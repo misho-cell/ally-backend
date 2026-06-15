@@ -24,3 +24,12 @@ export function authenticateJwt(req: Request, res: Response, next: NextFunction)
     res.status(401).json({ success: false, error: 'Invalid or expired authentication token' });
   }
 }
+
+export function requireAdminRole(req: Request, res: Response, next: NextFunction): void {
+  const user = (req as AuthenticatedRequest).user;
+  if (user.role !== 'admin') {
+    res.status(403).json({ success: false, error: 'Admin access required' });
+    return;
+  }
+  next();
+}
