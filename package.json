@@ -1,9 +1,11 @@
 {
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
     "test:neo4j": "node examples/neo4j_test.js",
     "test:postgres": "node examples/postgres_test.js",
-    "lint": "eslint . --ext .ts",
-    "dev": "ts-node src/index.ts"
+    "lint": "eslint . --ext .ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
