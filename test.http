@@ -1,0 +1,73 @@
+@host = http://localhost:4000
+@token = 
+@newFieldId = 
+
+### Register a new user
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Login
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+> {% client.global.set("token", response.body.data.token) %}
+
+### Get current user (protected)
+GET {{host}}/auth/me
+Authorization: Bearer {{token}}
+
+### List insight fields
+GET {{host}}/manager/insight-fields
+
+### Create a new insight field
+POST {{host}}/manager/insight-fields
+Content-Type: application/json
+
+{
+  "field_key": "industry",
+  "field_label": "Industry",
+  "field_description": "What industry does this person work in?"
+}
+
+> {% client.global.set("newFieldId", response.body.data.id) %}
+
+### Update the new insight field
+PUT {{host}}/manager/insight-fields/{{newFieldId}}
+Content-Type: application/json
+
+{
+  "field_label": "Industry Sector",
+  "field_description": "What industry sector does this person work in?"
+}
+
+### Toggle the new insight field
+PATCH {{host}}/manager/insight-fields/{{newFieldId}}/toggle
+
+### Get chat insight metadata for a contact
+GET {{host}}/chat/insights/neo4j-contact-123
+Authorization: Bearer {{token}}
+
+### Save contact insight from chat
+POST {{host}}/chat/insights/neo4j-contact-123
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contact_name": "John Doe",
+  "collected_data": {
+    "current_employer": "Acme Corp",
+    "relationship_strength": "Close",
+    "notes": "Met at the conference last month."
+  }
+}
+
