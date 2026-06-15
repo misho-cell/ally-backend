@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
-import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { authenticateJwt, requireAdminRole, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { processAdminChat } from '../../services/adminChatService';
 import {
   getInsightFields,
@@ -13,9 +13,10 @@ import { ApiResponse, InsightField } from '../../types';
 
 const adminRouter = Router();
 
+adminRouter.use(authenticateJwt, requireAdminRole);
+
 adminRouter.get(
   '/fields/active',
-  authenticateJwt,
   async (req: Request, res: Response<ApiResponse<InsightField[]>>) => {
     try {
       const fields = await getInsightFields();
@@ -30,7 +31,6 @@ adminRouter.get(
 
 adminRouter.get(
   '/fields',
-  authenticateJwt,
   async (req: Request, res: Response<ApiResponse<InsightField[]>>) => {
     try {
       const fields = await getAllInsightFields();
@@ -45,7 +45,6 @@ adminRouter.get(
 
 adminRouter.post(
   '/fields',
-  authenticateJwt,
   body('field_key').isString().trim().notEmpty(),
   body('field_label').isString().trim().notEmpty(),
   body('field_description').isString().trim().notEmpty(),
@@ -75,7 +74,6 @@ adminRouter.post(
 
 adminRouter.put(
   '/fields/:id',
-  authenticateJwt,
   param('id').isUUID(),
   body('field_label').isString().trim().notEmpty(),
   body('field_description').isString().trim().notEmpty(),
@@ -105,7 +103,6 @@ adminRouter.put(
 
 adminRouter.patch(
   '/fields/:id/toggle',
-  authenticateJwt,
   param('id').isUUID(),
   async (req: Request, res: Response<ApiResponse<InsightField>>) => {
     const errors = validationResult(req);
@@ -129,7 +126,6 @@ adminRouter.patch(
 
 adminRouter.post(
   '/chat',
-  authenticateJwt,
   body('message').isString().trim().notEmpty().isLength({ max: 4000 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
