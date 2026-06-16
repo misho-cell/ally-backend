@@ -98,8 +98,7 @@ chatRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
-      const msg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ success: false, error: msg });
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
 );
