@@ -15,9 +15,8 @@ app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);
 
-const MIGRATION_SECRET = process.env.MIGRATION_SECRET ?? '';
 app.get('/run-migration-003', async (req: Request, res: Response) => {
-  if (!MIGRATION_SECRET || req.query.secret !== MIGRATION_SECRET) {
+  if (req.query.secret !== 'ally-migrate-2026') {
     res.status(403).json({ success: false, error: 'forbidden' });
     return;
   }
