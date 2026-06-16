@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/express-validator": "^2.20.33",
     "@types/jest": "^29.5.14",
