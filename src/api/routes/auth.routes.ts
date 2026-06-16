@@ -1,6 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { requestOTP, verifyOTP, registerUser, adminLogin } from '../../services/auth.service';
+import {
+  requestOTP,
+  verifyOTP,
+  registerUser,
+  adminLogin,
+  completeLogin,
+} from '../../services/auth.service';
 import { ApiResponse } from '../../types';
 
 const authRouter = Router();
@@ -8,17 +14,25 @@ const authRouter = Router();
 authRouter.post(
   '/request-otp',
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
-  body('actionType').isIn(['REGISTER', 'AUTH', 'RECOVER']).withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
+  body('actionType')
+    .isIn(['REGISTER', 'AUTH', 'RECOVER'])
+    .withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
   async (req: Request, res: Response<ApiResponse<{ sent: boolean }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const message = errors.array().map((e) => e.msg).join(', ');
+      const message = errors
+        .array()
+        .map((e) => e.msg)
+        .join(', ');
       res.status(400).json({ success: false, error: message });
       return;
     }
 
     try {
-      const { phone, actionType } = req.body as { phone: string; actionType: 'REGISTER' | 'AUTH' | 'RECOVER' };
+      const { phone, actionType } = req.body as {
+        phone: string;
+        actionType: 'REGISTER' | 'AUTH' | 'RECOVER';
+      };
       await requestOTP(phone, actionType);
       res.status(200).json({ success: true, data: { sent: true } });
     } catch (error) {
@@ -32,21 +46,55 @@ authRouter.post(
   '/verify-otp',
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('code').isString().isLength({ min: 6, max: 6 }).withMessage('code must be 6 digits'),
-  body('actionType').isIn(['REGISTER', 'AUTH', 'RECOVER']).withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
+  body('actionType')
+    .isIn(['REGISTER', 'AUTH', 'RECOVER'])
+    .withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
   async (req: Request, res: Response<ApiResponse<{ verified: boolean }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const message = errors.array().map((e) => e.msg).join(', ');
+      const message = errors
+        .array()
+        .map((e) => e.msg)
+        .join(', ');
       res.status(400).json({ success: false, error: message });
       return;
     }
 
     try {
-      const { phone, code, actionType } = req.body as { phone: string; code: string; actionType: 'REGISTER' | 'AUTH' | 'RECOVER' };
+      const { phone, code, actionType } = req.body as {
+        phone: string;
+        code: string;
+        actionType: 'REGISTER' | 'AUTH' | 'RECOVER';
+      };
       await verifyOTP(phone, code, actionType);
       res.status(200).json({ success: true, data: { verified: true } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'OTP გადამოწმება ვერ მოხერხდა';
+      res.status(400).json({ success: false, error: message });
+    }
+  },
+);
+
+authRouter.post(
+  '/complete-login',
+  body('phone').isString().trim().notEmpty().withMessage('phone is required'),
+  async (req: Request, res: Response<ApiResponse<{ token: string; isNewUser: boolean }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const message = errors
+        .array()
+        .map((e) => String(e.msg))
+        .join(', ');
+      res.status(400).json({ success: false, error: message });
+      return;
+    }
+
+    try {
+      const { phone } = req.body as { phone: string };
+      const result = await completeLogin(phone);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'შესვლა ვერ მოხერხდა';
       res.status(400).json({ success: false, error: message });
     }
   },
@@ -59,7 +107,10 @@ authRouter.post(
   async (req: Request, res: Response<ApiResponse<{ token: string }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const message = errors.array().map((e) => e.msg).join(', ');
+      const message = errors
+        .array()
+        .map((e) => e.msg)
+        .join(', ');
       res.status(400).json({ success: false, error: message });
       return;
     }
@@ -82,7 +133,10 @@ authRouter.post(
   async (req: Request, res: Response<ApiResponse<{ token: string }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const message = errors.array().map((e) => e.msg).join(', ');
+      const message = errors
+        .array()
+        .map((e) => e.msg)
+        .join(', ');
       res.status(400).json({ success: false, error: message });
       return;
     }

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getInsightFields, getContactInsight, saveContactInsight } from './insights.service';
+import { getContactInsight, saveContactInsight } from './insights.service';
 import { createGetContactInsightTool, GetContactInsightParams } from './tools/get_contact_insight';
 import {
   createSaveContactInsightTool,
@@ -47,7 +47,7 @@ function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicToo
 export async function buildContactInsightSystemPrompt(): Promise<string> {
   // 1. Read base prompt from ai_config
   const configResult = await query<{ system_prompt: string }>(
-    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1'
+    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
   );
   const basePrompt = configResult.rows[0]?.system_prompt ?? '';
 
@@ -56,7 +56,9 @@ export async function buildContactInsightSystemPrompt(): Promise<string> {
     field_key: string;
     field_label: string;
     field_description: string;
-  }>('SELECT field_key, field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC');
+  }>(
+    'SELECT field_key, field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+  );
   const fields = fieldsResult.rows;
 
   // 3. Build fields section
@@ -66,7 +68,7 @@ export async function buildContactInsightSystemPrompt(): Promise<string> {
 
 ## კონტაქტის შესახებ ინფოს შეგროვება
 კონტაქტის წარდგენის შემდეგ ჰკითხე მომხმარებელს:
-${fields.map(f => `- ${f.field_label}: ${f.field_description}`).join('\n')}
+${fields.map((f) => `- ${f.field_label}: ${f.field_description}`).join('\n')}
 
 მიღებული ინფო შეინახე save_contact_insight tool-ით.
 შენახული ინფო გამოიყენე მომავალ ძიებებში search_by_insight tool-ით.`;
@@ -110,7 +112,8 @@ export async function processChat(userId: string, userMessage: string): Promise<
       properties: {
         name_query: {
           type: 'string',
-          description: 'The name or partial name to search for. Can be first name, last name, or full name.',
+          description:
+            'The name or partial name to search for. Can be first name, last name, or full name.',
         },
       },
       required: ['name_query'],
@@ -131,7 +134,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
   const insightTool: AnthropicTool = {
     name: 'search_by_insight',
     description:
-      "Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: \"სანდო ხელოსანი\", \"კარგი ექიმი\". This searches the assistant's own saved knowledge base.",
+      'Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: "სანდო ხელოსანი", "კარგი ექიმი". This searches the assistant\'s own saved knowledge base.',
     input_schema: {
       type: 'object',
       properties: {

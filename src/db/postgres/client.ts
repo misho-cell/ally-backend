@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Pool, QueryConfig, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
 
 dotenv.config();
 
@@ -40,6 +40,22 @@ export async function queryConfig<T extends QueryResultRow>(
   try {
     await client.query(`SET LOCAL statement_timeout = ${DEFAULT_QUERY_TIMEOUT_MS}`);
     return client.query<T>(queryConfig);
+  } finally {
+    client.release();
+  }
+}
+
+export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SET LOCAL statement_timeout = ${DEFAULT_QUERY_TIMEOUT_MS}`);
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
   } finally {
     client.release();
   }

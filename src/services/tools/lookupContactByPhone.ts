@@ -30,7 +30,7 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
           OR up.phone = $2
           OR up."phoneNumber" = $3
        LIMIT 1`,
-      [normalized, '+' + digitsOnly, digitsOnly]
+      [normalized, '+' + digitsOnly, digitsOnly],
     );
 
     if (result.rows.length === 0) {
@@ -40,10 +40,10 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
     const row = result.rows[0];
     return {
       found: true,
-      name:        row.alias ?? row.name ?? null,
-      city:        row.city ?? null,
+      name: row.alias ?? row.name ?? null,
+      city: row.city ?? null,
       jobPosition: row.jobPosition ?? null,
-      employer:    row.employer ?? null,
+      employer: row.employer ?? null,
     };
   } catch (err) {
     console.error('lookupContactByPhone error:', (err as Error).message);

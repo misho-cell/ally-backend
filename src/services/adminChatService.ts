@@ -33,64 +33,60 @@ const adminTools = [
     input_schema: {
       type: 'object' as const,
       properties: {},
-      required: []
-    }
+      required: [],
+    },
   },
   {
     name: 'update_user_assistant_prompt',
-    description: 'შეინახე განახლებული system prompt ai_config ცხრილში. გამოიყენე მხოლოდ ადმინის დადასტურების შემდეგ.',
+    description:
+      'შეინახე განახლებული system prompt ai_config ცხრილში. გამოიყენე მხოლოდ ადმინის დადასტურების შემდეგ.',
     input_schema: {
       type: 'object' as const,
       properties: {
         new_prompt: {
           type: 'string',
-          description: 'სრული განახლებული system prompt'
-        }
+          description: 'სრული განახლებული system prompt',
+        },
       },
-      required: ['new_prompt']
-    }
-  }
+      required: ['new_prompt'],
+    },
+  },
 ];
 
 async function executeAdminTool(toolName: string, toolInput: any): Promise<object> {
   if (toolName === 'get_current_prompt') {
     const result = await query<{ system_prompt: string }>(
-      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1'
+      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
     );
     return { current_prompt: result.rows[0]?.system_prompt ?? '' };
   }
 
   if (toolName === 'update_user_assistant_prompt') {
-    await query(
-      'INSERT INTO ai_config (system_prompt) VALUES ($1)',
-      [toolInput.new_prompt]
-    );
+    await query('INSERT INTO ai_config (system_prompt) VALUES ($1)', [toolInput.new_prompt]);
     return { updated: true };
   }
 
   return { error: 'Unknown tool' };
 }
 
-export async function processAdminChat(
-  adminId: string,
-  userMessage: string
-): Promise<string> {
+export async function processAdminChat(adminId: string, userMessage: string): Promise<string> {
   const historyResult = await query<{ role: string; content: string }>(
     `SELECT role, content FROM conversations
      WHERE user_id = $1
      ORDER BY created_at DESC LIMIT 20`,
-    [adminId]
+    [adminId],
   );
   const history = historyResult.rows.reverse();
 
-  await query(
-    'INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)',
-    [adminId, 'user', userMessage]
-  );
+  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
+    adminId,
+    'user',
+    userMessage,
+  ]);
 
   const messages: any[] = [
-    ...history.map(r => ({ role: r.role, content: r.content })),
-    { role: 'user', content: userMessage }
+    ...history.map((r) => ({ role: r.role, content: r.content })),
+    { role: 'user', content: userMessage },
   ];
 
   let response = await anthropic.messages.create({
@@ -98,7 +94,7 @@ export async function processAdminChat(
     max_tokens: 4096,
     system: ADMIN_SYSTEM_PROMPT,
     tools: adminTools,
-    messages
+    messages,
   });
 
   while (response.stop_reason === 'tool_use') {
@@ -111,7 +107,7 @@ export async function processAdminChat(
       toolResults.push({
         type: 'tool_result',
         tool_use_id: block.id,
-        content: JSON.stringify(result)
+        content: JSON.stringify(result),
       });
     }
 
@@ -123,19 +119,20 @@ export async function processAdminChat(
       max_tokens: 4096,
       system: ADMIN_SYSTEM_PROMPT,
       tools: adminTools,
-      messages
+      messages,
     });
   }
 
   const reply = response.content
-    .filter(b => b.type === 'text')
-    .map(b => (b as any).text)
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as any).text)
     .join('');
 
-  await query(
-    'INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)',
-    [adminId, 'assistant', reply]
-  );
+  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
+    adminId,
+    'assistant',
+    reply,
+  ]);
 
   return reply;
 }

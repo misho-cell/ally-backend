@@ -18,7 +18,7 @@ export async function searchByInsight(searchQuery: string): Promise<object> {
           OR LOWER(data::text)         LIKE $1
        ORDER BY updated_at DESC
        LIMIT 10`,
-      [searchTerm]
+      [searchTerm],
     );
 
     if (result.rows.length === 0) {
@@ -28,7 +28,7 @@ export async function searchByInsight(searchQuery: string): Promise<object> {
     return {
       found: true,
       count: result.rows.length,
-      results: result.rows.map(row => ({
+      results: result.rows.map((row) => ({
         name: row.neo4j_contact_name ?? null,
         info: row.data,
       })),

@@ -14,12 +14,15 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    body: Buffer.from(JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: phone,
-      type: 'text',
-      text: { body: `Ally-s kodi: ${code} - moqmedebs 5 wuti` },
-    }), 'utf8'),
+    body: Buffer.from(
+      JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'text',
+        text: { body: `Ally-s kodi: ${code} - moqmedebs 5 wuti` },
+      }),
+      'utf8',
+    ),
   });
 
   const responseBody = await response.json();
