@@ -91,6 +91,21 @@ export async function registerUser(phone: string, name: string): Promise<{ token
   return { token };
 }
 
+export async function completeLogin(phone: string): Promise<{ token: string; isNewUser: boolean }> {
+  const result = await query<{ id: number }>(
+    'SELECT "userId" AS id FROM "UserPhone" WHERE phone = $1',
+    [phone],
+  );
+
+  if (!result.rowCount || result.rowCount === 0) {
+    return { token: '', isNewUser: true };
+  }
+
+  const userId = result.rows[0].id;
+  const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
+  return { token, isNewUser: false };
+}
+
 export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
   const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(
     'SELECT id, password, "hasAccessToAlly" FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
