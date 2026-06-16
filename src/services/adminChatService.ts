@@ -94,7 +94,7 @@ export async function processAdminChat(
   ];
 
   let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     system: ADMIN_SYSTEM_PROMPT,
     tools: adminTools,
@@ -119,7 +119,7 @@ export async function processAdminChat(
     messages.push({ role: 'user', content: toolResults });
 
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: ADMIN_SYSTEM_PROMPT,
       tools: adminTools,
