@@ -179,7 +179,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
 
   // Step 6
   let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     system: systemPrompt,
     tools: allTools,
@@ -228,7 +228,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
     messages.push({ role: 'user', content: toolResults });
 
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       tools: allTools,
