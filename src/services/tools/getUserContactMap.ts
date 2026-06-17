@@ -1,5 +1,4 @@
 import { query } from '../../db/postgres/client';
-import { getSession } from '../../db/neo4j/client';
 
 export interface ContactInfo {
   name: string | null;
@@ -9,41 +8,36 @@ export interface ContactInfo {
 }
 
 export async function getUserContactMap(userId: string): Promise<Map<string, ContactInfo>> {
-  const phoneResult = await query<{ phone: string }>(
-    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
+  const result = await query<{
+    phone: string;
+    name: string | null;
+    employer: string | null;
+    jobPosition: string | null;
+    city: string | null;
+  }>(
+    `SELECT ua.phone,
+            COALESCE(ua.alias, u.name) AS name,
+            u.employer                 AS employer,
+            u."jobPosition"            AS "jobPosition",
+            u.city                     AS city
+     FROM "UserAlias" ua
+     LEFT JOIN "UserPhone" up ON up.phone = ua.phone
+     LEFT JOIN "User"      u  ON u.id     = up."userId"
+     WHERE ua."userId" = $1
+       AND ua.phone IS NOT NULL`,
     [userId],
   );
 
-  if (!phoneResult.rowCount || phoneResult.rows.length === 0) {
-    return new Map();
-  }
-
-  const userPhone = phoneResult.rows[0].phone;
-  const session = getSession();
-
-  try {
-    const result = await session.run(
-      `MATCH (me:PhoneNode {phone: $userPhone})-[r:CONTACT]->(contact:PhoneNode)
-       RETURN contact.phone AS phone,
-              r.name        AS name,
-              r.employer    AS employer,
-              r.jobPosition AS jobPosition,
-              r.city        AS city`,
-      { userPhone },
-      { timeout: 8000 },
-    );
-
-    const map = new Map<string, ContactInfo>();
-    for (const record of result.records) {
-      map.set(record.get('phone') as string, {
-        name: record.get('name') as string | null,
-        employer: record.get('employer') as string | null,
-        jobPosition: record.get('jobPosition') as string | null,
-        city: record.get('city') as string | null,
+  const map = new Map<string, ContactInfo>();
+  for (const row of result.rows) {
+    if (!map.has(row.phone)) {
+      map.set(row.phone, {
+        name: row.name,
+        employer: row.employer,
+        jobPosition: row.jobPosition,
+        city: row.city,
       });
     }
-    return map;
-  } finally {
-    await session.close();
   }
+  return map;
 }

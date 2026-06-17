@@ -28,7 +28,7 @@ export async function importContacts(
   let skipped = 0;
 
   for (const contact of batch) {
-    const counts = await importSingleContact(userPhone, contact);
+    const counts = await importSingleContact(userId, userPhone, contact);
     imported += counts.imported;
     skipped += counts.skipped;
   }
@@ -37,6 +37,7 @@ export async function importContacts(
 }
 
 async function importSingleContact(
+  userId: string,
   userPhone: string,
   contact: ImportContact,
 ): Promise<ImportResult> {
@@ -55,7 +56,7 @@ async function importSingleContact(
     }
 
     try {
-      await saveToPostgres(phone, contact);
+      await saveToPostgres(userId, phone, contact);
       await saveToNeo4j(userPhone, phone, contact);
       imported++;
     } catch (err) {
@@ -75,26 +76,30 @@ function normalizePhone(raw: string): string | null {
   return cleaned;
 }
 
-async function saveToPostgres(phone: string, contact: ImportContact): Promise<void> {
+async function saveToPostgres(
+  userId: string,
+  phone: string,
+  contact: ImportContact,
+): Promise<void> {
   await withTransaction(async (client: PoolClient) => {
     await client.query(
-      `INSERT INTO "UserAlias" (phone, alias, "createdAt", "updatedAt")
-       SELECT $1, $2, NOW(), NOW()
+      `INSERT INTO "UserAlias" (phone, "userId", alias, "createdAt", "updatedAt")
+       SELECT $1, $2, $3, NOW(), NOW()
        WHERE NOT EXISTS (
-         SELECT 1 FROM "UserAlias" WHERE phone = $1 AND alias = $2
+         SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "userId" = $2 AND alias = $3
        )`,
-      [phone, contact.name.trim()],
+      [phone, userId, contact.name.trim()],
     );
 
     const tags = buildTags(contact);
     for (const tag of tags) {
       await client.query(
-        `INSERT INTO "UserTags" (phone, tag, "weightCount", "createdAt", "updatedAt")
-         SELECT $1, $2, 1, NOW(), NOW()
+        `INSERT INTO "UserTags" (phone, "userId", tag, "weightCount", "createdAt", "updatedAt")
+         SELECT $1, $2, $3, 1, NOW(), NOW()
          WHERE NOT EXISTS (
-           SELECT 1 FROM "UserTags" WHERE phone = $1 AND tag = $2
+           SELECT 1 FROM "UserTags" WHERE phone = $1 AND "userId" = $2 AND tag = $3
          )`,
-        [phone, tag],
+        [phone, userId, tag],
       );
     }
   });
