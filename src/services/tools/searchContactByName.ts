@@ -1,56 +1,70 @@
 import { query } from '../../db/postgres/client';
+import { getUserContactMap } from './getUserContactMap';
 
-export async function searchContactByName(nameQuery: string): Promise<object> {
+export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
-    const searchTerm = '%' + nameQuery.toLowerCase() + '%';
+    const contactMap = await getUserContactMap(userId);
 
-    const result = await query<{
-      phone: string;
-      all_aliases: string[];
-      all_tags: string[];
-      registered_name: string | null;
-      city: string | null;
-      jobPosition: string | null;
-      employer: string | null;
-    }>(
-      `SELECT
-         ua.phone,
-         array_agg(DISTINCT ua.alias)  AS all_aliases,
-         array_agg(DISTINCT ut.tag)    AS all_tags,
-         MAX(u.name)                   AS registered_name,
-         MAX(u.city)                   AS city,
-         MAX(u."jobPosition")          AS "jobPosition",
-         MAX(u.employer)               AS employer
-       FROM "UserAlias" ua
-       LEFT JOIN "UserTags"  ut ON ut.phone  = ua.phone
-       LEFT JOIN "UserPhone" up ON up.phone  = ua.phone
-       LEFT JOIN "User"      u  ON u.id      = up."userId"
-       WHERE LOWER(ua.alias) LIKE $1
-          OR LOWER(u.name)   LIKE $1
-       GROUP BY ua.phone
-       ORDER BY COUNT(DISTINCT ua.alias) DESC
-       LIMIT 20`,
-      [searchTerm],
-    );
-
-    if (result.rows.length === 0) {
+    if (contactMap.size === 0) {
       return { found: false, query: nameQuery };
     }
 
+    const q = nameQuery.toLowerCase();
+
+    const neo4jMatches = Array.from(contactMap.entries())
+      .filter(([, info]) => info.name?.toLowerCase().includes(q))
+      .map(([phone]) => phone);
+
+    const phones = Array.from(contactMap.keys());
+    const searchTerm = '%' + q + '%';
+
+    const pgResult = await query<{
+      phone: string;
+      all_tags: string[];
+      registered_name: string | null;
+    }>(
+      `SELECT
+         up.phone,
+         array_agg(DISTINCT ut.tag) AS all_tags,
+         MAX(u.name)                AS registered_name
+       FROM "UserPhone" up
+       LEFT JOIN "UserTags" ut ON ut.phone  = up.phone
+       LEFT JOIN "User"     u  ON u.id      = up."userId"
+       WHERE up.phone = ANY($1)
+         AND LOWER(u.name) LIKE $2
+       GROUP BY up.phone`,
+      [phones, searchTerm],
+    );
+
+    const pgPhones = pgResult.rows.map((r) => r.phone);
+    const allMatchPhones = Array.from(new Set([...neo4jMatches, ...pgPhones]));
+
+    if (allMatchPhones.length === 0) {
+      return { found: false, query: nameQuery };
+    }
+
+    const tagsResult = await query<{ phone: string; all_tags: string[] }>(
+      `SELECT phone, array_agg(DISTINCT tag) AS all_tags
+       FROM "UserTags"
+       WHERE phone = ANY($1)
+       GROUP BY phone`,
+      [allMatchPhones],
+    );
+
+    const tagsMap = new Map(tagsResult.rows.map((r) => [r.phone, r.all_tags.filter(Boolean)]));
+    const pgMap = new Map(pgResult.rows.map((r) => [r.phone, r.registered_name]));
+
     return {
       found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => {
-        const cleanAliases = (row.all_aliases || []).filter(Boolean);
-        const cleanTags = (row.all_tags || []).filter(Boolean);
-        const bestName = row.registered_name ?? cleanAliases[0] ?? null;
+      count: allMatchPhones.length,
+      results: allMatchPhones.slice(0, 20).map((phone) => {
+        const neo4j = contactMap.get(phone);
         return {
-          name: bestName,
-          aliases: cleanAliases,
-          tags: cleanTags,
-          city: row.city ?? null,
-          jobPosition: row.jobPosition ?? null,
-          employer: row.employer ?? null,
+          name: neo4j?.name ?? pgMap.get(phone) ?? null,
+          tags: tagsMap.get(phone) ?? [],
+          employer: neo4j?.employer ?? null,
+          jobPosition: neo4j?.jobPosition ?? null,
+          city: neo4j?.city ?? null,
         };
       }),
     };

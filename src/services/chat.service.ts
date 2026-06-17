@@ -221,9 +221,9 @@ export async function processChat(userId: string, userMessage: string): Promise<
           (block.input as any).neo4j_contact_id,
         );
       } else if (block.name === 'search_contact_by_name') {
-        result = await searchContactByName((block.input as any).name_query);
+        result = await searchContactByName(userId, (block.input as any).name_query);
       } else if (block.name === 'search_by_tag') {
-        result = await searchByTag((block.input as any).tag_query);
+        result = await searchByTag(userId, (block.input as any).tag_query);
       } else if (block.name === 'search_by_insight') {
         result = await searchByInsight((block.input as any).search_query);
       } else if (block.name === 'search_second_degree') {

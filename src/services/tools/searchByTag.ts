@@ -1,35 +1,35 @@
 import { query } from '../../db/postgres/client';
+import { getUserContactMap } from './getUserContactMap';
 
-export async function searchByTag(tagQuery: string): Promise<object> {
+export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
+    const contactMap = await getUserContactMap(userId);
+
+    if (contactMap.size === 0) {
+      return { found: false, query: tagQuery };
+    }
+
+    const phones = Array.from(contactMap.keys());
     const searchTerm = '%' + tagQuery.toLowerCase() + '%';
 
     const result = await query<{
       phone: string;
-      all_aliases: string[];
       all_tags: string[];
       registered_name: string | null;
-      city: string | null;
-      jobPosition: string | null;
-      employer: string | null;
     }>(
       `SELECT
          ut.phone,
-         array_agg(DISTINCT ua.alias)  AS all_aliases,
-         array_agg(DISTINCT ut.tag)    AS all_tags,
-         MAX(u.name)                   AS registered_name,
-         MAX(u.city)                   AS city,
-         MAX(u."jobPosition")          AS "jobPosition",
-         MAX(u.employer)               AS employer
+         array_agg(DISTINCT ut.tag) AS all_tags,
+         MAX(u.name)                AS registered_name
        FROM "UserTags" ut
-       LEFT JOIN "UserAlias" ua ON ua.phone  = ut.phone
        LEFT JOIN "UserPhone" up ON up.phone  = ut.phone
        LEFT JOIN "User"      u  ON u.id      = up."userId"
-       WHERE LOWER(ut.tag) LIKE $1
+       WHERE ut.phone = ANY($1)
+         AND LOWER(ut.tag) LIKE $2
        GROUP BY ut.phone
        ORDER BY MAX(ut."weightCount") DESC
        LIMIT 20`,
-      [searchTerm],
+      [phones, searchTerm],
     );
 
     if (result.rows.length === 0) {
@@ -40,16 +40,14 @@ export async function searchByTag(tagQuery: string): Promise<object> {
       found: true,
       count: result.rows.length,
       results: result.rows.map((row) => {
-        const cleanAliases = (row.all_aliases || []).filter(Boolean);
+        const neo4j = contactMap.get(row.phone);
         const cleanTags = (row.all_tags || []).filter(Boolean);
-        const bestName = row.registered_name ?? cleanAliases[0] ?? null;
         return {
-          name: bestName,
-          aliases: cleanAliases,
+          name: neo4j?.name ?? row.registered_name ?? null,
           tags: cleanTags,
-          city: row.city ?? null,
-          jobPosition: row.jobPosition ?? null,
-          employer: row.employer ?? null,
+          employer: neo4j?.employer ?? null,
+          jobPosition: neo4j?.jobPosition ?? null,
+          city: neo4j?.city ?? null,
         };
       }),
     };
