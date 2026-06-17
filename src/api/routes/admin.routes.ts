@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
-import { authenticateJwt, requireAdminRole, AuthenticatedRequest } from '../middleware/auth.middleware';
+import {
+  authenticateJwt,
+  requireAdminRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { processAdminChat } from '../../services/adminChatService';
 import {
   getInsightFields,
@@ -29,19 +33,16 @@ adminRouter.get(
   },
 );
 
-adminRouter.get(
-  '/fields',
-  async (req: Request, res: Response<ApiResponse<InsightField[]>>) => {
-    try {
-      const fields = await getAllInsightFields();
-      res.status(200).json({ success: true, data: fields });
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
-    }
-  },
-);
+adminRouter.get('/fields', async (req: Request, res: Response<ApiResponse<InsightField[]>>) => {
+  try {
+    const fields = await getAllInsightFields();
+    res.status(200).json({ success: true, data: fields });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.post(
   '/fields',

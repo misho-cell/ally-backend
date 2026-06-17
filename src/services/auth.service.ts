@@ -21,7 +21,8 @@ function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
     throw new Error('ტელეფონი E.164 ფორმატში უნდა იყოს (+...)');
   }
   if (e164.startsWith('+995')) return { phoneCode: '+995', phoneNumber: e164.slice(4) };
-  if (e164.startsWith('+1') && e164.length === 12) return { phoneCode: '+1', phoneNumber: e164.slice(2) };
+  if (e164.startsWith('+1') && e164.length === 12)
+    return { phoneCode: '+1', phoneNumber: e164.slice(2) };
   if (e164.startsWith('+7')) return { phoneCode: '+7', phoneNumber: e164.slice(2) };
   if (e164.startsWith('+44')) return { phoneCode: '+44', phoneNumber: e164.slice(3) };
   if (e164.startsWith('+49')) return { phoneCode: '+49', phoneNumber: e164.slice(3) };
@@ -29,7 +30,10 @@ function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
   return { phoneCode: e164.slice(0, 4), phoneNumber: e164.slice(4) };
 }
 
-export async function requestOTP(phone: string, actionType: 'REGISTER' | 'AUTH' | 'RECOVER'): Promise<void> {
+export async function requestOTP(
+  phone: string,
+  actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+): Promise<void> {
   const code = generateOTP();
 
   await query(
@@ -41,7 +45,11 @@ export async function requestOTP(phone: string, actionType: 'REGISTER' | 'AUTH' 
   await sendWhatsAppMessage(phone, code);
 }
 
-export async function verifyOTP(phone: string, code: string, actionType: 'REGISTER' | 'AUTH' | 'RECOVER'): Promise<void> {
+export async function verifyOTP(
+  phone: string,
+  code: string,
+  actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+): Promise<void> {
   const result = await query<{ id: number }>(
     `SELECT id FROM "Otp"
      WHERE identifier = $1
@@ -60,10 +68,9 @@ export async function verifyOTP(phone: string, code: string, actionType: 'REGIST
 }
 
 export async function registerUser(phone: string, name: string): Promise<{ token: string }> {
-  const existing = await query<{ id: number }>(
-    'SELECT id FROM "UserPhone" WHERE phone = $1',
-    [phone],
-  );
+  const existing = await query<{ id: number }>('SELECT id FROM "UserPhone" WHERE phone = $1', [
+    phone,
+  ]);
 
   if (existing.rowCount && existing.rowCount > 0) {
     throw new Error('ნომერი უკვე რეგისტრირებულია');
@@ -127,7 +134,9 @@ export async function adminLogin(email: string, password: string): Promise<{ tok
     throw new Error('არასწორი პაროლი');
   }
 
-  const token = jwt.sign({ userId: String(user.id), role: 'admin' }, jwtSecret, { expiresIn: '8h' });
+  const token = jwt.sign({ userId: String(user.id), role: 'admin' }, jwtSecret, {
+    expiresIn: '8h',
+  });
   return { token };
 }
 

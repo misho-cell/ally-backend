@@ -30,7 +30,7 @@ export async function searchContactByName(nameQuery: string): Promise<object> {
        GROUP BY ua.phone
        ORDER BY COUNT(DISTINCT ua.alias) DESC
        LIMIT 20`,
-      [searchTerm]
+      [searchTerm],
     );
 
     if (result.rows.length === 0) {
@@ -40,19 +40,17 @@ export async function searchContactByName(nameQuery: string): Promise<object> {
     return {
       found: true,
       count: result.rows.length,
-      results: result.rows.map(row => {
+      results: result.rows.map((row) => {
         const cleanAliases = (row.all_aliases || []).filter(Boolean);
-        const cleanTags    = (row.all_tags    || []).filter(Boolean);
-        const bestName     = row.registered_name
-                           ?? cleanAliases[0]
-                           ?? null;
+        const cleanTags = (row.all_tags || []).filter(Boolean);
+        const bestName = row.registered_name ?? cleanAliases[0] ?? null;
         return {
-          name:        bestName,
-          aliases:     cleanAliases,
-          tags:        cleanTags,
-          city:        row.city        ?? null,
+          name: bestName,
+          aliases: cleanAliases,
+          tags: cleanTags,
+          city: row.city ?? null,
           jobPosition: row.jobPosition ?? null,
-          employer:    row.employer    ?? null,
+          employer: row.employer ?? null,
         };
       }),
     };

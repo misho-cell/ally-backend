@@ -9,6 +9,7 @@ import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
+import { searchSecondDegree } from './tools/searchSecondDegree';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -47,7 +48,7 @@ function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicToo
 export async function buildContactInsightSystemPrompt(): Promise<string> {
   // 1. Read base prompt from ai_config
   const configResult = await query<{ system_prompt: string }>(
-    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1'
+    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
   );
   const basePrompt = configResult.rows[0]?.system_prompt ?? '';
 
@@ -56,7 +57,9 @@ export async function buildContactInsightSystemPrompt(): Promise<string> {
     field_key: string;
     field_label: string;
     field_description: string;
-  }>('SELECT field_key, field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC');
+  }>(
+    'SELECT field_key, field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+  );
   const fields = fieldsResult.rows;
 
   // 3. Build fields section
@@ -66,7 +69,7 @@ export async function buildContactInsightSystemPrompt(): Promise<string> {
 
 ## კონტაქტის შესახებ ინფოს შეგროვება
 კონტაქტის წარდგენის შემდეგ ჰკითხე მომხმარებელს:
-${fields.map(f => `- ${f.field_label}: ${f.field_description}`).join('\n')}
+${fields.map((f) => `- ${f.field_label}: ${f.field_description}`).join('\n')}
 
 მიღებული ინფო შეინახე save_contact_insight tool-ით.
 შენახული ინფო გამოიყენე მომავალ ძიებებში search_by_insight tool-ით.`;
@@ -110,7 +113,8 @@ export async function processChat(userId: string, userMessage: string): Promise<
       properties: {
         name_query: {
           type: 'string',
-          description: 'The name or partial name to search for. Can be first name, last name, or full name.',
+          description:
+            'The name or partial name to search for. Can be first name, last name, or full name.',
         },
       },
       required: ['name_query'],
@@ -131,7 +135,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
   const insightTool: AnthropicTool = {
     name: 'search_by_insight',
     description:
-      "Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: \"სანდო ხელოსანი\", \"კარგი ექიმი\". This searches the assistant's own saved knowledge base.",
+      'Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: "სანდო ხელოსანი", "კარგი ექიმი". This searches the assistant\'s own saved knowledge base.',
     input_schema: {
       type: 'object',
       properties: {
@@ -143,12 +147,29 @@ export async function processChat(userId: string, userMessage: string): Promise<
       required: ['search_query'],
     },
   };
+  const secondDegreeTool: AnthropicTool = {
+    name: 'search_second_degree',
+    description:
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        tag_query: {
+          type: 'string',
+          description:
+            'The tag, job title, skill, or keyword to search for in 2nd degree contacts.',
+        },
+      },
+      required: ['tag_query'],
+    },
+  };
   const allTools: AnthropicTool[] = [
     ...existingTools.map(toAnthropicTool),
     lookupTool,
     searchTool,
     tagTool,
     insightTool,
+    secondDegreeTool,
   ];
 
   // Step 3
@@ -205,6 +226,8 @@ export async function processChat(userId: string, userMessage: string): Promise<
         result = await searchByTag((block.input as any).tag_query);
       } else if (block.name === 'search_by_insight') {
         result = await searchByInsight((block.input as any).search_query);
+      } else if (block.name === 'search_second_degree') {
+        result = await searchSecondDegree(userId, (block.input as any).tag_query);
       } else if (block.name === 'save_contact_insight') {
         result = await saveContactInsight(
           (block.input as any).userId,

@@ -1,14 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
-import {
-  buildContactInsightSystemPrompt,
-  processChat,
-} from '../../services/chat.service';
-import {
-  getContactInsight,
-  saveContactInsight,
-} from '../../services/insights.service';
+import { buildContactInsightSystemPrompt, processChat } from '../../services/chat.service';
+import { getContactInsight, saveContactInsight } from '../../services/insights.service';
 import { ApiResponse, ContactInsight } from '../../types';
 
 const chatRouter = Router();
@@ -38,7 +32,10 @@ chatRouter.get(
   authenticateJwt,
   param('neo4jContactId').isString().trim().notEmpty().withMessage('neo4jContactId is required'),
   handleValidationErrors,
-  async (req: Request, res: Response<ApiResponse<{ systemPrompt: string; insight: ContactInsight | null }>>) => {
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ systemPrompt: string; insight: ContactInsight | null }>>,
+  ) => {
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const neo4jContactId = String(req.params.neo4jContactId);
@@ -58,9 +55,16 @@ chatRouter.post(
   authenticateJwt,
   param('neo4jContactId').isString().trim().notEmpty().withMessage('neo4jContactId is required'),
   body('contact_name').isString().trim().notEmpty().withMessage('contact_name is required'),
-  body('collected_data').exists().withMessage('collected_data is required').isObject().withMessage('collected_data must be an object'),
+  body('collected_data')
+    .exists()
+    .withMessage('collected_data is required')
+    .isObject()
+    .withMessage('collected_data must be an object'),
   handleValidationErrors,
-  async (req: Request, res: Response<ApiResponse<{ systemPrompt: string; insight: ContactInsight }>>) => {
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ systemPrompt: string; insight: ContactInsight }>>,
+  ) => {
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const neo4jContactId = String(req.params.neo4jContactId);
