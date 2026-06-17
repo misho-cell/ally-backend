@@ -1,5 +1,7 @@
 import anthropic from '../config/anthropic';
 import { query } from '../db/postgres/client';
+import pool from '../db/postgres/client';
+import { getSession } from '../db/neo4j/client';
 
 const ADMIN_SYSTEM_PROMPT = `შენ ხარ Ally-ს AI ასისტენტის კონფიგურატორი.
 ადმინისტრატორი გეტყვის როგორ მოიქცეს user-ის AI ასისტენტი.
@@ -37,6 +39,15 @@ const adminTools = [
     },
   },
   {
+    name: 'neo4j_second_degree_stats',
+    description: 'აჩვენე Neo4j-ში კავშირების სტატისტიკა — რამდენი კონტაქტი ჩანს Neo4j-ში და რამდენი მეორე საფეხურის კავშირი არსებობს',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
     name: 'update_user_assistant_prompt',
     description:
       'შეინახე განახლებული system prompt ai_config ცხრილში. გამოიყენე მხოლოდ ადმინის დადასტურების შემდეგ.',
@@ -53,7 +64,40 @@ const adminTools = [
   },
 ];
 
-async function executeAdminTool(toolName: string, toolInput: any): Promise<object> {
+async function executeAdminTool(toolName: string, toolInput: any, adminId: string): Promise<object> {
+  if (toolName === 'neo4j_second_degree_stats') {
+    const phoneResult = await pool.query<{ phone: string }>(
+      'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
+      [adminId],
+    );
+    if (phoneResult.rows.length === 0) return { error: 'Phone not found' };
+    const userPhone = phoneResult.rows[0].phone;
+    const session = getSession();
+    try {
+      const result = await session.run(
+        `MATCH (me:PhoneNode {phone: $userPhone})-[:CONTACT]->(friend:PhoneNode)
+         OPTIONAL MATCH (friend)-[:CONTACT]->(target:PhoneNode)
+         WHERE target.phone <> me.phone
+         WITH friend, COUNT(DISTINCT target) AS friendContacts
+         RETURN
+           COUNT(friend)                                        AS total_friends_in_neo4j,
+           COUNT(CASE WHEN friendContacts > 0 THEN friend END)  AS friends_with_contacts,
+           SUM(friendContacts)                                  AS total_second_degree`,
+        { userPhone },
+        { timeout: 15000 },
+      );
+      const row = result.records[0];
+      return {
+        userPhone,
+        total_friends_in_neo4j: row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
+        friends_with_contacts: row.get('friends_with_contacts').toNumber?.() ?? row.get('friends_with_contacts'),
+        total_second_degree: row.get('total_second_degree').toNumber?.() ?? row.get('total_second_degree'),
+      };
+    } finally {
+      await session.close();
+    }
+  }
+
   if (toolName === 'get_current_prompt') {
     const result = await query<{ system_prompt: string }>(
       'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
@@ -103,7 +147,7 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
 
     for (const block of assistantContent) {
       if (block.type !== 'tool_use') continue;
-      const result = await executeAdminTool(block.name, (block as any).input);
+      const result = await executeAdminTool(block.name, (block as any).input, adminId);
       toolResults.push({
         type: 'tool_result',
         tool_use_id: block.id,
