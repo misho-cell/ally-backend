@@ -1,8 +1,12 @@
 import { query } from '../../db/postgres/client';
+import { buildSearchTerms } from './transliterate';
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
-    const searchTerm = '%' + nameQuery.toLowerCase() + '%';
+    const terms = buildSearchTerms(nameQuery).map((t) => '%' + t + '%');
+    const nameCondition = terms
+      .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)
+      .join(' OR ');
 
     const result = await query<{
       phone: string;
@@ -23,11 +27,11 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        LEFT JOIN "UserPhone" up ON up.phone  = ua.phone
        LEFT JOIN "User"      u  ON u.id      = up."userId"
        WHERE ua."contactId" = $1
-         AND (LOWER(ua.alias) LIKE $2 OR LOWER(u.name) LIKE $2)
+         AND (${nameCondition})
        GROUP BY ua.phone
        ORDER BY MAX(ua.alias)
        LIMIT 20`,
-      [userId, searchTerm],
+      [userId, ...terms],
     );
 
     if (result.rows.length === 0) {

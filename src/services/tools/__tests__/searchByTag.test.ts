@@ -34,12 +34,20 @@ describe('searchByTag', () => {
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId and lowercased search term to query', async () => {
+  it('passes userId and lowercased term to query (Latin — no transliteration)', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
 
     await searchByTag('42', 'Engineer');
 
     expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%engineer%']);
+  });
+
+  it('passes Georgian term plus transliteration for Georgian query', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+
+    await searchByTag('42', 'ინჟინერი');
+
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%ინჟინერი%', '%inzhineri%']);
   });
 
   it('returns null name when no alias or registered name', async () => {

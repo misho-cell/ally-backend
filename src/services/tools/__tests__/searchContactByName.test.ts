@@ -35,12 +35,20 @@ describe('searchContactByName', () => {
     expect(results[0].employer).toBe('TBC Bank');
   });
 
-  it('passes userId and lowercased search term to query', async () => {
+  it('passes userId and lowercased Georgian term plus transliteration to query', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
 
     await searchContactByName('42', 'გიო');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%გიო%']);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%გიო%', '%gio%']);
+  });
+
+  it('passes only one term for Latin query (no transliteration)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+
+    await searchContactByName('42', 'George');
+
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%george%']);
   });
 
   it('returns null name when no alias or registered name', async () => {
