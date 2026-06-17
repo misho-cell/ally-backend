@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
+import { createUserPhoneNode } from './contacts.service';
 import { AuthPayload } from '../types';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
@@ -93,6 +94,8 @@ export async function registerUser(phone: string, name: string): Promise<{ token
      VALUES ($1, $2, $3, $4, NOW(), NOW())`,
     [phone, phoneCode, phoneNumber, userId],
   );
+
+  await createUserPhoneNode(phone);
 
   const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
   return { token };

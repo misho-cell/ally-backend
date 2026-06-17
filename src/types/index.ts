@@ -51,6 +51,20 @@ export interface ContactInsightWithFieldContext extends ContactInsight {
   fieldContext: InsightField[];
 }
 
+export interface ImportContact {
+  name: string;
+  phones: string[];
+  email?: string;
+  employer?: string;
+  jobPosition?: string;
+  city?: string;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+}
+
 export interface ChatToolParameter {
   type: string;
   required: boolean;
