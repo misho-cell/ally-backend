@@ -83,10 +83,10 @@ async function saveToPostgres(
 ): Promise<void> {
   await withTransaction(async (client: PoolClient) => {
     await client.query(
-      `INSERT INTO "UserAlias" (phone, "userId", alias, "createdAt", "updatedAt")
+      `INSERT INTO "UserAlias" (phone, "contactId", alias, "createdAt", "updatedAt")
        SELECT $1, $2, $3, NOW(), NOW()
        WHERE NOT EXISTS (
-         SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "userId" = $2 AND alias = $3
+         SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2 AND alias = $3
        )`,
       [phone, userId, contact.name.trim()],
     );
@@ -94,10 +94,10 @@ async function saveToPostgres(
     const tags = buildTags(contact);
     for (const tag of tags) {
       await client.query(
-        `INSERT INTO "UserTags" (phone, "userId", tag, "weightCount", "createdAt", "updatedAt")
+        `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount", "createdAt", "updatedAt")
          SELECT $1, $2, $3, 1, NOW(), NOW()
          WHERE NOT EXISTS (
-           SELECT 1 FROM "UserTags" WHERE phone = $1 AND "userId" = $2 AND tag = $3
+           SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2 AND tag = $3
          )`,
         [phone, userId, tag],
       );

@@ -19,10 +19,10 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               MAX(u."jobPosition")                  AS "jobPosition",
               MAX(u.city)                           AS city
        FROM "UserAlias" ua
-       LEFT JOIN "UserTags"  ut ON ut.phone = ua.phone AND ut."userId" = ua."userId"
+       LEFT JOIN "UserTags"  ut ON ut.phone = ua.phone AND ut."contactId" = ua."contactId"
        LEFT JOIN "UserPhone" up ON up.phone  = ua.phone
        LEFT JOIN "User"      u  ON u.id      = up."userId"
-       WHERE ua."userId" = $1
+       WHERE ua."contactId" = $1
          AND (LOWER(ua.alias) LIKE $2 OR LOWER(u.name) LIKE $2)
        GROUP BY ua.phone
        ORDER BY MAX(ua.alias)

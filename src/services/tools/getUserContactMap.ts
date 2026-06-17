@@ -23,7 +23,7 @@ export async function getUserContactMap(userId: string): Promise<Map<string, Con
      FROM "UserAlias" ua
      LEFT JOIN "UserPhone" up ON up.phone = ua.phone
      LEFT JOIN "User"      u  ON u.id     = up."userId"
-     WHERE ua."userId" = $1
+     WHERE ua."contactId" = $1
        AND ua.phone IS NOT NULL`,
     [userId],
   );

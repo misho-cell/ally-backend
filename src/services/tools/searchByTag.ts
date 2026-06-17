@@ -19,10 +19,10 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
               MAX(u."jobPosition")                  AS "jobPosition",
               MAX(u.city)                           AS city
        FROM "UserTags" ut
-       LEFT JOIN "UserAlias" ua ON ua.phone = ut.phone AND ua."userId" = ut."userId"
+       LEFT JOIN "UserAlias" ua ON ua.phone = ut.phone AND ua."contactId" = ut."contactId"
        LEFT JOIN "UserPhone" up ON up.phone  = ut.phone
        LEFT JOIN "User"      u  ON u.id      = up."userId"
-       WHERE ut."userId" = $1
+       WHERE ut."contactId" = $1
          AND LOWER(ut.tag) LIKE $2
        GROUP BY ut.phone
        ORDER BY MAX(ut."weightCount") DESC
