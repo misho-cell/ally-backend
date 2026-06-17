@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
+import { buildSearchTerms } from './transliterate';
 
 interface SecondDegreeRecord {
   phone: string;
@@ -57,26 +58,28 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     }
 
     const phones = secondDegree.map((r) => r.phone);
-    const searchTerm = '%' + tagQuery.toLowerCase() + '%';
+    const terms = buildSearchTerms(tagQuery);
+    const searchTerms = terms.map((t) => '%' + t + '%');
+    const tagCondition = searchTerms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 2}`).join(' OR ');
 
     const tagResult = await query<{ phone: string; all_tags: string[] }>(
       `SELECT ut.phone, array_agg(DISTINCT ut.tag) AS all_tags
        FROM "UserTags" ut
-       WHERE ut.phone = ANY($1) AND LOWER(ut.tag) LIKE $2
+       WHERE ut.phone = ANY($1) AND (${tagCondition})
        GROUP BY ut.phone`,
-      [phones, searchTerm],
+      [phones, ...searchTerms],
     );
 
     const tagsMap = new Map(tagResult.rows.map((r) => [r.phone, r.all_tags.filter(Boolean)]));
 
-    const neo4jMatches = secondDegree.filter((r) => {
-      const q = tagQuery.toLowerCase();
-      return (
-        r.name?.toLowerCase().includes(q) ||
-        r.employer?.toLowerCase().includes(q) ||
-        r.jobPosition?.toLowerCase().includes(q)
-      );
-    });
+    const neo4jMatches = secondDegree.filter((r) =>
+      terms.some(
+        (t) =>
+          r.name?.toLowerCase().includes(t) ||
+          r.employer?.toLowerCase().includes(t) ||
+          r.jobPosition?.toLowerCase().includes(t),
+      ),
+    );
 
     const allMatchPhones = new Set([...tagsMap.keys(), ...neo4jMatches.map((r) => r.phone)]);
 
