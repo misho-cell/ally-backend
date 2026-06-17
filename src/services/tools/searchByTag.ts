@@ -12,18 +12,9 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const phones = Array.from(contactMap.keys());
     const searchTerm = '%' + tagQuery.toLowerCase() + '%';
 
-    const result = await query<{
-      phone: string;
-      all_tags: string[];
-      registered_name: string | null;
-    }>(
-      `SELECT
-         ut.phone,
-         array_agg(DISTINCT ut.tag) AS all_tags,
-         MAX(u.name)                AS registered_name
+    const result = await query<{ phone: string; all_tags: string[] }>(
+      `SELECT ut.phone, array_agg(DISTINCT ut.tag) AS all_tags
        FROM "UserTags" ut
-       LEFT JOIN "UserPhone" up ON up.phone  = ut.phone
-       LEFT JOIN "User"      u  ON u.id      = up."userId"
        WHERE ut.phone = ANY($1)
          AND LOWER(ut.tag) LIKE $2
        GROUP BY ut.phone
@@ -32,19 +23,33 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
       [phones, searchTerm],
     );
 
-    if (result.rows.length === 0) {
+    const q = tagQuery.toLowerCase();
+    const neo4jMatches = Array.from(contactMap.entries())
+      .filter(
+        ([, info]) =>
+          info.name?.toLowerCase().includes(q) ||
+          info.employer?.toLowerCase().includes(q) ||
+          info.jobPosition?.toLowerCase().includes(q),
+      )
+      .map(([phone]) => phone);
+
+    const tagPhones = new Set(result.rows.map((r) => r.phone));
+    const allMatchPhones = Array.from(new Set([...tagPhones, ...neo4jMatches]));
+
+    if (allMatchPhones.length === 0) {
       return { found: false, query: tagQuery };
     }
 
+    const tagsMap = new Map(result.rows.map((r) => [r.phone, (r.all_tags || []).filter(Boolean)]));
+
     return {
       found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => {
-        const neo4j = contactMap.get(row.phone);
-        const cleanTags = (row.all_tags || []).filter(Boolean);
+      count: allMatchPhones.length,
+      results: allMatchPhones.slice(0, 20).map((phone) => {
+        const neo4j = contactMap.get(phone);
         return {
-          name: neo4j?.name ?? row.registered_name ?? null,
-          tags: cleanTags,
+          name: neo4j?.name ?? null,
+          tags: tagsMap.get(phone) ?? [],
           employer: neo4j?.employer ?? null,
           jobPosition: neo4j?.jobPosition ?? null,
           city: neo4j?.city ?? null,
