@@ -22,7 +22,6 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     }
 
     const userPhone = phoneResult.rows[0].phone;
-
     const session = getSession();
     let secondDegree: SecondDegreeRecord[] = [];
 
@@ -30,15 +29,15 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       const neo4jResult = await session.run(
         `MATCH (me:PhoneNode {phone: $userPhone})-[:CONTACT]->(friend:PhoneNode)-[tr:CONTACT]->(target:PhoneNode)
          WHERE target.phone <> $userPhone
-           AND NOT (me)-[:CONTACT]->(target)
-         RETURN target.phone                                        AS phone,
-                friend.phone                                       AS via_phone,
-                head([(me)-[r:CONTACT]->(friend) | r.name])        AS via_name,
-                tr.name                                            AS name,
-                tr.employer                                        AS employer,
-                tr.jobPosition                                     AS jobPosition
-         LIMIT 100`,
+         RETURN target.phone                                   AS phone,
+                friend.phone                                  AS via_phone,
+                head([(me)-[r:CONTACT]->(friend) | r.name])   AS via_name,
+                tr.name                                       AS name,
+                tr.employer                                   AS employer,
+                tr.jobPosition                                AS jobPosition
+         LIMIT 50`,
         { userPhone },
+        { timeout: 8000 },
       );
 
       secondDegree = neo4jResult.records.map((r) => ({

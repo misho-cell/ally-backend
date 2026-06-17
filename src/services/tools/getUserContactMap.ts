@@ -30,6 +30,7 @@ export async function getUserContactMap(userId: string): Promise<Map<string, Con
               r.jobPosition AS jobPosition,
               r.city        AS city`,
       { userPhone },
+      { timeout: 8000 },
     );
 
     const map = new Map<string, ContactInfo>();
