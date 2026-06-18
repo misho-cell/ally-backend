@@ -2,6 +2,8 @@ import pool, { query } from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
 import { buildSearchTerms } from './transliterate';
 
+const MAX_FRIEND_PHONES = 300;
+
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
     const phoneResult = await pool.query<{ phone: string }>(
@@ -11,13 +13,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (phoneResult.rows.length === 0) return { found: false, reason: 'user_phone_not_found' };
     const userPhone = phoneResult.rows[0].phone;
 
-    // Get direct contact phones from Neo4j graph
+    // Step 1: get direct contact phones from Neo4j (capped to avoid large payloads)
     const session = getSession();
     let friendPhones: string[] = [];
     try {
       const neo4jResult = await session.run(
         `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
-         RETURN DISTINCT friend.phoneKey AS phoneKey`,
+         RETURN DISTINCT friend.phoneKey AS phoneKey
+         LIMIT ${MAX_FRIEND_PHONES}`,
         { userPhone },
         { timeout: 8000 },
       );
@@ -30,15 +33,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
-    // Search PostgreSQL contacts of those friends by tag/alias
+    // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
     const searchTerms = terms.map((t) => '%' + t + '%');
-    const aliasCondition = searchTerms
-      .map((_, i) => `LOWER(ua2.alias) LIKE $${i + 3}`)
-      .join(' OR ');
-    const tagCondition = searchTerms
-      .map((_, i) => `LOWER(ut.tag) LIKE $${i + 3}`)
-      .join(' OR ');
+    const tagConds = searchTerms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 3}`).join(' OR ');
+    const aliasConds = searchTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 3}`).join(' OR ');
 
     const result = await query<{
       phone: string;
@@ -46,45 +45,45 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       via_name: string | null;
       employer: string | null;
       jobPosition: string | null;
-      all_tags: string[];
     }>(
-      `SELECT DISTINCT ON (ua2.phone)
-              ua2.phone                                     AS phone,
-              COALESCE(ua2.alias, u2.name)                  AS name,
-              COALESCE(ua_misho.alias, u_via.name)          AS via_name,
-              u2.employer                                   AS employer,
-              u2."jobPosition"                              AS "jobPosition",
-              COALESCE(
-                (SELECT array_agg(DISTINCT ut2.tag)
-                 FROM "UserTags" ut2
-                 WHERE ut2.phone = ua2.phone AND ut2."contactId" = up_via."userId"),
-                ARRAY[]::text[]
-              )                                             AS all_tags
-       FROM "UserPhone" up_via
-       JOIN "UserAlias" ua2
-         ON ua2."contactId" = up_via."userId"
-       LEFT JOIN "UserAlias" ua_misho
-         ON ua_misho.phone = up_via.phone AND ua_misho."contactId" = $1
-       LEFT JOIN "User" u_via
-         ON u_via.id = up_via."userId"
-       LEFT JOIN "UserPhone" up2
-         ON up2.phone = ua2.phone
-       LEFT JOIN "User" u2
-         ON u2.id = up2."userId"
-       WHERE up_via.phone = ANY($2)
-         AND ua2.phone NOT IN (
-           SELECT phone FROM "UserAlias" WHERE "contactId" = $1
-         )
-         AND (
-           (${aliasCondition})
-           OR EXISTS (
-             SELECT 1 FROM "UserTags" ut
-             WHERE ut.phone       = ua2.phone
-               AND ut."contactId" = up_via."userId"
-               AND (${tagCondition})
-           )
-         )
-       ORDER BY ua2.phone, up_via."userId"
+      `WITH friend_users AS (
+         SELECT up."userId", up.phone AS via_phone
+         FROM "UserPhone" up
+         WHERE up.phone = ANY($2)
+       ),
+       tag_hits AS (
+         SELECT ut.phone, ut."contactId"
+         FROM "UserTags" ut
+         JOIN friend_users fu ON fu."userId" = ut."contactId"
+         WHERE ${tagConds}
+       ),
+       alias_hits AS (
+         SELECT ua_m.phone, ua_m."contactId"
+         FROM "UserAlias" ua_m
+         JOIN friend_users fu ON fu."userId" = ua_m."contactId"
+         WHERE ${aliasConds}
+       ),
+       matches AS (
+         SELECT phone, "contactId" FROM tag_hits
+         UNION
+         SELECT phone, "contactId" FROM alias_hits
+       )
+       SELECT DISTINCT ON (m.phone)
+              m.phone,
+              COALESCE(ua_t.alias, u_t.name)          AS name,
+              COALESCE(ua_via.alias, u_via.name)       AS via_name,
+              u_t.employer                             AS employer,
+              u_t."jobPosition"                        AS "jobPosition"
+       FROM matches m
+       JOIN friend_users fu        ON fu."userId" = m."contactId"
+       LEFT JOIN "UserAlias" ua_t  ON ua_t.phone = m.phone  AND ua_t."contactId" = m."contactId"
+       LEFT JOIN "UserPhone"  up_t ON up_t.phone = m.phone
+       LEFT JOIN "User"       u_t  ON u_t.id     = up_t."userId"
+       LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
+       LEFT JOIN "User"      u_via  ON u_via.id    = fu."userId"
+       LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
+       WHERE ua_own.phone IS NULL
+       ORDER BY m.phone
        LIMIT 20`,
       [userId, friendPhones, ...searchTerms],
     );
@@ -98,7 +97,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         name: row.name ?? null,
         employer: row.employer ?? null,
         jobPosition: row.jobPosition ?? null,
-        tags: (row.all_tags || []).filter(Boolean),
+        tags: [],
         via: row.via_name ?? null,
       })),
     };
