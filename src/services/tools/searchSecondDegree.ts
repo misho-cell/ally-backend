@@ -37,9 +37,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
-    const searchTerms = terms.map((t) => '%' + t + '%');
-    const tagConds = searchTerms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 3}`).join(' OR ');
-    const aliasConds = searchTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 3}`).join(' OR ');
+    // Tags are single words — use exact match (= ANY) so indexes are usable
+    const exactTerms = terms.map((t) => t.toLowerCase());
+    // Aliases are full names — need substring LIKE
+    const likeTerms = terms.map((t) => '%' + t + '%');
+
+    // $3 = exact terms array, $4..$N = LIKE patterns for aliases
+    const aliasConds = likeTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 4}`).join(' OR ');
 
     const result = await query<{
       phone: string;
@@ -57,7 +61,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT ut.phone, ut."contactId"
          FROM "UserTags" ut
          JOIN friend_users fu ON fu."userId" = ut."contactId"
-         WHERE ${tagConds}
+         WHERE LOWER(ut.tag) = ANY($3)
        ),
        alias_hits AS (
          SELECT ua_m.phone, ua_m."contactId"
@@ -87,7 +91,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        WHERE ua_own.phone IS NULL
        ORDER BY m.phone
        LIMIT 20`,
-      [userId, friendPhones, ...searchTerms],
+      [userId, friendPhones, exactTerms, ...likeTerms],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 

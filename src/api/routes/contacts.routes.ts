@@ -138,7 +138,8 @@ contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) =>
 
   const t2 = Date.now();
 
-  const searchTerm = '%' + tagQuery.toLowerCase() + '%';
+  const exactTerm = tagQuery.toLowerCase();
+  const likeTerm = '%' + exactTerm + '%';
 
   let pgRows: unknown[] = [];
   let pgError: string | null = null;
@@ -153,13 +154,13 @@ contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) =>
          SELECT ut.phone, ut."contactId"
          FROM "UserTags" ut
          JOIN friend_users fu ON fu."userId" = ut."contactId"
-         WHERE LOWER(ut.tag) LIKE $3
+         WHERE LOWER(ut.tag) = ANY($3)
        ),
        alias_hits AS (
          SELECT ua_m.phone, ua_m."contactId"
          FROM "UserAlias" ua_m
          JOIN friend_users fu ON fu."userId" = ua_m."contactId"
-         WHERE LOWER(ua_m.alias) LIKE $3
+         WHERE LOWER(ua_m.alias) LIKE $4
        ),
        matches AS (
          SELECT phone, "contactId" FROM tag_hits
@@ -178,7 +179,7 @@ contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) =>
        WHERE ua_own.phone IS NULL
        ORDER BY m.phone
        LIMIT 20`,
-      [userId, friendPhones, searchTerm],
+      [userId, friendPhones, [exactTerm], likeTerm],
     );
     pgRows = pgResult.rows;
   } catch (err) {
