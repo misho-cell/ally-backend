@@ -16,6 +16,11 @@ import {
 import { ApiResponse, InsightField } from '../../types';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
+import {
+  getAllEnabledTools,
+  toggleEnabledTool,
+  EnabledTool,
+} from '../../services/enabledTools.service';
 
 const adminRouter = Router();
 
@@ -146,6 +151,37 @@ adminRouter.post(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Admin chat error:', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get('/tools', async (_req: Request, res: Response<ApiResponse<EnabledTool[]>>) => {
+  try {
+    const tools = await getAllEnabledTools();
+    res.status(200).json({ success: true, data: tools });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.patch(
+  '/tools/:key/toggle',
+  param('key').isString().trim().notEmpty(),
+  async (req: Request, res: Response<ApiResponse<EnabledTool>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, errors: errors.array() } as never);
+      return;
+    }
+    try {
+      const tool = await toggleEnabledTool(req.params.key as string);
+      res.status(200).json({ success: true, data: tool });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
