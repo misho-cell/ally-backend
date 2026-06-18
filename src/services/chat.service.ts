@@ -12,13 +12,36 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
+import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 
+const HISTORY_LIMIT = 50;
+const MAX_TOKENS = 2048;
+const MODEL = 'claude-sonnet-4-6';
+
+const AGENT_STRATEGY_PROMPT = `
+
+## შენი სტრატეგია
+კონტაქტის ძიებისას გამოიყენე ეს თანმიმდევრობა:
+1. search_by_tag — თეგებით პირდაპირი ძებნა
+2. search_contact_by_name — სახელით ძებნა
+3. search_second_degree — კონტაქტების კონტაქტებში ძებნა
+4. web_search — საჯარო ინფო, ბიოგრაფია, კომპანია
+
+პასუხის გაცემამდე შეაფასე: „ეს შედეგი საკმარისია?" თუ არა — გამოიყენე სხვა ტული.
+მომხმარებლის შესახებ ახალი ფაქტი (პროფესია, ქალაქი, ინტერესი)? შეინახე update_user_profile-ით.`;
+
 interface ConversationRow {
   role: string;
   content: string;
+  content_json: Anthropic.MessageParam['content'] | null;
+}
+
+interface AnthropicToolProperty {
+  type: string;
+  description: string;
 }
 
 interface AnthropicTool {
@@ -26,64 +49,27 @@ interface AnthropicTool {
   description: string;
   input_schema: {
     type: 'object';
-    properties: Record<string, { type: string; description: string }>;
+    properties: Record<string, AnthropicToolProperty>;
     required: string[];
   };
 }
 
-function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicTool {
-  const properties: Record<string, { type: string; description: string }> = {};
-  const required: string[] = [];
-
-  for (const [key, param] of Object.entries(tool.parameters)) {
-    properties[key] = { type: param.type, description: param.description };
-    if (param.required) required.push(key);
-  }
-
-  return {
-    name: tool.name,
-    description: tool.description,
-    input_schema: { type: 'object', properties, required },
-  };
-}
-
-export async function buildContactInsightSystemPrompt(): Promise<string> {
-  const configResult = await query<{ system_prompt: string }>(
-    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
-  );
-  const basePrompt = configResult.rows[0]?.system_prompt ?? '';
-
-  const fieldsResult = await query<{
-    field_key: string;
-    field_label: string;
-    field_description: string;
-  }>(
-    'SELECT field_key, field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
-  );
-  const fields = fieldsResult.rows;
-
-  if (fields.length === 0) return basePrompt;
-
-  const fieldsSection = `
-
-## კონტაქტის შესახებ ინფოს შეგროვება
-კონტაქტის წარდგენის შემდეგ ჰკითხე მომხმარებელს:
-${fields.map((f) => `- ${f.field_label}: ${f.field_description}`).join('\n')}
-
-მიღებული ინფო შეინახე save_contact_insight tool-ით.
-შენახული ინფო გამოიყენე მომავალ ძიებებში search_by_insight tool-ით.`;
-
-  return basePrompt + fieldsSection;
-}
-
-export function getContactInsightTools(
-  userId: string,
-): Array<
-  | ChatToolDefinition<SaveContactInsightParams, unknown>
-  | ChatToolDefinition<GetContactInsightParams, unknown>
-> {
-  return [createSaveContactInsightTool(userId), createGetContactInsightTool(userId)];
-}
+const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
+  name: 'update_user_profile',
+  description:
+    'Save a fact learned about the user — profession, city, interest, preference, or frequently searched topics. Call once per field.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      key: {
+        type: 'string',
+        description: 'Field name, e.g. "profession", "city", "interests", "language"',
+      },
+      value: { type: 'string', description: 'Value to store for this field' },
+    },
+    required: ['key', 'value'],
+  },
+};
 
 const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
@@ -175,124 +161,220 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   },
 };
 
-export async function processChat(userId: string, userMessage: string): Promise<string> {
-  const [systemPrompt, enabledKeys] = await Promise.all([
-    buildContactInsightSystemPrompt(),
-    getEnabledToolKeys(),
-  ]);
+function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicTool {
+  const properties: Record<string, AnthropicToolProperty> = {};
+  const required: string[] = [];
 
-  const insightTools = getContactInsightTools(String(userId)).map(toAnthropicTool);
+  for (const [key, param] of Object.entries(tool.parameters)) {
+    properties[key] = { type: param.type, description: param.description };
+    if (param.required) required.push(key);
+  }
 
-  const enabledTools: AnthropicTool[] = [
-    ...insightTools,
-    ...enabledKeys
-      .filter((key) => key in ALL_TOOL_DEFINITIONS)
-      .map((key) => ALL_TOOL_DEFINITIONS[key]),
-  ];
+  return {
+    name: tool.name,
+    description: tool.description,
+    input_schema: { type: 'object', properties, required },
+  };
+}
 
-  const historyResult = await query<ConversationRow>(
-    'SELECT role, content FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
-    [userId],
+async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
+  const result = await query<ConversationRow>(
+    'SELECT role, content, content_json FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [userId, HISTORY_LIMIT],
   );
-  const history = historyResult.rows.reverse();
+  return result.rows.reverse().map((row) => ({
+    role: row.role as 'user' | 'assistant',
+    content:
+      row.content_json !== null
+        ? (row.content_json as Anthropic.MessageParam['content'])
+        : row.content,
+  }));
+}
 
-  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
-    userId,
-    'user',
-    userMessage,
+async function saveMessage(
+  userId: string,
+  role: 'user' | 'assistant',
+  content: Anthropic.MessageParam['content'],
+): Promise<void> {
+  const textContent = typeof content === 'string' ? content : '';
+  await query(
+    'INSERT INTO conversations (user_id, role, content, content_json) VALUES ($1, $2, $3, $4::jsonb)',
+    [userId, role, textContent, JSON.stringify(content)],
+  );
+}
+
+function buildProfileSection(profile: Record<string, unknown>): string {
+  const keys = Object.keys(profile);
+  if (keys.length === 0) return '';
+  const lines = keys.map((k) => `- ${k}: ${profile[k]}`).join('\n');
+  return `\n\n## მომხმარებლის ინფო\n${lines}`;
+}
+
+function buildInsightFieldsSection(
+  fields: Array<{ field_label: string; field_description: string }>,
+): string {
+  if (fields.length === 0) return '';
+  const lines = fields.map((f) => `- ${f.field_label}: ${f.field_description}`).join('\n');
+  return `\n\n## კონტაქტის ინფოს შეგროვება\nკონტაქტის წარდგენის შემდეგ ჰკითხე:\n${lines}\n\nშეინახე save_contact_insight-ით. გამოიყენე search_by_insight-ით.`;
+}
+
+async function buildAgentSystemPrompt(userId: string): Promise<string> {
+  const [configResult, fieldsResult, profile] = await Promise.all([
+    query<{ system_prompt: string }>(
+      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+    ),
+    query<{ field_label: string; field_description: string }>(
+      'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+    ),
+    getUserProfile(userId),
   ]);
 
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map((r) => ({
-      role: r.role as 'user' | 'assistant',
-      content: r.content,
-    })),
-    { role: 'user', content: userMessage },
-  ];
+  const base = configResult.rows[0]?.system_prompt ?? '';
+  return (
+    base +
+    AGENT_STRATEGY_PROMPT +
+    buildProfileSection(profile) +
+    buildInsightFieldsSection(fieldsResult.rows)
+  );
+}
 
-  let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
+async function executeToolCall(
+  userId: string,
+  name: string,
+  input: Record<string, unknown>,
+): Promise<unknown> {
+  switch (name) {
+    case 'lookup_contact_by_phone':
+      return lookupContactByPhone(input['phone_number'] as string);
+    case 'get_contact_insight':
+      return getContactInsight(input['userId'] as string, input['neo4j_contact_id'] as string);
+    case 'search_contact_by_name':
+      return searchContactByName(userId, input['name_query'] as string);
+    case 'search_by_tag':
+      return searchByTag(userId, input['tag_query'] as string);
+    case 'search_by_insight':
+      return searchByInsight(input['search_query'] as string);
+    case 'search_second_degree':
+      return searchSecondDegree(userId, input['tag_query'] as string);
+    case 'web_search':
+      return webSearch(input['query'] as string);
+    case 'save_contact_insight':
+      return saveContactInsight(
+        input['userId'] as string,
+        input['neo4j_contact_id'] as string,
+        input['contact_name'] as string,
+        input['collected_data'] as Record<string, unknown>,
+      );
+    case 'update_user_profile':
+      return setUserProfileField(userId, input['key'] as string, input['value'] as string);
+    default:
+      return { error: `Unknown tool: ${name}` };
+  }
+}
+
+async function processToolBlocks(
+  userId: string,
+  content: Anthropic.ContentBlock[],
+): Promise<Anthropic.ToolResultBlockParam[]> {
+  const results: Anthropic.ToolResultBlockParam[] = [];
+  for (const block of content) {
+    if (block.type !== 'tool_use') continue;
+    const result = await executeToolCall(
+      userId,
+      block.name,
+      block.input as Record<string, unknown>,
+    );
+    results.push({
+      type: 'tool_result',
+      tool_use_id: block.id,
+      content: JSON.stringify(result),
+    });
+  }
+  return results;
+}
+
+async function callClaude(
+  messages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+): Promise<Anthropic.Message> {
+  return anthropic.messages.create({
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
     system: systemPrompt,
-    tools: enabledTools,
+    tools,
     messages,
   });
+}
+
+async function runToolLoop(
+  userId: string,
+  messages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+): Promise<string> {
+  let response = await callClaude(messages, systemPrompt, tools);
 
   while (response.stop_reason === 'tool_use') {
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue;
-
-      let result: unknown;
-      const input = block.input as Record<string, unknown>;
-
-      switch (block.name) {
-        case 'lookup_contact_by_phone':
-          result = await lookupContactByPhone(input['phone_number'] as string);
-          break;
-        case 'get_contact_insight':
-          result = await getContactInsight(
-            input['userId'] as string,
-            input['neo4j_contact_id'] as string,
-          );
-          break;
-        case 'search_contact_by_name':
-          result = await searchContactByName(userId, input['name_query'] as string);
-          break;
-        case 'search_by_tag':
-          result = await searchByTag(userId, input['tag_query'] as string);
-          break;
-        case 'search_by_insight':
-          result = await searchByInsight(input['search_query'] as string);
-          break;
-        case 'search_second_degree':
-          result = await searchSecondDegree(userId, input['tag_query'] as string);
-          break;
-        case 'web_search':
-          result = await webSearch(input['query'] as string);
-          break;
-        case 'save_contact_insight':
-          result = await saveContactInsight(
-            input['userId'] as string,
-            input['neo4j_contact_id'] as string,
-            input['contact_name'] as string,
-            input['collected_data'] as Record<string, unknown>,
-          );
-          break;
-        default:
-          result = { error: `Unknown tool: ${block.name}` };
-      }
-
-      toolResults.push({
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content: JSON.stringify(result),
-      });
-    }
+    await saveMessage(userId, 'assistant', response.content);
+    const toolResults = await processToolBlocks(userId, response.content);
+    await saveMessage(userId, 'user', toolResults);
 
     messages.push({ role: 'assistant', content: response.content });
     messages.push({ role: 'user', content: toolResults });
 
-    response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: enabledTools,
-      messages,
-    });
+    response = await callClaude(messages, systemPrompt, tools);
   }
 
   const finalText = response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b as Anthropic.TextBlock).text)
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map((b) => b.text)
     .join('');
 
-  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
-    userId,
-    'assistant',
-    finalText,
+  await saveMessage(userId, 'assistant', finalText);
+  return finalText;
+}
+
+async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
+  const [enabledKeys, insightTools] = await Promise.all([
+    getEnabledToolKeys(),
+    Promise.resolve(getContactInsightTools(userId).map(toAnthropicTool)),
+  ]);
+  return [
+    ...insightTools,
+    UPDATE_USER_PROFILE_TOOL,
+    ...enabledKeys
+      .filter((key) => key in ALL_TOOL_DEFINITIONS)
+      .map((key) => ALL_TOOL_DEFINITIONS[key]),
+  ];
+}
+
+export async function processChat(userId: string, userMessage: string): Promise<string> {
+  const [systemPrompt, tools, history] = await Promise.all([
+    buildAgentSystemPrompt(userId),
+    buildEnabledTools(userId),
+    loadHistory(userId),
   ]);
 
-  return finalText;
+  await saveMessage(userId, 'user', userMessage);
+
+  const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
+
+  return runToolLoop(userId, messages, systemPrompt, tools);
+}
+
+export function getContactInsightTools(
+  userId: string,
+): Array<
+  | ChatToolDefinition<SaveContactInsightParams, unknown>
+  | ChatToolDefinition<GetContactInsightParams, unknown>
+> {
+  return [createSaveContactInsightTool(userId), createGetContactInsightTool(userId)];
+}
+
+export async function buildContactInsightSystemPrompt(): Promise<string> {
+  const result = await query<{ system_prompt: string }>(
+    'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+  );
+  return result.rows[0]?.system_prompt ?? '';
 }
