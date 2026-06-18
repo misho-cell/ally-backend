@@ -75,9 +75,9 @@ async function executeAdminTool(toolName: string, toolInput: any, adminId: strin
     const session = getSession();
     try {
       const result = await session.run(
-        `MATCH (me:AllyNode {phone: $userPhone})-[:CONTACT]->(friend:AllyNode)
+        `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
          OPTIONAL MATCH (friend)-[:CONTACT]->(target:AllyNode)
-         WHERE target.phone <> me.phone
+         WHERE target.phoneKey <> me.phoneKey
          WITH friend, COUNT(DISTINCT target) AS friendContacts
          RETURN
            COUNT(friend)                                        AS total_friends_in_neo4j,
