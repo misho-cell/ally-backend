@@ -1,78 +1,69 @@
-import { query } from '../../db/postgres/client';
+import pool from '../../db/postgres/client';
+import { getSession } from '../../db/neo4j/client';
 import { buildSearchTerms } from './transliterate';
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
-    const terms = buildSearchTerms(tagQuery);
-    const searchTerms = terms.map((t) => '%' + t + '%');
-
-    // $1 = userId, $2...$N = search terms (same terms used for alias and tag conditions)
-    const aliasCondition = searchTerms
-      .map((_, i) => `LOWER(ua2.alias) LIKE $${i + 2}`)
-      .join(' OR ');
-    const tagCondition = searchTerms
-      .map((_, i) => `LOWER(ut.tag) LIKE $${i + 2}`)
-      .join(' OR ');
-
-    const result = await query<{
-      phone: string;
-      name: string | null;
-      via_name: string | null;
-      employer: string | null;
-      jobPosition: string | null;
-      all_tags: string[];
-    }>(
-      `SELECT DISTINCT ON (ua2.phone)
-              ua2.phone                              AS phone,
-              COALESCE(ua2.alias, u2.name)           AS name,
-              COALESCE(ua_via.alias, u_via.name)     AS via_name,
-              u2.employer                            AS employer,
-              u2."jobPosition"                       AS "jobPosition",
-              COALESCE(
-                (SELECT array_agg(DISTINCT ut2.tag)
-                 FROM "UserTags" ut2
-                 WHERE ut2.phone = ua2.phone AND ut2."contactId" = up_via."userId"),
-                ARRAY[]::text[]
-              )                                      AS all_tags
-       FROM "UserAlias" ua_via
-       JOIN "UserPhone" up_via ON up_via.phone = ua_via.phone
-       JOIN "UserAlias" ua2    ON ua2."contactId" = up_via."userId"
-       LEFT JOIN "UserPhone" up2  ON up2.phone  = ua2.phone
-       LEFT JOIN "User"      u2   ON u2.id      = up2."userId"
-       LEFT JOIN "User"      u_via ON u_via.id  = up_via."userId"
-       WHERE ua_via."contactId" = $1
-         AND ua2.phone NOT IN (
-           SELECT phone FROM "UserAlias" WHERE "contactId" = $1
-         )
-         AND (
-           (${aliasCondition})
-           OR EXISTS (
-             SELECT 1 FROM "UserTags" ut
-             WHERE ut.phone      = ua2.phone
-               AND ut."contactId" = up_via."userId"
-               AND (${tagCondition})
-           )
-         )
-       ORDER BY ua2.phone, ua_via.alias
-       LIMIT 20`,
-      [userId, ...searchTerms],
+    const phoneResult = await pool.query<{ phone: string }>(
+      'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
+      [userId],
     );
 
-    if (result.rows.length === 0) {
-      return { found: false, reason: 'no_matches' };
+    if (phoneResult.rows.length === 0) {
+      return { found: false, reason: 'user_phone_not_found' };
     }
 
-    return {
-      found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => ({
-        name: row.name ?? null,
-        employer: row.employer ?? null,
-        jobPosition: row.jobPosition ?? null,
-        tags: (row.all_tags || []).filter(Boolean),
-        via: row.via_name ?? null,
-      })),
-    };
+    const userPhone = phoneResult.rows[0].phone;
+    const terms = buildSearchTerms(tagQuery);
+
+    const termConditions = terms
+      .map(
+        (_, i) =>
+          `(toLower(tr.name) CONTAINS $term${i}
+            OR toLower(tr.employer) CONTAINS $term${i}
+            OR toLower(tr.jobPosition) CONTAINS $term${i})`,
+      )
+      .join(' OR ');
+
+    const params: Record<string, string> = { userPhone };
+    terms.forEach((t, i) => {
+      params[`term${i}`] = t;
+    });
+
+    const session = getSession();
+    try {
+      const result = await session.run(
+        `MATCH (me:AllyNode {phoneKey: $userPhone})-[myRel:CONTACT]->(friend:AllyNode)-[tr:CONTACT]->(target:AllyNode)
+         WHERE target.phoneKey <> me.phoneKey
+           AND (${termConditions})
+         RETURN DISTINCT target.phoneKey AS phone,
+                tr.name                 AS name,
+                tr.employer             AS employer,
+                tr.jobPosition          AS jobPosition,
+                myRel.name              AS via_name
+         LIMIT 20`,
+        params,
+        { timeout: 10000 },
+      );
+
+      if (result.records.length === 0) {
+        return { found: false, reason: 'no_matches' };
+      }
+
+      return {
+        found: true,
+        count: result.records.length,
+        results: result.records.map((r) => ({
+          name: (r.get('name') as string | null) ?? null,
+          employer: (r.get('employer') as string | null) ?? null,
+          jobPosition: (r.get('jobPosition') as string | null) ?? null,
+          tags: [],
+          via: (r.get('via_name') as string | null) ?? null,
+        })),
+      };
+    } finally {
+      await session.close();
+    }
   } catch (err) {
     console.error('searchSecondDegree error:', (err as Error).message);
     return { found: false, error: (err as Error).message };
