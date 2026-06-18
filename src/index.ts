@@ -28,7 +28,9 @@ app.use((error: Error, req: Request, res: Response<ApiResponse<unknown>>, _next:
 });
 
 const port = Number(process.env.PORT ?? 4000);
-app.listen(port, () => {
+const server = app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`Server listening on port ${port}`);
 });
+
+server.timeout = 5 * 60 * 1000; // 5 minutes

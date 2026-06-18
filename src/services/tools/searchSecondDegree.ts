@@ -1,4 +1,6 @@
 import pool, { query } from '../../db/postgres/client';
+
+const SECOND_DEGREE_QUERY_TIMEOUT_MS = 30_000;
 import { getSession } from '../../db/neo4j/client';
 import { buildSearchTerms } from './transliterate';
 
@@ -86,6 +88,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        ORDER BY m.phone
        LIMIT 20`,
       [userId, friendPhones, ...searchTerms],
+      SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
     if (result.rows.length === 0) return { found: false, reason: 'no_matches' };

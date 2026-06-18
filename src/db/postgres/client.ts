@@ -21,11 +21,12 @@ const DEFAULT_QUERY_TIMEOUT_MS = 5000;
 export async function query<T extends QueryResultRow>(
   queryText: string,
   params?: unknown[],
+  timeoutMs: number = DEFAULT_QUERY_TIMEOUT_MS,
 ): Promise<QueryResult<T>> {
   const client = await pool.connect();
 
   try {
-    await client.query(`SET LOCAL statement_timeout = ${DEFAULT_QUERY_TIMEOUT_MS}`);
+    await client.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
     return client.query<T>({ text: queryText, values: params });
   } finally {
     client.release();
