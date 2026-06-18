@@ -5,6 +5,7 @@ import authRouter from './api/routes/auth.routes';
 import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
 import contactsRouter from './api/routes/contacts.routes';
+import { setupSwagger } from './swagger';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -16,6 +17,7 @@ app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);
 app.use('/contacts', contactsRouter);
+setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
   res.status(404).json({ success: false, error: 'Route not found' });

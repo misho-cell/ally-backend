@@ -18,7 +18,8 @@
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
     "neo4j-driver": "^6.0.1",
-    "pg": "^8.21.0"
+    "pg": "^8.21.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -29,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.60.0",
     "@typescript-eslint/parser": "^8.60.0",
     "eslint": "^8.57.0",
