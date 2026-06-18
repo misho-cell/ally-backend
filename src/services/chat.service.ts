@@ -182,13 +182,17 @@ async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
     'SELECT role, content, content_json FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
     [userId, HISTORY_LIMIT],
   );
-  return result.rows.reverse().map((row) => ({
+  const rows = result.rows.reverse().map((row) => ({
     role: row.role as 'user' | 'assistant',
     content:
       row.content_json !== null
         ? (row.content_json as Anthropic.MessageParam['content'])
         : row.content,
   }));
+  while (rows.length > 0 && rows[rows.length - 1].role === 'user') {
+    rows.pop();
+  }
+  return rows;
 }
 
 async function saveMessage(
