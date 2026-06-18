@@ -75,8 +75,8 @@ async function executeAdminTool(toolName: string, toolInput: any, adminId: strin
     const session = getSession();
     try {
       const result = await session.run(
-        `MATCH (me:PhoneNode {phone: $userPhone})-[:CONTACT]->(friend:PhoneNode)
-         OPTIONAL MATCH (friend)-[:CONTACT]->(target:PhoneNode)
+        `MATCH (me:AllyNode {phone: $userPhone})-[:CONTACT]->(friend:AllyNode)
+         OPTIONAL MATCH (friend)-[:CONTACT]->(target:AllyNode)
          WHERE target.phone <> me.phone
          WITH friend, COUNT(DISTINCT target) AS friendContacts
          RETURN

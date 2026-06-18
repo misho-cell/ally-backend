@@ -126,8 +126,8 @@ async function saveToNeo4j(
   const session = getSession();
   try {
     await session.run(
-      `MERGE (u:PhoneNode {phone: $userPhone})
-       MERGE (c:PhoneNode {phone: $contactPhone})
+      `MERGE (u:AllyNode {phone: $userPhone})
+       MERGE (c:AllyNode {phone: $contactPhone})
        MERGE (u)-[r:CONTACT]->(c)
        SET r.name        = $name,
            r.email       = $email,
@@ -204,10 +204,10 @@ function extractCityFromAdr(adr: string | undefined): string | undefined {
 export async function createUserPhoneNode(phone: string): Promise<void> {
   const session = getSession();
   try {
-    await session.run('MERGE (u:PhoneNode {phone: $phone})', { phone });
+    await session.run('MERGE (u:AllyNode {phone: $phone})', { phone });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('Failed to create Neo4j PhoneNode for phone:', phone, (err as Error).message);
+    console.error('Failed to create Neo4j AllyNode for phone:', phone, (err as Error).message);
   } finally {
     await session.close();
   }
