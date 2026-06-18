@@ -319,18 +319,25 @@ async function callClaude(
   });
 }
 
+interface PendingMessage {
+  role: 'user' | 'assistant';
+  content: Anthropic.MessageParam['content'];
+}
+
 async function runToolLoop(
   userId: string,
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
-): Promise<string> {
+): Promise<{ finalText: string; pending: PendingMessage[] }> {
+  const pending: PendingMessage[] = [];
   let response = await callClaude(messages, systemPrompt, tools);
 
   while (response.stop_reason === 'tool_use') {
-    await saveMessage(userId, 'assistant', response.content);
     const toolResults = await processToolBlocks(userId, response.content);
-    await saveMessage(userId, 'user', toolResults);
+
+    pending.push({ role: 'assistant', content: response.content });
+    pending.push({ role: 'user', content: toolResults });
 
     messages.push({ role: 'assistant', content: response.content });
     messages.push({ role: 'user', content: toolResults });
@@ -343,8 +350,7 @@ async function runToolLoop(
     .map((b) => b.text)
     .join('');
 
-  await saveMessage(userId, 'assistant', finalText);
-  return finalText;
+  return { finalText, pending };
 }
 
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
@@ -368,11 +374,19 @@ export async function processChat(userId: string, userMessage: string): Promise<
     loadHistory(userId),
   ]);
 
-  await saveMessage(userId, 'user', userMessage);
-
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
-  return runToolLoop(userId, messages, systemPrompt, tools);
+  // Run the tool loop without touching the DB — if it throws, nothing is saved
+  const { finalText, pending } = await runToolLoop(userId, messages, systemPrompt, tools);
+
+  // Persist only after full success: user message → tool interactions → final reply
+  await saveMessage(userId, 'user', userMessage);
+  for (const msg of pending) {
+    await saveMessage(userId, msg.role, msg.content);
+  }
+  await saveMessage(userId, 'assistant', finalText);
+
+  return finalText;
 }
 
 export function getContactInsightTools(
