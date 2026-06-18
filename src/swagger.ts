@@ -41,6 +41,14 @@ const spec = {
           is_active: { type: 'boolean' },
         },
       },
+      EnabledTool: {
+        type: 'object',
+        properties: {
+          tool_key: { type: 'string', example: 'web_search' },
+          tool_label: { type: 'string', example: 'ვებ ძიება (Tavily)' },
+          is_enabled: { type: 'boolean', example: false },
+        },
+      },
     },
   },
   tags: [
@@ -576,6 +584,70 @@ const spec = {
         responses: {
           '200': { description: 'AI reply' },
           '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/admin/tools': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List all AI tools with enabled/disabled status',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Tool list',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/EnabledTool' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden — admin only' },
+        },
+      },
+    },
+    '/admin/tools/{key}/toggle': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Toggle an AI tool on or off',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'key',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', example: 'web_search' },
+            description: 'Tool key (e.g. web_search, search_second_degree)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Updated tool state',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/EnabledTool' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden — admin only' },
+          '500': { description: 'Tool key not found' },
         },
       },
     },
