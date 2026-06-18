@@ -40,7 +40,8 @@ const adminTools = [
   },
   {
     name: 'neo4j_second_degree_stats',
-    description: 'აჩვენე Neo4j-ში კავშირების სტატისტიკა — რამდენი კონტაქტი ჩანს Neo4j-ში და რამდენი მეორე საფეხურის კავშირი არსებობს',
+    description:
+      'აჩვენე Neo4j-ში კავშირების სტატისტიკა — რამდენი კონტაქტი ჩანს Neo4j-ში და რამდენი მეორე საფეხურის კავშირი არსებობს',
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -64,7 +65,11 @@ const adminTools = [
   },
 ];
 
-async function executeAdminTool(toolName: string, toolInput: any, adminId: string): Promise<object> {
+async function executeAdminTool(
+  toolName: string,
+  toolInput: any,
+  adminId: string,
+): Promise<object> {
   if (toolName === 'neo4j_second_degree_stats') {
     const phoneResult = await pool.query<{ phone: string }>(
       'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
@@ -89,9 +94,12 @@ async function executeAdminTool(toolName: string, toolInput: any, adminId: strin
       const row = result.records[0];
       return {
         userPhone,
-        total_friends_in_neo4j: row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
-        friends_with_contacts: row.get('friends_with_contacts').toNumber?.() ?? row.get('friends_with_contacts'),
-        total_second_degree: row.get('total_second_degree').toNumber?.() ?? row.get('total_second_degree'),
+        total_friends_in_neo4j:
+          row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
+        friends_with_contacts:
+          row.get('friends_with_contacts').toNumber?.() ?? row.get('friends_with_contacts'),
+        total_second_degree:
+          row.get('total_second_degree').toNumber?.() ?? row.get('total_second_degree'),
       };
     } finally {
       await session.close();

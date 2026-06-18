@@ -180,13 +180,128 @@ adminRouter.get('/diag/neo4j-second-degree', async (req: Request, res: Response)
     res.json({
       success: true,
       userPhone,
-      total_friends_in_neo4j: row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
-      friends_with_contacts: row.get('friends_with_contacts').toNumber?.() ?? row.get('friends_with_contacts'),
-      total_second_degree: row.get('total_second_degree').toNumber?.() ?? row.get('total_second_degree'),
+      total_friends_in_neo4j:
+        row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
+      friends_with_contacts:
+        row.get('friends_with_contacts').toNumber?.() ?? row.get('friends_with_contacts'),
+      total_second_degree:
+        row.get('total_second_degree').toNumber?.() ?? row.get('total_second_degree'),
     });
   } finally {
     await session.close();
   }
+});
+
+const MAX_FRIEND_PHONES_DIAG = 300;
+
+adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).user.userId;
+  const tagQuery = String(req.query['q'] ?? 'test');
+
+  const t0 = Date.now();
+
+  const phoneResult = await pool.query<{ phone: string }>(
+    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
+    [userId],
+  );
+  if (phoneResult.rows.length === 0) {
+    res.status(404).json({ success: false, error: 'Phone not found for user' });
+    return;
+  }
+  const userPhone = phoneResult.rows[0].phone;
+
+  const neo4jSession = getSession();
+  let friendPhones: string[] = [];
+  try {
+    const neo4jResult = await neo4jSession.run(
+      `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
+       RETURN DISTINCT friend.phoneKey AS phoneKey
+       LIMIT ${MAX_FRIEND_PHONES_DIAG}`,
+      { userPhone },
+      { timeout: 10000 },
+    );
+    friendPhones = neo4jResult.records
+      .map((r) => r.get('phoneKey') as string | null)
+      .filter((p): p is string => p !== null);
+  } finally {
+    await neo4jSession.close();
+  }
+
+  const t1 = Date.now();
+
+  const registeredResult = await pool.query<{ userId: string; phone: string }>(
+    'SELECT "userId", phone FROM "UserPhone" WHERE phone = ANY($1)',
+    [friendPhones],
+  );
+  const registeredFriends = registeredResult.rows;
+
+  const t2 = Date.now();
+
+  const searchTerm = '%' + tagQuery.toLowerCase() + '%';
+
+  let pgRows: unknown[] = [];
+  let pgError: string | null = null;
+  try {
+    const pgResult = await pool.query<{ phone: string; name: string | null }>(
+      `WITH friend_users AS (
+         SELECT up."userId", up.phone AS via_phone
+         FROM "UserPhone" up
+         WHERE up.phone = ANY($2)
+       ),
+       tag_hits AS (
+         SELECT ut.phone, ut."contactId"
+         FROM "UserTags" ut
+         JOIN friend_users fu ON fu."userId" = ut."contactId"
+         WHERE LOWER(ut.tag) LIKE $3
+       ),
+       alias_hits AS (
+         SELECT ua_m.phone, ua_m."contactId"
+         FROM "UserAlias" ua_m
+         JOIN friend_users fu ON fu."userId" = ua_m."contactId"
+         WHERE LOWER(ua_m.alias) LIKE $3
+       ),
+       matches AS (
+         SELECT phone, "contactId" FROM tag_hits
+         UNION
+         SELECT phone, "contactId" FROM alias_hits
+       )
+       SELECT DISTINCT ON (m.phone)
+              m.phone,
+              COALESCE(ua_t.alias, u_t.name) AS name
+       FROM matches m
+       JOIN friend_users fu ON fu."userId" = m."contactId"
+       LEFT JOIN "UserAlias" ua_t ON ua_t.phone = m.phone AND ua_t."contactId" = m."contactId"
+       LEFT JOIN "UserPhone" up_t ON up_t.phone = m.phone
+       LEFT JOIN "User" u_t ON u_t.id = up_t."userId"
+       LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
+       WHERE ua_own.phone IS NULL
+       ORDER BY m.phone
+       LIMIT 20`,
+      [userId, friendPhones, searchTerm],
+    );
+    pgRows = pgResult.rows;
+  } catch (err) {
+    pgError = (err as Error).message;
+  }
+
+  const t3 = Date.now();
+
+  res.json({
+    success: true,
+    query: tagQuery,
+    userPhone,
+    timings_ms: {
+      neo4j_fetch: t1 - t0,
+      pg_registered_check: t2 - t1,
+      pg_search: t3 - t2,
+      total: t3 - t0,
+    },
+    friend_phones_from_neo4j: friendPhones.length,
+    registered_ally_friends: registeredFriends.length,
+    registered_friend_phones: registeredFriends.map((r) => r.phone),
+    pg_results: pgRows,
+    pg_error: pgError,
+  });
 });
 
 export default adminRouter;
