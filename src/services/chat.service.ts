@@ -189,7 +189,15 @@ async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
         ? (row.content_json as Anthropic.MessageParam['content'])
         : row.content,
   }));
-  while (rows.length > 0 && rows[rows.length - 1].role === 'user') {
+  // Strip trailing incomplete exchanges — history must end with a complete assistant text response
+  while (rows.length > 0) {
+    const last = rows[rows.length - 1];
+    if (last.role === 'assistant') {
+      const c = last.content;
+      const hasText =
+        typeof c === 'string' ? c.length > 0 : Array.isArray(c) && c.some((b) => b.type === 'text');
+      if (hasText) break;
+    }
     rows.pop();
   }
   return rows;
