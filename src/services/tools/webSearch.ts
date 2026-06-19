@@ -1,3 +1,5 @@
+import { hasGeorgian, georgianToLatin } from './transliterate';
+
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
 interface TavilyResult {
@@ -16,13 +18,17 @@ export async function webSearch(query: string): Promise<object> {
     return { error: 'Web search not configured (TAVILY_API_KEY missing)' };
   }
 
+  // If query contains Georgian script, append transliterated Latin version
+  // so search engines can match both scripts (e.g. "მახარაძე makharadze")
+  const enrichedQuery = hasGeorgian(query) ? `${query} ${georgianToLatin(query)}` : query;
+
   try {
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         api_key: TAVILY_API_KEY,
-        query,
+        query: enrichedQuery,
         search_depth: 'basic',
         max_results: 5,
         include_answer: true,

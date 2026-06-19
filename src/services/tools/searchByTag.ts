@@ -1,6 +1,8 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
 
+const FUZZY_THRESHOLD = 0.35;
+
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
     const terms = buildSearchTerms(tagQuery).map((t) => '%' + t + '%');
@@ -33,6 +35,56 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     );
 
     if (result.rows.length === 0) {
+      // Fallback: fuzzy similarity search via pg_trgm (catches typos and transliteration variants)
+      try {
+        const fuzzyTerms = buildSearchTerms(tagQuery).map((t) => t.toLowerCase());
+        const fuzzyConds = fuzzyTerms
+          .map((_, i) => `similarity(LOWER(ut.tag), $${i + 2}) > ${FUZZY_THRESHOLD}`)
+          .join(' OR ');
+
+        const fuzzyResult = await query<{
+          phone: string;
+          name: string | null;
+          all_tags: string[];
+          employer: string | null;
+          jobPosition: string | null;
+          city: string | null;
+        }>(
+          `SELECT ut.phone,
+                  COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+                  array_agg(DISTINCT ut.tag)            AS all_tags,
+                  MAX(u.employer)                       AS employer,
+                  MAX(u."jobPosition")                  AS "jobPosition",
+                  MAX(u.city)                           AS city
+           FROM "UserTags" ut
+           LEFT JOIN "UserAlias" ua ON ua.phone = ut.phone AND ua."contactId" = ut."contactId"
+           LEFT JOIN "UserPhone" up ON up.phone  = ut.phone
+           LEFT JOIN "User"      u  ON u.id      = up."userId"
+           WHERE ut."contactId" = $1
+             AND (${fuzzyConds})
+           GROUP BY ut.phone
+           ORDER BY MAX(ut."weightCount") DESC
+           LIMIT 20`,
+          [userId, ...fuzzyTerms],
+        );
+
+        if (fuzzyResult.rows.length > 0) {
+          return {
+            found: true,
+            count: fuzzyResult.rows.length,
+            fuzzy: true,
+            results: fuzzyResult.rows.map((row) => ({
+              name: row.name ?? null,
+              tags: (row.all_tags || []).filter(Boolean),
+              employer: row.employer ?? null,
+              jobPosition: row.jobPosition ?? null,
+              city: row.city ?? null,
+            })),
+          };
+        }
+      } catch {
+        // pg_trgm not available — skip fuzzy fallback
+      }
       return { found: false, query: tagQuery };
     }
 
