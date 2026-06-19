@@ -8,7 +8,7 @@ export async function respondToIntroduction(
   response?: string,
 ): Promise<object> {
   const reqResult = await query<{
-    requester_user_id: string;
+    requester_user_id: number;
     target_name: string;
     status: string;
   }>(
@@ -41,7 +41,7 @@ export async function respondToIntroduction(
     ? `${req.target_name}-ზე გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Ally.`
     : `${req.target_name}-ზე გაცნობის მოთხოვნაზე უარი მიიღე.`;
 
-  await sendPushNotification(req.requester_user_id, {
+  await sendPushNotification(String(req.requester_user_id), {
     title: 'Ally — გაცნობის პასუხი',
     body: notifyBody,
     url: '/chat',

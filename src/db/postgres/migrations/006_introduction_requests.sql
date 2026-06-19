@@ -1,7 +1,7 @@
 CREATE TABLE introduction_requests (
   id                SERIAL PRIMARY KEY,
-  requester_user_id UUID   NOT NULL,
-  mediator_user_id  UUID   NOT NULL,
+  requester_user_id INTEGER NOT NULL,
+  mediator_user_id  INTEGER NOT NULL,
   target_name       TEXT   NOT NULL,
   message           TEXT,
   status            TEXT   NOT NULL DEFAULT 'pending'

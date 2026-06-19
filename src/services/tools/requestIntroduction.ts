@@ -54,7 +54,7 @@ export async function requestIntroduction(
 
   const { phone: mediatorPhone } = phoneResult;
 
-  const mediatorUserResult = await query<{ userId: string }>(
+  const mediatorUserResult = await query<{ userId: number }>(
     `SELECT "userId" FROM "UserPhone" WHERE phone = $1 LIMIT 1`,
     [mediatorPhone],
   );
@@ -69,7 +69,7 @@ export async function requestIntroduction(
 
   const mediatorUserId = mediatorUserResult.rows[0].userId;
 
-  if (mediatorUserId === requesterUserId) {
+  if (String(mediatorUserId) === requesterUserId) {
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
   }
 
@@ -113,7 +113,7 @@ export async function requestIntroduction(
 
   const requestId = insertResult.rows[0].id;
 
-  await sendPushNotification(mediatorUserId, {
+  await sendPushNotification(String(mediatorUserId), {
     title: 'Ally — გაცნობის მოთხოვნა',
     body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Ally.`,
     url: '/chat',
