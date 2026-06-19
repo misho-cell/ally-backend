@@ -13,6 +13,14 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
+import { requestIntroduction } from './tools/requestIntroduction';
+import { respondToIntroduction } from './tools/respondToIntroduction';
+import {
+  getPendingRequestsForMediator,
+  getRecentResponsesForRequester,
+  PendingRequest,
+  RespondedRequest,
+} from './introduction.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -67,6 +75,7 @@ const AGENT_STRATEGY_PROMPT = `
 - ნათლად მიუთითე შუამავალი: „[სახელი]-ის მეშვეობით შეიძლება გაიცნო"
 - შეაფასე კავშირის სიძლიერე (რამდენი საერთო კონტაქტი, tags)
 - ბოლოს ეკითხე: „გინდა [შუამავალს] ვთხოვო გაცნობა?"
+- მომხმარებლის თანხმობის შემდეგ გამოიყენე request_introduction ტული
 
 ### 7. Profile Card — ყოველთვის ბოლოს
 ნებისმიერი ძიების ბოლოს სუფთა summary:
@@ -78,7 +87,14 @@ const AGENT_STRATEGY_PROMPT = `
 • შენახული ინფო: ...
 • წყარო: [კონტაქტები / ვებ / ორივე]
 
-მომხმარებლის შესახებ ახალი ფაქტი (პროფესია, ქალაქი, ინტერესი)? შეინახე update_user_profile-ით.`;
+მომხმარებლის შესახებ ახალი ფაქტი (პროფესია, ქალაქი, ინტერესი)? შეინახე update_user_profile-ით.
+
+### 8. გაცნობის მოთხოვნებზე პასუხი (შუამავლის როლი)
+თუ სისტემის კონტექსტში ჩანს გაუხსნელი გაცნობის მოთხოვნა:
+- მომხმარებელს მოუყევი: ვინ ეძებს გაცნობას და ვის გაეცნოს სურს
+- ჰკითხე: „დაეხმარები? თუ კი, რა ინფო ან ნომერი გაუზიაროს?"
+- პასუხის მიღების შემდეგ გამოიყენე respond_to_introduction ტული
+- გააფრთხილე: მხოლოდ ის ინფო გაიზიარო რაც მომხმარებელმა ნებაყოფლობით მოგცა`;
 
 interface ConversationRow {
   role: string;
@@ -100,6 +116,55 @@ interface AnthropicTool {
     required: string[];
   };
 }
+
+const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
+  name: 'request_introduction',
+  description:
+    "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      mediator_name: {
+        type: 'string',
+        description: 'Full name of the contact who will mediate the introduction',
+      },
+      target_name: {
+        type: 'string',
+        description: 'Name of the person the user wants to be introduced to',
+      },
+      message: {
+        type: 'string',
+        description: 'Optional context message for the mediator',
+      },
+    },
+    required: ['mediator_name', 'target_name'],
+  },
+};
+
+const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
+  name: 'respond_to_introduction',
+  description:
+    'Respond to a pending introduction request (when acting as mediator). Call after the user decides whether to help and what information to share.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      request_id: {
+        type: 'number',
+        description: 'The ID of the introduction request from the system context',
+      },
+      accepted: {
+        type: 'boolean',
+        description: 'Whether the mediator agrees to help with the introduction',
+      },
+      response: {
+        type: 'string',
+        description:
+          'Contact info or instructions for the requester (if accepted), or reason for declining',
+      },
+    },
+    required: ['request_id', 'accepted'],
+  },
+};
 
 const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
   name: 'update_user_profile',
@@ -269,6 +334,30 @@ function buildProfileSection(profile: Record<string, unknown>): string {
   return `\n\n## მომხმარებლის ინფო\n${lines}`;
 }
 
+function buildPendingRequestsSection(requests: PendingRequest[]): string {
+  if (requests.length === 0) return '';
+  const lines = requests
+    .map((r) => {
+      const who = r.requester_name ?? 'Ally-ს მომხმარებელი';
+      const msg = r.message ? ` შეტყობინება: "${r.message}"` : '';
+      return `- მოთხოვნა #${r.id}: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} (respond_to_introduction-ისთვის request_id=${r.id})`;
+    })
+    .join('\n');
+  return `\n\n## გაუხსნელი გაცნობის მოთხოვნები\n${lines}`;
+}
+
+function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
+  if (responses.length === 0) return '';
+  const lines = responses
+    .map((r) => {
+      const statusText = r.status === 'accepted' ? 'დათანხმდა' : 'უარი თქვა';
+      const info = r.mediator_response ? ` ინფო: "${r.mediator_response}"` : '';
+      return `- ${r.target_name}: შუამავალი ${statusText}.${info}`;
+    })
+    .join('\n');
+  return `\n\n## გაცნობის მოთხოვნების პასუხები\n${lines}\nეს ინფო მომხმარებელს გაუზიარე.`;
+}
+
 function buildInsightFieldsSection(
   fields: Array<{ field_label: string; field_description: string }>,
 ): string {
@@ -278,22 +367,28 @@ function buildInsightFieldsSection(
 }
 
 async function buildAgentSystemPrompt(userId: string): Promise<string> {
-  const [configResult, fieldsResult, profile] = await Promise.all([
-    query<{ system_prompt: string }>(
-      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
-    ),
-    query<{ field_label: string; field_description: string }>(
-      'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
-    ),
-    getUserProfile(userId),
-  ]);
+  const [configResult, fieldsResult, profile, pendingRequests, recentResponses] = await Promise.all(
+    [
+      query<{ system_prompt: string }>(
+        'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+      ),
+      query<{ field_label: string; field_description: string }>(
+        'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+      ),
+      getUserProfile(userId),
+      getPendingRequestsForMediator(userId),
+      getRecentResponsesForRequester(userId),
+    ],
+  );
 
   const base = configResult.rows[0]?.system_prompt ?? '';
   return (
     base +
     AGENT_STRATEGY_PROMPT +
     buildProfileSection(profile) +
-    buildInsightFieldsSection(fieldsResult.rows)
+    buildInsightFieldsSection(fieldsResult.rows) +
+    buildPendingRequestsSection(pendingRequests) +
+    buildRespondedRequestsSection(recentResponses)
   );
 }
 
@@ -326,6 +421,20 @@ async function executeToolCall(
       );
     case 'update_user_profile':
       return setUserProfileField(userId, input['key'] as string, input['value'] as string);
+    case 'request_introduction':
+      return requestIntroduction(
+        userId,
+        input['mediator_name'] as string,
+        input['target_name'] as string,
+        input['message'] as string | undefined,
+      );
+    case 'respond_to_introduction':
+      return respondToIntroduction(
+        userId,
+        input['request_id'] as number,
+        input['accepted'] as boolean,
+        input['response'] as string | undefined,
+      );
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -408,6 +517,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   return [
     ...insightTools,
     UPDATE_USER_PROFILE_TOOL,
+    REQUEST_INTRODUCTION_TOOL,
+    RESPOND_TO_INTRODUCTION_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
