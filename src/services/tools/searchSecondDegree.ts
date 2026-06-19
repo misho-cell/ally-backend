@@ -1,6 +1,6 @@
 import pool, { query } from '../../db/postgres/client';
 
-const SECOND_DEGREE_QUERY_TIMEOUT_MS = 30_000;
+const SECOND_DEGREE_QUERY_TIMEOUT_MS = 10_000;
 import { getSession } from '../../db/neo4j/client';
 import { buildSearchTerms } from './transliterate';
 

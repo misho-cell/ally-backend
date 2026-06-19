@@ -96,13 +96,23 @@ chatRouter.post(
     try {
       const { message } = req.body as { message: string };
       const userId = (req as AuthenticatedRequest).user.userId;
-      const reply = await processChat(userId, message);
+
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 50_000),
+      );
+      const reply = await Promise.race([processChat(userId, message), timeout]);
 
       res.status(200).json({ success: true, reply });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
-      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+      const isTimeout = error instanceof Error && error.message === 'REQUEST_TIMEOUT';
+      res.status(isTimeout ? 504 : 500).json({
+        success: false,
+        error: isTimeout
+          ? 'მოძებნას დასჭირდა ძალიან დიდი დრო. სცადეთ უფრო კონკრეტული კითხვით.'
+          : 'სერვერის შეცდომა',
+      });
     }
   },
 );

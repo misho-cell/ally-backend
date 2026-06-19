@@ -1,6 +1,7 @@
 import { hasGeorgian, georgianToLatin } from './transliterate';
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const TAVILY_TIMEOUT_MS = 12_000;
 
 interface TavilyResult {
   title: string;
@@ -22,10 +23,14 @@ export async function webSearch(query: string): Promise<object> {
   // so search engines can match both scripts (e.g. "მახარაძე makharadze")
   const enrichedQuery = hasGeorgian(query) ? `${query} ${georgianToLatin(query)}` : query;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
   try {
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         api_key: TAVILY_API_KEY,
         query: enrichedQuery,
@@ -52,5 +57,7 @@ export async function webSearch(query: string): Promise<object> {
     };
   } catch (err) {
     return { error: (err as Error).message };
+  } finally {
+    clearTimeout(timer);
   }
 }
