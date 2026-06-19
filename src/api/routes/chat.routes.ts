@@ -1,7 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
-import { buildContactInsightSystemPrompt, processChat } from '../../services/chat.service';
+import {
+  buildContactInsightSystemPrompt,
+  processChat,
+  getOrCreateDefaultThread,
+} from '../../services/chat.service';
 import { getContactInsight, saveContactInsight } from '../../services/insights.service';
 import { ApiResponse, ContactInsight } from '../../types';
 
@@ -97,10 +101,12 @@ chatRouter.post(
       const { message } = req.body as { message: string };
       const userId = (req as AuthenticatedRequest).user.userId;
 
+      const threadId = await getOrCreateDefaultThread(userId);
+
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 50_000),
       );
-      const result = await Promise.race([processChat(userId, message), timeout]);
+      const result = await Promise.race([processChat(userId, threadId, message), timeout]);
 
       res.status(200).json({
         success: true,

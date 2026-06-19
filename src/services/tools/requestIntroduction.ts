@@ -1,6 +1,8 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
+import { createIncomingRequestThread, createOutgoingRequestThread } from '../threads.service';
+import { emitThreadCreated } from '../sse.service';
 
 const CONTACT_SEARCH_LIMIT = 3;
 
@@ -143,6 +145,35 @@ export async function requestIntroduction(
   ]);
 
   const requestId = insertResult.rows[0].id;
+
+  const mediatorDisplayName = phoneResult.displayName ?? mediatorName;
+
+  const [incomingThread, outgoingThread] = await Promise.all([
+    createIncomingRequestThread(
+      mediatorUserId,
+      requestId,
+      requesterName,
+      targetName,
+      message ?? null,
+    ),
+    createOutgoingRequestThread(
+      Number(requesterUserId),
+      requestId,
+      mediatorDisplayName,
+      targetName,
+    ),
+  ]);
+
+  emitThreadCreated(String(mediatorUserId), {
+    id: incomingThread.id,
+    type: incomingThread.type,
+    title: incomingThread.title,
+  });
+  emitThreadCreated(requesterUserId, {
+    id: outgoingThread.id,
+    type: outgoingThread.type,
+    title: outgoingThread.title,
+  });
 
   if (hasPush) {
     await sendPushNotification(String(mediatorUserId), {

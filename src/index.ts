@@ -6,6 +6,7 @@ import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
 import contactsRouter from './api/routes/contacts.routes';
 import notificationsRouter from './api/routes/notifications.routes';
+import threadsRouter from './api/routes/threads.routes';
 import { setupSwagger } from './swagger';
 import { ApiResponse } from './types';
 
@@ -19,6 +20,7 @@ app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);
 app.use('/contacts', contactsRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/threads', threadsRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {

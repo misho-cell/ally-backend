@@ -21,6 +21,12 @@ import {
   PendingRequest,
   RespondedRequest,
 } from './introduction.service';
+import {
+  getThread,
+  getOrCreateDefaultThread,
+  getThreadContext,
+  touchThread,
+} from './threads.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -185,6 +191,17 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
   },
 };
 
+const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
+  name: 'get_thread_context',
+  description:
+    "Read recent messages from the user's other conversation threads. Use only when the user explicitly asks about something discussed in another thread.",
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+};
+
 const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
   name: 'update_user_profile',
   description:
@@ -316,10 +333,10 @@ function hasToolResults(msg: Anthropic.MessageParam): boolean {
   );
 }
 
-async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
+async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
-    'SELECT role, content, content_json FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
-    [userId, HISTORY_LIMIT],
+    'SELECT role, content, content_json FROM conversations WHERE thread_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [threadId, HISTORY_LIMIT],
   );
   const rows = result.rows.reverse().map((row) => ({
     role: row.role as 'user' | 'assistant',
@@ -351,14 +368,16 @@ async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
 
 async function saveMessage(
   userId: string,
+  threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
 ): Promise<void> {
   const textContent = typeof content === 'string' ? content : '';
   await query(
-    'INSERT INTO conversations (user_id, role, content, content_json) VALUES ($1, $2, $3, $4::jsonb)',
-    [userId, role, textContent, JSON.stringify(content)],
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json) VALUES ($1, $2, $3, $4, $5::jsonb)',
+    [userId, threadId, role, textContent, JSON.stringify(content)],
   );
+  await touchThread(threadId);
 }
 
 function buildProfileSection(profile: Record<string, unknown>): string {
@@ -400,7 +419,7 @@ function buildInsightFieldsSection(
   return `\n\n## კონტაქტის ინფოს შეგროვება\nკონტაქტის წარდგენის შემდეგ ჰკითხე:\n${lines}\n\nშეინახე save_contact_insight-ით. გამოიყენე search_by_insight-ით.`;
 }
 
-async function buildAgentSystemPrompt(userId: string): Promise<string> {
+async function buildAgentSystemPrompt(userId: string, threadType?: string): Promise<string> {
   const [configResult, fieldsResult, profile, pendingRequests, recentResponses] = await Promise.all(
     [
       query<{ system_prompt: string }>(
@@ -410,8 +429,12 @@ async function buildAgentSystemPrompt(userId: string): Promise<string> {
         'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
       ),
       getUserProfile(userId),
-      getPendingRequestsForMediator(userId),
-      getRecentResponsesForRequester(userId),
+      threadType === 'incoming_request' || threadType === 'outgoing_request'
+        ? Promise.resolve([] as PendingRequest[])
+        : getPendingRequestsForMediator(userId),
+      threadType === 'incoming_request' || threadType === 'outgoing_request'
+        ? Promise.resolve([] as RespondedRequest[])
+        : getRecentResponsesForRequester(userId),
     ],
   );
 
@@ -470,6 +493,8 @@ async function executeToolCall(
         input['accepted'] as boolean,
         input['response'] as string | undefined,
       );
+    case 'get_thread_context':
+      return getThreadContext(userId);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -569,17 +594,27 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     UPDATE_USER_PROFILE_TOOL,
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
+    GET_THREAD_CONTEXT_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
   ];
 }
 
-export async function processChat(userId: string, userMessage: string): Promise<ChatResult> {
+export async function processChat(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+): Promise<ChatResult> {
+  const thread = await getThread(threadId, userId);
+  if (thread === null) {
+    throw new Error(`Thread ${threadId} not found for user ${userId}`);
+  }
+
   const [systemPrompt, tools, history] = await Promise.all([
-    buildAgentSystemPrompt(userId),
+    buildAgentSystemPrompt(userId, thread.type),
     buildEnabledTools(userId),
-    loadHistory(userId),
+    loadHistory(threadId),
   ]);
 
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
@@ -588,14 +623,16 @@ export async function processChat(userId: string, userMessage: string): Promise<
   const { finalText, pending, options } = await runToolLoop(userId, messages, systemPrompt, tools);
 
   // Persist only after full success: user message → tool interactions → final reply
-  await saveMessage(userId, 'user', userMessage);
+  await saveMessage(userId, threadId, 'user', userMessage);
   for (const msg of pending) {
-    await saveMessage(userId, msg.role, msg.content);
+    await saveMessage(userId, threadId, msg.role, msg.content);
   }
-  await saveMessage(userId, 'assistant', finalText);
+  await saveMessage(userId, threadId, 'assistant', finalText);
 
   return { reply: finalText, ...(options && { options }) };
 }
+
+export { getOrCreateDefaultThread };
 
 export function getContactInsightTools(
   userId: string,
