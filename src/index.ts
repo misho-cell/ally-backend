@@ -5,6 +5,7 @@ import authRouter from './api/routes/auth.routes';
 import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
 import contactsRouter from './api/routes/contacts.routes';
+import notificationsRouter from './api/routes/notifications.routes';
 import { setupSwagger } from './swagger';
 import { ApiResponse } from './types';
 
@@ -17,6 +18,7 @@ app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);
 app.use('/contacts', contactsRouter);
+app.use('/notifications', notificationsRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
