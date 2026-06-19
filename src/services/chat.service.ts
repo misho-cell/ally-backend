@@ -13,7 +13,7 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
-import { requestIntroduction } from './tools/requestIntroduction';
+import { requestIntroduction, DisambiguationCandidate } from './tools/requestIntroduction';
 import { respondToIntroduction } from './tools/respondToIntroduction';
 import {
   getPendingRequestsForMediator,
@@ -79,6 +79,7 @@ const AGENT_STRATEGY_PROMPT = `
 - მომხმარებლის „კი"-ს შემდეგ დაუყოვნებლად გამოიძახე request_introduction ტული
 - თუ ტული დააბრუნებს push_sent=false — უთხარი: „მოთხოვნა შეიქმნა. [შუამავალი] ნოტიფიკაციას ვერ მიიღებს, მაგრამ დაინახავს Ally-ს შემდეგ გახსნისას."
 - **არ** შესთავაზო WhatsApp/SMS/email ალტერნატივა — Ally-ს სისტემა საკმარისია
+- თუ ტული დააბრუნებს needs_disambiguation=true — მხოლოდ ეს წარმოთქვი: „რამდენიმე [სახელი] ვიპოვე, აირჩიე:" — სახელების ჩამოთვლა არ გჭირდება, UI თავად გაჩვენებს. მომხმარებლის არჩევის შემდეგ გამოიძახე request_introduction ტული mediator_phone პარამეტრით.
 
 ### 7. Profile Card — ყოველთვის ბოლოს
 ნებისმიერი ძიების ბოლოს სუფთა summary:
@@ -506,17 +507,32 @@ interface PendingMessage {
   content: Anthropic.MessageParam['content'];
 }
 
+export interface ChatResult {
+  reply: string;
+  options?: DisambiguationCandidate[];
+}
+
 async function runToolLoop(
   userId: string,
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
-): Promise<{ finalText: string; pending: PendingMessage[] }> {
+): Promise<{ finalText: string; pending: PendingMessage[]; options?: DisambiguationCandidate[] }> {
   const pending: PendingMessage[] = [];
   let response = await callClaude(messages, systemPrompt, tools);
+  let options: DisambiguationCandidate[] | undefined;
 
   while (response.stop_reason === 'tool_use') {
     const toolResults = await processToolBlocks(userId, response.content);
+
+    for (const result of toolResults) {
+      if (typeof result.content === 'string') {
+        const parsed = JSON.parse(result.content) as Record<string, unknown>;
+        if (parsed.needs_disambiguation === true && Array.isArray(parsed.candidates)) {
+          options = parsed.candidates as DisambiguationCandidate[];
+        }
+      }
+    }
 
     pending.push({ role: 'assistant', content: response.content });
     pending.push({ role: 'user', content: toolResults });
@@ -532,7 +548,7 @@ async function runToolLoop(
     .map((b) => b.text)
     .join('');
 
-  return { finalText, pending };
+  return { finalText, pending, options };
 }
 
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
@@ -551,7 +567,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   ];
 }
 
-export async function processChat(userId: string, userMessage: string): Promise<string> {
+export async function processChat(userId: string, userMessage: string): Promise<ChatResult> {
   const [systemPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(userId),
     buildEnabledTools(userId),
@@ -561,7 +577,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
   // Run the tool loop without touching the DB — if it throws, nothing is saved
-  const { finalText, pending } = await runToolLoop(userId, messages, systemPrompt, tools);
+  const { finalText, pending, options } = await runToolLoop(userId, messages, systemPrompt, tools);
 
   // Persist only after full success: user message → tool interactions → final reply
   await saveMessage(userId, 'user', userMessage);
@@ -570,7 +586,7 @@ export async function processChat(userId: string, userMessage: string): Promise<
   }
   await saveMessage(userId, 'assistant', finalText);
 
-  return finalText;
+  return { reply: finalText, ...(options && { options }) };
 }
 
 export function getContactInsightTools(

@@ -100,9 +100,13 @@ chatRouter.post(
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 50_000),
       );
-      const reply = await Promise.race([processChat(userId, message), timeout]);
+      const result = await Promise.race([processChat(userId, message), timeout]);
 
-      res.status(200).json({ success: true, reply });
+      res.status(200).json({
+        success: true,
+        reply: result.reply,
+        ...(result.options && { options: result.options }),
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);

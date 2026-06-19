@@ -4,10 +4,20 @@ import { sendPushNotification } from '../notification.service';
 
 const CONTACT_SEARCH_LIMIT = 3;
 
+export interface DisambiguationCandidate {
+  phone: string;
+  name: string;
+}
+
+type PhoneResult =
+  | { phone: string; displayName: string | null }
+  | { error: string }
+  | { needs_disambiguation: true; candidates: DisambiguationCandidate[] };
+
 async function findMediatorPhone(
   requesterUserId: string,
   mediatorName: string,
-): Promise<{ phone: string; displayName: string | null } | { error: string }> {
+): Promise<PhoneResult> {
   const terms = buildSearchTerms(mediatorName).map((t) => '%' + t + '%');
   const nameCond = terms
     .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)
@@ -28,8 +38,10 @@ async function findMediatorPhone(
   }
 
   if (result.rows.length > 1) {
-    const names = result.rows.map((r) => r.display_name ?? r.phone).join(', ');
-    return { error: `რამდენიმე ${mediatorName} ვიპოვე: ${names}. გამოიყენე სრული სახელი` };
+    return {
+      needs_disambiguation: true,
+      candidates: result.rows.map((r) => ({ phone: r.phone, name: r.display_name ?? r.phone })),
+    };
   }
 
   return { phone: result.rows[0].phone, displayName: result.rows[0].display_name };
@@ -46,7 +58,7 @@ async function getRequesterName(userId: string): Promise<string> {
 async function findMediatorPhoneByPhone(
   requesterUserId: string,
   phone: string,
-): Promise<{ phone: string; displayName: string | null } | { error: string }> {
+): Promise<PhoneResult> {
   const result = await query<{ phone: string; display_name: string | null }>(
     `SELECT ua.phone, COALESCE(ua.alias, u.name) AS display_name
      FROM "UserAlias" ua
@@ -74,13 +86,15 @@ export async function requestIntroduction(
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
     : await findMediatorPhone(requesterUserId, mediatorName);
-  if ('error' in phoneResult) return { success: false, error: phoneResult.error };
 
-  const { phone: mediatorPhone } = phoneResult;
+  if ('error' in phoneResult) return { success: false, error: phoneResult.error };
+  if ('needs_disambiguation' in phoneResult) return phoneResult;
+
+  const resolvedPhone = phoneResult.phone;
 
   const mediatorUserResult = await query<{ userId: number }>(
     `SELECT "userId" FROM "UserPhone" WHERE phone = $1 LIMIT 1`,
-    [mediatorPhone],
+    [resolvedPhone],
   );
 
   if (mediatorUserResult.rows.length === 0) {
