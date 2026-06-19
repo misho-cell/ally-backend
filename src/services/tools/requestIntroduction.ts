@@ -73,19 +73,12 @@ export async function requestIntroduction(
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
   }
 
-  const pushResult = await query<{ id: number }>(
-    `SELECT id FROM push_subscriptions WHERE user_id = $1 LIMIT 1`,
-    [mediatorUserId],
-  );
-
-  if (pushResult.rows.length === 0) {
-    return {
-      success: false,
-      registered: true,
-      no_push: true,
-      error: `${mediatorName} Ally-ზე რეგისტრირებულია, მაგრამ ნოტიფიკაციები ჩართული არ აქვს`,
-    };
-  }
+  const hasPush =
+    (
+      await query<{ id: number }>(`SELECT id FROM push_subscriptions WHERE user_id = $1 LIMIT 1`, [
+        mediatorUserId,
+      ])
+    ).rows.length > 0;
 
   const dupResult = await query<{ id: number }>(
     `SELECT id FROM introduction_requests
@@ -113,15 +106,20 @@ export async function requestIntroduction(
 
   const requestId = insertResult.rows[0].id;
 
-  await sendPushNotification(String(mediatorUserId), {
-    title: 'Ally — გაცნობის მოთხოვნა',
-    body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Ally.`,
-    url: '/chat',
-  });
+  if (hasPush) {
+    await sendPushNotification(String(mediatorUserId), {
+      title: 'Ally — გაცნობის მოთხოვნა',
+      body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Ally.`,
+      url: '/chat',
+    });
+  }
 
   return {
     success: true,
     request_id: requestId,
-    message: `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`,
+    push_sent: hasPush,
+    message: hasPush
+      ? `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`
+      : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Ally-ს გახსნისას.`,
   };
 }
