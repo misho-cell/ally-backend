@@ -43,13 +43,37 @@ async function getRequesterName(userId: string): Promise<string> {
   return result.rows[0]?.name ?? 'Ally-ს მომხმარებელი';
 }
 
+async function findMediatorPhoneByPhone(
+  requesterUserId: string,
+  phone: string,
+): Promise<{ phone: string; displayName: string | null } | { error: string }> {
+  const result = await query<{ phone: string; display_name: string | null }>(
+    `SELECT ua.phone, COALESCE(ua.alias, u.name) AS display_name
+     FROM "UserAlias" ua
+     LEFT JOIN "UserPhone" up ON up.phone = ua.phone
+     LEFT JOIN "User" u ON u.id = up."userId"
+     WHERE ua."contactId" = $1 AND ua.phone = $2
+     LIMIT 1`,
+    [requesterUserId, phone],
+  );
+
+  if (result.rows.length === 0) {
+    return { error: `${phone} შენს კონტაქტებში ვერ ვიპოვე` };
+  }
+
+  return { phone: result.rows[0].phone, displayName: result.rows[0].display_name };
+}
+
 export async function requestIntroduction(
   requesterUserId: string,
   mediatorName: string,
   targetName: string,
   message?: string,
+  mediatorPhone?: string,
 ): Promise<object> {
-  const phoneResult = await findMediatorPhone(requesterUserId, mediatorName);
+  const phoneResult = mediatorPhone
+    ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
+    : await findMediatorPhone(requesterUserId, mediatorName);
   if ('error' in phoneResult) return { success: false, error: phoneResult.error };
 
   const { phone: mediatorPhone } = phoneResult;

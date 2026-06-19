@@ -133,6 +133,11 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
         type: 'string',
         description: 'Full name of the contact who will mediate the introduction',
       },
+      mediator_phone: {
+        type: 'string',
+        description:
+          'Phone number of the mediator (use when name search fails or user provides a phone number directly)',
+      },
       target_name: {
         type: 'string',
         description: 'Name of the person the user wants to be introduced to',
@@ -447,6 +452,7 @@ async function executeToolCall(
         input['mediator_name'] as string,
         input['target_name'] as string,
         input['message'] as string | undefined,
+        input['mediator_phone'] as string | undefined,
       );
     case 'respond_to_introduction':
       return respondToIntroduction(
