@@ -289,6 +289,14 @@ function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicToo
   };
 }
 
+function hasToolResults(msg: Anthropic.MessageParam): boolean {
+  return (
+    msg.role === 'user' &&
+    Array.isArray(msg.content) &&
+    msg.content.some((b) => (b as { type: string }).type === 'tool_result')
+  );
+}
+
 async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     'SELECT role, content, content_json FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
@@ -301,7 +309,8 @@ async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
         ? (row.content_json as Anthropic.MessageParam['content'])
         : row.content,
   }));
-  // Strip trailing incomplete exchanges — history must end with a complete assistant text response
+
+  // Strip trailing incomplete exchanges — must end with assistant text
   while (rows.length > 0) {
     const last = rows[rows.length - 1];
     if (last.role === 'assistant') {
@@ -312,6 +321,12 @@ async function loadHistory(userId: string): Promise<Anthropic.MessageParam[]> {
     }
     rows.pop();
   }
+
+  // Strip leading orphaned tool_result messages — no preceding assistant tool_use
+  while (rows.length > 0 && hasToolResults(rows[0])) {
+    rows.shift();
+  }
+
   return rows;
 }
 
