@@ -37,6 +37,8 @@ threadsRouter.get('/', authenticateJwt, async (req: Request, res: Response): Pro
     const threads = await getThreadsForUser(userId);
     res.status(200).json({ success: true, data: threads });
   } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /threads]', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch threads';
     res.status(500).json({ success: false, error: message });
   }
@@ -55,6 +57,8 @@ threadsRouter.post('/', authenticateJwt, async (req: Request, res: Response): Pr
     emitThreadCreated(userId, { id: thread.id, type: thread.type, title: thread.title });
     res.status(201).json({ success: true, data: thread });
   } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /threads]', error);
     const message = error instanceof Error ? error.message : 'Failed to create thread';
     res.status(500).json({ success: false, error: message });
   }
@@ -79,6 +83,8 @@ threadsRouter.get(
       const messages = await getThreadMessages(threadId);
       res.status(200).json({ success: true, data: messages });
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/messages]', error);
       const message = error instanceof Error ? error.message : 'Failed to fetch messages';
       res.status(500).json({ success: false, error: message });
     }
@@ -125,6 +131,10 @@ threadsRouter.post(
       });
     } catch (error) {
       const isTimeout = error instanceof Error && error.message === 'REQUEST_TIMEOUT';
+      if (!isTimeout) {
+        // eslint-disable-next-line no-console
+        console.error('[POST /threads/:id/message]', error);
+      }
       res.status(isTimeout ? 504 : 500).json({
         success: false,
         error: isTimeout
