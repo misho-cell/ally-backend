@@ -53,7 +53,7 @@ threadsRouter.get('/stream', authenticateJwt, (req: Request, res: Response): voi
 threadsRouter.post('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
-    const thread = await createThread(userId, 'regular');
+    const thread = await createThread(userId, 'regular', 'ახალი სრედი');
     emitThreadCreated(userId, { id: thread.id, type: thread.type, title: thread.title });
     res.status(201).json({ success: true, data: thread });
   } catch (error) {
