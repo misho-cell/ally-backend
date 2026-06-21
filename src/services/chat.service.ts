@@ -27,6 +27,7 @@ import {
   getThreadContext,
   touchThread,
 } from './threads.service';
+import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -114,7 +115,16 @@ const AGENT_STRATEGY_PROMPT = `
 - მომხმარებლის ნებისმიერ შეტყობინებაზე (მათ შორის „გამარჯობა") **პირველ წინადადებაში** გაუზიარე პასუხი
 - მაგ: „გამარჯობა! [შუამავალი] გიპასუხა — [target_name]-ზე [დათანხმდა/უარი თქვა]. [ინფო თუ არის]"
 - თუ accepted — გაახარე, გაუზიარე შუამავლის მიერ გაზიარებული ინფო სრულად
-- თუ declined — თანაგრძნობა, შესთავაზე სხვა მარშრუტი`;
+- თუ declined — თანაგრძნობა, შესთავაზე სხვა მარშრუტი
+
+### 10. კონტაქტის ფაქტების შეგროვება და ჩვენება
+კონტაქტის პროფილის ჩვენებისას გამოიძახე get_contact_facts და ფაქტები Profile Card-ში ჩართე.
+
+თუ მომხმარებელი ობიექტურ ფაქტს იუწყება კონტაქტის შესახებ (სამსახური, ქალაქი, პროფესია, სფერო):
+- გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry")
+- value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი")
+- თუ is_public=true → „შენახულია ✓ (2+ ადამიანი ადასტურებს)"
+- თუ is_public=false → „შენახულია (პრაივეთი — სხვა მომხმარებლის დადასტურებამდე)"`;
 
 interface ConversationRow {
   role: string;
@@ -199,6 +209,47 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
     type: 'object',
     properties: {},
     required: [],
+  },
+};
+
+const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
+  name: 'save_contact_fact',
+  description:
+    "Save an objective fact about a contact (occupation, employer, city, industry). Call whenever the user mentions such a fact. The system will automatically verify it against other users' input and make it public if confirmed.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      neo4j_contact_id: {
+        type: 'string',
+        description: 'The Neo4j contact ID from search results',
+      },
+      field_type: {
+        type: 'string',
+        description: 'One of: "occupation", "employer", "city", "industry"',
+      },
+      value: {
+        type: 'string',
+        description:
+          'The fact value, concise and in original language (e.g. "ფეხბურთელი", "TBC Bank", "თბილისი")',
+      },
+    },
+    required: ['neo4j_contact_id', 'field_type', 'value'],
+  },
+};
+
+const GET_CONTACT_FACTS_TOOL: AnthropicTool = {
+  name: 'get_contact_facts',
+  description:
+    "Get stored facts about a contact — both public (confirmed by 2+ users) and the current user's own private entries. Call when displaying a contact's profile.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      neo4j_contact_id: {
+        type: 'string',
+        description: 'The Neo4j contact ID',
+      },
+    },
+    required: ['neo4j_contact_id'],
   },
 };
 
@@ -495,6 +546,15 @@ async function executeToolCall(
       );
     case 'get_thread_context':
       return getThreadContext(userId);
+    case 'save_contact_fact':
+      return submitContactFact(
+        userId,
+        input['neo4j_contact_id'] as string,
+        input['field_type'] as string,
+        input['value'] as string,
+      );
+    case 'get_contact_facts':
+      return getVisibleFacts(userId, input['neo4j_contact_id'] as string);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -592,6 +652,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   return [
     ...insightTools,
     UPDATE_USER_PROFILE_TOOL,
+    SAVE_CONTACT_FACT_TOOL,
+    GET_CONTACT_FACTS_TOOL,
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
