@@ -21,6 +21,7 @@ import {
   toggleEnabledTool,
   EnabledTool,
 } from '../../services/enabledTools.service';
+import { EnrichmentJob, JobStatus } from '../../services/enrichment.job';
 
 const adminRouter = Router();
 
@@ -339,5 +340,48 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
     pg_error: pgError,
   });
 });
+
+adminRouter.post(
+  '/enrichment/start',
+  body('type').isIn(['full', 'incremental']).optional(),
+  async (req: Request, res: Response<ApiResponse<{ jobId: string }>>) => {
+    try {
+      const jobType = ((req.body as { type?: string }).type ?? 'full') as 'full' | 'incremental';
+      const jobId = await EnrichmentJob.start(jobType);
+      res.status(202).json({ success: true, data: { jobId } });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'სერვერის შეცდომა';
+      res.status(409).json({ success: false, error: msg });
+    }
+  },
+);
+
+adminRouter.get(
+  '/enrichment/status',
+  async (_req: Request, res: Response<ApiResponse<JobStatus>>) => {
+    try {
+      const status = await EnrichmentJob.getStatus();
+      res.status(200).json({ success: true, data: status });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.post(
+  '/enrichment/stop',
+  async (_req: Request, res: Response<ApiResponse<{ stopped: boolean }>>) => {
+    try {
+      await EnrichmentJob.stop();
+      res.status(200).json({ success: true, data: { stopped: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 export default adminRouter;

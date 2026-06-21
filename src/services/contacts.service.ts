@@ -3,6 +3,7 @@ import { withTransaction } from '../db/postgres/client';
 import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { ImportContact, ImportResult } from '../types';
+import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
 
@@ -58,6 +59,7 @@ async function importSingleContact(
     try {
       await saveToPostgres(userId, phone, contact);
       await saveToNeo4j(userPhone, phone, contact);
+      triggerEnrichmentAsync(Number(userId), userPhone, phone, contact.name.trim());
       imported++;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -74,6 +76,21 @@ function normalizePhone(raw: string): string | null {
   if (!cleaned.startsWith('+')) return null;
   if (cleaned.length < 8 || cleaned.length > 16) return null;
   return cleaned;
+}
+
+function triggerEnrichmentAsync(
+  userId: number,
+  userPhone: string,
+  contactPhone: string,
+  alias: string,
+): void {
+  Promise.all([
+    computeAndSaveSingleScore(userId, userPhone, contactPhone, alias),
+    enrichContact(contactPhone),
+  ]).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error(`[enrichment] Async trigger failed for ${contactPhone}:`, (err as Error).message);
+  });
 }
 
 async function saveToPostgres(

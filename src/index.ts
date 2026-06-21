@@ -9,6 +9,7 @@ import notificationsRouter from './api/routes/notifications.routes';
 import threadsRouter from './api/routes/threads.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
+import { EnrichmentJob } from './services/enrichment.job';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -43,6 +44,7 @@ runMigrations()
       console.log(`Server listening on port ${port}`);
     });
     server.timeout = 5 * 60 * 1000;
+    EnrichmentJob.startCron();
   })
   .catch((err: unknown) => {
     // eslint-disable-next-line no-console
