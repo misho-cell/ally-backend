@@ -8,6 +8,7 @@ import contactsRouter from './api/routes/contacts.routes';
 import notificationsRouter from './api/routes/notifications.routes';
 import threadsRouter from './api/routes/threads.routes';
 import { setupSwagger } from './swagger';
+import { runMigrations } from './db/postgres/migrate';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -34,9 +35,17 @@ app.use((error: Error, req: Request, res: Response<ApiResponse<unknown>>, _next:
 });
 
 const port = Number(process.env.PORT ?? 4000);
-const server = app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on port ${port}`);
-});
 
-server.timeout = 5 * 60 * 1000; // 5 minutes
+runMigrations()
+  .then(() => {
+    const server = app.listen(port, () => {
+      // eslint-disable-next-line no-console
+      console.log(`Server listening on port ${port}`);
+    });
+    server.timeout = 5 * 60 * 1000;
+  })
+  .catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[migrate] FATAL: migration failed, server will not start', err);
+    process.exit(1);
+  });
