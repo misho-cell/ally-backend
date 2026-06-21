@@ -135,7 +135,14 @@ const AGENT_STRATEGY_PROMPT = `
 - მაგ. profession → „ხოლო შენ, სად მუშაობ?"
 - ეს ითვლება საუბრის 1 კითხვად
 
-**კომბინირებული წესი:** მთელ საუბარში მაქსიმუმ **1 კითხვა** — კონტაქტის ხარვეზი (წ.2) პრიორიტეტულია მომხმარებლის ინფოზე (წ.3).`;
+**კომბინირებული წესი:** მთელ საუბარში მაქსიმუმ **1 კითხვა** — კონტაქტის ხარვეზი (წ.2) პრიორიტეტულია მომხმარებლის ინფოზე (წ.3).
+
+### 11. არჩევანის სია — ყოველთვის present_choices
+როდესაც მომხმარებელს სიიდან არჩევანი უნდა გაუკეთო (მაგ. რამდენი კონტაქტი ნაპოვნია, ან კითხვაა "რომელი?"):
+- **ნუ** ჩამოთვლი bullet-ებად ტექსტში
+- გამოიძახე \`present_choices\` ტული \`items=[...]\` პარამეტრით
+- ტექსტში მხოლოდ მოკლე კითხვა: მაგ. „რამდენიმე [სახელი] ვიპოვე, რომელი?"
+- UI თავად გამოაჩენს clickable ღილაკებს — სიის ხელით ჩამოთვლა არ გჭირდება`;
 
 interface ConversationRow {
   role: string;
@@ -146,6 +153,7 @@ interface ConversationRow {
 interface AnthropicToolProperty {
   type: string;
   description: string;
+  items?: { type: string };
 }
 
 interface AnthropicTool {
@@ -220,6 +228,23 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
     type: 'object',
     properties: {},
     required: [],
+  },
+};
+
+const PRESENT_CHOICES_TOOL: AnthropicTool = {
+  name: 'present_choices',
+  description:
+    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'The options to display as tappable buttons',
+      },
+    },
+    required: ['items'],
   },
 };
 
@@ -573,6 +598,8 @@ async function executeToolCall(
       );
     case 'get_contact_facts':
       return getVisibleFacts(userId, input['neo4j_contact_id'] as string);
+    case 'present_choices':
+      return { presented: true };
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -621,6 +648,7 @@ interface PendingMessage {
 export interface ChatResult {
   reply: string;
   options?: DisambiguationCandidate[];
+  choices?: string[];
 }
 
 async function runToolLoop(
@@ -628,12 +656,27 @@ async function runToolLoop(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
-): Promise<{ finalText: string; pending: PendingMessage[]; options?: DisambiguationCandidate[] }> {
+): Promise<{
+  finalText: string;
+  pending: PendingMessage[];
+  options?: DisambiguationCandidate[];
+  choices?: string[];
+}> {
   const pending: PendingMessage[] = [];
   let response = await callClaude(messages, systemPrompt, tools);
   let options: DisambiguationCandidate[] | undefined;
+  let choices: string[] | undefined;
 
   while (response.stop_reason === 'tool_use') {
+    for (const block of response.content) {
+      if (block.type === 'tool_use' && block.name === 'present_choices') {
+        const input = block.input as { items?: unknown };
+        if (Array.isArray(input.items)) {
+          choices = input.items.filter((i): i is string => typeof i === 'string');
+        }
+      }
+    }
+
     const toolResults = await processToolBlocks(userId, response.content);
 
     for (const result of toolResults) {
@@ -659,7 +702,7 @@ async function runToolLoop(
     .map((b) => b.text)
     .join('');
 
-  return { finalText, pending, options };
+  return { finalText, pending, options, choices };
 }
 
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
@@ -675,6 +718,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
+    PRESENT_CHOICES_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
@@ -700,7 +744,12 @@ export async function processChat(
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
   // Run the tool loop without touching the DB — if it throws, nothing is saved
-  const { finalText, pending, options } = await runToolLoop(userId, messages, systemPrompt, tools);
+  const { finalText, pending, options, choices } = await runToolLoop(
+    userId,
+    messages,
+    systemPrompt,
+    tools,
+  );
 
   // Persist only after full success: user message → tool interactions → final reply
   await saveMessage(userId, threadId, 'user', userMessage);
@@ -709,7 +758,7 @@ export async function processChat(
   }
   await saveMessage(userId, threadId, 'assistant', finalText);
 
-  return { reply: finalText, ...(options && { options }) };
+  return { reply: finalText, ...(options && { options }), ...(choices && { choices }) };
 }
 
 export { getOrCreateDefaultThread };

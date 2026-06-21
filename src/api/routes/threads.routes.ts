@@ -128,6 +128,7 @@ threadsRouter.post(
         success: true,
         reply: result.reply,
         ...(result.options && { options: result.options }),
+        ...(result.choices && { choices: result.choices }),
       });
     } catch (error) {
       const isTimeout = error instanceof Error && error.message === 'REQUEST_TIMEOUT';
