@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/db/postgres/migrations && cp src/db/postgres/migrations/*.sql dist/db/postgres/migrations/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest",
