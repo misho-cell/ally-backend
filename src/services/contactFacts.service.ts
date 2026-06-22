@@ -21,6 +21,11 @@ export interface VisibleFact {
   is_public: boolean;
 }
 
+export interface VisibleFactsResult {
+  facts: VisibleFact[];
+  ask_about: string | null;
+}
+
 async function runSemanticMatching(fieldType: string, values: string[]): Promise<SemanticResult> {
   const listed = values.map((v, i) => `${i}: "${v}"`).join(', ');
   const response = await anthropic.messages.create({
@@ -125,7 +130,7 @@ export async function submitContactFact(
 export async function getVisibleFacts(
   userId: string,
   neo4jContactId: string,
-): Promise<VisibleFact[]> {
+): Promise<VisibleFactsResult> {
   const [publicResult, privateResult] = await Promise.all([
     query<{ field_type: string; canonical_value: string }>(
       `SELECT DISTINCT ON (field_type) field_type, canonical_value
@@ -154,5 +159,11 @@ export async function getVisibleFacts(
     }
   }
 
-  return facts;
+  const knownFields = new Set([
+    ...publicResult.rows.map((r) => r.field_type),
+    ...privateResult.rows.map((r) => r.field_type),
+  ]);
+  const ask_about = FACT_FIELD_TYPES.find((f) => !knownFields.has(f)) ?? null;
+
+  return { facts, ask_about };
 }

@@ -21,6 +21,8 @@ import {
   toggleEnabledTool,
   EnabledTool,
 } from '../../services/enabledTools.service';
+import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
+import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 
 const adminRouter = Router();
 
@@ -189,19 +191,17 @@ adminRouter.patch(
 
 adminRouter.get('/diag/neo4j-second-degree', async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).user.userId;
-  const phoneResult = await pool.query<{ phone: string }>(
-    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
-    [userId],
-  );
-  if (phoneResult.rows.length === 0) {
+  let userKey: string;
+  try {
+    userKey = await getCompositeKeyForUser(Number(userId));
+  } catch {
     res.status(404).json({ success: false, error: 'Phone not found for user' });
     return;
   }
-  const userPhone = phoneResult.rows[0].phone;
   const session = getSession();
   try {
     const result = await session.run(
-      `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
+      `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
        OPTIONAL MATCH (friend)-[:CONTACT]->(target:AllyNode)
        WHERE target.phoneKey <> me.phoneKey
        WITH friend, COUNT(DISTINCT target) AS friendContacts
@@ -209,13 +209,13 @@ adminRouter.get('/diag/neo4j-second-degree', async (req: Request, res: Response)
          COUNT(friend)                                        AS total_friends_in_neo4j,
          COUNT(CASE WHEN friendContacts > 0 THEN friend END)  AS friends_with_contacts,
          SUM(friendContacts)                                  AS total_second_degree`,
-      { userPhone },
+      { userKey },
       { timeout: 15000 },
     );
     const row = result.records[0];
     res.json({
       success: true,
-      userPhone,
+      userKey,
       total_friends_in_neo4j:
         row.get('total_friends_in_neo4j').toNumber?.() ?? row.get('total_friends_in_neo4j'),
       friends_with_contacts:
@@ -236,32 +236,32 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
 
   const t0 = Date.now();
 
-  const phoneResult = await pool.query<{ phone: string }>(
-    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
-    [userId],
-  );
-  if (phoneResult.rows.length === 0) {
+  let userKey: string;
+  try {
+    userKey = await getCompositeKeyForUser(Number(userId));
+  } catch {
     res.status(404).json({ success: false, error: 'Phone not found for user' });
     return;
   }
-  const userPhone = phoneResult.rows[0].phone;
 
   const neo4jSession = getSession();
-  let friendPhones: string[] = [];
+  let friendKeys: string[] = [];
   try {
     const neo4jResult = await neo4jSession.run(
-      `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
+      `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
        RETURN DISTINCT friend.phoneKey AS phoneKey
        LIMIT ${MAX_FRIEND_PHONES_DIAG}`,
-      { userPhone },
+      { userKey },
       { timeout: 10000 },
     );
-    friendPhones = neo4jResult.records
+    friendKeys = neo4jResult.records
       .map((r) => r.get('phoneKey') as string | null)
       .filter((p): p is string => p !== null);
   } finally {
     await neo4jSession.close();
   }
+
+  const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))];
 
   const t1 = Date.now();
 
@@ -325,7 +325,7 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
   res.json({
     success: true,
     query: tagQuery,
-    userPhone,
+    userKey,
     timings_ms: {
       neo4j_fetch: t1 - t0,
       pg_registered_check: t2 - t1,
@@ -339,5 +339,48 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
     pg_error: pgError,
   });
 });
+
+adminRouter.post(
+  '/enrichment/start',
+  body('type').isIn(['full', 'incremental', 'neo4j_backfill']).optional(),
+  async (req: Request, res: Response<ApiResponse<{ jobId: string }>>) => {
+    try {
+      const jobType = ((req.body as { type?: string }).type ?? 'full') as JobType;
+      const jobId = await EnrichmentJob.start(jobType);
+      res.status(202).json({ success: true, data: { jobId } });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'სერვერის შეცდომა';
+      res.status(409).json({ success: false, error: msg });
+    }
+  },
+);
+
+adminRouter.get(
+  '/enrichment/status',
+  async (_req: Request, res: Response<ApiResponse<JobStatus>>) => {
+    try {
+      const status = await EnrichmentJob.getStatus();
+      res.status(200).json({ success: true, data: status });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.post(
+  '/enrichment/stop',
+  async (_req: Request, res: Response<ApiResponse<{ stopped: boolean }>>) => {
+    try {
+      await EnrichmentJob.stop();
+      res.status(200).json({ success: true, data: { stopped: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 export default adminRouter;

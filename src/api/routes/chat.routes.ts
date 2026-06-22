@@ -112,6 +112,7 @@ chatRouter.post(
         success: true,
         reply: result.reply,
         ...(result.options && { options: result.options }),
+        ...(result.choices && { choices: result.choices }),
       });
     } catch (error) {
       // eslint-disable-next-line no-console

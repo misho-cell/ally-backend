@@ -35,6 +35,7 @@ import { ChatToolDefinition } from '../types';
 const HISTORY_LIMIT = 50;
 const MAX_TOKENS = 2048;
 const MODEL = 'claude-sonnet-4-6';
+const USER_PROFILE_PRIORITY_FIELDS = ['profession', 'city', 'industry'] as const;
 
 const AGENT_STRATEGY_PROMPT = `
 
@@ -117,14 +118,31 @@ const AGENT_STRATEGY_PROMPT = `
 - თუ accepted — გაახარე, გაუზიარე შუამავლის მიერ გაზიარებული ინფო სრულად
 - თუ declined — თანაგრძნობა, შესთავაზე სხვა მარშრუტი
 
-### 10. კონტაქტის ფაქტების შეგროვება და ჩვენება
-კონტაქტის პროფილის ჩვენებისას გამოიძახე get_contact_facts და ფაქტები Profile Card-ში ჩართე.
+### 10. კონტაქტის ფაქტების შეგროვება (მაქსიმუმ 1 კითხვა მთელ საუბარში)
 
-თუ მომხმარებელი ობიექტურ ფაქტს იუწყება კონტაქტის შესახებ (სამსახური, ქალაქი, პროფესია, სფერო):
-- გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry")
-- value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი")
-- თუ is_public=true → „შენახულია ✓ (2+ ადამიანი ადასტურებს)"
-- თუ is_public=false → „შენახულია (პრაივეთი — სხვა მომხმარებლის დადასტურებამდე)"`;
+**წესი 1 — ავტომატური შენახვა:**
+კონტაქტზე ობიექტური ფაქტის (სამსახური, ქალაქი, პროფესია, სფერო) გაგება → დაუყოვნებლად გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry"), value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი"). შენახვის შემდეგ ერთი სტრიქონი: „შენახულია: [სახელი] — [field]: [value] ✓" (is_public=true → „✓ (2+ ადამიანი ადასტურებს)", is_public=false → „✓ (პრაივეთი)"). შენახვა ყოველთვის ხდება ნებართვის გარეშე.
+
+**წესი 2 — კონტაქტის ხარვეზის კითხვა:**
+კონტაქტის პროფილის ჩვენებამდე გამოიძახე get_contact_facts და ფაქტები Profile Card-ში ჩართე. თუ პასუხში ask_about != null **და ამ საუბარში ჯერ კითხვა არ დაგისვამს**:
+- response-ის ბოლოს ბუნებრივად დასვი 1 კითხვა ამ ველის შესახებ
+- მაგ. ask_about="employer" → „სხვათა შორის, სად მუშაობს [სახელი]?"
+- ეს ითვლება საუბრის 1 კითხვად — სხვა კითხვა ამ საუბარში აღარ დაუსვა
+
+**წესი 3 — მომხმარებლის პროფილი:**
+სისტემის კონტექსტში ჩანს „შენი ინფო — გამოტოვებული ველები"? თუ ამ საუბარში **ჯერ** კითხვა არ დაგისვამს:
+- საუბრის ბოლოს კონტექსტურად დასვი 1 კითხვა პირველ გამოტოვებულ ველზე
+- მაგ. profession → „ხოლო შენ, სად მუშაობ?"
+- ეს ითვლება საუბრის 1 კითხვად
+
+**კომბინირებული წესი:** მთელ საუბარში მაქსიმუმ **1 კითხვა** — კონტაქტის ხარვეზი (წ.2) პრიორიტეტულია მომხმარებლის ინფოზე (წ.3).
+
+### 11. არჩევანის სია — ყოველთვის present_choices
+როდესაც მომხმარებელს სიიდან არჩევანი უნდა გაუკეთო (მაგ. რამდენი კონტაქტი ნაპოვნია, ან კითხვაა "რომელი?"):
+- **ნუ** ჩამოთვლი bullet-ებად ტექსტში
+- გამოიძახე \`present_choices\` ტული \`items=[...]\` პარამეტრით
+- ტექსტში მხოლოდ მოკლე კითხვა: მაგ. „რამდენიმე [სახელი] ვიპოვე, რომელი?"
+- UI თავად გამოაჩენს clickable ღილაკებს — სიის ხელით ჩამოთვლა არ გჭირდება`;
 
 interface ConversationRow {
   role: string;
@@ -135,6 +153,7 @@ interface ConversationRow {
 interface AnthropicToolProperty {
   type: string;
   description: string;
+  items?: { type: string };
 }
 
 interface AnthropicTool {
@@ -212,6 +231,23 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
   },
 };
 
+const PRESENT_CHOICES_TOOL: AnthropicTool = {
+  name: 'present_choices',
+  description:
+    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'The options to display as tappable buttons',
+      },
+    },
+    required: ['items'],
+  },
+};
+
 const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
   name: 'save_contact_fact',
   description:
@@ -240,7 +276,7 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
 const GET_CONTACT_FACTS_TOOL: AnthropicTool = {
   name: 'get_contact_facts',
   description:
-    "Get stored facts about a contact — both public (confirmed by 2+ users) and the current user's own private entries. Call when displaying a contact's profile.",
+    "Get stored facts about a contact — both public (confirmed by 2+ users) and the current user's own private entries. Returns { facts: [...], ask_about: string|null } where ask_about is the highest-priority field not yet recorded for this contact. Call when displaying a contact's profile.",
   input_schema: {
     type: 'object',
     properties: {
@@ -438,6 +474,12 @@ function buildProfileSection(profile: Record<string, unknown>): string {
   return `\n\n## მომხმარებლის ინფო\n${lines}`;
 }
 
+function buildMissingUserProfileSection(profile: Record<string, unknown>): string {
+  const missing = USER_PROFILE_PRIORITY_FIELDS.filter((f) => !(f in profile));
+  if (missing.length === 0) return '';
+  return `\n\n## შენი ინფო — გამოტოვებული ველები\n${missing.join(', ')}`;
+}
+
 function buildPendingRequestsSection(requests: PendingRequest[]): string {
   if (requests.length === 0) return '';
   const lines = requests
@@ -494,6 +536,7 @@ async function buildAgentSystemPrompt(userId: string, threadType?: string): Prom
     base +
     AGENT_STRATEGY_PROMPT +
     buildProfileSection(profile) +
+    buildMissingUserProfileSection(profile) +
     buildInsightFieldsSection(fieldsResult.rows) +
     buildPendingRequestsSection(pendingRequests) +
     buildRespondedRequestsSection(recentResponses)
@@ -555,6 +598,8 @@ async function executeToolCall(
       );
     case 'get_contact_facts':
       return getVisibleFacts(userId, input['neo4j_contact_id'] as string);
+    case 'present_choices':
+      return { presented: true };
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -603,6 +648,7 @@ interface PendingMessage {
 export interface ChatResult {
   reply: string;
   options?: DisambiguationCandidate[];
+  choices?: string[];
 }
 
 async function runToolLoop(
@@ -610,12 +656,27 @@ async function runToolLoop(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
-): Promise<{ finalText: string; pending: PendingMessage[]; options?: DisambiguationCandidate[] }> {
+): Promise<{
+  finalText: string;
+  pending: PendingMessage[];
+  options?: DisambiguationCandidate[];
+  choices?: string[];
+}> {
   const pending: PendingMessage[] = [];
   let response = await callClaude(messages, systemPrompt, tools);
   let options: DisambiguationCandidate[] | undefined;
+  let choices: string[] | undefined;
 
   while (response.stop_reason === 'tool_use') {
+    for (const block of response.content) {
+      if (block.type === 'tool_use' && block.name === 'present_choices') {
+        const input = block.input as { items?: unknown };
+        if (Array.isArray(input.items)) {
+          choices = input.items.filter((i): i is string => typeof i === 'string');
+        }
+      }
+    }
+
     const toolResults = await processToolBlocks(userId, response.content);
 
     for (const result of toolResults) {
@@ -641,7 +702,7 @@ async function runToolLoop(
     .map((b) => b.text)
     .join('');
 
-  return { finalText, pending, options };
+  return { finalText, pending, options, choices };
 }
 
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
@@ -657,6 +718,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
+    PRESENT_CHOICES_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
@@ -682,7 +744,12 @@ export async function processChat(
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
   // Run the tool loop without touching the DB — if it throws, nothing is saved
-  const { finalText, pending, options } = await runToolLoop(userId, messages, systemPrompt, tools);
+  const { finalText, pending, options, choices } = await runToolLoop(
+    userId,
+    messages,
+    systemPrompt,
+    tools,
+  );
 
   // Persist only after full success: user message → tool interactions → final reply
   await saveMessage(userId, threadId, 'user', userMessage);
@@ -691,7 +758,7 @@ export async function processChat(
   }
   await saveMessage(userId, threadId, 'assistant', finalText);
 
-  return { reply: finalText, ...(options && { options }) };
+  return { reply: finalText, ...(options && { options }), ...(choices && { choices }) };
 }
 
 export { getOrCreateDefaultThread };
