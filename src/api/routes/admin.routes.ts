@@ -198,12 +198,10 @@ adminRouter.get('/diag/neo4j-second-degree', async (req: Request, res: Response)
     res.status(404).json({ success: false, error: 'Phone not found for user' });
     return;
   }
-  const userPhones = userKey.split('-');
   const session = getSession();
   try {
     const result = await session.run(
-      `MATCH (me:AllyNode)-[:CONTACT]->(friend:AllyNode)
-       WHERE me.phoneKey = $userKey OR me.phoneKey IN $userPhones
+      `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
        OPTIONAL MATCH (friend)-[:CONTACT]->(target:AllyNode)
        WHERE target.phoneKey <> me.phoneKey
        WITH friend, COUNT(DISTINCT target) AS friendContacts
@@ -211,7 +209,7 @@ adminRouter.get('/diag/neo4j-second-degree', async (req: Request, res: Response)
          COUNT(friend)                                        AS total_friends_in_neo4j,
          COUNT(CASE WHEN friendContacts > 0 THEN friend END)  AS friends_with_contacts,
          SUM(friendContacts)                                  AS total_second_degree`,
-      { userKey, userPhones },
+      { userKey },
       { timeout: 15000 },
     );
     const row = result.records[0];
@@ -247,15 +245,13 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
   }
 
   const neo4jSession = getSession();
-  const userPhonesForDiag = userKey.split('-');
   let friendKeys: string[] = [];
   try {
     const neo4jResult = await neo4jSession.run(
-      `MATCH (me:AllyNode)-[:CONTACT]->(friend:AllyNode)
-       WHERE me.phoneKey = $userKey OR me.phoneKey IN $userPhones
+      `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
        RETURN DISTINCT friend.phoneKey AS phoneKey
        LIMIT ${MAX_FRIEND_PHONES_DIAG}`,
-      { userKey, userPhones: userPhonesForDiag },
+      { userKey },
       { timeout: 10000 },
     );
     friendKeys = neo4jResult.records

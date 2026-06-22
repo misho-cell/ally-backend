@@ -16,24 +16,39 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       return { found: false, reason: 'user_phone_not_found' };
     }
 
-    // Step 1: get direct contact keys from Neo4j (capped to avoid large payloads)
-    // Match by composite key OR any individual phone — old Neo4j nodes may still use
-    // a single-phone key until the neo4j_backfill job migrates them.
+    // Step 1: get direct contact keys from Neo4j (capped to avoid large payloads).
+    // Use indexed lookup: try composite key first, then fall back to individual phones
+    // for legacy nodes that haven't been migrated yet (before neo4j_backfill runs).
     const userPhones = userKey.split('-');
     const session = getSession();
     let friendKeys: string[] = [];
     try {
       const neo4jResult = await session.run(
-        `MATCH (me:AllyNode)-[:CONTACT]->(friend:AllyNode)
-         WHERE me.phoneKey = $userKey OR me.phoneKey IN $userPhones
+        `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
          RETURN DISTINCT friend.phoneKey AS phoneKey
          LIMIT ${MAX_FRIEND_PHONES}`,
-        { userKey, userPhones },
+        { userKey },
         { timeout: 8000 },
       );
       friendKeys = neo4jResult.records
         .map((r) => r.get('phoneKey') as string | null)
         .filter((p): p is string => p !== null);
+
+      // Fallback: if composite key node has no contacts, try each individual phone key.
+      // Old nodes use a single phone as the key instead of the composite format.
+      if (friendKeys.length === 0 && userPhones.length > 1) {
+        const fallback = await session.run(
+          `UNWIND $userPhones AS phone
+           MATCH (me:AllyNode {phoneKey: phone})-[:CONTACT]->(friend:AllyNode)
+           RETURN DISTINCT friend.phoneKey AS phoneKey
+           LIMIT ${MAX_FRIEND_PHONES}`,
+          { userPhones },
+          { timeout: 8000 },
+        );
+        friendKeys = fallback.records
+          .map((r) => r.get('phoneKey') as string | null)
+          .filter((p): p is string => p !== null);
+      }
     } finally {
       await session.close();
     }
