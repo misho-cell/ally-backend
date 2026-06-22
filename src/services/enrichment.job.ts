@@ -1,14 +1,23 @@
 import { query } from '../db/postgres/client';
+import { getSession } from '../db/neo4j/client';
 import { computeAndSaveUserScores, enrichContact } from './enrichment.service';
+import { getCompositeKeysForUsers, getCompositeKeysForPhones } from './neo4j.keys';
 
 const RELATIONSHIP_BATCH_SIZE = 200;
 const ENRICHMENT_CONCURRENCY = 10;
 const ENRICHMENT_BATCH_DELAY_MS = 200;
+const BACKFILL_NEO4J_BATCH_SIZE = 500;
 const CRON_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 interface UserRow {
   user_id: number;
-  user_phone: string;
+  composite_key: string;
+}
+
+interface BackfillRow {
+  user_id: number;
+  contact_phone: string;
+  alias: string;
 }
 
 interface JobStats {
@@ -26,6 +35,8 @@ export interface JobStatus {
   failed: number;
   startedAt: string | null;
 }
+
+export type JobType = 'full' | 'incremental' | 'neo4j_backfill';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -60,9 +71,11 @@ async function finalizeJob(jobId: string, status: string, stats: JobStats): Prom
 
 async function getUserBatch(offset: number, limit: number): Promise<UserRow[]> {
   const result = await query<UserRow>(
-    `SELECT up."userId" AS user_id, up.phone AS user_phone
-     FROM "UserPhone" up
-     ORDER BY up."userId"
+    `SELECT "userId" AS user_id,
+            STRING_AGG(phone, '-' ORDER BY phone) AS composite_key
+     FROM "UserPhone"
+     GROUP BY "userId"
+     ORDER BY "userId"
      LIMIT $1 OFFSET $2`,
     [limit, offset],
   );
@@ -71,12 +84,16 @@ async function getUserBatch(offset: number, limit: number): Promise<UserRow[]> {
 
 async function getUserBatchWithNewContacts(offset: number, limit: number): Promise<UserRow[]> {
   const result = await query<UserRow>(
-    `SELECT DISTINCT up."userId" AS user_id, up.phone AS user_phone
+    `SELECT up."userId" AS user_id,
+            STRING_AGG(up.phone, '-' ORDER BY up.phone) AS composite_key
      FROM "UserPhone" up
-     JOIN "UserAlias" ua ON ua."contactId" = up."userId"
-     LEFT JOIN contact_relationship_scores crs
-       ON crs.user_id = up."userId" AND crs.contact_phone = ua.phone
-     WHERE crs.user_id IS NULL
+     WHERE EXISTS (
+       SELECT 1 FROM "UserAlias" ua
+       LEFT JOIN contact_relationship_scores crs
+         ON crs.user_id = up."userId" AND crs.contact_phone = ua.phone
+       WHERE ua."contactId" = up."userId" AND crs.user_id IS NULL
+     )
+     GROUP BY up."userId"
      ORDER BY up."userId"
      LIMIT $1 OFFSET $2`,
     [limit, offset],
@@ -87,7 +104,7 @@ async function getUserBatchWithNewContacts(offset: number, limit: number): Promi
 async function processRelationshipBatch(users: UserRow[], stats: JobStats): Promise<void> {
   for (const user of users) {
     try {
-      await computeAndSaveUserScores(user.user_id, user.user_phone);
+      await computeAndSaveUserScores(user.user_id, user.composite_key);
       stats.processed++;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -134,6 +151,80 @@ async function enrichBatch(phones: string[], stats: JobStats): Promise<void> {
       }),
     );
     await sleep(ENRICHMENT_BATCH_DELAY_MS);
+  }
+}
+
+async function getBackfillBatch(offset: number, limit: number): Promise<BackfillRow[]> {
+  const result = await query<BackfillRow>(
+    `SELECT DISTINCT ON (ua."contactId", ua.phone)
+       ua."contactId" AS user_id,
+       ua.phone AS contact_phone,
+       ua.alias
+     FROM "UserAlias" ua
+     ORDER BY ua."contactId", ua.phone, LENGTH(ua.alias) DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset],
+  );
+  return result.rows;
+}
+
+async function runNeo4jBackfill(
+  jobId: string,
+  stats: JobStats,
+  shouldStop: () => boolean,
+): Promise<void> {
+  let offset = 0;
+  while (!shouldStop()) {
+    const rows = await getBackfillBatch(offset, BACKFILL_NEO4J_BATCH_SIZE);
+    if (rows.length === 0) break;
+
+    const userIds = [...new Set(rows.map((r) => Number(r.user_id)))];
+    const contactPhones = [...new Set(rows.map((r) => r.contact_phone))];
+
+    const [userKeyMap, contactKeyMap] = await Promise.all([
+      getCompositeKeysForUsers(userIds),
+      getCompositeKeysForPhones(contactPhones),
+    ]);
+
+    interface MergeRow {
+      userKey: string;
+      contactKey: string;
+      name: string;
+    }
+
+    const mergeRows: MergeRow[] = [];
+    for (const row of rows) {
+      const userKey = userKeyMap.get(Number(row.user_id));
+      if (!userKey) continue;
+      const contactKey = contactKeyMap.get(row.contact_phone) ?? row.contact_phone;
+      mergeRows.push({ userKey, contactKey, name: row.alias });
+    }
+
+    if (mergeRows.length > 0) {
+      const session = getSession();
+      try {
+        await session.run(
+          `UNWIND $rows AS row
+           MERGE (u:AllyNode {phoneKey: row.userKey})
+           MERGE (c:AllyNode {phoneKey: row.contactKey})
+           MERGE (u)-[r:CONTACT]->(c)
+           SET r.name = row.name, r.updatedAt = datetime()`,
+          { rows: mergeRows },
+          { timeout: 60000 },
+        );
+        stats.processed += mergeRows.length;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[backfill] Neo4j batch failed:', (err as Error).message);
+        stats.failed += mergeRows.length;
+      } finally {
+        await session.close();
+      }
+    }
+
+    await updateJobProgress(jobId, stats);
+    offset += BACKFILL_NEO4J_BATCH_SIZE;
+    if (rows.length < BACKFILL_NEO4J_BATCH_SIZE) break;
   }
 }
 
@@ -184,7 +275,7 @@ export class EnrichmentJob {
   private static cronTimer: ReturnType<typeof setInterval> | null = null;
   private static stats: JobStats = { total: 0, processed: 0, failed: 0 };
 
-  static async start(jobType: 'full' | 'incremental'): Promise<string> {
+  static async start(jobType: JobType): Promise<string> {
     if (this.running) throw new Error('Enrichment job already running');
     const jobId = await createJobRecord(jobType);
     this.currentJobId = jobId;
@@ -200,12 +291,16 @@ export class EnrichmentJob {
     return jobId;
   }
 
-  private static async runJob(jobId: string, jobType: 'full' | 'incremental'): Promise<void> {
-    const incremental = jobType === 'incremental';
+  private static async runJob(jobId: string, jobType: JobType): Promise<void> {
     const stop = () => this._shouldStop;
     try {
-      await runRelationshipScores(jobId, this.stats, incremental, stop);
-      await runEnrichments(jobId, this.stats, incremental, stop);
+      if (jobType === 'neo4j_backfill') {
+        await runNeo4jBackfill(jobId, this.stats, stop);
+      } else {
+        const incremental = jobType === 'incremental';
+        await runRelationshipScores(jobId, this.stats, incremental, stop);
+        await runEnrichments(jobId, this.stats, incremental, stop);
+      }
       const status = this._shouldStop ? 'stopped' : 'completed';
       await finalizeJob(jobId, status, this.stats);
       // eslint-disable-next-line no-console

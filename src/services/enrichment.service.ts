@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import anthropic from '../config/anthropic';
+import { getCompositeKeyForPhone, getCompositeKeysForPhones } from './neo4j.keys';
 
 const FAMILY_KEYWORDS_UNAMBIGUOUS = [
   'დედა',
@@ -103,8 +104,8 @@ interface AiEnrichmentResult {
 }
 
 interface WeightUpdate {
-  userPhone: string;
-  contactPhone: string;
+  userKey: string;
+  contactKey: string;
   weight: number;
 }
 
@@ -155,21 +156,18 @@ export function computeRelationshipScore(
   return { relationship_type: 'formal', strength_score: Math.min(1, 0.4 + bonus), signals };
 }
 
-async function getBidirectionalSet(
-  userPhone: string,
-  contactPhones: string[],
-): Promise<Set<string>> {
-  if (contactPhones.length === 0) return new Set();
+async function getBidirectionalSet(userKey: string, contactKeys: string[]): Promise<Set<string>> {
+  if (contactKeys.length === 0) return new Set();
   const session = getSession();
   try {
     const result = await session.run(
-      `MATCH (me:AllyNode {phoneKey: $userPhone})<-[:CONTACT]-(c:AllyNode)
-       WHERE c.phoneKey IN $contactPhones
-       RETURN c.phoneKey AS phone`,
-      { userPhone, contactPhones },
+      `MATCH (me:AllyNode {phoneKey: $userKey})<-[:CONTACT]-(c:AllyNode)
+       WHERE c.phoneKey IN $contactKeys
+       RETURN c.phoneKey AS key`,
+      { userKey, contactKeys },
       { timeout: 8000 },
     );
-    return new Set(result.records.map((r) => r.get('phone') as string));
+    return new Set(result.records.map((r) => r.get('key') as string));
   } finally {
     await session.close();
   }
@@ -202,7 +200,7 @@ export async function updateNeo4jWeightsBatch(updates: WeightUpdate[]): Promise<
   try {
     await session.run(
       `UNWIND $updates AS u
-       MATCH (a:AllyNode {phoneKey: u.userPhone})-[r:CONTACT]->(b:AllyNode {phoneKey: u.contactPhone})
+       MATCH (a:AllyNode {phoneKey: u.userKey})-[r:CONTACT]->(b:AllyNode {phoneKey: u.contactKey})
        SET r.weight = u.weight`,
       { updates },
       { timeout: 30000 },
@@ -212,7 +210,10 @@ export async function updateNeo4jWeightsBatch(updates: WeightUpdate[]): Promise<
   }
 }
 
-export async function computeAndSaveUserScores(userId: number, userPhone: string): Promise<void> {
+export async function computeAndSaveUserScores(
+  userId: number,
+  userCompositeKey: string,
+): Promise<void> {
   const aliasResult = await query<{ phone: string; alias: string }>(
     `SELECT DISTINCT ON (phone) phone, alias
      FROM "UserAlias"
@@ -223,13 +224,17 @@ export async function computeAndSaveUserScores(userId: number, userPhone: string
   if (aliasResult.rows.length === 0) return;
 
   const contactPhones = aliasResult.rows.map((r) => r.phone);
-  const bidirectional = await getBidirectionalSet(userPhone, contactPhones);
+  const contactKeyMap = await getCompositeKeysForPhones(contactPhones);
+  const contactKeys = [...new Set(contactPhones.map((p) => contactKeyMap.get(p) ?? p))];
+
+  const bidirectional = await getBidirectionalSet(userCompositeKey, contactKeys);
   const weightUpdates: WeightUpdate[] = [];
 
   for (const row of aliasResult.rows) {
-    const score = computeRelationshipScore(row.alias, bidirectional.has(row.phone));
+    const contactKey = contactKeyMap.get(row.phone) ?? row.phone;
+    const score = computeRelationshipScore(row.alias, bidirectional.has(contactKey));
     await saveRelationshipScore(userId, row.phone, score);
-    weightUpdates.push({ userPhone, contactPhone: row.phone, weight: score.strength_score });
+    weightUpdates.push({ userKey: userCompositeKey, contactKey, weight: score.strength_score });
   }
 
   await updateNeo4jWeightsBatch(weightUpdates);
@@ -237,14 +242,17 @@ export async function computeAndSaveUserScores(userId: number, userPhone: string
 
 export async function computeAndSaveSingleScore(
   userId: number,
-  userPhone: string,
+  userCompositeKey: string,
   contactPhone: string,
   alias: string,
 ): Promise<void> {
-  const bidirectional = await getBidirectionalSet(userPhone, [contactPhone]);
-  const score = computeRelationshipScore(alias, bidirectional.has(contactPhone));
+  const contactKey = await getCompositeKeyForPhone(contactPhone);
+  const bidirectional = await getBidirectionalSet(userCompositeKey, [contactKey]);
+  const score = computeRelationshipScore(alias, bidirectional.has(contactKey));
   await saveRelationshipScore(userId, contactPhone, score);
-  await updateNeo4jWeightsBatch([{ userPhone, contactPhone, weight: score.strength_score }]);
+  await updateNeo4jWeightsBatch([
+    { userKey: userCompositeKey, contactKey, weight: score.strength_score },
+  ]);
 }
 
 async function getContactRawData(phone: string): Promise<ContactRawData> {
@@ -253,15 +261,16 @@ async function getContactRawData(phone: string): Promise<ContactRawData> {
     [phone],
   );
 
+  const contactKey = await getCompositeKeyForPhone(phone);
   const session = getSession();
   let employers: string[] = [];
   let jobPositions: string[] = [];
   try {
     const neo4jResult = await session.run(
-      `MATCH ()-[r:CONTACT]->(c:AllyNode {phoneKey: $phone})
+      `MATCH ()-[r:CONTACT]->(c:AllyNode {phoneKey: $contactKey})
        WHERE r.employer IS NOT NULL OR r.jobPosition IS NOT NULL
        RETURN r.employer AS employer, r.jobPosition AS jobPosition LIMIT 5`,
-      { phone },
+      { contactKey },
       { timeout: 5000 },
     );
     employers = neo4jResult.records

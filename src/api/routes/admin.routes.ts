@@ -21,7 +21,7 @@ import {
   toggleEnabledTool,
   EnabledTool,
 } from '../../services/enabledTools.service';
-import { EnrichmentJob, JobStatus } from '../../services/enrichment.job';
+import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 
 const adminRouter = Router();
 
@@ -343,10 +343,10 @@ adminRouter.get('/diag/pg-second-degree', async (req: Request, res: Response) =>
 
 adminRouter.post(
   '/enrichment/start',
-  body('type').isIn(['full', 'incremental']).optional(),
+  body('type').isIn(['full', 'incremental', 'neo4j_backfill']).optional(),
   async (req: Request, res: Response<ApiResponse<{ jobId: string }>>) => {
     try {
-      const jobType = ((req.body as { type?: string }).type ?? 'full') as 'full' | 'incremental';
+      const jobType = ((req.body as { type?: string }).type ?? 'full') as JobType;
       const jobId = await EnrichmentJob.start(jobType);
       res.status(202).json({ success: true, data: { jobId } });
     } catch (error) {

@@ -4,6 +4,7 @@ import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { ImportContact, ImportResult } from '../types';
 import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
+import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
 
@@ -18,18 +19,31 @@ export async function getUserPhone(userId: string): Promise<string> {
   return result.rows[0].phone;
 }
 
+export async function getUserPhones(userId: string): Promise<string[]> {
+  const result = await pool.query<{ phone: string }>(
+    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 ORDER BY phone',
+    [userId],
+  );
+  if (result.rows.length === 0) {
+    throw new Error('User phone not found');
+  }
+  return result.rows.map((r) => r.phone);
+}
+
 export async function importContacts(
   userId: string,
   contacts: ImportContact[],
 ): Promise<ImportResult> {
-  const userPhone = await getUserPhone(userId);
+  const userPhones = await getUserPhones(userId);
+  const userPhoneSet = new Set(userPhones);
+  const userCompositeKey = buildCompositeKey(userPhones);
   const batch = contacts.slice(0, MAX_CONTACTS_PER_IMPORT);
 
   let imported = 0;
   let skipped = 0;
 
   for (const contact of batch) {
-    const counts = await importSingleContact(userId, userPhone, contact);
+    const counts = await importSingleContact(userId, userPhoneSet, userCompositeKey, contact);
     imported += counts.imported;
     skipped += counts.skipped;
   }
@@ -39,7 +53,8 @@ export async function importContacts(
 
 async function importSingleContact(
   userId: string,
-  userPhone: string,
+  userPhoneSet: Set<string>,
+  userCompositeKey: string,
   contact: ImportContact,
 ): Promise<ImportResult> {
   if (!contact.name.trim() || contact.phones.length === 0) {
@@ -51,15 +66,17 @@ async function importSingleContact(
 
   for (const rawPhone of contact.phones) {
     const phone = normalizePhone(rawPhone);
-    if (!phone || phone === userPhone) {
+    if (!phone || userPhoneSet.has(phone)) {
       skipped++;
       continue;
     }
 
     try {
       await saveToPostgres(userId, phone, contact);
-      await saveToNeo4j(userPhone, phone, contact);
-      triggerEnrichmentAsync(Number(userId), userPhone, phone, contact.name.trim());
+      const contactKeyMap = await getCompositeKeysForPhones([phone]);
+      const contactKey = contactKeyMap.get(phone) ?? phone;
+      await saveToNeo4j(userCompositeKey, phone, contactKey, contact);
+      triggerEnrichmentAsync(Number(userId), userCompositeKey, phone, contact.name.trim());
       imported++;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -80,12 +97,12 @@ function normalizePhone(raw: string): string | null {
 
 function triggerEnrichmentAsync(
   userId: number,
-  userPhone: string,
+  userCompositeKey: string,
   contactPhone: string,
   alias: string,
 ): void {
   Promise.all([
-    computeAndSaveSingleScore(userId, userPhone, contactPhone, alias),
+    computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
     enrichContact(contactPhone),
   ]).catch((err: unknown) => {
     // eslint-disable-next-line no-console
@@ -136,15 +153,16 @@ function buildTags(contact: ImportContact): string[] {
 }
 
 async function saveToNeo4j(
-  userPhone: string,
+  userKey: string,
   contactPhone: string,
+  contactKey: string,
   contact: ImportContact,
 ): Promise<void> {
   const session = getSession();
   try {
     await session.run(
-      `MERGE (u:AllyNode {phoneKey: $userPhone})
-       MERGE (c:AllyNode {phoneKey: $contactPhone})
+      `MERGE (u:AllyNode {phoneKey: $userKey})
+       MERGE (c:AllyNode {phoneKey: $contactKey})
        MERGE (u)-[r:CONTACT]->(c)
        SET r.name        = $name,
            r.email       = $email,
@@ -153,8 +171,8 @@ async function saveToNeo4j(
            r.city        = $city,
            r.updatedAt   = datetime()`,
       {
-        userPhone,
-        contactPhone,
+        userKey,
+        contactKey,
         name: contact.name.trim(),
         email: contact.email ?? null,
         employer: contact.employer ?? null,
