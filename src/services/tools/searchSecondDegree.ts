@@ -17,14 +17,18 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     }
 
     // Step 1: get direct contact keys from Neo4j (capped to avoid large payloads)
+    // Match by composite key OR any individual phone — old Neo4j nodes may still use
+    // a single-phone key until the neo4j_backfill job migrates them.
+    const userPhones = userKey.split('-');
     const session = getSession();
     let friendKeys: string[] = [];
     try {
       const neo4jResult = await session.run(
-        `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
+        `MATCH (me:AllyNode)-[:CONTACT]->(friend:AllyNode)
+         WHERE me.phoneKey = $userKey OR me.phoneKey IN $userPhones
          RETURN DISTINCT friend.phoneKey AS phoneKey
          LIMIT ${MAX_FRIEND_PHONES}`,
-        { userKey },
+        { userKey, userPhones },
         { timeout: 8000 },
       );
       friendKeys = neo4jResult.records
