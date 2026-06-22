@@ -433,20 +433,27 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
         : row.content,
   }));
 
-  // Strip trailing incomplete exchanges — must end with assistant text
+  // Strip trailing incomplete exchanges — must end with a pure-text assistant message.
+  // A message with tool_use blocks (even alongside text) is not a valid endpoint because
+  // it requires a following tool_result; without it the next API call is rejected.
   while (rows.length > 0) {
     const last = rows[rows.length - 1];
     if (last.role === 'assistant') {
       const c = last.content;
-      const hasText =
-        typeof c === 'string' ? c.length > 0 : Array.isArray(c) && c.some((b) => b.type === 'text');
-      if (hasText) break;
+      const isCompleteText =
+        typeof c === 'string'
+          ? c.length > 0
+          : Array.isArray(c) &&
+            c.some((b) => b.type === 'text') &&
+            !c.some((b) => b.type === 'tool_use');
+      if (isCompleteText) break;
     }
     rows.pop();
   }
 
-  // Strip leading orphaned tool_result messages — no preceding assistant tool_use
-  while (rows.length > 0 && hasToolResults(rows[0])) {
+  // Strip leading orphaned tool_result or assistant messages — Anthropic requires
+  // the conversation to start with a user message.
+  while (rows.length > 0 && (hasToolResults(rows[0]) || rows[0].role === 'assistant')) {
     rows.shift();
   }
 
