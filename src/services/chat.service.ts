@@ -633,18 +633,23 @@ async function processToolBlocks(
   return results;
 }
 
+const CLAUDE_CALL_TIMEOUT_MS = 30_000;
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
 ): Promise<Anthropic.Message> {
-  return anthropic.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    tools,
-    messages,
-  });
+  return anthropic.messages.create(
+    {
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: systemPrompt,
+      tools,
+      messages,
+    },
+    { timeout: CLAUDE_CALL_TIMEOUT_MS },
+  );
 }
 
 interface PendingMessage {
