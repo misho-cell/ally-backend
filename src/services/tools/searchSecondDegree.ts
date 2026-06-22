@@ -1,39 +1,44 @@
-import pool, { query } from '../../db/postgres/client';
+import { query } from '../../db/postgres/client';
 
 const SECOND_DEGREE_QUERY_TIMEOUT_MS = 10_000;
 import { getSession } from '../../db/neo4j/client';
+import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
 
 const MAX_FRIEND_PHONES = 300;
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
-    const phoneResult = await pool.query<{ phone: string }>(
-      'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
-      [userId],
-    );
-    if (phoneResult.rows.length === 0) return { found: false, reason: 'user_phone_not_found' };
-    const userPhone = phoneResult.rows[0].phone;
+    let userKey: string;
+    try {
+      userKey = await getCompositeKeyForUser(Number(userId));
+    } catch {
+      return { found: false, reason: 'user_phone_not_found' };
+    }
 
-    // Step 1: get direct contact phones from Neo4j (capped to avoid large payloads)
+    // Step 1: get direct contact keys from Neo4j (capped to avoid large payloads)
     const session = getSession();
-    let friendPhones: string[] = [];
+    let friendKeys: string[] = [];
     try {
       const neo4jResult = await session.run(
-        `MATCH (me:AllyNode {phoneKey: $userPhone})-[:CONTACT]->(friend:AllyNode)
+        `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
          RETURN DISTINCT friend.phoneKey AS phoneKey
          LIMIT ${MAX_FRIEND_PHONES}`,
-        { userPhone },
+        { userKey },
         { timeout: 8000 },
       );
-      friendPhones = neo4jResult.records
+      friendKeys = neo4jResult.records
         .map((r) => r.get('phoneKey') as string | null)
         .filter((p): p is string => p !== null);
     } finally {
       await session.close();
     }
 
-    if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
+    if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
+
+    // Composite keys (e.g. "+99551111-+99599999") must be expanded to individual phones
+    // before matching against UserPhone which stores one row per phone
+    const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))];
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
