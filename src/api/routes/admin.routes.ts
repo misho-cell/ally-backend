@@ -23,6 +23,7 @@ import {
 } from '../../services/enabledTools.service';
 import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
+import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
 
@@ -375,6 +376,44 @@ adminRouter.post(
     try {
       await EnrichmentJob.stop();
       res.status(200).json({ success: true, data: { stopped: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get(
+  '/system-prompt',
+  async (_req: Request, res: Response<ApiResponse<{ system_prompt: string }>>) => {
+    try {
+      const result = await query<{ system_prompt: string }>(
+        'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+      );
+      const system_prompt = result.rows[0]?.system_prompt ?? '';
+      res.status(200).json({ success: true, data: { system_prompt } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.put(
+  '/system-prompt',
+  body('system_prompt').isString().notEmpty(),
+  async (req: Request, res: Response<ApiResponse<{ system_prompt: string }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, errors: errors.array() } as never);
+      return;
+    }
+    try {
+      const { system_prompt } = req.body as { system_prompt: string };
+      await query('INSERT INTO ai_config (system_prompt) VALUES ($1)', [system_prompt]);
+      res.status(200).json({ success: true, data: { system_prompt } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
