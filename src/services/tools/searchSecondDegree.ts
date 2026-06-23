@@ -73,7 +73,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       phone: string;
       target_user_id: number | null;
       name: string | null;
-      via_name: string | null;
+      via_names: string[] | null;
       employer: string | null;
       jobPosition: string | null;
     }>(
@@ -99,23 +99,23 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          UNION
          SELECT phone, "contactId" FROM alias_hits
        )
-       SELECT DISTINCT ON (m.phone)
-              m.phone,
-              up_t."userId"                            AS target_user_id,
-              COALESCE(ua_t.alias, u_t.name)          AS name,
-              COALESCE(ua_via.alias, u_via.name)       AS via_name,
-              u_t.employer                             AS employer,
-              u_t."jobPosition"                        AS "jobPosition"
+       SELECT m.phone,
+              MAX(up_t."userId")                                               AS target_user_id,
+              COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
+              array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
+                FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
+              MAX(u_t.employer)                                                AS employer,
+              MAX(u_t."jobPosition")                                           AS "jobPosition"
        FROM matches m
-       JOIN friend_users fu        ON fu."userId" = m."contactId"
-       LEFT JOIN "UserAlias" ua_t  ON ua_t.phone = m.phone  AND ua_t."contactId" = m."contactId"
-       LEFT JOIN "UserPhone"  up_t ON up_t.phone = m.phone
-       LEFT JOIN "User"       u_t  ON u_t.id     = up_t."userId"
+       JOIN friend_users fu         ON fu."userId" = m."contactId"
+       LEFT JOIN "UserAlias" ua_t   ON ua_t.phone  = m.phone AND ua_t."contactId" = m."contactId"
+       LEFT JOIN "UserPhone"  up_t  ON up_t.phone  = m.phone
+       LEFT JOIN "User"       u_t   ON u_t.id      = up_t."userId"
        LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
-       LEFT JOIN "User"      u_via  ON u_via.id    = fu."userId"
+       LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
        LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
        WHERE ua_own.phone IS NULL
-       ORDER BY m.phone
+       GROUP BY m.phone
        LIMIT 20`,
       [userId, friendPhones, exactTerms, ...likeTerms],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
@@ -131,7 +131,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         employer: row.employer ?? null,
         jobPosition: row.jobPosition ?? null,
         tags: [],
-        via: row.via_name ?? null,
+        via: row.via_names ?? [],
         // Internal identifiers for agent use — never displayed to the user.
         // target_user_id is set when the person is a registered Ally user;
         // target_phone is set when they are not (unregistered contact).
