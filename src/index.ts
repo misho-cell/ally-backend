@@ -7,15 +7,22 @@ import adminRouter from './api/routes/admin.routes';
 import contactsRouter from './api/routes/contacts.routes';
 import notificationsRouter from './api/routes/notifications.routes';
 import threadsRouter from './api/routes/threads.routes';
+import webhooksRouter from './api/routes/webhooks.routes';
+import billingRouter from './api/routes/billing.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { EnrichmentJob } from './services/enrichment.job';
+import { startSubscriptionCron } from './services/subscription.cron';
 import { ApiResponse } from './types';
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
+
+// Webhook route must use raw body BEFORE express.json() to allow signature verification
+app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
+
 app.use(express.json({ limit: '10mb' }));
 app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
@@ -23,6 +30,7 @@ app.use('/admin', adminRouter);
 app.use('/contacts', contactsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/threads', threadsRouter);
+app.use('/billing', billingRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
@@ -45,6 +53,7 @@ runMigrations()
     });
     server.timeout = 5 * 60 * 1000;
     EnrichmentJob.startCron();
+    startSubscriptionCron();
   })
   .catch((err: unknown) => {
     // eslint-disable-next-line no-console
