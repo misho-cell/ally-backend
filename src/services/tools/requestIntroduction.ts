@@ -84,6 +84,8 @@ export async function requestIntroduction(
   targetName: string,
   message?: string,
   mediatorPhone?: string,
+  targetUserId?: number,
+  targetPhone?: string,
 ): Promise<object> {
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
@@ -136,10 +138,18 @@ export async function requestIntroduction(
 
   const [insertResult, requesterName] = await Promise.all([
     query<{ id: number }>(
-      `INSERT INTO introduction_requests (requester_user_id, mediator_user_id, target_name, message)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO introduction_requests
+         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [requesterUserId, mediatorUserId, targetName, message ?? null],
+      [
+        requesterUserId,
+        mediatorUserId,
+        targetName,
+        message ?? null,
+        targetUserId ?? null,
+        targetPhone ?? null,
+      ],
     ),
     getRequesterName(requesterUserId),
   ]);

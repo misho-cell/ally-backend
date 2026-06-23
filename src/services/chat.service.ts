@@ -227,6 +227,16 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
         type: 'string',
         description: 'Name of the person the user wants to be introduced to',
       },
+      target_user_id: {
+        type: 'number',
+        description:
+          'Ally user ID of the target (from search result target_user_id field). Use when the target is a registered Ally user.',
+      },
+      target_phone: {
+        type: 'string',
+        description:
+          'Phone number of the target (from search result target_phone field). Use when the target is not a registered Ally user.',
+      },
       message: {
         type: 'string',
         description: 'Optional context message for the mediator',
@@ -627,6 +637,8 @@ async function executeToolCall(
         input['target_name'] as string,
         input['message'] as string | undefined,
         input['mediator_phone'] as string | undefined,
+        input['target_user_id'] as number | undefined,
+        input['target_phone'] as string | undefined,
       );
     case 'respond_to_introduction':
       return respondToIntroduction(

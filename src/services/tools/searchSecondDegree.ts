@@ -71,6 +71,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     const result = await query<{
       phone: string;
+      target_user_id: number | null;
       name: string | null;
       via_name: string | null;
       employer: string | null;
@@ -100,6 +101,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        )
        SELECT DISTINCT ON (m.phone)
               m.phone,
+              up_t."userId"                            AS target_user_id,
               COALESCE(ua_t.alias, u_t.name)          AS name,
               COALESCE(ua_via.alias, u_via.name)       AS via_name,
               u_t.employer                             AS employer,
@@ -130,6 +132,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         jobPosition: row.jobPosition ?? null,
         tags: [],
         via: row.via_name ?? null,
+        // Internal identifiers for agent use — never displayed to the user.
+        // target_user_id is set when the person is a registered Ally user;
+        // target_phone is set when they are not (unregistered contact).
+        ...(row.target_user_id != null
+          ? { target_user_id: row.target_user_id }
+          : { target_phone: row.phone }),
       })),
     };
   } catch (err) {
