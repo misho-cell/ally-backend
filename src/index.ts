@@ -18,8 +18,14 @@ import { ApiResponse } from './types';
 
 dotenv.config();
 
+const ALLOWED_ORIGINS = [
+  'https://allyapp.one',
+  'https://www.allyapp.one',
+  'https://ally-frontend-tau.vercel.app',
+];
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 
 // Webhook route must use raw body BEFORE express.json() to allow signature verification
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
