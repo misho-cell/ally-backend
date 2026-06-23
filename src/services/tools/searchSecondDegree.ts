@@ -5,7 +5,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
 
-const MAX_FRIEND_PHONES = 300;
+const MAX_FRIEND_PHONES = 3000;
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {

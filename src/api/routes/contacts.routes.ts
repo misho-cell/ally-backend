@@ -95,7 +95,7 @@ contactsRouter.post(
   },
 );
 
-const MAX_FRIEND_PHONES_DIAG = 300;
+const MAX_FRIEND_PHONES_DIAG = 3000;
 
 contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).user.userId;
