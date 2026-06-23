@@ -9,6 +9,7 @@ import notificationsRouter from './api/routes/notifications.routes';
 import threadsRouter from './api/routes/threads.routes';
 import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
+import profileRouter from './api/routes/profile.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { EnrichmentJob } from './services/enrichment.job';
@@ -31,6 +32,7 @@ app.use('/contacts', contactsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/threads', threadsRouter);
 app.use('/billing', billingRouter);
+app.use('/profile', profileRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
