@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { requireSubscription } from '../middleware/subscription.middleware';
 import {
   buildContactInsightSystemPrompt,
   processChat,
@@ -10,6 +11,9 @@ import { getContactInsight, saveContactInsight } from '../../services/insights.s
 import { ApiResponse, ContactInsight } from '../../types';
 
 const chatRouter = Router();
+
+chatRouter.use(authenticateJwt);
+chatRouter.use(requireSubscription);
 
 function handleValidationErrors(
   req: Request,
@@ -33,7 +37,6 @@ function handleValidationErrors(
 
 chatRouter.get(
   '/insights/:neo4jContactId',
-  authenticateJwt,
   param('neo4jContactId').isString().trim().notEmpty().withMessage('neo4jContactId is required'),
   handleValidationErrors,
   async (
@@ -56,7 +59,6 @@ chatRouter.get(
 
 chatRouter.post(
   '/insights/:neo4jContactId',
-  authenticateJwt,
   param('neo4jContactId').isString().trim().notEmpty().withMessage('neo4jContactId is required'),
   body('contact_name').isString().trim().notEmpty().withMessage('contact_name is required'),
   body('collected_data')
@@ -87,7 +89,6 @@ chatRouter.post(
 
 chatRouter.post(
   '/message',
-  authenticateJwt,
   body('message').isString().trim().notEmpty().isLength({ max: 2000 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);

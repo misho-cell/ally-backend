@@ -168,7 +168,7 @@ describe('completeLogin', () => {
 describe('adminLogin', () => {
   it('returns token for valid credentials', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, password: 'hashed', hasAccessToAlly: true }],
+      rows: [{ id: 1, password: 'hashed' }],
       rowCount: 1,
     } as never);
     mockBcryptCompare.mockResolvedValueOnce(true as never);
@@ -188,18 +188,9 @@ describe('adminLogin', () => {
     );
   });
 
-  it('throws when user has no access', async () => {
-    mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, password: 'hashed', hasAccessToAlly: false }],
-      rowCount: 1,
-    } as never);
-
-    await expect(adminLogin('user@test.com', 'pass')).rejects.toThrow('წვდომა დაკავებულია');
-  });
-
   it('throws on wrong password', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, password: 'hashed', hasAccessToAlly: true }],
+      rows: [{ id: 1, password: 'hashed' }],
       rowCount: 1,
     } as never);
     mockBcryptCompare.mockResolvedValueOnce(false as never);

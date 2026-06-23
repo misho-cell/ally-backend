@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { requireSubscription } from '../middleware/subscription.middleware';
 import {
   savePushSubscription,
   deletePushSubscription,
@@ -11,9 +12,11 @@ import { ApiResponse } from '../../types';
 
 const notificationsRouter = Router();
 
+notificationsRouter.use(authenticateJwt);
+notificationsRouter.use(requireSubscription);
+
 notificationsRouter.get(
   '/vapid-public-key',
-  authenticateJwt,
   (_req: Request, res: Response<ApiResponse<{ key: string }>>) => {
     const key = getVapidPublicKey();
 
@@ -28,7 +31,6 @@ notificationsRouter.get(
 
 notificationsRouter.post(
   '/subscribe',
-  authenticateJwt,
   body('endpoint').isString().trim().notEmpty().withMessage('endpoint is required'),
   body('keys.p256dh').isString().trim().notEmpty().withMessage('keys.p256dh is required'),
   body('keys.auth').isString().trim().notEmpty().withMessage('keys.auth is required'),
@@ -58,7 +60,6 @@ notificationsRouter.post(
 
 notificationsRouter.delete(
   '/subscribe',
-  authenticateJwt,
   body('endpoint').isString().trim().notEmpty().withMessage('endpoint is required'),
   async (req: Request, res: Response<ApiResponse<null>>) => {
     const errors = validationResult(req);

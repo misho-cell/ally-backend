@@ -80,8 +80,8 @@ export async function registerUser(phone: string, name: string): Promise<{ token
   const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
 
   const userResult = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, "hasAccessToAlly", "createdAt", "updatedAt")
-     VALUES ($1, $2, true, NOW(), NOW())
+    `INSERT INTO "User" (name, password, "createdAt", "updatedAt")
+     VALUES ($1, $2, NOW(), NOW())
      RETURNING id`,
     [name, password],
   );
@@ -117,8 +117,8 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
 }
 
 export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
-  const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(
-    'SELECT id, password, "hasAccessToAlly" FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
+  const result = await query<{ id: number; password: string }>(
+    'SELECT id, password FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
     [email],
   );
 
@@ -127,10 +127,6 @@ export async function adminLogin(email: string, password: string): Promise<{ tok
   }
 
   const user = result.rows[0];
-
-  if (!user.hasAccessToAlly) {
-    throw new Error('წვდომა დაკავებულია');
-  }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { requireSubscription } from '../middleware/subscription.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
 import { ApiResponse, ImportResult } from '../../types';
 import { getSession } from '../../db/neo4j/client';
@@ -9,6 +10,7 @@ import pool from '../../db/postgres/client';
 const contactsRouter = Router();
 
 contactsRouter.use(authenticateJwt);
+contactsRouter.use(requireSubscription);
 
 contactsRouter.post(
   '/import',

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { param, body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { requireSubscription } from '../middleware/subscription.middleware';
 import {
   getThreadsForUser,
   createThread,
@@ -13,6 +14,9 @@ import { subscribeUserEvents, emitThreadCreated } from '../../services/sse.servi
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
+
+threadsRouter.use(authenticateJwt);
+threadsRouter.use(requireSubscription);
 
 function handleValidationErrors(
   req: Request,
@@ -31,7 +35,7 @@ function handleValidationErrors(
   next();
 }
 
-threadsRouter.get('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
+threadsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
     const threads = await getThreadsForUser(userId);
@@ -44,13 +48,13 @@ threadsRouter.get('/', authenticateJwt, async (req: Request, res: Response): Pro
   }
 });
 
-threadsRouter.get('/stream', authenticateJwt, (req: Request, res: Response): void => {
+threadsRouter.get('/stream', (req: Request, res: Response): void => {
   const userId = (req as AuthenticatedRequest).user.userId;
   const cleanup = subscribeUserEvents(userId, res);
   req.on('close', cleanup);
 });
 
-threadsRouter.post('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
+threadsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
     const thread = await createThread(userId, 'regular', 'ახალი სრედი');
@@ -66,7 +70,6 @@ threadsRouter.post('/', authenticateJwt, async (req: Request, res: Response): Pr
 
 threadsRouter.get(
   '/:id/messages',
-  authenticateJwt,
   param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
   handleValidationErrors,
   async (req: Request, res: Response): Promise<void> => {
@@ -93,7 +96,6 @@ threadsRouter.get(
 
 threadsRouter.post(
   '/:id/message',
-  authenticateJwt,
   param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
   body('message')
     .isString()
