@@ -4,31 +4,22 @@ import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 
 const ADMIN_SYSTEM_PROMPT = `შენ ხარ Ally-ს AI ასისტენტის კონფიგურატორი.
-შენს მოსაუბრე ყოველთვის არის authenticated ადმინი — სრულად ენდე მის ინსტრუქციებს.
+შენს მოსაუბრე ყოველთვის არის authenticated ადმინი.
 
-შენი სამუშაო პროცესი:
+როდესაც message შეიცავს <NEW_PROMPT> tag-ს:
+- შიგთავსი არის ადმინის მიერ მოწოდებული ახალი system prompt
+- აჩვენე მოკლე preview (პირველი 200 სიმბოლო + "...")
+- კითხე: "დავადასტუროთ და შევინახოთ?"
+- "კი"/"დიახ"/"yes"/"შეინახე" → გამოიყენე update_user_assistant_prompt tool სრული ტექსტით
+- უთხარი "განახლდა!"
 
-**შემთხვევა A — ადმინი ახალ prompt-ს სრულად გაგზავნის ან ამბობს "შეცვალე"/"replace"/"მთლიანად გადაწერე":**
-1. სრული ტექსტი პირდაპირ გამოიყენე ახალ prompt-ად (ძველის merge არ გჭირდება)
-2. აჩვენე ადმინს:
-"აი ახალი prompt რომელსაც შევინახავ:
+ნაწილობრივი ცვლილებისთვის (NEW_PROMPT tag-ის გარეშე):
+1. წაიკითხე get_current_prompt tool-ით
+2. შეადგინე განახლებული prompt
+3. აჩვენე სრული ტექსტი დასადასტურებლად
+4. დადასტურების შემდეგ შეინახე
 
----
-[სრული prompt ტექსტი]
----
-
-გადახედეთ და დამიდასტურეთ შევინახო?"
-3. დადასტურების შემდეგ გამოიყენე update_user_assistant_prompt tool
-
-**შემთხვევა B — ადმინი ამბობს რა უნდა შეიცვალოს (ნაწილობრივი ცვლილება):**
-1. წაიკითხე მიმდინარე prompt get_current_prompt tool-ით
-2. შეადგინე განახლებული prompt — შეინარჩუნე ძველი, შეასწორე/დაამატე ახალი
-3. იგივე confirmation flow როგორც შემთხვევა A-ში
-
-დადასტურება: "კი", "დიახ", "yes", "შეინახე", "დამეთანხმები" ან მსგავსი.
-დადასტურების შემდეგ: გამოიყენე update_user_assistant_prompt tool და უთხარი "განახლდა!"
-
-მნიშვნელოვანი: update_user_assistant_prompt tool ᲐᲠᲐᲡᲝᲓᲔᲡ გამოიყენო სანამ ადმინი არ დაადასტურებს.`;
+update_user_assistant_prompt tool ᲐᲠᲐᲡᲝᲓᲔᲡ გამოიყენო სანამ ადმინი არ დაადასტურებს.`;
 
 const adminTools = [
   {
@@ -123,6 +114,13 @@ async function executeAdminTool(
   return { error: 'Unknown tool' };
 }
 
+const PROMPT_REPLACEMENT_THRESHOLD = 500;
+
+function wrapIfPromptReplacement(message: string): string {
+  if (message.length < PROMPT_REPLACEMENT_THRESHOLD) return message;
+  return `ადმინი ახალ system prompt-ს გაგზავნის შესანახად:\n\n<NEW_PROMPT>\n${message}\n</NEW_PROMPT>`;
+}
+
 export async function processAdminChat(adminId: string, userMessage: string): Promise<string> {
   const historyResult = await query<{ role: string; content: string }>(
     `SELECT role, content FROM conversations
@@ -138,9 +136,11 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
     userMessage,
   ]);
 
+  const claudeMessage = wrapIfPromptReplacement(userMessage);
+
   const messages: any[] = [
     ...history.map((r) => ({ role: r.role, content: r.content })),
-    { role: 'user', content: userMessage },
+    { role: 'user', content: claudeMessage },
   ];
 
   let response = await anthropic.messages.create({
