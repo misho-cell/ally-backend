@@ -6,7 +6,7 @@ if (!WHATSAPP_PHONE_ID || !WHATSAPP_TOKEN) {
 }
 
 export async function sendWhatsAppMessage(phone: string, code: string): Promise<void> {
-  const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`;
+  const url = `https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_ID}/messages`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -17,11 +17,11 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
     body: Buffer.from(
       JSON.stringify({
         messaging_product: 'whatsapp',
-        to: phone,
+        to: phone.replace(/^\+/, ''),
         type: 'template',
         template: {
           name: 'whatsup_otp',
-          language: { code: 'en' },
+          language: { code: 'en_US' },
           components: [
             {
               type: 'body',
