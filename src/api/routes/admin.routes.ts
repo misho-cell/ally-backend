@@ -137,7 +137,7 @@ adminRouter.patch(
 
 adminRouter.post(
   '/chat',
-  body('message').isString().trim().notEmpty().isLength({ max: 4000 }),
+  body('message').isString().trim().notEmpty().isLength({ max: 100_000 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
 
