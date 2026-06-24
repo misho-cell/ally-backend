@@ -18,8 +18,23 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
       JSON.stringify({
         messaging_product: 'whatsapp',
         to: phone,
-        type: 'text',
-        text: { body: `Ally-s kodi: ${code} - moqmedebs 5 wuti` },
+        type: 'template',
+        template: {
+          name: 'whatsup_otp',
+          language: { code: 'en' },
+          components: [
+            {
+              type: 'body',
+              parameters: [{ type: 'text', text: code }],
+            },
+            {
+              type: 'button',
+              sub_type: 'copy_code',
+              index: '0',
+              parameters: [{ type: 'coupon_code', coupon_code: code }],
+            },
+          ],
+        },
       }),
       'utf8',
     ),
