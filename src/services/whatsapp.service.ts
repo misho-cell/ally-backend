@@ -27,6 +27,12 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
               type: 'body',
               parameters: [{ type: 'text', text: code }],
             },
+            {
+              type: 'button',
+              sub_type: 'url',
+              index: '0',
+              parameters: [{ type: 'text', text: code }],
+            },
           ],
         },
       }),
