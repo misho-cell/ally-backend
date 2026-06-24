@@ -21,7 +21,7 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
         type: 'template',
         template: {
           name: 'whatsup_otp',
-          language: { code: 'en_US' },
+          language: { code: 'en' },
           components: [
             {
               type: 'body',
