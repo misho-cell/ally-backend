@@ -124,7 +124,7 @@ async function executeAdminTool(
 export async function processAdminChat(adminId: string, userMessage: string): Promise<string> {
   const historyResult = await query<{ role: string; content: string }>(
     `SELECT role, content FROM conversations
-     WHERE user_id = $1
+     WHERE user_id = $1 AND thread_id IS NULL
      ORDER BY created_at DESC LIMIT 20`,
     [adminId],
   );
