@@ -29,7 +29,7 @@ export async function getContactFullProfile(
 ): Promise<ContactFullProfile> {
   const lookupId = neo4jContactId ?? phone;
 
-  const [tagsResult, insight, factsAndAsk] = await Promise.all([
+  const [tagsResult, factsAndAsk] = await Promise.all([
     query<{ tag: string; contributor_count: number; total_weight: number }>(
       `SELECT
          ut.tag,
@@ -42,14 +42,21 @@ export async function getContactFullProfile(
        LIMIT 50`,
       [phone],
     ),
-    getContactInsight(userId, lookupId),
     getVisibleFacts(userId, lookupId),
   ]);
+
+  let insightData: Record<string, unknown> | null = null;
+  try {
+    const insight = await getContactInsight(userId, lookupId);
+    insightData = insight?.data ?? null;
+  } catch {
+    // contact_insights.user_id column type mismatch — insight unavailable
+  }
 
   return {
     phone,
     tags: tagsResult.rows.filter((r) => isDisplayableTag(r.tag)),
-    insights: insight?.data ?? null,
+    insights: insightData,
     facts_and_ask: factsAndAsk,
   };
 }
