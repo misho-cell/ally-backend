@@ -79,6 +79,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
             count: fuzzyResult.rows.length,
             fuzzy: true,
             results: fuzzyResult.rows.map((row) => ({
+              phone: row.phone,
               name: row.name ?? null,
               tags: (row.all_tags || []).filter(Boolean),
               employer: row.employer ?? null,
@@ -97,6 +98,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       found: true,
       count: result.rows.length,
       results: result.rows.map((row) => ({
+        phone: row.phone,
         name: row.name ?? null,
         tags: (row.all_tags || []).filter(Boolean),
         employer: row.employer ?? null,

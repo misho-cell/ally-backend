@@ -30,6 +30,7 @@ import {
   touchThread,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
+import { getContactFullProfile } from './tools/getContactFullProfile';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -90,6 +91,22 @@ const AGENT_STRATEGY_PROMPT = `
 - თუ ემთხვევა → გაიგივება შეიძლება, ასე მიუთითე
 - თუ ვერ ადასტურებ → მომხმარებელს ეკითხე: „კონტაქტში [X] ვიცი, ვებში [Y] ვნახე — ეს ერთი ადამიანია?"
 - ვებ ინფო **მხოლოდ** დადასტურების შემდეგ წარადგინე როგორც ამ კონტაქტის ინფო
+
+---
+
+### 4.5. კონტაქტის სრული პროფილი — get_contact_full_profile
+კონტაქტი ნაპოვნია და phone ხელმისაწვდომია? — **სავალდებულოდ** გამოიძახე **get_contact_full_profile(phone)** Profile Card-ის წინ.
+ეს tool-ი ანაცვლებს get_contact_facts-ს და get_contact_insight-ს ცალ-ცალკე — ისინი **აღარ** გამოიძახო.
+
+**tags ინტერპრეტაცია:**
+- contributor_count ≥ 2: სანდო (მრავალ user-მა დაადასტურა)
+- contributor_count = 1: ნაკლებ სანდო (ერთი user-ის ინფო)
+- numeric-only / emoji-only / 2 სიმბოლოზე ნაკლები: **ignore**
+- სხვადასხვა ენაზე ერთი კონცეფცია (developer / პროგრამისტი / software engineer): ჩათვალე **ერთ ფაქტად**, count-ები შეაჯამე
+
+**facts_and_ask:**
+- facts: გადამოწმებული ფაქტები — ჩართე Profile Card-ში
+- ask_about != null **და ამ საუბარში ჯერ კითხვა არ დაგისვამს** → response-ის ბოლოს ბუნებრივად 1 კითხვა
 
 ---
 
@@ -165,7 +182,7 @@ const AGENT_STRATEGY_PROMPT = `
 კონტაქტზე ობიექტური ფაქტის (სამსახური, ქალაქი, პროფესია, სფერო) გაგება → დაუყოვნებლად გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry"), value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი"). შენახვის შემდეგ ერთი სტრიქონი: „შენახულია: [სახელი] — [field]: [value] ✓" (is_public=true → „✓ (2+ ადამიანი ადასტურებს)", is_public=false → „✓ (პრაივეთი)"). შენახვა ყოველთვის ხდება ნებართვის გარეშე.
 
 **წესი 2 — კონტაქტის ხარვეზის კითხვა:**
-კონტაქტის პროფილის ჩვენებამდე გამოიძახე get_contact_facts და ფაქტები Profile Card-ში ჩართე. თუ პასუხში ask_about != null **და ამ საუბარში ჯერ კითხვა არ დაგისვამს**:
+გამოიყენე get_contact_full_profile-ის facts_and_ask ველი (ნაცვლად ცალკე get_contact_facts-ისა). ფაქტები Profile Card-ში ჩართე. თუ ask_about != null **და ამ საუბარში ჯერ კითხვა არ დაგისვამს**:
 - response-ის ბოლოს ბუნებრივად დასვი 1 კითხვა ამ ველის შესახებ
 - მაგ. ask_about="employer" → „სხვათა შორის, სად მუშაობს [სახელი]?"
 - ეს ითვლება საუბრის 1 კითხვად — სხვა კითხვა ამ საუბარში აღარ დაუსვა
@@ -347,6 +364,27 @@ const GET_CONTACT_FACTS_TOOL: AnthropicTool = {
       },
     },
     required: ['neo4j_contact_id'],
+  },
+};
+
+const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
+  name: 'get_contact_full_profile',
+  description:
+    'Get a consolidated profile for an identified contact: all tags with contributor_count (how many different users tagged them), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: {
+        type: 'string',
+        description: "The contact's phone number (from search results)",
+      },
+      neo4j_contact_id: {
+        type: 'string',
+        description:
+          'Neo4j contact ID for insights/facts lookup (pass if available from prior tool calls)',
+      },
+    },
+    required: ['phone'],
   },
 };
 
@@ -698,6 +736,12 @@ async function executeToolCall(
       );
     case 'get_contact_facts':
       return getVisibleFacts(userId, input['neo4j_contact_id'] as string);
+    case 'get_contact_full_profile':
+      return getContactFullProfile(
+        userId,
+        input['phone'] as string,
+        input['neo4j_contact_id'] as string | undefined,
+      );
     case 'present_choices':
       return { presented: true };
     default:
@@ -817,6 +861,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   ]);
   return [
     ...insightTools,
+    GET_CONTACT_FULL_PROFILE_TOOL,
     UPDATE_USER_PROFILE_TOOL,
     SAVE_CONTACT_FACT_TOOL,
     GET_CONTACT_FACTS_TOOL,

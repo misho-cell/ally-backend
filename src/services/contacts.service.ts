@@ -129,27 +129,53 @@ async function saveToPostgres(
     for (const tag of tags) {
       await client.query(
         `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount", "createdAt", "updatedAt")
-         SELECT $1, $2, $3, 1, NOW(), NOW()
-         WHERE NOT EXISTS (
-           SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2 AND tag = $3
-         )`,
+         VALUES ($1, $2, $3, 1, NOW(), NOW())
+         ON CONFLICT (phone, "contactId", tag)
+         DO UPDATE SET "weightCount" = "UserTags"."weightCount" + 1, "updatedAt" = NOW()`,
         [phone, userId, tag],
       );
     }
   });
 }
 
+const NUMERIC_ONLY_RE = /^\d+$/;
+const HAS_LETTER_RE = /\p{L}/u;
+const TAG_STOP_WORDS = new Set([
+  'კი',
+  'არა',
+  'და',
+  'ან',
+  'ამ',
+  'ეს',
+  'ის',
+  'მე',
+  'შენ',
+  'ჩვენ',
+  'თქვენ',
+  'ok',
+  'yes',
+  'no',
+  'mr',
+  'ms',
+  'dr',
+]);
+
+function isValidTag(tag: string): boolean {
+  if (tag.length < 2) return false;
+  if (NUMERIC_ONLY_RE.test(tag)) return false;
+  if (!HAS_LETTER_RE.test(tag)) return false;
+  if (TAG_STOP_WORDS.has(tag)) return false;
+  return true;
+}
+
 function buildTags(contact: ImportContact): string[] {
-  const parts: string[] = contact.name
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((p) => p.length > 1);
+  const parts: string[] = contact.name.toLowerCase().split(/\s+/).filter(isValidTag);
 
   if (contact.employer) parts.push(contact.employer.toLowerCase());
   if (contact.jobPosition) parts.push(contact.jobPosition.toLowerCase());
   if (contact.city) parts.push(contact.city.toLowerCase());
 
-  return [...new Set(parts)];
+  return [...new Set(parts)].filter(isValidTag);
 }
 
 async function saveToNeo4j(
