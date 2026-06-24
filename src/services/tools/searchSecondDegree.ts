@@ -127,10 +127,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       found: true,
       count: result.rows.length,
       results: result.rows.map((row) => ({
+        phone: row.phone,
         name: row.name ?? null,
         employer: row.employer ?? null,
         jobPosition: row.jobPosition ?? null,
-        tags: [],
         via: row.via_names ?? [],
         // Internal identifiers for agent use — never displayed to the user.
         // target_user_id is set when the person is a registered Ally user;
