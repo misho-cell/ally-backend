@@ -11,6 +11,7 @@ import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount } from './tools/getContactCount';
+import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
@@ -438,6 +439,22 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       required: ['tag_query'],
     },
   },
+  search_contacts_by_country: {
+    name: 'search_contacts_by_country',
+    description:
+      'Search direct contacts and contacts-of-contacts by country. Use when the user asks about contacts in a specific country or location (e.g. "გერმანიაში ვინმე მყავს?", "find contacts in Germany"). Returns both direct contacts and second-degree contacts with their mutual contact.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        country: {
+          type: 'string',
+          description:
+            'Country name in any language (Georgian or English), e.g. "გერმანია", "Germany", "ამერიკა", "USA".',
+        },
+      },
+      required: ['country'],
+    },
+  },
   get_contact_count: {
     name: 'get_contact_count',
     description:
@@ -638,6 +655,8 @@ async function executeToolCall(
       return searchByInsight(input['search_query'] as string);
     case 'search_second_degree':
       return searchSecondDegree(userId, input['tag_query'] as string);
+    case 'search_contacts_by_country':
+      return searchContactsByCountry(userId, input['country'] as string);
     case 'get_contact_count':
       return getContactCount(userId);
     case 'web_search':
