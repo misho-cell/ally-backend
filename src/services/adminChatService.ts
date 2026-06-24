@@ -114,14 +114,36 @@ async function executeAdminTool(
   return { error: 'Unknown tool' };
 }
 
-const PROMPT_REPLACEMENT_THRESHOLD = 500;
+const SAVE_COMMAND = '!save';
 
-function wrapIfPromptReplacement(message: string): string {
-  if (message.length < PROMPT_REPLACEMENT_THRESHOLD) return message;
-  return `ადმინი ახალ system prompt-ს გაგზავნის შესანახად:\n\n<NEW_PROMPT>\n${message}\n</NEW_PROMPT>`;
+async function handleDirectSave(adminId: string, userMessage: string): Promise<string | null> {
+  const trimmed = userMessage.trimStart();
+  if (!trimmed.startsWith(SAVE_COMMAND)) return null;
+
+  const newPrompt = trimmed.slice(SAVE_COMMAND.length).replace(/^\n/, '').trim();
+  if (!newPrompt) return null;
+
+  await query('INSERT INTO ai_config (system_prompt) VALUES ($1)', [newPrompt]);
+
+  const reply = '✓ შენახულია. user-ის ასისტენტი ახალ prompt-ით მუშაობს.';
+  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
+    adminId,
+    'assistant',
+    reply,
+  ]);
+  return reply;
 }
 
 export async function processAdminChat(adminId: string, userMessage: string): Promise<string> {
+  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
+    adminId,
+    'user',
+    userMessage,
+  ]);
+
+  const directResult = await handleDirectSave(adminId, userMessage);
+  if (directResult !== null) return directResult;
+
   const historyResult = await query<{ role: string; content: string }>(
     `SELECT role, content FROM conversations
      WHERE user_id = $1 AND thread_id IS NULL
@@ -130,17 +152,9 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
   );
   const history = historyResult.rows.reverse();
 
-  await query('INSERT INTO conversations (user_id, role, content) VALUES ($1, $2, $3)', [
-    adminId,
-    'user',
-    userMessage,
-  ]);
-
-  const claudeMessage = wrapIfPromptReplacement(userMessage);
-
   const messages: any[] = [
     ...history.map((r) => ({ role: r.role, content: r.content })),
-    { role: 'user', content: claudeMessage },
+    { role: 'user', content: userMessage },
   ];
 
   let response = await anthropic.messages.create({
