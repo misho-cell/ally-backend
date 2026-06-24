@@ -10,6 +10,7 @@ import { searchContactByName } from './tools/searchContactByName';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
+import { getContactCount } from './tools/getContactCount';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
@@ -437,6 +438,16 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       required: ['tag_query'],
     },
   },
+  get_contact_count: {
+    name: 'get_contact_count',
+    description:
+      'Returns the total number of contacts the user has imported. Use when the user asks how many contacts they have.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
   web_search: {
     name: 'web_search',
     description:
@@ -627,6 +638,8 @@ async function executeToolCall(
       return searchByInsight(input['search_query'] as string);
     case 'search_second_degree':
       return searchSecondDegree(userId, input['tag_query'] as string);
+    case 'get_contact_count':
+      return getContactCount(userId);
     case 'web_search':
       return webSearch(input['query'] as string);
     case 'save_contact_insight':
