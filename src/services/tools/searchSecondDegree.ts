@@ -49,6 +49,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           .map((r) => r.get('phoneKey') as string | null)
           .filter((p): p is string => p !== null);
       }
+    } catch (neo4jErr) {
+      console.error('searchSecondDegree neo4j error:', (neo4jErr as Error).message);
+      return { found: false, reason: 'neo4j_unavailable' };
     } finally {
       await session.close();
     }

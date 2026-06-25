@@ -395,6 +395,14 @@ export async function searchContactsByCountry(userId: string, country: string): 
         .map((r) => r.get('phoneKey') as string | null)
         .filter((p): p is string => p !== null);
     }
+  } catch (neo4jErr) {
+    console.error('searchContactsByCountry neo4j error:', (neo4jErr as Error).message);
+    return {
+      found: directResult.rows.length > 0,
+      prefix,
+      direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+      second_degree_contacts: [],
+    };
   } finally {
     await session.close();
   }
