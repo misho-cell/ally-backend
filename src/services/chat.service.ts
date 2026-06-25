@@ -837,6 +837,7 @@ async function processToolBlocks(
 }
 
 const CLAUDE_CALL_TIMEOUT_MS = 30_000;
+const MAX_TOOL_ITERATIONS = 8;
 
 async function callClaude(
   messages: Anthropic.MessageParam[],
@@ -881,8 +882,10 @@ async function runToolLoop(
   let response = await callClaude(messages, systemPrompt, tools);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
+  let iterations = 0;
 
-  while (response.stop_reason === 'tool_use') {
+  while (response.stop_reason === 'tool_use' && iterations < MAX_TOOL_ITERATIONS) {
+    iterations++;
     for (const block of response.content) {
       if (block.type === 'tool_use' && block.name === 'present_choices') {
         const input = block.input as { items?: unknown };

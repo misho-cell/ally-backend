@@ -105,7 +105,7 @@ chatRouter.post(
       const threadId = await getOrCreateDefaultThread(userId);
 
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 50_000),
+        setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 90_000),
       );
       const result = await Promise.race([processChat(userId, threadId, message), timeout]);
 
