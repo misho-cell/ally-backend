@@ -15,6 +15,10 @@ const uri = `bolt://${NEO4J_HOST}:${NEO4J_PORT}`;
 const driver = neo4j.driver(
   uri,
   neo4j.auth.basic(process.env.NEO4J_USER || '', process.env.NEO4J_PASS || ''),
+  {
+    connectionTimeout: 5000,
+    connectionAcquisitionTimeout: 5000,
+  },
 );
 
 export function getDriver() {
