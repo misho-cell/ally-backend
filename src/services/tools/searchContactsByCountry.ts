@@ -3,7 +3,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../neo4j.keys';
 
 const MAX_FRIEND_PHONES = 3000;
-const MAX_FRIEND_PHONES_FOR_QUERY = 500;
+const MAX_FRIEND_PHONES_FOR_QUERY = 200;
 const QUERY_TIMEOUT_MS = 10_000;
 
 const COUNTRY_PREFIX_MAP: Record<string, string> = {
