@@ -34,3 +34,7 @@ export function subscribeUserEvents(userId: string, res: Response): () => void {
 export function emitThreadCreated(userId: string, thread: unknown): void {
   emitter.emit(`user:${userId}`, { event: 'thread_created', thread });
 }
+
+export function emitToolProgress(userId: string, message: string): void {
+  emitter.emit(`user:${userId}`, { event: 'tool_progress', message });
+}

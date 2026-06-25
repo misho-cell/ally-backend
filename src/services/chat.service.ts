@@ -32,6 +32,7 @@ import {
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
+import { emitToolProgress } from './sse.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -822,6 +823,8 @@ async function processToolBlocks(
   const results: Anthropic.ToolResultBlockParam[] = [];
   for (const block of content) {
     if (block.type !== 'tool_use') continue;
+    const progressMsg = TOOL_PROGRESS_MESSAGES[block.name];
+    if (progressMsg) emitToolProgress(userId, progressMsg);
     const result = await executeToolCall(
       userId,
       block.name,
@@ -838,6 +841,27 @@ async function processToolBlocks(
 
 const CLAUDE_CALL_TIMEOUT_MS = 30_000;
 const MAX_TOOL_ITERATIONS = 8;
+
+const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
+  web_search: '🌐 ვებში ვეძებ...',
+  search_by_tag: '🔍 კონტაქტებში ვეძებ...',
+  search_contact_by_name: '🔍 სახელით ვეძებ...',
+  search_by_insight: '🔍 შენახულ ინფოში ვეძებ...',
+  search_second_degree: '👥 მეორე წრის კონტაქტებს ვამოწმებ...',
+  search_contacts_by_country: '🌍 ქვეყნის მიხედვით ვეძებ...',
+  get_contact_full_profile: '👤 კონტაქტის პროფილს ვტვირთავ...',
+  lookup_contact_by_phone: '📱 ნომრით ვეძებ...',
+  get_contact_count: '📊 კონტაქტების რაოდენობას ვამოწმებ...',
+  request_introduction: '📨 გაცნობის მოთხოვნას ვაგზავნი...',
+  respond_to_introduction: '📬 გაცნობის მოთხოვნაზე ვპასუხობ...',
+  save_contact_fact: '💾 ფაქტს ვინახავ...',
+  get_contact_facts: '📋 ფაქტებს ვტვირთავ...',
+  save_contact_insight: '💾 ინფოს ვინახავ...',
+  get_contact_insight: '📋 ინფოს ვტვირთავ...',
+  update_user_profile: '💾 პროფილს ვაახლებ...',
+  save_private_context: '💾 ინფოს ვინახავ...',
+  get_thread_context: '💬 სხვა საუბრებს ვამოწმებ...',
+};
 
 async function callClaude(
   messages: Anthropic.MessageParam[],
