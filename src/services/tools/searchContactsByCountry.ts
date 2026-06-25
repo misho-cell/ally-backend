@@ -3,7 +3,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../neo4j.keys';
 
 const MAX_FRIEND_PHONES = 3000;
-const MAX_FRIEND_PHONES_FOR_QUERY = 200;
+const MAX_FRIEND_PHONES_FOR_QUERY = 3000;
 const QUERY_TIMEOUT_MS = 10_000;
 
 const COUNTRY_PREFIX_MAP: Record<string, string> = {
@@ -422,10 +422,13 @@ export async function searchContactsByCountry(userId: string, country: string): 
   if (friendPhones.length > 0) {
     try {
       const sdResult = await query<SecondDegreeRow>(
-        `WITH friend_users AS (
+        `WITH phone_list AS (
+           SELECT UNNEST($2::text[]) AS phone
+         ),
+         friend_users AS (
            SELECT up."userId", up.phone AS via_phone
            FROM "UserPhone" up
-           WHERE up.phone = ANY($2)
+           JOIN phone_list pl ON pl.phone = up.phone
          ),
          matches AS (
            SELECT ua_m.phone, ua_m."contactId", ua_m.alias
