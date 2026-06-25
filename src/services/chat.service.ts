@@ -15,6 +15,7 @@ import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
+import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
 import { requestIntroduction, DisambiguationCandidate } from './tools/requestIntroduction';
 import { respondToIntroduction } from './tools/respondToIntroduction';
 import {
@@ -210,7 +211,21 @@ const AGENT_STRATEGY_PROMPT = `
 - **არასოდეს** გამოიყენო markdown ცხრილები (| სახელი | ... |) — UI არ ასახავს მათ სწორად
 - რამდენიმე კონტაქტის ჩამოთვლა: გამოიყენე ნუმერირებული სია ბრტყელ ტექსტში:
   1. Tako (TBC Bank) — Teona Panchulidze-ს მეშვეობით
-- ყველა სხვა ფორმატირება (bold, სიები) — ნორმალურია`;
+- ყველა სხვა ფორმატირება (bold, სიები) — ნორმალურია
+
+---
+
+### 14. პირადი კონტექსტი — save_private_context
+მომხმარებელი გიზიარებს პირად ინფოს (მიზნები, სასურველი კონტაქტები, გეგმები, პრეფერენსები)?
+→ **სავალდებულოდ** შეინახე \`save_private_context\`-ით.
+
+**mode-ის არჩევა (სისტემის კონტექსტში ჩაგიწერია „პირადი კონტექსტი" — იყენებ მისი key-ებს):**
+- key-ი **არ** არსებობს → \`mode: "set"\` (ახალი ჩანაწერი)
+- key-ი **არსებობს** და ახალი ინფო **ანაცვლებს** ძველს (მაგ. ქალაქი, სამსახური) → \`mode: "set"\`
+- key-ი **არსებობს** და ახალი ინფო **ემატება** ძველს (მაგ. მიზნები, სასურველი კონტაქტები) → \`mode: "append"\`
+
+**ეს ინფო მხოლოდ ამ მომხმარებლისთვისაა — არასოდეს გაუზიარო სხვას.**
+სისტემის კონტექსტში ჩანს → გამოიყენე ძიებაში, შეხვედრების მომზადებაში, რეკომენდაციებში.`;
 
 interface ConversationRow {
   role: string;
@@ -391,7 +406,7 @@ const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
 const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
   name: 'update_user_profile',
   description:
-    'Save a fact learned about the user — profession, city, interest, preference, or frequently searched topics. Call once per field.',
+    'Save a fact learned about the user — profession, city, interest, preference, or frequently searched topics. Check existing keys in "მომხმარებლის ინფო" section first to choose mode.',
   input_schema: {
     type: 'object',
     properties: {
@@ -400,8 +415,39 @@ const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
         description: 'Field name, e.g. "profession", "city", "interests", "language"',
       },
       value: { type: 'string', description: 'Value to store for this field' },
+      mode: {
+        type: 'string',
+        description:
+          '"set" to replace existing value (use for city, profession), "append" to add to existing value (use for interests, topics). Defaults to "set".',
+      },
     },
     required: ['key', 'value'],
+  },
+};
+
+const SAVE_PRIVATE_CONTEXT_TOOL: AnthropicTool = {
+  name: 'save_private_context',
+  description:
+    'Save private information shared by the user — goals, target contacts, plans, preferences. This data is strictly private and never shared with others. Check existing keys in "პირადი კონტექსტი" section first to choose mode.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      key: {
+        type: 'string',
+        description:
+          'Descriptive key in the language used by the user, e.g. "მიზნები", "სასურველი_კონტაქტები", "goals", "target_contacts"',
+      },
+      value: {
+        type: 'string',
+        description: 'The information to store',
+      },
+      mode: {
+        type: 'string',
+        description:
+          '"set" to replace existing value, "append" to add to existing value (adds on a new line). Use "append" when information accumulates (goals, contacts to meet). Use "set" when information replaces (current city, current focus).',
+      },
+    },
+    required: ['key', 'value', 'mode'],
   },
 };
 
@@ -612,6 +658,13 @@ function buildMissingUserProfileSection(profile: Record<string, unknown>): strin
   return `\n\n## შენი ინფო — გამოტოვებული ველები\n${missing.join(', ')}`;
 }
 
+function buildPrivateContextSection(context: Record<string, string>): string {
+  const keys = Object.keys(context);
+  if (keys.length === 0) return '';
+  const lines = keys.map((k) => `- ${k}: ${context[k]}`).join('\n');
+  return `\n\n## პირადი კონტექსტი [STRICTLY CONFIDENTIAL — never share with others]\n${lines}`;
+}
+
 function buildPendingRequestsSection(requests: PendingRequest[]): string {
   if (requests.length === 0) return '';
   const lines = requests
@@ -645,8 +698,8 @@ function buildInsightFieldsSection(
 }
 
 async function buildAgentSystemPrompt(userId: string, threadType?: string): Promise<string> {
-  const [configResult, fieldsResult, profile, pendingRequests, recentResponses] = await Promise.all(
-    [
+  const [configResult, fieldsResult, profile, privateContext, pendingRequests, recentResponses] =
+    await Promise.all([
       query<{ system_prompt: string }>(
         'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
       ),
@@ -654,14 +707,14 @@ async function buildAgentSystemPrompt(userId: string, threadType?: string): Prom
         'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
       ),
       getUserProfile(userId),
+      getPrivateContext(userId),
       threadType === 'incoming_request' || threadType === 'outgoing_request'
         ? Promise.resolve([] as PendingRequest[])
         : getPendingRequestsForMediator(userId),
       threadType === 'incoming_request' || threadType === 'outgoing_request'
         ? Promise.resolve([] as RespondedRequest[])
         : getRecentResponsesForRequester(userId),
-    ],
-  );
+    ]);
 
   const base = configResult.rows[0]?.system_prompt ?? '';
   return (
@@ -669,6 +722,7 @@ async function buildAgentSystemPrompt(userId: string, threadType?: string): Prom
     AGENT_STRATEGY_PROMPT +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
+    buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
     buildPendingRequestsSection(pendingRequests) +
     buildRespondedRequestsSection(recentResponses)
@@ -707,7 +761,19 @@ async function executeToolCall(
         input['collected_data'] as Record<string, unknown>,
       );
     case 'update_user_profile':
-      return setUserProfileField(userId, input['key'] as string, input['value'] as string);
+      return setUserProfileField(
+        userId,
+        input['key'] as string,
+        input['value'] as string,
+        (input['mode'] as 'set' | 'append' | undefined) ?? 'set',
+      );
+    case 'save_private_context':
+      return savePrivateContext(
+        userId,
+        input['key'] as string,
+        input['value'] as string,
+        input['mode'] as 'set' | 'append',
+      );
     case 'request_introduction':
       return requestIntroduction(
         userId,
@@ -863,6 +929,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     ...insightTools,
     GET_CONTACT_FULL_PROFILE_TOOL,
     UPDATE_USER_PROFILE_TOOL,
+    SAVE_PRIVATE_CONTEXT_TOOL,
     SAVE_CONTACT_FACT_TOOL,
     GET_CONTACT_FACTS_TOOL,
     REQUEST_INTRODUCTION_TOOL,
