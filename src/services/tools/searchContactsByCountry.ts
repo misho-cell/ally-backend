@@ -3,6 +3,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../neo4j.keys';
 
 const MAX_FRIEND_PHONES = 3000;
+const MAX_FRIEND_PHONES_FOR_QUERY = 500;
 const QUERY_TIMEOUT_MS = 10_000;
 
 const COUNTRY_PREFIX_MAP: Record<string, string> = {
@@ -398,7 +399,10 @@ export async function searchContactsByCountry(userId: string, country: string): 
     await session.close();
   }
 
-  const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))];
+  const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))].slice(
+    0,
+    MAX_FRIEND_PHONES_FOR_QUERY,
+  );
 
   interface SecondDegreeRow {
     name: string | null;
@@ -408,38 +412,42 @@ export async function searchContactsByCountry(userId: string, country: string): 
   let secondDegree: Array<{ name: string | null; via: string[] }> = [];
 
   if (friendPhones.length > 0) {
-    const sdResult = await query<SecondDegreeRow>(
-      `WITH friend_users AS (
-         SELECT up."userId", up.phone AS via_phone
-         FROM "UserPhone" up
-         WHERE up.phone = ANY($2)
-       ),
-       matches AS (
-         SELECT ua_m.phone, ua_m."contactId", ua_m.alias
-         FROM "UserAlias" ua_m
-         JOIN friend_users fu ON fu."userId" = ua_m."contactId"
-         WHERE ua_m.phone LIKE $3
-       )
-       SELECT MAX(m.alias)                                                      AS name,
-              array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
-                FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL)  AS via_names
-       FROM matches m
-       JOIN friend_users fu         ON fu."userId" = m."contactId"
-       LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
-       LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
-       LEFT JOIN "UserPhone" up_via ON up_via.phone = fu.via_phone
-       LEFT JOIN "User"      u_via  ON u_via.id     = up_via."userId"
-       WHERE ua_own.phone IS NULL
-       GROUP BY m.phone
-       LIMIT 20`,
-      [userId, friendPhones, phonePattern],
-      QUERY_TIMEOUT_MS,
-    );
+    try {
+      const sdResult = await query<SecondDegreeRow>(
+        `WITH friend_users AS (
+           SELECT up."userId", up.phone AS via_phone
+           FROM "UserPhone" up
+           WHERE up.phone = ANY($2)
+         ),
+         matches AS (
+           SELECT ua_m.phone, ua_m."contactId", ua_m.alias
+           FROM "UserAlias" ua_m
+           JOIN friend_users fu ON fu."userId" = ua_m."contactId"
+           WHERE ua_m.phone LIKE $3
+         )
+         SELECT MAX(m.alias)                                                      AS name,
+                array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
+                  FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL)  AS via_names
+         FROM matches m
+         JOIN friend_users fu         ON fu."userId" = m."contactId"
+         LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
+         LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
+         LEFT JOIN "UserPhone" up_via ON up_via.phone = fu.via_phone
+         LEFT JOIN "User"      u_via  ON u_via.id     = up_via."userId"
+         WHERE ua_own.phone IS NULL
+         GROUP BY m.phone
+         LIMIT 20`,
+        [userId, friendPhones, phonePattern],
+        QUERY_TIMEOUT_MS,
+      );
 
-    secondDegree = sdResult.rows.map((r) => ({
-      name: r.name ?? null,
-      via: r.via_names ?? [],
-    }));
+      secondDegree = sdResult.rows.map((r) => ({
+        name: r.name ?? null,
+        via: r.via_names ?? [],
+      }));
+    } catch (err) {
+      console.error('searchContactsByCountry second-degree query failed:', (err as Error).message);
+    }
   }
 
   const total = directResult.rows.length + secondDegree.length;
