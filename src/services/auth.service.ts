@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
-import { sendSmsOtp } from './twilio.service';
+import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { AuthPayload } from '../types';
 
@@ -53,8 +53,8 @@ export async function resendOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
-  const result = await query<{ otp: string; createdAt: Date }>(
-    `SELECT otp, "createdAt" FROM "Otp"
+  const result = await query<{ createdAt: Date }>(
+    `SELECT "createdAt" FROM "Otp"
      WHERE identifier = $1
        AND "actionType" = $2::"ActionType"
        AND "identifierType" = 'PHONE'::"IdentifierType"
@@ -68,14 +68,14 @@ export async function resendOTP(
     throw new Error('OTP არ მოიძებნა. ჯერ კოდი მოითხოვეთ');
   }
 
-  const { otp, createdAt } = result.rows[0];
+  const { createdAt } = result.rows[0];
   const secondsElapsed = (Date.now() - new Date(createdAt).getTime()) / 1000;
 
   if (secondsElapsed < RESEND_COOLDOWN_SECONDS) {
     throw new Error(`გთხოვთ, ${Math.ceil(RESEND_COOLDOWN_SECONDS - secondsElapsed)} წამი დაიცადოთ`);
   }
 
-  await sendSmsOtp(phone, otp);
+  await sendSmsOtp(phone);
 }
 
 export async function verifyOTP(
@@ -93,11 +93,23 @@ export async function verifyOTP(
     [phone, code, actionType],
   );
 
-  if (!result.rowCount || result.rowCount === 0) {
-    throw new Error('კოდი არასწორია ან ვადა გასულია');
+  if (result.rowCount && result.rowCount > 0) {
+    await query('DELETE FROM "Otp" WHERE id = $1', [result.rows[0].id]);
+    return;
   }
 
-  await query('DELETE FROM "Otp" WHERE id = $1', [result.rows[0].id]);
+  const twilioVerified = await checkTwilioCode(phone, code);
+  if (twilioVerified) {
+    await query(
+      `DELETE FROM "Otp"
+       WHERE identifier = $1 AND "actionType" = $2::"ActionType"
+         AND "identifierType" = 'PHONE'::"IdentifierType"`,
+      [phone, actionType],
+    );
+    return;
+  }
+
+  throw new Error('კოდი არასწორია ან ვადა გასულია');
 }
 
 export async function registerUser(phone: string, name: string): Promise<{ token: string }> {

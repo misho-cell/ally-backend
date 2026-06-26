@@ -24,11 +24,22 @@ function getTwilioClient(): { client: ReturnType<typeof twilio>; verifyServiceSi
   return { client: cachedClient, verifyServiceSid };
 }
 
-export async function sendSmsOtp(phone: string, code: string): Promise<void> {
+export async function sendSmsOtp(phone: string): Promise<void> {
   const { client, verifyServiceSid } = getTwilioClient();
   await client.verify.v2.services(verifyServiceSid).verifications.create({
     to: phone,
     channel: 'sms',
-    customCode: code,
   });
+}
+
+export async function checkTwilioCode(phone: string, code: string): Promise<boolean> {
+  try {
+    const { client, verifyServiceSid } = getTwilioClient();
+    const result = await client.verify.v2
+      .services(verifyServiceSid)
+      .verificationChecks.create({ to: phone, code });
+    return result.status === 'approved';
+  } catch {
+    return false;
+  }
 }
