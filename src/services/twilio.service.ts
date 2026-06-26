@@ -19,7 +19,7 @@ const client = twilio(accountSid, authToken);
 
 export async function sendSmsOtp(phone: string, code: string): Promise<void> {
   await client.messages.create({
-    body: `Ally-ს შესასვლელი კოდი: ${code}`,
+    body: `Your Ally verification code: ${code}`,
     from: TWILIO_FROM,
     to: phone,
   });
