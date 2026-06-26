@@ -14,6 +14,7 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
       city: string | null;
       jobPosition: string | null;
       employer: string | null;
+      subscriptionStatus: string | null;
     }>(
       `SELECT
          u.name        AS name,
@@ -22,7 +23,8 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
          u.email       AS email,
          u.city        AS city,
          u."jobPosition" AS "jobPosition",
-         u.employer    AS employer
+         u.employer    AS employer,
+         u.subscription_status AS "subscriptionStatus"
        FROM "UserPhone" up
        LEFT JOIN "User" u   ON u.id = up."userId"
        LEFT JOIN "UserAlias" ua ON ua.phone = up.phone
@@ -44,6 +46,7 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
       city: row.city ?? null,
       jobPosition: row.jobPosition ?? null,
       employer: row.employer ?? null,
+      hasSubscription: row.subscriptionStatus === 'active' || row.subscriptionStatus === 'trialing',
     };
   } catch (err) {
     console.error('lookupContactByPhone error:', (err as Error).message);
