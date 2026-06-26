@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import {
   requestOTP,
+  resendOTP,
   verifyOTP,
   registerUser,
   adminLogin,
@@ -37,6 +38,37 @@ authRouter.post(
       res.status(200).json({ success: true, data: { sent: true } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'OTP გაგზავნა ვერ მოხერხდა';
+      res.status(400).json({ success: false, error: message });
+    }
+  },
+);
+
+authRouter.post(
+  '/resend-otp',
+  body('phone').isString().trim().notEmpty().withMessage('phone is required'),
+  body('actionType')
+    .isIn(['REGISTER', 'AUTH', 'RECOVER'])
+    .withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
+  async (req: Request, res: Response<ApiResponse<{ sent: boolean }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const message = errors
+        .array()
+        .map((e) => e.msg)
+        .join(', ');
+      res.status(400).json({ success: false, error: message });
+      return;
+    }
+
+    try {
+      const { phone, actionType } = req.body as {
+        phone: string;
+        actionType: 'REGISTER' | 'AUTH' | 'RECOVER';
+      };
+      await resendOTP(phone, actionType);
+      res.status(200).json({ success: true, data: { sent: true } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'SMS გაგზავნა ვერ მოხერხდა';
       res.status(400).json({ success: false, error: message });
     }
   },

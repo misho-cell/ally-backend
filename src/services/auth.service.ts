@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
+import { sendSmsOtp } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { AuthPayload } from '../types';
 
@@ -46,6 +47,37 @@ export async function requestOTP(
   await sendWhatsAppMessage(phone, code);
 }
 
+const RESEND_COOLDOWN_SECONDS = 30;
+
+export async function resendOTP(
+  phone: string,
+  actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+): Promise<void> {
+  const result = await query<{ otp: string; createdAt: Date }>(
+    `SELECT otp, "createdAt" FROM "Otp"
+     WHERE identifier = $1
+       AND "actionType" = $2::"ActionType"
+       AND "identifierType" = 'PHONE'::"IdentifierType"
+       AND "createdAt" > NOW() - INTERVAL '5 minutes'
+     ORDER BY "createdAt" DESC
+     LIMIT 1`,
+    [phone, actionType],
+  );
+
+  if (!result.rowCount || result.rowCount === 0) {
+    throw new Error('OTP არ მოიძებნა. ჯერ კოდი მოითხოვეთ');
+  }
+
+  const { otp, createdAt } = result.rows[0];
+  const secondsElapsed = (Date.now() - new Date(createdAt).getTime()) / 1000;
+
+  if (secondsElapsed < RESEND_COOLDOWN_SECONDS) {
+    throw new Error(`გთხოვთ, ${Math.ceil(RESEND_COOLDOWN_SECONDS - secondsElapsed)} წამი დაიცადოთ`);
+  }
+
+  await sendSmsOtp(phone, otp);
+}
+
 export async function verifyOTP(
   phone: string,
   code: string,
@@ -80,8 +112,8 @@ export async function registerUser(phone: string, name: string): Promise<{ token
   const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
 
   const userResult = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, "createdAt", "updatedAt")
-     VALUES ($1, $2, NOW(), NOW())
+    `INSERT INTO "User" (name, password, "hasAccessToAlly", "createdAt", "updatedAt")
+     VALUES ($1, $2, true, NOW(), NOW())
      RETURNING id`,
     [name, password],
   );
@@ -117,8 +149,8 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
 }
 
 export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
-  const result = await query<{ id: number; password: string }>(
-    'SELECT id, password FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
+  const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(
+    'SELECT id, password, "hasAccessToAlly" FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
     [email],
   );
 
@@ -127,6 +159,10 @@ export async function adminLogin(email: string, password: string): Promise<{ tok
   }
 
   const user = result.rows[0];
+
+  if (!user.hasAccessToAlly) {
+    throw new Error('წვდომა დაკავებულია');
+  }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
