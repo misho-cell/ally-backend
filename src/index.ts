@@ -14,6 +14,7 @@ import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
+import { startAiNotificationCron } from './services/aiNotification.cron';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -62,6 +63,7 @@ runMigrations()
     server.timeout = 5 * 60 * 1000;
     EnrichmentJob.startCron();
     startSubscriptionCron();
+    startAiNotificationCron();
   })
   .catch((err: unknown) => {
     // eslint-disable-next-line no-console
