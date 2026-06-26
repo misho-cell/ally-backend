@@ -1,26 +1,26 @@
 import twilio from 'twilio';
 
-function getTwilioConfig(): { accountSid: string; authToken: string; phoneNumber: string } {
+function getTwilioConfig(): { accountSid: string; authToken: string; verifyServiceSid: string } {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-  if (!accountSid || !authToken || !phoneNumber) {
+  if (!accountSid || !authToken || !verifyServiceSid) {
     throw new Error(
-      'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER must be set in environment variables',
+      'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID must be set in environment variables',
     );
   }
 
-  return { accountSid, authToken, phoneNumber };
+  return { accountSid, authToken, verifyServiceSid };
 }
 
-const { accountSid, authToken, phoneNumber: TWILIO_FROM } = getTwilioConfig();
+const { accountSid, authToken, verifyServiceSid: VERIFY_SERVICE_SID } = getTwilioConfig();
 const client = twilio(accountSid, authToken);
 
 export async function sendSmsOtp(phone: string, code: string): Promise<void> {
-  await client.messages.create({
-    body: `Your Ally verification code: ${code}`,
-    from: TWILIO_FROM,
+  await client.verify.v2.services(VERIFY_SERVICE_SID).verifications.create({
     to: phone,
+    channel: 'sms',
+    customCode: code,
   });
 }
