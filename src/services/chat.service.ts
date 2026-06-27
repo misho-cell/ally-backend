@@ -739,7 +739,7 @@ async function executeToolCall(
     case 'lookup_contact_by_phone':
       return lookupContactByPhone(input['phone_number'] as string);
     case 'get_contact_insight':
-      return getContactInsight(input['userId'] as string, input['neo4j_contact_id'] as string);
+      return getContactInsight(userId, input['neo4j_contact_id'] as string);
     case 'search_contact_by_name':
       return searchContactByName(userId, input['name_query'] as string);
     case 'search_by_tag':
@@ -756,7 +756,7 @@ async function executeToolCall(
       return webSearch(input['query'] as string);
     case 'save_contact_insight':
       return saveContactInsight(
-        input['userId'] as string,
+        userId,
         input['neo4j_contact_id'] as string,
         input['contact_name'] as string,
         input['collected_data'] as Record<string, unknown>,

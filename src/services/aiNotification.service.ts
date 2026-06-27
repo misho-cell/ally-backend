@@ -111,7 +111,7 @@ async function generateNotificationContent(ctx: UserContext): Promise<Notificati
 
   const response = await anthropic.messages.create({
     model: NOTIFICATION_MODEL,
-    max_tokens: 200,
+    max_tokens: 1024,
     system: `შენ აგენერირებ პერსონალიზებულ push notification-ს Ally-სთვის — კონტაქტების ქსელის აპლიკაცია.
 მთავარი მიზანი: მომხმარებელი გახსნის app-ს ამ notification-ის გამო.
 
@@ -132,13 +132,22 @@ async function generateNotificationContent(ctx: UserContext): Promise<Notificati
             ? `მომხმარებლის კონტექსტი:\n\n${contextText}`
             : 'კონტექსტი ჯერ მწირია.',
       },
+      // Prefill the assistant turn with an opening brace so the model is
+      // forced to continue raw JSON (no markdown/prose preamble).
+      {
+        role: 'assistant',
+        content: '{',
+      },
     ],
   });
 
-  const text = response.content
+  const rawText = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map((b) => b.text)
     .join('');
+
+  // The opening brace lives in the prefill, so prepend it before parsing.
+  const text = '{' + rawText;
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Claude returned invalid JSON for notification');
