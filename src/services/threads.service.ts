@@ -13,6 +13,8 @@ export interface Thread {
 export interface ThreadMessage {
   role: string;
   content: string;
+  kind: string;
+  run_id: string | null;
   created_at: string;
 }
 
@@ -112,7 +114,7 @@ export async function getOrCreateDefaultThread(userId: string): Promise<number> 
 
 export async function getThreadMessages(threadId: number): Promise<ThreadMessage[]> {
   const result = await query<ThreadMessage>(
-    `SELECT role, content, created_at
+    `SELECT role, content, kind, run_id, created_at
      FROM conversations
      WHERE thread_id = $1 AND content != ''
      ORDER BY created_at ASC`,

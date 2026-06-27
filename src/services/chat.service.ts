@@ -594,7 +594,7 @@ function hasToolResults(msg: Anthropic.MessageParam): boolean {
 
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
-    'SELECT role, content, content_json FROM conversations WHERE thread_id = $1 ORDER BY created_at DESC LIMIT $2',
+    "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind = 'message' ORDER BY created_at DESC LIMIT $2",
     [threadId, HISTORY_LIMIT],
   );
   const rows = result.rows.reverse().map((row) => ({
@@ -637,11 +637,13 @@ async function saveMessage(
   threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
+  kind: 'message' | 'step' = 'message',
+  runId: string | null = null,
 ): Promise<void> {
   const textContent = typeof content === 'string' ? content : '';
   await query(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json) VALUES ($1, $2, $3, $4, $5::jsonb)',
-    [userId, threadId, role, textContent, JSON.stringify(content)],
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)',
+    [userId, threadId, role, textContent, JSON.stringify(content), kind, runId],
   );
   await touchThread(threadId);
 }
@@ -927,8 +929,12 @@ async function runToolLoop(
 
     // Stream the model's narration that accompanies this round of tool calls,
     // so the client sees the process step by step rather than one final answer.
+    // Persist it (kind='step') so it survives reload.
     const narration = extractText(response.content);
-    if (narration) emitStepSummary(userId, threadId, runId, narration);
+    if (narration) {
+      emitStepSummary(userId, threadId, runId, narration);
+      await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+    }
 
     for (const block of response.content) {
       if (block.type === 'tool_use' && block.name === 'present_choices') {
@@ -966,7 +972,10 @@ async function runToolLoop(
   // tool_result blocks or the API rejects the next call.)
   if (response.stop_reason === 'tool_use') {
     const narration = extractText(response.content);
-    if (narration) emitStepSummary(userId, threadId, runId, narration);
+    if (narration) {
+      emitStepSummary(userId, threadId, runId, narration);
+      await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+    }
 
     const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
     pending.push({ role: 'assistant', content: response.content });
@@ -1024,7 +1033,10 @@ export async function processChat(
 
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
-  // Run the tool loop without touching the DB — if it throws, nothing is saved
+  // Persist the user message first so it — and the step rows saved during the
+  // loop — appear in chronological order and survive a mid-run crash.
+  await saveMessage(userId, threadId, 'user', userMessage);
+
   const { finalText, pending, options, choices } = await runToolLoop(
     userId,
     threadId,
@@ -1034,8 +1046,9 @@ export async function processChat(
     tools,
   );
 
-  // Persist only after full success: user message → tool interactions → final reply
-  await saveMessage(userId, threadId, 'user', userMessage);
+  // Tool-interaction turns carry the full content_json for model history but
+  // have empty display content (filtered from the thread view); the final reply
+  // is the user-visible answer.
   for (const msg of pending) {
     await saveMessage(userId, threadId, msg.role, msg.content);
   }
