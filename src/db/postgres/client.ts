@@ -10,6 +10,9 @@ const pool = new Pool({
   user: process.env.POSTGRES_NAME,
   password: process.env.POSTGRES_PASS,
   max: 10,
+  // Fail fast instead of waiting forever when the pool is saturated, so a
+  // stalled request surfaces an error rather than hanging until restart.
+  connectionTimeoutMillis: 10_000,
   ssl:
     process.env.POSTGRES_SSL && process.env.POSTGRES_SSL.toLowerCase() !== 'false'
       ? { rejectUnauthorized: false }
@@ -26,8 +29,12 @@ export async function query<T extends QueryResultRow>(
   const client = await pool.connect();
 
   try {
-    await client.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
-    return client.query<T>({ text: queryText, values: params });
+    // SET LOCAL only applies inside a transaction; this path is autocommit,
+    // so use a session-level SET (re-applied on every borrow of the connection).
+    await client.query(`SET statement_timeout = ${Math.floor(timeoutMs)}`);
+    // Must await before release — returning the promise unawaited releases the
+    // connection while the query is still in flight, corrupting the pool.
+    return await client.query<T>({ text: queryText, values: params });
   } finally {
     client.release();
   }
@@ -39,8 +46,8 @@ export async function queryConfig<T extends QueryResultRow>(
   const client = await pool.connect();
 
   try {
-    await client.query(`SET LOCAL statement_timeout = ${DEFAULT_QUERY_TIMEOUT_MS}`);
-    return client.query<T>(queryConfig);
+    await client.query(`SET statement_timeout = ${DEFAULT_QUERY_TIMEOUT_MS}`);
+    return await client.query<T>(queryConfig);
   } finally {
     client.release();
   }
