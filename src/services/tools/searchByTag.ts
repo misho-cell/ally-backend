@@ -1,12 +1,15 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
+import { getBlockedPhones } from '../block.service';
 
 const FUZZY_THRESHOLD = 0.35;
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
+    const blockedPhones = await getBlockedPhones(userId);
     const terms = buildSearchTerms(tagQuery).map((t) => '%' + t + '%');
     const tagCondition = terms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 2}`).join(' OR ');
+    const blockParamIdx = terms.length + 2;
 
     const result = await query<{
       phone: string;
@@ -28,10 +31,11 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
        LEFT JOIN "User"      u  ON u.id      = up."userId"
        WHERE ut."contactId" = $1
          AND (${tagCondition})
+         AND ut.phone != ALL($${blockParamIdx})
        GROUP BY ut.phone
        ORDER BY MAX(ut."weightCount") DESC
        LIMIT 20`,
-      [userId, ...terms],
+      [userId, ...terms, blockedPhones],
     );
 
     if (result.rows.length === 0) {
@@ -41,6 +45,7 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
         const fuzzyConds = fuzzyTerms
           .map((_, i) => `similarity(LOWER(ut.tag), $${i + 2}) > ${FUZZY_THRESHOLD}`)
           .join(' OR ');
+        const fuzzyBlockParamIdx = fuzzyTerms.length + 2;
 
         const fuzzyResult = await query<{
           phone: string;
@@ -62,10 +67,11 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
            LEFT JOIN "User"      u  ON u.id      = up."userId"
            WHERE ut."contactId" = $1
              AND (${fuzzyConds})
+             AND ut.phone != ALL($${fuzzyBlockParamIdx})
            GROUP BY ut.phone
            ORDER BY MAX(ut."weightCount") DESC
            LIMIT 20`,
-          [userId, ...fuzzyTerms],
+          [userId, ...fuzzyTerms, blockedPhones],
         );
 
         if (fuzzyResult.rows.length > 0) {

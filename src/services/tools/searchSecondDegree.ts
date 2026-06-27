@@ -4,6 +4,7 @@ const SECOND_DEGREE_QUERY_TIMEOUT_MS = 10_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
+import { getBlockedPhones } from '../block.service';
 
 const MAX_FRIEND_PHONES = 3000;
 
@@ -58,9 +59,17 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
+    const blockedPhones = await getBlockedPhones(userId);
+    const blockedSet = new Set(blockedPhones);
+
     // Composite keys (e.g. "+99551111-+99599999") must be expanded to individual phones
-    // before matching against UserPhone which stores one row per phone
-    const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))];
+    // before matching against UserPhone which stores one row per phone.
+    // Blocked phones are removed here to exclude them as intermediaries (via).
+    const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))].filter(
+      (p) => !blockedSet.has(p),
+    );
+
+    if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
@@ -69,8 +78,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // Aliases are full names — need substring LIKE
     const likeTerms = terms.map((t) => '%' + t + '%');
 
-    // $3 = exact terms array, $4..$N = LIKE patterns for aliases
+    // $3 = exact terms array, $4..$N = LIKE patterns for aliases, $(N+1) = blocked phones
     const aliasConds = likeTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 4}`).join(' OR ');
+    const blockParamIdx = likeTerms.length + 4;
 
     const result = await query<{
       phone: string;
@@ -118,9 +128,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
        LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
        WHERE ua_own.phone IS NULL
+         AND m.phone != ALL($${blockParamIdx})
        GROUP BY m.phone
        LIMIT 20`,
-      [userId, friendPhones, exactTerms, ...likeTerms],
+      [userId, friendPhones, exactTerms, ...likeTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 

@@ -1,14 +1,17 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
+import { getBlockedPhones } from '../block.service';
 
 const FUZZY_THRESHOLD = 0.35;
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
+    const blockedPhones = await getBlockedPhones(userId);
     const terms = buildSearchTerms(nameQuery).map((t) => '%' + t + '%');
     const nameCondition = terms
       .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)
       .join(' OR ');
+    const blockParamIdx = terms.length + 2;
 
     const result = await query<{
       phone: string;
@@ -30,10 +33,11 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        LEFT JOIN "User"      u  ON u.id      = up."userId"
        WHERE ua."contactId" = $1
          AND (${nameCondition})
+         AND ua.phone != ALL($${blockParamIdx})
        GROUP BY ua.phone
        ORDER BY MAX(ua.alias)
        LIMIT 20`,
-      [userId, ...terms],
+      [userId, ...terms, blockedPhones],
     );
 
     if (result.rows.length === 0) {
@@ -46,6 +50,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               `word_similarity($${i + 2}, LOWER(ua.alias)) > ${FUZZY_THRESHOLD} OR word_similarity($${i + 2}, LOWER(u.name)) > ${FUZZY_THRESHOLD}`,
           )
           .join(' OR ');
+        const fuzzyBlockParamIdx = fuzzyTerms.length + 2;
 
         const fuzzyResult = await query<{
           phone: string;
@@ -67,10 +72,11 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
            LEFT JOIN "User"      u  ON u.id      = up."userId"
            WHERE ua."contactId" = $1
              AND (${fuzzyConds})
+             AND ua.phone != ALL($${fuzzyBlockParamIdx})
            GROUP BY ua.phone
            ORDER BY MAX(ua.alias)
            LIMIT 20`,
-          [userId, ...fuzzyTerms],
+          [userId, ...fuzzyTerms, blockedPhones],
         );
 
         if (fuzzyResult.rows.length > 0) {
