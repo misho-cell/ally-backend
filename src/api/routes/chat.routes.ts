@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
@@ -107,7 +108,10 @@ chatRouter.post(
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 300_000),
       );
-      const result = await Promise.race([processChat(userId, threadId, message), timeout]);
+      const result = await Promise.race([
+        processChat(userId, threadId, message, randomUUID()),
+        timeout,
+      ]);
 
       res.status(200).json({
         success: true,

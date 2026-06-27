@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
@@ -10,7 +11,12 @@ import {
   updateThreadTitle,
 } from '../../services/threads.service';
 import { processChat } from '../../services/chat.service';
-import { subscribeUserEvents, emitThreadCreated } from '../../services/sse.service';
+import {
+  subscribeUserEvents,
+  emitThreadCreated,
+  emitRunComplete,
+  emitRunError,
+} from '../../services/sse.service';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -120,30 +126,32 @@ threadsRouter.post(
         await updateThreadTitle(threadId, message.slice(0, 60));
       }
 
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 300_000),
-      );
+      // Accept the message and process it in the background. The agent loop can
+      // take minutes for large multi-step tasks, so we never hold the HTTP
+      // request open: progress and the final answer are streamed over SSE
+      // (GET /threads/stream), keyed by runId.
+      const runId = randomUUID();
+      res.status(202).json({ success: true, runId });
 
-      const result = await Promise.race([processChat(userId, threadId, message), timeout]);
-
-      res.status(200).json({
-        success: true,
-        reply: result.reply,
-        ...(result.options && { options: result.options }),
-        ...(result.choices && { choices: result.choices }),
-      });
+      processChat(userId, threadId, message, runId)
+        .then((result) => {
+          emitRunComplete(userId, threadId, runId, {
+            reply: result.reply,
+            ...(result.options && { options: result.options }),
+            ...(result.choices && { choices: result.choices }),
+          });
+        })
+        .catch((error: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[POST /threads/:id/message] run failed', error);
+          emitRunError(userId, threadId, runId, 'სერვერის შეცდომა');
+        });
     } catch (error) {
-      const isTimeout = error instanceof Error && error.message === 'REQUEST_TIMEOUT';
-      if (!isTimeout) {
-        // eslint-disable-next-line no-console
-        console.error('[POST /threads/:id/message]', error);
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/message]', error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
       }
-      res.status(isTimeout ? 504 : 500).json({
-        success: false,
-        error: isTimeout
-          ? 'მოძებნას დასჭირდა ძალიან დიდი დრო. სცადეთ უფრო კონკრეტული კითხვით.'
-          : 'სერვერის შეცდომა',
-      });
     }
   },
 );

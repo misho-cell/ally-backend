@@ -3,6 +3,13 @@ jest.mock('../../../db/postgres/client', () => ({
   __esModule: true,
 }));
 
+// Block filtering issues its own query; stub it so the `query` mock below
+// only sees the search call (keeps call-arg assertions on index 0).
+jest.mock('../../block.service', () => ({
+  __esModule: true,
+  getBlockedPhones: jest.fn().mockResolvedValue([]),
+}));
+
 import { query } from '../../../db/postgres/client';
 import { searchByTag } from '../searchByTag';
 
@@ -39,7 +46,7 @@ describe('searchByTag', () => {
 
     await searchByTag('42', 'Engineer');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%engineer%']);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%engineer%', []]);
   });
 
   it('passes Georgian term plus transliteration for Georgian query', async () => {
@@ -47,7 +54,7 @@ describe('searchByTag', () => {
 
     await searchByTag('42', 'ინჟინერი');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%ინჟინერი%', '%inzhineri%']);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%ინჟინერი%', '%inzhineri%', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {

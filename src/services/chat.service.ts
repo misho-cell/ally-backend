@@ -32,7 +32,7 @@ import {
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
-import { emitToolProgress } from './sse.service';
+import { emitToolProgress, emitStepSummary } from './sse.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -818,13 +818,15 @@ async function executeToolCall(
 
 async function processToolBlocks(
   userId: string,
+  threadId: number,
+  runId: string,
   content: Anthropic.ContentBlock[],
 ): Promise<Anthropic.ToolResultBlockParam[]> {
   const results: Anthropic.ToolResultBlockParam[] = [];
   for (const block of content) {
     if (block.type !== 'tool_use') continue;
     const progressMsg = TOOL_PROGRESS_MESSAGES[block.name];
-    if (progressMsg) emitToolProgress(userId, progressMsg);
+    if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
     const result = await executeToolCall(
       userId,
       block.name,
@@ -840,7 +842,9 @@ async function processToolBlocks(
 }
 
 const CLAUDE_CALL_TIMEOUT_MS = 30_000;
-const MAX_TOOL_ITERATIONS = 8;
+// Higher cap is safe now that runs are processed in the background (no HTTP
+// timeout pressure) and stream progress to the client as they go.
+const MAX_TOOL_ITERATIONS = 20;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   web_search: '🌐 ვებში ვეძებ...',
@@ -891,8 +895,18 @@ export interface ChatResult {
   choices?: string[];
 }
 
+function extractText(content: Anthropic.ContentBlock[]): string {
+  return content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+}
+
 async function runToolLoop(
   userId: string,
+  threadId: number,
+  runId: string,
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
@@ -910,6 +924,12 @@ async function runToolLoop(
 
   while (response.stop_reason === 'tool_use' && iterations < MAX_TOOL_ITERATIONS) {
     iterations++;
+
+    // Stream the model's narration that accompanies this round of tool calls,
+    // so the client sees the process step by step rather than one final answer.
+    const narration = extractText(response.content);
+    if (narration) emitStepSummary(userId, threadId, runId, narration);
+
     for (const block of response.content) {
       if (block.type === 'tool_use' && block.name === 'present_choices') {
         const input = block.input as { items?: unknown };
@@ -919,7 +939,7 @@ async function runToolLoop(
       }
     }
 
-    const toolResults = await processToolBlocks(userId, response.content);
+    const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
 
     for (const result of toolResults) {
       if (typeof result.content === 'string') {
@@ -939,10 +959,26 @@ async function runToolLoop(
     response = await callClaude(messages, systemPrompt, tools);
   }
 
-  const finalText = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
+  // Guard: if the loop stopped because it hit the iteration cap while still
+  // wanting to call tools, resolve the outstanding tool calls and then make
+  // one final tool-free turn, so the user always gets a written answer instead
+  // of an empty reply. (The pending tool_use blocks must be answered with
+  // tool_result blocks or the API rejects the next call.)
+  if (response.stop_reason === 'tool_use') {
+    const narration = extractText(response.content);
+    if (narration) emitStepSummary(userId, threadId, runId, narration);
+
+    const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+    pending.push({ role: 'assistant', content: response.content });
+    pending.push({ role: 'user', content: toolResults });
+    messages.push({ role: 'assistant', content: response.content });
+    messages.push({ role: 'user', content: toolResults });
+
+    // No tools on this call → the model must produce a final text answer.
+    response = await callClaude(messages, systemPrompt, []);
+  }
+
+  const finalText = extractText(response.content);
 
   return { finalText, pending, options, choices };
 }
@@ -973,6 +1009,7 @@ export async function processChat(
   userId: string,
   threadId: number,
   userMessage: string,
+  runId: string,
 ): Promise<ChatResult> {
   const thread = await getThread(threadId, userId);
   if (thread === null) {
@@ -990,6 +1027,8 @@ export async function processChat(
   // Run the tool loop without touching the DB — if it throws, nothing is saved
   const { finalText, pending, options, choices } = await runToolLoop(
     userId,
+    threadId,
+    runId,
     messages,
     systemPrompt,
     tools,
