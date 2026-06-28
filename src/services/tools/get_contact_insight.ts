@@ -2,7 +2,7 @@ import { getContactInsight } from '../insights.service';
 import { ChatToolDefinition, ContactInsight } from '../../types';
 
 export interface GetContactInsightParams {
-  neo4j_contact_id: string;
+  phone: string;
 }
 
 export function createGetContactInsightTool(
@@ -10,22 +10,23 @@ export function createGetContactInsightTool(
 ): ChatToolDefinition<GetContactInsightParams, ContactInsight | null> {
   return {
     name: 'get_contact_insight',
-    description: 'Retrieve stored contact insight for a given Neo4j contact ID.',
+    description: 'Retrieve stored contact insight for a given contact phone number.',
     parameters: {
-      neo4j_contact_id: {
+      phone: {
         type: 'string',
         required: true,
-        description: 'The Neo4j node ID of the contact',
+        description:
+          "The contact's phone number from search results — used as the contact identifier. Reuse it exactly; do not display it to the user.",
       },
     },
     execute: async (params: GetContactInsightParams): Promise<ContactInsight | null> => {
-      const { neo4j_contact_id } = params;
+      const { phone } = params;
 
-      if (!neo4j_contact_id.trim()) {
-        throw new Error('neo4j_contact_id is required');
+      if (!phone.trim()) {
+        throw new Error('phone is required');
       }
 
-      return getContactInsight(userId, neo4j_contact_id);
+      return getContactInsight(userId, phone);
     },
   };
 }

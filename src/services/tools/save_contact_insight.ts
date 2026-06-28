@@ -2,7 +2,7 @@ import { saveContactInsight } from '../insights.service';
 import { ChatToolDefinition, ContactInsight } from '../../types';
 
 export interface SaveContactInsightParams {
-  neo4j_contact_id: string;
+  phone: string;
   contact_name: string;
   collected_data: Record<string, unknown>;
 }
@@ -14,10 +14,11 @@ export function createSaveContactInsightTool(
     name: 'save_contact_insight',
     description: 'Save collected information about a contact for future reference.',
     parameters: {
-      neo4j_contact_id: {
+      phone: {
         type: 'string',
         required: true,
-        description: 'The Neo4j node ID of the contact',
+        description:
+          "The contact's phone number from search results — used as the contact identifier. Reuse it exactly; do not display it to the user.",
       },
       contact_name: {
         type: 'string',
@@ -31,13 +32,13 @@ export function createSaveContactInsightTool(
       },
     },
     execute: async (params: SaveContactInsightParams): Promise<ContactInsight> => {
-      const { neo4j_contact_id, contact_name, collected_data } = params;
+      const { phone, contact_name, collected_data } = params;
 
-      if (!neo4j_contact_id.trim() || !contact_name.trim()) {
-        throw new Error('neo4j_contact_id and contact_name are required');
+      if (!phone.trim() || !contact_name.trim()) {
+        throw new Error('phone and contact_name are required');
       }
 
-      return saveContactInsight(userId, neo4j_contact_id, contact_name, collected_data);
+      return saveContactInsight(userId, phone, contact_name, collected_data);
     },
   };
 }

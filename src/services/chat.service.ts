@@ -349,9 +349,10 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
   input_schema: {
     type: 'object',
     properties: {
-      neo4j_contact_id: {
+      phone: {
         type: 'string',
-        description: 'The Neo4j contact ID from search results',
+        description:
+          "The contact's phone number from search results — used as the contact identifier. Reuse it exactly; do not display it to the user.",
       },
       field_type: {
         type: 'string',
@@ -363,7 +364,7 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
           'The fact value, concise and in original language (e.g. "ფეხბურთელი", "TBC Bank", "თბილისი")',
       },
     },
-    required: ['neo4j_contact_id', 'field_type', 'value'],
+    required: ['phone', 'field_type', 'value'],
   },
 };
 
@@ -374,12 +375,13 @@ const GET_CONTACT_FACTS_TOOL: AnthropicTool = {
   input_schema: {
     type: 'object',
     properties: {
-      neo4j_contact_id: {
+      phone: {
         type: 'string',
-        description: 'The Neo4j contact ID',
+        description:
+          "The contact's phone number from search results — used as the contact identifier. Reuse it exactly; do not display it to the user.",
       },
     },
-    required: ['neo4j_contact_id'],
+    required: ['phone'],
   },
 };
 
@@ -741,7 +743,7 @@ async function executeToolCall(
     case 'lookup_contact_by_phone':
       return lookupContactByPhone(input['phone_number'] as string);
     case 'get_contact_insight':
-      return getContactInsight(userId, input['neo4j_contact_id'] as string);
+      return getContactInsight(userId, input['phone'] as string);
     case 'search_contact_by_name':
       return searchContactByName(userId, input['name_query'] as string);
     case 'search_by_tag':
@@ -759,7 +761,7 @@ async function executeToolCall(
     case 'save_contact_insight':
       return saveContactInsight(
         userId,
-        input['neo4j_contact_id'] as string,
+        input['phone'] as string,
         input['contact_name'] as string,
         input['collected_data'] as Record<string, unknown>,
       );
@@ -799,12 +801,12 @@ async function executeToolCall(
     case 'save_contact_fact':
       return submitContactFact(
         userId,
-        input['neo4j_contact_id'] as string,
+        input['phone'] as string,
         input['field_type'] as string,
         input['value'] as string,
       );
     case 'get_contact_facts':
-      return getVisibleFacts(userId, input['neo4j_contact_id'] as string);
+      return getVisibleFacts(userId, input['phone'] as string);
     case 'get_contact_full_profile':
       return getContactFullProfile(
         userId,
