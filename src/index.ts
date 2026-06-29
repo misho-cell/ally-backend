@@ -26,6 +26,8 @@ const ALLOWED_ORIGINS = [
 ];
 
 const app = express();
+// Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.
+app.set('trust proxy', 1);
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 
 // Webhook route must use raw body BEFORE express.json() to allow signature verification

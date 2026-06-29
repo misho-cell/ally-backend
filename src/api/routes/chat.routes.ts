@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
   buildContactInsightSystemPrompt,
   processChat,
@@ -15,6 +16,7 @@ const chatRouter = Router();
 
 chatRouter.use(authenticateJwt);
 chatRouter.use(requireSubscription);
+chatRouter.use(rateLimit({ windowMs: 60_000, max: 60 }));
 
 function handleValidationErrors(
   req: Request,

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
+import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
 import { blockContact, unblockContact, getBlockedByUser } from '../../services/block.service';
 import { ApiResponse, ImportResult } from '../../types';
@@ -12,6 +13,7 @@ const contactsRouter = Router();
 
 contactsRouter.use(authenticateJwt);
 contactsRouter.use(requireSubscription);
+contactsRouter.use(captureDeviceFingerprint);
 
 contactsRouter.post(
   '/import',

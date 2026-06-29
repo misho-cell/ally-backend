@@ -3,6 +3,8 @@ import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
+import { rateLimit } from '../middleware/rateLimit.middleware';
+import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import {
   getThreadsForUser,
   createThread,
@@ -23,6 +25,9 @@ const threadsRouter = Router();
 
 threadsRouter.use(authenticateJwt);
 threadsRouter.use(requireSubscription);
+// Per-user cap on chat/thread traffic (abuse control).
+threadsRouter.use(rateLimit({ windowMs: 60_000, max: 60 }));
+threadsRouter.use(captureDeviceFingerprint);
 
 function handleValidationErrors(
   req: Request,

@@ -9,8 +9,12 @@ import {
   completeLogin,
 } from '../../services/auth.service';
 import { ApiResponse } from '../../types';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 
 const authRouter = Router();
+
+// Unauthenticated endpoints — limit by IP to curb OTP/login abuse.
+authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));
 
 authRouter.post(
   '/request-otp',
