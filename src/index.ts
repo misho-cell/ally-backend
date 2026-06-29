@@ -28,7 +28,8 @@ const ALLOWED_ORIGINS = [
 const app = express();
 // Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.
 app.set('trust proxy', 1);
-app.use(cors({ origin: ALLOWED_ORIGINS }));
+// exposedHeaders lets the browser read Retry-After on 429 rate-limit responses.
+app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After'] }));
 
 // Webhook route must use raw body BEFORE express.json() to allow signature verification
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
