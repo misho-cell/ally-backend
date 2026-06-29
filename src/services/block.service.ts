@@ -45,3 +45,31 @@ export async function getBlockedPhones(userId: string): Promise<string[]> {
   );
   return result.rows.map((r) => r.phone);
 }
+
+/**
+ * Every phone that must be hidden from this user's search results:
+ * blocked phones (both directions) plus contacts the user marked as deceased.
+ */
+export async function getExcludedPhones(userId: string): Promise<string[]> {
+  const result = await query<{ phone: string }>(
+    `SELECT "blockedPhone" AS phone
+     FROM "UserBlock"
+     WHERE "blockerId" = $1
+
+     UNION
+
+     SELECT up2.phone
+     FROM "UserPhone"  up_me
+     JOIN "UserBlock"  ub   ON ub."blockedPhone" = up_me.phone
+     JOIN "UserPhone"  up2  ON up2."userId"      = ub."blockerId"
+     WHERE up_me."userId" = $1
+
+     UNION
+
+     SELECT phone
+     FROM "ContactDeceased"
+     WHERE "userId" = $1`,
+    [userId],
+  );
+  return result.rows.map((r) => r.phone);
+}

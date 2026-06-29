@@ -9,9 +9,11 @@ const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_RECENT_MESSAGES = 12;
 const MAX_TOP_CONTACTS = 10;
 
-const CONSECUTIVE_NO_OPENS_PAUSE_THRESHOLD = 10;
-const CONSECUTIVE_NO_OPENS_WEEKLY_THRESHOLD = 6;
-const CONSECUTIVE_NO_OPENS_TRIWEEKLY_THRESHOLD = 3;
+// Nudge fatigue: ignoring this many notifications in a row pauses nudges.
+const NUDGE_IGNORE_PAUSE_THRESHOLD = 3;
+const NUDGE_PAUSE_DAYS = 14;
+// How long nudges stay suppressed after the agent flags the user as distressed.
+const DISTRESS_PAUSE_DAYS = 7;
 
 interface NotificationContent {
   title: string;
@@ -168,34 +170,72 @@ async function updateEngagement(userId: string, lastSentAt: Date): Promise<void>
   const opened = Number(activityResult.rows[0]?.count ?? 0) > 0;
 
   if (opened) {
+    // Re-engaged: clear the ignore counter and any fatigue pause.
     await query(
       `UPDATE ai_notification_settings
        SET consecutive_no_opens = 0,
            frequency_days       = 1,
+           paused_until         = NULL,
            updated_at           = NOW()
        WHERE user_id = $1`,
       [userId],
     );
   } else {
+    // Ignored again. On the Nth consecutive ignore, pause nudges for 14 days
+    // and reset the counter so the user gets a fresh start after the cooldown.
     await query(
       `UPDATE ai_notification_settings
-       SET consecutive_no_opens = consecutive_no_opens + 1,
-           frequency_days = CASE
-             WHEN consecutive_no_opens + 1 >= $2 THEN 7
-             WHEN consecutive_no_opens + 1 >= $3 THEN 3
-             ELSE 1
+       SET consecutive_no_opens = CASE
+             WHEN consecutive_no_opens + 1 >= $2 THEN 0
+             ELSE consecutive_no_opens + 1
            END,
-           paused     = (consecutive_no_opens + 1 >= $4),
+           paused_until = CASE
+             WHEN consecutive_no_opens + 1 >= $2 THEN NOW() + make_interval(days => $3)
+             ELSE paused_until
+           END,
            updated_at = NOW()
        WHERE user_id = $1`,
-      [
-        userId,
-        CONSECUTIVE_NO_OPENS_WEEKLY_THRESHOLD,
-        CONSECUTIVE_NO_OPENS_TRIWEEKLY_THRESHOLD,
-        CONSECUTIVE_NO_OPENS_PAUSE_THRESHOLD,
-      ],
+      [userId, NUDGE_IGNORE_PAUSE_THRESHOLD, NUDGE_PAUSE_DAYS],
     );
   }
+}
+
+/**
+ * Suppress nudges for a user the agent has detected to be in distress.
+ * Called from the chat tool layer, not the cron.
+ */
+export async function setUserDistress(userId: string): Promise<void> {
+  await query(
+    `INSERT INTO ai_notification_settings (user_id, distress_until)
+     VALUES ($1, NOW() + make_interval(days => $2))
+     ON CONFLICT (user_id)
+     DO UPDATE SET distress_until = EXCLUDED.distress_until, updated_at = NOW()`,
+    [userId, DISTRESS_PAUSE_DAYS],
+  );
+}
+
+/** Clear a distress pause when the user is okay again. */
+export async function clearUserDistress(userId: string): Promise<void> {
+  await query(
+    `UPDATE ai_notification_settings SET distress_until = NULL, updated_at = NOW()
+     WHERE user_id = $1`,
+    [userId],
+  );
+}
+
+interface SuppressionState {
+  paused: boolean;
+  paused_until: Date | null;
+  distress_until: Date | null;
+}
+
+/** Nudges are suppressed by a legacy hard pause, a fatigue cooldown, or distress. */
+function isSuppressed(s: SuppressionState): boolean {
+  const now = Date.now();
+  if (s.paused) return true;
+  if (s.paused_until !== null && new Date(s.paused_until).getTime() > now) return true;
+  if (s.distress_until !== null && new Date(s.distress_until).getTime() > now) return true;
+  return false;
 }
 
 export async function sendAiNotification(userId: string): Promise<void> {
@@ -203,8 +243,10 @@ export async function sendAiNotification(userId: string): Promise<void> {
     frequency_days: number;
     last_sent_at: Date | null;
     paused: boolean;
+    paused_until: Date | null;
+    distress_until: Date | null;
   }>(
-    `SELECT frequency_days, last_sent_at, paused
+    `SELECT frequency_days, last_sent_at, paused, paused_until, distress_until
      FROM ai_notification_settings
      WHERE user_id = $1`,
     [userId],
@@ -217,10 +259,16 @@ export async function sendAiNotification(userId: string): Promise<void> {
       `INSERT INTO ai_notification_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
       [userId],
     );
-    settings = { frequency_days: 1, last_sent_at: null, paused: false };
+    settings = {
+      frequency_days: 1,
+      last_sent_at: null,
+      paused: false,
+      paused_until: null,
+      distress_until: null,
+    };
   }
 
-  if (settings.paused) return;
+  if (isSuppressed(settings)) return;
 
   if (settings.last_sent_at !== null) {
     const daysSinceLast =
@@ -229,11 +277,15 @@ export async function sendAiNotification(userId: string): Promise<void> {
 
     await updateEngagement(userId, new Date(settings.last_sent_at));
 
-    const refreshed = await query<{ paused: boolean }>(
-      `SELECT paused FROM ai_notification_settings WHERE user_id = $1`,
+    const refreshed = await query<{
+      paused: boolean;
+      paused_until: Date | null;
+      distress_until: Date | null;
+    }>(
+      `SELECT paused, paused_until, distress_until FROM ai_notification_settings WHERE user_id = $1`,
       [userId],
     );
-    if (refreshed.rows[0]?.paused) return;
+    if (refreshed.rows[0] && isSuppressed(refreshed.rows[0])) return;
   }
 
   const ctx = await gatherUserContext(userId);

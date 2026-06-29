@@ -33,6 +33,9 @@ import {
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary } from './sse.service';
+import { setUserDistress, clearUserDistress } from './aiNotification.service';
+import { markContactDeceased } from './deceased.service';
+import { isReplySafe } from './moderation.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -379,6 +382,39 @@ const GET_CONTACT_FACTS_TOOL: AnthropicTool = {
         type: 'string',
         description:
           "The contact's phone number from search results — used as the contact identifier. Reuse it exactly; do not display it to the user.",
+      },
+    },
+    required: ['phone'],
+  },
+};
+
+const SET_USER_STATE_TOOL: AnthropicTool = {
+  name: 'set_user_state',
+  description:
+    "Record the user's emotional state. Call with state='distress' when the user is grieving, in crisis, or clearly upset — this quietly pauses proactive nudges so the assistant does not nag them. Call with state='ok' once they are clearly fine again. Never announce this to the user.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      state: {
+        type: 'string',
+        description: 'One of: "distress" (pause nudges) or "ok" (resume nudges)',
+      },
+    },
+    required: ['state'],
+  },
+};
+
+const MARK_CONTACT_DECEASED_TOOL: AnthropicTool = {
+  name: 'mark_contact_deceased',
+  description:
+    "Mark a contact as deceased when the user mentions they have passed away. This permanently hides them from the user's searches and introduction suggestions. Respond gently and never suggest contacting or introducing this person again.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: {
+        type: 'string',
+        description:
+          "The deceased contact's phone number from search results — used as the contact identifier. Do not display it to the user.",
       },
     },
     required: ['phone'],
@@ -807,6 +843,16 @@ async function executeToolCall(
       );
     case 'get_contact_facts':
       return getVisibleFacts(userId, input['phone'] as string);
+    case 'set_user_state':
+      if (input['state'] === 'distress') {
+        await setUserDistress(userId);
+      } else {
+        await clearUserDistress(userId);
+      }
+      return { ok: true };
+    case 'mark_contact_deceased':
+      await markContactDeceased(userId, input['phone'] as string);
+      return { ok: true };
     case 'get_contact_full_profile':
       return getContactFullProfile(
         userId,
@@ -1006,6 +1052,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     SAVE_PRIVATE_CONTEXT_TOOL,
     SAVE_CONTACT_FACT_TOOL,
     GET_CONTACT_FACTS_TOOL,
+    SET_USER_STATE_TOOL,
+    MARK_CONTACT_DECEASED_TOOL,
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
@@ -1054,9 +1102,14 @@ export async function processChat(
   for (const msg of pending) {
     await saveMessage(userId, threadId, msg.role, msg.content);
   }
-  await saveMessage(userId, threadId, 'assistant', finalText);
 
-  return { reply: finalText, ...(options && { options }), ...(choices && { choices }) };
+  // Moderate the user-facing reply before persisting/returning it.
+  const reply = (await isReplySafe(finalText))
+    ? finalText
+    : 'ბოდიში, ამ პასუხს ვერ გავცემ. სცადე კითხვის სხვაგვარად ჩამოყალიბება.';
+  await saveMessage(userId, threadId, 'assistant', reply);
+
+  return { reply, ...(options && { options }), ...(choices && { choices }) };
 }
 
 export { getOrCreateDefaultThread };

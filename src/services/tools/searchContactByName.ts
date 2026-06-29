@@ -1,12 +1,12 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
-import { getBlockedPhones } from '../block.service';
+import { getExcludedPhones } from '../block.service';
 
 const FUZZY_THRESHOLD = 0.35;
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
-    const blockedPhones = await getBlockedPhones(userId);
+    const blockedPhones = await getExcludedPhones(userId);
     const terms = buildSearchTerms(nameQuery).map((t) => '%' + t + '%');
     const nameCondition = terms
       .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)

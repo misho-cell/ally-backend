@@ -7,7 +7,7 @@ jest.mock('../../../db/postgres/client', () => ({
 // only sees the search call (keeps call-arg assertions on index 0).
 jest.mock('../../block.service', () => ({
   __esModule: true,
-  getBlockedPhones: jest.fn().mockResolvedValue([]),
+  getExcludedPhones: jest.fn().mockResolvedValue([]),
 }));
 
 import { query } from '../../../db/postgres/client';

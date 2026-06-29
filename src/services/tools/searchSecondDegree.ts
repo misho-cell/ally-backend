@@ -4,7 +4,7 @@ const SECOND_DEGREE_QUERY_TIMEOUT_MS = 10_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
-import { getBlockedPhones } from '../block.service';
+import { getExcludedPhones } from '../block.service';
 
 const MAX_FRIEND_PHONES = 3000;
 
@@ -59,7 +59,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
-    const blockedPhones = await getBlockedPhones(userId);
+    const blockedPhones = await getExcludedPhones(userId);
     const blockedSet = new Set(blockedPhones);
 
     // Composite keys (e.g. "+99551111-+99599999") must be expanded to individual phones
