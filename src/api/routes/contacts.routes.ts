@@ -4,7 +4,12 @@ import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middle
 import { requireSubscription } from '../middleware/subscription.middleware';
 import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
-import { blockContact, unblockContact, getBlockedByUser } from '../../services/block.service';
+import {
+  blockContact,
+  unblockContact,
+  getBlockedByUser,
+  BlockedContact,
+} from '../../services/block.service';
 import { ApiResponse, ImportResult } from '../../types';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
@@ -152,16 +157,19 @@ contactsRouter.delete(
   },
 );
 
-contactsRouter.get('/blocked', async (req: Request, res: Response<ApiResponse<string[]>>) => {
-  try {
-    const userId = (req as AuthenticatedRequest).user.userId;
-    const phones = await getBlockedByUser(userId);
-    res.status(200).json({ success: true, data: phones });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'სია ვერ მოიძებნა';
-    res.status(500).json({ success: false, error: message });
-  }
-});
+contactsRouter.get(
+  '/blocked',
+  async (req: Request, res: Response<ApiResponse<BlockedContact[]>>) => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const blocked = await getBlockedByUser(userId);
+      res.status(200).json({ success: true, data: blocked });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'სია ვერ მოიძებნა';
+      res.status(500).json({ success: false, error: message });
+    }
+  },
+);
 
 const MAX_FRIEND_PHONES_DIAG = 3000;
 

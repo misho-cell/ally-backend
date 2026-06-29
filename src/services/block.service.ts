@@ -16,12 +16,28 @@ export async function unblockContact(userId: string, phone: string): Promise<voi
   ]);
 }
 
-export async function getBlockedByUser(userId: string): Promise<string[]> {
-  const result = await query<{ phone: string }>(
-    `SELECT "blockedPhone" AS phone FROM "UserBlock" WHERE "blockerId" = $1`,
+export interface BlockedContact {
+  phone: string;
+  name: string | null;
+}
+
+/**
+ * Contacts THIS user has blocked (one-directional — does not include users who
+ * blocked them). Resolves a display name: the user's own alias for the contact,
+ * falling back to the registered user's name.
+ */
+export async function getBlockedByUser(userId: string): Promise<BlockedContact[]> {
+  const result = await query<{ phone: string; name: string | null }>(
+    `SELECT ub."blockedPhone"          AS phone,
+            COALESCE(ua.alias, u.name) AS name
+     FROM "UserBlock" ub
+     LEFT JOIN "UserAlias" ua ON ua.phone = ub."blockedPhone" AND ua."contactId" = ub."blockerId"
+     LEFT JOIN "UserPhone" up ON up.phone = ub."blockedPhone"
+     LEFT JOIN "User"       u ON u.id     = up."userId"
+     WHERE ub."blockerId" = $1`,
     [userId],
   );
-  return result.rows.map((r) => r.phone);
+  return result.rows.map((r) => ({ phone: r.phone, name: r.name ?? null }));
 }
 
 /**
