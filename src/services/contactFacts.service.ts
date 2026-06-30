@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { query } from '../db/postgres/client';
+import { normalizePhone } from './phone';
 import anthropic from '../config/anthropic';
 
 export const FACT_FIELD_TYPES = ['occupation', 'employer', 'city', 'industry'] as const;
@@ -81,10 +82,11 @@ async function getOtherFacts(
 
 export async function submitContactFact(
   userId: string,
-  neo4jContactId: string,
+  neo4jContactIdRaw: string,
   fieldType: string,
   value: string,
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
+  const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   await upsertFact(userId, neo4jContactId, fieldType, value);
 
   const others = await getOtherFacts(userId, neo4jContactId, fieldType);
@@ -129,8 +131,9 @@ export async function submitContactFact(
 
 export async function getVisibleFacts(
   userId: string,
-  neo4jContactId: string,
+  neo4jContactIdRaw: string,
 ): Promise<VisibleFactsResult> {
+  const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   const [publicResult, privateResult] = await Promise.all([
     query<{ field_type: string; canonical_value: string }>(
       `SELECT DISTINCT ON (field_type) field_type, canonical_value

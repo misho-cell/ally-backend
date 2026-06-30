@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { normalizePhone } from './phone';
 import { ContactInsight, ContactInsightWithFieldContext, InsightField } from '../types';
 
 const INSIGHT_FIELD_SELECT = `
@@ -30,7 +31,7 @@ export async function getContactInsight(
 ): Promise<ContactInsight | null> {
   const result = await query<ContactInsight>(
     `SELECT id, user_id AS "userId", neo4j_contact_id AS "neo4jContactId", neo4j_contact_name AS "neo4jContactName", data, created_at AS "createdAt", updated_at AS "updatedAt" FROM contact_insights WHERE user_id = $1 AND neo4j_contact_id = $2`,
-    [userId, neo4jContactId],
+    [userId, normalizePhone(neo4jContactId)],
   );
 
   return result.rows[0] ?? null;
@@ -50,7 +51,7 @@ export async function saveContactInsight(
                    neo4j_contact_name = EXCLUDED.neo4j_contact_name,
                    updated_at = NOW()
      RETURNING id, user_id AS "userId", neo4j_contact_id AS "neo4jContactId", neo4j_contact_name AS "neo4jContactName", data, created_at AS "createdAt", updated_at AS "updatedAt"`,
-    [userId, neo4jContactId, contactName, newData],
+    [userId, normalizePhone(neo4jContactId), contactName, newData],
   );
 
   if (result.rowCount === 0) {

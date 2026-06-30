@@ -3,7 +3,7 @@ import { buildSearchTerms } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 
-const FUZZY_THRESHOLD = 0.35;
+const FUZZY_THRESHOLD = 0.3;
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {

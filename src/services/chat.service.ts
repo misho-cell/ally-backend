@@ -975,10 +975,17 @@ async function processToolBlocks(
       block.name,
       block.input as Record<string, unknown>,
     );
+    const rawContent = JSON.stringify(result);
+    const safeContent = JSON.stringify(sanitizeToolResult(result));
+    if (rawContent !== safeContent) {
+      // Debug: the sanitizer neutralized something in untrusted tool output.
+      // eslint-disable-next-line no-console
+      console.warn(`[sanitizer] neutralized injected content in ${block.name} result`);
+    }
     results.push({
       type: 'tool_result',
       tool_use_id: block.id,
-      content: JSON.stringify(sanitizeToolResult(result)),
+      content: safeContent,
     });
   }
   return results;
@@ -988,6 +995,10 @@ const CLAUDE_CALL_TIMEOUT_MS = 30_000;
 // Higher cap is safe now that runs are processed in the background (no HTTP
 // timeout pressure) and stream progress to the client as they go.
 const MAX_TOOL_ITERATIONS = 20;
+// Wall-clock budget for a single run. If a heavy/looping run exceeds it, we
+// stop calling tools and force a final answer from whatever we have so far,
+// rather than letting it hang indefinitely.
+const RUN_WALL_CLOCK_BUDGET_MS = 210_000;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   web_search: '🌐 ვებში ვეძებ...',
@@ -1063,12 +1074,17 @@ async function runToolLoop(
   choices?: string[];
 }> {
   const pending: PendingMessage[] = [];
+  const startedAt = Date.now();
   let response = await callClaude(messages, systemPrompt, tools);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let iterations = 0;
 
-  while (response.stop_reason === 'tool_use' && iterations < MAX_TOOL_ITERATIONS) {
+  while (
+    response.stop_reason === 'tool_use' &&
+    iterations < MAX_TOOL_ITERATIONS &&
+    Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS
+  ) {
     iterations++;
 
     // Stream the model's narration that accompanies this round of tool calls,
