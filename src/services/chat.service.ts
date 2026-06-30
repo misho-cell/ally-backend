@@ -838,6 +838,21 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
   get_contact_insight: 'phone',
 };
 
+// Run a search tool, then log the activity with its result count (fire-and-forget
+// so logging never blocks or fails the search). Result objects expose `count`.
+async function runLoggedSearch(
+  userId: string,
+  tool: string,
+  searchQuery: string,
+  run: (userId: string, q: string) => Promise<object>,
+): Promise<object> {
+  const result = await run(userId, searchQuery);
+  const rawCount = (result as { count?: unknown }).count;
+  const resultCount = typeof rawCount === 'number' ? rawCount : 0;
+  void logSearchActivity(userId, tool, searchQuery, resultCount).catch(() => {});
+  return result;
+}
+
 async function executeToolCall(
   userId: string,
   name: string,
@@ -862,17 +877,18 @@ async function executeToolCall(
     case 'get_contact_insight':
       return getContactInsight(userId, input['phone'] as string);
     case 'search_contact_by_name':
-      void logSearchActivity(userId, 'name', input['name_query'] as string).catch(() => {});
-      return searchContactByName(userId, input['name_query'] as string);
+      return runLoggedSearch(userId, 'name', input['name_query'] as string, searchContactByName);
     case 'search_by_tag':
-      void logSearchActivity(userId, 'tag', input['tag_query'] as string).catch(() => {});
-      return searchByTag(userId, input['tag_query'] as string);
+      return runLoggedSearch(userId, 'tag', input['tag_query'] as string, searchByTag);
     case 'search_by_insight':
-      void logSearchActivity(userId, 'insight', input['search_query'] as string).catch(() => {});
-      return searchByInsight(userId, input['search_query'] as string);
+      return runLoggedSearch(userId, 'insight', input['search_query'] as string, searchByInsight);
     case 'search_second_degree':
-      void logSearchActivity(userId, 'second_degree', input['tag_query'] as string).catch(() => {});
-      return searchSecondDegree(userId, input['tag_query'] as string);
+      return runLoggedSearch(
+        userId,
+        'second_degree',
+        input['tag_query'] as string,
+        searchSecondDegree,
+      );
     case 'search_contacts_by_country':
       return searchContactsByCountry(userId, input['country'] as string);
     case 'get_contact_count':

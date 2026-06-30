@@ -112,6 +112,8 @@ export interface LabeledCount {
 export interface CoreUsageMetrics {
   searchesByType: LabeledCount[];
   totalSearches: number;
+  // Searches that returned at least one result (NULL-count legacy rows excluded).
+  successfulSearches: number;
   introsByStatus: LabeledCount[];
   avgNetworkSize: number;
   factsCount: number;
@@ -172,6 +174,7 @@ export interface RecentSearch {
   query: string;
   tool: string | null;
   flagged: boolean;
+  resultCount: number | null;
   createdAt: string;
 }
 
@@ -179,6 +182,9 @@ export interface UserSearches {
   totalSearches: number;
   byType: LabeledCount[];
   flaggedCount: number;
+  // Searches that returned at least one result. NULL-count rows (logged before
+  // result tracking existed) are excluded from this tally.
+  successfulSearches: number;
   recent: RecentSearch[];
 }
 

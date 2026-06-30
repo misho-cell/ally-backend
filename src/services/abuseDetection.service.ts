@@ -15,6 +15,7 @@ export async function logSearchActivity(
   userId: string,
   tool: string,
   rawQuery: string,
+  resultCount: number | null = null,
 ): Promise<void> {
   const q = rawQuery.trim().slice(0, MAX_QUERY_LENGTH);
   if (!q) return;
@@ -35,8 +36,9 @@ export async function logSearchActivity(
   const flagged = hourly >= HOURLY_VOLUME_THRESHOLD || sameTarget >= SAME_TARGET_THRESHOLD;
 
   await query(
-    `INSERT INTO search_activity (user_id, query, tool, flagged) VALUES ($1, $2, $3, $4)`,
-    [userId, q, tool, flagged],
+    `INSERT INTO search_activity (user_id, query, tool, flagged, result_count)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, q, tool, flagged, resultCount],
   );
 
   if (flagged) {

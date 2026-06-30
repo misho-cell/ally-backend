@@ -114,13 +114,18 @@ function toLabeledCounts(rows: { label: string | null; count: string | number }[
 }
 
 async function getCoreUsage(): Promise<CoreUsageMetrics> {
-  const [searchesResult, introsResult, networkResult, factsResult, insightsResult] =
+  const [searchesResult, successResult, introsResult, networkResult, factsResult, insightsResult] =
     await Promise.all([
       query<{ label: string | null; count: string }>(
         `SELECT tool AS label, COUNT(*) AS count
          FROM search_activity
          GROUP BY tool
          ORDER BY COUNT(*) DESC`,
+        [],
+        ANALYTICS_QUERY_TIMEOUT_MS,
+      ),
+      query<{ count: string }>(
+        'SELECT COUNT(*) AS count FROM search_activity WHERE result_count > 0',
         [],
         ANALYTICS_QUERY_TIMEOUT_MS,
       ),
@@ -156,6 +161,7 @@ async function getCoreUsage(): Promise<CoreUsageMetrics> {
   return {
     searchesByType,
     totalSearches,
+    successfulSearches: toNumber(successResult.rows[0]?.count),
     introsByStatus: toLabeledCounts(introsResult.rows),
     avgNetworkSize: Math.round(toNumber(networkResult.rows[0]?.avg)),
     factsCount: toNumber(factsResult.rows[0]?.count),
@@ -169,6 +175,7 @@ const EMPTY_FUNNEL: ActivationFunnel = { steps: [] };
 const EMPTY_USAGE: CoreUsageMetrics = {
   searchesByType: [],
   totalSearches: 0,
+  successfulSearches: 0,
   introsByStatus: [],
   avgNetworkSize: 0,
   factsCount: 0,

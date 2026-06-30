@@ -235,8 +235,10 @@ async function getActivity(userId: number): Promise<UserActivity> {
 async function getSearches(userId: number): Promise<UserSearches> {
   const id = String(userId);
   const [totals, byType, recent] = await Promise.all([
-    query<{ total: string; flagged: string }>(
-      `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE flagged) AS flagged
+    query<{ total: string; flagged: string; successful: string }>(
+      `SELECT COUNT(*) AS total,
+              COUNT(*) FILTER (WHERE flagged)           AS flagged,
+              COUNT(*) FILTER (WHERE result_count > 0)  AS successful
        FROM search_activity WHERE user_id = $1`,
       [id],
     ),
@@ -246,8 +248,14 @@ async function getSearches(userId: number): Promise<UserSearches> {
        GROUP BY tool ORDER BY COUNT(*) DESC`,
       [id],
     ),
-    query<{ query: string; tool: string | null; flagged: boolean; created_at: string }>(
-      `SELECT query, tool, flagged, created_at
+    query<{
+      query: string;
+      tool: string | null;
+      flagged: boolean;
+      result_count: number | null;
+      created_at: string;
+    }>(
+      `SELECT query, tool, flagged, result_count, created_at
        FROM search_activity WHERE user_id = $1
        ORDER BY created_at DESC LIMIT $2`,
       [id, RECENT_SEARCH_LIMIT],
@@ -258,12 +266,14 @@ async function getSearches(userId: number): Promise<UserSearches> {
     query: r.query,
     tool: r.tool,
     flagged: r.flagged,
+    resultCount: r.result_count,
     createdAt: r.created_at,
   }));
   return {
     totalSearches: toNumber(totals.rows[0]?.total),
     byType: toLabeledCounts(byType.rows),
     flaggedCount: toNumber(totals.rows[0]?.flagged),
+    successfulSearches: toNumber(totals.rows[0]?.successful),
     recent: recentSearches,
   };
 }

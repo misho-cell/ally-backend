@@ -23,6 +23,7 @@ function routeQuery(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('AS dau')) return rows([{ dau: '10', wau: '40', mau: '90' }]);
   if (sql.includes('FROM conversations') && sql.includes('AS count'))
     return rows([{ day: '2026-06-29', count: '7' }]);
+  if (sql.includes('WHERE result_count > 0')) return rows([{ count: '33' }]);
   if (sql.includes('tool AS label'))
     return rows([
       { label: 'name', count: '30' },
@@ -80,6 +81,7 @@ describe('getOverview', () => {
     const overview = await getOverview();
 
     expect(overview.usage.totalSearches).toBe(42);
+    expect(overview.usage.successfulSearches).toBe(33);
     expect(overview.usage.searchesByType).toEqual([
       { label: 'name', count: 30 },
       { label: 'tag', count: 12 },

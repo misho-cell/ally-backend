@@ -44,11 +44,13 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('AS threads'))
     return rows([{ threads: '3', messages: '88', first_at: '2026-01-02', last_at: '2026-06-30' }]);
   if (sql.includes('GROUP BY DATE(created_at)')) return rows([{ day: '2026-06-30', count: '4' }]);
-  if (sql.includes('FILTER (WHERE flagged) AS flagged'))
-    return rows([{ total: '50', flagged: '1' }]);
+  if (sql.includes('FILTER (WHERE flagged)'))
+    return rows([{ total: '50', flagged: '1', successful: '37' }]);
   if (sql.includes('tool AS label')) return rows([{ label: 'name', count: '30' }]);
-  if (sql.includes('query, tool, flagged, created_at'))
-    return rows([{ query: 'gio', tool: 'name', flagged: false, created_at: '2026-06-30' }]);
+  if (sql.includes('query, tool, flagged, result_count'))
+    return rows([
+      { query: 'gio', tool: 'name', flagged: false, result_count: 4, created_at: '2026-06-30' },
+    ]);
   if (sql.includes('status AS label')) return rows([{ label: 'accepted', count: '5' }]);
   if (sql.includes('mediator_user_id = $1')) return rows([{ count: '2' }]);
   if (sql.includes('FROM contact_insights')) return rows([{ count: '13' }]);
@@ -158,6 +160,8 @@ describe('getAdminUserDetail', () => {
     expect(profile?.activity.messageCount).toBe(88);
     expect(profile?.searches.totalSearches).toBe(50);
     expect(profile?.searches.flaggedCount).toBe(1);
+    expect(profile?.searches.successfulSearches).toBe(37);
+    expect(profile?.searches.recent[0].resultCount).toBe(4);
     expect(profile?.outcomes.introRequestsMade).toBe(5);
     expect(profile?.outcomes.factsSubmitted).toBe(23);
     expect(profile?.memory.profile).toEqual([
