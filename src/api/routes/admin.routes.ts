@@ -13,8 +13,15 @@ import {
   updateInsightField,
   toggleInsightField,
 } from '../../services/insights.service';
-import { ApiResponse, AnalyticsOverview, InsightField } from '../../types';
+import {
+  ApiResponse,
+  AnalyticsOverview,
+  InsightField,
+  UserListItem,
+  UserProfile,
+} from '../../types';
 import { getOverview } from '../../services/analytics.service';
+import { listUsers, getAdminUserDetail } from '../../services/adminUsers.service';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
 import {
@@ -432,6 +439,43 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Analytics overview error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get('/users', async (req: Request, res: Response<ApiResponse<UserListItem[]>>) => {
+  try {
+    const q = typeof req.query['q'] === 'string' ? req.query['q'] : '';
+    const limit = Number(req.query['limit'] ?? 0);
+    const users = await listUsers(q, limit);
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('List users error:', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get(
+  '/users/:id',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<UserProfile>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, errors: errors.array() } as never);
+      return;
+    }
+    try {
+      const profile = await getAdminUserDetail(Number(req.params.id));
+      if (!profile) {
+        res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+        return;
+      }
+      res.status(200).json({ success: true, data: profile });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('User detail error:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

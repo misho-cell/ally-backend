@@ -123,6 +123,114 @@ export interface AnalyticsBlockError {
   message: string;
 }
 
+export interface UserListItem {
+  id: number;
+  name: string | null;
+  phones: string[];
+  city: string | null;
+  subscriptionStatus: string;
+  createdAt: string | null;
+  lastActiveAt: string | null;
+  contactsCount: number;
+}
+
+export interface UserAccount {
+  id: number;
+  name: string | null;
+  email: string | null;
+  employer: string | null;
+  jobPosition: string | null;
+  city: string | null;
+  phones: string[];
+  createdAt: string | null;
+  deletedAt: string | null;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  paddleCustomerId: string | null;
+}
+
+export interface UserNetwork {
+  contactsCount: number;
+  tagsCount: number;
+  blockedCount: number;
+  deceasedCount: number;
+  firstDegree: number | null;
+  secondDegree: number | null;
+}
+
+export interface UserActivity {
+  threadsCount: number;
+  messageCount: number;
+  firstActivityAt: string | null;
+  lastActivityAt: string | null;
+  activityByDay: DailyCount[];
+}
+
+export interface RecentSearch {
+  query: string;
+  tool: string | null;
+  flagged: boolean;
+  createdAt: string;
+}
+
+export interface UserSearches {
+  totalSearches: number;
+  byType: LabeledCount[];
+  flaggedCount: number;
+  recent: RecentSearch[];
+}
+
+export interface UserOutcomes {
+  introRequestsMade: number;
+  introRequestsByStatus: LabeledCount[];
+  introRequestsMediated: number;
+  insightsSaved: number;
+  factsSubmitted: number;
+}
+
+export interface UserContextEntry {
+  key: string;
+  value: string;
+  updatedAt: string;
+}
+
+export interface UserMemory {
+  profile: UserContextEntry[];
+  privateContext: UserContextEntry[];
+  nudgesSent: number;
+  notificationFrequencyDays: number | null;
+  consecutiveNoOpens: number | null;
+  lastNudgeAt: string | null;
+  pausedUntil: string | null;
+  distressUntil: string | null;
+}
+
+export interface UserDevice {
+  deviceId: string;
+  userAgent: string | null;
+  ip: string | null;
+  requestCount: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface UserDevices {
+  devices: UserDevice[];
+  pushSubscriptionsCount: number;
+}
+
+export interface UserProfile {
+  account: UserAccount;
+  network: UserNetwork;
+  activity: UserActivity;
+  searches: UserSearches;
+  outcomes: UserOutcomes;
+  memory: UserMemory;
+  devices: UserDevices;
+}
+
 export interface AnalyticsOverview {
   growth: GrowthMetrics;
   retention: RetentionMetrics;
