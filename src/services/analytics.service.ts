@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import {
   ActivationFunnel,
+  AnalyticsBlockError,
   AnalyticsOverview,
   CoreUsageMetrics,
   DailyCount,
@@ -163,13 +164,50 @@ async function getCoreUsage(): Promise<CoreUsageMetrics> {
   };
 }
 
+const EMPTY_GROWTH: GrowthMetrics = { totalUsers: 0, newUsersByDay: [] };
+const EMPTY_RETENTION: RetentionMetrics = { dau: 0, wau: 0, mau: 0, activeUsersByDay: [] };
+const EMPTY_FUNNEL: ActivationFunnel = { steps: [] };
+const EMPTY_USAGE: CoreUsageMetrics = {
+  searchesByType: [],
+  totalSearches: 0,
+  introsByStatus: [],
+  avgNetworkSize: 0,
+  factsCount: 0,
+  insightsCount: 0,
+};
+
+// Run one block in isolation so a single failing query degrades that block to
+// its empty shape and records the reason, instead of failing the whole report.
+async function runBlock<T>(
+  block: string,
+  fn: () => Promise<T>,
+  fallback: T,
+  diagnostics: AnalyticsBlockError[],
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    // eslint-disable-next-line no-console
+    console.error(`[analytics] block "${block}" failed:`, message);
+    diagnostics.push({ block, message });
+    return fallback;
+  }
+}
+
 export async function getOverview(): Promise<AnalyticsOverview> {
+  const diagnostics: AnalyticsBlockError[] = [];
+
   const [growth, retention, funnel, usage] = await Promise.all([
-    getGrowth(),
-    getRetention(),
-    getActivationFunnel(),
-    getCoreUsage(),
+    runBlock('growth', getGrowth, EMPTY_GROWTH, diagnostics),
+    runBlock('retention', getRetention, EMPTY_RETENTION, diagnostics),
+    runBlock('funnel', getActivationFunnel, EMPTY_FUNNEL, diagnostics),
+    runBlock('usage', getCoreUsage, EMPTY_USAGE, diagnostics),
   ]);
 
-  return { growth, retention, funnel, usage };
+  const overview: AnalyticsOverview = { growth, retention, funnel, usage };
+  if (diagnostics.length > 0) {
+    overview.diagnostics = diagnostics;
+  }
+  return overview;
 }

@@ -98,4 +98,28 @@ describe('getOverview', () => {
 
     expect(overview.usage.searchesByType).toEqual([{ label: 'unknown', count: 3 }]);
   });
+
+  it('degrades a single failing block to empty and records a diagnostic', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('AS signed_up')) {
+        return Promise.reject(new Error('column "X" does not exist'));
+      }
+      return Promise.resolve(routeQuery(sql) as never);
+    });
+
+    const overview = await getOverview();
+
+    // The broken block degrades, the others still resolve.
+    expect(overview.funnel.steps).toEqual([]);
+    expect(overview.growth.totalUsers).toBe(120);
+    expect(overview.diagnostics).toEqual([
+      { block: 'funnel', message: 'column "X" does not exist' },
+    ]);
+  });
+
+  it('omits diagnostics entirely when every block succeeds', async () => {
+    const overview = await getOverview();
+
+    expect(overview.diagnostics).toBeUndefined();
+  });
 });

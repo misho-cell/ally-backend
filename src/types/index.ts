@@ -118,9 +118,17 @@ export interface CoreUsageMetrics {
   insightsCount: number;
 }
 
+export interface AnalyticsBlockError {
+  block: string;
+  message: string;
+}
+
 export interface AnalyticsOverview {
   growth: GrowthMetrics;
   retention: RetentionMetrics;
   funnel: ActivationFunnel;
   usage: CoreUsageMetrics;
+  // Populated only when one or more blocks failed; lets the dashboard render
+  // the blocks that succeeded instead of failing the whole request.
+  diagnostics?: AnalyticsBlockError[];
 }
