@@ -11,15 +11,18 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 // getOverview fans its queries out with Promise.all, so call order is not
 // guaranteed. Route each call by a distinctive fragment of its SQL instead.
 function routeQuery(sql: string): { rows: unknown[]; rowCount: number } {
-  if (sql.includes('COUNT(*) AS count FROM "User"')) return rows([{ count: '120' }]);
+  // Funnel steps are now separate scalar queries; match the specific ones
+  // before the generic `COUNT(*) ... FROM "User"` so order stays deterministic.
+  if (sql.includes('subscription_status')) return rows([{ count: '15' }]); // subscribed
+  if (sql.includes('COUNT(DISTINCT "contactId")')) return rows([{ count: '80' }]); // imported
+  if (sql.includes('COUNT(DISTINCT requester_user_id)')) return rows([{ count: '20' }]); // intro
+  if (sql.includes('COUNT(DISTINCT user_id) AS count FROM search_activity'))
+    return rows([{ count: '50' }]); // searched
+  if (sql.includes('COUNT(*) AS count FROM "User"')) return rows([{ count: '120' }]); // total + signed_up
   if (sql.includes('GROUP BY DATE("createdAt")')) return rows([{ day: '2026-06-29', count: '5' }]);
   if (sql.includes('AS dau')) return rows([{ dau: '10', wau: '40', mau: '90' }]);
   if (sql.includes('FROM conversations') && sql.includes('AS count'))
     return rows([{ day: '2026-06-29', count: '7' }]);
-  if (sql.includes('AS signed_up'))
-    return rows([
-      { signed_up: '120', imported: '80', searched: '50', requested_intro: '20', subscribed: '15' },
-    ]);
   if (sql.includes('tool AS label'))
     return rows([
       { label: 'name', count: '30' },
@@ -101,7 +104,7 @@ describe('getOverview', () => {
 
   it('degrades a single failing block to empty and records a diagnostic', async () => {
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('AS signed_up')) {
+      if (sql.includes('COUNT(DISTINCT requester_user_id)')) {
         return Promise.reject(new Error('column "X" does not exist'));
       }
       return Promise.resolve(routeQuery(sql) as never);

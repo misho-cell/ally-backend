@@ -79,33 +79,32 @@ async function getRetention(): Promise<RetentionMetrics> {
   };
 }
 
-async function getActivationFunnel(): Promise<ActivationFunnel> {
-  const result = await query<{
-    signed_up: string;
-    imported: string;
-    searched: string;
-    requested_intro: string;
-    subscribed: string;
-  }>(
-    `SELECT
-       (SELECT COUNT(*) FROM "User")                                               AS signed_up,
-       (SELECT COUNT(DISTINCT "contactId") FROM "UserAlias")                       AS imported,
-       (SELECT COUNT(DISTINCT user_id) FROM search_activity)                       AS searched,
-       (SELECT COUNT(DISTINCT requester_user_id) FROM introduction_requests)       AS requested_intro,
-       (SELECT COUNT(*) FROM "User"
-          WHERE subscription_status IN ('active', 'trialing'))                     AS subscribed`,
-    [],
-    ANALYTICS_QUERY_TIMEOUT_MS,
-  );
+async function countScalar(sql: string): Promise<number> {
+  const result = await query<{ count: string }>(sql, [], ANALYTICS_QUERY_TIMEOUT_MS);
+  return toNumber(result.rows[0]?.count);
+}
 
-  const row = result.rows[0];
+async function getActivationFunnel(): Promise<ActivationFunnel> {
+  // Each step is its own statement with its own timeout. Bundling all five into
+  // one statement made the heavy "UserAlias" distinct-count share a single
+  // budget with the others and time out on large data sets.
+  const [signedUp, imported, searched, requestedIntro, subscribed] = await Promise.all([
+    countScalar('SELECT COUNT(*) AS count FROM "User"'),
+    countScalar('SELECT COUNT(DISTINCT "contactId") AS count FROM "UserAlias"'),
+    countScalar('SELECT COUNT(DISTINCT user_id) AS count FROM search_activity'),
+    countScalar('SELECT COUNT(DISTINCT requester_user_id) AS count FROM introduction_requests'),
+    countScalar(
+      `SELECT COUNT(*) AS count FROM "User" WHERE subscription_status IN ('active', 'trialing')`,
+    ),
+  ]);
+
   return {
     steps: [
-      { step: 'signed_up', users: toNumber(row?.signed_up) },
-      { step: 'imported_contacts', users: toNumber(row?.imported) },
-      { step: 'searched', users: toNumber(row?.searched) },
-      { step: 'requested_intro', users: toNumber(row?.requested_intro) },
-      { step: 'subscribed', users: toNumber(row?.subscribed) },
+      { step: 'signed_up', users: signedUp },
+      { step: 'imported_contacts', users: imported },
+      { step: 'searched', users: searched },
+      { step: 'requested_intro', users: requestedIntro },
+      { step: 'subscribed', users: subscribed },
     ],
   };
 }
