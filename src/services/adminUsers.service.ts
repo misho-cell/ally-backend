@@ -16,6 +16,7 @@ import {
   UserOutcomes,
   UserProfile,
   UserSearches,
+  UserTimelineEvent,
 } from '../types';
 
 const TREND_WINDOW_DAYS = 30;
@@ -389,18 +390,56 @@ async function getDevices(userId: number): Promise<UserDevices> {
   return { devices: deviceList, pushSubscriptionsCount: toNumber(push.rows[0]?.count) };
 }
 
+async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
+  const id = String(userId);
+  const result = await query<{
+    signup: string | null;
+    first_import: string | null;
+    first_search: string | null;
+    first_intro: string | null;
+    first_nudge: string | null;
+    last_active: string | null;
+  }>(
+    `SELECT
+       (SELECT "createdAt" FROM "User" WHERE id = $1)                                   AS signup,
+       (SELECT MIN("createdAt") FROM "UserAlias" WHERE "contactId" = $1)                AS first_import,
+       (SELECT MIN(created_at) FROM search_activity WHERE user_id = $2)                 AS first_search,
+       (SELECT MIN(created_at) FROM introduction_requests WHERE requester_user_id = $1) AS first_intro,
+       (SELECT MIN(created_at) FROM ai_notification_log WHERE user_id = $2)             AS first_nudge,
+       (SELECT MAX(created_at) FROM conversations
+          WHERE user_id = $1 AND (kind IS NULL OR kind <> 'step'))                      AS last_active`,
+    [userId, id],
+  );
+
+  const row = result.rows[0];
+  const candidates: { type: UserTimelineEvent['type']; at: string | null }[] = [
+    { type: 'signup', at: row?.signup ?? null },
+    { type: 'first_import', at: row?.first_import ?? null },
+    { type: 'first_search', at: row?.first_search ?? null },
+    { type: 'first_intro_request', at: row?.first_intro ?? null },
+    { type: 'first_nudge', at: row?.first_nudge ?? null },
+    { type: 'last_active', at: row?.last_active ?? null },
+  ];
+
+  return candidates
+    .filter((e): e is { type: UserTimelineEvent['type']; at: string } => e.at !== null)
+    .map((e) => ({ type: e.type, at: e.at }))
+    .sort((a, b) => a.at.localeCompare(b.at));
+}
+
 export async function getAdminUserDetail(userId: number): Promise<UserProfile | null> {
   const account = await getAccount(userId);
   if (!account) return null;
 
-  const [network, activity, searches, outcomes, memory, devices] = await Promise.all([
+  const [network, activity, searches, outcomes, memory, devices, timeline] = await Promise.all([
     getNetwork(userId),
     getActivity(userId),
     getSearches(userId),
     getOutcomes(userId),
     getMemory(userId),
     getDevices(userId),
+    getTimeline(userId),
   ]);
 
-  return { account, network, activity, searches, outcomes, memory, devices };
+  return { account, network, activity, searches, outcomes, memory, devices, timeline };
 }

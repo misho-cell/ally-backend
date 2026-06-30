@@ -19,6 +19,19 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 // Route detail-page queries by a distinctive SQL fragment (Promise.all → order
 // is not deterministic).
 function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
+  // Timeline query also embeds `FROM "User" WHERE id = $1` in a subselect, so
+  // match its unique `AS first_import` fragment before the account check.
+  if (sql.includes('AS first_import'))
+    return rows([
+      {
+        signup: '2026-01-01',
+        first_import: '2026-01-03',
+        first_search: '2026-02-01',
+        first_intro: null,
+        first_nudge: null,
+        last_active: '2026-06-30',
+      },
+    ]);
   if (sql.includes('FROM "User" WHERE id = $1'))
     return rows([
       {
@@ -169,6 +182,13 @@ describe('getAdminUserDetail', () => {
     ]);
     expect(profile?.devices.devices[0].deviceId).toBe('d1');
     expect(profile?.devices.pushSubscriptionsCount).toBe(1);
+    // Timeline drops null milestones and sorts ascending.
+    expect(profile?.timeline.map((e) => e.type)).toEqual([
+      'signup',
+      'first_import',
+      'first_search',
+      'last_active',
+    ]);
   });
 
   it('degrades neo4j reach to null when the graph query fails', async () => {

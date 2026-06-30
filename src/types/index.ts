@@ -227,6 +227,19 @@ export interface UserDevices {
   pushSubscriptionsCount: number;
 }
 
+// Milestone derived from an existing timestamp (no dedicated event table).
+// `type` is a stable key the client localizes; events are sorted ascending.
+export interface UserTimelineEvent {
+  type:
+    | 'signup'
+    | 'first_import'
+    | 'first_search'
+    | 'first_intro_request'
+    | 'first_nudge'
+    | 'last_active';
+  at: string;
+}
+
 export interface UserProfile {
   account: UserAccount;
   network: UserNetwork;
@@ -235,6 +248,7 @@ export interface UserProfile {
   outcomes: UserOutcomes;
   memory: UserMemory;
   devices: UserDevices;
+  timeline: UserTimelineEvent[];
 }
 
 export interface AnalyticsOverview {
