@@ -862,16 +862,16 @@ async function executeToolCall(
     case 'get_contact_insight':
       return getContactInsight(userId, input['phone'] as string);
     case 'search_contact_by_name':
-      void logSearchActivity(userId, input['name_query'] as string).catch(() => {});
+      void logSearchActivity(userId, 'name', input['name_query'] as string).catch(() => {});
       return searchContactByName(userId, input['name_query'] as string);
     case 'search_by_tag':
-      void logSearchActivity(userId, input['tag_query'] as string).catch(() => {});
+      void logSearchActivity(userId, 'tag', input['tag_query'] as string).catch(() => {});
       return searchByTag(userId, input['tag_query'] as string);
     case 'search_by_insight':
-      void logSearchActivity(userId, input['search_query'] as string).catch(() => {});
+      void logSearchActivity(userId, 'insight', input['search_query'] as string).catch(() => {});
       return searchByInsight(userId, input['search_query'] as string);
     case 'search_second_degree':
-      void logSearchActivity(userId, input['tag_query'] as string).catch(() => {});
+      void logSearchActivity(userId, 'second_degree', input['tag_query'] as string).catch(() => {});
       return searchSecondDegree(userId, input['tag_query'] as string);
     case 'search_contacts_by_country':
       return searchContactsByCountry(userId, input['country'] as string);

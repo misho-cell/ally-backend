@@ -77,3 +77,50 @@ export interface ChatToolDefinition<TRequest, TResponse> {
   parameters: Record<string, ChatToolParameter>;
   execute: (params: TRequest) => Promise<TResponse>;
 }
+
+export interface DailyCount {
+  day: string;
+  count: number;
+}
+
+export interface GrowthMetrics {
+  totalUsers: number;
+  newUsersByDay: DailyCount[];
+}
+
+export interface RetentionMetrics {
+  dau: number;
+  wau: number;
+  mau: number;
+  activeUsersByDay: DailyCount[];
+}
+
+export interface FunnelStep {
+  step: string;
+  users: number;
+}
+
+export interface ActivationFunnel {
+  steps: FunnelStep[];
+}
+
+export interface LabeledCount {
+  label: string;
+  count: number;
+}
+
+export interface CoreUsageMetrics {
+  searchesByType: LabeledCount[];
+  totalSearches: number;
+  introsByStatus: LabeledCount[];
+  avgNetworkSize: number;
+  factsCount: number;
+  insightsCount: number;
+}
+
+export interface AnalyticsOverview {
+  growth: GrowthMetrics;
+  retention: RetentionMetrics;
+  funnel: ActivationFunnel;
+  usage: CoreUsageMetrics;
+}

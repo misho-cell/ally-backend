@@ -13,7 +13,8 @@ import {
   updateInsightField,
   toggleInsightField,
 } from '../../services/insights.service';
-import { ApiResponse, InsightField } from '../../types';
+import { ApiResponse, AnalyticsOverview, InsightField } from '../../types';
+import { getOverview } from '../../services/analytics.service';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
 import {
@@ -417,6 +418,20 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get(
+  '/analytics/overview',
+  async (_req: Request, res: Response<ApiResponse<AnalyticsOverview>>) => {
+    try {
+      const overview = await getOverview();
+      res.status(200).json({ success: true, data: overview });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Analytics overview error:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

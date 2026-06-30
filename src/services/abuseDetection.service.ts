@@ -11,7 +11,11 @@ const SAME_TARGET_THRESHOLD = 20;
  * targeting of the same query). Best-effort: callers invoke fire-and-forget.
  * For now flagged activity is recorded and logged, not hard-blocked.
  */
-export async function logSearchActivity(userId: string, rawQuery: string): Promise<void> {
+export async function logSearchActivity(
+  userId: string,
+  tool: string,
+  rawQuery: string,
+): Promise<void> {
   const q = rawQuery.trim().slice(0, MAX_QUERY_LENGTH);
   if (!q) return;
 
@@ -30,11 +34,10 @@ export async function logSearchActivity(userId: string, rawQuery: string): Promi
   const sameTarget = Number(row?.same_target ?? 0);
   const flagged = hourly >= HOURLY_VOLUME_THRESHOLD || sameTarget >= SAME_TARGET_THRESHOLD;
 
-  await query(`INSERT INTO search_activity (user_id, query, flagged) VALUES ($1, $2, $3)`, [
-    userId,
-    q,
-    flagged,
-  ]);
+  await query(
+    `INSERT INTO search_activity (user_id, query, tool, flagged) VALUES ($1, $2, $3, $4)`,
+    [userId, q, tool, flagged],
+  );
 
   if (flagged) {
     // eslint-disable-next-line no-console
