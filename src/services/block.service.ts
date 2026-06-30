@@ -1,17 +1,20 @@
 import { query } from '../db/postgres/client';
+import { normalizePhone } from './phone';
 
 export async function blockContact(userId: string, phone: string): Promise<void> {
   await query(
     `INSERT INTO "UserBlock" ("blockerId", "blockedPhone", "createdAt", "updatedAt")
      VALUES ($1, $2, NOW(), NOW())
      ON CONFLICT ("blockerId", "blockedPhone") DO NOTHING`,
-    [userId, phone],
+    [userId, normalizePhone(phone)],
   );
 }
 
 export async function unblockContact(userId: string, phone: string): Promise<void> {
-  await query(`DELETE FROM "UserBlock" WHERE "blockerId" = $1 AND "blockedPhone" = $2`, [
+  // Delete both the canonical row and any legacy raw-format row.
+  await query(`DELETE FROM "UserBlock" WHERE "blockerId" = $1 AND "blockedPhone" IN ($2, $3)`, [
     userId,
+    normalizePhone(phone),
     phone,
   ]);
 }
@@ -88,4 +91,14 @@ export async function getExcludedPhones(userId: string): Promise<string[]> {
     [userId],
   );
   return result.rows.map((r) => r.phone);
+}
+
+/**
+ * Excluded phones as a normalized Set, for format-independent comparison.
+ * Callers normalize each candidate phone with normalizePhone() before checking
+ * membership — so "+995…", "995…" and a bare local number all match.
+ */
+export async function getExcludedPhoneSet(userId: string): Promise<Set<string>> {
+  const phones = await getExcludedPhones(userId);
+  return new Set(phones.map((p) => normalizePhone(p)));
 }

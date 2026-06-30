@@ -1,6 +1,8 @@
 import { query } from '../../db/postgres/client';
+import { getExcludedPhoneSet } from '../block.service';
+import { normalizePhone } from '../phone';
 
-export async function searchByInsight(searchQuery: string): Promise<object> {
+export async function searchByInsight(userId: string, searchQuery: string): Promise<object> {
   try {
     const searchTerm = '%' + searchQuery.toLowerCase() + '%';
 
@@ -21,14 +23,17 @@ export async function searchByInsight(searchQuery: string): Promise<object> {
       [searchTerm],
     );
 
-    if (result.rows.length === 0) {
+    const excluded = await getExcludedPhoneSet(userId);
+    const rows = result.rows.filter((r) => !excluded.has(normalizePhone(r.neo4j_contact_id)));
+
+    if (rows.length === 0) {
       return { found: false, query: searchQuery };
     }
 
     return {
       found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => ({
+      count: rows.length,
+      results: rows.map((row) => ({
         name: row.neo4j_contact_name ?? null,
         info: row.data,
       })),

@@ -1,12 +1,15 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
 import { getExcludedPhones } from '../block.service';
+import { normalizePhone } from '../phone';
 
 const FUZZY_THRESHOLD = 0.35;
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId);
+    const excludedSet = new Set(blockedPhones.map(normalizePhone));
+    const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
     const terms = buildSearchTerms(tagQuery).map((t) => '%' + t + '%');
     const tagCondition = terms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 2}`).join(' OR ');
     const blockParamIdx = terms.length + 2;
@@ -38,7 +41,9 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
       [userId, ...terms, blockedPhones],
     );
 
-    if (result.rows.length === 0) {
+    const rows = result.rows.filter((r) => !isExcluded(r.phone));
+
+    if (rows.length === 0) {
       // Fallback: fuzzy similarity search via pg_trgm (catches typos and transliteration variants)
       try {
         const fuzzyTerms = buildSearchTerms(tagQuery).map((t) => t.toLowerCase());
@@ -74,12 +79,13 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
           [userId, ...fuzzyTerms, blockedPhones],
         );
 
-        if (fuzzyResult.rows.length > 0) {
+        const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
+        if (fuzzyRows.length > 0) {
           return {
             found: true,
-            count: fuzzyResult.rows.length,
+            count: fuzzyRows.length,
             fuzzy: true,
-            results: fuzzyResult.rows.map((row) => ({
+            results: fuzzyRows.map((row) => ({
               phone: row.phone,
               name: row.name ?? null,
               tags: (row.all_tags || []).filter(Boolean),
@@ -97,8 +103,8 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
 
     return {
       found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => ({
+      count: rows.length,
+      results: rows.map((row) => ({
         phone: row.phone,
         name: row.name ?? null,
         tags: (row.all_tags || []).filter(Boolean),

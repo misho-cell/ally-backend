@@ -5,6 +5,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
 import { getExcludedPhones } from '../block.service';
+import { normalizePhone } from '../phone';
 
 const MAX_FRIEND_PHONES = 3000;
 
@@ -60,13 +61,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     const blockedPhones = await getExcludedPhones(userId);
-    const blockedSet = new Set(blockedPhones);
+    const blockedSet = new Set(blockedPhones.map(normalizePhone));
+    const isExcluded = (phone: string): boolean => blockedSet.has(normalizePhone(phone));
 
     // Composite keys (e.g. "+99551111-+99599999") must be expanded to individual phones
     // before matching against UserPhone which stores one row per phone.
     // Blocked phones are removed here to exclude them as intermediaries (via).
     const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))].filter(
-      (p) => !blockedSet.has(p),
+      (p) => !isExcluded(p),
     );
 
     if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
@@ -135,12 +137,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
-    if (result.rows.length === 0) return { found: false, reason: 'no_matches' };
+    const rows = result.rows.filter((r) => !isExcluded(r.phone));
+    if (rows.length === 0) return { found: false, reason: 'no_matches' };
 
     return {
       found: true,
-      count: result.rows.length,
-      results: result.rows.map((row) => ({
+      count: rows.length,
+      results: rows.map((row) => ({
         phone: row.phone,
         name: row.name ?? null,
         employer: row.employer ?? null,

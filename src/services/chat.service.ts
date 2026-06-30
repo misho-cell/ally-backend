@@ -35,7 +35,13 @@ import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary } from './sse.service';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
-import { blockContact, unblockContact, getBlockedByUser } from './block.service';
+import {
+  blockContact,
+  unblockContact,
+  getBlockedByUser,
+  getExcludedPhoneSet,
+} from './block.service';
+import { normalizePhone } from './phone';
 import { isReplySafe } from './moderation.service';
 import { sanitizeToolResult } from './sanitization.service';
 import { logSearchActivity } from './abuseDetection.service';
@@ -824,11 +830,32 @@ async function buildAgentSystemPrompt(userId: string, threadType?: string): Prom
   );
 }
 
+// Phone-keyed tools that must not return data for a blocked/deceased contact.
+const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
+  lookup_contact_by_phone: 'phone_number',
+  get_contact_full_profile: 'phone',
+  get_contact_facts: 'phone',
+  get_contact_insight: 'phone',
+};
+
 async function executeToolCall(
   userId: string,
   name: string,
   input: Record<string, unknown>,
 ): Promise<unknown> {
+  // Block/deceased guard: never surface a single excluded contact via a
+  // phone-keyed lookup (format-independent match).
+  const phoneField = PHONE_KEYED_TOOL_FIELD[name];
+  if (phoneField) {
+    const phone = input[phoneField];
+    if (typeof phone === 'string' && phone.length > 0) {
+      const excluded = await getExcludedPhoneSet(userId);
+      if (excluded.has(normalizePhone(phone))) {
+        return { found: false, reason: 'unavailable' };
+      }
+    }
+  }
+
   switch (name) {
     case 'lookup_contact_by_phone':
       return lookupContactByPhone(input['phone_number'] as string);
@@ -842,7 +869,7 @@ async function executeToolCall(
       return searchByTag(userId, input['tag_query'] as string);
     case 'search_by_insight':
       void logSearchActivity(userId, input['search_query'] as string).catch(() => {});
-      return searchByInsight(input['search_query'] as string);
+      return searchByInsight(userId, input['search_query'] as string);
     case 'search_second_degree':
       void logSearchActivity(userId, input['tag_query'] as string).catch(() => {});
       return searchSecondDegree(userId, input['tag_query'] as string);
