@@ -975,6 +975,22 @@ async function executeToolCall(
   }
 }
 
+// Tools whose results carry external or cross-user content (other people's
+// names/tags/facts, web pages) — the only place a prompt injection can ride in.
+// The sanitizer runs only on these; write-echoes and the user's own data are
+// trusted, so sanitizing them just mangles content and logs false positives.
+const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
+  'lookup_contact_by_phone',
+  'get_contact_full_profile',
+  'get_contact_facts',
+  'search_contact_by_name',
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contacts_by_country',
+  'web_search',
+]);
+
 async function processToolBlocks(
   userId: string,
   threadId: number,
@@ -992,9 +1008,10 @@ async function processToolBlocks(
       block.input as Record<string, unknown>,
     );
     const rawContent = JSON.stringify(result);
-    const safeContent = JSON.stringify(sanitizeToolResult(result));
-    if (rawContent !== safeContent) {
-      // Debug: the sanitizer neutralized something in untrusted tool output.
+    const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
+    const safeContent = shouldSanitize ? JSON.stringify(sanitizeToolResult(result)) : rawContent;
+    if (shouldSanitize && rawContent !== safeContent) {
+      // The sanitizer neutralized something in untrusted external/cross-user output.
       // eslint-disable-next-line no-console
       console.warn(`[sanitizer] neutralized injected content in ${block.name} result`);
     }
