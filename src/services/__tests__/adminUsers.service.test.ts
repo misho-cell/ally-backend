@@ -20,14 +20,13 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 // is not deterministic).
 function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   // Timeline query also embeds `FROM "User" WHERE id = $1` in a subselect, so
-  // match its unique `AS first_import` fragment before the account check.
-  if (sql.includes('AS first_import'))
+  // match its unique `AS signup` fragment before the account check.
+  if (sql.includes('AS signup'))
     // Postgres returns timestamp columns as Date objects, not strings — mirror
     // that so the sort can't regress to calling string methods on a Date.
     return rows([
       {
         signup: new Date('2026-01-01T00:00:00Z'),
-        first_import: new Date('2026-01-03T00:00:00Z'),
         first_search: new Date('2026-02-01T00:00:00Z'),
         first_intro: null,
         first_nudge: null,
@@ -202,12 +201,7 @@ describe('getAdminUserDetail', () => {
     expect(profile?.devices.devices[0].deviceId).toBe('d1');
     expect(profile?.devices.pushSubscriptionsCount).toBe(1);
     // Timeline drops null milestones, normalises Date -> ISO, sorts ascending.
-    expect(profile?.timeline.map((e) => e.type)).toEqual([
-      'signup',
-      'first_import',
-      'first_search',
-      'last_active',
-    ]);
+    expect(profile?.timeline.map((e) => e.type)).toEqual(['signup', 'first_search', 'last_active']);
     expect(profile?.timeline[0].at).toBe('2026-01-01T00:00:00.000Z');
   });
 

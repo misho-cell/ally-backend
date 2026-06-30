@@ -420,7 +420,6 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
   const id = String(userId);
   const result = await query<{
     signup: string | null;
-    first_import: string | null;
     first_search: string | null;
     first_intro: string | null;
     first_nudge: string | null;
@@ -428,7 +427,6 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
   }>(
     `SELECT
        (SELECT "createdAt" FROM "User" WHERE id = $1)                                   AS signup,
-       (SELECT MIN("createdAt") FROM "UserAlias" WHERE "contactId" = $1)                AS first_import,
        (SELECT MIN(created_at) FROM search_activity WHERE user_id = $2)                 AS first_search,
        (SELECT MIN(created_at) FROM introduction_requests WHERE requester_user_id = $1) AS first_intro,
        (SELECT MIN(created_at) FROM ai_notification_log WHERE user_id = $2)             AS first_nudge,
@@ -441,7 +439,6 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
   const row = result.rows[0];
   const candidates: { type: UserTimelineEvent['type']; at: string | null }[] = [
     { type: 'signup', at: toIso(row?.signup) },
-    { type: 'first_import', at: toIso(row?.first_import) },
     { type: 'first_search', at: toIso(row?.first_search) },
     { type: 'first_intro_request', at: toIso(row?.first_intro) },
     { type: 'first_nudge', at: toIso(row?.first_nudge) },
