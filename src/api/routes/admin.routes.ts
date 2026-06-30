@@ -448,7 +448,8 @@ adminRouter.get('/users', async (req: Request, res: Response<ApiResponse<UserLis
   try {
     const q = typeof req.query['q'] === 'string' ? req.query['q'] : '';
     const limit = Number(req.query['limit'] ?? 0);
-    const users = await listUsers(q, limit);
+    const subscribedOnly = req.query['subscribed'] === 'true';
+    const users = await listUsers(q, limit, subscribedOnly);
     res.status(200).json({ success: true, data: users });
   } catch (error) {
     // eslint-disable-next-line no-console

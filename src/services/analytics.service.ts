@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import {
   ActivationFunnel,
-  AnalyticsBlockError,
+  BlockDiagnostic,
   AnalyticsOverview,
   CoreUsageMetrics,
   DailyCount,
@@ -188,7 +188,7 @@ async function runBlock<T>(
   block: string,
   fn: () => Promise<T>,
   fallback: T,
-  diagnostics: AnalyticsBlockError[],
+  diagnostics: BlockDiagnostic[],
 ): Promise<T> {
   try {
     return await fn();
@@ -202,7 +202,7 @@ async function runBlock<T>(
 }
 
 export async function getOverview(): Promise<AnalyticsOverview> {
-  const diagnostics: AnalyticsBlockError[] = [];
+  const diagnostics: BlockDiagnostic[] = [];
 
   const [growth, retention, funnel, usage] = await Promise.all([
     runBlock('growth', getGrowth, EMPTY_GROWTH, diagnostics),

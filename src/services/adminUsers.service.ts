@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeyForUser } from './neo4j.keys';
 import {
+  BlockDiagnostic,
   DailyCount,
   LabeledCount,
   RecentSearch,
@@ -24,9 +25,22 @@ const RECENT_SEARCH_LIMIT = 10;
 const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 100;
 const NEO4J_TIMEOUT_MS = 10_000;
+// Per-user reads can scan large tables (UserAlias, conversations), so give them
+// more headroom than the 5s default used for light user-facing queries.
+const PROFILE_QUERY_TIMEOUT_MS = 15_000;
+// subscription_status values that count as an active paying/trialing subscriber.
+const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 
 function toNumber(value: unknown): number {
   return Number(value ?? 0);
+}
+
+// Postgres returns timestamp columns as JS Date objects; normalise to an ISO
+// string so timeline events can be compared/sorted as strings.
+function toIso(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
 }
 
 function toLabeledCounts(rows: { label: string | null; count: string }[]): LabeledCount[] {
@@ -47,7 +61,11 @@ function toNeoNumber(value: unknown): number | null {
   return Number(value);
 }
 
-export async function listUsers(rawQuery: string, rawLimit: number): Promise<UserListItem[]> {
+export async function listUsers(
+  rawQuery: string,
+  rawLimit: number,
+  subscribedOnly: boolean,
+): Promise<UserListItem[]> {
   const q = rawQuery.trim().toLowerCase();
   const like = `%${q}%`;
   const limit = Math.min(Math.max(Math.floor(rawLimit) || DEFAULT_LIST_LIMIT, 1), MAX_LIST_LIMIT);
@@ -72,9 +90,10 @@ export async function listUsers(rawQuery: string, rawLimit: number): Promise<Use
        AND ($1 = ''
             OR LOWER(u.name) LIKE $2
             OR EXISTS (SELECT 1 FROM "UserPhone" up WHERE up."userId" = u.id AND up.phone LIKE $2))
+       AND (NOT $4 OR u.subscription_status = ANY($5))
      ORDER BY u."createdAt" DESC NULLS LAST
      LIMIT $3`,
-    [q, like, limit],
+    [q, like, limit, subscribedOnly, SUBSCRIBED_STATUSES],
   );
 
   return result.rows.map((r) => ({
@@ -112,10 +131,13 @@ async function getAccount(userId: number): Promise<UserAccount | null> {
               trial_ends_at, current_period_ends_at, paddle_customer_id
        FROM "User" WHERE id = $1`,
       [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
     ),
-    query<{ phone: string }>('SELECT phone FROM "UserPhone" WHERE "userId" = $1 ORDER BY phone', [
-      userId,
-    ]),
+    query<{ phone: string }>(
+      'SELECT phone FROM "UserPhone" WHERE "userId" = $1 ORDER BY phone',
+      [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
   ]);
 
   const u = userResult.rows[0];
@@ -172,25 +194,27 @@ async function getNeo4jReach(
   }
 }
 
+async function countWhere(sql: string, userId: number): Promise<number> {
+  const result = await query<{ count: string }>(sql, [userId], PROFILE_QUERY_TIMEOUT_MS);
+  return toNumber(result.rows[0]?.count);
+}
+
 async function getNetwork(userId: number): Promise<UserNetwork> {
-  const [counts, reach] = await Promise.all([
-    query<{ contacts: string; tags: string; blocked: string; deceased: string }>(
-      `SELECT
-         (SELECT COUNT(*) FROM "UserAlias"       WHERE "contactId" = $1) AS contacts,
-         (SELECT COUNT(*) FROM "UserTags"        WHERE "contactId" = $1) AS tags,
-         (SELECT COUNT(*) FROM "UserBlock"       WHERE "blockerId" = $1) AS blocked,
-         (SELECT COUNT(*) FROM "ContactDeceased" WHERE "userId"    = $1) AS deceased`,
-      [userId],
-    ),
+  // Separate statements (each its own timeout) so the large UserAlias/UserTags
+  // scans don't share one budget and time out the way a bundled query would.
+  const [contacts, tags, blocked, deceased, reach] = await Promise.all([
+    countWhere('SELECT COUNT(*) AS count FROM "UserAlias" WHERE "contactId" = $1', userId),
+    countWhere('SELECT COUNT(*) AS count FROM "UserTags" WHERE "contactId" = $1', userId),
+    countWhere('SELECT COUNT(*) AS count FROM "UserBlock" WHERE "blockerId" = $1', userId),
+    countWhere('SELECT COUNT(*) AS count FROM "ContactDeceased" WHERE "userId" = $1', userId),
     getNeo4jReach(userId),
   ]);
 
-  const row = counts.rows[0];
   return {
-    contactsCount: toNumber(row?.contacts),
-    tagsCount: toNumber(row?.tags),
-    blockedCount: toNumber(row?.blocked),
-    deceasedCount: toNumber(row?.deceased),
+    contactsCount: contacts,
+    tagsCount: tags,
+    blockedCount: blocked,
+    deceasedCount: deceased,
     firstDegree: reach.firstDegree,
     secondDegree: reach.secondDegree,
   };
@@ -207,6 +231,7 @@ async function getActivity(userId: number): Promise<UserActivity> {
        FROM conversations
        WHERE user_id = $1 AND (kind IS NULL OR kind <> 'step')`,
       [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
     ),
     query<{ day: string; count: string }>(
       `SELECT TO_CHAR(DATE(created_at), 'YYYY-MM-DD') AS day, COUNT(*) AS count
@@ -216,6 +241,7 @@ async function getActivity(userId: number): Promise<UserActivity> {
        GROUP BY DATE(created_at)
        ORDER BY DATE(created_at)`,
       [userId, TREND_WINDOW_DAYS],
+      PROFILE_QUERY_TIMEOUT_MS,
     ),
   ]);
 
@@ -409,16 +435,17 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
        (SELECT MAX(created_at) FROM conversations
           WHERE user_id = $1 AND (kind IS NULL OR kind <> 'step'))                      AS last_active`,
     [userId, id],
+    PROFILE_QUERY_TIMEOUT_MS,
   );
 
   const row = result.rows[0];
   const candidates: { type: UserTimelineEvent['type']; at: string | null }[] = [
-    { type: 'signup', at: row?.signup ?? null },
-    { type: 'first_import', at: row?.first_import ?? null },
-    { type: 'first_search', at: row?.first_search ?? null },
-    { type: 'first_intro_request', at: row?.first_intro ?? null },
-    { type: 'first_nudge', at: row?.first_nudge ?? null },
-    { type: 'last_active', at: row?.last_active ?? null },
+    { type: 'signup', at: toIso(row?.signup) },
+    { type: 'first_import', at: toIso(row?.first_import) },
+    { type: 'first_search', at: toIso(row?.first_search) },
+    { type: 'first_intro_request', at: toIso(row?.first_intro) },
+    { type: 'first_nudge', at: toIso(row?.first_nudge) },
+    { type: 'last_active', at: toIso(row?.last_active) },
   ];
 
   return candidates
@@ -427,19 +454,93 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
+const EMPTY_NETWORK: UserNetwork = {
+  contactsCount: 0,
+  tagsCount: 0,
+  blockedCount: 0,
+  deceasedCount: 0,
+  firstDegree: null,
+  secondDegree: null,
+};
+const EMPTY_ACTIVITY: UserActivity = {
+  threadsCount: 0,
+  messageCount: 0,
+  firstActivityAt: null,
+  lastActivityAt: null,
+  activityByDay: [],
+};
+const EMPTY_SEARCHES: UserSearches = {
+  totalSearches: 0,
+  byType: [],
+  flaggedCount: 0,
+  successfulSearches: 0,
+  recent: [],
+};
+const EMPTY_OUTCOMES: UserOutcomes = {
+  introRequestsMade: 0,
+  introRequestsByStatus: [],
+  introRequestsMediated: 0,
+  insightsSaved: 0,
+  factsSubmitted: 0,
+};
+const EMPTY_MEMORY: UserMemory = {
+  profile: [],
+  privateContext: [],
+  nudgesSent: 0,
+  notificationFrequencyDays: null,
+  consecutiveNoOpens: null,
+  lastNudgeAt: null,
+  pausedUntil: null,
+  distressUntil: null,
+};
+const EMPTY_DEVICES: UserDevices = { devices: [], pushSubscriptionsCount: 0 };
+
+// Isolate a block so a single failing query degrades it to its empty shape and
+// records the reason, instead of failing the whole profile request.
+async function runBlock<T>(
+  block: string,
+  fn: () => Promise<T>,
+  fallback: T,
+  diagnostics: BlockDiagnostic[],
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    // eslint-disable-next-line no-console
+    console.error(`[user-profile] block "${block}" failed:`, message);
+    diagnostics.push({ block, message });
+    return fallback;
+  }
+}
+
 export async function getAdminUserDetail(userId: number): Promise<UserProfile | null> {
+  // The account is the gate: if the user does not exist we 404, and an account
+  // query failure is a genuine 500 (it is cheap and essential).
   const account = await getAccount(userId);
   if (!account) return null;
 
+  const diagnostics: BlockDiagnostic[] = [];
   const [network, activity, searches, outcomes, memory, devices, timeline] = await Promise.all([
-    getNetwork(userId),
-    getActivity(userId),
-    getSearches(userId),
-    getOutcomes(userId),
-    getMemory(userId),
-    getDevices(userId),
-    getTimeline(userId),
+    runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
+    runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
+    runBlock('searches', () => getSearches(userId), EMPTY_SEARCHES, diagnostics),
+    runBlock('outcomes', () => getOutcomes(userId), EMPTY_OUTCOMES, diagnostics),
+    runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
+    runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
+    runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
   ]);
 
-  return { account, network, activity, searches, outcomes, memory, devices, timeline };
+  const profile: UserProfile = {
+    account,
+    network,
+    activity,
+    searches,
+    outcomes,
+    memory,
+    devices,
+    timeline,
+  };
+  if (diagnostics.length > 0) profile.diagnostics = diagnostics;
+  return profile;
 }

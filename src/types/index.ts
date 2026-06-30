@@ -120,7 +120,7 @@ export interface CoreUsageMetrics {
   insightsCount: number;
 }
 
-export interface AnalyticsBlockError {
+export interface BlockDiagnostic {
   block: string;
   message: string;
 }
@@ -249,6 +249,8 @@ export interface UserProfile {
   memory: UserMemory;
   devices: UserDevices;
   timeline: UserTimelineEvent[];
+  // Populated only when a non-account block failed; the rest still render.
+  diagnostics?: BlockDiagnostic[];
 }
 
 export interface AnalyticsOverview {
@@ -258,5 +260,5 @@ export interface AnalyticsOverview {
   usage: CoreUsageMetrics;
   // Populated only when one or more blocks failed; lets the dashboard render
   // the blocks that succeeded instead of failing the whole request.
-  diagnostics?: AnalyticsBlockError[];
+  diagnostics?: BlockDiagnostic[];
 }

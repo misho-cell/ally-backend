@@ -22,14 +22,16 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   // Timeline query also embeds `FROM "User" WHERE id = $1` in a subselect, so
   // match its unique `AS first_import` fragment before the account check.
   if (sql.includes('AS first_import'))
+    // Postgres returns timestamp columns as Date objects, not strings — mirror
+    // that so the sort can't regress to calling string methods on a Date.
     return rows([
       {
-        signup: '2026-01-01',
-        first_import: '2026-01-03',
-        first_search: '2026-02-01',
+        signup: new Date('2026-01-01T00:00:00Z'),
+        first_import: new Date('2026-01-03T00:00:00Z'),
+        first_search: new Date('2026-02-01T00:00:00Z'),
         first_intro: null,
         first_nudge: null,
-        last_active: '2026-06-30',
+        last_active: new Date('2026-06-30T00:00:00Z'),
       },
     ]);
   if (sql.includes('FROM "User" WHERE id = $1'))
@@ -52,8 +54,10 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
     ]);
   if (sql.includes('FROM "UserPhone" WHERE "userId" = $1 ORDER BY phone'))
     return rows([{ phone: '+995555' }]);
-  if (sql.includes('AS contacts'))
-    return rows([{ contacts: '311', tags: '40', blocked: '2', deceased: '1' }]);
+  if (sql.includes('FROM "UserAlias" WHERE "contactId"')) return rows([{ count: '311' }]);
+  if (sql.includes('FROM "UserTags" WHERE "contactId"')) return rows([{ count: '40' }]);
+  if (sql.includes('FROM "UserBlock" WHERE "blockerId"')) return rows([{ count: '2' }]);
+  if (sql.includes('FROM "ContactDeceased" WHERE "userId"')) return rows([{ count: '1' }]);
   if (sql.includes('AS threads'))
     return rows([{ threads: '3', messages: '88', first_at: '2026-01-02', last_at: '2026-06-30' }]);
   if (sql.includes('GROUP BY DATE(created_at)')) return rows([{ day: '2026-06-30', count: '4' }]);
@@ -130,7 +134,7 @@ describe('listUsers', () => {
       ]) as never,
     );
 
-    const result = await listUsers('lika', 9999);
+    const result = await listUsers('lika', 9999, true);
 
     expect(result).toEqual([
       {
@@ -144,7 +148,22 @@ describe('listUsers', () => {
         contactsCount: 311,
       },
     ]);
-    expect(mockQuery.mock.calls[0][1]).toEqual(['lika', '%lika%', 100]);
+    // limit capped at 100; subscribed flag + status list forwarded to SQL.
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      'lika',
+      '%lika%',
+      100,
+      true,
+      ['active', 'trialing'],
+    ]);
+  });
+
+  it('passes subscribedOnly=false when the toggle is off', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
+
+    await listUsers('', 50, false);
+
+    expect(mockQuery.mock.calls[0][1]).toEqual(['', '%%', 50, false, ['active', 'trialing']]);
   });
 });
 
@@ -182,13 +201,14 @@ describe('getAdminUserDetail', () => {
     ]);
     expect(profile?.devices.devices[0].deviceId).toBe('d1');
     expect(profile?.devices.pushSubscriptionsCount).toBe(1);
-    // Timeline drops null milestones and sorts ascending.
+    // Timeline drops null milestones, normalises Date -> ISO, sorts ascending.
     expect(profile?.timeline.map((e) => e.type)).toEqual([
       'signup',
       'first_import',
       'first_search',
       'last_active',
     ]);
+    expect(profile?.timeline[0].at).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('degrades neo4j reach to null when the graph query fails', async () => {
@@ -204,5 +224,23 @@ describe('getAdminUserDetail', () => {
     expect(profile?.network.firstDegree).toBeNull();
     expect(profile?.network.secondDegree).toBeNull();
     expect(profile?.network.contactsCount).toBe(311);
+  });
+
+  it('degrades a failing block to empty and records a diagnostic', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FILTER (WHERE flagged)')) {
+        return Promise.reject(new Error('canceling statement due to statement timeout'));
+      }
+      return Promise.resolve(routeDetail(sql) as never);
+    });
+
+    const profile = await getAdminUserDetail(7);
+
+    // The whole profile still resolves; only the searches block is empty.
+    expect(profile?.account.name).toBe('ლიკა');
+    expect(profile?.searches.totalSearches).toBe(0);
+    expect(profile?.diagnostics).toEqual([
+      { block: 'searches', message: 'canceling statement due to statement timeout' },
+    ]);
   });
 });
