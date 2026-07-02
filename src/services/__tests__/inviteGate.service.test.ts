@@ -19,7 +19,7 @@ interface GateWorld {
 
 // Route gate queries by a distinctive SQL fragment.
 function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: number } {
-  if (sql.includes('FeatureFlags')) return rows([{ isEnabled: world.flagEnabled }]);
+  if (sql.includes('app_flags')) return rows([{ enabled: world.flagEnabled }]);
   if (sql.includes('SELECT "userId" FROM "UserPhone"'))
     return world.registered ? rows([{ userId: 42 }]) : rows([]);
   if (sql.includes('FROM "UserAlias" ua'))
@@ -53,7 +53,7 @@ describe('isInviteOnlyEnabled', () => {
   });
 
   it('reflects the flag value', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ isEnabled: true }]) as never);
+    mockQuery.mockResolvedValueOnce(rows([{ enabled: true }]) as never);
 
     expect(await isInviteOnlyEnabled()).toBe(true);
   });

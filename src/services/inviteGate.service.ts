@@ -17,11 +17,11 @@ function phoneVariants(phone: string): string[] {
 }
 
 export async function isInviteOnlyEnabled(): Promise<boolean> {
-  const result = await query<{ isEnabled: boolean }>(
-    'SELECT "isEnabled" FROM "FeatureFlags" WHERE "featureName" = $1 LIMIT 1',
+  const result = await query<{ enabled: boolean }>(
+    'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
     [INVITE_ONLY_FLAG],
   );
-  return result.rows[0]?.isEnabled === true;
+  return result.rows[0]?.enabled === true;
 }
 
 async function isPhoneRegistered(variants: string[]): Promise<boolean> {
