@@ -99,6 +99,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
       },
     ]);
   if (sql.includes('FROM push_subscriptions')) return rows([{ count: '1' }]);
+  if (sql.includes('AS last30d')) return rows([{ last30d: '3.10', total: '9.99' }]);
+  if (sql.includes('kind AS label')) return rows([{ label: 'chat', total: '2.80' }]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 
@@ -204,6 +206,11 @@ describe('getAdminUserDetail', () => {
     ]);
     expect(profile?.devices.devices[0].deviceId).toBe('d1');
     expect(profile?.devices.pushSubscriptionsCount).toBe(1);
+    expect(profile?.costs).toEqual({
+      last30dUsd: 3.1,
+      totalUsd: 9.99,
+      byKind: [{ label: 'chat', costUsd: 2.8 }],
+    });
     // Timeline drops null milestones, normalises Date -> ISO, sorts ascending.
     expect(profile?.timeline.map((e) => e.type)).toEqual(['signup', 'first_search', 'last_active']);
     expect(profile?.timeline[0].at).toBe('2026-01-01T00:00:00.000Z');

@@ -45,6 +45,7 @@ import { normalizePhone } from './phone';
 import { isReplySafe } from './moderation.service';
 import { sanitizeToolResult } from './sanitization.service';
 import { logSearchActivity } from './abuseDetection.service';
+import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -894,6 +895,12 @@ async function executeToolCall(
     case 'get_contact_count':
       return getContactCount(userId);
     case 'web_search':
+      void recordFixedUsage({
+        userId,
+        kind: 'web_search',
+        provider: 'tavily',
+        priceKey: 'tavily.search',
+      }).catch(() => {});
       return webSearch(input['query'] as string);
     case 'save_contact_insight':
       return saveContactInsight(
@@ -1057,12 +1064,19 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   get_thread_context: '💬 სხვა საუბრებს ვამოწმებ...',
 };
 
+interface RunContext {
+  userId: string;
+  runId: string;
+  threadId: number;
+}
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
+  ctx: RunContext,
 ): Promise<Anthropic.Message> {
-  return anthropic.messages.create(
+  const response = await anthropic.messages.create(
     {
       model: MODEL,
       max_tokens: MAX_TOKENS,
@@ -1072,6 +1086,16 @@ async function callClaude(
     },
     { timeout: CLAUDE_CALL_TIMEOUT_MS },
   );
+  // Fire-and-forget: the cost ledger must never slow or fail the chat path.
+  void recordClaudeUsage({
+    userId: ctx.userId,
+    kind: 'chat',
+    model: MODEL,
+    usage: response.usage,
+    runId: ctx.runId,
+    threadId: ctx.threadId,
+  }).catch(() => {});
+  return response;
 }
 
 interface PendingMessage {
@@ -1108,7 +1132,8 @@ async function runToolLoop(
 }> {
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
-  let response = await callClaude(messages, systemPrompt, tools);
+  const ctx: RunContext = { userId, runId, threadId };
+  let response = await callClaude(messages, systemPrompt, tools, ctx);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let iterations = 0;
@@ -1155,7 +1180,7 @@ async function runToolLoop(
     messages.push({ role: 'assistant', content: response.content });
     messages.push({ role: 'user', content: toolResults });
 
-    response = await callClaude(messages, systemPrompt, tools);
+    response = await callClaude(messages, systemPrompt, tools, ctx);
   }
 
   // Guard: if the loop stopped because it hit the iteration cap while still
@@ -1177,7 +1202,7 @@ async function runToolLoop(
     messages.push({ role: 'user', content: toolResults });
 
     // No tools on this call → the model must produce a final text answer.
-    response = await callClaude(messages, systemPrompt, []);
+    response = await callClaude(messages, systemPrompt, [], ctx);
   }
 
   const finalText = extractText(response.content);
@@ -1252,7 +1277,7 @@ export async function processChat(
   }
 
   // Moderate the user-facing reply before persisting/returning it.
-  const reply = (await isReplySafe(finalText))
+  const reply = (await isReplySafe(finalText, userId))
     ? finalText
     : 'ბოდიში, ამ პასუხს ვერ გავცემ. სცადე კითხვის სხვაგვარად ჩამოყალიბება.';
   await saveMessage(userId, threadId, 'assistant', reply);

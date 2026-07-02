@@ -1,3 +1,4 @@
+import { recordFixedUsage, resolveUserIdByPhone } from './costLedger.service';
 import twilio from 'twilio';
 
 let cachedClient: ReturnType<typeof twilio> | null = null;
@@ -30,6 +31,12 @@ export async function sendSmsOtp(phone: string): Promise<void> {
     to: phone,
     channel: 'sms',
   });
+
+  void resolveUserIdByPhone(phone)
+    .then((userId) =>
+      recordFixedUsage({ userId, kind: 'otp_sms', provider: 'twilio', priceKey: 'twilio.sms' }),
+    )
+    .catch(() => {});
 }
 
 export async function checkTwilioCode(phone: string, code: string): Promise<boolean> {

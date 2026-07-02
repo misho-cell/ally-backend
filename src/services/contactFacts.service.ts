@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { recordClaudeUsage } from './costLedger.service';
 import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
 import anthropic from '../config/anthropic';
@@ -39,6 +40,13 @@ async function runSemanticMatching(fieldType: string, values: string[]): Promise
       },
     ],
   });
+
+  void recordClaudeUsage({
+    userId: null,
+    kind: 'fact_extraction',
+    model: 'claude-haiku-4-5-20251001',
+    usage: response.usage,
+  }).catch(() => {});
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

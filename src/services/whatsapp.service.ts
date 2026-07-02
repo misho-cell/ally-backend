@@ -1,3 +1,5 @@
+import { recordFixedUsage, resolveUserIdByPhone } from './costLedger.service';
+
 const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 
@@ -47,4 +49,17 @@ export async function sendWhatsAppMessage(phone: string, code: string): Promise<
   if (!response.ok) {
     throw new Error(`WhatsApp API error: ${JSON.stringify(responseBody)}`);
   }
+
+  // OTP happens pre-auth, so attribute the spend by resolving the phone to a
+  // registered user when one exists (NULL otherwise). Fire-and-forget.
+  void resolveUserIdByPhone(phone)
+    .then((userId) =>
+      recordFixedUsage({
+        userId,
+        kind: 'otp_whatsapp',
+        provider: 'whatsapp',
+        priceKey: 'whatsapp.otp_message',
+      }),
+    )
+    .catch(() => {});
 }

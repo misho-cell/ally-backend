@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { recordClaudeUsage } from './costLedger.service';
 import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import anthropic from '../config/anthropic';
@@ -311,6 +312,13 @@ async function runAiEnrichment(data: ContactRawData): Promise<AiEnrichmentResult
     max_tokens: 200,
     messages: [{ role: 'user', content: buildEnrichmentPrompt(data) }],
   });
+
+  void recordClaudeUsage({
+    userId: null,
+    kind: 'enrichment',
+    model: AI_MODEL,
+    usage: response.usage,
+  }).catch(() => {});
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

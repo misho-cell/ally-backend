@@ -24,6 +24,10 @@ function routeQuery(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('FROM conversations') && sql.includes('AS count'))
     return rows([{ day: '2026-06-29', count: '7' }]);
   if (sql.includes('WHERE result_count > 0')) return rows([{ count: '33' }]);
+  if (sql.includes('kind AS label')) return rows([{ label: 'chat', total: '4.20' }]);
+  if (sql.includes('ue.user_id') && sql.includes('SUM(ue.cost_usd)'))
+    return rows([{ user_id: '7', name: 'ლიკა', total: '2.50' }]);
+  if (sql.includes('SUM(cost_usd) AS total FROM usage_events')) return rows([{ total: '5.75' }]);
   if (sql.includes('tool AS label'))
     return rows([
       { label: 'name', count: '30' },
@@ -82,6 +86,14 @@ describe('getOverview', () => {
 
     expect(overview.usage.totalSearches).toBe(42);
     expect(overview.usage.successfulSearches).toBe(33);
+  });
+
+  it('aggregates the cost block', async () => {
+    const overview = await getOverview();
+
+    expect(overview.costs.last30dUsd).toBe(5.75);
+    expect(overview.costs.byKind).toEqual([{ label: 'chat', costUsd: 4.2 }]);
+    expect(overview.costs.topSpenders).toEqual([{ userId: '7', name: 'ლიკა', costUsd: 2.5 }]);
     expect(overview.usage.searchesByType).toEqual([
       { label: 'name', count: 30 },
       { label: 'tag', count: 12 },

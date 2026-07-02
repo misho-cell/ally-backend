@@ -4,6 +4,7 @@ import {
   BlockDiagnostic,
   AnalyticsOverview,
   CoreUsageMetrics,
+  CostMetrics,
   DailyCount,
   GrowthMetrics,
   LabeledCount,
@@ -169,7 +170,50 @@ async function getCoreUsage(): Promise<CoreUsageMetrics> {
   };
 }
 
+const TOP_SPENDERS_LIMIT = 5;
+
+async function getCosts(): Promise<CostMetrics> {
+  const [totalResult, byKindResult, topResult] = await Promise.all([
+    query<{ total: string | null }>(
+      `SELECT SUM(cost_usd) AS total FROM usage_events
+       WHERE created_at > NOW() - ($1 || ' days')::INTERVAL`,
+      [TREND_WINDOW_DAYS],
+      ANALYTICS_QUERY_TIMEOUT_MS,
+    ),
+    query<{ label: string; total: string }>(
+      `SELECT kind AS label, SUM(cost_usd) AS total FROM usage_events
+       WHERE created_at > NOW() - ($1 || ' days')::INTERVAL
+       GROUP BY kind ORDER BY SUM(cost_usd) DESC`,
+      [TREND_WINDOW_DAYS],
+      ANALYTICS_QUERY_TIMEOUT_MS,
+    ),
+    query<{ user_id: string; name: string | null; total: string }>(
+      `SELECT ue.user_id, MAX(u.name) AS name, SUM(ue.cost_usd) AS total
+       FROM usage_events ue
+       LEFT JOIN "User" u ON u.id::TEXT = ue.user_id
+       WHERE ue.user_id IS NOT NULL
+         AND ue.created_at > NOW() - ($1 || ' days')::INTERVAL
+       GROUP BY ue.user_id
+       ORDER BY SUM(ue.cost_usd) DESC
+       LIMIT $2`,
+      [TREND_WINDOW_DAYS, TOP_SPENDERS_LIMIT],
+      ANALYTICS_QUERY_TIMEOUT_MS,
+    ),
+  ]);
+
+  return {
+    last30dUsd: toNumber(totalResult.rows[0]?.total),
+    byKind: byKindResult.rows.map((r) => ({ label: r.label, costUsd: toNumber(r.total) })),
+    topSpenders: topResult.rows.map((r) => ({
+      userId: r.user_id,
+      name: r.name,
+      costUsd: toNumber(r.total),
+    })),
+  };
+}
+
 const EMPTY_GROWTH: GrowthMetrics = { totalUsers: 0, newUsersByDay: [] };
+const EMPTY_COSTS: CostMetrics = { last30dUsd: 0, byKind: [], topSpenders: [] };
 const EMPTY_RETENTION: RetentionMetrics = { dau: 0, wau: 0, mau: 0, activeUsersByDay: [] };
 const EMPTY_FUNNEL: ActivationFunnel = { steps: [] };
 const EMPTY_USAGE: CoreUsageMetrics = {
@@ -204,14 +248,15 @@ async function runBlock<T>(
 export async function getOverview(): Promise<AnalyticsOverview> {
   const diagnostics: BlockDiagnostic[] = [];
 
-  const [growth, retention, funnel, usage] = await Promise.all([
+  const [growth, retention, funnel, usage, costs] = await Promise.all([
     runBlock('growth', getGrowth, EMPTY_GROWTH, diagnostics),
     runBlock('retention', getRetention, EMPTY_RETENTION, diagnostics),
     runBlock('funnel', getActivationFunnel, EMPTY_FUNNEL, diagnostics),
     runBlock('usage', getCoreUsage, EMPTY_USAGE, diagnostics),
+    runBlock('costs', getCosts, EMPTY_COSTS, diagnostics),
   ]);
 
-  const overview: AnalyticsOverview = { growth, retention, funnel, usage };
+  const overview: AnalyticsOverview = { growth, retention, funnel, usage, costs };
   if (diagnostics.length > 0) {
     overview.diagnostics = diagnostics;
   }

@@ -263,9 +263,33 @@ export interface UserProfile {
   outcomes: UserOutcomes;
   memory: UserMemory;
   devices: UserDevices;
+  costs: UserCosts;
   timeline: UserTimelineEvent[];
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
+}
+
+export interface CostByKind {
+  label: string;
+  costUsd: number;
+}
+
+export interface CostTopSpender {
+  userId: string;
+  name: string | null;
+  costUsd: number;
+}
+
+export interface CostMetrics {
+  last30dUsd: number;
+  byKind: CostByKind[];
+  topSpenders: CostTopSpender[];
+}
+
+export interface UserCosts {
+  last30dUsd: number;
+  totalUsd: number;
+  byKind: CostByKind[];
 }
 
 export interface AnalyticsOverview {
@@ -273,6 +297,7 @@ export interface AnalyticsOverview {
   retention: RetentionMetrics;
   funnel: ActivationFunnel;
   usage: CoreUsageMetrics;
+  costs: CostMetrics;
   // Populated only when one or more blocks failed; lets the dashboard render
   // the blocks that succeeded instead of failing the whole request.
   diagnostics?: BlockDiagnostic[];

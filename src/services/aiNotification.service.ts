@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { query } from '../db/postgres/client';
+import { recordClaudeUsage } from './costLedger.service';
 import { getUserProfile } from './userProfile.service';
 import { getPrivateContext } from './userPrivateContext.service';
 import { sendPushNotification } from './notification.service';
@@ -108,7 +109,10 @@ function formatContext(ctx: UserContext): string {
   return parts.join('\n\n');
 }
 
-async function generateNotificationContent(ctx: UserContext): Promise<NotificationContent> {
+async function generateNotificationContent(
+  userId: string,
+  ctx: UserContext,
+): Promise<NotificationContent> {
   const contextText = formatContext(ctx);
 
   const response = await anthropic.messages.create({
@@ -142,6 +146,13 @@ async function generateNotificationContent(ctx: UserContext): Promise<Notificati
       },
     ],
   });
+
+  void recordClaudeUsage({
+    userId,
+    kind: 'notification',
+    model: NOTIFICATION_MODEL,
+    usage: response.usage,
+  }).catch(() => {});
 
   const rawText = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -289,7 +300,7 @@ export async function sendAiNotification(userId: string): Promise<void> {
   }
 
   const ctx = await gatherUserContext(userId);
-  const content = await generateNotificationContent(ctx);
+  const content = await generateNotificationContent(userId, ctx);
 
   const logResult = await query<{ id: number }>(
     `INSERT INTO ai_notification_log (user_id, title, body) VALUES ($1, $2, $3) RETURNING id`,

@@ -2,6 +2,7 @@ import anthropic from '../config/anthropic';
 import { query } from '../db/postgres/client';
 import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
+import { recordClaudeUsage } from './costLedger.service';
 
 const ADMIN_SYSTEM_PROMPT = `შენ ხარ Ally-ს AI ასისტენტის კონფიგურატორი.
 შენს მოსაუბრე ყოველთვის არის authenticated ადმინი.
@@ -164,6 +165,12 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
     tools: adminTools,
     messages,
   });
+  void recordClaudeUsage({
+    userId: adminId,
+    kind: 'admin_chat',
+    model: 'claude-sonnet-4-6',
+    usage: response.usage,
+  }).catch(() => {});
 
   while (response.stop_reason === 'tool_use') {
     const assistantContent = response.content;
@@ -189,6 +196,12 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
       tools: adminTools,
       messages,
     });
+    void recordClaudeUsage({
+      userId: adminId,
+      kind: 'admin_chat',
+      model: 'claude-sonnet-4-6',
+      usage: response.usage,
+    }).catch(() => {});
   }
 
   const reply = response.content

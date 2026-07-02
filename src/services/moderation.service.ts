@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import anthropic from '../config/anthropic';
+import { recordClaudeUsage } from './costLedger.service';
 
 const MODERATION_MODEL = 'claude-haiku-4-5-20251001';
 const MODERATION_TIMEOUT_MS = 10_000;
@@ -9,7 +10,7 @@ const MODERATION_TIMEOUT_MS = 10_000;
  * Fails open: any error returns `true` so moderation never blocks a
  * legitimate answer.
  */
-export async function isReplySafe(text: string): Promise<boolean> {
+export async function isReplySafe(text: string, userId: string | null = null): Promise<boolean> {
   if (!text.trim()) return true;
 
   try {
@@ -27,6 +28,13 @@ export async function isReplySafe(text: string): Promise<boolean> {
       },
       { timeout: MODERATION_TIMEOUT_MS },
     );
+
+    void recordClaudeUsage({
+      userId,
+      kind: 'moderation',
+      model: MODERATION_MODEL,
+      usage: response.usage,
+    }).catch(() => {});
 
     const verdict = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

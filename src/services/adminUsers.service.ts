@@ -15,6 +15,7 @@ import {
   UserMemory,
   UserNetwork,
   UserOutcomes,
+  UserCosts,
   UserProfile,
   UserSearches,
   UserTimelineEvent,
@@ -468,6 +469,35 @@ async function getTimeline(userId: number): Promise<UserTimelineEvent[]> {
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
+async function getCosts(userId: number): Promise<UserCosts> {
+  const id = String(userId);
+  const [totals, byKind] = await Promise.all([
+    query<{ last30d: string | null; total: string | null }>(
+      `SELECT SUM(cost_usd) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') AS last30d,
+              SUM(cost_usd)                                                        AS total
+       FROM usage_events WHERE user_id = $1`,
+      [id],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+    query<{ label: string; total: string }>(
+      `SELECT kind AS label, SUM(cost_usd) AS total
+       FROM usage_events
+       WHERE user_id = $1 AND created_at > NOW() - INTERVAL '30 days'
+       GROUP BY kind ORDER BY SUM(cost_usd) DESC`,
+      [id],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+  ]);
+
+  return {
+    last30dUsd: toNumber(totals.rows[0]?.last30d),
+    totalUsd: toNumber(totals.rows[0]?.total),
+    byKind: byKind.rows.map((r) => ({ label: r.label, costUsd: toNumber(r.total) })),
+  };
+}
+
+const EMPTY_COSTS: UserCosts = { last30dUsd: 0, totalUsd: 0, byKind: [] };
+
 const EMPTY_NETWORK: UserNetwork = {
   contactsCount: 0,
   tagsCount: 0,
@@ -535,15 +565,17 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   if (!account) return null;
 
   const diagnostics: BlockDiagnostic[] = [];
-  const [network, activity, searches, outcomes, memory, devices, timeline] = await Promise.all([
-    runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
-    runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
-    runBlock('searches', () => getSearches(userId), EMPTY_SEARCHES, diagnostics),
-    runBlock('outcomes', () => getOutcomes(userId), EMPTY_OUTCOMES, diagnostics),
-    runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
-    runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
-    runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
-  ]);
+  const [network, activity, searches, outcomes, memory, devices, costs, timeline] =
+    await Promise.all([
+      runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
+      runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
+      runBlock('searches', () => getSearches(userId), EMPTY_SEARCHES, diagnostics),
+      runBlock('outcomes', () => getOutcomes(userId), EMPTY_OUTCOMES, diagnostics),
+      runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
+      runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
+      runBlock('costs', () => getCosts(userId), EMPTY_COSTS, diagnostics),
+      runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
+    ]);
 
   const profile: UserProfile = {
     account,
@@ -553,6 +585,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     outcomes,
     memory,
     devices,
+    costs,
     timeline,
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
