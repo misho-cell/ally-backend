@@ -7,6 +7,7 @@ import type {
 import paddle from '../config/paddle';
 import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
+import { creditTopup, findTopupPackageByPriceId } from './tokenWallet.service';
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? '';
 
@@ -120,8 +121,51 @@ async function handleSubscriptionCanceled(sub: SubscriptionNotification): Promis
   );
 }
 
+async function findUserByCustomerId(customerId: string | null | undefined): Promise<number | null> {
+  if (!customerId) return null;
+  const result = await query<{ id: number }>(
+    `SELECT id FROM "User" WHERE paddle_customer_id = $1 LIMIT 1`,
+    [customerId],
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+/**
+ * One-time transactions (no subscription) are token top-ups: map the purchased
+ * price to a package and credit the wallet. Idempotent by transaction id, so
+ * Paddle webhook retries never double-credit.
+ */
+async function handleTopupTransaction(txn: TransactionNotification): Promise<void> {
+  const priceIds = (txn.items ?? [])
+    .map((item) => item.price?.id)
+    .filter((id): id is string => typeof id === 'string');
+
+  for (const priceId of priceIds) {
+    const pkg = await findTopupPackageByPriceId(priceId);
+    if (!pkg) continue;
+
+    const userIdFromData = extractUserId(txn.customData);
+    const userId = userIdFromData ?? (await findUserByCustomerId(txn.customerId))?.toString();
+    if (!userId) {
+      console.error('[paddle] top-up transaction with no resolvable user', txn.id, priceId);
+      continue;
+    }
+
+    const credited = await creditTopup(userId, pkg.tokens, txn.id);
+    if (credited) {
+      await sendPushNotification(userId, {
+        title: 'Ally — ტოკენები დაემატა',
+        body: `+${pkg.tokens} ტოკენი დაერიცხა შენს ბალანსს 🪙`,
+      }).catch(() => {});
+    }
+  }
+}
+
 async function handleTransactionCompleted(txn: TransactionNotification): Promise<void> {
-  if (!txn.subscriptionId) return;
+  if (!txn.subscriptionId) {
+    await handleTopupTransaction(txn);
+    return;
+  }
 
   const userId = await findUserBySubscriptionId(txn.subscriptionId);
   if (!userId) return;

@@ -4,9 +4,11 @@ import { query } from '../../db/postgres/client';
 import { clearPriceCache } from '../costLedger.service';
 import {
   checkRunAllowance,
+  creditTopup,
   debitRun,
   ensurePeriodGrant,
   getWalletSummary,
+  listTopupPackages,
 } from '../tokenWallet.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -152,6 +154,38 @@ describe('debitRun', () => {
     });
     expect(await debitRun('7', 'run-1')).toBe(0);
     expect(inserts()).toHaveLength(0);
+  });
+});
+
+describe('creditTopup', () => {
+  it('credits and reports true on the first insert', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+
+    expect(await creditTopup('7', 500, 'txn_123')).toBe(true);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['7', 500, 'topup', 'txn_123']);
+  });
+
+  it('is idempotent: a webhook retry credits nothing', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    expect(await creditTopup('7', 500, 'txn_123')).toBe(false);
+  });
+
+  it('rejects non-positive amounts without touching the DB', async () => {
+    expect(await creditTopup('7', 0, 'txn_123')).toBe(false);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('listTopupPackages', () => {
+  it('maps active packages', async () => {
+    mockQuery.mockResolvedValueOnce(
+      rows([{ id: 1, paddle_price_id: 'pri_x', tokens: 500, label: '500 ტოკენი' }]) as never,
+    );
+
+    expect(await listTopupPackages()).toEqual([
+      { id: 1, paddlePriceId: 'pri_x', tokens: 500, label: '500 ტოკენი' },
+    ]);
   });
 });
 

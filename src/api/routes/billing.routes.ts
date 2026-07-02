@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { createCustomerPortalSession } from '../../services/paddle.service';
-import { getWalletSummary, WalletSummary } from '../../services/tokenWallet.service';
+import {
+  getWalletSummary,
+  listTopupPackages,
+  TopupPackage,
+  WalletSummary,
+} from '../../services/tokenWallet.service';
 import { ApiResponse } from '../../types';
 
 const billingRouter = Router();
@@ -38,6 +43,20 @@ billingRouter.get(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[GET /billing/tokens]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+billingRouter.get(
+  '/topup-packages',
+  async (_req: Request, res: Response<ApiResponse<TopupPackage[]>>): Promise<void> => {
+    try {
+      const packages = await listTopupPackages();
+      res.status(200).json({ success: true, data: packages });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /billing/topup-packages]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

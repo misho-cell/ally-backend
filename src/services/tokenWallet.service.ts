@@ -5,6 +5,7 @@ const WALLET_FLAG = 'token_wallet';
 const MONTHLY_GRANT_REASON = 'monthly_grant';
 const TRIAL_GRANT_REASON = 'trial_grant';
 const CHAT_DEBIT_REASON = 'chat_debit';
+const TOPUP_REASON = 'topup';
 const TRIAL_PERIOD_KEY = 'trial';
 const PERCENT = 100;
 
@@ -118,6 +119,71 @@ export async function debitRun(userId: string, runId: string): Promise<number> {
     [userId, -tokens, CHAT_DEBIT_REASON, runId],
   );
   return tokens;
+}
+
+export interface TopupPackage {
+  id: number;
+  paddlePriceId: string;
+  tokens: number;
+  label: string;
+}
+
+export async function listTopupPackages(): Promise<TopupPackage[]> {
+  const result = await query<{
+    id: number;
+    paddle_price_id: string;
+    tokens: number;
+    label: string;
+  }>(
+    `SELECT id, paddle_price_id, tokens, label
+     FROM topup_packages WHERE active = true ORDER BY tokens ASC`,
+  );
+  return result.rows.map((r) => ({
+    id: Number(r.id),
+    paddlePriceId: r.paddle_price_id,
+    tokens: Number(r.tokens),
+    label: r.label,
+  }));
+}
+
+export async function findTopupPackageByPriceId(priceId: string): Promise<TopupPackage | null> {
+  const result = await query<{
+    id: number;
+    paddle_price_id: string;
+    tokens: number;
+    label: string;
+  }>(
+    `SELECT id, paddle_price_id, tokens, label
+     FROM topup_packages WHERE paddle_price_id = $1 AND active = true LIMIT 1`,
+    [priceId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: Number(row.id),
+    paddlePriceId: row.paddle_price_id,
+    tokens: Number(row.tokens),
+    label: row.label,
+  };
+}
+
+/**
+ * Credit a purchased top-up. Idempotent by external id (the Paddle transaction
+ * id) — webhook retries insert nothing. Returns whether tokens were credited.
+ */
+export async function creditTopup(
+  userId: string,
+  tokens: number,
+  externalId: string,
+): Promise<boolean> {
+  if (tokens <= 0) return false;
+  const result = await query(
+    `INSERT INTO token_transactions (user_id, amount, reason, external_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO NOTHING`,
+    [userId, Math.floor(tokens), TOPUP_REASON, externalId],
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 /** Balance view for the app (GET /billing/tokens). */
