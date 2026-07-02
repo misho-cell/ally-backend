@@ -33,6 +33,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
         last_active: new Date('2026-06-30T00:00:00Z'),
       },
     ]);
+  if (sql.includes('JOIN "User" inviter')) return rows([{ id: 5, name: 'მარი' }]);
+  if (sql.includes('"inviterReferralUserId" = $1')) return rows([{ count: '2' }]);
   if (sql.includes('FROM "User" WHERE id = $1'))
     return rows([
       {
@@ -185,6 +187,8 @@ describe('getAdminUserDetail', () => {
 
     expect(profile?.account.name).toBe('ლიკა');
     expect(profile?.account.phones).toEqual(['+995555']);
+    expect(profile?.account.invitedBy).toEqual({ id: 5, name: 'მარი' });
+    expect(profile?.account.invitedCount).toBe(2);
     expect(profile?.network.contactsCount).toBe(311);
     expect(profile?.network.firstDegree).toBe(250);
     expect(profile?.network.secondDegree).toBe(4100);

@@ -109,7 +109,7 @@ export async function listUsers(
 }
 
 async function getAccount(userId: number): Promise<UserAccount | null> {
-  const [userResult, phoneResult] = await Promise.all([
+  const [userResult, phoneResult, inviterResult, invitedResult] = await Promise.all([
     query<{
       id: number;
       name: string | null;
@@ -138,10 +138,25 @@ async function getAccount(userId: number): Promise<UserAccount | null> {
       [userId],
       PROFILE_QUERY_TIMEOUT_MS,
     ),
+    query<{ id: number; name: string | null }>(
+      `SELECT inviter.id, inviter.name
+       FROM "User" me
+       JOIN "User" inviter ON inviter.id = me."inviterReferralUserId"
+       WHERE me.id = $1`,
+      [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+    query<{ count: string }>(
+      'SELECT COUNT(*) AS count FROM "User" WHERE "inviterReferralUserId" = $1 AND "deletedAt" IS NULL',
+      [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
   ]);
 
   const u = userResult.rows[0];
   if (!u) return null;
+
+  const inviter = inviterResult.rows[0];
 
   return {
     id: Number(u.id),
@@ -158,6 +173,8 @@ async function getAccount(userId: number): Promise<UserAccount | null> {
     trialEndsAt: u.trial_ends_at,
     currentPeriodEndsAt: u.current_period_ends_at,
     paddleCustomerId: u.paddle_customer_id,
+    invitedBy: inviter ? { id: Number(inviter.id), name: inviter.name } : null,
+    invitedCount: toNumber(invitedResult.rows[0]?.count),
   };
 }
 

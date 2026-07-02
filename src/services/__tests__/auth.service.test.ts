@@ -15,6 +15,10 @@ jest.mock('../contacts.service', () => ({
   createUserPhoneNode: jest.fn(),
 }));
 
+jest.mock('../inviteGate.service', () => ({
+  checkRegistrationEligibility: jest.fn(),
+}));
+
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
@@ -24,6 +28,7 @@ import jwt from 'jsonwebtoken';
 import { query } from '../../db/postgres/client';
 import { sendWhatsAppMessage } from '../whatsapp.service';
 import { createUserPhoneNode } from '../contacts.service';
+import { checkRegistrationEligibility } from '../inviteGate.service';
 import bcrypt from 'bcrypt';
 import {
   requestOTP,
@@ -41,11 +46,15 @@ const mockSendWhatsApp = sendWhatsAppMessage as jest.MockedFunction<typeof sendW
 const mockCreatePhoneNode = createUserPhoneNode as jest.MockedFunction<typeof createUserPhoneNode>;
 const mockBcryptHash = bcrypt.hash as jest.MockedFunction<typeof bcrypt.hash>;
 const mockBcryptCompare = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
+const mockGate = checkRegistrationEligibility as jest.MockedFunction<
+  typeof checkRegistrationEligibility
+>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockCreatePhoneNode.mockResolvedValue(undefined);
   mockBcryptHash.mockResolvedValue('$2b$12$hashed' as never);
+  mockGate.mockResolvedValue({ eligible: true, mode: 'open' });
 });
 
 describe('requestOTP', () => {
@@ -114,6 +123,32 @@ describe('registerUser', () => {
     await expect(registerUser('+995555123456', 'გიორგი')).rejects.toThrow(
       'ნომერი უკვე რეგისტრირებულია',
     );
+  });
+
+  it('rejects when the invite gate closes and creates no user', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    mockGate.mockResolvedValue({ eligible: false, reason: 'referral_required' });
+
+    await expect(registerUser('+995555123456', 'გიორგი')).rejects.toThrow(
+      'რეგისტრაციისთვის საჭიროა გამომწერი მეგობრის მოწვევა',
+    );
+    // Only the "already registered" lookup ran — no INSERTs.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('records the inviter when the gate passes via referral', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 7 }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    mockGate.mockResolvedValue({ eligible: true, mode: 'referral', inviterUserId: 5 });
+
+    await registerUser('+995555123456', 'გიორგი', '+995599444420');
+
+    expect(mockGate).toHaveBeenCalledWith('+995555123456', '+995599444420');
+    const userInsertCall = mockQuery.mock.calls[1];
+    expect(userInsertCall[0]).toContain('inviterReferralUserId');
+    expect(userInsertCall[1]).toEqual(['გიორგი', '$2b$12$hashed', 5]);
   });
 
   it('parses +995 phone code correctly', async () => {

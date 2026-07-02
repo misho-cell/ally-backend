@@ -8,7 +8,8 @@ import {
   adminLogin,
   completeLogin,
 } from '../../services/auth.service';
-import { ApiResponse } from '../../types';
+import { checkRegistrationEligibility } from '../../services/inviteGate.service';
+import { ApiResponse, EligibilityMode, EligibilityReason } from '../../types';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 
 const authRouter = Router();
@@ -140,6 +141,7 @@ authRouter.post(
   '/register',
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('name').isString().trim().notEmpty().withMessage('name is required'),
+  body('referralPhone').optional().isString().trim(),
   async (req: Request, res: Response<ApiResponse<{ token: string }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -152,12 +154,52 @@ authRouter.post(
     }
 
     try {
-      const { phone, name } = req.body as { phone: string; name: string };
-      const result = await registerUser(phone, name);
+      const { phone, name, referralPhone } = req.body as {
+        phone: string;
+        name: string;
+        referralPhone?: string;
+      };
+      const result = await registerUser(phone, name, referralPhone);
       res.status(201).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'რეგისტრაცია ვერ მოხერხდა';
       res.status(400).json({ success: false, error: message });
+    }
+  },
+);
+
+authRouter.post(
+  '/eligibility',
+  body('phone').isString().trim().notEmpty().withMessage('phone is required'),
+  body('referralPhone').optional().isString().trim(),
+  async (
+    req: Request,
+    res: Response<
+      ApiResponse<{ eligible: boolean; mode?: EligibilityMode; reason?: EligibilityReason }>
+    >,
+  ) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const message = errors
+        .array()
+        .map((e) => String(e.msg))
+        .join(', ');
+      res.status(400).json({ success: false, error: message });
+      return;
+    }
+
+    try {
+      const { phone, referralPhone } = req.body as { phone: string; referralPhone?: string };
+      const result = await checkRegistrationEligibility(phone, referralPhone);
+      // inviterUserId stays server-side — no user ids for unauthenticated callers.
+      res.status(200).json({
+        success: true,
+        data: { eligible: result.eligible, mode: result.mode, reason: result.reason },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Eligibility check error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
 );

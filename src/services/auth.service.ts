@@ -5,6 +5,7 @@ import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
+import { checkRegistrationEligibility } from './inviteGate.service';
 import { AuthPayload } from '../types';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
@@ -112,7 +113,11 @@ export async function verifyOTP(
   throw new Error('კოდი არასწორია ან ვადა გასულია');
 }
 
-export async function registerUser(phone: string, name: string): Promise<{ token: string }> {
+export async function registerUser(
+  phone: string,
+  name: string,
+  referralPhone?: string,
+): Promise<{ token: string }> {
   const existing = await query<{ id: number }>('SELECT id FROM "UserPhone" WHERE phone = $1', [
     phone,
   ]);
@@ -121,13 +126,24 @@ export async function registerUser(phone: string, name: string): Promise<{ token
     throw new Error('ნომერი უკვე რეგისტრირებულია');
   }
 
+  const gate = await checkRegistrationEligibility(phone, referralPhone);
+  if (!gate.eligible) {
+    // eslint-disable-next-line no-console
+    console.warn(`[invite-gate] rejected registration ***${phone.slice(-4)} — ${gate.reason}`);
+    throw new Error(
+      gate.reason === 'referrer_not_subscribed'
+        ? 'მოწვევის ნომერი ვერ მოიძებნა ან გამოწერა არ აქვს'
+        : 'რეგისტრაციისთვის საჭიროა გამომწერი მეგობრის მოწვევა',
+    );
+  }
+
   const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
 
   const userResult = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, "hasAccessToAlly", "createdAt", "updatedAt")
-     VALUES ($1, $2, true, NOW(), NOW())
+    `INSERT INTO "User" (name, password, "hasAccessToAlly", "inviterReferralUserId", "createdAt", "updatedAt")
+     VALUES ($1, $2, true, $3, NOW(), NOW())
      RETURNING id`,
-    [name, password],
+    [name, password, gate.inviterUserId ?? null],
   );
 
   const userId = userResult.rows[0].id;

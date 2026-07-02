@@ -125,6 +125,23 @@ export interface BlockDiagnostic {
   message: string;
 }
 
+// How a registration attempt passed (or would pass) the invite-only gate:
+// 'open' — gate disabled; 'existing' — phone already registered;
+// 'social' — enough existing users have this phone in their contacts;
+// 'referral' — vouched for by a subscribed user's phone number.
+export type EligibilityMode = 'open' | 'existing' | 'social' | 'referral';
+
+export type EligibilityReason = 'referral_required' | 'referrer_not_subscribed';
+
+export interface EligibilityCheck {
+  eligible: boolean;
+  mode?: EligibilityMode;
+  reason?: EligibilityReason;
+  // Internal: set when mode === 'referral'; recorded as inviterReferralUserId.
+  // Not exposed to unauthenticated clients.
+  inviterUserId?: number;
+}
+
 export interface UserListItem {
   id: number;
   name: string | null;
@@ -151,6 +168,10 @@ export interface UserAccount {
   trialEndsAt: string | null;
   currentPeriodEndsAt: string | null;
   paddleCustomerId: string | null;
+  // Referral: who vouched for this user at registration, and how many
+  // registrations this user has vouched for.
+  invitedBy: { id: number; name: string | null } | null;
+  invitedCount: number;
 }
 
 export interface UserNetwork {
