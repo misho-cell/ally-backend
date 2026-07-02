@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { createCustomerPortalSession } from '../../services/paddle.service';
+import { getWalletSummary, WalletSummary } from '../../services/tokenWallet.service';
 import { ApiResponse } from '../../types';
 
 const billingRouter = Router();
@@ -22,6 +23,21 @@ billingRouter.post(
       }
       // eslint-disable-next-line no-console
       console.error('[POST /billing/customer-portal]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+billingRouter.get(
+  '/tokens',
+  async (req: Request, res: Response<ApiResponse<WalletSummary>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const summary = await getWalletSummary(userId);
+      res.status(200).json({ success: true, data: summary });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /billing/tokens]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

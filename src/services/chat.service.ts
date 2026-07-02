@@ -32,7 +32,7 @@ import {
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
-import { emitToolProgress, emitStepSummary } from './sse.service';
+import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
 import {
@@ -46,6 +46,7 @@ import { isReplySafe } from './moderation.service';
 import { sanitizeToolResult } from './sanitization.service';
 import { logSearchActivity } from './abuseDetection.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
+import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -858,6 +859,7 @@ async function executeToolCall(
   userId: string,
   name: string,
   input: Record<string, unknown>,
+  runId?: string,
 ): Promise<unknown> {
   // Block/deceased guard: never surface a single excluded contact via a
   // phone-keyed lookup (format-independent match).
@@ -895,11 +897,12 @@ async function executeToolCall(
     case 'get_contact_count':
       return getContactCount(userId);
     case 'web_search':
-      void recordFixedUsage({
+      await recordFixedUsage({
         userId,
         kind: 'web_search',
         provider: 'tavily',
         priceKey: 'tavily.search',
+        runId,
       }).catch(() => {});
       return webSearch(input['query'] as string);
     case 'save_contact_insight':
@@ -1013,6 +1016,7 @@ async function processToolBlocks(
       userId,
       block.name,
       block.input as Record<string, unknown>,
+      runId,
     );
     const rawContent = JSON.stringify(result);
     const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
@@ -1086,8 +1090,10 @@ async function callClaude(
     },
     { timeout: CLAUDE_CALL_TIMEOUT_MS },
   );
-  // Fire-and-forget: the cost ledger must never slow or fail the chat path.
-  void recordClaudeUsage({
+  // Awaited (a pooled INSERT is ~ms next to a multi-second model call) so the
+  // run's ledger rows are complete when the wallet debits it; .catch keeps the
+  // ledger from ever failing the chat path.
+  await recordClaudeUsage({
     userId: ctx.userId,
     kind: 'chat',
     model: MODEL,
@@ -1281,6 +1287,16 @@ export async function processChat(
     ? finalText
     : 'ბოდიში, ამ პასუხს ვერ გავცემ. სცადე კითხვის სხვაგვარად ჩამოყალიბება.';
   await saveMessage(userId, threadId, 'assistant', reply);
+
+  // Charge the run's actual ledger cost to the user's token wallet (no-op
+  // while the wallet flag is off). Never fails the reply.
+  try {
+    const debited = await debitRun(userId, runId);
+    if (debited > 0) emitTokensDebited(userId, threadId, runId, debited);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[wallet] debit failed for run', runId, (err as Error).message);
+  }
 
   return { reply, ...(options && { options }), ...(choices && { choices }) };
 }

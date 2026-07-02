@@ -17,6 +17,7 @@ import {
   UserOutcomes,
   UserCosts,
   UserProfile,
+  UserWallet,
   UserSearches,
   UserTimelineEvent,
 } from '../types';
@@ -497,6 +498,31 @@ async function getCosts(userId: number): Promise<UserCosts> {
 }
 
 const EMPTY_COSTS: UserCosts = { last30dUsd: 0, totalUsd: 0, byKind: [] };
+const EMPTY_WALLET: UserWallet = { balance: 0, grantedThisMonth: 0, spentThisMonth: 0 };
+
+async function getWallet(userId: number): Promise<UserWallet> {
+  const result = await query<{
+    balance: string | null;
+    granted: string | null;
+    spent: string | null;
+  }>(
+    `SELECT SUM(amount) AS balance,
+            SUM(amount) FILTER (WHERE amount > 0
+              AND created_at >= date_trunc('month', NOW())) AS granted,
+            -SUM(amount) FILTER (WHERE amount < 0
+              AND created_at >= date_trunc('month', NOW())) AS spent
+     FROM token_transactions
+     WHERE user_id = $1`,
+    [String(userId)],
+    PROFILE_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return {
+    balance: toNumber(row?.balance),
+    grantedThisMonth: toNumber(row?.granted),
+    spentThisMonth: toNumber(row?.spent),
+  };
+}
 
 const EMPTY_NETWORK: UserNetwork = {
   contactsCount: 0,
@@ -565,7 +591,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   if (!account) return null;
 
   const diagnostics: BlockDiagnostic[] = [];
-  const [network, activity, searches, outcomes, memory, devices, costs, timeline] =
+  const [network, activity, searches, outcomes, memory, devices, costs, wallet, timeline] =
     await Promise.all([
       runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
       runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
@@ -574,6 +600,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
       runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
       runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
       runBlock('costs', () => getCosts(userId), EMPTY_COSTS, diagnostics),
+      runBlock('wallet', () => getWallet(userId), EMPTY_WALLET, diagnostics),
       runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
     ]);
 
@@ -586,6 +613,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     memory,
     devices,
     costs,
+    wallet,
     timeline,
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;

@@ -264,6 +264,7 @@ export interface UserProfile {
   memory: UserMemory;
   devices: UserDevices;
   costs: UserCosts;
+  wallet: UserWallet;
   timeline: UserTimelineEvent[];
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
@@ -290,6 +291,12 @@ export interface UserCosts {
   last30dUsd: number;
   totalUsd: number;
   byKind: CostByKind[];
+}
+
+export interface UserWallet {
+  balance: number;
+  grantedThisMonth: number;
+  spentThisMonth: number;
 }
 
 export interface AnalyticsOverview {

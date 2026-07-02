@@ -71,6 +71,16 @@ export function emitRunComplete(
   emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...payload });
 }
 
+/** Tokens charged for a completed run — lets the client refresh the balance live. */
+export function emitTokensDebited(
+  userId: string,
+  threadId: number,
+  runId: string,
+  tokens: number,
+): void {
+  emitter.emit(`user:${userId}`, { event: 'tokens_debited', threadId, runId, tokens });
+}
+
 /** A run failed before producing an answer. */
 export function emitRunError(
   userId: string,

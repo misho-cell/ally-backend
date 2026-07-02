@@ -13,6 +13,7 @@ import {
   updateThreadTitle,
 } from '../../services/threads.service';
 import { processChat } from '../../services/chat.service';
+import { checkRunAllowance } from '../../services/tokenWallet.service';
 import {
   subscribeUserEvents,
   emitThreadCreated,
@@ -129,6 +130,20 @@ threadsRouter.post(
 
       if (thread.type === 'regular' && thread.title === null) {
         await updateThreadTitle(threadId, message.slice(0, 60));
+      }
+
+      // Token wallet gate: when enabled, an exhausted balance blocks new runs
+      // (the in-flight one always completes). 402 carries a machine reason so
+      // the app can show the right screen.
+      const allowance = await checkRunAllowance(userId);
+      if (!allowance.allowed) {
+        res.status(402).json({
+          success: false,
+          error: 'ტოკენები ამოგეწურა — შეიძინე დამატებით ან დაელოდე თვიურ განახლებას',
+          reason: 'insufficient_tokens',
+          balance: allowance.balance,
+        });
+        return;
       }
 
       // Accept the message and process it in the background. The agent loop can
