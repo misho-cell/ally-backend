@@ -6,6 +6,7 @@ const MONTHLY_GRANT_REASON = 'monthly_grant';
 const TRIAL_GRANT_REASON = 'trial_grant';
 const CHAT_DEBIT_REASON = 'chat_debit';
 const TOPUP_REASON = 'topup';
+const GRANT_EXPIRY_REASON = 'grant_expiry';
 const TRIAL_PERIOD_KEY = 'trial';
 const PERCENT = 100;
 
@@ -75,16 +76,67 @@ export async function ensurePeriodGrant(userId: string): Promise<void> {
 }
 
 /**
+ * Monthly grants expire: at the first wallet touch of a new month, the unused
+ * part of each past month's grant is burned with a grant_expiry transaction.
+ * Spending counts against the grant first, so purchased/top-up/admin tokens
+ * survive rollover. The exp:<YYYY-MM> period key rides the same unique index
+ * as grants — concurrent settles can only burn once, and a written marker
+ * (even a zero one) stops the month from being re-evaluated.
+ */
+export async function expireStaleGrants(userId: string): Promise<void> {
+  const stale = await query<{ period_key: string; amount: number }>(
+    `SELECT period_key, amount
+     FROM token_transactions t
+     WHERE user_id = $1 AND reason = $2
+       AND period_key < 'm:' || to_char(NOW(), 'YYYY-MM')
+       AND NOT EXISTS (
+         SELECT 1 FROM token_transactions e
+         WHERE e.user_id = $1
+           AND e.period_key = 'exp:' || substring(t.period_key FROM 3)
+       )`,
+    [userId, MONTHLY_GRANT_REASON],
+  );
+
+  for (const grant of stale.rows) {
+    const month = grant.period_key.slice(2);
+    const [debitsResult, balance] = await Promise.all([
+      query<{ spent: string | null }>(
+        `SELECT -SUM(amount) AS spent
+         FROM token_transactions
+         WHERE user_id = $1 AND amount < 0 AND reason <> $3
+           AND created_at >= to_date($2, 'YYYY-MM')
+           AND created_at <  to_date($2, 'YYYY-MM') + INTERVAL '1 month'`,
+        [userId, month, GRANT_EXPIRY_REASON],
+      ),
+      getBalance(userId),
+    ]);
+
+    const spent = Number(debitsResult.rows[0]?.spent ?? 0);
+    const leftover = Math.max(0, Number(grant.amount) - spent);
+    const burn = Math.min(leftover, Math.max(0, balance));
+    const amount = burn > 0 ? -burn : 0;
+
+    await query(
+      `INSERT INTO token_transactions (user_id, amount, reason, period_key)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
+      [userId, amount, GRANT_EXPIRY_REASON, 'exp:' + month],
+    );
+  }
+}
+
+/**
  * Gate for starting a chat run. When the wallet flag is off everything is
- * allowed (the ledger still measures). When on: grant if due, then require a
- * positive balance. A run in flight may take the balance slightly negative —
- * that is deliberate grace; the next run is what gets blocked.
+ * allowed (the ledger still measures). When on: settle expiries, grant if
+ * due, then require a positive balance. A run in flight may take the balance
+ * slightly negative — that is deliberate grace; the next run gets blocked.
  */
 export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
   if (!(await isWalletEnabled())) {
     return { allowed: true, balance: null };
   }
 
+  await expireStaleGrants(userId);
   await ensurePeriodGrant(userId);
   const balance = await getBalance(userId);
   return { allowed: balance > 0, balance };
@@ -190,6 +242,7 @@ export async function creditTopup(
 export async function getWalletSummary(userId: string): Promise<WalletSummary> {
   const enabled = await isWalletEnabled();
   if (enabled) {
+    await expireStaleGrants(userId);
     await ensurePeriodGrant(userId);
   }
 
@@ -201,11 +254,11 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
     `SELECT SUM(amount) AS balance,
             SUM(amount) FILTER (WHERE amount > 0
               AND created_at >= date_trunc('month', NOW()))       AS granted,
-            -SUM(amount) FILTER (WHERE amount < 0
+            -SUM(amount) FILTER (WHERE amount < 0 AND reason <> $2
               AND created_at >= date_trunc('month', NOW()))       AS spent
      FROM token_transactions
      WHERE user_id = $1`,
-    [userId],
+    [userId, GRANT_EXPIRY_REASON],
   );
 
   const row = result.rows[0];

@@ -7,6 +7,7 @@ import {
   creditTopup,
   debitRun,
   ensurePeriodGrant,
+  expireStaleGrants,
   getWalletSummary,
   listTopupPackages,
 } from '../tokenWallet.service';
@@ -22,6 +23,8 @@ interface WalletWorld {
   subscriptionStatus: string | null;
   balance: number;
   runCostUsd: number;
+  staleGrants?: { period_key: string; amount: number }[];
+  monthDebits?: number;
 }
 
 const PRICES: Record<string, number> = {
@@ -52,6 +55,9 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
     }
     if (sql.includes('SUM(cost_usd) AS total FROM usage_events'))
       return Promise.resolve(rows([{ total: String(world.runCostUsd) }]) as never);
+    if (sql.includes('NOT EXISTS')) return Promise.resolve(rows(world.staleGrants ?? []) as never);
+    if (sql.includes('to_date('))
+      return Promise.resolve(rows([{ spent: String(world.monthDebits ?? 0) }]) as never);
     if (sql.includes('FROM token_transactions'))
       return Promise.resolve(
         rows([{ balance: String(world.balance), granted: '1000', spent: '260' }]) as never,
@@ -153,6 +159,68 @@ describe('debitRun', () => {
       runCostUsd: 0,
     });
     expect(await debitRun('7', 'run-1')).toBe(0);
+    expect(inserts()).toHaveLength(0);
+  });
+});
+
+describe('expireStaleGrants', () => {
+  it("burns the unused part of last month's grant", async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 700,
+      runCostUsd: 0,
+      staleGrants: [{ period_key: 'm:2026-06', amount: 1000 }],
+      monthDebits: 400,
+    });
+
+    await expireStaleGrants('7');
+
+    // grant 1000 − spent 400 = 600 leftover → burned
+    expect(inserts()[0]).toEqual(['7', -600, 'grant_expiry', 'exp:2026-06']);
+  });
+
+  it('writes a zero marker when the grant was fully spent', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 500,
+      runCostUsd: 0,
+      staleGrants: [{ period_key: 'm:2026-06', amount: 1000 }],
+      monthDebits: 1200,
+    });
+
+    await expireStaleGrants('7');
+
+    expect(inserts()[0]).toEqual(['7', 0, 'grant_expiry', 'exp:2026-06']);
+  });
+
+  it('never burns more than the current balance (top-ups survive)', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 300,
+      runCostUsd: 0,
+      staleGrants: [{ period_key: 'm:2026-06', amount: 1000 }],
+      monthDebits: 0,
+    });
+
+    await expireStaleGrants('7');
+
+    expect(inserts()[0]).toEqual(['7', -300, 'grant_expiry', 'exp:2026-06']);
+  });
+
+  it('does nothing when every past grant is already settled', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 500,
+      runCostUsd: 0,
+      staleGrants: [],
+    });
+
+    await expireStaleGrants('7');
+
     expect(inserts()).toHaveLength(0);
   });
 });

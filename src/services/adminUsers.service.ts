@@ -509,7 +509,7 @@ async function getWallet(userId: number): Promise<UserWallet> {
     `SELECT SUM(amount) AS balance,
             SUM(amount) FILTER (WHERE amount > 0
               AND created_at >= date_trunc('month', NOW())) AS granted,
-            -SUM(amount) FILTER (WHERE amount < 0
+            -SUM(amount) FILTER (WHERE amount < 0 AND reason <> 'grant_expiry'
               AND created_at >= date_trunc('month', NOW())) AS spent
      FROM token_transactions
      WHERE user_id = $1`,
