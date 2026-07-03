@@ -44,6 +44,7 @@ import {
 import { normalizePhone } from './phone';
 import { isReplySafe } from './moderation.service';
 import { sanitizeToolResult } from './sanitization.service';
+import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { debitRun } from './tokenWallet.service';
@@ -1018,9 +1019,11 @@ async function processToolBlocks(
       block.input as Record<string, unknown>,
       runId,
     );
-    const rawContent = JSON.stringify(result);
+    const rawContent = JSON.stringify(dietToolResult(result));
     const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
-    const safeContent = shouldSanitize ? JSON.stringify(sanitizeToolResult(result)) : rawContent;
+    const safeContent = shouldSanitize
+      ? JSON.stringify(sanitizeToolResult(dietToolResult(result)))
+      : rawContent;
     if (shouldSanitize && rawContent !== safeContent) {
       // The sanitizer neutralized something in untrusted external/cross-user output.
       // eslint-disable-next-line no-console
@@ -1035,7 +1038,11 @@ async function processToolBlocks(
   return results;
 }
 
-const CLAUDE_CALL_TIMEOUT_MS = 30_000;
+// Streaming keeps the connection alive token-by-token, so the per-call cap can
+// be generous (the 210s run budget is the real bound). The stall watchdog
+// aborts a stream that stops emitting events — the actual hang signal.
+const STREAM_TIMEOUT_MS = 180_000;
+const STREAM_STALL_TIMEOUT_MS = 45_000;
 // Higher cap is safe now that runs are processed in the background (no HTTP
 // timeout pressure) and stream progress to the client as they go.
 const MAX_TOOL_ITERATIONS = 20;
@@ -1074,22 +1081,76 @@ interface RunContext {
   threadId: number;
 }
 
+const CACHE_EPHEMERAL = { type: 'ephemeral' as const };
+
+// Prompt caching: the last tool carries a breakpoint (caches all tool schemas),
+// the system prompt carries one, and the newest message carries one so each
+// iteration reads the whole previous prefix from cache instead of reprocessing
+// it — the growing-context latency/cost that used to blow past timeouts.
+function toCachedTools(tools: AnthropicTool[]): Anthropic.Tool[] {
+  const apiTools = tools as unknown as Anthropic.Tool[];
+  if (apiTools.length === 0) return apiTools;
+  const last = { ...apiTools[apiTools.length - 1], cache_control: CACHE_EPHEMERAL };
+  return [...apiTools.slice(0, -1), last];
+}
+
+function markLastMessageForCache(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length === 0) return messages;
+  const last = messages[messages.length - 1];
+  const blocks: Anthropic.ContentBlockParam[] =
+    typeof last.content === 'string'
+      ? [{ type: 'text', text: last.content }]
+      : [...(last.content as Anthropic.ContentBlockParam[])];
+  if (blocks.length === 0) return messages;
+  blocks[blocks.length - 1] = {
+    ...blocks[blocks.length - 1],
+    cache_control: CACHE_EPHEMERAL,
+  } as Anthropic.ContentBlockParam;
+  return [...messages.slice(0, -1), { role: last.role, content: blocks }];
+}
+
+interface CallOptions {
+  // Force a text-only answer while keeping the tools array identical (so the
+  // cached prefix still hits) — used for the final wrap-up turn.
+  forceText?: boolean;
+}
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
   ctx: RunContext,
+  opts: CallOptions = {},
 ): Promise<Anthropic.Message> {
-  const response = await anthropic.messages.create(
+  const stream = anthropic.messages.stream(
     {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: systemPrompt,
-      tools,
-      messages,
+      system: [{ type: 'text', text: systemPrompt, cache_control: CACHE_EPHEMERAL }],
+      tools: toCachedTools(tools),
+      messages: markLastMessageForCache(messages),
+      ...(opts.forceText ? { tool_choice: { type: 'none' as const } } : {}),
     },
-    { timeout: CLAUDE_CALL_TIMEOUT_MS },
+    { timeout: STREAM_TIMEOUT_MS },
   );
+
+  // Watchdog: a healthy stream emits events continuously; silence means the
+  // connection hung — abort instead of waiting out the full timeout.
+  let stallTimer: NodeJS.Timeout | null = null;
+  const resetStall = (): void => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => stream.abort(), STREAM_STALL_TIMEOUT_MS);
+  };
+  resetStall();
+  stream.on('streamEvent', resetStall);
+
+  let response: Anthropic.Message;
+  try {
+    response = await stream.finalMessage();
+  } finally {
+    if (stallTimer) clearTimeout(stallTimer);
+  }
+
   // Awaited (a pooled INSERT is ~ms next to a multi-second model call) so the
   // run's ledger rows are complete when the wallet debits it; .catch keeps the
   // ledger from ever failing the chat path.
@@ -1139,81 +1200,151 @@ async function runToolLoop(
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
   const ctx: RunContext = { userId, runId, threadId };
+  // Initial call: nothing gathered yet, so a failure here propagates and the
+  // route reports a run error — there is no partial answer to salvage.
   let response = await callClaude(messages, systemPrompt, tools, ctx);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let iterations = 0;
+  let finalText = '';
 
-  while (
-    response.stop_reason === 'tool_use' &&
-    iterations < MAX_TOOL_ITERATIONS &&
-    Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS
-  ) {
-    iterations++;
+  try {
+    while (
+      response.stop_reason === 'tool_use' &&
+      iterations < MAX_TOOL_ITERATIONS &&
+      Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS
+    ) {
+      iterations++;
 
-    // Stream the model's narration that accompanies this round of tool calls,
-    // so the client sees the process step by step rather than one final answer.
-    // Persist it (kind='step') so it survives reload.
-    const narration = extractText(response.content);
-    if (narration) {
-      emitStepSummary(userId, threadId, runId, narration);
-      await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
-    }
+      // Stream the model's narration that accompanies this round of tool calls,
+      // so the client sees the process step by step rather than one final answer.
+      // Persist it (kind='step') so it survives reload.
+      const narration = extractText(response.content);
+      if (narration) {
+        emitStepSummary(userId, threadId, runId, narration);
+        await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+      }
 
-    for (const block of response.content) {
-      if (block.type === 'tool_use' && block.name === 'present_choices') {
-        const input = block.input as { items?: unknown };
-        if (Array.isArray(input.items)) {
-          choices = input.items.filter((i): i is string => typeof i === 'string');
+      for (const block of response.content) {
+        if (block.type === 'tool_use' && block.name === 'present_choices') {
+          const input = block.input as { items?: unknown };
+          if (Array.isArray(input.items)) {
+            choices = input.items.filter((i): i is string => typeof i === 'string');
+          }
         }
       }
-    }
 
-    const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+      const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
 
-    for (const result of toolResults) {
-      if (typeof result.content === 'string') {
-        const parsed = JSON.parse(result.content) as Record<string, unknown>;
-        if (parsed.needs_disambiguation === true && Array.isArray(parsed.candidates)) {
-          options = parsed.candidates as DisambiguationCandidate[];
+      for (const result of toolResults) {
+        if (typeof result.content === 'string') {
+          const parsed = JSON.parse(result.content) as Record<string, unknown>;
+          if (parsed.needs_disambiguation === true && Array.isArray(parsed.candidates)) {
+            options = parsed.candidates as DisambiguationCandidate[];
+          }
         }
       }
+
+      pending.push({ role: 'assistant', content: response.content });
+      pending.push({ role: 'user', content: toolResults });
+
+      messages.push({ role: 'assistant', content: response.content });
+      messages.push({ role: 'user', content: toolResults });
+
+      response = await callClaude(messages, systemPrompt, tools, ctx);
     }
 
-    pending.push({ role: 'assistant', content: response.content });
-    pending.push({ role: 'user', content: toolResults });
+    // Guard: if the loop stopped because it hit the iteration cap while still
+    // wanting to call tools, resolve the outstanding tool calls and then make
+    // one final text-only turn, so the user always gets a written answer instead
+    // of an empty reply. (The pending tool_use blocks must be answered with
+    // tool_result blocks or the API rejects the next call.) The tools array is
+    // kept identical (tool_choice: none) so the cached prompt prefix still hits.
+    if (response.stop_reason === 'tool_use') {
+      const narration = extractText(response.content);
+      if (narration) {
+        emitStepSummary(userId, threadId, runId, narration);
+        await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+      }
 
-    messages.push({ role: 'assistant', content: response.content });
-    messages.push({ role: 'user', content: toolResults });
+      const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+      pending.push({ role: 'assistant', content: response.content });
+      pending.push({ role: 'user', content: toolResults });
+      messages.push({ role: 'assistant', content: response.content });
+      messages.push({ role: 'user', content: toolResults });
 
-    response = await callClaude(messages, systemPrompt, tools, ctx);
-  }
-
-  // Guard: if the loop stopped because it hit the iteration cap while still
-  // wanting to call tools, resolve the outstanding tool calls and then make
-  // one final tool-free turn, so the user always gets a written answer instead
-  // of an empty reply. (The pending tool_use blocks must be answered with
-  // tool_result blocks or the API rejects the next call.)
-  if (response.stop_reason === 'tool_use') {
-    const narration = extractText(response.content);
-    if (narration) {
-      emitStepSummary(userId, threadId, runId, narration);
-      await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+      response = await callClaude(messages, systemPrompt, tools, ctx, { forceText: true });
     }
 
-    const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
-    pending.push({ role: 'assistant', content: response.content });
-    pending.push({ role: 'user', content: toolResults });
-    messages.push({ role: 'assistant', content: response.content });
-    messages.push({ role: 'user', content: toolResults });
-
-    // No tools on this call → the model must produce a final text answer.
-    response = await callClaude(messages, systemPrompt, [], ctx);
+    finalText = extractText(response.content);
+  } catch (err) {
+    // A model call died mid-run (timeout, network, provider incident). The run
+    // already gathered material — salvage a written answer from it instead of
+    // failing the whole run with an empty error screen.
+    // eslint-disable-next-line no-console
+    console.error('[chat] model call failed mid-run — salvaging:', (err as Error).message);
+    finalText = await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending);
   }
-
-  const finalText = extractText(response.content);
 
   return { finalText, pending, options, choices };
+}
+
+const SALVAGE_NUDGE =
+  '(სისტემური შენიშვნა: ძიება ტექნიკური შეფერხების გამო შეწყდა. ჩამოაყალიბე საბოლოო პასუხი მხოლოდ უკვე მოძიებული ინფორმაციით — ახალი ხელსაწყო აღარ გამოიძახო. თუ ვერაფერი მოიძებნა, გულწრფელად უთხარი მომხმარებელს, რომ ძიება შეფერხდა და თავიდან ცდა ღირს.)';
+
+const SALVAGE_FALLBACK_REPLY = 'ძიება ტექნიკური შეფერხების გამო შეწყდა — გთხოვ, სცადე თავიდან. 🙏';
+
+/**
+ * Best-effort wrap-up after a mid-run model failure: close any outstanding
+ * tool_use blocks (both for the API call and for the persisted history — an
+ * unresolved tool_use in saved history would 400 every future run), then ask
+ * for a text-only answer from what was already gathered. If even that call
+ * fails, fall back to a fixed apology so the user never sees a dead run.
+ */
+async function salvageFinalAnswer(
+  messages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+  ctx: RunContext,
+  pending: PendingMessage[],
+): Promise<string> {
+  try {
+    const last = messages[messages.length - 1];
+    if (last && last.role === 'assistant' && Array.isArray(last.content)) {
+      const outstanding = last.content.filter(
+        (b): b is Anthropic.ToolUseBlock => (b as { type?: string }).type === 'tool_use',
+      );
+      if (outstanding.length > 0) {
+        const syntheticResults: Anthropic.ToolResultBlockParam[] = outstanding.map((b) => ({
+          type: 'tool_result',
+          tool_use_id: b.id,
+          content: '{"interrupted":true}',
+        }));
+        messages.push({ role: 'user', content: syntheticResults });
+        pending.push({ role: 'user', content: syntheticResults });
+      }
+    }
+
+    // Fold the nudge into the trailing user message (roles must alternate).
+    const salvageMessages = [...messages];
+    const tail = salvageMessages[salvageMessages.length - 1];
+    if (tail && tail.role === 'user') {
+      const blocks: Anthropic.ContentBlockParam[] =
+        typeof tail.content === 'string'
+          ? [{ type: 'text', text: tail.content }]
+          : [...(tail.content as Anthropic.ContentBlockParam[])];
+      blocks.push({ type: 'text', text: SALVAGE_NUDGE });
+      salvageMessages[salvageMessages.length - 1] = { role: 'user', content: blocks };
+    }
+
+    const response = await callClaude(salvageMessages, systemPrompt, tools, ctx, {
+      forceText: true,
+    });
+    const text = extractText(response.content);
+    return text || SALVAGE_FALLBACK_REPLY;
+  } catch {
+    return SALVAGE_FALLBACK_REPLY;
+  }
 }
 
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
