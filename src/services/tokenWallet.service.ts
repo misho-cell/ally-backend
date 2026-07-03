@@ -40,21 +40,25 @@ export async function getBalance(userId: string): Promise<number> {
 }
 
 /**
- * Lazy granting: called before balance checks. Active subscribers get the
- * monthly grant once per calendar month; trialing users get the one-time
- * trial grant. The partial unique index on (user_id, period_key) makes
- * concurrent calls race-safe (second insert is a no-op).
+ * Lazy granting: called before balance checks. Active subscribers get their
+ * tier's monthly grant once per calendar month (pro 1000 / enterprise 5500 /
+ * premium 1000, all editable in provider_prices; the tierless key is the
+ * fallback for unknown tiers). Trialing users get the one-time trial grant.
+ * The partial unique index on (user_id, period_key) makes concurrent calls
+ * race-safe (second insert is a no-op).
  */
 export async function ensurePeriodGrant(userId: string): Promise<void> {
-  const statusResult = await query<{ subscription_status: string }>(
-    'SELECT subscription_status FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
+  const statusResult = await query<{ subscription_status: string; subscription_tier: string }>(
+    'SELECT subscription_status, subscription_tier FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
     [userId],
   );
   const status = statusResult.rows[0]?.subscription_status;
   if (status !== 'active' && status !== 'trialing') return;
 
   if (status === 'active') {
-    const grant = await getPrice('tokens.monthly_grant');
+    const tier = statusResult.rows[0]?.subscription_tier ?? '';
+    const tierGrant = tier ? await getPrice(`tokens.monthly_grant.${tier}`) : 0;
+    const grant = tierGrant > 0 ? tierGrant : await getPrice('tokens.monthly_grant');
     if (grant <= 0) return;
     await query(
       `INSERT INTO token_transactions (user_id, amount, reason, period_key)

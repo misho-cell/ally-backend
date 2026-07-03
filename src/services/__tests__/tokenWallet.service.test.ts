@@ -21,6 +21,7 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 interface WalletWorld {
   walletEnabled: boolean;
   subscriptionStatus: string | null;
+  subscriptionTier?: string;
   balance: number;
   runCostUsd: number;
   staleGrants?: { period_key: string; amount: number }[];
@@ -30,6 +31,8 @@ interface WalletWorld {
 const PRICES: Record<string, number> = {
   'tokens.usd_per_token': 0.01,
   'tokens.monthly_grant': 1000,
+  'tokens.monthly_grant.pro': 1000,
+  'tokens.monthly_grant.enterprise': 5500,
   'tokens.trial_grant': 120,
   'infra.overhead_pct': 10,
 };
@@ -47,7 +50,12 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
       return Promise.resolve(
         (world.subscriptionStatus === null
           ? rows([])
-          : rows([{ subscription_status: world.subscriptionStatus }])) as never,
+          : rows([
+              {
+                subscription_status: world.subscriptionStatus,
+                subscription_tier: world.subscriptionTier ?? 'pro',
+              },
+            ])) as never,
       );
     if (sql.includes('INSERT INTO token_transactions')) {
       inserts.push(params ?? []);
@@ -77,6 +85,34 @@ describe('ensurePeriodGrant', () => {
     const { inserts } = setWorld({
       walletEnabled: true,
       subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0,
+    });
+
+    await ensurePeriodGrant('7');
+
+    expect(inserts()[0]).toEqual(['7', 1000, 'monthly_grant']);
+  });
+
+  it('grants the enterprise amount to an enterprise subscriber', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      subscriptionTier: 'enterprise',
+      balance: 0,
+      runCostUsd: 0,
+    });
+
+    await ensurePeriodGrant('7');
+
+    expect(inserts()[0]).toEqual(['7', 5500, 'monthly_grant']);
+  });
+
+  it('falls back to the tierless grant for unknown tiers', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      subscriptionTier: 'legacy-mystery',
       balance: 0,
       runCostUsd: 0,
     });
