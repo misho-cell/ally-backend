@@ -11,6 +11,7 @@ import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
 import profileRouter from './api/routes/profile.routes';
 import mcpRouter from './api/routes/mcp.routes';
+import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { EnrichmentJob } from './services/enrichment.job';
@@ -45,6 +46,8 @@ app.use('/threads', threadsRouter);
 app.use('/billing', billingRouter);
 app.use('/profile', profileRouter);
 app.use('/mcp', mcpRouter);
+app.use('/oauth', oauthRouter);
+app.use('/.well-known', wellKnownRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
