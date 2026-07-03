@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
 import {
   savePushSubscription,
@@ -12,7 +16,7 @@ import { ApiResponse } from '../../types';
 
 const notificationsRouter = Router();
 
-notificationsRouter.use(authenticateJwt);
+notificationsRouter.use(authenticateJwt, requireUserRole);
 notificationsRouter.use(requireSubscription);
 
 notificationsRouter.get(

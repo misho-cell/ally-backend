@@ -1,7 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { body, param, validationResult } from 'express-validator';
-import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
@@ -14,7 +18,7 @@ import { ApiResponse, ContactInsight } from '../../types';
 
 const chatRouter = Router();
 
-chatRouter.use(authenticateJwt);
+chatRouter.use(authenticateJwt, requireUserRole);
 chatRouter.use(requireSubscription);
 chatRouter.use(rateLimit({ windowMs: 60_000, max: 60 }));
 

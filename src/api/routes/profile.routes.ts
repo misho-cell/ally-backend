@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { query } from '../../db/postgres/client';
 import { ApiResponse } from '../../types';
 
@@ -17,6 +21,7 @@ const profileRouter = Router();
 profileRouter.get(
   '/',
   authenticateJwt,
+  requireUserRole,
   async (req: Request, res: Response<ApiResponse<ProfileData>>): Promise<void> => {
     try {
       const userId = (req as AuthenticatedRequest).user.userId;

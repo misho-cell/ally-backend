@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { createCustomerPortalSession } from '../../services/paddle.service';
 import {
   getWalletSummary,
@@ -11,7 +15,7 @@ import { ApiResponse } from '../../types';
 
 const billingRouter = Router();
 
-billingRouter.use(authenticateJwt);
+billingRouter.use(authenticateJwt, requireUserRole);
 
 billingRouter.post(
   '/customer-portal',
