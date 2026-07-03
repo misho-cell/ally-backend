@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@paddle/paddle-node-sdk": "^3.8.0",
     "@tavily/core": "^0.7.6",
     "bcrypt": "^6.0.0",
@@ -23,7 +24,8 @@
     "pg": "^8.21.0",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^6.0.2",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

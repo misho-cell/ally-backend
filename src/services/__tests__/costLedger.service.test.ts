@@ -134,7 +134,7 @@ describe('recordFixedUsage', () => {
     });
 
     const params = insertCalls()[0];
-    expect(params).toEqual([null, 'web_search', 'tavily', 3, 0.024, null]);
+    expect(params).toEqual([null, 'web_search', 'tavily', null, 3, 0.024, null]);
   });
 });
 

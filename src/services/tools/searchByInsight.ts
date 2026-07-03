@@ -36,6 +36,8 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       results: rows.map((row) => ({
         name: row.neo4j_contact_name ?? null,
         info: row.data,
+        // Internal identifier for follow-up profile lookups — never shown to the user.
+        contact_id: row.neo4j_contact_id,
       })),
     };
   } catch (err) {

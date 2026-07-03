@@ -18,7 +18,7 @@ interface ContactFullProfile {
 const NUMERIC_ONLY_RE = /^\d+$/;
 const HAS_LETTER_RE = /\p{L}/u;
 
-function isDisplayableTag(tag: string): boolean {
+export function isDisplayableTag(tag: string): boolean {
   return tag.length >= 2 && !NUMERIC_ONLY_RE.test(tag) && HAS_LETTER_RE.test(tag);
 }
 
