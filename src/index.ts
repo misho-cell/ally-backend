@@ -27,11 +27,19 @@ const ALLOWED_ORIGINS = [
   'https://ally-frontend-tau.vercel.app',
 ];
 
+// claude.ai (and other clients) derive the custom-connector icon from the
+// API domain's favicon — serve the app's own logo instead of a 404.
+const FAVICON_URL = 'https://allyapp.one/favicon.ico';
+
 const app = express();
 // Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.
 app.set('trust proxy', 1);
 // exposedHeaders lets the browser read Retry-After on 429 rate-limit responses.
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After'] }));
+
+app.get('/favicon.ico', (req: Request, res: Response) => {
+  res.redirect(FAVICON_URL);
+});
 
 // Webhook route must use raw body BEFORE express.json() to allow signature verification
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
