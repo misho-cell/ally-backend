@@ -134,6 +134,41 @@ export const PARAM_TEXTS = {
   responseNote: 'Optional short note from the user to pass back with the answer.',
 } as const;
 
+// Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).
+// Georgian-primary per the prompt team's document — they enter the chat with
+// user-message strength.
+export const PROMPT_TEXTS = {
+  find_in_network: {
+    title: 'ვინ მყავს ქსელში',
+    description: 'იპოვე ჩემს ქსელში ადამიანები მოცემულ სფეროში ან საჭიროებაზე',
+    argField: 'სფერო ან საჭიროება — მაგ. "იურისტი", "ინვესტორი", "მშენებლობის ნებართვები"',
+    build: (field: string): string =>
+      `იპოვე ჩემს ქსელში ადამიანები, ვინც შეესაბამება: ${field}. ` +
+      'ჯერ ტეგებით ეძებე (2–3 ვარიანტი, ორივე დამწერლობით), მერე insight-ებითა და ' +
+      'დამსაქმებელი/პოზიციით, ბოლოს მეორე წრეში. მაჩვენე საუკეთესო დამთხვევები — თითო ერთი ' +
+      'ხაზით: ვინ არის და რატომ ჯდება, დალაგებული შესაბამისობითა და რამდენმა ადამიანმა ' +
+      'დაადასტურა. მითხარი სულ რამდენი მოიძებნა და შემომთავაზე უფრო ღრმად ძებნა. ' +
+      'ტელეფონის ნომრები არასდროს აჩვენო.',
+  },
+  request_intro: {
+    title: 'გაცნობის მოთხოვნა',
+    description: 'იპოვე ყველაზე თბილი გზა სასურველ ადამიანამდე და მოაწყვე გაცნობა',
+    argWho: 'ვისთან გინდა დაკავშირება — სახელი ან აღწერა',
+    argPurpose: 'რისთვის გინდა გაცნობა — ერთი წინადადება',
+    build: (who: string, purpose: string): string =>
+      `მინდა გამაცნო ${who} — მიზანი: ${purpose}. იპოვე ყველაზე თბილი გზა ჩემი ქსელით, ` +
+      'მითხარი ვინ შემიძლია გამაცნოს და რატომ, და სანამ რამეს გააგზავნი — დამიდასტურე.',
+  },
+  network_overview: {
+    title: 'ჩემი ქსელის მიმოხილვა',
+    description: 'ქსელის ზომა, მთავარი წრეები და რჩევა ვინ დაამატო',
+    build: (): string =>
+      'მომეცი ჩემი ქსელის მიმოხილვა: ზომა, მთავარი წრეები და ყველაზე ძლიერი სფეროები — ' +
+      'მერე შემომთავაზე ერთი-ორი ტიპის ადამიანი, ვისი დამატებაც გამომადგება. აღწერე ' +
+      'სიტყვებით, ტელეფონის ნომრების გარეშე.',
+  },
+} as const;
+
 export const NOTE_EMPTY_RESULT =
   '0 results for this word. Before concluding, try search_by_insight or an employer search, ' +
   'and call get_network_stats to confirm the network size. ' +

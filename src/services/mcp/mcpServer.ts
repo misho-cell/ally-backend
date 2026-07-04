@@ -17,6 +17,7 @@ import {
   MCP_SERVER_NAME,
   MCP_SERVER_VERSION,
   PARAM_TEXTS,
+  PROMPT_TEXTS,
   TOOL_TEXTS,
 } from './texts';
 
@@ -172,6 +173,46 @@ function registerIntroTools(server: McpServer, userId: string): void {
   );
 }
 
+function promptMessage(text: string): {
+  messages: { role: 'user'; content: { type: 'text'; text: string } }[];
+} {
+  return { messages: [{ role: 'user', content: { type: 'text', text } }] };
+}
+
+// Ready-made scenarios for claude.ai's "+" menu. They carry user-message
+// strength — stronger than any passive hint the connector can give.
+function registerPrompts(server: McpServer): void {
+  server.registerPrompt(
+    'find_in_network',
+    {
+      title: PROMPT_TEXTS.find_in_network.title,
+      description: PROMPT_TEXTS.find_in_network.description,
+      argsSchema: { field: z.string().describe(PROMPT_TEXTS.find_in_network.argField) },
+    },
+    ({ field }) => promptMessage(PROMPT_TEXTS.find_in_network.build(field)),
+  );
+  server.registerPrompt(
+    'request_intro',
+    {
+      title: PROMPT_TEXTS.request_intro.title,
+      description: PROMPT_TEXTS.request_intro.description,
+      argsSchema: {
+        who: z.string().describe(PROMPT_TEXTS.request_intro.argWho),
+        purpose: z.string().describe(PROMPT_TEXTS.request_intro.argPurpose),
+      },
+    },
+    ({ who, purpose }) => promptMessage(PROMPT_TEXTS.request_intro.build(who, purpose)),
+  );
+  server.registerPrompt(
+    'network_overview',
+    {
+      title: PROMPT_TEXTS.network_overview.title,
+      description: PROMPT_TEXTS.network_overview.description,
+    },
+    () => promptMessage(PROMPT_TEXTS.network_overview.build()),
+  );
+}
+
 /**
  * One MCP server per request, bound to the authenticated user. Nothing is
  * shared between requests, so sessions can never bleed into each other.
@@ -184,5 +225,6 @@ export function buildMcpServer(userId: string): McpServer {
   registerSearchTools(server, userId);
   registerProfileTools(server, userId);
   registerIntroTools(server, userId);
+  registerPrompts(server);
   return server;
 }
