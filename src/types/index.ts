@@ -24,6 +24,9 @@ export interface SuccessResponse<T> {
 export interface ErrorResponse {
   success: false;
   error: string;
+  // Machine-readable error code so clients can branch without parsing the
+  // human message (e.g. insufficient_balance, admin_token_on_user_endpoint).
+  reason?: string;
 }
 
 export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
@@ -265,6 +268,7 @@ export interface UserProfile {
   devices: UserDevices;
   costs: UserCosts;
   wallet: UserWallet;
+  referral: UserReferral;
   timeline: UserTimelineEvent[];
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
@@ -297,6 +301,14 @@ export interface UserWallet {
   balance: number;
   grantedThisMonth: number;
   spentThisMonth: number;
+}
+
+export interface UserReferral {
+  balanceUsd: number;
+  totalEarnedUsd: number;
+  totalSpentUsd: number;
+  earningsCount: number;
+  invitedCount: number;
 }
 
 export interface AnalyticsOverview {

@@ -7,7 +7,16 @@ import type {
 import paddle from '../config/paddle';
 import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
+import { distributeReferralEarnings } from './referral.service';
 import { creditTopup, findTopupPackageByPriceId } from './tokenWallet.service';
+
+// Paddle reports money in minor units (cents).
+const MINOR_UNITS_PER_USD = 100;
+
+function transactionTotalUsd(txn: TransactionNotification): number {
+  const total = Number(txn.details?.totals?.total ?? 0);
+  return Number.isFinite(total) ? total / MINOR_UNITS_PER_USD : 0;
+}
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? '';
 
@@ -178,6 +187,18 @@ async function handleTransactionCompleted(txn: TransactionNotification): Promise
      WHERE id = $2`,
     [txn.billingPeriod?.endsAt ?? null, userId],
   );
+
+  // Referral earnings on the first real charge (trial-period $0 transactions
+  // are skipped by the amount check; renewals by the once-per-subscriber
+  // guard inside the service). Never let this break the webhook.
+  const totalUsd = transactionTotalUsd(txn);
+  if (totalUsd > 0) {
+    try {
+      await distributeReferralEarnings(String(userId), totalUsd, txn.id);
+    } catch (err) {
+      console.error('[paddle] referral distribution failed for txn', txn.id, err);
+    }
+  }
 }
 
 async function handlePaymentFailed(txn: TransactionNotification): Promise<void> {

@@ -17,6 +17,7 @@ import {
   UserOutcomes,
   UserCosts,
   UserProfile,
+  UserReferral,
   UserWallet,
   UserSearches,
   UserTimelineEvent,
@@ -524,6 +525,48 @@ async function getWallet(userId: number): Promise<UserWallet> {
   };
 }
 
+const EMPTY_REFERRAL: UserReferral = {
+  balanceUsd: 0,
+  totalEarnedUsd: 0,
+  totalSpentUsd: 0,
+  earningsCount: 0,
+  invitedCount: 0,
+};
+
+async function getReferral(userId: number): Promise<UserReferral> {
+  const [totals, invited] = await Promise.all([
+    query<{
+      balance: string | null;
+      earned: string | null;
+      spent: string | null;
+      earnings_count: string | null;
+    }>(
+      `SELECT SUM(amount_usd) AS balance,
+              SUM(amount_usd)  FILTER (WHERE amount_usd > 0) AS earned,
+              -SUM(amount_usd) FILTER (WHERE amount_usd < 0) AS spent,
+              COUNT(*)         FILTER (WHERE reason = 'earn') AS earnings_count
+       FROM referral_transactions
+       WHERE user_id = $1`,
+      [String(userId)],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+    query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM "User"
+       WHERE "inviterReferralUserId" = $1 AND "deletedAt" IS NULL`,
+      [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+  ]);
+  const row = totals.rows[0];
+  return {
+    balanceUsd: toNumber(row?.balance),
+    totalEarnedUsd: toNumber(row?.earned),
+    totalSpentUsd: toNumber(row?.spent),
+    earningsCount: toNumber(row?.earnings_count),
+    invitedCount: toNumber(invited.rows[0]?.count),
+  };
+}
+
 const EMPTY_NETWORK: UserNetwork = {
   contactsCount: 0,
   tagsCount: 0,
@@ -591,18 +634,29 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   if (!account) return null;
 
   const diagnostics: BlockDiagnostic[] = [];
-  const [network, activity, searches, outcomes, memory, devices, costs, wallet, timeline] =
-    await Promise.all([
-      runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
-      runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
-      runBlock('searches', () => getSearches(userId), EMPTY_SEARCHES, diagnostics),
-      runBlock('outcomes', () => getOutcomes(userId), EMPTY_OUTCOMES, diagnostics),
-      runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
-      runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
-      runBlock('costs', () => getCosts(userId), EMPTY_COSTS, diagnostics),
-      runBlock('wallet', () => getWallet(userId), EMPTY_WALLET, diagnostics),
-      runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
-    ]);
+  const [
+    network,
+    activity,
+    searches,
+    outcomes,
+    memory,
+    devices,
+    costs,
+    wallet,
+    referral,
+    timeline,
+  ] = await Promise.all([
+    runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
+    runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
+    runBlock('searches', () => getSearches(userId), EMPTY_SEARCHES, diagnostics),
+    runBlock('outcomes', () => getOutcomes(userId), EMPTY_OUTCOMES, diagnostics),
+    runBlock('memory', () => getMemory(userId), EMPTY_MEMORY, diagnostics),
+    runBlock('devices', () => getDevices(userId), EMPTY_DEVICES, diagnostics),
+    runBlock('costs', () => getCosts(userId), EMPTY_COSTS, diagnostics),
+    runBlock('wallet', () => getWallet(userId), EMPTY_WALLET, diagnostics),
+    runBlock('referral', () => getReferral(userId), EMPTY_REFERRAL, diagnostics),
+    runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
+  ]);
 
   const profile: UserProfile = {
     account,
@@ -614,6 +668,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     devices,
     costs,
     wallet,
+    referral,
     timeline,
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;

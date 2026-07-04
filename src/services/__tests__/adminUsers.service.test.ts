@@ -102,6 +102,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('AS last30d')) return rows([{ last30d: '3.10', total: '9.99' }]);
   if (sql.includes('FROM token_transactions'))
     return rows([{ balance: '740', granted: '1000', spent: '260' }]);
+  if (sql.includes('FROM referral_transactions'))
+    return rows([{ balance: '11.20', earned: '22.19', spent: '10.99', earnings_count: '3' }]);
   if (sql.includes('kind AS label')) return rows([{ label: 'chat', total: '2.80' }]);
   throw new Error(`Unexpected query: ${sql}`);
 }
