@@ -124,12 +124,12 @@ async function readAuthorizeParams(
   const scope = typeof source.scope === 'string' ? source.scope : '';
 
   if (!clientId || !redirectUri || !codeChallenge) {
-    return { error: 'მოთხოვნას აკლია სავალდებულო OAuth-პარამეტრები' };
+    return { error: 'The request is missing required OAuth parameters.' };
   }
   const client = await getClient(clientId);
-  if (!client) return { error: 'უცნობი კლიენტი — კონექტორი თავიდან დაამატე' };
+  if (!client) return { error: 'Unknown client — remove and re-add the connector.' };
   if (!client.redirectUris.includes(redirectUri)) {
-    return { error: 'redirect_uri რეგისტრირებულს არ ემთხვევა' };
+    return { error: 'redirect_uri does not match the registered one.' };
   }
   return { params: { clientId, redirectUri, state, codeChallenge, scope } };
 }
@@ -143,19 +143,19 @@ oauthRouter.get('/authorize', async (req: Request, res: Response): Promise<void>
     }
     const method = source.code_challenge_method ?? SUPPORTED_CHALLENGE_METHOD;
     if (method !== SUPPORTED_CHALLENGE_METHOD) {
-      res.status(400).send(renderErrorPage('მხოლოდ S256 code_challenge_method არის მხარდაჭერილი'));
+      res.status(400).send(renderErrorPage('Only the S256 code_challenge_method is supported.'));
       return;
     }
     const { params, error } = await readAuthorizeParams(source);
     if (!params) {
-      res.status(400).send(renderErrorPage(error ?? 'არასწორი მოთხოვნა'));
+      res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
       return;
     }
     res.send(renderPhonePage(params));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[oauth] authorize failed:', err);
-    res.status(500).send(renderErrorPage('სერვერის შეცდომა — სცადე თავიდან'));
+    res.status(500).send(renderErrorPage('Server error — please try again.'));
   }
 });
 
@@ -175,7 +175,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
     const source = req.body as Record<string, unknown>;
     const { params, error } = await readAuthorizeParams(source);
     if (!params) {
-      res.status(400).send(renderErrorPage(error ?? 'არასწორი მოთხოვნა'));
+      res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
       return;
     }
     const phone = typeof source.phone === 'string' ? source.phone.replace(/\s+/g, '') : '';
@@ -185,7 +185,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
         .send(
           renderPhonePage(
             params,
-            'ეს ნომერი Ally-ში რეგისტრირებული არ არის — ჯერ აპში დარეგისტრირდი',
+            'This number is not registered with Ally — sign up in the app first.',
           ),
         );
       return;
@@ -195,7 +195,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[oauth] send-code failed:', err);
-    res.status(500).send(renderErrorPage('კოდის გაგზავნა ვერ მოხერხდა — სცადე თავიდან'));
+    res.status(500).send(renderErrorPage('Could not send the code — please try again.'));
   }
 });
 
@@ -203,21 +203,24 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
   const source = req.body as Record<string, unknown>;
   const { params, error } = await readAuthorizeParams(source);
   if (!params) {
-    res.status(400).send(renderErrorPage(error ?? 'არასწორი მოთხოვნა'));
+    res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
     return;
   }
   const phone = typeof source.phone === 'string' ? source.phone : '';
   const code = typeof source.code === 'string' ? source.code.trim() : '';
   try {
     await verifyOTP(phone, code, 'AUTH');
-  } catch (err) {
-    res.status(200).send(renderCodePage(params, phone, (err as Error).message));
+  } catch {
+    // The shared OTP service reports errors in Georgian — this page is English.
+    res
+      .status(200)
+      .send(renderCodePage(params, phone, 'The code is wrong or has expired — try again.'));
     return;
   }
   try {
     const userId = await findUserIdByPhone(phone);
     if (userId === null) {
-      res.status(400).send(renderErrorPage('მომხმარებელი ვერ მოიძებნა'));
+      res.status(400).send(renderErrorPage('User not found.'));
       return;
     }
     const authCode = await createAuthorizationCode(
@@ -234,7 +237,7 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[oauth] verify failed:', err);
-    res.status(500).send(renderErrorPage('სერვერის შეცდომა — სცადე თავიდან'));
+    res.status(500).send(renderErrorPage('Server error — please try again.'));
   }
 });
 
