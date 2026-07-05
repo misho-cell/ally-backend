@@ -6,7 +6,9 @@ import {
   mcpCheckInbox,
   mcpGetContactFacts,
   mcpGetContactProfile,
+  mcpGetGroupConnectors,
   mcpGetNetworkStats,
+  mcpGetTopConnectors,
   mcpListBlocked,
   mcpRequestIntroduction,
   mcpRespondToRequest,
@@ -239,6 +241,32 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   );
 }
 
+function registerGraphTools(server: McpServer, userId: string): void {
+  server.registerTool(
+    'get_top_connectors',
+    {
+      title: TOOL_TEXTS.get_top_connectors.title,
+      description: TOOL_TEXTS.get_top_connectors.description,
+      inputSchema: { limit: z.number().int().positive().optional().describe(PARAM_TEXTS.connectorLimit) },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_top_connectors', () => mcpGetTopConnectors(userId, args)),
+  );
+  server.registerTool(
+    'get_group_connectors',
+    {
+      title: TOOL_TEXTS.get_group_connectors.title,
+      description: TOOL_TEXTS.get_group_connectors.description,
+      inputSchema: {
+        group_tag: z.string().describe(PARAM_TEXTS.groupTag),
+        limit: z.number().int().positive().optional().describe(PARAM_TEXTS.connectorLimit),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+  );
+}
+
 function promptMessage(text: string): {
   messages: { role: 'user'; content: { type: 'text'; text: string } }[];
 } {
@@ -292,6 +320,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerProfileTools(server, userId);
   registerIntroTools(server, userId);
   registerMemoryAndBlockTools(server, userId);
+  registerGraphTools(server, userId);
   registerPrompts(server);
   return server;
 }

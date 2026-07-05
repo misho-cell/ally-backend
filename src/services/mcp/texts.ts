@@ -138,6 +138,22 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Returns the contacts the user has blocked (name + contact_ref for unblocking). Use when ' +
       'the user asks who they have blocked, or before unblocking someone.',
   },
+  get_top_connectors: {
+    title: 'Top connectors in the network',
+    description:
+      'Ranks the user\'s own contacts by how many people they reach that the user does not ' +
+      'already know — the best "bridges". Use for "who should I bring into Ally / sell to / ' +
+      'reconnect with to unlock the most new people". Each result carries a `reach` count. This ' +
+      'answers connectivity questions that word search cannot.',
+  },
+  get_group_connectors: {
+    title: 'Who bridges into a group',
+    description:
+      'Given a group defined by a tag (e.g. "axel"), ranks NON-members by how many members of ' +
+      'that group they are connected to — the warmest ways into the group. Each result carries ' +
+      'a `member_links` count. Use for "who knows the most people in X" / "who could introduce ' +
+      'me across the whole X group".',
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -169,6 +185,8 @@ export const PARAM_TEXTS = {
   responseNote: 'Optional short note from the user to pass back with the answer.',
   factFieldType: 'One of: employer, occupation, city, industry.',
   factValue: 'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi").',
+  groupTag: 'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
+  connectorLimit: 'How many to return (default 10, max 25).',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).

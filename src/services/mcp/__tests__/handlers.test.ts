@@ -44,6 +44,11 @@ jest.mock('../../block.service', () => ({
   getBlockedByUser: jest.fn(),
   __esModule: true,
 }));
+jest.mock('../../graphAnalytics.service', () => ({
+  getTopConnectors: jest.fn(),
+  getGroupConnectors: jest.fn(),
+  __esModule: true,
+}));
 
 import { query } from '../../../db/postgres/client';
 import { searchByTag } from '../../tools/searchByTag';
@@ -68,6 +73,8 @@ import {
   mcpRequestIntroduction,
   mcpBlockContact,
   mcpGetContactFacts,
+  mcpGetGroupConnectors,
+  mcpGetTopConnectors,
   mcpListBlocked,
   mcpRespondToRequest,
   mcpSaveContactFact,
@@ -78,6 +85,7 @@ import {
 } from '../handlers';
 import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
 import { blockContact, getBlockedByUser, unblockContact } from '../../block.service';
+import { getGroupConnectors, getTopConnectors } from '../../graphAnalytics.service';
 
 const USER = '7';
 const PHONE = '+995599123456';
@@ -103,6 +111,8 @@ const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFac
 const mockBlock = blockContact as jest.MockedFunction<typeof blockContact>;
 const mockUnblock = unblockContact as jest.MockedFunction<typeof unblockContact>;
 const mockGetBlocked = getBlockedByUser as jest.MockedFunction<typeof getBlockedByUser>;
+const mockTopConnectors = getTopConnectors as jest.MockedFunction<typeof getTopConnectors>;
+const mockGroupConnectors = getGroupConnectors as jest.MockedFunction<typeof getGroupConnectors>;
 
 function searchRow(index: number): Record<string, unknown> {
   return {
@@ -471,5 +481,42 @@ describe('blocking tools', () => {
     expect(list[0].name).toBe('Spammer');
     expect(list[0].contact_ref).toBe(encodeContactRef(USER, PHONE));
     expect(containsPhoneLike(result)).toBe(false);
+  });
+});
+
+describe('graph tools', () => {
+  it('top connectors: name + ref + reach, no phone leak', async () => {
+    mockTopConnectors.mockResolvedValue({
+      found: true,
+      results: [{ name: 'Bridge Bob', phone: PHONE, score: 42 }],
+    });
+
+    const result = await mcpGetTopConnectors(USER, {});
+
+    const row = (result.results as Record<string, unknown>[])[0];
+    expect(row.name).toBe('Bridge Bob');
+    expect(row.contact_ref).toBe(encodeContactRef(USER, PHONE));
+    expect(row.reach).toBe(42);
+    expect(row.phone).toBeUndefined();
+    expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('group connectors: requires a group_tag and passes member_links', async () => {
+    expect((await mcpGetGroupConnectors(USER, { group_tag: '' })).error).toBeDefined();
+
+    mockGroupConnectors.mockResolvedValue({
+      found: true,
+      results: [{ name: 'Gio', phone: PHONE, score: 7 }],
+    });
+    const result = await mcpGetGroupConnectors(USER, { group_tag: 'axel' });
+    expect(mockGroupConnectors).toHaveBeenCalledWith(USER, 'axel', undefined);
+    expect((result.results as Record<string, unknown>[])[0].member_links).toBe(7);
+  });
+
+  it('passes the empty reason through when no connectors', async () => {
+    mockTopConnectors.mockResolvedValue({ found: false, reason: 'no_connectors' });
+    const result = await mcpGetTopConnectors(USER, { limit: 5 });
+    expect(result.found).toBe(false);
+    expect(result.reason).toBe('no_connectors');
   });
 });

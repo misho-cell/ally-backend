@@ -10,6 +10,11 @@ import { respondToIntroduction } from '../tools/respondToIntroduction';
 import { FACT_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
 import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
 import {
+  ConnectorOutcome,
+  getGroupConnectors,
+  getTopConnectors,
+} from '../graphAnalytics.service';
+import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
 } from '../introduction.service';
@@ -347,4 +352,34 @@ export async function mcpListBlocked(userId: string): Promise<McpToolPayload> {
       contact_ref: encodeContactRef(userId, entry.phone),
     })),
   };
+}
+
+function mapConnectors(userId: string, outcome: ConnectorOutcome, scoreLabel: string): McpToolPayload {
+  if (!outcome.found || !outcome.results || outcome.results.length === 0) {
+    return { found: false, reason: outcome.reason ?? 'no_connectors' };
+  }
+  return {
+    found: true,
+    results: outcome.results.map((r) => ({
+      name: r.name,
+      contact_ref: encodeContactRef(userId, r.phone),
+      [scoreLabel]: r.score,
+    })),
+  };
+}
+
+export async function mcpGetTopConnectors(
+  userId: string,
+  args: { limit?: number },
+): Promise<McpToolPayload> {
+  return mapConnectors(userId, await getTopConnectors(userId, args.limit), 'reach');
+}
+
+export async function mcpGetGroupConnectors(
+  userId: string,
+  args: { group_tag: string; limit?: number },
+): Promise<McpToolPayload> {
+  const groupTag = (args.group_tag ?? '').trim();
+  if (!groupTag) return { error: 'Pass group_tag.' };
+  return mapConnectors(userId, await getGroupConnectors(userId, groupTag, args.limit), 'member_links');
 }
