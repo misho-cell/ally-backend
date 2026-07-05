@@ -165,6 +165,20 @@ describe('mcpSearchContacts', () => {
     expect(names).toContain('Contact 5');
   });
 
+  it('flags fuzzy (approximate) matches instead of a truncation note', async () => {
+    mockSearchByTag.mockResolvedValue({
+      found: true,
+      count: 1,
+      total: 1,
+      fuzzy: true,
+      results: [searchRow(1)],
+    });
+
+    const result = await mcpSearchContacts(USER, { tag: 'livigstone' });
+
+    expect(String(result.note)).toContain('APPROXIMATE');
+  });
+
   it('returns the empty-result guidance on no matches and on missing args', async () => {
     mockSearchByTag.mockResolvedValue({ found: false, query: 'x' });
     const empty = await mcpSearchContacts(USER, { tag: 'x' });

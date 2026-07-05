@@ -1,4 +1,9 @@
-import { hasGeorgian, georgianToLatin, buildSearchTerms } from '../transliterate';
+import {
+  hasGeorgian,
+  georgianToLatin,
+  buildSearchTerms,
+  toWordStartPattern,
+} from '../transliterate';
 
 describe('hasGeorgian', () => {
   it('returns true for Georgian text', () => {
@@ -61,5 +66,34 @@ describe('buildSearchTerms', () => {
     const terms = buildSearchTerms('მიშო');
     expect(terms[0]).toBe('მიშო');
     expect(terms[1]).toBe('misho');
+  });
+
+  it('adds a drift variant for the gh↔r pair (ბუღალტერი)', () => {
+    const terms = buildSearchTerms('ბუღალტერი');
+    // canonical "bughalteri" plus the "r"-for-ღ drift "buralteri"
+    expect(terms).toContain('bughalteri');
+    expect(terms).toContain('buralteri');
+  });
+
+  it('adds drift variants for a Latin query (q↔k, ts↔c)', () => {
+    expect(buildSearchTerms('qutaisi')).toContain('kutaisi'); // ყ/ქ typed q ↔ k
+    const ts = buildSearchTerms('tsalka');
+    expect(ts).toContain('tsalka');
+    expect(ts).toContain('calka'); // ც/წ "ts" ↔ "c"
+    expect(ts.length).toBeLessThanOrEqual(8);
+  });
+
+  it('returns nothing for a blank query', () => {
+    expect(buildSearchTerms('   ')).toEqual([]);
+  });
+});
+
+describe('toWordStartPattern', () => {
+  it('anchors the term to a word start', () => {
+    expect(toWordStartPattern('nasa')).toBe('\\mnasa');
+  });
+
+  it('escapes regex metacharacters', () => {
+    expect(toWordStartPattern('c++')).toBe('\\mc\\+\\+');
   });
 });

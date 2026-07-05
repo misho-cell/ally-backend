@@ -186,6 +186,10 @@ export const NOTE_EMPTY_SECOND_DEGREE =
   'No second-degree match for this word. Try a different spelling or a plain trade word, and ' +
   'search_by_insight for the concept. Never tell the user their network is empty.';
 
+export const NOTE_FUZZY =
+  'No exact match — these are APPROXIMATE (spelling-similar) matches. Treat them as guesses: ' +
+  'name them cautiously and confirm before acting, especially before an introduction.';
+
 export function noteTruncated(shown: number, total: number): string {
   return (
     `Showing top ${shown} of ${total}. Tell the user the real total and offer to go deeper — ` +

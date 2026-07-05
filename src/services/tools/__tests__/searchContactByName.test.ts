@@ -60,20 +60,20 @@ describe('searchContactByName', () => {
     expect(results[0].employer).toBe('TBC Bank');
   });
 
-  it('passes userId and lowercased Georgian term plus transliteration to the main query', async () => {
+  it('passes Georgian term and transliteration as word-start patterns to the main query', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'გიო');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%გიო%', '%gio%', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', []]);
   });
 
-  it('passes only one term for Latin query (no transliteration)', async () => {
+  it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%george%', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {

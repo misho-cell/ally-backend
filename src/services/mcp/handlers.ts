@@ -18,6 +18,7 @@ import {
   NOTE_EMPTY_INSIGHT,
   NOTE_EMPTY_SECOND_DEGREE,
   NOTE_EMPTY_TAG,
+  NOTE_FUZZY,
   NOTE_INTRO_SENT,
   NOTE_RATE_LIMITED,
   noteInboxPending,
@@ -52,6 +53,8 @@ interface SearchOutcome {
   readonly count?: number;
   // Real unbounded match count when the tool provides it (vs. the capped page).
   readonly total?: number;
+  // Set when the rows came from the spelling-similar fuzzy fallback, not exact.
+  readonly fuzzy?: boolean;
   readonly results?: SearchRow[];
 }
 
@@ -100,7 +103,10 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
   const total = outcome.total ?? outcome.count ?? deduped.length;
   const rows = deduped.slice(0, MCP_RESULT_LIMIT).map((row) => toPublicRow(userId, row));
   const payload: McpToolPayload = { found: true, total, results: rows };
-  if (total > rows.length) payload.note = noteTruncated(rows.length, total);
+  // Fuzzy (approximate) matches are flagged so the model treats them as guesses;
+  // this takes priority over the truncation note.
+  if (outcome.fuzzy) payload.note = NOTE_FUZZY;
+  else if (total > rows.length) payload.note = noteTruncated(rows.length, total);
   return payload;
 }
 

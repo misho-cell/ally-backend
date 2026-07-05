@@ -1,10 +1,10 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms } from './transliterate';
+import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, fetchFactsForPhones } from './factEnrichment';
 
-const FUZZY_THRESHOLD = 0.3;
+const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
@@ -12,8 +12,12 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const blockedPhones = await getExcludedPhones(userId);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
-    const terms = buildSearchTerms(tagQuery).map((t) => '%' + t + '%');
-    const tagCondition = terms.map((_, i) => `LOWER(ut.tag) LIKE $${i + 2}`).join(' OR ');
+    const rawTerms = buildSearchTerms(tagQuery);
+    if (rawTerms.length === 0) return { found: false, query: tagQuery };
+    // Word-start regex, not infix LIKE, so a tag word matches by prefix but a
+    // query never matches a fragment inside a longer word (ISSUE 3).
+    const terms = rawTerms.map(toWordStartPattern);
+    const tagCondition = terms.map((_, i) => `LOWER(ut.tag) ~ $${i + 2}`).join(' OR ');
     const blockParamIdx = terms.length + 2;
 
     // Real total (distinct matching contacts, unbounded) alongside the capped

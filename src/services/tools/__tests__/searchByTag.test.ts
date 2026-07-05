@@ -60,20 +60,27 @@ describe('searchByTag', () => {
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId and lowercased term to the main query (Latin — no transliteration)', async () => {
+  it('passes userId and a word-start pattern to the main query (Latin — no transliteration)', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Engineer');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%engineer%', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', []]);
   });
 
-  it('passes Georgian term plus transliteration for Georgian query', async () => {
+  it('passes Georgian term, transliteration and drift variant as word-start patterns', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'ინჟინერი');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%ინჟინერი%', '%inzhineri%', []]);
+    // ჟ → "zh" canonical, drift "zh" → "j".
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      '\\mინჟინერი',
+      '\\minzhineri',
+      '\\minjineri',
+      [],
+    ]);
   });
 
   it('reports the real total even when the page is capped', async () => {

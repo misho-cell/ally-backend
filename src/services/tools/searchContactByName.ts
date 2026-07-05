@@ -1,10 +1,10 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms } from './transliterate';
+import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, fetchFactsForPhones } from './factEnrichment';
 
-const FUZZY_THRESHOLD = 0.3;
+const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
@@ -13,9 +13,13 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // Normalized set catches format variants the SQL exact match would miss.
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
-    const terms = buildSearchTerms(nameQuery).map((t) => '%' + t + '%');
+    const rawTerms = buildSearchTerms(nameQuery);
+    if (rawTerms.length === 0) return { found: false, query: nameQuery };
+    // Word-start regex matches a name part by prefix ("gio" → "Giorgi") without
+    // matching a fragment inside another word ("japan" ↛ "Japaridze") (ISSUE 3).
+    const terms = rawTerms.map(toWordStartPattern);
     const nameCondition = terms
-      .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)
+      .map((_, i) => `LOWER(ua.alias) ~ $${i + 2} OR LOWER(u.name) ~ $${i + 2}`)
       .join(' OR ');
     const blockParamIdx = terms.length + 2;
 
