@@ -284,11 +284,13 @@ describe('creditTopup', () => {
 describe('listTopupPackages', () => {
   it('maps active packages', async () => {
     mockQuery.mockResolvedValueOnce(
-      rows([{ id: 1, paddle_price_id: 'pri_x', tokens: 500, label: '500 ტოკენი' }]) as never,
+      rows([
+        { id: 1, paddle_price_id: 'pri_x', tokens: 500, label: '500 ტოკენი', price_usd: '10.99' },
+      ]) as never,
     );
 
     expect(await listTopupPackages()).toEqual([
-      { id: 1, paddlePriceId: 'pri_x', tokens: 500, label: '500 ტოკენი' },
+      { id: 1, paddlePriceId: 'pri_x', tokens: 500, label: '500 ტოკენი', priceUsd: 10.99 },
     ]);
   });
 });

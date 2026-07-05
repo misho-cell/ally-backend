@@ -182,6 +182,8 @@ export interface TopupPackage {
   paddlePriceId: string;
   tokens: number;
   label: string;
+  // USD price of the package — what a referral-balance purchase costs.
+  priceUsd: number | null;
 }
 
 export async function listTopupPackages(): Promise<TopupPackage[]> {
@@ -190,8 +192,9 @@ export async function listTopupPackages(): Promise<TopupPackage[]> {
     paddle_price_id: string;
     tokens: number;
     label: string;
+    price_usd: string | null;
   }>(
-    `SELECT id, paddle_price_id, tokens, label
+    `SELECT id, paddle_price_id, tokens, label, price_usd
      FROM topup_packages WHERE active = true ORDER BY tokens ASC`,
   );
   return result.rows.map((r) => ({
@@ -199,6 +202,7 @@ export async function listTopupPackages(): Promise<TopupPackage[]> {
     paddlePriceId: r.paddle_price_id,
     tokens: Number(r.tokens),
     label: r.label,
+    priceUsd: r.price_usd === null ? null : Number(r.price_usd),
   }));
 }
 
@@ -208,8 +212,9 @@ export async function findTopupPackageByPriceId(priceId: string): Promise<TopupP
     paddle_price_id: string;
     tokens: number;
     label: string;
+    price_usd: string | null;
   }>(
-    `SELECT id, paddle_price_id, tokens, label
+    `SELECT id, paddle_price_id, tokens, label, price_usd
      FROM topup_packages WHERE paddle_price_id = $1 AND active = true LIMIT 1`,
     [priceId],
   );
@@ -220,6 +225,7 @@ export async function findTopupPackageByPriceId(priceId: string): Promise<TopupP
     paddlePriceId: row.paddle_price_id,
     tokens: Number(row.tokens),
     label: row.label,
+    priceUsd: row.price_usd === null ? null : Number(row.price_usd),
   };
 }
 
