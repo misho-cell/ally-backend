@@ -4,7 +4,7 @@ jest.mock('../../../db/postgres/client', () => ({
 }));
 
 // Block filtering issues its own query; stub it so the `query` mock below
-// only sees the search call (keeps call-arg assertions on index 0).
+// only sees the search calls (keeps call-arg assertions on index 0).
 jest.mock('../../block.service', () => ({
   __esModule: true,
   getExcludedPhones: jest.fn().mockResolvedValue([]),
@@ -24,25 +24,44 @@ const mockRow = {
   employer: 'Bank of Georgia',
 };
 
+function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
+  return { rows: data, rowCount: data.length };
+}
+
+// searchByTag now fires the main page and a real COUNT in parallel, then a
+// facts-enrichment query — route by SQL fragment so any call order is safe.
+function setup(opts: { main?: unknown[]; count?: number; facts?: unknown[] }): void {
+  const main = opts.main ?? [];
+  const count = opts.count ?? main.length;
+  const facts = opts.facts ?? [];
+  mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: String(count) }]) as never);
+    if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
+    return Promise.resolve(rows(main) as never); // main page
+  });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
 describe('searchByTag', () => {
   it('returns results when tag matches', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+    setup({ main: [mockRow], count: 1 });
 
     const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
 
     expect(result.found).toBe(true);
     expect(result.count).toBe(1);
+    expect(result.total).toBe(1);
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].name).toBe('ნინო');
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId and lowercased term to query (Latin — no transliteration)', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+  it('passes userId and lowercased term to the main query (Latin — no transliteration)', async () => {
+    setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Engineer');
 
@@ -50,16 +69,23 @@ describe('searchByTag', () => {
   });
 
   it('passes Georgian term plus transliteration for Georgian query', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+    setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'ინჟინერი');
 
     expect(mockQuery.mock.calls[0][1]).toEqual(['42', '%ინჟინერი%', '%inzhineri%', []]);
   });
 
+  it('reports the real total even when the page is capped', async () => {
+    setup({ main: [mockRow], count: 52 });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+
+    expect(result.total).toBe(52);
+  });
+
   it('returns null name when no alias or registered name', async () => {
-    const rowNoName = { ...mockRow, name: null };
-    mockQuery.mockResolvedValueOnce({ rows: [rowNoName], rowCount: 1 } as never);
+    setup({ main: [{ ...mockRow, name: null }], count: 1 });
 
     const result = (await searchByTag('42', 'tbilisi')) as Record<string, unknown>;
 
@@ -68,7 +94,7 @@ describe('searchByTag', () => {
   });
 
   it('returns found: false when no matches', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    setup({ main: [], count: 0 });
 
     const result = (await searchByTag('42', 'xyzzy')) as Record<string, unknown>;
 
@@ -77,7 +103,7 @@ describe('searchByTag', () => {
   });
 
   it('returns found: false with error on DB failure', async () => {
-    mockQuery.mockRejectedValueOnce(new Error('connection lost'));
+    mockQuery.mockRejectedValue(new Error('connection lost') as never);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const result = (await searchByTag('42', 'test')) as Record<string, unknown>;
@@ -88,12 +114,27 @@ describe('searchByTag', () => {
   });
 
   it('filters null values from tags array', async () => {
-    const rowWithNulls = { ...mockRow, all_tags: [null, 'engineer'] };
-    mockQuery.mockResolvedValueOnce({ rows: [rowWithNulls], rowCount: 1 } as never);
+    setup({ main: [{ ...mockRow, all_tags: [null, 'engineer'] }], count: 1 });
 
     const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
 
     const results = result.results as Array<Record<string, unknown>>;
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
+  });
+
+  it('overlays employer/occupation from saved facts when present', async () => {
+    setup({
+      main: [{ ...mockRow, employer: null, jobPosition: null }],
+      count: 1,
+      facts: [
+        { phone: '+995555123456', field_type: 'employer', value: 'MKD Law' },
+        { phone: '+995555123456', field_type: 'occupation', value: 'Senior Associate' },
+      ],
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].employer).toBe('MKD Law');
+    expect(results[0].jobPosition).toBe('Senior Associate');
   });
 });

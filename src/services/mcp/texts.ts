@@ -169,10 +169,22 @@ export const PROMPT_TEXTS = {
   },
 } as const;
 
-export const NOTE_EMPTY_RESULT =
-  '0 results for this word. Before concluding, try search_by_insight or an employer search, ' +
-  'and call get_network_stats to confirm the network size. ' +
-  'Do not tell the user their contacts are missing.';
+// Per-tool empty-result guidance. Each tool must point at DIFFERENT tools to
+// try next — never back at itself (the old shared note told search_by_insight
+// callers to "try search_by_insight").
+export const NOTE_EMPTY_TAG =
+  '0 results for this tag. Try 1–2 more tag spellings (both scripts), then switch to ' +
+  'search_by_insight for the concept. Call get_network_stats before concluding anything — ' +
+  "never tell the user their contacts are missing; you can't see that.";
+
+export const NOTE_EMPTY_INSIGHT =
+  'No saved facts matched. Try search_contacts with a plain trade/company word, or ' +
+  'search_second_degree for people one ring out. Call get_network_stats before concluding — ' +
+  'an empty result never means the network is empty.';
+
+export const NOTE_EMPTY_SECOND_DEGREE =
+  'No second-degree match for this word. Try a different spelling or a plain trade word, and ' +
+  'search_by_insight for the concept. Never tell the user their network is empty.';
 
 export function noteTruncated(shown: number, total: number): string {
   return (

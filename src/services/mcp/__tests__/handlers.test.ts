@@ -36,6 +36,7 @@ jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModul
 import { query } from '../../../db/postgres/client';
 import { searchByTag } from '../../tools/searchByTag';
 import { searchContactByName } from '../../tools/searchContactByName';
+import { searchByInsight } from '../../tools/searchByInsight';
 import { searchSecondDegree } from '../../tools/searchSecondDegree';
 import { getContactCount } from '../../tools/getContactCount';
 import { getContactFullProfile } from '../../tools/getContactFullProfile';
@@ -54,6 +55,7 @@ import {
   mcpGetNetworkStats,
   mcpRequestIntroduction,
   mcpRespondToRequest,
+  mcpSearchByInsight,
   mcpSearchContacts,
   mcpSearchSecondDegree,
 } from '../handlers';
@@ -64,6 +66,7 @@ const PHONE = '+995599123456';
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSearchByTag = searchByTag as jest.MockedFunction<typeof searchByTag>;
 const mockSearchByName = searchContactByName as jest.MockedFunction<typeof searchContactByName>;
+const mockSearchByInsight = searchByInsight as jest.MockedFunction<typeof searchByInsight>;
 const mockSecondDegree = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
 const mockContactCount = getContactCount as jest.MockedFunction<typeof getContactCount>;
 const mockFullProfile = getContactFullProfile as jest.MockedFunction<typeof getContactFullProfile>;
@@ -133,6 +136,35 @@ describe('mcpSearchContacts', () => {
     expect(result.note).toContain('top 8 of 12');
   });
 
+  it('surfaces the real total, not the capped page (ISSUE 5)', async () => {
+    const rows = Array.from({ length: 20 }, (_, i) => searchRow(i));
+    mockSearchByTag.mockResolvedValue({ found: true, count: 20, total: 52, results: rows });
+
+    const result = await mcpSearchContacts(USER, { tag: 'axel' });
+
+    expect(result.total).toBe(52);
+    expect((result.results as unknown[]).length).toBe(8);
+    expect(result.note).toContain('of 52');
+  });
+
+  it('dedupes the same person appearing under several phones (ISSUE 6)', async () => {
+    const dupe = (i: number): Record<string, unknown> => ({ ...searchRow(i), name: 'Guntars Cauna' });
+    mockSearchByTag.mockResolvedValue({
+      found: true,
+      count: 5,
+      total: 5,
+      results: [dupe(1), dupe(2), dupe(3), searchRow(4), searchRow(5)],
+    });
+
+    const result = await mcpSearchContacts(USER, { tag: 'developer' });
+
+    const names = (result.results as Record<string, unknown>[]).map((r) => r.name);
+    expect(names.filter((n) => n === 'Guntars Cauna')).toHaveLength(1);
+    // The three collapsed slots free up for the two distinct people.
+    expect(names).toContain('Contact 4');
+    expect(names).toContain('Contact 5');
+  });
+
   it('returns the empty-result guidance on no matches and on missing args', async () => {
     mockSearchByTag.mockResolvedValue({ found: false, query: 'x' });
     const empty = await mcpSearchContacts(USER, { tag: 'x' });
@@ -141,6 +173,13 @@ describe('mcpSearchContacts', () => {
 
     const noArgs = await mcpSearchContacts(USER, {});
     expect(noArgs.error).toBeDefined();
+  });
+
+  it('insight empty note never points the caller back at insight search', async () => {
+    mockSearchByInsight.mockResolvedValue({ found: false, query: 'x' });
+    const empty = await mcpSearchByInsight(USER, { query: 'who invests' });
+    expect(empty.found).toBe(false);
+    expect(String(empty.note)).not.toContain('try search_by_insight');
   });
 });
 

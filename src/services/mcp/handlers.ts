@@ -15,7 +15,9 @@ import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubText } from './privacy';
 import {
-  NOTE_EMPTY_RESULT,
+  NOTE_EMPTY_INSIGHT,
+  NOTE_EMPTY_SECOND_DEGREE,
+  NOTE_EMPTY_TAG,
   NOTE_INTRO_SENT,
   NOTE_RATE_LIMITED,
   noteInboxPending,
@@ -48,6 +50,8 @@ interface SearchRow {
 interface SearchOutcome {
   readonly found?: boolean;
   readonly count?: number;
+  // Real unbounded match count when the tool provides it (vs. the capped page).
+  readonly total?: number;
   readonly results?: SearchRow[];
 }
 
@@ -62,13 +66,39 @@ function toPublicRow(userId: string, row: SearchRow): McpToolPayload {
   return publicRow;
 }
 
-function mapSearchResult(userId: string, raw: object): McpToolPayload {
+function normalizedName(row: SearchRow): string | null {
+  const name = typeof row.name === 'string' ? row.name.trim().toLowerCase() : '';
+  return name.length > 0 ? name.replace(/\s+/g, ' ') : null;
+}
+
+/**
+ * Collapse the same person appearing under several raw-contact phones (ISSUE
+ * 6): keep the first row per normalized name, drop later duplicates so the
+ * 8-slot window fills with distinct people. Nameless rows are never merged.
+ */
+function dedupeByName(rows: SearchRow[]): SearchRow[] {
+  const seen = new Set<string>();
+  const out: SearchRow[] = [];
+  for (const row of rows) {
+    const key = normalizedName(row);
+    if (key !== null) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToolPayload {
   const outcome = raw as SearchOutcome;
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
-    return { found: false, note: NOTE_EMPTY_RESULT };
+    return { found: false, note: emptyNote };
   }
-  const total = outcome.count ?? outcome.results.length;
-  const rows = outcome.results.slice(0, MCP_RESULT_LIMIT).map((row) => toPublicRow(userId, row));
+  const deduped = dedupeByName(outcome.results);
+  // Real total when the tool reports one; else the deduped pool size.
+  const total = outcome.total ?? outcome.count ?? deduped.length;
+  const rows = deduped.slice(0, MCP_RESULT_LIMIT).map((row) => toPublicRow(userId, row));
   const payload: McpToolPayload = { found: true, total, results: rows };
   if (total > rows.length) payload.note = noteTruncated(rows.length, total);
   return payload;
@@ -84,7 +114,7 @@ export async function mcpSearchContacts(
     return { error: 'Pass either tag or name.' };
   }
   const raw = tag ? await searchByTag(userId, tag) : await searchContactByName(userId, name ?? '');
-  return mapSearchResult(userId, raw);
+  return mapSearchResult(userId, raw, NOTE_EMPTY_TAG);
 }
 
 export async function mcpSearchByInsight(
@@ -93,7 +123,7 @@ export async function mcpSearchByInsight(
 ): Promise<McpToolPayload> {
   const insightQuery = args.query?.trim();
   if (!insightQuery) return { error: 'Pass query.' };
-  return mapSearchResult(userId, await searchByInsight(userId, insightQuery));
+  return mapSearchResult(userId, await searchByInsight(userId, insightQuery), NOTE_EMPTY_INSIGHT);
 }
 
 export async function mcpSearchSecondDegree(
@@ -102,7 +132,11 @@ export async function mcpSearchSecondDegree(
 ): Promise<McpToolPayload> {
   const searchQuery = args.query?.trim();
   if (!searchQuery) return { error: 'Pass query.' };
-  return mapSearchResult(userId, await searchSecondDegree(userId, searchQuery));
+  return mapSearchResult(
+    userId,
+    await searchSecondDegree(userId, searchQuery),
+    NOTE_EMPTY_SECOND_DEGREE,
+  );
 }
 
 export async function mcpGetNetworkStats(userId: string): Promise<McpToolPayload> {

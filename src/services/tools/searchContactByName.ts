@@ -2,8 +2,10 @@ import { query } from '../../db/postgres/client';
 import { buildSearchTerms } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { applyFacts, fetchFactsForPhones } from './factEnrichment';
 
 const FUZZY_THRESHOLD = 0.3;
+const RESULT_LIMIT = 20;
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
@@ -17,34 +19,47 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       .join(' OR ');
     const blockParamIdx = terms.length + 2;
 
-    const result = await query<{
-      phone: string;
-      name: string | null;
-      all_tags: string[];
-      employer: string | null;
-      jobPosition: string | null;
-      city: string | null;
-    }>(
-      `SELECT ua.phone,
-              COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
-              array_agg(DISTINCT ut.tag)            AS all_tags,
-              MAX(u.employer)                       AS employer,
-              MAX(u."jobPosition")                  AS "jobPosition",
-              MAX(u.city)                           AS city
-       FROM "UserAlias" ua
-       LEFT JOIN "UserTags"  ut ON ut.phone = ua.phone AND ut."contactId" = ua."contactId"
-       LEFT JOIN "UserPhone" up ON up.phone  = ua.phone
-       LEFT JOIN "User"      u  ON u.id      = up."userId"
-       WHERE ua."contactId" = $1
-         AND (${nameCondition})
-         AND ua.phone != ALL($${blockParamIdx})
-       GROUP BY ua.phone
-       ORDER BY MAX(ua.alias)
-       LIMIT 20`,
-      [userId, ...terms, blockedPhones],
-    );
+    const [result, countResult] = await Promise.all([
+      query<{
+        phone: string;
+        name: string | null;
+        all_tags: string[];
+        employer: string | null;
+        jobPosition: string | null;
+        city: string | null;
+      }>(
+        `SELECT ua.phone,
+                COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+                array_agg(DISTINCT ut.tag)            AS all_tags,
+                MAX(u.employer)                       AS employer,
+                MAX(u."jobPosition")                  AS "jobPosition",
+                MAX(u.city)                           AS city
+         FROM "UserAlias" ua
+         LEFT JOIN "UserTags"  ut ON ut.phone = ua.phone AND ut."contactId" = ua."contactId"
+         LEFT JOIN "UserPhone" up ON up.phone  = ua.phone
+         LEFT JOIN "User"      u  ON u.id      = up."userId"
+         WHERE ua."contactId" = $1
+           AND (${nameCondition})
+           AND ua.phone != ALL($${blockParamIdx})
+         GROUP BY ua.phone
+         ORDER BY MAX(ua.alias)
+         LIMIT ${RESULT_LIMIT}`,
+        [userId, ...terms, blockedPhones],
+      ),
+      query<{ total: string }>(
+        `SELECT COUNT(DISTINCT ua.phone) AS total
+         FROM "UserAlias" ua
+         LEFT JOIN "UserPhone" up ON up.phone = ua.phone
+         LEFT JOIN "User"      u  ON u.id     = up."userId"
+         WHERE ua."contactId" = $1
+           AND (${nameCondition})
+           AND ua.phone != ALL($${blockParamIdx})`,
+        [userId, ...terms, blockedPhones],
+      ),
+    ]);
 
     const rows = result.rows.filter((r) => !isExcluded(r.phone));
+    const total = Number(countResult.rows[0]?.total ?? rows.length);
 
     if (rows.length === 0) {
       // Fallback: fuzzy similarity search via pg_trgm (catches typos like livingston/livingstone)
@@ -87,18 +102,28 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
 
         const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
         if (fuzzyRows.length > 0) {
+          const facts = await fetchFactsForPhones(
+            userId,
+            fuzzyRows.map((r) => r.phone),
+          );
           return {
             found: true,
             count: fuzzyRows.length,
+            total: fuzzyRows.length,
             fuzzy: true,
-            results: fuzzyRows.map((row) => ({
-              phone: row.phone,
-              name: row.name ?? null,
-              tags: (row.all_tags || []).filter(Boolean),
-              employer: row.employer ?? null,
-              jobPosition: row.jobPosition ?? null,
-              city: row.city ?? null,
-            })),
+            results: fuzzyRows.map((row) =>
+              applyFacts(
+                {
+                  phone: row.phone,
+                  name: row.name ?? null,
+                  tags: (row.all_tags || []).filter(Boolean),
+                  employer: row.employer ?? null,
+                  jobPosition: row.jobPosition ?? null,
+                  city: row.city ?? null,
+                },
+                facts,
+              ),
+            ),
           };
         }
       } catch {
@@ -107,17 +132,27 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       return { found: false, query: nameQuery };
     }
 
+    const facts = await fetchFactsForPhones(
+      userId,
+      rows.map((r) => r.phone),
+    );
     return {
       found: true,
       count: rows.length,
-      results: rows.map((row) => ({
-        phone: row.phone,
-        name: row.name ?? null,
-        tags: (row.all_tags || []).filter(Boolean),
-        employer: row.employer ?? null,
-        jobPosition: row.jobPosition ?? null,
-        city: row.city ?? null,
-      })),
+      total,
+      results: rows.map((row) =>
+        applyFacts(
+          {
+            phone: row.phone,
+            name: row.name ?? null,
+            tags: (row.all_tags || []).filter(Boolean),
+            employer: row.employer ?? null,
+            jobPosition: row.jobPosition ?? null,
+            city: row.city ?? null,
+          },
+          facts,
+        ),
+      ),
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);
