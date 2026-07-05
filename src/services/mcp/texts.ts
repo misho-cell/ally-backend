@@ -103,6 +103,41 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       "this notifies the other side and can't be undone. Pass on only what the user can " +
       'honestly stand behind; keep a decline private and neutral.',
   },
+  save_contact_fact: {
+    title: 'Remember a fact about a contact',
+    description:
+      "Saves a fact the user tells you about a contact (their employer, occupation, city, or " +
+      'industry) so it is remembered across conversations and makes them findable by ' +
+      'search_by_insight later. Use when the user states something factual about a person ' +
+      '("Nino is a lawyer at MKD Law"). Takes the contact_ref from a search result. Facts are ' +
+      "private to this user unless the same fact is independently confirmed by others.",
+  },
+  get_contact_facts: {
+    title: 'Recall saved facts about a contact',
+    description:
+      'Returns the facts saved about one contact by contact_ref — the user\'s own saved facts ' +
+      'plus any crowd-confirmed public ones, and which field is still unknown. Use to recall ' +
+      'what the user previously told you about a person before answering or presenting them.',
+  },
+  block_contact: {
+    title: 'Block a contact',
+    description:
+      'Hides a contact from all of the user\'s searches, second-degree paths, and introductions ' +
+      '(both directions). Use only on the user\'s explicit request to block/hide someone. Takes ' +
+      'the contact_ref from a search result. Reversible with unblock_contact.',
+  },
+  unblock_contact: {
+    title: 'Unblock a contact',
+    description:
+      'Reverses a block, by the contact_ref from list_blocked_contacts, restoring the person to ' +
+      "searches. Use only on the user's explicit request.",
+  },
+  list_blocked_contacts: {
+    title: 'List blocked contacts',
+    description:
+      'Returns the contacts the user has blocked (name + contact_ref for unblocking). Use when ' +
+      'the user asks who they have blocked, or before unblocking someone.',
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -132,6 +167,8 @@ export const PARAM_TEXTS = {
   requestRef: 'The stable id of a waiting request, taken from check_my_inbox. Never invent it.',
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
+  factFieldType: 'One of: employer, occupation, city, industry.',
+  factValue: 'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi").',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).

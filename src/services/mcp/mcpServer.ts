@@ -2,14 +2,19 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { recordFixedUsage } from '../costLedger.service';
 import {
+  mcpBlockContact,
   mcpCheckInbox,
+  mcpGetContactFacts,
   mcpGetContactProfile,
   mcpGetNetworkStats,
+  mcpListBlocked,
   mcpRequestIntroduction,
   mcpRespondToRequest,
+  mcpSaveContactFact,
   mcpSearchByInsight,
   mcpSearchContacts,
   mcpSearchSecondDegree,
+  mcpUnblockContact,
   McpToolPayload,
 } from './handlers';
 import {
@@ -173,6 +178,67 @@ function registerIntroTools(server: McpServer, userId: string): void {
   );
 }
 
+// Private, reversible writes (facts, blocks) — not destructive in the
+// third-party sense, so no forced confirmation like request_introduction.
+const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+
+function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
+  server.registerTool(
+    'save_contact_fact',
+    {
+      title: TOOL_TEXTS.save_contact_fact.title,
+      description: TOOL_TEXTS.save_contact_fact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        field_type: z.string().describe(PARAM_TEXTS.factFieldType),
+        value: z.string().describe(PARAM_TEXTS.factValue),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'save_contact_fact', () => mcpSaveContactFact(userId, args)),
+  );
+  server.registerTool(
+    'get_contact_facts',
+    {
+      title: TOOL_TEXTS.get_contact_facts.title,
+      description: TOOL_TEXTS.get_contact_facts.description,
+      inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_contact_facts', () => mcpGetContactFacts(userId, args)),
+  );
+  server.registerTool(
+    'block_contact',
+    {
+      title: TOOL_TEXTS.block_contact.title,
+      description: TOOL_TEXTS.block_contact.description,
+      inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'block_contact', () => mcpBlockContact(userId, args)),
+  );
+  server.registerTool(
+    'unblock_contact',
+    {
+      title: TOOL_TEXTS.unblock_contact.title,
+      description: TOOL_TEXTS.unblock_contact.description,
+      inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'unblock_contact', () => mcpUnblockContact(userId, args)),
+  );
+  server.registerTool(
+    'list_blocked_contacts',
+    {
+      title: TOOL_TEXTS.list_blocked_contacts.title,
+      description: TOOL_TEXTS.list_blocked_contacts.description,
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    () => runTool(userId, 'list_blocked_contacts', () => mcpListBlocked(userId)),
+  );
+}
+
 function promptMessage(text: string): {
   messages: { role: 'user'; content: { type: 'text'; text: string } }[];
 } {
@@ -225,6 +291,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerSearchTools(server, userId);
   registerProfileTools(server, userId);
   registerIntroTools(server, userId);
+  registerMemoryAndBlockTools(server, userId);
   registerPrompts(server);
   return server;
 }

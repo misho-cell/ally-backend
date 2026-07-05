@@ -32,6 +32,18 @@ jest.mock('../../introduction.service', () => ({
   __esModule: true,
 }));
 jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModule: true }));
+jest.mock('../../contactFacts.service', () => ({
+  FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
+  submitContactFact: jest.fn(),
+  getVisibleFacts: jest.fn(),
+  __esModule: true,
+}));
+jest.mock('../../block.service', () => ({
+  blockContact: jest.fn(),
+  unblockContact: jest.fn(),
+  getBlockedByUser: jest.fn(),
+  __esModule: true,
+}));
 
 import { query } from '../../../db/postgres/client';
 import { searchByTag } from '../../tools/searchByTag';
@@ -54,11 +66,18 @@ import {
   mcpGetContactProfile,
   mcpGetNetworkStats,
   mcpRequestIntroduction,
+  mcpBlockContact,
+  mcpGetContactFacts,
+  mcpListBlocked,
   mcpRespondToRequest,
+  mcpSaveContactFact,
   mcpSearchByInsight,
   mcpSearchContacts,
   mcpSearchSecondDegree,
+  mcpUnblockContact,
 } from '../handlers';
+import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
+import { blockContact, getBlockedByUser, unblockContact } from '../../block.service';
 
 const USER = '7';
 const PHONE = '+995599123456';
@@ -79,6 +98,11 @@ const mockAnswered = getRecentResponsesForRequester as jest.MockedFunction<
   typeof getRecentResponsesForRequester
 >;
 const mockIsSafe = isReplySafe as jest.MockedFunction<typeof isReplySafe>;
+const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
+const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFacts>;
+const mockBlock = blockContact as jest.MockedFunction<typeof blockContact>;
+const mockUnblock = unblockContact as jest.MockedFunction<typeof unblockContact>;
+const mockGetBlocked = getBlockedByUser as jest.MockedFunction<typeof getBlockedByUser>;
 
 function searchRow(index: number): Record<string, unknown> {
   return {
@@ -386,5 +410,66 @@ describe('mcpRespondToRequest', () => {
     });
     expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, 'ახლა ვერ');
     expect(result.success).toBe(true);
+  });
+});
+
+describe('memory tools', () => {
+  it('saves a fact by contact_ref and validates the field type', async () => {
+    mockSubmitFact.mockResolvedValue({ is_public: false, canonical_value: null });
+    const ref = encodeContactRef(USER, PHONE);
+
+    const ok = await mcpSaveContactFact(USER, { contact_ref: ref, field_type: 'employer', value: 'MKD Law' });
+    expect(ok.saved).toBe(true);
+    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'employer', 'MKD Law');
+
+    const badField = await mcpSaveContactFact(USER, { contact_ref: ref, field_type: 'zodiac', value: 'x' });
+    expect(badField.saved).toBe(false);
+
+    const badRef = await mcpSaveContactFact(USER, { contact_ref: 'c_fake', field_type: 'employer', value: 'x' });
+    expect(badRef.saved).toBe(false);
+    expect(mockSubmitFact).toHaveBeenCalledTimes(1);
+  });
+
+  it('recalls facts without leaking a phone', async () => {
+    mockGetFacts.mockResolvedValue({
+      facts: [{ field_type: 'employer', value: 'MKD Law', is_public: false }],
+      ask_about: 'city',
+    });
+    const ref = encodeContactRef(USER, PHONE);
+
+    const result = await mcpGetContactFacts(USER, { contact_ref: ref });
+
+    expect(mockGetFacts).toHaveBeenCalledWith(USER, PHONE);
+    expect(result.contact_ref).toBe(ref);
+    expect(containsPhoneLike(result)).toBe(false);
+  });
+});
+
+describe('blocking tools', () => {
+  it('blocks and unblocks by contact_ref', async () => {
+    const ref = encodeContactRef(USER, PHONE);
+
+    expect(await mcpBlockContact(USER, { contact_ref: ref })).toEqual({ blocked: true });
+    expect(mockBlock).toHaveBeenCalledWith(USER, PHONE);
+
+    expect(await mcpUnblockContact(USER, { contact_ref: ref })).toEqual({ unblocked: true });
+    expect(mockUnblock).toHaveBeenCalledWith(USER, PHONE);
+  });
+
+  it('rejects a foreign/invented ref without touching the DB', async () => {
+    const foreign = encodeContactRef('999', PHONE);
+    expect((await mcpBlockContact(USER, { contact_ref: foreign })).blocked).toBe(false);
+    expect(mockBlock).not.toHaveBeenCalled();
+  });
+
+  it('lists blocked contacts as name + fresh ref, never a phone', async () => {
+    mockGetBlocked.mockResolvedValue([{ phone: PHONE, name: 'Spammer' }]);
+
+    const result = await mcpListBlocked(USER);
+
+    const list = result.blocked as Record<string, unknown>[];
+    expect(list[0].name).toBe('Spammer');
+    expect(list[0].contact_ref).toBe(encodeContactRef(USER, PHONE));
+    expect(containsPhoneLike(result)).toBe(false);
   });
 });

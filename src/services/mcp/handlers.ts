@@ -7,6 +7,8 @@ import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
+import { FACT_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
+import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
 import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
@@ -284,4 +286,65 @@ export async function mcpRespondToRequest(
   }
   const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
   return scrubDeep(raw) as McpToolPayload;
+}
+
+const UNKNOWN_REF_ERROR = 'Unknown contact_ref — take it from a fresh search result, never invent it.';
+
+export async function mcpSaveContactFact(
+  userId: string,
+  args: { contact_ref: string; field_type: string; value: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
+  const fieldType = (args.field_type ?? '').trim();
+  if (!(FACT_FIELD_TYPES as readonly string[]).includes(fieldType)) {
+    return { saved: false, error: `field_type must be one of: ${FACT_FIELD_TYPES.join(', ')}.` };
+  }
+  const value = (args.value ?? '').trim();
+  if (!value) return { saved: false, error: 'Pass a non-empty value.' };
+
+  const result = await submitContactFact(userId, phone, fieldType, value);
+  // is_public means the crowd corroborated it; the saved value is still private
+  // to this user's assistant either way.
+  return { saved: true, field_type: fieldType, crowd_confirmed: result.is_public };
+}
+
+export async function mcpGetContactFacts(
+  userId: string,
+  args: { contact_ref: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { error: UNKNOWN_REF_ERROR };
+  const facts = await getVisibleFacts(userId, phone);
+  return { contact_ref: args.contact_ref, ...(scrubDeep(facts) as McpToolPayload) };
+}
+
+export async function mcpBlockContact(
+  userId: string,
+  args: { contact_ref: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { blocked: false, error: UNKNOWN_REF_ERROR };
+  await blockContact(userId, phone);
+  return { blocked: true };
+}
+
+export async function mcpUnblockContact(
+  userId: string,
+  args: { contact_ref: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { unblocked: false, error: UNKNOWN_REF_ERROR };
+  await unblockContact(userId, phone);
+  return { unblocked: true };
+}
+
+export async function mcpListBlocked(userId: string): Promise<McpToolPayload> {
+  const blocked = await getBlockedByUser(userId);
+  return {
+    blocked: blocked.map((entry) => ({
+      name: entry.name,
+      contact_ref: encodeContactRef(userId, entry.phone),
+    })),
+  };
 }
