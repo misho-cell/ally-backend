@@ -98,14 +98,36 @@ describe('searchByInsight', () => {
     expect(result.query).toBe('nothing');
   });
 
-  it('returns found: false with error on DB failure', async () => {
+  it('still returns facts when the insights query fails (isolated sources)', async () => {
+    // The prod bug: the contact_insights scan timed out and took the facts
+    // channel down with it. Sources are now isolated — facts must survive.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM contact_facts')) {
+        return Promise.resolve(
+          rows([{ phone: '+995599777777', name: 'Nino', matched: ['employer: MKD Law'] }]) as never,
+        );
+      }
+      if (sql.includes('FROM contact_insights')) {
+        return Promise.reject(new Error('statement timeout'));
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = (await searchByInsight('42', 'MKD Law')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    expect((result.results as Array<Record<string, unknown>>)[0].name).toBe('Nino');
+    consoleSpy.mockRestore();
+  });
+
+  it('degrades to found:false (no throw) when both sources fail', async () => {
     mockQuery.mockRejectedValue(new Error('query timeout') as never);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const result = (await searchByInsight('42', 'test')) as Record<string, unknown>;
 
     expect(result.found).toBe(false);
-    expect(result.error).toBe('query timeout');
     consoleSpy.mockRestore();
   });
 });

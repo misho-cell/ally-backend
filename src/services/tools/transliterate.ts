@@ -54,7 +54,8 @@ export function georgianToLatin(text: string): string {
 // a dropped letter (ღ written as nothing) can't be reconstructed; full
 // forgiveness needs a normalized index, tracked separately.
 const DRIFT_PAIRS: readonly [string, string][] = [
-  ['gh', 'r'], // ღ
+  ['gh', 'r'], // ღ — "gh" ↔ typed "r"
+  ['gh', 'g'], // ღ — "gh" ↔ typed "g" (so a ღ query generates both r- and g-forms)
   ['kh', 'x'], // ხ
   ['ts', 'c'], // ც / წ
   ['q', 'k'], // ყ / ქ
