@@ -52,12 +52,14 @@ export async function fetchFactsForPhones(
 }
 
 /** Overlay saved-fact fields onto a search row, keeping any non-empty existing value. */
-export function applyFacts<T extends {
-  phone: string;
-  employer: string | null;
-  jobPosition: string | null;
-  city: string | null;
-}>(row: T, facts: Map<string, ContactFactFields>): T & { industry?: string | null } {
+export function applyFacts<
+  T extends {
+    phone: string;
+    employer: string | null;
+    jobPosition: string | null;
+    city: string | null;
+  },
+>(row: T, facts: Map<string, ContactFactFields>): T & { industry?: string | null } {
   const f = facts.get(normalizePhone(row.phone));
   if (!f) return row;
   return {

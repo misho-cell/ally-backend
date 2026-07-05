@@ -71,7 +71,7 @@ describe('searchByInsight', () => {
     await searchByInsight('42', 'CONFERENCE');
 
     for (const call of mockQuery.mock.calls) {
-      expect((call[1] as string[])).toContain('%conference%');
+      expect(call[1] as string[]).toContain('%conference%');
     }
   });
 

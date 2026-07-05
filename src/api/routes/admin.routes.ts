@@ -31,6 +31,7 @@ import {
 } from '../../services/enabledTools.service';
 import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
+import { getGraphDiagnostic, GraphDiagnostic } from '../../services/graphAnalytics.service';
 import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
@@ -477,6 +478,31 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('User detail error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// One-off validation for the graph tools: confirms which phoneKey form a real
+// account uses and returns a raw top-connectors sample. Admin-only, read-only.
+adminRouter.get(
+  '/graph-diagnostic',
+  async (req: Request, res: Response<ApiResponse<GraphDiagnostic>>) => {
+    const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+    if (!phone) {
+      res.status(400).json({ success: false, error: 'phone query param is required' });
+      return;
+    }
+    try {
+      const result = await getGraphDiagnostic(phone);
+      if ('error' in result) {
+        res.status(404).json({ success: false, error: result.error });
+        return;
+      }
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('graph-diagnostic error:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

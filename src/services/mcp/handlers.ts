@@ -9,11 +9,7 @@ import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import { FACT_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
 import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
-import {
-  ConnectorOutcome,
-  getGroupConnectors,
-  getTopConnectors,
-} from '../graphAnalytics.service';
+import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
@@ -293,7 +289,8 @@ export async function mcpRespondToRequest(
   return scrubDeep(raw) as McpToolPayload;
 }
 
-const UNKNOWN_REF_ERROR = 'Unknown contact_ref — take it from a fresh search result, never invent it.';
+const UNKNOWN_REF_ERROR =
+  'Unknown contact_ref — take it from a fresh search result, never invent it.';
 
 export async function mcpSaveContactFact(
   userId: string,
@@ -354,7 +351,11 @@ export async function mcpListBlocked(userId: string): Promise<McpToolPayload> {
   };
 }
 
-function mapConnectors(userId: string, outcome: ConnectorOutcome, scoreLabel: string): McpToolPayload {
+function mapConnectors(
+  userId: string,
+  outcome: ConnectorOutcome,
+  scoreLabel: string,
+): McpToolPayload {
   if (!outcome.found || !outcome.results || outcome.results.length === 0) {
     return { found: false, reason: outcome.reason ?? 'no_connectors' };
   }
@@ -381,5 +382,9 @@ export async function mcpGetGroupConnectors(
 ): Promise<McpToolPayload> {
   const groupTag = (args.group_tag ?? '').trim();
   if (!groupTag) return { error: 'Pass group_tag.' };
-  return mapConnectors(userId, await getGroupConnectors(userId, groupTag, args.limit), 'member_links');
+  return mapConnectors(
+    userId,
+    await getGroupConnectors(userId, groupTag, args.limit),
+    'member_links',
+  );
 }

@@ -182,7 +182,10 @@ describe('mcpSearchContacts', () => {
   });
 
   it('dedupes the same person appearing under several phones (ISSUE 6)', async () => {
-    const dupe = (i: number): Record<string, unknown> => ({ ...searchRow(i), name: 'Guntars Cauna' });
+    const dupe = (i: number): Record<string, unknown> => ({
+      ...searchRow(i),
+      name: 'Guntars Cauna',
+    });
     mockSearchByTag.mockResolvedValue({
       found: true,
       count: 5,
@@ -428,14 +431,26 @@ describe('memory tools', () => {
     mockSubmitFact.mockResolvedValue({ is_public: false, canonical_value: null });
     const ref = encodeContactRef(USER, PHONE);
 
-    const ok = await mcpSaveContactFact(USER, { contact_ref: ref, field_type: 'employer', value: 'MKD Law' });
+    const ok = await mcpSaveContactFact(USER, {
+      contact_ref: ref,
+      field_type: 'employer',
+      value: 'MKD Law',
+    });
     expect(ok.saved).toBe(true);
     expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'employer', 'MKD Law');
 
-    const badField = await mcpSaveContactFact(USER, { contact_ref: ref, field_type: 'zodiac', value: 'x' });
+    const badField = await mcpSaveContactFact(USER, {
+      contact_ref: ref,
+      field_type: 'zodiac',
+      value: 'x',
+    });
     expect(badField.saved).toBe(false);
 
-    const badRef = await mcpSaveContactFact(USER, { contact_ref: 'c_fake', field_type: 'employer', value: 'x' });
+    const badRef = await mcpSaveContactFact(USER, {
+      contact_ref: 'c_fake',
+      field_type: 'employer',
+      value: 'x',
+    });
     expect(badRef.saved).toBe(false);
     expect(mockSubmitFact).toHaveBeenCalledTimes(1);
   });

@@ -106,24 +106,24 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
-      "Saves a fact the user tells you about a contact (their employer, occupation, city, or " +
+      'Saves a fact the user tells you about a contact (their employer, occupation, city, or ' +
       'industry) so it is remembered across conversations and makes them findable by ' +
       'search_by_insight later. Use when the user states something factual about a person ' +
       '("Nino is a lawyer at MKD Law"). Takes the contact_ref from a search result. Facts are ' +
-      "private to this user unless the same fact is independently confirmed by others.",
+      'private to this user unless the same fact is independently confirmed by others.',
   },
   get_contact_facts: {
     title: 'Recall saved facts about a contact',
     description:
-      'Returns the facts saved about one contact by contact_ref — the user\'s own saved facts ' +
+      "Returns the facts saved about one contact by contact_ref — the user's own saved facts " +
       'plus any crowd-confirmed public ones, and which field is still unknown. Use to recall ' +
       'what the user previously told you about a person before answering or presenting them.',
   },
   block_contact: {
     title: 'Block a contact',
     description:
-      'Hides a contact from all of the user\'s searches, second-degree paths, and introductions ' +
-      '(both directions). Use only on the user\'s explicit request to block/hide someone. Takes ' +
+      "Hides a contact from all of the user's searches, second-degree paths, and introductions " +
+      "(both directions). Use only on the user's explicit request to block/hide someone. Takes " +
       'the contact_ref from a search result. Reversible with unblock_contact.',
   },
   unblock_contact: {
@@ -141,7 +141,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   get_top_connectors: {
     title: 'Top connectors in the network',
     description:
-      'Ranks the user\'s own contacts by how many people they reach that the user does not ' +
+      "Ranks the user's own contacts by how many people they reach that the user does not " +
       'already know — the best "bridges". Use for "who should I bring into Ally / sell to / ' +
       'reconnect with to unlock the most new people". Each result carries a `reach` count. This ' +
       'answers connectivity questions that word search cannot.',
@@ -185,7 +185,8 @@ export const PARAM_TEXTS = {
   responseNote: 'Optional short note from the user to pass back with the answer.',
   factFieldType: 'One of: employer, occupation, city, industry.',
   factValue: 'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi").',
-  groupTag: 'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
+  groupTag:
+    'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
   connectorLimit: 'How many to return (default 10, max 25).',
 } as const;
 

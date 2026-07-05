@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
-import { getCompositeKeyForUser } from './neo4j.keys';
+import { buildCompositeKey, getCompositeKeyForUser } from './neo4j.keys';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
 import { buildSearchTerms, toWordStartPattern } from './tools/transliterate';
@@ -189,4 +189,80 @@ export async function getGroupConnectors(
   const results = await resolveConnectors(userId, ranked);
   if (results.length === 0) return { found: false, reason: 'no_connectors' };
   return { found: true, results };
+}
+
+export interface GraphDiagnostic {
+  userId: number;
+  phones: string[];
+  compositeKey: string;
+  keyForms: { key: string; directContacts: number }[];
+  workingKey: string | null;
+  topConnectorsSample: { phoneKey: string; reach: number }[];
+}
+
+/**
+ * Admin-only one-off validation for the graph tools: which phoneKey form the
+ * account's node actually uses (composite vs. single) and a raw top-connectors
+ * sample. Returns phoneKeys unmasked — this is an admin diagnostic, not a
+ * user-facing tool, and admins already see phones in the 360 profile.
+ */
+export async function getGraphDiagnostic(
+  phone: string,
+): Promise<GraphDiagnostic | { error: string }> {
+  const userRow = await query<{ userId: number }>(
+    'SELECT "userId" FROM "UserPhone" WHERE phone = $1 LIMIT 1',
+    [phone],
+  );
+  const userId = userRow.rows[0]?.userId;
+  if (userId === undefined) return { error: 'phone_not_found' };
+
+  const phonesRes = await query<{ phone: string }>(
+    'SELECT phone FROM "UserPhone" WHERE "userId" = $1 ORDER BY phone',
+    [userId],
+  );
+  const phones = phonesRes.rows.map((r) => r.phone);
+  if (phones.length === 0) return { error: 'no_phones' };
+
+  const compositeKey = buildCompositeKey(phones);
+  const candidates = [...new Set([compositeKey, ...phones])];
+
+  const session = getSession();
+  try {
+    const diag = await session.run(
+      `MATCH (me:AllyNode) WHERE me.phoneKey IN $keys
+       OPTIONAL MATCH (me)-[:CONTACT]->(f)
+       RETURN me.phoneKey AS key, count(f) AS c`,
+      { keys: candidates },
+      { timeout: NEO4J_TIMEOUT_MS },
+    );
+    const keyForms = diag.records.map((r) => ({
+      key: r.get('key') as string,
+      directContacts: toNumber(r.get('c')),
+    }));
+
+    const best = [...keyForms].sort((a, b) => b.directContacts - a.directContacts)[0];
+    const workingKey = best && best.directContacts > 0 ? best.key : null;
+
+    let topConnectorsSample: { phoneKey: string; reach: number }[] = [];
+    if (workingKey) {
+      const top = await session.run(
+        `MATCH (me:AllyNode {phoneKey: $key})-[:CONTACT]->(friend:AllyNode)
+         OPTIONAL MATCH (friend)-[:CONTACT]->(t:AllyNode)
+         WHERE t.phoneKey <> me.phoneKey AND NOT (me)-[:CONTACT]->(t)
+         WITH friend.phoneKey AS phoneKey, count(DISTINCT t) AS reach
+         WHERE reach > 0
+         RETURN phoneKey, reach ORDER BY reach DESC LIMIT 10`,
+        { key: workingKey },
+        { timeout: NEO4J_TIMEOUT_MS },
+      );
+      topConnectorsSample = top.records.map((r) => ({
+        phoneKey: r.get('phoneKey') as string,
+        reach: toNumber(r.get('reach')),
+      }));
+    }
+
+    return { userId, phones, compositeKey, keyForms, workingKey, topConnectorsSample };
+  } finally {
+    await session.close();
+  }
 }

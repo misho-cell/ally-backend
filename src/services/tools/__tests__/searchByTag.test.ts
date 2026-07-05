@@ -35,7 +35,8 @@ function setup(opts: { main?: unknown[]; count?: number; facts?: unknown[] }): v
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: String(count) }]) as never);
+    if (sql.includes('COUNT(DISTINCT'))
+      return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
     return Promise.resolve(rows(main) as never); // main page

@@ -247,7 +247,9 @@ function registerGraphTools(server: McpServer, userId: string): void {
     {
       title: TOOL_TEXTS.get_top_connectors.title,
       description: TOOL_TEXTS.get_top_connectors.description,
-      inputSchema: { limit: z.number().int().positive().optional().describe(PARAM_TEXTS.connectorLimit) },
+      inputSchema: {
+        limit: z.number().int().positive().optional().describe(PARAM_TEXTS.connectorLimit),
+      },
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_top_connectors', () => mcpGetTopConnectors(userId, args)),
