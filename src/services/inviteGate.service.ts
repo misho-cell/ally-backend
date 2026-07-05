@@ -64,29 +64,64 @@ async function findSubscribedReferrer(referralPhone: string): Promise<number | n
 }
 
 /**
+ * Attribution lookup for the referral-earnings chain: any registered,
+ * non-deleted user counts as an inviter. Intentionally more lenient than the
+ * gate's entrance rule (which demands a subscribed referrer) — with the gate
+ * off, "invited by" is an optional field and an unknown phone must never
+ * block or fail the registration, just go unattributed.
+ */
+async function findInviterForAttribution(
+  referralPhone: string,
+  registrantPhone: string,
+): Promise<number | undefined> {
+  // Self-referral guard: pointing the field at your own number attributes nothing.
+  if (normalizePhone(referralPhone) === normalizePhone(registrantPhone)) return undefined;
+  const result = await query<{ id: number }>(
+    `SELECT u.id
+     FROM "UserPhone" up
+     JOIN "User" u ON u.id = up."userId"
+     WHERE up.phone = ANY($1) AND u."deletedAt" IS NULL
+     LIMIT 1`,
+    [phoneVariants(referralPhone)],
+  );
+  return result.rows[0]?.id ?? undefined;
+}
+
+function hasReferralPhone(referralPhone?: string): referralPhone is string {
+  return referralPhone !== undefined && referralPhone.trim() !== '';
+}
+
+/**
  * Invite-only gate for new registrations. Order matters:
  * an already-known phone (social proof) enters with no referral asked;
  * a referral from a subscribed user is the fallback for unknown phones.
+ * Whatever the entrance mode, a provided referralPhone is resolved to an
+ * inviter so the referral-earnings chain gets built even when the gate is
+ * off or the person entered via social proof.
  */
 export async function checkRegistrationEligibility(
   phone: string,
   referralPhone?: string,
 ): Promise<EligibilityCheck> {
+  const attribution = hasReferralPhone(referralPhone)
+    ? await findInviterForAttribution(referralPhone, phone)
+    : undefined;
+
   if (!(await isInviteOnlyEnabled())) {
-    return { eligible: true, mode: 'open' };
+    return { eligible: true, mode: 'open', inviterUserId: attribution };
   }
 
   const variants = phoneVariants(phone);
 
   if (await isPhoneRegistered(variants)) {
-    return { eligible: true, mode: 'existing' };
+    return { eligible: true, mode: 'existing', inviterUserId: attribution };
   }
 
   if (await passesSocialProof(variants)) {
-    return { eligible: true, mode: 'social' };
+    return { eligible: true, mode: 'social', inviterUserId: attribution };
   }
 
-  if (referralPhone !== undefined && referralPhone.trim() !== '') {
+  if (hasReferralPhone(referralPhone)) {
     const inviterUserId = await findSubscribedReferrer(referralPhone);
     if (inviterUserId !== null) {
       return { eligible: true, mode: 'referral', inviterUserId };

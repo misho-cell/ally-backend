@@ -15,6 +15,8 @@ interface GateWorld {
   totalOwners: number;
   subscribedOwners: number;
   referrerId: number | null;
+  // Lenient attribution lookup (any registered user, no subscription demand).
+  attributedInviterId?: number | null;
 }
 
 // Route gate queries by a distinctive SQL fragment.
@@ -24,8 +26,10 @@ function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: 
     return world.registered ? rows([{ userId: 42 }]) : rows([]);
   if (sql.includes('FROM "UserAlias" ua'))
     return rows([{ total: String(world.totalOwners), subscribed: String(world.subscribedOwners) }]);
-  if (sql.includes('JOIN "User" u ON u.id = up."userId"'))
+  if (sql.includes('subscription_status = ANY'))
     return world.referrerId === null ? rows([]) : rows([{ id: world.referrerId }]);
+  if (sql.includes('JOIN "User" u ON u.id = up."userId"'))
+    return world.attributedInviterId == null ? rows([]) : rows([{ id: world.attributedInviterId }]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 
@@ -131,5 +135,45 @@ describe('checkRegistrationEligibility', () => {
     const result = await checkRegistrationEligibility('+995599000001', '   ');
 
     expect(result).toEqual({ eligible: false, reason: 'referral_required' });
+  });
+});
+
+describe('referral attribution with the gate off (earnings chain)', () => {
+  it('records the inviter when a referral phone is provided', async () => {
+    setWorld({ ...CLOSED_WORLD, flagEnabled: false, attributedInviterId: 55 });
+
+    const result = await checkRegistrationEligibility('+995599000001', '+995599222222');
+
+    expect(result).toEqual({ eligible: true, mode: 'open', inviterUserId: 55 });
+  });
+
+  it('never blocks registration when the referral phone is unknown', async () => {
+    setWorld({ ...CLOSED_WORLD, flagEnabled: false, attributedInviterId: null });
+
+    const result = await checkRegistrationEligibility('+995599000001', '+995599999999');
+
+    expect(result.eligible).toBe(true);
+    expect(result.inviterUserId).toBeUndefined();
+  });
+
+  it('ignores self-referral without touching the DB lookup', async () => {
+    setWorld({ ...CLOSED_WORLD, flagEnabled: false, attributedInviterId: 55 });
+
+    const result = await checkRegistrationEligibility('+995599000001', '599 00 00 01');
+
+    expect(result.inviterUserId).toBeUndefined();
+  });
+
+  it('attributes the inviter on social-proof entry too (gate on)', async () => {
+    setWorld({
+      ...CLOSED_WORLD,
+      totalOwners: 25,
+      subscribedOwners: 0,
+      attributedInviterId: 77,
+    });
+
+    const result = await checkRegistrationEligibility('+995599000001', '+995599222222');
+
+    expect(result).toEqual({ eligible: true, mode: 'social', inviterUserId: 77 });
   });
 });
