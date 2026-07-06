@@ -23,13 +23,18 @@ const insightRow = {
   data: { mood: 'positive', note: 'met at conference' },
 };
 
-// Concept search reads two sources in parallel — contact_facts (the user's
-// saved facts) and contact_insights (AI enrichment) — then merges by phone.
-function setup(opts: { facts?: unknown[]; insights?: unknown[] }): void {
-  const facts = opts.facts ?? [];
+// Concept search reads three isolated sources — the user's own saved facts and
+// crowd-confirmed public facts (both from contact_facts, split into two queries
+// so one bound parameter is never compared to two column types) plus
+// contact_insights (AI enrichment) — then merges by phone. Own vs. public are
+// told apart by their WHERE clause: `submitted_by_user_id = $1` vs. `is_public`.
+function setup(opts: { facts?: unknown[]; publicFacts?: unknown[]; insights?: unknown[] }): void {
+  const own = opts.facts ?? [];
+  const pub = opts.publicFacts ?? [];
   const insights = opts.insights ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('cf.submitted_by_user_id = $1')) return Promise.resolve(rows(own) as never);
+    if (sql.includes('cf.is_public = true')) return Promise.resolve(rows(pub) as never);
     if (sql.includes('FROM contact_insights')) return Promise.resolve(rows(insights) as never);
     throw new Error(`Unexpected query: ${sql}`);
   });
@@ -98,26 +103,53 @@ describe('searchByInsight', () => {
     expect(result.query).toBe('nothing');
   });
 
-  it('still returns facts when the insights query fails (isolated sources)', async () => {
+  it('still returns own facts when the insights query fails (isolated sources)', async () => {
     // The prod bug: the contact_insights scan timed out and took the facts
     // channel down with it. Sources are now isolated — facts must survive.
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    setup({ facts: [{ phone: '+995599777777', name: 'Nino', matched: ['employer: MKD Law'] }] });
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('FROM contact_facts')) {
+      if (sql.includes('cf.submitted_by_user_id = $1')) {
         return Promise.resolve(
           rows([{ phone: '+995599777777', name: 'Nino', matched: ['employer: MKD Law'] }]) as never,
         );
       }
+      if (sql.includes('cf.is_public = true')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM contact_insights')) {
         return Promise.reject(new Error('statement timeout'));
       }
       throw new Error(`Unexpected query: ${sql}`);
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const result = (await searchByInsight('42', 'MKD Law')) as Record<string, unknown>;
 
     expect(result.found).toBe(true);
     expect((result.results as Array<Record<string, unknown>>)[0].name).toBe('Nino');
+    consoleSpy.mockRestore();
+  });
+
+  it('still returns own facts when the public-facts scan fails (the save→search loop)', async () => {
+    // Precisely the reported prod symptom: save a fact, then search it. Even if
+    // the crowd/public-facts scan times out, the user's OWN fact must surface.
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('cf.submitted_by_user_id = $1')) {
+        return Promise.resolve(
+          rows([
+            { phone: '+995599777777', name: 'Mariam', matched: ['employer: MKD Law'] },
+          ]) as never,
+        );
+      }
+      if (sql.includes('cf.is_public = true'))
+        return Promise.reject(new Error('statement timeout'));
+      if (sql.includes('FROM contact_insights')) return Promise.resolve(rows([]) as never);
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+
+    const result = (await searchByInsight('42', 'MKD Law')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    expect((result.results as Array<Record<string, unknown>>)[0].name).toBe('Mariam');
     consoleSpy.mockRestore();
   });
 
