@@ -94,6 +94,40 @@ describe('searchByInsight', () => {
     expect(row.info).toEqual(insightRow.data);
   });
 
+  it('matches multi-word queries per word and ranks by words hit', async () => {
+    // "lawyer real estate": the contact whose facts cover both concepts must
+    // outrank one that only matches a single word.
+    setup({
+      facts: [
+        { phone: '+995599000001', name: 'One-word', matched: ['occupation: lawyer'] },
+        {
+          phone: '+995599000002',
+          name: 'Both-words',
+          matched: ['occupation: lawyer', 'industry: real estate'],
+        },
+      ],
+    });
+
+    const result = (await searchByInsight('42', 'lawyer real estate')) as Record<string, unknown>;
+
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results).toHaveLength(2);
+    expect(results[0].name).toBe('Both-words');
+    expect(results[1].name).toBe('One-word');
+  });
+
+  it('sends one LIKE parameter per query word', async () => {
+    setup({ facts: [], insights: [] });
+
+    await searchByInsight('42', 'lawyer estate');
+
+    // Own-facts call params: [userId, userId, '%lawyer%', '%estate%', LIMIT]
+    const ownCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('cf.submitted_by_user_id = $1'),
+    );
+    expect(ownCall?.[1] as string[]).toEqual(expect.arrayContaining(['%lawyer%', '%estate%']));
+  });
+
   it('returns found: false when neither source matches', async () => {
     setup({ facts: [], insights: [] });
 
