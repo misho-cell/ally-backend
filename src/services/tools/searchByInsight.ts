@@ -3,7 +3,7 @@ import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 
 const RESULT_LIMIT = 20;
-const SEARCH_TIMEOUT_MS = 10_000;
+const SEARCH_TIMEOUT_MS = 12_000;
 const MIN_WORD_LEN = 2;
 const MAX_QUERY_WORDS = 6;
 

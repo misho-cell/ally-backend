@@ -19,7 +19,7 @@ const pool = new Pool({
       : false,
 });
 
-const DEFAULT_QUERY_TIMEOUT_MS = 5000;
+const DEFAULT_QUERY_TIMEOUT_MS = 8000;
 
 export async function query<T extends QueryResultRow>(
   queryText: string,

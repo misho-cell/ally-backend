@@ -10,7 +10,7 @@ const RESULT_LIMIT = 20;
 // Until that index is built (out of band, see migration 036) the pass would
 // seq-scan; a short timeout makes it fail fast and be skipped, leaving the exact
 // search untouched, instead of dragging every tag query.
-const FUZZY_TIMEOUT_MS = 3_000;
+const FUZZY_TIMEOUT_MS = 5_000;
 
 interface TagRow {
   phone: string;

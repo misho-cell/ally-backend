@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
 
-const SECOND_DEGREE_QUERY_TIMEOUT_MS = 10_000;
+const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
@@ -79,14 +79,27 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
-    // Tags are single words — use exact match (= ANY) so indexes are usable
-    const exactTerms = terms.map((t) => t.toLowerCase());
     // Aliases are full names — need substring LIKE
     const likeTerms = terms.map((t) => '%' + t + '%');
 
-    // $3 = exact terms array, $4..$N = LIKE patterns for aliases, $(N+1) = blocked phones
-    const aliasConds = likeTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 4}`).join(' OR ');
-    const blockParamIdx = likeTerms.length + 4;
+    // Tag match is index-backed and spelling-tolerant: the % trigram operator
+    // (served by idx_user_tags_norm_trgm on the normalized token) generates
+    // candidates fast, then similarity refines to the same 0.45 threshold the
+    // direct tag search uses. Each term is its own parameter so the index applies
+    // per disjunct. One clause covers exact, digraph-merge, ღ-drift and
+    // cross-script — the query must be normalized the same way the index was.
+    const n = terms.length;
+    const tagConds = terms
+      .map(
+        (_, i) =>
+          `(normalize_search_token(ut.tag) % normalize_search_token($${i + 3})` +
+          ` AND similarity(normalize_search_token(ut.tag), normalize_search_token($${i + 3}))` +
+          ` >= ${FUZZY_THRESHOLD})`,
+      )
+      .join(' OR ');
+    // $3..$(2+n) = tag terms, $(3+n)..$(2+2n) = alias LIKE patterns, $(3+2n) = blocked phones
+    const aliasConds = likeTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 3 + n}`).join(' OR ');
+    const blockParamIdx = 3 + 2 * n;
 
     const result = await query<{
       phone: string;
@@ -105,13 +118,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT ut.phone, ut."contactId"
          FROM "UserTags" ut
          JOIN friend_users fu ON fu."userId" = ut."contactId"
-         WHERE normalize_search_token(ut.tag)
-                 = ANY(ARRAY(SELECT normalize_search_token(t) FROM unnest($3::text[]) AS t))
-            OR EXISTS (
-                 SELECT 1 FROM unnest($3::text[]) AS t
-                 WHERE similarity(normalize_search_token(ut.tag), normalize_search_token(t))
-                       > ${FUZZY_THRESHOLD}
-               )
+         WHERE ${tagConds}
        ),
        alias_hits AS (
          SELECT ua_m.phone, ua_m."contactId"
@@ -143,7 +150,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          AND m.phone != ALL($${blockParamIdx})
        GROUP BY m.phone
        LIMIT 20`,
-      [userId, friendPhones, exactTerms, ...likeTerms, blockedPhones],
+      [userId, friendPhones, ...terms, ...likeTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
