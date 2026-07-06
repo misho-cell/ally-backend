@@ -18,13 +18,13 @@ interface FactRow {
   matched: string[];
 }
 
-// Every fact query anchors on a single column per bound parameter. contact_facts
-// stores submitted_by_user_id as INTEGER while "UserAlias"."contactId" is a
-// different type, so the SAME $1 can never be compared to both in one statement
-// (Postgres refuses to deduce one type for the parameter and the whole query
-// throws). The own- and public-fact paths are therefore split into two queries,
-// each also runs in isolation so a slow public scan can't hide the user's own
-// freshly-saved fact — the save→search loop.
+// Every fact query anchors on a single column per bound parameter.
+// contact_facts.submitted_by_user_id is TEXT on prod while "UserAlias"."contactId"
+// is INTEGER, so the SAME $1 can never be compared to both in one statement
+// (Postgres cannot deduce one type for the parameter and the whole query throws
+// on every call). The own- and public-fact paths are therefore split into two
+// queries, each also runs in isolation so a slow public scan can't hide the
+// user's own freshly-saved fact — the save→search loop.
 const FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value))`;
 
 /**
