@@ -30,16 +30,22 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 
 // searchByTag now fires the main page and a real COUNT in parallel, then a
 // facts-enrichment query — route by SQL fragment so any call order is safe.
-function setup(opts: { main?: unknown[]; count?: number; facts?: unknown[] }): void {
+function setup(opts: {
+  main?: unknown[];
+  count?: number;
+  facts?: unknown[];
+  fuzzy?: unknown[];
+}): void {
   const main = opts.main ?? [];
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
+  const fuzzy = opts.fuzzy ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
-    if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
-    return Promise.resolve(rows(main) as never); // main page
+    if (sql.includes('similarity(')) return Promise.resolve(rows(fuzzy) as never); // normalized fuzzy pass
+    return Promise.resolve(rows(main) as never); // exact page
   });
 }
 
@@ -128,6 +134,65 @@ describe('searchByTag', () => {
 
     const results = result.results as Array<Record<string, unknown>>;
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
+  });
+
+  it('unions the fuzzy pass and flags fuzzy-only rows approximate', async () => {
+    // Exact finds the "buralteri" spelling; the normalized fuzzy pass surfaces
+    // the "bugalteri" spelling of the same word as a separate contact.
+    setup({
+      main: [{ ...mockRow, phone: '+995500000001', name: 'Exact' }],
+      count: 1,
+      fuzzy: [{ ...mockRow, phone: '+995500000002', name: 'Approx' }],
+    });
+
+    const result = (await searchByTag('42', 'buralteri')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    expect(result.count).toBe(2);
+    expect(results[0].name).toBe('Exact');
+    expect(results[0].approximate).toBeUndefined();
+    expect(results[1].name).toBe('Approx');
+    expect(results[1].approximate).toBe(true);
+    expect(result.fuzzy).toBeUndefined(); // mixed result — not wholly approximate
+  });
+
+  it('drops a fuzzy hit that duplicates an exact hit (same phone)', async () => {
+    setup({
+      main: [{ ...mockRow, phone: '+995500000001', name: 'Exact' }],
+      count: 1,
+      fuzzy: [{ ...mockRow, phone: '+995500000001', name: 'Dup' }],
+    });
+
+    const result = (await searchByTag('42', 'buralteri')) as Record<string, unknown>;
+
+    expect(result.count).toBe(1);
+    expect((result.results as Array<Record<string, unknown>>)[0].name).toBe('Exact');
+  });
+
+  it('marks the whole result fuzzy when only the fuzzy pass matches', async () => {
+    setup({ main: [], count: 0, fuzzy: [{ ...mockRow, name: 'Only fuzzy' }] });
+
+    const result = (await searchByTag('42', 'buhalteri')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    expect(result.fuzzy).toBe(true);
+    expect((result.results as Array<Record<string, unknown>>)[0].approximate).toBe(true);
+  });
+
+  it('still returns exact rows when the fuzzy pass errors', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('FROM contact_facts')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('similarity(')) return Promise.reject(new Error('index missing'));
+      return Promise.resolve(rows([mockRow]) as never);
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    expect(result.count).toBe(1);
+    consoleSpy.mockRestore();
   });
 
   it('overlays employer/occupation from saved facts when present', async () => {

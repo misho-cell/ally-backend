@@ -8,6 +8,10 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 
 const MAX_FRIEND_PHONES = 3000;
+// Same threshold as the direct tag search; matching runs only over friends'
+// tags (already narrowed by the friend_users join), so no dedicated index is
+// needed for it to stay fast.
+const FUZZY_THRESHOLD = 0.45;
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
@@ -101,7 +105,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT ut.phone, ut."contactId"
          FROM "UserTags" ut
          JOIN friend_users fu ON fu."userId" = ut."contactId"
-         WHERE LOWER(ut.tag) = ANY($3)
+         WHERE normalize_search_token(ut.tag)
+                 = ANY(ARRAY(SELECT normalize_search_token(t) FROM unnest($3::text[]) AS t))
+            OR EXISTS (
+                 SELECT 1 FROM unnest($3::text[]) AS t
+                 WHERE similarity(normalize_search_token(ut.tag), normalize_search_token(t))
+                       > ${FUZZY_THRESHOLD}
+               )
        ),
        alias_hits AS (
          SELECT ua_m.phone, ua_m."contactId"
