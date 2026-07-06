@@ -33,6 +33,7 @@ import {
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
+import { scrubText } from './privacyScrub';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
 import {
@@ -1219,7 +1220,9 @@ async function runToolLoop(
       // Stream the model's narration that accompanies this round of tool calls,
       // so the client sees the process step by step rather than one final answer.
       // Persist it (kind='step') so it survives reload.
-      const narration = extractText(response.content);
+      // Scrub before persisting too — the SSE gate scrubs the live stream, but
+      // the stored 'step' row is re-read on reload and must be phone-free as well.
+      const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -1261,7 +1264,9 @@ async function runToolLoop(
     // tool_result blocks or the API rejects the next call.) The tools array is
     // kept identical (tool_choice: none) so the cached prompt prefix still hits.
     if (response.stop_reason === 'tool_use') {
-      const narration = extractText(response.content);
+      // Scrub before persisting too — the SSE gate scrubs the live stream, but
+      // the stored 'step' row is re-read on reload and must be phone-free as well.
+      const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -1276,14 +1281,14 @@ async function runToolLoop(
       response = await callClaude(messages, systemPrompt, tools, ctx, { forceText: true });
     }
 
-    finalText = extractText(response.content);
+    finalText = scrubText(extractText(response.content));
   } catch (err) {
     // A model call died mid-run (timeout, network, provider incident). The run
     // already gathered material — salvage a written answer from it instead of
     // failing the whole run with an empty error screen.
     // eslint-disable-next-line no-console
     console.error('[chat] model call failed mid-run — salvaging:', (err as Error).message);
-    finalText = await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending);
+    finalText = scrubText(await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending));
   }
 
   return { finalText, pending, options, choices };

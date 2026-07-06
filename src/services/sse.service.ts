@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { Response } from 'express';
+import { scrubDeep, scrubText } from './privacyScrub';
 
 const emitter = new EventEmitter();
 emitter.setMaxListeners(0);
@@ -35,6 +36,12 @@ export function emitThreadCreated(userId: string, thread: unknown): void {
   emitter.emit(`user:${userId}`, { event: 'thread_created', thread });
 }
 
+// Every text/payload leaving this module is phone-scrubbed here, at the single
+// choke point, so a number can never reach the client — not in a spinner line,
+// the agent's step narration, or the final answer (the model sometimes writes a
+// discovered number into its reasoning; the prompt discourages it but this is
+// the guarantee).
+
 /** Short "what I'm doing now" spinner line tied to a specific run. */
 export function emitToolProgress(
   userId: string,
@@ -42,7 +49,12 @@ export function emitToolProgress(
   runId: string,
   message: string,
 ): void {
-  emitter.emit(`user:${userId}`, { event: 'tool_progress', threadId, runId, message });
+  emitter.emit(`user:${userId}`, {
+    event: 'tool_progress',
+    threadId,
+    runId,
+    message: scrubText(message),
+  });
 }
 
 /** The agent's intermediate natural-language narration between tool calls. */
@@ -52,7 +64,12 @@ export function emitStepSummary(
   runId: string,
   text: string,
 ): void {
-  emitter.emit(`user:${userId}`, { event: 'step_summary', threadId, runId, text });
+  emitter.emit(`user:${userId}`, {
+    event: 'step_summary',
+    threadId,
+    runId,
+    text: scrubText(text),
+  });
 }
 
 interface RunCompletePayload {
@@ -68,7 +85,12 @@ export function emitRunComplete(
   runId: string,
   payload: RunCompletePayload,
 ): void {
-  emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...payload });
+  const safe: RunCompletePayload = {
+    reply: scrubText(payload.reply),
+    options: scrubDeep(payload.options),
+    choices: scrubDeep(payload.choices),
+  };
+  emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...safe });
 }
 
 /** Tokens charged for a completed run — lets the client refresh the balance live. */
