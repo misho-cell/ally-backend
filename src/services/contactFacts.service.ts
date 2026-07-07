@@ -4,8 +4,16 @@ import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
 import anthropic from '../config/anthropic';
 
+// Structured, crowd-confirmable facts — one value per field per contact.
 export const FACT_FIELD_TYPES = ['occupation', 'employer', 'city', 'industry'] as const;
 export type FactFieldType = (typeof FACT_FIELD_TYPES)[number];
+
+// Free-text memory: private to the submitter, never crowd-confirmed, and it
+// ACCUMULATES (many notes per contact) rather than overwriting. Kept out of
+// FACT_FIELD_TYPES so it skips the crowd/canonical logic and the search
+// enrichment that maps structured fields to employer/jobPosition/etc.
+export const MEMORY_FIELD_TYPE = 'note';
+export const SAVEABLE_FIELD_TYPES = [...FACT_FIELD_TYPES, MEMORY_FIELD_TYPE] as const;
 
 interface FactRow {
   id: number;
@@ -67,11 +75,23 @@ async function upsertFact(
   value: string,
 ): Promise<void> {
   await query(
+    // The arbiter is the partial unique index uq_contact_facts_structured, so
+    // its predicate must be repeated here; notes have no such index and are
+    // never routed through this path.
     `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
+     ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type) WHERE field_type <> 'note'
      DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW()`,
     [neo4jContactId, userId, fieldType, value],
+  );
+}
+
+/** Append a free-text memory. Notes accumulate — each save is a new private row. */
+async function insertNote(userId: string, neo4jContactId: string, value: string): Promise<void> {
+  await query(
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
+     VALUES ($1, $2, $3, $4)`,
+    [neo4jContactId, userId, MEMORY_FIELD_TYPE, value],
   );
 }
 
@@ -95,6 +115,13 @@ export async function submitContactFact(
   value: string,
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+
+  // Free-text notes are private and accumulate — no crowd-confirmation pass.
+  if (fieldType === MEMORY_FIELD_TYPE) {
+    await insertNote(userId, neo4jContactId, value);
+    return { is_public: false, canonical_value: null };
+  }
+
   await upsertFact(userId, neo4jContactId, fieldType, value);
 
   const others = await getOtherFacts(userId, neo4jContactId, fieldType);

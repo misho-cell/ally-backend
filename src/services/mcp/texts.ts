@@ -106,11 +106,13 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
-      'Saves a fact the user tells you about a contact (their employer, occupation, city, or ' +
-      'industry) so it is remembered across conversations and makes them findable by ' +
-      'search_by_insight later. Use when the user states something factual about a person ' +
-      '("Nino is a lawyer at MKD Law"). Takes the contact_ref from a search result. Facts are ' +
-      'private to this user unless the same fact is independently confirmed by others.',
+      'Saves something to remember about a contact so it persists across conversations and ' +
+      'makes them findable by search_by_insight later. Two kinds: a structured fact ' +
+      '(field_type employer/occupation/city/industry — "Nino is a lawyer at MKD Law"), or a ' +
+      'free-text "note" for anything else — how to approach them, a reminder, context. Notes ' +
+      'accumulate (each call adds one); structured facts have one value per field. Takes the ' +
+      'contact_ref from a search result. Everything is private to this user; only structured ' +
+      'facts can become public, and only when independently confirmed by others — notes never do.',
   },
   get_contact_facts: {
     title: 'Recall saved facts about a contact',
@@ -183,8 +185,13 @@ export const PARAM_TEXTS = {
   requestRef: 'The stable id of a waiting request, taken from check_my_inbox. Never invent it.',
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
-  factFieldType: 'One of: employer, occupation, city, industry.',
-  factValue: 'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi").',
+  factFieldType:
+    'One of: employer, occupation, city, industry (structured facts), or "note" ' +
+    'for a free-text observation. Use "note" for anything that is not one of the ' +
+    'four structured fields — how to approach the person, a reminder, context. ' +
+    'Never pack free text into occupation.',
+  factValue:
+    'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi", or a full note).',
   groupTag:
     'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
   connectorLimit: 'How many to return (default 10, max 25).',

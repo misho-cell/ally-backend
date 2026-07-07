@@ -34,6 +34,7 @@ jest.mock('../../introduction.service', () => ({
 jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModule: true }));
 jest.mock('../../contactFacts.service', () => ({
   FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
+  SAVEABLE_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry', 'note'],
   submitContactFact: jest.fn(),
   getVisibleFacts: jest.fn(),
   __esModule: true,
@@ -453,6 +454,25 @@ describe('memory tools', () => {
     });
     expect(badRef.saved).toBe(false);
     expect(mockSubmitFact).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a free-text note as a saveable field type', async () => {
+    mockSubmitFact.mockResolvedValue({ is_public: false, canonical_value: null });
+    const ref = encodeContactRef(USER, PHONE);
+
+    const ok = await mcpSaveContactFact(USER, {
+      contact_ref: ref,
+      field_type: 'note',
+      value: 'Approach via a warm intro — dislikes cold outreach.',
+    });
+
+    expect(ok.saved).toBe(true);
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      USER,
+      PHONE,
+      'note',
+      'Approach via a warm intro — dislikes cold outreach.',
+    );
   });
 
   it('recalls facts without leaking a phone', async () => {

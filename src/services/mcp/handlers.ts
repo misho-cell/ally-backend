@@ -7,7 +7,7 @@ import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
-import { FACT_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
+import { SAVEABLE_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
 import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import {
@@ -299,8 +299,11 @@ export async function mcpSaveContactFact(
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
   const fieldType = (args.field_type ?? '').trim();
-  if (!(FACT_FIELD_TYPES as readonly string[]).includes(fieldType)) {
-    return { saved: false, error: `field_type must be one of: ${FACT_FIELD_TYPES.join(', ')}.` };
+  if (!(SAVEABLE_FIELD_TYPES as readonly string[]).includes(fieldType)) {
+    return {
+      saved: false,
+      error: `field_type must be one of: ${SAVEABLE_FIELD_TYPES.join(', ')}.`,
+    };
   }
   const value = (args.value ?? '').trim();
   if (!value) return { saved: false, error: 'Pass a non-empty value.' };

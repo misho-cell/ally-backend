@@ -205,7 +205,7 @@ const AGENT_STRATEGY_PROMPT = `
 ### 11. კონტაქტის ფაქტების შეგროვება (მაქსიმუმ 1 კითხვა მთელ საუბარში)
 
 **წესი 1 — ავტომატური შენახვა:**
-კონტაქტზე ობიექტური ფაქტის (სამსახური, ქალაქი, პროფესია, სფერო) გაგება → დაუყოვნებლად გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry"), value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი"). შენახვის შემდეგ ერთი სტრიქონი: „შენახულია: [სახელი] — [field]: [value] ✓" (is_public=true → „✓ (2+ ადამიანი ადასტურებს)", is_public=false → „✓ (პრაივეთი)"). შენახვა ყოველთვის ხდება ნებართვის გარეშე.
+კონტაქტზე ობიექტური ფაქტის (სამსახური, ქალაქი, პროფესია, სფერო) გაგება → დაუყოვნებლად გამოიძახე save_contact_fact (field_type: "occupation" / "employer" / "city" / "industry"), value — მოკლე და კონკრეტული (მაგ: "ფეხბურთელი", "TBC Bank", "თბილისი"). თავისუფალი დაკვირვება/შენიშვნა (როგორ მივუდგე, შეხსენება, კონტექსტი) → field_type: "note", value — თავისუფალი ტექსტი (notes გროვდება, პრაივეთია, occupation-ში ნუ ჩატენი). შენახვის შემდეგ ერთი სტრიქონი: „შენახულია: [სახელი] — [field]: [value] ✓" (is_public=true → „✓ (2+ ადამიანი ადასტურებს)", is_public=false → „✓ (პრაივეთი)"). შენახვა ყოველთვის ხდება ნებართვის გარეშე.
 
 **წესი 2 — კონტაქტის ხარვეზის კითხვა:**
 გამოიყენე get_contact_full_profile-ის facts_and_ask ველი (ნაცვლად ცალკე get_contact_facts-ისა). ფაქტები Profile Card-ში ჩართე. თუ ask_about != null **და ამ საუბარში ჯერ კითხვა არ დაგისვამს**:
@@ -412,7 +412,7 @@ const PRESENT_CHOICES_TOOL: AnthropicTool = {
 const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
   name: 'save_contact_fact',
   description:
-    "Save an objective fact about a contact (occupation, employer, city, industry). Call whenever the user mentions such a fact. The system will automatically verify it against other users' input and make it public if confirmed.",
+    'Remember something about a contact. Either a structured fact (occupation, employer, city, industry) — the system verifies it against other users and may make it public if confirmed — or a free-text "note" for anything else (how to approach them, a reminder, context). Notes accumulate and stay private. Call whenever the user states a fact or a useful observation about a person.',
   input_schema: {
     type: 'object',
     properties: {
@@ -423,7 +423,8 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
       },
       field_type: {
         type: 'string',
-        description: 'One of: "occupation", "employer", "city", "industry"',
+        description:
+          'One of: "occupation", "employer", "city", "industry", or "note". Use "note" for free-text observations — never pack free text into occupation.',
       },
       value: {
         type: 'string',
