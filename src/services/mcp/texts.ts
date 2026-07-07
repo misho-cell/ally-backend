@@ -1,7 +1,7 @@
 // Every instruction text the MCP connector shows Claude, verbatim from the
-// prompt team's approved document (ALLY_MCP_INSTRUCTION_TEXTS Rev 2,
-// 2026-07-03). Wording changes belong to the prompt team — edit the document
-// first, then mirror it here.
+// prompt team's approved document (ALLY_MCP_INSTRUCTION_TEXTS Rev 3,
+// 2026-07-03 — adds the save_contact_fact `note` field). Wording changes belong
+// to the prompt team — edit the document first, then mirror it here.
 
 export const MCP_SERVER_NAME = 'Ally';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -106,13 +106,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
-      'Saves something to remember about a contact so it persists across conversations and ' +
-      'makes them findable by search_by_insight later. Two kinds: a structured fact ' +
-      '(field_type employer/occupation/city/industry — "Nino is a lawyer at MKD Law"), or a ' +
-      'free-text "note" for anything else — how to approach them, a reminder, context. Notes ' +
-      'accumulate (each call adds one); structured facts have one value per field. Takes the ' +
-      'contact_ref from a search result. Everything is private to this user; only structured ' +
-      'facts can become public, and only when independently confirmed by others — notes never do.',
+      'Saves something the user tells you about a contact, by contact_ref. Two kinds. ' +
+      'Structural facts (field_type: occupation, employer, city, industry) are single-value — ' +
+      'a new value overwrites the old, and a fact 2+ people independently give becomes public. ' +
+      'A note (field_type: note) is free text, private forever (never becomes public), and ' +
+      'accumulates — save as many as you like, none overwrites another. Use note for soft ' +
+      'intel that isn\'t a job title: how to approach the person ("prefers a warm intro, ' +
+      'dislikes cold outreach"), a preference, a caution ("don\'t talk price at the first ' +
+      'meeting"). Notes are findable later through search_by_insight and never appear as the ' +
+      "person's job title. Confirm in one short line after saving.",
   },
   get_contact_facts: {
     title: 'Recall saved facts about a contact',
@@ -186,12 +188,13 @@ export const PARAM_TEXTS = {
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
   factFieldType:
-    'One of: employer, occupation, city, industry (structured facts), or "note" ' +
-    'for a free-text observation. Use "note" for anything that is not one of the ' +
-    'four structured fields — how to approach the person, a reminder, context. ' +
-    'Never pack free text into occupation.',
+    'One of: occupation, employer, city, industry, or note. The first four are single-value ' +
+    'structural facts (a new value replaces the old). note is free-text, private, and ' +
+    "accumulates — use it for soft intel that isn't a job title (approach tips, preferences, " +
+    'cautions).',
   factValue:
-    'The value in the user\'s words (e.g. "MKD Law", "lawyer", "Tbilisi", or a full note).',
+    "For a structural fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). " +
+    "For a note, the free-text observation in the user's own words.",
   groupTag:
     'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
   connectorLimit: 'How many to return (default 10, max 25).',
