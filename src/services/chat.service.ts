@@ -20,6 +20,7 @@ import { requestIntroduction, DisambiguationCandidate } from './tools/requestInt
 import { respondToIntroduction } from './tools/respondToIntroduction';
 import {
   getPendingRequestsForMediator,
+  getPendingRequestById,
   getRecentResponsesForRequester,
   PendingRequest,
   RespondedRequest,
@@ -808,7 +809,29 @@ function buildInsightFieldsSection(
   return `\n\n## კონტაქტის ინფოს შეგროვება\nკონტაქტის წარდგენის შემდეგ ჰკითხე:\n${lines}\n\nშეინახე save_contact_insight-ით. გამოიყენე search_by_insight-ით.`;
 }
 
-async function buildAgentSystemPrompt(userId: string, threadType?: string): Promise<string> {
+// Which pending requests to surface (with their request_id) for a thread.
+// Inside an incoming-request thread the agent must see THAT request so it can
+// answer it — the earlier blanket "[]" is exactly why accept/decline failed
+// with "request not found". Elsewhere (regular thread) show all waiting ones;
+// an outgoing-request thread is the requester's side, so none.
+function resolvePendingRequests(
+  userId: string,
+  threadType?: string,
+  introRequestId?: number | null,
+): Promise<PendingRequest[]> {
+  if (threadType === 'incoming_request') {
+    if (introRequestId == null) return Promise.resolve([]);
+    return getPendingRequestById(userId, introRequestId).then((r) => (r ? [r] : []));
+  }
+  if (threadType === 'outgoing_request') return Promise.resolve([]);
+  return getPendingRequestsForMediator(userId);
+}
+
+async function buildAgentSystemPrompt(
+  userId: string,
+  threadType?: string,
+  introRequestId?: number | null,
+): Promise<string> {
   const [configResult, fieldsResult, profile, privateContext, pendingRequests, recentResponses] =
     await Promise.all([
       query<{ system_prompt: string }>(
@@ -819,9 +842,7 @@ async function buildAgentSystemPrompt(userId: string, threadType?: string): Prom
       ),
       getUserProfile(userId),
       getPrivateContext(userId),
-      threadType === 'incoming_request' || threadType === 'outgoing_request'
-        ? Promise.resolve([] as PendingRequest[])
-        : getPendingRequestsForMediator(userId),
+      resolvePendingRequests(userId, threadType, introRequestId),
       threadType === 'incoming_request' || threadType === 'outgoing_request'
         ? Promise.resolve([] as RespondedRequest[])
         : getRecentResponsesForRequester(userId),
@@ -1398,7 +1419,7 @@ export async function processChat(
   }
 
   const [systemPrompt, tools, history] = await Promise.all([
-    buildAgentSystemPrompt(userId, thread.type),
+    buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id),
     buildEnabledTools(userId),
     loadHistory(threadId),
   ]);

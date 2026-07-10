@@ -38,6 +38,27 @@ export async function getPendingRequestsForMediator(
   return result.rows;
 }
 
+/**
+ * The single pending request behind an incoming-request thread, so the agent
+ * has its request_id available to answer it. Scoped to this mediator + still
+ * pending; returns null once answered.
+ */
+export async function getPendingRequestById(
+  mediatorUserId: string,
+  requestId: number,
+): Promise<PendingRequest | null> {
+  const result = await query<PendingRequest>(
+    `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
+            u.name AS requester_name
+     FROM introduction_requests ir
+     LEFT JOIN "User" u ON u.id = ir.requester_user_id
+     WHERE ir.id = $1 AND ir.mediator_user_id = $2 AND ir.status = 'pending'
+     LIMIT 1`,
+    [requestId, mediatorUserId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function getRecentResponsesForRequester(
   requesterUserId: string,
 ): Promise<RespondedRequest[]> {

@@ -198,7 +198,18 @@ export async function getVisibleFacts(
   neo4jContactIdRaw: string,
 ): Promise<VisibleFactsResult> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
-  const [publicResult, privateResult] = await Promise.all([
+  const [ownResult, publicResult] = await Promise.all([
+    // The owner's OWN saved values — ALL of them (free-form keys accumulate), and
+    // always shown, even when the crowd's public value for the same field differs.
+    query<{ field_type: string; value: string; is_public: boolean }>(
+      `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public
+       FROM contact_facts
+       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
+       ORDER BY field_type, updated_at DESC`,
+      [neo4jContactId, userId],
+    ),
+    // Crowd-confirmed public values (any submitter) — used only to FILL fields
+    // the owner has never set themselves; never to override the owner's own value.
     query<{ field_type: string; canonical_value: string }>(
       `SELECT DISTINCT ON (field_type) field_type, canonical_value
        FROM contact_facts
@@ -206,30 +217,22 @@ export async function getVisibleFacts(
        ORDER BY field_type`,
       [neo4jContactId],
     ),
-    query<{ field_type: string; value: string }>(
-      `SELECT field_type, value FROM contact_facts
-       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND is_public = false`,
-      [neo4jContactId, userId],
-    ),
   ]);
 
-  const publicFieldTypes = new Set(publicResult.rows.map((r) => r.field_type));
-  const facts: VisibleFact[] = publicResult.rows.map((r) => ({
+  const ownFieldTypes = new Set(ownResult.rows.map((r) => r.field_type));
+  const facts: VisibleFact[] = ownResult.rows.map((r) => ({
     field_type: r.field_type,
-    value: r.canonical_value,
-    is_public: true,
+    value: r.value,
+    is_public: r.is_public,
   }));
 
-  for (const row of privateResult.rows) {
-    if (!publicFieldTypes.has(row.field_type)) {
-      facts.push({ field_type: row.field_type, value: row.value, is_public: false });
+  for (const row of publicResult.rows) {
+    if (!ownFieldTypes.has(row.field_type)) {
+      facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
     }
   }
 
-  const knownFields = new Set([
-    ...publicResult.rows.map((r) => r.field_type),
-    ...privateResult.rows.map((r) => r.field_type),
-  ]);
+  const knownFields = new Set([...ownFieldTypes, ...publicResult.rows.map((r) => r.field_type)]);
   const ask_about = FACT_FIELD_TYPES.find((f) => !knownFields.has(f)) ?? null;
 
   return { facts, ask_about };

@@ -7,7 +7,7 @@ jest.mock('../../config/anthropic', () => ({
 
 import { query } from '../../db/postgres/client';
 import anthropic from '../../config/anthropic';
-import { submitContactFact } from '../contactFacts.service';
+import { submitContactFact, getVisibleFacts } from '../contactFacts.service';
 import { normalizePhone } from '../phone';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -79,5 +79,37 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     // field_type is normalized (trimmed + lowercased) before storage.
     expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone']);
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('getVisibleFacts — owner value never hidden by the crowd (F1)', () => {
+  function setup(own: unknown[], pub: unknown[]): void {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('submitted_by_user_id = $2')) return Promise.resolve(rows(own) as never);
+      if (sql.includes('is_public = true')) return Promise.resolve(rows(pub) as never);
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+  }
+
+  it("shows the owner's own value even when a crowd public value differs", async () => {
+    setup(
+      [{ field_type: 'employer', value: 'MKD Law', is_public: false }],
+      [{ field_type: 'employer', canonical_value: 'Big Corp' }],
+    );
+
+    const { facts } = await getVisibleFacts(USER, RAW_PHONE);
+    const employer = facts.filter((f) => f.field_type === 'employer');
+
+    expect(employer).toHaveLength(1);
+    expect(employer[0].value).toBe('MKD Law'); // own value, not the crowd's "Big Corp"
+    expect(employer[0].is_public).toBe(false);
+  });
+
+  it('fills a field from the crowd only when the owner has no own value', async () => {
+    setup([], [{ field_type: 'city', canonical_value: 'Tbilisi' }]);
+
+    const { facts } = await getVisibleFacts(USER, RAW_PHONE);
+
+    expect(facts).toEqual([{ field_type: 'city', value: 'Tbilisi', is_public: true }]);
   });
 });
