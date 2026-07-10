@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
+import { fetchMembersForPhones, isMemberPhone } from './membership';
 
 const RESULT_LIMIT = 20;
 const SEARCH_TIMEOUT_MS = 12_000;
@@ -202,8 +203,11 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
     }
 
     // Best matches first: most query words hit wins.
-    const results = [...byPhone.values()].sort((a, b) => wordsHit(b, words) - wordsHit(a, words));
-    if (results.length === 0) return { found: false, query: searchQuery };
+    const ranked = [...byPhone.values()].sort((a, b) => wordsHit(b, words) - wordsHit(a, words));
+    if (ranked.length === 0) return { found: false, query: searchQuery };
+
+    const members = await fetchMembersForPhones(ranked.map((r) => r.contact_id));
+    const results = ranked.map((r) => ({ ...r, is_member: isMemberPhone(members, r.contact_id) }));
 
     return { found: true, count: results.length, results };
   } catch (err) {

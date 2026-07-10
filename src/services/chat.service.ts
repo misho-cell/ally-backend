@@ -308,6 +308,11 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
         type: 'string',
         description: 'Optional context message for the mediator',
       },
+      ask_type: {
+        type: 'string',
+        description:
+          'What to ask the mediator: "intro" (a warm introduction) or "share_contact" (share the target\'s contact — for a target not on Ally). Ask the user which before sending; defaults to "intro".',
+      },
     },
     required: ['mediator_name', 'target_name'],
   },
@@ -938,6 +943,7 @@ async function executeToolCall(
         input['mediator_phone'] as string | undefined,
         input['target_user_id'] as number | undefined,
         input['target_phone'] as string | undefined,
+        input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
       );
     case 'respond_to_introduction':
       return respondToIntroduction(

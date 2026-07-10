@@ -44,6 +44,7 @@ function setup(opts: {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
     if (sql.includes('similarity(')) return Promise.resolve(rows(fuzzy) as never); // normalized fuzzy pass
     return Promise.resolve(rows(main) as never); // exact page
   });
@@ -134,6 +135,29 @@ describe('searchByTag', () => {
 
     const results = result.results as Array<Record<string, unknown>>;
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
+  });
+
+  it('marks is_member true for a contact that is a registered Ally user', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('FROM contact_facts')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve(rows([{ phone: mockRow.phone }]) as never); // member
+      if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never);
+      return Promise.resolve(rows([mockRow]) as never);
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].is_member).toBe(true);
+  });
+
+  it('marks is_member false when the contact is not a registered user', async () => {
+    setup({ main: [mockRow], count: 1 }); // membership route returns []
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].is_member).toBe(false);
   });
 
   it('unions the fuzzy pass and flags fuzzy-only rows approximate', async () => {

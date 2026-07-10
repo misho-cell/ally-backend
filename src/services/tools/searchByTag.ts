@@ -3,6 +3,7 @@ import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
+import { fetchMembersForPhones, isMemberPhone } from './membership';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
@@ -106,6 +107,7 @@ async function runFuzzySearch(
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
+  members: Set<string>,
   approximate: boolean,
 ): Record<string, unknown> {
   const base = applyFacts(
@@ -119,7 +121,8 @@ function shape(
     },
     facts,
   );
-  return approximate ? { ...base, approximate: true } : base;
+  const withMember = { ...base, is_member: isMemberPhone(members, row.phone) };
+  return approximate ? { ...withMember, approximate: true } : withMember;
 }
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
@@ -144,13 +147,14 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
 
     if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
-    const facts = await fetchFactsForPhones(
-      userId,
-      [...exactRows, ...fuzzyRows].map((r) => r.phone),
-    );
+    const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
+    const [facts, members] = await Promise.all([
+      fetchFactsForPhones(userId, allPhones),
+      fetchMembersForPhones(allPhones),
+    ]);
     const results = [
-      ...exactRows.map((r) => shape(r, facts, false)),
-      ...fuzzyRows.map((r) => shape(r, facts, true)),
+      ...exactRows.map((r) => shape(r, facts, members, false)),
+      ...fuzzyRows.map((r) => shape(r, facts, members, true)),
     ];
     const payload: Record<string, unknown> = {
       found: true,

@@ -182,7 +182,7 @@ export async function mcpGetContactProfile(
     insights: profile.insights,
     facts_and_ask: profile.facts_and_ask,
   }) as McpToolPayload;
-  return { contact_ref: args.contact_ref, ...clean };
+  return { contact_ref: args.contact_ref, is_member: profile.is_member, ...clean };
 }
 
 async function introRequestsInLastDay(userId: string): Promise<number> {
@@ -219,8 +219,15 @@ function mapIntroOutcome(userId: string, raw: object): McpToolPayload {
 
 export async function mcpRequestIntroduction(
   userId: string,
-  args: { mediator_name: string; target_name: string; message: string; mediator_ref?: string },
+  args: {
+    mediator_name: string;
+    target_name: string;
+    message: string;
+    mediator_ref?: string;
+    ask_type?: string;
+  },
 ): Promise<McpToolPayload> {
+  const askType = args.ask_type === 'share_contact' ? 'share_contact' : 'intro';
   if ((await introRequestsInLastDay(userId)) >= MAX_INTRO_REQUESTS_PER_DAY) {
     return { success: false, note: NOTE_RATE_LIMITED };
   }
@@ -247,6 +254,9 @@ export async function mcpRequestIntroduction(
     args.target_name,
     args.message,
     mediatorPhone,
+    undefined,
+    undefined,
+    askType,
   );
   return mapIntroOutcome(userId, raw);
 }
@@ -265,10 +275,16 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
       created_at: scrubDeep(request.created_at),
     })),
     replies_to_my_requests: answered.map((reply) => ({
+      request_ref: REQUEST_REF_PREFIX + String(reply.id),
       about: reply.target_name,
+      from_mediator: reply.mediator_name,
+      ask_type: reply.ask_type,
       status: reply.status,
+      // The user's own original reason, so the reply is shown with context.
+      original_reason: reply.message === null ? null : scrubText(reply.message),
       note_from_mediator:
         reply.mediator_response === null ? null : scrubText(reply.mediator_response),
+      sent_at: scrubDeep(reply.created_at),
       responded_at: scrubDeep(reply.responded_at),
     })),
   };

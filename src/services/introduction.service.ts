@@ -14,6 +14,11 @@ export interface RespondedRequest {
   status: 'accepted' | 'declined';
   mediator_response: string | null;
   responded_at: string;
+  // Context so a reply is shown with meaning, never a bare "accepted".
+  mediator_name: string | null;
+  message: string | null;
+  created_at: string;
+  ask_type: string;
 }
 
 const RESPONSE_WINDOW_DAYS = 7;
@@ -37,12 +42,15 @@ export async function getRecentResponsesForRequester(
   requesterUserId: string,
 ): Promise<RespondedRequest[]> {
   const result = await query<RespondedRequest>(
-    `SELECT id, target_name, status, mediator_response, responded_at
-     FROM introduction_requests
-     WHERE requester_user_id = $1
-       AND status IN ('accepted', 'declined')
-       AND responded_at > NOW() - INTERVAL '${RESPONSE_WINDOW_DAYS} days'
-     ORDER BY responded_at DESC`,
+    `SELECT ir.id, ir.target_name, ir.status, ir.mediator_response, ir.responded_at,
+            ir.message, ir.created_at, ir.ask_type,
+            m.name AS mediator_name
+     FROM introduction_requests ir
+     LEFT JOIN "User" m ON m.id = ir.mediator_user_id
+     WHERE ir.requester_user_id = $1
+       AND ir.status IN ('accepted', 'declined')
+       AND ir.responded_at > NOW() - INTERVAL '${RESPONSE_WINDOW_DAYS} days'
+     ORDER BY ir.responded_at DESC`,
     [requesterUserId],
   );
   return result.rows;

@@ -78,6 +78,8 @@ async function findMediatorPhoneByPhone(
   return { phone: result.rows[0].phone, displayName: result.rows[0].display_name };
 }
 
+export type IntroAskType = 'intro' | 'share_contact';
+
 export async function requestIntroduction(
   requesterUserId: string,
   mediatorName: string,
@@ -86,6 +88,7 @@ export async function requestIntroduction(
   mediatorPhone?: string,
   targetUserId?: number,
   targetPhone?: string,
+  askType: IntroAskType = 'intro',
 ): Promise<object> {
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
@@ -139,8 +142,8 @@ export async function requestIntroduction(
   const [insertResult, requesterName] = await Promise.all([
     query<{ id: number }>(
       `INSERT INTO introduction_requests
-         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone)
-       VALUES ($1, $2, $3, $4, $5, $6)
+         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
       [
         requesterUserId,
@@ -149,6 +152,7 @@ export async function requestIntroduction(
         message ?? null,
         targetUserId ?? null,
         targetPhone ?? null,
+        askType,
       ],
     ),
     getRequesterName(requesterUserId),

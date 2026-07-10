@@ -36,6 +36,7 @@ function setup(opts: { facts?: unknown[]; publicFacts?: unknown[]; insights?: un
     if (sql.includes('cf.submitted_by_user_id = $1')) return Promise.resolve(rows(own) as never);
     if (sql.includes('cf.is_public = true')) return Promise.resolve(rows(pub) as never);
     if (sql.includes('FROM contact_insights')) return Promise.resolve(rows(insights) as never);
+    if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
     throw new Error(`Unexpected query: ${sql}`);
   });
 }
@@ -152,6 +153,7 @@ describe('searchByInsight', () => {
       if (sql.includes('FROM contact_insights')) {
         return Promise.reject(new Error('statement timeout'));
       }
+      if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
       throw new Error(`Unexpected query: ${sql}`);
     });
 
@@ -177,6 +179,7 @@ describe('searchByInsight', () => {
       if (sql.includes('cf.is_public = true'))
         return Promise.reject(new Error('statement timeout'));
       if (sql.includes('FROM contact_insights')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
       throw new Error(`Unexpected query: ${sql}`);
     });
 

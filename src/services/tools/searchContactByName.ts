@@ -2,10 +2,39 @@ import { query } from '../../db/postgres/client';
 import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
-import { applyFacts, fetchFactsForPhones } from './factEnrichment';
+import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
+import { fetchMembersForPhones, isMemberPhone } from './membership';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
+
+interface NameRow {
+  phone: string;
+  name: string | null;
+  all_tags: string[];
+  employer: string | null;
+  jobPosition: string | null;
+  city: string | null;
+}
+
+function toRow(
+  row: NameRow,
+  facts: Map<string, ContactFactFields>,
+  members: Set<string>,
+): Record<string, unknown> {
+  const base = applyFacts(
+    {
+      phone: row.phone,
+      name: row.name ?? null,
+      tags: (row.all_tags || []).filter(Boolean),
+      employer: row.employer ?? null,
+      jobPosition: row.jobPosition ?? null,
+      city: row.city ?? null,
+    },
+    facts,
+  );
+  return { ...base, is_member: isMemberPhone(members, row.phone) };
+}
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
   try {
@@ -106,28 +135,17 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
 
         const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
         if (fuzzyRows.length > 0) {
-          const facts = await fetchFactsForPhones(
-            userId,
-            fuzzyRows.map((r) => r.phone),
-          );
+          const fuzzyPhones = fuzzyRows.map((r) => r.phone);
+          const [facts, members] = await Promise.all([
+            fetchFactsForPhones(userId, fuzzyPhones),
+            fetchMembersForPhones(fuzzyPhones),
+          ]);
           return {
             found: true,
             count: fuzzyRows.length,
             total: fuzzyRows.length,
             fuzzy: true,
-            results: fuzzyRows.map((row) =>
-              applyFacts(
-                {
-                  phone: row.phone,
-                  name: row.name ?? null,
-                  tags: (row.all_tags || []).filter(Boolean),
-                  employer: row.employer ?? null,
-                  jobPosition: row.jobPosition ?? null,
-                  city: row.city ?? null,
-                },
-                facts,
-              ),
-            ),
+            results: fuzzyRows.map((row) => toRow(row, facts, members)),
           };
         }
       } catch {
@@ -136,27 +154,16 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       return { found: false, query: nameQuery };
     }
 
-    const facts = await fetchFactsForPhones(
-      userId,
-      rows.map((r) => r.phone),
-    );
+    const phones = rows.map((r) => r.phone);
+    const [facts, members] = await Promise.all([
+      fetchFactsForPhones(userId, phones),
+      fetchMembersForPhones(phones),
+    ]);
     return {
       found: true,
       count: rows.length,
       total,
-      results: rows.map((row) =>
-        applyFacts(
-          {
-            phone: row.phone,
-            name: row.name ?? null,
-            tags: (row.all_tags || []).filter(Boolean),
-            employer: row.employer ?? null,
-            jobPosition: row.jobPosition ?? null,
-            city: row.city ?? null,
-          },
-          facts,
-        ),
-      ),
+      results: rows.map((row) => toRow(row, facts, members)),
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);

@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { getContactInsight } from '../insights.service';
 import { getVisibleFacts, VisibleFactsResult } from '../contactFacts.service';
+import { fetchMembersForPhones, isMemberPhone } from './membership';
 
 interface TagSummary {
   tag: string;
@@ -10,6 +11,8 @@ interface TagSummary {
 
 interface ContactFullProfile {
   phone: string;
+  // Whether this contact is a registered Ally member — steers intro vs. invite.
+  is_member: boolean;
   tags: TagSummary[];
   insights: Record<string, unknown> | null;
   facts_and_ask: VisibleFactsResult;
@@ -53,8 +56,11 @@ export async function getContactFullProfile(
     // contact_insights.user_id column type mismatch — insight unavailable
   }
 
+  const members = await fetchMembersForPhones([phone]);
+
   return {
     phone,
+    is_member: isMemberPhone(members, phone),
     tags: tagsResult.rows.filter((r) => isDisplayableTag(r.tag)),
     insights: insightData,
     facts_and_ask: factsAndAsk,

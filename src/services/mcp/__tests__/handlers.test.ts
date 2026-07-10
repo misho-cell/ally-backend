@@ -214,7 +214,7 @@ describe('mcpSearchContacts', () => {
 
     const result = await mcpSearchContacts(USER, { tag: 'livigstone' });
 
-    expect(String(result.note)).toContain('APPROXIMATE');
+    expect(String(result.note)).toContain('confirm by the aggregated tags');
   });
 
   it('returns the empty-result guidance on no matches and on missing args', async () => {
@@ -340,7 +340,16 @@ describe('mcpRequestIntroduction', () => {
     const ref = encodeContactRef(USER, PHONE);
     const result = await mcpRequestIntroduction(USER, { ...args, mediator_ref: ref });
 
-    expect(mockRequestIntro).toHaveBeenCalledWith(USER, 'Tazo', 'Nino', args.message, PHONE);
+    expect(mockRequestIntro).toHaveBeenCalledWith(
+      USER,
+      'Tazo',
+      'Nino',
+      args.message,
+      PHONE,
+      undefined,
+      undefined,
+      'intro',
+    );
     expect(result.note).toContain('Introduction request sent');
   });
 
@@ -393,6 +402,33 @@ describe('mcpCheckInbox', () => {
     expect(waiting[0].request_ref).toBe('req_12');
     expect(waiting[0].message).toBe('my number is [hidden]');
     expect(result.note).toContain('1 unread');
+    expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('returns replies with full context (mediator, original reason, ask_type, timestamps)', async () => {
+    mockPending.mockResolvedValue([]);
+    mockAnswered.mockResolvedValue([
+      {
+        id: 20,
+        target_name: 'Mari',
+        status: 'accepted',
+        mediator_response: 'happy to connect you',
+        responded_at: '2026-07-08T12:00:00Z',
+        mediator_name: 'Tazo',
+        message: 'needs a lawyer for her startup',
+        created_at: '2026-07-08T09:00:00Z',
+        ask_type: 'intro',
+      },
+    ]);
+
+    const result = await mcpCheckInbox(USER);
+    const replies = result.replies_to_my_requests as Record<string, unknown>[];
+
+    expect(replies[0].request_ref).toBe('req_20');
+    expect(replies[0].from_mediator).toBe('Tazo');
+    expect(replies[0].original_reason).toBe('needs a lawyer for her startup');
+    expect(replies[0].ask_type).toBe('intro');
+    expect(replies[0].about).toBe('Mari');
     expect(containsPhoneLike(result)).toBe(false);
   });
 

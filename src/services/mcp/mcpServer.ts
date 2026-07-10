@@ -149,6 +149,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
         mediator_ref: z.string().optional().describe(PARAM_TEXTS.mediatorRef),
         target_name: z.string().describe(PARAM_TEXTS.targetName),
         message: z.string().describe(PARAM_TEXTS.introMessage),
+        ask_type: z.enum(['intro', 'share_contact']).optional().describe(PARAM_TEXTS.askType),
       },
       annotations: DESTRUCTIVE,
     },
