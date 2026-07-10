@@ -34,7 +34,10 @@ jest.mock('../../introduction.service', () => ({
 jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModule: true }));
 jest.mock('../../contactFacts.service', () => ({
   FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
-  SAVEABLE_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry', 'note'],
+  normalizeFieldType: (raw: string): string | null => {
+    const s = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+    return s && s.length <= 40 && /\p{L}/u.test(s) ? s : null;
+  },
   submitContactFact: jest.fn(),
   getVisibleFacts: jest.fn(),
   __esModule: true,
@@ -464,7 +467,7 @@ describe('mcpRespondToRequest', () => {
 });
 
 describe('memory tools', () => {
-  it('saves a fact by contact_ref and validates the field type', async () => {
+  it('saves a fact by contact_ref and rejects an empty/invalid field type', async () => {
     mockSubmitFact.mockResolvedValue({ is_public: false, canonical_value: null });
     const ref = encodeContactRef(USER, PHONE);
 
@@ -476,9 +479,11 @@ describe('memory tools', () => {
     expect(ok.saved).toBe(true);
     expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'employer', 'MKD Law');
 
+    // field_type is free-form now, but must still be a real label — empty and
+    // letterless inputs are rejected.
     const badField = await mcpSaveContactFact(USER, {
       contact_ref: ref,
-      field_type: 'zodiac',
+      field_type: '   ',
       value: 'x',
     });
     expect(badField.saved).toBe(false);
@@ -490,6 +495,20 @@ describe('memory tools', () => {
     });
     expect(badRef.saved).toBe(false);
     expect(mockSubmitFact).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts an arbitrary free-form key (rich profile — role, skill, …)', async () => {
+    mockSubmitFact.mockResolvedValue({ is_public: false, canonical_value: null });
+    const ref = encodeContactRef(USER, PHONE);
+
+    const ok = await mcpSaveContactFact(USER, {
+      contact_ref: ref,
+      field_type: 'role',
+      value: 'CEO @ Leavingstone',
+    });
+
+    expect(ok.saved).toBe(true);
+    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'role', 'CEO @ Leavingstone');
   });
 
   it('accepts a free-text note as a saveable field type', async () => {

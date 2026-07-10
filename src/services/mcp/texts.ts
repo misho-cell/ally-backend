@@ -127,15 +127,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
-      'Saves something the user tells you about a contact, by contact_ref. Two kinds. ' +
-      'Structural facts (field_type: occupation, employer, city, industry) are single-value — ' +
-      'a new value overwrites the old, and a fact 2+ people independently give becomes public. ' +
-      'A note (field_type: note) is free text, private forever (never becomes public), and ' +
-      'accumulates — save as many as you like, none overwrites another. Use note for soft ' +
-      'intel that isn\'t a job title: how to approach the person ("prefers a warm intro, ' +
-      'dislikes cold outreach"), a preference, a caution ("don\'t talk price at the first ' +
-      'meeting"). Notes are findable later through search_by_insight and never appear as the ' +
-      "person's job title. Confirm in one short line after saving.",
+      'Saves something the user tells you about a contact, by contact_ref. field_type is ' +
+      'free-form. The four core facts (occupation, employer, city, industry) are single-value ' +
+      '— a new value overwrites the old, and a fact 2+ people independently give becomes ' +
+      'public. Any other key — role, skill, expertise, education, need, note, … — is free ' +
+      'text, private forever (never becomes public), and accumulates (save as many as you ' +
+      'like, none overwrites another). Use a specific key per piece of a rich profile, and ' +
+      'note for soft intel that isn\'t a job title ("prefers a warm intro", "don\'t talk price ' +
+      'first"). Everything is findable later through search_by_insight; free-form keys never ' +
+      "appear as the person's job title. Confirm in one short line after saving.",
   },
   get_contact_facts: {
     title: 'Recall saved facts about a contact',
@@ -212,13 +212,14 @@ export const PARAM_TEXTS = {
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
   factFieldType:
-    'One of: occupation, employer, city, industry, or note. The first four are single-value ' +
-    'structural facts (a new value replaces the old). note is free-text, private, and ' +
-    "accumulates — use it for soft intel that isn't a job title (approach tips, preferences, " +
-    'cautions).',
+    'A short label for what you are saving (free-form). occupation, employer, city, industry ' +
+    'are the four core facts (single-value, can become public if others confirm). Any other ' +
+    'key — role, skill, expertise, education, need, note, … — is free-text, private, and ' +
+    'accumulates. Use a specific key per piece of a rich profile; use note for a general ' +
+    'observation.',
   factValue:
-    "For a structural fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). " +
-    "For a note, the free-text observation in the user's own words.",
+    "For a core fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). For any " +
+    "other key, the free-text value/observation in the user's own words.",
   groupTag:
     'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
   connectorLimit: 'How many to return (default 10, max 25).',

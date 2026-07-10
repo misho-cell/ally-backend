@@ -4,16 +4,37 @@ import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
 import anthropic from '../config/anthropic';
 
-// Structured, crowd-confirmable facts — one value per field per contact.
+// The four core, crowd-confirmable facts — one value per field per contact,
+// mapped into search-result enrichment (employer/jobPosition/city/industry).
 export const FACT_FIELD_TYPES = ['occupation', 'employer', 'city', 'industry'] as const;
 export type FactFieldType = (typeof FACT_FIELD_TYPES)[number];
 
-// Free-text memory: private to the submitter, never crowd-confirmed, and it
-// ACCUMULATES (many notes per contact) rather than overwriting. Kept out of
-// FACT_FIELD_TYPES so it skips the crowd/canonical logic and the search
-// enrichment that maps structured fields to employer/jobPosition/etc.
+// A conventional free-text memory key. It is not special in the engine — ANY
+// key that is not one of the four core facts behaves the same way: private to
+// the submitter, never crowd-confirmed, and it ACCUMULATES (many rows per
+// contact) instead of overwriting. This is what lets the prompt store a rich
+// profile (role, skill, expertise, education, need, …) without the four fields
+// having to know about each key.
 export const MEMORY_FIELD_TYPE = 'note';
-export const SAVEABLE_FIELD_TYPES = [...FACT_FIELD_TYPES, MEMORY_FIELD_TYPE] as const;
+export const MAX_FIELD_TYPE_LEN = 40;
+
+/** True for the four crowd-confirmable, single-value, enrichment-mapped facts. */
+export function isCoreFact(fieldType: string): boolean {
+  return (FACT_FIELD_TYPES as readonly string[]).includes(fieldType);
+}
+
+/**
+ * Normalize a caller-supplied field_type: trimmed, lowercased, whitespace
+ * collapsed. Returns null when it is empty, too long, or has no letter — the
+ * key is now free-form and model-controlled, so it must be bounded before it
+ * touches the database.
+ */
+export function normalizeFieldType(raw: string): string | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!s || s.length > MAX_FIELD_TYPE_LEN) return null;
+  if (!/\p{L}/u.test(s)) return null;
+  return s;
+}
 
 interface FactRow {
   id: number;
@@ -76,22 +97,28 @@ async function upsertFact(
 ): Promise<void> {
   await query(
     // The arbiter is the partial unique index uq_contact_facts_structured, so
-    // its predicate must be repeated here; notes have no such index and are
-    // never routed through this path.
+    // its predicate (only the four core facts) must be repeated here; free-form
+    // keys have no such index and are never routed through this path.
     `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type) WHERE field_type <> 'note'
+     ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
+       WHERE field_type IN ('occupation', 'employer', 'city', 'industry')
      DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW()`,
     [neo4jContactId, userId, fieldType, value],
   );
 }
 
-/** Append a free-text memory. Notes accumulate — each save is a new private row. */
-async function insertNote(userId: string, neo4jContactId: string, value: string): Promise<void> {
+/** Append a free-form fact. Non-core keys accumulate — each save is a new private row. */
+async function insertFreeFormFact(
+  userId: string,
+  neo4jContactId: string,
+  fieldType: string,
+  value: string,
+): Promise<void> {
   await query(
     `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
      VALUES ($1, $2, $3, $4)`,
-    [neo4jContactId, userId, MEMORY_FIELD_TYPE, value],
+    [neo4jContactId, userId, fieldType, value],
   );
 }
 
@@ -111,14 +138,16 @@ async function getOtherFacts(
 export async function submitContactFact(
   userId: string,
   neo4jContactIdRaw: string,
-  fieldType: string,
+  fieldTypeRaw: string,
   value: string,
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+  const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
 
-  // Free-text notes are private and accumulate — no crowd-confirmation pass.
-  if (fieldType === MEMORY_FIELD_TYPE) {
-    await insertNote(userId, neo4jContactId, value);
+  // Any non-core key (note, role, skill, …) is private and accumulates — no
+  // crowd-confirmation pass. Only the four core facts go through canonicalization.
+  if (!isCoreFact(fieldType)) {
+    await insertFreeFormFact(userId, neo4jContactId, fieldType, value);
     return { is_public: false, canonical_value: null };
   }
 

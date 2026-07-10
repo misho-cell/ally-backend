@@ -96,7 +96,7 @@ chatRouter.post(
 
 chatRouter.post(
   '/message',
-  body('message').isString().trim().notEmpty().isLength({ max: 2000 }),
+  body('message').isString().trim().notEmpty().isLength({ max: 10000 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
 

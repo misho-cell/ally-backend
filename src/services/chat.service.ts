@@ -429,7 +429,7 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
       field_type: {
         type: 'string',
         description:
-          'One of: "occupation", "employer", "city", "industry", or "note". Use "note" for free-text observations — never pack free text into occupation.',
+          'Free-form label. "occupation", "employer", "city", "industry" are the four core facts (single-value, can become public). Any other key — "role", "skill", "expertise", "education", "need", "note", … — is free-text, private, and accumulates. Use a specific key per piece of a rich profile; use "note" for a general observation. Never pack free text into occupation.',
       },
       value: {
         type: 'string',

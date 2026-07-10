@@ -7,7 +7,7 @@ import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
-import { SAVEABLE_FIELD_TYPES, getVisibleFacts, submitContactFact } from '../contactFacts.service';
+import { normalizeFieldType, getVisibleFacts, submitContactFact } from '../contactFacts.service';
 import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import {
@@ -314,11 +314,11 @@ export async function mcpSaveContactFact(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
-  const fieldType = (args.field_type ?? '').trim();
-  if (!(SAVEABLE_FIELD_TYPES as readonly string[]).includes(fieldType)) {
+  const fieldType = normalizeFieldType(args.field_type ?? '');
+  if (!fieldType) {
     return {
       saved: false,
-      error: `field_type must be one of: ${SAVEABLE_FIELD_TYPES.join(', ')}.`,
+      error: 'field_type must be a short non-empty label (e.g. occupation, role, skill, note).',
     };
   }
   const value = (args.value ?? '').trim();

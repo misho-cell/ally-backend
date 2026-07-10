@@ -42,7 +42,7 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('does not query for other users\' facts when saving a note', async () => {
+  it("does not query for other users' facts when saving a note", async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
     await submitContactFact(USER, RAW_PHONE, 'note', 'reminder');
@@ -63,6 +63,21 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     expect(result.is_public).toBe(false);
     const upsertSql = mockQuery.mock.calls[0][0] as string;
     expect(upsertSql).toContain('ON CONFLICT');
-    expect(upsertSql).toContain("WHERE field_type <> 'note'");
+    expect(upsertSql).toContain("field_type IN ('occupation', 'employer', 'city', 'industry')");
+  });
+
+  it('accumulates any non-core free-form key (role, skill, …) like a note', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'Role', 'CEO @ Leavingstone');
+
+    expect(result).toEqual({ is_public: false, canonical_value: null });
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('INSERT INTO contact_facts');
+    expect(sql as string).not.toContain('ON CONFLICT');
+    // field_type is normalized (trimmed + lowercased) before storage.
+    expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone']);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });
