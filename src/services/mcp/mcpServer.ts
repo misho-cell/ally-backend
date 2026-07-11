@@ -17,6 +17,12 @@ import {
   mcpSearchContacts,
   mcpSearchSecondDegree,
   mcpUnblockContact,
+  mcpCreateTask,
+  mcpGetMyTasks,
+  mcpUpdateTask,
+  mcpGrantTaskPermission,
+  mcpSaveUserNote,
+  mcpGetUserNotes,
   McpToolPayload,
 } from './handlers';
 import {
@@ -242,6 +248,87 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   );
 }
 
+function registerGoalTools(server: McpServer, userId: string): void {
+  server.registerTool(
+    'create_task',
+    {
+      title: TOOL_TEXTS.create_task.title,
+      description: TOOL_TEXTS.create_task.description,
+      inputSchema: {
+        title: z.string().describe(PARAM_TEXTS.taskTitle),
+        description: z.string().optional().describe(PARAM_TEXTS.taskDescription),
+        task_type: z.enum(['solve', 'reach']).optional().describe(PARAM_TEXTS.taskType),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'create_task', () => mcpCreateTask(userId, args)),
+  );
+  server.registerTool(
+    'get_my_tasks',
+    {
+      title: TOOL_TEXTS.get_my_tasks.title,
+      description: TOOL_TEXTS.get_my_tasks.description,
+      inputSchema: {
+        status: z.enum(['open', 'paused', 'closed']).optional().describe(PARAM_TEXTS.taskStatus),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_my_tasks', () => mcpGetMyTasks(userId, args)),
+  );
+  server.registerTool(
+    'update_task',
+    {
+      title: TOOL_TEXTS.update_task.title,
+      description: TOOL_TEXTS.update_task.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        status: z.enum(['open', 'paused', 'closed']).describe(PARAM_TEXTS.taskStatus),
+        note: z.string().optional().describe(PARAM_TEXTS.taskNote),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'update_task', () => mcpUpdateTask(userId, args)),
+  );
+  server.registerTool(
+    'grant_task_permission',
+    {
+      title: TOOL_TEXTS.grant_task_permission.title,
+      description: TOOL_TEXTS.grant_task_permission.description,
+      inputSchema: { task_ref: z.string().describe(PARAM_TEXTS.taskRef) },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'grant_task_permission', () => mcpGrantTaskPermission(userId, args)),
+  );
+  server.registerTool(
+    'save_user_note',
+    {
+      title: TOOL_TEXTS.save_user_note.title,
+      description: TOOL_TEXTS.save_user_note.description,
+      inputSchema: {
+        kind: z.enum(['need', 'preference', 'profile']).describe(PARAM_TEXTS.userNoteKind),
+        text: z.string().describe(PARAM_TEXTS.userNoteText),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'save_user_note', () => mcpSaveUserNote(userId, args)),
+  );
+  server.registerTool(
+    'get_user_notes',
+    {
+      title: TOOL_TEXTS.get_user_notes.title,
+      description: TOOL_TEXTS.get_user_notes.description,
+      inputSchema: {
+        kind: z
+          .enum(['need', 'preference', 'profile'])
+          .optional()
+          .describe(PARAM_TEXTS.userNoteKind),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_user_notes', () => mcpGetUserNotes(userId, args)),
+  );
+}
+
 function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_top_connectors',
@@ -324,6 +411,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerIntroTools(server, userId);
   registerMemoryAndBlockTools(server, userId);
   registerGraphTools(server, userId);
+  registerGoalTools(server, userId);
   registerPrompts(server);
   return server;
 }

@@ -9,6 +9,14 @@ import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import { normalizeFieldType, getVisibleFacts, submitContactFact } from '../contactFacts.service';
 import {
+  createTask,
+  getMyTasks,
+  grantTaskPermission,
+  isTaskStatus,
+  updateTask,
+} from '../taskStore.service';
+import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
+import {
   blockContact,
   getBlockedByUser,
   getExcludedPhoneSet,
@@ -423,4 +431,98 @@ export async function mcpGetGroupConnectors(
     await getGroupConnectors(userId, groupTag, args.limit),
     'member_links',
   );
+}
+
+// --- Goal store + user memory (B1 + C) --------------------------------------
+// Tasks and notes are the user's own content, so no contact_ref/phone handling —
+// but text is scrubbed defensively before it reaches the model, same as any
+// other payload leaving the connector.
+
+const TASK_REF_PREFIX = 'task_';
+
+function parseTaskRef(ref: string): number | null {
+  if (!ref.startsWith(TASK_REF_PREFIX)) return null;
+  const id = Number(ref.slice(TASK_REF_PREFIX.length));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+export async function mcpCreateTask(
+  userId: string,
+  args: { title: string; description?: string; task_type?: string },
+): Promise<McpToolPayload> {
+  const title = (args.title ?? '').trim();
+  if (!title) return { created: false, error: 'Pass a non-empty title.' };
+  const taskType = args.task_type === 'reach' ? 'reach' : 'solve';
+  const description = (args.description ?? '').trim() || null;
+  const { id } = await createTask(userId, title, description, taskType);
+  return { created: true, task_ref: TASK_REF_PREFIX + String(id) };
+}
+
+export async function mcpGetMyTasks(
+  userId: string,
+  args: { status?: string },
+): Promise<McpToolPayload> {
+  const status = args.status && isTaskStatus(args.status) ? args.status : undefined;
+  const tasks = await getMyTasks(userId, status);
+  return {
+    tasks: tasks.map((t) => ({
+      task_ref: TASK_REF_PREFIX + String(t.id),
+      title: scrubText(t.title),
+      description: t.description === null ? null : scrubText(t.description),
+      type: t.task_type,
+      status: t.status,
+      permission_granted: t.permission_granted,
+    })),
+  };
+}
+
+export async function mcpUpdateTask(
+  userId: string,
+  args: { task_ref: string; status: string; note?: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) {
+    return { updated: false, error: 'Unknown task_ref — take it from get_my_tasks.' };
+  }
+  if (!isTaskStatus(args.status)) {
+    return { updated: false, error: 'status must be open, paused, or closed.' };
+  }
+  const ok = await updateTask(userId, taskId, args.status, args.note);
+  return ok ? { updated: true } : { updated: false, error: 'No such task.' };
+}
+
+export async function mcpGrantTaskPermission(
+  userId: string,
+  args: { task_ref: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) {
+    return { granted: false, error: 'Unknown task_ref — take it from get_my_tasks.' };
+  }
+  const ok = await grantTaskPermission(userId, taskId);
+  return ok ? { granted: true } : { granted: false, error: 'No such task.' };
+}
+
+export async function mcpSaveUserNote(
+  userId: string,
+  args: { kind: string; text: string },
+): Promise<McpToolPayload> {
+  if (!isUserNoteKind(args.kind ?? '')) {
+    return { saved: false, error: 'kind must be need, preference, or profile.' };
+  }
+  const text = (args.text ?? '').trim();
+  if (!text) return { saved: false, error: 'Pass a non-empty text.' };
+  await saveUserNote(userId, args.kind as 'need' | 'preference' | 'profile', text);
+  return { saved: true, kind: args.kind };
+}
+
+export async function mcpGetUserNotes(
+  userId: string,
+  args: { kind?: string },
+): Promise<McpToolPayload> {
+  const kind = args.kind && isUserNoteKind(args.kind) ? args.kind : undefined;
+  const notes = await getUserNotes(userId, kind);
+  return {
+    notes: notes.map((n) => ({ kind: n.kind, text: scrubText(n.text) })),
+  };
 }

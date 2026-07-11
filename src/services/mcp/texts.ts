@@ -179,6 +179,51 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'a `member_links` count. Use for "who knows the most people in X" / "who could introduce ' +
       'me across the whole X group".',
   },
+  create_task: {
+    title: 'Remember a goal',
+    description:
+      'Saves a goal the user wants worked on as a standing task that survives after this chat ' +
+      'closes (e.g. "find a lawyer for my startup", "get introduced to the CEO of X"). ' +
+      'task_type is "solve" (find several helpers) or "reach" (a path to one specific target). ' +
+      'Use whenever the user states something they want to achieve through their network, not a ' +
+      'one-off lookup. Returns a task_ref. Does NOT start any outreach on its own.',
+  },
+  get_my_tasks: {
+    title: 'My open goals',
+    description:
+      "Lists the user's saved goals with their status and whether outreach was permitted. Call " +
+      'this at the START of a conversation so you know what you were already working on for ' +
+      'them, and refer back to it naturally. Optional status filter (open/paused/closed).',
+  },
+  update_task: {
+    title: 'Update a goal',
+    description:
+      'Changes a goal by its task_ref (from get_my_tasks): pause, resume (status open), or close ' +
+      'it. When closing, pass a short note of the outcome ("solved — Nino took it"). Confirm ' +
+      'with the user before closing a goal they still care about.',
+  },
+  grant_task_permission: {
+    title: 'Permission to ask around',
+    description:
+      'Records the user\'s one blanket "yes, you can ask people in my network about this" for a ' +
+      'goal (by task_ref). Ask for it in plain words first and call this only after they agree. ' +
+      'No outreach on a goal is allowed until this is granted.',
+  },
+  save_user_note: {
+    title: 'Remember something about the user',
+    description:
+      'Saves something the user tells you about THEMSELF so it persists across chats — kind is ' +
+      '"need" (an open thing they want), "preference" (how they like things), or "profile" (a ' +
+      'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
+      'contacts). Notes accumulate. Confirm in one short line.',
+  },
+  get_user_notes: {
+    title: 'Recall notes about the user',
+    description:
+      'Reads back what the user previously told you about themselves — their needs, preferences ' +
+      'and profile. Call this at the start of a conversation alongside get_my_tasks so you ' +
+      "already know them and don't re-ask what they've said. Optional kind filter.",
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -223,6 +268,18 @@ export const PARAM_TEXTS = {
   groupTag:
     'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
   connectorLimit: 'How many to return (default 10, max 25).',
+  taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
+  taskDescription:
+    "Optional extra detail about the goal — who/what/constraints, in the user's words.",
+  taskType:
+    '"solve" to find several helpers (fan-out) or "reach" to orchestrate a path to one specific ' +
+    'target. Defaults to "solve".',
+  taskStatus: 'One of: open, paused, closed.',
+  taskRef: 'The stable id of a goal, taken from get_my_tasks. Never invent it.',
+  taskNote: 'On close, a short outcome note (e.g. "solved — Nino took it").',
+  userNoteKind:
+    'One of: need (an open want), preference (how they like things), profile (a stable fact).',
+  userNoteText: 'What the user said about themselves, in their own words.',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).
