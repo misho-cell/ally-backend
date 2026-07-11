@@ -17,8 +17,19 @@ const authRouter = Router();
 // Unauthenticated endpoints — limit by IP to curb OTP/login abuse.
 authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));
 
+// Tighter, per-device limit on the SMS-sending endpoints specifically, so a
+// single device can't burn the SMS budget behind a shared/NAT'd IP (F4).
+const OTP_SEND_WINDOW_MS = 10 * 60_000;
+const OTP_SEND_MAX_PER_DEVICE = 5;
+const limitOtpSends = rateLimit({
+  windowMs: OTP_SEND_WINDOW_MS,
+  max: OTP_SEND_MAX_PER_DEVICE,
+  keyBy: 'device',
+});
+
 authRouter.post(
   '/request-otp',
+  limitOtpSends,
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('actionType')
     .isIn(['REGISTER', 'AUTH', 'RECOVER'])
@@ -50,6 +61,7 @@ authRouter.post(
 
 authRouter.post(
   '/resend-otp',
+  limitOtpSends,
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('actionType')
     .isIn(['REGISTER', 'AUTH', 'RECOVER'])

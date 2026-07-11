@@ -46,6 +46,7 @@ jest.mock('../../block.service', () => ({
   blockContact: jest.fn(),
   unblockContact: jest.fn(),
   getBlockedByUser: jest.fn(),
+  getExcludedPhoneSet: jest.fn().mockResolvedValue(new Set<string>()),
   __esModule: true,
 }));
 jest.mock('../../graphAnalytics.service', () => ({
@@ -88,7 +89,15 @@ import {
   mcpUnblockContact,
 } from '../handlers';
 import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
-import { blockContact, getBlockedByUser, unblockContact } from '../../block.service';
+import {
+  blockContact,
+  getBlockedByUser,
+  getExcludedPhoneSet,
+  unblockContact,
+} from '../../block.service';
+import { normalizePhone } from '../../phone';
+
+const mockExcludedSet = getExcludedPhoneSet as jest.MockedFunction<typeof getExcludedPhoneSet>;
 import { getGroupConnectors, getTopConnectors } from '../../graphAnalytics.service';
 
 const USER = '7';
@@ -304,6 +313,16 @@ describe('mcpGetContactProfile', () => {
     expect(mockFullProfile).toHaveBeenCalledWith(USER, PHONE);
     expect(result.contact_ref).toBe(ref);
     expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('returns unavailable (never the profile) for a blocked/deceased contact', async () => {
+    mockExcludedSet.mockResolvedValueOnce(new Set([normalizePhone(PHONE)]));
+    const ref = encodeContactRef(USER, PHONE);
+
+    const result = await mcpGetContactProfile(USER, { contact_ref: ref });
+
+    expect(result.error).toContain('unavailable');
+    expect(mockFullProfile).not.toHaveBeenCalled();
   });
 });
 

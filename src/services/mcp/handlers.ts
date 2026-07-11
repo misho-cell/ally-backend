@@ -8,7 +8,13 @@ import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFull
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import { normalizeFieldType, getVisibleFacts, submitContactFact } from '../contactFacts.service';
-import { blockContact, getBlockedByUser, unblockContact } from '../block.service';
+import {
+  blockContact,
+  getBlockedByUser,
+  getExcludedPhoneSet,
+  unblockContact,
+} from '../block.service';
+import { normalizePhone } from '../phone';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import {
   getPendingRequestsForMediator,
@@ -176,6 +182,7 @@ export async function mcpGetContactProfile(
   if (!phone) {
     return { error: 'Unknown contact_ref — take it from a fresh search result, never invent it.' };
   }
+  if (await isExcludedContact(userId, phone)) return { error: UNAVAILABLE_CONTACT_ERROR };
   const profile = await getContactFullProfile(userId, phone);
   const clean = scrubDeep({
     tags: profile.tags,
@@ -307,6 +314,15 @@ export async function mcpRespondToRequest(
 
 const UNKNOWN_REF_ERROR =
   'Unknown contact_ref — take it from a fresh search result, never invent it.';
+const UNAVAILABLE_CONTACT_ERROR = 'This contact is unavailable.';
+
+// Defense-in-depth block/deceased gate for single-contact reads by ref. Searches
+// already exclude these contacts, so a fresh ref should never point at one — but
+// a stale/reused ref must not surface a blocked person's profile or facts.
+async function isExcludedContact(userId: string, phone: string): Promise<boolean> {
+  const excluded = await getExcludedPhoneSet(userId);
+  return excluded.has(normalizePhone(phone));
+}
 
 export async function mcpSaveContactFact(
   userId: string,
@@ -336,6 +352,7 @@ export async function mcpGetContactFacts(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { error: UNKNOWN_REF_ERROR };
+  if (await isExcludedContact(userId, phone)) return { error: UNAVAILABLE_CONTACT_ERROR };
   const facts = await getVisibleFacts(userId, phone);
   return { contact_ref: args.contact_ref, ...(scrubDeep(facts) as McpToolPayload) };
 }
