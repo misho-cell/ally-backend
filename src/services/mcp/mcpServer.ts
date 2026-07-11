@@ -23,6 +23,8 @@ import {
   mcpGrantTaskPermission,
   mcpSaveUserNote,
   mcpGetUserNotes,
+  mcpQueueResult,
+  mcpGetPendingUpdates,
   McpToolPayload,
 } from './handlers';
 import {
@@ -326,6 +328,31 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_user_notes', () => mcpGetUserNotes(userId, args)),
+  );
+  server.registerTool(
+    'queue_result',
+    {
+      title: TOOL_TEXTS.queue_result.title,
+      description: TOOL_TEXTS.queue_result.description,
+      inputSchema: {
+        kind: z.string().describe(PARAM_TEXTS.updateKind),
+        summary: z.string().describe(PARAM_TEXTS.updateSummary),
+        task_ref: z.string().optional().describe(PARAM_TEXTS.taskRef),
+        contact_ref: z.string().optional().describe(PARAM_TEXTS.contactRef),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'queue_result', () => mcpQueueResult(userId, args)),
+  );
+  server.registerTool(
+    'get_pending_updates',
+    {
+      title: TOOL_TEXTS.get_pending_updates.title,
+      description: TOOL_TEXTS.get_pending_updates.description,
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    () => runTool(userId, 'get_pending_updates', () => mcpGetPendingUpdates(userId)),
   );
 }
 

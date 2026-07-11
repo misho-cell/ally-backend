@@ -224,6 +224,22 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'and profile. Call this at the start of a conversation alongside get_my_tasks so you ' +
       "already know them and don't re-ask what they've said. Optional kind filter.",
   },
+  queue_result: {
+    title: 'Queue a result for a goal',
+    description:
+      'Drops a result you found for a goal into the drip queue instead of dumping everything at ' +
+      'once. summary is a one-line description; attach the task_ref it belongs to and a ' +
+      'contact_ref if the result is a person. The backend releases a small burst, then one per ' +
+      'day — you never invent or rush the rest. Use when you found something for an open task.',
+  },
+  get_pending_updates: {
+    title: 'Updates due for the user',
+    description:
+      'Returns the results due to be shown today (drip-released) plus a count of how many more ' +
+      'are still coming. Call once at the start of a conversation, alongside check_my_inbox; ' +
+      'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
+      'Each item is reported only once.',
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -280,6 +296,9 @@ export const PARAM_TEXTS = {
   userNoteKind:
     'One of: need (an open want), preference (how they like things), profile (a stable fact).',
   userNoteText: 'What the user said about themselves, in their own words.',
+  updateKind:
+    'What kind of update this is — e.g. "found", "confirmed", "no_luck". Short, snake_case.',
+  updateSummary: 'One plain line describing the result, for the user to read.',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).

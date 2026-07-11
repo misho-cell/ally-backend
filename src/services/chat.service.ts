@@ -41,6 +41,7 @@ import {
   updateTask,
 } from './taskStore.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
+import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
 import { scrubText } from './privacyScrub';
@@ -652,6 +653,28 @@ const GET_USER_NOTES_TOOL: AnthropicTool = {
   },
 };
 
+const QUEUE_RESULT_TOOL: AnthropicTool = {
+  name: 'queue_result',
+  description:
+    'Drop a result you found for a goal into the drip queue instead of showing everything at once. summary is a one-line description; pass the task_id it belongs to. The backend releases a small burst, then one per day — never invent or rush the rest. Use when you found something for an open task.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      kind: { type: 'string', description: 'e.g. "found", "confirmed", "no_luck" (snake_case)' },
+      summary: { type: 'string', description: 'One plain line describing the result' },
+      task_id: { type: 'number', description: 'Task id from get_my_tasks' },
+    },
+    required: ['kind', 'summary'],
+  },
+};
+
+const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
+  name: 'get_pending_updates',
+  description:
+    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once.',
+  input_schema: { type: 'object', properties: {}, required: [] },
+};
+
 const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
     name: 'lookup_contact_by_phone',
@@ -1178,6 +1201,21 @@ async function executeToolCall(
         : undefined;
       return { notes: await getUserNotes(userId, kind) };
     }
+    case 'queue_result': {
+      const kind = ((input['kind'] as string) ?? '').trim();
+      const summary = ((input['summary'] as string) ?? '').trim();
+      if (!kind || !summary) return { queued: false, error: 'Pass kind and summary.' };
+      const taskId = typeof input['task_id'] === 'number' ? (input['task_id'] as number) : null;
+      await queueResult(userId, taskId, kind, { summary });
+      return { queued: true };
+    }
+    case 'get_pending_updates': {
+      const [updates, morePending] = await Promise.all([
+        getPendingUpdates(userId),
+        countHeldUpdates(userId),
+      ]);
+      return { updates, more_pending: morePending };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1575,6 +1613,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GRANT_TASK_PERMISSION_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
+    QUEUE_RESULT_TOOL,
+    GET_PENDING_UPDATES_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),

@@ -16,6 +16,7 @@ import {
   updateTask,
 } from '../taskStore.service';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
+import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
 import {
   blockContact,
   getBlockedByUser,
@@ -524,5 +525,34 @@ export async function mcpGetUserNotes(
   const notes = await getUserNotes(userId, kind);
   return {
     notes: notes.map((n) => ({ kind: n.kind, text: scrubText(n.text) })),
+  };
+}
+
+export async function mcpQueueResult(
+  userId: string,
+  args: { task_ref?: string; kind: string; summary: string; contact_ref?: string },
+): Promise<McpToolPayload> {
+  const kind = (args.kind ?? '').trim();
+  const summary = (args.summary ?? '').trim();
+  if (!kind || !summary) return { queued: false, error: 'Pass kind and summary.' };
+  const taskId = args.task_ref ? parseTaskRef(args.task_ref) : null;
+  const payload: Record<string, unknown> = { summary };
+  if (args.contact_ref) payload.contact_ref = args.contact_ref;
+  await queueResult(userId, taskId, kind, payload);
+  return { queued: true };
+}
+
+export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {
+  const [updates, morePending] = await Promise.all([
+    getPendingUpdates(userId),
+    countHeldUpdates(userId),
+  ]);
+  return {
+    updates: updates.map((u) => ({
+      task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),
+      kind: u.kind,
+      ...(scrubDeep(u.payload) as McpToolPayload),
+    })),
+    more_pending: morePending,
   };
 }
