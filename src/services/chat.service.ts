@@ -1210,10 +1210,9 @@ async function executeToolCall(
       return { queued: true };
     }
     case 'get_pending_updates': {
-      const [updates, morePending] = await Promise.all([
-        getPendingUpdates(userId),
-        countHeldUpdates(userId),
-      ]);
+      // Release first, then count, so more_pending excludes the just-shown burst.
+      const updates = await getPendingUpdates(userId);
+      const morePending = await countHeldUpdates(userId);
       return { updates, more_pending: morePending };
     }
     default:

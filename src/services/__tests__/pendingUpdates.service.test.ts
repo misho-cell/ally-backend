@@ -45,11 +45,14 @@ describe('pendingUpdates.service', () => {
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain("SET status = 'seen'");
     expect(sql).toContain('release_at <= NOW()');
+    // A closed goal's queued results must never release.
+    expect(sql).toContain("t.status <> 'closed'");
   });
 
-  it('countHeldUpdates returns the number still waiting', async () => {
+  it('countHeldUpdates excludes closed-goal updates and returns the number waiting', async () => {
     mockQuery.mockResolvedValue(result([{ count: '4' }]) as never);
 
     expect(await countHeldUpdates(USER)).toBe(4);
+    expect(mockQuery.mock.calls[0][0] as string).toContain("t.status <> 'closed'");
   });
 });

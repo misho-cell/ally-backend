@@ -543,10 +543,10 @@ export async function mcpQueueResult(
 }
 
 export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {
-  const [updates, morePending] = await Promise.all([
-    getPendingUpdates(userId),
-    countHeldUpdates(userId),
-  ]);
+  // Release first, THEN count — so the just-released burst is already 'seen' and
+  // more_pending reflects only what is still waiting.
+  const updates = await getPendingUpdates(userId);
+  const morePending = await countHeldUpdates(userId);
   return {
     updates: updates.map((u) => ({
       task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),

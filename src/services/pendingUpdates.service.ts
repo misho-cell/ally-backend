@@ -45,25 +45,36 @@ export async function queueResult(
  */
 export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]> {
   const result = await query<PendingUpdate>(
-    `UPDATE pending_updates
+    `UPDATE pending_updates pu
      SET status = 'seen'
-     WHERE id IN (
-       SELECT id FROM pending_updates
-       WHERE user_id = $1 AND status = 'held' AND release_at <= NOW()
-       ORDER BY release_at ASC
+     WHERE pu.id IN (
+       SELECT p.id FROM pending_updates p
+       LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
+       WHERE p.user_id = $1 AND p.status = 'held' AND p.release_at <= NOW()
+         AND (p.task_id IS NULL OR t.status <> 'closed')
+       ORDER BY p.release_at ASC
        LIMIT $2
      )
-     RETURNING id, task_id, kind, payload`,
+     RETURNING pu.id, pu.task_id, pu.kind, pu.payload`,
     [userId, MAX_RELEASED_PER_READ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
 }
 
-/** How many updates are still held for the user (due later) — for a "more coming" hint. */
+/**
+ * How many updates are still held for the user (due later) — the "more coming"
+ * hint. Excludes updates for a closed goal (they never release), and must be
+ * read AFTER getPendingUpdates in the same turn so the just-released ones are
+ * already 'seen' and not counted.
+ */
 export async function countHeldUpdates(userId: string): Promise<number> {
   const result = await query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM pending_updates WHERE user_id = $1 AND status = 'held'`,
+    `SELECT COUNT(*) AS count
+     FROM pending_updates p
+     LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
+     WHERE p.user_id = $1 AND p.status = 'held'
+       AND (p.task_id IS NULL OR t.status <> 'closed')`,
     [userId],
     QUERY_TIMEOUT_MS,
   );
