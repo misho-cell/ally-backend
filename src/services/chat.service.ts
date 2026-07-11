@@ -32,6 +32,15 @@ import {
   touchThread,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
+import {
+  createTask,
+  getMyTasks,
+  grantTaskPermission,
+  isTaskStatus,
+  Task,
+  updateTask,
+} from './taskStore.service';
+import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
 import { scrubText } from './privacyScrub';
@@ -561,6 +570,88 @@ const SAVE_PRIVATE_CONTEXT_TOOL: AnthropicTool = {
   },
 };
 
+// --- Goal store + user memory (B1 + C) --------------------------------------
+const CREATE_TASK_TOOL: AnthropicTool = {
+  name: 'create_task',
+  description:
+    'Save a goal the user wants worked on as a standing task that survives after this chat closes ("find a startup lawyer", "get introduced to X"). task_type is "solve" (find several helpers) or "reach" (a path to one target). Use when the user states something to achieve through their network, not a one-off lookup. Returns task_id. Starts no outreach by itself.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: "Short line naming the goal, in the user's words" },
+      description: { type: 'string', description: 'Optional extra detail/constraints' },
+      task_type: {
+        type: 'string',
+        description:
+          '"solve" (find several helpers) or "reach" (a path to one target). Default "solve".',
+      },
+    },
+    required: ['title'],
+  },
+};
+
+const GET_MY_TASKS_TOOL: AnthropicTool = {
+  name: 'get_my_tasks',
+  description:
+    "List the user's saved goals with status. Call at the START of a conversation so you know what you were already working on. Optional status filter (open/paused/closed).",
+  input_schema: {
+    type: 'object',
+    properties: { status: { type: 'string', description: 'open | paused | closed' } },
+    required: [],
+  },
+};
+
+const UPDATE_TASK_TOOL: AnthropicTool = {
+  name: 'update_task',
+  description:
+    'Change a goal by task_id (from get_my_tasks): pause, resume (open), or close it. On close, pass a short outcome note. Confirm before closing a goal the user still cares about.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'Task id from get_my_tasks' },
+      status: { type: 'string', description: 'open | paused | closed' },
+      note: { type: 'string', description: 'Outcome note when closing' },
+    },
+    required: ['task_id', 'status'],
+  },
+};
+
+const GRANT_TASK_PERMISSION_TOOL: AnthropicTool = {
+  name: 'grant_task_permission',
+  description:
+    'Record the user\'s one blanket "yes, you can ask people in my network about this" for a goal (by task_id). Ask in plain words first; call only after they agree.',
+  input_schema: {
+    type: 'object',
+    properties: { task_id: { type: 'number', description: 'Task id from get_my_tasks' } },
+    required: ['task_id'],
+  },
+};
+
+const SAVE_USER_NOTE_TOOL: AnthropicTool = {
+  name: 'save_user_note',
+  description:
+    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      kind: { type: 'string', description: 'need | preference | profile' },
+      text: { type: 'string', description: 'What the user said about themselves, in their words' },
+    },
+    required: ['kind', 'text'],
+  },
+};
+
+const GET_USER_NOTES_TOOL: AnthropicTool = {
+  name: 'get_user_notes',
+  description:
+    'Read back what the user told you about themselves (needs, preferences, profile). Call at the start of a chat with get_my_tasks so you already know them. Optional kind filter.',
+  input_schema: {
+    type: 'object',
+    properties: { kind: { type: 'string', description: 'need | preference | profile' } },
+    required: [],
+  },
+};
+
 const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
     name: 'lookup_contact_by_phone',
@@ -809,6 +900,29 @@ function buildInsightFieldsSection(
   return `\n\n## კონტაქტის ინფოს შეგროვება\nკონტაქტის წარდგენის შემდეგ ჰკითხე:\n${lines}\n\nშეინახე save_contact_insight-ით. გამოიყენე search_by_insight-ით.`;
 }
 
+function buildTasksSection(tasks: Task[]): string {
+  if (tasks.length === 0) return '';
+  const lines = tasks
+    .map((t) => {
+      const perm = t.permission_granted ? '' : ' (ნებართვა ჯერ არ არის)';
+      return `- #${t.id} [${t.status}] ${t.title}${perm} (update_task/grant_task_permission-ისთვის task_id=${t.id})`;
+    })
+    .join('\n');
+  return `\n\n## მიმდინარე მიზნები\nსესიის დასაწყისში გაიხსენე რაზე ვმუშაობდით:\n${lines}`;
+}
+
+function buildUserNotesSection(notes: UserNote[]): string {
+  if (notes.length === 0) return '';
+  const lines = notes.map((n) => `- [${n.kind}] ${n.text}`).join('\n');
+  return `\n\n## რა ვიცი მომხმარებელზე\n${lines}`;
+}
+
+// Tasks + self-notes only matter in the main chat, not a focused intro-request
+// thread; skip the extra queries there.
+function shouldLoadMemory(threadType?: string): boolean {
+  return threadType !== 'incoming_request' && threadType !== 'outgoing_request';
+}
+
 // Which pending requests to surface (with their request_id) for a thread.
 // Inside an incoming-request thread the agent must see THAT request so it can
 // answer it — the earlier blanket "[]" is exactly why accept/decline failed
@@ -832,21 +946,32 @@ async function buildAgentSystemPrompt(
   threadType?: string,
   introRequestId?: number | null,
 ): Promise<string> {
-  const [configResult, fieldsResult, profile, privateContext, pendingRequests, recentResponses] =
-    await Promise.all([
-      query<{ system_prompt: string }>(
-        'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
-      ),
-      query<{ field_label: string; field_description: string }>(
-        'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
-      ),
-      getUserProfile(userId),
-      getPrivateContext(userId),
-      resolvePendingRequests(userId, threadType, introRequestId),
-      threadType === 'incoming_request' || threadType === 'outgoing_request'
-        ? Promise.resolve([] as RespondedRequest[])
-        : getRecentResponsesForRequester(userId),
-    ]);
+  const loadMemory = shouldLoadMemory(threadType);
+  const [
+    configResult,
+    fieldsResult,
+    profile,
+    privateContext,
+    pendingRequests,
+    recentResponses,
+    tasks,
+    userNotes,
+  ] = await Promise.all([
+    query<{ system_prompt: string }>(
+      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+    ),
+    query<{ field_label: string; field_description: string }>(
+      'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+    ),
+    getUserProfile(userId),
+    getPrivateContext(userId),
+    resolvePendingRequests(userId, threadType, introRequestId),
+    threadType === 'incoming_request' || threadType === 'outgoing_request'
+      ? Promise.resolve([] as RespondedRequest[])
+      : getRecentResponsesForRequester(userId),
+    loadMemory ? getMyTasks(userId, 'open') : Promise.resolve([] as Task[]),
+    loadMemory ? getUserNotes(userId) : Promise.resolve([] as UserNote[]),
+  ]);
 
   const base = configResult.rows[0]?.system_prompt ?? '';
   return (
@@ -854,6 +979,8 @@ async function buildAgentSystemPrompt(
     AGENT_STRATEGY_PROMPT +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
+    buildTasksSection(tasks) +
+    buildUserNotesSection(userNotes) +
     buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
     buildPendingRequestsSection(pendingRequests) +
@@ -1010,6 +1137,47 @@ async function executeToolCall(
       );
     case 'present_choices':
       return { presented: true };
+    case 'create_task': {
+      const taskType = input['task_type'] === 'reach' ? 'reach' : 'solve';
+      const title = ((input['title'] as string) ?? '').trim();
+      if (!title) return { created: false, error: 'Pass a non-empty title.' };
+      const description = ((input['description'] as string) ?? '').trim() || null;
+      const { id } = await createTask(userId, title, description, taskType);
+      return { created: true, task_id: id };
+    }
+    case 'get_my_tasks': {
+      const status = isTaskStatus(input['status'] as string)
+        ? (input['status'] as 'open' | 'paused' | 'closed')
+        : undefined;
+      return { tasks: await getMyTasks(userId, status) };
+    }
+    case 'update_task': {
+      const status = input['status'] as string;
+      if (!isTaskStatus(status)) return { updated: false, error: 'Invalid status.' };
+      const ok = await updateTask(
+        userId,
+        input['task_id'] as number,
+        status,
+        input['note'] as string | undefined,
+      );
+      return { updated: ok };
+    }
+    case 'grant_task_permission':
+      return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
+    case 'save_user_note': {
+      const kind = input['kind'] as string;
+      if (!isUserNoteKind(kind)) return { saved: false, error: 'Invalid kind.' };
+      const text = ((input['text'] as string) ?? '').trim();
+      if (!text) return { saved: false, error: 'Pass a non-empty text.' };
+      await saveUserNote(userId, kind, text);
+      return { saved: true };
+    }
+    case 'get_user_notes': {
+      const kind = isUserNoteKind(input['kind'] as string)
+        ? (input['kind'] as 'need' | 'preference' | 'profile')
+        : undefined;
+      return { notes: await getUserNotes(userId, kind) };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1401,6 +1569,12 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
     PRESENT_CHOICES_TOOL,
+    CREATE_TASK_TOOL,
+    GET_MY_TASKS_TOOL,
+    UPDATE_TASK_TOOL,
+    GRANT_TASK_PERMISSION_TOOL,
+    SAVE_USER_NOTE_TOOL,
+    GET_USER_NOTES_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
