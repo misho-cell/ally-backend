@@ -16,6 +16,16 @@ const RESULT_GUIDANCE =
   'preserve exact job titles verbatim — never shorten a qualified title (e.g. ' +
   '"Deputy CEO in charge of X") to a broader one (e.g. "CEO").';
 
+// A fetched page's readable text lets the model verify a current officeholder
+// off an institution's own roster instead of a stale third-party directory —
+// search snippets alone can't carry the actual name. Same rule as search: read
+// the page's words verbatim, don't invent or promote a role.
+const PAGE_CHARS = 8000;
+const PAGE_GUIDANCE =
+  "This is the page's own text. Read the answer off it verbatim (exact names and " +
+  'titles); if the page does not state it, say so — do not guess or fall back to a ' +
+  'name not on the page.';
+
 interface TavilyResult {
   title: string;
   url: string;
@@ -24,6 +34,10 @@ interface TavilyResult {
 
 interface TavilyResponse {
   results?: TavilyResult[];
+}
+
+interface TavilyExtractResponse {
+  results?: { url: string; raw_content?: string }[];
 }
 
 export async function webSearch(query: string): Promise<object> {
@@ -67,6 +81,49 @@ export async function webSearch(query: string): Promise<object> {
         snippet: r.content.slice(0, SNIPPET_CHARS),
       })),
     };
+  } catch (err) {
+    return { error: (err as Error).message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fetch and return the readable text of one page (via Tavily's extract endpoint)
+ * so the assistant can read an official roster/page directly rather than relying
+ * on search snippets. URL must be http(s); content is truncated.
+ */
+export async function fetchPage(url: string): Promise<object> {
+  if (!TAVILY_API_KEY) {
+    return { error: 'Web fetch not configured (TAVILY_API_KEY missing)' };
+  }
+  const target = (url ?? '').trim();
+  if (!/^https?:\/\//i.test(target)) {
+    return { error: 'Pass a full http(s) URL.' };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+  try {
+    const response = await fetch('https://api.tavily.com/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ api_key: TAVILY_API_KEY, urls: [target] }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return { error: `Tavily extract error ${response.status}: ${body}` };
+    }
+
+    const data = (await response.json()) as TavilyExtractResponse;
+    const content = data.results?.[0]?.raw_content ?? '';
+    if (!content.trim()) {
+      return { url: target, content: null, note: 'The page returned no readable text.' };
+    }
+    return { url: target, guidance: PAGE_GUIDANCE, content: content.slice(0, PAGE_CHARS) };
   } catch (err) {
     return { error: (err as Error).message };
   } finally {

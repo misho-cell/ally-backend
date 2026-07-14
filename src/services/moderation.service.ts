@@ -19,11 +19,15 @@ export async function isReplySafe(text: string, userId: string | null = null): P
         model: MODERATION_MODEL,
         max_tokens: 8,
         system:
-          'You moderate replies from a contacts-networking assistant. ' +
-          'Mark UNSAFE only if the reply contains hate, harassment, sexual content, ' +
-          'self-harm encouragement, violence, or dangerous instructions. ' +
-          'Normal contact info, names, and networking help are SAFE. ' +
-          'Answer with exactly one word: SAFE or UNSAFE.',
+          'You moderate replies from a contacts-networking assistant whose whole job is ' +
+          'helping people reach the right person through their network — including public ' +
+          'officials and people at public institutions. Mark UNSAFE ONLY if the reply itself ' +
+          'contains hate speech, harassment or threats toward a person, sexual content, ' +
+          'self-harm encouragement, incitement to violence, or genuinely dangerous ' +
+          'instructions. The following are always SAFE: naming or identifying a public ' +
+          'official or the head of a public body, helping the user reach a person or ' +
+          'institution, contact info, names, and ordinary networking. When unsure, answer ' +
+          'SAFE. Answer with exactly one word: SAFE or UNSAFE.',
         messages: [{ role: 'user', content: text }],
       },
       { timeout: MODERATION_TIMEOUT_MS },

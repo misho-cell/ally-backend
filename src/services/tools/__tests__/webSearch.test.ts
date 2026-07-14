@@ -85,3 +85,65 @@ describe('webSearch', () => {
     expect(result.error).toEqual(expect.stringContaining('TAVILY_API_KEY'));
   });
 });
+
+type FetchPage = typeof import('../webSearch').fetchPage;
+
+async function loadFetchPage(apiKey: string | undefined): Promise<FetchPage> {
+  jest.resetModules();
+  if (apiKey === undefined) delete process.env.TAVILY_API_KEY;
+  else process.env.TAVILY_API_KEY = apiKey;
+  const mod = await import('../webSearch');
+  return mod.fetchPage;
+}
+
+describe('fetchPage', () => {
+  it("returns the page's readable text with a verbatim-read guidance", async () => {
+    mockFetch({
+      ok: true,
+      json: async () => ({
+        results: [
+          { url: 'https://saburtalo.tbilisi.gov.ge/roster', raw_content: 'Head: Gogi Chikovani' },
+        ],
+      }),
+    });
+
+    const fetchPage = await loadFetchPage('test-key');
+    const result = (await fetchPage('https://saburtalo.tbilisi.gov.ge/roster')) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result.content).toEqual(expect.stringContaining('Gogi Chikovani'));
+    expect(result.guidance).toEqual(expect.stringContaining('verbatim'));
+  });
+
+  it('rejects a non-http URL without calling the network', async () => {
+    mockFetch({ ok: true, json: async () => ({}) });
+    const fetchPage = await loadFetchPage('test-key');
+
+    const result = (await fetchPage('not-a-url')) as Record<string, unknown>;
+
+    expect(result.error).toEqual(expect.stringContaining('http'));
+    expect(global.fetch as jest.Mock).not.toHaveBeenCalled();
+  });
+
+  it('reports a note when the page has no readable text', async () => {
+    mockFetch({
+      ok: true,
+      json: async () => ({ results: [{ url: 'https://x.com', raw_content: '' }] }),
+    });
+    const fetchPage = await loadFetchPage('test-key');
+
+    const result = (await fetchPage('https://x.com')) as Record<string, unknown>;
+
+    expect(result.content).toBeNull();
+    expect(result.note).toEqual(expect.stringContaining('no readable text'));
+  });
+
+  it('errors when the API key is missing', async () => {
+    const fetchPage = await loadFetchPage(undefined);
+    const result = (await fetchPage('https://x.com')) as Record<string, unknown>;
+
+    expect(result.error).toEqual(expect.stringContaining('TAVILY_API_KEY'));
+  });
+});

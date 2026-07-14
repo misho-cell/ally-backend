@@ -12,7 +12,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount } from './tools/getContactCount';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
-import { webSearch } from './tools/webSearch';
+import { webSearch, fetchPage } from './tools/webSearch';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
@@ -675,6 +675,17 @@ const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
+const FETCH_PAGE_TOOL: AnthropicTool = {
+  name: 'fetch_page',
+  description:
+    "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page.",
+  input_schema: {
+    type: 'object',
+    properties: { url: { type: 'string', description: 'Full http(s) URL of the page to read' } },
+    required: ['url'],
+  },
+};
+
 const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
     name: 'lookup_contact_by_phone',
@@ -1084,6 +1095,15 @@ async function executeToolCall(
         runId,
       }).catch(() => {});
       return webSearch(input['query'] as string);
+    case 'fetch_page':
+      await recordFixedUsage({
+        userId,
+        kind: 'web_search',
+        provider: 'tavily',
+        priceKey: 'tavily.search',
+        runId,
+      }).catch(() => {});
+      return fetchPage(input['url'] as string);
     case 'save_contact_insight':
       return saveContactInsight(
         userId,
@@ -1234,6 +1254,7 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
   'search_second_degree',
   'search_contacts_by_country',
   'web_search',
+  'fetch_page',
 ]);
 
 async function processToolBlocks(
@@ -1614,6 +1635,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
     GET_PENDING_UPDATES_TOOL,
+    FETCH_PAGE_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
