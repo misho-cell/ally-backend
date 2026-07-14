@@ -42,6 +42,7 @@ import {
 } from './taskStore.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
+import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
 import { scrubText } from './privacyScrub';
@@ -675,6 +676,37 @@ const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
+const GET_TOP_CONNECTORS_TOOL: AnthropicTool = {
+  name: 'get_top_connectors',
+  description:
+    'The people in the user\'s network with the widest reach (most connections) — the strongest overall connectors. Use for "who are my best-connected people" or to find a broad opener. Returns names + a reach score.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      limit: { type: 'number', description: 'How many to return (default 10, max 25)' },
+    },
+    required: [],
+  },
+};
+
+const GET_GROUP_CONNECTORS_TOOL: AnthropicTool = {
+  name: 'get_group_connectors',
+  description:
+    'Given a group defined by a tag (a company, community, or field — e.g. "TBC", "axel"), ranks the people who bridge INTO it: who knows the most members of that group. Use for "warmest way into [company/community]" or "who can get me into X". Returns names + a member-links count. Prefer this over a plain tag/second-degree search when the user wants the best path into a whole company or community.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      group_tag: {
+        type: 'string',
+        description:
+          'The tag naming the group/company/community — one word, both scripts across calls',
+      },
+      limit: { type: 'number', description: 'How many to return (default 10)' },
+    },
+    required: ['group_tag'],
+  },
+};
+
 const FETCH_PAGE_TOOL: AnthropicTool = {
   name: 'fetch_page',
   description:
@@ -1235,6 +1267,14 @@ async function executeToolCall(
       const morePending = await countHeldUpdates(userId);
       return { updates, more_pending: morePending };
     }
+    case 'get_top_connectors':
+      return getTopConnectors(userId, input['limit'] as number | undefined);
+    case 'get_group_connectors':
+      return getGroupConnectors(
+        userId,
+        ((input['group_tag'] as string) ?? '').trim(),
+        input['limit'] as number | undefined,
+      );
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1636,6 +1676,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     QUEUE_RESULT_TOOL,
     GET_PENDING_UPDATES_TOOL,
     FETCH_PAGE_TOOL,
+    GET_TOP_CONNECTORS_TOOL,
+    GET_GROUP_CONNECTORS_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),

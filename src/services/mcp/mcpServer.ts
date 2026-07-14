@@ -422,6 +422,24 @@ function registerPrompts(server: McpServer): void {
     },
     () => promptMessage(PROMPT_TEXTS.network_overview.build()),
   );
+  server.registerPrompt(
+    'build_target_list',
+    {
+      title: PROMPT_TEXTS.build_target_list.title,
+      description: PROMPT_TEXTS.build_target_list.description,
+      argsSchema: { goal: z.string().describe(PROMPT_TEXTS.build_target_list.argGoal) },
+    },
+    ({ goal }) => promptMessage(PROMPT_TEXTS.build_target_list.build(goal)),
+  );
+  server.registerPrompt(
+    'invite_people',
+    {
+      title: PROMPT_TEXTS.invite_people.title,
+      description: PROMPT_TEXTS.invite_people.description,
+      argsSchema: { who: z.string().optional().describe(PROMPT_TEXTS.invite_people.argWho) },
+    },
+    ({ who }) => promptMessage(PROMPT_TEXTS.invite_people.build(who ?? '')),
+  );
 }
 
 /**

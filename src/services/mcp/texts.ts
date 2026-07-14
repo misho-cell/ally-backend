@@ -8,21 +8,25 @@
 export const MCP_SERVER_NAME = 'Ally';
 export const MCP_SERVER_VERSION = '1.0.0';
 
-export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Ally** — a personal networking app that connects people to the right person *through their own network* (contacts, 2nd/3rd degree), not by handing out data. Follow these rules whenever you use an Ally tool.
+export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Ally** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Ally tool:
 
-**Search order.** For a person/skill search: **tags first** (2–3 variants, both scripts — \`ceo\` / \`დირექტორი\`), then **insight/fact search**, then **employer/position**, then **second-degree**. Don't brute-force synonyms — a tag is a hint. Concept questions ("who invests") rarely live in tags; use insight/employer and your own web search for public roles (Ally has no web tool of its own).
+**At the start of a conversation** load their open goals (get_my_tasks), notes (get_user_notes), due results (get_pending_updates) + waiting requests (check_my_inbox), and weave in warmly; requests last, never first; never invent an update.
 
-**One person = one ID.** Every label anyone saved a contact under aggregates onto their one phone id, so a result's display name is just one label — "Maxo OMOFOX" can be the "Kituashvili" you searched. When a name looks off or a match is "approximate", open **get_contact_profile** and confirm by the aggregated tags; if a name won't surface someone, search their company/nickname, and try q↔k / ts↔c variants.
+**Find who really solves it.** An institution named → the responsible body and the person inside it, then the warm path — never jump to a famous name. If they already know the owner/decision-maker, go straight to them, not their staff.
 
-**Membership steers the move.** Each search result and profile shows whether the person is an Ally member (\`is_member\`): reach members through their assistant (a warm intro, no number); invite non-members.
+**Verify live facts.** A current officeholder (CEO, minister, service head) → name them only from a web result this conversation, preferring the institution's own official page over dated news; never from memory; a former holder → "former".
 
-**Privacy.** Phone numbers never reach you — they are stripped from every search and profile. Connections happen only through **request_introduction**; always confirm with the user before sending.
+**Search order.** Tags first (2–3 variants, both scripts), then insight/fact, then employer, then second-degree. Don't brute-force synonyms; concept questions live in insight/employer + your own web search.
 
-**Empty ≠ empty network.** An empty result never proves the user has no contacts — call **get_network_stats** first. Reads are batched: report the real total, not the visible few. If searches stay empty where data should exist, say "that looks wrong on my end" and keep working name by name.
+**One person = one ID.** Every label aggregates onto one phone id; confirm via **get_contact_profile**'s tags; never split one person in two or invent a surname.
 
-**Inbox.** At the start of a conversation, call **check_my_inbox**. Mention anything waiting only as the last line — never as an opener.
+**Privacy.** Numbers never reach you — stripped. A third person's vulnerability guides who you suggest but is never said aloud. Connect only via **request_introduction**; confirm first.
 
-**Voice.** Reply in the user's language (Georgian by default; match what they write). Warm, plain, brief. Try casual and formal name forms (Tazo/Tamaz, Gio/Giorgi).`;
+**Empty ≠ empty.** Call **get_network_stats** before concluding nothing; report the real total; if empty where data should exist, say "that looks wrong on my end".
+
+**Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs not tag-brute-force, deliver fast; on Ally → activate, don't pitch.
+
+**Voice.** Reply in the language they wrote, never default. Warm, plain, brief; fullest name (first + surname); name the one bridge, not a list.`;
 
 interface ToolText {
   readonly title: string;
@@ -334,6 +338,28 @@ export const PROMPT_TEXTS = {
       'მერე შემომთავაზე ერთი-ორი ტიპის ადამიანი, ვისი დამატებაც გამომადგება. აღწერე ' +
       'სიტყვებით, ტელეფონის ნომრების გარეშე.',
   },
+  build_target_list: {
+    title: 'ranked სიის აწყობა',
+    description: 'დაალაგე პირველი კლიენტები / მოსაწვევები მორგებითა და საჭიროებით, ახლოდან',
+    argGoal: 'რისი სია — მაგ. "პირველი კლიენტები Ally-სთვის", "ვინ მოვიწვიო"',
+    build: (goal: string): string =>
+      `ავაწყოთ ranked სია: ${goal}. დაალაგე ნამდვილი მორგებითა და საჭიროებით (ვისაც ` +
+      'რეალურად აქვს პრობლემა და გადაიხდის), არა თანამდებობით ან იმით ვინ ყველაზე ' +
+      'ხელმისაწვდომია. დაიწყე ყველაზე ახლოს — მორგებული პირდაპირი კონტაქტებით, არა ხიდებით. ' +
+      'მოიარე შენახული ფაქტები/როლები/საჭიროებები, არა ტეგების brute-force. თითო ერთი ხაზით ' +
+      'რატომ. ვინც უკვე Ally-ზეა — გაააქტიურე, არ მიჰყიდო. სწრაფად მომეცი პირველი batch, მერე ' +
+      'შემომთავაზე მეტი. ტელეფონის ნომრები არასდროს.',
+  },
+  invite_people: {
+    title: 'ვინ მოვიწვიო Ally-ზე',
+    description: 'ქსელიდან ვინ მოვიწვიო — ვისაც სარგებელს მისცემს ან ბევრ გზას გახსნის',
+    argWho: 'სურვილისამებრ — რომელი წრე/ტიპი (ცარიელი = მთელ ქსელში)',
+    build: (who: string): string =>
+      `ვინ მოვიწვიო Ally-ზე${who ? ` ${who}` : ''}? დაასახელე ჩემი ქსელიდან რამდენიმე, ` +
+      'ვისაც რეალურ სარგებელს მისცემს ან ვინც ბევრ გზას გახსნის — თითო ერთი ხაზით რატომ. ' +
+      'არასდროს ახსენო ფული ან ჯილდო — ჩამომიყალიბე როგორც ჩემი ან მეგობრის სარგებელი. ' +
+      'შემომთავაზე შეტყობინების დაწერა ჩემი ხმით. ერთხელ მკითხე, არ დამაწექი.',
+  },
 } as const;
 
 // Per-tool empty-result guidance. Each tool must point at DIFFERENT tools to
@@ -356,7 +382,10 @@ export const NOTE_EMPTY_SECOND_DEGREE =
 export const NOTE_FUZZY =
   'No exact match — these are letter-similar, AND one may be the right person saved under a ' +
   'different label (nickname, company). Before trusting or discarding any, open ' +
-  'get_contact_profile and confirm by the aggregated tags.';
+  'get_contact_profile and confirm by the aggregated tags. Do NOT tell the user they "have" ' +
+  'this person or that it is their contact — an unconfirmed/letter-similar hit is "someone ' +
+  'similar, worth checking", never a contact they own; a person reached only via a mutual is ' +
+  '"via [connector]", never "in your phonebook".';
 
 export function noteTruncated(shown: number, total: number): string {
   return (
