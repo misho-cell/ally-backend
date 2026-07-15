@@ -228,7 +228,7 @@ describe('spendReferralOnSubscription', () => {
 
 describe('getReferralSummary', () => {
   it('maps balance, totals and withdrawal eligibility', async () => {
-    mockQuery.mockImplementation(((sql: string, params?: unknown[]) => {
+    mockQuery.mockImplementation(((sql: string, _params?: unknown[]) => {
       if (String(sql).includes('FROM provider_prices')) {
         return Promise.resolve(rows([{ value: '10' }]));
       }

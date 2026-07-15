@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, toWordStartPattern } from './transliterate';
+import { buildSearchTerms, buildWordGroups } from './transliterate';
+import { buildGroupSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -46,39 +47,41 @@ const AGG_JOINS = `FROM hits h
    LEFT JOIN "UserPhone" up ON up.phone = h.phone
    LEFT JOIN "User"      u  ON u.id     = up."userId"`;
 
-/** Exact word-start match over aggregated tags, plus the real distinct-contact count. */
+/** Exact word-start match over aggregated tags, ranked by words-matched, plus the real count. */
 async function runExactSearch(
   userId: string,
-  terms: string[],
+  wordGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const tagCondition = terms.map((_, i) => `LOWER(t.tag) ~ $${i + 2}`).join(' OR ');
-  const blockParamIdx = terms.length + 2;
+  const g = buildGroupSql(wordGroups, 2, (i) => `LOWER(t.tag) ~ $${i}`);
+  const blockParamIdx = g.nextParamIdx;
+  const params = [userId, ...g.patterns, blockedPhones];
   const [result, countResult] = await Promise.all([
     query<TagRow>(
       `WITH ${MY_CONTACTS_CTE},
        hits AS (
-         SELECT DISTINCT t.phone
+         SELECT t.phone, (${g.wordHits}) AS word_hits
          FROM "UserTags" t
          WHERE t.phone IN (SELECT phone FROM mine)
-           AND (${tagCondition})
+           AND (${g.matchAny})
            AND t.phone != ALL($${blockParamIdx})
+         GROUP BY t.phone
        )
        SELECT ${AGG_SELECT}
        ${AGG_JOINS}
        GROUP BY h.phone
-       ORDER BY MAX(ut."weightCount") DESC
+       ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC
        LIMIT ${RESULT_LIMIT}`,
-      [userId, ...terms, blockedPhones],
+      params,
     ),
     query<{ total: string }>(
       `WITH ${MY_CONTACTS_CTE}
        SELECT COUNT(DISTINCT t.phone) AS total
        FROM "UserTags" t
        WHERE t.phone IN (SELECT phone FROM mine)
-         AND (${tagCondition})
+         AND (${g.matchAny})
          AND t.phone != ALL($${blockParamIdx})`,
-      [userId, ...terms, blockedPhones],
+      params,
     ),
   ]);
   return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
@@ -155,17 +158,24 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
 
-    const rawTerms = buildSearchTerms(tagQuery);
-    if (rawTerms.length === 0) return { found: false, query: tagQuery };
+    const wordGroups = buildWordGroups(tagQuery);
+    if (wordGroups.length === 0) return { found: false, query: tagQuery };
 
-    const exact = await runExactSearch(userId, rawTerms.map(toWordStartPattern), blockedPhones);
+    const exact = await runExactSearch(userId, wordGroups, blockedPhones);
     const exactRows = exact.rows.filter((r) => !isExcluded(r.phone));
 
+    // Fuzzy pass runs over the flat union of every word's variants (spelling
+    // tolerance, no intersection ranking — it is only a fallback/union).
+    const fuzzyTerms = tagQuery
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .flatMap((word) => buildSearchTerms(word));
     // Always union the fuzzy pass so a query for one ღ-spelling also surfaces the
     // others (they otherwise return disjoint sets). Fuzzy-only hits are marked
     // approximate; exact hits keep priority and are never re-flagged.
     const seen = new Set(exactRows.map((r) => normalizePhone(r.phone)));
-    const fuzzyRows = (await runFuzzySearch(userId, rawTerms, blockedPhones)).filter(
+    const fuzzyRows = (await runFuzzySearch(userId, fuzzyTerms, blockedPhones)).filter(
       (r) => !isExcluded(r.phone) && !seen.has(normalizePhone(r.phone)),
     );
 

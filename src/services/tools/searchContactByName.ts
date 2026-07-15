@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, toWordStartPattern } from './transliterate';
+import { buildSearchTerms, buildWordGroups } from './transliterate';
+import { buildGroupSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -42,32 +43,37 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // Normalized set catches format variants the SQL exact match would miss.
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
-    const rawTerms = buildSearchTerms(nameQuery);
-    if (rawTerms.length === 0) return { found: false, query: nameQuery };
     // Word-start regex matches a name part by prefix ("gio" → "Giorgi") without
     // matching a fragment inside another word ("japan" ↛ "Japaridze") (ISSUE 3).
-    const terms = rawTerms.map(toWordStartPattern);
+    const wordGroups = buildWordGroups(nameQuery);
+    if (wordGroups.length === 0) return { found: false, query: nameQuery };
     // Match ANY contributor's alias (a) or the registered name (u2) on the user's
     // OWN contacts (the "mine" set), not only the label the user saved — so a
     // surname another contributor put on the contact ("Salome Jojua") surfaces
-    // her even when the user saved her as just "Salome" (Bug 1).
-    const nameCondition = terms
-      .map((_, i) => `LOWER(a.alias) ~ $${i + 2} OR LOWER(u2.name) ~ $${i + 2}`)
-      .join(' OR ');
-    const blockParamIdx = terms.length + 2;
+    // her even when the user saved her as just "Salome" (Bug 1). A contact's
+    // word_hits ranks the one matching every query word above partial matches
+    // ("Dachi Axel" → the person carrying both, not the ~150 "Axel"-only) (Bug 2).
+    const g = buildGroupSql(
+      wordGroups,
+      2,
+      (i) => `LOWER(a.alias) ~ $${i} OR LOWER(u2.name) ~ $${i}`,
+    );
+    const blockParamIdx = g.nextParamIdx;
+    const params = [userId, ...g.patterns, blockedPhones];
     const mineCte = `mine AS (
        SELECT phone FROM "UserTags"  WHERE "contactId" = $1
        UNION
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
     const hitsCte = `hits AS (
-       SELECT DISTINCT a.phone
+       SELECT a.phone, (${g.wordHits}) AS word_hits
        FROM "UserAlias" a
        LEFT JOIN "UserPhone" up2 ON up2.phone = a.phone
        LEFT JOIN "User"      u2  ON u2.id     = up2."userId"
        WHERE a.phone IN (SELECT phone FROM mine)
-         AND (${nameCondition})
+         AND (${g.matchAny})
          AND a.phone != ALL($${blockParamIdx})
+       GROUP BY a.phone
      )`;
     const aggSelect = `SELECT h.phone,
               COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
@@ -93,9 +99,9 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       }>(
         `WITH ${mineCte}, ${hitsCte}
          ${aggSelect}
-         ORDER BY MAX(ua.alias)
+         ORDER BY MAX(h.word_hits) DESC, MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
-        [userId, ...terms, blockedPhones],
+        params,
       ),
       query<{ total: string }>(
         `WITH ${mineCte}
@@ -104,9 +110,9 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
          LEFT JOIN "UserPhone" up2 ON up2.phone = a.phone
          LEFT JOIN "User"      u2  ON u2.id     = up2."userId"
          WHERE a.phone IN (SELECT phone FROM mine)
-           AND (${nameCondition})
+           AND (${g.matchAny})
            AND a.phone != ALL($${blockParamIdx})`,
-        [userId, ...terms, blockedPhones],
+        params,
       ),
     ]);
 
@@ -116,7 +122,12 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     if (rows.length === 0) {
       // Fallback: fuzzy similarity search via pg_trgm (catches typos like livingston/livingstone)
       try {
-        const fuzzyTerms = buildSearchTerms(nameQuery).map((t) => t.toLowerCase());
+        const fuzzyTerms = nameQuery
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .flatMap((word) => buildSearchTerms(word))
+          .map((t) => t.toLowerCase());
         const fuzzyConds = fuzzyTerms
           .map(
             (_, i) =>

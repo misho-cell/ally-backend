@@ -116,6 +116,21 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
 }
 
 /**
+ * Split a multi-word query into per-word variant groups, each the full set of
+ * word-start patterns for that word (transliteration + drift folds). A caller
+ * can then rank a contact by HOW MANY distinct query words it matched — so
+ * "Dachi Axel" ranks the one person carrying both tags above the ~150 who carry
+ * only the common "Axel" (search Bug 2). A single-word query yields one group,
+ * degrading to the plain single-term behaviour.
+ */
+export function buildWordGroups(rawQuery: string): string[][] {
+  const words = rawQuery.trim().split(/\s+/).filter(Boolean);
+  return words
+    .map((word) => buildSearchTerms(word).map(toWordStartPattern))
+    .filter((group) => group.length > 0);
+}
+
+/**
  * A Postgres regex that anchors a term to the START of a word, so "nasa"
  * matches the word "nasa..." but never the fragment inside "Inasaridze"
  * (ISSUE 3). Word-start (not exact) keeps prefix typing ("law" → "lawyer")

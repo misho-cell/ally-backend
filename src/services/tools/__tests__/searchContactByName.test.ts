@@ -133,6 +133,25 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain('LOWER(a.alias) ~ $2');
   });
 
+  it('ranks a two-word name by how many distinct words each contact matched (Bug 2)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchContactByName('42', 'Dachi Axel');
+
+    const mainCall = mockQuery.mock.calls.find(
+      (c) =>
+        !(c[0] as string).includes('COUNT(DISTINCT') &&
+        !(c[0] as string).includes('word_similarity('),
+    );
+    const mainSql = mainCall?.[0] as string;
+    const mainParams = mainCall?.[1] as unknown[];
+    expect(mainSql).toContain('bool_or(');
+    expect(mainSql).toContain(') AS word_hits');
+    expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
+    expect(mainParams).toContain('\\mdachi');
+    expect(mainParams).toContain('\\maxel');
+  });
+
   it('fills employer/occupation from saved facts when the join fields are empty', async () => {
     setup({
       main: [{ ...mockRow, employer: '', jobPosition: '', city: null }],

@@ -154,6 +154,28 @@ describe('searchByTag', () => {
     expect(mainSql).not.toContain('ut."contactId" = $1');
   });
 
+  it('ranks a two-word query by how many distinct words each contact matched (Bug 2)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchByTag('42', 'dachi axel');
+
+    const mainSql = mockQuery.mock.calls.find(
+      (c) =>
+        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+    )?.[0] as string;
+    const mainParams = mockQuery.mock.calls.find(
+      (c) =>
+        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+    )?.[1] as unknown[];
+    // Each word becomes a bool_or group; word_hits sums them and drives the order.
+    expect(mainSql).toContain('bool_or(');
+    expect(mainSql).toContain(') AS word_hits');
+    expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
+    // Both words' patterns are passed (intersection, not a single OR term).
+    expect(mainParams).toContain('\\mdachi');
+    expect(mainParams).toContain('\\maxel');
+  });
+
   it('marks is_member true for a contact that is a registered Ally user', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
