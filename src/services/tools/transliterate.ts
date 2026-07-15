@@ -48,21 +48,35 @@ export function georgianToLatin(text: string): string {
   return result;
 }
 
-// Common Georgian→Latin spelling drift: the canonical multi-letter form people
-// are taught vs. how they actually type the sound. Applied to Latin terms so
-// one query matches tags stored under either spelling (ISSUE 4). Not lossless —
-// a dropped letter (ღ written as nothing) can't be reconstructed; full
-// forgiveness needs a normalized index, tracked separately.
+// Common Georgian/Armenian→Latin spelling drift: the canonical multi-letter
+// form people are taught vs. how they actually type the sound. Applied to Latin
+// terms so one query matches tags stored under either spelling (ISSUE 4 / search
+// Bug 3). Each entry rewrites every occurrence of `from` → `to` in the seed.
+// Genuinely two-way sounds are listed in BOTH directions — e.g. q↔k, so a query
+// for "chikava" also generates "chiqava" (the k→q direction was the gap). One-way
+// entries (gh→g "drop the h") are listed once so we don't rewrite every plain
+// g/h and flood the query with noise. Not lossless — a fully dropped letter can't
+// be reconstructed; full forgiveness needs the normalized index (migration 036).
 const DRIFT_PAIRS: readonly [string, string][] = [
-  ['gh', 'r'], // ღ — "gh" ↔ typed "r"
-  ['gh', 'g'], // ღ — "gh" ↔ typed "g" (so a ღ query generates both r- and g-forms)
-  ['kh', 'x'], // ხ
-  ['ts', 'c'], // ც / წ
-  ['q', 'k'], // ყ / ქ
-  ['zh', 'j'], // ჟ
+  ['gh', 'r'], // ღ — "gh" → typed "r"
+  ['gh', 'g'], // ღ — "gh" → typed "g" (drop the h)
+  ['kh', 'x'], // ხ — "kh" → "x"
+  ['kh', 'h'], // ხ — "kh" → "h" (drop the k)
+  ['x', 'kh'], // ხ — "x" → "kh"
+  ['ts', 'c'], // ც / წ — "ts" → "c"
+  ['c', 'ts'], // ც / წ — "c" → "ts"
+  ['q', 'k'], // ყ / ქ — "q" → "k"
+  ['k', 'q'], // ქ / ყ — "k" → "q"  (Chikava ↔ Chiqava)
+  ['zh', 'j'], // ჟ — "zh" → "j"
 ];
 
-const MAX_TERMS = 8;
+// Armenian surname endings people spell interchangeably (asriants / asriyants /
+// asriiants). Fold them so the caller needn't guess which the tag was saved as.
+// Longest first so "petrosyants" matches "yants" (stem "petros"), not the "ants"
+// substring (which would leave a stray "y" in the stem).
+const ARMENIAN_ENDINGS: readonly string[] = ['iants', 'yants', 'ants'];
+
+const MAX_TERMS = 12;
 
 function driftVariants(term: string): string[] {
   const out = new Set<string>([term]);
@@ -73,16 +87,31 @@ function driftVariants(term: string): string[] {
   return [...out];
 }
 
+// If the term ends in one of the interchangeable Armenian endings, also emit the
+// term with each of the other endings; otherwise return it unchanged.
+function endingVariants(term: string): string[] {
+  for (const ending of ARMENIAN_ENDINGS) {
+    if (term.endsWith(ending)) {
+      const stem = term.slice(0, term.length - ending.length);
+      return ARMENIAN_ENDINGS.map((e) => stem + e);
+    }
+  }
+  return [term];
+}
+
 /**
  * Query terms to try: the lowercased original, its Latin transliteration when
- * Georgian, and common drift variants of the Latin form — deduped and capped.
+ * Georgian, common drift variants of the Latin form, and Armenian-ending folds —
+ * deduped and capped.
  */
 export function buildSearchTerms(rawQuery: string): readonly string[] {
   const lower = rawQuery.trim().toLowerCase();
   if (!lower) return [];
   const terms = new Set<string>([lower]);
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
-  for (const variant of driftVariants(latin)) terms.add(variant);
+  for (const drift of driftVariants(latin)) {
+    for (const withEnding of endingVariants(drift)) terms.add(withEnding);
+  }
   return [...terms].slice(0, MAX_TERMS);
 }
 

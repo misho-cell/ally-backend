@@ -83,6 +83,27 @@ describe('buildSearchTerms', () => {
     expect(ts.length).toBeLessThanOrEqual(8);
   });
 
+  it('folds k↔q both ways so a "k" query reaches the "q" spelling (Chikava↔Chiqava)', () => {
+    expect(buildSearchTerms('chikava')).toContain('chiqava');
+    expect(buildSearchTerms('chiqava')).toContain('chikava');
+  });
+
+  it('folds x↔kh↔h for the ხ sound', () => {
+    expect(buildSearchTerms('sokhumi')).toContain('soxumi'); // kh → x
+    expect(buildSearchTerms('sokhumi')).toContain('sohumi'); // kh → h (drop k)
+    expect(buildSearchTerms('soxumi')).toContain('sokhumi'); // x → kh
+  });
+
+  it('folds interchangeable Armenian endings (ants/iants/yants)', () => {
+    const terms = buildSearchTerms('petrosyants');
+    expect(terms).toContain('petrosants');
+    expect(terms).toContain('petrosiants');
+  });
+
+  it('never exceeds the term cap', () => {
+    expect(buildSearchTerms('katskhatskhi').length).toBeLessThanOrEqual(12);
+  });
+
   it('returns nothing for a blank query', () => {
     expect(buildSearchTerms('   ')).toEqual([]);
   });
