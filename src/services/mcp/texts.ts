@@ -5,14 +5,15 @@
 // channel-2 wording + group_tag param (Rev 9)). Wording belongs to the prompt
 // team — edit the document first, then mirror it here.
 //
-// NOT mirrored: the doc header's "Rev 5 field_type patch" (the 18-key canonical
-// schema) — it contradicts the SHIPPED backend, which makes only the four core
-// keys (occupation/employer/city/industry) single-value + crowd-confirmable and
-// treats every other key as free-form/private/accumulate. The doc's list renames
-// those keys (role/affiliation/…) and marks the rich keys public. Applying it
-// verbatim would misdescribe what save_contact_fact actually does. Flagged back
-// to the prompt team; the current save_contact_fact/factFieldType text below
-// describes the real behaviour. See reply for the reconciliation options.
+// Rev 5 field_type patch — RECONCILED, not mirrored verbatim. The doc's 18-key
+// "canonical" schema marks rich keys (role/affiliation/…) public and renames the
+// core keys, which contradicts the SHIPPED backend: only the four core keys
+// (occupation/employer/city/industry) are single-value + crowd-confirmable; every
+// other key is free-form/private/accumulate. We kept the backend semantics and
+// adopted only the doc's valid point — a FIXED key vocabulary so a synonym does
+// not fragment search — by naming a recommended free-form key set in
+// save_contact_fact/factFieldType below. A public rich-key taxonomy would need a
+// backend migration (not done); flagged to the prompt team.
 
 export const MCP_SERVER_NAME = 'Ally';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -141,14 +142,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     title: 'Remember a fact about a contact',
     description:
       'Saves something the user tells you about a contact, by contact_ref. field_type is ' +
-      'free-form. The four core facts (occupation, employer, city, industry) are single-value ' +
-      '— a new value overwrites the old, and a fact 2+ people independently give becomes ' +
-      'public. Any other key — role, skill, expertise, education, need, note, … — is free ' +
-      'text, private forever (never becomes public), and accumulates (save as many as you ' +
-      'like, none overwrites another). Use a specific key per piece of a rich profile, and ' +
-      'note for soft intel that isn\'t a job title ("prefers a warm intro", "don\'t talk price ' +
-      'first"). Everything is findable later through search_by_insight; free-form keys never ' +
-      "appear as the person's job title. Confirm in one short line after saving.",
+      'free-form, but REUSE a consistent key so search can find it later — an invented synonym ' +
+      '("job" instead of the usual key) saves but never matches on search. The four CORE keys — ' +
+      'occupation, employer, city, industry — are single-value (a new value overwrites the old) ' +
+      'and become public when 2+ people independently give the same fact. Everything else is ' +
+      'free-text, PRIVATE forever, and ACCUMULATES (save as many as you like, none overwrites ' +
+      'another); for a rich profile reuse these keys: headline, seniority, skill, expertise, ' +
+      'education, language, link, country, need, interest, email, note. Use note for soft intel ' +
+      'that isn\'t a job title ("prefers a warm intro", "don\'t talk price first"). Everything is ' +
+      "findable through search_by_insight; free-form keys never appear as the person's job " +
+      'title. Confirm in one short line after saving.',
   },
   get_contact_facts: {
     title: 'Recall saved facts about a contact',
@@ -291,11 +294,11 @@ export const PARAM_TEXTS = {
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
   factFieldType:
-    'A short label for what you are saving (free-form). occupation, employer, city, industry ' +
-    'are the four core facts (single-value, can become public if others confirm). Any other ' +
-    'key — role, skill, expertise, education, need, note, … — is free-text, private, and ' +
-    'accumulates. Use a specific key per piece of a rich profile; use note for a general ' +
-    'observation.',
+    'The key for what you are saving. Reuse a consistent key so search matches later — do not ' +
+    'invent synonyms. CORE (single-value, can become public if others confirm): occupation, ' +
+    'employer, city, industry. FREE-FORM (private, accumulates) — reuse these: headline, ' +
+    'seniority, skill, expertise, education, language, link, country, need, interest, email, ' +
+    'note. Use note for a general observation that is not a job title.',
   factValue:
     "For a core fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). For any " +
     "other key, the free-text value/observation in the user's own words.",
