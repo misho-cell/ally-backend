@@ -137,6 +137,23 @@ describe('searchByTag', () => {
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
   });
 
+  it("matches AGGREGATED tags on the user's own contacts, not only tags they saved (Bug 1)", async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchByTag('42', 'asriyants');
+
+    const mainSql = mockQuery.mock.calls.find(
+      (c) =>
+        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+    )?.[0] as string;
+    // Recall is scoped to the user's own contact phones (the "mine" set)...
+    expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
+    expect(mainSql).toContain('t.phone IN (SELECT phone FROM mine)');
+    // ...but the tag match runs over every contributor's tag on those phones.
+    expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
+    expect(mainSql).not.toContain('ut."contactId" = $1');
+  });
+
   it('marks is_member true for a contact that is a registered Ally user', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);

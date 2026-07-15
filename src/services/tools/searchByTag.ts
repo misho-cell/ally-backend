@@ -22,43 +22,62 @@ interface TagRow {
   city: string | null;
 }
 
-const TAG_SELECT = `ut.phone,
-        COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
-        array_agg(DISTINCT ut.tag)            AS all_tags,
-        MAX(u.employer)                       AS employer,
-        MAX(u."jobPosition")                  AS "jobPosition",
-        MAX(u.city)                           AS city`;
-const TAG_JOINS = `FROM "UserTags" ut
-   LEFT JOIN "UserAlias" ua ON ua.phone = ut.phone AND ua."contactId" = ut."contactId"
-   LEFT JOIN "UserPhone" up ON up.phone  = ut.phone
-   LEFT JOIN "User"      u  ON u.id      = up."userId"`;
+// The user's OWN contacts — the phones they actually have (from any tag or alias
+// they saved). Recall then matches AGGREGATED tags (from every contributor) on
+// these phones, so a contact surfaces by a crowd tag on their profile even if
+// the user never personally typed it — the fix for "search only saw my own tags".
+const MY_CONTACTS_CTE = `mine AS (
+     SELECT phone FROM "UserTags"  WHERE "contactId" = $1
+     UNION
+     SELECT phone FROM "UserAlias" WHERE "contactId" = $1
+   )`;
 
-/** Exact word-start match plus the real (unbounded) distinct-contact count. */
+// Aggregate the display fields for a set of matched phones: the user's OWN alias
+// for the name, every contributor's tags, and the registered profile fields.
+const AGG_SELECT = `h.phone,
+        COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+        array_agg(DISTINCT ut.tag)           AS all_tags,
+        MAX(u.employer)                      AS employer,
+        MAX(u."jobPosition")                 AS "jobPosition",
+        MAX(u.city)                          AS city`;
+const AGG_JOINS = `FROM hits h
+   JOIN "UserTags"       ut ON ut.phone = h.phone
+   LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
+   LEFT JOIN "UserPhone" up ON up.phone = h.phone
+   LEFT JOIN "User"      u  ON u.id     = up."userId"`;
+
+/** Exact word-start match over aggregated tags, plus the real distinct-contact count. */
 async function runExactSearch(
   userId: string,
   terms: string[],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const tagCondition = terms.map((_, i) => `LOWER(ut.tag) ~ $${i + 2}`).join(' OR ');
+  const tagCondition = terms.map((_, i) => `LOWER(t.tag) ~ $${i + 2}`).join(' OR ');
   const blockParamIdx = terms.length + 2;
   const [result, countResult] = await Promise.all([
     query<TagRow>(
-      `SELECT ${TAG_SELECT}
-       ${TAG_JOINS}
-       WHERE ut."contactId" = $1
-         AND (${tagCondition})
-         AND ut.phone != ALL($${blockParamIdx})
-       GROUP BY ut.phone
+      `WITH ${MY_CONTACTS_CTE},
+       hits AS (
+         SELECT DISTINCT t.phone
+         FROM "UserTags" t
+         WHERE t.phone IN (SELECT phone FROM mine)
+           AND (${tagCondition})
+           AND t.phone != ALL($${blockParamIdx})
+       )
+       SELECT ${AGG_SELECT}
+       ${AGG_JOINS}
+       GROUP BY h.phone
        ORDER BY MAX(ut."weightCount") DESC
        LIMIT ${RESULT_LIMIT}`,
       [userId, ...terms, blockedPhones],
     ),
     query<{ total: string }>(
-      `SELECT COUNT(DISTINCT ut.phone) AS total
-       FROM "UserTags" ut
-       WHERE ut."contactId" = $1
+      `WITH ${MY_CONTACTS_CTE}
+       SELECT COUNT(DISTINCT t.phone) AS total
+       FROM "UserTags" t
+       WHERE t.phone IN (SELECT phone FROM mine)
          AND (${tagCondition})
-         AND ut.phone != ALL($${blockParamIdx})`,
+         AND t.phone != ALL($${blockParamIdx})`,
       [userId, ...terms, blockedPhones],
     ),
   ]);
@@ -81,17 +100,22 @@ async function runFuzzySearch(
     const conds = terms
       .map(
         (_, i) =>
-          `similarity(normalize_search_token(ut.tag), normalize_search_token($${i + 2})) > $${terms.length + 2}`,
+          `similarity(normalize_search_token(t.tag), normalize_search_token($${i + 2})) > $${terms.length + 2}`,
       )
       .join(' OR ');
     const blockParamIdx = terms.length + 3;
     const result = await query<TagRow>(
-      `SELECT ${TAG_SELECT}
-       ${TAG_JOINS}
-       WHERE ut."contactId" = $1
-         AND (${conds})
-         AND ut.phone != ALL($${blockParamIdx})
-       GROUP BY ut.phone
+      `WITH ${MY_CONTACTS_CTE},
+       hits AS (
+         SELECT DISTINCT t.phone
+         FROM "UserTags" t
+         WHERE t.phone IN (SELECT phone FROM mine)
+           AND (${conds})
+           AND t.phone != ALL($${blockParamIdx})
+       )
+       SELECT ${AGG_SELECT}
+       ${AGG_JOINS}
+       GROUP BY h.phone
        ORDER BY MAX(similarity(normalize_search_token(ut.tag), normalize_search_token($2))) DESC
        LIMIT ${RESULT_LIMIT}`,
       [userId, ...terms, FUZZY_THRESHOLD, blockedPhones],
