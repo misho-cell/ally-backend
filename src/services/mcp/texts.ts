@@ -1,9 +1,18 @@
 // Every instruction text the MCP connector shows Claude, mirrored from the
-// prompt team's approved document (ALLY_MCP_INSTRUCTION_TEXTS Rev 4, 2026-07-08
-// — search-identity, is_member membership steer, and request_introduction
-// ask_type). The share_contact number egress is intentionally NOT promised here
-// yet (deferred pending privacy sign-off). Wording belongs to the prompt team —
-// edit the document first, then mirror it here.
+// prompt team's approved document (ALLY_MCP_INSTRUCTION_TEXTS, through Rev 9,
+// 2026-07-14 — search-identity + is_member steer + ask_type (Rev 4-8), the
+// anti-give-up-on-a-name-miss guard in NOTE_FUZZY and the two graph tools'
+// channel-2 wording + group_tag param (Rev 9)). Wording belongs to the prompt
+// team — edit the document first, then mirror it here.
+//
+// NOT mirrored: the doc header's "Rev 5 field_type patch" (the 18-key canonical
+// schema) — it contradicts the SHIPPED backend, which makes only the four core
+// keys (occupation/employer/city/industry) single-value + crowd-confirmable and
+// treats every other key as free-form/private/accumulate. The doc's list renames
+// those keys (role/affiliation/…) and marks the rich keys public. Applying it
+// verbatim would misdescribe what save_contact_fact actually does. Flagged back
+// to the prompt team; the current save_contact_fact/factFieldType text below
+// describes the real behaviour. See reply for the reconciliation options.
 
 export const MCP_SERVER_NAME = 'Ally';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -170,18 +179,23 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   get_top_connectors: {
     title: 'Top connectors in the network',
     description:
-      "Ranks the user's own contacts by how many people they reach that the user does not " +
-      'already know — the best "bridges". Use for "who should I bring into Ally / sell to / ' +
-      'reconnect with to unlock the most new people". Each result carries a `reach` count. This ' +
-      'answers connectivity questions that word search cannot.',
+      "Returns the user's widest-reach people — their best-connected contacts in general, each " +
+      'with a reach score (how many people they reach that the user does not already know). Arg: ' +
+      'limit (default 10). Use for "who are my most-connected people / strongest connectors", or ' +
+      'to spot a broad-reach person worth activating or inviting. NOT for reaching a specific ' +
+      'group or company — use get_group_connectors for that.',
   },
   get_group_connectors: {
     title: 'Who bridges into a group',
     description:
-      'Given a group defined by a tag (e.g. "axel"), ranks NON-members by how many members of ' +
-      'that group they are connected to — the warmest ways into the group. Each result carries ' +
-      'a `member_links` count. Use for "who knows the most people in X" / "who could introduce ' +
-      'me across the whole X group".',
+      "Finds who bridges into a group, company or community, ranked by how many of that group's " +
+      'members they connect to — the warmest ways in. Pass the group as a one-word group_tag ' +
+      '("TBC", "axel", "EBAN"). Use this FIRST for "what\'s my warmest way into [company/' +
+      'community]" or "who can get me into X" — prefer it over a plain search_contacts tag or a ' +
+      'search_second_degree sweep. Returns names + a member_links count (how many of the group ' +
+      'each person bridges to). The graph only knows a group if enough contacts are tagged with ' +
+      'it, so if group_tag comes back thin, fall back to search_by_insight / search_second_degree ' +
+      'as before. Not for a single named person — use the normal search path for that.',
   },
   create_task: {
     title: 'Remember a goal',
@@ -286,7 +300,9 @@ export const PARAM_TEXTS = {
     "For a core fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). For any " +
     "other key, the free-text value/observation in the user's own words.",
   groupTag:
-    'The tag that defines the group, e.g. "axel", "ceo". One word, both scripts across calls.',
+    'The group, company or community as ONE word ("TBC", "axel", "EBAN") — not a phrase. The ' +
+    'graph must have enough contacts tagged with it to rank well; if it comes back thin, fall ' +
+    'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:
@@ -385,7 +401,10 @@ export const NOTE_FUZZY =
   'get_contact_profile and confirm by the aggregated tags. Do NOT tell the user they "have" ' +
   'this person or that it is their contact — an unconfirmed/letter-similar hit is "someone ' +
   'similar, worth checking", never a contact they own; a person reached only via a mutual is ' +
-  '"via [connector]", never "in your phonebook".';
+  '"via [connector]", never "in your phonebook". And when the user wants a PATH to this named ' +
+  'person, a name miss is NOT "no connection" — before ever concluding no path exists, run ' +
+  'search_second_degree on the surname AND a tag search (both scripts); the tie usually lives ' +
+  'one ring out, not under the exact full name.';
 
 export function noteTruncated(shown: number, total: number): string {
   return (
