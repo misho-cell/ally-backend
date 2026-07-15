@@ -115,6 +115,24 @@ describe('searchContactByName', () => {
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
   });
 
+  it("matches ANY contributor's alias on the user's own contacts, not only the label they saved (Bug 1)", async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchContactByName('42', 'Jojua');
+
+    const mainSql = mockQuery.mock.calls.find(
+      (c) =>
+        !(c[0] as string).includes('COUNT(DISTINCT') &&
+        !(c[0] as string).includes('word_similarity('),
+    )?.[0] as string;
+    // Recall is scoped to the user's own contact phones (the "mine" set)...
+    expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
+    expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
+    // ...but the alias/name match runs over every contributor's alias on those
+    // phones, so a surname another contributor saved surfaces the contact.
+    expect(mainSql).toContain('LOWER(a.alias) ~ $2');
+  });
+
   it('fills employer/occupation from saved facts when the join fields are empty', async () => {
     setup({
       main: [{ ...mockRow, employer: '', jobPosition: '', city: null }],
