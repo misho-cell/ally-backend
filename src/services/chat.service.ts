@@ -905,13 +905,20 @@ async function saveMessage(
   content: Anthropic.MessageParam['content'],
   kind: 'message' | 'step' = 'message',
   runId: string | null = null,
-): Promise<void> {
+): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
-  await query(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)',
+  const result = await query<{ id: number }>(
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING id',
     [userId, threadId, role, textContent, JSON.stringify(content), kind, runId],
   );
   await touchThread(threadId);
+  return result.rows[0].id;
+}
+
+// Remove a persisted row by id — used to lift a narration 'step' into the final
+// 'message' without leaving a duplicate behind (see the empty-final promotion).
+async function deleteMessage(rowId: number): Promise<void> {
+  await query('DELETE FROM conversations WHERE id = $1', [rowId]);
 }
 
 function buildProfileSection(profile: Record<string, unknown>): string {
@@ -1502,6 +1509,14 @@ async function runToolLoop(
   let choices: string[] | undefined;
   let iterations = 0;
   let finalText = '';
+  // Track the most recent narration saved as a 'step'. If the model puts its real
+  // answer (or a clarifying question) in the text that accompanies a tool call and
+  // then returns an empty final turn, that answer would otherwise live only in a
+  // step — invisible to loadHistory (kind='message' only) and to thread resume.
+  // We promote it to the final message so every run yields exactly one non-empty
+  // 'message' (fixes same-thread memory loss + resume showing only steps).
+  let lastNarration = '';
+  let lastStepId: number | null = null;
 
   try {
     while (
@@ -1519,7 +1534,8 @@ async function runToolLoop(
       const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
-        await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        lastStepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        lastNarration = narration;
       }
 
       for (const block of response.content) {
@@ -1563,7 +1579,8 @@ async function runToolLoop(
       const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
-        await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        lastStepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        lastNarration = narration;
       }
 
       const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
@@ -1583,6 +1600,18 @@ async function runToolLoop(
     // eslint-disable-next-line no-console
     console.error('[chat] model call failed mid-run — salvaging:', (err as Error).message);
     finalText = scrubText(await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending));
+  }
+
+  // The model answered inside a tool-call turn and then went silent (or the run
+  // was salvaged to an empty string). Promote the last narration to the final
+  // answer and drop the now-duplicate step, so every run yields exactly one
+  // non-empty final 'message' — the invariant loadHistory and thread-resume rely
+  // on. Without this the answer lived only in a 'step': invisible to the next
+  // turn's context (same-thread memory loss) and shown only as a collapsed step
+  // on resume.
+  if (finalText.length === 0 && lastNarration.length > 0) {
+    finalText = lastNarration;
+    if (lastStepId !== null) await deleteMessage(lastStepId);
   }
 
   return { finalText, pending, options, choices };
