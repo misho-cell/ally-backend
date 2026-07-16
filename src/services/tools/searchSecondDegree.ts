@@ -9,6 +9,10 @@ import { normalizePhone } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 
 const MAX_FRIEND_PHONES = 3000;
+// A target reachable through MORE mutuals is a stronger, more-verified bridge —
+// rank by that and cap at a real limit, so the right connection isn't lost in an
+// arbitrary unordered slice (was an unranked LIMIT 20).
+const SECOND_DEGREE_RESULT_LIMIT = 30;
 // Same threshold as the direct tag search; matching runs only over friends'
 // tags (already narrowed by the friend_users join), so no dedicated index is
 // needed for it to stay fast.
@@ -150,7 +154,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        WHERE ua_own.phone IS NULL
          AND m.phone != ALL($${blockParamIdx})
        GROUP BY m.phone
-       LIMIT 20`,
+       ORDER BY COUNT(DISTINCT fu."userId") DESC, MAX(COALESCE(u_t.name, ua_t.alias))
+       LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [userId, friendPhones, ...terms, ...likeTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
