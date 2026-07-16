@@ -47,17 +47,17 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // matching a fragment inside another word ("japan" ↛ "Japaridze") (ISSUE 3).
     const wordGroups = buildWordGroups(nameQuery);
     if (wordGroups.length === 0) return { found: false, query: nameQuery };
-    // Match ANY contributor's alias (a) or the registered name (u2) on the user's
-    // OWN contacts (the "mine" set), not only the label the user saved — so a
-    // surname another contributor put on the contact ("Salome Jojua") surfaces
-    // her even when the user saved her as just "Salome" (Bug 1). A contact's
-    // word_hits ranks the one matching every query word above partial matches
-    // ("Dachi Axel" → the person carrying both, not the ~150 "Axel"-only) (Bug 2).
-    const g = buildGroupSql(
-      wordGroups,
-      2,
-      (i) => `LOWER(a.alias) ~ $${i} OR LOWER(u2.name) ~ $${i}`,
-    );
+    // Match each query word across ALL of a contact's labels — every
+    // contributor's alias, the registered name, AND every tag — on the user's
+    // OWN contacts (the "mine" set), not only the label the user saved. So a
+    // surname another contributor added ("Salome Jojua") surfaces her even when
+    // the user saved her as just "Salome" (Bug 1), and a person is found by a
+    // nickname/group tag as readily as by their display name. A contact's
+    // word_hits (distinct query words matched across those labels) ranks the one
+    // matching every word above partial matches: "Dachi Axel" surfaces the person
+    // carrying the `dachi` tag AND `axel`, not the ~150 who only match one (Bug 2);
+    // without the tag union his `dachi` (a tag, not his alias) stays invisible.
+    const g = buildGroupSql(wordGroups, 2, (i) => `label ~ $${i}`);
     const blockParamIdx = g.nextParamIdx;
     const params = [userId, ...g.patterns, blockedPhones];
     const mineCte = `mine AS (
@@ -65,15 +65,27 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        UNION
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
-    const hitsCte = `hits AS (
-       SELECT a.phone, (${g.wordHits}) AS word_hits
+    // Every searchable label for the mine-phones, lower-cased, as one column.
+    const labelsCte = `labels AS (
+       SELECT a.phone, LOWER(a.alias) AS label
        FROM "UserAlias" a
-       LEFT JOIN "UserPhone" up2 ON up2.phone = a.phone
-       LEFT JOIN "User"      u2  ON u2.id     = up2."userId"
        WHERE a.phone IN (SELECT phone FROM mine)
-         AND (${g.matchAny})
-         AND a.phone != ALL($${blockParamIdx})
-       GROUP BY a.phone
+       UNION ALL
+       SELECT up2.phone, LOWER(u2.name) AS label
+       FROM "UserPhone" up2
+       JOIN "User" u2 ON u2.id = up2."userId"
+       WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+       UNION ALL
+       SELECT t.phone, LOWER(t.tag) AS label
+       FROM "UserTags" t
+       WHERE t.phone IN (SELECT phone FROM mine)
+     )`;
+    const hitsCte = `hits AS (
+       SELECT phone, (${g.wordHits}) AS word_hits
+       FROM labels
+       WHERE (${g.matchAny})
+         AND phone != ALL($${blockParamIdx})
+       GROUP BY phone
      )`;
     const aggSelect = `SELECT h.phone,
               COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
@@ -97,21 +109,18 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         jobPosition: string | null;
         city: string | null;
       }>(
-        `WITH ${mineCte}, ${hitsCte}
+        `WITH ${mineCte}, ${labelsCte}, ${hitsCte}
          ${aggSelect}
          ORDER BY MAX(h.word_hits) DESC, MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
         params,
       ),
       query<{ total: string }>(
-        `WITH ${mineCte}
-         SELECT COUNT(DISTINCT a.phone) AS total
-         FROM "UserAlias" a
-         LEFT JOIN "UserPhone" up2 ON up2.phone = a.phone
-         LEFT JOIN "User"      u2  ON u2.id     = up2."userId"
-         WHERE a.phone IN (SELECT phone FROM mine)
-           AND (${g.matchAny})
-           AND a.phone != ALL($${blockParamIdx})`,
+        `WITH ${mineCte}, ${labelsCte}
+         SELECT COUNT(DISTINCT phone) AS total
+         FROM labels
+         WHERE (${g.matchAny})
+           AND phone != ALL($${blockParamIdx})`,
         params,
       ),
     ]);

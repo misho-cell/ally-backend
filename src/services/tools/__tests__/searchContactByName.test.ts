@@ -115,7 +115,7 @@ describe('searchContactByName', () => {
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
   });
 
-  it("matches ANY contributor's alias on the user's own contacts, not only the label they saved (Bug 1)", async () => {
+  it("matches a contact by ANY label — alias, registered name, or tag — on the user's own contacts (Bug 1)", async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'Jojua');
@@ -128,9 +128,12 @@ describe('searchContactByName', () => {
     // Recall is scoped to the user's own contact phones (the "mine" set)...
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
     expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
-    // ...but the alias/name match runs over every contributor's alias on those
-    // phones, so a surname another contributor saved surfaces the contact.
-    expect(mainSql).toContain('LOWER(a.alias) ~ $2');
+    // ...and the match runs over the union of every label (alias, registered
+    // name, and tag) on those phones, so a surname or nickname another
+    // contributor saved — even a tag, not the display name — surfaces the contact.
+    expect(mainSql).toContain('LOWER(a.alias) AS label');
+    expect(mainSql).toContain('LOWER(t.tag) AS label');
+    expect(mainSql).toContain('label ~ $2');
   });
 
   it('ranks a two-word name by how many distinct words each contact matched (Bug 2)', async () => {
