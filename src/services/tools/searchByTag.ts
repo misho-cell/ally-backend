@@ -5,6 +5,7 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
@@ -17,6 +18,7 @@ const FUZZY_TIMEOUT_MS = 5_000;
 interface TagRow {
   phone: string;
   name: string | null;
+  saved_as: string | null;
   all_tags: string[];
   employer: string | null;
   jobPosition: string | null;
@@ -33,16 +35,37 @@ const MY_CONTACTS_CTE = `mine AS (
      SELECT phone FROM "UserAlias" WHERE "contactId" = $1
    )`;
 
+// Every searchable label for the user's own contacts, lower-cased into one
+// column: every contributor's tag AND alias, plus the registered name. Matching
+// over this union (not tags alone) means a contact saved only as an alias with
+// NO tags — e.g. an old-app import — still surfaces on a tag search (Bug 1.3b).
+const LABELS_CTE = `labels AS (
+     SELECT t.phone, LOWER(t.tag) AS label
+     FROM "UserTags" t
+     WHERE t.phone IN (SELECT phone FROM mine)
+     UNION ALL
+     SELECT a.phone, LOWER(a.alias) AS label
+     FROM "UserAlias" a
+     WHERE a.phone IN (SELECT phone FROM mine)
+     UNION ALL
+     SELECT up2.phone, LOWER(u2.name) AS label
+     FROM "User" u2
+     JOIN "UserPhone" up2 ON up2."userId" = u2.id
+     WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+   )`;
+
 // Aggregate the display fields for a set of matched phones: the user's OWN alias
 // for the name, every contributor's tags, and the registered profile fields.
+// UserTags is LEFT-joined so a tagless (alias-only) contact isn't dropped.
 const AGG_SELECT = `h.phone,
         COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+        MAX(ua.alias)                        AS saved_as,
         array_agg(DISTINCT ut.tag)           AS all_tags,
         MAX(u.employer)                      AS employer,
         MAX(u."jobPosition")                 AS "jobPosition",
         MAX(u.city)                          AS city`;
 const AGG_JOINS = `FROM hits h
-   JOIN "UserTags"       ut ON ut.phone = h.phone
+   LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
    LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
    LEFT JOIN "UserPhone" up ON up.phone = h.phone
    LEFT JOIN "User"      u  ON u.id     = up."userId"`;
@@ -53,34 +76,32 @@ async function runExactSearch(
   wordGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const g = buildGroupSql(wordGroups, 2, (i) => `LOWER(t.tag) ~ $${i}`);
+  const g = buildGroupSql(wordGroups, 2, (i) => `label ~ $${i}`);
   const blockParamIdx = g.nextParamIdx;
   const params = [userId, ...g.patterns, blockedPhones];
   const [result, countResult] = await Promise.all([
     query<TagRow>(
-      `WITH ${MY_CONTACTS_CTE},
+      `WITH ${MY_CONTACTS_CTE}, ${LABELS_CTE},
        hits AS (
-         SELECT t.phone, (${g.wordHits}) AS word_hits
-         FROM "UserTags" t
-         WHERE t.phone IN (SELECT phone FROM mine)
-           AND (${g.matchAny})
-           AND t.phone != ALL($${blockParamIdx})
-         GROUP BY t.phone
+         SELECT phone, (${g.wordHits}) AS word_hits
+         FROM labels
+         WHERE (${g.matchAny})
+           AND phone != ALL($${blockParamIdx})
+         GROUP BY phone
        )
        SELECT ${AGG_SELECT}
        ${AGG_JOINS}
        GROUP BY h.phone
-       ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC
+       ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC NULLS LAST
        LIMIT ${RESULT_LIMIT}`,
       params,
     ),
     query<{ total: string }>(
-      `WITH ${MY_CONTACTS_CTE}
-       SELECT COUNT(DISTINCT t.phone) AS total
-       FROM "UserTags" t
-       WHERE t.phone IN (SELECT phone FROM mine)
-         AND (${g.matchAny})
-         AND t.phone != ALL($${blockParamIdx})`,
+      `WITH ${MY_CONTACTS_CTE}, ${LABELS_CTE}
+       SELECT COUNT(DISTINCT phone) AS total
+       FROM labels
+       WHERE (${g.matchAny})
+         AND phone != ALL($${blockParamIdx})`,
       params,
     ),
   ]);
@@ -148,8 +169,13 @@ function shape(
     },
     facts,
   );
-  const withMember = { ...base, is_member: isMemberPhone(members, row.phone) };
-  return approximate ? { ...withMember, approximate: true } : withMember;
+  const withMeta = {
+    ...base,
+    is_member: isMemberPhone(members, row.phone),
+    ownership: OWNERSHIP.DIRECT,
+    saved_as: row.saved_as ?? null,
+  };
+  return approximate ? { ...withMeta, approximate: true } : withMeta;
 }
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {

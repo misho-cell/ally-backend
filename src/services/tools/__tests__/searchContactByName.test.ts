@@ -155,6 +155,15 @@ describe('searchContactByName', () => {
     expect(mainParams).toContain('\\maxel');
   });
 
+  it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {
+    setup({ main: [{ ...mockRow, saved_as: 'კლასელი' }], count: 1 });
+
+    const result = (await searchContactByName('42', 'გიო')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r.ownership).toBe('direct');
+    expect(r.saved_as).toBe('კლასელი');
+  });
+
   it('fills employer/occupation from saved facts when the join fields are empty', async () => {
     setup({
       main: [{ ...mockRow, employer: '', jobPosition: '', city: null }],

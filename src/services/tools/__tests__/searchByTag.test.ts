@@ -137,7 +137,7 @@ describe('searchByTag', () => {
     expect((results[0].tags as string[]).every(Boolean)).toBe(true);
   });
 
-  it("matches AGGREGATED tags on the user's own contacts, not only tags they saved (Bug 1)", async () => {
+  it("matches AGGREGATED labels on the user's own contacts — tags AND aliases (Bug 1 / 1.3b)", async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'asriyants');
@@ -148,8 +148,12 @@ describe('searchByTag', () => {
     )?.[0] as string;
     // Recall is scoped to the user's own contact phones (the "mine" set)...
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('t.phone IN (SELECT phone FROM mine)');
-    // ...but the tag match runs over every contributor's tag on those phones.
+    expect(mainSql).toContain('phone IN (SELECT phone FROM mine)');
+    // ...and the match runs over the union of every contributor's tag AND alias
+    // on those phones, so an alias-only contact (no tags) still surfaces.
+    expect(mainSql).toContain('LOWER(t.tag) AS label');
+    expect(mainSql).toContain('LOWER(a.alias) AS label');
+    expect(mainSql).toContain('label ~ $2');
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
   });
@@ -174,6 +178,15 @@ describe('searchByTag', () => {
     // Both words' patterns are passed (intersection, not a single OR term).
     expect(mainParams).toContain('\\mdachi');
     expect(mainParams).toContain('\\maxel');
+  });
+
+  it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {
+    setup({ main: [{ ...mockRow, saved_as: 'ჩემი კლასელი' }], count: 1 });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r.ownership).toBe('direct');
+    expect(r.saved_as).toBe('ჩემი კლასელი');
   });
 
   it('marks is_member true for a contact that is a registered Ally user', async () => {

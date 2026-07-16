@@ -6,6 +6,7 @@ import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { OWNERSHIP } from './searchResultMeta';
 
 const MAX_FRIEND_PHONES = 3000;
 // Same threshold as the direct tag search; matching runs only over friends'
@@ -165,6 +166,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         name: row.name ?? null,
         employer: row.employer ?? null,
         jobPosition: row.jobPosition ?? null,
+        ownership: OWNERSHIP.SECOND_DEGREE,
         via: row.via_names ?? [],
         // Internal identifiers for agent use — never displayed to the user.
         // target_user_id is set when the person is a registered Ally user;

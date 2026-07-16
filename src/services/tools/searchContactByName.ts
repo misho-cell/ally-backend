@@ -5,6 +5,7 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
@@ -12,6 +13,7 @@ const RESULT_LIMIT = 20;
 interface NameRow {
   phone: string;
   name: string | null;
+  saved_as: string | null;
   all_tags: string[];
   employer: string | null;
   jobPosition: string | null;
@@ -34,7 +36,12 @@ function toRow(
     },
     facts,
   );
-  return { ...base, is_member: isMemberPhone(members, row.phone) };
+  return {
+    ...base,
+    is_member: isMemberPhone(members, row.phone),
+    ownership: OWNERSHIP.DIRECT,
+    saved_as: row.saved_as ?? null,
+  };
 }
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
@@ -89,6 +96,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
      )`;
     const aggSelect = `SELECT h.phone,
               COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+              MAX(ua.alias)                        AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
               MAX(u.employer)                      AS employer,
               MAX(u."jobPosition")                 AS "jobPosition",
@@ -104,6 +112,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       query<{
         phone: string;
         name: string | null;
+        saved_as: string | null;
         all_tags: string[];
         employer: string | null;
         jobPosition: string | null;
@@ -153,6 +162,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         const fuzzyResult = await query<{
           phone: string;
           name: string | null;
+          saved_as: string | null;
           all_tags: string[];
           employer: string | null;
           jobPosition: string | null;
@@ -170,6 +180,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
            )
            SELECT h.phone,
                   COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+                  MAX(ua.alias)                        AS saved_as,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
                   MAX(u.employer)                      AS employer,
                   MAX(u."jobPosition")                 AS "jobPosition",
