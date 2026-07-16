@@ -195,9 +195,9 @@ const AGENT_STRATEGY_PROMPT = `
 
 ### 9. გაცნობის მოთხოვნებზე პასუხი (შუამავლის როლი)
 თუ სისტემის კონტექსტში ჩანს „გაუხსნელი გაცნობის მოთხოვნები" სექცია:
-- **ეს არის შენი პირველი პასუხი — სხვა თემამდე ამას მიაქციე ყურადღება**
-- მომხმარებლის ნებისმიერ შეტყობინებაზე (მათ შორის „გამარჯობა") **პირველ წინადადებაში** დაასახელე მოთხოვნა
-- მაგ: „გამარჯობა! სანამ გიპასუხებ — მოსულა გაცნობის მოთხოვნა: [სახელი] გინდა გეცნოს [სახელი]-ს. დაეხმარები?"
+- **ჯერ უპასუხე მომხმარებლის შეტყობინებას; მოთხოვნა ახსენე პასუხის ბოლოს** — არასდროს გახადო ის პირველი წინადადება ან მთელი პასუხი
+- მოკლე პასუხზეც კი — ჯერ არსებით შეკითხვას უპასუხე, ბოლოს დაურთე ერთი ხაზი მოთხოვნაზე
+- მაგ: „[პასუხი მომხმარებლის შეკითხვაზე]… სხვათა შორის, მოსულა გაცნობის მოთხოვნა: [სახელი] გინდა გეცნოს [სახელი]-ს. დაეხმარები?"
 - ჰკითხე: „თუ კი, რა ინფო ან საკონტაქტო გაუზიარო?"
 - პასუხის მიღების შემდეგ გამოიყენე respond_to_introduction ტული
 - გააფრთხილე: მხოლოდ ის ინფო გაიზიარო რაც მომხმარებელმა ნებაყოფლობით მოგცა
@@ -206,9 +206,9 @@ const AGENT_STRATEGY_PROMPT = `
 
 ### 10. გაცნობის პასუხის ჩვენება (მომთხოვნის როლი)
 თუ სისტემის კონტექსტში ჩანს „გაცნობის მოთხოვნების პასუხები" სექცია:
-- **ეს არის შენი პირველი პასუხი — სხვა თემამდე ამას მიაქციე ყურადღება**
-- მომხმარებლის ნებისმიერ შეტყობინებაზე (მათ შორის „გამარჯობა") **პირველ წინადადებაში** გაუზიარე პასუხი
-- მაგ: „გამარჯობა! [შუამავალი] გიპასუხა — [target_name]-ზე [დათანხმდა/უარი თქვა]. [ინფო თუ არის]"
+- **ჯერ უპასუხე მომხმარებლის შეტყობინებას; პასუხი გაუზიარე შენი რეპლიკის ბოლოს** — არასდროს გახადო ის პირველი წინადადება ან მთელი პასუხი
+- მოკლე პასუხზეც კი — ჯერ არსებით შეკითხვას უპასუხე, ბოლოს დაურთე ერთი ხაზი შუამავლის პასუხზე
+- მაგ: „[პასუხი მომხმარებლის შეკითხვაზე]… სხვათა შორის, [შუამავალი] გიპასუხა — [target_name]-ზე [დათანხმდა/უარი თქვა]. [ინფო თუ არის]"
 - თუ accepted — გაახარე, გაუზიარე შუამავლის მიერ გაზიარებული ინფო სრულად
 - თუ declined — თანაგრძნობა, შესთავაზე სხვა მარშრუტი
 
@@ -941,6 +941,30 @@ function buildPrivateContextSection(context: Record<string, string>): string {
   return `\n\n## პირადი კონტექსტი [STRICTLY CONFIDENTIAL — never share with others]\n${lines}`;
 }
 
+// Reply-language pin (engine-level). The strategy prompt is written entirely in
+// Georgian; without an explicit per-message directive the model drifts to
+// Georgian even when the user wrote in English or Russian (battery T7/T8).
+// Detect the message's dominant script and pin the reply language.
+const REPLY_LANGUAGE = { GEORGIAN: 'Georgian', RUSSIAN: 'Russian', ENGLISH: 'English' } as const;
+type ReplyLanguage = (typeof REPLY_LANGUAGE)[keyof typeof REPLY_LANGUAGE];
+
+function detectMessageLanguage(text: string): ReplyLanguage {
+  if (/[ა-ჿ]/.test(text)) return REPLY_LANGUAGE.GEORGIAN;
+  if (/[а-яё]/i.test(text)) return REPLY_LANGUAGE.RUSSIAN;
+  return REPLY_LANGUAGE.ENGLISH;
+}
+
+function buildReplyLanguageDirective(userMessage: string): string {
+  const lang = detectMessageLanguage(userMessage);
+  return (
+    `\n\n## REPLY LANGUAGE [HARD RULE]\n` +
+    `The user's latest message appears to be in ${lang}. Write your ENTIRE reply in the ` +
+    `SAME language the user actually used — mirror their latest message. Latin letters may be ` +
+    `transliterated Georgian; if so, reply in Georgian. Never default to Georgian for a genuine ` +
+    `English or Russian message.`
+  );
+}
+
 function buildPendingRequestsSection(requests: PendingRequest[]): string {
   if (requests.length === 0) return '';
   const lines = requests
@@ -950,7 +974,7 @@ function buildPendingRequestsSection(requests: PendingRequest[]): string {
       return `- მოთხოვნა #${r.id}: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} (respond_to_introduction-ისთვის request_id=${r.id})`;
     })
     .join('\n');
-  return `\n\n## გაუხსნელი გაცნობის მოთხოვნები\n${lines}`;
+  return `\n\n## გაუხსნელი გაცნობის მოთხოვნები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს ახსენე]\n${lines}`;
 }
 
 function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
@@ -962,7 +986,7 @@ function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
       return `- ${r.target_name}: შუამავალი ${statusText}.${info}`;
     })
     .join('\n');
-  return `\n\n## გაცნობის მოთხოვნების პასუხები [FIRST PRIORITY — პირველ წინადადებაში გაუზიარე]\n${lines}`;
+  return `\n\n## გაცნობის მოთხოვნების პასუხები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს გაუზიარე]\n${lines}`;
 }
 
 function buildInsightFieldsSection(
@@ -1724,11 +1748,14 @@ export async function processChat(
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
 
-  const [systemPrompt, tools, history] = await Promise.all([
+  const [basePrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id),
     buildEnabledTools(userId),
     loadHistory(threadId),
   ]);
+  // Pin the reply language to the user's latest message (engine-level, appended
+  // last so it wins over the Georgian strategy prompt).
+  const systemPrompt = basePrompt + buildReplyLanguageDirective(userMessage);
 
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
