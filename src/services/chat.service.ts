@@ -1388,6 +1388,10 @@ const RUN_WALL_CLOCK_BUDGET_MS = 210_000;
 // from what we already gathered (partial answer > blank on timeout).
 const FINAL_ANSWER_HEADROOM_MS = 30_000;
 const RUN_SOFT_BUDGET_MS = RUN_WALL_CLOCK_BUDGET_MS - FINAL_ANSWER_HEADROOM_MS;
+// A narration step at least this long is treated as a real (buried) answer, not
+// process chatter, so it can be promoted over a shorter final turn (e.g. a
+// pending-request wrap-up). Below it, a longer prior step is just narration.
+const MIN_BURIED_ANSWER_CHARS = 200;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   web_search: '🌐 ვებში ვეძებ...',
@@ -1546,14 +1550,16 @@ async function runToolLoop(
   let iterations = 0;
   let toolCallCount = 0;
   let finalText = '';
-  // Track the most recent narration saved as a 'step'. If the model puts its real
-  // answer (or a clarifying question) in the text that accompanies a tool call and
-  // then returns an empty final turn, that answer would otherwise live only in a
-  // step — invisible to loadHistory (kind='message' only) and to thread resume.
-  // We promote it to the final message so every run yields exactly one non-empty
-  // 'message' (fixes same-thread memory loss + resume showing only steps).
-  let lastNarration = '';
-  let lastStepId: number | null = null;
+  // Track the LONGEST narration saved as a 'step' — the model's real answer when
+  // it wrote it in the text alongside a tool call. If the final turn then comes
+  // back empty, or shorter than that buried answer (e.g. the run ends on a short
+  // pending-request wrap-up while the 800-char path answer sits in a step), the
+  // answer would otherwise live only in a step: invisible to loadHistory
+  // (kind='message' only) and to thread resume, and rendered as a collapsed step
+  // in the UI. We promote it to the final message (appending the short final
+  // text, so a pending-request line ends the answer rather than replacing it).
+  let bestNarration = '';
+  let bestStepId: number | null = null;
 
   try {
     while (
@@ -1572,8 +1578,11 @@ async function runToolLoop(
       const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
-        lastStepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
-        lastNarration = narration;
+        const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        if (narration.length > bestNarration.length) {
+          bestNarration = narration;
+          bestStepId = stepId;
+        }
       }
 
       for (const block of response.content) {
@@ -1619,8 +1628,11 @@ async function runToolLoop(
       const narration = scrubText(extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
-        lastStepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
-        lastNarration = narration;
+        const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        if (narration.length > bestNarration.length) {
+          bestNarration = narration;
+          bestStepId = stepId;
+        }
       }
 
       const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
@@ -1642,16 +1654,23 @@ async function runToolLoop(
     finalText = scrubText(await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending));
   }
 
-  // The model answered inside a tool-call turn and then went silent (or the run
-  // was salvaged to an empty string). Promote the last narration to the final
-  // answer and drop the now-duplicate step, so every run yields exactly one
-  // non-empty final 'message' — the invariant loadHistory and thread-resume rely
-  // on. Without this the answer lived only in a 'step': invisible to the next
-  // turn's context (same-thread memory loss) and shown only as a collapsed step
-  // on resume.
-  if (finalText.length === 0 && lastNarration.length > 0) {
-    finalText = lastNarration;
-    if (lastStepId !== null) await deleteMessage(lastStepId);
+  // Rescue an answer the model buried in a 'step'. Two cases:
+  //  - the final turn came back empty (answer was the last thing it wrote), or
+  //  - the final turn is SHORTER than a substantial buried narration — e.g. the
+  //    run ends on a short pending-request wrap-up while the real path answer
+  //    (800+ chars) sits in a step.
+  // In both, promote the buried narration to the final message and append the
+  // short final text (so a pending-request line ENDS the answer instead of
+  // replacing it), then drop the now-duplicate step. Guarantees exactly one
+  // non-empty final 'message' carrying the full answer — the invariant
+  // loadHistory, thread-resume, and the UI's step/final split rely on.
+  const buriedAnswer =
+    bestNarration.length > 0 &&
+    (finalText.length === 0 ||
+      (bestNarration.length >= MIN_BURIED_ANSWER_CHARS && bestNarration.length > finalText.length));
+  if (buriedAnswer) {
+    finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
+    if (bestStepId !== null) await deleteMessage(bestStepId);
   }
 
   // Per-run telemetry: tool-call count, model round-trips, and elapsed time, so
