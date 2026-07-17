@@ -44,8 +44,14 @@ import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNote
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
-import { emitToolProgress, emitStepSummary, emitTokensDebited } from './sse.service';
+import {
+  emitToolProgress,
+  emitStepSummary,
+  emitTokensDebited,
+  emitAnswerDelta,
+} from './sse.service';
 import { scrubText } from './privacyScrub';
+import { createSafeTextStreamer } from './answerStream';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
 import {
@@ -1455,6 +1461,9 @@ interface CallOptions {
   // Force a text-only answer while keeping the tools array identical (so the
   // cached prefix still hits) — used for the final wrap-up turn.
   forceText?: boolean;
+  // Called with each text delta as the model streams, so the answer can be
+  // forwarded to the UI token-by-token (see the answer streamer in runToolLoop).
+  onText?: (delta: string) => void;
 }
 
 async function callClaude(
@@ -1485,6 +1494,7 @@ async function callClaude(
   };
   resetStall();
   stream.on('streamEvent', resetStall);
+  if (opts.onText) stream.on('text', opts.onText);
 
   let response: Anthropic.Message;
   try {
@@ -1542,9 +1552,14 @@ async function runToolLoop(
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
   const ctx: RunContext = { userId, runId, threadId };
+  // Stream every turn's text to the UI token-by-token (append-only, phone-safe).
+  // It's a live preview; run_complete carries the authoritative reply the client
+  // reconciles against, so intermediate narration briefly shown here is replaced.
+  const answer = createSafeTextStreamer((chunk) => emitAnswerDelta(userId, threadId, runId, chunk));
+  const stream = answer.push;
   // Initial call: nothing gathered yet, so a failure here propagates and the
   // route reports a run error — there is no partial answer to salvage.
-  let response = await callClaude(messages, systemPrompt, tools, ctx);
+  let response = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let iterations = 0;
@@ -1611,7 +1626,7 @@ async function runToolLoop(
       messages.push({ role: 'assistant', content: response.content });
       messages.push({ role: 'user', content: toolResults });
 
-      response = await callClaude(messages, systemPrompt, tools, ctx);
+      response = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
     }
 
     // Guard: the loop stopped while the model still wanted tools — it hit the
@@ -1641,7 +1656,10 @@ async function runToolLoop(
       messages.push({ role: 'assistant', content: response.content });
       messages.push({ role: 'user', content: toolResults });
 
-      response = await callClaude(messages, systemPrompt, tools, ctx, { forceText: true });
+      response = await callClaude(messages, systemPrompt, tools, ctx, {
+        forceText: true,
+        onText: stream,
+      });
     }
 
     finalText = scrubText(extractText(response.content));
@@ -1672,6 +1690,10 @@ async function runToolLoop(
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
     if (bestStepId !== null) await deleteMessage(bestStepId);
   }
+
+  // Emit any safe remainder held back during streaming (run_complete then
+  // reconciles the client's buffer against the authoritative reply anyway).
+  answer.flush();
 
   // Per-run telemetry: tool-call count, model round-trips, and elapsed time, so
   // the tool-budget rule can be watched and runaway tool loops spotted.

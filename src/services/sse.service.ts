@@ -72,6 +72,26 @@ export function emitStepSummary(
   });
 }
 
+/**
+ * An incremental chunk of the final answer as it streams from the model, so the
+ * UI fills in progressively instead of blanking for the whole generation. The
+ * chunk is append-only and already phone-scrubbed; run_complete still carries the
+ * full authoritative reply, which the client reconciles the buffer against.
+ */
+export function emitAnswerDelta(
+  userId: string,
+  threadId: number,
+  runId: string,
+  delta: string,
+): void {
+  emitter.emit(`user:${userId}`, {
+    event: 'answer_delta',
+    threadId,
+    runId,
+    delta: scrubText(delta),
+  });
+}
+
 interface RunCompletePayload {
   reply: string;
   options?: unknown;
