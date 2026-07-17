@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildWordGroups } from './transliterate';
-import { buildGroupSql } from './wordMatch';
+import { buildSearchTerms, buildRawWordGroups, toWordStartPattern } from './transliterate';
+import { likePatterns } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -52,46 +52,55 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
     // Word-start regex matches a name part by prefix ("gio" → "Giorgi") without
     // matching a fragment inside another word ("japan" ↛ "Japaridze") (ISSUE 3).
-    const wordGroups = buildWordGroups(nameQuery);
-    if (wordGroups.length === 0) return { found: false, query: nameQuery };
+    const rawGroups = buildRawWordGroups(nameQuery);
+    if (rawGroups.length === 0) return { found: false, query: nameQuery };
     // Match each query word across ALL of a contact's labels — every
     // contributor's alias, the registered name, AND every tag — on the user's
-    // OWN contacts (the "mine" set), not only the label the user saved. So a
-    // surname another contributor added ("Salome Jojua") surfaces her even when
-    // the user saved her as just "Salome" (Bug 1), and a person is found by a
-    // nickname/group tag as readily as by their display name. A contact's
-    // word_hits (distinct query words matched across those labels) ranks the one
-    // matching every word above partial matches: "Dachi Axel" surfaces the person
-    // carrying the `dachi` tag AND `axel`, not the ~150 who only match one (Bug 2);
-    // without the tag union his `dachi` (a tag, not his alias) stays invisible.
-    const g = buildGroupSql(wordGroups, 2, (i) => `label ~ $${i}`);
-    const blockParamIdx = g.nextParamIdx;
-    const params = [userId, ...g.patterns, blockedPhones];
+    // OWN contacts (the "mine" set). So a surname another contributor added
+    // ("Salome Jojua") surfaces her even when the user saved her as just "Salome"
+    // (Bug 1), and a person is found by a nickname/group tag as readily as by
+    // their display name. word_hits (distinct query words matched across labels)
+    // ranks the one matching every word first ("Dachi Axel" → the person with the
+    // `dachi` tag AND `axel`, not the ~150 who match one — Bug 2). Alias/name
+    // candidates use an index-backed trigram LIKE (idx_user_alias_trgm) then
+    // refine to word-start — no full labels seq-scan (that measured ~3s and
+    // tipped heavier queries past the statement timeout → empty results).
+    const groupRegex = rawGroups.map((grp) => grp.map(toWordStartPattern));
+    const allRegex = groupRegex.flat();
+    const allLike = likePatterns(rawGroups.flat());
+    // $1 userId, $2 allRegex[], $3 allLike[], $4..$(3+G) per-group regex[], last = blocked
+    const groupParamStart = 4;
+    const blockParamIdx = groupParamStart + groupRegex.length;
+    const wordHits = groupRegex
+      .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
+      .join(' + ');
+    const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
     const mineCte = `mine AS (
        SELECT phone FROM "UserTags"  WHERE "contactId" = $1
        UNION
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
-    // Every searchable label for the mine-phones, lower-cased, as one column.
-    const labelsCte = `labels AS (
+    // Only the matching labels of the mine-phones (index-backed candidates).
+    const matchedCte = `matched AS (
        SELECT a.phone, LOWER(a.alias) AS label
        FROM "UserAlias" a
        WHERE a.phone IN (SELECT phone FROM mine)
+         AND LOWER(a.alias) LIKE ANY($3) AND LOWER(a.alias) ~ ANY($2)
        UNION ALL
        SELECT up2.phone, LOWER(u2.name) AS label
-       FROM "UserPhone" up2
-       JOIN "User" u2 ON u2.id = up2."userId"
+       FROM "User" u2
+       JOIN "UserPhone" up2 ON up2."userId" = u2.id
        WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+         AND LOWER(u2.name) LIKE ANY($3) AND LOWER(u2.name) ~ ANY($2)
        UNION ALL
        SELECT t.phone, LOWER(t.tag) AS label
        FROM "UserTags" t
-       WHERE t.phone IN (SELECT phone FROM mine)
+       WHERE t.phone IN (SELECT phone FROM mine) AND LOWER(t.tag) ~ ANY($2)
      )`;
     const hitsCte = `hits AS (
-       SELECT phone, (${g.wordHits}) AS word_hits
-       FROM labels
-       WHERE (${g.matchAny})
-         AND phone != ALL($${blockParamIdx})
+       SELECT phone, (${wordHits}) AS word_hits
+       FROM matched
+       WHERE phone != ALL($${blockParamIdx})
        GROUP BY phone
      )`;
     const aggSelect = `SELECT h.phone,
@@ -118,18 +127,17 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         jobPosition: string | null;
         city: string | null;
       }>(
-        `WITH ${mineCte}, ${labelsCte}, ${hitsCte}
+        `WITH ${mineCte}, ${matchedCte}, ${hitsCte}
          ${aggSelect}
          ORDER BY MAX(h.word_hits) DESC, MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
         params,
       ),
       query<{ total: string }>(
-        `WITH ${mineCte}, ${labelsCte}
+        `WITH ${mineCte}, ${matchedCte}
          SELECT COUNT(DISTINCT phone) AS total
-         FROM labels
-         WHERE (${g.matchAny})
-           AND phone != ALL($${blockParamIdx})`,
+         FROM matched
+         WHERE phone != ALL($${blockParamIdx})`,
         params,
       ),
     ]);

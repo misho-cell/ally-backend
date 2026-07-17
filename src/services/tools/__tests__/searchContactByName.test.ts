@@ -61,12 +61,15 @@ describe('searchContactByName', () => {
     expect(results[0].employer).toBe('TBC Bank');
   });
 
-  it('passes Georgian term and transliteration as word-start patterns to the main query', async () => {
+  it('passes regex + LIKE arrays and per-group regex for a Georgian term', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'გიო');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', []]);
+    // $1 userId, $2 all regexes, $3 all %term% LIKE, $4 per-group regex, last = blocked.
+    const regex = ['\\mგიო', '\\mgio'];
+    const like = ['%გიო%', '%gio%'];
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -74,7 +77,13 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      ['\\mgeorge'],
+      ['%george%'],
+      ['\\mgeorge'],
+      [],
+    ]);
   });
 
   it('returns null name when no alias or registered name', async () => {
@@ -128,12 +137,13 @@ describe('searchContactByName', () => {
     // Recall is scoped to the user's own contact phones (the "mine" set)...
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
     expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
-    // ...and the match runs over the union of every label (alias, registered
-    // name, and tag) on those phones, so a surname or nickname another
+    // ...and matches alias, registered name, AND tag, with alias/name candidates
+    // from an index-backed trigram LIKE, so a surname or nickname another
     // contributor saved — even a tag, not the display name — surfaces the contact.
     expect(mainSql).toContain('LOWER(a.alias) AS label');
     expect(mainSql).toContain('LOWER(t.tag) AS label');
-    expect(mainSql).toContain('label ~ $2');
+    expect(mainSql).toContain('LOWER(a.alias) LIKE ANY($3)');
+    expect(mainSql).toContain('LOWER(t.tag) ~ ANY($2)');
   });
 
   it('ranks a two-word name by how many distinct words each contact matched (Bug 2)', async () => {
@@ -151,8 +161,10 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain('bool_or(');
     expect(mainSql).toContain(') AS word_hits');
     expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
-    expect(mainParams).toContain('\\mdachi');
-    expect(mainParams).toContain('\\maxel');
+    const hasInGroup = (needle: string): boolean =>
+      mainParams.some((p) => Array.isArray(p) && (p as string[]).includes(needle));
+    expect(hasInGroup('\\mdachi')).toBe(true);
+    expect(hasInGroup('\\maxel')).toBe(true);
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {

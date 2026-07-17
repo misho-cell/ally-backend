@@ -68,27 +68,31 @@ describe('searchByTag', () => {
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId and a word-start pattern to the main query (Latin — no transliteration)', async () => {
+  it('passes userId, word-start regex + LIKE arrays, per-group regex, and blocked (Latin)', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Engineer');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', []]);
+    // $1 userId, $2 all word-start regexes, $3 all %term% LIKE patterns,
+    // $4 per-group regex (one group here), last = blocked phones.
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      ['\\mengineer'],
+      ['%engineer%'],
+      ['\\mengineer'],
+      [],
+    ]);
   });
 
-  it('passes Georgian term, transliteration and drift variant as word-start patterns', async () => {
+  it('passes Georgian term, transliteration and drift variants as regex + LIKE patterns', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'ინჟინერი');
 
     // ჟ → "zh" canonical, drift "zh" → "j".
-    expect(mockQuery.mock.calls[0][1]).toEqual([
-      '42',
-      '\\mინჟინერი',
-      '\\minzhineri',
-      '\\minjineri',
-      [],
-    ]);
+    const regex = ['\\mინჟინერი', '\\minzhineri', '\\minjineri'];
+    const like = ['%ინჟინერი%', '%inzhineri%', '%injineri%'];
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
   });
 
   it('reports the real total even when the page is capped', async () => {
@@ -149,11 +153,12 @@ describe('searchByTag', () => {
     // Recall is scoped to the user's own contact phones (the "mine" set)...
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
     expect(mainSql).toContain('phone IN (SELECT phone FROM mine)');
-    // ...and the match runs over the union of every contributor's tag AND alias
-    // on those phones, so an alias-only contact (no tags) still surfaces.
+    // ...and matches tag AND alias, with the alias candidate coming from an
+    // index-backed trigram LIKE, so an alias-only contact (no tags) surfaces.
     expect(mainSql).toContain('LOWER(t.tag) AS label');
     expect(mainSql).toContain('LOWER(a.alias) AS label');
-    expect(mainSql).toContain('label ~ $2');
+    expect(mainSql).toContain('LOWER(a.alias) LIKE ANY($3)');
+    expect(mainSql).toContain('LOWER(t.tag) ~ ANY($2)');
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
   });
@@ -175,9 +180,12 @@ describe('searchByTag', () => {
     expect(mainSql).toContain('bool_or(');
     expect(mainSql).toContain(') AS word_hits');
     expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
-    // Both words' patterns are passed (intersection, not a single OR term).
-    expect(mainParams).toContain('\\mdachi');
-    expect(mainParams).toContain('\\maxel');
+    // Both words' patterns are passed as separate per-group regex arrays
+    // ($4, $5) so word_hits counts the intersection, not a single OR term.
+    const hasInGroup = (needle: string): boolean =>
+      mainParams.some((p) => Array.isArray(p) && (p as string[]).includes(needle));
+    expect(hasInGroup('\\mdachi')).toBe(true);
+    expect(hasInGroup('\\maxel')).toBe(true);
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {

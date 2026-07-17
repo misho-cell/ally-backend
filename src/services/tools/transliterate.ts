@@ -116,18 +116,17 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
 }
 
 /**
- * Split a multi-word query into per-word variant groups, each the full set of
- * word-start patterns for that word (transliteration + drift folds). A caller
- * can then rank a contact by HOW MANY distinct query words it matched — so
- * "Dachi Axel" ranks the one person carrying both tags above the ~150 who carry
- * only the common "Axel" (search Bug 2). A single-word query yields one group,
- * degrading to the plain single-term behaviour.
+ * Split a multi-word query into per-word variant groups, each holding the RAW
+ * variant terms for that word (transliteration + drift folds). A caller ranks a
+ * contact by HOW MANY distinct query words it matched — so "Dachi Axel" ranks the
+ * one person carrying both above the ~150 who carry only the common "Axel"
+ * (search Bug 2) — and builds both an index-backed candidate filter (LIKE
+ * '%term%') and a word-start refine from these terms. Single-word queries yield
+ * one group, degrading to plain single-term behaviour.
  */
-export function buildWordGroups(rawQuery: string): string[][] {
+export function buildRawWordGroups(rawQuery: string): string[][] {
   const words = rawQuery.trim().split(/\s+/).filter(Boolean);
-  return words
-    .map((word) => buildSearchTerms(word).map(toWordStartPattern))
-    .filter((group) => group.length > 0);
+  return words.map((word) => [...buildSearchTerms(word)]).filter((group) => group.length > 0);
 }
 
 /**

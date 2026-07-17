@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildWordGroups } from './transliterate';
-import { buildGroupSql } from './wordMatch';
+import { buildSearchTerms, buildRawWordGroups, toWordStartPattern } from './transliterate';
+import { likePatterns } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -35,25 +35,6 @@ const MY_CONTACTS_CTE = `mine AS (
      SELECT phone FROM "UserAlias" WHERE "contactId" = $1
    )`;
 
-// Every searchable label for the user's own contacts, lower-cased into one
-// column: every contributor's tag AND alias, plus the registered name. Matching
-// over this union (not tags alone) means a contact saved only as an alias with
-// NO tags — e.g. an old-app import — still surfaces on a tag search (Bug 1.3b).
-const LABELS_CTE = `labels AS (
-     SELECT t.phone, LOWER(t.tag) AS label
-     FROM "UserTags" t
-     WHERE t.phone IN (SELECT phone FROM mine)
-     UNION ALL
-     SELECT a.phone, LOWER(a.alias) AS label
-     FROM "UserAlias" a
-     WHERE a.phone IN (SELECT phone FROM mine)
-     UNION ALL
-     SELECT up2.phone, LOWER(u2.name) AS label
-     FROM "User" u2
-     JOIN "UserPhone" up2 ON up2."userId" = u2.id
-     WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
-   )`;
-
 // Aggregate the display fields for a set of matched phones: the user's OWN alias
 // for the name, every contributor's tags, and the registered profile fields.
 // UserTags is LEFT-joined so a tagless (alias-only) contact isn't dropped.
@@ -70,23 +51,58 @@ const AGG_JOINS = `FROM hits h
    LEFT JOIN "UserPhone" up ON up.phone = h.phone
    LEFT JOIN "User"      u  ON u.id     = up."userId"`;
 
-/** Exact word-start match over aggregated tags, ranked by words-matched, plus the real count. */
+// Only the matching labels of the user's own contacts — every contributor's tag
+// AND alias, plus the registered name. Alias/name candidates come from an
+// index-backed trigram LIKE (idx_user_alias_trgm) then refine to word-start;
+// tags use the word-start regex over the mine-scoped tag rows. This replaced a
+// full labels-union seq-scan that measured ~3s on a large account and tipped
+// heavier queries past the statement timeout (→ empty results). $2 = all
+// word-start regexes, $3 = all `%term%` LIKE patterns.
+const MATCHED_CTE = `matched AS (
+     SELECT t.phone, LOWER(t.tag) AS label
+     FROM "UserTags" t
+     WHERE t.phone IN (SELECT phone FROM mine) AND LOWER(t.tag) ~ ANY($2)
+     UNION ALL
+     SELECT a.phone, LOWER(a.alias) AS label
+     FROM "UserAlias" a
+     WHERE a.phone IN (SELECT phone FROM mine)
+       AND LOWER(a.alias) LIKE ANY($3) AND LOWER(a.alias) ~ ANY($2)
+     UNION ALL
+     SELECT up2.phone, LOWER(u2.name) AS label
+     FROM "User" u2
+     JOIN "UserPhone" up2 ON up2."userId" = u2.id
+     WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+       AND LOWER(u2.name) LIKE ANY($3) AND LOWER(u2.name) ~ ANY($2)
+   )`;
+
+/**
+ * Match the user's own contacts by any label (tag / alias / registered name),
+ * ranked by word_hits — the count of distinct query words matched — so a
+ * multi-word query surfaces the intersection first (Bug 2) and an alias-only
+ * contact still surfaces (Bug 1.3b). Index-backed, so no full labels seq-scan.
+ */
 async function runExactSearch(
   userId: string,
-  wordGroups: string[][],
+  rawGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const g = buildGroupSql(wordGroups, 2, (i) => `label ~ $${i}`);
-  const blockParamIdx = g.nextParamIdx;
-  const params = [userId, ...g.patterns, blockedPhones];
+  const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
+  const allRegex = groupRegex.flat();
+  const allLike = likePatterns(rawGroups.flat());
+  // $1 userId, $2 allRegex[], $3 allLike[], $4..$(3+G) per-group regex[], last = blocked
+  const groupParamStart = 4;
+  const blockParamIdx = groupParamStart + groupRegex.length;
+  const wordHits = groupRegex
+    .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
+    .join(' + ');
+  const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
   const [result, countResult] = await Promise.all([
     query<TagRow>(
-      `WITH ${MY_CONTACTS_CTE}, ${LABELS_CTE},
+      `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE},
        hits AS (
-         SELECT phone, (${g.wordHits}) AS word_hits
-         FROM labels
-         WHERE (${g.matchAny})
-           AND phone != ALL($${blockParamIdx})
+         SELECT phone, (${wordHits}) AS word_hits
+         FROM matched
+         WHERE phone != ALL($${blockParamIdx})
          GROUP BY phone
        )
        SELECT ${AGG_SELECT}
@@ -97,11 +113,10 @@ async function runExactSearch(
       params,
     ),
     query<{ total: string }>(
-      `WITH ${MY_CONTACTS_CTE}, ${LABELS_CTE}
+      `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE}
        SELECT COUNT(DISTINCT phone) AS total
-       FROM labels
-       WHERE (${g.matchAny})
-         AND phone != ALL($${blockParamIdx})`,
+       FROM matched
+       WHERE phone != ALL($${blockParamIdx})`,
       params,
     ),
   ]);
@@ -184,10 +199,10 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
 
-    const wordGroups = buildWordGroups(tagQuery);
-    if (wordGroups.length === 0) return { found: false, query: tagQuery };
+    const rawGroups = buildRawWordGroups(tagQuery);
+    if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
-    const exact = await runExactSearch(userId, wordGroups, blockedPhones);
+    const exact = await runExactSearch(userId, rawGroups, blockedPhones);
     const exactRows = exact.rows.filter((r) => !isExcluded(r.phone));
 
     // Fuzzy pass runs over the flat union of every word's variants (spelling
