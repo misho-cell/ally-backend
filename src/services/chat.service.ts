@@ -1328,40 +1328,47 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
   'fetch_page',
 ]);
 
+async function runOneToolBlock(
+  userId: string,
+  runId: string,
+  block: Anthropic.ToolUseBlock,
+): Promise<Anthropic.ToolResultBlockParam> {
+  const result = await executeToolCall(
+    userId,
+    block.name,
+    block.input as Record<string, unknown>,
+    runId,
+  );
+  const diet = dietToolResult(result);
+  const rawContent = JSON.stringify(diet);
+  const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
+  const safeContent = shouldSanitize ? JSON.stringify(sanitizeToolResult(diet)) : rawContent;
+  if (shouldSanitize && rawContent !== safeContent) {
+    // The sanitizer neutralized something in untrusted external/cross-user output.
+    // eslint-disable-next-line no-console
+    console.warn(`[sanitizer] neutralized injected content in ${block.name} result`);
+  }
+  return { type: 'tool_result', tool_use_id: block.id, content: safeContent };
+}
+
 async function processToolBlocks(
   userId: string,
   threadId: number,
   runId: string,
   content: Anthropic.ContentBlock[],
 ): Promise<Anthropic.ToolResultBlockParam[]> {
-  const results: Anthropic.ToolResultBlockParam[] = [];
-  for (const block of content) {
-    if (block.type !== 'tool_use') continue;
+  const toolBlocks = content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+  // Emit progress up front (in order), then run the calls CONCURRENTLY. A single
+  // turn's tool_use blocks are independent by construction — the model emitted
+  // them together without seeing any result — so parallel execution is safe and
+  // collapses N sequential round-trips into one. (Cross-turn dependencies are
+  // unaffected: a tool that needs a prior result is only ever emitted in a later
+  // turn, after that result is in context.) Promise.all preserves result order.
+  for (const block of toolBlocks) {
     const progressMsg = TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
-    const result = await executeToolCall(
-      userId,
-      block.name,
-      block.input as Record<string, unknown>,
-      runId,
-    );
-    const rawContent = JSON.stringify(dietToolResult(result));
-    const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
-    const safeContent = shouldSanitize
-      ? JSON.stringify(sanitizeToolResult(dietToolResult(result)))
-      : rawContent;
-    if (shouldSanitize && rawContent !== safeContent) {
-      // The sanitizer neutralized something in untrusted external/cross-user output.
-      // eslint-disable-next-line no-console
-      console.warn(`[sanitizer] neutralized injected content in ${block.name} result`);
-    }
-    results.push({
-      type: 'tool_result',
-      tool_use_id: block.id,
-      content: safeContent,
-    });
   }
-  return results;
+  return Promise.all(toolBlocks.map((block) => runOneToolBlock(userId, runId, block)));
 }
 
 // Streaming keeps the connection alive token-by-token, so the per-call cap can
@@ -1376,6 +1383,11 @@ const MAX_TOOL_ITERATIONS = 20;
 // stop calling tools and force a final answer from whatever we have so far,
 // rather than letting it hang indefinitely.
 const RUN_WALL_CLOCK_BUDGET_MS = 210_000;
+// Reserve headroom for the forced final answer: stop starting NEW tool rounds
+// once this soft budget is spent, leaving time to synthesize a partial answer
+// from what we already gathered (partial answer > blank on timeout).
+const FINAL_ANSWER_HEADROOM_MS = 30_000;
+const RUN_SOFT_BUDGET_MS = RUN_WALL_CLOCK_BUDGET_MS - FINAL_ANSWER_HEADROOM_MS;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   web_search: '🌐 ვებში ვეძებ...',
@@ -1532,6 +1544,7 @@ async function runToolLoop(
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let iterations = 0;
+  let toolCallCount = 0;
   let finalText = '';
   // Track the most recent narration saved as a 'step'. If the model puts its real
   // answer (or a clarifying question) in the text that accompanies a tool call and
@@ -1546,9 +1559,10 @@ async function runToolLoop(
     while (
       response.stop_reason === 'tool_use' &&
       iterations < MAX_TOOL_ITERATIONS &&
-      Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS
+      Date.now() - startedAt < RUN_SOFT_BUDGET_MS
     ) {
       iterations++;
+      toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
 
       // Stream the model's narration that accompanies this round of tool calls,
       // so the client sees the process step by step rather than one final answer.
@@ -1591,13 +1605,15 @@ async function runToolLoop(
       response = await callClaude(messages, systemPrompt, tools, ctx);
     }
 
-    // Guard: if the loop stopped because it hit the iteration cap while still
-    // wanting to call tools, resolve the outstanding tool calls and then make
-    // one final text-only turn, so the user always gets a written answer instead
-    // of an empty reply. (The pending tool_use blocks must be answered with
-    // tool_result blocks or the API rejects the next call.) The tools array is
-    // kept identical (tool_choice: none) so the cached prompt prefix still hits.
+    // Guard: the loop stopped while the model still wanted tools — it hit the
+    // iteration cap OR spent the soft time budget. Resolve the outstanding tool
+    // calls and make one final text-only turn (within the reserved headroom), so
+    // the user always gets a written answer from what we gathered instead of an
+    // empty reply. (The pending tool_use blocks must be answered with tool_result
+    // blocks or the API rejects the next call.) The tools array is kept identical
+    // (tool_choice: none) so the cached prompt prefix still hits.
     if (response.stop_reason === 'tool_use') {
+      toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
       const narration = scrubText(extractText(response.content));
@@ -1637,6 +1653,13 @@ async function runToolLoop(
     finalText = lastNarration;
     if (lastStepId !== null) await deleteMessage(lastStepId);
   }
+
+  // Per-run telemetry: tool-call count, model round-trips, and elapsed time, so
+  // the tool-budget rule can be watched and runaway tool loops spotted.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[chat] run ${runId} done: ${toolCallCount} tool call(s), ${iterations} iteration(s), ${Date.now() - startedAt}ms`,
+  );
 
   return { finalText, pending, options, choices };
 }
