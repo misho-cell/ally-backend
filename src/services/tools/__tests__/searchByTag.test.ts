@@ -95,6 +95,20 @@ describe('searchByTag', () => {
     expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
   });
 
+  it('drops a sub-trigram token ("2") from the LIKE candidates but keeps it for ranking', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchByTag('42', 'Radiatori 2');
+
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    // $2 all regexes (both words), $3 LIKE candidates (only the >=3-char word),
+    // $4/$5 per-group regex — "2" ranks via word_hits but never drives the scan.
+    expect(params[1]).toEqual(['\\mradiatori', '\\m2']);
+    expect(params[2]).toEqual(['%radiatori%']); // no '%2%' → no seq-scan
+    expect(params[3]).toEqual(['\\mradiatori']);
+    expect(params[4]).toEqual(['\\m2']);
+  });
+
   it('reports the real total even when the page is capped', async () => {
     setup({ main: [mockRow], count: 52 });
 
