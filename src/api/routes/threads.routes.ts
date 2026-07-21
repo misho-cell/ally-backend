@@ -23,7 +23,10 @@ import {
   emitThreadCreated,
   emitRunComplete,
   emitRunError,
+  hasActiveConnection,
 } from '../../services/sse.service';
+import { sendPushNotification } from '../../services/notification.service';
+import { scrubText } from '../../services/privacyScrub';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -32,6 +35,17 @@ const threadsRouter = Router();
 // wall-clock budget, so a normal run finishes on its own and this only fires for
 // a genuinely stuck run — turning a silent forever-hang into a retryable error.
 const RUN_HARD_TIMEOUT_MS = 110_000;
+
+// Short, phone-safe preview for the push body. Scrub first (the reply is already
+// scrubbed for SSE, but this path is independent), collapse whitespace, truncate.
+const PUSH_PREVIEW_MAX_CHARS = 120;
+function buildPushPreview(reply: string): string {
+  const safe = scrubText(reply).replace(/\s+/g, ' ').trim();
+  if (safe.length === 0) return 'შენი პასუხი მზადაა 🎉';
+  return safe.length > PUSH_PREVIEW_MAX_CHARS
+    ? safe.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
+    : safe;
+}
 
 threadsRouter.use(authenticateJwt, requireUserRole);
 threadsRouter.use(requireSubscription);
@@ -179,6 +193,17 @@ threadsRouter.post(
             ...(result.options && { options: result.options }),
             ...(result.choices && { choices: result.choices }),
           });
+          // If the user isn't connected (closed the app / switched away), their
+          // answer would sit unseen — push it. No-op when they're live (they see
+          // it over SSE) or when VAPID isn't configured. The preview is scrubbed
+          // and truncated so no phone number rides in the notification body.
+          if (!hasActiveConnection(userId)) {
+            void sendPushNotification(userId, {
+              title: 'Ally — პასუხი მზადაა',
+              body: buildPushPreview(result.reply),
+              url: `/chat/${threadId}`,
+            }).catch(() => undefined);
+          }
         })
         .catch((error: unknown) => {
           const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';

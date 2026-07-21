@@ -36,6 +36,17 @@ export function emitThreadCreated(userId: string, thread: unknown): void {
   emitter.emit(`user:${userId}`, { event: 'thread_created', thread });
 }
 
+/**
+ * Whether the user currently has an open SSE stream (an attached listener). Used
+ * to decide if a completed run should also fire a push — if they're connected
+ * they'll see it live; if not, their answer would otherwise sit unseen. This is
+ * connection-level presence, not per-thread, which is the right bar for "notify
+ * when away".
+ */
+export function hasActiveConnection(userId: string): boolean {
+  return emitter.listenerCount(`user:${userId}`) > 0;
+}
+
 // Every text/payload leaving this module is phone-scrubbed here, at the single
 // choke point, so a number can never reach the client — not in a spinner line,
 // the agent's step narration, or the final answer (the model sometimes writes a
