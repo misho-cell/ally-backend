@@ -14,6 +14,7 @@ import mcpRouter from './api/routes/mcp.routes';
 import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
+import { checkCriticalIndexes } from './db/postgres/indexSanity';
 import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
 import { startAiNotificationCron } from './services/aiNotification.cron';
@@ -80,6 +81,8 @@ runMigrations()
     EnrichmentJob.startCron();
     startSubscriptionCron();
     startAiNotificationCron();
+    // Fire-and-forget: warns in logs if a search-critical index is missing.
+    void checkCriticalIndexes();
   })
   .catch((err: unknown) => {
     // eslint-disable-next-line no-console

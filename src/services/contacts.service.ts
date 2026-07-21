@@ -5,6 +5,7 @@ import { getSession } from '../db/neo4j/client';
 import { ImportContact, ImportResult } from '../types';
 import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
 import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
+import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
 
@@ -174,6 +175,18 @@ function buildTags(contact: ImportContact): string[] {
   if (contact.employer) parts.push(contact.employer.toLowerCase());
   if (contact.jobPosition) parts.push(contact.jobPosition.toLowerCase());
   if (contact.city) parts.push(contact.city.toLowerCase());
+
+  // Store the Latin transliteration ALONGSIDE each Georgian token, so a
+  // Latin-script query reaches the contact without depending on runtime query
+  // expansion or the fuzzy index (the write-side half of the name-sync gap:
+  // spelling forgiveness only existed at search time). Existing rows are
+  // untouched — backfill is a separate, deliberate job.
+  for (const part of [...parts]) {
+    if (hasGeorgian(part)) {
+      const latin = georgianToLatin(part);
+      if (latin !== part) parts.push(latin);
+    }
+  }
 
   return [...new Set(parts)].filter(isValidTag);
 }
