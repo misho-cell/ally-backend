@@ -49,6 +49,7 @@ import {
   emitStepSummary,
   emitTokensDebited,
   emitAnswerDelta,
+  emitAnswerReset,
 } from './sse.service';
 import { scrubText } from './privacyScrub';
 import { createSafeTextStreamer } from './answerStream';
@@ -1554,11 +1555,27 @@ async function runToolLoop(
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
   const ctx: RunContext = { userId, runId, threadId };
-  // Stream every turn's text to the UI token-by-token (append-only, phone-safe).
-  // It's a live preview; run_complete carries the authoritative reply the client
-  // reconciles against, so intermediate narration briefly shown here is replaced.
-  const answer = createSafeTextStreamer((chunk) => emitAnswerDelta(userId, threadId, runId, chunk));
-  const stream = answer.push;
+  // Stream each turn's text to the UI token-by-token (append-only, phone-safe).
+  // The streamer is PER TURN: if a turn ends wanting tools, its text was
+  // narration, not the answer — we emit answer_reset so the client clears its
+  // buffer, and the next turn's deltas start a fresh answer. Only the turn that
+  // ends the run keeps its deltas (flushed below); run_complete still carries
+  // the authoritative reply the client reconciles against. This stops tool-round
+  // narration garbling into the visible message mid-run.
+  let turnEmitted = false;
+  let answer = createSafeTextStreamer((chunk) => {
+    turnEmitted = true;
+    emitAnswerDelta(userId, threadId, runId, chunk);
+  });
+  const stream = (delta: string): void => answer.push(delta);
+  const resetTurnStream = (): void => {
+    if (turnEmitted) emitAnswerReset(userId, threadId, runId);
+    turnEmitted = false;
+    answer = createSafeTextStreamer((chunk) => {
+      turnEmitted = true;
+      emitAnswerDelta(userId, threadId, runId, chunk);
+    });
+  };
   // Initial call: nothing gathered yet, so a failure here propagates and the
   // route reports a run error — there is no partial answer to salvage.
   let response = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
@@ -1628,6 +1645,8 @@ async function runToolLoop(
       messages.push({ role: 'assistant', content: response.content });
       messages.push({ role: 'user', content: toolResults });
 
+      // This turn ended in tool calls — its streamed text was narration.
+      resetTurnStream();
       response = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
     }
 
@@ -1658,6 +1677,8 @@ async function runToolLoop(
       messages.push({ role: 'assistant', content: response.content });
       messages.push({ role: 'user', content: toolResults });
 
+      // The capped turn's streamed text was narration too.
+      resetTurnStream();
       response = await callClaude(messages, systemPrompt, tools, ctx, {
         forceText: true,
         onText: stream,

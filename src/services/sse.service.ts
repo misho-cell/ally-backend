@@ -103,6 +103,16 @@ export function emitAnswerDelta(
   });
 }
 
+/**
+ * The text streamed so far this run turned out to be tool-round narration, not
+ * the final answer — the client must clear its delta buffer for this run. Fired
+ * between turns; the deltas that follow start a fresh answer. Fixes narration
+ * garbling into the visible message mid-run.
+ */
+export function emitAnswerReset(userId: string, threadId: number, runId: string): void {
+  emitter.emit(`user:${userId}`, { event: 'answer_reset', threadId, runId });
+}
+
 interface RunCompletePayload {
   reply: string;
   options?: unknown;
