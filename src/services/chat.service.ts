@@ -1387,8 +1387,10 @@ const STREAM_STALL_TIMEOUT_MS = 45_000;
 const MAX_TOOL_ITERATIONS = 20;
 // Wall-clock budget for a single run. If a heavy/looping run exceeds it, we
 // stop calling tools and force a final answer from whatever we have so far,
-// rather than letting it hang indefinitely.
-const RUN_WALL_CLOCK_BUDGET_MS = 210_000;
+// rather than letting it hang indefinitely. Kept near the ~90s the app enforces
+// as a hard timeout, so the user reliably gets SOMETHING (a partial answer)
+// before the outer timeout would surface an error (investor-tester hang).
+const RUN_WALL_CLOCK_BUDGET_MS = 90_000;
 // Reserve headroom for the forced final answer: stop starting NEW tool rounds
 // once this soft budget is spent, leaving time to synthesize a partial answer
 // from what we already gathered (partial answer > blank on timeout).

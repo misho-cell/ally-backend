@@ -28,6 +28,11 @@ import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
 
+// Ceiling on a single background run. Sits just above the run's own ~90s
+// wall-clock budget, so a normal run finishes on its own and this only fires for
+// a genuinely stuck run — turning a silent forever-hang into a retryable error.
+const RUN_HARD_TIMEOUT_MS = 110_000;
+
 threadsRouter.use(authenticateJwt, requireUserRole);
 threadsRouter.use(requireSubscription);
 // Per-user cap on chat/thread traffic (abuse control).
@@ -157,7 +162,17 @@ threadsRouter.post(
       const runId = randomUUID();
       res.status(202).json({ success: true, runId });
 
-      processChat(userId, threadId, message, runId)
+      // Hard outer timeout: the run's own budget (~90s) normally forces a final
+      // answer, but a truly stuck call (a hung external dependency the inner
+      // watchdogs miss) could otherwise leave the client waiting forever with the
+      // input locked — which cost us a tester. If the run hasn't produced a reply
+      // by this ceiling, surface a visible, retryable error instead of silence.
+      // (The orphaned run may still finish; the race has already settled, so its
+      // late result is ignored and never double-emitted.)
+      const hardTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
+      );
+      Promise.race([processChat(userId, threadId, message, runId), hardTimeout])
         .then((result) => {
           emitRunComplete(userId, threadId, runId, {
             reply: result.reply,
@@ -166,9 +181,15 @@ threadsRouter.post(
           });
         })
         .catch((error: unknown) => {
+          const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
           // eslint-disable-next-line no-console
           console.error('[POST /threads/:id/message] run failed', error);
-          emitRunError(userId, threadId, runId, 'სერვერის შეცდომა');
+          emitRunError(
+            userId,
+            threadId,
+            runId,
+            timedOut ? 'პასუხს ძალიან დიდი დრო დასჭირდა — სცადე თავიდან 🙏' : 'სერვერის შეცდომა',
+          );
         });
     } catch (error) {
       // eslint-disable-next-line no-console
