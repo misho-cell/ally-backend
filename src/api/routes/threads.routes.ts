@@ -122,8 +122,8 @@ threadsRouter.post(
     .isString()
     .trim()
     .notEmpty()
-    .isLength({ max: 2000 })
-    .withMessage('message must be a non-empty string with max 2000 characters'),
+    .isLength({ max: 10000 })
+    .withMessage('შეტყობინება ძალიან გრძელია — გთხოვ, დაამოკლე (მაქს. 10000 სიმბოლო).'),
   handleValidationErrors,
   async (req: Request, res: Response): Promise<void> => {
     try {

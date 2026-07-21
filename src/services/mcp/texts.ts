@@ -385,18 +385,22 @@ export const PROMPT_TEXTS = {
 // try next — never back at itself (the old shared note told search_by_insight
 // callers to "try search_by_insight").
 export const NOTE_EMPTY_TAG =
-  '0 results for this tag. Try 1–2 more tag spellings (both scripts), then switch to ' +
-  'search_by_insight for the concept. Call get_network_stats before concluding anything — ' +
-  "never tell the user their contacts are missing; you can't see that.";
+  '0 results for THIS spelling — this is NOT "not found", it is one miss. Do NOT announce to the ' +
+  'user that the person/contact was not found yet. Silently run the full ladder first: 1–2 more ' +
+  'spellings AND both scripts, then search_by_insight for the concept, then search_second_degree ' +
+  'on the surname. Only after that whole ladder is exhausted may you report an outcome — and ' +
+  "even then never say their contacts are missing (you can't see that); call get_network_stats.";
 
 export const NOTE_EMPTY_INSIGHT =
-  'No saved facts matched. Try search_contacts with a plain trade/company word, or ' +
-  'search_second_degree for people one ring out. Call get_network_stats before concluding — ' +
-  'an empty result never means the network is empty.';
+  'No saved facts matched THIS query — one miss, not "not found". Do NOT tell the user nothing ' +
+  'exists yet. Silently try search_contacts with a plain trade/company word (both scripts, 1–2 ' +
+  'spellings) and search_second_degree one ring out before concluding. Call get_network_stats ' +
+  'before ever concluding — an empty result never means the network is empty.';
 
 export const NOTE_EMPTY_SECOND_DEGREE =
-  'No second-degree match for this word. Try a different spelling or a plain trade word, and ' +
-  'search_by_insight for the concept. Never tell the user their network is empty.';
+  'No second-degree match for THIS word — one miss, not "not found". Do NOT tell the user there ' +
+  'is no path yet. Silently try a different spelling and both scripts, a plain trade word, and ' +
+  'search_by_insight for the concept before concluding. Never tell the user their network is empty.';
 
 export const NOTE_FUZZY =
   'No exact match — these are letter-similar, AND one may be the right person saved under a ' +
