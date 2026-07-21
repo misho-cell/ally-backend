@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../neo4j.keys';
+import { getExcludedPhones } from '../block.service';
 
 const MAX_FRIEND_PHONES = 3000;
 const MAX_FRIEND_PHONES_FOR_QUERY = 3000;
@@ -339,19 +340,35 @@ function resolvePrefix(country: string): string | null {
   return null;
 }
 
+// A calling code shared by several countries (+7 = Russia AND Kazakhstan,
+// +1 = USA AND Canada) is a hint, not proof of the country — surface the
+// ambiguity so the assistant qualifies instead of asserting nationality.
+function prefixSharedWith(prefix: string, asked: string): string[] {
+  const askedKey = asked.toLowerCase().trim();
+  const names = Object.entries(COUNTRY_PREFIX_MAP)
+    .filter(([name, p]) => p === prefix && name !== askedKey)
+    .map(([name]) => name)
+    // Keep only the Latin canonical names (skip Georgian/translit duplicates)
+    .filter((name) => /^[a-z '-]+$/.test(name) && name.length > 2);
+  return [...new Set(names)];
+}
+
 export async function searchContactsByCountry(userId: string, country: string): Promise<object> {
   const prefix = resolvePrefix(country);
   if (!prefix) return { found: false, reason: 'unknown_country', country };
 
   const phonePattern = prefix + '%';
+  // Blocked contacts are invisible on every read path — this tool included.
+  const blockedPhones = await getExcludedPhones(userId);
 
   const directResult = await query<{ name: string | null }>(
     `SELECT DISTINCT ON (ua.phone) ua.alias AS name
      FROM "UserAlias" ua
      WHERE ua."contactId" = $1 AND ua.phone LIKE $2
+       AND ua.phone != ALL($3)
      ORDER BY ua.phone
      LIMIT 50`,
-    [userId, phonePattern],
+    [userId, phonePattern, blockedPhones],
     QUERY_TIMEOUT_MS,
   );
 
@@ -435,6 +452,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
            FROM "UserAlias" ua_m
            JOIN friend_users fu ON fu."userId" = ua_m."contactId"
            WHERE ua_m.phone LIKE $3
+             AND ua_m.phone != ALL($4)
          )
          SELECT MAX(m.alias)                                                      AS name,
                 array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
@@ -448,7 +466,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
          WHERE ua_own.phone IS NULL
          GROUP BY m.phone
          LIMIT 20`,
-        [userId, friendPhones, phonePattern],
+        [userId, friendPhones, phonePattern, blockedPhones],
         QUERY_TIMEOUT_MS,
       );
 
@@ -462,11 +480,15 @@ export async function searchContactsByCountry(userId: string, country: string): 
   }
 
   const total = directResult.rows.length + secondDegree.length;
+  const sharedWith = prefixSharedWith(prefix, country);
 
   return {
     found: total > 0,
     country,
     prefix,
+    // Non-empty when other countries share this calling code (+7, +1, +44…):
+    // treat the prefix as a hint, not proof of the person's country.
+    ...(sharedWith.length > 0 && { prefix_shared_with: sharedWith }),
     direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
     second_degree_contacts: secondDegree,
     total,
