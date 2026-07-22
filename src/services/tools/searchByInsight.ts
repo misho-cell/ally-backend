@@ -54,12 +54,27 @@ function likeOrClause(expr: string, count: number, startIdx: number): string {
 }
 
 /**
+ * Per-contact count of DISTINCT query words matched, computed in SQL so the
+ * ranking happens BEFORE the LIMIT cuts the page. Without it the LIMIT took an
+ * arbitrary 20 of all matching contacts and the best match (every word hit,
+ * e.g. "Chairman @ GITA" for "GITA chairman") could be dropped before the
+ * post-hoc ranking ever saw it.
+ */
+function wordHitsClause(expr: string, count: number, startIdx: number): string {
+  return Array.from(
+    { length: count },
+    (_, i) => `bool_or(${expr} LIKE $${startIdx + i})::int`,
+  ).join(' + ');
+}
+
+/**
  * Facts THIS user saved. Restricted by submitted_by_user_id first (indexed),
  * so the LIKE runs over just this user's handful of facts — fast, and the path
  * that must always succeed for the save→search memory loop.
  */
 async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[]> {
-  const orClause = likeOrClause('LOWER(COALESCE(cf.canonical_value, cf.value))', likes.length, 3);
+  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const orClause = likeOrClause(matchExpr, likes.length, 3);
   const result = await query<FactRow>(
     `SELECT cf.neo4j_contact_id AS phone,
             COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
@@ -71,6 +86,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
      WHERE cf.submitted_by_user_id = $1
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
+     ORDER BY (${wordHitsClause(matchExpr, likes.length, 3)}) DESC, MAX(cf.created_at) DESC
      LIMIT $${likes.length + 3}`,
     [userId, userId, ...likes, RESULT_LIMIT],
     SEARCH_TIMEOUT_MS,
@@ -84,7 +100,8 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
  * contacts before the LIKE, and keeps $1 bound to a single column type.
  */
 async function searchPublicFacts(userId: string, likes: string[]): Promise<FactRow[]> {
-  const orClause = likeOrClause('LOWER(COALESCE(cf.canonical_value, cf.value))', likes.length, 2);
+  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const orClause = likeOrClause(matchExpr, likes.length, 2);
   const result = await query<FactRow>(
     `SELECT cf.neo4j_contact_id AS phone,
             MAX(ua.alias) AS name,
@@ -94,6 +111,7 @@ async function searchPublicFacts(userId: string, likes: string[]): Promise<FactR
      WHERE cf.is_public = true
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
+     ORDER BY (${wordHitsClause(matchExpr, likes.length, 2)}) DESC, MAX(cf.created_at) DESC
      LIMIT $${likes.length + 2}`,
     [userId, ...likes, RESULT_LIMIT],
     SEARCH_TIMEOUT_MS,

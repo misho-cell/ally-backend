@@ -129,6 +129,27 @@ describe('searchByInsight', () => {
     expect(ownCall?.[1] as string[]).toEqual(expect.arrayContaining(['%lawyer%', '%estate%']));
   });
 
+  it('ranks by words-hit INSIDE the SQL, before the LIMIT cuts the page', async () => {
+    setup({ facts: [], insights: [] });
+
+    await searchByInsight('42', 'GITA chairman');
+
+    // Without in-SQL ordering the LIMIT took an arbitrary 20 of all matches and
+    // the best hit (every word matched) could be dropped before ranking ran.
+    const ownCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('cf.submitted_by_user_id = $1'),
+    );
+    const publicCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('cf.is_public = true'),
+    );
+    for (const call of [ownCall, publicCall]) {
+      const sql = call?.[0] as string;
+      expect(sql).toContain('bool_or(');
+      expect(sql).toMatch(/ORDER BY \(.*bool_or.*\) DESC, MAX\(cf\.created_at\) DESC/s);
+      expect(sql.indexOf('ORDER BY')).toBeLessThan(sql.indexOf('LIMIT'));
+    }
+  });
+
   it('returns found: false when neither source matches', async () => {
     setup({ facts: [], insights: [] });
 

@@ -17,6 +17,11 @@ export type FactFieldType = (typeof FACT_FIELD_TYPES)[number];
 // having to know about each key.
 export const MEMORY_FIELD_TYPE = 'note';
 export const MAX_FIELD_TYPE_LEN = 40;
+// A core fact is a short label (a job title, a company, a city). Anything
+// longer is narrative — soft intel that must never sit in a public-capable,
+// crowd-confirmable field (a real case: an "occupation" carrying a third
+// party's co-founder conflict). Longer values are rerouted to a private note.
+export const MAX_CORE_FACT_VALUE_LEN = 80;
 
 /** True for the four crowd-confirmable, single-value, enrichment-mapped facts. */
 export function isCoreFact(fieldType: string): boolean {
@@ -146,8 +151,14 @@ export async function submitContactFact(
 
   // Any non-core key (note, role, skill, …) is private and accumulates — no
   // crowd-confirmation pass. Only the four core facts go through canonicalization.
-  if (!isCoreFact(fieldType)) {
-    await insertFreeFormFact(userId, neo4jContactId, fieldType, value);
+  // A narrative-length value aimed at a core field is rerouted the same way:
+  // it is soft intel, not a label, and must never become crowd-public.
+  if (!isCoreFact(fieldType) || value.trim().length > MAX_CORE_FACT_VALUE_LEN) {
+    const targetField =
+      isCoreFact(fieldType) && value.trim().length > MAX_CORE_FACT_VALUE_LEN
+        ? MEMORY_FIELD_TYPE
+        : fieldType;
+    await insertFreeFormFact(userId, neo4jContactId, targetField, value);
     return { is_public: false, canonical_value: null };
   }
 

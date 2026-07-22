@@ -66,6 +66,23 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     expect(upsertSql).toContain("field_type IN ('occupation', 'employer', 'city', 'industry')");
   });
 
+  it('reroutes a narrative-length core value to a private note (sensitive-text guard)', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    const narrative =
+      'co-founder/CEO conflict; wants everything NOW and is frustrated with the board over ' +
+      'equity split and control of the roadmap';
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'occupation', narrative);
+
+    expect(result).toEqual({ is_public: false, canonical_value: null });
+    // Saved as an accumulating private note — never through the crowd-capable upsert.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).not.toContain('ON CONFLICT');
+    expect((params as unknown[])[2]).toBe('note');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it('accumulates any non-core free-form key (role, skill, …) like a note', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
