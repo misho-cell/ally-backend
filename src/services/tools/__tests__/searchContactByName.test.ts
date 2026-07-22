@@ -167,6 +167,23 @@ describe('searchContactByName', () => {
     expect(hasInGroup('\\maxel')).toBe(true);
   });
 
+  it('passes the COUNT query only the parameters it references (no unused per-group params)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchContactByName('42', 'Dachi Axel');
+
+    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('COUNT(DISTINCT'));
+    const countSql = countCall?.[0] as string;
+    const countParams = countCall?.[1] as unknown[];
+    // Postgres rejects a bind carrying parameters the statement never uses
+    // ("could not determine data type of parameter $4") — the count query must
+    // carry exactly $1 userId, $2 regex[], $3 like[], $4 blocked.
+    expect(countParams).toHaveLength(4);
+    expect(countSql).toContain('ALL($4)');
+    expect(countParams?.[0]).toBe('42');
+    expect(countParams?.[3]).toEqual([]);
+  });
+
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {
     setup({ main: [{ ...mockRow, saved_as: 'კლასელი' }], count: 1 });
 

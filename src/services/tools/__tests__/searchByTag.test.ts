@@ -95,6 +95,23 @@ describe('searchByTag', () => {
     expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
   });
 
+  it('passes the COUNT query only the parameters it references (no unused per-group params)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchByTag('42', 'dachi axel');
+
+    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('COUNT(DISTINCT'));
+    const countSql = countCall?.[0] as string;
+    const countParams = countCall?.[1] as unknown[];
+    // Postgres rejects a bind carrying parameters the statement never uses
+    // ("could not determine data type of parameter $4") — the count query must
+    // carry exactly $1 userId, $2 regex[], $3 like[], $4 blocked.
+    expect(countParams).toHaveLength(4);
+    expect(countSql).toContain('ALL($4)');
+    expect(countParams?.[0]).toBe('42');
+    expect(countParams?.[3]).toEqual([]);
+  });
+
   it('drops a sub-trigram token ("2") from the LIKE candidates but keeps it for ranking', async () => {
     setup({ main: [mockRow], count: 1 });
 

@@ -75,6 +75,10 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
       .join(' + ');
     const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
+    // The COUNT query gets ONLY the parameters it references ($1-$3 + block at
+    // $4): Postgres rejects a bind carrying unused parameters ("could not
+    // determine data type of parameter $4"), which failed the whole search.
+    const countParams = [userId, allRegex, allLike, blockedPhones];
     const mineCte = `mine AS (
        SELECT phone FROM "UserTags"  WHERE "contactId" = $1
        UNION
@@ -137,8 +141,8 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         `WITH ${mineCte}, ${matchedCte}
          SELECT COUNT(DISTINCT phone) AS total
          FROM matched
-         WHERE phone != ALL($${blockParamIdx})`,
-        params,
+         WHERE phone != ALL($4)`,
+        countParams,
       ),
     ]);
 

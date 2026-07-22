@@ -96,6 +96,11 @@ async function runExactSearch(
     .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
     .join(' + ');
   const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
+  // The COUNT query must get ONLY the parameters it references ($1-$3 + block
+  // at $4): Postgres rejects a bind carrying parameters the statement never
+  // uses ("could not determine data type of parameter $4"), which silently
+  // failed the whole search whenever the shared per-group params were passed.
+  const countParams = [userId, allRegex, allLike, blockedPhones];
   const [result, countResult] = await Promise.all([
     query<TagRow>(
       `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE},
@@ -116,8 +121,8 @@ async function runExactSearch(
       `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE}
        SELECT COUNT(DISTINCT phone) AS total
        FROM matched
-       WHERE phone != ALL($${blockParamIdx})`,
-      params,
+       WHERE phone != ALL($4)`,
+      countParams,
     ),
   ]);
   return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
