@@ -8,6 +8,7 @@ import { query } from './client';
 // instead of silent until a tester hits it.
 const CRITICAL_INDEXES: readonly string[] = [
   'idx_user_alias_trgm', // alias LIKE candidates (searchByTag / searchContactByName)
+  'idx_user_name_trgm', // registered-name LIKE candidates (same searches, "User" branch)
   'idx_user_tags_norm_trgm', // normalized fuzzy tag pass
   'idx_user_alias_contact', // the "mine" CTE owner filter
   'idx_user_tags_contact', // the "mine" CTE owner filter

@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildRawWordGroups, toWordStartPattern } from './transliterate';
-import { likePatterns } from './wordMatch';
+import { buildSearchTerms, buildRawWordGroups } from './transliterate';
+import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -29,7 +29,11 @@ interface TagRow {
 // they saved). Recall then matches AGGREGATED tags (from every contributor) on
 // these phones, so a contact surfaces by a crowd tag on their profile even if
 // the user never personally typed it — the fix for "search only saw my own tags".
-const MY_CONTACTS_CTE = `mine AS (
+// MATERIALIZED pins the plan: mine (a few thousand phones) is computed once and
+// every matched-branch joins FROM it via the phone indexes — the planner can't
+// flip to scanning the multi-million-row alias/tag tables first, which is what
+// pushed the name search past the statement timeout at prod scale.
+const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
      SELECT phone FROM "UserTags"  WHERE "contactId" = $1
      UNION
      SELECT phone FROM "UserAlias" WHERE "contactId" = $1
@@ -51,63 +55,27 @@ const AGG_JOINS = `FROM hits h
    LEFT JOIN "UserPhone" up ON up.phone = h.phone
    LEFT JOIN "User"      u  ON u.id     = up."userId"`;
 
-// Only the matching labels of the user's own contacts — every contributor's tag
-// AND alias, plus the registered name. Alias/name candidates come from an
-// index-backed trigram LIKE (idx_user_alias_trgm) then refine to word-start;
-// tags use the word-start regex over the mine-scoped tag rows. This replaced a
-// full labels-union seq-scan that measured ~3s on a large account and tipped
-// heavier queries past the statement timeout (→ empty results). $2 = all
-// word-start regexes, $3 = all `%term%` LIKE patterns.
-const MATCHED_CTE = `matched AS (
-     SELECT t.phone, LOWER(t.tag) AS label
-     FROM "UserTags" t
-     WHERE t.phone IN (SELECT phone FROM mine) AND LOWER(t.tag) ~ ANY($2)
-     UNION ALL
-     SELECT a.phone, LOWER(a.alias) AS label
-     FROM "UserAlias" a
-     WHERE a.phone IN (SELECT phone FROM mine)
-       AND LOWER(a.alias) LIKE ANY($3) AND LOWER(a.alias) ~ ANY($2)
-     UNION ALL
-     SELECT up2.phone, LOWER(u2.name) AS label
-     FROM "User" u2
-     JOIN "UserPhone" up2 ON up2."userId" = u2.id
-     WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
-       AND LOWER(u2.name) LIKE ANY($3) AND LOWER(u2.name) ~ ANY($2)
-   )`;
-
 /**
  * Match the user's own contacts by any label (tag / alias / registered name),
  * ranked by word_hits — the count of distinct query words matched — so a
  * multi-word query surfaces the intersection first (Bug 2) and an alias-only
- * contact still surfaces (Bug 1.3b). Index-backed, so no full labels seq-scan.
+ * contact still surfaces (Bug 1.3b). Every branch is driven FROM the
+ * materialized mine set (see buildExactMatchSql) so the plan stays index-backed
+ * at prod scale.
  */
 async function runExactSearch(
   userId: string,
   rawGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
-  const allRegex = groupRegex.flat();
-  const allLike = likePatterns(rawGroups.flat());
-  // $1 userId, $2 allRegex[], $3 allLike[], $4..$(3+G) per-group regex[], last = blocked
-  const groupParamStart = 4;
-  const blockParamIdx = groupParamStart + groupRegex.length;
-  const wordHits = groupRegex
-    .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
-    .join(' + ');
-  const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
-  // The COUNT query must get ONLY the parameters it references ($1-$3 + block
-  // at $4): Postgres rejects a bind carrying parameters the statement never
-  // uses ("could not determine data type of parameter $4"), which silently
-  // failed the whole search whenever the shared per-group params were passed.
-  const countParams = [userId, allRegex, allLike, blockedPhones];
+  const m = buildExactMatchSql(userId, rawGroups, blockedPhones);
   const [result, countResult] = await Promise.all([
     query<TagRow>(
-      `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE},
+      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
        hits AS (
-         SELECT phone, (${wordHits}) AS word_hits
+         SELECT phone, (${m.wordHits}) AS word_hits
          FROM matched
-         WHERE phone != ALL($${blockParamIdx})
+         WHERE phone != ALL($${m.blockIdx})
          GROUP BY phone
        )
        SELECT ${AGG_SELECT}
@@ -115,14 +83,14 @@ async function runExactSearch(
        GROUP BY h.phone
        ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC NULLS LAST
        LIMIT ${RESULT_LIMIT}`,
-      params,
+      m.params,
     ),
     query<{ total: string }>(
-      `WITH ${MY_CONTACTS_CTE}, ${MATCHED_CTE}
+      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte}
        SELECT COUNT(DISTINCT phone) AS total
        FROM matched
-       WHERE phone != ALL($4)`,
-      countParams,
+       WHERE phone != ALL($${m.blockIdx})`,
+      m.params,
     ),
   ]);
   return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };

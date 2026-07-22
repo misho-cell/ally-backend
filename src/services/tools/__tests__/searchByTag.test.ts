@@ -68,20 +68,15 @@ describe('searchByTag', () => {
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId, word-start regex + LIKE arrays, per-group regex, and blocked (Latin)', async () => {
+  it('passes userId, then one placeholder per regex/LIKE pattern, then blocked (Latin)', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Engineer');
 
-    // $1 userId, $2 all word-start regexes, $3 all %term% LIKE patterns,
-    // $4 per-group regex (one group here), last = blocked phones.
-    expect(mockQuery.mock.calls[0][1]).toEqual([
-      '42',
-      ['\\mengineer'],
-      ['%engineer%'],
-      ['\\mengineer'],
-      [],
-    ]);
+    // $1 userId, then each word-start regex, then each %term% LIKE pattern
+    // (individual placeholders — never ANY(array), so the planner can BitmapOr
+    // and the page/count queries share one gap-free param array), last blocked.
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', '%engineer%', []]);
   });
 
   it('passes Georgian term, transliteration and drift variants as regex + LIKE patterns', async () => {
@@ -90,12 +85,19 @@ describe('searchByTag', () => {
     await searchByTag('42', 'ინჟინერი');
 
     // ჟ → "zh" canonical, drift "zh" → "j".
-    const regex = ['\\mინჟინერი', '\\minzhineri', '\\minjineri'];
-    const like = ['%ინჟინერი%', '%inzhineri%', '%injineri%'];
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      '\\mინჟინერი',
+      '\\minzhineri',
+      '\\minjineri',
+      '%ინჟინერი%',
+      '%inzhineri%',
+      '%injineri%',
+      [],
+    ]);
   });
 
-  it('passes the COUNT query only the parameters it references (no unused per-group params)', async () => {
+  it('gives the COUNT query a gap-free param array where every entry is referenced', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'dachi axel');
@@ -104,12 +106,15 @@ describe('searchByTag', () => {
     const countSql = countCall?.[0] as string;
     const countParams = countCall?.[1] as unknown[];
     // Postgres rejects a bind carrying parameters the statement never uses
-    // ("could not determine data type of parameter $4") — the count query must
-    // carry exactly $1 userId, $2 regex[], $3 like[], $4 blocked.
-    expect(countParams).toHaveLength(4);
-    expect(countSql).toContain('ALL($4)');
+    // ("could not determine data type of parameter $4") — every placeholder
+    // from $1 to $N must appear in the SQL.
+    for (let i = 1; i <= (countParams?.length ?? 0); i++) {
+      expect(countSql).toContain(`$${i}`);
+    }
+    // Block filter is the last placeholder.
+    expect(countSql).toContain(`ALL($${countParams?.length})`);
     expect(countParams?.[0]).toBe('42');
-    expect(countParams?.[3]).toEqual([]);
+    expect(countParams?.[countParams.length - 1]).toEqual([]);
   });
 
   it('drops a sub-trigram token ("2") from the LIKE candidates but keeps it for ranking', async () => {
@@ -118,12 +123,13 @@ describe('searchByTag', () => {
     await searchByTag('42', 'Radiatori 2');
 
     const params = mockQuery.mock.calls[0][1] as unknown[];
-    // $2 all regexes (both words), $3 LIKE candidates (only the >=3-char word),
-    // $4/$5 per-group regex — "2" ranks via word_hits but never drives the scan.
-    expect(params[1]).toEqual(['\\mradiatori', '\\m2']);
-    expect(params[2]).toEqual(['%radiatori%']); // no '%2%' → no seq-scan
-    expect(params[3]).toEqual(['\\mradiatori']);
-    expect(params[4]).toEqual(['\\m2']);
+    // Regexes for both words present ("2" still ranks via word_hits), but no
+    // '%2%' LIKE pattern — a sub-trigram pattern can't use the GIN index and
+    // would drive a seq-scan.
+    expect(params).toContain('\\mradiatori');
+    expect(params).toContain('\\m2');
+    expect(params).toContain('%radiatori%');
+    expect(params).not.toContain('%2%');
   });
 
   it('reports the real total even when the page is capped', async () => {
@@ -181,17 +187,22 @@ describe('searchByTag', () => {
       (c) =>
         !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
     )?.[0] as string;
-    // Recall is scoped to the user's own contact phones (the "mine" set)...
+    // Recall is scoped to the user's own contact phones (the materialized
+    // "mine" set — every branch joins FROM it, so the plan can't flip to
+    // scanning the full alias/tag tables)...
+    expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('phone IN (SELECT phone FROM mine)');
-    // ...and matches tag AND alias, with the alias candidate coming from an
-    // index-backed trigram LIKE, so an alias-only contact (no tags) surfaces.
+    expect(mainSql).toContain('JOIN "UserTags" t ON t.phone = m.phone');
+    expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
+    // ...and matches tag AND alias, with per-pattern LIKE placeholders (never
+    // ANY(array)) so the trigram index applies; an alias-only contact surfaces.
     expect(mainSql).toContain('LOWER(t.tag) AS label');
     expect(mainSql).toContain('LOWER(a.alias) AS label');
-    expect(mainSql).toContain('LOWER(a.alias) LIKE ANY($3)');
-    expect(mainSql).toContain('LOWER(t.tag) ~ ANY($2)');
+    expect(mainSql).toMatch(/LOWER\(a\.alias\) LIKE \$\d+/);
+    expect(mainSql).toMatch(/LOWER\(t\.tag\) ~ \$\d+/);
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
+    expect(mainSql).not.toContain('ANY(');
   });
 
   it('ranks a two-word query by how many distinct words each contact matched (Bug 2)', async () => {
@@ -211,12 +222,10 @@ describe('searchByTag', () => {
     expect(mainSql).toContain('bool_or(');
     expect(mainSql).toContain(') AS word_hits');
     expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
-    // Both words' patterns are passed as separate per-group regex arrays
-    // ($4, $5) so word_hits counts the intersection, not a single OR term.
-    const hasInGroup = (needle: string): boolean =>
-      mainParams.some((p) => Array.isArray(p) && (p as string[]).includes(needle));
-    expect(hasInGroup('\\mdachi')).toBe(true);
-    expect(hasInGroup('\\maxel')).toBe(true);
+    // Both words' patterns are separate placeholders so word_hits counts the
+    // intersection, not a single OR term.
+    expect(mainParams).toContain('\\mdachi');
+    expect(mainParams).toContain('\\maxel');
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {

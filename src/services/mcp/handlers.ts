@@ -113,6 +113,16 @@ function dedupeByName(rows: SearchRow[]): SearchRow[] {
 
 function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToolPayload {
   const outcome = raw as SearchOutcome;
+  // A technical failure (timeout, SQL error) must never masquerade as "no
+  // results" — the model would tell the user the person doesn't exist. Surface
+  // it as an error so the model reports a temporary problem and retries.
+  if (typeof (outcome as { error?: unknown }).error === 'string') {
+    return {
+      error:
+        'Search failed with a technical error (not an empty result). Tell the user honestly ' +
+        'that the search glitched and retry once; do NOT conclude the person is missing.',
+    };
+  }
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
     return { found: false, note: emptyNote };
   }

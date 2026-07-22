@@ -61,15 +61,13 @@ describe('searchContactByName', () => {
     expect(results[0].employer).toBe('TBC Bank');
   });
 
-  it('passes regex + LIKE arrays and per-group regex for a Georgian term', async () => {
+  it('passes one placeholder per regex/LIKE pattern for a Georgian term', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'გიო');
 
-    // $1 userId, $2 all regexes, $3 all %term% LIKE, $4 per-group regex, last = blocked.
-    const regex = ['\\mგიო', '\\mgio'];
-    const like = ['%გიო%', '%gio%'];
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', regex, like, regex, []]);
+    // $1 userId, then each regex, then each %term% LIKE, last = blocked.
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', '%გიო%', '%gio%', []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -77,13 +75,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual([
-      '42',
-      ['\\mgeorge'],
-      ['%george%'],
-      ['\\mgeorge'],
-      [],
-    ]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', '%george%', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {
@@ -134,16 +126,19 @@ describe('searchContactByName', () => {
         !(c[0] as string).includes('COUNT(DISTINCT') &&
         !(c[0] as string).includes('word_similarity('),
     )?.[0] as string;
-    // Recall is scoped to the user's own contact phones (the "mine" set)...
+    // Recall is scoped to the user's own contact phones (the materialized
+    // "mine" set — every branch joins FROM it)...
+    expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
-    // ...and matches alias, registered name, AND tag, with alias/name candidates
-    // from an index-backed trigram LIKE, so a surname or nickname another
-    // contributor saved — even a tag, not the display name — surfaces the contact.
+    expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
+    // ...and matches alias, registered name, AND tag, with per-pattern LIKE
+    // placeholders (never ANY(array)) so the trigram indexes apply — a surname
+    // or nickname another contributor saved, even as a tag, surfaces the contact.
     expect(mainSql).toContain('LOWER(a.alias) AS label');
     expect(mainSql).toContain('LOWER(t.tag) AS label');
-    expect(mainSql).toContain('LOWER(a.alias) LIKE ANY($3)');
-    expect(mainSql).toContain('LOWER(t.tag) ~ ANY($2)');
+    expect(mainSql).toMatch(/LOWER\(a\.alias\) LIKE \$\d+/);
+    expect(mainSql).toMatch(/LOWER\(t\.tag\) ~ \$\d+/);
+    expect(mainSql).not.toContain('ANY(');
   });
 
   it('ranks a two-word name by how many distinct words each contact matched (Bug 2)', async () => {
@@ -161,13 +156,11 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain('bool_or(');
     expect(mainSql).toContain(') AS word_hits');
     expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
-    const hasInGroup = (needle: string): boolean =>
-      mainParams.some((p) => Array.isArray(p) && (p as string[]).includes(needle));
-    expect(hasInGroup('\\mdachi')).toBe(true);
-    expect(hasInGroup('\\maxel')).toBe(true);
+    expect(mainParams).toContain('\\mdachi');
+    expect(mainParams).toContain('\\maxel');
   });
 
-  it('passes the COUNT query only the parameters it references (no unused per-group params)', async () => {
+  it('gives the COUNT query a gap-free param array where every entry is referenced', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'Dachi Axel');
@@ -176,12 +169,14 @@ describe('searchContactByName', () => {
     const countSql = countCall?.[0] as string;
     const countParams = countCall?.[1] as unknown[];
     // Postgres rejects a bind carrying parameters the statement never uses
-    // ("could not determine data type of parameter $4") — the count query must
-    // carry exactly $1 userId, $2 regex[], $3 like[], $4 blocked.
-    expect(countParams).toHaveLength(4);
-    expect(countSql).toContain('ALL($4)');
+    // ("could not determine data type of parameter $4") — every placeholder
+    // from $1 to $N must appear in the SQL.
+    for (let i = 1; i <= (countParams?.length ?? 0); i++) {
+      expect(countSql).toContain(`$${i}`);
+    }
+    expect(countSql).toContain(`ALL($${countParams?.length})`);
     expect(countParams?.[0]).toBe('42');
-    expect(countParams?.[3]).toEqual([]);
+    expect(countParams?.[countParams.length - 1]).toEqual([]);
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {

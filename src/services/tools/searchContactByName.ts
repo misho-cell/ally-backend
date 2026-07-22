@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildRawWordGroups, toWordStartPattern } from './transliterate';
-import { likePatterns } from './wordMatch';
+import { buildSearchTerms, buildRawWordGroups } from './transliterate';
+import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -61,50 +61,20 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // (Bug 1), and a person is found by a nickname/group tag as readily as by
     // their display name. word_hits (distinct query words matched across labels)
     // ranks the one matching every word first ("Dachi Axel" → the person with the
-    // `dachi` tag AND `axel`, not the ~150 who match one — Bug 2). Alias/name
-    // candidates use an index-backed trigram LIKE (idx_user_alias_trgm) then
-    // refine to word-start — no full labels seq-scan (that measured ~3s and
-    // tipped heavier queries past the statement timeout → empty results).
-    const groupRegex = rawGroups.map((grp) => grp.map(toWordStartPattern));
-    const allRegex = groupRegex.flat();
-    const allLike = likePatterns(rawGroups.flat());
-    // $1 userId, $2 allRegex[], $3 allLike[], $4..$(3+G) per-group regex[], last = blocked
-    const groupParamStart = 4;
-    const blockParamIdx = groupParamStart + groupRegex.length;
-    const wordHits = groupRegex
-      .map((_, i) => `bool_or(label ~ ANY($${groupParamStart + i}))::int`)
-      .join(' + ');
-    const params = [userId, allRegex, allLike, ...groupRegex, blockedPhones];
-    // The COUNT query gets ONLY the parameters it references ($1-$3 + block at
-    // $4): Postgres rejects a bind carrying unused parameters ("could not
-    // determine data type of parameter $4"), which failed the whole search.
-    const countParams = [userId, allRegex, allLike, blockedPhones];
-    const mineCte = `mine AS (
+    // `dachi` tag AND `axel`, not the ~150 who match one — Bug 2). Every branch
+    // is driven FROM the materialized mine set (see buildExactMatchSql) so the
+    // plan stays index-backed at prod scale — the previous shape tipped the
+    // statement timeout on the founder's account.
+    const m = buildExactMatchSql(userId, rawGroups, blockedPhones);
+    const mineCte = `mine AS MATERIALIZED (
        SELECT phone FROM "UserTags"  WHERE "contactId" = $1
        UNION
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
-    // Only the matching labels of the mine-phones (index-backed candidates).
-    const matchedCte = `matched AS (
-       SELECT a.phone, LOWER(a.alias) AS label
-       FROM "UserAlias" a
-       WHERE a.phone IN (SELECT phone FROM mine)
-         AND LOWER(a.alias) LIKE ANY($3) AND LOWER(a.alias) ~ ANY($2)
-       UNION ALL
-       SELECT up2.phone, LOWER(u2.name) AS label
-       FROM "User" u2
-       JOIN "UserPhone" up2 ON up2."userId" = u2.id
-       WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
-         AND LOWER(u2.name) LIKE ANY($3) AND LOWER(u2.name) ~ ANY($2)
-       UNION ALL
-       SELECT t.phone, LOWER(t.tag) AS label
-       FROM "UserTags" t
-       WHERE t.phone IN (SELECT phone FROM mine) AND LOWER(t.tag) ~ ANY($2)
-     )`;
     const hitsCte = `hits AS (
-       SELECT phone, (${wordHits}) AS word_hits
+       SELECT phone, (${m.wordHits}) AS word_hits
        FROM matched
-       WHERE phone != ALL($${blockParamIdx})
+       WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
      )`;
     const aggSelect = `SELECT h.phone,
@@ -131,18 +101,18 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         jobPosition: string | null;
         city: string | null;
       }>(
-        `WITH ${mineCte}, ${matchedCte}, ${hitsCte}
+        `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
          ${aggSelect}
          ORDER BY MAX(h.word_hits) DESC, MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
-        params,
+        m.params,
       ),
       query<{ total: string }>(
-        `WITH ${mineCte}, ${matchedCte}
+        `WITH ${mineCte}, ${m.matchedCte}
          SELECT COUNT(DISTINCT phone) AS total
          FROM matched
-         WHERE phone != ALL($4)`,
-        countParams,
+         WHERE phone != ALL($${m.blockIdx})`,
+        m.params,
       ),
     ]);
 
