@@ -118,9 +118,15 @@ export async function registerUser(
   name: string,
   referralPhone?: string,
 ): Promise<{ token: string }> {
-  const existing = await query<{ id: number }>('SELECT id FROM "UserPhone" WHERE phone = $1', [
-    phone,
-  ]);
+  // Format-independent lookup: "+995 599…", "995599…" and the stored form must
+  // all hit the same row. An exact string compare here created a DUPLICATE user
+  // on re-login when the client sent a different format — the old account (and
+  // its chats/network) silently "disappeared" for the user.
+  const existing = await query<{ id: number }>(
+    `SELECT id FROM "UserPhone"
+     WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
+    [phone],
+  );
 
   if (existing.rowCount && existing.rowCount > 0) {
     throw new Error('ნომერი უკვე რეგისტრირებულია');
@@ -162,8 +168,11 @@ export async function registerUser(
 }
 
 export async function completeLogin(phone: string): Promise<{ token: string; isNewUser: boolean }> {
+  // Same format-independent compare as registration — a login with a different
+  // phone format must find the EXISTING user, never mint a new one.
   const result = await query<{ id: number }>(
-    'SELECT "userId" AS id FROM "UserPhone" WHERE phone = $1',
+    `SELECT "userId" AS id FROM "UserPhone"
+     WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
     [phone],
   );
 

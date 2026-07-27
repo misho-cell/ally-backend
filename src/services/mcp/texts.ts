@@ -148,7 +148,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'and become public when 2+ people independently give the same fact. Everything else is ' +
       'free-text, PRIVATE forever, and ACCUMULATES (save as many as you like, none overwrites ' +
       'another); for a rich profile reuse these keys: headline, seniority, skill, expertise, ' +
-      'education, language, link, country, need, interest, email, note. Use note for soft intel ' +
+      'education, language, link, country, foreign_reach, need, interest, email, note. Use ' +
+      'foreign_reach for a country/market the contact can OPEN (ties, not residence — "does ' +
+      'business in Kazakhstan"); it also feeds the country search. Use note for soft intel ' +
       'that isn\'t a job title ("prefers a warm intro", "don\'t talk price first"). Everything is ' +
       "findable through search_by_insight; free-form keys never appear as the person's job " +
       'title. Confirm in one short line after saving.',
@@ -297,7 +299,8 @@ export const PARAM_TEXTS = {
     'The key for what you are saving. Reuse a consistent key so search matches later — do not ' +
     'invent synonyms. CORE (single-value, can become public if others confirm): occupation, ' +
     'employer, city, industry. FREE-FORM (private, accumulates) — reuse these: headline, ' +
-    'seniority, skill, expertise, education, language, link, country, need, interest, email, ' +
+    'seniority, skill, expertise, education, language, link, country, foreign_reach, need, ' +
+    'interest, email, ' +
     'note. Use note for a general observation that is not a job title.',
   factValue:
     "For a core fact, a short value in the user's words ('lawyer', 'TBC', 'Tbilisi'). For any " +

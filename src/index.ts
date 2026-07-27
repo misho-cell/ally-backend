@@ -22,11 +22,10 @@ import { ApiResponse } from './types';
 
 dotenv.config();
 
-const ALLOWED_ORIGINS = [
-  'https://allyapp.one',
-  'https://www.allyapp.one',
-  'https://ally-frontend-tau.vercel.app',
-];
+// The retired Vercel origin was still alive and double-delivering (duplicate
+// push notifications) — the old frontend is cut off here; allyapp.one is the
+// only client.
+const ALLOWED_ORIGINS = ['https://allyapp.one', 'https://www.allyapp.one'];
 
 // claude.ai (and other clients) derive the custom-connector icon from the
 // API domain's favicon — serve the app's own logo instead of a 404.

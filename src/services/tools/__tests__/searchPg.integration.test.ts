@@ -36,7 +36,8 @@ const SEED_SQL = `
   INSERT INTO "UserAlias" (phone, "contactId", alias) VALUES
     ('+995599000001', 501, 'Ilia Babuxadia'),
     ('+995597777897', 501, 'Radiatori 2'),
-    ('+995592922551', 501, 'Davit Tsitskishvili. Axel');
+    ('+995592922551', 501, 'Davit Tsitskishvili. Axel'),
+    ('+995599000002', 501, 'გიორგი შენგელია');
   INSERT INTO "UserTags" (phone, "contactId", tag) VALUES
     ('+995599000001', 777, 'babukhadia'),
     ('+995592922551', 501, 'dachi'),
@@ -88,6 +89,12 @@ maybeDescribe('search against real Postgres (prod repro cases)', () => {
       expect(r.error).toBeUndefined();
       expect(r.found).toBe(true);
     }
+  });
+
+  it('name search finds a Georgian-script alias by a Georgian query (შენგელია)', async () => {
+    const r = (await searchContactByName('501', 'შენგელია')) as SearchResult;
+    expect(r.error).toBeUndefined();
+    expect(names(r)).toContain('გიორგი შენგელია');
   });
 
   it("does not leak another user's contacts (scoping)", async () => {

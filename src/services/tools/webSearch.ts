@@ -14,7 +14,24 @@ const SNIPPET_CHARS = 600;
 const RESULT_GUIDANCE =
   'These are raw search results. Derive facts only from the snippets below and ' +
   'preserve exact job titles verbatim — never shorten a qualified title (e.g. ' +
-  '"Deputy CEO in charge of X") to a broader one (e.g. "CEO").';
+  '"Deputy CEO in charge of X") to a broader one (e.g. "CEO"). For a current ' +
+  "officeholder, prefer a result marked official:true (the institution's own " +
+  'site) and READ that page with fetch_page before naming anyone — a news ' +
+  'snippet may be stale or name a former/acting holder.';
+
+// The institution's own domain outranks any news article on "who currently
+// holds this role". Georgian public bodies live under gov.ge; parliament and
+// a few others have their own roots.
+const OFFICIAL_DOMAIN_RE =
+  /(^|\.)gov\.ge$|(^|\.)parliament\.ge$|(^|\.)court\.ge$|(^|\.)nbg\.gov\.ge$|(^|\.)\w+\.gov$/i;
+
+function isOfficialDomain(url: string): boolean {
+  try {
+    return OFFICIAL_DOMAIN_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
 
 // A fetched page's readable text lets the model verify a current officeholder
 // off an institution's own roster instead of a stale third-party directory —
@@ -79,6 +96,11 @@ export async function webSearch(query: string): Promise<object> {
         title: r.title,
         url: r.url,
         snippet: r.content.slice(0, SNIPPET_CHARS),
+        // Institutional/government domains are the authoritative source for
+        // current officeholders — news can be stale. When official:true is
+        // present, prefer that result and read the page itself (fetch_page)
+        // before naming who holds a role.
+        ...(isOfficialDomain(r.url) && { official: true }),
       })),
     };
   } catch (err) {
