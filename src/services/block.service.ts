@@ -67,7 +67,10 @@ export async function getBlockedPhones(userId: string): Promise<string[]> {
 
 /**
  * Every phone that must be hidden from this user's search results:
- * blocked phones (both directions) plus contacts the user marked as deceased.
+ * blocked phones (both directions), contacts the user marked as deceased, and
+ * the user's OWN phone numbers — a real prospect asked for a bridge into a
+ * company and was recommended HERSELF (her own number saved in her phonebook).
+ * The user must never appear in their own results, on any tool.
  */
 export async function getExcludedPhones(userId: string): Promise<string[]> {
   const result = await query<{ phone: string }>(
@@ -87,6 +90,12 @@ export async function getExcludedPhones(userId: string): Promise<string[]> {
 
      SELECT phone
      FROM "ContactDeceased"
+     WHERE "userId" = $1
+
+     UNION
+
+     SELECT phone
+     FROM "UserPhone"
      WHERE "userId" = $1`,
     [userId],
   );

@@ -13,6 +13,27 @@ const MAX_FRIEND_PHONES = 3000;
 // rank by that and cap at a real limit, so the right connection isn't lost in an
 // arbitrary unordered slice (was an unranked LIMIT 20).
 const SECOND_DEGREE_RESULT_LIMIT = 30;
+const WEAK_TIE_SIGNAL_CAP = 3;
+
+/**
+ * If the second-degree query matches contacts the user ALREADY holds directly,
+ * record a weak-tie signal on those edges (they asked for a path instead of
+ * calling). Consumed as a down-rank when this user appears as a via-bridge in
+ * other users' results. Best-effort — never blocks or fails the search.
+ */
+async function recordWeakTieSignals(userId: string, likeTerms: string[]): Promise<void> {
+  if (likeTerms.length === 0) return;
+  const likeOr = likeTerms.map((_, i) => `LOWER(alias) LIKE $${i + 2}`).join(' OR ');
+  await query(
+    `INSERT INTO weak_tie_signals (user_id, contact_phone)
+     SELECT DISTINCT $1::int, phone
+     FROM "UserAlias"
+     WHERE "contactId" = $1 AND (${likeOr})
+     LIMIT ${WEAK_TIE_SIGNAL_CAP}
+     ON CONFLICT (user_id, contact_phone) DO NOTHING`,
+    [userId, ...likeTerms],
+  );
+}
 // Same threshold as the direct tag search; matching runs only over friends'
 // tags (already narrowed by the friend_users join), so no dedicated index is
 // needed for it to stay fast.
@@ -31,40 +52,62 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // Use indexed lookup: try composite key first, then fall back to individual phones
     // for legacy nodes that haven't been migrated yet (before neo4j_backfill runs).
     const userPhones = userKey.split('-');
-    const session = getSession();
+    // One transient blip must not hollow out the whole answer — retry once with
+    // a fresh session before declaring the graph down.
     let friendKeys: string[] = [];
-    try {
-      const neo4jResult = await session.run(
-        `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
-         RETURN DISTINCT friend.phoneKey AS phoneKey
-         LIMIT ${MAX_FRIEND_PHONES}`,
-        { userKey },
-        { timeout: 8000 },
-      );
-      friendKeys = neo4jResult.records
-        .map((r) => r.get('phoneKey') as string | null)
-        .filter((p): p is string => p !== null);
-
-      // Fallback: if composite key node has no contacts, try each individual phone key.
-      // Old nodes use a single phone as the key instead of the composite format.
-      if (friendKeys.length === 0 && userPhones.length > 1) {
-        const fallback = await session.run(
-          `UNWIND $userPhones AS phone
-           MATCH (me:AllyNode {phoneKey: phone})-[:CONTACT]->(friend:AllyNode)
+    let graphDown = false;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const session = getSession();
+      try {
+        const neo4jResult = await session.run(
+          `MATCH (me:AllyNode {phoneKey: $userKey})-[:CONTACT]->(friend:AllyNode)
            RETURN DISTINCT friend.phoneKey AS phoneKey
            LIMIT ${MAX_FRIEND_PHONES}`,
-          { userPhones },
+          { userKey },
           { timeout: 8000 },
         );
-        friendKeys = fallback.records
+        friendKeys = neo4jResult.records
           .map((r) => r.get('phoneKey') as string | null)
           .filter((p): p is string => p !== null);
+
+        // Fallback: if composite key node has no contacts, try each individual phone key.
+        // Old nodes use a single phone as the key instead of the composite format.
+        if (friendKeys.length === 0 && userPhones.length > 1) {
+          const fallback = await session.run(
+            `UNWIND $userPhones AS phone
+             MATCH (me:AllyNode {phoneKey: phone})-[:CONTACT]->(friend:AllyNode)
+             RETURN DISTINCT friend.phoneKey AS phoneKey
+             LIMIT ${MAX_FRIEND_PHONES}`,
+            { userPhones },
+            { timeout: 8000 },
+          );
+          friendKeys = fallback.records
+            .map((r) => r.get('phoneKey') as string | null)
+            .filter((p): p is string => p !== null);
+        }
+        graphDown = false;
+        break;
+      } catch (neo4jErr) {
+        console.error(
+          `searchSecondDegree neo4j error (attempt ${attempt + 1}/2):`,
+          (neo4jErr as Error).message,
+        );
+        graphDown = true;
+      } finally {
+        await session.close();
       }
-    } catch (neo4jErr) {
-      console.error('searchSecondDegree neo4j error:', (neo4jErr as Error).message);
-      return { found: false, reason: 'neo4j_unavailable' };
-    } finally {
-      await session.close();
+    }
+    if (graphDown) {
+      // Loud, honest degrade: the model must tell the user the answer is
+      // partial, not silently thin it out as if the network were empty.
+      return {
+        found: false,
+        reason: 'neo4j_unavailable',
+        note:
+          'The connection graph is TEMPORARILY unavailable — this is a technical outage, not an ' +
+          'empty network. Tell the user plainly that second-degree paths are missing from this ' +
+          'answer right now and offer to retry in a bit; do NOT conclude no path exists.',
+      };
     }
 
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
@@ -86,6 +129,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const terms = buildSearchTerms(tagQuery);
     // Aliases are full names — need substring LIKE
     const likeTerms = terms.map((t) => '%' + t + '%');
+
+    // Weak-tie signal: asking for a PATH to a contact you already hold directly
+    // means that edge is weak. Record it (fire-and-forget) so this user is
+    // down-ranked as a warm bridge to that person for OTHER users.
+    void recordWeakTieSignals(userId, likeTerms).catch(() => undefined);
 
     // Tag match is index-backed and spelling-tolerant: the % trigram operator
     // (served by idx_user_tags_norm_trgm on the normalized token) generates
@@ -151,10 +199,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
        LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
+       LEFT JOIN weak_tie_signals w ON w.contact_phone = m.phone AND w.user_id = fu."userId"
        WHERE ua_own.phone IS NULL
          AND m.phone != ALL($${blockParamIdx})
        GROUP BY m.phone
-       ORDER BY COUNT(DISTINCT fu."userId") DESC, MAX(COALESCE(u_t.name, ua_t.alias))
+       ORDER BY (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
+                MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [userId, friendPhones, ...terms, ...likeTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,

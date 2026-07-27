@@ -45,3 +45,34 @@ describe('containsPhoneLike', () => {
     expect(containsPhoneLike({ a: 'meeting on 2026-07-03', n: 42 })).toBe(false);
   });
 });
+
+describe('own-number allow spans', () => {
+  const { scrubEmailsDeep, stripAllowedSpans, ALLOW_OPEN, ALLOW_CLOSE } =
+    jest.requireActual<typeof import('../../privacyScrub')>('../../privacyScrub');
+
+  it('scrubText preserves an allowed span (markers intact) but scrubs numbers outside it', () => {
+    const text = `own: ${ALLOW_OPEN}+995599123456${ALLOW_CLOSE}, other: +995577000000`;
+    const scrubbed = scrubText(text);
+    expect(scrubbed).toContain(`${ALLOW_OPEN}+995599123456${ALLOW_CLOSE}`);
+    expect(scrubbed).toContain('[hidden]');
+    expect(scrubbed).not.toContain('+995577000000');
+  });
+
+  it('is idempotent across repeated scrub passes, then reveals at the boundary', () => {
+    const once = scrubText(`${ALLOW_OPEN}+995599123456${ALLOW_CLOSE}`);
+    const twice = scrubText(once);
+    expect(twice).toBe(once);
+    expect(stripAllowedSpans(twice)).toBe('+995599123456');
+  });
+
+  it('a number the model wraps WITHOUT the backend marker still gets scrubbed', () => {
+    expect(scrubText('call +995599123456')).toBe('call [hidden]');
+  });
+
+  it('scrubEmailsDeep masks saved emails but leaves other text intact', () => {
+    const out = scrubEmailsDeep({
+      facts: [{ value: 'email: g.kuprashvili@gt.ge, office Tbilisi' }],
+    }) as { facts: Array<{ value: string }> };
+    expect(out.facts[0].value).toBe('email: [email hidden], office Tbilisi');
+  });
+});

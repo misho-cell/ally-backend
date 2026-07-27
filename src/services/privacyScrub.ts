@@ -18,8 +18,29 @@ function redactCandidate(match: string): string {
   return digitCount >= MIN_PHONE_DIGITS ? REDACTED : match;
 }
 
+// Explicit-consent passthrough: ONLY the get_own_contact_number tool wraps a
+// number in these markers (the user's own direct contact, on their explicit
+// request). scrubText carries the span through UNTOUCHED (markers included, so
+// repeated scrub passes stay idempotent); the display boundaries call
+// stripAllowedSpans() to reveal the number at the last moment. Any number
+// OUTSIDE a marker pair is scrubbed exactly as before.
+export const ALLOW_OPEN = '⟦own⟧';
+export const ALLOW_CLOSE = '⟦/own⟧';
+const ALLOW_SPAN_RE = /⟦own⟧[\s\S]*?⟦\/own⟧/g;
+
 export function scrubText(text: string): string {
-  return text.replace(new RegExp(PHONE_LIKE_PATTERN, 'g'), redactCandidate);
+  return text
+    .split(ALLOW_SPAN_RE)
+    .map((part) => part.replace(new RegExp(PHONE_LIKE_PATTERN, 'g'), redactCandidate))
+    .reduce((acc, part, i) => {
+      const spans = text.match(ALLOW_SPAN_RE) ?? [];
+      return acc + (i > 0 ? spans[i - 1] : '') + part;
+    }, '');
+}
+
+/** Reveal allowed spans at a display boundary: drop the markers, keep the content. */
+export function stripAllowedSpans(text: string): string {
+  return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');
 }
 
 /**
@@ -35,6 +56,32 @@ export function scrubDeep(value: unknown): unknown {
     for (const [key, entry] of Object.entries(value)) {
       if (PHONE_KEY_RE.test(key)) continue;
       out[key] = scrubDeep(entry);
+    }
+    return out;
+  }
+  return value;
+}
+
+// Private saved emails are masked like phone numbers — but ONLY on contact-data
+// reads (profiles, saved facts, insights), never globally: a PUBLIC business
+// email arriving from the model's own web search is legitimate to show. Callers
+// therefore apply this at the contact-payload source, not at the SSE boundary.
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const REDACTED_EMAIL = '[email hidden]';
+
+export function scrubEmailsText(text: string): string {
+  return text.replace(EMAIL_RE, REDACTED_EMAIL);
+}
+
+/** Recursively masks email addresses in a JSON-serializable value. */
+export function scrubEmailsDeep(value: unknown): unknown {
+  if (typeof value === 'string') return scrubEmailsText(value);
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(scrubEmailsDeep);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      out[key] = scrubEmailsDeep(entry);
     }
     return out;
   }

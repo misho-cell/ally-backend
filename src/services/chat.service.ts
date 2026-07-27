@@ -51,7 +51,7 @@ import {
   emitAnswerDelta,
   emitAnswerReset,
 } from './sse.service';
-import { scrubText } from './privacyScrub';
+import { scrubText, scrubEmailsDeep, ALLOW_OPEN, ALLOW_CLOSE } from './privacyScrub';
 import { createSafeTextStreamer } from './answerStream';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
@@ -409,6 +409,27 @@ const LIST_BLOCKED_CONTACTS_TOOL: AnthropicTool = {
     type: 'object',
     properties: {},
     required: [],
+  },
+};
+
+const GET_OWN_CONTACT_NUMBER_TOOL: AnthropicTool = {
+  name: 'get_own_contact_number',
+  description:
+    "Returns the phone number of one of the user's OWN direct contacts — call ONLY when the " +
+    'user EXPLICITLY asks for a saved contact\'s number ("რა ნომერი აქვს გიოს?"). It is their ' +
+    'own phonebook data, so it may be shown. The result wraps the number in special markers — ' +
+    'copy the wrapped value into your reply EXACTLY as returned, markers included; the app ' +
+    'reveals it to the user. Never use this for network (non-direct) contacts — their numbers ' +
+    'are never shown; offer request_introduction instead.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: {
+        type: 'string',
+        description: "The contact's phone id from a search result (the user's direct contact).",
+      },
+    },
+    required: ['phone'],
   },
 };
 
@@ -935,6 +956,42 @@ async function deleteMessage(rowId: number): Promise<void> {
   await query('DELETE FROM conversations WHERE id = $1', [rowId]);
 }
 
+/**
+ * The user's OWN direct contact's number, on explicit request only. Guards:
+ * the phone must be in THEIR phonebook (UserAlias under their contactId) and
+ * not blocked/deceased/self. The number is wrapped in allow-span markers that
+ * only this tool emits — the scrubber carries the span through and the display
+ * boundary reveals it, so "Name — [hidden]" can never render for own contacts.
+ */
+async function getOwnContactNumber(userId: string, phoneRaw: string): Promise<object> {
+  const phone = (phoneRaw ?? '').trim();
+  if (!phone) return { error: 'Pass the contact phone id from a search result.' };
+  const [ownRow, excluded] = await Promise.all([
+    query<{ alias: string }>(
+      'SELECT alias FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2 LIMIT 1',
+      [userId, phone],
+    ),
+    getExcludedPhoneSet(userId),
+  ]);
+  if (excluded.has(normalizePhone(phone))) {
+    return { error: 'This contact is unavailable.' };
+  }
+  if (ownRow.rows.length === 0) {
+    return {
+      error:
+        "Not the user's own direct contact — network numbers are never shown. " +
+        'Offer request_introduction instead.',
+    };
+  }
+  return {
+    name: ownRow.rows[0].alias,
+    number: `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`,
+    instruction:
+      'Copy the number value into your reply EXACTLY as given, including the ⟦own⟧ markers — ' +
+      'the app reveals it to the user.',
+  };
+}
+
 function buildProfileSection(profile: Record<string, unknown>): string {
   const keys = Object.keys(profile);
   if (keys.length === 0) return '';
@@ -985,7 +1042,7 @@ function buildPendingRequestsSection(requests: PendingRequest[]): string {
     .map((r) => {
       const who = r.requester_name ?? 'Ally-ს მომხმარებელი';
       const msg = r.message ? ` შეტყობინება: "${r.message}"` : '';
-      return `- მოთხოვნა #${r.id}: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} (respond_to_introduction-ისთვის request_id=${r.id})`;
+      return `- მოთხოვნა: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
     .join('\n');
   return `\n\n## გაუხსნელი გაცნობის მოთხოვნები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს ახსენე]\n${lines}`;
@@ -1016,7 +1073,7 @@ function buildTasksSection(tasks: Task[]): string {
   const lines = tasks
     .map((t) => {
       const perm = t.permission_granted ? '' : ' (ნებართვა ჯერ არ არის)';
-      return `- #${t.id} [${t.status}] ${t.title}${perm} (update_task/grant_task_permission-ისთვის task_id=${t.id})`;
+      return `- [${t.status}] ${t.title}${perm} [შიდა: task_id=${t.id} — მხოლოდ update_task/grant_task_permission-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
     .join('\n');
   return `\n\n## მიმდინარე მიზნები\nსესიის დასაწყისში გაიხსენე რაზე ვმუშაობდით:\n${lines}`;
@@ -1230,7 +1287,9 @@ async function executeToolCall(
         input['value'] as string,
       );
     case 'get_contact_facts':
-      return getVisibleFacts(userId, input['phone'] as string);
+      // Saved contact data masks private emails (a public web email the model
+      // finds itself is fine — this guard is only on stored-contact reads).
+      return scrubEmailsDeep(await getVisibleFacts(userId, input['phone'] as string)) as object;
     case 'set_user_state':
       if (input['state'] === 'distress') {
         await setUserDistress(userId);
@@ -1249,12 +1308,16 @@ async function executeToolCall(
       return { ok: true };
     case 'list_blocked_contacts':
       return { blocked: await getBlockedByUser(userId) };
+    case 'get_own_contact_number':
+      return getOwnContactNumber(userId, input['phone'] as string);
     case 'get_contact_full_profile':
-      return getContactFullProfile(
-        userId,
-        input['phone'] as string,
-        input['neo4j_contact_id'] as string | undefined,
-      );
+      return scrubEmailsDeep(
+        await getContactFullProfile(
+          userId,
+          input['phone'] as string,
+          input['neo4j_contact_id'] as string | undefined,
+        ),
+      ) as object;
     case 'present_choices':
       return { presented: true };
     case 'create_task': {
@@ -1836,6 +1899,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     BLOCK_CONTACT_TOOL,
     UNBLOCK_CONTACT_TOOL,
     LIST_BLOCKED_CONTACTS_TOOL,
+    GET_OWN_CONTACT_NUMBER_TOOL,
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,

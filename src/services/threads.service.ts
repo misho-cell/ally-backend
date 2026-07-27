@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { stripAllowedSpans } from './privacyScrub';
 
 export interface Thread {
   id: number;
@@ -120,7 +121,9 @@ export async function getThreadMessages(threadId: number): Promise<ThreadMessage
      ORDER BY created_at ASC`,
     [threadId],
   );
-  return result.rows;
+  // Reveal own-number passthrough spans at this display boundary (stored text
+  // keeps the markers so repeated scrub passes stay idempotent).
+  return result.rows.map((row) => ({ ...row, content: stripAllowedSpans(row.content) }));
 }
 
 export async function saveThreadMessage(

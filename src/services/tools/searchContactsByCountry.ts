@@ -353,6 +353,56 @@ function prefixSharedWith(prefix: string, asked: string): string[] {
   return [...new Set(names)];
 }
 
+// Every name (Latin + Georgian) the prefix map holds for this calling code,
+// plus whatever the caller typed — the LIKE terms for the reach scan.
+function countryNameTerms(prefix: string, asked: string): string[] {
+  const names = Object.entries(COUNTRY_PREFIX_MAP)
+    .filter(([, p]) => p === prefix)
+    .map(([name]) => name);
+  return [...new Set([asked.toLowerCase().trim(), ...names])].filter((n) => n.length >= 3);
+}
+
+/**
+ * People whose SAVED FACTS tie them to the country — foreign_reach, country,
+ * affiliation, notes ("does business in Kazakhstan") — regardless of their own
+ * phone prefix. A +995 Georgian with Kazakh ties is reach the prefix scan can
+ * never see; this is the other half of "who do I know in X".
+ */
+async function searchReachContacts(
+  userId: string,
+  prefix: string,
+  country: string,
+  blockedPhones: string[],
+): Promise<Array<{ name: string | null; reach_fact: string }>> {
+  const terms = countryNameTerms(prefix, country).slice(0, 10);
+  if (terms.length === 0) return [];
+  // One placeholder per pattern (never ANY(array) — planner + gap-free binds).
+  const startIdx = 3;
+  const likeOr = terms
+    .map((_, i) => `LOWER(COALESCE(cf.canonical_value, cf.value)) LIKE $${startIdx + i}`)
+    .join(' OR ');
+  const blockIdx = startIdx + terms.length;
+  try {
+    const result = await query<{ name: string | null; reach_fact: string }>(
+      `SELECT COALESCE(MAX(ua.alias), MAX(cf.neo4j_contact_id)) AS name,
+              MAX(cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value)) AS reach_fact
+       FROM contact_facts cf
+       LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
+       WHERE cf.submitted_by_user_id = $1
+         AND (${likeOr})
+         AND cf.neo4j_contact_id != ALL($${blockIdx})
+       GROUP BY cf.neo4j_contact_id
+       LIMIT 20`,
+      [userId, userId, ...terms.map((t) => `%${t}%`), blockedPhones],
+      QUERY_TIMEOUT_MS,
+    );
+    return result.rows.map((r) => ({ name: r.name ?? null, reach_fact: r.reach_fact }));
+  } catch (err) {
+    console.error('searchContactsByCountry reach query failed:', (err as Error).message);
+    return [];
+  }
+}
+
 export async function searchContactsByCountry(userId: string, country: string): Promise<object> {
   const prefix = resolvePrefix(country);
   if (!prefix) return { found: false, reason: 'unknown_country', country };
@@ -361,25 +411,29 @@ export async function searchContactsByCountry(userId: string, country: string): 
   // Blocked contacts are invisible on every read path — this tool included.
   const blockedPhones = await getExcludedPhones(userId);
 
-  const directResult = await query<{ name: string | null }>(
-    `SELECT DISTINCT ON (ua.phone) ua.alias AS name
-     FROM "UserAlias" ua
-     WHERE ua."contactId" = $1 AND ua.phone LIKE $2
-       AND ua.phone != ALL($3)
-     ORDER BY ua.phone
-     LIMIT 50`,
-    [userId, phonePattern, blockedPhones],
-    QUERY_TIMEOUT_MS,
-  );
+  const [directResult, reachContacts] = await Promise.all([
+    query<{ name: string | null }>(
+      `SELECT DISTINCT ON (ua.phone) ua.alias AS name
+       FROM "UserAlias" ua
+       WHERE ua."contactId" = $1 AND ua.phone LIKE $2
+         AND ua.phone != ALL($3)
+       ORDER BY ua.phone
+       LIMIT 50`,
+      [userId, phonePattern, blockedPhones],
+      QUERY_TIMEOUT_MS,
+    ),
+    searchReachContacts(userId, prefix, country, blockedPhones),
+  ]);
 
   let userKey: string;
   try {
     userKey = await getCompositeKeyForUser(Number(userId));
   } catch {
     return {
-      found: directResult.rows.length > 0,
+      found: directResult.rows.length > 0 || reachContacts.length > 0,
       prefix,
       direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+      reach_contacts: reachContacts,
       second_degree_contacts: [],
     };
   }
@@ -415,9 +469,10 @@ export async function searchContactsByCountry(userId: string, country: string): 
   } catch (neo4jErr) {
     console.error('searchContactsByCountry neo4j error:', (neo4jErr as Error).message);
     return {
-      found: directResult.rows.length > 0,
+      found: directResult.rows.length > 0 || reachContacts.length > 0,
       prefix,
       direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+      reach_contacts: reachContacts,
       second_degree_contacts: [],
     };
   } finally {
@@ -479,7 +534,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
     }
   }
 
-  const total = directResult.rows.length + secondDegree.length;
+  const total = directResult.rows.length + secondDegree.length + reachContacts.length;
   const sharedWith = prefixSharedWith(prefix, country);
 
   return {
@@ -490,6 +545,10 @@ export async function searchContactsByCountry(userId: string, country: string): 
     // treat the prefix as a hint, not proof of the person's country.
     ...(sharedWith.length > 0 && { prefix_shared_with: sharedWith }),
     direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+    // People whose saved facts tie them to the country (foreign_reach,
+    // affiliation, notes) — reach the phone prefix can't see. Present them as
+    // "has ties to X", not as being in X.
+    reach_contacts: reachContacts,
     second_degree_contacts: secondDegree,
     total,
   };

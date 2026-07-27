@@ -44,12 +44,16 @@ describe('searchSecondDegree tag matching', () => {
 
     await searchSecondDegree('42', 'buralteri');
 
-    const [sql, params] = mockQuery.mock.calls[0];
+    // The weak-tie signal INSERT fires first — find the main query by fragment.
+    const mainCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+    );
+    const [sql, params] = mainCall as [string, unknown[]];
     // Index-backed trigram match, not a bare similarity() scan.
-    expect(sql as string).toContain('normalize_search_token(ut.tag) % normalize_search_token($3)');
-    expect(sql as string).toContain('>= 0.45');
+    expect(sql).toContain('normalize_search_token(ut.tag) % normalize_search_token($3)');
+    expect(sql).toContain('>= 0.45');
     // $3 = normalized tag term, $4 = alias LIKE, $5 = blocked phones.
-    expect(params as unknown[]).toEqual(['42', [FRIEND_PHONE], 'buralteri', '%buralteri%', []]);
+    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '%buralteri%', []]);
   });
 
   it('normalizes a Georgian query the same way the index is built (via transliteration)', async () => {
@@ -57,10 +61,38 @@ describe('searchSecondDegree tag matching', () => {
 
     await searchSecondDegree('42', 'ბუღალტერი');
 
-    const params = mockQuery.mock.calls[0][1] as string[];
+    const mainCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+    );
+    const params = mainCall?.[1] as string[];
     // buildSearchTerms transliterates the Georgian query to its Latin form(s),
     // which normalize_search_token then folds to the canonical token in-SQL.
     expect(params).toContain('bughalteri');
+  });
+
+  it('records a weak-tie signal before searching (path asked to an own contact)', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'buralteri');
+
+    const insertCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO weak_tie_signals'),
+    );
+    expect(insertCall).toBeDefined();
+    expect(insertCall?.[0] as string).toContain('ON CONFLICT (user_id, contact_phone) DO NOTHING');
+    expect((insertCall?.[1] as unknown[])[0]).toBe('42');
+  });
+
+  it('down-ranks weak-tie vias in the bridge ordering', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'buralteri');
+
+    const mainSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+    )?.[0] as string;
+    expect(mainSql).toContain('LEFT JOIN weak_tie_signals w');
+    expect(mainSql).toContain('COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)');
   });
 
   it('returns found:false when the graph has no contacts', async () => {

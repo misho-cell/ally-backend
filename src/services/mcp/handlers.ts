@@ -31,7 +31,7 @@ import {
 } from '../introduction.service';
 import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
-import { scrubDeep, scrubText } from './privacy';
+import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
 import {
   NOTE_EMPTY_INSIGHT,
   NOTE_EMPTY_SECOND_DEGREE,
@@ -212,11 +212,15 @@ export async function mcpGetContactProfile(
   }
   if (await isExcludedContact(userId, phone)) return { error: UNAVAILABLE_CONTACT_ERROR };
   const profile = await getContactFullProfile(userId, phone);
-  const clean = scrubDeep({
-    tags: profile.tags,
-    insights: profile.insights,
-    facts_and_ask: profile.facts_and_ask,
-  }) as McpToolPayload;
+  // Saved contact data masks private emails too (a public web email the model
+  // finds itself is fine — this guard is only on the stored-profile read).
+  const clean = scrubEmailsDeep(
+    scrubDeep({
+      tags: profile.tags,
+      insights: profile.insights,
+      facts_and_ask: profile.facts_and_ask,
+    }),
+  ) as McpToolPayload;
   return {
     contact_ref: args.contact_ref,
     is_member: profile.is_member,
@@ -389,7 +393,10 @@ export async function mcpGetContactFacts(
   if (!phone) return { error: UNKNOWN_REF_ERROR };
   if (await isExcludedContact(userId, phone)) return { error: UNAVAILABLE_CONTACT_ERROR };
   const facts = await getVisibleFacts(userId, phone);
-  return { contact_ref: args.contact_ref, ...(scrubDeep(facts) as McpToolPayload) };
+  return {
+    contact_ref: args.contact_ref,
+    ...(scrubEmailsDeep(scrubDeep(facts)) as McpToolPayload),
+  };
 }
 
 export async function mcpBlockContact(

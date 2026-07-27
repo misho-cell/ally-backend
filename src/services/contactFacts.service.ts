@@ -55,6 +55,8 @@ export interface VisibleFact {
   field_type: string;
   value: string;
   is_public: boolean;
+  // YYYY-MM-DD of the last save/confirmation — absent on crowd-filled values.
+  last_confirmed?: string;
 }
 
 export interface VisibleFactsResult {
@@ -212,8 +214,9 @@ export async function getVisibleFacts(
   const [ownResult, publicResult] = await Promise.all([
     // The owner's OWN saved values — ALL of them (free-form keys accumulate), and
     // always shown, even when the crowd's public value for the same field differs.
-    query<{ field_type: string; value: string; is_public: boolean }>(
-      `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public
+    query<{ field_type: string; value: string; is_public: boolean; last_confirmed: string }>(
+      `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public,
+              TO_CHAR(updated_at, 'YYYY-MM-DD') AS last_confirmed
        FROM contact_facts
        WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
        ORDER BY field_type, updated_at DESC`,
@@ -231,10 +234,14 @@ export async function getVisibleFacts(
   ]);
 
   const ownFieldTypes = new Set(ownResult.rows.map((r) => r.field_type));
+  // last_confirmed lets the model time-check a role/employer before ranking on
+  // it — tags carry no date, so a 16-years-stale "head of department" read as
+  // current. A date makes stale roles visible instead of trusted.
   const facts: VisibleFact[] = ownResult.rows.map((r) => ({
     field_type: r.field_type,
     value: r.value,
     is_public: r.is_public,
+    last_confirmed: r.last_confirmed,
   }));
 
   for (const row of publicResult.rows) {

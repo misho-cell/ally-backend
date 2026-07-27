@@ -1,6 +1,12 @@
 import { EventEmitter } from 'events';
 import { Response } from 'express';
-import { scrubDeep, scrubText } from './privacyScrub';
+import { scrubDeep, scrubText, stripAllowedSpans } from './privacyScrub';
+
+// Scrub then reveal explicitly-allowed spans (the own-number passthrough) at
+// this final display boundary.
+function displayText(text: string): string {
+  return stripAllowedSpans(scrubText(text));
+}
 
 const emitter = new EventEmitter();
 emitter.setMaxListeners(0);
@@ -79,7 +85,7 @@ export function emitStepSummary(
     event: 'step_summary',
     threadId,
     runId,
-    text: scrubText(text),
+    text: displayText(text),
   });
 }
 
@@ -99,7 +105,7 @@ export function emitAnswerDelta(
     event: 'answer_delta',
     threadId,
     runId,
-    delta: scrubText(delta),
+    delta: displayText(delta),
   });
 }
 
@@ -127,7 +133,7 @@ export function emitRunComplete(
   payload: RunCompletePayload,
 ): void {
   const safe: RunCompletePayload = {
-    reply: scrubText(payload.reply),
+    reply: displayText(payload.reply),
     options: scrubDeep(payload.options),
     choices: scrubDeep(payload.choices),
   };
