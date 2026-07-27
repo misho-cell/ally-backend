@@ -38,10 +38,17 @@ import {
   NOTE_EMPTY_TAG,
   NOTE_FUZZY,
   NOTE_INTRO_SENT,
+  NOTE_NOT_ON_ALLY,
   NOTE_RATE_LIMITED,
   noteInboxPending,
+  noteTooBroad,
   noteTruncated,
 } from './texts';
+
+// Above this many total matches the query word is a crowd word — steer the
+// model to narrow with the user instead of listing look-alikes (channel-5
+// "vague / too-broad" guard from the connector doc).
+const TOO_BROAD_TOTAL = 500;
 
 // One MCP tool call = one handler here. Handlers wrap the same services the
 // in-app agent uses, but everything they return goes to claude.ai — so every
@@ -134,6 +141,8 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
   // Fuzzy (approximate) matches are flagged so the model treats them as guesses;
   // this takes priority over the truncation note.
   if (outcome.fuzzy) payload.note = NOTE_FUZZY;
+  else if (typeof total === 'number' && total >= TOO_BROAD_TOTAL)
+    payload.note = noteTooBroad(total);
   else if (total > rows.length) payload.note = noteTruncated(rows.length, total);
   return payload;
 }
@@ -208,7 +217,14 @@ export async function mcpGetContactProfile(
     insights: profile.insights,
     facts_and_ask: profile.facts_and_ask,
   }) as McpToolPayload;
-  return { contact_ref: args.contact_ref, is_member: profile.is_member, ...clean };
+  return {
+    contact_ref: args.contact_ref,
+    is_member: profile.is_member,
+    // Invite trigger: the user is zooming in on this person — if they're not on
+    // Ally, steer toward naming the user's own people who'd open the path.
+    ...(profile.is_member === false && { note: NOTE_NOT_ON_ALLY }),
+    ...clean,
+  };
 }
 
 async function introRequestsInLastDay(userId: string): Promise<number> {

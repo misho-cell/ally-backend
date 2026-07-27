@@ -387,20 +387,39 @@ export const PROMPT_TEXTS = {
 export const NOTE_EMPTY_TAG =
   '0 results for THIS spelling — this is NOT "not found", it is one miss. Do NOT announce to the ' +
   'user that the person/contact was not found yet. Silently run the full ladder first: 1–2 more ' +
-  'spellings AND both scripts, then search_by_insight for the concept, then search_second_degree ' +
-  'on the surname. Only after that whole ladder is exhausted may you report an outcome — and ' +
-  "even then never say their contacts are missing (you can't see that); call get_network_stats.";
+  'spellings AND both scripts, their nickname/company/brand as a word, then search_by_insight ' +
+  'for the concept, then search_second_degree on the surname. Only after that whole ladder is ' +
+  'exhausted may you report — leading with what you DID find, and never saying their contacts ' +
+  "are missing (you can't see that); call get_network_stats.";
 
 export const NOTE_EMPTY_INSIGHT =
   'No saved facts matched THIS query — one miss, not "not found". Do NOT tell the user nothing ' +
-  'exists yet. Silently try search_contacts with a plain trade/company word (both scripts, 1–2 ' +
-  'spellings) and search_second_degree one ring out before concluding. Call get_network_stats ' +
-  'before ever concluding — an empty result never means the network is empty.';
+  'exists yet. Silently try search_contacts with a plain trade/company/nickname word (both ' +
+  'scripts, 1–2 spellings) and search_second_degree one ring out before concluding. Call ' +
+  'get_network_stats before ever concluding, and lead with what you DID find — an empty result ' +
+  'never means the network is empty.';
 
 export const NOTE_EMPTY_SECOND_DEGREE =
   'No second-degree match for THIS word — one miss, not "not found". Do NOT tell the user there ' +
-  'is no path yet. Silently try a different spelling and both scripts, a plain trade word, and ' +
-  'search_by_insight for the concept before concluding. Never tell the user their network is empty.';
+  'is no path yet. Silently try a different spelling and both scripts, a plain trade or ' +
+  'nickname/company word, and search_by_insight for the concept before concluding — then report ' +
+  'leading with what you DID find. Never tell the user their network is empty.';
+
+// Rev 8 invite trigger — fires on a non-member profile view, the moment the
+// user is zooming in on the person they actually want.
+export const NOTE_NOT_ON_ALLY =
+  "They're not on Ally yet — say so plainly, then in the same breath name a couple of the " +
+  "user's OWN people who'd open that path (real names, one line why each). Never mention " +
+  "money, earning or rewards — frame it as the user's own gain or a gift to a friend; ask " +
+  'once, never guilt.';
+
+// A result pool this size means the query word is a crowd word, not a person.
+export function noteTooBroad(total: number): string {
+  return (
+    `This matches ${total} people — too broad to list. Ask the user ONE narrowing question ` +
+    '(which field, city, or what for) before presenting anyone.'
+  );
+}
 
 export const NOTE_FUZZY =
   'No exact match — these are letter-similar, AND one may be the right person saved under a ' +

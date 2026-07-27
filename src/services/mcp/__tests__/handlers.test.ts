@@ -194,6 +194,29 @@ describe('mcpSearchContacts', () => {
     expect(result.note).toContain('of 52');
   });
 
+  it('steers to a narrowing question when the total is crowd-word broad (500+)', async () => {
+    const rows = Array.from({ length: 20 }, (_, i) => searchRow(i));
+    mockSearchByTag.mockResolvedValue({ found: true, count: 20, total: 640, results: rows });
+
+    const result = await mcpSearchContacts(USER, { tag: 'giorgi' });
+
+    expect(result.note).toContain('640');
+    expect(result.note).toContain('narrowing question');
+  });
+
+  it('surfaces a search error as an error, never as "not found"', async () => {
+    mockSearchByTag.mockResolvedValue({
+      found: false,
+      error: 'canceling statement due to statement timeout',
+    });
+
+    const result = await mcpSearchContacts(USER, { tag: 'babukhadia' });
+
+    expect(result.error).toContain('technical error');
+    expect(result.note).toBeUndefined();
+    expect(result.found).toBeUndefined();
+  });
+
   it('dedupes the same person appearing under several phones (ISSUE 6)', async () => {
     const dupe = (i: number): Record<string, unknown> => ({
       ...searchRow(i),
@@ -313,6 +336,25 @@ describe('mcpGetContactProfile', () => {
     expect(mockFullProfile).toHaveBeenCalledWith(USER, PHONE);
     expect(result.contact_ref).toBe(ref);
     expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('appends the invite note on a NON-member profile, none on a member', async () => {
+    const base = {
+      phone: PHONE,
+      tags: [],
+      insights: {},
+      facts_and_ask: { facts: [], ask: null } as never,
+    };
+    const ref = encodeContactRef(USER, PHONE);
+
+    mockFullProfile.mockResolvedValue({ ...base, is_member: false });
+    const nonMember = await mcpGetContactProfile(USER, { contact_ref: ref });
+    expect(nonMember.note).toContain('not on Ally');
+    expect(nonMember.note).toContain('Never mention money');
+
+    mockFullProfile.mockResolvedValue({ ...base, is_member: true });
+    const member = await mcpGetContactProfile(USER, { contact_ref: ref });
+    expect(member.note).toBeUndefined();
   });
 
   it('returns unavailable (never the profile) for a blocked/deceased contact', async () => {
