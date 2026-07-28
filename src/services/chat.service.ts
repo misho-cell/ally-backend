@@ -966,13 +966,26 @@ async function deleteMessage(rowId: number): Promise<void> {
 async function getOwnContactNumber(userId: string, phoneRaw: string): Promise<object> {
   const phone = (phoneRaw ?? '').trim();
   if (!phone) return { error: 'Pass the contact phone id from a search result.' };
-  const [ownRow, excluded] = await Promise.all([
-    query<{ alias: string }>(
-      'SELECT alias FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2 LIMIT 1',
-      [userId, phone],
-    ),
-    getExcludedPhoneSet(userId),
-  ]);
+  let ownRow: { rows: { alias: string }[] };
+  let excluded: Set<string>;
+  try {
+    [ownRow, excluded] = await Promise.all([
+      query<{ alias: string }>(
+        'SELECT alias FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2 LIMIT 1',
+        [userId, phone],
+      ),
+      getExcludedPhoneSet(userId),
+    ]);
+  } catch {
+    // A timeout here must never degrade to a masked "[hidden]" render — tell
+    // the model to say honestly that the number can't be shown right now.
+    return {
+      error:
+        'Temporary technical error — could not read the number right now. Tell the user ' +
+        'honestly you cannot show it at the moment and to try again shortly. NEVER write ' +
+        '"[hidden]" or any placeholder where the number would go.',
+    };
+  }
   if (excluded.has(normalizePhone(phone))) {
     return { error: 'This contact is unavailable.' };
   }

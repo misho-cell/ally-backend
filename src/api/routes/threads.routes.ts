@@ -15,6 +15,7 @@ import {
   getThread,
   getThreadMessages,
   updateThreadTitle,
+  saveThreadMessage,
 } from '../../services/threads.service';
 import { processChat } from '../../services/chat.service';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
@@ -209,11 +210,16 @@ threadsRouter.post(
           const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
           // eslint-disable-next-line no-console
           console.error('[POST /threads/:id/message] run failed', error);
-          emitRunError(
-            userId,
-            threadId,
-            runId,
-            timedOut ? 'პასუხს ძალიან დიდი დრო დასჭირდა — სცადე თავიდან 🙏' : 'სერვერის შეცდომა',
+          const userMessage = timedOut
+            ? 'პასუხს ძალიან დიდი დრო დასჭირდა — სცადე თავიდან 🙏'
+            : 'სერვერის შეცდომა — სცადე თავიდან 🙏';
+          emitRunError(userId, threadId, runId, userMessage);
+          // The SSE event alone is not enough: if the stream dropped mid-run, the
+          // user stares at frozen narration forever (three real stalls in one
+          // battery run showed no visible timeout). Persist the error INTO the
+          // thread so any refetch/reopen shows it. Best-effort — never throws.
+          saveThreadMessage(threadId, Number(userId), 'assistant', userMessage).catch(
+            () => undefined,
           );
         });
     } catch (error) {
