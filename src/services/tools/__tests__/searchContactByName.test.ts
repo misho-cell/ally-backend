@@ -131,7 +131,8 @@ describe('searchContactByName', () => {
     // "mine" set — every branch joins FROM it)...
     expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
+    expect(mainSql).toContain('CROSS JOIN LATERAL');
+    expect(mainSql).toContain('WHERE a.phone = m.phone');
     // ...and matches alias, registered name, AND tag with the index-defeating
     // (LOWER(x) || '') wrapper — the trigram GIN must never be chosen (KA
     // scripts extract ~no trigrams on prod → GIN scan → statement timeout).

@@ -52,23 +52,36 @@ export function buildExactMatchSql(
     return `(${parts.join(' OR ')})`;
   };
 
+  // CROSS JOIN LATERAL forces a nested loop from mine (a few thousand rows)
+  // into the per-phone btree indexes. A plain JOIN let the planner pick a
+  // hash join with a FULL seq-scan of the multi-million-row tables (regex
+  // evaluated on every row) — statement timeouts survived the GIN removal.
   const matchedCte = `matched AS (
-     SELECT t.phone, LOWER(t.tag) AS label
+     SELECT l.phone, l.label
      FROM mine m
-     JOIN "UserTags" t ON t.phone = m.phone
-     WHERE ${regexOr('t.tag')}
+     CROSS JOIN LATERAL (
+       SELECT t.phone, LOWER(t.tag) AS label
+       FROM "UserTags" t
+       WHERE t.phone = m.phone AND ${regexOr('t.tag')}
+     ) l
      UNION ALL
-     SELECT a.phone, LOWER(a.alias) AS label
+     SELECT l.phone, l.label
      FROM mine m
-     JOIN "UserAlias" a ON a.phone = m.phone
-     WHERE ${regexOr('a.alias')}
+     CROSS JOIN LATERAL (
+       SELECT a.phone, LOWER(a.alias) AS label
+       FROM "UserAlias" a
+       WHERE a.phone = m.phone AND ${regexOr('a.alias')}
+     ) l
      UNION ALL
-     SELECT up2.phone, LOWER(u2.name) AS label
+     SELECT l.phone, l.label
      FROM mine m
-     JOIN "UserPhone" up2 ON up2.phone = m.phone
-     JOIN "User"      u2  ON u2.id     = up2."userId"
-     WHERE u2.name IS NOT NULL
-       AND ${regexOr('u2.name')}
+     CROSS JOIN LATERAL (
+       SELECT up2.phone, LOWER(u2.name) AS label
+       FROM "UserPhone" up2
+       JOIN "User" u2 ON u2.id = up2."userId"
+       WHERE up2.phone = m.phone AND u2.name IS NOT NULL
+         AND ${regexOr('u2.name')}
+     ) l
    )`;
 
   let cursor = regexStart;

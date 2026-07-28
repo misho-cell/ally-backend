@@ -44,7 +44,7 @@ function setup(opts: {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
-    if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
+    if (sql.includes('SELECT DISTINCT up.phone')) return Promise.resolve(rows([]) as never); // membership
     if (sql.includes('similarity(')) return Promise.resolve(rows(fuzzy) as never); // normalized fuzzy pass
     return Promise.resolve(rows(main) as never); // exact page
   });
@@ -186,8 +186,9 @@ describe('searchByTag', () => {
     // scanning the full alias/tag tables)...
     expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('JOIN "UserTags" t ON t.phone = m.phone');
-    expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
+    expect(mainSql).toContain('CROSS JOIN LATERAL');
+    expect(mainSql).toContain('WHERE t.phone = m.phone');
+    expect(mainSql).toContain('WHERE a.phone = m.phone');
     // ...and matches tag AND alias with the index-defeating (LOWER(x) || '')
     // wrapper — the trigram GIN must never be chosen (KA scripts extract ~no
     // trigrams on prod, exploding a GIN scan into a statement timeout).
