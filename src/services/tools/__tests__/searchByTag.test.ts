@@ -68,18 +68,18 @@ describe('searchByTag', () => {
     expect(results[0].tags).toContain('engineer');
   });
 
-  it('passes userId, then one placeholder per regex/LIKE pattern, then blocked (Latin)', async () => {
+  it('passes userId, one placeholder per word-start regex, then blocked (Latin)', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Engineer');
 
-    // $1 userId, then each word-start regex, then each %term% LIKE pattern
-    // (individual placeholders — never ANY(array), so the planner can BitmapOr
-    // and the page/count queries share one gap-free param array), last blocked.
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', '%engineer%', []]);
+    // $1 userId, then each word-start regex (individual placeholders — never
+    // ANY(array)), last blocked. No LIKE patterns: the trigram GIN path is
+    // deliberately unusable here (KA scripts extract ~no trigrams on prod).
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', []]);
   });
 
-  it('passes Georgian term, transliteration and drift variants as regex + LIKE patterns', async () => {
+  it('passes Georgian term, transliteration and drift variants as word-start regexes', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'ინჟინერი');
@@ -90,9 +90,6 @@ describe('searchByTag', () => {
       '\\mინჟინერი',
       '\\minzhineri',
       '\\minjineri',
-      '%ინჟინერი%',
-      '%inzhineri%',
-      '%injineri%',
       [],
     ]);
   });
@@ -117,19 +114,16 @@ describe('searchByTag', () => {
     expect(countParams?.[countParams.length - 1]).toEqual([]);
   });
 
-  it('drops a sub-trigram token ("2") from the LIKE candidates but keeps it for ranking', async () => {
+  it('short tokens ("2") still rank via word_hits and no LIKE pattern ever appears', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchByTag('42', 'Radiatori 2');
 
     const params = mockQuery.mock.calls[0][1] as unknown[];
-    // Regexes for both words present ("2" still ranks via word_hits), but no
-    // '%2%' LIKE pattern — a sub-trigram pattern can't use the GIN index and
-    // would drive a seq-scan.
     expect(params).toContain('\\mradiatori');
     expect(params).toContain('\\m2');
-    expect(params).toContain('%radiatori%');
-    expect(params).not.toContain('%2%');
+    // No %…% patterns at all — the exact search never touches the trigram path.
+    expect(params.some((p) => typeof p === 'string' && p.startsWith('%'))).toBe(false);
   });
 
   it('reports the real total even when the page is capped', async () => {
@@ -194,12 +188,14 @@ describe('searchByTag', () => {
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
     expect(mainSql).toContain('JOIN "UserTags" t ON t.phone = m.phone');
     expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
-    // ...and matches tag AND alias, with per-pattern LIKE placeholders (never
-    // ANY(array)) so the trigram index applies; an alias-only contact surfaces.
+    // ...and matches tag AND alias with the index-defeating (LOWER(x) || '')
+    // wrapper — the trigram GIN must never be chosen (KA scripts extract ~no
+    // trigrams on prod, exploding a GIN scan into a statement timeout).
     expect(mainSql).toContain('LOWER(t.tag) AS label');
     expect(mainSql).toContain('LOWER(a.alias) AS label');
-    expect(mainSql).toMatch(/LOWER\(a\.alias\) LIKE \$\d+/);
-    expect(mainSql).toMatch(/LOWER\(t\.tag\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).not.toContain('LIKE');
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
     expect(mainSql).not.toContain('ANY(');

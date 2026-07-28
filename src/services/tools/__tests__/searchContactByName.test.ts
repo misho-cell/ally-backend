@@ -61,13 +61,14 @@ describe('searchContactByName', () => {
     expect(results[0].employer).toBe('TBC Bank');
   });
 
-  it('passes one placeholder per regex/LIKE pattern for a Georgian term', async () => {
+  it('passes one placeholder per word-start regex for a Georgian term', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'გიო');
 
-    // $1 userId, then each regex, then each %term% LIKE, last = blocked.
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', '%გიო%', '%gio%', []]);
+    // $1 userId, then each regex, last = blocked. No LIKE patterns (the trigram
+    // GIN path is deliberately unusable — KA extracts ~no trigrams on prod).
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -75,7 +76,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', '%george%', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {
@@ -131,13 +132,14 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
     expect(mainSql).toContain('JOIN "UserAlias" a ON a.phone = m.phone');
-    // ...and matches alias, registered name, AND tag, with per-pattern LIKE
-    // placeholders (never ANY(array)) so the trigram indexes apply — a surname
-    // or nickname another contributor saved, even as a tag, surfaces the contact.
+    // ...and matches alias, registered name, AND tag with the index-defeating
+    // (LOWER(x) || '') wrapper — the trigram GIN must never be chosen (KA
+    // scripts extract ~no trigrams on prod → GIN scan → statement timeout).
     expect(mainSql).toContain('LOWER(a.alias) AS label');
     expect(mainSql).toContain('LOWER(t.tag) AS label');
-    expect(mainSql).toMatch(/LOWER\(a\.alias\) LIKE \$\d+/);
-    expect(mainSql).toMatch(/LOWER\(t\.tag\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).not.toContain('LIKE');
     expect(mainSql).not.toContain('ANY(');
   });
 
