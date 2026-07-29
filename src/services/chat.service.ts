@@ -769,7 +769,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_contact_by_name: {
     name: 'search_contact_by_name',
     description:
-      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details.',
+      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) and `relationship_strength` (0–1) — how the user relates to that contact; use it to disambiguate and phrase naturally.',
     input_schema: {
       type: 'object',
       properties: {
@@ -785,7 +785,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_by_tag: {
     name: 'search_by_tag',
     description:
-      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email.',
+      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) and `relationship_strength` (0–1) — how the user relates to that contact; when choosing whom to recommend, prefer a stronger tie and phrase accordingly (e.g. a close contact over a formal one).',
     input_schema: {
       type: 'object',
       properties: {
@@ -812,7 +812,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_second_degree: {
     name: 'search_second_degree',
     description:
-      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists.",
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists.",
     input_schema: {
       type: 'object',
       properties: {

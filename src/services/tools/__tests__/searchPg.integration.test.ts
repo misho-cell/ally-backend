@@ -17,7 +17,7 @@ const maybeDescribe = process.env.PG_INTEGRATION === '1' ? describe : describe.s
 
 const SCHEMA_SQL = `
   CREATE EXTENSION IF NOT EXISTS pg_trgm;
-  DROP TABLE IF EXISTS "UserAlias", "UserTags", "UserPhone", "User", "UserBlock", contact_facts CASCADE;
+  DROP TABLE IF EXISTS "UserAlias", "UserTags", "UserPhone", "User", "UserBlock", contact_facts, contact_relationship_scores CASCADE;
   CREATE TABLE "UserAlias" (id serial primary key, phone text, "contactId" int, alias text);
   CREATE TABLE "UserTags"  (id serial primary key, phone text, "contactId" int, tag text, "weightCount" int default 1);
   CREATE TABLE "UserPhone" (id serial primary key, phone text, "userId" int);
@@ -27,6 +27,11 @@ const SCHEMA_SQL = `
     id serial primary key, neo4j_contact_id text, submitted_by_user_id text,
     field_type text, value text, canonical_value text, is_public boolean default false,
     created_at timestamp default now(), updated_at timestamp default now());
+  CREATE TABLE contact_relationship_scores (
+    user_id int not null, contact_phone text not null, relationship_type text not null,
+    strength_score float not null, signals jsonb not null default '{}',
+    computed_at timestamp not null default now(),
+    primary key (user_id, contact_phone));
   CREATE INDEX idx_user_alias_trgm ON "UserAlias" USING GIN (LOWER(alias) gin_trgm_ops);
   CREATE OR REPLACE FUNCTION normalize_search_token(input text)
   RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $fn$
@@ -53,12 +58,18 @@ const SEED_SQL = `
     ('+995592922551', 501, 'dachi'),
     ('+995592922551', 501, 'axel'),
     ('+995597777897', 501, 'radiatori');
+  INSERT INTO contact_relationship_scores (user_id, contact_phone, relationship_type, strength_score) VALUES
+    (501, '+995599000001', 'professional', 0.72);
 `;
 
 interface SearchResult {
   found?: boolean;
   error?: string;
-  results?: Array<{ name: string | null }>;
+  results?: Array<{
+    name: string | null;
+    relationship?: string;
+    relationship_strength?: number;
+  }>;
 }
 
 function names(r: SearchResult): Array<string | null> {
@@ -105,6 +116,14 @@ maybeDescribe('search against real Postgres (prod repro cases)', () => {
     const r = (await searchContactByName('501', 'შენგელია')) as SearchResult;
     expect(r.error).toBeUndefined();
     expect(names(r)).toContain('გიორგი შენგელია');
+  });
+
+  it('attaches the enrichment relationship score to a direct result', async () => {
+    const r = (await searchContactByName('501', 'babukhadia')) as SearchResult;
+    expect(r.error).toBeUndefined();
+    const hit = (r.results ?? []).find((x) => x.name === 'Ilia Babuxadia');
+    expect(hit?.relationship).toBe('professional');
+    expect(hit?.relationship_strength).toBe(0.72);
   });
 
   it("does not leak another user's contacts (scoping)", async () => {

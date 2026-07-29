@@ -35,15 +35,19 @@ function setup(opts: {
   count?: number;
   facts?: unknown[];
   fuzzy?: unknown[];
+  relationships?: unknown[];
 }): void {
   const main = opts.main ?? [];
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
   const fuzzy = opts.fuzzy ?? [];
+  const relationships = opts.relationships ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('contact_relationship_scores'))
+      return Promise.resolve(rows(relationships) as never);
     if (sql.includes('SELECT DISTINCT up.phone')) return Promise.resolve(rows([]) as never); // membership
     if (sql.includes('similarity(')) return Promise.resolve(rows(fuzzy) as never); // normalized fuzzy pass
     return Promise.resolve(rows(main) as never); // exact page
@@ -317,6 +321,30 @@ describe('searchByTag', () => {
     expect(result.found).toBe(true);
     expect(result.count).toBe(1);
     consoleSpy.mockRestore();
+  });
+
+  it('surfaces the enrichment relationship type and strength when computed', async () => {
+    setup({
+      main: [mockRow],
+      count: 1,
+      relationships: [
+        { contact_phone: '+995555123456', relationship_type: 'professional', strength_score: 0.7 },
+      ],
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r.relationship).toBe('professional');
+    expect(r.relationship_strength).toBe(0.7);
+  });
+
+  it('omits relationship fields when no score has been computed', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r).not.toHaveProperty('relationship');
+    expect(r).not.toHaveProperty('relationship_strength');
   });
 
   it('overlays employer/occupation from saved facts when present', async () => {

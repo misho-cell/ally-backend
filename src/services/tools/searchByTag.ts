@@ -5,6 +5,7 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { fetchRelationshipForPhones, RelationshipInfo } from './relationshipScores';
 import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
@@ -144,6 +145,7 @@ function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
   members: Set<string>,
+  relationships: Map<string, RelationshipInfo>,
   approximate: boolean,
 ): Record<string, unknown> {
   const base = applyFacts(
@@ -157,11 +159,15 @@ function shape(
     },
     facts,
   );
+  const rel = relationships.get(row.phone);
   const withMeta = {
     ...base,
     is_member: isMemberPhone(members, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
+    // Enrichment-computed edge score (family/close/professional/formal + 0..1
+    // strength) — lets the agent phrase how well the user knows this person.
+    ...(rel && { relationship: rel.relationship, relationship_strength: rel.strength }),
   };
   return approximate ? { ...withMeta, approximate: true } : withMeta;
 }
@@ -196,13 +202,14 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
     const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
-    const [facts, members] = await Promise.all([
+    const [facts, members, relationships] = await Promise.all([
       fetchFactsForPhones(userId, allPhones),
       fetchMembersForPhones(allPhones),
+      fetchRelationshipForPhones(userId, allPhones),
     ]);
     const results = [
-      ...exactRows.map((r) => shape(r, facts, members, false)),
-      ...fuzzyRows.map((r) => shape(r, facts, members, true)),
+      ...exactRows.map((r) => shape(r, facts, members, relationships, false)),
+      ...fuzzyRows.map((r) => shape(r, facts, members, relationships, true)),
     ];
     const payload: Record<string, unknown> = {
       found: true,

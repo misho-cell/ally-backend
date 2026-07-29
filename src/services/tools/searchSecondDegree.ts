@@ -161,6 +161,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       via_names: string[] | null;
       employer: string | null;
       jobPosition: string | null;
+      warmth: number | null;
     }>(
       `WITH friend_users AS (
          SELECT up."userId", up.phone AS via_phone
@@ -190,7 +191,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
               MAX(u_t.employer)                                                AS employer,
-              MAX(u_t."jobPosition")                                           AS "jobPosition"
+              MAX(u_t."jobPosition")                                           AS "jobPosition",
+              MAX(crs.strength_score)                                          AS warmth
        FROM matches m
        JOIN friend_users fu         ON fu."userId" = m."contactId"
        LEFT JOIN "UserAlias" ua_t   ON ua_t.phone  = m.phone AND ua_t."contactId" = m."contactId"
@@ -200,10 +202,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
        LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
        LEFT JOIN weak_tie_signals w ON w.contact_phone = m.phone AND w.user_id = fu."userId"
+       LEFT JOIN contact_relationship_scores crs
+              ON crs.user_id = fu."userId" AND crs.contact_phone = m.phone
        WHERE ua_own.phone IS NULL
          AND m.phone != ALL($${blockParamIdx})
        GROUP BY m.phone
        ORDER BY (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
+                MAX(crs.strength_score) DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [userId, friendPhones, ...terms, ...likeTerms, blockedPhones],
@@ -223,6 +228,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         jobPosition: row.jobPosition ?? null,
         ownership: OWNERSHIP.SECOND_DEGREE,
         via: row.via_names ?? [],
+        // Strongest bridge→target relationship score (enrichment-computed,
+        // 0..1) — how warm the best via's own tie to this person is. Missing
+        // when no bridge has a computed score.
+        ...(row.warmth != null && { via_warmth: Number(row.warmth) }),
         // Internal identifiers for agent use — never displayed to the user.
         // target_user_id is set when the person is a registered Ally user;
         // target_phone is set when they are not (unregistered contact).

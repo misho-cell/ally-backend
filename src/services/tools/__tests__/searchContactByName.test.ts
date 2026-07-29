@@ -30,14 +30,22 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 
 // Name search now fires the main page and a real COUNT in parallel, then a
 // facts-enrichment query — route by SQL fragment so any call order is safe.
-function setup(opts: { main?: unknown[]; count?: number; facts?: unknown[] }): void {
+function setup(opts: {
+  main?: unknown[];
+  count?: number;
+  facts?: unknown[];
+  relationships?: unknown[];
+}): void {
   const main = opts.main ?? [];
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
+  const relationships = opts.relationships ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('contact_relationship_scores'))
+      return Promise.resolve(rows(relationships) as never);
     if (sql.includes('word_similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
     return Promise.resolve(rows(main) as never); // main page
   });
@@ -188,6 +196,30 @@ describe('searchContactByName', () => {
     const r = (result.results as Array<Record<string, unknown>>)[0];
     expect(r.ownership).toBe('direct');
     expect(r.saved_as).toBe('კლასელი');
+  });
+
+  it('surfaces the enrichment relationship type and strength when computed', async () => {
+    setup({
+      main: [mockRow],
+      count: 1,
+      relationships: [
+        { contact_phone: '+995555123456', relationship_type: 'family', strength_score: 0.9 },
+      ],
+    });
+
+    const result = (await searchContactByName('42', 'გიო')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r.relationship).toBe('family');
+    expect(r.relationship_strength).toBe(0.9);
+  });
+
+  it('omits relationship fields when no score has been computed', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    const result = (await searchContactByName('42', 'გიო')) as Record<string, unknown>;
+    const r = (result.results as Array<Record<string, unknown>>)[0];
+    expect(r).not.toHaveProperty('relationship');
+    expect(r).not.toHaveProperty('relationship_strength');
   });
 
   it('fills employer/occupation from saved facts when the join fields are empty', async () => {

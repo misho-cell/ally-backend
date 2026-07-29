@@ -5,6 +5,7 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { fetchRelationshipForPhones, RelationshipInfo } from './relationshipScores';
 import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
@@ -24,6 +25,7 @@ function toRow(
   row: NameRow,
   facts: Map<string, ContactFactFields>,
   members: Set<string>,
+  relationships: Map<string, RelationshipInfo>,
 ): Record<string, unknown> {
   const base = applyFacts(
     {
@@ -36,11 +38,15 @@ function toRow(
     },
     facts,
   );
+  const rel = relationships.get(row.phone);
   return {
     ...base,
     is_member: isMemberPhone(members, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
+    // Enrichment-computed edge score (family/close/professional/formal + 0..1
+    // strength) — lets the agent phrase how well the user knows this person.
+    ...(rel && { relationship: rel.relationship, relationship_strength: rel.strength }),
   };
 }
 
@@ -181,16 +187,17 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
         if (fuzzyRows.length > 0) {
           const fuzzyPhones = fuzzyRows.map((r) => r.phone);
-          const [facts, members] = await Promise.all([
+          const [facts, members, relationships] = await Promise.all([
             fetchFactsForPhones(userId, fuzzyPhones),
             fetchMembersForPhones(fuzzyPhones),
+            fetchRelationshipForPhones(userId, fuzzyPhones),
           ]);
           return {
             found: true,
             count: fuzzyRows.length,
             total: fuzzyRows.length,
             fuzzy: true,
-            results: fuzzyRows.map((row) => toRow(row, facts, members)),
+            results: fuzzyRows.map((row) => toRow(row, facts, members, relationships)),
           };
         }
       } catch {
@@ -200,15 +207,16 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     }
 
     const phones = rows.map((r) => r.phone);
-    const [facts, members] = await Promise.all([
+    const [facts, members, relationships] = await Promise.all([
       fetchFactsForPhones(userId, phones),
       fetchMembersForPhones(phones),
+      fetchRelationshipForPhones(userId, phones),
     ]);
     return {
       found: true,
       count: rows.length,
       total,
-      results: rows.map((row) => toRow(row, facts, members)),
+      results: rows.map((row) => toRow(row, facts, members, relationships)),
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);

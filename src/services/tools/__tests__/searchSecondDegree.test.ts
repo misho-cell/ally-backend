@@ -95,6 +95,34 @@ describe('searchSecondDegree tag matching', () => {
     expect(mainSql).toContain('COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)');
   });
 
+  it('warm bridges rank above cold ones and warmth is surfaced as via_warmth', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        {
+          phone: '+995500000123',
+          target_user_id: null,
+          name: 'Nino',
+          via_names: ['Gio'],
+          warmth: 0.85,
+        },
+        { phone: '+995500000124', target_user_id: 7, name: 'Dato', via_names: ['Keti'] },
+      ]) as never,
+    );
+
+    const result = (await searchSecondDegree('42', 'buralteri')) as Record<string, unknown>;
+
+    const mainSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+    )?.[0] as string;
+    // The bridge's own enrichment-computed tie to the target breaks mutual-count
+    // ties: a warm via outranks a cold one.
+    expect(mainSql).toContain('LEFT JOIN contact_relationship_scores crs');
+    expect(mainSql).toContain('MAX(crs.strength_score) DESC NULLS LAST');
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].via_warmth).toBe(0.85);
+    expect(results[1]).not.toHaveProperty('via_warmth');
+  });
+
   it('returns found:false when the graph has no contacts', async () => {
     mockGetSession.mockReturnValue({
       run: jest.fn().mockResolvedValue({ records: [] }),
