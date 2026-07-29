@@ -68,7 +68,7 @@ describe('searchContactByName', () => {
 
     // $1 userId, then each regex, last = blocked. No LIKE patterns (the trigram
     // GIN path is deliberately unusable — KA extracts ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', 'გიო', 'gio', []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -76,7 +76,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', 'george', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {
@@ -131,8 +131,8 @@ describe('searchContactByName', () => {
     // "mine" set — every branch joins FROM it)...
     expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('CROSS JOIN LATERAL');
-    expect(mainSql).toContain('WHERE a.phone = m.phone');
+    expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
+    expect(mainSql).toMatch(/normalize_search_token\(a\.alias\) LIKE/);
     // ...and matches alias, registered name, AND tag with the index-defeating
     // (LOWER(x) || '') wrapper — the trigram GIN must never be chosen (KA
     // scripts extract ~no trigrams on prod → GIN scan → statement timeout).
@@ -140,7 +140,6 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain('LOWER(t.tag) AS label');
     expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
-    expect(mainSql).not.toContain('LIKE');
     expect(mainSql).not.toContain('ANY(');
   });
 

@@ -28,6 +28,16 @@ const SCHEMA_SQL = `
     field_type text, value text, canonical_value text, is_public boolean default false,
     created_at timestamp default now(), updated_at timestamp default now());
   CREATE INDEX idx_user_alias_trgm ON "UserAlias" USING GIN (LOWER(alias) gin_trgm_ops);
+  CREATE OR REPLACE FUNCTION normalize_search_token(input text)
+  RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $fn$
+    SELECT replace(replace(replace(replace(replace(replace(
+      translate(lower(coalesce(input, '')),
+        'აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ',
+        'abgdevztiklmnopjrstufkgkscczcckjh'),
+      'gh', 'g'), 'kh', 'k'), 'zh', 'j'), 'ts', 'c'), 'x', 'k'), 'q', 'k');
+  $fn$;
+  CREATE INDEX idx_user_tags_norm_trgm ON "UserTags" USING GIN (normalize_search_token(tag) gin_trgm_ops);
+  CREATE INDEX idx_user_alias_norm_trgm ON "UserAlias" USING GIN (normalize_search_token(alias) gin_trgm_ops);
 `;
 
 // The three production repros: alias-only contact with a spelling variant,

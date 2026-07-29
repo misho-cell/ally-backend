@@ -76,7 +76,7 @@ describe('searchByTag', () => {
     // $1 userId, then each word-start regex (individual placeholders — never
     // ANY(array)), last blocked. No LIKE patterns: the trigram GIN path is
     // deliberately unusable here (KA scripts extract ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', 'engineer', []]);
   });
 
   it('passes Georgian term, transliteration and drift variants as word-start regexes', async () => {
@@ -90,6 +90,9 @@ describe('searchByTag', () => {
       '\\mინჟინერი',
       '\\minzhineri',
       '\\minjineri',
+      'ინჟინერი',
+      'inzhineri',
+      'injineri',
       [],
     ]);
   });
@@ -186,9 +189,10 @@ describe('searchByTag', () => {
     // scanning the full alias/tag tables)...
     expect(mainSql).toContain('mine AS MATERIALIZED');
     expect(mainSql).toContain('SELECT phone FROM "UserTags"  WHERE "contactId" = $1');
-    expect(mainSql).toContain('CROSS JOIN LATERAL');
-    expect(mainSql).toContain('WHERE t.phone = m.phone');
-    expect(mainSql).toContain('WHERE a.phone = m.phone');
+    expect(mainSql).toContain('t.phone IN (SELECT phone FROM mine)');
+    expect(mainSql).toContain('a.phone IN (SELECT phone FROM mine)');
+    expect(mainSql).toMatch(/normalize_search_token\(t\.tag\) LIKE/);
+    expect(mainSql).toMatch(/normalize_search_token\(a\.alias\) LIKE/);
     // ...and matches tag AND alias with the index-defeating (LOWER(x) || '')
     // wrapper — the trigram GIN must never be chosen (KA scripts extract ~no
     // trigrams on prod, exploding a GIN scan into a statement timeout).
@@ -196,7 +200,6 @@ describe('searchByTag', () => {
     expect(mainSql).toContain('LOWER(a.alias) AS label');
     expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
-    expect(mainSql).not.toContain('LIKE');
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
     expect(mainSql).not.toContain('ANY(');
