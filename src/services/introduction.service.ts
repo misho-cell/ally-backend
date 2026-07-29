@@ -134,26 +134,30 @@ async function loadRequestForMediator(
  * the same state: the mediator's incoming thread is settled (or snoozed), the
  * requester's outgoing thread flips to "answer arrived". Best-effort.
  */
-async function syncRequestThreads(requestId: number, action: IntroductionAction): Promise<void> {
+async function syncRequestThreads(req: RequestRow, action: IntroductionAction): Promise<void> {
   try {
-    const threads = await getThreadsByIntroRequestId(requestId);
+    const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
       const owner = String(thread.user_id);
       if (thread.type === 'incoming_request') {
         if (action === 'snooze') {
-          await setThreadStatus(owner, thread.id, 'waiting', { statusLine: LINE_SNOOZED });
+          await setThreadStatus(owner, thread.id, 'waiting', {
+            statusLine: LINE_SNOOZED,
+            requestRef: req.request_ref,
+          });
         } else {
-          await setThreadStatus(owner, thread.id, 'done');
+          await setThreadStatus(owner, thread.id, 'done', { requestRef: req.request_ref });
         }
       } else if (thread.type === 'outgoing_request' && action !== 'snooze') {
         await setThreadStatus(owner, thread.id, 'needs_you', {
           statusLine: LINE_RESPONSE_ARRIVED,
+          requestRef: req.request_ref,
         });
       }
     }
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error(`[intro] thread sync failed for request ${requestId}:`, (err as Error).message);
+    console.error(`[intro] thread sync failed for request ${req.id}:`, (err as Error).message);
   }
 }
 
@@ -208,7 +212,7 @@ export async function resolveIntroductionRequest(
       request_ref: req.request_ref,
       days,
     });
-    await syncRequestThreads(req.id, action);
+    await syncRequestThreads(req, action);
     return { ok: true, status: 'pending', snoozedUntil: updated.rows[0].snoozed_until };
   }
 
@@ -236,6 +240,6 @@ export async function resolveIntroductionRequest(
     request_ref: req.request_ref,
   });
   await notifyRequester(req, action === 'accept');
-  await syncRequestThreads(req.id, action);
+  await syncRequestThreads(req, action);
   return { ok: true, status: newStatus };
 }

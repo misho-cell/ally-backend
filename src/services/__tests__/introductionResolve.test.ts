@@ -95,10 +95,15 @@ describe('resolveIntroductionRequest', () => {
       source: 'button',
       request_ref: REQUEST_ROW.request_ref,
     });
-    // Mediator's incoming thread settles; requester's outgoing flips to needs_you.
-    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'done');
+    // Mediator's incoming thread settles; requester's outgoing flips to
+    // needs_you. Both events carry the ref so the client can keep targeting
+    // /requests/:ref without a refetch.
+    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'done', {
+      requestRef: REQUEST_ROW.request_ref,
+    });
     expect(mockSetStatus).toHaveBeenCalledWith('9', 12, 'needs_you', {
       statusLine: 'პასუხი მოვიდა',
+      requestRef: REQUEST_ROW.request_ref,
     });
   });
 
@@ -176,7 +181,10 @@ describe('resolveIntroductionRequest', () => {
       request_ref: REQUEST_ROW.request_ref,
       days: 5,
     });
-    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'waiting', { statusLine: 'გადადებულია' });
+    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'waiting', {
+      statusLine: 'გადადებულია',
+      requestRef: REQUEST_ROW.request_ref,
+    });
     // Snooze is the mediator's private deferral — the requester's thread is untouched.
     expect(mockSetStatus).not.toHaveBeenCalledWith('9', 12, expect.anything(), expect.anything());
     expect(mockPush).not.toHaveBeenCalled();

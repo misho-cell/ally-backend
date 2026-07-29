@@ -140,11 +140,11 @@ export async function requestIntroduction(
   }
 
   const [insertResult, requesterName] = await Promise.all([
-    query<{ id: number }>(
+    query<{ id: number; request_ref: string }>(
       `INSERT INTO introduction_requests
          (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
+       RETURNING id, request_ref`,
       [
         requesterUserId,
         mediatorUserId,
@@ -159,6 +159,7 @@ export async function requestIntroduction(
   ]);
 
   const requestId = insertResult.rows[0].id;
+  const requestRef = insertResult.rows[0].request_ref;
 
   const mediatorDisplayName = phoneResult.displayName ?? mediatorName;
 
@@ -185,6 +186,7 @@ export async function requestIntroduction(
     is_task: incomingThread.is_task,
     status: incomingThread.status,
     status_line: incomingThread.status_line,
+    request_ref: requestRef,
   });
   emitThreadCreated(requesterUserId, {
     id: outgoingThread.id,
@@ -193,6 +195,7 @@ export async function requestIntroduction(
     is_task: outgoingThread.is_task,
     status: outgoingThread.status,
     status_line: outgoingThread.status_line,
+    request_ref: requestRef,
   });
 
   if (hasPush) {

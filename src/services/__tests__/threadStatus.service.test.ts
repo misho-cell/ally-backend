@@ -56,6 +56,17 @@ describe('setThreadStatus', () => {
     });
   });
 
+  it('passes the request ref through to the broadcast when given', async () => {
+    await setThreadStatus('42', 7, 'done', { requestRef: 'aaaa-ref' });
+
+    expect(mockEmit).toHaveBeenCalledWith('42', {
+      id: 7,
+      status: 'done',
+      status_line: null,
+      request_ref: 'aaaa-ref',
+    });
+  });
+
   it('uses a null line for done (no caption on an idle thread)', async () => {
     await setThreadStatus('42', 7, 'done');
 

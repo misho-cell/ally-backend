@@ -48,6 +48,9 @@ export interface ThreadUpdatePayload {
   status_line?: string | null;
   is_task?: boolean;
   title?: string;
+  // Public ref of the linked introduction request — included on request-thread
+  // updates so the client can target /requests/:ref without a refetch.
+  request_ref?: string;
 }
 
 /**

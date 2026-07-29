@@ -25,7 +25,7 @@ export async function setThreadStatus(
   userId: string,
   threadId: number,
   status: ThreadStatus,
-  opts: { statusLine?: string | null; isTask?: boolean } = {},
+  opts: { statusLine?: string | null; isTask?: boolean; requestRef?: string } = {},
 ): Promise<void> {
   const statusLine = opts.statusLine !== undefined ? opts.statusLine : STATUS_LINES[status];
   try {
@@ -35,6 +35,7 @@ export async function setThreadStatus(
       status,
       status_line: statusLine,
       ...(opts.isTask !== undefined && { is_task: opts.isTask }),
+      ...(opts.requestRef !== undefined && { request_ref: opts.requestRef }),
     });
   } catch (err) {
     // eslint-disable-next-line no-console

@@ -44,6 +44,9 @@ export interface ThreadMessage {
 interface ThreadRow extends Thread {
   last_message: string | null;
   last_message_at: string | null;
+  // Public ref of the linked introduction request (null on regular threads) —
+  // what the client posts to /requests/:ref/{accept,decline,snooze}.
+  request_ref: string | null;
 }
 
 export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
@@ -59,9 +62,11 @@ export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
        t.status_line,
        t.created_at,
        t.updated_at,
+       ir.request_ref,
        lm.content AS last_message,
        lm.created_at AS last_message_at
      FROM threads t
+     LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
      LEFT JOIN LATERAL (
        SELECT content, created_at
        FROM conversations
