@@ -132,7 +132,14 @@ export async function fetchPage(url: string): Promise<object> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
-      body: JSON.stringify({ api_key: TAVILY_API_KEY, urls: [target] }),
+      // Official/gov pages often defeat the basic extractor ("blocks text" —
+      // two officeholder fabrications trace to unreadable tbilisi.gov.ge).
+      // Advanced depth renders these pages properly; used only where it matters.
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        urls: [target],
+        ...(isOfficialDomain(target) && { extract_depth: 'advanced' }),
+      }),
     });
 
     if (!response.ok) {

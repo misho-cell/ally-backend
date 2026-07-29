@@ -7,13 +7,17 @@
 const PHONE_LIKE_PATTERN = '\\+?\\d[\\d\\s\\-().]{5,}\\d';
 const PHONE_KEY_RE = /phone|msisdn/i;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Year ranges ("2015-2017", "2015 - 2017") are education/work dates, not phones.
+const YEAR_RANGE_RE = /^(19|20)\d{2}\s?[-–—]\s?(19|20)\d{2}$/;
 const REDACTED = '[hidden]';
-// Georgian numbers are 9+ digits; ISO dates hold 8. Sequences shorter than
-// this are ages, counts, house numbers — not phones.
-const MIN_PHONE_DIGITS = 8;
+// Georgian numbers are 9 digits local / 12 with the country code. 8-digit runs
+// were over-masking real content (a year range is 8 digits) — see the battery
+// finding "[hidden] ადამიანი" / "FreeUni/ESM, [hidden]".
+const MIN_PHONE_DIGITS = 9;
 
 function redactCandidate(match: string): string {
-  if (ISO_DATE_RE.test(match)) return match;
+  const trimmed = match.trim();
+  if (ISO_DATE_RE.test(trimmed) || YEAR_RANGE_RE.test(trimmed)) return match;
   const digitCount = match.replace(/\D/g, '').length;
   return digitCount >= MIN_PHONE_DIGITS ? REDACTED : match;
 }

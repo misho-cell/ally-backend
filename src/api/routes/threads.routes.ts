@@ -211,8 +211,8 @@ threadsRouter.post(
           // eslint-disable-next-line no-console
           console.error('[POST /threads/:id/message] run failed', error);
           const userMessage = timedOut
-            ? 'პასუხს ძალიან დიდი დრო დასჭირდა — სცადე თავიდან 🙏'
-            : 'სერვერის შეცდომა — სცადე თავიდან 🙏';
+            ? 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.'
+            : 'ტექნიკური შეფერხება მოხდა ჩვენს მხარეს. გთხოვ, სცადე თავიდან.';
           emitRunError(userId, threadId, runId, userMessage);
           // The SSE event alone is not enough: if the stream dropped mid-run, the
           // user stares at frozen narration forever (three real stalls in one

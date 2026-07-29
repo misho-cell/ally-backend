@@ -76,3 +76,12 @@ describe('own-number allow spans', () => {
     expect(out.facts[0].value).toBe('email: [email hidden], office Tbilisi');
   });
 });
+
+describe('over-masking guards', () => {
+  it('keeps year ranges and short counts, masks real phones', () => {
+    expect(scrubText('MBA — FreeUni/ESM, 2015-2017')).toContain('2015-2017');
+    expect(scrubText('2 698 ადამიანი გყავს')).toContain('2 698');
+    expect(scrubText('call +995 599 12 34 56')).toContain('[hidden]');
+    expect(scrubText('599 12 34 56')).toContain('[hidden]');
+  });
+});
