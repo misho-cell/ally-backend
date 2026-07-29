@@ -369,6 +369,26 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
   },
 };
 
+const SET_TASK_RESULT_TOOL: AnthropicTool = {
+  name: 'set_task_result',
+  description:
+    'Call this ONCE, right before writing your final answer, when a concrete task has a ' +
+    'concrete OUTCOME — an introduction was arranged, a meeting/call was agreed, a specific ' +
+    'ask was fulfilled. The app renders these fields as a result card on the thread. Fill ' +
+    "only what is actually known, as short plain text in the user's language. Do NOT call it " +
+    'for ordinary questions, searches or small talk. Never put phone numbers in these fields.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      who: { type: 'string', description: 'Who the outcome involves (a name — never a phone).' },
+      when: { type: 'string', description: 'When it happens, if a time was agreed.' },
+      where: { type: 'string', description: 'Where it happens, if a place was agreed.' },
+      topic: { type: 'string', description: 'The subject of the outcome, in 2–6 words.' },
+    },
+    required: ['topic'],
+  },
+};
+
 const BLOCK_CONTACT_TOOL: AnthropicTool = {
   name: 'block_contact',
   description:
@@ -1333,6 +1353,10 @@ async function executeToolCall(
       ) as object;
     case 'present_choices':
       return { presented: true };
+    case 'set_task_result':
+      // Captured from the tool_use block in runToolLoop; the result here only
+      // acknowledges the call so the loop continues to the final answer.
+      return { saved: true };
     case 'create_task': {
       const taskType = input['task_type'] === 'reach' ? 'reach' : 'solve';
       const title = ((input['title'] as string) ?? '').trim();
@@ -1507,6 +1531,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   update_user_profile: '💾 პროფილს ვაახლებ...',
   save_private_context: '💾 ინფოს ვინახავ...',
   get_thread_context: '💬 სხვა საუბრებს ვამოწმებ...',
+  set_task_result: '📌 შედეგს ვაფიქსირებ...',
 };
 
 interface RunContext {
@@ -1611,10 +1636,38 @@ interface PendingMessage {
   content: Anthropic.MessageParam['content'];
 }
 
+// Structured task outcome the model reports via set_task_result — surfaced to
+// the client on run_complete as `result` (the messenger's result card).
+export interface TaskResultCard {
+  who?: string;
+  when?: string;
+  where?: string;
+  topic?: string;
+}
+
+const TASK_RESULT_FIELDS = ['who', 'when', 'where', 'topic'] as const;
+const TASK_RESULT_FIELD_MAX_CHARS = 200;
+
+function sanitizeTaskResult(input: unknown): TaskResultCard | undefined {
+  if (typeof input !== 'object' || input === null) return undefined;
+  const source = input as Record<string, unknown>;
+  const card: TaskResultCard = {};
+  for (const field of TASK_RESULT_FIELDS) {
+    const value = source[field];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      card[field] = scrubText(value.trim().slice(0, TASK_RESULT_FIELD_MAX_CHARS));
+    }
+  }
+  return Object.keys(card).length > 0 ? card : undefined;
+}
+
 export interface ChatResult {
   reply: string;
   options?: DisambiguationCandidate[];
   choices?: string[];
+  /** The run sent an introduction request — the thread is now waiting on a third party. */
+  requestCreated?: boolean;
+  taskResult?: TaskResultCard;
 }
 
 function extractText(content: Anthropic.ContentBlock[]): string {
@@ -1637,6 +1690,8 @@ async function runToolLoop(
   pending: PendingMessage[];
   options?: DisambiguationCandidate[];
   choices?: string[];
+  requestCreated: boolean;
+  taskResult?: TaskResultCard;
 }> {
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
@@ -1674,9 +1729,44 @@ async function runToolLoop(
   let finalFromStrong = false;
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
+  let requestCreated = false;
+  let taskResult: TaskResultCard | undefined;
   let iterations = 0;
   let toolCallCount = 0;
   let finalText = '';
+  // Signals live in two places: choices/task results in the assistant's
+  // tool_use blocks, disambiguation/request-created in the tool RESULTS. Both
+  // scans run on every round INCLUDING the capped last one, so a request sent
+  // on the final turn still flips the thread to waiting.
+  const scanAssistantBlocks = (content: Anthropic.ContentBlock[]): void => {
+    for (const block of content) {
+      if (block.type !== 'tool_use') continue;
+      if (block.name === 'present_choices') {
+        const input = block.input as { items?: unknown };
+        if (Array.isArray(input.items)) {
+          choices = input.items.filter((i): i is string => typeof i === 'string');
+        }
+      }
+      if (block.name === 'set_task_result') {
+        taskResult = sanitizeTaskResult(block.input) ?? taskResult;
+      }
+    }
+  };
+  const scanToolResults = (toolResults: Anthropic.ToolResultBlockParam[]): void => {
+    for (const result of toolResults) {
+      if (typeof result.content === 'string') {
+        const parsed = JSON.parse(result.content) as Record<string, unknown>;
+        if (parsed.needs_disambiguation === true && Array.isArray(parsed.candidates)) {
+          options = parsed.candidates as DisambiguationCandidate[];
+        }
+        // Only request_introduction returns request_id on success — the signal
+        // that this run put an introduction request in flight.
+        if (parsed.success === true && typeof parsed.request_id === 'number') {
+          requestCreated = true;
+        }
+      }
+    }
+  };
   // Track the LONGEST narration saved as a 'step' — the model's real answer when
   // it wrote it in the text alongside a tool call. If the final turn then comes
   // back empty, or shorter than that buried answer (e.g. the run ends on a short
@@ -1712,25 +1802,10 @@ async function runToolLoop(
         }
       }
 
-      for (const block of response.content) {
-        if (block.type === 'tool_use' && block.name === 'present_choices') {
-          const input = block.input as { items?: unknown };
-          if (Array.isArray(input.items)) {
-            choices = input.items.filter((i): i is string => typeof i === 'string');
-          }
-        }
-      }
+      scanAssistantBlocks(response.content);
 
       const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
-
-      for (const result of toolResults) {
-        if (typeof result.content === 'string') {
-          const parsed = JSON.parse(result.content) as Record<string, unknown>;
-          if (parsed.needs_disambiguation === true && Array.isArray(parsed.candidates)) {
-            options = parsed.candidates as DisambiguationCandidate[];
-          }
-        }
-      }
+      scanToolResults(toolResults);
 
       pending.push({ role: 'assistant', content: response.content });
       pending.push({ role: 'user', content: toolResults });
@@ -1767,7 +1842,9 @@ async function runToolLoop(
         }
       }
 
+      scanAssistantBlocks(response.content);
       const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+      scanToolResults(toolResults);
       pending.push({ role: 'assistant', content: response.content });
       pending.push({ role: 'user', content: toolResults });
       messages.push({ role: 'assistant', content: response.content });
@@ -1834,7 +1911,7 @@ async function runToolLoop(
     `[chat] run ${runId} done: ${toolCallCount} tool call(s), ${iterations} iteration(s), ${Date.now() - startedAt}ms`,
   );
 
-  return { finalText, pending, options, choices };
+  return { finalText, pending, options, choices, requestCreated, taskResult };
 }
 
 const SALVAGE_NUDGE =
@@ -1917,6 +1994,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     RESPOND_TO_INTRODUCTION_TOOL,
     GET_THREAD_CONTEXT_TOOL,
     PRESENT_CHOICES_TOOL,
+    SET_TASK_RESULT_TOOL,
     CREATE_TASK_TOOL,
     GET_MY_TASKS_TOOL,
     UPDATE_TASK_TOOL,
@@ -1960,7 +2038,7 @@ export async function processChat(
   // loop — appear in chronological order and survive a mid-run crash.
   await saveMessage(userId, threadId, 'user', userMessage);
 
-  const { finalText, pending, options, choices } = await runToolLoop(
+  const { finalText, pending, options, choices, requestCreated, taskResult } = await runToolLoop(
     userId,
     threadId,
     runId,
@@ -1992,7 +2070,13 @@ export async function processChat(
     console.error('[wallet] debit failed for run', runId, (err as Error).message);
   }
 
-  return { reply, ...(options && { options }), ...(choices && { choices }) };
+  return {
+    reply,
+    ...(options && { options }),
+    ...(choices && { choices }),
+    ...(requestCreated && { requestCreated: true }),
+    ...(taskResult && { taskResult }),
+  };
 }
 
 export { getOrCreateDefaultThread };

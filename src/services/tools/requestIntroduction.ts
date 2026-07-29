@@ -182,11 +182,17 @@ export async function requestIntroduction(
     id: incomingThread.id,
     type: incomingThread.type,
     title: incomingThread.title,
+    is_task: incomingThread.is_task,
+    status: incomingThread.status,
+    status_line: incomingThread.status_line,
   });
   emitThreadCreated(requesterUserId, {
     id: outgoingThread.id,
     type: outgoingThread.type,
     title: outgoingThread.title,
+    is_task: outgoingThread.is_task,
+    status: outgoingThread.status,
+    status_line: outgoingThread.status_line,
   });
 
   if (hasPush) {

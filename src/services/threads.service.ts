@@ -1,14 +1,36 @@
 import { query } from '../db/postgres/client';
 import { stripAllowedSpans } from './privacyScrub';
 
+export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
+
+// Default status_line per status (Georgian, shown under the thread title in the
+// chat list). `done` carries no line — an idle thread needs no caption.
+export const STATUS_LINES: Readonly<Record<ThreadStatus, string | null>> = {
+  working: 'ვმუშაობ…',
+  waiting: 'ველოდები პასუხს',
+  needs_you: 'შენი პასუხი სჭირდება',
+  done: null,
+  failed: 'შეფერხდა — სცადე თავიდან',
+};
+
 export interface Thread {
   id: number;
   user_id: number;
   type: 'regular' | 'incoming_request' | 'outgoing_request';
   title: string | null;
   introduction_request_id: number | null;
+  is_task: boolean;
+  status: ThreadStatus;
+  status_line: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Initial task state for a thread created in a non-idle state (request threads).
+export interface ThreadTaskState {
+  isTask: boolean;
+  status: ThreadStatus;
+  statusLine: string | null;
 }
 
 export interface ThreadMessage {
@@ -32,6 +54,9 @@ export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
        t.type,
        t.title,
        t.introduction_request_id,
+       t.is_task,
+       t.status,
+       t.status_line,
        t.created_at,
        t.updated_at,
        lm.content AS last_message,
@@ -56,19 +81,30 @@ export async function createThread(
   type: Thread['type'],
   title?: string,
   introRequestId?: number,
+  task?: ThreadTaskState,
 ): Promise<Thread> {
   const result = await query<Thread>(
-    `INSERT INTO threads (user_id, type, title, introduction_request_id)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, user_id, type, title, introduction_request_id, created_at, updated_at`,
-    [userId, type, title ?? null, introRequestId ?? null],
+    `INSERT INTO threads (user_id, type, title, introduction_request_id, is_task, status, status_line)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, user_id, type, title, introduction_request_id, is_task, status, status_line,
+               created_at, updated_at`,
+    [
+      userId,
+      type,
+      title ?? null,
+      introRequestId ?? null,
+      task?.isTask ?? false,
+      task?.status ?? 'done',
+      task?.statusLine ?? null,
+    ],
   );
   return result.rows[0];
 }
 
 export async function getThread(threadId: number, userId: string): Promise<Thread | null> {
   const result = await query<Thread>(
-    `SELECT id, user_id, type, title, introduction_request_id, created_at, updated_at
+    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
+            created_at, updated_at
      FROM threads
      WHERE id = $1 AND user_id = $2
      LIMIT 1`,
@@ -79,7 +115,8 @@ export async function getThread(threadId: number, userId: string): Promise<Threa
 
 export async function getThreadByIntroRequestId(introRequestId: number): Promise<Thread | null> {
   const result = await query<Thread>(
-    `SELECT id, user_id, type, title, introduction_request_id, created_at, updated_at
+    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
+            created_at, updated_at
      FROM threads
      WHERE introduction_request_id = $1
      LIMIT 1`,
@@ -88,8 +125,38 @@ export async function getThreadByIntroRequestId(introRequestId: number): Promise
   return result.rows[0] ?? null;
 }
 
+/** Both sides of an introduction request: the mediator's incoming thread and the requester's outgoing one. */
+export async function getThreadsByIntroRequestId(introRequestId: number): Promise<Thread[]> {
+  const result = await query<Thread>(
+    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
+            created_at, updated_at
+     FROM threads
+     WHERE introduction_request_id = $1`,
+    [introRequestId],
+  );
+  return result.rows;
+}
+
 export async function updateThreadTitle(threadId: number, title: string): Promise<void> {
   await query(`UPDATE threads SET title = $1, updated_at = NOW() WHERE id = $2`, [title, threadId]);
+}
+
+/**
+ * Persist the thread's task state. `isTask` only ever flips to true (a thread
+ * that became a task stays one); omitting it leaves the flag unchanged.
+ */
+export async function updateThreadStatus(
+  threadId: number,
+  status: ThreadStatus,
+  statusLine: string | null,
+  isTask?: boolean,
+): Promise<void> {
+  await query(
+    `UPDATE threads
+     SET status = $1, status_line = $2, is_task = COALESCE($3, is_task), updated_at = NOW()
+     WHERE id = $4`,
+    [status, statusLine, isTask ?? null, threadId],
+  );
 }
 
 export async function touchThread(threadId: number): Promise<void> {
@@ -148,11 +215,17 @@ export async function createIncomingRequestThread(
   message: string | null,
 ): Promise<Thread> {
   const title = `${requesterName} → ${targetName}`;
+  // The mediator must answer this request — the thread is born a task awaiting them.
   const thread = await createThread(
     String(mediatorUserId),
     'incoming_request',
     title,
     introRequestId,
+    {
+      isTask: true,
+      status: 'needs_you',
+      statusLine: STATUS_LINES.needs_you,
+    },
   );
 
   const openingMessage =
@@ -172,11 +245,17 @@ export async function createOutgoingRequestThread(
   targetName: string,
 ): Promise<Thread> {
   const title = `${mediatorName} → ${targetName}`;
+  // The requester is waiting on the mediator — born a task in the waiting state.
   const thread = await createThread(
     String(requesterUserId),
     'outgoing_request',
     title,
     introRequestId,
+    {
+      isTask: true,
+      status: 'waiting',
+      statusLine: STATUS_LINES.waiting,
+    },
   );
 
   const openingMessage =

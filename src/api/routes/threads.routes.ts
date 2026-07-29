@@ -17,7 +17,10 @@ import {
   updateThreadTitle,
   saveThreadMessage,
 } from '../../services/threads.service';
-import { processChat } from '../../services/chat.service';
+import { processChat, ChatResult } from '../../services/chat.service';
+import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
+import { generateThreadTitle } from '../../services/threadTitle.service';
+import { ThreadStatus } from '../../services/threads.service';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
 import {
   subscribeUserEvents,
@@ -46,6 +49,17 @@ function buildPushPreview(reply: string): string {
   return safe.length > PUSH_PREVIEW_MAX_CHARS
     ? safe.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
     : safe;
+}
+
+/**
+ * Terminal thread status for a finished run: an in-flight introduction request
+ * outranks everything (the thread is genuinely waiting on a third party), then
+ * an explicit or trailing question to the user, else the run is simply done.
+ */
+function statusAfterRun(result: ChatResult): ThreadStatus {
+  if (result.requestCreated === true) return 'waiting';
+  if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
+  return 'done';
 }
 
 threadsRouter.use(authenticateJwt, requireUserRole);
@@ -94,7 +108,14 @@ threadsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
     const thread = await createThread(userId, 'regular');
-    emitThreadCreated(userId, { id: thread.id, type: thread.type, title: thread.title });
+    emitThreadCreated(userId, {
+      id: thread.id,
+      type: thread.type,
+      title: thread.title,
+      is_task: thread.is_task,
+      status: thread.status,
+      status_line: thread.status_line,
+    });
     res.status(201).json({ success: true, data: thread });
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -153,7 +174,10 @@ threadsRouter.post(
       }
 
       if (thread.type === 'regular' && thread.title === null) {
+        // Provisional title immediately (never a blank row in the chat list),
+        // then a model-written 2–4 word one replaces it via thread_updated.
         await updateThreadTitle(threadId, message.slice(0, 60));
+        void generateThreadTitle(userId, threadId, message);
       }
 
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
@@ -177,6 +201,10 @@ threadsRouter.post(
       const runId = randomUUID();
       res.status(202).json({ success: true, runId });
 
+      // The run is in flight — every device's chat list shows "working" from
+      // the server-held state (no more client-local status guessing).
+      void setThreadStatus(userId, threadId, 'working');
+
       // Hard outer timeout: the run's own budget (~90s) normally forces a final
       // answer, but a truly stuck call (a hung external dependency the inner
       // watchdogs miss) could otherwise leave the client waiting forever with the
@@ -193,6 +221,13 @@ threadsRouter.post(
             reply: result.reply,
             ...(result.options && { options: result.options }),
             ...(result.choices && { choices: result.choices }),
+            ...(result.taskResult && { result: result.taskResult }),
+          });
+          // Persist + broadcast the terminal status. The thread becomes a task
+          // once a run sent a request or reported a structured result.
+          const becameTask = result.requestCreated === true || result.taskResult !== undefined;
+          void setThreadStatus(userId, threadId, statusAfterRun(result), {
+            ...(becameTask && { isTask: true }),
           });
           // If the user isn't connected (closed the app / switched away), their
           // answer would sit unseen — push it. No-op when they're live (they see
@@ -214,6 +249,7 @@ threadsRouter.post(
             ? 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.'
             : 'ტექნიკური შეფერხება მოხდა ჩვენს მხარეს. გთხოვ, სცადე თავიდან.';
           emitRunError(userId, threadId, runId, userMessage);
+          void setThreadStatus(userId, threadId, 'failed');
           // The SSE event alone is not enough: if the stream dropped mid-run, the
           // user stares at frozen narration forever (three real stalls in one
           // battery run showed no visible timeout). Persist the error INTO the

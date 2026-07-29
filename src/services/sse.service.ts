@@ -42,6 +42,30 @@ export function emitThreadCreated(userId: string, thread: unknown): void {
   emitter.emit(`user:${userId}`, { event: 'thread_created', thread });
 }
 
+export interface ThreadUpdatePayload {
+  id: number;
+  status?: string;
+  status_line?: string | null;
+  is_task?: boolean;
+  title?: string;
+}
+
+/**
+ * The thread's task state (or generated title) changed server-side — every
+ * connected device patches its chat list from this instead of deriving state
+ * locally. Fields are partial: only what changed is sent.
+ */
+export function emitThreadUpdated(userId: string, thread: ThreadUpdatePayload): void {
+  emitter.emit(`user:${userId}`, {
+    event: 'thread_updated',
+    thread: {
+      ...thread,
+      ...(typeof thread.status_line === 'string' && { status_line: scrubText(thread.status_line) }),
+      ...(typeof thread.title === 'string' && { title: scrubText(thread.title) }),
+    },
+  });
+}
+
 /**
  * Whether the user currently has an open SSE stream (an attached listener). Used
  * to decide if a completed run should also fire a push — if they're connected
@@ -123,6 +147,9 @@ interface RunCompletePayload {
   reply: string;
   options?: unknown;
   choices?: unknown;
+  // Structured task outcome (who/when/where/topic) the model filled via
+  // set_task_result — the client renders it as a result card.
+  result?: unknown;
 }
 
 /** Final answer for a run — the frontend renders this as the assistant message. */
@@ -136,6 +163,7 @@ export function emitRunComplete(
     reply: displayText(payload.reply),
     options: scrubDeep(payload.options),
     choices: scrubDeep(payload.choices),
+    result: scrubDeep(payload.result),
   };
   emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...safe });
 }
