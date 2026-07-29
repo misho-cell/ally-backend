@@ -3,7 +3,9 @@ import { updateThreadTitle } from './threads.service';
 import { emitThreadUpdated } from './sse.service';
 
 // Cheap tier is plenty for a 2–4 word title; overridable without a deploy.
-const TITLE_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5';
+// Dated id on purpose — it is the key provider_prices is seeded under, so the
+// cost ledger prices the call instead of warning "missing price".
+const TITLE_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
 const TITLE_MAX_TOKENS = 30;
 const TITLE_TIMEOUT_MS = 10_000;
 const TITLE_MAX_WORDS = 4;
