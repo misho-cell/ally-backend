@@ -17,7 +17,9 @@ const RESULT_GUIDANCE =
   '"Deputy CEO in charge of X") to a broader one (e.g. "CEO"). For a current ' +
   "officeholder, prefer a result marked official:true (the institution's own " +
   'site) and READ that page with fetch_page before naming anyone — a news ' +
-  'snippet may be stale or name a former/acting holder.';
+  'snippet may be stale or name a former/acting holder. If fetch_page cannot ' +
+  'read the page, you may NOT name the officeholder from these snippets — ' +
+  'say plainly that the official page could not be read.';
 
 // The institution's own domain outranks any news article on "who currently
 // holds this role". Georgian public bodies live under gov.ge; parliament and
@@ -55,6 +57,59 @@ interface TavilyResponse {
 
 interface TavilyExtractResponse {
   results?: { url: string; raw_content?: string }[];
+}
+
+// Two prod fabrications (threads 5941/6087) traced to exactly this: Tavily's
+// extractor returned NO text for tbilisi.gov.ge pages — even at advanced
+// depth — and the model then named an officeholder from a stale search
+// snippet. The note must forbid that fallback in so many words.
+const NO_TEXT_NOTE =
+  'The page returned no readable text. You may NOT name a person or ' +
+  'officeholder from search snippets instead — tell the user plainly that ' +
+  'the official page could not be read right now.';
+
+// The direct-fetch fallback hits a model-supplied URL from OUR server, so
+// private/internal targets must be refused (SSRF). Tavily-side fetches never
+// had this concern — their infrastructure did the fetching.
+const PRIVATE_HOST_RE =
+  /^(localhost|.*\.local|.*\.internal)$|^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)|^(\[?::1\]?|0\.0\.0\.0)$/i;
+
+export function isBlockedFetchHost(hostname: string): boolean {
+  return PRIVATE_HOST_RE.test(hostname);
+}
+
+/**
+ * Last-resort page read when Tavily's extractor comes back empty: plain GET +
+ * crude tag strip. Gov pages that defeat the extractor often still carry
+ * their roster in plain markup, so even rough text beats an empty answer.
+ */
+async function fetchRawPageText(url: string): Promise<string> {
+  try {
+    if (isBlockedFetchHost(new URL(url).hostname)) return '';
+  } catch {
+    return '';
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AllyBot/1.0)' },
+    });
+    if (!response.ok) return '';
+    const html = await response.text();
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function webSearch(query: string): Promise<object> {
@@ -150,7 +205,12 @@ export async function fetchPage(url: string): Promise<object> {
     const data = (await response.json()) as TavilyExtractResponse;
     const content = data.results?.[0]?.raw_content ?? '';
     if (!content.trim()) {
-      return { url: target, content: null, note: 'The page returned no readable text.' };
+      // Extractor came back empty — try a plain fetch before giving up.
+      const fallback = await fetchRawPageText(target);
+      if (fallback) {
+        return { url: target, guidance: PAGE_GUIDANCE, content: fallback.slice(0, PAGE_CHARS) };
+      }
+      return { url: target, content: null, note: NO_TEXT_NOTE };
     }
     return { url: target, guidance: PAGE_GUIDANCE, content: content.slice(0, PAGE_CHARS) };
   } catch (err) {
