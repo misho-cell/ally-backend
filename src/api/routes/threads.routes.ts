@@ -45,7 +45,7 @@ const RUN_HARD_TIMEOUT_MS = 110_000;
 const PUSH_PREVIEW_MAX_CHARS = 120;
 function buildPushPreview(reply: string): string {
   const safe = scrubText(reply).replace(/\s+/g, ' ').trim();
-  if (safe.length === 0) return 'შენი პასუხი მზადაა 🎉';
+  if (safe.length === 0) return 'შენი პასუხი მზადაა';
   return safe.length > PUSH_PREVIEW_MAX_CHARS
     ? safe.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
     : safe;
@@ -253,8 +253,9 @@ threadsRouter.post(
           // The SSE event alone is not enough: if the stream dropped mid-run, the
           // user stares at frozen narration forever (three real stalls in one
           // battery run showed no visible timeout). Persist the error INTO the
-          // thread so any refetch/reopen shows it. Best-effort — never throws.
-          saveThreadMessage(threadId, Number(userId), 'assistant', userMessage).catch(
+          // thread — kind='error' so the client renders it as a system failure
+          // with a retry, never as words the assistant said. Best-effort.
+          saveThreadMessage(threadId, Number(userId), 'assistant', userMessage, 'error').catch(
             () => undefined,
           );
         });

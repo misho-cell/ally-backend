@@ -46,6 +46,20 @@ async function runAiNotifications(): Promise<void> {
 }
 
 export function startAiNotificationCron(): void {
+  // Kill switch: the nudge job spends real model tokens per subscriber. Off
+  // when explicitly disabled, and off when push can't be delivered anyway
+  // (no VAPID keys) — generating teasers nobody receives is pure spend.
+  if (process.env.AI_NOTIFICATIONS_ENABLED === 'false') {
+    // eslint-disable-next-line no-console
+    console.log('[ai-notif-cron] Disabled via AI_NOTIFICATIONS_ENABLED=false');
+    return;
+  }
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    // eslint-disable-next-line no-console
+    console.log('[ai-notif-cron] Disabled — VAPID keys not configured, pushes cannot deliver');
+    return;
+  }
+
   const scheduleNext = (): void => {
     const delay = msUntilNextSendWindow();
     const nextRun = new Date(Date.now() + delay);

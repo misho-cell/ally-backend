@@ -59,13 +59,20 @@ beforeEach(() => {
 
 describe('requestOTP', () => {
   it('inserts OTP record and sends WhatsApp message', async () => {
-    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
+    // Route by fragment: the hardened flow also checks the per-phone cap,
+    // deletes stale codes and records the send.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM otp_sends'))
+        return Promise.resolve({ rows: [{ count: '0' }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
     mockSendWhatsApp.mockResolvedValue(undefined);
 
     await requestOTP('+995555123456', 'AUTH');
 
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(mockQuery.mock.calls[0][0]).toContain('INSERT INTO "Otp"');
+    expect(mockQuery.mock.calls.some((c) => (c[0] as string).includes('INSERT INTO "Otp"'))).toBe(
+      true,
+    );
     expect(mockSendWhatsApp).toHaveBeenCalledWith(
       '+995555123456',
       expect.stringMatching(/^\d{6}$/),
@@ -80,20 +87,28 @@ describe('requestOTP', () => {
 });
 
 describe('verifyOTP', () => {
-  it('deletes OTP on successful verification', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: 42 }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+  it('deletes OTP on successful verification and records the verification', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT id FROM "Otp"'))
+        return Promise.resolve({ rows: [{ id: 42 }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
 
     await verifyOTP('+995555123456', '123456', 'AUTH');
 
-    expect(mockQuery).toHaveBeenCalledTimes(2);
-    expect(mockQuery.mock.calls[1][0]).toContain('DELETE FROM "Otp"');
-    expect(mockQuery.mock.calls[1][1]).toEqual([42]);
+    const del = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('DELETE FROM "Otp" WHERE id'),
+    );
+    expect(del?.[1]).toEqual([42]);
+    expect(
+      mockQuery.mock.calls.some((c) =>
+        (c[0] as string).includes('INSERT INTO phone_verifications'),
+      ),
+    ).toBe(true);
   });
 
   it('throws when OTP not found or expired', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
     await expect(verifyOTP('+995555123456', '000000', 'AUTH')).rejects.toThrow(
       'კოდი არასწორია ან ვადა გასულია',
@@ -101,12 +116,23 @@ describe('verifyOTP', () => {
   });
 });
 
+// Route register's queries by fragment: duplicate check, verification consume
+// (the OTP round-trip is now mandatory), user + phone inserts.
+function routeRegisterQueries(opts: { userId?: number; verified?: boolean } = {}): void {
+  mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('SELECT id FROM "UserPhone"'))
+      return Promise.resolve({ rows: [], rowCount: 0 } as never);
+    if (sql.includes('DELETE FROM phone_verifications'))
+      return Promise.resolve({ rows: [], rowCount: opts.verified === false ? 0 : 1 } as never);
+    if (sql.includes('INSERT INTO "User"'))
+      return Promise.resolve({ rows: [{ id: opts.userId ?? 7 }], rowCount: 1 } as never);
+    return Promise.resolve({ rows: [], rowCount: 1 } as never);
+  });
+}
+
 describe('registerUser', () => {
   it('creates user and phone record, returns token', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
-      .mockResolvedValueOnce({ rows: [{ id: 7 }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    routeRegisterQueries();
 
     const result = await registerUser('+995555123456', 'გიორგი');
 
@@ -115,6 +141,12 @@ describe('registerUser', () => {
     expect(decoded.userId).toBe('7');
     expect(decoded.role).toBe('user');
     expect(mockCreatePhoneNode).toHaveBeenCalledWith('+995555123456');
+  });
+
+  it('refuses an unverified phone', async () => {
+    routeRegisterQueries({ verified: false });
+
+    await expect(registerUser('+995555123456', 'გიორგი')).rejects.toThrow(/დაუდასტურებელია/);
   });
 
   it('throws when phone already registered', async () => {
@@ -137,50 +169,53 @@ describe('registerUser', () => {
   });
 
   it('records the inviter when the gate passes via referral', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
-      .mockResolvedValueOnce({ rows: [{ id: 7 }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    routeRegisterQueries();
     mockGate.mockResolvedValue({ eligible: true, mode: 'referral', inviterUserId: 5 });
 
     await registerUser('+995555123456', 'გიორგი', '+995599444420');
 
     expect(mockGate).toHaveBeenCalledWith('+995555123456', '+995599444420');
-    const userInsertCall = mockQuery.mock.calls[1];
-    expect(userInsertCall[0]).toContain('inviterReferralUserId');
-    expect(userInsertCall[1]).toEqual(['გიორგი', '$2b$12$hashed', 5]);
+    const userInsertCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO "User"'),
+    );
+    expect(userInsertCall?.[0]).toContain('inviterReferralUserId');
+    expect(userInsertCall?.[1]).toEqual(['გიორგი', '$2b$12$hashed', 5]);
   });
 
   it('parses +995 phone code correctly', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
-      .mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    routeRegisterQueries({ userId: 1 });
 
     await registerUser('+995555123456', 'Test');
 
-    const phoneInsertCall = mockQuery.mock.calls[2];
-    expect(phoneInsertCall[1]).toContain('+995');
-    expect(phoneInsertCall[1]).toContain('555123456');
+    const phoneInsertCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO "UserPhone"'),
+    );
+    expect(phoneInsertCall?.[1]).toContain('+995');
+    expect(phoneInsertCall?.[1]).toContain('555123456');
   });
 
   it('parses +44 phone code correctly', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
-      .mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    routeRegisterQueries({ userId: 1 });
 
     await registerUser('+447911123456', 'Test');
 
-    const phoneInsertCall = mockQuery.mock.calls[2];
-    expect(phoneInsertCall[1]).toContain('+44');
-    expect(phoneInsertCall[1]).toContain('7911123456');
+    const phoneInsertCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO "UserPhone"'),
+    );
+    expect(phoneInsertCall?.[1]).toContain('+44');
+    expect(phoneInsertCall?.[1]).toContain('7911123456');
   });
 });
 
 describe('completeLogin', () => {
-  it('returns token and isNewUser: false for existing phone', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 5 }], rowCount: 1 } as never);
+  it('returns token and isNewUser: false for a verified existing phone', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve({ rows: [{ id: 5 }], rowCount: 1 } as never);
+      if (sql.includes('DELETE FROM phone_verifications'))
+        return Promise.resolve({ rows: [], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
 
     const result = await completeLogin('+995555123456');
 
@@ -190,8 +225,20 @@ describe('completeLogin', () => {
     expect(decoded.userId).toBe('5');
   });
 
+  it('refuses a session when the phone was not verified', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve({ rows: [{ id: 5 }], rowCount: 1 } as never);
+      if (sql.includes('DELETE FROM phone_verifications'))
+        return Promise.resolve({ rows: [], rowCount: 0 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
+
+    await expect(completeLogin('+995555123456')).rejects.toThrow(/დაუდასტურებელია/);
+  });
+
   it('returns empty token and isNewUser: true for unknown phone', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
     const result = await completeLogin('+995000000000');
 
@@ -203,7 +250,7 @@ describe('completeLogin', () => {
 describe('adminLogin', () => {
   it('returns token for valid credentials', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, password: 'hashed' }],
+      rows: [{ id: 1, password: 'hashed', hasAccessToAlly: true }],
       rowCount: 1,
     } as never);
     mockBcryptCompare.mockResolvedValueOnce(true as never);
@@ -225,7 +272,7 @@ describe('adminLogin', () => {
 
   it('throws on wrong password', async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, password: 'hashed' }],
+      rows: [{ id: 1, password: 'hashed', hasAccessToAlly: true }],
       rowCount: 1,
     } as never);
     mockBcryptCompare.mockResolvedValueOnce(false as never);

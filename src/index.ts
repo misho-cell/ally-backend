@@ -19,6 +19,7 @@ import { checkCriticalIndexes } from './db/postgres/indexSanity';
 import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
 import { startAiNotificationCron } from './services/aiNotification.cron';
+import { startRunReaper } from './services/runReaper.service';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -82,6 +83,7 @@ runMigrations()
     EnrichmentJob.startCron();
     startSubscriptionCron();
     startAiNotificationCron();
+    startRunReaper();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
   })

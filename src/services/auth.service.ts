@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt, createHash } from 'crypto';
 import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
@@ -14,9 +14,64 @@ if (!jwtSecret) {
 }
 
 const SALT_ROUNDS = 12;
+// How long a completed OTP verification stays valid for register/complete-login.
+const VERIFICATION_TTL_MINUTES = 10;
+// Per-PHONE send ceiling (per-IP and per-device limits live in the router; this
+// closes the "many senders, one victim phone" hole).
+const OTP_SENDS_PER_PHONE_PER_HOUR = 5;
+const ERR_PHONE_NOT_VERIFIED =
+  'ნომერი დაუდასტურებელია — ჯერ კოდით გაიარე ვერიფიკაცია და მერე სცადე';
 
+// An authentication secret must come from a CSPRNG — Math.random() is guessable.
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
+}
+
+// Codes are stored hashed: a DB read must never yield a usable login code.
+function hashOtp(code: string): string {
+  return createHash('sha256').update(code).digest('hex');
+}
+
+function phoneDigits(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+async function enforcePhoneSendCap(phone: string): Promise<void> {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM otp_sends
+     WHERE phone_digits = $1 AND sent_at > NOW() - INTERVAL '1 hour'`,
+    [phoneDigits(phone)],
+  );
+  if (Number(result.rows[0]?.count ?? 0) >= OTP_SENDS_PER_PHONE_PER_HOUR) {
+    throw new Error('ამ ნომერზე ძალიან ბევრი კოდი გაიგზავნა — სცადე ერთ საათში');
+  }
+}
+
+async function recordOtpSend(phone: string): Promise<void> {
+  await query(`INSERT INTO otp_sends (phone_digits) VALUES ($1)`, [phoneDigits(phone)]);
+}
+
+// One successful OTP check = one short-lived verification, consumed exactly
+// once by register/complete-login. This is what makes the OTP mandatory
+// server-side instead of a client-flow convention.
+async function markPhoneVerified(phone: string, actionType: string): Promise<void> {
+  await query(
+    `INSERT INTO phone_verifications (phone_digits, action_type, verified_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (phone_digits, action_type) DO UPDATE SET verified_at = NOW()`,
+    [phoneDigits(phone), actionType],
+  );
+}
+
+async function consumePhoneVerification(phone: string, actionTypes: string[]): Promise<boolean> {
+  const result = await query(
+    `DELETE FROM phone_verifications
+     WHERE phone_digits = $1
+       AND action_type = ANY($2)
+       AND verified_at > NOW() - INTERVAL '${VERIFICATION_TTL_MINUTES} minutes'`,
+    [phoneDigits(phone), actionTypes],
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
@@ -37,14 +92,28 @@ export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
+  await enforcePhoneSendCap(phone);
+
   const code = generateOTP();
+
+  // One valid code at a time: a new request invalidates every earlier code for
+  // this phone+action (format-independent, so a re-request in another format
+  // can't leave a second live code behind).
+  await query(
+    `DELETE FROM "Otp"
+     WHERE regexp_replace(identifier, '\\D', '', 'g') = $1
+       AND "actionType" = $2::"ActionType"
+       AND "identifierType" = 'PHONE'::"IdentifierType"`,
+    [phoneDigits(phone), actionType],
+  );
 
   await query(
     `INSERT INTO "Otp" (identifier, "identifierType", "actionType", otp, "createdAt", "updatedAt")
      VALUES ($1, 'PHONE'::"IdentifierType", $2::"ActionType", $3, NOW(), NOW())`,
-    [phone, actionType, code],
+    [phone, actionType, hashOtp(code)],
   );
 
+  await recordOtpSend(phone);
   await sendWhatsAppMessage(phone, code);
 }
 
@@ -76,6 +145,8 @@ export async function resendOTP(
     throw new Error(`გთხოვთ, ${Math.ceil(RESEND_COOLDOWN_SECONDS - secondsElapsed)} წამი დაიცადოთ`);
   }
 
+  await enforcePhoneSendCap(phone);
+  await recordOtpSend(phone);
   await sendSmsOtp(phone);
 }
 
@@ -84,18 +155,20 @@ export async function verifyOTP(
   code: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
+  // Codes are stored hashed; compare hashes. Consumed on use (single-shot).
   const result = await query<{ id: number }>(
     `SELECT id FROM "Otp"
-     WHERE identifier = $1
+     WHERE regexp_replace(identifier, '\\D', '', 'g') = $1
        AND otp = $2
        AND "actionType" = $3::"ActionType"
        AND "identifierType" = 'PHONE'::"IdentifierType"
        AND "createdAt" > NOW() - INTERVAL '5 minutes'`,
-    [phone, code, actionType],
+    [phoneDigits(phone), hashOtp(code), actionType],
   );
 
   if (result.rowCount && result.rowCount > 0) {
     await query('DELETE FROM "Otp" WHERE id = $1', [result.rows[0].id]);
+    await markPhoneVerified(phone, actionType);
     return;
   }
 
@@ -103,10 +176,12 @@ export async function verifyOTP(
   if (twilioVerified) {
     await query(
       `DELETE FROM "Otp"
-       WHERE identifier = $1 AND "actionType" = $2::"ActionType"
+       WHERE regexp_replace(identifier, '\\D', '', 'g') = $1
+         AND "actionType" = $2::"ActionType"
          AND "identifierType" = 'PHONE'::"IdentifierType"`,
-      [phone, actionType],
+      [phoneDigits(phone), actionType],
     );
+    await markPhoneVerified(phone, actionType);
     return;
   }
 
@@ -143,6 +218,12 @@ export async function registerUser(
     );
   }
 
+  // The OTP round-trip is mandatory: no verification record — no account.
+  // (Consumed here, single use, so a stolen response can't be replayed.)
+  if (!(await consumePhoneVerification(phone, ['REGISTER']))) {
+    throw new Error(ERR_PHONE_NOT_VERIFIED);
+  }
+
   const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
 
   const userResult = await query<{ id: number }>(
@@ -153,15 +234,18 @@ export async function registerUser(
   );
 
   const userId = userResult.rows[0].id;
-  const { phoneCode, phoneNumber } = parsePhone(phone);
+  // Store the phone canonically (no spaces/dashes) — unnormalized rows are what
+  // broke is_member and self-exclusion for format-variant registrations.
+  const cleanPhone = phone.replace(/[\s\-().]/g, '');
+  const { phoneCode, phoneNumber } = parsePhone(cleanPhone);
 
   await query(
     `INSERT INTO "UserPhone" (phone, "phoneCode", "phoneNumber", "userId", "createdAt", "updatedAt")
      VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-    [phone, phoneCode, phoneNumber, userId],
+    [cleanPhone, phoneCode, phoneNumber, userId],
   );
 
-  await createUserPhoneNode(phone);
+  await createUserPhoneNode(cleanPhone);
 
   const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
   return { token };
@@ -178,6 +262,12 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
 
   if (!result.rowCount || result.rowCount === 0) {
     return { token: '', isNewUser: true };
+  }
+
+  // Same rule as registration: a session is only minted against a fresh,
+  // consumed OTP verification (AUTH for login, RECOVER for account recovery).
+  if (!(await consumePhoneVerification(phone, ['AUTH', 'RECOVER']))) {
+    throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
 
   const userId = result.rows[0].id;

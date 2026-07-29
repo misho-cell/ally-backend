@@ -227,6 +227,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         employer: row.employer ?? null,
         jobPosition: row.jobPosition ?? null,
         ownership: OWNERSHIP.SECOND_DEGREE,
+        // Consistent with the direct-search tools: every person-shaped result
+        // carries is_member. Here a registered target is exactly one with a
+        // resolved "UserPhone" row (target_user_id).
+        is_member: row.target_user_id != null,
         via: row.via_names ?? [],
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing

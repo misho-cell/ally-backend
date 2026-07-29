@@ -67,6 +67,7 @@ import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
+import { isCliffhangerReply, CLIFFHANGER_NUDGE } from './replyGuards';
 import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -276,7 +277,14 @@ const AGENT_STRATEGY_PROMPT = `
 - key-ი **არსებობს** და ახალი ინფო **ემატება** ძველს (მაგ. მიზნები, სასურველი კონტაქტები) → \`mode: "append"\`
 
 **ეს ინფო მხოლოდ ამ მომხმარებლისთვისაა — არასოდეს გაუზიარო სხვას.**
-სისტემის კონტექსტში ჩანს → გამოიყენე ძიებაში, შეხვედრების მომზადებაში, რეკომენდაციებში.`;
+სისტემის კონტექსტში ჩანს → გამოიყენე ძიებაში, შეხვედრების მომზადებაში, რეკომენდაციებში.
+
+---
+
+### 15. დაასრულე, სანამ გაჩერდები
+- **არასოდეს** დაამთავრო პასუხი მომავალი მოქმედების გამოცხადებით („ახლა ვნახოთ…", „ერთი წუთით, ვამოწმებ…").
+- ან გააკეთე ის მოქმედება ახლავე (გამოიძახე ტული), ან ჩამოაყალიბე საბოლოო პასუხი უკვე ნაპოვნი ინფორმაციით.
+- ბოლო წინადადება ყოველთვის ან დასრულებული პასუხია, ან კონკრეტული კითხვა მომხმარებელს.`;
 
 interface ConversationRow {
   role: string;
@@ -1086,7 +1094,9 @@ function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
   const lines = responses
     .map((r) => {
       const statusText = r.status === 'accepted' ? 'დათანხმდა' : 'უარი თქვა';
-      const info = r.mediator_response ? ` ინფო: "${r.mediator_response}"` : '';
+      // Another user wrote this free text — scrub it before it enters THIS
+      // user's prompt (phone numbers etc. must not ride across accounts).
+      const info = r.mediator_response ? ` ინფო: "${scrubText(r.mediator_response)}"` : '';
       return `- ${r.target_name}: შუამავალი ${statusText}.${info}`;
     })
     .join('\n');
@@ -1165,7 +1175,11 @@ async function buildAgentSystemPrompt(
       'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
     ),
     getUserProfile(userId),
-    getPrivateContext(userId),
+    // Private context is the user's own confidential notes. In a request
+    // thread the reply crosses to ANOTHER user (mediator_response), so the
+    // confidential material must not share that context window at all —
+    // code-enforced, not prompt-enforced.
+    loadMemory ? getPrivateContext(userId) : Promise.resolve({} as Record<string, string>),
     resolvePendingRequests(userId, threadType, introRequestId),
     threadType === 'incoming_request' || threadType === 'outgoing_request'
       ? Promise.resolve([] as RespondedRequest[])
@@ -1900,6 +1914,31 @@ async function runToolLoop(
     if (bestStepId !== null) await deleteMessage(bestStepId);
   }
 
+  // If, even after promotion, the final is a short "now let me check…"
+  // cliffhanger, force ONE text-only continuation so the run ends on an
+  // answer (or an honest "couldn't find it"), never on an announcement.
+  if (isCliffhangerReply(finalText)) {
+    try {
+      const cliffhangerTurn = {
+        role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: finalText }],
+      };
+      const nudgeTurn = { role: 'user' as const, content: CLIFFHANGER_NUDGE };
+      messages.push(cliffhangerTurn, nudgeTurn);
+      pending.push(cliffhangerTurn, nudgeTurn);
+      resetTurnStream();
+      const continuation = await callClaude(messages, systemPrompt, tools, ctx, {
+        forceText: true,
+        onText: stream,
+      });
+      const continuationText = scrubText(extractText(continuation.content));
+      if (continuationText) finalText = `${finalText}\n\n${continuationText}`;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[chat] cliffhanger continuation failed:', (err as Error).message);
+    }
+  }
+
   // Emit any safe remainder held back during streaming (run_complete then
   // reconciles the client's buffer against the authoritative reply anyway).
   answer.flush();
@@ -1917,7 +1956,7 @@ async function runToolLoop(
 const SALVAGE_NUDGE =
   '(სისტემური შენიშვნა: ძიება ტექნიკური შეფერხების გამო შეწყდა. ჩამოაყალიბე საბოლოო პასუხი მხოლოდ უკვე მოძიებული ინფორმაციით — ახალი ხელსაწყო აღარ გამოიძახო. თუ ვერაფერი მოიძებნა, გულწრფელად უთხარი მომხმარებელს, რომ ძიება შეფერხდა და თავიდან ცდა ღირს.)';
 
-const SALVAGE_FALLBACK_REPLY = 'ძიება ტექნიკური შეფერხების გამო შეწყდა — გთხოვ, სცადე თავიდან. 🙏';
+const SALVAGE_FALLBACK_REPLY = 'ძიება ტექნიკური შეფერხების გამო შეწყდა — გთხოვ, სცადე თავიდან.';
 
 /**
  * Best-effort wrap-up after a mid-run model failure: close any outstanding

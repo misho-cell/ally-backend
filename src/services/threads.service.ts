@@ -203,11 +203,14 @@ export async function saveThreadMessage(
   userId: number,
   role: 'user' | 'assistant',
   content: string,
+  // 'error' renders as a system-styled failure with a retry in the client —
+  // never as words the assistant said.
+  kind: 'message' | 'error' = 'message',
 ): Promise<void> {
   await query(
-    `INSERT INTO conversations (thread_id, user_id, role, content, content_json)
-     VALUES ($1, $2, $3, $4, NULL)`,
-    [threadId, userId, role, content],
+    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind)
+     VALUES ($1, $2, $3, $4, NULL, $5)`,
+    [threadId, userId, role, content, kind],
   );
   await touchThread(threadId);
 }

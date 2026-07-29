@@ -18,6 +18,16 @@ const MIN_PHONE_DIGITS = 9;
 function redactCandidate(match: string): string {
   const trimmed = match.trim();
   if (ISO_DATE_RE.test(trimmed) || YEAR_RANGE_RE.test(trimmed)) return match;
+  // A run of ADJACENT standalone numbers ("1500 2000 3000", "2015-2017
+  // 2018-2020") is not one phone: real spaced phones break into 2-3 digit
+  // groups ("+995 599 12 34 56"), while lists of counts/years/prices come in
+  // chunks of 4+ digits each. Judge such chunks individually instead of
+  // summing digits across the whole run — summing is what masked real content.
+  const chunks = trimmed.split(/\s+/);
+  if (chunks.length > 1 && chunks.every((c) => c.replace(/\D/g, '').length >= 4)) {
+    const anyChunkIsPhone = chunks.some((c) => c.replace(/\D/g, '').length >= MIN_PHONE_DIGITS);
+    return anyChunkIsPhone ? REDACTED : match;
+  }
   const digitCount = match.replace(/\D/g, '').length;
   return digitCount >= MIN_PHONE_DIGITS ? REDACTED : match;
 }

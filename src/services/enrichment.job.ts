@@ -8,6 +8,9 @@ const ENRICHMENT_CONCURRENCY = 10;
 const ENRICHMENT_BATCH_DELAY_MS = 200;
 const BACKFILL_NEO4J_BATCH_SIZE = 500;
 const CRON_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// First incremental run shortly after boot (gives migrations/indexes time to
+// settle) so a restart never postpones enrichment by a full day.
+const BOOT_RUN_DELAY_MS = 5 * 60 * 1000;
 
 interface UserRow {
   user_id: number;
@@ -364,21 +367,27 @@ export class EnrichmentJob {
     };
   }
 
+  private static runIncremental(): void {
+    if (this.running) {
+      // eslint-disable-next-line no-console
+      console.log('[enrichment] Cron skipped — job already running');
+      return;
+    }
+    this.start('incremental').catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[enrichment] Cron start error:', (err as Error).message);
+    });
+  }
+
   static startCron(): void {
     if (this.cronTimer !== null) return;
-    this.cronTimer = setInterval(() => {
-      if (this.running) {
-        // eslint-disable-next-line no-console
-        console.log('[enrichment] Cron skipped — job already running');
-        return;
-      }
-      this.start('incremental').catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[enrichment] Cron start error:', (err as Error).message);
-      });
-    }, CRON_INTERVAL_MS);
+    // Run shortly after boot, then on a fixed 24h interval. The old shape ran
+    // ONLY 24h after boot — every deploy/restart reset the clock, so the
+    // "daily" run drifted and a restart-heavy day never ran it at all.
+    setTimeout(() => this.runIncremental(), BOOT_RUN_DELAY_MS).unref();
+    this.cronTimer = setInterval(() => this.runIncremental(), CRON_INTERVAL_MS);
     // eslint-disable-next-line no-console
-    console.log('[enrichment] Daily cron started (24h interval)');
+    console.log('[enrichment] Cron started (first run in 5min, then every 24h)');
   }
 
   static stopCron(): void {

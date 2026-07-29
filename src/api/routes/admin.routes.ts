@@ -38,6 +38,67 @@ const adminRouter = Router();
 
 adminRouter.use(authenticateJwt, requireAdminRole);
 
+// App flags an admin may flip from the console. Whitelist on purpose — a typo
+// must not mint a brand-new (fail-open-read) flag row.
+const MANAGED_APP_FLAGS = ['invite_only'] as const;
+
+interface AppFlagRow {
+  flag: string;
+  enabled: boolean;
+  updated_at: string;
+}
+
+adminRouter.get('/flags', async (req: Request, res: Response<ApiResponse<AppFlagRow[]>>) => {
+  try {
+    const result = await query<AppFlagRow>(
+      `SELECT flag, enabled, updated_at FROM app_flags ORDER BY flag`,
+      [],
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.put(
+  '/flags/:flag',
+  param('flag')
+    .isIn([...MANAGED_APP_FLAGS])
+    .withMessage('unknown flag'),
+  body('enabled').isBoolean().withMessage('enabled must be a boolean'),
+  async (req: Request, res: Response<ApiResponse<AppFlagRow>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const flag = String(req.params.flag);
+      const { enabled } = req.body as { enabled: boolean };
+      const result = await query<AppFlagRow>(
+        `INSERT INTO app_flags (flag, enabled)
+         VALUES ($1, $2)
+         ON CONFLICT (flag) DO UPDATE SET enabled = $2, updated_at = NOW()
+         RETURNING flag, enabled, updated_at`,
+        [flag, enabled],
+      );
+      res.status(200).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 adminRouter.get(
   '/fields/active',
   async (req: Request, res: Response<ApiResponse<InsightField[]>>) => {

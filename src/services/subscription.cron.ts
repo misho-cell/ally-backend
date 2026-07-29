@@ -35,6 +35,6 @@ export function startSubscriptionCron(): void {
   };
 
   // eslint-disable-next-line no-console
-  console.log('[subscription-cron] Daily cron started (5h interval)');
+  console.log('[subscription-cron] Cron started (every 5h)');
   setTimeout(() => void run(), CRON_INTERVAL_MS);
 }

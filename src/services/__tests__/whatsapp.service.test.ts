@@ -23,8 +23,11 @@ describe('sendWhatsAppMessage', () => {
     expect(url).toContain('messages');
 
     const body = JSON.parse((options.body as Buffer).toString('utf8'));
-    expect(body.to).toBe('+995555123456');
-    expect(body.text.body).toContain('123456');
+    expect(body.to).toBe('995555123456');
+    // The message is a template send — the code rides as a body parameter.
+    expect(body.type).toBe('template');
+    expect(body.template.name).toBe('whatsup_otp');
+    expect(body.template.components[0].parameters[0].text).toBe('123456');
     expect(body.messaging_product).toBe('whatsapp');
   });
 
