@@ -1167,6 +1167,7 @@ async function buildAgentSystemPrompt(
   const loadMemory = shouldLoadMemory(threadType);
   const [
     configResult,
+    nameResult,
     fieldsResult,
     profile,
     privateContext,
@@ -1178,6 +1179,10 @@ async function buildAgentSystemPrompt(
     query<{ system_prompt: string }>(
       'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
     ),
+    // The registered name never reached the model before — with no name key in
+    // the profile KV it would sometimes invent one, or guess a gendered
+    // address (second-account battery: a female tester greeted as a man).
+    query<{ name: string | null }>('SELECT name FROM "User" WHERE id = $1 LIMIT 1', [userId]),
     query<{ field_label: string; field_description: string }>(
       'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
     ),
@@ -1196,9 +1201,14 @@ async function buildAgentSystemPrompt(
   ]);
 
   const base = configResult.rows[0]?.system_prompt ?? '';
+  const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
+  const nameSection = registeredName
+    ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).`
+    : '';
   return (
     base +
     AGENT_STRATEGY_PROMPT +
+    nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
     buildTasksSection(tasks) +
