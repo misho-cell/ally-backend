@@ -24,14 +24,19 @@ import { ApiResponse } from './types';
 
 dotenv.config();
 
-// The retired Vercel origin was still alive and double-delivering (duplicate
-// push notifications) — the old frontend is cut off here; allyapp.one is the
-// only client.
-const ALLOWED_ORIGINS = ['https://allyapp.one', 'https://www.allyapp.one'];
+// Domain migration (29 Jul): netai.guru is the new home; allyapp.one stays
+// allowed through the transition (installed PWAs keep working until the
+// redirect ships), then gets removed. The retired Vercel origin stays out.
+const ALLOWED_ORIGINS = [
+  'https://netai.guru',
+  'https://www.netai.guru',
+  'https://allyapp.one',
+  'https://www.allyapp.one',
+];
 
 // claude.ai (and other clients) derive the custom-connector icon from the
 // API domain's favicon — serve the app's own logo instead of a 404.
-const FAVICON_URL = 'https://allyapp.one/favicon.ico';
+const FAVICON_URL = 'https://netai.guru/favicon.ico';
 
 const app = express();
 // Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.

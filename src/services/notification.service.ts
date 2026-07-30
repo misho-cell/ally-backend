@@ -3,7 +3,7 @@ import { query } from '../db/postgres/client';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? '';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:support@allyapp.one';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:support@netai.guru';
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
