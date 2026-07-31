@@ -1,16 +1,24 @@
-import { query } from '../db/postgres/client';
+// Everything in this job runs on the ISOLATED background pool: its scans over
+// the multi-million-row alias table must never compete with user searches for
+// a connection (30 Jul outage: the backlog run made every search time out).
+import { backgroundQuery as query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { computeAndSaveUserScores, enrichContact } from './enrichment.service';
 import { getCompositeKeysForUsers, getCompositeKeysForPhones } from './neo4j.keys';
 
-const RELATIONSHIP_BATCH_SIZE = 200;
-const ENRICHMENT_CONCURRENCY = 10;
-const ENRICHMENT_BATCH_DELAY_MS = 200;
+const RELATIONSHIP_BATCH_SIZE = 50;
+const ENRICHMENT_CONCURRENCY = 2;
+const ENRICHMENT_BATCH_DELAY_MS = 500;
+const SCORE_USER_DELAY_MS = 250;
 const BACKFILL_NEO4J_BATCH_SIZE = 500;
-const CRON_INTERVAL_MS = 24 * 60 * 60 * 1000;
-// First incremental run shortly after boot (gives migrations/indexes time to
-// settle) so a restart never postpones enrichment by a full day.
-const BOOT_RUN_DELAY_MS = 5 * 60 * 1000;
+// Cap per INCREMENTAL run: the backlog drains over several nights instead of
+// one marathon that pegs the database. An admin-started 'full' job is uncapped.
+const MAX_SCORE_USERS_PER_INCREMENTAL_RUN = 400;
+const MAX_ENRICH_PHONES_PER_INCREMENTAL_RUN = 500;
+// Fixed low-traffic window: 01:00 UTC = 05:00 Tbilisi (well before the 05:00
+// UTC notification cron). Never runs at boot — the boot-run variant is what
+// lit the backlog during live testing hours.
+const CRON_HOUR_UTC = 1;
 
 interface UserRow {
   user_id: number;
@@ -114,6 +122,8 @@ async function processRelationshipBatch(users: UserRow[], stats: JobStats): Prom
       console.error(`[enrichment] Failed scores for user ${user.user_id}:`, (err as Error).message);
       stats.failed++;
     }
+    // Deliberate pacing: spread the write load instead of a tight loop.
+    await sleep(SCORE_USER_DELAY_MS);
   }
 }
 
@@ -238,7 +248,9 @@ async function runRelationshipScores(
   shouldStop: () => boolean,
 ): Promise<void> {
   let offset = 0;
-  while (!shouldStop()) {
+  let usersThisRun = 0;
+  const cap = incrementalOnly ? MAX_SCORE_USERS_PER_INCREMENTAL_RUN : Infinity;
+  while (!shouldStop() && usersThisRun < cap) {
     const users = incrementalOnly
       ? await getUserBatchWithNewContacts(offset, RELATIONSHIP_BATCH_SIZE)
       : await getUserBatch(offset, RELATIONSHIP_BATCH_SIZE);
@@ -246,6 +258,7 @@ async function runRelationshipScores(
     if (users.length === 0) break;
     await processRelationshipBatch(users, stats);
     await updateJobProgress(jobId, stats);
+    usersThisRun += users.length;
     offset += RELATIONSHIP_BATCH_SIZE;
     if (users.length < RELATIONSHIP_BATCH_SIZE) break;
   }
@@ -258,7 +271,9 @@ async function runEnrichments(
   shouldStop: () => boolean,
 ): Promise<void> {
   let offset = 0;
-  while (!shouldStop()) {
+  let phonesThisRun = 0;
+  const cap = incrementalOnly ? MAX_ENRICH_PHONES_PER_INCREMENTAL_RUN : Infinity;
+  while (!shouldStop() && phonesThisRun < cap) {
     const phones = incrementalOnly
       ? await getUnenrichedPhones(RELATIONSHIP_BATCH_SIZE, offset)
       : await getAllPhones(RELATIONSHIP_BATCH_SIZE, offset);
@@ -266,6 +281,7 @@ async function runEnrichments(
     if (phones.length === 0) break;
     await enrichBatch(phones, stats);
     await updateJobProgress(jobId, stats);
+    phonesThisRun += phones.length;
     offset += RELATIONSHIP_BATCH_SIZE;
     if (phones.length < RELATIONSHIP_BATCH_SIZE) break;
   }
@@ -275,7 +291,7 @@ export class EnrichmentJob {
   private static running = false;
   private static _shouldStop = false;
   private static currentJobId: string | null = null;
-  private static cronTimer: ReturnType<typeof setInterval> | null = null;
+  private static cronTimer: ReturnType<typeof setTimeout> | null = null;
   private static stats: JobStats = { total: 0, processed: 0, failed: 0 };
 
   static async start(jobType: JobType): Promise<string> {
@@ -379,20 +395,43 @@ export class EnrichmentJob {
     });
   }
 
+  private static msUntilNextWindow(): number {
+    const now = new Date();
+    const next = new Date(now);
+    next.setUTCHours(CRON_HOUR_UTC, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    return next.getTime() - now.getTime();
+  }
+
   static startCron(): void {
     if (this.cronTimer !== null) return;
-    // Run shortly after boot, then on a fixed 24h interval. The old shape ran
-    // ONLY 24h after boot — every deploy/restart reset the clock, so the
-    // "daily" run drifted and a restart-heavy day never ran it at all.
-    setTimeout(() => this.runIncremental(), BOOT_RUN_DELAY_MS).unref();
-    this.cronTimer = setInterval(() => this.runIncremental(), CRON_INTERVAL_MS);
+    if (process.env.ENRICHMENT_CRON_ENABLED === 'false') {
+      // eslint-disable-next-line no-console
+      console.log('[enrichment] Cron disabled via ENRICHMENT_CRON_ENABLED=false');
+      return;
+    }
+    // Fixed nightly window, never at boot: wall-clock alignment kills the
+    // deploy-drift problem, and the low-traffic hour keeps the (isolated,
+    // throttled) run away from live users entirely.
+    const scheduleNext = (): void => {
+      const delay = this.msUntilNextWindow();
+      // eslint-disable-next-line no-console
+      console.log(
+        `[enrichment] Next incremental run at ${new Date(Date.now() + delay).toISOString()}`,
+      );
+      this.cronTimer = setTimeout(() => {
+        this.runIncremental();
+        scheduleNext();
+      }, delay);
+    };
     // eslint-disable-next-line no-console
-    console.log('[enrichment] Cron started (first run in 5min, then every 24h)');
+    console.log(`[enrichment] Cron started (daily at 0${CRON_HOUR_UTC}:00 UTC)`);
+    scheduleNext();
   }
 
   static stopCron(): void {
     if (this.cronTimer !== null) {
-      clearInterval(this.cronTimer);
+      clearTimeout(this.cronTimer);
       this.cronTimer = null;
     }
   }

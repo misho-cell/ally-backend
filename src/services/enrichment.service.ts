@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from './costLedger.service';
-import { query } from '../db/postgres/client';
+// Background pool on purpose: enrichment reads/writes (nightly job AND the
+// fire-and-forget per-import trigger) must never contend with user queries.
+import { backgroundQuery as query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import anthropic from '../config/anthropic';
 import { getCompositeKeyForPhone, getCompositeKeysForPhones } from './neo4j.keys';
