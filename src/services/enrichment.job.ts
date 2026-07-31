@@ -4,6 +4,7 @@
 import { backgroundQuery as query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { computeAndSaveUserScores, enrichContact } from './enrichment.service';
+import { reclassifyPrivateNotes } from './contactFacts.service';
 import { getCompositeKeysForUsers, getCompositeKeysForPhones } from './neo4j.keys';
 
 const RELATIONSHIP_BATCH_SIZE = 50;
@@ -15,6 +16,9 @@ const BACKFILL_NEO4J_BATCH_SIZE = 500;
 // one marathon that pegs the database. An admin-started 'full' job is uncapped.
 const MAX_SCORE_USERS_PER_INCREMENTAL_RUN = 400;
 const MAX_ENRICH_PHONES_PER_INCREMENTAL_RUN = 500;
+// Nightly agent-moderation sweep over legacy private notes (moderated_at IS
+// NULL) — the backlog surfaces over a few nights with zero manual calls.
+const MAX_NOTE_MODERATION_PER_RUN = 500;
 // Fixed low-traffic window: 01:00 UTC = 05:00 Tbilisi (well before the 05:00
 // UTC notification cron). Never runs at boot — the boot-run variant is what
 // lit the backlog during live testing hours.
@@ -319,6 +323,14 @@ export class EnrichmentJob {
         const incremental = jobType === 'incremental';
         await runRelationshipScores(jobId, this.stats, incremental, stop);
         await runEnrichments(jobId, this.stats, incremental, stop);
+        if (incremental && !this._shouldStop) {
+          const moderation = await reclassifyPrivateNotes(null, MAX_NOTE_MODERATION_PER_RUN);
+          // eslint-disable-next-line no-console
+          console.log(
+            `[enrichment] note moderation: scanned=${moderation.scanned} published=${moderation.published}` +
+              (moderation.remaining ? ' (backlog continues tomorrow night)' : ''),
+          );
+        }
       }
       const status = this._shouldStop ? 'stopped' : 'completed';
       await finalizeJob(jobId, status, this.stats);

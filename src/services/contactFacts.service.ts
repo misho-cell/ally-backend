@@ -125,9 +125,10 @@ async function insertFreeFormFact(
 ): Promise<void> {
   await query(
     // canonical_value doubles as the "shareable text" for public rows — the
-    // read paths COALESCE it, so a public note must carry it.
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END)`,
+    // read paths COALESCE it, so a public note must carry it. moderated_at
+    // marks the row as already agent-checked (the nightly sweep skips it).
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value, moderated_at)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END, NOW())`,
     [neo4jContactId, userId, fieldType, value, isPublic],
   );
 }
@@ -332,12 +333,16 @@ export interface ReclassifyResult {
 }
 
 export async function reclassifyPrivateNotes(
-  userId: string,
+  userId: string | null,
   cap: number = RECLASSIFY_DEFAULT_CAP,
 ): Promise<ReclassifyResult> {
+  // moderated_at IS NULL = never agent-checked. Every scanned row gets stamped
+  // (public or not), so the sweep converges instead of re-judging the same
+  // private notes forever.
   const rows = await backgroundQuery<{ id: number; field_type: string; value: string }>(
     `SELECT id, field_type, value FROM contact_facts
-     WHERE submitted_by_user_id = $1 AND is_public = false
+     WHERE ($1::int IS NULL OR submitted_by_user_id = $1::int)
+       AND is_public = false AND moderated_at IS NULL
        AND field_type NOT IN ('occupation', 'employer', 'city', 'industry')
      ORDER BY id
      LIMIT $2`,
@@ -346,14 +351,17 @@ export async function reclassifyPrivateNotes(
   const batch = rows.rows.slice(0, cap);
   let published = 0;
   for (const row of batch) {
-    if (await moderateNotePublicity(row.field_type, row.value)) {
-      await backgroundQuery(
-        `UPDATE contact_facts SET is_public = true, canonical_value = value, updated_at = NOW()
-         WHERE id = $1`,
-        [row.id],
-      );
-      published++;
-    }
+    const isPublic = await moderateNotePublicity(row.field_type, row.value);
+    await backgroundQuery(
+      `UPDATE contact_facts
+       SET moderated_at = NOW(),
+           is_public = $2,
+           canonical_value = CASE WHEN $2 THEN value ELSE canonical_value END,
+           updated_at = CASE WHEN $2 THEN NOW() ELSE updated_at END
+       WHERE id = $1`,
+      [row.id, isPublic],
+    );
+    if (isPublic) published++;
     await new Promise<void>((resolve) => setTimeout(resolve, RECLASSIFY_DELAY_MS));
   }
   return {
