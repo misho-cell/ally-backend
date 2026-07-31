@@ -9,7 +9,7 @@ import { query } from '../../db/postgres/client';
 import { saveThreadMessage } from '../threads.service';
 import { emitThreadUpdated } from '../sse.service';
 import { sweepOrphanedRuns } from '../runReaper.service';
-import { isCliffhangerReply } from '../replyGuards';
+import { isCliffhangerReply, claimsNothingFound } from '../replyGuards';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
@@ -74,5 +74,27 @@ describe('isCliffhangerReply', () => {
     const long =
       'აი შენი პასუხი: '.repeat(30) + 'საბოლოოდ, საჭიროების შემთხვევაში კიდევ შევამოწმებ სხვებსაც';
     expect(isCliffhangerReply(long)).toBe(false);
+  });
+});
+
+describe('claimsNothingFound (contradiction guard, battery case 8)', () => {
+  it.each([
+    // The literal failure shape: steps found 23 people, final denies it.
+    ['სამწუხაროდ PR-ის სპეციალისტები ვერ ვიპოვე შენს ქსელში.', true],
+    ['ვერაფერი მოიძებნა ამ სახელით.', true],
+    ["I couldn't find PR-specific people in your network.", true],
+    ['ასეთი კონტაქტი არ მოიძებნა.', true],
+    // Valid finals must not trigger.
+    ['ვიპოვე 23 ადამიანი PR-ის თეგით. აი ისინი: …', false],
+    ['', false],
+  ])('%s → %s', (text, expected) => {
+    expect(claimsNothingFound(text)).toBe(expected);
+  });
+
+  it('does not flag a LONG answer that only says nothing MORE was found', () => {
+    const long =
+      'აი 15 ადამიანი შენი ქსელიდან: '.padEnd(650, 'დეტალები. ') +
+      'ამათ გარდა დამატებით ვერაფერი ვიპოვე.';
+    expect(claimsNothingFound(long)).toBe(false);
   });
 });

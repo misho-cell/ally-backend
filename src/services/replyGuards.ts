@@ -19,3 +19,17 @@ export function isCliffhangerReply(text: string): boolean {
 export const CLIFFHANGER_NUDGE =
   '(სისტემური შენიშვნა: პასუხი დაასრულე ახლავე — ნუ გამოაცხადებ შემდეგ ნაბიჯს. ' +
   'ჩამოაყალიბე საბოლოო პასუხი უკვე მოძიებული ინფორმაციით; თუ რამე ვერ მოიძებნა, პირდაპირ თქვი.)';
+
+// The final message claiming NOTHING was found while a tool round returned
+// results (battery case 8: steps named 23 people, the final said none exist).
+// Only a short final can be a blanket not-found claim — a long answer that
+// merely says "couldn't find MORE" must not trigger.
+const NOT_FOUND_CLAIM_RE =
+  /ვერ (?:ვიპოვე|მოიძებნა|ვნახე|იძებნება)|ვერაფერი (?:ვიპოვე|მოიძებნა)|არ (?:მოიძებნა|ჩანს შედეგები)|couldn'?t find|could not find|no (?:results|matches|one) (?:found|matched)|nothing (?:found|matched)/i;
+const MAX_NOT_FOUND_CLAIM_CHARS = 600;
+
+export function claimsNothingFound(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_NOT_FOUND_CLAIM_CHARS) return false;
+  return NOT_FOUND_CLAIM_RE.test(trimmed);
+}

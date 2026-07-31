@@ -198,6 +198,22 @@ export async function getThreadMessages(threadId: number): Promise<ThreadMessage
   return result.rows.map((row) => ({ ...row, content: stripAllowedSpans(row.content) }));
 }
 
+/**
+ * The longest narration step a run persisted — the material for a partial
+ * answer when the run itself never finished (hard timeout). Steps are stored
+ * already scrubbed.
+ */
+export async function getLongestRunStep(threadId: number, runId: string): Promise<string | null> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+     WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND content != ''
+     ORDER BY length(content) DESC
+     LIMIT 1`,
+    [threadId, runId],
+  );
+  return result.rows[0]?.content ?? null;
+}
+
 export async function saveThreadMessage(
   threadId: number,
   userId: number,

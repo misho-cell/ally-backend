@@ -16,6 +16,7 @@ import {
   getThreadMessages,
   updateThreadTitle,
   saveThreadMessage,
+  getLongestRunStep,
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
@@ -39,6 +40,10 @@ const threadsRouter = Router();
 // wall-clock budget, so a normal run finishes on its own and this only fires for
 // a genuinely stuck run — turning a silent forever-hang into a retryable error.
 const RUN_HARD_TIMEOUT_MS = 110_000;
+
+// A timed-out run's longest persisted step must be at least this long to be
+// worth flushing as a partial answer (anything shorter is spinner narration).
+const MIN_PARTIAL_FLUSH_CHARS = 80;
 
 // Short, phone-safe preview for the push body. Scrub first (the reply is already
 // scrubbed for SSE, but this path is independent), collapse whitespace, truncate.
@@ -241,10 +246,28 @@ threadsRouter.post(
             }).catch(() => undefined);
           }
         })
-        .catch((error: unknown) => {
+        .catch(async (error: unknown) => {
           const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
           // eslint-disable-next-line no-console
           console.error('[POST /threads/:id/message] run failed', error);
+
+          // Timeout with material already gathered → FLUSH it as a partial
+          // answer instead of a bare error ("on timeout, deliver what was
+          // found + ask გავაგრძელო?" — the spec from the battery runs where
+          // the right answer sat in a step while the run died).
+          if (timedOut) {
+            const partial = await getLongestRunStep(threadId, runId).catch(() => null);
+            if (partial !== null && partial.length >= MIN_PARTIAL_FLUSH_CHARS) {
+              const reply = `${partial}\n\nამაზე მეტი ვერ მოვასწარი — გავაგრძელო?`;
+              emitRunComplete(userId, threadId, runId, { reply });
+              void setThreadStatus(userId, threadId, 'needs_you');
+              saveThreadMessage(threadId, Number(userId), 'assistant', reply).catch(
+                () => undefined,
+              );
+              return;
+            }
+          }
+
           const userMessage = timedOut
             ? 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.'
             : 'ტექნიკური შეფერხება მოხდა ჩვენს მხარეს. გთხოვ, სცადე თავიდან.';

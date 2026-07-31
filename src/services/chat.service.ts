@@ -67,7 +67,7 @@ import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
-import { isCliffhangerReply, CLIFFHANGER_NUDGE } from './replyGuards';
+import { isCliffhangerReply, CLIFFHANGER_NUDGE, claimsNothingFound } from './replyGuards';
 import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -291,7 +291,13 @@ const AGENT_STRATEGY_PROMPT = `
 ### 16. მიმართვა და სქესი
 - მომხმარებლის სქესი **არასოდეს** გამოიცნო — არც სახელიდან, არც სხვა ნიშნიდან.
 - გენდერული მიმართვა („კარგო ბიჭო", „კარგო გოგო", „ძმაო", „დაო", ბატონო/ქალბატონო ვარაუდით) აკრძალულია, სანამ მომხმარებელს თავად არ უთქვამს, როგორ მიმართო.
-- მიმართე მხოლოდ სისტემის კონტექსტში მოცემული სახელით; თუ სახელი არ ჩანს ან საეჭვოა — ნეიტრალურად, სახელისა და გენდერის გარეშე. სხვა სახელი არასდროს მოიგონო.`;
+- მიმართე მხოლოდ სისტემის კონტექსტში მოცემული სახელით; თუ სახელი არ ჩანს ან საეჭვოა — ნეიტრალურად, სახელისა და გენდერის გარეშე. სხვა სახელი არასდროს მოიგონო.
+
+---
+
+### 17. პასუხი ნაბიჯებს არ ეწინააღმდეგება
+- თუ ხელსაწყომ შედეგები დააბრუნა, საბოლოო პასუხში ისინი **აუცილებლად** ჩანს — „ვერ ვიპოვე" აკრძალულია, როცა ძიებამ იპოვა.
+- საბოლოო პასუხი ყოველთვის აჯამებს იმას, რაც ამ საუბარში რეალურად ნახე — ნაპოვნი სახელების გაქრობა პასუხიდან შეცდომაა.`;
 
 interface ConversationRow {
   role: string;
@@ -1761,6 +1767,7 @@ async function runToolLoop(
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let requestCreated = false;
+  let searchFoundSomething = false;
   let taskResult: TaskResultCard | undefined;
   let iterations = 0;
   let toolCallCount = 0;
@@ -1795,6 +1802,9 @@ async function runToolLoop(
         if (parsed.success === true && typeof parsed.request_id === 'number') {
           requestCreated = true;
         }
+        // A search tool returned real results this run — the final answer is
+        // not allowed to claim nothing was found (see contradiction guard).
+        if (parsed.found === true) searchFoundSomething = true;
       }
     }
   };
@@ -1928,6 +1938,18 @@ async function runToolLoop(
       (bestNarration.length >= MIN_BURIED_ANSWER_CHARS && bestNarration.length > finalText.length));
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
+    if (bestStepId !== null) await deleteMessage(bestStepId);
+  } else if (
+    // Contradiction guard (battery case 8): a search returned real results,
+    // the steps carry them, yet the short final claims nothing was found. The
+    // length-based promotion above misses this (the wrong final can be longer
+    // than nothing) — promote the narration explicitly so the run's own
+    // findings are never erased by its last sentence.
+    searchFoundSomething &&
+    bestNarration.length >= MIN_BURIED_ANSWER_CHARS &&
+    claimsNothingFound(finalText)
+  ) {
+    finalText = `${bestNarration}\n\n${finalText}`;
     if (bestStepId !== null) await deleteMessage(bestStepId);
   }
 
