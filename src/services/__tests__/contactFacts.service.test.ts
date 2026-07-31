@@ -1,5 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
-jest.mock('../costLedger.service', () => ({ recordClaudeUsage: jest.fn(), __esModule: true }));
+jest.mock('../costLedger.service', () => ({
+  __esModule: true,
+  recordClaudeUsage: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('../../config/anthropic', () => ({
   __esModule: true,
   default: { messages: { create: jest.fn() } },
@@ -25,9 +28,18 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('submitContactFact — free-text notes (Option B)', () => {
-  it('inserts a note as a private row without crowd-confirmation', async () => {
+// The agent-moderation call: resolves the publicity verdict the model returns.
+function mockModeration(publicVerdict: boolean): void {
+  mockCreate.mockResolvedValue({
+    content: [{ type: 'text', text: JSON.stringify({ public: publicVerdict }) }],
+    usage: { input_tokens: 1, output_tokens: 1 },
+  });
+}
+
+describe('submitContactFact — free-text notes (agent-moderated publicity)', () => {
+  it('inserts a note as a PRIVATE row when the agent rules it personal', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(false);
 
     const result = await submitContactFact(USER, RAW_PHONE, 'note', 'Approach via warm intro');
 
@@ -37,13 +49,33 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
-    expect(params as unknown[]).toEqual([PHONE, USER, 'note', 'Approach via warm intro']);
-    // No semantic matching / crowd pass for notes.
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(params as unknown[]).toEqual([PHONE, USER, 'note', 'Approach via warm intro', false]);
+  });
+
+  it('inserts a note as a PUBLIC row when the agent rules it professional', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(true);
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'note', 'Fintech product manager');
+
+    expect(result.is_public).toBe(true);
+    const [, params] = mockQuery.mock.calls[0];
+    expect((params as unknown[])[4]).toBe(true);
+  });
+
+  it('stays private (fail-closed) when the moderation call fails', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockCreate.mockRejectedValue(new Error('model down'));
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'note', 'anything');
+
+    expect(result.is_public).toBe(false);
+    expect((mockQuery.mock.calls[0][1] as unknown[])[4]).toBe(false);
   });
 
   it("does not query for other users' facts when saving a note", async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(false);
 
     await submitContactFact(USER, RAW_PHONE, 'note', 'reminder');
 
@@ -66,8 +98,9 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     expect(upsertSql).toContain("field_type IN ('occupation', 'employer', 'city', 'industry')");
   });
 
-  it('reroutes a narrative-length core value to a private note (sensitive-text guard)', async () => {
+  it('reroutes a narrative-length core value to a note, never the crowd upsert', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(false);
     const narrative =
       'co-founder/CEO conflict; wants everything NOW and is frustrated with the board over ' +
       'equity split and control of the roadmap';
@@ -75,16 +108,24 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     const result = await submitContactFact(USER, RAW_PHONE, 'occupation', narrative);
 
     expect(result).toEqual({ is_public: false, canonical_value: null });
-    // Saved as an accumulating private note — never through the crowd-capable upsert.
+    // Saved as an accumulating note — never through the crowd-capable upsert,
+    // and never through crowd canonicalization (only the moderation call runs).
     expect(mockQuery).toHaveBeenCalledTimes(1);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql as string).not.toContain('ON CONFLICT');
     expect((params as unknown[])[2]).toBe('note');
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(
+      mockCreate.mock.calls.some((c) =>
+        String((c[0] as { messages: { content: string }[] }).messages[0].content).includes(
+          'matching_indices',
+        ),
+      ),
+    ).toBe(false);
   });
 
   it('accumulates any non-core free-form key (role, skill, …) like a note', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(false);
 
     const result = await submitContactFact(USER, RAW_PHONE, 'Role', 'CEO @ Leavingstone');
 
@@ -94,8 +135,7 @@ describe('submitContactFact — free-text notes (Option B)', () => {
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
     // field_type is normalized (trimmed + lowercased) before storage.
-    expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone']);
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone', false]);
   });
 });
 

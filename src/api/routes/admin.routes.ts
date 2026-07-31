@@ -32,6 +32,7 @@ import {
 import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { getGraphDiagnostic, GraphDiagnostic } from '../../services/graphAnalytics.service';
+import { reclassifyPrivateNotes, ReclassifyResult } from '../../services/contactFacts.service';
 import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
@@ -422,6 +423,38 @@ adminRouter.post(
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'სერვერის შეცდომა';
       res.status(409).json({ success: false, error: msg });
+    }
+  },
+);
+
+// Backfill: run a user's existing PRIVATE free-form notes through the same
+// agent moderation new saves get, publishing the clearly-professional ones.
+// Synchronous but capped (`max`, default 150 notes ≈ a few minutes) — returns
+// counts; remaining=1 means call again to continue.
+adminRouter.post(
+  '/facts/reclassify',
+  body('user_id').isInt({ min: 1 }).withMessage('user_id must be a positive integer'),
+  body('max').optional().isInt({ min: 1, max: 2000 }),
+  async (req: Request, res: Response<ApiResponse<ReclassifyResult>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const { user_id, max } = req.body as { user_id: number; max?: number };
+      const result = await reclassifyPrivateNotes(String(user_id), max);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
 );

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from './costLedger.service';
-import { query } from '../db/postgres/client';
+import { query, backgroundQuery } from '../db/postgres/client';
 import { normalizePhone } from './phone';
 import anthropic from '../config/anthropic';
 
@@ -115,18 +115,64 @@ async function upsertFact(
   );
 }
 
-/** Append a free-form fact. Non-core keys accumulate — each save is a new private row. */
+/** Append a free-form fact. Non-core keys accumulate — each save is a new row. */
 async function insertFreeFormFact(
   userId: string,
   neo4jContactId: string,
   fieldType: string,
   value: string,
+  isPublic: boolean,
 ): Promise<void> {
   await query(
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
-     VALUES ($1, $2, $3, $4)`,
-    [neo4jContactId, userId, fieldType, value],
+    // canonical_value doubles as the "shareable text" for public rows — the
+    // read paths COALESCE it, so a public note must carry it.
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END)`,
+    [neo4jContactId, userId, fieldType, value, isPublic],
   );
+}
+
+// The agent decides whether a free-text note may be seen by EVERYONE, at save
+// time. PUBLIC is reserved for purely factual, professional content; personal
+// judgments and sensitive material stay private. Fail-closed: any error or
+// ambiguity keeps the note private.
+const NOTE_MODERATION_MODEL = 'claude-haiku-4-5-20251001';
+const NOTE_MODERATION_MAX_TOKENS = 60;
+
+export async function moderateNotePublicity(fieldType: string, value: string): Promise<boolean> {
+  try {
+    const response = await anthropic.messages.create({
+      model: NOTE_MODERATION_MODEL,
+      max_tokens: NOTE_MODERATION_MAX_TOKENS,
+      messages: [
+        {
+          role: 'user',
+          content:
+            `A user saved this about one of their contacts (field "${fieldType}"): "${value}". ` +
+            'Decide if it may be shown to EVERY user of a contacts app. PUBLIC only if it is ' +
+            'purely factual and professional: profession, workplace, role, skills, education, ' +
+            'public achievements, business interests. PRIVATE if it contains personal judgments ' +
+            'or evaluations, relationships, health, money, private life, secrets, contact ' +
+            'details, or anything the person themselves might not want shared. When unsure — ' +
+            'PRIVATE. Reply JSON only: {"public":true} or {"public":false}',
+        },
+      ],
+    });
+    void recordClaudeUsage({
+      userId: null,
+      kind: 'fact_moderation',
+      model: NOTE_MODERATION_MODEL,
+      usage: response.usage,
+    }).catch(() => {});
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+    const parsed = JSON.parse(text) as { public?: unknown };
+    return parsed.public === true;
+  } catch {
+    return false;
+  }
 }
 
 async function getOtherFacts(
@@ -151,17 +197,19 @@ export async function submitContactFact(
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
 
-  // Any non-core key (note, role, skill, …) is private and accumulates — no
-  // crowd-confirmation pass. Only the four core facts go through canonicalization.
+  // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
+  // with other users is the AGENT's call at save time: purely professional
+  // facts go public, anything personal or ambiguous stays private (fail-closed).
   // A narrative-length value aimed at a core field is rerouted the same way:
-  // it is soft intel, not a label, and must never become crowd-public.
+  // it is soft intel, not a label, and never enters crowd canonicalization.
   if (!isCoreFact(fieldType) || value.trim().length > MAX_CORE_FACT_VALUE_LEN) {
     const targetField =
       isCoreFact(fieldType) && value.trim().length > MAX_CORE_FACT_VALUE_LEN
         ? MEMORY_FIELD_TYPE
         : fieldType;
-    await insertFreeFormFact(userId, neo4jContactId, targetField, value);
-    return { is_public: false, canonical_value: null };
+    const isPublic = await moderateNotePublicity(targetField, value);
+    await insertFreeFormFact(userId, neo4jContactId, targetField, value, isPublic);
+    return { is_public: isPublic, canonical_value: null };
   }
 
   await upsertFact(userId, neo4jContactId, fieldType, value);
@@ -222,13 +270,13 @@ export async function getVisibleFacts(
        ORDER BY field_type, updated_at DESC`,
       [neo4jContactId, userId],
     ),
-    // Crowd-confirmed public values (any submitter) — used only to FILL fields
-    // the owner has never set themselves; never to override the owner's own value.
+    // Public values from any submitter: crowd-confirmed core facts (fill-only)
+    // and agent-approved public notes (appended, they accumulate).
     query<{ field_type: string; canonical_value: string }>(
-      `SELECT DISTINCT ON (field_type) field_type, canonical_value
+      `SELECT field_type, COALESCE(canonical_value, value) AS canonical_value
        FROM contact_facts
        WHERE neo4j_contact_id = $1 AND is_public = true
-       ORDER BY field_type`,
+       ORDER BY field_type, updated_at DESC`,
       [neo4jContactId],
     ),
   ]);
@@ -244,9 +292,23 @@ export async function getVisibleFacts(
     last_confirmed: r.last_confirmed,
   }));
 
+  // Core facts: fill only when the owner never set the field (their value
+  // always wins). Free-form public notes: append every one the owner does not
+  // already hold verbatim — they accumulate rather than collapse.
+  const seenValues = new Set(ownResult.rows.map((r) => `${r.field_type} ${r.value}`));
+  const filledCore = new Set<string>();
   for (const row of publicResult.rows) {
-    if (!ownFieldTypes.has(row.field_type)) {
-      facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
+    if (isCoreFact(row.field_type)) {
+      if (!ownFieldTypes.has(row.field_type) && !filledCore.has(row.field_type)) {
+        facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
+        filledCore.add(row.field_type);
+      }
+    } else {
+      const key = `${row.field_type} ${row.canonical_value}`;
+      if (!seenValues.has(key)) {
+        facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
+        seenValues.add(key);
+      }
     }
   }
 
@@ -254,4 +316,49 @@ export async function getVisibleFacts(
   const ask_about = FACT_FIELD_TYPES.find((f) => !knownFields.has(f)) ?? null;
 
   return { facts, ask_about };
+}
+
+// Backfill: run existing PRIVATE free-form notes through the same agent
+// moderation that new saves get, publishing the clearly-professional ones.
+// Background pool + pacing on purpose — this loops model calls and must never
+// contend with live traffic. Capped per invocation; call again to continue.
+const RECLASSIFY_DEFAULT_CAP = 150;
+const RECLASSIFY_DELAY_MS = 150;
+
+export interface ReclassifyResult {
+  scanned: number;
+  published: number;
+  remaining: number;
+}
+
+export async function reclassifyPrivateNotes(
+  userId: string,
+  cap: number = RECLASSIFY_DEFAULT_CAP,
+): Promise<ReclassifyResult> {
+  const rows = await backgroundQuery<{ id: number; field_type: string; value: string }>(
+    `SELECT id, field_type, value FROM contact_facts
+     WHERE submitted_by_user_id = $1 AND is_public = false
+       AND field_type NOT IN ('occupation', 'employer', 'city', 'industry')
+     ORDER BY id
+     LIMIT $2`,
+    [userId, cap + 1],
+  );
+  const batch = rows.rows.slice(0, cap);
+  let published = 0;
+  for (const row of batch) {
+    if (await moderateNotePublicity(row.field_type, row.value)) {
+      await backgroundQuery(
+        `UPDATE contact_facts SET is_public = true, canonical_value = value, updated_at = NOW()
+         WHERE id = $1`,
+        [row.id],
+      );
+      published++;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, RECLASSIFY_DELAY_MS));
+  }
+  return {
+    scanned: batch.length,
+    published,
+    remaining: rows.rows.length > cap ? 1 : 0,
+  };
 }
