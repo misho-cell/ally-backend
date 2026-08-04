@@ -17,8 +17,9 @@ export function isCliffhangerReply(text: string): boolean {
 }
 
 export const CLIFFHANGER_NUDGE =
-  '(სისტემური შენიშვნა: პასუხი დაასრულე ახლავე — ნუ გამოაცხადებ შემდეგ ნაბიჯს. ' +
-  'ჩამოაყალიბე საბოლოო პასუხი უკვე მოძიებული ინფორმაციით; თუ რამე ვერ მოიძებნა, პირდაპირ თქვი.)';
+  '(სისტემური შენიშვნა: მოკლედ აცნობე მომხმარებელს სად ხარ და რა გაქვს უკვე ნაპოვნი. ' +
+  'თუ საქმე დაუსრულებელია და წინსვლა შეგიძლია — განაგრძე ახლავე: გამოიძახე საჭირო ხელსაწყო. ' +
+  'თუ საქმე დასრულდა — ჩამოაყალიბე საბოლოო პასუხი; რაც ვერ მოიძებნა, პირდაპირ თქვი.)';
 
 // The final message claiming NOTHING was found while a tool round returned
 // results (battery case 8: steps named 23 people, the final said none exist).

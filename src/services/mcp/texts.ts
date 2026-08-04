@@ -26,7 +26,7 @@ export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside 
 
 **Verify live facts.** A current officeholder (CEO, minister, service head) → name them only from a web result this conversation, preferring the institution's own official page over dated news; never from memory; a former holder → "former".
 
-**Search order.** Tags first (2–3 variants, both scripts), then insight/fact, then employer, then second-degree. Don't brute-force synonyms; concept questions live in insight/employer + your own web search.
+**Search order.** Tags first (both scripts), then insight/fact, then employer, then second-degree. Concept questions live in insight/employer + your own web search. Keep searching as long as a new angle can genuinely surface someone — thoroughness beats speed.
 
 **One person = one ID.** Every label aggregates onto one phone id; confirm via **get_contact_profile**'s tags; never split one person in two or invent a surname.
 
@@ -34,7 +34,7 @@ export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside 
 
 **Empty ≠ empty.** Call **get_network_stats** before concluding nothing; report the real total; if empty where data should exist, say "that looks wrong on my end".
 
-**Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs not tag-brute-force, deliver fast; on Ally → activate, don't pitch.
+**Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs; on Ally → activate, don't pitch.
 
 **Voice.** Reply in the language they wrote, never default. Warm, plain, brief; fullest name (first + surname); name the one bridge, not a list.`;
 
@@ -49,9 +49,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     description:
       "Searches the user's network by tag or name (a tag is a word saved inside a contact's " +
       'phone name — a trade, company, or nickname, e.g. "plumber", "TBC", "Gio"). Use for ' +
-      'concrete lookups where a real phonebook word fits. Try at most 2–3 tag variants (both ' +
-      'scripts — "lawyer" and "იურისტი"); if they come back empty, do NOT keep trying synonyms ' +
-      '— switch to search_by_insight. For a named person, also try script/spelling variants ' +
+      'concrete lookups where a real phonebook word fits. Try tag variants in both scripts ' +
+      '("lawyer" and "იურისტი") and any synonym that could be a real phonebook word; also ' +
+      'search_by_insight covers concept phrasings. For a named person, also try script/spelling variants ' +
       "(q↔k, ts↔c), first-name or surname alone, and — when the name won't surface them — " +
       'their company, brand or nickname as a word ("omofox"). A result flagged "approximate" ' +
       "can still be the right person saved under a different label — don't discard it; open " +
@@ -337,7 +337,7 @@ export const PROMPT_TEXTS = {
     argField: 'სფერო ან საჭიროება — მაგ. "იურისტი", "ინვესტორი", "მშენებლობის ნებართვები"',
     build: (field: string): string =>
       `იპოვე ჩემს ქსელში ადამიანები, ვინც შეესაბამება: ${field}. ` +
-      'ჯერ ტეგებით ეძებე (2–3 ვარიანტი, ორივე დამწერლობით), მერე insight-ებითა და ' +
+      'ჯერ ტეგებით ეძებე (ორივე დამწერლობით), მერე insight-ებითა და ' +
       'დამსაქმებელი/პოზიციით, ბოლოს მეორე წრეში. მაჩვენე საუკეთესო დამთხვევები — თითო ერთი ' +
       'ხაზით: ვინ არის და რატომ ჯდება, დალაგებული შესაბამისობითა და რამდენმა ადამიანმა ' +
       'დაადასტურა. მითხარი სულ რამდენი მოიძებნა და შემომთავაზე უფრო ღრმად ძებნა. ' +
@@ -368,8 +368,8 @@ export const PROMPT_TEXTS = {
       `ავაწყოთ ranked სია: ${goal}. დაალაგე ნამდვილი მორგებითა და საჭიროებით (ვისაც ` +
       'რეალურად აქვს პრობლემა და გადაიხდის), არა თანამდებობით ან იმით ვინ ყველაზე ' +
       'ხელმისაწვდომია. დაიწყე ყველაზე ახლოს — მორგებული პირდაპირი კონტაქტებით, არა ხიდებით. ' +
-      'მოიარე შენახული ფაქტები/როლები/საჭიროებები, არა ტეგების brute-force. თითო ერთი ხაზით ' +
-      'რატომ. ვინც უკვე Ally-ზეა — გაააქტიურე, არ მიჰყიდო. სწრაფად მომეცი პირველი batch, მერე ' +
+      'მოიარე შენახული ფაქტები/როლები/საჭიროებები. თითო ერთი ხაზით ' +
+      'რატომ. ვინც უკვე Ally-ზეა — გაააქტიურე, არ მიჰყიდო. მომეცი პირველი batch, მერე ' +
       'შემომთავაზე მეტი. ტელეფონის ნომრები არასდროს.',
   },
   invite_people: {

@@ -2,16 +2,16 @@ import { query } from '../db/postgres/client';
 import { saveThreadMessage, STATUS_LINES } from './threads.service';
 import { emitThreadUpdated } from './sse.service';
 
-// A legitimate run can live at most ~110s (the route's hard timeout). A thread
-// still 'working' well past that means the process that owned the run died
-// (deploy restart, crash) taking its timers with it — the "thread hangs
-// forever with no error" family. The reaper turns those into visible,
-// retryable failures.
+// A thread still 'working' well past the hard run ceiling means the process
+// that owned the run died (deploy restart, crash) taking its timers with it —
+// the "thread hangs forever with no error" family. The reaper turns those
+// into visible, retryable failures. Thresholds follow the shared budget
+// family, so raising run budgets via env moves them automatically.
+import { ORPHAN_AGE_MS, BOOT_ORPHAN_AGE_MS } from '../config/runBudgets';
+
 const SWEEP_INTERVAL_MS = 60_000;
-const ORPHAN_AGE_MINUTES = 4;
-// At boot every 'working' thread is an orphan of the previous process, but a
-// blue-green overlap could still be finishing one — use a shorter grace, not 0.
-const BOOT_ORPHAN_AGE_MINUTES = 2;
+const ORPHAN_AGE_MINUTES = Math.ceil(ORPHAN_AGE_MS / 60_000);
+const BOOT_ORPHAN_AGE_MINUTES = Math.ceil(BOOT_ORPHAN_AGE_MS / 60_000);
 const BOOT_SWEEP_DELAY_MS = 10_000;
 
 const ORPHAN_MESSAGE = 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.';

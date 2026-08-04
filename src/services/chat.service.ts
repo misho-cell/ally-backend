@@ -68,6 +68,12 @@ import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { isCliffhangerReply, CLIFFHANGER_NUDGE, claimsNothingFound } from './replyGuards';
+import {
+  RUN_WALL_CLOCK_BUDGET_MS,
+  RUN_SOFT_BUDGET_MS,
+  MAX_TOOL_ITERATIONS,
+  CLIFFHANGER_EXTRA_ROUNDS,
+} from '../config/runBudgets';
 import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -979,7 +985,7 @@ async function saveMessage(
   threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
-  kind: 'message' | 'step' = 'message',
+  kind: 'message' | 'step' | 'error' = 'message',
   runId: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
@@ -1527,20 +1533,8 @@ async function processToolBlocks(
 // aborts a stream that stops emitting events — the actual hang signal.
 const STREAM_TIMEOUT_MS = 180_000;
 const STREAM_STALL_TIMEOUT_MS = 45_000;
-// Higher cap is safe now that runs are processed in the background (no HTTP
-// timeout pressure) and stream progress to the client as they go.
-const MAX_TOOL_ITERATIONS = 20;
-// Wall-clock budget for a single run. If a heavy/looping run exceeds it, we
-// stop calling tools and force a final answer from whatever we have so far,
-// rather than letting it hang indefinitely. Kept near the ~90s the app enforces
-// as a hard timeout, so the user reliably gets SOMETHING (a partial answer)
-// before the outer timeout would surface an error (investor-tester hang).
-const RUN_WALL_CLOCK_BUDGET_MS = 90_000;
-// Reserve headroom for the forced final answer: stop starting NEW tool rounds
-// once this soft budget is spent, leaving time to synthesize a partial answer
-// from what we already gathered (partial answer > blank on timeout).
-const FINAL_ANSWER_HEADROOM_MS = 30_000;
-const RUN_SOFT_BUDGET_MS = RUN_WALL_CLOCK_BUDGET_MS - FINAL_ANSWER_HEADROOM_MS;
+// Run budgets live in src/config/runBudgets.ts (env-overridable as one
+// family — wall clock, soft budget, iterations, hard ceiling, reaper age).
 // A narration step at least this long is treated as a real (buried) answer, not
 // process chatter, so it can be promoted over a shorter final turn (e.g. a
 // pending-request wrap-up). Below it, a longer prior step is just narration.
@@ -1705,6 +1699,8 @@ export interface ChatResult {
   /** The run sent an introduction request — the thread is now waiting on a third party. */
   requestCreated?: boolean;
   taskResult?: TaskResultCard;
+  /** The run could not produce an answer — reply carries the failure text; route must surface run_error. */
+  runFailed?: boolean;
 }
 
 function extractText(content: Anthropic.ContentBlock[]): string {
@@ -1954,8 +1950,10 @@ async function runToolLoop(
   }
 
   // If, even after promotion, the final is a short "now let me check…"
-  // cliffhanger, force ONE text-only continuation so the run ends on an
-  // answer (or an honest "couldn't find it"), never on an announcement.
+  // cliffhanger, nudge the model to report progress AND — the long-work
+  // change — actually let it carry on: tools stay allowed, up to
+  // CLIFFHANGER_EXTRA_ROUNDS extra rounds inside the wall clock. Only then
+  // is a text-only final forced.
   if (isCliffhangerReply(finalText)) {
     try {
       const cliffhangerTurn = {
@@ -1966,10 +1964,50 @@ async function runToolLoop(
       messages.push(cliffhangerTurn, nudgeTurn);
       pending.push(cliffhangerTurn, nudgeTurn);
       resetTurnStream();
-      const continuation = await callClaude(messages, systemPrompt, tools, ctx, {
-        forceText: true,
-        onText: stream,
-      });
+      let continuation = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
+
+      let extraRounds = 0;
+      while (
+        continuation.stop_reason === 'tool_use' &&
+        extraRounds < CLIFFHANGER_EXTRA_ROUNDS &&
+        Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS
+      ) {
+        extraRounds++;
+        toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
+        const narration = scrubText(extractText(continuation.content));
+        if (narration) {
+          emitStepSummary(userId, threadId, runId, narration);
+          await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        }
+        scanAssistantBlocks(continuation.content);
+        const extraResults = await processToolBlocks(userId, threadId, runId, continuation.content);
+        scanToolResults(extraResults);
+        pending.push({ role: 'assistant', content: continuation.content });
+        pending.push({ role: 'user', content: extraResults });
+        messages.push({ role: 'assistant', content: continuation.content });
+        messages.push({ role: 'user', content: extraResults });
+        resetTurnStream();
+        continuation = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
+      }
+
+      // Out of extra rounds but still reaching for tools — resolve them and
+      // force the written answer.
+      if (continuation.stop_reason === 'tool_use') {
+        toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
+        scanAssistantBlocks(continuation.content);
+        const lastResults = await processToolBlocks(userId, threadId, runId, continuation.content);
+        scanToolResults(lastResults);
+        pending.push({ role: 'assistant', content: continuation.content });
+        pending.push({ role: 'user', content: lastResults });
+        messages.push({ role: 'assistant', content: continuation.content });
+        messages.push({ role: 'user', content: lastResults });
+        resetTurnStream();
+        continuation = await callClaude(messages, systemPrompt, tools, ctx, {
+          forceText: true,
+          onText: stream,
+        });
+      }
+
       const continuationText = scrubText(extractText(continuation.content));
       if (continuationText) finalText = `${finalText}\n\n${continuationText}`;
     } catch (err) {
@@ -1986,7 +2024,8 @@ async function runToolLoop(
   // the tool-budget rule can be watched and runaway tool loops spotted.
   // eslint-disable-next-line no-console
   console.log(
-    `[chat] run ${runId} done: ${toolCallCount} tool call(s), ${iterations} iteration(s), ${Date.now() - startedAt}ms`,
+    `[chat] run ${runId} done: ${toolCallCount} tool call(s), ${iterations} iteration(s), ` +
+      `finalLen=${finalText.length}, ${Date.now() - startedAt}ms`,
   );
 
   return { finalText, pending, options, choices, requestCreated, taskResult };
@@ -2130,6 +2169,18 @@ export async function processChat(
   // is the user-visible answer.
   for (const msg of pending) {
     await saveMessage(userId, threadId, msg.role, msg.content);
+  }
+
+  // A run must NEVER end "successfully" with nothing to say: an empty final
+  // used to be persisted as an empty (view-filtered) message with status done —
+  // the silent-empty-thread family. Surface it as a real, retryable failure.
+  if (!finalText.trim()) {
+    // eslint-disable-next-line no-console
+    console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
+    const failureReply =
+      'პასუხის ჩამოყალიბება ვერ მოხერხდა — სამუშაო შუა გზაზე შეწყდა. გთხოვ, სცადე თავიდან.';
+    await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
+    return { reply: failureReply, runFailed: true };
   }
 
   // Moderate the user-facing reply before persisting/returning it.

@@ -36,10 +36,9 @@ import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
 
-// Ceiling on a single background run. Sits just above the run's own ~90s
-// wall-clock budget, so a normal run finishes on its own and this only fires for
-// a genuinely stuck run — turning a silent forever-hang into a retryable error.
-const RUN_HARD_TIMEOUT_MS = 110_000;
+// Ceiling on a single background run — from the shared budget family, so
+// raising the wall clock via env raises this with it (see config/runBudgets).
+import { RUN_HARD_TIMEOUT_MS } from '../../config/runBudgets';
 
 // A timed-out run's longest persisted step must be at least this long to be
 // worth flushing as a partial answer (anything shorter is spinner narration).
@@ -222,6 +221,13 @@ threadsRouter.post(
       );
       Promise.race([processChat(userId, threadId, message, runId), hardTimeout])
         .then((result) => {
+          // The run itself reports failure (e.g. an empty final) — surface a
+          // retryable error, never a "successful" empty answer.
+          if (result.runFailed === true) {
+            emitRunError(userId, threadId, runId, result.reply);
+            void setThreadStatus(userId, threadId, 'failed');
+            return;
+          }
           emitRunComplete(userId, threadId, runId, {
             reply: result.reply,
             ...(result.options && { options: result.options }),
