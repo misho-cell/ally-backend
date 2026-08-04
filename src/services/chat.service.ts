@@ -37,9 +37,15 @@ import {
   getMyTasks,
   grantTaskPermission,
   isTaskStatus,
+  isTaskAutonomy,
   Task,
   updateTask,
+  getTaskById,
+  getOpenTaskByThread,
+  setTaskBrief,
+  setTaskWake,
 } from './taskStore.service';
+import { createAsk, cancelAsksForTask, getAsksForTask, TaskAsk } from './taskAsks.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -81,11 +87,12 @@ import { composePromptBlocks } from './promptBlocks.service';
 // unwritten block is skipped, so behavior only changes when they fill it.
 // Task-engine modes (task_planning, task_step, outreach_writing,
 // ask_answering) join this matrix with the task engine.
-type RunMode = 'quick_answer' | 'request_thread';
+type RunMode = 'quick_answer' | 'request_thread' | 'task_step';
 
 const MODE_BLOCKS: Record<RunMode, readonly string[]> = {
   quick_answer: ['quick_answer'],
   request_thread: ['request_thread'],
+  task_step: ['task_step'],
 };
 
 function deriveRunMode(threadType?: string): RunMode {
@@ -688,8 +695,83 @@ const CREATE_TASK_TOOL: AnthropicTool = {
         description:
           '"solve" (find several helpers) or "reach" (a path to one target). Default "solve".',
       },
+      autonomy: {
+        type: 'string',
+        description:
+          'ASK the user once when forming the task: "ask_first" (confirm with them before ' +
+          'writing to anyone) or "autonomous" (act and just keep them posted). Default ask_first.',
+      },
     },
     required: ['title'],
+  },
+};
+
+const ASK_CONTACT_TOOL: AnthropicTool = {
+  name: 'ask_contact',
+  description:
+    "Send a question to one of the user's MEMBER contacts on an open task's behalf (pass the " +
+    'phone id from a search result). The recipient gets it as a thread + push and answers in ' +
+    'plain text; the answer wakes this task automatically. One task never asks the same person ' +
+    "twice. If the task's autonomy is ask_first, confirm with the user in this thread BEFORE " +
+    'calling. Never put phone numbers inside the question text.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The open task this ask belongs to.' },
+      phone: { type: 'string', description: "The recipient's phone id from a search result." },
+      question: {
+        type: 'string',
+        description: 'The question, short and self-contained (max 600 chars).',
+      },
+    },
+    required: ['task_id', 'phone', 'question'],
+  },
+};
+
+const SET_TASK_BRIEF_TOOL: AnthropicTool = {
+  name: 'set_task_brief',
+  description:
+    "Rewrite the task's operative brief after every substantive step: goal, plan, what is done, " +
+    'whom we asked and what they said, what we are waiting for, and the finish criterion. The ' +
+    'brief is YOUR working memory — the next wake-up run sees it instead of re-reading history.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The task id from the system context.' },
+      brief: { type: 'string', description: 'The full replacement brief text.' },
+    },
+    required: ['task_id', 'brief'],
+  },
+};
+
+const SET_TASK_WAKE_TOOL: AnthropicTool = {
+  name: 'set_task_wake',
+  description:
+    'Schedule when this task should wake YOU next (hours from now, 1–168) — e.g. 24 to check ' +
+    'unanswered asks tomorrow, or a deadline to summarize whatever arrived. Answers wake the ' +
+    'task immediately on their own; this is the fallback timer.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The task id from the system context.' },
+      hours: { type: 'number', description: 'Hours from now (1–168).' },
+    },
+    required: ['task_id', 'hours'],
+  },
+};
+
+const FINISH_TASK_TOOL: AnthropicTool = {
+  name: 'finish_task',
+  description:
+    'Close the task when the finish criterion is met — a real result delivered, or every avenue ' +
+    'honestly exhausted. Pass a short outcome summary. Cancels any unanswered asks politely.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The task id from the system context.' },
+      summary: { type: 'string', description: 'One-line outcome.' },
+    },
+    required: ['task_id', 'summary'],
   },
 };
 
@@ -1190,15 +1272,51 @@ function resolvePendingRequests(
   return getPendingRequestsForMediator(userId);
 }
 
+// Engine-owned section for a task-bound thread: the task's state and the
+// mechanics of the engine tools. Tone/strategy live in the task_step prompt
+// block (the prompt team's); mechanics live here (the engine's).
+function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
+  const askLines = asks
+    .map((a) => {
+      const who = a.to_name ?? 'კონტაქტი';
+      const answer = a.answer ? ` — პასუხი: "${a.answer}"` : '';
+      return `- ${who} [${a.status}]${answer}`;
+    })
+    .join('\n');
+  const autonomyLine =
+    task.autonomy === 'autonomous'
+      ? 'ავტონომიური — მოქმედებ დაუკითხავად და მხოლოდ აცნობებ მფლობელს.'
+      : 'ჯერ-კითხვა — ვინმესთვის მიწერამდე ამ თრედში დაეკითხე მფლობელს და დაელოდე თანხმობას.';
+  return (
+    `\n\n## აქტიური დავალება [შიდა: task_id=${task.id} — ინსტრუმენტებისთვის, პასუხის ტექსტში არასდროს ახსენო]\n` +
+    `სათაური: ${task.title}\n` +
+    `რეჟიმი: ${autonomyLine}\n` +
+    (task.brief ? `\nსამუშაო გეგმა (brief):\n${task.brief}\n` : '') +
+    (askLines ? `\nგაგზავნილი კითხვები:\n${askLines}\n` : '') +
+    `\nძრავის წესები:\n` +
+    `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის; ერთ ადამიანს ამ დავალებაზე მხოლოდ ერთხელ.\n` +
+    `- set_task_brief — ყოველი არსებითი ნაბიჯის ბოლოს განაახლე გეგმა: რა გაკეთდა, ვის ველოდები, რა არის შემდეგი, როდის ვამთავრებ.\n` +
+    `- set_task_wake — თუ პასუხებს ელოდები ან მოგვიანებით უნდა დაუბრუნდე, დანიშნე გაღვიძება საათებში (მაგ. 24).\n` +
+    `- finish_task — როცა შედეგი ჩაბარებულია ან გზები პატიოსნად ამოიწურა: შეაჯამე და დახურე.\n` +
+    `- „[მოვლენა]"-თი დაწყებული შეტყობინება სისტემისგანაა (პასუხი მოვიდა / დრო მოვიდა) — უპასუხე მოქმედებით, არა მისალმებით.`
+  );
+}
+
 async function buildAgentSystemPrompt(
   userId: string,
   threadType?: string,
   introRequestId?: number | null,
+  threadId?: number,
 ): Promise<string> {
   const loadMemory = shouldLoadMemory(threadType);
+  // A thread bound to an open task runs in task_step mode: its block + the
+  // engine section with the brief and ask states.
+  const boundTask = threadId != null ? await getOpenTaskByThread(threadId) : null;
+  const runMode: RunMode = boundTask ? 'task_step' : deriveRunMode(threadType);
   const [
     configResult,
     modeBlocks,
+    boundAsks,
     nameResult,
     fieldsResult,
     profile,
@@ -1213,7 +1331,8 @@ async function buildAgentSystemPrompt(
     ),
     // Mode-specific prompt blocks (DB-edited, deploy-free). Empty until the
     // prompt team writes them — composition is a no-op then.
-    composePromptBlocks(MODE_BLOCKS[deriveRunMode(threadType)]),
+    composePromptBlocks(MODE_BLOCKS[runMode]),
+    boundTask ? getAsksForTask(boundTask.id) : Promise.resolve([] as TaskAsk[]),
     // The registered name never reached the model before — with no name key in
     // the profile KV it would sometimes invent one, or guess a gendered
     // address (second-account battery: a female tester greeted as a man).
@@ -1244,6 +1363,7 @@ async function buildAgentSystemPrompt(
     base +
     AGENT_STRATEGY_PROMPT +
     modeBlocks +
+    (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
     nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
@@ -1284,6 +1404,7 @@ async function executeToolCall(
   name: string,
   input: Record<string, unknown>,
   runId?: string,
+  threadId?: number,
 ): Promise<unknown> {
   // Block/deceased guard: never surface a single excluded contact via a
   // phone-keyed lookup (format-independent match).
@@ -1429,8 +1550,39 @@ async function executeToolCall(
       const title = ((input['title'] as string) ?? '').trim();
       if (!title) return { created: false, error: 'Pass a non-empty title.' };
       const description = ((input['description'] as string) ?? '').trim() || null;
-      const { id } = await createTask(userId, title, description, taskType);
-      return { created: true, task_id: id };
+      const autonomyRaw = (input['autonomy'] as string) ?? 'ask_first';
+      const autonomy = isTaskAutonomy(autonomyRaw) ? autonomyRaw : 'ask_first';
+      const { id } = await createTask(userId, title, description, taskType, threadId, autonomy);
+      return { created: true, task_id: id, autonomy };
+    }
+    case 'ask_contact': {
+      const taskId = Number(input['task_id']);
+      const task = Number.isFinite(taskId) ? await getTaskById(taskId) : null;
+      if (!task || String(task.user_id) !== userId || task.status !== 'open') {
+        return { sent: false, error: 'Task not found or not open.' };
+      }
+      return createAsk(
+        userId,
+        taskId,
+        String(input['phone'] ?? ''),
+        String(input['question'] ?? ''),
+      );
+    }
+    case 'set_task_brief': {
+      const brief = String(input['brief'] ?? '').trim();
+      if (!brief) return { updated: false, error: 'Pass a non-empty brief.' };
+      return { updated: await setTaskBrief(userId, Number(input['task_id']), brief) };
+    }
+    case 'set_task_wake': {
+      const hours = Math.min(168, Math.max(1, Number(input['hours']) || 24));
+      return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
+    }
+    case 'finish_task': {
+      const taskId = Number(input['task_id']);
+      const summary = String(input['summary'] ?? 'done').slice(0, 500);
+      const closed = await updateTask(userId, taskId, 'closed', summary);
+      if (closed) await cancelAsksForTask(taskId);
+      return { closed };
     }
     case 'get_my_tasks': {
       const status = isTaskStatus(input['status'] as string)
@@ -1511,6 +1663,7 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
 
 async function runOneToolBlock(
   userId: string,
+  threadId: number,
   runId: string,
   block: Anthropic.ToolUseBlock,
 ): Promise<Anthropic.ToolResultBlockParam> {
@@ -1519,6 +1672,7 @@ async function runOneToolBlock(
     block.name,
     block.input as Record<string, unknown>,
     runId,
+    threadId,
   );
   const diet = dietToolResult(result);
   const rawContent = JSON.stringify(diet);
@@ -1549,7 +1703,7 @@ async function processToolBlocks(
     const progressMsg = TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
   }
-  return Promise.all(toolBlocks.map((block) => runOneToolBlock(userId, runId, block)));
+  return Promise.all(toolBlocks.map((block) => runOneToolBlock(userId, threadId, runId, block)));
 }
 
 // Streaming keeps the connection alive token-by-token, so the per-call cap can
@@ -1587,6 +1741,10 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   save_private_context: '💾 ინფოს ვინახავ...',
   get_thread_context: '💬 სხვა საუბრებს ვამოწმებ...',
   set_task_result: '📌 შედეგს ვაფიქსირებ...',
+  ask_contact: '✉️ კონტაქტს ვწერ...',
+  set_task_brief: '🗂 გეგმას ვაახლებ...',
+  set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
+  finish_task: '🏁 დავალებას ვხურავ...',
 };
 
 interface RunContext {
@@ -2140,6 +2298,10 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_MY_TASKS_TOOL,
     UPDATE_TASK_TOOL,
     GRANT_TASK_PERMISSION_TOOL,
+    ASK_CONTACT_TOOL,
+    SET_TASK_BRIEF_TOOL,
+    SET_TASK_WAKE_TOOL,
+    FINISH_TASK_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
@@ -2165,7 +2327,7 @@ export async function processChat(
   }
 
   const [basePrompt, tools, history] = await Promise.all([
-    buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id),
+    buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id, thread.id),
     buildEnabledTools(userId),
     loadHistory(threadId),
   ]);

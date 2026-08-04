@@ -8,6 +8,13 @@ export const TASK_STATUSES = ['open', 'paused', 'closed'] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
+export const TASK_AUTONOMY_MODES = ['ask_first', 'autonomous'] as const;
+export type TaskAutonomy = (typeof TASK_AUTONOMY_MODES)[number];
+
+export function isTaskAutonomy(v: string): v is TaskAutonomy {
+  return (TASK_AUTONOMY_MODES as readonly string[]).includes(v);
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -15,6 +22,10 @@ export interface Task {
   task_type: string;
   status: string;
   permission_granted: boolean;
+  thread_id: number | null;
+  autonomy: string;
+  brief: string | null;
+  next_wake_at: string | null;
   created_at: string;
   last_activity_at: string;
 }
@@ -27,21 +38,106 @@ export function isTaskStatus(v: string): v is TaskStatus {
   return (TASK_STATUSES as readonly string[]).includes(v);
 }
 
-/** Save a goal as a standing task. Returns the new task id. */
+/**
+ * Save a goal as a standing task, bound to the thread it was created in
+ * (1 task = 1 thread — the engine wakes the task INTO that thread).
+ */
 export async function createTask(
   userId: string,
   title: string,
   description: string | null,
   taskType: TaskType,
+  threadId?: number,
+  autonomy: TaskAutonomy = 'ask_first',
 ): Promise<{ id: number }> {
   const result = await query<{ id: number }>(
-    `INSERT INTO tasks (user_id, title, description, task_type)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO tasks (user_id, title, description, task_type, thread_id, autonomy)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id`,
-    [userId, title, description, taskType],
+    [userId, title, description, taskType, threadId ?? null, autonomy],
     QUERY_TIMEOUT_MS,
   );
   return { id: result.rows[0].id };
+}
+
+const TASK_COLUMNS = `id, title, description, task_type, status, permission_granted,
+            thread_id, autonomy, brief, next_wake_at, created_at, last_activity_at`;
+
+/** The open task bound to a thread — what makes a run a "task step" run. */
+export async function getOpenTaskByThread(threadId: number): Promise<Task | null> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks
+     WHERE thread_id = $1 AND status = 'open'
+     ORDER BY id DESC LIMIT 1`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function getTaskById(taskId: number): Promise<(Task & { user_id: string }) | null> {
+  const result = await query<Task & { user_id: string }>(
+    `SELECT user_id, ${TASK_COLUMNS} FROM tasks WHERE id = $1 LIMIT 1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+/** The model's operative plan for the task — rewritten as work progresses. */
+export async function setTaskBrief(
+  userId: string,
+  taskId: number,
+  brief: string,
+): Promise<boolean> {
+  const result = await query(
+    `UPDATE tasks SET brief = $3, updated_at = NOW(), last_activity_at = NOW()
+     WHERE id = $1 AND user_id = $2 AND status = 'open'`,
+    [taskId, userId, brief],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+export async function setTaskAutonomy(
+  userId: string,
+  taskId: number,
+  autonomy: TaskAutonomy,
+): Promise<boolean> {
+  const result = await query(
+    `UPDATE tasks SET autonomy = $3, updated_at = NOW() WHERE id = $1 AND user_id = $2`,
+    [taskId, userId, autonomy],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** Schedule the task's next self-wake (revisit, reminder, summary deadline). */
+export async function setTaskWake(userId: string, taskId: number, hours: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE tasks SET next_wake_at = NOW() + ($3 || ' hours')::interval, updated_at = NOW()
+     WHERE id = $1 AND user_id = $2 AND status = 'open'`,
+    [taskId, userId, hours],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** Open tasks whose wake time has arrived — the ticker's worklist. */
+export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
+  const result = await query<Task & { user_id: string }>(
+    `SELECT user_id, ${TASK_COLUMNS} FROM tasks
+     WHERE status = 'open' AND next_wake_at IS NOT NULL AND next_wake_at <= NOW()
+     ORDER BY next_wake_at ASC
+     LIMIT $1`,
+    [limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function clearTaskWake(taskId: number): Promise<void> {
+  await query(`UPDATE tasks SET next_wake_at = NULL WHERE id = $1`, [taskId], QUERY_TIMEOUT_MS);
 }
 
 /** The user's tasks (open by default) — how a fresh chat learns what it was doing. */

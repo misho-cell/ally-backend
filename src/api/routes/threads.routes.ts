@@ -20,6 +20,8 @@ import {
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
+import { recordAskAnswer } from '../../services/taskAsks.service';
+import { wakeTask } from '../../services/taskEngine.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { ThreadStatus } from '../../services/threads.service';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
@@ -204,6 +206,27 @@ threadsRouter.post(
       // (GET /threads/stream), keyed by runId.
       const runId = randomUUID();
       res.status(202).json({ success: true, runId });
+
+      // An incoming_ask thread is someone ELSE's question — the reply is the
+      // answer. Capture it onto the ask and wake the asking task; this thread's
+      // own run still proceeds normally (the assistant acknowledges).
+      if (thread.type === 'incoming_ask') {
+        void recordAskAnswer(threadId, message)
+          .then((captured) => {
+            if (captured?.firstAnswer) {
+              void setThreadStatus(userId, threadId, 'done');
+              return wakeTask(
+                captured.taskId,
+                'პასუხი მოვიდა შენს გაგზავნილ კითხვაზე — გაეცანი (კითხვების სექცია) და გააგრძელე დავალება.',
+              );
+            }
+            return undefined;
+          })
+          .catch((err: unknown) =>
+            // eslint-disable-next-line no-console
+            console.error('[ask-capture] failed:', (err as Error).message),
+          );
+      }
 
       // The run is in flight — every device's chat list shows "working" from
       // the server-held state (no more client-local status guessing).

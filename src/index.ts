@@ -8,6 +8,7 @@ import contactsRouter from './api/routes/contacts.routes';
 import notificationsRouter from './api/routes/notifications.routes';
 import threadsRouter from './api/routes/threads.routes';
 import requestsRouter from './api/routes/requests.routes';
+import tasksRouter from './api/routes/tasks.routes';
 import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
 import profileRouter from './api/routes/profile.routes';
@@ -20,6 +21,7 @@ import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
 import { startAiNotificationCron } from './services/aiNotification.cron';
 import { startRunReaper } from './services/runReaper.service';
+import { startTaskTicker } from './services/taskEngine.service';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -59,6 +61,7 @@ app.use('/contacts', contactsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/threads', threadsRouter);
 app.use('/requests', requestsRouter);
+app.use('/tasks', tasksRouter);
 app.use('/billing', billingRouter);
 app.use('/profile', profileRouter);
 app.use('/mcp', mcpRouter);
@@ -89,6 +92,7 @@ runMigrations()
     startSubscriptionCron();
     startAiNotificationCron();
     startRunReaper();
+    startTaskTicker();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
   })
