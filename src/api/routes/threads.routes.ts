@@ -269,7 +269,7 @@ threadsRouter.post(
           // and truncated so no phone number rides in the notification body.
           if (!hasActiveConnection(userId)) {
             void sendPushNotification(userId, {
-              title: 'Ally — პასუხი მზადაა',
+              title: 'Netai — პასუხი მზადაა',
               body: buildPushPreview(result.reply),
               url: `/chat/${threadId}`,
             }).catch(() => undefined);

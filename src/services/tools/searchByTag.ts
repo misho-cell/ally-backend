@@ -6,6 +6,8 @@ import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
 import { fetchRelationshipForPhones, RelationshipInfo } from './relationshipScores';
+import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
+import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
@@ -147,6 +149,7 @@ function shape(
   facts: Map<string, ContactFactFields>,
   members: Set<string>,
   relationships: Map<string, RelationshipInfo>,
+  exclusions: Map<string, ContactExclusion[]>,
   approximate: boolean,
 ): Record<string, unknown> {
   const base = applyFacts(
@@ -161,6 +164,7 @@ function shape(
     facts,
   );
   const rel = relationships.get(row.phone);
+  const excl = exclusions.get(phoneDigits(row.phone));
   const withMeta = {
     ...base,
     is_member: isMemberPhone(members, row.phone),
@@ -169,6 +173,9 @@ function shape(
     // Enrichment-computed edge score (family/close/professional/formal + 0..1
     // strength) — lets the agent phrase how well the user knows this person.
     ...(rel && { relationship: rel.relationship, relationship_strength: rel.strength }),
+    // The user's own recorded "not this person, for this" decisions — the
+    // assistant must respect the scope (and only the scope) without a lookup.
+    ...(excl && excl.length > 0 && { exclusions: excl }),
   };
   return approximate ? { ...withMeta, approximate: true } : withMeta;
 }
@@ -203,14 +210,15 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
     const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
-    const [facts, members, relationships] = await Promise.all([
+    const [facts, members, relationships, exclusions] = await Promise.all([
       fetchFactsForPhones(userId, allPhones),
       fetchMembersForPhones(allPhones),
       fetchRelationshipForPhones(userId, allPhones),
+      fetchExclusionsForPhones(userId, allPhones),
     ]);
     const results = [
-      ...exactRows.map((r) => shape(r, facts, members, relationships, false)),
-      ...fuzzyRows.map((r) => shape(r, facts, members, relationships, true)),
+      ...exactRows.map((r) => shape(r, facts, members, relationships, exclusions, false)),
+      ...fuzzyRows.map((r) => shape(r, facts, members, relationships, exclusions, true)),
     ];
     const payload: Record<string, unknown> = {
       found: true,

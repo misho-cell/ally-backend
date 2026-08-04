@@ -163,7 +163,7 @@ async function handleTopupTransaction(txn: TransactionNotification): Promise<voi
     const credited = await creditTopup(userId, pkg.tokens, txn.id);
     if (credited) {
       await sendPushNotification(userId, {
-        title: 'Ally — ტოკენები დაემატა',
+        title: 'Netai — ტოკენები დაემატა',
         body: `+${pkg.tokens} ტოკენი დაერიცხა შენს ბალანსს 🪙`,
       }).catch(() => {});
     }
@@ -216,7 +216,7 @@ async function handlePaymentFailed(txn: TransactionNotification): Promise<void> 
   );
 
   await sendPushNotification(String(userId), {
-    title: 'Ally — გადახდის პრობლემა',
+    title: 'Netai — გადახდის პრობლემა',
     body: 'გადახდა ვერ განხორციელდა. განაახლე გადახდის მეთოდი.',
     url: '/settings',
   });

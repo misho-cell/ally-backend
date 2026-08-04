@@ -52,6 +52,15 @@ export function scrubText(text: string): string {
     }, '');
 }
 
+/**
+ * Brand rule: assistant prose must not carry em dashes. Applied ONLY at
+ * display boundaries (SSE, thread reads) — stored text stays untouched, and
+ * three prompt-side attempts failed, so this is the render-layer fix.
+ */
+export function stripEmDashesForDisplay(text: string): string {
+  return text.replace(/\s+—\s+/g, ', ').replace(/—/g, '-');
+}
+
 /** Reveal allowed spans at a display boundary: drop the markers, keep the content. */
 export function stripAllowedSpans(text: string): string {
   return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');

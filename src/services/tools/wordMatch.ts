@@ -115,6 +115,7 @@ export function buildExactMatchSql(
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.field_type IN ('occupation', 'employer', 'industry')
+       AND cf.retracted_at IS NULL
        AND (cf.submitted_by_user_id = $${factsUserIdx}::int OR cf.is_public = true)
        AND ${regexOr('cf.value')}
    )`;

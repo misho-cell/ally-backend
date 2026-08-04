@@ -1,11 +1,11 @@
 import { EventEmitter } from 'events';
 import { Response } from 'express';
-import { scrubDeep, scrubText, stripAllowedSpans } from './privacyScrub';
+import { scrubDeep, scrubText, stripAllowedSpans, stripEmDashesForDisplay } from './privacyScrub';
 
 // Scrub then reveal explicitly-allowed spans (the own-number passthrough) at
 // this final display boundary.
 function displayText(text: string): string {
-  return stripAllowedSpans(scrubText(text));
+  return stripEmDashesForDisplay(stripAllowedSpans(scrubText(text)));
 }
 
 const emitter = new EventEmitter();

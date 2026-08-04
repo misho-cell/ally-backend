@@ -37,6 +37,7 @@ export async function createAsk(
   taskId: number,
   contactPhone: string,
   question: string,
+  parentAskId?: number,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed) return { sent: false, error: 'Pass a non-empty question.' };
@@ -110,10 +111,10 @@ export async function createAsk(
   await saveThreadMessage(thread.id, toUserId, 'assistant', opening);
 
   const ask = await query<{ id: number }>(
-    `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id)
-     VALUES ($1, $2::int, $3, $4, $5)
+    `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id, parent_ask_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6)
      RETURNING id`,
-    [taskId, fromUserId, toUserId, safeQuestion, thread.id],
+    [taskId, fromUserId, toUserId, safeQuestion, thread.id, parentAskId ?? null],
     ASK_QUERY_TIMEOUT_MS,
   );
 
@@ -203,4 +204,99 @@ export async function cancelAsksForTask(taskId: number): Promise<void> {
       'ეს კითხვა აღარ არის აქტუალური — პასუხი აღარ არის საჭირო. მადლობა!',
     ).catch(() => undefined);
   }
+}
+
+export interface IncomingAsk {
+  id: number;
+  task_id: number;
+  question: string;
+  from_name: string | null;
+  status: string;
+}
+
+/** The live ask behind an incoming_ask thread — injected into the recipient's prompt. */
+export async function getAskByThread(askThreadId: number): Promise<IncomingAsk | null> {
+  const result = await query<IncomingAsk>(
+    `SELECT ta.id, ta.task_id, ta.question, ta.status, u.name AS from_name
+     FROM task_asks ta
+     LEFT JOIN "User" u ON u.id = ta.from_user_id
+     WHERE ta.ask_thread_id = $1
+     ORDER BY ta.id DESC LIMIT 1`,
+    [askThreadId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Relay: the RECIPIENT of an ask forwards it (with their consent, voiced in
+ * their own thread) to one of THEIR contacts. The child ask keeps the original
+ * task_id, so C's answer wakes A's task through the normal capture path; B is
+ * the sender for caps and dedupe purposes. One level deep by design.
+ */
+export async function createRelayAsk(
+  relayerUserId: string,
+  parentAskId: number,
+  contactPhone: string,
+  question?: string,
+): Promise<CreateAskOutcome> {
+  const parent = await query<{
+    id: number;
+    task_id: number;
+    to_user_id: number;
+    question: string;
+    parent_ask_id: number | null;
+  }>(
+    `SELECT id, task_id, to_user_id, question, parent_ask_id FROM task_asks WHERE id = $1 LIMIT 1`,
+    [parentAskId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const row = parent.rows[0];
+  if (!row || String(row.to_user_id) !== relayerUserId) {
+    return { sent: false, error: 'Ask not found.' };
+  }
+  if (row.parent_ask_id !== null) {
+    return { sent: false, error: 'ეს კითხვა უკვე გადაგზავნილია ერთხელ — ჯაჭვი აქ ჩერდება.' };
+  }
+  return createAsk(
+    relayerUserId,
+    row.task_id,
+    contactPhone,
+    question?.trim() || row.question,
+    row.id,
+  );
+}
+
+// One polite reminder per unanswered ask, after this long.
+const ASK_REMINDER_AFTER_HOURS = 48;
+
+export async function sendDueAskReminders(limit: number): Promise<number> {
+  const due = await query<{ ask_thread_id: number | null; to_user_id: number }>(
+    `UPDATE task_asks SET reminded_at = NOW()
+     WHERE id IN (
+       SELECT id FROM task_asks
+       WHERE status = 'sent' AND reminded_at IS NULL
+         AND created_at < NOW() - INTERVAL '${ASK_REMINDER_AFTER_HOURS} hours'
+       ORDER BY created_at
+       LIMIT $1
+     )
+     RETURNING ask_thread_id, to_user_id`,
+    [limit],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  for (const row of due.rows) {
+    if (row.ask_thread_id === null) continue;
+    await saveThreadMessage(
+      row.ask_thread_id,
+      row.to_user_id,
+      'assistant',
+      'შეხსენება: ეს კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.',
+    ).catch(() => undefined);
+    void sendPushNotification(String(row.to_user_id), {
+      title: 'Netai — შეხსენება',
+      body: 'უპასუხო კითხვა გელოდება.',
+      url: `/chat/${row.ask_thread_id}`,
+    }).catch(() => undefined);
+  }
+  return due.rows.length;
 }

@@ -40,7 +40,9 @@ export async function fetchFactsForPhones(
             TO_CHAR(updated_at, 'YYYY-MM-DD') AS as_of
      FROM contact_facts
      WHERE neo4j_contact_id = ANY($1)
-       AND (submitted_by_user_id = $2 OR is_public = true)`,
+       AND (submitted_by_user_id = $2 OR is_public = true)
+       AND retracted_at IS NULL
+     ORDER BY (submitted_by_user_id = $2) DESC`,
     [normalized, userId],
     ENRICH_TIMEOUT_MS,
   );

@@ -183,7 +183,8 @@ async function getOtherFacts(
 ): Promise<FactRow[]> {
   const result = await query<FactRow>(
     `SELECT id, value FROM contact_facts
-     WHERE neo4j_contact_id = $1 AND field_type = $2 AND submitted_by_user_id != $3`,
+     WHERE neo4j_contact_id = $1 AND field_type = $2 AND submitted_by_user_id != $3
+       AND retracted_at IS NULL`,
     [neo4jContactId, fieldType, userId],
   );
   return result.rows;
@@ -267,7 +268,7 @@ export async function getVisibleFacts(
       `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public,
               TO_CHAR(updated_at, 'YYYY-MM-DD') AS last_confirmed
        FROM contact_facts
-       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
+       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
        ORDER BY field_type, updated_at DESC`,
       [neo4jContactId, userId],
     ),
@@ -276,7 +277,7 @@ export async function getVisibleFacts(
     query<{ field_type: string; canonical_value: string }>(
       `SELECT field_type, COALESCE(canonical_value, value) AS canonical_value
        FROM contact_facts
-       WHERE neo4j_contact_id = $1 AND is_public = true
+       WHERE neo4j_contact_id = $1 AND is_public = true AND retracted_at IS NULL
        ORDER BY field_type, updated_at DESC`,
       [neo4jContactId],
     ),
@@ -342,7 +343,7 @@ export async function reclassifyPrivateNotes(
   const rows = await backgroundQuery<{ id: number; field_type: string; value: string }>(
     `SELECT id, field_type, value FROM contact_facts
      WHERE ($1::int IS NULL OR submitted_by_user_id = $1::int)
-       AND is_public = false AND moderated_at IS NULL
+       AND is_public = false AND moderated_at IS NULL AND retracted_at IS NULL
        AND field_type NOT IN ('occupation', 'employer', 'city', 'industry')
      ORDER BY id
      LIMIT $2`,
@@ -369,4 +370,35 @@ export async function reclassifyPrivateNotes(
     published,
     remaining: rows.rows.length > cap ? 1 : 0,
   };
+}
+
+/**
+ * The user says a saved fact is WRONG: their own matching rows are marked
+ * retracted (kept for audit) and leave every read path — search overlays,
+ * profiles, crowd confirmation, the moderation sweep. Scoped to the caller's
+ * own submissions; others' rows are untouched (the caller's own corrected
+ * value already outranks public values in every read).
+ */
+export async function retractOwnFacts(
+  userId: string,
+  neo4jContactIdRaw: string,
+  fieldType?: string,
+  valueFragment?: string,
+): Promise<{ retracted: number }> {
+  const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+  const result = await query(
+    `UPDATE contact_facts
+     SET retracted_at = NOW(), is_public = false, updated_at = NOW()
+     WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
+       AND retracted_at IS NULL
+       AND ($3::text IS NULL OR field_type = $3)
+       AND ($4::text IS NULL OR value ILIKE '%' || $4 || '%')`,
+    [
+      neo4jContactId,
+      userId,
+      fieldType?.trim().toLowerCase() || null,
+      valueFragment?.trim() || null,
+    ],
+  );
+  return { retracted: result.rowCount ?? 0 };
 }

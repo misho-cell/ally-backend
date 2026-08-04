@@ -1,6 +1,14 @@
 import { randomUUID } from 'crypto';
 import { processChat } from './chat.service';
-import { getTaskById, getDueTasks, clearTaskWake, Task } from './taskStore.service';
+import {
+  getTaskById,
+  getDueTasks,
+  getStaleOpenTasks,
+  touchTaskActivity,
+  clearTaskWake,
+  Task,
+} from './taskStore.service';
+import { sendDueAskReminders } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
@@ -10,6 +18,14 @@ import { scrubText } from './privacyScrub';
 import { RUN_HARD_TIMEOUT_MS } from '../config/runBudgets';
 
 const TICK_INTERVAL_MS = 60_000;
+const REMINDER_INTERVAL_MS = 60 * 60_000;
+const MAX_REMINDERS_PER_SWEEP = 10;
+// Nightly review (the matcher, v1): quiet open tasks get one model-driven
+// re-check per night — new members/tags/facts since yesterday surface through
+// the same searches the task already knows how to run.
+const NIGHTLY_REVIEW_HOUR_UTC = 2; // 06:00 Tbilisi, after the enrichment window
+const NIGHTLY_REVIEW_QUIET_HOURS = 20;
+const MAX_NIGHTLY_REVIEWS = 10;
 // How many due tasks one tick advances — engine runs share the model budget
 // with live users and must trickle, not burst.
 const MAX_WAKES_PER_TICK = 2;
@@ -119,6 +135,31 @@ async function tick(): Promise<void> {
   }
 }
 
+async function nightlyReview(): Promise<void> {
+  const stale = await getStaleOpenTasks(NIGHTLY_REVIEW_QUIET_HOURS, MAX_NIGHTLY_REVIEWS);
+  for (const task of stale) {
+    await touchTaskActivity(task.id); // one review per night even if the run fails
+    await wakeTask(
+      task.id,
+      'ღამის გადახედვა: ქსელში გუშინდელის მერე ახალი ხალხი/ინფორმაცია შეიძლება გაჩნდა. ' +
+        'გაიმეორე ძირითადი ძიებები და შეადარე brief-ს — მფლობელს მხოლოდ რეალური სიახლე აცნობე; ' +
+        'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე.',
+    );
+  }
+  if (stale.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[task-engine] nightly review woke ${stale.length} task(s)`);
+  }
+}
+
+function msUntilUtcHour(hour: number): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(hour, 30, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
 export function startTaskTicker(): void {
   setInterval(() => {
     void tick().catch((err) =>
@@ -126,8 +167,28 @@ export function startTaskTicker(): void {
       console.error('[task-engine] tick failed:', (err as Error).message),
     );
   }, TICK_INTERVAL_MS).unref();
+
+  setInterval(() => {
+    void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] reminder sweep failed:', (err as Error).message),
+    );
+  }, REMINDER_INTERVAL_MS).unref();
+
+  const scheduleNightly = (): void => {
+    setTimeout(() => {
+      void nightlyReview()
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] nightly review failed:', (err as Error).message),
+        )
+        .finally(scheduleNightly);
+    }, msUntilUtcHour(NIGHTLY_REVIEW_HOUR_UTC)).unref();
+  };
+  scheduleNightly();
+
   // eslint-disable-next-line no-console
-  console.log('[task-engine] ticker started (60s)');
+  console.log('[task-engine] ticker started (60s; reminders hourly; nightly review 02:30 UTC)');
 }
 
 /** Re-exported for the ask-answer capture path (threads.routes). */

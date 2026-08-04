@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { stripAllowedSpans } from './privacyScrub';
+import { stripAllowedSpans, stripEmDashesForDisplay } from './privacyScrub';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
@@ -181,7 +181,7 @@ export async function getOrCreateDefaultThread(userId: string): Promise<number> 
     return result.rows[0].id;
   }
 
-  const created = await createThread(userId, 'regular', 'Ally Chat');
+  const created = await createThread(userId, 'regular', 'Netai Chat');
   return created.id;
 }
 
@@ -194,8 +194,15 @@ export async function getThreadMessages(threadId: number): Promise<ThreadMessage
     [threadId],
   );
   // Reveal own-number passthrough spans at this display boundary (stored text
-  // keeps the markers so repeated scrub passes stay idempotent).
-  return result.rows.map((row) => ({ ...row, content: stripAllowedSpans(row.content) }));
+  // keeps the markers so repeated scrub passes stay idempotent). Em dashes are
+  // stripped from the ASSISTANT's prose only (brand rule, render-layer fix).
+  return result.rows.map((row) => ({
+    ...row,
+    content:
+      row.role === 'assistant'
+        ? stripEmDashesForDisplay(stripAllowedSpans(row.content))
+        : stripAllowedSpans(row.content),
+  }));
 }
 
 /**
@@ -253,7 +260,7 @@ export async function createIncomingRequestThread(
   );
 
   const openingMessage =
-    `გამარჯობა! **${requesterName}**-ს გინდა გეცნოს **${targetName}**-ს Ally-ის მეშვეობით.` +
+    `გამარჯობა! **${requesterName}**-ს გინდა გეცნოს **${targetName}**-ს Netai-ის მეშვეობით.` +
     (message ? `\n\nმათი შეტყობინება: _"${message}"_` : '') +
     `\n\nდაეხმარები? 🤝`;
 
@@ -284,7 +291,7 @@ export async function createOutgoingRequestThread(
 
   const openingMessage =
     `**${mediatorName}**-სთვის გაიგზავნა გაცნობის მოთხოვნა **${targetName}**-ზე.\n\n` +
-    `**${mediatorName}** Ally-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
+    `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
 
   await saveThreadMessage(thread.id, requesterUserId, 'assistant', openingMessage);
 

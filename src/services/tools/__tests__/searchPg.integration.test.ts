@@ -26,6 +26,7 @@ const SCHEMA_SQL = `
   CREATE TABLE contact_facts (
     id serial primary key, neo4j_contact_id text, submitted_by_user_id integer,
     field_type text, value text, canonical_value text, is_public boolean default false,
+    moderated_at timestamp, retracted_at timestamp,
     created_at timestamp default now(), updated_at timestamp default now());
   CREATE TABLE contact_relationship_scores (
     user_id int not null, contact_phone text not null, relationship_type text not null,

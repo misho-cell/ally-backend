@@ -54,7 +54,7 @@ async function getRequesterName(userId: string): Promise<string> {
     `SELECT name FROM "User" WHERE id = $1 LIMIT 1`,
     [userId],
   );
-  return result.rows[0]?.name ?? 'Ally-ს მომხმარებელი';
+  return result.rows[0]?.name ?? 'Netai-ს მომხმარებელი';
 }
 
 async function findMediatorPhoneByPhone(
@@ -108,7 +108,7 @@ export async function requestIntroduction(
     return {
       success: false,
       registered: false,
-      error: `${mediatorName} Ally-ს არ იყენებს — მოთხოვნის გაგზავნა შეუძლებელია`,
+      error: `${mediatorName} Netai-ს არ იყენებს — მოთხოვნის გაგზავნა შეუძლებელია`,
     };
   }
 
@@ -200,8 +200,8 @@ export async function requestIntroduction(
 
   if (hasPush) {
     await sendPushNotification(String(mediatorUserId), {
-      title: 'Ally — გაცნობის მოთხოვნა',
-      body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Ally.`,
+      title: 'Netai — გაცნობის მოთხოვნა',
+      body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Netai.`,
       url: '/chat',
     });
   }
@@ -212,6 +212,6 @@ export async function requestIntroduction(
     push_sent: hasPush,
     message: hasPush
       ? `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`
-      : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Ally-ს გახსნისას.`,
+      : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Netai-ს გახსნისას.`,
   };
 }

@@ -163,10 +163,10 @@ async function syncRequestThreads(req: RequestRow, action: IntroductionAction): 
 
 async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void> {
   const body = accepted
-    ? `${req.target_name}-ზე გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Ally.`
+    ? `${req.target_name}-ზე გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
     : `${req.target_name}-ზე გაცნობის მოთხოვნაზე უარი მიიღე.`;
   await sendPushNotification(String(req.requester_user_id), {
-    title: 'Ally — გაცნობის პასუხი',
+    title: 'Netai — გაცნობის პასუხი',
     body,
     url: '/chat',
   }).catch(() => undefined);

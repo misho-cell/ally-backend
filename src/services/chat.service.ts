@@ -45,7 +45,17 @@ import {
   setTaskBrief,
   setTaskWake,
 } from './taskStore.service';
-import { createAsk, cancelAsksForTask, getAsksForTask, TaskAsk } from './taskAsks.service';
+import {
+  createAsk,
+  createRelayAsk,
+  cancelAsksForTask,
+  getAsksForTask,
+  getAskByThread,
+  TaskAsk,
+  IncomingAsk,
+} from './taskAsks.service';
+import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
+import { retractOwnFacts } from './contactFacts.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -217,11 +227,11 @@ const AGENT_STRATEGY_PROMPT = `
 თუ პიროვნება მხოლოდ 2nd degree-შია:
 - ნათლად მიუთითე შუამავალი: „[სახელი]-ის მეშვეობით შეიძლება გაიცნო"
 - შეაფასე კავშირის სიძლიერე (რამდენი საერთო კონტაქტი, tags)
-- ეკითხე: „გინდა Ally-ის მეშვეობით [შუამავალს] გაცნობის მოთხოვნა გავაგზავნო? ის Ally-ში მიიღებს შეტყობინებას და პირდაპირ გიპასუხებს."
+- ეკითხე: „გინდა Netai-ის მეშვეობით [შუამავალს] გაცნობის მოთხოვნა გავაგზავნო? ის Netai-ში მიიღებს შეტყობინებას და პირდაპირ გიპასუხებს."
 - **არასოდეს** შეიმუშაო ხელით გასაგზავნი WhatsApp/SMS ტექსტი — გამოიყენე მხოლოდ request_introduction ტული
 - მომხმარებლის „კი"-ს შემდეგ დაუყოვნებლად გამოიძახე request_introduction ტული
-- თუ ტული დააბრუნებს push_sent=false — უთხარი: „მოთხოვნა შეიქმნა. [შუამავალი] ნოტიფიკაციას ვერ მიიღებს, მაგრამ დაინახავს Ally-ს შემდეგ გახსნისას."
-- **არ** შესთავაზო WhatsApp/SMS/email ალტერნატივა — Ally-ს სისტემა საკმარისია
+- თუ ტული დააბრუნებს push_sent=false — უთხარი: „მოთხოვნა შეიქმნა. [შუამავალი] ნოტიფიკაციას ვერ მიიღებს, მაგრამ დაინახავს Netai-ს შემდეგ გახსნისას."
+- **არ** შესთავაზო WhatsApp/SMS/email ალტერნატივა — Netai-ს სისტემა საკმარისია
 - თუ ტული დააბრუნებს needs_disambiguation=true — მხოლოდ ეს წარმოთქვი: „რამდენიმე [სახელი] ვიპოვე, აირჩიე:" — სახელების ჩამოთვლა არ გჭირდება, UI თავად გაჩვენებს. მომხმარებლის არჩევის შემდეგ გამოიძახე request_introduction ტული mediator_phone პარამეტრით.
 
 ---
@@ -775,6 +785,93 @@ const FINISH_TASK_TOOL: AnthropicTool = {
   },
 };
 
+const RELAY_ASK_TOOL: AnthropicTool = {
+  name: 'relay_ask',
+  description:
+    'Inside an incoming-ask thread ONLY: when the user offers to forward the question to one ' +
+    'of THEIR contacts ("ask Giorgi, he would know"), relay it with their consent. The answer ' +
+    'flows back to the original asker automatically. One relay level deep — a relayed ask ' +
+    'cannot be relayed again.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      ask_id: { type: 'number', description: 'The incoming ask id from the system context.' },
+      phone: {
+        type: 'string',
+        description: "The user's contact to forward to (from a search result).",
+      },
+      question: {
+        type: 'string',
+        description: 'Optional rephrased question; defaults to the original.',
+      },
+    },
+    required: ['ask_id', 'phone'],
+  },
+};
+
+const EXCLUDE_CONTACT_TOOL: AnthropicTool = {
+  name: 'exclude_contact',
+  description:
+    'Record the user\'s decision "not this person, FOR THIS" — when they reject a suggestion, ' +
+    'ask WHY once, then save the scope and reason. This is not a blocklist: the person stays ' +
+    'searchable, but you must not suggest them again FOR THAT SCOPE while the reason holds. ' +
+    'Search results carry these as `exclusions` — respect them without being asked.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+      excluded_for: {
+        type: 'string',
+        description: 'The scope, short free text — e.g. "bridge into city hall", "designer work".',
+      },
+      reason: { type: 'string', description: "Why, in the user's words." },
+      revisit_if: {
+        type: 'string',
+        description: 'Optional — what would make this stale, e.g. "city hall leadership changes".',
+      },
+    },
+    required: ['phone', 'excluded_for', 'reason'],
+  },
+};
+
+const REMOVE_EXCLUSION_TOOL: AnthropicTool = {
+  name: 'remove_contact_exclusion',
+  description:
+    'Lift a recorded exclusion when the user changes their mind or its reason expired. Omit ' +
+    'excluded_for to lift ALL exclusions on the contact.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id." },
+      excluded_for: { type: 'string', description: 'The scope to lift; omit for all.' },
+    },
+    required: ['phone'],
+  },
+};
+
+const RETRACT_FACT_TOOL: AnthropicTool = {
+  name: 'retract_contact_fact',
+  description:
+    "The user says a saved fact is WRONG — retract the user's own matching saved fact(s) so " +
+    'they stop appearing anywhere. Narrow with field_type and/or a value fragment; then save ' +
+    'the corrected fact with save_contact_fact if the user gave one.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id." },
+      field_type: {
+        type: 'string',
+        description: 'Optional: occupation | employer | city | industry | note | …',
+      },
+      value_fragment: {
+        type: 'string',
+        description: 'Optional: retract only facts whose text contains this fragment.',
+      },
+    },
+    required: ['phone'],
+  },
+};
+
 const GET_MY_TASKS_TOOL: AnthropicTool = {
   name: 'get_my_tasks',
   description:
@@ -1201,7 +1298,7 @@ function buildPendingRequestsSection(requests: PendingRequest[]): string {
   if (requests.length === 0) return '';
   const lines = requests
     .map((r) => {
-      const who = r.requester_name ?? 'Ally-ს მომხმარებელი';
+      const who = r.requester_name ?? 'Netai-ს მომხმარებელი';
       const msg = r.message ? ` შეტყობინება: "${r.message}"` : '';
       return `- მოთხოვნა: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
@@ -1272,6 +1369,20 @@ function resolvePendingRequests(
   return getPendingRequestsForMediator(userId);
 }
 
+// The recipient's side of an ask: the question, who asked, and the relay
+// mechanics. The user's plain reply is captured automatically — the assistant
+// only helps and, on explicit consent, relays.
+function buildIncomingAskSection(ask: IncomingAsk): string {
+  const from = ask.from_name ?? 'Netai-ს მომხმარებელი';
+  return (
+    `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ relay_ask-ისთვის, პასუხში არასდროს ახსენო]\n` +
+    `${from} გეკითხება: "${ask.question}"\n` +
+    `- მომხმარებლის პასუხი ავტომატურად გადაეცემა მკითხველს — შენ დაეხმარე ჩამოყალიბებაში და დაადასტურე გადაცემა.\n` +
+    `- თუ მომხმარებელი იტყვის „ჩემს ნაცნობს ჰკითხე/გადაუგზავნე" — ჯერ იპოვე ის კონტაქტი ძიებით, მერე გამოიძახე relay_ask.\n` +
+    `- მისი პირადი ინფორმაცია კითხვის ავტორს არასდროს გადასცე პასუხის ტექსტის მიღმა.`
+  );
+}
+
 // Engine-owned section for a task-bound thread: the task's state and the
 // mechanics of the engine tools. Tone/strategy live in the task_step prompt
 // block (the prompt team's); mechanics live here (the engine's).
@@ -1317,6 +1428,7 @@ async function buildAgentSystemPrompt(
     configResult,
     modeBlocks,
     boundAsks,
+    incomingAsk,
     nameResult,
     fieldsResult,
     profile,
@@ -1333,6 +1445,9 @@ async function buildAgentSystemPrompt(
     // prompt team writes them — composition is a no-op then.
     composePromptBlocks(MODE_BLOCKS[runMode]),
     boundTask ? getAsksForTask(boundTask.id) : Promise.resolve([] as TaskAsk[]),
+    threadType === 'incoming_ask' && threadId != null
+      ? getAskByThread(threadId)
+      : Promise.resolve(null),
     // The registered name never reached the model before — with no name key in
     // the profile KV it would sometimes invent one, or guess a gendered
     // address (second-account battery: a female tester greeted as a man).
@@ -1364,6 +1479,7 @@ async function buildAgentSystemPrompt(
     AGENT_STRATEGY_PROMPT +
     modeBlocks +
     (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
+    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
     nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
@@ -1577,6 +1693,34 @@ async function executeToolCall(
       const hours = Math.min(168, Math.max(1, Number(input['hours']) || 24));
       return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
     }
+    case 'relay_ask':
+      return createRelayAsk(
+        userId,
+        Number(input['ask_id']),
+        String(input['phone'] ?? ''),
+        input['question'] ? String(input['question']) : undefined,
+      );
+    case 'exclude_contact':
+      return saveContactExclusion(
+        userId,
+        String(input['phone'] ?? ''),
+        String(input['excluded_for'] ?? ''),
+        String(input['reason'] ?? ''),
+        input['revisit_if'] ? String(input['revisit_if']) : undefined,
+      );
+    case 'remove_contact_exclusion':
+      return removeContactExclusion(
+        userId,
+        String(input['phone'] ?? ''),
+        input['excluded_for'] ? String(input['excluded_for']) : undefined,
+      );
+    case 'retract_contact_fact':
+      return retractOwnFacts(
+        userId,
+        String(input['phone'] ?? ''),
+        input['field_type'] ? String(input['field_type']) : undefined,
+        input['value_fragment'] ? String(input['value_fragment']) : undefined,
+      );
     case 'finish_task': {
       const taskId = Number(input['task_id']);
       const summary = String(input['summary'] ?? 'done').slice(0, 500);
@@ -1745,6 +1889,10 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   set_task_brief: '🗂 გეგმას ვაახლებ...',
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   finish_task: '🏁 დავალებას ვხურავ...',
+  relay_ask: '↪️ კითხვას გადავცემ...',
+  exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
+  remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
+  retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
 };
 
 interface RunContext {
@@ -2302,6 +2450,10 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     SET_TASK_BRIEF_TOOL,
     SET_TASK_WAKE_TOOL,
     FINISH_TASK_TOOL,
+    RELAY_ASK_TOOL,
+    EXCLUDE_CONTACT_TOOL,
+    REMOVE_EXCLUSION_TOOL,
+    RETRACT_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
@@ -2370,7 +2522,16 @@ export async function processChat(
   }
 
   // Moderate the user-facing reply before persisting/returning it.
-  const reply = (await isReplySafe(finalText, userId))
+  const replySafe = await isReplySafe(finalText, userId);
+  if (!replySafe) {
+    // Rare, unclear-trigger refusals (battery thread 6809) — log enough to
+    // characterize the false-positive pattern without logging the content.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[moderation] run ${runId} reply blocked by content filter (len=${finalText.length})`,
+    );
+  }
+  const reply = replySafe
     ? finalText
     : 'ბოდიში, ამ პასუხს ვერ გავცემ. სცადე კითხვის სხვაგვარად ჩამოყალიბება.';
   await saveMessage(userId, threadId, 'assistant', reply);

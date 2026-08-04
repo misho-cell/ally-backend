@@ -136,6 +136,34 @@ export async function getDueTasks(limit: number): Promise<Array<Task & { user_id
   return result.rows;
 }
 
+/**
+ * Open tasks with NO scheduled wake and no activity for a while — the nightly
+ * review's worklist (the model re-checks the network for new matches).
+ */
+export async function getStaleOpenTasks(
+  hoursQuiet: number,
+  limit: number,
+): Promise<Array<Task & { user_id: string }>> {
+  const result = await query<Task & { user_id: string }>(
+    `SELECT user_id, ${TASK_COLUMNS} FROM tasks
+     WHERE status = 'open' AND next_wake_at IS NULL
+       AND last_activity_at < NOW() - ($1 || ' hours')::interval
+     ORDER BY last_activity_at ASC
+     LIMIT $2`,
+    [hoursQuiet, limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function touchTaskActivity(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET last_activity_at = NOW() WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 export async function clearTaskWake(taskId: number): Promise<void> {
   await query(`UPDATE tasks SET next_wake_at = NULL WHERE id = $1`, [taskId], QUERY_TIMEOUT_MS);
 }
