@@ -33,6 +33,12 @@ import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { getGraphDiagnostic, GraphDiagnostic } from '../../services/graphAnalytics.service';
 import { reclassifyPrivateNotes, ReclassifyResult } from '../../services/contactFacts.service';
+import {
+  listPromptBlocks,
+  upsertPromptBlock,
+  isValidBlockName,
+  PromptBlock,
+} from '../../services/promptBlocks.service';
 import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
@@ -92,6 +98,52 @@ adminRouter.put(
         [flag, enabled],
       );
       res.status(200).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Prompt blocks — the mode-specific prompt pieces the prompt team edits
+// without a deploy (see MODE_BLOCKS in chat.service for which mode reads what).
+adminRouter.get(
+  '/prompt-blocks',
+  async (req: Request, res: Response<ApiResponse<PromptBlock[]>>) => {
+    try {
+      res.status(200).json({ success: true, data: await listPromptBlocks() });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.put(
+  '/prompt-blocks/:name',
+  body('content').isString().isLength({ max: 20_000 }).withMessage('content too long'),
+  async (req: Request, res: Response<ApiResponse<PromptBlock>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    const name = String(req.params.name);
+    if (!isValidBlockName(name)) {
+      res.status(400).json({ success: false, error: 'name must match [a-z0-9_]{2,40}' });
+      return;
+    }
+    try {
+      const { content } = req.body as { content: string };
+      res.status(200).json({ success: true, data: await upsertPromptBlock(name, content) });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);

@@ -74,6 +74,25 @@ import {
   MAX_TOOL_ITERATIONS,
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
+import { composePromptBlocks } from './promptBlocks.service';
+
+// Run modes and their prompt blocks (composed in this order, after the base
+// strategy prompt). The tester team writes block CONTENT in the DB — an
+// unwritten block is skipped, so behavior only changes when they fill it.
+// Task-engine modes (task_planning, task_step, outreach_writing,
+// ask_answering) join this matrix with the task engine.
+type RunMode = 'quick_answer' | 'request_thread';
+
+const MODE_BLOCKS: Record<RunMode, readonly string[]> = {
+  quick_answer: ['quick_answer'],
+  request_thread: ['request_thread'],
+};
+
+function deriveRunMode(threadType?: string): RunMode {
+  return threadType === 'incoming_request' || threadType === 'outgoing_request'
+    ? 'request_thread'
+    : 'quick_answer';
+}
 import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -1179,6 +1198,7 @@ async function buildAgentSystemPrompt(
   const loadMemory = shouldLoadMemory(threadType);
   const [
     configResult,
+    modeBlocks,
     nameResult,
     fieldsResult,
     profile,
@@ -1191,6 +1211,9 @@ async function buildAgentSystemPrompt(
     query<{ system_prompt: string }>(
       'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
     ),
+    // Mode-specific prompt blocks (DB-edited, deploy-free). Empty until the
+    // prompt team writes them — composition is a no-op then.
+    composePromptBlocks(MODE_BLOCKS[deriveRunMode(threadType)]),
     // The registered name never reached the model before — with no name key in
     // the profile KV it would sometimes invent one, or guess a gendered
     // address (second-account battery: a female tester greeted as a man).
@@ -1220,6 +1243,7 @@ async function buildAgentSystemPrompt(
   return (
     base +
     AGENT_STRATEGY_PROMPT +
+    modeBlocks +
     nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
