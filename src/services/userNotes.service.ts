@@ -17,12 +17,25 @@ export function isUserNoteKind(v: string): v is UserNoteKind {
   return (USER_NOTE_KINDS as readonly string[]).includes(v);
 }
 
-/** Save something the user told the assistant about THEMSELF. Notes accumulate. */
+/**
+ * Save something the user told the assistant about THEMSELF. Notes accumulate,
+ * but the SAME text is never stored twice ("keep answers short" existed four
+ * times) — a duplicate save returns the existing row's id.
+ */
 export async function saveUserNote(
   userId: string,
   kind: UserNoteKind,
   text: string,
 ): Promise<{ id: number }> {
+  const existing = await query<{ id: number }>(
+    `SELECT id FROM user_notes
+     WHERE user_id = $1 AND kind = $2 AND LOWER(TRIM(text)) = LOWER(TRIM($3))
+     LIMIT 1`,
+    [userId, kind, text],
+    QUERY_TIMEOUT_MS,
+  );
+  if (existing.rows.length > 0) return { id: existing.rows[0].id };
+
   const result = await query<{ id: number }>(
     `INSERT INTO user_notes (user_id, kind, text)
      VALUES ($1, $2, $3)

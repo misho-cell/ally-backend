@@ -24,7 +24,7 @@ const SCHEMA_SQL = `
   CREATE TABLE "User"      (id serial primary key, name text, employer text, "jobPosition" text, city text, "deletedAt" timestamptz);
   CREATE TABLE "UserBlock" (id serial primary key, "blockerId" int, "blockedPhone" text, "blockedName" text, created_at timestamptz default now());
   CREATE TABLE contact_facts (
-    id serial primary key, neo4j_contact_id text, submitted_by_user_id text,
+    id serial primary key, neo4j_contact_id text, submitted_by_user_id integer,
     field_type text, value text, canonical_value text, is_public boolean default false,
     created_at timestamp default now(), updated_at timestamp default now());
   CREATE TABLE contact_relationship_scores (
@@ -52,7 +52,11 @@ const SEED_SQL = `
     ('+995599000001', 501, 'Ilia Babuxadia'),
     ('+995597777897', 501, 'Radiatori 2'),
     ('+995592922551', 501, 'Davit Tsitskishvili. Axel'),
-    ('+995599000002', 501, 'გიორგი შენგელია');
+    ('+995599000002', 501, 'გიორგი შენგელია'),
+    ('+995599000777', 501, 'Avto Kasradze'),
+    ('+995599000778', 501, 'Gita Beridze');
+  INSERT INTO "User" (id, name, "jobPosition") VALUES (900, 'Avto Kasradze', 'Chairman, GITA');
+  INSERT INTO "UserPhone" (phone, "userId") VALUES ('+995599000777', 900);
   INSERT INTO "UserTags" (phone, "contactId", tag) VALUES
     ('+995599000001', 777, 'babukhadia'),
     ('+995592922551', 501, 'dachi'),
@@ -116,6 +120,17 @@ maybeDescribe('search against real Postgres (prod repro cases)', () => {
     const r = (await searchContactByName('501', 'შენგელია')) as SearchResult;
     expect(r.error).toBeUndefined();
     expect(names(r)).toContain('გიორგი შენგელია');
+  });
+
+  it('ranks a structured jobPosition match above raw name-token matches (GITA case)', async () => {
+    // "gita" matches Gita Beridze by NAME and Avto Kasradze by his registered
+    // jobPosition "Chairman, GITA" — the structured hit must come first.
+    const r = (await searchContactByName('501', 'gita')) as SearchResult;
+    expect(r.error).toBeUndefined();
+    const resultNames = names(r);
+    expect(resultNames).toContain('Avto Kasradze');
+    expect(resultNames).toContain('Gita Beridze');
+    expect(resultNames[0]).toBe('Avto Kasradze');
   });
 
   it('attaches the enrichment relationship score to a direct result', async () => {

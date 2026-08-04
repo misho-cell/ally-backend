@@ -147,6 +147,24 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
   return payload;
 }
 
+// A transient failure (pool blip, statement-timeout edge, Neo4j hiccup) used
+// to surface straight to the model — ~3 calls in 10 during the 31 Jul battery,
+// and a manual retry always worked. One paced server-side retry absorbs the
+// flake; a persistent error still surfaces honestly.
+const SEARCH_RETRY_DELAY_MS = 400;
+
+async function searchWithRetry(run: () => Promise<object>): Promise<object> {
+  const first = await run().catch((err) => ({ error: (err as Error).message }) as object);
+  if (typeof (first as { error?: unknown }).error !== 'string') return first;
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[mcp] search failed transiently — retrying once:',
+    (first as { error: string }).error,
+  );
+  await new Promise<void>((resolve) => setTimeout(resolve, SEARCH_RETRY_DELAY_MS));
+  return run().catch((err) => ({ error: (err as Error).message }) as object);
+}
+
 export async function mcpSearchContacts(
   userId: string,
   args: { tag?: string; name?: string },
@@ -156,7 +174,9 @@ export async function mcpSearchContacts(
   if (!tag && !name) {
     return { error: 'Pass either tag or name.' };
   }
-  const raw = tag ? await searchByTag(userId, tag) : await searchContactByName(userId, name ?? '');
+  const raw = await searchWithRetry(() =>
+    tag ? searchByTag(userId, tag) : searchContactByName(userId, name ?? ''),
+  );
   return mapSearchResult(userId, raw, NOTE_EMPTY_TAG);
 }
 
@@ -166,7 +186,8 @@ export async function mcpSearchByInsight(
 ): Promise<McpToolPayload> {
   const insightQuery = args.query?.trim();
   if (!insightQuery) return { error: 'Pass query.' };
-  return mapSearchResult(userId, await searchByInsight(userId, insightQuery), NOTE_EMPTY_INSIGHT);
+  const raw = await searchWithRetry(() => searchByInsight(userId, insightQuery));
+  return mapSearchResult(userId, raw, NOTE_EMPTY_INSIGHT);
 }
 
 export async function mcpSearchSecondDegree(
@@ -175,11 +196,8 @@ export async function mcpSearchSecondDegree(
 ): Promise<McpToolPayload> {
   const searchQuery = args.query?.trim();
   if (!searchQuery) return { error: 'Pass query.' };
-  return mapSearchResult(
-    userId,
-    await searchSecondDegree(userId, searchQuery),
-    NOTE_EMPTY_SECOND_DEGREE,
-  );
+  const raw = await searchWithRetry(() => searchSecondDegree(userId, searchQuery));
+  return mapSearchResult(userId, raw, NOTE_EMPTY_SECOND_DEGREE);
 }
 
 export async function mcpGetNetworkStats(userId: string): Promise<McpToolPayload> {

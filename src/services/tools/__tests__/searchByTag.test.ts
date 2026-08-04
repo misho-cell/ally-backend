@@ -45,7 +45,7 @@ function setup(opts: {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
-    if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
     if (sql.includes('SELECT DISTINCT up.phone')) return Promise.resolve(rows([]) as never); // membership
@@ -80,7 +80,7 @@ describe('searchByTag', () => {
     // $1 userId, then each word-start regex (individual placeholders — never
     // ANY(array)), last blocked. No LIKE patterns: the trigram GIN path is
     // deliberately unusable here (KA scripts extract ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', 'engineer', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', 'engineer', '42', []]);
   });
 
   it('passes Georgian term, transliteration and drift variants as word-start regexes', async () => {
@@ -97,6 +97,7 @@ describe('searchByTag', () => {
       'ინჟინერი',
       'inzhineri',
       'injineri',
+      '42',
       [],
     ]);
   });
@@ -244,7 +245,7 @@ describe('searchByTag', () => {
   it('marks is_member true for a contact that is a registered Ally user', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
-      if (sql.includes('FROM contact_facts')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"'))
         return Promise.resolve(rows([{ phone: mockRow.phone }]) as never); // member
       if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never);
@@ -311,7 +312,7 @@ describe('searchByTag', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
-      if (sql.includes('FROM contact_facts')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('similarity(')) return Promise.reject(new Error('index missing'));
       return Promise.resolve(rows([mockRow]) as never);
     });

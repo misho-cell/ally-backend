@@ -74,7 +74,7 @@ async function runExactSearch(
     query<TagRow>(
       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
        hits AS (
-         SELECT phone, (${m.wordHits}) AS word_hits
+         SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority
          FROM matched
          WHERE phone != ALL($${m.blockIdx})
          GROUP BY phone
@@ -82,7 +82,8 @@ async function runExactSearch(
        SELECT ${AGG_SELECT}
        ${AGG_JOINS}
        GROUP BY h.phone
-       ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC NULLS LAST
+       ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC,
+                MAX(ut."weightCount") DESC NULLS LAST
        LIMIT ${RESULT_LIMIT}`,
       m.params,
     ),

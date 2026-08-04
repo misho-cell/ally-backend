@@ -78,7 +78,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
     const hitsCte = `hits AS (
-       SELECT phone, (${m.wordHits}) AS word_hits
+       SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority
        FROM matched
        WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
@@ -109,7 +109,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       }>(
         `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
          ${aggSelect}
-         ORDER BY MAX(h.word_hits) DESC, MAX(ua.alias)
+         ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC, MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
         m.params,
       ),

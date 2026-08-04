@@ -14,15 +14,34 @@ const USER = '501';
 beforeEach(() => jest.clearAllMocks());
 
 describe('userNotes.service', () => {
-  it('saveUserNote inserts a note and returns its id', async () => {
-    mockQuery.mockResolvedValue(result([{ id: 3 }]) as never);
+  it('saveUserNote inserts a NEW note and returns its id', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT id FROM user_notes')) return Promise.resolve(result([]) as never);
+      return Promise.resolve(result([{ id: 3 }]) as never);
+    });
 
     const out = await saveUserNote(USER, 'need', 'looking for a co-founder');
 
     expect(out).toEqual({ id: 3 });
-    const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql as string).toContain('INSERT INTO user_notes');
-    expect(params as unknown[]).toEqual([USER, 'need', 'looking for a co-founder']);
+    const insert = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO user_notes'),
+    );
+    expect(insert?.[1]).toEqual([USER, 'need', 'looking for a co-founder']);
+  });
+
+  it('saveUserNote never stores the same text twice (dedupe)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT id FROM user_notes'))
+        return Promise.resolve(result([{ id: 7 }]) as never);
+      return Promise.resolve(result([{ id: 99 }]) as never);
+    });
+
+    const out = await saveUserNote(USER, 'preference', '  Keep answers short ');
+
+    expect(out).toEqual({ id: 7 });
+    expect(
+      mockQuery.mock.calls.some((c) => (c[0] as string).includes('INSERT INTO user_notes')),
+    ).toBe(false);
   });
 
   it('getUserNotes scopes to the user and filters by kind when given', async () => {

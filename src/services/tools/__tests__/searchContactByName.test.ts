@@ -43,7 +43,7 @@ function setup(opts: {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('COUNT(DISTINCT'))
       return Promise.resolve(rows([{ total: String(count) }]) as never);
-    if (sql.includes('FROM contact_facts')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
     if (sql.includes('word_similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
@@ -76,7 +76,7 @@ describe('searchContactByName', () => {
 
     // $1 userId, then each regex, last = blocked. No LIKE patterns (the trigram
     // GIN path is deliberately unusable — KA extracts ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', 'გიო', 'gio', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', 'გიო', 'gio', '42', []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -84,7 +84,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'George');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', 'george', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', 'george', '42', []]);
   });
 
   it('returns null name when no alias or registered name', async () => {

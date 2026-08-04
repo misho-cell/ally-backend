@@ -49,7 +49,11 @@ export function buildExactMatchSql(
 
   const regexStart = 2; // $1 = userId
   const gateStart = regexStart + allRegex.length;
-  const blockIdx = gateStart + gateTerms.length;
+  // The facts branch gets its OWN userId placeholder with an explicit ::int
+  // cast — $1's inferred type depends on the "contactId" columns and must not
+  // leak into an integer comparison.
+  const factsUserIdx = gateStart + gateTerms.length;
+  const blockIdx = factsUserIdx + 1;
 
   // The || '' wrapper is THE point — see the function comment (KA trigram gap).
   const regexOr = (col: string): string => {
@@ -73,22 +77,46 @@ export function buildExactMatchSql(
           .join(' OR ')})`
       : 'TRUE';
 
+  // priority: a hit on a STRUCTURED field (registered jobPosition/employer, or
+  // a saved occupation/employer/industry fact) is a stronger signal than a hit
+  // inside a name/tag token — "gita" must surface the chairman of GITA above
+  // nineteen people whose NAME contains Gita. Name/tag/alias branches carry 1,
+  // structured branches 2; the tools order by word_hits first, then priority.
+  // The structured branches skip the norm-trigram gate on purpose: they are
+  // mine-scoped joins over small sets (registered contacts / the user's own
+  // facts), with no trigram indexes to mislead the planner.
   const matchedCte = `matched AS (
-     SELECT t.phone, LOWER(t.tag) AS label
+     SELECT t.phone, LOWER(t.tag) AS label, 1 AS priority
      FROM "UserTags" t
      WHERE t.phone IN (SELECT phone FROM mine)
        AND ${gateOr('t.tag')} AND ${regexOr('t.tag')}
      UNION ALL
-     SELECT a.phone, LOWER(a.alias) AS label
+     SELECT a.phone, LOWER(a.alias) AS label, 1 AS priority
      FROM "UserAlias" a
      WHERE a.phone IN (SELECT phone FROM mine)
        AND ${gateOr('a.alias')} AND ${regexOr('a.alias')}
      UNION ALL
-     SELECT up2.phone, LOWER(u2.name) AS label
+     SELECT up2.phone, LOWER(u2.name) AS label, 1 AS priority
      FROM "UserPhone" up2
      JOIN "User" u2 ON u2.id = up2."userId"
      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
        AND ${gateOr('u2.name')} AND ${regexOr('u2.name')}
+     UNION ALL
+     SELECT up3.phone,
+            LOWER(COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')) AS label,
+            2 AS priority
+     FROM "UserPhone" up3
+     JOIN "User" u3 ON u3.id = up3."userId"
+     WHERE up3.phone IN (SELECT phone FROM mine)
+       AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
+       AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
+     UNION ALL
+     SELECT cf.neo4j_contact_id AS phone, LOWER(cf.value) AS label, 2 AS priority
+     FROM contact_facts cf
+     WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+       AND cf.field_type IN ('occupation', 'employer', 'industry')
+       AND (cf.submitted_by_user_id = $${factsUserIdx}::int OR cf.is_public = true)
+       AND ${regexOr('cf.value')}
    )`;
 
   let cursor = regexStart;
@@ -105,7 +133,7 @@ export function buildExactMatchSql(
   return {
     matchedCte,
     wordHits,
-    params: [userId, ...allRegex, ...gateTerms, [...blockedPhones]],
+    params: [userId, ...allRegex, ...gateTerms, userId, [...blockedPhones]],
     blockIdx,
   };
 }
