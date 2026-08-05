@@ -116,10 +116,16 @@ async function saveToPostgres(
   phone: string,
   contact: ImportContact,
 ): Promise<void> {
+  // Column lists match the LIVE prod schema exactly: UserAlias(id, userId,
+  // contactId, alias, phone) and UserTags(id, userId, contactId, tag, phone,
+  // weightCount, source) carry NO createdAt/updatedAt — writing them made
+  // every import silently fail (each contact error-counted as "skipped").
+  // Verified against information_schema on 2 Aug. The upsert also avoids
+  // ON CONFLICT: the unique constraint it needs is not provable in prod.
   await withTransaction(async (client: PoolClient) => {
     await client.query(
-      `INSERT INTO "UserAlias" (phone, "contactId", alias, "createdAt", "updatedAt")
-       SELECT $1, $2, $3, NOW(), NOW()
+      `INSERT INTO "UserAlias" (phone, "contactId", alias)
+       SELECT $1, $2, $3
        WHERE NOT EXISTS (
          SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2 AND alias = $3
        )`,
@@ -128,13 +134,21 @@ async function saveToPostgres(
 
     const tags = buildTags(contact);
     for (const tag of tags) {
-      await client.query(
-        `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount", "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, 1, NOW(), NOW())
-         ON CONFLICT (phone, "contactId", tag)
-         DO UPDATE SET "weightCount" = "UserTags"."weightCount" + 1, "updatedAt" = NOW()`,
+      const bumped = await client.query(
+        `UPDATE "UserTags" SET "weightCount" = "weightCount" + 1
+         WHERE phone = $1 AND "contactId" = $2 AND tag = $3`,
         [phone, userId, tag],
       );
+      if ((bumped.rowCount ?? 0) === 0) {
+        await client.query(
+          `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount")
+           SELECT $1, $2, $3, 1
+           WHERE NOT EXISTS (
+             SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2 AND tag = $3
+           )`,
+          [phone, userId, tag],
+        );
+      }
     }
   });
 }
