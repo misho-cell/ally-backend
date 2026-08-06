@@ -90,25 +90,24 @@ import {
   MAX_TOOL_ITERATIONS,
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
-import { composePromptBlocks } from './promptBlocks.service';
+import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
+import { isOnboardingUser } from './onboarding.service';
 
-// Run modes and their prompt blocks (composed in this order, after the base
-// strategy prompt). The tester team writes block CONTENT in the DB — an
-// unwritten block is skipped, so behavior only changes when they fill it.
-// Task-engine modes (task_planning, task_step, outreach_writing,
-// ask_answering) join this matrix with the task engine.
-type RunMode = 'quick_answer' | 'request_thread' | 'task_step';
-
-const MODE_BLOCKS: Record<RunMode, readonly string[]> = {
-  quick_answer: ['quick_answer'],
-  request_thread: ['request_thread'],
-  task_step: ['task_step'],
-};
-
-function deriveRunMode(threadType?: string): RunMode {
-  return threadType === 'incoming_request' || threadType === 'outgoing_request'
-    ? 'request_thread'
-    : 'quick_answer';
+// A mode is a SITUATION — who is in the conversation and what state the
+// account is in — detected from hard facts, never from message content (the
+// prompt team's standing rule). Which blocks a mode loads lives in the DB
+// (prompt_blocks.modes), edited from the admin console.
+async function resolveRunMode(
+  userId: string,
+  threadType: string | undefined,
+  boundTask: Task | null,
+): Promise<RunMode> {
+  if (boundTask) return 'task_step';
+  if (threadType === 'incoming_ask') return 'incoming_ask';
+  if (threadType === 'incoming_request' || threadType === 'outgoing_request') {
+    return 'request_thread';
+  }
+  return (await isOnboardingUser(userId)) ? 'onboarding' : 'quick_answer';
 }
 import { debitRun } from './tokenWallet.service';
 import { query } from '../db/postgres/client';
@@ -1413,17 +1412,26 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
   );
 }
 
+interface AgentPromptResult {
+  prompt: string;
+  runMode: RunMode;
+  blockNames: string[];
+}
+
 async function buildAgentSystemPrompt(
   userId: string,
   threadType?: string,
   introRequestId?: number | null,
   threadId?: number,
-): Promise<string> {
+  // Preview-only override: the admin preview must render a chosen mode without
+  // a live thread in that state. Real runs never pass it.
+  forcedMode?: RunMode,
+): Promise<AgentPromptResult> {
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
   const boundTask = threadId != null ? await getOpenTaskByThread(threadId) : null;
-  const runMode: RunMode = boundTask ? 'task_step' : deriveRunMode(threadType);
+  const runMode: RunMode = forcedMode ?? (await resolveRunMode(userId, threadType, boundTask));
   const [
     configResult,
     modeBlocks,
@@ -1441,9 +1449,10 @@ async function buildAgentSystemPrompt(
     query<{ system_prompt: string }>(
       'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
     ),
-    // Mode-specific prompt blocks (DB-edited, deploy-free). Empty until the
-    // prompt team writes them — composition is a no-op then.
-    composePromptBlocks(MODE_BLOCKS[runMode]),
+    // Mode-bound prompt blocks (DB-edited, deploy-free): every enabled block
+    // bound to this mode — and, for trial blocks, to this account — in the
+    // prompt team's configured order. No blocks = no-op.
+    composeBlocksForMode(runMode, userId),
     boundTask ? getAsksForTask(boundTask.id) : Promise.resolve([] as TaskAsk[]),
     threadType === 'incoming_ask' && threadId != null
       ? getAskByThread(threadId)
@@ -1474,10 +1483,10 @@ async function buildAgentSystemPrompt(
   const nameSection = registeredName
     ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).`
     : '';
-  return (
+  const prompt =
     base +
     AGENT_STRATEGY_PROMPT +
-    modeBlocks +
+    modeBlocks.text +
     (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
     (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
     nameSection +
@@ -1488,8 +1497,56 @@ async function buildAgentSystemPrompt(
     buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
     buildPendingRequestsSection(pendingRequests) +
-    buildRespondedRequestsSection(recentResponses)
-  );
+    buildRespondedRequestsSection(recentResponses);
+  return { prompt, runMode, blockNames: modeBlocks.names };
+}
+
+// What a preview renders when no live thread state exists for the mode: the
+// closest deterministic thread type. Task/ask sections need live rows and are
+// reported as not-rendered instead of being faked.
+const PREVIEW_THREAD_TYPE: Partial<Record<RunMode, string>> = {
+  request_thread: 'incoming_request',
+  incoming_ask: 'incoming_ask',
+};
+
+export interface PromptPreview {
+  mode: RunMode;
+  system_prompt: string;
+  block_names: string[];
+  tools: { name: string; description: string }[];
+  char_count: number;
+  // Rough estimate for the admin meter (Georgian ≈ 2–3 chars/token) — the
+  // exact char_count is the number the team actually watches.
+  approx_tokens: number;
+  not_rendered: string[];
+}
+
+/**
+ * The full system prompt exactly as a run in `mode` would receive it for this
+ * account — base, blocks in order, code-built sections — plus every enabled
+ * tool's name and description (prompt team request 4/5b: no debugging blind).
+ */
+export async function buildPromptPreview(userId: string, mode: RunMode): Promise<PromptPreview> {
+  const [{ prompt, blockNames }, tools] = await Promise.all([
+    buildAgentSystemPrompt(userId, PREVIEW_THREAD_TYPE[mode], null, undefined, mode),
+    buildEnabledTools(userId),
+  ]);
+  const not_rendered: string[] = [];
+  if (mode === 'task_step') {
+    not_rendered.push('task-engine section (renders only on a thread with a live open task)');
+  }
+  if (mode === 'incoming_ask') {
+    not_rendered.push('incoming-ask section (renders only on a thread with a live ask)');
+  }
+  return {
+    mode,
+    system_prompt: prompt,
+    block_names: blockNames,
+    tools: tools.map((t) => ({ name: t.name, description: t.description ?? '' })),
+    char_count: prompt.length,
+    approx_tokens: Math.round(prompt.length / 3),
+    not_rendered,
+  };
 }
 
 // Phone-keyed tools that must not return data for a blocked/deceased contact.
@@ -2478,14 +2535,22 @@ export async function processChat(
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
 
-  const [basePrompt, tools, history] = await Promise.all([
+  const [agentPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id, thread.id),
     buildEnabledTools(userId),
     loadHistory(threadId),
   ]);
+  // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
+  // "the block is wrong" vs "the wrong block loaded"). Best-effort.
+  void stampRunMode(runId, userId, threadId, agentPrompt.runMode, agentPrompt.blockNames).catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[prompt-stamp] failed:', (err as Error).message);
+    },
+  );
   // Pin the reply language to the user's latest message (engine-level, appended
   // last so it wins over the Georgian strategy prompt).
-  const systemPrompt = basePrompt + buildReplyLanguageDirective(userMessage);
+  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
 
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 

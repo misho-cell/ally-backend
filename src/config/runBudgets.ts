@@ -3,7 +3,7 @@
 // raised together, and they must never drift apart: the route's hard timeout
 // sits above the wall clock, and the reaper's orphan threshold above both.
 
-function intEnv(name: string, fallback: number): number {
+export function intEnv(name: string, fallback: number): number {
   const raw = Number(process.env[name]);
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
 }

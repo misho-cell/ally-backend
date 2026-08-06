@@ -36,9 +36,21 @@ import { reclassifyPrivateNotes, ReclassifyResult } from '../../services/contact
 import {
   listPromptBlocks,
   upsertPromptBlock,
+  deletePromptBlock,
+  getPromptBlockHistory,
+  computeModeTotals,
+  listRunStamps,
   isValidBlockName,
+  isRunMode,
   PromptBlock,
+  PromptBlockInput,
+  PromptBlockHistoryEntry,
+  PromptBlockValidationError,
+  ModeTotal,
+  RunStamp,
+  RUN_MODES,
 } from '../../services/promptBlocks.service';
+import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
@@ -106,13 +118,24 @@ adminRouter.put(
   },
 );
 
-// Prompt blocks — the mode-specific prompt pieces the prompt team edits
-// without a deploy (see MODE_BLOCKS in chat.service for which mode reads what).
+// Prompt blocks — the prompt team's own catalog: create/edit/reorder/trial/
+// disable/delete blocks and their mode bindings, live on save, no deploy.
+// Mode DETECTION stays code-side (see resolveRunMode in chat.service).
+interface PromptBlocksListing {
+  blocks: PromptBlock[];
+  modes: readonly string[];
+  mode_totals: ModeTotal[];
+}
+
 adminRouter.get(
   '/prompt-blocks',
-  async (req: Request, res: Response<ApiResponse<PromptBlock[]>>) => {
+  async (_req: Request, res: Response<ApiResponse<PromptBlocksListing>>) => {
     try {
-      res.status(200).json({ success: true, data: await listPromptBlocks() });
+      const blocks = await listPromptBlocks();
+      res.status(200).json({
+        success: true,
+        data: { blocks, modes: RUN_MODES, mode_totals: computeModeTotals(blocks) },
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -123,7 +146,13 @@ adminRouter.get(
 
 adminRouter.put(
   '/prompt-blocks/:name',
-  body('content').isString().isLength({ max: 20_000 }).withMessage('content too long'),
+  body('content').optional().isString().isLength({ max: 20_000 }).withMessage('content too long'),
+  body('modes').optional().isArray().withMessage('modes must be an array'),
+  body('modes.*').optional().isString(),
+  body('sort_order').optional().isInt({ min: 0, max: 100_000 }),
+  body('enabled').optional().isBoolean(),
+  body('enabled_for_user_ids').optional().isArray(),
+  body('enabled_for_user_ids.*').optional().isInt({ min: 1 }),
   async (req: Request, res: Response<ApiResponse<PromptBlock>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -142,8 +171,35 @@ adminRouter.put(
       return;
     }
     try {
-      const { content } = req.body as { content: string };
-      res.status(200).json({ success: true, data: await upsertPromptBlock(name, content) });
+      const input = req.body as PromptBlockInput;
+      res.status(200).json({ success: true, data: await upsertPromptBlock(name, input) });
+    } catch (error) {
+      if (error instanceof PromptBlockValidationError) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.delete(
+  '/prompt-blocks/:name',
+  async (req: Request, res: Response<ApiResponse<{ deleted: boolean }>>) => {
+    const name = String(req.params.name);
+    if (!isValidBlockName(name)) {
+      res.status(400).json({ success: false, error: 'name must match [a-z0-9_]{2,40}' });
+      return;
+    }
+    try {
+      const deleted = await deletePromptBlock(name);
+      if (!deleted) {
+        res.status(404).json({ success: false, error: 'ბლოკი ვერ მოიძებნა' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { deleted: true } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -151,6 +207,70 @@ adminRouter.put(
     }
   },
 );
+
+adminRouter.get(
+  '/prompt-blocks/:name/history',
+  async (req: Request, res: Response<ApiResponse<PromptBlockHistoryEntry[]>>) => {
+    const name = String(req.params.name);
+    if (!isValidBlockName(name)) {
+      res.status(400).json({ success: false, error: 'name must match [a-z0-9_]{2,40}' });
+      return;
+    }
+    try {
+      res.status(200).json({ success: true, data: await getPromptBlockHistory(name) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// The assembled prompt EXACTLY as a run in ?mode= would receive it — base,
+// blocks in order, code-built sections, plus every enabled tool's description.
+// ?user_id= defaults to PREVIEW_DEFAULT_USER_ID (the account the team tests on).
+adminRouter.get(
+  '/prompt-preview',
+  async (req: Request, res: Response<ApiResponse<PromptPreview>>) => {
+    const mode = String(req.query['mode'] ?? '');
+    if (!isRunMode(mode)) {
+      res
+        .status(400)
+        .json({ success: false, error: `mode must be one of: ${RUN_MODES.join(', ')}` });
+      return;
+    }
+    const rawUserId = String(req.query['user_id'] ?? process.env['PREVIEW_DEFAULT_USER_ID'] ?? '');
+    if (!/^\d+$/.test(rawUserId)) {
+      res.status(400).json({
+        success: false,
+        error: 'user_id query param required (or set PREVIEW_DEFAULT_USER_ID)',
+      });
+      return;
+    }
+    try {
+      res.status(200).json({ success: true, data: await buildPromptPreview(rawUserId, mode) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Which mode each recent run resolved to and which blocks it loaded
+// (?thread_id= narrows to one conversation).
+adminRouter.get('/run-modes', async (req: Request, res: Response<ApiResponse<RunStamp[]>>) => {
+  const rawThread = req.query['thread_id'];
+  const threadId =
+    typeof rawThread === 'string' && /^\d+$/.test(rawThread) ? Number(rawThread) : undefined;
+  try {
+    res.status(200).json({ success: true, data: await listRunStamps(threadId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.get(
   '/fields/active',
