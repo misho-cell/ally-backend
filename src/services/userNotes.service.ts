@@ -57,5 +57,15 @@ export async function getUserNotes(userId: string, kind?: UserNoteKind): Promise
     [userId, kind ?? null, NOTES_LIMIT],
     QUERY_TIMEOUT_MS,
   );
-  return result.rows;
+  // Save-time dedupe only guards NEW rows; duplicates saved before it existed
+  // still sit in the table. Collapse them on read (case/whitespace-insensitive,
+  // newest kept) so every surface — in-app context and the connector's
+  // get_user_notes alike — sees each note once.
+  const seen = new Set<string>();
+  return result.rows.filter((n) => {
+    const key = `${n.kind}|${n.text.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

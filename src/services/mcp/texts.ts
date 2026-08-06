@@ -263,6 +263,59 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
       'Each item is reported only once.',
   },
+  ask_contact: {
+    title: 'Ask a contact on a task',
+    description:
+      "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
+      'get it as a message in their own app and their first reply comes back to the task. Only ' +
+      "with the user's explicit go-ahead, only to a member (is_member from search results), and " +
+      'only once per person per task. Pass the task_ref (get_my_tasks) and the contact_ref ' +
+      '(search result). Expect the answer hours or days later — tell the user you will follow up.',
+  },
+  set_task_brief: {
+    title: "Update a task's working brief",
+    description:
+      "Rewrites the task's operative brief — goal, plan, what is done, who we are waiting on, " +
+      'what comes next. Keep it current after every substantive step; it is the working memory ' +
+      'the task wakes up with.',
+  },
+  set_task_wake: {
+    title: 'Schedule a task wake-up',
+    description:
+      'Schedules when the task should resume on its own — hours from now, 1–168 (e.g. 24 to ' +
+      'check tomorrow). Use it when answers are pending or a step belongs later; the engine ' +
+      'wakes the task and continues without the user having to remember.',
+  },
+  finish_task: {
+    title: 'Finish a task',
+    description:
+      'Closes the task when the finish criterion is met — a real result delivered, or every ' +
+      'avenue honestly exhausted. Pass a short summary of the outcome; unanswered asks are ' +
+      'cancelled politely. Confirm with the user before closing a goal they still care about.',
+  },
+  exclude_contact: {
+    title: 'Record "not this person, for this"',
+    description:
+      "Records the user's decision that a contact must not be suggested FOR A SPECIFIC purpose " +
+      '("not for legal work", "not for intros to investors") — with their reason and, optionally, ' +
+      'what would make the decision stale. Scoped, not a block: the person still appears for ' +
+      'everything else. Future search results carry it back to you automatically.',
+  },
+  remove_contact_exclusion: {
+    title: 'Lift an exclusion',
+    description:
+      'Removes a recorded "not this person, for this" when the user changes their mind or its ' +
+      'reason no longer holds. Pass excluded_for to lift one scope, omit it to lift all of them ' +
+      'for that contact.',
+  },
+  retract_contact_fact: {
+    title: 'Retract a wrong saved fact',
+    description:
+      "The user says something saved about a contact is WRONG — retracts the user's own " +
+      'matching fact(s) so they stop appearing anywhere. Narrow with field_type and/or a ' +
+      'value_fragment; omit both to retract all their facts on that contact. Only affects what ' +
+      "this user submitted, never other people's entries.",
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -325,6 +378,19 @@ export const PARAM_TEXTS = {
   updateKind:
     'What kind of update this is — e.g. "found", "confirmed", "no_luck". Short, snake_case.',
   updateSummary: 'One plain line describing the result, for the user to read.',
+  askQuestion:
+    "The question for the contact, written out ready to send — polite, one ask, in the user's " +
+    'voice. The recipient sees it verbatim.',
+  taskBrief: 'The full rewritten brief: goal, plan, done, waiting-on, next step, finish criterion.',
+  wakeHours: 'Hours from now to wake the task, 1–168.',
+  finishSummary: 'One short line of the outcome (e.g. "introduced to Nino — done").',
+  excludedFor:
+    'The scope the exclusion applies to, in a few words (e.g. "legal work", "investor intros").',
+  exclusionReason: "The user's reason, short and in their words.",
+  revisitIf: 'Optional: what would make this stale (e.g. "if he changes jobs").',
+  retractFieldType: 'Optional: limit the retraction to one fact key (occupation, note, …).',
+  retractValueFragment:
+    'Optional: a fragment of the wrong value to match, so only it is retracted.',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).

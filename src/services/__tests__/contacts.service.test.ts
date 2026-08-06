@@ -9,12 +9,13 @@ jest.mock('../../db/neo4j/client', () => ({
   getSession: jest.fn(),
 }));
 
-import { withTransaction as _withTransaction } from '../../db/postgres/client';
+import { query as _query, withTransaction as _withTransaction } from '../../db/postgres/client';
 import pool from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
 import { getUserPhone, importContacts, parseVcf, createUserPhoneNode } from '../contacts.service';
 
 const mockPoolQuery = pool.query as jest.Mock;
+const mockNamedQuery = _query as jest.Mock;
 const mockWithTransaction = _withTransaction as jest.Mock;
 const mockGetSession = getSession as jest.Mock;
 
@@ -33,6 +34,10 @@ beforeEach(() => {
   mockWithTransaction.mockImplementation(async (cb: (c: object) => Promise<void>) =>
     cb(makeTransactionClient()),
   );
+  // getCompositeKeysForPhones (neo4j.keys) reads via the NAMED query export —
+  // "no registered phones" is the right default, so contactKey falls back to
+  // the raw phone exactly as in prod for a non-member contact.
+  mockNamedQuery.mockResolvedValue({ rows: [], rowCount: 0 });
 });
 
 // ─── getUserPhone ────────────────────────────────────────────────────────────

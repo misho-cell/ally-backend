@@ -21,6 +21,13 @@ import {
   mcpGetMyTasks,
   mcpUpdateTask,
   mcpGrantTaskPermission,
+  mcpAskContact,
+  mcpSetTaskBrief,
+  mcpSetTaskWake,
+  mcpFinishTask,
+  mcpExcludeContact,
+  mcpRemoveExclusion,
+  mcpRetractFact,
   mcpSaveUserNote,
   mcpGetUserNotes,
   mcpQueueResult,
@@ -353,6 +360,101 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     () => runTool(userId, 'get_pending_updates', () => mcpGetPendingUpdates(userId)),
+  );
+  server.registerTool(
+    'ask_contact',
+    {
+      title: TOOL_TEXTS.ask_contact.title,
+      description: TOOL_TEXTS.ask_contact.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        question: z.string().describe(PARAM_TEXTS.askQuestion),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'ask_contact', () => mcpAskContact(userId, args)),
+  );
+  server.registerTool(
+    'set_task_brief',
+    {
+      title: TOOL_TEXTS.set_task_brief.title,
+      description: TOOL_TEXTS.set_task_brief.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        brief: z.string().describe(PARAM_TEXTS.taskBrief),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'set_task_brief', () => mcpSetTaskBrief(userId, args)),
+  );
+  server.registerTool(
+    'set_task_wake',
+    {
+      title: TOOL_TEXTS.set_task_wake.title,
+      description: TOOL_TEXTS.set_task_wake.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        hours: z.number().int().min(1).max(168).describe(PARAM_TEXTS.wakeHours),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'set_task_wake', () => mcpSetTaskWake(userId, args)),
+  );
+  server.registerTool(
+    'finish_task',
+    {
+      title: TOOL_TEXTS.finish_task.title,
+      description: TOOL_TEXTS.finish_task.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        summary: z.string().describe(PARAM_TEXTS.finishSummary),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'finish_task', () => mcpFinishTask(userId, args)),
+  );
+  server.registerTool(
+    'exclude_contact',
+    {
+      title: TOOL_TEXTS.exclude_contact.title,
+      description: TOOL_TEXTS.exclude_contact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        excluded_for: z.string().describe(PARAM_TEXTS.excludedFor),
+        reason: z.string().describe(PARAM_TEXTS.exclusionReason),
+        revisit_if: z.string().optional().describe(PARAM_TEXTS.revisitIf),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'exclude_contact', () => mcpExcludeContact(userId, args)),
+  );
+  server.registerTool(
+    'remove_contact_exclusion',
+    {
+      title: TOOL_TEXTS.remove_contact_exclusion.title,
+      description: TOOL_TEXTS.remove_contact_exclusion.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        excluded_for: z.string().optional().describe(PARAM_TEXTS.excludedFor),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'remove_contact_exclusion', () => mcpRemoveExclusion(userId, args)),
+  );
+  server.registerTool(
+    'retract_contact_fact',
+    {
+      title: TOOL_TEXTS.retract_contact_fact.title,
+      description: TOOL_TEXTS.retract_contact_fact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        field_type: z.string().optional().describe(PARAM_TEXTS.retractFieldType),
+        value_fragment: z.string().optional().describe(PARAM_TEXTS.retractValueFragment),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'retract_contact_fact', () => mcpRetractFact(userId, args)),
   );
 }
 

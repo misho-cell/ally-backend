@@ -7,14 +7,24 @@ import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
-import { normalizeFieldType, getVisibleFacts, submitContactFact } from '../contactFacts.service';
+import {
+  normalizeFieldType,
+  getVisibleFacts,
+  submitContactFact,
+  retractOwnFacts,
+} from '../contactFacts.service';
 import {
   createTask,
   getMyTasks,
+  getTaskById,
   grantTaskPermission,
   isTaskStatus,
+  setTaskBrief,
+  setTaskWake,
   updateTask,
 } from '../taskStore.service';
+import { cancelAsksForTask, createAsk } from '../taskAsks.service';
+import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
 import {
@@ -553,6 +563,97 @@ export async function mcpGrantTaskPermission(
   }
   const ok = await grantTaskPermission(userId, taskId);
   return ok ? { granted: true } : { granted: false, error: 'No such task.' };
+}
+
+// --- Task-engine + correction tools (connector parity with the in-app set).
+// Phones never cross this boundary: contact_ref in, scrubbed payloads out.
+// relay_ask stays app-only by design — it exists only inside a live
+// incoming-ask thread, which the connector does not have.
+
+const UNKNOWN_TASK_REF = 'Unknown task_ref — take it from get_my_tasks.';
+const UNKNOWN_CONTACT_REF =
+  'Unknown contact_ref — take it from a fresh search result, never invent it.';
+
+export async function mcpAskContact(
+  userId: string,
+  args: { task_ref: string; contact_ref: string; question: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { sent: false, error: UNKNOWN_TASK_REF };
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { sent: false, error: UNKNOWN_CONTACT_REF };
+  const task = await getTaskById(taskId);
+  if (!task || String(task.user_id) !== userId || task.status !== 'open') {
+    return { sent: false, error: 'Task not found or not open.' };
+  }
+  const outcome = await createAsk(userId, taskId, phone, args.question ?? '');
+  return scrubDeep(outcome) as McpToolPayload;
+}
+
+export async function mcpSetTaskBrief(
+  userId: string,
+  args: { task_ref: string; brief: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { updated: false, error: UNKNOWN_TASK_REF };
+  const brief = (args.brief ?? '').trim();
+  if (!brief) return { updated: false, error: 'Pass a non-empty brief.' };
+  return { updated: await setTaskBrief(userId, taskId, brief) };
+}
+
+export async function mcpSetTaskWake(
+  userId: string,
+  args: { task_ref: string; hours: number },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { scheduled: false, error: UNKNOWN_TASK_REF };
+  const hours = Math.min(168, Math.max(1, Number(args.hours) || 24));
+  return { scheduled: await setTaskWake(userId, taskId, hours), hours };
+}
+
+export async function mcpFinishTask(
+  userId: string,
+  args: { task_ref: string; summary: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { closed: false, error: UNKNOWN_TASK_REF };
+  const summary = (args.summary ?? 'done').slice(0, 500);
+  const closed = await updateTask(userId, taskId, 'closed', summary);
+  if (closed) await cancelAsksForTask(taskId);
+  return { closed };
+}
+
+export async function mcpExcludeContact(
+  userId: string,
+  args: { contact_ref: string; excluded_for: string; reason: string; revisit_if?: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { saved: false, error: UNKNOWN_CONTACT_REF };
+  return saveContactExclusion(
+    userId,
+    phone,
+    args.excluded_for ?? '',
+    args.reason ?? '',
+    args.revisit_if,
+  );
+}
+
+export async function mcpRemoveExclusion(
+  userId: string,
+  args: { contact_ref: string; excluded_for?: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { removed: 0, error: UNKNOWN_CONTACT_REF };
+  return removeContactExclusion(userId, phone, args.excluded_for);
+}
+
+export async function mcpRetractFact(
+  userId: string,
+  args: { contact_ref: string; field_type?: string; value_fragment?: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { retracted: 0, error: UNKNOWN_CONTACT_REF };
+  return retractOwnFacts(userId, phone, args.field_type, args.value_fragment);
 }
 
 export async function mcpSaveUserNote(
