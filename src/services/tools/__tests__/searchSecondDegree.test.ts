@@ -52,14 +52,20 @@ describe('searchSecondDegree tag matching', () => {
     // Index-backed trigram match, not a bare similarity() scan.
     expect(sql).toContain('normalize_search_token(ut.tag) % normalize_search_token($3)');
     expect(sql).toContain('>= 0.45');
-    // Aliases: norm-trigram gate + WORD-START regex — substring LIKE matched
-    // every mid-word "…gita…" alias (the 6 Aug second-degree timeout).
-    expect(sql).toContain(
-      `normalize_search_token(ua_m.alias) LIKE '%' || normalize_search_token($3) || '%'`,
-    );
-    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $4`);
-    // $3 = term, $4 = word-start regex, $5 = blocked phones.
-    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '\\mburalteri', []]);
+    // Aliases: RAW-LIKE gate (norm-folding regressed 'axel' → '%akel%') plus
+    // a WORD-START regex refine (substring alone matched every mid-word
+    // "…gita…" alias — the 6 Aug second-degree timeout).
+    expect(sql).toContain(`LOWER(ua_m.alias) LIKE $4`);
+    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $5`);
+    // $3 = tag term, $4 = alias LIKE gate, $5 = word-start regex, $6 = blocked.
+    expect(params).toEqual([
+      '42',
+      [FRIEND_PHONE],
+      'buralteri',
+      '%buralteri%',
+      '\\mburalteri',
+      [],
+    ]);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {

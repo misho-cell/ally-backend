@@ -149,23 +149,29 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           ` >= ${FUZZY_THRESHOLD})`,
       )
       .join(' OR ');
-    // Alias match is WORD-START, not substring: '%gita%' matched every
-    // mid-word "…gita…" alias (67k rows on the founder's graph — the 6 Aug
-    // second-degree timeout), and mid-word hits are wrong results anyway
-    // (Margita is not a GITA lead). Same shape as the direct search: the
-    // normalized-trigram LIKE gate is index-backed for every script, then the
-    // word-start regex refines; (LOWER(...) || '') keeps the planner off the
-    // raw-trigram index (near-useless for KA text — see wordMatch).
-    // $3..$(2+n) = terms, $(3+n)..$(2+2n) = word-start regexes, $(3+2n) = blocked phones
+    // Alias match: the RAW-LIKE gate (idx_user_alias_trgm, the shape that ran
+    // for months) + a WORD-START regex refine. Two hard-won rules meet here:
+    //  - the refine is word-start, not substring: '%gita%' matched every
+    //    mid-word "…gita…" alias (67k rows on the founder's graph — the 6 Aug
+    //    timeout), and mid-word hits are wrong results anyway (Margita is not
+    //    a GITA lead);
+    //  - the gate must stay on the RAW alias: gating on
+    //    normalize_search_token(alias) regressed 'axel' — normalization folds
+    //    x→k, and the '%akel%' trigrams (ake/kel) sit inside half of Georgian
+    //    surnames, so the bitmap exploded and every candidate re-ran the
+    //    normalize replace-chain in the recheck. Cross-script coverage comes
+    //    from buildSearchTerms' per-script variants, not from the folding.
+    // $3..$(2+n) = tag terms, $(3+n)..$(2+2n) = alias LIKE gates,
+    // $(3+2n)..$(2+3n) = word-start regexes, $(3+3n) = blocked phones
     const aliasConds = terms
       .map(
         (_, i) =>
-          `(normalize_search_token(ua_m.alias) LIKE '%' || normalize_search_token($${i + 3}) || '%'` +
-          ` AND (LOWER(ua_m.alias) || '') ~ $${i + 3 + n})`,
+          `(LOWER(ua_m.alias) LIKE $${i + 3 + n}` +
+          ` AND (LOWER(ua_m.alias) || '') ~ $${i + 3 + 2 * n})`,
       )
       .join(' OR ');
     const regexTerms = terms.map(toWordStartPattern);
-    const blockParamIdx = 3 + 2 * n;
+    const blockParamIdx = 3 + 3 * n;
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
     // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
@@ -242,7 +248,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
-      [userId, friendPhones, ...terms, ...regexTerms, blockedPhones],
+      [userId, friendPhones, ...terms, ...likeTerms, ...regexTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
