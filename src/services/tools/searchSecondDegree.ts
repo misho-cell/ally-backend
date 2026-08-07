@@ -3,7 +3,7 @@ import { query } from '../../db/postgres/client';
 const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
-import { buildSearchTerms } from './transliterate';
+import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
@@ -127,7 +127,6 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
     const terms = buildSearchTerms(tagQuery);
-    // Aliases are full names — need substring LIKE
     const likeTerms = terms.map((t) => '%' + t + '%');
 
     // Weak-tie signal: asking for a PATH to a contact you already hold directly
@@ -150,10 +149,30 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           ` >= ${FUZZY_THRESHOLD})`,
       )
       .join(' OR ');
-    // $3..$(2+n) = tag terms, $(3+n)..$(2+2n) = alias LIKE patterns, $(3+2n) = blocked phones
-    const aliasConds = likeTerms.map((_, i) => `LOWER(ua_m.alias) LIKE $${i + 3 + n}`).join(' OR ');
+    // Alias match is WORD-START, not substring: '%gita%' matched every
+    // mid-word "…gita…" alias (67k rows on the founder's graph — the 6 Aug
+    // second-degree timeout), and mid-word hits are wrong results anyway
+    // (Margita is not a GITA lead). Same shape as the direct search: the
+    // normalized-trigram LIKE gate is index-backed for every script, then the
+    // word-start regex refines; (LOWER(...) || '') keeps the planner off the
+    // raw-trigram index (near-useless for KA text — see wordMatch).
+    // $3..$(2+n) = terms, $(3+n)..$(2+2n) = word-start regexes, $(3+2n) = blocked phones
+    const aliasConds = terms
+      .map(
+        (_, i) =>
+          `(normalize_search_token(ua_m.alias) LIKE '%' || normalize_search_token($${i + 3}) || '%'` +
+          ` AND (LOWER(ua_m.alias) || '') ~ $${i + 3 + n})`,
+      )
+      .join(' OR ');
+    const regexTerms = terms.map(toWordStartPattern);
     const blockParamIdx = 3 + 2 * n;
 
+    // Rank FIRST, decorate LAST: the old shape joined the display tables
+    // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
+    // broad term (~45k matched contacts) turned that into full-table hash
+    // joins and a statement timeout. The ranking core (mutuals − weak ties,
+    // warmth) is cheap and picks the top rows; names and fields are resolved
+    // for those rows only.
     const result = await query<{
       phone: string;
       target_user_id: number | null;
@@ -184,34 +203,46 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT phone, "contactId" FROM tag_hits
          UNION
          SELECT phone, "contactId" FROM alias_hits
+       ),
+       ranked AS (
+         SELECT m.phone,
+                (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) AS bridge_rank,
+                MAX(crs.strength_score)                                   AS warmth
+         FROM matches m
+         JOIN friend_users fu         ON fu."userId" = m."contactId"
+         LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
+         LEFT JOIN weak_tie_signals w ON w.contact_phone = m.phone AND w.user_id = fu."userId"
+         LEFT JOIN contact_relationship_scores crs
+                ON crs.user_id = fu."userId" AND crs.contact_phone = m.phone
+         WHERE ua_own.phone IS NULL
+           AND m.phone != ALL($${blockParamIdx})
+         GROUP BY m.phone
+         ORDER BY (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
+                  MAX(crs.strength_score) DESC NULLS LAST,
+                  m.phone
+         LIMIT ${SECOND_DEGREE_RESULT_LIMIT}
        )
-       SELECT m.phone,
+       SELECT r.phone,
               MAX(up_t."userId")                                               AS target_user_id,
               COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
               MAX(u_t.employer)                                                AS employer,
               MAX(u_t."jobPosition")                                           AS "jobPosition",
-              MAX(crs.strength_score)                                          AS warmth
-       FROM matches m
+              r.warmth                                                         AS warmth
+       FROM ranked r
+       JOIN matches m               ON m.phone     = r.phone
        JOIN friend_users fu         ON fu."userId" = m."contactId"
-       LEFT JOIN "UserAlias" ua_t   ON ua_t.phone  = m.phone AND ua_t."contactId" = m."contactId"
-       LEFT JOIN "UserPhone"  up_t  ON up_t.phone  = m.phone
+       LEFT JOIN "UserAlias" ua_t   ON ua_t.phone  = r.phone AND ua_t."contactId" = m."contactId"
+       LEFT JOIN "UserPhone"  up_t  ON up_t.phone  = r.phone
        LEFT JOIN "User"       u_t   ON u_t.id      = up_t."userId"
        LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
-       LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
-       LEFT JOIN weak_tie_signals w ON w.contact_phone = m.phone AND w.user_id = fu."userId"
-       LEFT JOIN contact_relationship_scores crs
-              ON crs.user_id = fu."userId" AND crs.contact_phone = m.phone
-       WHERE ua_own.phone IS NULL
-         AND m.phone != ALL($${blockParamIdx})
-       GROUP BY m.phone
-       ORDER BY (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
-                MAX(crs.strength_score) DESC NULLS LAST,
+       GROUP BY r.phone, r.bridge_rank, r.warmth
+       ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
-      [userId, friendPhones, ...terms, ...likeTerms, blockedPhones],
+      [userId, friendPhones, ...terms, ...regexTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 

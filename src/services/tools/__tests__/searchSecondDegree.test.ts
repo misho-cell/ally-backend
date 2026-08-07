@@ -52,8 +52,28 @@ describe('searchSecondDegree tag matching', () => {
     // Index-backed trigram match, not a bare similarity() scan.
     expect(sql).toContain('normalize_search_token(ut.tag) % normalize_search_token($3)');
     expect(sql).toContain('>= 0.45');
-    // $3 = normalized tag term, $4 = alias LIKE, $5 = blocked phones.
-    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '%buralteri%', []]);
+    // Aliases: norm-trigram gate + WORD-START regex — substring LIKE matched
+    // every mid-word "…gita…" alias (the 6 Aug second-degree timeout).
+    expect(sql).toContain(
+      `normalize_search_token(ua_m.alias) LIKE '%' || normalize_search_token($3) || '%'`,
+    );
+    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $4`);
+    // $3 = term, $4 = word-start regex, $5 = blocked phones.
+    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '\\mburalteri', []]);
+  });
+
+  it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'buralteri');
+
+    const sql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+    )?.[0] as string;
+    // The ranking CTE carries its own LIMIT, and the display tables join FROM
+    // it — never onto the unbounded match set (the 6 Aug timeout shape).
+    expect(sql).toMatch(/ranked AS \([\s\S]*LIMIT 30[\s\S]*\)\s*SELECT r\.phone/);
+    expect(sql).toContain('FROM ranked r');
   });
 
   it('normalizes a Georgian query the same way the index is built (via transliteration)', async () => {
