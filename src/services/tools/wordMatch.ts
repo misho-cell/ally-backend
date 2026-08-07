@@ -49,9 +49,15 @@ export function buildExactMatchSql(
 
   const regexStart = 2; // $1 = userId
   const gateStart = regexStart + allRegex.length;
-  // The facts branch gets its OWN userId placeholder with an explicit ::int
-  // cast — $1's inferred type depends on the "contactId" columns and must not
-  // leak into an integer comparison.
+  // The facts branch gets its OWN userId placeholder, deliberately UNCAST:
+  // a dedicated parameter lets Postgres infer its type from the column it is
+  // compared to, in each database. The live prod table predates the migration
+  // runner and carries submitted_by_user_id as TEXT while migration 009 (and
+  // every fresh/test database) says INTEGER — an explicit ::int cast raised
+  // `operator does not exist: text = integer` on EVERY prod tag/name search
+  // (the 6 Aug outage on both the app and the connector). $1 itself still
+  // can't be reused here: its inferred type is pinned by the "contactId"
+  // comparisons.
   const factsUserIdx = gateStart + gateTerms.length;
   const blockIdx = factsUserIdx + 1;
 
@@ -116,7 +122,7 @@ export function buildExactMatchSql(
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.field_type IN ('occupation', 'employer', 'industry')
        AND cf.retracted_at IS NULL
-       AND (cf.submitted_by_user_id = $${factsUserIdx}::int OR cf.is_public = true)
+       AND (cf.submitted_by_user_id = $${factsUserIdx} OR cf.is_public = true)
        AND ${regexOr('cf.value')}
    )`;
 

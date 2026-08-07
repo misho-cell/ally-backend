@@ -17,7 +17,8 @@ const maybeDescribe = process.env.PG_INTEGRATION === '1' ? describe : describe.s
 
 const SCHEMA_SQL = `
   CREATE EXTENSION IF NOT EXISTS pg_trgm;
-  DROP TABLE IF EXISTS "UserAlias", "UserTags", "UserPhone", "User", "UserBlock", contact_facts, contact_relationship_scores CASCADE;
+  DROP TABLE IF EXISTS "UserAlias", "UserTags", "UserPhone", "User", "UserBlock",
+    "ContactDeceased", contact_facts, contact_relationship_scores, contact_exclusions CASCADE;
   CREATE TABLE "UserAlias" (id serial primary key, phone text, "contactId" int, alias text);
   CREATE TABLE "UserTags"  (id serial primary key, phone text, "contactId" int, tag text, "weightCount" int default 1);
   CREATE TABLE "UserPhone" (id serial primary key, phone text, "userId" int);
@@ -33,6 +34,14 @@ const SCHEMA_SQL = `
     strength_score float not null, signals jsonb not null default '{}',
     computed_at timestamp not null default now(),
     primary key (user_id, contact_phone));
+  CREATE TABLE "ContactDeceased" (
+    id serial primary key, "userId" int not null, phone text not null,
+    "createdAt" timestamp not null default now());
+  CREATE TABLE contact_exclusions (
+    id serial primary key, user_id integer not null, contact_phone text not null,
+    excluded_for text not null, reason text not null, revisit_if text,
+    created_at timestamp not null default now(),
+    unique (user_id, contact_phone, excluded_for));
   CREATE INDEX idx_user_alias_trgm ON "UserAlias" USING GIN (LOWER(alias) gin_trgm_ops);
   CREATE OR REPLACE FUNCTION normalize_search_token(input text)
   RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $fn$
@@ -146,5 +155,25 @@ maybeDescribe('search against real Postgres (prod repro cases)', () => {
     const r = (await searchContactByName('999', 'babukhadia')) as SearchResult;
     expect(r.error).toBeUndefined();
     expect(r.found).toBe(false);
+  });
+
+  // The 6 Aug outage, as a permanent repro: the LIVE prod table predates the
+  // migration runner and carries submitted_by_user_id as TEXT (migrations say
+  // INTEGER) — an explicit ::int cast in the facts branch raised `operator
+  // does not exist: text = integer` on every prod tag/name search, on both
+  // the app and the connector. Keep this LAST — it mutates the schema.
+  it('facts branch survives the prod column-type drift (submitted_by_user_id TEXT)', async () => {
+    await query(
+      `ALTER TABLE contact_facts
+       ALTER COLUMN submitted_by_user_id TYPE text USING submitted_by_user_id::text`,
+      [],
+      30_000,
+    );
+    const byTag = (await searchByTag('501', 'gita')) as SearchResult;
+    expect(byTag.error).toBeUndefined();
+    expect(byTag.found).toBe(true);
+    const byName = (await searchContactByName('501', 'gita')) as SearchResult;
+    expect(byName.error).toBeUndefined();
+    expect(names(byName)[0]).toBe('Avto Kasradze');
   });
 });
