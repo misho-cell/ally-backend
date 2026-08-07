@@ -3,6 +3,7 @@ import { searchByTag } from '../tools/searchByTag';
 import { searchContactByName } from '../tools/searchContactByName';
 import { searchByInsight } from '../tools/searchByInsight';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
+import { searchWithRetry } from '../tools/searchRetry';
 import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
@@ -157,23 +158,9 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
   return payload;
 }
 
-// A transient failure (pool blip, statement-timeout edge, Neo4j hiccup) used
-// to surface straight to the model — ~3 calls in 10 during the 31 Jul battery,
-// and a manual retry always worked. One paced server-side retry absorbs the
-// flake; a persistent error still surfaces honestly.
-const SEARCH_RETRY_DELAY_MS = 400;
-
-async function searchWithRetry(run: () => Promise<object>): Promise<object> {
-  const first = await run().catch((err) => ({ error: (err as Error).message }) as object);
-  if (typeof (first as { error?: unknown }).error !== 'string') return first;
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[mcp] search failed transiently — retrying once:',
-    (first as { error: string }).error,
-  );
-  await new Promise<void>((resolve) => setTimeout(resolve, SEARCH_RETRY_DELAY_MS));
-  return run().catch((err) => ({ error: (err as Error).message }) as object);
-}
+// One paced server-side retry absorbs transient search failures (~3 calls in
+// 10 during the 31 Jul battery); shared with the in-app dispatch since the
+// thread-7428 finding — see tools/searchRetry.
 
 export async function mcpSearchContacts(
   userId: string,

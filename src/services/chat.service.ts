@@ -91,6 +91,7 @@ import {
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
+import { searchWithRetry } from './tools/searchRetry';
 import { isOnboardingUser } from './onboarding.service';
 
 // A mode is a SITUATION — who is in the conversation and what state the
@@ -1352,15 +1353,17 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
   get_contact_insight: 'phone',
 };
 
-// Run a search tool, then log the activity with its result count (fire-and-forget
-// so logging never blocks or fails the search). Result objects expose `count`.
+// Run a search tool with the shared one-shot retry (the connector always had
+// it; in-app a single transient/cold-cache spike reached the user as "timeout,
+// come back later" — thread 7428), then log the activity with its result count
+// (fire-and-forget so logging never blocks or fails the search).
 async function runLoggedSearch(
   userId: string,
   tool: string,
   searchQuery: string,
   run: (userId: string, q: string) => Promise<object>,
 ): Promise<object> {
-  const result = await run(userId, searchQuery);
+  const result = await searchWithRetry(() => run(userId, searchQuery));
   const rawCount = (result as { count?: unknown }).count;
   const resultCount = typeof rawCount === 'number' ? rawCount : 0;
   void logSearchActivity(userId, tool, searchQuery, resultCount).catch(() => {});
