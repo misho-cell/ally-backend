@@ -58,14 +58,7 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).toContain(`LOWER(ua_m.alias) LIKE $4`);
     expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $5`);
     // $3 = tag term, $4 = alias LIKE gate, $5 = word-start regex, $6 = blocked.
-    expect(params).toEqual([
-      '42',
-      [FRIEND_PHONE],
-      'buralteri',
-      '%buralteri%',
-      '\\mburalteri',
-      [],
-    ]);
+    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '%buralteri%', '\\mburalteri', []]);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
