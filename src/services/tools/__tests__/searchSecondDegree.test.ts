@@ -45,9 +45,7 @@ describe('searchSecondDegree tag matching', () => {
     await searchSecondDegree('42', 'buralteri');
 
     // The weak-tie signal INSERT fires first — find the main query by fragment.
-    const mainCall = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('tag_hits'),
-    );
+    const mainCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
     const [sql, params] = mainCall as [string, unknown[]];
     // Word-start on the RAW text for tags and aliases alike — the normalize
     // fold is OUT of second-degree (Khazaradze matched "kasradze"; 'axel'
@@ -81,9 +79,7 @@ describe('searchSecondDegree tag matching', () => {
 
     await searchSecondDegree('42', 'ბუღალტერი');
 
-    const mainCall = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('tag_hits'),
-    );
+    const mainCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
     const params = mainCall?.[1] as unknown[];
     // buildSearchTerms transliterates the Georgian query to its Latin form(s);
     // each variant arrives as its own word-start regex.

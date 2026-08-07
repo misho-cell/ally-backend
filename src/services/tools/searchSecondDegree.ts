@@ -150,12 +150,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones
     const n = terms.length;
     const regexTerms = terms.map(toWordStartPattern);
-    const tagConds = terms
-      .map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 3}`)
-      .join(' OR ');
-    const aliasConds = terms
-      .map((_, i) => `(LOWER(ua_m.alias) || '') ~ $${i + 3}`)
-      .join(' OR ');
+    const tagConds = terms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 3}`).join(' OR ');
+    const aliasConds = terms.map((_, i) => `(LOWER(ua_m.alias) || '') ~ $${i + 3}`).join(' OR ');
     const blockParamIdx = 3 + n;
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
