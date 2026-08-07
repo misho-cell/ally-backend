@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 describe('searchSecondDegree tag matching', () => {
-  it('matches tags with the index-backed % operator + similarity refine', async () => {
+  it('matches tags and aliases by word-start regex on the RAW text (no fold)', async () => {
     mockQuery.mockResolvedValue(
       rows([
         { phone: '+995500000123', target_user_id: null, name: 'Nino', via_names: ['Gio'] },
@@ -46,19 +46,20 @@ describe('searchSecondDegree tag matching', () => {
 
     // The weak-tie signal INSERT fires first — find the main query by fragment.
     const mainCall = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+      (c[0] as string).includes('tag_hits'),
     );
     const [sql, params] = mainCall as [string, unknown[]];
-    // Index-backed trigram match, not a bare similarity() scan.
-    expect(sql).toContain('normalize_search_token(ut.tag) % normalize_search_token($3)');
-    expect(sql).toContain('>= 0.45');
-    // Aliases: RAW-LIKE gate (norm-folding regressed 'axel' → '%akel%') plus
-    // a WORD-START regex refine (substring alone matched every mid-word
-    // "…gita…" alias — the 6 Aug second-degree timeout).
-    expect(sql).toContain(`LOWER(ua_m.alias) LIKE $4`);
-    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $5`);
-    // $3 = tag term, $4 = alias LIKE gate, $5 = word-start regex, $6 = blocked.
-    expect(params).toEqual(['42', [FRIEND_PHONE], 'buralteri', '%buralteri%', '\\mburalteri', []]);
+    // Word-start on the RAW text for tags and aliases alike — the normalize
+    // fold is OUT of second-degree (Khazaradze matched "kasradze"; 'axel'
+    // folded to '%akel%' and exploded every trigram path). The (|| '')
+    // wrapper keeps every filter non-indexable so the LATERAL contactId
+    // probes are the only plan.
+    expect(sql).toContain(`(LOWER(ut.tag) || '') ~ $3`);
+    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $3`);
+    expect(sql).not.toContain('normalize_search_token');
+    expect(sql).toContain('JOIN LATERAL');
+    // $3 = word-start regex, $4 = blocked phones.
+    expect(params).toEqual(['42', [FRIEND_PHONE], '\\mburalteri', []]);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
@@ -67,7 +68,7 @@ describe('searchSecondDegree tag matching', () => {
     await searchSecondDegree('42', 'buralteri');
 
     const sql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+      (c[0] as string).includes('tag_hits'),
     )?.[0] as string;
     // The ranking CTE carries its own LIMIT, and the display tables join FROM
     // it — never onto the unbounded match set (the 6 Aug timeout shape).
@@ -75,18 +76,18 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).toContain('FROM ranked r');
   });
 
-  it('normalizes a Georgian query the same way the index is built (via transliteration)', async () => {
+  it('carries a Georgian query cross-script via per-script variants', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
     await searchSecondDegree('42', 'ბუღალტერი');
 
     const mainCall = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+      (c[0] as string).includes('tag_hits'),
     );
-    const params = mainCall?.[1] as string[];
-    // buildSearchTerms transliterates the Georgian query to its Latin form(s),
-    // which normalize_search_token then folds to the canonical token in-SQL.
-    expect(params).toContain('bughalteri');
+    const params = mainCall?.[1] as unknown[];
+    // buildSearchTerms transliterates the Georgian query to its Latin form(s);
+    // each variant arrives as its own word-start regex.
+    expect(params.some((p) => typeof p === 'string' && p.includes('bughalteri'))).toBe(true);
   });
 
   it('records a weak-tie signal before searching (path asked to an own contact)', async () => {
@@ -108,7 +109,7 @@ describe('searchSecondDegree tag matching', () => {
     await searchSecondDegree('42', 'buralteri');
 
     const mainSql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+      (c[0] as string).includes('tag_hits'),
     )?.[0] as string;
     expect(mainSql).toContain('LEFT JOIN weak_tie_signals w');
     expect(mainSql).toContain('COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)');
@@ -131,7 +132,7 @@ describe('searchSecondDegree tag matching', () => {
     const result = (await searchSecondDegree('42', 'buralteri')) as Record<string, unknown>;
 
     const mainSql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('normalize_search_token(ut.tag)'),
+      (c[0] as string).includes('tag_hits'),
     )?.[0] as string;
     // The bridge's own enrichment-computed tie to the target breaks mutual-count
     // ties: a warm via outranks a cold one.

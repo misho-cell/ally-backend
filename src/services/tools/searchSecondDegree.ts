@@ -34,10 +34,6 @@ async function recordWeakTieSignals(userId: string, likeTerms: string[]): Promis
     [userId, ...likeTerms],
   );
 }
-// Same threshold as the direct tag search; matching runs only over friends'
-// tags (already narrowed by the friend_users join), so no dedicated index is
-// needed for it to stay fast.
-const FUZZY_THRESHOLD = 0.45;
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
@@ -134,44 +130,33 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // down-ranked as a warm bridge to that person for OTHER users.
     void recordWeakTieSignals(userId, likeTerms).catch(() => undefined);
 
-    // Tag match is index-backed and spelling-tolerant: the % trigram operator
-    // (served by idx_user_tags_norm_trgm on the normalized token) generates
-    // candidates fast, then similarity refines to the same 0.45 threshold the
-    // direct tag search uses. Each term is its own parameter so the index applies
-    // per disjunct. One clause covers exact, digraph-merge, ღ-drift and
-    // cross-script — the query must be normalized the same way the index was.
+    // Matching is WORD-START on the RAW text, for tags and aliases alike, and
+    // the normalize fold is OUT of second-degree entirely — a product call as
+    // much as a perf one (tester findings, 7 Aug):
+    //  - the folded similarity match returned Khazaradze rows for "kasradze"
+    //    (k↔kh/x collapse) — wrong results, not just slow ones;
+    //  - the same fold turned 'axel' into '%akel%', whose trigrams sit inside
+    //    half of Georgian surnames — every trigram-index path exploded there
+    //    (gate or recheck, it only moved between deploys);
+    //  - mid-word substring hits (Margita for "gita") were wrong AND heavy.
+    // Cross-script coverage still comes from buildSearchTerms' per-script
+    // variants; ღ-drift tolerance is deliberately NOT offered here (the direct
+    // tag search keeps it, clearly labeled approximate).
+    // The (LOWER(...) || '') wrapper makes every filter non-indexable ON
+    // PURPOSE: combined with the LATERAL below, the planner has exactly one
+    // plan — probe each friend's rows via the contactId btrees and filter in
+    // memory — whose cost is bounded by the friend set and IDENTICAL for
+    // every term. No term can be the next gita.
+    // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones
     const n = terms.length;
-    const tagConds = terms
-      .map(
-        (_, i) =>
-          `(normalize_search_token(ut.tag) % normalize_search_token($${i + 3})` +
-          ` AND similarity(normalize_search_token(ut.tag), normalize_search_token($${i + 3}))` +
-          ` >= ${FUZZY_THRESHOLD})`,
-      )
-      .join(' OR ');
-    // Alias match: the RAW-LIKE gate (idx_user_alias_trgm, the shape that ran
-    // for months) + a WORD-START regex refine. Two hard-won rules meet here:
-    //  - the refine is word-start, not substring: '%gita%' matched every
-    //    mid-word "…gita…" alias (67k rows on the founder's graph — the 6 Aug
-    //    timeout), and mid-word hits are wrong results anyway (Margita is not
-    //    a GITA lead);
-    //  - the gate must stay on the RAW alias: gating on
-    //    normalize_search_token(alias) regressed 'axel' — normalization folds
-    //    x→k, and the '%akel%' trigrams (ake/kel) sit inside half of Georgian
-    //    surnames, so the bitmap exploded and every candidate re-ran the
-    //    normalize replace-chain in the recheck. Cross-script coverage comes
-    //    from buildSearchTerms' per-script variants, not from the folding.
-    // $3..$(2+n) = tag terms, $(3+n)..$(2+2n) = alias LIKE gates,
-    // $(3+2n)..$(2+3n) = word-start regexes, $(3+3n) = blocked phones
-    const aliasConds = terms
-      .map(
-        (_, i) =>
-          `(LOWER(ua_m.alias) LIKE $${i + 3 + n}` +
-          ` AND (LOWER(ua_m.alias) || '') ~ $${i + 3 + 2 * n})`,
-      )
-      .join(' OR ');
     const regexTerms = terms.map(toWordStartPattern);
-    const blockParamIdx = 3 + 3 * n;
+    const tagConds = terms
+      .map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 3}`)
+      .join(' OR ');
+    const aliasConds = terms
+      .map((_, i) => `(LOWER(ua_m.alias) || '') ~ $${i + 3}`)
+      .join(' OR ');
+    const blockParamIdx = 3 + n;
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
     // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
@@ -194,16 +179,24 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          WHERE up.phone = ANY($2)
        ),
        tag_hits AS (
-         SELECT ut.phone, ut."contactId"
-         FROM "UserTags" ut
-         JOIN friend_users fu ON fu."userId" = ut."contactId"
-         WHERE ${tagConds}
+         SELECT t.phone, t."contactId"
+         FROM friend_users fu
+         JOIN LATERAL (
+           SELECT ut.phone, ut."contactId"
+           FROM "UserTags" ut
+           WHERE ut."contactId" = fu."userId"
+             AND (${tagConds})
+         ) t ON TRUE
        ),
        alias_hits AS (
-         SELECT ua_m.phone, ua_m."contactId"
-         FROM "UserAlias" ua_m
-         JOIN friend_users fu ON fu."userId" = ua_m."contactId"
-         WHERE ${aliasConds}
+         SELECT a.phone, a."contactId"
+         FROM friend_users fu
+         JOIN LATERAL (
+           SELECT ua_m.phone, ua_m."contactId"
+           FROM "UserAlias" ua_m
+           WHERE ua_m."contactId" = fu."userId"
+             AND (${aliasConds})
+         ) a ON TRUE
        ),
        matches AS (
          SELECT phone, "contactId" FROM tag_hits
@@ -248,7 +241,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
-      [userId, friendPhones, ...terms, ...likeTerms, ...regexTerms, blockedPhones],
+      [userId, friendPhones, ...regexTerms, blockedPhones],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
