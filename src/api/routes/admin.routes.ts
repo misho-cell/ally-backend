@@ -51,6 +51,9 @@ import {
   RUN_MODES,
 } from '../../services/promptBlocks.service';
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
+import { getTaskById } from '../../services/taskStore.service';
+import { wakeTask } from '../../services/taskEngine.service';
+import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 
 const adminRouter = Router();
@@ -744,6 +747,80 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('User detail error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Fire a task's wake NOW instead of waiting for next_wake_at — the tester's
+// fast-forward (every multi-day goal behavior is otherwise unobservable) and
+// production's rescue lever for a stuck goal. Works on any user's open task.
+adminRouter.post(
+  '/tasks/:id/wake',
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  async (req: Request, res: Response<ApiResponse<{ woken: boolean }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const taskId = Number(req.params.id);
+      const task = await getTaskById(taskId);
+      if (!task) {
+        res.status(404).json({ success: false, error: 'დავალება ვერ მოიძებნა' });
+        return;
+      }
+      if (task.status !== 'open') {
+        res.status(409).json({ success: false, error: `დავალება ${task.status}-სტატუსშია` });
+        return;
+      }
+      await wakeTask(
+        taskId,
+        'ადმინმა ხელით გააღვიძა დავალება — გააგრძელე მუშაობა გეგმის მიხედვით.',
+      );
+      res.status(200).json({ success: true, data: { woken: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin wake]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Read ANY thread's messages — the tester's window into the incoming_ask
+// surface (checking the exact message that landed on a consenting recipient's
+// phone, word for word). Admin-only by the router guard above.
+adminRouter.get(
+  '/threads/:id/messages',
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const threadId = Number(req.params.id);
+      const threadResult = await query<{
+        id: number;
+        user_id: number;
+        type: string;
+        title: string | null;
+        status: string;
+        created_at: string;
+      }>(`SELECT id, user_id, type, title, status, created_at FROM threads WHERE id = $1`, [
+        threadId,
+      ]);
+      if (threadResult.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'thread ვერ მოიძებნა' });
+        return;
+      }
+      const messages = await getThreadMessages(threadId);
+      res.status(200).json({ success: true, data: { thread: threadResult.rows[0], messages } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin thread read]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

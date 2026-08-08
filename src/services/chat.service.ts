@@ -116,7 +116,10 @@ import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 
 const HISTORY_LIMIT = 50;
-const MAX_TOKENS = 2048;
+// 8k output: 2048 cut long Georgian answers mid-word at ~3.2k chars (thread
+// 7693 — the model itself apologised for "cutting off half" next turn).
+// Cost is bounded by actual usage, not by this ceiling.
+const MAX_TOKENS = 8192;
 const MODEL = 'claude-sonnet-4-6';
 // A/B lever for per-round latency (ticket Part A #5): when set (e.g. to
 // claude-haiku-4-5-20251001), the tool-loop turns run on this faster model and

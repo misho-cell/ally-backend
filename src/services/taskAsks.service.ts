@@ -58,6 +58,21 @@ export async function createAsk(
   const toUserId = member.rows[0].userId;
   const toName = member.rows[0].name ?? 'კონტაქტი';
 
+  // Live-fire safety switch for the incoming_ask test phase: when set (comma-
+  // separated user ids), asks may reach ONLY those accounts — a mis-picked
+  // contact must not receive a test question about someone else's problem.
+  // Unset (the default) = no restriction.
+  const allowlist = (process.env.ASK_RECIPIENT_ALLOWLIST ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  if (allowlist.length > 0 && !allowlist.includes(String(toUserId))) {
+    return {
+      sent: false,
+      error: 'სატესტო რეჟიმშია: შეკითხვები ამ ეტაპზე მხოლოდ თანხმობის მქონე მიმღებებთან იგზავნება.',
+    };
+  }
+
   if (String(toUserId) === fromUserId) {
     return { sent: false, error: 'საკუთარ თავს ვერ მისწერ.' };
   }

@@ -35,6 +35,7 @@ import {
   unblockContact,
 } from '../block.service';
 import { normalizePhone } from '../phone';
+import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import {
   getPendingRequestsForMediator,
@@ -641,6 +642,16 @@ export async function mcpRetractFact(
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { retracted: 0, error: UNKNOWN_CONTACT_REF };
   return retractOwnFacts(userId, phone, args.field_type, args.value_fragment);
+}
+
+export async function mcpMarkContactDeceased(
+  userId: string,
+  args: { contact_ref: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { marked: false, error: UNKNOWN_CONTACT_REF };
+  await markContactDeceased(userId, phone);
+  return { marked: true };
 }
 
 export async function mcpSaveUserNote(

@@ -26,6 +26,7 @@ import {
   mcpSetTaskWake,
   mcpFinishTask,
   mcpExcludeContact,
+  mcpMarkContactDeceased,
   mcpRemoveExclusion,
   mcpRetractFact,
   mcpSaveUserNote,
@@ -441,6 +442,16 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'remove_contact_exclusion', () => mcpRemoveExclusion(userId, args)),
+  );
+  server.registerTool(
+    'mark_contact_deceased',
+    {
+      title: TOOL_TEXTS.mark_contact_deceased.title,
+      description: TOOL_TEXTS.mark_contact_deceased.description,
+      inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
+      annotations: DESTRUCTIVE,
+    },
+    (args) => runTool(userId, 'mark_contact_deceased', () => mcpMarkContactDeceased(userId, args)),
   );
   server.registerTool(
     'retract_contact_fact',

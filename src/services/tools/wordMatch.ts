@@ -41,14 +41,8 @@ export function buildExactMatchSql(
 ): ExactMatchSql {
   const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
   const allRegex = groupRegex.flat();
-  // Candidate gate: normalized-trigram LIKE, indexable for EVERY script
-  // (normalize_search_token transliterates KA→ASCII — migration 043). Without
-  // this gate a large account's full crowd rows get regex-scanned and time out;
-  // sub-trigram terms are dropped (they can't use the index).
-  const gateTerms = [...new Set(rawGroups.flat())].filter((t) => t.length >= 3);
 
   const regexStart = 2; // $1 = userId
-  const gateStart = regexStart + allRegex.length;
   // The facts branch gets its OWN userId placeholder, deliberately UNCAST:
   // a dedicated parameter lets Postgres infer its type from the column it is
   // compared to, in each database. The live prod table predates the migration
@@ -58,7 +52,7 @@ export function buildExactMatchSql(
   // (the 6 Aug outage on both the app and the connector). $1 itself still
   // can't be reused here: its inferred type is pinned by the "contactId"
   // comparisons.
-  const factsUserIdx = gateStart + gateTerms.length;
+  const factsUserIdx = regexStart + allRegex.length;
   const blockIdx = factsUserIdx + 1;
 
   // The || '' wrapper is THE point — see the function comment (KA trigram gap).
@@ -68,45 +62,47 @@ export function buildExactMatchSql(
     return `(${parts.join(' OR ')})`;
   };
 
-  // Normalized-trigram candidate gate, then word-start regex refine. The gate
-  // uses the norm GIN indexes (ASCII for every script) to cut millions of rows
-  // to a small candidate set; the refine regex carries the || '' wrapper so the
-  // planner never touches the RAW trigram indexes (near-useless for KA text).
-  // Empty gate (all sub-trigram terms) degrades to the mine-scoped scan.
-  const gateOr = (col: string): string =>
-    gateTerms.length > 0
-      ? `(${gateTerms
-          .map(
-            (_, i) =>
-              `normalize_search_token(${col}) LIKE '%' || normalize_search_token($${gateStart + i}) || '%'`,
-          )
-          .join(' OR ')})`
-      : 'TRUE';
-
+  // CROSS JOIN LATERAL forces the ONLY acceptable plan for the crowd-table
+  // branches: a nested loop from mine (a few thousand phones) into the
+  // per-phone btree indexes, with the (|| '')-wrapped regex evaluated over
+  // that bounded set. This shape is a RESTORATION (04b17da): the norm-trigram
+  // gate that replaced it was indexable by design, and for patterns whose
+  // trigrams matched tens of thousands of global rows the planner — trusting
+  // a rows=1 estimate — joined those candidates to mine with a plain join
+  // FILTER: 33k candidates × 2.7k mine phones = 90M comparisons = statement
+  // timeout, term- and data-dependent (the 8 Aug full-surname failures:
+  // Chikhladze/Javakhishvili/Rukhadze/Lika). LATERAL is estimate-proof: no
+  // pattern can change the plan.
+  //
   // priority: a hit on a STRUCTURED field (registered jobPosition/employer, or
   // a saved occupation/employer/industry fact) is a stronger signal than a hit
   // inside a name/tag token — "gita" must surface the chairman of GITA above
   // nineteen people whose NAME contains Gita. Name/tag/alias branches carry 1,
   // structured branches 2; the tools order by word_hits first, then priority.
-  // The structured branches skip the norm-trigram gate on purpose: they are
-  // mine-scoped joins over small sets (registered contacts / the user's own
-  // facts), with no trigram indexes to mislead the planner.
+  // The structured branches stay as mine-scoped joins over small sets
+  // (registered contacts / the user's own facts).
   const matchedCte = `matched AS (
-     SELECT t.phone, LOWER(t.tag) AS label, 1 AS priority
-     FROM "UserTags" t
-     WHERE t.phone IN (SELECT phone FROM mine)
-       AND ${gateOr('t.tag')} AND ${regexOr('t.tag')}
+     SELECT lt.phone, lt.label, 1 AS priority
+     FROM mine m
+     CROSS JOIN LATERAL (
+       SELECT t.phone, LOWER(t.tag) AS label
+       FROM "UserTags" t
+       WHERE t.phone = m.phone AND ${regexOr('t.tag')}
+     ) lt
      UNION ALL
-     SELECT a.phone, LOWER(a.alias) AS label, 1 AS priority
-     FROM "UserAlias" a
-     WHERE a.phone IN (SELECT phone FROM mine)
-       AND ${gateOr('a.alias')} AND ${regexOr('a.alias')}
+     SELECT la.phone, la.label, 1 AS priority
+     FROM mine m
+     CROSS JOIN LATERAL (
+       SELECT a.phone, LOWER(a.alias) AS label
+       FROM "UserAlias" a
+       WHERE a.phone = m.phone AND ${regexOr('a.alias')}
+     ) la
      UNION ALL
      SELECT up2.phone, LOWER(u2.name) AS label, 1 AS priority
      FROM "UserPhone" up2
      JOIN "User" u2 ON u2.id = up2."userId"
      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
-       AND ${gateOr('u2.name')} AND ${regexOr('u2.name')}
+       AND ${regexOr('u2.name')}
      UNION ALL
      SELECT up3.phone,
             LOWER(COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')) AS label,
@@ -140,7 +136,7 @@ export function buildExactMatchSql(
   return {
     matchedCte,
     wordHits,
-    params: [userId, ...allRegex, ...gateTerms, userId, [...blockedPhones]],
+    params: [userId, ...allRegex, userId, [...blockedPhones]],
     blockIdx,
   };
 }

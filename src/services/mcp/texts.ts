@@ -308,6 +308,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'reason no longer holds. Pass excluded_for to lift one scope, omit it to lift all of them ' +
       'for that contact.',
   },
+  mark_contact_deceased: {
+    title: 'Mark a contact as deceased',
+    description:
+      'Mark a contact as deceased when the user mentions they have passed away. This permanently ' +
+      "hides them from the user's searches and introduction suggestions. Respond gently and " +
+      'never suggest contacting or introducing this person again. Pass the contact_ref from a ' +
+      'search result.',
+  },
   retract_contact_fact: {
     title: 'Retract a wrong saved fact',
     description:

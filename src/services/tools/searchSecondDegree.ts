@@ -5,6 +5,8 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
+import { fetchExclusionsForPhones } from './contactExclusions';
+import { phoneDigits } from '../phone';
 import { normalizePhone } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 
@@ -244,6 +246,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const rows = result.rows.filter((r) => !isExcluded(r.phone));
     if (rows.length === 0) return { found: false, reason: 'no_matches' };
 
+    // The user's own "not this person, for this" decisions ride along here
+    // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
+    // later precisely because only the DIRECT tools carried exclusions.
+    const exclusions = await fetchExclusionsForPhones(
+      userId,
+      rows.map((r) => r.phone),
+    );
+
     return {
       found: true,
       count: rows.length,
@@ -262,6 +272,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         // 0..1) — how warm the best via's own tie to this person is. Missing
         // when no bridge has a computed score.
         ...(row.warmth != null && { via_warmth: Number(row.warmth) }),
+        ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
+          exclusions: exclusions.get(phoneDigits(row.phone)),
+        }),
         // Internal identifiers for agent use — never displayed to the user.
         // target_user_id is set when the person is a registered Ally user;
         // target_phone is set when they are not (unregistered contact).
