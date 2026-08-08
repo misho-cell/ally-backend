@@ -12,16 +12,19 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
+jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
 }));
 
 import { query } from '../../db/postgres/client';
+import { getTaskById } from '../taskStore.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import { createAsk, recordAskAnswer, cancelAsksForTask } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockCreateThread = createThread as jest.MockedFunction<typeof createThread>;
 const mockSaveMessage = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 
@@ -29,7 +32,17 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
   return { rows: data, rowCount };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Default: an open task owned by the caller WITH the blanket permission —
+  // the P0 gate lets these through; individual tests flip the fields.
+  mockGetTask.mockResolvedValue({
+    id: 3,
+    user_id: 42,
+    status: 'open',
+    permission_granted: true,
+  } as never);
+});
 
 function routeAskQueries(opts: {
   member?: { userId: number; name: string } | null;
@@ -51,6 +64,32 @@ function routeAskQueries(opts: {
 }
 
 describe('createAsk', () => {
+  it('REFUSES without granted permission — the server-side P0 gate (thread 7723)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    mockGetTask.mockResolvedValue({
+      id: 3,
+      user_id: 42,
+      status: 'open',
+      permission_granted: false,
+    } as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect((out as { error: string }).error).toContain('grant_task_permission');
+    // Nothing left the building: no thread, no message, no push.
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('a relay (parentAskId set) bypasses the sender-permission gate by design', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    mockGetTask.mockResolvedValue(null as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა', 11);
+
+    expect(out.sent).toBe(true);
+  });
+
   it('sends: ask row + recipient thread + opening message', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
 

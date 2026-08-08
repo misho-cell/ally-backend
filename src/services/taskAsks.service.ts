@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { getTaskById } from './taskStore.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
@@ -41,6 +42,31 @@ export async function createAsk(
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed) return { sent: false, error: 'Pass a non-empty question.' };
+
+  // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
+  // reaches a real person's phone must never depend on prompt text alone —
+  // the rule lived only in the task_step block, and every mode carries every
+  // tool, so a quick_answer run created task_331 and fired an ask in one
+  // move, permission_granted = false. The gate lives HERE, at the single
+  // choke point every surface (in-app dispatch, connector, future callers)
+  // must pass through. Relays are exempt by design: a relay is the RECIPIENT
+  // forwarding the already-permitted parent ask with their own consent.
+  if (parentAskId === undefined) {
+    const task = await getTaskById(taskId);
+    if (!task || String(task.user_id) !== fromUserId || task.status !== 'open') {
+      return { sent: false, error: 'Task not found or not open.' };
+    }
+    if (!task.permission_granted) {
+      return {
+        sent: false,
+        error:
+          'ნებართვა არ არის: ამ დავალებაზე მომხმარებელს ჯერ არ დაუდასტურებია, რომ მისი ' +
+          'სახელით ადამიანებს მივწერო. ჯერ პირდაპირ ჰკითხე მას („გინდა შენი ქსელის წევრებს ' +
+          'ვკითხო ამაზე?"), დასტურის შემდეგ გამოიძახე grant_task_permission და მხოლოდ მერე ' +
+          'ask_contact. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
+      };
+    }
+  }
 
   // The recipient must be a registered member (format-independent lookup).
   const member = await query<{ userId: number; name: string | null }>(
