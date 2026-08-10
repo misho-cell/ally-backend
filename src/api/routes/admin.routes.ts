@@ -816,7 +816,7 @@ adminRouter.get(
         res.status(404).json({ success: false, error: 'thread ვერ მოიძებნა' });
         return;
       }
-      const messages = await getThreadMessages(threadId);
+      const messages = await getThreadMessages(threadId, { includeSteps: true });
       res.status(200).json({ success: true, data: { thread: threadResult.rows[0], messages } });
     } catch (error) {
       // eslint-disable-next-line no-console

@@ -61,13 +61,17 @@ export async function createAsk(
       return { sent: false, error: 'Task not found or not open.' };
     }
     if (!task.permission_granted) {
+      // The wording matters (ticket 3 §6.8): the old text sent the model back
+      // to the user even when consent had JUST been voiced, producing three
+      // permission prompts for one send (thread 8152).
       return {
         sent: false,
         error:
-          'ნებართვა არ არის: ამ დავალებაზე მომხმარებელს ჯერ არ დაუდასტურებია, რომ მისი ' +
-          'სახელით ადამიანებს მივწერო. ჯერ პირდაპირ ჰკითხე მას („გინდა შენი ქსელის წევრებს ' +
-          'ვკითხო ამაზე?"), დასტურის შემდეგ გამოიძახე grant_task_permission და მხოლოდ მერე ' +
-          'ask_contact. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
+          'ნებართვა არ არის: ამ დავალებაზე grant_task_permission ჯერ არ გამოძახებულა. თუ ' +
+          'მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი აქვს („კი, გაუგზავნე") — ხელახლა ' +
+          'ნუ ჰკითხავ: გამოიძახე grant_task_permission ახლავე და გაიმეორე ask_contact. თუ ' +
+          'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
+          'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
     }
   }

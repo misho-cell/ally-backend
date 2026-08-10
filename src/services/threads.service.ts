@@ -185,11 +185,20 @@ export async function getOrCreateDefaultThread(userId: string): Promise<number> 
   return created.id;
 }
 
-export async function getThreadMessages(threadId: number): Promise<ThreadMessage[]> {
+export async function getThreadMessages(
+  threadId: number,
+  opts: { includeSteps?: boolean } = {},
+): Promise<ThreadMessage[]> {
+  // Step rows are live-run narration (kept in the DB as timeout-salvage
+  // material) — in the chat view they read as the assistant saying almost the
+  // same thing twice (ticket 3 §6.2: a step at 07:49:11 and the final message
+  // at 07:49:20 in thread 7921). The admin window keeps them for
+  // word-for-word inspection.
+  const kindFilter = opts.includeSteps ? '' : ` AND kind <> 'step'`;
   const result = await query<ThreadMessage>(
     `SELECT role, content, kind, run_id, created_at
      FROM conversations
-     WHERE thread_id = $1 AND content != ''
+     WHERE thread_id = $1 AND content != ''${kindFilter}
      ORDER BY created_at ASC`,
     [threadId],
   );
