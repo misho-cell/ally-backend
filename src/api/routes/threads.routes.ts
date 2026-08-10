@@ -219,9 +219,12 @@ threadsRouter.post(
         askAnswerCaptured = recordAskAnswer(threadId, message)
           .then((captured) => {
             if (captured?.firstAnswer) {
+              // The verbatim (scrubbed) answer rides IN the wake event: in
+              // thread 7723 the asker-side agent, sent to look the answer up,
+              // presented the thread title instead (ticket 3 §5).
               void wakeTask(
                 captured.taskId,
-                'პასუხი მოვიდა შენს გაგზავნილ კითხვაზე — გაეცანი (კითხვების სექცია) და გააგრძელე დავალება.',
+                `პასუხი მოვიდა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტია: "${captured.answer}" — მფლობელს გადაეცი ეს სიტყვასიტყვით, ციტატად (თუ სხვა ენაზეა, თარგმანიც დაურთე) და გააგრძელე დავალება.`,
               );
             }
             return captured !== null;

@@ -196,7 +196,7 @@ export async function createAsk(
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
-): Promise<{ taskId: number; firstAnswer: boolean } | null> {
+): Promise<{ taskId: number; firstAnswer: boolean; answer: string } | null> {
   const safe = scrubText(answerText.trim());
   if (!safe) return null;
   const updated = await query<{ task_id: number; status: string }>(
@@ -221,7 +221,10 @@ export async function recordAskAnswer(
     ASK_QUERY_TIMEOUT_MS,
   );
   const firstAnswer = (check.rows[0]?.answer ?? '') === safe;
-  return { taskId: row.task_id, firstAnswer };
+  // The scrubbed verbatim text rides back so the wake event can carry it —
+  // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
+  // answer; giving it the exact words in the event kills that failure mode.
+  return { taskId: row.task_id, firstAnswer, answer: safe };
 }
 
 /** Everything this task has asked and heard back — for the prompt's task section. */

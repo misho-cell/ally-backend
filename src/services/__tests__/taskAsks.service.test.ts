@@ -262,7 +262,8 @@ describe('recordAskAnswer', () => {
 
     const out = await recordAskAnswer(55, 'ბიძაშვილი აკეთებს BMW-ებს');
 
-    expect(out).toEqual({ taskId: 3, firstAnswer: true });
+    // The verbatim scrubbed text rides back for the wake event (ticket 3 §5).
+    expect(out).toEqual({ taskId: 3, firstAnswer: true, answer: 'ბიძაშვილი აკეთებს BMW-ებს' });
   });
 
   it('returns null when the thread carries no live ask', async () => {
