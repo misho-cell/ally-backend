@@ -587,23 +587,25 @@ const RELAY_ASK_TOOL: AnthropicTool = {
   name: 'relay_ask',
   description:
     'Inside an incoming-ask thread ONLY: when the user offers to forward the question to one ' +
-    'of THEIR contacts ("ask Giorgi, he would know"), relay it with their consent. The answer ' +
-    'flows back to the original asker automatically. One relay level deep — a relayed ask ' +
-    'cannot be relayed again.',
+    'of THEIR contacts ("ask Giorgi, he would know"), relay it with their consent. Pass the ' +
+    "contact's name exactly as the user said it — the server finds the contact in the user's " +
+    'own phonebook; you never search. The answer flows back to the original asker ' +
+    'automatically. One relay level deep — a relayed ask cannot be relayed again.',
   input_schema: {
     type: 'object',
     properties: {
       ask_id: { type: 'number', description: 'The incoming ask id from the system context.' },
-      phone: {
+      contact_name: {
         type: 'string',
-        description: "The user's contact to forward to (from a search result).",
+        description:
+          "The contact's name exactly as the user said it (or a phone number they dictated).",
       },
       question: {
         type: 'string',
         description: 'Optional rephrased question; defaults to the original.',
       },
     },
-    required: ['ask_id', 'phone'],
+    required: ['ask_id', 'contact_name'],
   },
 };
 
@@ -812,7 +814,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_contact_by_name: {
     name: 'search_contact_by_name',
     description:
-      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) and `relationship_strength` (0–1) — how the user relates to that contact; use it to disambiguate and phrase naturally.',
+      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.',
     input_schema: {
       type: 'object',
       properties: {
@@ -828,7 +830,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_by_tag: {
     name: 'search_by_tag',
     description:
-      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) and `relationship_strength` (0–1) — how the user relates to that contact; when choosing whom to recommend, prefer a stronger tie and phrase accordingly (e.g. a close contact over a formal one).',
+      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.',
     input_schema: {
       type: 'object',
       properties: {
@@ -1169,16 +1171,57 @@ function resolvePendingRequests(
 
 // The recipient's side of an ask: the question, who asked, and the relay
 // mechanics. The user's plain reply is captured automatically — the assistant
-// only helps and, on explicit consent, relays.
+// carries it verbatim and, on explicit consent, relays. Engine-owned gates
+// (ticket 3 §1): no follow-up interrogation, no delivery talk, no "contact
+// them directly", and no data — the context has none by construction.
 function buildIncomingAskSection(ask: IncomingAsk): string {
   const from = ask.from_name ?? 'Netai-ს მომხმარებელი';
   return (
     `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ relay_ask-ისთვის, პასუხში არასდროს ახსენო]\n` +
     `${from} გეკითხება: "${ask.question}"\n` +
-    `- მომხმარებლის პასუხი ავტომატურად გადაეცემა მკითხველს — შენ დაეხმარე ჩამოყალიბებაში და დაადასტურე გადაცემა.\n` +
-    `- თუ მომხმარებელი იტყვის „ჩემს ნაცნობს ჰკითხე/გადაუგზავნე" — ჯერ იპოვე ის კონტაქტი ძიებით, მერე გამოიძახე relay_ask.\n` +
-    `- მისი პირადი ინფორმაცია კითხვის ავტორს არასდროს გადასცე პასუხის ტექსტის მიღმა.`
+    `- მომხმარებლის პასუხი უკვე ავტომატურად გადაეცემა კითხვის ავტორს იმ წამს, როცა ის შეტყობინებას აგზავნის. შენ არაფერს აგზავნი და გადაცემის წარმატება-ჩავარდნაზე არასოდეს საუბრობ.\n` +
+    `- პასუხი გადადის სიტყვასიტყვით. დამაზუსტებელი კითხვები არ დაუსვა — მადლობა და მოკლე დახურვა სრული პასუხია.\n` +
+    `- relay_ask მხოლოდ მაშინ, როცა მომხმარებელი თვითონ იტყვის „ჩემს ნაცნობს გადაუგზავნე/ჰკითხე" — გადაეცი ის სახელი relay_ask-ს ისე, როგორც მან თქვა (კონტაქტს სერვერი პოულობს).\n` +
+    `- თუ რამის გადაცემა ვერ მოხერხდა: მხოლოდ „ამის გადაცემა ვერ მოხერხდა". „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება, ნომრის თხოვნა-გაცემა ან სხვა გვერდითი გზა.\n` +
+    `- შენ ვერ ხედავ ვერავის ქსელს, კონტაქტებს, მიზნებს, ჩანაწერებსა და სტატისტიკას — ეს მონაცემები ამ საუბარში არ არსებობს და მათზე ვერაფერს იტყვი. კითხვაზე „რა არის ეს აპი?" უპასუხე ერთი წინადადებით და დაბრუნდი კითხვაზე — არავითარი შეთავაზება „შენც დაგეხმარები"-ს სტილში.`
   );
+}
+
+// Fail-safe identity for the isolated incoming_ask context: even with every
+// prompt block disabled, the model must know it is a courier for one question
+// and nothing more.
+const INCOMING_ASK_IDENTITY =
+  'შენ Netai-ს ასისტენტი ხარ, რომელიც მომხმარებელს ესაუბრება ერთი კონკრეტული, სხვისგან მოსული ' +
+  'კითხვის გამო. შენი ერთადერთი საქმეა ამ კითხვაზე პასუხის მიღება და მადლობა — სხვა თემა, ' +
+  'ინსტრუმენტი თუ მონაცემი ამ საუბარში არ არსებობს.';
+
+// Ticket 3 §1 (CRITICAL, code-enforced): an incoming_ask thread talks to the
+// OTHER side of an ask — a person who never consented to see anyone's data.
+// Its context window gets NO base playbook, NO profile/tasks/notes/private
+// context/insight fields/pending requests and (see buildToolsForThread) NO
+// tools beyond relay_ask. Three live leaks came from data that had no business
+// being in this window; two prompt rewrites failed to hold the boundary, so
+// the data itself stays out.
+async function buildIncomingAskPrompt(
+  userId: string,
+  threadId?: number,
+): Promise<AgentPromptResult> {
+  const [modeBlocks, incomingAsk, nameResult] = await Promise.all([
+    composeBlocksForMode('incoming_ask', userId),
+    threadId != null ? getAskByThread(threadId) : Promise.resolve(null),
+    query<{ name: string | null }>('SELECT name FROM "User" WHERE id = $1 LIMIT 1', [userId]),
+  ]);
+  const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
+  const nameSection = registeredName
+    ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე.`
+    : '';
+  const prompt =
+    INCOMING_ASK_IDENTITY +
+    INJECTION_DEFENSE_PROMPT +
+    modeBlocks.text +
+    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+    nameSection;
+  return { prompt, runMode: 'incoming_ask', blockNames: modeBlocks.names };
 }
 
 // Engine-owned section for a task-bound thread: the task's state and the
@@ -1226,6 +1269,11 @@ async function buildAgentSystemPrompt(
   // a live thread in that state. Real runs never pass it.
   forcedMode?: RunMode,
 ): Promise<AgentPromptResult> {
+  // The isolated recipient-side context — checked FIRST so nothing below
+  // (base prompt, memory, tasks, profile) is even loaded for it.
+  if (threadType === 'incoming_ask' || forcedMode === 'incoming_ask') {
+    return buildIncomingAskPrompt(userId, threadId);
+  }
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
@@ -1328,7 +1376,9 @@ export interface PromptPreview {
 export async function buildPromptPreview(userId: string, mode: RunMode): Promise<PromptPreview> {
   const [{ prompt, blockNames }, tools] = await Promise.all([
     buildAgentSystemPrompt(userId, PREVIEW_THREAD_TYPE[mode], null, undefined, mode),
-    buildEnabledTools(userId),
+    // The preview must show the mode's REAL toolset — incoming_ask carries
+    // relay_ask only (ticket 3 §1).
+    buildToolsForThread(userId, PREVIEW_THREAD_TYPE[mode]),
   ]);
   const not_rendered: string[] = [];
   if (mode === 'task_step') {
@@ -1552,10 +1602,12 @@ async function executeToolCall(
       return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
     }
     case 'relay_ask':
+      // `phone` fallback: an in-flight thread may replay history recorded
+      // under the old schema.
       return createRelayAsk(
         userId,
         Number(input['ask_id']),
-        String(input['phone'] ?? ''),
+        String(input['contact_name'] ?? input['phone'] ?? ''),
         input['question'] ? String(input['question']) : undefined,
       );
     case 'exclude_contact':
@@ -2277,6 +2329,15 @@ async function salvageFinalAnswer(
   }
 }
 
+// Ticket 3 §1: the recipient-side agent gets exactly one capability — relaying
+// the ask onward with the user's consent. Search, tasks, notes, profile and
+// every other tool belong to account-owner modes and must not be reachable
+// from an incoming_ask thread.
+async function buildToolsForThread(userId: string, threadType?: string): Promise<AnthropicTool[]> {
+  if (threadType === 'incoming_ask') return [RELAY_ASK_TOOL];
+  return buildEnabledTools(userId);
+}
+
 async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
     getEnabledToolKeys(),
@@ -2338,7 +2399,7 @@ export async function processChat(
 
   const [agentPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id, thread.id),
-    buildEnabledTools(userId),
+    buildToolsForThread(userId, thread.type),
     loadHistory(threadId),
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:

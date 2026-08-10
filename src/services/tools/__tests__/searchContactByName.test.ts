@@ -197,7 +197,7 @@ describe('searchContactByName', () => {
     expect(r.saved_as).toBe('კლასელი');
   });
 
-  it('surfaces the enrichment relationship type and strength when computed', async () => {
+  it('surfaces the relationship category but NEVER the numeric strength (ticket 3 §6.0)', async () => {
     setup({
       main: [mockRow],
       count: 1,
@@ -209,7 +209,7 @@ describe('searchContactByName', () => {
     const result = (await searchContactByName('42', 'გიო')) as Record<string, unknown>;
     const r = (result.results as Array<Record<string, unknown>>)[0];
     expect(r.relationship).toBe('family');
-    expect(r.relationship_strength).toBe(0.9);
+    expect(r).not.toHaveProperty('relationship_strength');
   });
 
   it('omits relationship fields when no score has been computed', async () => {

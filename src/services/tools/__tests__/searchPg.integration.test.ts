@@ -143,12 +143,12 @@ maybeDescribe('search against real Postgres (prod repro cases)', () => {
     expect(resultNames[0]).toBe('Avto Kasradze');
   });
 
-  it('attaches the enrichment relationship score to a direct result', async () => {
+  it('attaches the relationship category, never the numeric strength (ticket 3 §6.0)', async () => {
     const r = (await searchContactByName('501', 'babukhadia')) as SearchResult;
     expect(r.error).toBeUndefined();
     const hit = (r.results ?? []).find((x) => x.name === 'Ilia Babuxadia');
     expect(hit?.relationship).toBe('professional');
-    expect(hit?.relationship_strength).toBe(0.72);
+    expect(hit).not.toHaveProperty('relationship_strength');
   });
 
   it("does not leak another user's contacts (scoping)", async () => {

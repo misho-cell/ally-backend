@@ -170,9 +170,11 @@ function shape(
     is_member: isMemberPhone(members, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
-    // Enrichment-computed edge score (family/close/professional/formal + 0..1
-    // strength) — lets the agent phrase how well the user knows this person.
-    ...(rel && { relationship: rel.relationship, relationship_strength: rel.strength }),
+    // Enrichment-computed edge category (family/close/professional/formal) —
+    // lets the agent phrase how well the user knows this person. The numeric
+    // strength stays server-side: a raw score printed to a user is a leak
+    // (ticket 3 §6.0 — "relationship_strength 0.65" reached a reply).
+    ...(rel && { relationship: rel.relationship }),
     // The user's own recorded "not this person, for this" decisions — the
     // assistant must respect the scope (and only the scope) without a lookup.
     ...(excl && excl.length > 0 && { exclusions: excl }),

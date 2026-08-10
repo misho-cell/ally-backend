@@ -4,8 +4,12 @@ import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
+import { toWordStartPattern } from './tools/transliterate';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
+// The recipient's chat list must distinguish eight questions from the same
+// sender — the title carries the question itself, not a generic "კითხვა".
+const ASK_TITLE_SNIPPET_CHARS = 48;
 // Anti-runaway ceiling, not a product limit (the product decision is "no
 // limits, the user pays tokens") — one account still must not be able to
 // blanket the network in a day. Env-adjustable.
@@ -130,15 +134,21 @@ export async function createAsk(
     [fromUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
-  const senderName = fromName.rows[0]?.name ?? 'Netai-ს მომხმარებელი';
+  // Trimmed: a trailing space in the stored name rendered as "**Name **" on
+  // the recipient's phone (ticket 3 §6.3).
+  const senderName = fromName.rows[0]?.name?.trim() || 'Netai-ს მომხმარებელი';
 
   // Recipient-side thread: born a task-shaped item awaiting THEIR reply. The
   // question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
+  const titleSnippet =
+    safeQuestion.length > ASK_TITLE_SNIPPET_CHARS
+      ? `${safeQuestion.slice(0, ASK_TITLE_SNIPPET_CHARS - 1)}…`
+      : safeQuestion;
   const thread = await createThread(
     String(toUserId),
     'incoming_ask',
-    `${senderName} — კითხვა`,
+    `${senderName}: ${titleSnippet}`,
     undefined,
     {
       isTask: true,
@@ -146,8 +156,10 @@ export async function createAsk(
       statusLine: 'პასუხს ელოდება',
     },
   );
+  // Plain text, no markdown: the recipient-side renderer shows the asterisks
+  // verbatim (ticket 3 §6.3).
   const opening =
-    `**${senderName}**-ის ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
+    `${senderName}-ის ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
     'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
   await saveThreadMessage(thread.id, toUserId, 'assistant', opening);
 
@@ -269,16 +281,81 @@ export async function getAskByThread(askThreadId: number): Promise<IncomingAsk |
   return result.rows[0] ?? null;
 }
 
+// Appended to every FAILED relay outcome: the model on the recipient's side of
+// an ask must close neutrally — a refusal must never surface as "system error"
+// and must never end with "contact them directly" (ticket 3 §1, code-enforced
+// because two prompt rewrites failed to hold it).
+const RELAY_NEUTRAL_CLOSE =
+  ' მომხმარებელს მხოლოდ ეს უთხარი: „ამის გადაცემა ამ ეტაპზე ვერ მოხერხდა". ტექნიკური მიზეზი და ' +
+  '„სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.';
+
+// A dictated number is used as-is; anything shorter is treated as a name.
+const RELAY_PHONE_MIN_DIGITS = 9;
+// We only need to distinguish "exactly one" from "several" — never a list.
+const RELAY_NAME_MATCH_LIMIT = 3;
+
+/**
+ * Resolve the relay target INSIDE the server, from the relayer's own saved
+ * contacts. The incoming_ask context has no search tools by design (ticket 3
+ * §1) — candidate names, counts and tags must never enter that context window,
+ * so ambiguity comes back as "ask the user for the full name", never as a list.
+ */
+async function resolveRelayContact(
+  relayerUserId: string,
+  contact: string,
+): Promise<{ phone: string } | { error: string }> {
+  const digits = contact.replace(/\D/g, '');
+  if (digits.length >= RELAY_PHONE_MIN_DIGITS) return { phone: digits };
+  const words = contact.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return { error: 'კონტაქტის სახელი ცარიელია — ჰკითხე მომხმარებელს სახელი და გვარი.' };
+  }
+  const conds = words.map((_, i) => `(LOWER(ua.alias) || '') ~ $${i + 2}`).join(' AND ');
+  const matches = await query<{ digits: string }>(
+    `SELECT DISTINCT regexp_replace(ua.phone, '\\D', '', 'g') AS digits
+     FROM "UserAlias" ua
+     WHERE ua."contactId" = $1::int AND ${conds}
+     LIMIT ${RELAY_NAME_MATCH_LIMIT}`,
+    [relayerUserId, ...words.map(toWordStartPattern)],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  if (matches.rows.length === 0) {
+    return {
+      error:
+        'ასეთი სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა — ჰკითხე მას ზუსტი სახელი და გვარი. ვარაუდები ნუ ჩამოთვლი.',
+    };
+  }
+  if (matches.rows.length > 1) {
+    return {
+      error:
+        'ეს სახელი ცალსახად ვერ დადგინდა — ჰკითხე მომხმარებელს სრული სახელი და გვარი. კანდიდატები ნუ ჩამოთვლი.',
+    };
+  }
+  return { phone: matches.rows[0].digits };
+}
+
 /**
  * Relay: the RECIPIENT of an ask forwards it (with their consent, voiced in
- * their own thread) to one of THEIR contacts. The child ask keeps the original
- * task_id, so C's answer wakes A's task through the normal capture path; B is
- * the sender for caps and dedupe purposes. One level deep by design.
+ * their own thread) to one of THEIR contacts, named in their words — the
+ * server finds the contact. The child ask keeps the original task_id, so C's
+ * answer wakes A's task through the normal capture path; B is the sender for
+ * caps and dedupe purposes. One level deep by design.
  */
 export async function createRelayAsk(
   relayerUserId: string,
   parentAskId: number,
-  contactPhone: string,
+  contact: string,
+  question?: string,
+): Promise<CreateAskOutcome> {
+  const outcome = await relayAskInner(relayerUserId, parentAskId, contact, question);
+  if (outcome.sent) return outcome;
+  return { sent: false, error: outcome.error + RELAY_NEUTRAL_CLOSE };
+}
+
+async function relayAskInner(
+  relayerUserId: string,
+  parentAskId: number,
+  contact: string,
   question?: string,
 ): Promise<CreateAskOutcome> {
   const parent = await query<{
@@ -299,10 +376,14 @@ export async function createRelayAsk(
   if (row.parent_ask_id !== null) {
     return { sent: false, error: 'ეს კითხვა უკვე გადაგზავნილია ერთხელ — ჯაჭვი აქ ჩერდება.' };
   }
+  const target = await resolveRelayContact(relayerUserId, contact);
+  if ('error' in target) {
+    return { sent: false, error: target.error };
+  }
   return createAsk(
     relayerUserId,
     row.task_id,
-    contactPhone,
+    target.phone,
     question?.trim() || row.question,
     row.id,
   );
