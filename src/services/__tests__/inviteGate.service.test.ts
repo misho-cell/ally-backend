@@ -121,6 +121,46 @@ describe('checkRegistrationEligibility', () => {
     expect(result).toEqual({ eligible: true, mode: 'referral', inviterUserId: 167712 });
   });
 
+  it('matches phones by DIGITS, never by exact spelling (10 Aug: the door rejected real subscribers)', async () => {
+    setWorld({ ...CLOSED_WORLD, referrerId: 167712 });
+
+    await checkRegistrationEligibility('+995599000001', '+995 599 44 44 20');
+
+    // The referrer lookup must compare regexp-stripped digits on both sides —
+    // prod UserPhone spellings vary ('+995…', '995…', spaced), and exact
+    // matching locked out every real subscriber.
+    const referrerCall = mockQuery.mock.calls.find(
+      ([sql]) =>
+        (sql as string).includes('FROM "UserPhone" up') &&
+        (sql as string).includes('subscription_status = ANY'),
+    );
+    expect(referrerCall).toBeDefined();
+    expect(referrerCall?.[0]).toContain("regexp_replace(up.phone, '\\D', '', 'g') = $1");
+    expect(referrerCall?.[1]?.[0]).toBe('995599444420');
+
+    // The registered-phone check uses the same digits contract.
+    const registeredCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SELECT "userId" FROM "UserPhone"'),
+    );
+    expect(registeredCall?.[0]).toContain("regexp_replace(phone, '\\D', '', 'g') = $1");
+    expect(registeredCall?.[1]?.[0]).toBe('995599000001');
+  });
+
+  it('probes UserAlias social proof with every realistic spelling of the number', async () => {
+    setWorld(CLOSED_WORLD);
+
+    await checkRegistrationEligibility('599 00 00 01');
+
+    const aliasCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM "UserAlias" ua'),
+    );
+    expect(aliasCall).toBeDefined();
+    const variants = aliasCall?.[1]?.[0] as string[];
+    expect(variants).toEqual(
+      expect.arrayContaining(['+995599000001', '995599000001', '599000001', '0599000001']),
+    );
+  });
+
   it('rejects a referral that is not a subscribed user', async () => {
     setWorld(CLOSED_WORLD);
 

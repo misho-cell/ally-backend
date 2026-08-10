@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { normalizePhone } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
 
 const INVITE_ONLY_FLAG = 'invite_only';
@@ -9,11 +9,30 @@ const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 // many subscribers, OR this many users of any kind ("the bubble knows them").
 const MIN_SUBSCRIBED_OWNERS = 3;
 const MIN_TOTAL_OWNERS = 20;
+// A full Georgian number in digits: '995' + the 9-digit local part.
+const GEORGIA_CC = '995';
+const GEORGIA_FULL_DIGITS = 12;
 
-// Stored phones may predate normalization, so match both spellings.
+// Stored phones predate normalization and vary in spelling ('+995…', '995…',
+// '599…', '0599…'). UserPhone lookups compare digits on both sides instead
+// (see below) — this variant list exists only for the UserAlias social-proof
+// probe, where a regexp on the column would forfeit the phone index over
+// millions of rows. Every realistic spelling of the same number is enumerated
+// so `phone = ANY(...)` stays index-friendly.
 function phoneVariants(phone: string): string[] {
-  const normalized = normalizePhone(phone);
-  return normalized === phone ? [phone] : [phone, normalized];
+  const variants = new Set<string>([phone.trim()]);
+  const digits = phoneDigits(phone);
+  if (digits) {
+    variants.add(normalizePhone(phone));
+    variants.add(digits);
+    if (digits.startsWith(GEORGIA_CC) && digits.length === GEORGIA_FULL_DIGITS) {
+      const local = digits.slice(GEORGIA_CC.length);
+      variants.add(local);
+      variants.add(`0${local}`);
+    }
+  }
+  variants.delete('');
+  return [...variants];
 }
 
 export async function isInviteOnlyEnabled(): Promise<boolean> {
@@ -24,10 +43,17 @@ export async function isInviteOnlyEnabled(): Promise<boolean> {
   return result.rows[0]?.enabled === true;
 }
 
-async function isPhoneRegistered(variants: string[]): Promise<boolean> {
+// UserPhone holds one row per REGISTERED user — small enough that the
+// format-independent digits comparison (no index) is free. Exact string
+// matching here rejected real numbers whose stored spelling differed from the
+// typed one, which locked the door on every registration (10 Aug).
+async function isPhoneRegistered(phone: string): Promise<boolean> {
+  const digits = phoneDigits(phone);
+  if (!digits) return false;
   const result = await query<{ userId: number }>(
-    'SELECT "userId" FROM "UserPhone" WHERE phone = ANY($1) LIMIT 1',
-    [variants],
+    `SELECT "userId" FROM "UserPhone"
+     WHERE regexp_replace(phone, '\\D', '', 'g') = $1 LIMIT 1`,
+    [digits],
   );
   return (result.rowCount ?? 0) > 0;
 }
@@ -50,15 +76,17 @@ async function passesSocialProof(variants: string[]): Promise<boolean> {
 }
 
 async function findSubscribedReferrer(referralPhone: string): Promise<number | null> {
+  const digits = phoneDigits(referralPhone);
+  if (!digits) return null;
   const result = await query<{ id: number }>(
     `SELECT u.id
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
-     WHERE up.phone = ANY($1)
+     WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
        AND u."deletedAt" IS NULL
        AND u.subscription_status = ANY($2)
      LIMIT 1`,
-    [phoneVariants(referralPhone), SUBSCRIBED_STATUSES],
+    [digits, SUBSCRIBED_STATUSES],
   );
   return result.rows[0]?.id ?? null;
 }
@@ -76,13 +104,15 @@ async function findInviterForAttribution(
 ): Promise<number | undefined> {
   // Self-referral guard: pointing the field at your own number attributes nothing.
   if (normalizePhone(referralPhone) === normalizePhone(registrantPhone)) return undefined;
+  const digits = phoneDigits(referralPhone);
+  if (!digits) return undefined;
   const result = await query<{ id: number }>(
     `SELECT u.id
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
-     WHERE up.phone = ANY($1) AND u."deletedAt" IS NULL
+     WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1 AND u."deletedAt" IS NULL
      LIMIT 1`,
-    [phoneVariants(referralPhone)],
+    [digits],
   );
   return result.rows[0]?.id ?? undefined;
 }
@@ -111,13 +141,11 @@ export async function checkRegistrationEligibility(
     return { eligible: true, mode: 'open', inviterUserId: attribution };
   }
 
-  const variants = phoneVariants(phone);
-
-  if (await isPhoneRegistered(variants)) {
+  if (await isPhoneRegistered(phone)) {
     return { eligible: true, mode: 'existing', inviterUserId: attribution };
   }
 
-  if (await passesSocialProof(variants)) {
+  if (await passesSocialProof(phoneVariants(phone))) {
     return { eligible: true, mode: 'social', inviterUserId: attribution };
   }
 
