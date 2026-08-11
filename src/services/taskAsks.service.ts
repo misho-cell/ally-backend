@@ -6,6 +6,7 @@ import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
 import { buildRawWordGroups, toWordStartPattern } from './tools/transliterate';
 import { isOptedOutFromAsks } from './askOptOut.service';
+import { isPhoneOptedOut } from './privacyRights.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 // The recipient's chat list must distinguish eight questions from the same
@@ -112,7 +113,10 @@ export async function createAsk(
   // ahead of every other rule: a refusal to be contacted is about the person,
   // not the task, and it must not depend on the assistant's wording. Relays are
   // NOT exempt: a relay is still a message arriving on that person's phone.
-  if (await isOptedOutFromAsks(toUserId)) {
+  // Two lists, one rule: the account-level opt-out, and the phone-level one
+  // that outlives a deleted account (migration 056) — an erased number must
+  // not be reachable again just because someone still has it in a contact list.
+  if ((await isOptedOutFromAsks(toUserId)) || (await isPhoneOptedOut(contactPhone))) {
     return {
       sent: false,
       error:
