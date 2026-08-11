@@ -21,7 +21,13 @@ jest.mock('../notification.service', () => ({
 import { query } from '../../db/postgres/client';
 import { getTaskById } from '../taskStore.service';
 import { createThread, saveThreadMessage } from '../threads.service';
-import { createAsk, createRelayAsk, recordAskAnswer, cancelAsksForTask } from '../taskAsks.service';
+import {
+  createAsk,
+  createRelayAsk,
+  recordAskAnswer,
+  cancelAsksForTask,
+  buildAnswerWakeEvent,
+} from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
@@ -209,14 +215,21 @@ describe('createRelayAsk', () => {
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
-  it('a no-match name comes back neutral, with the no-direct-contact rule attached', async () => {
+  it('a no-match name gives the model an OUT when the user never asked to forward (blocker 2)', async () => {
     routeRelayQueries({ parent: parentRow, aliasMatches: [] });
 
-    const out = await createRelayAsk('42', 11, 'ზურაბი');
+    const out = await createRelayAsk('42', 11, 'თვითონ');
 
     expect(out.sent).toBe(false);
-    expect((out as { error: string }).error).toContain('ვერ მოიძებნა');
-    expect((out as { error: string }).error).toContain('პირდაპირ დაკავშირება');
+    const error = (out as { error: string }).error;
+    expect(error).toContain('ვერ მოიძებნა');
+    // "I'll ask him myself" is not a forward request — the instruction tells
+    // the model to say nothing about relaying and just continue.
+    expect(error).toContain('ზედმეტი იყო');
+    // Resolution errors carry their own instructions — the neutral-close
+    // suffix ("ამის გადაცემა ვერ მოხერხდა") must NOT ride on them: it made a
+    // never-requested relay read as a malfunction.
+    expect(error).not.toContain('ამის გადაცემა ამ ეტაპზე ვერ მოხერხდა');
   });
 
   it('every refusal carries the neutral-close rule (no "system error", no direct contact)', async () => {
@@ -256,20 +269,38 @@ describe('recordAskAnswer', () => {
   it('captures the FIRST reply and reports which task to wake', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('UPDATE task_asks'))
-        return Promise.resolve(rows([{ task_id: 3, status: 'answered' }]) as never);
+        return Promise.resolve(rows([{ id: 77, task_id: 3, status: 'answered' }]) as never);
       return Promise.resolve(rows([{ answer: 'ბიძაშვილი აკეთებს BMW-ებს' }]) as never);
     });
 
     const out = await recordAskAnswer(55, 'ბიძაშვილი აკეთებს BMW-ებს');
 
-    // The verbatim scrubbed text rides back for the wake event (ticket 3 §5).
-    expect(out).toEqual({ taskId: 3, firstAnswer: true, answer: 'ბიძაშვილი აკეთებს BMW-ებს' });
+    // The verbatim scrubbed text + ask id ride back for the wake event and
+    // its delivery marker (ticket 3 §5, ticket 4 blocker 1).
+    expect(out).toEqual({
+      askId: 77,
+      taskId: 3,
+      firstAnswer: true,
+      answer: 'ბიძაშვილი აკეთებს BMW-ებს',
+    });
   });
 
   it('returns null when the thread carries no live ask', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
     expect(await recordAskAnswer(55, 'hello')).toBeNull();
+  });
+});
+
+describe('buildAnswerWakeEvent', () => {
+  it('survives double quotes in the answer — tag-delimited, never quote-wrapped (blocker 3)', () => {
+    const event = buildAnswerWakeEvent('მან თქვა "არა" და წავიდა');
+
+    expect(event).toContain('<answer>\nმან თქვა "არა" და წავიდა\n</answer>');
+    // The old form wrapped the answer in its own quotes — thread 8201 got a
+    // raw fragment when the answer itself contained one.
+    expect(event).not.toContain('ტექსტია: "');
+    expect(event).toContain('სიტყვასიტყვით');
   });
 });
 

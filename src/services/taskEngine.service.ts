@@ -8,7 +8,12 @@ import {
   clearTaskWake,
   Task,
 } from './taskStore.service';
-import { sendDueAskReminders } from './taskAsks.service';
+import {
+  sendDueAskReminders,
+  listUnwokenAnswers,
+  markAskWakeDelivered,
+  buildAnswerWakeEvent,
+} from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
@@ -20,6 +25,10 @@ import { RUN_HARD_TIMEOUT_MS } from '../config/runBudgets';
 const TICK_INTERVAL_MS = 60_000;
 const REMINDER_INTERVAL_MS = 60 * 60_000;
 const MAX_REMINDERS_PER_SWEEP = 10;
+// Answer-wake backstop (ticket 4 blocker 1): re-deliver any answered ask whose
+// task never woke — a deploy-window failure is late by minutes, not by a day.
+const UNWOKEN_SWEEP_INTERVAL_MS = 5 * 60_000;
+const MAX_UNWOKEN_PER_SWEEP = 10;
 // Nightly review (the matcher, v1): quiet open tasks get one model-driven
 // re-check per night — new members/tags/facts since yesterday surface through
 // the same searches the task already knows how to run.
@@ -39,17 +48,22 @@ const runningTasks = new Set<number>();
  * thread as a normal turn (so history carries it), the run works with tools,
  * and the outcome is delivered exactly like a user-triggered run — SSE,
  * statuses, push when the owner is away.
+ *
+ * Returns whether the event actually entered the thread — false on every
+ * guard exit (closed task, busy thread, empty wallet, run crash). Callers
+ * that must guarantee delivery (the answer-wake path) use this to decide
+ * whether to mark the wake delivered or leave it for the sweep.
  */
-export async function wakeTask(taskId: number, eventText: string): Promise<void> {
-  if (runningTasks.has(taskId)) return;
+export async function wakeTask(taskId: number, eventText: string): Promise<boolean> {
+  if (runningTasks.has(taskId)) return false;
   runningTasks.add(taskId);
   try {
     const task = await getTaskById(taskId);
-    if (!task || task.status !== 'open' || task.thread_id === null) return;
+    if (!task || task.status !== 'open' || task.thread_id === null) return false;
     const ownerId = String(task.user_id);
     const thread = await getThread(task.thread_id, ownerId);
-    if (!thread) return;
-    if (thread.status === 'working') return; // a live run owns the thread right now
+    if (!thread) return false;
+    if (thread.status === 'working') return false; // a live run owns the thread right now
 
     // Engine runs spend the owner's tokens like any other run — an exhausted
     // balance pauses the task visibly instead of failing silently.
@@ -64,7 +78,7 @@ export async function wakeTask(taskId: number, eventText: string): Promise<void>
         'assistant',
         'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
       ).catch(() => undefined);
-      return;
+      return false;
     }
 
     const runId = randomUUID();
@@ -81,7 +95,9 @@ export async function wakeTask(taskId: number, eventText: string): Promise<void>
       if (result.runFailed === true) {
         emitRunError(ownerId, thread.id, runId, result.reply);
         void setThreadStatus(ownerId, thread.id, 'failed');
-        return;
+        // The event itself was persisted into the thread before the run died —
+        // it is delivered; the task will see it on its next step.
+        return true;
       }
       emitRunComplete(ownerId, thread.id, runId, {
         reply: result.reply,
@@ -104,6 +120,7 @@ export async function wakeTask(taskId: number, eventText: string): Promise<void>
           url: `/chat/${thread.id}`,
         }).catch(() => undefined);
       }
+      return true;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message);
@@ -116,9 +133,35 @@ export async function wakeTask(taskId: number, eventText: string): Promise<void>
         'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით თავად ვცდი ხელახლა.',
         'error',
       ).catch(() => undefined);
+      return false;
     }
   } finally {
     runningTasks.delete(taskId);
+  }
+}
+
+/**
+ * Deliver wakes that the live capture path dropped (crash, deploy window,
+ * busy thread). A closed task gets marked without a wake — there is nothing
+ * left to deliver to; a busy thread stays unmarked and retries next sweep.
+ */
+async function sweepUnwokenAnswers(): Promise<void> {
+  const due = await listUnwokenAnswers(MAX_UNWOKEN_PER_SWEEP);
+  let delivered = 0;
+  for (const ask of due) {
+    if (ask.task_status !== 'open') {
+      await markAskWakeDelivered(ask.id);
+      continue;
+    }
+    const woken = await wakeTask(ask.task_id, buildAnswerWakeEvent(ask.answer ?? ''));
+    if (woken) {
+      await markAskWakeDelivered(ask.id);
+      delivered += 1;
+    }
+  }
+  if (delivered > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[task-engine] answer-wake sweep re-delivered ${delivered} wake(s)`);
   }
 }
 
@@ -174,6 +217,13 @@ export function startTaskTicker(): void {
       console.error('[task-engine] reminder sweep failed:', (err as Error).message),
     );
   }, REMINDER_INTERVAL_MS).unref();
+
+  setInterval(() => {
+    void sweepUnwokenAnswers().catch((err) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] answer-wake sweep failed:', (err as Error).message),
+    );
+  }, UNWOKEN_SWEEP_INTERVAL_MS).unref();
 
   const scheduleNightly = (): void => {
     setTimeout(() => {

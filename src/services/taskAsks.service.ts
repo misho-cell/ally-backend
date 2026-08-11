@@ -197,19 +197,26 @@ export async function createAsk(
  * (sent → answered) and reports which task to wake; later messages append to
  * the answer without re-waking.
  */
+export interface CapturedAnswer {
+  askId: number;
+  taskId: number;
+  firstAnswer: boolean;
+  answer: string;
+}
+
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
-): Promise<{ taskId: number; firstAnswer: boolean; answer: string } | null> {
+): Promise<CapturedAnswer | null> {
   const safe = scrubText(answerText.trim());
   if (!safe) return null;
-  const updated = await query<{ task_id: number; status: string }>(
+  const updated = await query<{ id: number; task_id: number; status: string }>(
     `UPDATE task_asks
      SET answer = CASE WHEN answer IS NULL THEN $2 ELSE answer || E'\n' || $2 END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,
          answered_at = COALESCE(answered_at, NOW())
      WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
-     RETURNING task_id, status`,
+     RETURNING id, task_id, status`,
     [askThreadId, safe],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -228,7 +235,73 @@ export async function recordAskAnswer(
   // The scrubbed verbatim text rides back so the wake event can carry it —
   // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
   // answer; giving it the exact words in the event kills that failure mode.
-  return { taskId: row.task_id, firstAnswer, answer: safe };
+  return { askId: row.id, taskId: row.task_id, firstAnswer, answer: safe };
+}
+
+// One capture failing during a deploy window loses the wake for a day (ticket
+// 4 blocker 1) — retry the transient before giving up; the wake sweep is the
+// backstop for whatever still slips through.
+const CAPTURE_RETRY_DELAYS_MS = [0, 1_000, 3_000];
+
+export async function recordAskAnswerWithRetry(
+  askThreadId: number,
+  answerText: string,
+): Promise<CapturedAnswer | null> {
+  let lastError: unknown;
+  for (const delayMs of CAPTURE_RETRY_DELAYS_MS) {
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    try {
+      return await recordAskAnswer(askThreadId, answerText);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * The wake event for an arrived answer. Tag-delimited, NOT quote-wrapped:
+ * a quote inside the answer broke the quoted form and the asker received a
+ * raw fragment (ticket 4 blocker 3, thread 8201).
+ */
+export function buildAnswerWakeEvent(answer: string): string {
+  return (
+    'პასუხი მოვიდა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n' +
+    `<answer>\n${answer}\n</answer>\n` +
+    'გადაეცი მფლობელს სიტყვასიტყვით, ციტატად (თუ სხვა ენაზეა, თარგმანიც დაურთე) და გააგრძელე დავალება.'
+  );
+}
+
+export interface UnwokenAnswer {
+  id: number;
+  task_id: number;
+  answer: string | null;
+  task_status: string | null;
+}
+
+/** Answered asks whose owning task was never woken — the sweep's worklist. */
+export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
+  const result = await query<UnwokenAnswer>(
+    `SELECT ta.id, ta.task_id, ta.answer, t.status AS task_status
+     FROM task_asks ta
+     LEFT JOIN tasks t ON t.id = ta.task_id
+     WHERE ta.status = 'answered'
+       AND ta.answered_at IS NOT NULL
+       AND ta.wake_delivered_at IS NULL
+     ORDER BY ta.answered_at ASC
+     LIMIT $1`,
+    [limit],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function markAskWakeDelivered(askId: number): Promise<void> {
+  await query(
+    `UPDATE task_asks SET wake_delivered_at = NOW() WHERE id = $1`,
+    [askId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
 }
 
 /** Everything this task has asked and heard back — for the prompt's task section. */
@@ -301,6 +374,27 @@ const RELAY_PHONE_MIN_DIGITS = 9;
 // We only need to distinguish "exactly one" from "several" — never a list.
 const RELAY_NAME_MATCH_LIMIT = 3;
 
+// Resolution errors carry their own instructions (including an explicit out
+// when the user never asked to forward — ticket 4 blocker 2: relay_ask fired
+// on "მაგას თვითონ ვკითხავ" with contact_name "თვითონ", and the neutral-close
+// made the refusal read as a malfunction). They must NOT get the neutral-close
+// suffix, which is for real send failures only.
+const RELAY_EMPTY_NAME_ERROR =
+  'კონტაქტის სახელი ცარიელია. თუ მომხმარებელს გადაგზავნა პირდაპირ არ უთხოვია — ეს გამოძახება ' +
+  'ზედმეტი იყო: გადაცემაზე არაფერი თქვა და უბრალოდ გააგრძელე. თუ სთხოვა, ჰკითხე სახელი და გვარი.';
+const RELAY_NOT_FOUND_ERROR =
+  'ასეთი სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა. თუ მომხმარებელს გადაგზავნა პირდაპირ არ ' +
+  'უთხოვია („თვითონ ვკითხავ" გადაგზავნის თხოვნა არ არის) — ეს გამოძახება ზედმეტი იყო: გადაცემაზე ' +
+  'არაფერი თქვა და უბრალოდ გააგრძელე საუბარი. თუ ნამდვილად სთხოვა, ჰკითხე ზუსტი სახელი და გვარი. ' +
+  'ვარაუდები ნუ ჩამოთვლი.';
+const RELAY_AMBIGUOUS_ERROR =
+  'ეს სახელი ცალსახად ვერ დადგინდა — ჰკითხე მომხმარებელს სრული სახელი და გვარი. კანდიდატები ნუ ჩამოთვლი.';
+const RELAY_RESOLUTION_ERRORS: ReadonlySet<string> = new Set([
+  RELAY_EMPTY_NAME_ERROR,
+  RELAY_NOT_FOUND_ERROR,
+  RELAY_AMBIGUOUS_ERROR,
+]);
+
 /**
  * Resolve the relay target INSIDE the server, from the relayer's own saved
  * contacts. The incoming_ask context has no search tools by design (ticket 3
@@ -315,7 +409,7 @@ async function resolveRelayContact(
   if (digits.length >= RELAY_PHONE_MIN_DIGITS) return { phone: digits };
   const words = contact.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) {
-    return { error: 'კონტაქტის სახელი ცარიელია — ჰკითხე მომხმარებელს სახელი და გვარი.' };
+    return { error: RELAY_EMPTY_NAME_ERROR };
   }
   const conds = words.map((_, i) => `(LOWER(ua.alias) || '') ~ $${i + 2}`).join(' AND ');
   const matches = await query<{ digits: string }>(
@@ -327,16 +421,10 @@ async function resolveRelayContact(
     ASK_QUERY_TIMEOUT_MS,
   );
   if (matches.rows.length === 0) {
-    return {
-      error:
-        'ასეთი სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა — ჰკითხე მას ზუსტი სახელი და გვარი. ვარაუდები ნუ ჩამოთვლი.',
-    };
+    return { error: RELAY_NOT_FOUND_ERROR };
   }
   if (matches.rows.length > 1) {
-    return {
-      error:
-        'ეს სახელი ცალსახად ვერ დადგინდა — ჰკითხე მომხმარებელს სრული სახელი და გვარი. კანდიდატები ნუ ჩამოთვლი.',
-    };
+    return { error: RELAY_AMBIGUOUS_ERROR };
   }
   return { phone: matches.rows[0].digits };
 }
@@ -355,7 +443,7 @@ export async function createRelayAsk(
   question?: string,
 ): Promise<CreateAskOutcome> {
   const outcome = await relayAskInner(relayerUserId, parentAskId, contact, question);
-  if (outcome.sent) return outcome;
+  if (outcome.sent || RELAY_RESOLUTION_ERRORS.has(outcome.error)) return outcome;
   return { sent: false, error: outcome.error + RELAY_NEUTRAL_CLOSE };
 }
 

@@ -58,16 +58,30 @@ async function isPhoneRegistered(phone: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+// A phonebook bigger than this is a purchased list, not a person's contacts —
+// a 40k-row vendor dump imported under one account in 9 minutes must not
+// vouch for every number it contains (ticket 4 blocker 4). Env-adjustable.
+const MAX_HUMAN_PHONEBOOK_ROWS = Number(process.env.SOCIAL_PROOF_MAX_OWNER_CONTACTS ?? 15000);
+
+// "The bubble knows them" = distinct HUMAN owners: live, non-deleted accounts
+// whose own phonebook is human-sized. The per-owner size check is an
+// index-only count over (contactId) and runs only for the handful of owners
+// that actually carry the number.
 async function passesSocialProof(variants: string[]): Promise<boolean> {
   const result = await query<{ total: string; subscribed: string }>(
-    `SELECT COUNT(DISTINCT ua."contactId") AS total,
-            COUNT(DISTINCT ua."contactId") FILTER (
-              WHERE u.subscription_status = ANY($2) AND u."deletedAt" IS NULL
-            ) AS subscribed
-     FROM "UserAlias" ua
-     LEFT JOIN "User" u ON u.id = ua."contactId"
-     WHERE ua.phone = ANY($1)`,
-    [variants, SUBSCRIBED_STATUSES],
+    `SELECT COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE is_subscribed) AS subscribed
+     FROM (
+       SELECT ua."contactId",
+              bool_or(u.subscription_status = ANY($2)) AS is_subscribed
+       FROM "UserAlias" ua
+       JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
+       WHERE ua.phone = ANY($1)
+       GROUP BY ua."contactId"
+       HAVING (SELECT COUNT(*) FROM "UserAlias" b
+               WHERE b."contactId" = ua."contactId") <= $3
+     ) owners`,
+    [variants, SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS],
   );
   const row = result.rows[0];
   const total = Number(row?.total ?? 0);

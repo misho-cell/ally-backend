@@ -161,6 +161,24 @@ describe('checkRegistrationEligibility', () => {
     );
   });
 
+  it('counts only live HUMAN owners in social proof — no vendor dumps, no deleted accounts (ticket 4 blocker 4)', async () => {
+    setWorld(CLOSED_WORLD);
+
+    await checkRegistrationEligibility('599 00 00 01');
+
+    const aliasCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM "UserAlias" ua'),
+    );
+    const sql = aliasCall?.[0] as string;
+    // Owner must be a real, non-deleted account (inner JOIN, not LEFT)…
+    expect(sql).toContain('JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL');
+    expect(sql).not.toContain('LEFT JOIN');
+    // …with a human-sized phonebook: one 40k-row purchased list under one
+    // account must not vouch for every number it contains.
+    expect(sql).toContain('HAVING');
+    expect(aliasCall?.[1]?.[2]).toBe(15000);
+  });
+
   it('rejects a referral that is not a subscribed user', async () => {
     setWorld(CLOSED_WORLD);
 

@@ -20,7 +20,11 @@ import {
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
-import { recordAskAnswer } from '../../services/taskAsks.service';
+import {
+  recordAskAnswerWithRetry,
+  buildAnswerWakeEvent,
+  markAskWakeDelivered,
+} from '../../services/taskAsks.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { ThreadStatus } from '../../services/threads.service';
@@ -216,16 +220,22 @@ threadsRouter.post(
       // needs_you).
       let askAnswerCaptured: Promise<boolean> = Promise.resolve(false);
       if (thread.type === 'incoming_ask') {
-        askAnswerCaptured = recordAskAnswer(threadId, message)
+        // Retried capture + delivery marker (ticket 4 blocker 1): a deploy-
+        // window failure dropped 3 of 7 wakes on 11 Aug. The wake is marked
+        // delivered only after it actually ran; the task-engine sweep
+        // re-delivers anything still unmarked within minutes.
+        askAnswerCaptured = recordAskAnswerWithRetry(threadId, message)
           .then((captured) => {
             if (captured?.firstAnswer) {
-              // The verbatim (scrubbed) answer rides IN the wake event: in
-              // thread 7723 the asker-side agent, sent to look the answer up,
-              // presented the thread title instead (ticket 3 §5).
-              void wakeTask(
-                captured.taskId,
-                `პასუხი მოვიდა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტია: "${captured.answer}" — მფლობელს გადაეცი ეს სიტყვასიტყვით, ციტატად (თუ სხვა ენაზეა, თარგმანიც დაურთე) და გააგრძელე დავალება.`,
-              );
+              // The verbatim (scrubbed) answer rides IN the wake event, tag-
+              // delimited so quotes inside the answer can't break it (ticket 3
+              // §5; ticket 4 blocker 3).
+              void wakeTask(captured.taskId, buildAnswerWakeEvent(captured.answer))
+                .then((delivered) => (delivered ? markAskWakeDelivered(captured.askId) : undefined))
+                .catch((err: unknown) =>
+                  // eslint-disable-next-line no-console
+                  console.error('[ask-wake] failed (sweep will retry):', (err as Error).message),
+                );
             }
             return captured !== null;
           })
