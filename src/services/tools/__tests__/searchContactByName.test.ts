@@ -41,8 +41,7 @@ function setup(opts: {
   const facts = opts.facts ?? [];
   const relationships = opts.relationships ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('COUNT(DISTINCT'))
-      return Promise.resolve(rows([{ total: String(count) }]) as never);
+    if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
@@ -132,8 +131,7 @@ describe('searchContactByName', () => {
 
     const mainSql = mockQuery.mock.calls.find(
       (c) =>
-        !(c[0] as string).includes('COUNT(DISTINCT') &&
-        !(c[0] as string).includes('word_similarity('),
+        !(c[0] as string).includes('AS total') && !(c[0] as string).includes('word_similarity('),
     )?.[0] as string;
     // Recall is scoped to the user's own contact phones (the materialized
     // "mine" set — every branch joins FROM it)...
@@ -157,8 +155,7 @@ describe('searchContactByName', () => {
 
     const mainCall = mockQuery.mock.calls.find(
       (c) =>
-        !(c[0] as string).includes('COUNT(DISTINCT') &&
-        !(c[0] as string).includes('word_similarity('),
+        !(c[0] as string).includes('AS total') && !(c[0] as string).includes('word_similarity('),
     );
     const mainSql = mainCall?.[0] as string;
     const mainParams = mainCall?.[1] as unknown[];
@@ -174,7 +171,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'Dachi Axel');
 
-    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('COUNT(DISTINCT'));
+    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('AS total'));
     const countSql = countCall?.[0] as string;
     const countParams = countCall?.[1] as unknown[];
     // Postgres rejects a bind carrying parameters the statement never uses
@@ -186,6 +183,30 @@ describe('searchContactByName', () => {
     expect(countSql).toContain(`ALL($${countParams?.length})`);
     expect(countParams?.[0]).toBe('42');
     expect(countParams?.[countParams.length - 1]).toEqual([]);
+  });
+
+  it('counts only contacts matching EVERY word of a two-word name (ticket 4 item 0B)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchContactByName('42', 'Giorgi Basilaia');
+
+    const countSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('AS total'),
+    )?.[0] as string;
+    // "Giorgi Basilaia" reported 275 — everyone tagged giorgi — for one real
+    // person, and the payload tells the assistant to say the number out loud.
+    expect(countSql).toContain('word_hits >= 2');
+  });
+
+  it('a single-word query still counts every match (word_hits >= 1)', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    await searchContactByName('42', 'Basilaia');
+
+    const countSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('AS total'),
+    )?.[0] as string;
+    expect(countSql).toContain('word_hits >= 1');
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {

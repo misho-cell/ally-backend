@@ -4,12 +4,28 @@ import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
-import { toWordStartPattern } from './tools/transliterate';
+import { buildRawWordGroups, toWordStartPattern } from './tools/transliterate';
+import { isOptedOutFromAsks } from './askOptOut.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 // The recipient's chat list must distinguish eight questions from the same
 // sender — the title carries the question itself, not a generic "კითხვა".
 const ASK_TITLE_SNIPPET_CHARS = 48;
+// Belt-and-braces for the title only (ticket 4 item 3): when every ask opens
+// "გამარჯობა ლიკა!", every row in her list reads the same. The greeting is
+// stripped from the TITLE; the message itself is delivered exactly as the
+// sender wrote it. Punctuation is required after the greeting so a question
+// that merely starts with a similar word is never truncated.
+const TITLE_GREETING_PREFIX =
+  /^\s*(გამარჯობათ|გამარჯობა|მოგესალმებით|მოგესალმები|სალამი|დილა მშვიდობისა|საღამო მშვიდობისა|hello|hi|hey|dear)(?:\s+[\p{L}.]+){0,2}\s*[,!.\-—]+\s*/iu;
+
+function titleSnippetFrom(question: string): string {
+  const stripped = question.replace(TITLE_GREETING_PREFIX, '').trim();
+  const body = stripped.length > 0 ? stripped : question.trim();
+  return body.length > ASK_TITLE_SNIPPET_CHARS
+    ? `${body.slice(0, ASK_TITLE_SNIPPET_CHARS - 1)}…`
+    : body;
+}
 // Anti-runaway ceiling, not a product limit (the product decision is "no
 // limits, the user pays tokens") — one account still must not be able to
 // blanket the network in a day. Env-adjustable.
@@ -92,6 +108,20 @@ export async function createAsk(
   const toUserId = member.rows[0].userId;
   const toName = member.rows[0].name ?? 'კონტაქტი';
 
+  // Person-level opt-out (ticket 4, item 00) — checked HERE, at send time, and
+  // ahead of every other rule: a refusal to be contacted is about the person,
+  // not the task, and it must not depend on the assistant's wording. Relays are
+  // NOT exempt: a relay is still a message arriving on that person's phone.
+  if (await isOptedOutFromAsks(toUserId)) {
+    return {
+      sent: false,
+      error:
+        `${toName}-მ მოითხოვა, რომ Netai-დან შეტყობინებები აღარ მიეღო — ამიტომ მას ვერაფერს ვწერთ, ` +
+        'ვერც ამ და ვერც სხვა დავალებაზე. ეს მისი გადაწყვეტილებაა და პატივს ვცემთ. მფლობელს ' +
+        'პირდაპირ და მშვიდად უთხარი ეს (არა „ტექნიკური შეფერხება") და შესთავაზე სხვა ადამიანი.',
+    };
+  }
+
   // Live-fire safety switch for the incoming_ask test phase: when set (comma-
   // separated user ids), asks may reach ONLY those accounts — a mis-picked
   // contact must not receive a test question about someone else's problem.
@@ -145,10 +175,7 @@ export async function createAsk(
   // Recipient-side thread: born a task-shaped item awaiting THEIR reply. The
   // question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
-  const titleSnippet =
-    safeQuestion.length > ASK_TITLE_SNIPPET_CHARS
-      ? `${safeQuestion.slice(0, ASK_TITLE_SNIPPET_CHARS - 1)}…`
-      : safeQuestion;
+  const titleSnippet = titleSnippetFrom(safeQuestion);
   const thread = await createThread(
     String(toUserId),
     'incoming_ask',
@@ -202,6 +229,8 @@ export interface CapturedAnswer {
   taskId: number;
   firstAnswer: boolean;
   answer: string;
+  /** Who answered — the wake event names them (ticket 4 item 0C.3). */
+  fromName: string | null;
 }
 
 export async function recordAskAnswer(
@@ -226,8 +255,11 @@ export async function recordAskAnswer(
   // set. Detect via a second cheap read of answer history length? Simpler: the
   // status was 'sent' before when answered_at IS NOW — approximate by checking
   // whether the stored answer equals exactly this message.
-  const check = await query<{ answer: string }>(
-    `SELECT answer FROM task_asks WHERE ask_thread_id = $1 LIMIT 1`,
+  const check = await query<{ answer: string; from_name: string | null }>(
+    `SELECT ta.answer, u.name AS from_name
+     FROM task_asks ta
+     LEFT JOIN "User" u ON u.id = ta.to_user_id
+     WHERE ta.ask_thread_id = $1 LIMIT 1`,
     [askThreadId],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -235,7 +267,13 @@ export async function recordAskAnswer(
   // The scrubbed verbatim text rides back so the wake event can carry it —
   // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
   // answer; giving it the exact words in the event kills that failure mode.
-  return { askId: row.id, taskId: row.task_id, firstAnswer, answer: safe };
+  return {
+    askId: row.id,
+    taskId: row.task_id,
+    firstAnswer,
+    answer: safe,
+    fromName: check.rows[0]?.from_name ?? null,
+  };
 }
 
 // One capture failing during a deploy window loses the wake for a day (ticket
@@ -262,29 +300,54 @@ export async function recordAskAnswerWithRetry(
 /**
  * The wake event for an arrived answer. Tag-delimited, NOT quote-wrapped:
  * a quote inside the answer broke the quoted form and the asker received a
- * raw fragment (ticket 4 blocker 3, thread 8201).
+ * raw fragment (ticket 4 blocker 3, thread 8201). The responder is named
+ * (item 0C.3): an answer that arrives anonymously reads as the assistant's own
+ * curiosity, so the owner has no reason to treat it as someone waiting.
  */
-export function buildAnswerWakeEvent(answer: string): string {
+export function buildAnswerWakeEvent(answer: string, fromName?: string | null): string {
+  const who = fromName?.trim() ? fromName.trim() : 'ადამიანმა, ვისაც კითხვა გაეგზავნა';
   return (
-    'პასუხი მოვიდა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n' +
+    `${who} გიპასუხა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n` +
     `<answer>\n${answer}\n</answer>\n` +
-    'გადაეცი მფლობელს სიტყვასიტყვით, ციტატად (თუ სხვა ენაზეა, თარგმანიც დაურთე) და გააგრძელე დავალება.'
+    `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ სხვა ენაზეა, ` +
+    'თარგმანიც დაურთე. თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
+    'შემდეგ გააგრძელე დავალება.'
   );
+}
+
+/**
+ * Is this thread's task waiting on someone else right now? A thread whose ask
+ * is unanswered is `waiting`, never `done` — ticket 4 item 0C.5: thread 8416
+ * sat in the finished list while the founder was waiting on a reply.
+ */
+export async function hasPendingAskForThread(threadId: number): Promise<boolean> {
+  const result = await query<{ id: number }>(
+    `SELECT ta.id
+     FROM task_asks ta
+     JOIN tasks t ON t.id = ta.task_id
+     WHERE t.thread_id = $1 AND ta.status = 'sent'
+     LIMIT 1`,
+    [threadId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
 }
 
 export interface UnwokenAnswer {
   id: number;
   task_id: number;
   answer: string | null;
+  from_name: string | null;
   task_status: string | null;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
 export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, t.status AS task_status
+    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
+     LEFT JOIN "User" u ON u.id = ta.to_user_id
      WHERE ta.status = 'answered'
        AND ta.answered_at IS NOT NULL
        AND ta.wake_delivered_at IS NULL
@@ -361,13 +424,26 @@ export async function getAskByThread(askThreadId: number): Promise<IncomingAsk |
   return result.rows[0] ?? null;
 }
 
+// THE fix for ticket 4 items 0A/0AA: a relay failure is NOT an answer failure.
+// The recipient's own reply is captured and delivered the instant they send it,
+// on a completely separate path; relay_ask is only the EXTRA hop that forwards
+// the question to a third person. On 11 Aug the recipient was told "ამის
+// გადაცემა ვერ მოხერხდა" four times while the asker had her answer every time —
+// she was being shown the result of the contact lookup, not of the delivery.
+// Every relay outcome now carries that distinction in the text itself.
+const RELAY_ALREADY_DELIVERED =
+  ' მნიშვნელოვანი: მომხმარებლის პასუხი კითხვის ავტორს უკვე გადაეცა — ეს ცალკე, ავტომატური გზაა და ' +
+  'ყოველთვის მუშაობს. აქ საქმე მხოლოდ დამატებით გადაგზავნას ეხება. არასოდეს თქვა, რომ პასუხი ვერ ' +
+  'გადაიცა ან დაიკარგა — ეს ტყუილი იქნებოდა.';
 // Appended to every FAILED relay outcome: the model on the recipient's side of
 // an ask must close neutrally — a refusal must never surface as "system error"
 // and must never end with "contact them directly" (ticket 3 §1, code-enforced
 // because two prompt rewrites failed to hold it).
 const RELAY_NEUTRAL_CLOSE =
-  ' მომხმარებელს მხოლოდ ეს უთხარი: „ამის გადაცემა ამ ეტაპზე ვერ მოხერხდა". ტექნიკური მიზეზი და ' +
-  '„სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.';
+  ' დამატებითი გადაგზავნა ვერ მოხერხდა — მომხმარებელს ეს ერთი მშვიდი წინადადებით უთხარი და ' +
+  'აუცილებლად დაამატე, რომ მისი პასუხი კითხვის ავტორმა მიიღო. „სისტემური შეცდომა" არ ახსენო და ' +
+  'არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.' +
+  RELAY_ALREADY_DELIVERED;
 
 // A dictated number is used as-is; anything shorter is treated as a name.
 const RELAY_PHONE_MIN_DIGITS = 9;
@@ -380,15 +456,22 @@ const RELAY_NAME_MATCH_LIMIT = 3;
 // made the refusal read as a malfunction). They must NOT get the neutral-close
 // suffix, which is for real send failures only.
 const RELAY_EMPTY_NAME_ERROR =
-  'კონტაქტის სახელი ცარიელია. თუ მომხმარებელს გადაგზავნა პირდაპირ არ უთხოვია — ეს გამოძახება ' +
-  'ზედმეტი იყო: გადაცემაზე არაფერი თქვა და უბრალოდ გააგრძელე. თუ სთხოვა, ჰკითხე სახელი და გვარი.';
+  'კონტაქტის სახელი ცარიელია — გადაგზავნა არ მომხდარა და არც იყო საჭირო.' + RELAY_ALREADY_DELIVERED;
+// Ticket 4 item 0C.1b: naming a person IS the answer — a recommendation, not a
+// relay request. The name already reached the asker as plain text through the
+// automatic capture, so a failed lookup must end in a thank-you, never in an
+// apology and never in "spell it for me": no recipient will work out which
+// script their own phonebook uses.
 const RELAY_NOT_FOUND_ERROR =
-  'ასეთი სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა. თუ მომხმარებელს გადაგზავნა პირდაპირ არ ' +
-  'უთხოვია („თვითონ ვკითხავ" გადაგზავნის თხოვნა არ არის) — ეს გამოძახება ზედმეტი იყო: გადაცემაზე ' +
-  'არაფერი თქვა და უბრალოდ გააგრძელე საუბარი. თუ ნამდვილად სთხოვა, ჰკითხე ზუსტი სახელი და გვარი. ' +
-  'ვარაუდები ნუ ჩამოთვლი.';
+  'ეს სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა, ამიტომ მისთვის ცალკე კითხვა არ გაგზავნილა — ' +
+  'და არც არის საჭირო: სახელი კითხვის ავტორს უკვე მივიდა, როგორც რეკომენდაცია. მადლობა უთხარი და ' +
+  'დაასრულე. ორთოგრაფია არ ჰკითხო, ვარაუდები ნუ ჩამოთვლი და ბოდიში არ მოიხადო.' +
+  RELAY_ALREADY_DELIVERED;
 const RELAY_AMBIGUOUS_ERROR =
-  'ეს სახელი ცალსახად ვერ დადგინდა — ჰკითხე მომხმარებელს სრული სახელი და გვარი. კანდიდატები ნუ ჩამოთვლი.';
+  'ამ სახელს რამდენიმე კონტაქტი ემთხვევა, ამიტომ ცალკე კითხვა არავის გაგზავნია. თუ მომხმარებელმა ' +
+  'გადაგზავნა ნამდვილად ითხოვა, ჰკითხე სრული სახელი და გვარი; თუ უბრალოდ ადამიანს ასახელებდა — ' +
+  'მადლობა უთხარი და დაასრულე. კანდიდატები ნუ ჩამოთვლი.' +
+  RELAY_ALREADY_DELIVERED;
 const RELAY_RESOLUTION_ERRORS: ReadonlySet<string> = new Set([
   RELAY_EMPTY_NAME_ERROR,
   RELAY_NOT_FOUND_ERROR,
@@ -407,17 +490,37 @@ async function resolveRelayContact(
 ): Promise<{ phone: string } | { error: string }> {
   const digits = contact.replace(/\D/g, '');
   if (digits.length >= RELAY_PHONE_MIN_DIGITS) return { phone: digits };
-  const words = contact.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) {
+  // Same matching standard as search_contacts (ticket 4 item 0C.1): one variant
+  // group per word — transliteration and drift folds included — so a name said
+  // in Georgian resolves a contact saved in Latin script. The plain lowercase
+  // comparison this replaces told a recipient her own saved contact did not
+  // exist and asked her to guess the spelling of her own phonebook.
+  const groups = buildRawWordGroups(contact);
+  if (groups.length === 0) {
     return { error: RELAY_EMPTY_NAME_ERROR };
   }
-  const conds = words.map((_, i) => `(LOWER(ua.alias) || '') ~ $${i + 2}`).join(' AND ');
+  // Every word must match (AND across groups); within a word any variant does.
+  let cursor = 2; // $1 = relayer
+  const conds = groups
+    .map((group) => {
+      const alternatives = group
+        .map((_, i) => `(LOWER(label) || '') ~ $${cursor + i}`)
+        .join(' OR ');
+      cursor += group.length;
+      return `(${alternatives})`;
+    })
+    .join(' AND ');
+  const patterns = groups.flat().map(toWordStartPattern);
   const matches = await query<{ digits: string }>(
-    `SELECT DISTINCT regexp_replace(ua.phone, '\\D', '', 'g') AS digits
-     FROM "UserAlias" ua
-     WHERE ua."contactId" = $1::int AND ${conds}
+    `SELECT DISTINCT regexp_replace(phone, '\\D', '', 'g') AS digits
+     FROM (
+       SELECT ua.phone, ua.alias AS label FROM "UserAlias" ua WHERE ua."contactId" = $1::int
+       UNION ALL
+       SELECT ut.phone, ut.tag AS label FROM "UserTags" ut WHERE ut."contactId" = $1::int
+     ) labels
+     WHERE ${conds}
      LIMIT ${RELAY_NAME_MATCH_LIMIT}`,
-    [relayerUserId, ...words.map(toWordStartPattern)],
+    [relayerUserId, ...patterns],
     ASK_QUERY_TIMEOUT_MS,
   );
   if (matches.rows.length === 0) {

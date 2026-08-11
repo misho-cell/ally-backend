@@ -13,6 +13,7 @@ import {
   listUnwokenAnswers,
   markAskWakeDelivered,
   buildAnswerWakeEvent,
+  hasPendingAskForThread,
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
@@ -103,11 +104,16 @@ export async function wakeTask(taskId: number, eventText: string): Promise<boole
         reply: result.reply,
         ...(result.taskResult && { result: result.taskResult }),
       });
+      // A task whose question is unanswered on someone else's phone is waiting,
+      // not finished (ticket 4 item 0C.5).
+      const pendingAsk = await hasPendingAskForThread(thread.id).catch(() => false);
       const status = result.requestCreated
         ? 'waiting'
         : endsWithQuestion(result.reply)
           ? 'needs_you'
-          : 'done';
+          : pendingAsk
+            ? 'waiting'
+            : 'done';
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });
       if (!hasActiveConnection(ownerId)) {
         const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
@@ -153,7 +159,10 @@ async function sweepUnwokenAnswers(): Promise<void> {
       await markAskWakeDelivered(ask.id);
       continue;
     }
-    const woken = await wakeTask(ask.task_id, buildAnswerWakeEvent(ask.answer ?? ''));
+    const woken = await wakeTask(
+      ask.task_id,
+      buildAnswerWakeEvent(ask.answer ?? '', ask.from_name),
+    );
     if (woken) {
       await markAskWakeDelivered(ask.id);
       delivered += 1;

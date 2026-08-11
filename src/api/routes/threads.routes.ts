@@ -24,6 +24,7 @@ import {
   recordAskAnswerWithRetry,
   buildAnswerWakeEvent,
   markAskWakeDelivered,
+  hasPendingAskForThread,
 } from '../../services/taskAsks.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
@@ -65,11 +66,17 @@ function buildPushPreview(reply: string): string {
  * Terminal thread status for a finished run: an in-flight introduction request
  * outranks everything (the thread is genuinely waiting on a third party), then
  * an explicit or trailing question to the user, else the run is simply done.
+ *
+ * `pendingAsk` carries the same truth from the ask engine: a thread whose
+ * question is sitting unanswered on someone else's phone is WAITING, whatever
+ * the reply text looked like. Without it thread 8416 — the dentist question to
+ * Lika, unanswered — was filed as finished and sank to the bottom of the list
+ * (ticket 4 item 0C.5).
  */
-function statusAfterRun(result: ChatResult): ThreadStatus {
+function statusAfterRun(result: ChatResult, pendingAsk: boolean): ThreadStatus {
   if (result.requestCreated === true) return 'waiting';
   if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
-  return 'done';
+  return pendingAsk ? 'waiting' : 'done';
 }
 
 threadsRouter.use(authenticateJwt, requireUserRole);
@@ -230,7 +237,10 @@ threadsRouter.post(
               // The verbatim (scrubbed) answer rides IN the wake event, tag-
               // delimited so quotes inside the answer can't break it (ticket 3
               // §5; ticket 4 blocker 3).
-              void wakeTask(captured.taskId, buildAnswerWakeEvent(captured.answer))
+              void wakeTask(
+                captured.taskId,
+                buildAnswerWakeEvent(captured.answer, captured.fromName),
+              )
                 .then((delivered) => (delivered ? markAskWakeDelivered(captured.askId) : undefined))
                 .catch((err: unknown) =>
                   // eslint-disable-next-line no-console
@@ -283,9 +293,13 @@ threadsRouter.post(
           // Persist + broadcast the terminal status. The thread becomes a task
           // once a run sent a request or reported a structured result.
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
-          void setThreadStatus(userId, threadId, answered ? 'done' : statusAfterRun(result), {
-            ...(becameTask && { isTask: true }),
-          });
+          const pendingAsk = await hasPendingAskForThread(threadId).catch(() => false);
+          void setThreadStatus(
+            userId,
+            threadId,
+            answered ? 'done' : statusAfterRun(result, pendingAsk),
+            { ...(becameTask && { isTask: true }) },
+          );
           // If the user isn't connected (closed the app / switched away), their
           // answer would sit unseen — push it. No-op when they're live (they see
           // it over SSE) or when VAPID isn't configured. The preview is scrubbed

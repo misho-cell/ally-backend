@@ -12,6 +12,10 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
+jest.mock('../askOptOut.service', () => ({
+  __esModule: true,
+  isOptedOutFromAsks: jest.fn().mockResolvedValue(false),
+}));
 jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
@@ -20,6 +24,7 @@ jest.mock('../notification.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { getTaskById } from '../taskStore.service';
+import { isOptedOutFromAsks } from '../askOptOut.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import {
   createAsk,
@@ -31,6 +36,7 @@ import {
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
+const mockOptedOut = isOptedOutFromAsks as jest.MockedFunction<typeof isOptedOutFromAsks>;
 const mockCreateThread = createThread as jest.MockedFunction<typeof createThread>;
 const mockSaveMessage = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 
@@ -40,6 +46,7 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockOptedOut.mockResolvedValue(false);
   // Default: an open task owned by the caller WITH the blanket permission —
   // the P0 gate lets these through; individual tests flip the fields.
   mockGetTask.mockResolvedValue({
@@ -148,6 +155,47 @@ describe('createAsk', () => {
     expect((out as { error: string }).error).toContain('ლიმიტი');
   });
 
+  it('REFUSES a person who asked not to be contacted — any sender, any task (ticket 4 item 00)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'ლიკა' } });
+    mockOptedOut.mockResolvedValue(true);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect((out as { error: string }).error).toContain('აღარ მიეღო');
+    // The asker hears the truth, not a technical excuse.
+    expect((out as { error: string }).error).toContain('ტექნიკური შეფერხება');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('a RELAY cannot route around the opt-out either — it is still a message on their phone', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'ლიკა' } });
+    mockOptedOut.mockResolvedValue(true);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა', 11);
+
+    expect(out.sent).toBe(false);
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('strips a greeting from the thread TITLE while the message keeps the sender wording', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'გამარჯობა ლიკა! გყავს კარგი სტომატოლოგი თბილისში?');
+
+    // Every ask opened "გამარჯობა ლიკა!", so every row in her list read the
+    // same (ticket 4 item 3).
+    expect(mockCreateThread).toHaveBeenCalledWith(
+      '7',
+      'incoming_ask',
+      'მიშო: გყავს კარგი სტომატოლოგი თბილისში?',
+      undefined,
+      expect.anything(),
+    );
+    // …but the question itself is delivered exactly as written.
+    expect(mockSaveMessage.mock.calls[0][3]).toContain('გამარჯობა ლიკა!');
+  });
+
   it('refuses asking yourself', async () => {
     routeAskQueries({ member: { userId: 42, name: 'მიშო' } });
 
@@ -174,7 +222,7 @@ describe('createRelayAsk', () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('parent_ask_id FROM task_asks'))
         return Promise.resolve(rows(opts.parent ? [opts.parent] : []) as never);
-      if (sql.includes('FROM "UserAlias"'))
+      if (sql.includes('FROM "UserAlias" ua WHERE'))
         return Promise.resolve(rows(opts.aliasMatches ?? []) as never);
       if (sql.includes('FROM "UserPhone"'))
         return Promise.resolve(rows(opts.member ? [opts.member] : []) as never);
@@ -210,8 +258,9 @@ describe('createRelayAsk', () => {
 
     expect(out.sent).toBe(false);
     const error = (out as { error: string }).error;
-    expect(error).toContain('ცალსახად ვერ დადგინდა');
+    expect(error).toContain('რამდენიმე კონტაქტი ემთხვევა');
     expect(error).toContain('კანდიდატები ნუ ჩამოთვლი');
+    expect(error).toContain('უკვე გადაეცა');
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
@@ -223,9 +272,11 @@ describe('createRelayAsk', () => {
     expect(out.sent).toBe(false);
     const error = (out as { error: string }).error;
     expect(error).toContain('ვერ მოიძებნა');
-    // "I'll ask him myself" is not a forward request — the instruction tells
-    // the model to say nothing about relaying and just continue.
-    expect(error).toContain('ზედმეტი იყო');
+    // The answer itself already reached the asker — the recipient must never
+    // be told it failed, and must never be asked to spell her own phonebook
+    // (ticket 4 items 0A/0AA/0C.1b).
+    expect(error).toContain('უკვე მივიდა');
+    expect(error).toContain('ორთოგრაფია არ ჰკითხო');
     // Resolution errors carry their own instructions — the neutral-close
     // suffix ("ამის გადაცემა ვერ მოხერხდა") must NOT ride on them: it made a
     // never-requested relay read as a malfunction.
@@ -241,6 +292,8 @@ describe('createRelayAsk', () => {
     expect((out as { error: string }).error).toContain('ჯაჭვი');
     expect((out as { error: string }).error).toContain('სისტემური შეცდომა');
     expect((out as { error: string }).error).toContain('არასოდეს ურჩიო');
+    // Even a genuine relay failure must state that the ANSWER got through.
+    expect((out as { error: string }).error).toContain('უკვე გადაეცა');
   });
 
   it('only the ask RECIPIENT can relay it', async () => {
@@ -270,7 +323,9 @@ describe('recordAskAnswer', () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('UPDATE task_asks'))
         return Promise.resolve(rows([{ id: 77, task_id: 3, status: 'answered' }]) as never);
-      return Promise.resolve(rows([{ answer: 'ბიძაშვილი აკეთებს BMW-ებს' }]) as never);
+      return Promise.resolve(
+        rows([{ answer: 'ბიძაშვილი აკეთებს BMW-ებს', from_name: 'გია' }]) as never,
+      );
     });
 
     const out = await recordAskAnswer(55, 'ბიძაშვილი აკეთებს BMW-ებს');
@@ -282,6 +337,7 @@ describe('recordAskAnswer', () => {
       taskId: 3,
       firstAnswer: true,
       answer: 'ბიძაშვილი აკეთებს BMW-ებს',
+      fromName: 'გია',
     });
   });
 

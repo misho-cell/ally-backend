@@ -121,13 +121,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
          LIMIT ${RESULT_LIMIT}`,
         m.params,
       ),
-      query<{ total: string }>(
-        `WITH ${mineCte}, ${m.matchedCte}
-         SELECT COUNT(DISTINCT phone) AS total
-         FROM matched
-         WHERE phone != ALL($${m.blockIdx})`,
-        m.params,
-      ),
+      query<{ total: string }>(`WITH ${mineCte}, ${m.matchedCte} ${m.totalSql}`, m.params),
     ]);
 
     const rows = result.rows.filter((r) => !isExcluded(r.phone));

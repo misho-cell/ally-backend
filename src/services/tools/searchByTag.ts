@@ -89,13 +89,7 @@ async function runExactSearch(
        LIMIT ${RESULT_LIMIT}`,
       m.params,
     ),
-    query<{ total: string }>(
-      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte}
-       SELECT COUNT(DISTINCT phone) AS total
-       FROM matched
-       WHERE phone != ALL($${m.blockIdx})`,
-      m.params,
-    ),
+    query<{ total: string }>(`WITH ${MY_CONTACTS_CTE}, ${m.matchedCte} ${m.totalSql}`, m.params),
   ]);
   return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
 }

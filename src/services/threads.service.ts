@@ -192,9 +192,11 @@ export async function getThreadMessages(
   // Step rows are live-run narration (kept in the DB as timeout-salvage
   // material) — in the chat view they read as the assistant saying almost the
   // same thing twice (ticket 3 §6.2: a step at 07:49:11 and the final message
-  // at 07:49:20 in thread 7921). The admin window keeps them for
-  // word-for-word inspection.
-  const kindFilter = opts.includeSteps ? '' : ` AND kind <> 'step'`;
+  // at 07:49:20 in thread 7921). 'event' rows are engine turns written FOR THE
+  // MODEL — tags, tool instructions and all (ticket 4 item 0C.2). Neither
+  // belongs in a chat; the admin window keeps both for word-for-word
+  // inspection.
+  const kindFilter = opts.includeSteps ? '' : ` AND kind NOT IN ('step', 'event')`;
   const result = await query<ThreadMessage>(
     `SELECT role, content, kind, run_id, created_at
      FROM conversations

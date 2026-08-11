@@ -15,6 +15,15 @@ export interface ExactMatchSql {
   readonly params: unknown[];
   /** Placeholder index of the blocked-phones array (the last parameter). */
   readonly blockIdx: number;
+  /**
+   * The count query body: contacts matching EVERY query word. Counting anyone
+   * matching ANY word made "Giorgi Basilaia" report 275 (everyone tagged
+   * giorgi) for one real person, and the payload instructs the assistant to say
+   * that number out loud (ticket 4 item 0B). Ranking is unaffected — partial
+   * matches still appear in the results, below the full ones, because a contact
+   * saved under a surname alone must not vanish from a two-word search.
+   */
+  readonly totalSql: string;
 }
 
 /**
@@ -133,10 +142,22 @@ export function buildExactMatchSql(
     })
     .join(' + ');
 
+  // COUNT over the same word_hits the ranking uses: a contact counts only when
+  // every query word matched somewhere on it. Single-word queries need 1 hit,
+  // so their totals are unchanged.
+  const totalSql = `SELECT COUNT(*) AS total FROM (
+       SELECT phone, (${wordHits}) AS word_hits
+       FROM matched
+       WHERE phone != ALL($${blockIdx})
+       GROUP BY phone
+     ) counted
+     WHERE word_hits >= ${rawGroups.length}`;
+
   return {
     matchedCte,
     wordHits,
     params: [userId, ...allRegex, userId, [...blockedPhones]],
     blockIdx,
+    totalSql,
   };
 }

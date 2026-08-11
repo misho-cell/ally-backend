@@ -43,8 +43,7 @@ function setup(opts: {
   const fuzzy = opts.fuzzy ?? [];
   const relationships = opts.relationships ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('COUNT(DISTINCT'))
-      return Promise.resolve(rows([{ total: String(count) }]) as never);
+    if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
@@ -104,7 +103,7 @@ describe('searchByTag', () => {
 
     await searchByTag('42', 'dachi axel');
 
-    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('COUNT(DISTINCT'));
+    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('AS total'));
     const countSql = countCall?.[0] as string;
     const countParams = countCall?.[1] as unknown[];
     // Postgres rejects a bind carrying parameters the statement never uses
@@ -183,8 +182,7 @@ describe('searchByTag', () => {
     await searchByTag('42', 'asriyants');
 
     const mainSql = mockQuery.mock.calls.find(
-      (c) =>
-        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
     )?.[0] as string;
     // Recall is scoped to the user's own contact phones (the materialized
     // "mine" set — every branch joins FROM it, so the plan can't flip to
@@ -212,12 +210,10 @@ describe('searchByTag', () => {
     await searchByTag('42', 'dachi axel');
 
     const mainSql = mockQuery.mock.calls.find(
-      (c) =>
-        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
     )?.[0] as string;
     const mainParams = mockQuery.mock.calls.find(
-      (c) =>
-        !(c[0] as string).includes('COUNT(DISTINCT') && !(c[0] as string).includes('similarity('),
+      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
     )?.[1] as unknown[];
     // Each word becomes a bool_or group; word_hits sums them and drives the order.
     expect(mainSql).toContain('bool_or(');
@@ -240,7 +236,7 @@ describe('searchByTag', () => {
 
   it('marks is_member true for a contact that is a registered Ally user', async () => {
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"'))
         return Promise.resolve(rows([{ phone: mockRow.phone }]) as never); // member
@@ -307,7 +303,7 @@ describe('searchByTag', () => {
   it('still returns exact rows when the fuzzy pass errors', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('COUNT(DISTINCT')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('similarity(')) return Promise.reject(new Error('index missing'));
       return Promise.resolve(rows([mockRow]) as never);

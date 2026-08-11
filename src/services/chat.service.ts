@@ -54,6 +54,7 @@ import {
   TaskAsk,
   IncomingAsk,
 } from './taskAsks.service';
+import { optOutFromAsks, resumeAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts } from './contactFacts.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
@@ -116,6 +117,11 @@ import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 
 const HISTORY_LIMIT = 50;
+// Engine-initiated turns are addressed to the MODEL, not the user: they carry
+// tool instructions and <answer> tags. They must stay in model history and stay
+// OUT of the chat view — ticket 4 item 0C.2, where the raw wake event with its
+// tags and quoting instructions was rendered to the founder as a message.
+export const RUN_EVENT_PREFIX = '[მოვლენა]';
 // 8k output: 2048 cut long Georgian answers mid-word at ~3.2k chars (thread
 // 7693 — the model itself apologised for "cutting off half" next turn).
 // Cost is bounded by actual usage, not by this ceiling.
@@ -521,7 +527,10 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'phone id from a search result). The recipient gets it as a thread + push and answers in ' +
     'plain text; the answer wakes this task automatically. One task never asks the same person ' +
     "twice. If the task's autonomy is ask_first, confirm with the user in this thread BEFORE " +
-    'calling. Never put phone numbers inside the question text.',
+    'calling, showing the recipient AND the exact wording you will send. Never put phone numbers ' +
+    'inside the question text. WORDING: the first words of the ask are the question itself, ' +
+    "never a greeting — that opening line becomes the title of the thread on the recipient's " +
+    'phone, and "hello NAME" as a title makes every question look identical in their list.',
   input_schema: {
     type: 'object',
     properties: {
@@ -607,6 +616,39 @@ const RELAY_ASK_TOOL: AnthropicTool = {
     },
     required: ['ask_id', 'contact_name'],
   },
+};
+
+// Ticket 4 item 00: a person who says "stop writing to me" must be able to make
+// that true, not merely be promised it. The tool is reachable from the
+// recipient-side context (where the refusal is actually spoken) and from the
+// user's own chat; enforcement lives in createAsk, at send time.
+const STOP_CONTACTING_TOOL: AnthropicTool = {
+  name: 'stop_contacting_me',
+  description:
+    'Call this the moment the user says they do not want to receive questions any more ' +
+    '("don\'t write to me again", "stop messaging me", "unsubscribe", "remove me"). It stops ' +
+    'EVERY future question from EVERY sender reaching them, not just this one task, and ' +
+    'cancels anything already pending. Accept the refusal in one warm line, do not argue, do ' +
+    'not ask why, and tell them plainly that no more questions will come and that they can lift ' +
+    'it at any time by telling you so.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      reason: {
+        type: 'string',
+        description: 'Optional: their own words, if they gave a reason. Never ask for one.',
+      },
+    },
+    required: [],
+  },
+};
+
+const RESUME_CONTACT_TOOL: AnthropicTool = {
+  name: 'allow_contacting_me',
+  description:
+    'Lift a previous "stop contacting me" — call only when the user explicitly says questions ' +
+    'may reach them again. Confirm in one line.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 const EXCLUDE_CONTACT_TOOL: AnthropicTool = {
@@ -940,7 +982,8 @@ function hasToolResults(msg: Anthropic.MessageParam): boolean {
 
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
-    "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind = 'message' ORDER BY created_at DESC LIMIT $2",
+    // 'event' rows are engine turns: model history yes, chat view no.
+    "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind IN ('message', 'event') ORDER BY created_at DESC LIMIT $2",
     [threadId, HISTORY_LIMIT],
   );
   const rows = result.rows.reverse().map((row) => ({
@@ -983,7 +1026,7 @@ async function saveMessage(
   threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
-  kind: 'message' | 'step' | 'error' = 'message',
+  kind: 'message' | 'step' | 'error' | 'event' = 'message',
   runId: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
@@ -1179,10 +1222,11 @@ function buildIncomingAskSection(ask: IncomingAsk): string {
   return (
     `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ relay_ask-ისთვის, პასუხში არასდროს ახსენო]\n` +
     `${from} გეკითხება: "${ask.question}"\n` +
-    `- მომხმარებლის პასუხი უკვე ავტომატურად გადაეცემა კითხვის ავტორს იმ წამს, როცა ის შეტყობინებას აგზავნის. შენ არაფერს აგზავნი და გადაცემის წარმატება-ჩავარდნაზე არასოდეს საუბრობ.\n` +
+    `- მომხმარებლის ყოველი პასუხი კითხვის ავტორს **უკვე გადაეცა** — ავტომატურად, იმ წამს, როცა მან შეტყობინება გააგზავნა. ეს ცალკე გზაა და ყოველთვის მუშაობს. არასოდეს თქვა „პასუხი ვერ გადაიცა" ან „დაიკარგა" — ეს ტყუილი იქნებოდა.\n` +
     `- პასუხი გადადის სიტყვასიტყვით. დამაზუსტებელი კითხვები არ დაუსვა — მადლობა და მოკლე დახურვა სრული პასუხია.\n` +
-    `- relay_ask მხოლოდ მაშინ, როცა მომხმარებელი კონკრეტულ ადამიანს ასახელებს სახელით („სალომეს ჰკითხე") — გადაეცი ის სახელი ისე, როგორც მან თქვა (კონტაქტს სერვერი პოულობს). „თვითონ ვკითხავ", „მე მოვაგვარებ", „ის იცის" — ეს გადაგზავნის თხოვნა არ არის: relay_ask არ გამოიძახო, უბრალოდ დაადასტურე.\n` +
-    `- თუ რამის გადაცემა ვერ მოხერხდა: მხოლოდ „ამის გადაცემა ვერ მოხერხდა". „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება, ნომრის თხოვნა-გაცემა ან სხვა გვერდითი გზა.\n` +
+    `- როცა მომხმარებელი ადამიანს ასახელებს („სალომე ფარქოსაძე") — ეს რეკომენდაციაა და უკვე გადაცემულია. relay_ask მხოლოდ მაშინ, როცა ის პირდაპირ ითხოვს გადაგზავნას („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის.\n` +
+    `- თუ relay_ask-მა კონტაქტი ვერ იპოვა: ორთოგრაფია არ ჰკითხო და ბოდიში არ მოიხადო — სახელი ისედაც გადაცემულია. მადლობა უთხარი და დაასრულე. „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.\n` +
+    `- თუ მომხმარებელი იტყვის, რომ მსგავსი შეტყობინებები აღარ სურს („აღარ მომწერო") — გამოიძახე stop_contacting_me. ეს ნამდვილად აჩერებს ყველა მომავალ კითხვას ყველა ადამიანისგან. დაპირება მხოლოდ სიტყვით არასოდეს მისცე — ჯერ ინსტრუმენტი, მერე დადასტურება.\n` +
     `- შენ ვერ ხედავ ვერავის ქსელს, კონტაქტებს, მიზნებს, ჩანაწერებსა და სტატისტიკას — ეს მონაცემები ამ საუბარში არ არსებობს და მათზე ვერაფერს იტყვი. კითხვაზე „რა არის ეს აპი?" უპასუხე ერთი წინადადებით და დაბრუნდი კითხვაზე — არავითარი შეთავაზება „შენც დაგეხმარები"-ს სტილში.`
   );
 }
@@ -1602,6 +1646,16 @@ async function executeToolCall(
       const hours = Math.min(168, Math.max(1, Number(input['hours']) || 24));
       return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
     }
+    case 'stop_contacting_me':
+      await optOutFromAsks(userId, input['reason'] ? String(input['reason']) : undefined);
+      return {
+        stopped: true,
+        scope: 'all_senders',
+        note: 'აღარცერთი კითხვა აღარ მოვა — არც ამ და არც სხვა ადამიანისგან. ეს ნებისმიერ დროს შეიძლება უკან დაბრუნდეს.',
+      };
+    case 'allow_contacting_me':
+      await resumeAsks(userId);
+      return { resumed: true };
     case 'relay_ask':
       // `phone` fallback: an in-flight thread may replay history recorded
       // under the old schema.
@@ -1801,6 +1855,8 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   finish_task: '🏁 დავალებას ვხურავ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
+  stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
+  allow_contacting_me: '🔔 შეტყობინებებს ვაბრუნებ...',
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
   remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
@@ -2335,7 +2391,11 @@ async function salvageFinalAnswer(
 // every other tool belong to account-owner modes and must not be reachable
 // from an incoming_ask thread.
 async function buildToolsForThread(userId: string, threadType?: string): Promise<AnthropicTool[]> {
-  if (threadType === 'incoming_ask') return [RELAY_ASK_TOOL];
+  // Relaying onward, and the ability to say "stop" and have it enforced
+  // (ticket 4 item 00) — nothing else is reachable from a recipient's thread.
+  if (threadType === 'incoming_ask') {
+    return [RELAY_ASK_TOOL, STOP_CONTACTING_TOOL, RESUME_CONTACT_TOOL];
+  }
   return buildEnabledTools(userId);
 }
 
@@ -2371,6 +2431,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     SET_TASK_WAKE_TOOL,
     FINISH_TASK_TOOL,
     RELAY_ASK_TOOL,
+    STOP_CONTACTING_TOOL,
+    RESUME_CONTACT_TOOL,
     EXCLUDE_CONTACT_TOOL,
     REMOVE_EXCLUSION_TOOL,
     RETRACT_FACT_TOOL,
@@ -2418,8 +2480,15 @@ export async function processChat(
   const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
 
   // Persist the user message first so it — and the step rows saved during the
-  // loop — appear in chronological order and survive a mid-run crash.
-  await saveMessage(userId, threadId, 'user', userMessage);
+  // loop — appear in chronological order and survive a mid-run crash. An engine
+  // event is persisted as kind 'event': the model sees it, the user does not.
+  await saveMessage(
+    userId,
+    threadId,
+    'user',
+    userMessage,
+    userMessage.startsWith(RUN_EVENT_PREFIX) ? 'event' : 'message',
+  );
 
   const { finalText, pending, options, choices, requestCreated, taskResult } = await runToolLoop(
     userId,
