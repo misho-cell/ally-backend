@@ -105,7 +105,17 @@ function handleValidationErrors(
 threadsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
-    const threads = await getThreadsForUser(userId);
+    // Optional paging — omitted, the response is exactly what it always was, so
+    // no client breaks. A client that passes ?limit= gets a page and walks back
+    // with ?before=<last updated_at>&before_id=<last id>.
+    const rawLimit = Number(req.query.limit);
+    const before = typeof req.query.before === 'string' ? req.query.before : undefined;
+    const rawBeforeId = Number(req.query.before_id);
+    const threads = await getThreadsForUser(userId, {
+      ...(Number.isFinite(rawLimit) && rawLimit > 0 && { limit: Math.floor(rawLimit) }),
+      ...(before && { beforeUpdatedAt: before }),
+      ...(Number.isFinite(rawBeforeId) && rawBeforeId > 0 && { beforeId: Math.floor(rawBeforeId) }),
+    });
     res.status(200).json({ success: true, data: threads });
   } catch (error) {
     // eslint-disable-next-line no-console

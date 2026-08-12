@@ -49,7 +49,32 @@ interface ThreadRow extends Thread {
   request_ref: string | null;
 }
 
-export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
+// The list shows a one-line preview, so the full text of the last message has
+// no business travelling: the founder's account carries 1623 threads, and
+// sending every last reply in full made the payload grow with every long
+// answer the assistant ever wrote. Truncated in SQL, before it leaves Postgres.
+const LAST_MESSAGE_PREVIEW_CHARS = 200;
+// Ceiling for a client-supplied page size.
+const MAX_THREAD_PAGE = 200;
+
+export interface ThreadListOptions {
+  /** Page size. Omitted = every thread (the pre-pagination behaviour). */
+  readonly limit?: number;
+  /** Cursor: return threads older than this updated_at (with beforeId to break ties). */
+  readonly beforeUpdatedAt?: string;
+  readonly beforeId?: number;
+}
+
+export async function getThreadsForUser(
+  userId: string,
+  opts: ThreadListOptions = {},
+): Promise<ThreadRow[]> {
+  const limit =
+    opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_THREAD_PAGE);
+  const before = opts.beforeUpdatedAt ?? null;
+  // Tie-break so a page boundary landing between two threads with the same
+  // updated_at can neither skip nor repeat one.
+  const beforeId = opts.beforeId ?? Number.MAX_SAFE_INTEGER;
   const result = await query<ThreadRow>(
     `SELECT
        t.id,
@@ -63,7 +88,7 @@ export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
        t.created_at,
        t.updated_at,
        ir.request_ref,
-       lm.content AS last_message,
+       LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
        lm.created_at AS last_message_at
      FROM threads t
      LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
@@ -75,8 +100,10 @@ export async function getThreadsForUser(userId: string): Promise<ThreadRow[]> {
        LIMIT 1
      ) lm ON true
      WHERE t.user_id = $1
-     ORDER BY t.updated_at DESC`,
-    [userId],
+       AND ($2::timestamptz IS NULL OR (t.updated_at, t.id) < ($2::timestamptz, $3::bigint))
+     ORDER BY t.updated_at DESC, t.id DESC
+     LIMIT $4::int`,
+    [userId, before, beforeId, limit],
   );
   return result.rows;
 }
