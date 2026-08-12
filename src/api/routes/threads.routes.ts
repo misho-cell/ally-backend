@@ -167,7 +167,19 @@ threadsRouter.get(
         return;
       }
 
-      const messages = await getThreadMessages(threadId);
+      // Optional paging — omitted, the whole history comes back exactly as
+      // before. ?limit=30 opens the chat on its most recent 30 messages; the
+      // client loads older ones by passing the oldest row it holds as the
+      // cursor (?before=<created_at>&before_id=<id>).
+      const rawLimit = Number(req.query.limit);
+      const before = typeof req.query.before === 'string' ? req.query.before : undefined;
+      const rawBeforeId = Number(req.query.before_id);
+      const messages = await getThreadMessages(threadId, {
+        ...(Number.isFinite(rawLimit) && rawLimit > 0 && { limit: Math.floor(rawLimit) }),
+        ...(before && { beforeCreatedAt: before }),
+        ...(Number.isFinite(rawBeforeId) &&
+          rawBeforeId > 0 && { beforeId: Math.floor(rawBeforeId) }),
+      });
       res.status(200).json({ success: true, data: messages });
     } catch (error) {
       // eslint-disable-next-line no-console

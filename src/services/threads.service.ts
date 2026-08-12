@@ -34,6 +34,8 @@ export interface ThreadTaskState {
 }
 
 export interface ThreadMessage {
+  /** Needed by the client as the "load older" cursor, with created_at. */
+  id: number;
   role: string;
   content: string;
   kind: string;
@@ -212,9 +214,31 @@ export async function getOrCreateDefaultThread(userId: string): Promise<number> 
   return created.id;
 }
 
+export interface ThreadMessageOptions {
+  readonly includeSteps?: boolean;
+  /** Page size, counted from the NEWEST message back. Omitted = whole history. */
+  readonly limit?: number;
+  /** Cursor for "load older": messages before this (created_at, id). */
+  readonly beforeCreatedAt?: string;
+  readonly beforeId?: number;
+}
+
+// Ceiling for a client-supplied page size.
+const MAX_MESSAGE_PAGE = 200;
+
+/**
+ * A thread's messages, oldest-first within the page.
+ *
+ * Paging counts back from the NEWEST message because a chat opens at the
+ * bottom: `limit` returns the most recent N, and the client walks upwards by
+ * passing the oldest row it holds as the cursor. Without it the endpoint sent
+ * every message a thread had ever accumulated — the founder's long threads run
+ * to hundreds of turns, and opening one meant shipping and rendering all of
+ * them (the 4–5s page switch, 12 Aug).
+ */
 export async function getThreadMessages(
   threadId: number,
-  opts: { includeSteps?: boolean } = {},
+  opts: ThreadMessageOptions = {},
 ): Promise<ThreadMessage[]> {
   // Step rows are live-run narration (kept in the DB as timeout-salvage
   // material) — in the chat view they read as the assistant saying almost the
@@ -224,12 +248,23 @@ export async function getThreadMessages(
   // belongs in a chat; the admin window keeps both for word-for-word
   // inspection.
   const kindFilter = opts.includeSteps ? '' : ` AND kind NOT IN ('step', 'event')`;
+  const limit =
+    opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_MESSAGE_PAGE);
+  const before = opts.beforeCreatedAt ?? null;
+  const beforeId = opts.beforeId ?? Number.MAX_SAFE_INTEGER;
+  // The inner scan walks the (thread_id, created_at DESC) index backwards from
+  // the newest row and stops at LIMIT; the outer flip restores reading order.
   const result = await query<ThreadMessage>(
-    `SELECT role, content, kind, run_id, created_at
-     FROM conversations
-     WHERE thread_id = $1 AND content != ''${kindFilter}
-     ORDER BY created_at ASC`,
-    [threadId],
+    `SELECT * FROM (
+       SELECT id, role, content, kind, run_id, created_at
+       FROM conversations
+       WHERE thread_id = $1 AND content != ''${kindFilter}
+         AND ($2::timestamptz IS NULL OR (created_at, id) < ($2::timestamptz, $3::bigint))
+       ORDER BY created_at DESC, id DESC
+       LIMIT $4::int
+     ) page
+     ORDER BY created_at ASC, id ASC`,
+    [threadId, before, beforeId, limit],
   );
   // Reveal own-number passthrough spans at this display boundary (stored text
   // keeps the markers so repeated scrub passes stay idempotent). Em dashes are
