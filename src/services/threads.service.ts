@@ -34,8 +34,11 @@ export interface ThreadTaskState {
 }
 
 export interface ThreadMessage {
-  /** Needed by the client as the "load older" cursor, with created_at. */
-  id: number;
+  /**
+   * Needed by the client as the "load older" cursor, with created_at.
+   * A UUID string on production (migration 002) — never assume numeric.
+   */
+  id: string;
   role: string;
   content: string;
   kind: string;
@@ -220,7 +223,8 @@ export interface ThreadMessageOptions {
   readonly limit?: number;
   /** Cursor for "load older": messages before this (created_at, id). */
   readonly beforeCreatedAt?: string;
-  readonly beforeId?: number;
+  /** The row id at the cursor — a UUID string on prod, so never parsed as a number. */
+  readonly beforeId?: string;
 }
 
 // Ceiling for a client-supplied page size.
@@ -250,21 +254,35 @@ export async function getThreadMessages(
   const kindFilter = opts.includeSteps ? '' : ` AND kind NOT IN ('step', 'event')`;
   const limit =
     opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_MESSAGE_PAGE);
-  const before = opts.beforeCreatedAt ?? null;
-  const beforeId = opts.beforeId ?? Number.MAX_SAFE_INTEGER;
+  // The cursor clause is BUILT, not NULL-tricked: conversations.id is a UUID
+  // on production (migration 002) while test schemas use serial — comparing it
+  // against a typed numeric placeholder fails at PARSE time even when the
+  // cursor is absent, which is how a bare ?limit=30 broke every chat on prod
+  // (12 Aug). id::text on both sides orders identically to the ORDER BY below
+  // in every schema, which is all a tie-break needs.
+  const params: unknown[] = [threadId];
+  let cursorClause = '';
+  if (opts.beforeCreatedAt && opts.beforeId) {
+    params.push(opts.beforeCreatedAt, opts.beforeId);
+    cursorClause = ` AND (created_at, id::text) < ($2::timestamptz, $3::text)`;
+  } else if (opts.beforeCreatedAt) {
+    params.push(opts.beforeCreatedAt);
+    cursorClause = ` AND created_at < $2::timestamptz`;
+  }
+  params.push(limit);
+  const limitIdx = params.length;
   // The inner scan walks the (thread_id, created_at DESC) index backwards from
   // the newest row and stops at LIMIT; the outer flip restores reading order.
   const result = await query<ThreadMessage>(
     `SELECT * FROM (
        SELECT id, role, content, kind, run_id, created_at
        FROM conversations
-       WHERE thread_id = $1 AND content != ''${kindFilter}
-         AND ($2::timestamptz IS NULL OR (created_at, id) < ($2::timestamptz, $3::bigint))
-       ORDER BY created_at DESC, id DESC
-       LIMIT $4::int
+       WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
+       ORDER BY created_at DESC, id::text DESC
+       LIMIT $${limitIdx}::int
      ) page
-     ORDER BY created_at ASC, id ASC`,
-    [threadId, before, beforeId, limit],
+     ORDER BY created_at ASC, id::text ASC`,
+    params,
   );
   // Reveal own-number passthrough spans at this display boundary (stored text
   // keeps the markers so repeated scrub passes stay idempotent). Em dashes are

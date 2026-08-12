@@ -173,12 +173,12 @@ threadsRouter.get(
       // cursor (?before=<created_at>&before_id=<id>).
       const rawLimit = Number(req.query.limit);
       const before = typeof req.query.before === 'string' ? req.query.before : undefined;
-      const rawBeforeId = Number(req.query.before_id);
+      // A UUID string on prod — passed through verbatim, never parsed.
+      const beforeId = typeof req.query.before_id === 'string' ? req.query.before_id : undefined;
       const messages = await getThreadMessages(threadId, {
         ...(Number.isFinite(rawLimit) && rawLimit > 0 && { limit: Math.floor(rawLimit) }),
         ...(before && { beforeCreatedAt: before }),
-        ...(Number.isFinite(rawBeforeId) &&
-          rawBeforeId > 0 && { beforeId: Math.floor(rawBeforeId) }),
+        ...(beforeId && { beforeId }),
       });
       res.status(200).json({ success: true, data: messages });
     } catch (error) {
