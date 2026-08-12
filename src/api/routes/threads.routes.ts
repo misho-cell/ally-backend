@@ -25,10 +25,12 @@ import {
   buildAnswerWakeEvent,
   markAskWakeDelivered,
   hasPendingAskForThread,
+  cancelAsksForTask,
 } from '../../services/taskAsks.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
-import { ThreadStatus } from '../../services/threads.service';
+import { ThreadStatus, deleteThread } from '../../services/threads.service';
+import { query } from '../../db/postgres/client';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
 import {
   subscribeUserEvents,
@@ -387,6 +389,46 @@ threadsRouter.post(
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
       }
+    }
+  },
+);
+
+// Delete one conversation (Lika's D23) — pending asks of any task living on
+// the thread are cancelled FIRST (recipients get an honest closing note),
+// then the thread and everything in it goes in one transaction.
+threadsRouter.delete(
+  '/:id',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'არასწორი thread id' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const thread = await getThread(threadId, userId);
+      if (thread === null) {
+        res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
+        return;
+      }
+      const openTasks = await query<{ id: number }>(
+        `SELECT id FROM tasks WHERE thread_id = $1 AND user_id = $2::int AND status = 'open'`,
+        [threadId, userId],
+      );
+      for (const task of openTasks.rows) {
+        await cancelAsksForTask(task.id).catch(() => undefined);
+      }
+      const result = await deleteThread(userId, threadId);
+      if (!result.deleted) {
+        res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
+        return;
+      }
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /threads/:id]', error);
+      res.status(500).json({ success: false, error: 'წაშლა ვერ მოხერხდა' });
     }
   },
 );

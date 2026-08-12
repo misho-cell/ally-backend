@@ -58,7 +58,32 @@ export async function saveContactInsight(
     throw new Error('Unable to save contact insight');
   }
 
+  // A saved `relationship` is the user's own word on how close this person is —
+  // the score that ranks search results must hear it NOW, not at the next
+  // nightly run (ticket 4 item 4B.5: five "ახლო მეგობარი" notes, score still
+  // formal 0.4). Fire-and-forget; a failure leaves the old score, never blocks
+  // the save.
+  if (typeof newData.relationship === 'string' && newData.relationship.trim() !== '') {
+    void recomputeScoreForContact(userId, result.rows[0].neo4jContactId).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[insights] score recompute failed:', (err as Error).message);
+    });
+  }
+
   return result.rows[0];
+}
+
+async function recomputeScoreForContact(userId: string, contactPhone: string): Promise<void> {
+  const alias = await query<{ alias: string }>(
+    `SELECT alias FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2
+     ORDER BY LENGTH(alias) DESC LIMIT 1`,
+    [userId, contactPhone],
+  );
+  if (alias.rows.length === 0) return;
+  const { getCompositeKeyForUser } = await import('./neo4j.keys');
+  const { computeAndSaveSingleScore } = await import('./enrichment.service');
+  const userKey = await getCompositeKeyForUser(Number(userId));
+  await computeAndSaveSingleScore(Number(userId), userKey, contactPhone, alias.rows[0].alias);
 }
 
 export async function getInsightsByUser(userId: string): Promise<ContactInsightWithFieldContext[]> {

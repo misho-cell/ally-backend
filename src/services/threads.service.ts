@@ -150,6 +150,38 @@ export async function getThread(threadId: number, userId: string): Promise<Threa
   return result.rows[0] ?? null;
 }
 
+/**
+ * Delete ONE conversation — Lika's item D23, the narrow sibling of account
+ * erasure, and the same promise the Privacy Policy already makes. Everything
+ * in one transaction: the thread's messages, its run stamps, and the thread
+ * row. A task living on the thread is cancelled first (its pending asks are
+ * cancelled by the caller BEFORE this, since notifying recipients is a
+ * side-effect that must not ride inside the transaction).
+ */
+export async function deleteThread(
+  userId: string,
+  threadId: number,
+): Promise<{ deleted: boolean; cancelledTasks: number[] }> {
+  const { withTransaction } = await import('../db/postgres/client');
+  return withTransaction(async (client) => {
+    const owned = await client.query<{ id: number }>(
+      'SELECT id FROM threads WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [threadId, userId],
+    );
+    if (owned.rows.length === 0) return { deleted: false, cancelledTasks: [] };
+    const tasks = await client.query<{ id: number }>(
+      `UPDATE tasks SET status = 'cancelled'
+       WHERE thread_id = $1 AND user_id = $2::int AND status = 'open'
+       RETURNING id`,
+      [threadId, userId],
+    );
+    await client.query('DELETE FROM conversations WHERE thread_id = $1', [threadId]);
+    await client.query('DELETE FROM run_prompt_stamps WHERE thread_id = $1', [threadId]);
+    await client.query('DELETE FROM threads WHERE id = $1', [threadId]);
+    return { deleted: true, cancelledTasks: tasks.rows.map((t) => t.id) };
+  });
+}
+
 export async function getThreadByIntroRequestId(introRequestId: number): Promise<Thread | null> {
   const result = await query<Thread>(
     `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,

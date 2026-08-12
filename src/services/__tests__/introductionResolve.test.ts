@@ -14,13 +14,14 @@ jest.mock('../threadStatus.service', () => ({
 jest.mock('../threads.service', () => ({
   __esModule: true,
   getThreadsByIntroRequestId: jest.fn().mockResolvedValue([]),
+  saveThreadMessage: jest.fn().mockResolvedValue(undefined),
 }));
 
 import { query } from '../../db/postgres/client';
 import { sendPushNotification } from '../notification.service';
 import { recordProductEvent } from '../productEvents.service';
 import { setThreadStatus } from '../threadStatus.service';
-import { getThreadsByIntroRequestId } from '../threads.service';
+import { getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
 import { resolveIntroductionRequest } from '../introduction.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -64,7 +65,36 @@ beforeEach(() => {
   mockThreads.mockResolvedValue([]);
 });
 
+const mockSaveThreadMessage = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
+
 describe('resolveIntroductionRequest', () => {
+  it("a DECLINE is written INTO the requester's thread, not just fired as a notification", async () => {
+    setup({ request: REQUEST_ROW });
+    mockThreads.mockResolvedValue([
+      { id: 11, user_id: 7, type: 'incoming_request' },
+      { id: 12, user_id: 9, type: 'outgoing_request' },
+    ] as never);
+
+    const out = await resolveIntroductionRequest(
+      '7',
+      { requestRef: REQUEST_ROW.request_ref },
+      'decline',
+      { response: 'ვერ დავეხმარები', source: 'button' },
+    );
+
+    expect(out.ok).toBe(true);
+    // A push fires once and is gone; the thread is what persists — before this
+    // the outgoing thread kept reading "ველოდები პასუხს" forever after a
+    // decline (ticket 4 PART B miss 3).
+    expect(mockSaveThreadMessage).toHaveBeenCalledWith(
+      12,
+      9,
+      'assistant',
+      expect.stringContaining('უარი'),
+    );
+    expect(mockSaveThreadMessage.mock.calls[0][3]).toContain('ვერ დავეხმარები');
+  });
+
   it('accepts a pending request: updates, notifies requester, records analytics, syncs threads', async () => {
     setup({ request: REQUEST_ROW });
     mockThreads.mockResolvedValue([

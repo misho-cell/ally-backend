@@ -74,6 +74,7 @@ const BIDIRECTIONALITY_BONUS = 0.1;
 const AI_MODEL = 'claude-haiku-4-5-20251001';
 
 export interface RelationshipSignals {
+  explicit_insight?: boolean;
   family_keyword?: boolean;
   close_emoji?: boolean;
   single_name?: boolean;
@@ -126,10 +127,73 @@ export function extractCountryCode(phone: string): string | null {
   return null;
 }
 
+// The user's OWN words about a relationship, mapped to a type — an explicit
+// statement ("ახლო მეგობარი" saved as an insight) must override the alias
+// heuristic below. Ticket 4 item 4B.5: the founder's closest friend, saved
+// under his full name, was scored `formal 0.4` while five of his own notes
+// said the opposite — the classifier only ever read the alias string.
+const EXPLICIT_FAMILY_RE =
+  /ოჯახ|დეიდ|ბიძ|ძმ(?![ა-ჰ]*ურთ)|დედ|მამ|ცოლ|ქმარ|შვილ|family|brother|sister|mother|father|wife|husband|cousin/i;
+const EXPLICIT_CLOSE_RE =
+  /ახლო|ახლობ|საუკეთესო|უახლოეს|მეგობ|დაქალ|ძმაკაც|close|best friend|friend/i;
+const EXPLICIT_PROFESSIONAL_RE = /კოლეგა|თანამშრომ|საქმიან|პარტნიორ|colleague|coworker|business/i;
+
+export function classifyExplicitRelationship(
+  text: string,
+): 'family' | 'close' | 'professional' | null {
+  if (EXPLICIT_FAMILY_RE.test(text)) return 'family';
+  if (EXPLICIT_CLOSE_RE.test(text)) return 'close';
+  if (EXPLICIT_PROFESSIONAL_RE.test(text)) return 'professional';
+  return null;
+}
+
+const EXPLICIT_STRENGTH: Record<'family' | 'close' | 'professional', number> = {
+  family: 0.9,
+  close: 0.85,
+  professional: 0.55,
+};
+
+/** The user's saved `relationship` insights for their contacts, phone-keyed. */
+async function getExplicitRelationships(userId: number): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const result = await query<{ phone: string; relationship: string }>(
+      `SELECT neo4j_contact_id AS phone, data->>'relationship' AS relationship
+       FROM contact_insights
+       WHERE user_id = $1 AND data->>'relationship' IS NOT NULL`,
+      [userId],
+    );
+    for (const row of result.rows) map.set(row.phone, row.relationship);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[enrichment] explicit relationships unavailable:', (err as Error).message);
+  }
+  return map;
+}
+
 export function computeRelationshipScore(
   alias: string,
   isBidirectional: boolean,
+  explicitText?: string,
 ): RelationshipScore {
+  // An explicit user statement beats every alias heuristic.
+  if (explicitText) {
+    const explicit = classifyExplicitRelationship(explicitText);
+    if (explicit !== null) {
+      const signals: RelationshipSignals = { explicit_insight: true };
+      if (isBidirectional) signals.bidirectional = true;
+      const bonus = isBidirectional ? BIDIRECTIONALITY_BONUS : 0;
+      return {
+        relationship_type: explicit,
+        strength_score: Math.min(1, EXPLICIT_STRENGTH[explicit] + bonus),
+        signals,
+      };
+    }
+  }
+  return computeAliasScore(alias, isBidirectional);
+}
+
+function computeAliasScore(alias: string, isBidirectional: boolean): RelationshipScore {
   const lower = alias.toLowerCase();
   const signals: RelationshipSignals = {};
   const bonus = isBidirectional ? BIDIRECTIONALITY_BONUS : 0;
@@ -230,12 +294,19 @@ export async function computeAndSaveUserScores(
   const contactKeyMap = await getCompositeKeysForPhones(contactPhones);
   const contactKeys = [...new Set(contactPhones.map((p) => contactKeyMap.get(p) ?? p))];
 
-  const bidirectional = await getBidirectionalSet(userCompositeKey, contactKeys);
+  const [bidirectional, explicit] = await Promise.all([
+    getBidirectionalSet(userCompositeKey, contactKeys),
+    getExplicitRelationships(userId),
+  ]);
   const weightUpdates: WeightUpdate[] = [];
 
   for (const row of aliasResult.rows) {
     const contactKey = contactKeyMap.get(row.phone) ?? row.phone;
-    const score = computeRelationshipScore(row.alias, bidirectional.has(contactKey));
+    const score = computeRelationshipScore(
+      row.alias,
+      bidirectional.has(contactKey),
+      explicit.get(row.phone),
+    );
     await saveRelationshipScore(userId, row.phone, score);
     weightUpdates.push({ userKey: userCompositeKey, contactKey, weight: score.strength_score });
   }
@@ -250,8 +321,15 @@ export async function computeAndSaveSingleScore(
   alias: string,
 ): Promise<void> {
   const contactKey = await getCompositeKeyForPhone(contactPhone);
-  const bidirectional = await getBidirectionalSet(userCompositeKey, [contactKey]);
-  const score = computeRelationshipScore(alias, bidirectional.has(contactKey));
+  const [bidirectional, explicit] = await Promise.all([
+    getBidirectionalSet(userCompositeKey, [contactKey]),
+    getExplicitRelationships(userId),
+  ]);
+  const score = computeRelationshipScore(
+    alias,
+    bidirectional.has(contactKey),
+    explicit.get(contactPhone),
+  );
   await saveRelationshipScore(userId, contactPhone, score);
   await updateNeo4jWeightsBatch([
     { userKey: userCompositeKey, contactKey, weight: score.strength_score },

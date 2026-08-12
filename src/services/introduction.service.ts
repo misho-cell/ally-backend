@@ -2,7 +2,8 @@ import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
-import { getThreadsByIntroRequestId } from './threads.service';
+import { getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
+import { scrubText } from './privacyScrub';
 
 export interface PendingRequest {
   id: number;
@@ -129,12 +130,29 @@ async function loadRequestForMediator(
   return result.rows[0] ?? null;
 }
 
+// The outcome as a MESSAGE in the requester's thread. A push notification
+// fires once, on one device, and is gone; the thread is what persists, and it
+// used to keep reading "ველოდები პასუხს" forever after a decline — the asker
+// concluded the person ignored him when she had answered clearly (ticket 4
+// PART B miss 3).
+function outcomeMessage(req: RequestRow, action: IntroductionAction, response?: string): string {
+  const answer = response?.trim() ? `\n\nპასუხი: „${scrubText(response.trim())}"` : '';
+  return action === 'accept'
+    ? `${req.target_name}-ზე გაცნობის მოთხოვნა მიღებულია. ${answer ? answer : 'დეტალებს გაცნობებ.'}`
+    : `${req.target_name}-ზე გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${answer} სხვა გზა მოვძებნოთ?`;
+}
+
 /**
  * Reflect the request's outcome on BOTH of its threads so every device shows
  * the same state: the mediator's incoming thread is settled (or snoozed), the
- * requester's outgoing thread flips to "answer arrived". Best-effort.
+ * requester's outgoing thread gets the outcome WRITTEN INTO IT and flips to
+ * "answer arrived". Best-effort.
  */
-async function syncRequestThreads(req: RequestRow, action: IntroductionAction): Promise<void> {
+async function syncRequestThreads(
+  req: RequestRow,
+  action: IntroductionAction,
+  response?: string,
+): Promise<void> {
   try {
     const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
@@ -149,6 +167,12 @@ async function syncRequestThreads(req: RequestRow, action: IntroductionAction): 
           await setThreadStatus(owner, thread.id, 'done', { requestRef: req.request_ref });
         }
       } else if (thread.type === 'outgoing_request' && action !== 'snooze') {
+        await saveThreadMessage(
+          thread.id,
+          thread.user_id,
+          'assistant',
+          outcomeMessage(req, action, response),
+        ).catch(() => undefined);
         await setThreadStatus(owner, thread.id, 'needs_you', {
           statusLine: LINE_RESPONSE_ARRIVED,
           requestRef: req.request_ref,
@@ -240,6 +264,6 @@ export async function resolveIntroductionRequest(
     request_ref: req.request_ref,
   });
   await notifyRequester(req, action === 'accept');
-  await syncRequestThreads(req, action);
+  await syncRequestThreads(req, action, opts.response);
   return { ok: true, status: newStatus };
 }
