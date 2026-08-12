@@ -1,0 +1,23 @@
+-- 057: the chat list's missing index (Lika, 12 Aug: "switching from chat to
+-- chat takes a long time — the messages of the second chat load late").
+--
+-- getThreadsForUser attaches each thread's LAST message with a LATERAL
+-- ORDER BY created_at DESC LIMIT 1. The only indexes were (thread_id) and
+-- (thread_id, kind), so for EVERY thread Postgres read every one of that
+-- thread's rows and top-N sorted them. Measured on a prod-shaped bench
+-- (60 threads x 250 messages, 1.5M rows): 15,193 buffer touches and 2,877
+-- disk pages per chat-list load — ~3s on Railway's cold disk, which is the
+-- 2.2s the tester measured. With this index: 246 buffers, 59 reads, 0.55ms.
+--
+-- It is also the ONLY item on the speed list that gets worse as the product is
+-- used: the old cost is linear in messages-per-thread, this one is constant.
+--
+-- On production, create it CONCURRENTLY by hand BEFORE deploying this — a
+-- plain CREATE INDEX locks writes to conversations for the duration, which is
+-- a visible chat outage:
+--   CREATE INDEX CONCURRENTLY idx_conversations_thread_created
+--     ON conversations (thread_id, created_at DESC);
+-- This statement then finds it already there and does nothing. (The migration
+-- runner wraps each file in a transaction, so CONCURRENTLY cannot live here.)
+CREATE INDEX IF NOT EXISTS idx_conversations_thread_created
+  ON conversations (thread_id, created_at DESC);

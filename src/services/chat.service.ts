@@ -69,7 +69,7 @@ import {
   emitAnswerReset,
 } from './sse.service';
 import { scrubText, scrubEmailsDeep, ALLOW_OPEN, ALLOW_CLOSE } from './privacyScrub';
-import { createSafeTextStreamer } from './answerStream';
+import { createSafeTextStreamer, SafeTextStreamer } from './answerStream';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
 import {
@@ -2034,18 +2034,26 @@ async function runToolLoop(
   // the authoritative reply the client reconciles against. This stops tool-round
   // narration garbling into the visible message mid-run.
   let turnEmitted = false;
-  let answer = createSafeTextStreamer((chunk) => {
-    turnEmitted = true;
-    emitAnswerDelta(userId, threadId, runId, chunk);
-  });
-  const stream = (delta: string): void => answer.push(delta);
-  const resetTurnStream = (): void => {
-    if (turnEmitted) emitAnswerReset(userId, threadId, runId);
-    turnEmitted = false;
-    answer = createSafeTextStreamer((chunk) => {
+  const newTurnStreamer = (): SafeTextStreamer =>
+    createSafeTextStreamer((chunk) => {
       turnEmitted = true;
       emitAnswerDelta(userId, threadId, runId, chunk);
     });
+  let answer = newTurnStreamer();
+  const stream = (delta: string): void => answer.push(delta);
+  const resetTurnStream = (): void => {
+    if (turnEmitted) {
+      // The discarded text is narration, and it MOVES rather than vanishing:
+      // it goes to the steps panel where reasoning belongs. Text appearing in
+      // the answer bubble and then disappearing was read as the assistant
+      // changing its mind mid-reply ("რაც მანამდე დაწერა ის ქრება" — Lika,
+      // 12 Aug; the same leak the tester logged as 0C.6).
+      const narration = answer.emittedText().trim();
+      emitAnswerReset(userId, threadId, runId);
+      if (narration) emitStepSummary(userId, threadId, runId, narration);
+    }
+    turnEmitted = false;
+    answer = newTurnStreamer();
   };
   // Initial call: nothing gathered yet, so a failure here propagates and the
   // route reports a run error — there is no partial answer to salvage.

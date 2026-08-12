@@ -41,12 +41,47 @@ describe('createSafeTextStreamer', () => {
     expect(out).toContain('he expects you');
   });
 
-  it('holds back the trailing margin until more text proves it safe (no premature emit)', () => {
+  it('streams ordinary prose with NO lag — nothing is held back', () => {
     const sink = collect();
     const s = createSafeTextStreamer(sink.emit);
-    s.push('short'); // shorter than the holdback → nothing emitted yet
-    expect(sink.text()).toBe('');
-    s.flush(); // flush releases the remainder
-    expect(sink.text()).toBe('short');
+
+    s.push('გამარჯობა');
+
+    // The flat 40-char margin used to swallow six or seven Georgian words, so
+    // the answer visibly stopped mid-word and caught up later (Lika, 12 Aug).
+    expect(sink.text()).toBe('გამარჯობა');
+  });
+
+  it('holds a trailing run that could still become a number, and only that', () => {
+    const sink = collect();
+    const s = createSafeTextStreamer(sink.emit);
+
+    s.push('დარეკე ნომერზე 599');
+    // The digits are withheld: they may still be growing into a full number.
+    expect(sink.text()).toBe('დარეკე ნომერზე');
+
+    s.push(' და მკითხე');
+    // Proven safe by what followed — released, with the prose that came after.
+    expect(sink.text()).toBe('დარეკე ნომერზე 599 და მკითხე');
+  });
+
+  it('holds a bare "+" too — scrubbing rewrites from there once the digits land', () => {
+    const sink = collect();
+    const s = createSafeTextStreamer(sink.emit);
+
+    s.push('write to +');
+
+    expect(sink.text()).toBe('write to');
+  });
+
+  it('reports what the user actually saw, for narration that must move to the steps panel', () => {
+    const sink = collect();
+    const s = createSafeTextStreamer(sink.emit);
+
+    s.push('ვეძებ სტომატოლოგს');
+    s.flush();
+
+    expect(s.emittedText()).toBe('ვეძებ სტომატოლოგს');
+    expect(s.emittedText()).toBe(sink.text());
   });
 });
