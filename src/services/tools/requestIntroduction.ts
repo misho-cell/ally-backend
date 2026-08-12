@@ -3,6 +3,8 @@ import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
 import { createIncomingRequestThread, createOutgoingRequestThread } from '../threads.service';
 import { emitThreadCreated } from '../sse.service';
+import { isOptedOutFromAsks } from '../askOptOut.service';
+import { isPhoneOptedOut } from '../privacyRights.service';
 
 const CONTACT_SEARCH_LIMIT = 3;
 
@@ -116,6 +118,20 @@ export async function requestIntroduction(
 
   if (String(mediatorUserId) === requesterUserId) {
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
+  }
+
+  // Person-level opt-out covers EVERY path that puts a message on someone's
+  // phone — ticket 4 PART B miss 1: an intro request reached an opted-out
+  // recipient because only createAsk enforced the stop. Same rule, same
+  // wording contract: the asker hears the truth, never a technical excuse.
+  if ((await isOptedOutFromAsks(mediatorUserId)) || (await isPhoneOptedOut(resolvedPhone))) {
+    return {
+      success: false,
+      error:
+        `${mediatorName}-მ მოითხოვა, რომ Netai-დან შეტყობინებები აღარ მიეღო — ამიტომ მას ვერც ` +
+        'გაცნობის მოთხოვნას ვუგზავნით. ეს მისი გადაწყვეტილებაა და პატივს ვცემთ. მომხმარებელს ' +
+        'პირდაპირ უთხარი ეს და შესთავაზე სხვა შუამავალი.',
+    };
   }
 
   const hasPush =

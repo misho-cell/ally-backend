@@ -170,7 +170,8 @@ interface AnthropicTool {
 const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'request_introduction',
   description:
-    "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list.",
+    "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list." +
+    ' WHEN: to ask a single mediator, only after they confirm.',
   input_schema: {
     type: 'object',
     properties: {
@@ -428,7 +429,8 @@ const MARK_CONTACT_DECEASED_TOOL: AnthropicTool = {
 const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
   name: 'get_contact_full_profile',
   description:
-    'Get a consolidated profile for an identified contact: all tags with contributor_count (how many different users tagged them), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.',
+    'Get a consolidated profile for an identified contact: all tags with contributor_count (how many different users tagged them), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
+    ' WHEN: to open a person properly before putting their name in front of anyone.',
   input_schema: {
     type: 'object',
     properties: {
@@ -498,7 +500,8 @@ const SAVE_PRIVATE_CONTEXT_TOOL: AnthropicTool = {
 const CREATE_TASK_TOOL: AnthropicTool = {
   name: 'create_task',
   description:
-    'Save a goal the user wants worked on as a standing task that survives after this chat closes ("find a startup lawyer", "get introduced to X"). task_type is "solve" (find several helpers) or "reach" (a path to one target). Use when the user states something to achieve through their network, not a one-off lookup. Returns task_id. Starts no outreach by itself.',
+    'Save a goal the user wants worked on as a standing task that survives after this chat closes ("find a startup lawyer", "get introduced to X"). task_type is "solve" (find several helpers) or "reach" (a path to one target). Use when the user states something to achieve through their network, not a one-off lookup. Returns task_id. Starts no outreach by itself.' +
+    ' WHEN: to save a goal so it outlives this conversation.',
   input_schema: {
     type: 'object',
     properties: {
@@ -530,7 +533,9 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'calling, showing the recipient AND the exact wording you will send. Never put phone numbers ' +
     'inside the question text. WORDING: the first words of the ask are the question itself, ' +
     "never a greeting — that opening line becomes the title of the thread on the recipient's " +
-    'phone, and "hello NAME" as a title makes every question look identical in their list.',
+    'phone, and "hello NAME" as a title makes every question look identical in their list. ' +
+    "Every ask carries the sender's name — anonymous asks do not exist in this product; " +
+    'never offer "send without my name" as an option.',
   input_schema: {
     type: 'object',
     properties: {
@@ -717,7 +722,8 @@ const RETRACT_FACT_TOOL: AnthropicTool = {
 const GET_MY_TASKS_TOOL: AnthropicTool = {
   name: 'get_my_tasks',
   description:
-    "List the user's saved goals with status. Call at the START of a conversation so you know what you were already working on. Optional status filter (open/paused/closed).",
+    "List the user's saved goals with status. Call at the START of a conversation so you know what you were already working on. Optional status filter (open/paused/closed)." +
+    ' WHEN: for their open goals.',
   input_schema: {
     type: 'object',
     properties: { status: { type: 'string', description: 'open | paused | closed' } },
@@ -743,7 +749,8 @@ const UPDATE_TASK_TOOL: AnthropicTool = {
 const GRANT_TASK_PERMISSION_TOOL: AnthropicTool = {
   name: 'grant_task_permission',
   description:
-    'Record the user\'s one blanket "yes, you can ask people in my network about this" for a goal (by task_id). Ask in plain words first; call only after they agree.',
+    'Record the user\'s one blanket "yes, you can ask people in my network about this" for a goal (by task_id). Ask in plain words first; call only after they agree.' +
+    ' WHEN: their blanket yes before anything is asked of anyone.',
   input_schema: {
     type: 'object',
     properties: { task_id: { type: 'number', description: 'Task id from get_my_tasks' } },
@@ -768,7 +775,8 @@ const SAVE_USER_NOTE_TOOL: AnthropicTool = {
 const GET_USER_NOTES_TOOL: AnthropicTool = {
   name: 'get_user_notes',
   description:
-    'Read back what the user told you about themselves (needs, preferences, profile). Call at the start of a chat with get_my_tasks so you already know them. Optional kind filter.',
+    'Read back what the user told you about themselves (needs, preferences, profile). Call at the start of a chat with get_my_tasks so you already know them. Optional kind filter.' +
+    ' WHEN: for what they have told you about themselves.',
   input_schema: {
     type: 'object',
     properties: { kind: { type: 'string', description: 'need | preference | profile' } },
@@ -779,7 +787,8 @@ const GET_USER_NOTES_TOOL: AnthropicTool = {
 const QUEUE_RESULT_TOOL: AnthropicTool = {
   name: 'queue_result',
   description:
-    'Drop a result you found for a goal into the drip queue instead of showing everything at once. summary is a one-line description; pass the task_id it belongs to. The backend releases a small burst, then one per day — never invent or rush the rest. Use when you found something for an open task.',
+    'Drop a result you found for a goal into the drip queue instead of showing everything at once. summary is a one-line description; pass the task_id it belongs to. The backend releases a small burst, then one per day — never invent or rush the rest. Use when you found something for an open task.' +
+    ' WHEN: to drip findings back over days rather than dumping everything at once.',
   input_schema: {
     type: 'object',
     properties: {
@@ -794,14 +803,16 @@ const QUEUE_RESULT_TOOL: AnthropicTool = {
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
-    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once.',
+    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once.' +
+    ' WHEN: for what is due today.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 const GET_TOP_CONNECTORS_TOOL: AnthropicTool = {
   name: 'get_top_connectors',
   description:
-    'The people in the user\'s network with the widest reach (most connections) — the strongest overall connectors. Use for "who are my best-connected people" or to find a broad opener. Returns names + a reach score.',
+    'The people in the user\'s network with the widest reach (most connections) — the strongest overall connectors. Use for "who are my best-connected people" or to find a broad opener. Returns names + a reach score.' +
+    ' WHEN: for their widest-reach people.',
   input_schema: {
     type: 'object',
     properties: {
@@ -814,7 +825,8 @@ const GET_TOP_CONNECTORS_TOOL: AnthropicTool = {
 const GET_GROUP_CONNECTORS_TOOL: AnthropicTool = {
   name: 'get_group_connectors',
   description:
-    'Given a group defined by a tag (a company, community, or field — e.g. "TBC", "axel"), ranks the people who bridge INTO it: who knows the most members of that group. Use for "warmest way into [company/community]" or "who can get me into X". Returns names + a member-links count. Prefer this over a plain tag/second-degree search when the user wants the best path into a whole company or community.',
+    'Given a group defined by a tag (a company, community, or field — e.g. "TBC", "axel"), ranks the people who bridge INTO it: who knows the most members of that group. Use for "warmest way into [company/community]" or "who can get me into X". Returns names + a member-links count. Prefer this over a plain tag/second-degree search when the user wants the best path into a whole company or community.' +
+    ' WHEN: for the warmest way into a named company or community.',
   input_schema: {
     type: 'object',
     properties: {
@@ -832,7 +844,8 @@ const GET_GROUP_CONNECTORS_TOOL: AnthropicTool = {
 const FETCH_PAGE_TOOL: AnthropicTool = {
   name: 'fetch_page',
   description:
-    "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page.",
+    "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page." +
+    " WHEN: open an institution's own page whenever a current officeholder is involved.",
   input_schema: {
     type: 'object',
     properties: { url: { type: 'string', description: 'Full http(s) URL of the page to read' } },
@@ -844,7 +857,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
     name: 'lookup_contact_by_phone',
     description:
-      'Looks up a contact in Neo4j by phone number. Use every time the user mentions a phone number.',
+      'Looks up a contact in Neo4j by phone number. Use every time the user mentions a phone number.' +
+      ' WHEN: when you have a number.',
     input_schema: {
       type: 'object',
       properties: {
@@ -856,7 +870,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_contact_by_name: {
     name: 'search_contact_by_name',
     description:
-      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.',
+      'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.' +
+      ' WHEN: try spelling variants, first name alone, surname alone, and the company, brand or nickname as a word.',
     input_schema: {
       type: 'object',
       properties: {
@@ -872,7 +887,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_by_tag: {
     name: 'search_by_tag',
     description:
-      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.',
+      'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.' +
+      ' WHEN: for trade, company and nickname words, in both scripts, across several related words and not just one.',
     input_schema: {
       type: 'object',
       properties: {
@@ -884,7 +900,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_by_insight: {
     name: 'search_by_insight',
     description:
-      "Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: 'სანდო ხელოსანი', 'კარგი ექიმი'. This searches the assistant's own saved knowledge base.",
+      "Search contacts using previously saved information collected from users by the assistant. Use this when the user is looking for someone based on details the assistant has already recorded — for example: 'სანდო ხელოსანი', 'კარგი ექიმი'. This searches the assistant's own saved knowledge base." +
+      " WHEN: for everything a phonebook word cannot answer, which is most real questions — run in both languages, because a Georgian note is invisible to an English query. For a country, city, industry or community, once per channel: alumni and universities, clubs and fellowships, associations and chambers, embassies and that country's firms with a local office.",
     input_schema: {
       type: 'object',
       properties: {
@@ -899,7 +916,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_second_degree: {
     name: 'search_second_degree',
     description:
-      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists.",
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
+      ' WHEN: for one ring beyond their contacts.',
     input_schema: {
       type: 'object',
       properties: {
@@ -915,7 +933,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_contacts_by_country: {
     name: 'search_contacts_by_country',
     description:
-      'Search direct contacts and contacts-of-contacts by country. Use when the user asks about contacts in a specific country or location (e.g. "გერმანიაში ვინმე მყავს?", "find contacts in Germany"). Returns both direct contacts and second-degree contacts with their mutual contact.',
+      'Search direct contacts and contacts-of-contacts by country. Use when the user asks about contacts in a specific country or location (e.g. "გერმანიაში ვინმე მყავს?", "find contacts in Germany"). Returns both direct contacts and second-degree contacts with their mutual contact.' +
+      ' WHEN: for a country sweep.',
     input_schema: {
       type: 'object',
       properties: {
@@ -931,7 +950,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   get_contact_count: {
     name: 'get_contact_count',
     description:
-      'Returns the total number of contacts the user has imported. Use when the user asks how many contacts they have.',
+      'Returns the total number of contacts the user has imported. Use when the user asks how many contacts they have.' +
+      ' WHEN: for the real size of the pool.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -941,7 +961,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   web_search: {
     name: 'web_search',
     description:
-      'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.',
+      'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.' +
+      ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive.',
     input_schema: {
       type: 'object',
       properties: {

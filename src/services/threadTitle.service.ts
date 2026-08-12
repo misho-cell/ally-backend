@@ -12,14 +12,31 @@ const TITLE_MAX_WORDS = 4;
 const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
 const TITLE_PROMPT =
-  'მომხმარებლის შეტყობინებიდან შეადგინე საუბრის სათაური: ზუსტად 2–4 სიტყვა, იმავე ენაზე, ' +
-  'რომელზეც შეტყობინებაა. არავითარი ბრჭყალები, წერტილი ან ახსნა — მხოლოდ სათაური. ' +
-  'ტელეფონის ნომერი სათაურში არასდროს ჩაწერო.';
+  'მომხმარებლის შეტყობინებიდან შეადგინე საუბრის სათაური: ზუსტად 2–4 სიტყვა, მხოლოდ იმ ენაზე, ' +
+  'რომელზეც შეტყობინებაა — ენების შერევა აკრძალულია. უპასუხე მხოლოდ თვითონ სათაურით: არავითარი ' +
+  '„სათაური:", ბრჭყალები, ემოჯი, წერტილი ან ახსნა. ტელეფონის ნომერი სათაურში არასდროს ჩაწერო.';
 
-/** Strip quotes/markdown, collapse whitespace, cap at 4 words — or null if unusable. */
+// The generator's own preamble, in every wording it has produced live —
+// "სათაური: X" and "საუბრის სათაური: X" reached users as the visible title
+// (ticket 4 item 0C.7: six of nine thread titles malformed in one run).
+const TITLE_LABEL_PREFIX = /^\s*(?:საუბრის\s+)?(?:სათაური|title)\s*[:\-—]\s*/iu;
+// Anything outside Georgian/Latin letters, digits and basic punctuation —
+// kills emoji; Cyrillic is checked separately so it can be REJECTED, because a
+// Russian word inside a Georgian title means the model drifted, not decorated.
+const TITLE_DISALLOWED_CHARS = /[^\p{Script=Georgian}\p{Script=Latin}0-9 ,.'&()-]/gu;
+const CYRILLIC = /\p{Script=Cyrillic}/u;
+
+/**
+ * Strip the generator's label and quotes/markdown/emoji, collapse whitespace,
+ * cap at 4 words, and never cut mid-word — or null if unusable (the caller
+ * keeps the provisional title, which is honest text from the user's message).
+ */
 export function sanitizeTitle(raw: string): string | null {
+  if (CYRILLIC.test(raw)) return null;
   const words = raw
+    .replace(TITLE_LABEL_PREFIX, '')
     .replace(/["'"„“”«»*_`#]/g, '')
+    .replace(TITLE_DISALLOWED_CHARS, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
@@ -27,7 +44,16 @@ export function sanitizeTitle(raw: string): string | null {
     .slice(0, TITLE_MAX_WORDS);
   const title = words.join(' ').replace(/[.:,;]+$/, '');
   if (title.length < 2) return null;
-  return title.slice(0, TITLE_MAX_CHARS);
+  if (title.length <= TITLE_MAX_CHARS) return title;
+  // Over the cap: drop whole words from the end, never characters — "ღრმაწყლოვანი
+  // თევზჭერა ნორვეგ" (a hard cut mid-word) is worse than a shorter title.
+  const cut = title.slice(0, TITLE_MAX_CHARS + 1);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = (lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, TITLE_MAX_CHARS)).replace(
+    /[.:,;]+$/,
+    '',
+  );
+  return trimmed.length >= 2 ? trimmed : null;
 }
 
 /**

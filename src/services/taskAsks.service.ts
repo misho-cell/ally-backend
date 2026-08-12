@@ -135,9 +135,17 @@ export async function createAsk(
     .map((v) => v.trim())
     .filter(Boolean);
   if (allowlist.length > 0 && !allowlist.includes(String(toUserId))) {
+    // Worded so it CANNOT be read as the recipient's own choice: on 12 Aug the
+    // model translated the old text into "this person has switched Netai
+    // messages off" — a false statement about a third party's settings
+    // (ticket 4 item 00-D).
     return {
       sent: false,
-      error: 'სატესტო რეჟიმშია: შეკითხვები ამ ეტაპზე მხოლოდ თანხმობის მქონე მიმღებებთან იგზავნება.',
+      error:
+        'ვერ გაიგზავნა: აპლიკაცია სატესტო რეჟიმშია და კითხვები ამ ეტაპზე მხოლოდ წინასწარ ' +
+        'შერჩეულ სატესტო მიმღებებს ეგზავნებათ. ეს ჩვენი, სისტემის დროებითი შეზღუდვაა — ამ ' +
+        'ადამიანს არაფერი გამოურთავს და მისი პარამეტრების შესახებ არაფერი თქვა. მომხმარებელს ' +
+        'უთხარი მხოლოდ: „სატესტო რეჟიმის გამო ამ ადამიანთან მიწერა ჯერ არ შემიძლია".',
     };
   }
 

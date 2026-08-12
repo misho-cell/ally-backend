@@ -826,6 +826,39 @@ adminRouter.get(
   },
 );
 
+// The ask log (tester register T2-02, requested three times): every ask ever
+// sent, with its delivery state — the only way to reconstruct what a user
+// actually received when two surfaces disagree. Newest first; ?limit= and
+// ?task_id= / ?user_id= narrow it.
+adminRouter.get('/asks', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+    const taskId = Number.isFinite(Number(req.query.task_id)) ? Number(req.query.task_id) : null;
+    const userId = Number.isFinite(Number(req.query.user_id)) ? Number(req.query.user_id) : null;
+    const result = await query(
+      `SELECT ta.id, ta.task_id, ta.parent_ask_id,
+              ta.from_user_id, fu.name AS from_name,
+              ta.to_user_id, tu.name AS to_name,
+              ta.status, ta.question, ta.answer, ta.ask_thread_id,
+              ta.created_at, ta.answered_at, ta.reminded_at, ta.wake_delivered_at
+       FROM task_asks ta
+       LEFT JOIN "User" fu ON fu.id = ta.from_user_id
+       LEFT JOIN "User" tu ON tu.id = ta.to_user_id
+       WHERE ($1::int IS NULL OR ta.task_id = $1::int)
+         AND ($2::int IS NULL OR ta.from_user_id = $2::int OR ta.to_user_id = $2::int)
+       ORDER BY ta.id DESC
+       LIMIT $3::int`,
+      [taskId, userId, limit],
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin asks log]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // One-off validation for the graph tools: confirms which phoneKey form a real
 // account uses and returns a raw top-connectors sample. Admin-only, read-only.
 adminRouter.get(
