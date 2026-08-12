@@ -115,7 +115,37 @@ async function upsertFact(
   );
 }
 
-/** Append a free-form fact. Non-core keys accumulate — each save is a new row. */
+// Near-duplicate detection for accumulating facts (ticket 4 item 4B.6: one
+// contact carried FIVE copies of the same sentence, saved on five days).
+// Normalised-equal or ≥80% token overlap counts as the same statement — cheap,
+// deterministic, no model call.
+const DUPLICATE_TOKEN_OVERLAP = 0.8;
+
+function normalizeFactText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[.,!?;:„““”"'()—–-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function isNearDuplicateFact(a: string, b: string): boolean {
+  const na = normalizeFactText(a);
+  const nb = normalizeFactText(b);
+  if (na === nb) return true;
+  const ta = new Set(na.split(' ').filter(Boolean));
+  const tb = new Set(nb.split(' ').filter(Boolean));
+  if (ta.size === 0 || tb.size === 0) return false;
+  let shared = 0;
+  for (const t of ta) if (tb.has(t)) shared += 1;
+  return shared / Math.max(ta.size, tb.size) >= DUPLICATE_TOKEN_OVERLAP;
+}
+
+/**
+ * Append a free-form fact. Non-core keys accumulate — but the SAME statement
+ * saved again refreshes the existing row's date instead of piling up a copy:
+ * a repeat is confirmation, not new information (4B.6).
+ */
 async function insertFreeFormFact(
   userId: string,
   neo4jContactId: string,
@@ -123,6 +153,17 @@ async function insertFreeFormFact(
   value: string,
   isPublic: boolean,
 ): Promise<void> {
+  const existing = await query<{ id: number; value: string }>(
+    `SELECT id, value FROM contact_facts
+     WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND field_type = $3
+       AND retracted_at IS NULL`,
+    [neo4jContactId, userId, fieldType],
+  );
+  const duplicate = existing.rows.find((row) => isNearDuplicateFact(row.value, value));
+  if (duplicate) {
+    await query(`UPDATE contact_facts SET updated_at = NOW() WHERE id = $1`, [duplicate.id]);
+    return;
+  }
   await query(
     // canonical_value doubles as the "shareable text" for public rows — the
     // read paths COALESCE it, so a public note must carry it. moderated_at

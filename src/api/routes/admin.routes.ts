@@ -859,6 +859,67 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
   }
 });
 
+// WHY is this phone in this user's results (ticket 4 item 4B.1: "ownership on
+// the Basilaia record is still direct")? ownership: 'direct' means the phone
+// is in the user's own mine-set — this shows the exact rows that put it there:
+// the user's own alias/tag rows, everyone's facts, the relationship score.
+adminRouter.get('/contact-provenance', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+    if (!Number.isFinite(userId) || userId <= 0 || phone === '') {
+      res.status(400).json({ success: false, error: 'user_id და phone აუცილებელია' });
+      return;
+    }
+    const digits = phone.replace(/\D/g, '');
+    const [aliases, tags, facts, score, registered] = await Promise.all([
+      query(
+        `SELECT id, phone, alias FROM "UserAlias"
+         WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2`,
+        [userId, digits],
+      ),
+      query(
+        `SELECT id, phone, tag FROM "UserTags"
+         WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2`,
+        [userId, digits],
+      ),
+      query(
+        `SELECT id, submitted_by_user_id, field_type, value, retracted_at, created_at
+         FROM contact_facts WHERE regexp_replace(neo4j_contact_id, '\\D', '', 'g') = $1
+         ORDER BY created_at DESC LIMIT 50`,
+        [digits],
+      ),
+      query(
+        `SELECT relationship_type, strength_score, signals, computed_at
+         FROM contact_relationship_scores
+         WHERE user_id = $1 AND regexp_replace(contact_phone, '\\D', '', 'g') = $2`,
+        [userId, digits],
+      ),
+      query(
+        `SELECT up."userId", u.name FROM "UserPhone" up
+         JOIN "User" u ON u.id = up."userId"
+         WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1 AND u."deletedAt" IS NULL`,
+        [digits],
+      ),
+    ]);
+    res.status(200).json({
+      success: true,
+      data: {
+        in_mine_set: aliases.rows.length > 0 || tags.rows.length > 0,
+        own_aliases: aliases.rows,
+        own_tags: tags.rows,
+        facts: facts.rows,
+        relationship_score: score.rows[0] ?? null,
+        registered_as: registered.rows[0] ?? null,
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin contact-provenance]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // One-off validation for the graph tools: confirms which phoneKey form a real
 // account uses and returns a raw top-connectors sample. Admin-only, read-only.
 adminRouter.get(

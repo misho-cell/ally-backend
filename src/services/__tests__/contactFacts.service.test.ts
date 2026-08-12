@@ -36,6 +36,13 @@ function mockModeration(publicVerdict: boolean): void {
   });
 }
 
+function insertCall(): [string, unknown[]] {
+  const call = mockQuery.mock.calls.find(([sql]) =>
+    (sql as string).includes('INSERT INTO contact_facts'),
+  );
+  return [call?.[0] as string, call?.[1] as unknown[]];
+}
+
 describe('submitContactFact — free-text notes (agent-moderated publicity)', () => {
   it('inserts a note as a PRIVATE row when the agent rules it personal', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
@@ -44,9 +51,8 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const result = await submitContactFact(USER, RAW_PHONE, 'note', 'Approach via warm intro');
 
     expect(result).toEqual({ is_public: false, canonical_value: null });
-    // Exactly one write, a plain INSERT (notes accumulate — never an upsert).
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    const [sql, params] = mockQuery.mock.calls[0];
+    // One dedupe scan + one plain INSERT (notes accumulate — never an upsert).
+    const [sql, params] = insertCall();
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
     expect(params as unknown[]).toEqual([PHONE, USER, 'note', 'Approach via warm intro', false]);
@@ -59,7 +65,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const result = await submitContactFact(USER, RAW_PHONE, 'note', 'Fintech product manager');
 
     expect(result.is_public).toBe(true);
-    const [, params] = mockQuery.mock.calls[0];
+    const [, params] = insertCall();
     expect((params as unknown[])[4]).toBe(true);
   });
 
@@ -70,7 +76,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const result = await submitContactFact(USER, RAW_PHONE, 'note', 'anything');
 
     expect(result.is_public).toBe(false);
-    expect((mockQuery.mock.calls[0][1] as unknown[])[4]).toBe(false);
+    expect(insertCall()[1][4]).toBe(false);
   });
 
   it("does not query for other users' facts when saving a note", async () => {
@@ -79,10 +85,12 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
 
     await submitContactFact(USER, RAW_PHONE, 'note', 'reminder');
 
-    // The structured path issues a follow-up SELECT of other submitters' facts;
-    // the note path must not — so there is only the single INSERT.
+    // The structured path issues a follow-up SELECT of OTHER submitters' facts;
+    // the note path's only SELECT is the dedupe scan over the user's OWN rows.
     const selects = mockQuery.mock.calls.filter((c) => (c[0] as string).includes('SELECT'));
-    expect(selects).toHaveLength(0);
+    for (const [sql] of selects) {
+      expect(sql as string).toContain('submitted_by_user_id = $2');
+    }
   });
 
   it('still upserts a structured fact via the partial-index arbiter', async () => {
@@ -110,8 +118,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     expect(result).toEqual({ is_public: false, canonical_value: null });
     // Saved as an accumulating note — never through the crowd-capable upsert,
     // and never through crowd canonicalization (only the moderation call runs).
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    const [sql, params] = mockQuery.mock.calls[0];
+    const [sql, params] = insertCall();
     expect(sql as string).not.toContain('ON CONFLICT');
     expect((params as unknown[])[2]).toBe('note');
     expect(
@@ -130,12 +137,53 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const result = await submitContactFact(USER, RAW_PHONE, 'Role', 'CEO @ Leavingstone');
 
     expect(result).toEqual({ is_public: false, canonical_value: null });
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    const [sql, params] = mockQuery.mock.calls[0];
+    const [sql, params] = insertCall();
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
     // field_type is normalized (trimmed + lowercased) before storage.
     expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone', false]);
+  });
+
+  it('a repeat of the SAME statement refreshes the existing row instead of piling up (4B.6)', async () => {
+    mockModeration(false);
+    mockQuery.mockImplementation((sql: string) => {
+      if ((sql as string).includes('SELECT id, value'))
+        return Promise.resolve(
+          rows([{ id: 9, value: 'ძალიან ახლო მეგობარი — თითქმის ყოველდღე საუბრობენ' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await submitContactFact(
+      USER,
+      RAW_PHONE,
+      'note',
+      'ძალიან ახლო მეგობარი, თითქმის ყოველდღე საუბრობენ!',
+    );
+
+    // Beso carried FIVE copies of this sentence, saved on five days.
+    const update = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SET updated_at = NOW()'),
+    );
+    expect(update?.[1]).toEqual([9]);
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('INSERT INTO contact_facts')),
+    ).toBe(false);
+  });
+
+  it('a genuinely different note still accumulates', async () => {
+    mockModeration(false);
+    mockQuery.mockImplementation((sql: string) => {
+      if ((sql as string).includes('SELECT id, value'))
+        return Promise.resolve(rows([{ id: 9, value: 'ახლო მეგობარი' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await submitContactFact(USER, RAW_PHONE, 'note', 'აშენებს ახალ სახლს კახეთში');
+
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('INSERT INTO contact_facts')),
+    ).toBe(true);
   });
 });
 

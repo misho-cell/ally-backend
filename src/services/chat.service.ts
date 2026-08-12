@@ -93,6 +93,7 @@ import {
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
 import { searchWithRetry } from './tools/searchRetry';
+import { getCountryChannels } from './tools/countryChannels';
 import { isOnboardingUser } from './onboarding.service';
 
 // A mode is a SITUATION — who is in the conversation and what state the
@@ -654,6 +655,28 @@ const RESUME_CONTACT_TOOL: AnthropicTool = {
     'Lift a previous "stop contacting me" — call only when the user explicitly says questions ' +
     'may reach them again. Confirm in one line.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+// Ticket 4 item 4C: the channel sweep the prompt could not enforce, as a tool.
+const GET_COUNTRY_CHANNELS_TOOL: AnthropicTool = {
+  name: 'get_country_channels',
+  description:
+    'For a question about reaching a country (or its market/community): which institutional ' +
+    "channels exist in the user's OWN network — alumni & universities, clubs & fellowships, " +
+    'associations & chambers, embassies & diplomats, bilateral councils — each with a count ' +
+    'and sample contacts. Call it for EVERY country-shaped ask, alongside people search, and ' +
+    'name every channel in the answer including the empty ones: "no alumni angle" is an ' +
+    'answer. WHEN: a country, city-abroad, industry-abroad or community question.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      country: {
+        type: 'string',
+        description: 'The country name as the user said it (Georgian or English).',
+      },
+    },
+    required: ['country'],
+  },
 };
 
 const EXCLUDE_CONTACT_TOOL: AnthropicTool = {
@@ -1677,6 +1700,8 @@ async function executeToolCall(
     case 'allow_contacting_me':
       await resumeAsks(userId);
       return { resumed: true };
+    case 'get_country_channels':
+      return getCountryChannels(userId, String(input['country'] ?? ''));
     case 'relay_ask':
       // `phone` fallback: an in-flight thread may replay history recorded
       // under the old schema.
@@ -1876,6 +1901,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   finish_task: '🏁 დავალებას ვხურავ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
+  get_country_channels: '🌍 არხებს ვამოწმებ...',
   stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
   allow_contacting_me: '🔔 შეტყობინებებს ვაბრუნებ...',
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
@@ -2472,6 +2498,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,
     GET_GROUP_CONNECTORS_TOOL,
+    GET_COUNTRY_CHANNELS_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
