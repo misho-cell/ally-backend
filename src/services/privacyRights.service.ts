@@ -51,6 +51,7 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   { table: 'contact_enrichment', column: 'user_id' },
   { table: 'weak_tie_signals', column: 'user_id' },
   { table: 'search_activity', column: 'user_id' },
+  { table: 'user_avatars', column: 'user_id' },
   { table: 'ai_notification_log', column: 'user_id' },
   { table: 'ai_notification_settings', column: 'user_id' },
   { table: 'push_subscriptions', column: 'user_id' },

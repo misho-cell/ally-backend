@@ -115,4 +115,94 @@ profileRouter.patch(
   },
 );
 
+// --- Profile photo (Lika's item 9) ------------------------------------------
+// Stored in Postgres (migration 058): one image per user, small and capped —
+// see the migration comment for why not an object store.
+const MAX_AVATAR_BYTES = 300 * 1024;
+const ALLOWED_AVATAR_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+profileRouter.put(
+  '/photo',
+  authenticateJwt,
+  requireUserRole,
+  body('mime').isString().trim(),
+  body('data_base64').isString().isLength({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'mime და data_base64 აუცილებელია' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const { mime, data_base64: dataBase64 } = req.body as { mime: string; data_base64: string };
+      if (!ALLOWED_AVATAR_MIME.has(mime)) {
+        res.status(400).json({ success: false, error: 'დაშვებულია: JPEG, PNG, WebP' });
+        return;
+      }
+      const data = Buffer.from(dataBase64, 'base64');
+      if (data.length === 0 || data.length > MAX_AVATAR_BYTES) {
+        res.status(400).json({
+          success: false,
+          error: `ფოტო უნდა იყოს 1 ბაიტიდან ${Math.floor(MAX_AVATAR_BYTES / 1024)}KB-მდე`,
+        });
+        return;
+      }
+      await query(
+        `INSERT INTO user_avatars (user_id, mime, data)
+         VALUES ($1::int, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET mime = $2, data = $3, updated_at = NOW()`,
+        [userId, mime, data],
+      );
+      res.status(200).json({ success: true, data: { bytes: data.length } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PUT /profile/photo]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.get(
+  '/photo',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const result = await query<{ mime: string; data: Buffer }>(
+        'SELECT mime, data FROM user_avatars WHERE user_id = $1::int LIMIT 1',
+        [userId],
+      );
+      const row = result.rows[0];
+      if (!row) {
+        res.status(404).json({ success: false, error: 'ფოტო არ არის' });
+        return;
+      }
+      res.status(200).set('Content-Type', row.mime).set('Cache-Control', 'private, max-age=300');
+      res.send(row.data);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/photo]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/photo',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      await query('DELETE FROM user_avatars WHERE user_id = $1::int', [userId]);
+      res.status(200).json({ success: true, data: { deleted: true } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/photo]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 export default profileRouter;
