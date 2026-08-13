@@ -44,6 +44,8 @@ import {
 import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
+import { getCountryChannels } from '../tools/countryChannels';
+import { optOutFromAsks, resumeAsks } from '../askOptOut.service';
 import {
   NOTE_EMPTY_INSIGHT,
   NOTE_EMPTY_SECOND_DEGREE,
@@ -481,6 +483,57 @@ export async function mcpGetGroupConnectors(
     await getGroupConnectors(userId, groupTag, args.limit),
     'member_links',
   );
+}
+
+interface CountryChannelsRaw {
+  found?: boolean;
+  error?: string;
+  country?: string;
+  channels?: { channel: string; count: number; sample: { phone: string; name: string | null }[] }[];
+  note?: string;
+}
+
+export async function mcpGetCountryChannels(
+  userId: string,
+  args: { country: string },
+): Promise<McpToolPayload> {
+  const country = (args.country ?? '').trim();
+  if (!country) return { error: 'Pass country.' };
+  const raw = (await getCountryChannels(userId, country)) as CountryChannelsRaw;
+  if (raw.found !== true) {
+    return { found: false, ...(raw.error && { error: scrubText(raw.error) }) };
+  }
+  // Phones become contact_refs at the connector boundary, same as every search.
+  return {
+    found: true,
+    country: raw.country,
+    channels: (raw.channels ?? []).map((ch) => ({
+      channel: ch.channel,
+      count: ch.count,
+      sample: ch.sample.map((s) => ({
+        name: s.name ? scrubText(s.name) : null,
+        contact_ref: encodeContactRef(userId, s.phone),
+      })),
+    })),
+    note: raw.note,
+  };
+}
+
+export async function mcpStopContactingMe(
+  userId: string,
+  args: { reason?: string },
+): Promise<McpToolPayload> {
+  await optOutFromAsks(userId, args.reason?.trim() || undefined);
+  return {
+    stopped: true,
+    scope: 'all_senders',
+    note: 'No more questions will reach them, from anyone. They can lift it at any time.',
+  };
+}
+
+export async function mcpAllowContactingMe(userId: string): Promise<McpToolPayload> {
+  await resumeAsks(userId);
+  return { resumed: true };
 }
 
 // --- Goal store + user memory (B1 + C) --------------------------------------

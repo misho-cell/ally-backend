@@ -146,7 +146,7 @@ describe('registerUser', () => {
   it('refuses an unverified phone', async () => {
     routeRegisterQueries({ verified: false });
 
-    await expect(registerUser('+995555123456', 'გიორგი')).rejects.toThrow(/დაუდასტურებელია/);
+    await expect(registerUser('+995555123456', 'გიორგი')).rejects.toThrow(/დადასტურებული არ არის/);
   });
 
   it('throws when phone already registered', async () => {
@@ -234,7 +234,7 @@ describe('completeLogin', () => {
       return Promise.resolve({ rows: [], rowCount: 1 } as never);
     });
 
-    await expect(completeLogin('+995555123456')).rejects.toThrow(/დაუდასტურებელია/);
+    await expect(completeLogin('+995555123456')).rejects.toThrow(/დადასტურებული არ არის/);
   });
 
   it('returns empty token and isNewUser: true for unknown phone', async () => {

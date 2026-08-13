@@ -190,6 +190,30 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'to spot a broad-reach person worth activating or inviting. NOT for reaching a specific ' +
       'group or company — use get_group_connectors for that.',
   },
+  get_country_channels: {
+    title: 'Institutional channels into a country',
+    description:
+      'For any country-shaped ask ("who do I know for Kazakhstan", reaching a market or ' +
+      "community abroad): which institutional channels exist in the user's OWN network — " +
+      'alumni & universities, clubs & fellowships, associations & chambers, embassies & ' +
+      'diplomacy, bilateral councils — each with a count and sample contacts. Call it ' +
+      'ALONGSIDE the people searches, and name every channel in the answer including the ' +
+      'empty ones: "no alumni angle in your network" is an answer the user needs.',
+  },
+  stop_contacting_me: {
+    title: 'Stop questions reaching this user',
+    description:
+      'Call the moment the user says they no longer want to receive questions from Netai ' +
+      '("stop writing to me", "unsubscribe"). Stops EVERY future question from EVERY sender ' +
+      'and cancels anything pending — not just one task. Accept the refusal in one warm ' +
+      'line, never argue or ask why, and say plainly that they can lift it at any time.',
+  },
+  allow_contacting_me: {
+    title: 'Allow questions again',
+    description:
+      'Lift a previous stop — call only when the user explicitly says questions may reach ' +
+      'them again. Confirm in one line.',
+  },
   get_group_connectors: {
     title: 'Who bridges into a group',
     description:
@@ -371,6 +395,8 @@ export const PARAM_TEXTS = {
     'graph must have enough contacts tagged with it to rank well; if it comes back thin, fall ' +
     'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
+  country: 'The country name as the user said it (Georgian or English).',
+  optOutReason: "Optional: the user's own words, if they gave a reason. Never ask for one.",
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:
     "Optional extra detail about the goal — who/what/constraints, in the user's words.",

@@ -126,7 +126,7 @@ describe('registerUser requires a consumed verification', () => {
   it('refuses to mint an account for an unverified phone', async () => {
     setup({ verified: false });
 
-    await expect(registerUser(PHONE, 'Lika')).rejects.toThrow(/დაუდასტურებელია/);
+    await expect(registerUser(PHONE, 'Lika')).rejects.toThrow(/დადასტურებული არ არის/);
     expect(mockQuery.mock.calls.some((c) => (c[0] as string).includes('INSERT INTO "User"'))).toBe(
       false,
     );
@@ -155,7 +155,7 @@ describe('completeLogin requires a consumed verification', () => {
       return Promise.resolve(rows([]) as never);
     });
 
-    await expect(completeLogin(PHONE)).rejects.toThrow(/დაუდასტურებელია/);
+    await expect(completeLogin(PHONE)).rejects.toThrow(/დადასტურებული არ არის/);
   });
 
   it('mints a session against a fresh AUTH verification', async () => {

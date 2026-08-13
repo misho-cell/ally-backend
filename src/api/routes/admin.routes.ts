@@ -859,6 +859,29 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
   }
 });
 
+// Recompute one account's relationship scores NOW (ticket 4 items 4B.2/4B.5):
+// the explicit-insight override applies to new saves immediately, but scores
+// computed before the fix stay wrong until re-scored — this runs the same pass
+// the nightly job would, on demand, so a verification does not wait a day.
+adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+      return;
+    }
+    const { getCompositeKeyForUser } = await import('../../services/neo4j.keys');
+    const { computeAndSaveUserScores } = await import('../../services/enrichment.service');
+    const userKey = await getCompositeKeyForUser(userId);
+    await computeAndSaveUserScores(userId, userKey);
+    res.status(200).json({ success: true, data: { rescored_user: userId } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin rescore]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // WHY is this phone in this user's results (ticket 4 item 4B.1: "ownership on
 // the Basilaia record is still direct")? ownership: 'direct' means the phone
 // is in the user's own mine-set — this shows the exact rows that put it there:

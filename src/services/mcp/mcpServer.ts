@@ -7,6 +7,9 @@ import {
   mcpGetContactFacts,
   mcpGetContactProfile,
   mcpGetGroupConnectors,
+  mcpGetCountryChannels,
+  mcpStopContactingMe,
+  mcpAllowContactingMe,
   mcpGetNetworkStats,
   mcpGetTopConnectors,
   mcpListBlocked,
@@ -494,6 +497,40 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+  );
+  server.registerTool(
+    'get_country_channels',
+    {
+      title: TOOL_TEXTS.get_country_channels.title,
+      description: TOOL_TEXTS.get_country_channels.description,
+      inputSchema: {
+        country: z.string().describe(PARAM_TEXTS.country),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_country_channels', () => mcpGetCountryChannels(userId, args)),
+  );
+  server.registerTool(
+    'stop_contacting_me',
+    {
+      title: TOOL_TEXTS.stop_contacting_me.title,
+      description: TOOL_TEXTS.stop_contacting_me.description,
+      inputSchema: {
+        reason: z.string().optional().describe(PARAM_TEXTS.optOutReason),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'stop_contacting_me', () => mcpStopContactingMe(userId, args)),
+  );
+  server.registerTool(
+    'allow_contacting_me',
+    {
+      title: TOOL_TEXTS.allow_contacting_me.title,
+      description: TOOL_TEXTS.allow_contacting_me.description,
+      inputSchema: {},
+      annotations: WRITE,
+    },
+    () => runTool(userId, 'allow_contacting_me', () => mcpAllowContactingMe(userId)),
   );
 }
 

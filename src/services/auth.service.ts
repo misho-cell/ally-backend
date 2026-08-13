@@ -19,8 +19,15 @@ const VERIFICATION_TTL_MINUTES = 10;
 // Per-PHONE send ceiling (per-IP and per-device limits live in the router; this
 // closes the "many senders, one victim phone" hole).
 const OTP_SENDS_PER_PHONE_PER_HOUR = 5;
+// Names WHOSE number and WHAT to do: the old wording ("ნომერი
+// დაუდასტურებელია") sat on a screen with TWO numbers — the registrant's and
+// the inviter's — and named neither, on a step with no visible code field
+// (ticket 4 item 5.2: the most experienced tester asked "maybe it's my
+// fault"). The inviter's number never needs verifying; only the registrant's
+// own does, via the OTP step.
 const ERR_PHONE_NOT_VERIFIED =
-  'ნომერი დაუდასტურებელია — ჯერ კოდით გაიარე ვერიფიკაცია და მერე სცადე';
+  'შენი ნომერი ჯერ დადასტურებული არ არის: ჯერ შენს ნომერზე გამოგზავნილი კოდი შეიყვანე და მერე ' +
+  'გააგრძელე. (მომწვევის ნომერს დადასტურება არ სჭირდება.)';
 
 // An authentication secret must come from a CSPRNG — Math.random() is guessable.
 function generateOTP(): string {
