@@ -35,6 +35,7 @@ import { checkRunAllowance } from '../../services/tokenWallet.service';
 import {
   subscribeUserEvents,
   emitThreadCreated,
+  emitThreadUpdated,
   emitRunComplete,
   emitRunError,
   hasActiveConnection,
@@ -389,6 +390,39 @@ threadsRouter.post(
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
       }
+    }
+  },
+);
+
+// Rename a conversation (Lika's item 1). The user's own words become the
+// title verbatim (trimmed and capped); a rename also wins over any later
+// model-generated title, because generateThreadTitle only fires on creation.
+const MAX_TITLE_CHARS = 80;
+threadsRouter.patch(
+  '/:id',
+  param('id').isInt({ min: 1 }),
+  body('title').isString().trim().isLength({ min: 1, max: MAX_TITLE_CHARS }),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: `title: 1–${MAX_TITLE_CHARS} სიმბოლო` });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const thread = await getThread(threadId, userId);
+      if (thread === null) {
+        res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
+        return;
+      }
+      const title = String((req.body as { title: string }).title).trim();
+      await updateThreadTitle(threadId, title);
+      emitThreadUpdated(userId, { id: threadId, title });
+      res.status(200).json({ success: true, data: { id: threadId, title } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[PATCH /threads/:id]', error);
+      res.status(500).json({ success: false, error: 'გადარქმევა ვერ მოხერხდა' });
     }
   },
 );
