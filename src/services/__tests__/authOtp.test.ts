@@ -112,6 +112,60 @@ describe('verifyOTP', () => {
   });
 });
 
+describe('review login bypass (REVIEW_PHONE + REVIEW_OTP)', () => {
+  const REVIEW_PHONE = '+995555000001';
+  const REVIEW_CODE = '13570246';
+
+  beforeEach(() => {
+    process.env.REVIEW_PHONE = REVIEW_PHONE;
+    process.env.REVIEW_OTP = REVIEW_CODE;
+    mockQuery.mockResolvedValue(rows([]) as never);
+  });
+
+  afterEach(() => {
+    delete process.env.REVIEW_PHONE;
+    delete process.env.REVIEW_OTP;
+  });
+
+  it('requestOTP sends nothing and stores nothing for the review number', async () => {
+    await requestOTP(REVIEW_PHONE, 'AUTH');
+
+    expect(mockWhatsApp).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('verifyOTP accepts the fixed code for the review number (format-independent)', async () => {
+    await verifyOTP('555 00 00 01', REVIEW_CODE, 'AUTH');
+
+    const marker = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO phone_verifications'),
+    );
+    expect(marker).toBeDefined();
+  });
+
+  it('verifyOTP still rejects a WRONG code on the review number', async () => {
+    await expect(verifyOTP(REVIEW_PHONE, '000000', 'AUTH')).rejects.toThrow();
+  });
+
+  it('the fixed code does NOT work for any other number', async () => {
+    await expect(verifyOTP(PHONE, REVIEW_CODE, 'AUTH')).rejects.toThrow();
+  });
+
+  it('is fully inert when the env vars are unset', async () => {
+    delete process.env.REVIEW_PHONE;
+    delete process.env.REVIEW_OTP;
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM otp_sends')) return Promise.resolve(rows([{ count: '0' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await requestOTP(REVIEW_PHONE, 'AUTH');
+
+    // Without the vars the review number is an ordinary number: code stored, message sent.
+    expect(mockWhatsApp).toHaveBeenCalled();
+  });
+});
+
 describe('registerUser requires a consumed verification', () => {
   function setup(opts: { verified: boolean }): void {
     mockQuery.mockImplementation((sql: string) => {

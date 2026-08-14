@@ -96,10 +96,36 @@ function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
   return { phoneCode: e164.slice(0, 4), phoneNumber: e164.slice(4) };
 }
 
+// --- Store/marketplace review login ------------------------------------------
+// Reviewers (Paddle, app stores) must log into the live app but cannot receive
+// a Georgian SMS. When BOTH env vars are set, the single designated number
+// verifies with the fixed code and no message is ever sent to it. Active only
+// while the vars exist — unset them the moment the review is over.
+function reviewLoginDigits(): string | null {
+  const phone = process.env.REVIEW_PHONE;
+  if (!phone || !process.env.REVIEW_OTP) return null;
+  return phoneDigits(normalizePhone(phone)) || null;
+}
+
+function isReviewPhone(phone: string): boolean {
+  const review = reviewLoginDigits();
+  // Normalize before comparing so the local "5XX…" spelling the login screen
+  // itself suggests matches the env value's full form.
+  return review !== null && phoneDigits(normalizePhone(phone)) === review;
+}
+
+function isReviewLogin(phone: string, code: string): boolean {
+  return isReviewPhone(phone) && code === process.env.REVIEW_OTP;
+}
+
 export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
+  // The review number gets no message and no stored code — verifyOTP accepts
+  // its fixed env code instead.
+  if (isReviewPhone(phone)) return;
+
   await enforcePhoneSendCap(phone);
 
   const code = generateOTP();
@@ -131,6 +157,8 @@ export async function resendOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
+  if (isReviewPhone(phone)) return;
+
   const result = await query<{ createdAt: Date }>(
     `SELECT "createdAt" FROM "Otp"
      WHERE identifier = $1
@@ -163,6 +191,13 @@ export async function verifyOTP(
   code: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
 ): Promise<void> {
+  // Review login: the fixed env code verifies the designated number with no
+  // stored OTP. A wrong code on that number still falls through and fails.
+  if (isReviewLogin(phone, code)) {
+    await markPhoneVerified(phone, actionType);
+    return;
+  }
+
   // Codes are stored hashed; compare hashes. Consumed on use (single-shot).
   const result = await query<{ id: number }>(
     `SELECT id FROM "Otp"
