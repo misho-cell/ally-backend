@@ -2623,19 +2623,21 @@ export async function processChat(
     return { reply: failureReply, runFailed: true };
   }
 
-  // Moderate the user-facing reply before persisting/returning it.
+  // Moderate the user-facing reply before persisting/returning it. Blocking
+  // takes two independent UNSAFE votes (see moderation.service) — a false
+  // block here replaced delivered work with a refusal that blamed the user's
+  // wording (14 Aug P0, threads 8944/8954).
   const replySafe = await isReplySafe(finalText, userId);
   if (!replySafe) {
-    // Rare, unclear-trigger refusals (battery thread 6809) — log enough to
-    // characterize the false-positive pattern without logging the content.
+    // Log enough to characterize the pattern without logging the content.
     // eslint-disable-next-line no-console
     console.warn(
-      `[moderation] run ${runId} reply blocked by content filter (len=${finalText.length})`,
+      `[moderation] run ${runId} thread ${threadId} reply blocked by content filter (len=${finalText.length})`,
     );
   }
   const reply = replySafe
     ? finalText
-    : 'ბოდიში, ამ პასუხს ვერ გავცემ. სცადე კითხვის სხვაგვარად ჩამოყალიბება.';
+    : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.';
   await saveMessage(userId, threadId, 'assistant', reply);
 
   // Charge the run's actual ledger cost to the user's token wallet (no-op
