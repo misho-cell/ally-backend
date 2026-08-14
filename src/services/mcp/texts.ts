@@ -404,7 +404,10 @@ export const PARAM_TEXTS = {
     'graph must have enough contacts tagged with it to rank well; if it comes back thin, fall ' +
     'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
-  country: 'The country name as the user said it (Georgian or English).',
+  country:
+    'The country name in EVERY relevant language, space-separated — always Georgian AND English ' +
+    'at minimum (e.g. "Germany გერმანია", "პოლონეთი Poland"). Tags are stored in whatever ' +
+    'language the contact was saved in; a single-language name misses the rest.',
   knownInstitutions:
     '3-8 major institutions YOU know link people to this country (e.g. Germany: GIZ, DAAD, KfW, ' +
     'Goethe-Institut, AHK). Contacts are often tagged with the institution, never the country — ' +

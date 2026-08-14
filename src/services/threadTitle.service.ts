@@ -13,8 +13,11 @@ const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
 const TITLE_PROMPT =
   'მომხმარებლის შეტყობინებიდან შეადგინე საუბრის სათაური: ზუსტად 2–4 სიტყვა, მხოლოდ იმ ენაზე, ' +
-  'რომელზეც შეტყობინებაა — ენების შერევა აკრძალულია. უპასუხე მხოლოდ თვითონ სათაურით: არავითარი ' +
-  '„სათაური:", ბრჭყალები, ემოჯი, წერტილი ან ახსნა. ტელეფონის ნომერი სათაურში არასდროს ჩაწერო.';
+  'რომელზეც შეტყობინებაა — ენების შერევა აკრძალულია. გამოიყენე მხოლოდ ის საგანი/სიტყვები, რაც ' +
+  'შეტყობინებაშია — არაფერი გამოიგონო; თუ მკაფიო საგანი არ ჩანს, გამოიყენე შეტყობინების პირველი ' +
+  'სიტყვები. საკუთარ თავზე (ასისტენტზე) სათაური არასდროს — ასეთ კითხვას უპასუხე შეტყობინების ' +
+  'სიტყვებით. უპასუხე მხოლოდ თვითონ სათაურით: არავითარი „სათაური:", ბრჭყალები, ემოჯი, წერტილი ' +
+  'ან ახსნა. ტელეფონის ნომერი სათაურში არასდროს ჩაწერო.';
 
 // The generator's own preamble, in every wording it has produced live —
 // "სათაური: X" and "საუბრის სათაური: X" reached users as the visible title
@@ -25,6 +28,10 @@ const TITLE_LABEL_PREFIX = /^\s*(?:საუბრის\s+)?(?:სათაუ�
 // Russian word inside a Georgian title means the model drifted, not decorated.
 const TITLE_DISALLOWED_CHARS = /[^\p{Script=Georgian}\p{Script=Latin}0-9 ,.'&()-]/gu;
 const CYRILLIC = /\p{Script=Cyrillic}/u;
+// The generator must never name the underlying vendor/model: "AI ასისტენტი
+// Claude" reached a user as a visible title (ticket 6 B3, thread 9103). The
+// product's assistant has no such name anywhere in the UI.
+const VENDOR_NAME = /claude|anthropic|კლოდ/iu;
 
 /**
  * Strip the generator's label and quotes/markdown/emoji, collapse whitespace,
@@ -33,6 +40,7 @@ const CYRILLIC = /\p{Script=Cyrillic}/u;
  */
 export function sanitizeTitle(raw: string): string | null {
   if (CYRILLIC.test(raw)) return null;
+  if (VENDOR_NAME.test(raw)) return null;
   const words = raw
     .replace(TITLE_LABEL_PREFIX, '')
     .replace(/["'"„“”«»*_`#]/g, '')

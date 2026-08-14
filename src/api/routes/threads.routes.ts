@@ -17,6 +17,7 @@ import {
   updateThreadTitle,
   saveThreadMessage,
   getLongestRunStep,
+  DEFAULT_NEW_THREAD_TITLE,
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
@@ -79,8 +80,13 @@ function buildPushPreview(reply: string): string {
  */
 function statusAfterRun(result: ChatResult, pendingAsk: boolean): ThreadStatus {
   if (result.requestCreated === true) return 'waiting';
+  // Third-party dependency outranks the reply's own shape: while an ask or an
+  // introduction sits unanswered on someone else's phone the user owes
+  // nothing, however chatty the acknowledgement was (ticket 6 B2: thread 8556
+  // stayed needs_you because its reply ended with a question).
+  if (pendingAsk) return 'waiting';
   if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
-  return pendingAsk ? 'waiting' : 'done';
+  return 'done';
 }
 
 threadsRouter.use(authenticateJwt, requireUserRole);
@@ -216,7 +222,10 @@ threadsRouter.post(
         return;
       }
 
-      if (thread.type === 'regular' && thread.title === null) {
+      if (
+        thread.type === 'regular' &&
+        (thread.title === null || thread.title === DEFAULT_NEW_THREAD_TITLE)
+      ) {
         // Provisional title immediately (never a blank row in the chat list),
         // then a model-written 2–4 word one replaces it via thread_updated.
         await updateThreadTitle(threadId, message.slice(0, 60));

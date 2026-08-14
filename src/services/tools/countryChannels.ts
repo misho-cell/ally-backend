@@ -80,14 +80,36 @@ const CHANNELS: readonly Channel[] = [
   },
 ] as const;
 
+// The country field may carry the name in SEVERAL languages at once
+// ("Germany გერმანია") — the tool description asks the model to do exactly
+// that, because tags are stored in whatever language the contact was saved in
+// and an English-only "Germany" matches neither "გერმანია" nor "germania"
+// (ticket 6 PART D: that mismatch made Germany all-zeros from the connector).
+const MIN_COUNTRY_TOKEN = 2;
+
 function countryPatterns(country: string): string[] {
   const variants = new Set<string>();
-  for (const term of buildSearchTerms(country.trim())) {
-    variants.add(term);
-    const stemmed = term.replace(GEORGIAN_COUNTRY_SUFFIX, '');
-    if (stemmed.length >= 4) variants.add(stemmed);
+  const tokens = country.split(/[\s,/]+/).filter((t) => t.length >= MIN_COUNTRY_TOKEN);
+  for (const token of tokens) {
+    for (const term of buildSearchTerms(token)) {
+      variants.add(term);
+      const stemmed = term.replace(GEORGIAN_COUNTRY_SUFFIX, '');
+      if (stemmed.length >= 4) variants.add(stemmed);
+    }
   }
   return [...variants].map(toWordStartPattern);
+}
+
+// Labels are compared LOWER()ed, so institution hints must be lowercased too —
+// the raw "GIZ" pattern could never match a lowercased 'giz' tag (ticket 6
+// PART D: the case mismatch zeroed named_institutions as well). Hyphen/space
+// spellings both occur in tags ("goethe-institut" vs "goethe institut").
+function institutionVariants(name: string): string[] {
+  const lower = name.trim().toLowerCase();
+  const variants = new Set<string>([lower]);
+  if (lower.includes('-')) variants.add(lower.replace(/-/g, ' '));
+  if (/\s/.test(lower)) variants.add(lower.replace(/\s+/g, '-'));
+  return [...variants];
 }
 
 interface ChannelHit {
@@ -173,7 +195,8 @@ export async function getCountryChannels(
     const institutions = knownInstitutions
       .map((i) => i.trim())
       .filter((i) => i.length >= 2)
-      .slice(0, MAX_KNOWN_INSTITUTIONS);
+      .slice(0, MAX_KNOWN_INSTITUTIONS)
+      .flatMap(institutionVariants);
     const institutionRegexes = institutions.map(toWordStartPattern);
     // An institution name counts as country evidence too — that is the whole
     // point of the hint list.

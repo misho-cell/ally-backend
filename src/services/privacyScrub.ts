@@ -66,6 +66,24 @@ export function stripAllowedSpans(text: string): string {
   return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');
 }
 
+// "[hidden]" is plumbing, not prose: tool results reach the model already
+// scrubbed, and the model sometimes copies the placeholder into its reply —
+// "ილია წულაია ([hidden]): …" rendered to a user (ticket 6 item 13). At the
+// display boundary the placeholder disappears entirely, wrapper included:
+// a parenthesized/bracketed "( **[hidden]** )" goes as one unit, a bare
+// "[hidden]" goes alone, and leftover doubled spaces / space-before-comma are
+// tidied. Privacy is unchanged — the number was already gone.
+const REDACTED_WRAPPED_RE = /\s*[([]\s*\*{0,2}\[hidden\]\*{0,2}\s*[)\]]/g;
+const REDACTED_BARE_RE = /\s*\*{0,2}\[hidden\]\*{0,2}/g;
+
+export function stripRedactionArtifactsForDisplay(text: string): string {
+  return text
+    .replace(REDACTED_WRAPPED_RE, '')
+    .replace(REDACTED_BARE_RE, '')
+    .replace(/ {2,}/g, ' ')
+    .replace(/ ([,.:;!?])/g, '$1');
+}
+
 /**
  * Recursively scrubs a JSON-serializable value: drops phone-named keys,
  * redacts phone-shaped substrings in every string.

@@ -80,6 +80,7 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { isReplySafe } from './moderation.service';
+import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
@@ -337,7 +338,7 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
 const PRESENT_CHOICES_TOOL: AnthropicTool = {
   name: 'present_choices',
   description:
-    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message.',
+    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message. WHEN: the user asks for options/variants to pick from, you are about to end a reply with an either/or question, or your reply would otherwise list 2-5 alternatives as bullets.',
   input_schema: {
     type: 'object',
     properties: {
@@ -673,7 +674,10 @@ const GET_COUNTRY_CHANNELS_TOOL: AnthropicTool = {
     properties: {
       country: {
         type: 'string',
-        description: 'The country name as the user said it (Georgian or English).',
+        description:
+          'The country name in EVERY relevant language, space-separated — always Georgian AND ' +
+          'English at minimum (e.g. "Germany გერმანია", "პოლონეთი Poland"). Tags are stored in ' +
+          'whatever language the contact was saved in; a single-language name misses the rest.',
       },
       known_institutions: {
         type: 'array',
@@ -2094,6 +2098,15 @@ function extractText(content: Anthropic.ContentBlock[]): string {
     .trim();
 }
 
+// Signs of life on a silent run (ticket 6 item 14): the opener reaches the
+// client within the first second; the heartbeat fires whenever nothing else
+// has been emitted for RUN_HEARTBEAT_MS, so a 4-minute research run is never
+// a blank screen.
+const RUN_OPENING_STEP = '🔎 ვიწყებ — ვარკვევ, რა გვჭირდება...';
+const RUN_HEARTBEAT_MS = 25_000;
+const RUN_HEARTBEAT_POLL_MS = 5_000;
+const RUN_HEARTBEAT_STEP = '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...';
+
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -2120,9 +2133,12 @@ async function runToolLoop(
   // the authoritative reply the client reconciles against. This stops tool-round
   // narration garbling into the visible message mid-run.
   let turnEmitted = false;
+  // Anything visibly reaching the client (delta or step) resets the heartbeat.
+  let lastSignalAt = Date.now();
   const newTurnStreamer = (): SafeTextStreamer =>
     createSafeTextStreamer((chunk) => {
       turnEmitted = true;
+      lastSignalAt = Date.now();
       emitAnswerDelta(userId, threadId, runId, chunk);
     });
   let answer = newTurnStreamer();
@@ -2141,6 +2157,22 @@ async function runToolLoop(
     turnEmitted = false;
     answer = newTurnStreamer();
   };
+  // First sign of life BEFORE the first model call: a heavy research run's
+  // opening API call can think for tens of seconds with nothing on screen —
+  // three 3-4 minute runs rendered in total silence (ticket 6 item 14). This
+  // step line reaches the client within the first second of every run.
+  emitStepSummary(userId, threadId, runId, RUN_OPENING_STEP);
+  const heartbeat = setInterval(() => {
+    // Self-terminating past the wall clock so an abandoned run can't tick forever.
+    if (Date.now() - startedAt > RUN_WALL_CLOCK_BUDGET_MS) {
+      clearInterval(heartbeat);
+      return;
+    }
+    if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
+      lastSignalAt = Date.now();
+      emitStepSummary(userId, threadId, runId, RUN_HEARTBEAT_STEP);
+    }
+  }, RUN_HEARTBEAT_POLL_MS);
   // Initial call: nothing gathered yet, so a failure here propagates and the
   // route reports a run error — there is no partial answer to salvage.
   // Tool turns run on TOOL_TURN_MODEL (same as MODEL unless the A/B flag is set).
@@ -2411,6 +2443,8 @@ async function runToolLoop(
   // reconciles the client's buffer against the authoritative reply anyway).
   answer.flush();
 
+  clearInterval(heartbeat);
+
   // Per-run telemetry: tool-call count, model round-trips, and elapsed time, so
   // the tool-budget rule can be watched and runaway tool loops spotted.
   // eslint-disable-next-line no-console
@@ -2623,20 +2657,25 @@ export async function processChat(
     return { reply: failureReply, runFailed: true };
   }
 
+  // Deterministic opener strip (ticket 6 item 12): a long reply must open
+  // with the answer, not "ახლა სრული სურათი მაქვს" — four prompt attempts
+  // could not unlearn the habit. Before persistence, so stored text is clean.
+  const cleanedFinal = stripProcessOpener(finalText, threadId);
+
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  const replySafe = await isReplySafe(finalText, userId);
+  const replySafe = await isReplySafe(cleanedFinal, userId);
   if (!replySafe) {
     // Log enough to characterize the pattern without logging the content.
     // eslint-disable-next-line no-console
     console.warn(
-      `[moderation] run ${runId} thread ${threadId} reply blocked by content filter (len=${finalText.length})`,
+      `[moderation] run ${runId} thread ${threadId} reply blocked by content filter (len=${cleanedFinal.length})`,
     );
   }
   const reply = replySafe
-    ? finalText
+    ? cleanedFinal
     : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.';
   await saveMessage(userId, threadId, 'assistant', reply);
 

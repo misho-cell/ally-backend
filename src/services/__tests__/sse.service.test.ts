@@ -39,7 +39,10 @@ describe('sse.service phone scrubbing', () => {
       text: string;
     };
     expect(step.text).not.toContain(PHONE);
-    expect(step.text).toContain('[hidden]');
+    // The placeholder itself never renders either — the parenthesized redaction
+    // disappears as one unit (ticket 6 item 13: "[hidden]" reached a user).
+    expect(step.text).not.toContain('[hidden]');
+    expect(step.text).toBe('Only one Georgian number so far.');
     unsubscribe();
   });
 

@@ -1,5 +1,9 @@
 import { query } from '../db/postgres/client';
-import { stripAllowedSpans, stripEmDashesForDisplay } from './privacyScrub';
+import {
+  stripAllowedSpans,
+  stripEmDashesForDisplay,
+  stripRedactionArtifactsForDisplay,
+} from './privacyScrub';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
@@ -113,6 +117,11 @@ export async function getThreadsForUser(
   return result.rows;
 }
 
+// A brand-new thread is never born titleless: a null title left the row blank
+// in the client with no rename/delete controls at all — an unremovable ghost
+// (ticket 6 B2, threads 9080/9115). The first message replaces this.
+export const DEFAULT_NEW_THREAD_TITLE = 'ახალი საუბარი';
+
 export async function createThread(
   userId: string,
   type: Thread['type'],
@@ -128,7 +137,7 @@ export async function createThread(
     [
       userId,
       type,
-      title ?? null,
+      title ?? (type === 'regular' ? DEFAULT_NEW_THREAD_TITLE : null),
       introRequestId ?? null,
       task?.isTask ?? false,
       task?.status ?? 'done',
@@ -328,7 +337,7 @@ export async function getThreadMessages(
     ...row,
     content:
       row.role === 'assistant'
-        ? stripEmDashesForDisplay(stripAllowedSpans(row.content))
+        ? stripEmDashesForDisplay(stripRedactionArtifactsForDisplay(stripAllowedSpans(row.content)))
         : stripAllowedSpans(row.content),
   }));
 }

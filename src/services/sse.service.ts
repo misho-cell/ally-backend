@@ -1,11 +1,19 @@
 import { EventEmitter } from 'events';
 import { Response } from 'express';
-import { scrubDeep, scrubText, stripAllowedSpans, stripEmDashesForDisplay } from './privacyScrub';
+import {
+  scrubDeep,
+  scrubText,
+  stripAllowedSpans,
+  stripEmDashesForDisplay,
+  stripRedactionArtifactsForDisplay,
+} from './privacyScrub';
 
 // Scrub then reveal explicitly-allowed spans (the own-number passthrough) at
-// this final display boundary.
+// this final display boundary; the "[hidden]" placeholder itself never renders.
 function displayText(text: string): string {
-  return stripEmDashesForDisplay(stripAllowedSpans(scrubText(text)));
+  return stripEmDashesForDisplay(
+    stripRedactionArtifactsForDisplay(stripAllowedSpans(scrubText(text))),
+  );
 }
 
 const emitter = new EventEmitter();
