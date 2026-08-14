@@ -505,6 +505,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       description: TOOL_TEXTS.get_country_channels.description,
       inputSchema: {
         country: z.string().describe(PARAM_TEXTS.country),
+        known_institutions: z.array(z.string()).optional().describe(PARAM_TEXTS.knownInstitutions),
       },
       annotations: READ_ONLY,
     },

@@ -674,6 +674,12 @@ const GET_COUNTRY_CHANNELS_TOOL: AnthropicTool = {
         type: 'string',
         description: 'The country name as the user said it (Georgian or English).',
       },
+      known_institutions: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          '3-8 major institutions YOU know link people to this country (e.g. Germany: GIZ, DAAD, KfW, Goethe-Institut, AHK, Konrad-Adenauer). Contacts are often tagged with the institution, never the country — without this list those contacts are invisible.',
+      },
     },
     required: ['country'],
   },
@@ -1701,7 +1707,13 @@ async function executeToolCall(
       await resumeAsks(userId);
       return { resumed: true };
     case 'get_country_channels':
-      return getCountryChannels(userId, String(input['country'] ?? ''));
+      return getCountryChannels(
+        userId,
+        String(input['country'] ?? ''),
+        Array.isArray(input['known_institutions'])
+          ? (input['known_institutions'] as unknown[]).map(String)
+          : [],
+      );
     case 'relay_ask':
       // `phone` fallback: an in-flight thread may replay history recorded
       // under the old schema.
@@ -2557,9 +2569,16 @@ export async function processChat(
 
   // Tool-interaction turns carry the full content_json for model history but
   // have empty display content (filtered from the thread view); the final reply
-  // is the user-visible answer.
+  // is the user-visible answer. System turns addressed to the MODEL — the wake
+  // events and the cliffhanger nudge — persist as kind 'event' so they never
+  // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
+  // DOM as the user's own message and the assistant answered IT).
   for (const msg of pending) {
-    await saveMessage(userId, threadId, msg.role, msg.content);
+    const isSystemTurn =
+      msg.role === 'user' &&
+      typeof msg.content === 'string' &&
+      (msg.content.startsWith(RUN_EVENT_PREFIX) || msg.content === CLIFFHANGER_NUDGE);
+    await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
   }
 
   // A run must NEVER end "successfully" with nothing to say: an empty final

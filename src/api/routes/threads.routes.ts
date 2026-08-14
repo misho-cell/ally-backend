@@ -28,6 +28,7 @@ import {
   cancelAsksForTask,
 } from '../../services/taskAsks.service';
 import { wakeTask } from '../../services/taskEngine.service';
+import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { ThreadStatus, deleteThread } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
@@ -302,6 +303,11 @@ threadsRouter.post(
           // test the run's failure text told the recipient the answer had
           // failed while the asker already had it (ticket 3 §1 case 2 / §6.5).
           const answered = await askAnswerCaptured;
+          // Waiting covers BOTH kinds of third-party dependency: an unanswered
+          // ask AND an unanswered introduction request (ticket 5 item B2).
+          const pendingIntro =
+            thread.type === 'outgoing_request' &&
+            (await hasPendingIntroForThread(thread.introduction_request_id).catch(() => false));
           // The run itself reports failure (e.g. an empty final) — surface a
           // retryable error, never a "successful" empty answer.
           if (result.runFailed === true) {
@@ -318,7 +324,8 @@ threadsRouter.post(
           // Persist + broadcast the terminal status. The thread becomes a task
           // once a run sent a request or reported a structured result.
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
-          const pendingAsk = await hasPendingAskForThread(threadId).catch(() => false);
+          const pendingAsk =
+            (await hasPendingAskForThread(threadId).catch(() => false)) || pendingIntro;
           void setThreadStatus(
             userId,
             threadId,
@@ -446,8 +453,10 @@ threadsRouter.delete(
         res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
         return;
       }
+      // tasks.user_id is TEXT — uncast parameter (the ::int cast was one of the
+      // three faults behind ticket 5 item A2's 500).
       const openTasks = await query<{ id: number }>(
-        `SELECT id FROM tasks WHERE thread_id = $1 AND user_id = $2::int AND status = 'open'`,
+        `SELECT id FROM tasks WHERE thread_id = $1 AND user_id = $2 AND status = 'open'`,
         [threadId, userId],
       );
       for (const task of openTasks.rows) {

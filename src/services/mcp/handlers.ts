@@ -495,11 +495,15 @@ interface CountryChannelsRaw {
 
 export async function mcpGetCountryChannels(
   userId: string,
-  args: { country: string },
+  args: { country: string; known_institutions?: string[] },
 ): Promise<McpToolPayload> {
   const country = (args.country ?? '').trim();
   if (!country) return { error: 'Pass country.' };
-  const raw = (await getCountryChannels(userId, country)) as CountryChannelsRaw;
+  const raw = (await getCountryChannels(
+    userId,
+    country,
+    Array.isArray(args.known_institutions) ? args.known_institutions.map(String) : [],
+  )) as CountryChannelsRaw;
   if (raw.found !== true) {
     return { found: false, ...(raw.error && { error: scrubText(raw.error) }) };
   }

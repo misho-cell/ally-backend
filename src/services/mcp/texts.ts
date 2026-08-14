@@ -396,6 +396,10 @@ export const PARAM_TEXTS = {
     'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
   country: 'The country name as the user said it (Georgian or English).',
+  knownInstitutions:
+    '3-8 major institutions YOU know link people to this country (e.g. Germany: GIZ, DAAD, KfW, ' +
+    'Goethe-Institut, AHK). Contacts are often tagged with the institution, never the country — ' +
+    'without this list those contacts are invisible.',
   optOutReason: "Optional: the user's own words, if they gave a reason. Never ask for one.",
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:

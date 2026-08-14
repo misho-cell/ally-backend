@@ -153,20 +153,43 @@ const EXPLICIT_STRENGTH: Record<'family' | 'close' | 'professional', number> = {
   professional: 0.55,
 };
 
-/** The user's saved `relationship` insights for their contacts, phone-keyed. */
+/**
+ * The user's OWN words about a relationship, phone-keyed. Two sources, in
+ * precedence order: the `relationship` insight field, then note-facts — people
+ * say "close friend" in notes far more often than they fill a field (ticket 5
+ * item C2: three close-friend notes, score still formal). The insight value
+ * comes FIRST in the joined text so classifyExplicitRelationship reads it
+ * first when both exist.
+ */
 async function getExplicitRelationships(userId: number): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   try {
-    const result = await query<{ phone: string; relationship: string }>(
+    const insights = await query<{ phone: string; relationship: string }>(
       `SELECT neo4j_contact_id AS phone, data->>'relationship' AS relationship
        FROM contact_insights
        WHERE user_id = $1 AND data->>'relationship' IS NOT NULL`,
       [userId],
     );
-    for (const row of result.rows) map.set(row.phone, row.relationship);
+    for (const row of insights.rows) map.set(row.phone, row.relationship);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[enrichment] explicit relationships unavailable:', (err as Error).message);
+  }
+  try {
+    const notes = await query<{ phone: string; notes: string }>(
+      `SELECT neo4j_contact_id AS phone, string_agg(value, ' | ') AS notes
+       FROM contact_facts
+       WHERE submitted_by_user_id = $1 AND field_type = 'note' AND retracted_at IS NULL
+       GROUP BY neo4j_contact_id`,
+      [String(userId)],
+    );
+    for (const row of notes.rows) {
+      const existing = map.get(row.phone);
+      map.set(row.phone, existing ? `${existing} | ${row.notes}` : row.notes);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[enrichment] note-facts unavailable:', (err as Error).message);
   }
   return map;
 }

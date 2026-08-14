@@ -870,14 +870,99 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
       return;
     }
+    // 202 + background: a full account takes minutes (the founder's ~2,700
+    // contacts each need a graph bidirectionality check) and a synchronous run
+    // outlived every browser timeout (ticket 5 item C2's operational ask).
     const { getCompositeKeyForUser } = await import('../../services/neo4j.keys');
     const { computeAndSaveUserScores } = await import('../../services/enrichment.service');
     const userKey = await getCompositeKeyForUser(userId);
-    await computeAndSaveUserScores(userId, userKey);
-    res.status(200).json({ success: true, data: { rescored_user: userId } });
+    void computeAndSaveUserScores(userId, userKey)
+      .then(() =>
+        // eslint-disable-next-line no-console
+        console.log(`[rescore] user ${userId} done`),
+      )
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(`[rescore] user ${userId} FAILED:`, (err as Error).message),
+      );
+    res.status(202).json({
+      success: true,
+      data: {
+        rescoring_user: userId,
+        note: 'მიმდინარეობს ფონურად (რამდენიმე წუთი დიდ ექაუნთზე) — დასრულება Railway-ს ლოგში ჩანს: [rescore] user N done',
+      },
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin rescore]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Introduction requests, same shape as /admin/asks (ticket 5 item G3: intro
+// declines were observable nowhere admin-side).
+adminRouter.get('/intro-requests', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+    const userId = Number.isFinite(Number(req.query.user_id)) ? Number(req.query.user_id) : null;
+    const result = await query(
+      `SELECT ir.id, ir.request_ref, ir.status, ir.target_name, ir.message,
+              ir.mediator_response, ir.ask_type, ir.snoozed_until,
+              ir.requester_user_id, rq.name AS requester_name,
+              ir.mediator_user_id, md.name AS mediator_name,
+              ir.created_at, ir.responded_at
+       FROM introduction_requests ir
+       LEFT JOIN "User" rq ON rq.id = ir.requester_user_id
+       LEFT JOIN "User" md ON md.id = ir.mediator_user_id
+       WHERE ($1::int IS NULL OR ir.requester_user_id = $1::int OR ir.mediator_user_id = $1::int)
+       ORDER BY ir.id DESC
+       LIMIT $2::int`,
+      [userId, limit],
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin intro log]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// One pass over existing thread titles with the SAME sanitiser new titles get
+// (ticket 5 item B3: the old malformed titles were never backfilled). A title
+// the sanitiser rejects outright (e.g. Cyrillic drift) falls back to the
+// thread's first user message. Idempotent; capped per call.
+adminRouter.post('/titles/cleanup', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 2000) : 500;
+    const { sanitizeTitle } = await import('../../services/threadTitle.service');
+    const threads = await query<{ id: number; title: string }>(
+      `SELECT id, title FROM threads WHERE title IS NOT NULL ORDER BY id DESC LIMIT $1::int`,
+      [limit],
+    );
+    let updated = 0;
+    for (const row of threads.rows) {
+      const cleaned = sanitizeTitle(row.title);
+      let next: string | null = cleaned;
+      if (next === null) {
+        const firstMsg = await query<{ content: string }>(
+          `SELECT content FROM conversations
+           WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+           ORDER BY created_at ASC LIMIT 1`,
+          [row.id],
+        );
+        next = firstMsg.rows[0]?.content.slice(0, 60) ?? null;
+      }
+      if (next !== null && next !== row.title) {
+        await query(`UPDATE threads SET title = $1 WHERE id = $2`, [next, row.id]);
+        updated += 1;
+      }
+    }
+    res.status(200).json({ success: true, data: { scanned: threads.rows.length, updated } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin title cleanup]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

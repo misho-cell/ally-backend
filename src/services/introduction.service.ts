@@ -83,6 +83,21 @@ export async function getRecentResponsesForRequester(
   return result.rows;
 }
 
+/**
+ * Is this thread's introduction request still unanswered? An outgoing-request
+ * thread waiting on the mediator is WAITING, not needs_you — the asker owes
+ * nothing (ticket 5 item B2: thread 8556 read needs_you while the recipient
+ * had not answered).
+ */
+export async function hasPendingIntroForThread(introRequestId: number | null): Promise<boolean> {
+  if (introRequestId === null) return false;
+  const result = await query<{ id: number }>(
+    `SELECT id FROM introduction_requests WHERE id = $1 AND status = 'pending' LIMIT 1`,
+    [introRequestId],
+  );
+  return result.rows.length > 0;
+}
+
 export type IntroductionAction = 'accept' | 'decline' | 'snooze';
 export type ResolveSource = 'chat' | 'button';
 

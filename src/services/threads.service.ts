@@ -169,9 +169,14 @@ export async function deleteThread(
       [threadId, userId],
     );
     if (owned.rows.length === 0) return { deleted: false, cancelledTasks: [] };
+    // tasks.user_id is TEXT (migration 040) — the parameter stays UNCAST so PG
+    // infers the type from the column; and the status CHECK allows only
+    // open/paused/closed, so a deleted thread's task is 'closed' with a reason.
+    // Both wrong in the first cut: DELETE /threads returned 500 on every real
+    // thread (ticket 5 item A2).
     const tasks = await client.query<{ id: number }>(
-      `UPDATE tasks SET status = 'cancelled'
-       WHERE thread_id = $1 AND user_id = $2::int AND status = 'open'
+      `UPDATE tasks SET status = 'closed', closed_reason = 'thread_deleted'
+       WHERE thread_id = $1 AND user_id = $2 AND status = 'open'
        RETURNING id`,
       [threadId, userId],
     );

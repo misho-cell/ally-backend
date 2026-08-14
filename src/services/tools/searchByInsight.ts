@@ -84,6 +84,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
      LEFT JOIN "UserPhone" up ON up.phone = cf.neo4j_contact_id
      LEFT JOIN "User"      u  ON u.id     = up."userId"
      WHERE cf.submitted_by_user_id = $1
+       AND cf.retracted_at IS NULL
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
      ORDER BY (${wordHitsClause(matchExpr, likes.length, 3)}) DESC, MAX(cf.created_at) DESC
@@ -109,6 +110,7 @@ async function searchPublicFacts(userId: string, likes: string[]): Promise<FactR
      FROM contact_facts cf
      JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
      WHERE cf.is_public = true
+       AND cf.retracted_at IS NULL
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
      ORDER BY (${wordHitsClause(matchExpr, likes.length, 2)}) DESC, MAX(cf.created_at) DESC

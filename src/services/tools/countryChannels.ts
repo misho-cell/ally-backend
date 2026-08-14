@@ -156,16 +156,40 @@ async function sweepChannel(
   return result.rows;
 }
 
-export async function getCountryChannels(userId: string, country: string): Promise<object> {
+// The model supplies these — institution names imply their country without
+// containing it: a "GIZ" tag never matches the word Germany, which made
+// Germany return all zeros on a network full of GIZ contacts (ticket 5 PART
+// D). Capped: this is a hint list, not a directory.
+const MAX_KNOWN_INSTITUTIONS = 10;
+
+export async function getCountryChannels(
+  userId: string,
+  country: string,
+  knownInstitutions: readonly string[] = [],
+): Promise<object> {
   try {
     const trimmed = country.trim();
     if (!trimmed) return { found: false, error: 'Pass a country name.' };
-    const countryRegexes = countryPatterns(trimmed);
+    const institutions = knownInstitutions
+      .map((i) => i.trim())
+      .filter((i) => i.length >= 2)
+      .slice(0, MAX_KNOWN_INSTITUTIONS);
+    const institutionRegexes = institutions.map(toWordStartPattern);
+    // An institution name counts as country evidence too — that is the whole
+    // point of the hint list.
+    const countryRegexes = [...countryPatterns(trimmed), ...institutionRegexes];
     const blockedPhones = await getExcludedPhones(userId);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
 
+    const sweeps: Channel[] = [...CHANNELS];
+    if (institutionRegexes.length > 0) {
+      // The institutions ARE a channel: a contact tagged "GIZ" belongs in the
+      // Germany answer even when no generic channel keyword touches them.
+      sweeps.push({ key: 'named_institutions', keywords: institutions });
+    }
+
     const channels = [];
-    for (const channel of CHANNELS) {
+    for (const channel of sweeps) {
       const hits = (await sweepChannel(userId, channel, countryRegexes, blockedPhones)).filter(
         (h) => !excludedSet.has(normalizePhone(h.phone)),
       );
