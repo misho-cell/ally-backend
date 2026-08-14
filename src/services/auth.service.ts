@@ -7,6 +7,7 @@ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { AuthPayload } from '../types';
+import { normalizePhone } from './phone';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
 if (!jwtSecret) {
@@ -225,37 +226,55 @@ export async function registerUser(
     );
   }
 
+  // Everything that can fail on INPUT is validated BEFORE the verification is
+  // consumed: a burnt verification on a failed attempt sent the retry to
+  // "ნომერი დადასტურებული არ არის" even though the person had just passed the
+  // OTP (13 Aug: a real new user bounced back to the invite screen after
+  // completing every step). normalizePhone also accepts the local "5XX…" form
+  // the registration screen shows as its placeholder — the raw value used to
+  // reach parsePhone and throw on the missing "+".
+  const cleanPhone = normalizePhone(phone);
+  const { phoneCode, phoneNumber } = parsePhone(cleanPhone);
+
   // The OTP round-trip is mandatory: no verification record — no account.
-  // (Consumed here, single use, so a stolen response can't be replayed.)
-  if (!(await consumePhoneVerification(phone, ['REGISTER']))) {
+  // Consumed here, single use, so a stolen response can't be replayed.
+  // REGISTER and AUTH are both accepted: they prove the same thing (possession
+  // of this phone within the TTL), and the app's single entry screen sends the
+  // code as AUTH before it knows whether the number is new — demanding
+  // REGISTER-only rejected every real new user who arrived through login.
+  if (!(await consumePhoneVerification(phone, ['REGISTER', 'AUTH']))) {
     throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
 
-  const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
+  try {
+    const password = await bcrypt.hash(randomUUID(), SALT_ROUNDS);
 
-  const userResult = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, "hasAccessToAlly", "inviterReferralUserId", "createdAt", "updatedAt")
-     VALUES ($1, $2, true, $3, NOW(), NOW())
-     RETURNING id`,
-    [name, password, gate.inviterUserId ?? null],
-  );
+    const userResult = await query<{ id: number }>(
+      `INSERT INTO "User" (name, password, "hasAccessToAlly", "inviterReferralUserId", "createdAt", "updatedAt")
+       VALUES ($1, $2, true, $3, NOW(), NOW())
+       RETURNING id`,
+      [name, password, gate.inviterUserId ?? null],
+    );
 
-  const userId = userResult.rows[0].id;
-  // Store the phone canonically (no spaces/dashes) — unnormalized rows are what
-  // broke is_member and self-exclusion for format-variant registrations.
-  const cleanPhone = phone.replace(/[\s\-().]/g, '');
-  const { phoneCode, phoneNumber } = parsePhone(cleanPhone);
+    const userId = userResult.rows[0].id;
+    await query(
+      `INSERT INTO "UserPhone" (phone, "phoneCode", "phoneNumber", "userId", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+      [cleanPhone, phoneCode, phoneNumber, userId],
+    );
 
-  await query(
-    `INSERT INTO "UserPhone" (phone, "phoneCode", "phoneNumber", "userId", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-    [cleanPhone, phoneCode, phoneNumber, userId],
-  );
+    await createUserPhoneNode(cleanPhone);
 
-  await createUserPhoneNode(cleanPhone);
-
-  const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
-  return { token };
+    const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, {
+      expiresIn: '30d',
+    });
+    return { token };
+  } catch (err) {
+    // The creation failed AFTER the verification was spent — hand it back so
+    // the user's retry works instead of demanding a code they already entered.
+    await markPhoneVerified(phone, 'REGISTER').catch(() => undefined);
+    throw err;
+  }
 }
 
 export async function completeLogin(phone: string): Promise<{ token: string; isNewUser: boolean }> {
@@ -272,8 +291,11 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
   }
 
   // Same rule as registration: a session is only minted against a fresh,
-  // consumed OTP verification (AUTH for login, RECOVER for account recovery).
-  if (!(await consumePhoneVerification(phone, ['AUTH', 'RECOVER']))) {
+  // consumed OTP verification. All three action types prove the same thing —
+  // possession of this phone within the TTL — so none of them may strand a
+  // real person on the wrong screen (the register/login mirror of the 13 Aug
+  // registration bounce).
+  if (!(await consumePhoneVerification(phone, ['AUTH', 'RECOVER', 'REGISTER']))) {
     throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
 

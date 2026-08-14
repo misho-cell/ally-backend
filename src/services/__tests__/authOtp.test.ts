@@ -144,6 +144,48 @@ describe('registerUser requires a consumed verification', () => {
     // No spaces/dashes ever again — unnormalized rows broke is_member/self-exclusion.
     expect((phoneInsert?.[1] as unknown[])[0]).toBe('+995599123456');
   });
+
+  it('accepts a verification recorded as AUTH — the entry screen sends the code before knowing the number is new (13 Aug bounce)', async () => {
+    setup({ verified: true });
+
+    await registerUser(PHONE, 'Lika');
+
+    const consume = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('DELETE FROM phone_verifications'),
+    );
+    expect((consume?.[1] as unknown[])[1]).toEqual(['REGISTER', 'AUTH']);
+  });
+
+  it('registers a LOCAL-format number (the "5XX…" the screen itself suggests)', async () => {
+    setup({ verified: true });
+
+    const result = await registerUser('599 12 34 56', 'Lika');
+
+    // Used to reach parsePhone raw and throw on the missing "+", burning the
+    // verification so the retry hit "ნომერი დადასტურებული არ არის".
+    expect(result.token).toBeTruthy();
+    const phoneInsert = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO "UserPhone"'),
+    );
+    expect((phoneInsert?.[1] as unknown[])[0]).toBe('+995599123456');
+  });
+
+  it('hands the verification BACK when creation fails after the consume, so the retry works', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT id FROM "UserPhone"')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('DELETE FROM phone_verifications'))
+        return Promise.resolve(rows([], 1) as never);
+      if (sql.includes('INSERT INTO "User"')) return Promise.reject(new Error('db down') as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await expect(registerUser(PHONE, 'Lika')).rejects.toThrow('db down');
+
+    const restore = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO phone_verifications'),
+    );
+    expect(restore).toBeDefined();
+  });
 });
 
 describe('completeLogin requires a consumed verification', () => {
