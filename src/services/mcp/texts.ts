@@ -200,6 +200,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'ALONGSIDE the people searches, and name every channel in the answer including the ' +
       'empty ones: "no alumni angle in your network" is an answer the user needs.',
   },
+  get_netai_info: {
+    title: 'What Netai is, costs, and can do',
+    description:
+      'The user asks what Netai is, what it costs, how referral earning/withdrawal works, what ' +
+      'it can and cannot do, how introductions work, or how their data is treated → call this ' +
+      'and answer FROM it, in their language, quoting numbers exactly. Topics: about, doors, ' +
+      'pricing, earnings, intro_flow, privacy, limits, capabilities. If a topic is not covered, ' +
+      'say you do not know — never improvise product facts.',
+  },
   stop_contacting_me: {
     title: 'Stop questions reaching this user',
     description:
@@ -400,6 +409,8 @@ export const PARAM_TEXTS = {
     '3-8 major institutions YOU know link people to this country (e.g. Germany: GIZ, DAAD, KfW, ' +
     'Goethe-Institut, AHK). Contacts are often tagged with the institution, never the country — ' +
     'without this list those contacts are invisible.',
+  netaiInfoTopic:
+    'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities.',
   optOutReason: "Optional: the user's own words, if they gave a reason. Never ask for one.",
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:

@@ -200,6 +200,7 @@ export async function registerUser(
   phone: string,
   name: string,
   referralPhone?: string,
+  referralCode?: string,
 ): Promise<{ token: string }> {
   // Format-independent lookup: "+995 599…", "995599…" and the stored form must
   // all hit the same row. An exact string compare here created a DUPLICATE user
@@ -215,7 +216,7 @@ export async function registerUser(
     throw new Error('ნომერი უკვე რეგისტრირებულია');
   }
 
-  const gate = await checkRegistrationEligibility(phone, referralPhone);
+  const gate = await checkRegistrationEligibility(phone, referralPhone, referralCode);
   if (!gate.eligible) {
     // eslint-disable-next-line no-console
     console.warn(`[invite-gate] rejected registration ***${phone.slice(-4)} — ${gate.reason}`);

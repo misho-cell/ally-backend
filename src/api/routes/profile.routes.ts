@@ -18,6 +18,8 @@ interface ProfileData {
   readonly subscription_status: string;
   readonly trial_ends_at: string | null;
   readonly current_period_ends_at: string | null;
+  /** Minted on first read — the invite currency (founder decision F.1). */
+  referral_code?: string | null;
 }
 
 // The public fields a user may edit about THEMSELVES (Lika's item 9: "the
@@ -63,7 +65,10 @@ profileRouter.get(
         return;
       }
 
-      res.status(200).json({ success: true, data: row });
+      // Minted on first read (founder decision F.1: invites go by code).
+      const { getOrCreateReferralCode } = await import('../../services/referralCode.service');
+      const referralCode = await getOrCreateReferralCode(userId).catch(() => null);
+      res.status(200).json({ success: true, data: { ...row, referral_code: referralCode } });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[GET /profile]', err);

@@ -45,6 +45,7 @@ import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
 import { getCountryChannels } from '../tools/countryChannels';
+import { getNetaiInfo } from '../tools/netaiInfo';
 import { optOutFromAsks, resumeAsks } from '../askOptOut.service';
 import {
   NOTE_EMPTY_INSIGHT,
@@ -521,6 +522,10 @@ export async function mcpGetCountryChannels(
     })),
     note: raw.note,
   };
+}
+
+export async function mcpGetNetaiInfo(args: { topic: string }): Promise<McpToolPayload> {
+  return (await getNetaiInfo(args.topic ?? '')) as McpToolPayload;
 }
 
 export async function mcpStopContactingMe(

@@ -174,7 +174,7 @@ describe('registerUser', () => {
 
     await registerUser('+995555123456', 'გიორგი', '+995599444420');
 
-    expect(mockGate).toHaveBeenCalledWith('+995555123456', '+995599444420');
+    expect(mockGate).toHaveBeenCalledWith('+995555123456', '+995599444420', undefined);
     const userInsertCall = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('INSERT INTO "User"'),
     );

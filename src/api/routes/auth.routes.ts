@@ -154,6 +154,7 @@ authRouter.post(
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('name').isString().trim().notEmpty().withMessage('name is required'),
   body('referralPhone').optional().isString().trim(),
+  body('referralCode').optional().isString().trim(),
   async (req: Request, res: Response<ApiResponse<{ token: string }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -166,12 +167,13 @@ authRouter.post(
     }
 
     try {
-      const { phone, name, referralPhone } = req.body as {
+      const { phone, name, referralPhone, referralCode } = req.body as {
         phone: string;
         name: string;
         referralPhone?: string;
+        referralCode?: string;
       };
-      const result = await registerUser(phone, name, referralPhone);
+      const result = await registerUser(phone, name, referralPhone, referralCode);
       res.status(201).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'რეგისტრაცია ვერ მოხერხდა';
@@ -184,6 +186,7 @@ authRouter.post(
   '/eligibility',
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('referralPhone').optional().isString().trim(),
+  body('referralCode').optional().isString().trim(),
   async (
     req: Request,
     res: Response<
@@ -201,8 +204,12 @@ authRouter.post(
     }
 
     try {
-      const { phone, referralPhone } = req.body as { phone: string; referralPhone?: string };
-      const result = await checkRegistrationEligibility(phone, referralPhone);
+      const { phone, referralPhone, referralCode } = req.body as {
+        phone: string;
+        referralPhone?: string;
+        referralCode?: string;
+      };
+      const result = await checkRegistrationEligibility(phone, referralPhone, referralCode);
       // inviterUserId stays server-side — no user ids for unauthenticated callers.
       res.status(200).json({
         success: true,

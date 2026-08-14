@@ -94,6 +94,7 @@ import {
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
+import { getNetaiInfo } from './tools/netaiInfo';
 import { isOnboardingUser } from './onboarding.service';
 
 // A mode is a SITUATION — who is in the conversation and what state the
@@ -682,6 +683,29 @@ const GET_COUNTRY_CHANNELS_TOOL: AnthropicTool = {
       },
     },
     required: ['country'],
+  },
+};
+
+// Ticket 5 PART G1: product self-knowledge — content DB-owned by the prompt team.
+const GET_NETAI_INFO_TOOL: AnthropicTool = {
+  name: 'get_netai_info',
+  description:
+    'The user asks what Netai is, what it costs, how referral earning/withdrawal works, what it ' +
+    'can and cannot do, how introductions work, or how their data is treated → call this and ' +
+    'answer FROM it, in their language, quoting numbers exactly. Topics: about, doors, pricing, ' +
+    'earnings, intro_flow, privacy, limits, capabilities. If the topic is not covered, say you ' +
+    'do not know rather than guessing — NEVER improvise product facts (the referral program was ' +
+    'once denied to a paying-intent user while its page was live).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      topic: {
+        type: 'string',
+        description:
+          'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities.',
+      },
+    },
+    required: ['topic'],
   },
 };
 
@@ -1706,6 +1730,8 @@ async function executeToolCall(
     case 'allow_contacting_me':
       await resumeAsks(userId);
       return { resumed: true };
+    case 'get_netai_info':
+      return getNetaiInfo(String(input['topic'] ?? ''));
     case 'get_country_channels':
       return getCountryChannels(
         userId,
@@ -1914,6 +1940,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   finish_task: '🏁 დავალებას ვხურავ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
   get_country_channels: '🌍 არხებს ვამოწმებ...',
+  get_netai_info: 'ℹ️ Netai-ს ინფოს ვკითხულობ...',
   stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
   allow_contacting_me: '🔔 შეტყობინებებს ვაბრუნებ...',
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
@@ -2461,7 +2488,9 @@ async function buildToolsForThread(userId: string, threadType?: string): Promise
   // Relaying onward, and the ability to say "stop" and have it enforced
   // (ticket 4 item 00) — nothing else is reachable from a recipient's thread.
   if (threadType === 'incoming_ask') {
-    return [RELAY_ASK_TOOL, STOP_CONTACTING_TOOL, RESUME_CONTACT_TOOL];
+    // get_netai_info carries NO user data — recipients ask "what is this app"
+    // in almost every session, and guessing is worse than answering.
+    return [RELAY_ASK_TOOL, STOP_CONTACTING_TOOL, RESUME_CONTACT_TOOL, GET_NETAI_INFO_TOOL];
   }
   return buildEnabledTools(userId);
 }
@@ -2511,6 +2540,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_TOP_CONNECTORS_TOOL,
     GET_GROUP_CONNECTORS_TOOL,
     GET_COUNTRY_CHANNELS_TOOL,
+    GET_NETAI_INFO_TOOL,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),

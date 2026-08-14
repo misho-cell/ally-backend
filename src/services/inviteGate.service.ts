@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
+import { findUserByReferralCode } from './referralCode.service';
 
 const INVITE_ONLY_FLAG = 'invite_only';
 // subscription_status values that count as an active paying/trialing subscriber.
@@ -146,10 +147,16 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
 export async function checkRegistrationEligibility(
   phone: string,
   referralPhone?: string,
+  referralCode?: string,
 ): Promise<EligibilityCheck> {
-  const attribution = hasReferralPhone(referralPhone)
-    ? await findInviterForAttribution(referralPhone, phone)
-    : undefined;
+  // A referral CODE resolves first (founder decision, ticket 5 F.1: codes are
+  // the invite currency; the phone path stays for backward compatibility).
+  const codeOwner = referralCode?.trim() ? await findUserByReferralCode(referralCode) : null;
+  const attribution =
+    codeOwner?.userId ??
+    (hasReferralPhone(referralPhone)
+      ? await findInviterForAttribution(referralPhone, phone)
+      : undefined);
 
   if (!(await isInviteOnlyEnabled())) {
     return { eligible: true, mode: 'open', inviterUserId: attribution };
@@ -161,6 +168,13 @@ export async function checkRegistrationEligibility(
 
   if (await passesSocialProof(phoneVariants(phone))) {
     return { eligible: true, mode: 'social', inviterUserId: attribution };
+  }
+
+  if (codeOwner) {
+    if (codeOwner.subscribed) {
+      return { eligible: true, mode: 'referral', inviterUserId: codeOwner.userId };
+    }
+    return { eligible: false, reason: 'referrer_not_subscribed' };
   }
 
   if (hasReferralPhone(referralPhone)) {

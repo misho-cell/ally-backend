@@ -8,6 +8,7 @@ import {
   mcpGetContactProfile,
   mcpGetGroupConnectors,
   mcpGetCountryChannels,
+  mcpGetNetaiInfo,
   mcpStopContactingMe,
   mcpAllowContactingMe,
   mcpGetNetworkStats,
@@ -510,6 +511,18 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_country_channels', () => mcpGetCountryChannels(userId, args)),
+  );
+  server.registerTool(
+    'get_netai_info',
+    {
+      title: TOOL_TEXTS.get_netai_info.title,
+      description: TOOL_TEXTS.get_netai_info.description,
+      inputSchema: {
+        topic: z.string().describe(PARAM_TEXTS.netaiInfoTopic),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_netai_info', () => mcpGetNetaiInfo(args)),
   );
   server.registerTool(
     'stop_contacting_me',

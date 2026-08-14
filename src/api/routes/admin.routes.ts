@@ -899,6 +899,42 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
   }
 });
 
+// The assistant's product self-knowledge (netai_info) — owned by the prompt
+// team, edited here without a deploy, read verbatim by get_netai_info.
+adminRouter.get('/netai-info', async (req: Request, res: Response) => {
+  try {
+    const result = await query('SELECT topic, content, updated_at FROM netai_info ORDER BY topic');
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin netai-info list]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.put('/netai-info/:topic', async (req: Request, res: Response) => {
+  try {
+    const topic = String(req.params.topic ?? '')
+      .trim()
+      .toLowerCase();
+    const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+    if (!topic || !content) {
+      res.status(400).json({ success: false, error: 'topic და content აუცილებელია' });
+      return;
+    }
+    await query(
+      `INSERT INTO netai_info (topic, content) VALUES ($1, $2)
+       ON CONFLICT (topic) DO UPDATE SET content = $2, updated_at = NOW()`,
+      [topic, content],
+    );
+    res.status(200).json({ success: true, data: { topic } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin netai-info put]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // Introduction requests, same shape as /admin/asks (ticket 5 item G3: intro
 // declines were observable nowhere admin-side).
 adminRouter.get('/intro-requests', async (req: Request, res: Response) => {
