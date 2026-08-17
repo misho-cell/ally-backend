@@ -56,6 +56,9 @@ import { RUN_HARD_TIMEOUT_MS } from '../../config/runBudgets';
 // worth flushing as a partial answer (anything shorter is spinner narration).
 const MIN_PARTIAL_FLUSH_CHARS = 80;
 
+// The provisional (pre-generator) title keeps only the message's first words.
+const PROVISIONAL_TITLE_WORDS = 6;
+
 // Short, phone-safe preview for the push body. Scrub first (the reply is already
 // scrubbed for SSE, but this path is independent), collapse whitespace, truncate.
 const PUSH_PREVIEW_MAX_CHARS = 120;
@@ -228,7 +231,11 @@ threadsRouter.post(
       ) {
         // Provisional title immediately (never a blank row in the chat list),
         // then a model-written 2–4 word one replaces it via thread_updated.
-        await updateThreadTitle(threadId, message.slice(0, 60));
+        // First words only, never the whole message — when the generator's
+        // title is rejected, this provisional is what the user keeps, and a
+        // verbatim question as a title is the prompt-echo class (§3.5).
+        const provisional = message.split(/\s+/).slice(0, PROVISIONAL_TITLE_WORDS).join(' ');
+        await updateThreadTitle(threadId, provisional.slice(0, MAX_TITLE_CHARS));
         void generateThreadTitle(userId, threadId, message);
       }
 

@@ -2103,6 +2103,8 @@ function extractText(content: Anthropic.ContentBlock[]): string {
 // has been emitted for RUN_HEARTBEAT_MS, so a 4-minute research run is never
 // a blank screen.
 const RUN_OPENING_STEP = '🔎 ვიწყებ — ვარკვევ, რა გვჭირდება...';
+// The visible line when the model's whole answer is the tappable buttons.
+const CHOICES_ONLY_REPLY = 'აირჩიე ერთ-ერთი:';
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
 const RUN_HEARTBEAT_STEP = '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...';
@@ -2143,7 +2145,11 @@ async function runToolLoop(
     });
   let answer = newTurnStreamer();
   const stream = (delta: string): void => answer.push(delta);
-  const resetTurnStream = (): void => {
+  // emitNarration=false when the caller has ALREADY emitted this turn's text
+  // as a step — re-emitting it produced identical duplicate step blocks in
+  // long runs (ticket 6 response §3.5). The answer_reset itself always fires,
+  // or the client would keep the stale narration in the answer bubble.
+  const resetTurnStream = (emitNarration = true): void => {
     if (turnEmitted) {
       // The discarded text is narration, and it MOVES rather than vanishing:
       // it goes to the steps panel where reasoning belongs. Text appearing in
@@ -2152,7 +2158,7 @@ async function runToolLoop(
       // 12 Aug; the same leak the tester logged as 0C.6).
       const narration = answer.emittedText().trim();
       emitAnswerReset(userId, threadId, runId);
-      if (narration) emitStepSummary(userId, threadId, runId, narration);
+      if (narration && emitNarration) emitStepSummary(userId, threadId, runId, narration);
     }
     turnEmitted = false;
     answer = newTurnStreamer();
@@ -2273,8 +2279,9 @@ async function runToolLoop(
       messages.push({ role: 'assistant', content: response.content });
       messages.push({ role: 'user', content: toolResults });
 
-      // This turn ended in tool calls — its streamed text was narration.
-      resetTurnStream();
+      // This turn ended in tool calls — its streamed text was narration, and
+      // it was already emitted as a step above; don't emit it twice.
+      resetTurnStream(false);
       response = await callClaude(messages, systemPrompt, tools, ctx, {
         onText: stream,
         model: TOOL_TURN_MODEL,
@@ -2409,7 +2416,8 @@ async function runToolLoop(
         pending.push({ role: 'user', content: extraResults });
         messages.push({ role: 'assistant', content: continuation.content });
         messages.push({ role: 'user', content: extraResults });
-        resetTurnStream();
+        // Narration already emitted as a step above — no duplicate (§3.5).
+        resetTurnStream(false);
         continuation = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
       }
 
@@ -2648,7 +2656,15 @@ export async function processChat(
   // A run must NEVER end "successfully" with nothing to say: an empty final
   // used to be persisted as an empty (view-filtered) message with status done —
   // the silent-empty-thread family. Surface it as a real, retryable failure.
-  if (!finalText.trim()) {
+  // EXCEPT when the run's answer IS the buttons: after present_choices (or a
+  // disambiguation) the model reasonably says nothing more, and failing the
+  // run here killed the choices with it — 3 of 3 in the tester's probe
+  // (ticket 6 response §3.1, threads 9146/9149/9150).
+  let effectiveFinal = finalText;
+  if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
+    effectiveFinal = CHOICES_ONLY_REPLY;
+  }
+  if (!effectiveFinal.trim()) {
     // eslint-disable-next-line no-console
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
     const failureReply =
@@ -2660,7 +2676,7 @@ export async function processChat(
   // Deterministic opener strip (ticket 6 item 12): a long reply must open
   // with the answer, not "ახლა სრული სურათი მაქვს" — four prompt attempts
   // could not unlearn the habit. Before persistence, so stored text is clean.
-  const cleanedFinal = stripProcessOpener(finalText, threadId);
+  const cleanedFinal = stripProcessOpener(effectiveFinal, threadId);
 
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false

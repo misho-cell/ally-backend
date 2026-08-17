@@ -71,4 +71,32 @@ describe('stripProcessOpener', () => {
     const reply = `ახლა სრული სურათი მაქვს. ${BODY}`;
     expect(stripProcessOpener(reply, 7)).toBe(reply);
   });
+
+  it('strips thread 9144 escape: საკმარისი ინფორმაცია დავაგროვე', () => {
+    const result = stripProcessOpener(`საკმარისი ინფორმაცია დავაგროვე. ${BODY}`, 9144);
+    expect(result.startsWith('პირველი აბზაცი')).toBe(true);
+  });
+
+  describe('invert mode (OPENER_STRIP=invert)', () => {
+    beforeEach(() => {
+      process.env.OPENER_STRIP = 'invert';
+    });
+
+    it('drops a contentless first sentence even when no pattern matches', () => {
+      const novel = `მოვემზადე და ყველაფერი გავითვალისწინე. ${BODY}`;
+      const result = stripProcessOpener(novel, 7);
+      expect(result.startsWith('პირველი აბზაცი')).toBe(true);
+    });
+
+    it('keeps a first sentence protected by a number', () => {
+      const withNumber = `მოიძებნა 8 დეველოპერი. ${BODY}`;
+      expect(stripProcessOpener(withNumber, 7)).toBe(withNumber);
+    });
+
+    it('keeps a colon-led finding and logs the keep', () => {
+      const finding = `მთავარი მიგნება: ბესო ორთოიძე არის Arci-ის დამფუძნებელი. ${BODY}`;
+      expect(stripProcessOpener(finding, 7)).toBe(finding);
+      expect(spyLog).toHaveBeenCalledWith(expect.stringContaining('[opener-keep] thread 7'));
+    });
+  });
 });

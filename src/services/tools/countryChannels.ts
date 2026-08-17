@@ -112,6 +112,17 @@ function institutionVariants(name: string): string[] {
   return [...variants];
 }
 
+// A short acronym must match a whole token, never a prefix: word-start 'giz'
+// swallowed the given name "Gizo" and the typo "giza" — 2 of Germany's 3
+// samples were false positives (ticket 6 response §3.2). Longer names keep
+// the prefix match so "goethe" still finds "goethe-institut".
+const EXACT_TOKEN_MAX_CHARS = 4;
+
+function institutionPattern(variant: string): string {
+  const wordStart = toWordStartPattern(variant);
+  return variant.length <= EXACT_TOKEN_MAX_CHARS ? `${wordStart}\\M` : wordStart;
+}
+
 interface ChannelHit {
   phone: string;
   name: string | null;
@@ -126,11 +137,10 @@ interface ChannelHit {
  */
 async function sweepChannel(
   userId: string,
-  channel: Channel,
+  channelRegexes: readonly string[],
   countryRegexes: readonly string[],
   blockedPhones: readonly string[],
 ): Promise<ChannelHit[]> {
-  const channelRegexes = channel.keywords.map(toWordStartPattern);
   // $1 userId(int-инferred), then country patterns, then channel patterns,
   // then facts userId (uncast — prod column is TEXT), then blocked.
   const countryStart = 2;
@@ -192,32 +202,35 @@ export async function getCountryChannels(
   try {
     const trimmed = country.trim();
     if (!trimmed) return { found: false, error: 'Pass a country name.' };
-    const institutions = knownInstitutions
+    const institutionRegexes = knownInstitutions
       .map((i) => i.trim())
       .filter((i) => i.length >= 2)
       .slice(0, MAX_KNOWN_INSTITUTIONS)
-      .flatMap(institutionVariants);
-    const institutionRegexes = institutions.map(toWordStartPattern);
+      .flatMap(institutionVariants)
+      .map(institutionPattern);
     // An institution name counts as country evidence too — that is the whole
     // point of the hint list.
     const countryRegexes = [...countryPatterns(trimmed), ...institutionRegexes];
     const blockedPhones = await getExcludedPhones(userId);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
 
-    const sweeps: Channel[] = [...CHANNELS];
+    const sweeps: { key: string; regexes: readonly string[] }[] = CHANNELS.map((c) => ({
+      key: c.key,
+      regexes: c.keywords.map(toWordStartPattern),
+    }));
     if (institutionRegexes.length > 0) {
       // The institutions ARE a channel: a contact tagged "GIZ" belongs in the
       // Germany answer even when no generic channel keyword touches them.
-      sweeps.push({ key: 'named_institutions', keywords: institutions });
+      sweeps.push({ key: 'named_institutions', regexes: institutionRegexes });
     }
 
     const channels = [];
-    for (const channel of sweeps) {
-      const hits = (await sweepChannel(userId, channel, countryRegexes, blockedPhones)).filter(
-        (h) => !excludedSet.has(normalizePhone(h.phone)),
-      );
+    for (const sweep of sweeps) {
+      const hits = (
+        await sweepChannel(userId, sweep.regexes, countryRegexes, blockedPhones)
+      ).filter((h) => !excludedSet.has(normalizePhone(h.phone)));
       channels.push({
-        channel: channel.key,
+        channel: sweep.key,
         count: hits.length,
         sample: hits.slice(0, SAMPLE_NAMES_PER_CHANNEL).map((h) => ({
           phone: h.phone,

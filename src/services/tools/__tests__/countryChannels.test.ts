@@ -41,10 +41,23 @@ describe('getCountryChannels', () => {
 
     expect((result as { found: boolean }).found).toBe(true);
     const regexes = allRegexParams();
-    expect(regexes).toContain('\\mgiz');
-    expect(regexes).toContain('\\mdaad');
+    expect(regexes).toContain('\\mgiz\\M');
+    expect(regexes).toContain('\\mdaad\\M');
     // No raw-cased pattern may survive — it can never match a lowercased label.
-    expect(regexes.some((r) => /[A-Z]/.test(r))).toBe(false);
+    expect(regexes.some((r) => /[A-Z]/.test(r) && !r.includes('\\M'))).toBe(false);
+  });
+
+  it('short acronyms are exact tokens, never prefixes — "giz" must not match "Gizo" (§3.2)', async () => {
+    await getCountryChannels('501', 'Germany', ['GIZ', 'AHK', 'DAAD', 'Goethe-Institut']);
+
+    const regexes = allRegexParams();
+    // ≤4 chars → whole-token (\m...\M); longer names keep the prefix match.
+    expect(regexes).toContain('\\mgiz\\M');
+    expect(regexes).toContain('\\mahk\\M');
+    expect(regexes).toContain('\\mdaad\\M');
+    expect(regexes).toContain('\\mgoethe-institut');
+    expect(regexes).not.toContain('\\mgiz');
+    expect(regexes).not.toContain('\\mahk');
   });
 
   it('expands hyphen/space institution spellings both ways', async () => {
