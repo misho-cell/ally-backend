@@ -22,7 +22,7 @@ const maybeDescribe = process.env.PG_INTEGRATION === '1' ? describe : describe.s
 const SCHEMA_SQL = `
   DROP TABLE IF EXISTS "UserAlias", "UserTags", "UserPhone", "User", "UserBlock",
     conversations, threads, tasks, task_asks, user_notes, contact_facts,
-    phone_optouts, ask_optouts, erasure_log CASCADE;
+    run_prompt_stamps, phone_optouts, ask_optouts, erasure_log CASCADE;
   CREATE TABLE "User"      (id serial primary key, name text, employer text,
                             "jobPosition" text, city text, "deletedAt" timestamptz);
   CREATE TABLE "UserPhone" (id serial primary key, phone text, "userId" int);
@@ -31,11 +31,17 @@ const SCHEMA_SQL = `
   CREATE TABLE "UserBlock" (id serial primary key, "blockerId" int, "blockedPhone" text);
   CREATE TABLE conversations (id serial primary key, user_id int, thread_id int, content text);
   CREATE TABLE threads (id serial primary key, user_id int, title text);
-  CREATE TABLE tasks (id serial primary key, user_id int, thread_id int, status text);
+  -- Prod truth: tasks.user_id and contact_facts.submitted_by_user_id are TEXT
+  -- (schema drift, migrations 040/–) — the ::int summary bug only reproduces here.
+  CREATE TABLE tasks (id serial primary key, user_id text, thread_id int, status text);
   CREATE TABLE task_asks (id serial primary key, task_id int, from_user_id int,
                           to_user_id int, question text, answer text, status text);
   CREATE TABLE user_notes (id serial primary key, user_id int, text text);
-  CREATE TABLE contact_facts (id serial primary key, submitted_by_user_id integer, value text);
+  -- Prod shape (migration 052): a sibling suite creates a user_id-less variant
+  -- in the shared test DB — this suite must own the prod-true one.
+  CREATE TABLE run_prompt_stamps (run_id text primary key, user_id integer not null,
+                                  thread_id integer, mode text not null default 'quick_answer');
+  CREATE TABLE contact_facts (id serial primary key, submitted_by_user_id text, value text);
   CREATE TABLE phone_optouts (phone_digits text primary key, reason text,
                               created_at timestamptz not null default now());
   CREATE TABLE ask_optouts (user_id integer primary key, reason text,
@@ -57,9 +63,10 @@ const SEED_SQL = `
   INSERT INTO "UserBlock" ("blockerId", "blockedPhone") VALUES (501, '+995444');
   INSERT INTO threads (id, user_id, title) VALUES (1, 501, 'mine'), (2, 777, 'theirs');
   INSERT INTO conversations (user_id, thread_id, content) VALUES (501, 1, 'private'), (777, 2, 'keep');
-  INSERT INTO tasks (id, user_id, thread_id, status) VALUES (10, 501, 1, 'open'), (11, 777, 2, 'open');
+  INSERT INTO tasks (id, user_id, thread_id, status) VALUES (10, '501', 1, 'open'), (11, '777', 2, 'open');
   INSERT INTO user_notes (user_id, text) VALUES (501, 'secret'), (777, 'keep');
-  INSERT INTO contact_facts (submitted_by_user_id, value) VALUES (501, 'fact'), (777, 'keep');
+  INSERT INTO run_prompt_stamps (run_id, user_id, thread_id) VALUES ('run-501', 501, 1), ('run-777', 777, 2);
+  INSERT INTO contact_facts (submitted_by_user_id, value) VALUES ('501', 'fact'), ('777', 'keep');
   -- An ask 777 sent to 501: their record, her words.
   INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, answer, status) VALUES
     (11, 777, 501, 'do you know a dentist?', 'yes, Tatia', 'answered');
@@ -102,6 +109,10 @@ maybeDescribe('right to erasure (real Postgres cascade)', () => {
     expect(summary['UserAlias']).toBe(2);
     expect(summary['threads']).toBe(1);
     expect(summary['UserPhone']).toBe(1);
+    // TEXT-typed id columns must be counted too — the $1::int cast made these
+    // two comparisons throw and the tables silently vanish from the summary.
+    expect(summary['tasks']).toBe(1);
+    expect(summary['contact_facts']).toBe(1);
   });
 
   it('erases the account: own data gone, identity scrubbed, number on the do-not-contact list', async () => {
@@ -112,9 +123,9 @@ maybeDescribe('right to erasure (real Postgres cascade)', () => {
     for (const sql of [
       'SELECT COUNT(*) AS count FROM conversations WHERE user_id = 501',
       'SELECT COUNT(*) AS count FROM threads WHERE user_id = 501',
-      'SELECT COUNT(*) AS count FROM tasks WHERE user_id = 501',
+      "SELECT COUNT(*) AS count FROM tasks WHERE user_id = '501'",
       'SELECT COUNT(*) AS count FROM user_notes WHERE user_id = 501',
-      'SELECT COUNT(*) AS count FROM contact_facts WHERE submitted_by_user_id = 501',
+      "SELECT COUNT(*) AS count FROM contact_facts WHERE submitted_by_user_id = '501'",
       'SELECT COUNT(*) AS count FROM task_asks WHERE from_user_id = 501',
       'SELECT COUNT(*) AS count FROM "UserAlias" WHERE "contactId" = 501',
       'SELECT COUNT(*) AS count FROM "UserTags" WHERE "contactId" = 501',

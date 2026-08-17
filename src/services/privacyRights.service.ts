@@ -129,8 +129,12 @@ export async function getMyDataSummary(userId: string): Promise<Record<string, n
   const counts: Record<string, number> = {};
   for (const { table, column } of OWNED_TABLES) {
     try {
+      // Untyped $1 on purpose: the id columns drift between INTEGER and TEXT
+      // in prod (tasks.user_id, contact_facts.submitted_by_user_id are TEXT) —
+      // a $1 cast made those comparisons throw, the catch swallowed it,
+      // and the tables silently vanished from the summary (ticket 6 follow-up).
       const result = await query<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = $1::int`,
+        `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = $1`,
         [userId],
         ERASURE_TIMEOUT_MS,
       );
@@ -154,7 +158,7 @@ export async function getMyDataSummary(userId: string): Promise<Record<string, n
  */
 export async function deleteMyAccount(userId: string, dryRun = false): Promise<ErasureReport> {
   const phones = await query<{ phone: string }>(
-    'SELECT phone FROM "UserPhone" WHERE "userId" = $1::int',
+    'SELECT phone FROM "UserPhone" WHERE "userId" = $1',
     [userId],
     ERASURE_TIMEOUT_MS,
   );
@@ -182,22 +186,26 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
         `UPDATE task_asks
          SET answer = NULL,
              status = CASE WHEN status = 'sent' THEN 'cancelled' ELSE status END
-         WHERE to_user_id = $1::int`,
+         WHERE to_user_id = $1`,
         [userId],
       );
       counts['task_asks (answers erased)'] = scrubbed.rowCount ?? 0;
     }
     if (tables.has('introduction_requests')) {
       const scrubbed = await client.query(
-        'UPDATE introduction_requests SET mediator_response = NULL WHERE mediator_user_id = $1::int',
+        'UPDATE introduction_requests SET mediator_response = NULL WHERE mediator_user_id = $1',
         [userId],
       );
       counts['introduction_requests (responses erased)'] = scrubbed.rowCount ?? 0;
     }
 
+    // Untyped $1 everywhere in this cascade: the id columns drift between
+    // INTEGER and TEXT across prod tables (tasks.user_id,
+    // contact_facts.submitted_by_user_id) — a ::int cast throws on the TEXT
+    // ones and aborts the whole erasure transaction.
     for (const { table, column } of OWNED_TABLES) {
       if (!tables.has(bareName(table))) continue;
-      const result = await client.query(`DELETE FROM ${table} WHERE ${column} = $1::int`, [userId]);
+      const result = await client.query(`DELETE FROM ${table} WHERE ${column} = $1`, [userId]);
       if ((result.rowCount ?? 0) > 0) counts[bareName(table)] = result.rowCount ?? 0;
     }
 
@@ -207,7 +215,7 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
     const userColumns = await existingUserColumns(client);
     const assignments = userColumns.map((c) => `"${c}" = NULL`).join(', ');
     await client.query(
-      `UPDATE "User" SET ${assignments ? assignments + ', ' : ''}"deletedAt" = NOW() WHERE id = $1::int`,
+      `UPDATE "User" SET ${assignments ? assignments + ', ' : ''}"deletedAt" = NOW() WHERE id = $1`,
       [userId],
     );
 
@@ -219,8 +227,8 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
         [d],
       );
     }
-    await client.query('DELETE FROM ask_optouts WHERE user_id = $1::int', [userId]);
-    await client.query('INSERT INTO erasure_log (user_id, rows_deleted) VALUES ($1::int, $2)', [
+    await client.query('DELETE FROM ask_optouts WHERE user_id = $1', [userId]);
+    await client.query('INSERT INTO erasure_log (user_id, rows_deleted) VALUES ($1, $2)', [
       userId,
       JSON.stringify(counts),
     ]);
