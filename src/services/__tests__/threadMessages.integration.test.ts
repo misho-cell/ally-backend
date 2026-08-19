@@ -24,7 +24,8 @@ const SCHEMA_SQL = `
     content_json JSONB,
     kind       TEXT NOT NULL DEFAULT 'message',
     run_id     TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    choices    JSONB
   );
   CREATE INDEX idx_conv_pg_test ON conversations (thread_id, created_at DESC);
 `;

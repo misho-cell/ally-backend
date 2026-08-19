@@ -111,7 +111,8 @@ describe('buildSearchTerms', () => {
 
 describe('toWordStartPattern', () => {
   it('anchors the term to a word start', () => {
-    expect(toWordStartPattern('nasa')).toBe('\\mnasa');
+    // 4 chars -> exact token (ticket 6 close §6: short prefixes are noise).
+    expect(toWordStartPattern('nasa')).toBe('\\mnasa\\M');
   });
 
   it('escapes regex metacharacters', () => {

@@ -56,8 +56,9 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $3`);
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
-    // $3 = word-start regex, $4 = blocked phones.
-    expect(params).toEqual(['42', [FRIEND_PHONE], '\\mburalteri', []]);
+    // $3 = word-start regex, $4 = blocked phones, $5 = userId again as TEXT
+    // (the contact_facts role lookup — $1 is inferred int by the joins).
+    expect(params).toEqual(['42', [FRIEND_PHONE], '\\mburalteri', [], '42']);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {

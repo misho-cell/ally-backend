@@ -75,7 +75,7 @@ describe('searchContactByName', () => {
 
     // $1 userId, then each regex, last = blocked. No LIKE patterns (the trigram
     // GIN path is deliberately unusable — KA extracts ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო', '\\mgio', '42', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო\\M', '\\mgio\\M', '42', []]);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
@@ -163,7 +163,7 @@ describe('searchContactByName', () => {
     expect(mainSql).toContain(') AS word_hits');
     expect(mainSql).toContain('ORDER BY MAX(h.word_hits) DESC');
     expect(mainParams).toContain('\\mdachi');
-    expect(mainParams).toContain('\\maxel');
+    expect(mainParams).toContain('\\maxel\\M');
   });
 
   it('gives the COUNT query a gap-free param array where every entry is referenced', async () => {

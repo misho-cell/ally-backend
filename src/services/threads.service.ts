@@ -48,6 +48,8 @@ export interface ThreadMessage {
   kind: string;
   run_id: string | null;
   created_at: string;
+  /** Tappable options saved with the message (present_choices) — render as buttons. */
+  choices: string[] | null;
 }
 
 interface ThreadRow extends Thread {
@@ -321,7 +323,7 @@ export async function getThreadMessages(
   // the newest row and stops at LIMIT; the outer flip restores reading order.
   const result = await query<ThreadMessage>(
     `SELECT * FROM (
-       SELECT id, role, content, kind, run_id, created_at
+       SELECT id, role, content, kind, run_id, created_at, choices
        FROM conversations
        WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
        ORDER BY created_at DESC, id::text DESC

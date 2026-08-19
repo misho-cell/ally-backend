@@ -901,6 +901,100 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
 
 // The assistant's product self-knowledge (netai_info) — owned by the prompt
 // team, edited here without a deploy, read verbatim by get_netai_info.
+// PART H's first observable (ticket 6 close, task 5): proves migration 061 is
+// live and shows what the question bank holds. The tester's 48 rows load here;
+// POST accepts them as a JSON array (insert-or-update by question_id).
+adminRouter.get('/question-bank', async (_req: Request, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT question_id, category, surface, prompt_ka, prompt_es, prompt_en,
+              options, signals, score_vector, immediate_use, storage_level,
+              follow_up_rule, active, updated_at
+       FROM question_bank ORDER BY question_id`,
+    );
+    res
+      .status(200)
+      .json({ success: true, data: { count: result.rowCount ?? 0, rows: result.rows } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin question-bank list]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+interface QuestionRow {
+  question_id: string;
+  category: string;
+  surface?: string;
+  prompt_ka: string;
+  prompt_es?: string | null;
+  prompt_en?: string | null;
+  options?: unknown;
+  signals?: string[];
+  score_vector?: unknown;
+  immediate_use: string;
+  storage_level?: string;
+  follow_up_rule?: string | null;
+  active?: boolean;
+}
+
+adminRouter.post('/question-bank', async (req: Request, res: Response) => {
+  try {
+    const rows = Array.isArray(req.body) ? (req.body as QuestionRow[]) : null;
+    if (!rows || rows.length === 0) {
+      res.status(400).json({ success: false, error: 'გადმოეცი კითხვების JSON მასივი' });
+      return;
+    }
+    let upserted = 0;
+    for (const row of rows) {
+      if (!row.question_id?.trim() || !row.category?.trim() || !row.prompt_ka?.trim()) {
+        res.status(400).json({
+          success: false,
+          error: `question_id, category და prompt_ka აუცილებელია (გაჩერდა: ${row.question_id ?? '?'})`,
+        });
+        return;
+      }
+      await query(
+        `INSERT INTO question_bank
+           (question_id, category, surface, prompt_ka, prompt_es, prompt_en, options,
+            signals, score_vector, immediate_use, storage_level, follow_up_rule, active)
+         VALUES ($1, $2, COALESCE($3, 'any'), $4, $5, $6, COALESCE($7::jsonb, '[]'),
+                 COALESCE($8, '{}'), COALESCE($9::jsonb, '{}'), $10,
+                 COALESCE($11, 'raw+normalized'), $12, COALESCE($13, true))
+         ON CONFLICT (question_id) DO UPDATE SET
+           category = EXCLUDED.category, surface = EXCLUDED.surface,
+           prompt_ka = EXCLUDED.prompt_ka, prompt_es = EXCLUDED.prompt_es,
+           prompt_en = EXCLUDED.prompt_en, options = EXCLUDED.options,
+           signals = EXCLUDED.signals, score_vector = EXCLUDED.score_vector,
+           immediate_use = EXCLUDED.immediate_use, storage_level = EXCLUDED.storage_level,
+           follow_up_rule = EXCLUDED.follow_up_rule, active = EXCLUDED.active,
+           updated_at = NOW()`,
+        [
+          row.question_id.trim(),
+          row.category.trim(),
+          row.surface ?? null,
+          row.prompt_ka,
+          row.prompt_es ?? null,
+          row.prompt_en ?? null,
+          row.options === undefined ? null : JSON.stringify(row.options),
+          row.signals ?? null,
+          row.score_vector === undefined ? null : JSON.stringify(row.score_vector),
+          row.immediate_use,
+          row.storage_level ?? null,
+          row.follow_up_rule ?? null,
+          row.active ?? null,
+        ],
+      );
+      upserted++;
+    }
+    res.status(200).json({ success: true, data: { upserted } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin question-bank post]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/netai-info', async (req: Request, res: Response) => {
   try {
     const result = await query('SELECT topic, content, updated_at FROM netai_info ORDER BY topic');

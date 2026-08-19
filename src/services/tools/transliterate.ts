@@ -129,13 +129,24 @@ export function buildRawWordGroups(rawQuery: string): string[][] {
   return words.map((word) => [...buildSearchTerms(word)]).filter((group) => group.length > 0);
 }
 
+// A term this short must match a whole token, never a prefix: 'giz' swallowed
+// "Gizo"/"giza" in country channels, 'coo' matched "Cooper"/"Mini Cooper"/
+// "Cooprogetti" in second degree — one shared matcher, three tools' noise
+// (ticket 6 close §6, founder ruling). The cost — 3-4 char prefix typing like
+// "law"→"lawyer" stops expanding — was judged smaller than the noise.
+const EXACT_TOKEN_MAX_CHARS = 4;
+
 /**
  * A Postgres regex that anchors a term to the START of a word, so "nasa"
  * matches the word "nasa..." but never the fragment inside "Inasaridze"
- * (ISSUE 3). Word-start (not exact) keeps prefix typing ("law" → "lawyer")
- * working. Regex metacharacters in the term are escaped.
+ * (ISSUE 3). Terms of ≤4 characters additionally anchor the END of the word —
+ * an exact token — because at that length a prefix is noise, not forgiveness.
+ * Regex metacharacters in the term are escaped.
  */
 export function toWordStartPattern(term: string): string {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return '\\m' + escaped;
+  // \M is only valid after a word character — "c++" ends on '+', where a
+  // word-end boundary can never match, so such terms keep the prefix form.
+  const exactToken = term.length <= EXACT_TOKEN_MAX_CHARS && /[\p{L}\p{N}]$/u.test(term);
+  return exactToken ? `\\m${escaped}\\M` : '\\m' + escaped;
 }

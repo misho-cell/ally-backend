@@ -1106,11 +1106,23 @@ async function saveMessage(
   content: Anthropic.MessageParam['content'],
   kind: 'message' | 'step' | 'error' | 'event' = 'message',
   runId: string | null = null,
+  // Display-only tappable choices (present_choices) — persisted with the row
+  // so they survive reload (ticket 6 close §15 B1). Never part of model history.
+  choices: readonly string[] | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
   const result = await query<{ id: number }>(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING id',
-    [userId, threadId, role, textContent, JSON.stringify(content), kind, runId],
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb) RETURNING id',
+    [
+      userId,
+      threadId,
+      role,
+      textContent,
+      JSON.stringify(content),
+      kind,
+      runId,
+      choices === null ? null : JSON.stringify(choices),
+    ],
   );
   await touchThread(threadId);
   return result.rows[0].id;
@@ -2693,7 +2705,7 @@ export async function processChat(
   const reply = replySafe
     ? cleanedFinal
     : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.';
-  await saveMessage(userId, threadId, 'assistant', reply);
+  await saveMessage(userId, threadId, 'assistant', reply, 'message', null, choices ?? null);
 
   // Charge the run's actual ledger cost to the user's token wallet (no-op
   // while the wallet flag is off). Never fails the reply.

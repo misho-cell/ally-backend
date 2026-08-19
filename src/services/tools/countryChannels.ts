@@ -112,16 +112,9 @@ function institutionVariants(name: string): string[] {
   return [...variants];
 }
 
-// A short acronym must match a whole token, never a prefix: word-start 'giz'
-// swallowed the given name "Gizo" and the typo "giza" — 2 of Germany's 3
-// samples were false positives (ticket 6 response §3.2). Longer names keep
-// the prefix match so "goethe" still finds "goethe-institut".
-const EXACT_TOKEN_MAX_CHARS = 4;
-
-function institutionPattern(variant: string): string {
-  const wordStart = toWordStartPattern(variant);
-  return variant.length <= EXACT_TOKEN_MAX_CHARS ? `${wordStart}\\M` : wordStart;
-}
+// Short acronyms ('GIZ', 'AHK') get exact-token matching from
+// toWordStartPattern itself — the ≤4-char rule now lives in the shared
+// matcher, one fix for all three affected tools (ticket 6 close §6).
 
 interface ChannelHit {
   phone: string;
@@ -207,7 +200,7 @@ export async function getCountryChannels(
       .filter((i) => i.length >= 2)
       .slice(0, MAX_KNOWN_INSTITUTIONS)
       .flatMap(institutionVariants)
-      .map(institutionPattern);
+      .map(toWordStartPattern);
     // An institution name counts as country evidence too — that is the whole
     // point of the hint list.
     const countryRegexes = [...countryPatterns(trimmed), ...institutionRegexes];

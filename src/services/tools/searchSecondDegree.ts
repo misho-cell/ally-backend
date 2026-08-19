@@ -155,6 +155,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const tagConds = terms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 3}`).join(' OR ');
     const aliasConds = terms.map((_, i) => `(LOWER(ua_m.alias) || '') ~ $${i + 3}`).join(' OR ');
     const blockParamIdx = 3 + n;
+    // userId again, as its own parameter: $1 is inferred as int (contactId
+    // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
+    // parameter cannot carry both types.
+    const factsUserIdx = blockParamIdx + 1;
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
     // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
@@ -224,8 +228,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
-              MAX(u_t.employer)                                                AS employer,
-              MAX(u_t."jobPosition")                                           AS "jobPosition",
+              COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
+              COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
               r.warmth                                                         AS warmth
        FROM ranked r
        JOIN matches m               ON m.phone     = r.phone
@@ -235,11 +239,34 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN "User"       u_t   ON u_t.id      = up_t."userId"
        LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
+       -- Role data (ticket 6 close §8): the User self-profile is almost always
+       -- empty, so employer/jobPosition came back null for everyone — role
+       -- searches were impossible. Facts are the real source, privacy-scoped:
+       -- only PUBLIC (2+ confirmations) facts or the SEARCHER'S OWN. Empty
+       -- strings count as missing (§10).
+       LEFT JOIN LATERAL (
+         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
+         FROM contact_facts cf
+         WHERE cf.neo4j_contact_id = r.phone AND cf.field_type = 'employer'
+           AND cf.retracted_at IS NULL
+           AND (cf.is_public OR cf.submitted_by_user_id = $${factsUserIdx})
+         ORDER BY cf.is_public DESC, cf.updated_at DESC
+         LIMIT 1
+       ) fe ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
+         FROM contact_facts cf
+         WHERE cf.neo4j_contact_id = r.phone AND cf.field_type = 'occupation'
+           AND cf.retracted_at IS NULL
+           AND (cf.is_public OR cf.submitted_by_user_id = $${factsUserIdx})
+         ORDER BY cf.is_public DESC, cf.updated_at DESC
+         LIMIT 1
+       ) fj ON TRUE
        GROUP BY r.phone, r.bridge_rank, r.warmth
        ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
-      [userId, friendPhones, ...regexTerms, blockedPhones],
+      [userId, friendPhones, ...regexTerms, blockedPhones, userId],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 

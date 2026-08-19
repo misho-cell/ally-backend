@@ -125,7 +125,8 @@ describe('searchByTag', () => {
 
     const params = mockQuery.mock.calls[0][1] as unknown[];
     expect(params).toContain('\\mradiatori');
-    expect(params).toContain('\\m2');
+    // '2' is short AND word-ending -> exact token.
+    expect(params).toContain('\\m2\\M');
     // No %…% patterns at all — the exact search never touches the trigram path.
     expect(params.some((p) => typeof p === 'string' && p.startsWith('%'))).toBe(false);
   });
@@ -222,7 +223,7 @@ describe('searchByTag', () => {
     // Both words' patterns are separate placeholders so word_hits counts the
     // intersection, not a single OR term.
     expect(mainParams).toContain('\\mdachi');
-    expect(mainParams).toContain('\\maxel');
+    expect(mainParams).toContain('\\maxel\\M');
   });
 
   it("marks direct ownership and surfaces the user's own saved_as label (Bug 1.1)", async () => {
