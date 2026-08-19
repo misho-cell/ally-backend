@@ -14,6 +14,7 @@ import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
 import profileRouter from './api/routes/profile.routes';
 import mcpRouter from './api/routes/mcp.routes';
+import roQueryRouter from './api/routes/roQuery.routes';
 import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
@@ -67,6 +68,9 @@ app.use('/privacy', privacyRouter);
 app.use('/billing', billingRouter);
 app.use('/profile', profileRouter);
 app.use('/mcp', mcpRouter);
+// Key-gated, read-only SQL window for the development assistant — exists only
+// while RO_SQL_KEY + DATABASE_RO_URL are set on the server (see the route file).
+app.use('/internal/ro-sql', roQueryRouter);
 app.use('/oauth', oauthRouter);
 app.use('/.well-known', wellKnownRouter);
 setupSwagger(app);
