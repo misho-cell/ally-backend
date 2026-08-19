@@ -132,11 +132,20 @@ export function extractCountryCode(phone: string): string | null {
 // heuristic below. Ticket 4 item 4B.5: the founder's closest friend, saved
 // under his full name, was scored `formal 0.4` while five of his own notes
 // said the opposite — the classifier only ever read the alias string.
+// English words need boundaries AND relational context — a bare /family/
+// classified "grew up in a trucking family" as FAMILY 0.9 (ticket 6 close §5,
+// Maxo: an investee scored as kin). The word must be about THIS relationship:
+// a kinship noun as a whole word, or "family" with a possessive/als "member".
+// Georgian traps closed while here: bare შვილ matched every "-შვილი" SURNAME
+// (Javakhishvili → family 0.9), ბიძ matched the first name ბიძინა, and bare
+// დედ matched დედაქალაქი. Kinship შვილ must start its word; ბიძ must not be
+// ბიძინა; დედ/მამ need the possessive form.
 const EXPLICIT_FAMILY_RE =
-  /ოჯახ|დეიდ|ბიძ|ძმ(?![ა-ჰ]*ურთ)|დედ|მამ|ცოლ|ქმარ|შვილ|family|brother|sister|mother|father|wife|husband|cousin/i;
+  /ოჯახის წევრ|ჩემი ოჯახ|დეიდ|ბიძ(?!ინ)|ძმ(?!აკაც)(?![ა-ჰ]*ურთ)|დედაჩემ|დედამის|მამაჩემ|მამამის|ცოლ|ქმარ|(?<![ა-ჰ])შვილ|(?:my|his|her|our) family\b|family member\b|\b(?:brother|sister|mother|father|wife|husband|cousin)\b/i;
 const EXPLICIT_CLOSE_RE =
-  /ახლო|ახლობ|საუკეთესო|უახლოეს|მეგობ|დაქალ|ძმაკაც|close|best friend|friend/i;
-const EXPLICIT_PROFESSIONAL_RE = /კოლეგა|თანამშრომ|საქმიან|პარტნიორ|colleague|coworker|business/i;
+  /ახლო|ახლობ|საუკეთესო|უახლოეს|მეგობ|დაქალ|ძმაკაც|\bclose\b|best friend\b|\bfriend\b/i;
+const EXPLICIT_PROFESSIONAL_RE =
+  /კოლეგა|თანამშრომ|საქმიან|პარტნიორ|\bcolleague\b|\bcoworker\b|\bbusiness\b/i;
 
 export function classifyExplicitRelationship(
   text: string,
