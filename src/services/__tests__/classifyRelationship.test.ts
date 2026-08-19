@@ -4,7 +4,7 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 jest.mock('../../db/neo4j/client', () => ({ getSession: jest.fn(), __esModule: true }));
 
-import { classifyExplicitRelationship } from '../enrichment.service';
+import { classifyExplicitRelationship, computeRelationshipScore } from '../enrichment.service';
 
 // Ticket 6 close §5: keyword matching on free text scored an investee as
 // FAMILY because his note said "grew up in a trucking family". While fixing
@@ -43,5 +43,36 @@ describe('classifyExplicitRelationship', () => {
 
   it('returns null when nothing relational appears', () => {
     expect(classifyExplicitRelationship('იურისტი, ხელშეკრულებები, კარგი სპეციალისტი')).toBeNull();
+  });
+});
+
+// The old-Ally hand-sort (D6): allies/loyal carry over as warm; the user's
+// CURRENT words still outrank the 18-month-old sort; alias guesswork never
+// outranks a hand decision.
+describe('computeRelationshipScore with old-Ally status', () => {
+  it('the old-Ally sort beats the alias heuristic (the Kovziridze case)', () => {
+    const score = computeRelationshipScore('Tamuna Kovziridze. Axel', false, undefined, 'loyal');
+    expect(score.relationship_type).toBe('close');
+    expect(score.strength_score).toBeCloseTo(0.7);
+    expect(score.signals.old_ally_status).toBe('loyal');
+  });
+
+  it('allies scores higher than loyal', () => {
+    const allies = computeRelationshipScore('Someone Full', false, undefined, 'allies');
+    const loyal = computeRelationshipScore('Someone Full', false, undefined, 'loyal');
+    expect(allies.strength_score).toBeGreaterThan(loyal.strength_score);
+    expect(allies.relationship_type).toBe('close');
+  });
+
+  it('an explicit CURRENT statement still beats the old sort', () => {
+    const score = computeRelationshipScore('Someone Full', false, 'ჩემი ბიძაშვილია', 'loyal');
+    expect(score.relationship_type).toBe('family');
+    expect(score.signals.explicit_insight).toBe(true);
+    expect(score.signals.old_ally_status).toBeUndefined();
+  });
+
+  it('without an old-Ally status the alias heuristic still runs', () => {
+    const score = computeRelationshipScore('Full Name Person', false, undefined, undefined);
+    expect(score.relationship_type).toBe('formal');
   });
 });

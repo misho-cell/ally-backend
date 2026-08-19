@@ -6,6 +6,7 @@ import { backgroundQuery as query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import anthropic from '../config/anthropic';
 import { getCompositeKeyForPhone, getCompositeKeysForPhones } from './neo4j.keys';
+import { phoneDigits } from './phone';
 
 const FAMILY_KEYWORDS_UNAMBIGUOUS = [
   'დედა',
@@ -81,6 +82,8 @@ export interface RelationshipSignals {
   professional_keyword?: boolean;
   full_name?: boolean;
   bidirectional?: boolean;
+  /** The user's own hand-sorting from the old Ally app (ticket 6 close, D6). */
+  old_ally_status?: OldAllyStatus;
 }
 
 export interface RelationshipScore {
@@ -203,10 +206,47 @@ async function getExplicitRelationships(userId: number): Promise<Map<string, str
   return map;
 }
 
+// The old Ally app's hand-sorting (RelationshipStatus enum in the legacy
+// UserConnection table — the "colours"): allies and loyal are the two warm
+// tiers the founder decided must carry over (D6); connections/contacts carry
+// no override. Sorting a contact by hand beats any alias guess, but the
+// user's CURRENT words (insight/notes) still beat an 18-month-old sort.
+export type OldAllyStatus = 'allies' | 'loyal';
+const OLD_ALLY_STRENGTH: Record<OldAllyStatus, number> = { allies: 0.85, loyal: 0.7 };
+
+/**
+ * The user's old-Ally hand-sorted warm tiers, keyed by PHONE DIGITS (formats
+ * drift between tables — compare digits, never spellings).
+ */
+export async function getOldAllyStatuses(userId: number): Promise<Map<string, OldAllyStatus>> {
+  const map = new Map<string, OldAllyStatus>();
+  try {
+    const result = await query<{ phone: string; status: OldAllyStatus }>(
+      `SELECT ucp.phone, uc."relationshipStatus" AS status
+       FROM "UserConnection" uc
+       JOIN "UserConnectionPhone" ucp ON ucp."connectionId" = uc.id
+       WHERE uc."originUserId" = $1 AND uc."relationshipStatus" IN ('allies', 'loyal')`,
+      [userId],
+    );
+    for (const row of result.rows) {
+      const digits = phoneDigits(row.phone);
+      // allies outranks loyal when one person carries both (two numbers).
+      if (digits && (map.get(digits) !== 'allies' || row.status === 'allies')) {
+        map.set(digits, row.status);
+      }
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[enrichment] old-Ally statuses unavailable:', (err as Error).message);
+  }
+  return map;
+}
+
 export function computeRelationshipScore(
   alias: string,
   isBidirectional: boolean,
   explicitText?: string,
+  oldAllyStatus?: OldAllyStatus,
 ): RelationshipScore {
   // An explicit user statement beats every alias heuristic.
   if (explicitText) {
@@ -221,6 +261,18 @@ export function computeRelationshipScore(
         signals,
       };
     }
+  }
+  // The old-Ally hand-sort beats the alias guesswork (ticket 6 close D6:
+  // Tamuna Kovziridze, sorted loyal by the founder, scored `formal`).
+  if (oldAllyStatus !== undefined) {
+    const signals: RelationshipSignals = { old_ally_status: oldAllyStatus };
+    if (isBidirectional) signals.bidirectional = true;
+    const bonus = isBidirectional ? BIDIRECTIONALITY_BONUS : 0;
+    return {
+      relationship_type: 'close',
+      strength_score: Math.min(1, OLD_ALLY_STRENGTH[oldAllyStatus] + bonus),
+      signals,
+    };
   }
   return computeAliasScore(alias, isBidirectional);
 }
@@ -326,9 +378,10 @@ export async function computeAndSaveUserScores(
   const contactKeyMap = await getCompositeKeysForPhones(contactPhones);
   const contactKeys = [...new Set(contactPhones.map((p) => contactKeyMap.get(p) ?? p))];
 
-  const [bidirectional, explicit] = await Promise.all([
+  const [bidirectional, explicit, oldAlly] = await Promise.all([
     getBidirectionalSet(userCompositeKey, contactKeys),
     getExplicitRelationships(userId),
+    getOldAllyStatuses(userId),
   ]);
   const weightUpdates: WeightUpdate[] = [];
 
@@ -338,6 +391,7 @@ export async function computeAndSaveUserScores(
       row.alias,
       bidirectional.has(contactKey),
       explicit.get(row.phone),
+      oldAlly.get(phoneDigits(row.phone)),
     );
     await saveRelationshipScore(userId, row.phone, score);
     weightUpdates.push({ userKey: userCompositeKey, contactKey, weight: score.strength_score });
@@ -353,14 +407,16 @@ export async function computeAndSaveSingleScore(
   alias: string,
 ): Promise<void> {
   const contactKey = await getCompositeKeyForPhone(contactPhone);
-  const [bidirectional, explicit] = await Promise.all([
+  const [bidirectional, explicit, oldAlly] = await Promise.all([
     getBidirectionalSet(userCompositeKey, [contactKey]),
     getExplicitRelationships(userId),
+    getOldAllyStatuses(userId),
   ]);
   const score = computeRelationshipScore(
     alias,
     bidirectional.has(contactKey),
     explicit.get(contactPhone),
+    oldAlly.get(phoneDigits(contactPhone)),
   );
   await saveRelationshipScore(userId, contactPhone, score);
   await updateNeo4jWeightsBatch([
