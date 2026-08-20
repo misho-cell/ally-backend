@@ -75,12 +75,17 @@ async function updateJobProgress(jobId: string, stats: JobStats): Promise<void> 
   ]);
 }
 
-async function finalizeJob(jobId: string, status: string, stats: JobStats): Promise<void> {
+async function finalizeJob(
+  jobId: string,
+  status: string,
+  stats: JobStats,
+  errorText: string | null = null,
+): Promise<void> {
   await query(
     `UPDATE enrichment_jobs
-     SET status = $1, completed_at = NOW(), processed = $2, failed = $3
+     SET status = $1, completed_at = NOW(), processed = $2, failed = $3, error = $5
      WHERE id = $4`,
-    [status, stats.processed, stats.failed, jobId],
+    [status, stats.processed, stats.failed, jobId, errorText],
   );
 }
 
@@ -97,21 +102,31 @@ async function getUserBatch(offset: number, limit: number): Promise<UserRow[]> {
   return result.rows;
 }
 
+// The nightly's FIRST query. The old shape ran a per-user EXISTS anti-join
+// while walking every registered user in id order — once most users had no
+// unscored contacts the walk covered the whole table, blew the background
+// pool's 30s statement timeout at 01:00:01 sharp, and the job died with
+// processed=0 EVERY night (ticket 6 close, answer 9: failed since at least
+// 11 Aug). Set-based anti-join instead, with its own generous timeout.
+const INCREMENTAL_BATCH_TIMEOUT_MS = 300_000;
+
 async function getUserBatchWithNewContacts(offset: number, limit: number): Promise<UserRow[]> {
   const result = await query<UserRow>(
-    `SELECT up."userId" AS user_id,
+    `SELECT s.user_id,
             STRING_AGG(up.phone, '-' ORDER BY up.phone) AS composite_key
-     FROM "UserPhone" up
-     WHERE EXISTS (
-       SELECT 1 FROM "UserAlias" ua
+     FROM (
+       SELECT DISTINCT ua."contactId" AS user_id
+       FROM "UserAlias" ua
        LEFT JOIN contact_relationship_scores crs
-         ON crs.user_id = up."userId" AND crs.contact_phone = ua.phone
-       WHERE ua."contactId" = up."userId" AND crs.user_id IS NULL
-     )
-     GROUP BY up."userId"
-     ORDER BY up."userId"
+         ON crs.user_id = ua."contactId" AND crs.contact_phone = ua.phone
+       WHERE crs.user_id IS NULL
+     ) s
+     JOIN "UserPhone" up ON up."userId" = s.user_id
+     GROUP BY s.user_id
+     ORDER BY s.user_id
      LIMIT $1 OFFSET $2`,
     [limit, offset],
+    INCREMENTAL_BATCH_TIMEOUT_MS,
   );
   return result.rows;
 }
@@ -339,7 +354,9 @@ export class EnrichmentJob {
         `[enrichment] Job ${jobId} ${status}: processed=${this.stats.processed} failed=${this.stats.failed}`,
       );
     } catch (err) {
-      await finalizeJob(jobId, 'failed', this.stats).catch(() => {});
+      await finalizeJob(jobId, 'failed', this.stats, (err as Error).message.slice(0, 500)).catch(
+        () => {},
+      );
       throw err;
     } finally {
       this.running = false;
@@ -361,7 +378,7 @@ export class EnrichmentJob {
         failed: number;
         started_at: string | null;
       }>(
-        'SELECT id, status, total, processed, failed, started_at FROM enrichment_jobs ORDER BY created_at DESC LIMIT 1',
+        'SELECT id, status, total, processed, failed, started_at, error FROM enrichment_jobs ORDER BY created_at DESC LIMIT 1',
       );
       const row = last.rows[0];
       if (!row)
