@@ -254,3 +254,74 @@ describe('getAdminUserDetail', () => {
     ]);
   });
 });
+
+// --- Manual subscription management ------------------------------------------
+import {
+  searchUsersByPhone,
+  grantSubscription,
+  deactivateSubscription,
+  isGrantTier,
+} from '../adminUsers.service';
+
+describe('searchUsersByPhone', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('normalizes any spelling to digits and matches as a suffix', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 165699, name: 'Ninia' }]) as never);
+
+    await searchUsersByPhone('+995 598 85-20-80');
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain(`LIKE '%' || $1`);
+    expect(sql).toContain('"deletedAt" IS NULL');
+    expect(params).toEqual(['995598852080']);
+  });
+
+  it('refuses to search on fewer than 6 digits (no table scan on junk)', async () => {
+    const out = await searchUsersByPhone('12345');
+    expect(out).toEqual([]);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('grantSubscription / deactivateSubscription', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('grants a tier for N days and returns the updated row', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ id: 7, subscription_status: 'active', subscription_tier: 'pro' }]) as never,
+    );
+
+    const out = await grantSubscription(7, 'pro', 30);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain(`subscription_status = 'active'`);
+    expect(sql).toContain('"deletedAt" IS NULL');
+    expect(params).toEqual([7, 'pro', 30]);
+    expect(out?.subscription_status).toBe('active');
+  });
+
+  it('returns null for a missing/deleted user', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    expect(await grantSubscription(999999, 'enterprise', 30)).toBeNull();
+  });
+
+  it('deactivation flips status and closes the period', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 7, subscription_status: 'inactive' }]) as never);
+
+    await deactivateSubscription(7);
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain(`subscription_status = 'inactive'`);
+    expect(sql).toContain('current_period_ends_at = NOW()');
+  });
+});
+
+describe('isGrantTier', () => {
+  it('accepts only the two sellable tiers', () => {
+    expect(isGrantTier('pro')).toBe(true);
+    expect(isGrantTier('enterprise')).toBe(true);
+    expect(isGrantTier('free')).toBe(false);
+    expect(isGrantTier('admin')).toBe(false);
+  });
+});

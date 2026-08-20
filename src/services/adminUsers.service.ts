@@ -674,3 +674,75 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
   return profile;
 }
+
+// --- Manual subscription management (admin console) --------------------------
+// The ops need this covered four times by hand in one week: find the person by
+// their number, switch premium on. Search compares DIGITS on both sides —
+// stored spellings drift ('+995…', '995…', '0…') and an admin types whatever
+// the person sent them.
+
+export interface AdminPhoneSearchRow {
+  id: number;
+  name: string | null;
+  phone: string;
+  subscription_status: string | null;
+  subscription_tier: string | null;
+  current_period_ends_at: string | null;
+  created_at: string;
+}
+
+const PHONE_SEARCH_LIMIT = 5;
+const GRANT_TIERS = ['pro', 'enterprise'] as const;
+export type GrantTier = (typeof GRANT_TIERS)[number];
+
+export function isGrantTier(raw: string): raw is GrantTier {
+  return (GRANT_TIERS as readonly string[]).includes(raw);
+}
+
+export async function searchUsersByPhone(rawPhone: string): Promise<AdminPhoneSearchRow[]> {
+  const digits = rawPhone.replace(/\D/g, '');
+  if (digits.length < 6) return [];
+  // A local spelling ("598852080") must find the stored "+995598852080" —
+  // suffix match, not equality, so the country code never blocks the search.
+  const result = await query<AdminPhoneSearchRow>(
+    `SELECT u.id, u.name, up.phone, u.subscription_status, u.subscription_tier,
+            u.current_period_ends_at, u."createdAt" AS created_at
+     FROM "UserPhone" up
+     JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL
+     WHERE regexp_replace(up.phone, '\\D', '', 'g') LIKE '%' || $1
+     LIMIT ${PHONE_SEARCH_LIMIT}`,
+    [digits],
+  );
+  return result.rows;
+}
+
+export async function grantSubscription(
+  userId: number,
+  tier: GrantTier,
+  days: number,
+): Promise<AdminPhoneSearchRow | null> {
+  const result = await query<AdminPhoneSearchRow>(
+    `UPDATE "User"
+     SET subscription_status = 'active',
+         subscription_tier = $2,
+         current_period_ends_at = NOW() + ($3 || ' days')::interval
+     WHERE id = $1 AND "deletedAt" IS NULL
+     RETURNING id, name, '' AS phone, subscription_status, subscription_tier,
+               current_period_ends_at, "createdAt" AS created_at`,
+    [userId, tier, days],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function deactivateSubscription(userId: number): Promise<AdminPhoneSearchRow | null> {
+  const result = await query<AdminPhoneSearchRow>(
+    `UPDATE "User"
+     SET subscription_status = 'inactive',
+         current_period_ends_at = NOW()
+     WHERE id = $1 AND "deletedAt" IS NULL
+     RETURNING id, name, '' AS phone, subscription_status, subscription_tier,
+               current_period_ends_at, "createdAt" AS created_at`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}

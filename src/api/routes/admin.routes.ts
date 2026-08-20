@@ -21,7 +21,16 @@ import {
   UserProfile,
 } from '../../types';
 import { getOverview } from '../../services/analytics.service';
-import { listUsers, getAdminUserDetail } from '../../services/adminUsers.service';
+import {
+  listUsers,
+  getAdminUserDetail,
+  searchUsersByPhone,
+  grantSubscription,
+  deactivateSubscription,
+  isGrantTier,
+  AdminPhoneSearchRow,
+} from '../../services/adminUsers.service';
+import { recordProductEvent } from '../../services/productEvents.service';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
 import {
@@ -727,6 +736,94 @@ adminRouter.get('/users', async (req: Request, res: Response<ApiResponse<UserLis
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// Find a user by phone, any spelling — digits are compared as a suffix so
+// "+995 598 85 20 80", "598852080" and "0598852080" all find the same person.
+// Registered BEFORE /users/:id so 'search' never falls into the :id matcher.
+adminRouter.get(
+  '/users/search',
+  async (req: Request, res: Response<ApiResponse<AdminPhoneSearchRow[]>>) => {
+    try {
+      const phone = typeof req.query['phone'] === 'string' ? req.query['phone'] : '';
+      if (phone.replace(/\D/g, '').length < 6) {
+        res.status(400).json({ success: false, error: 'phone: მინიმუმ 6 ციფრი' });
+        return;
+      }
+      const users = await searchUsersByPhone(phone);
+      res.status(200).json({ success: true, data: users });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin user search]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Manual premium switch: grant a tier for N days, or deactivate. Every change
+// is audited — who did it, to whom, what — in product_events and the log.
+const GRANT_DEFAULT_DAYS = 30;
+const GRANT_MAX_DAYS = 365;
+
+adminRouter.post(
+  '/users/:id/subscription',
+  param('id').isInt({ min: 1 }),
+  body('action').optional().isIn(['grant', 'deactivate']),
+  body('tier').optional().isString(),
+  body('days').optional().isInt({ min: 1, max: GRANT_MAX_DAYS }),
+  async (req: Request, res: Response<ApiResponse<AdminPhoneSearchRow>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'არასწორი პარამეტრები' });
+      return;
+    }
+    try {
+      const targetId = Number(req.params.id);
+      const adminId = (req as AuthenticatedRequest).user.userId;
+      const action = String((req.body as { action?: string }).action ?? 'grant');
+
+      if (action === 'deactivate') {
+        const updated = await deactivateSubscription(targetId);
+        if (!updated) {
+          res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+          return;
+        }
+        void recordProductEvent(adminId, 'admin_subscription_change', {
+          action: 'deactivate',
+          target_user_id: targetId,
+        });
+        // eslint-disable-next-line no-console
+        console.log(`[admin-sub] admin ${adminId} deactivated user ${targetId}`);
+        res.status(200).json({ success: true, data: updated });
+        return;
+      }
+
+      const tier = String((req.body as { tier?: string }).tier ?? '');
+      if (!isGrantTier(tier)) {
+        res.status(400).json({ success: false, error: 'tier: pro ან enterprise' });
+        return;
+      }
+      const days = Number((req.body as { days?: number }).days ?? GRANT_DEFAULT_DAYS);
+      const updated = await grantSubscription(targetId, tier, days);
+      if (!updated) {
+        res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+        return;
+      }
+      void recordProductEvent(adminId, 'admin_subscription_change', {
+        action: 'grant',
+        target_user_id: targetId,
+        tier,
+        days,
+      });
+      // eslint-disable-next-line no-console
+      console.log(`[admin-sub] admin ${adminId} granted ${tier}/${days}d to user ${targetId}`);
+      res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin subscription]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.get(
   '/users/:id',
