@@ -225,18 +225,16 @@ threadsRouter.post(
         return;
       }
 
-      if (
+      // Provisional title immediately (never a blank row in the chat list);
+      // the model-written title is generated AFTER the run, from the FINAL
+      // reply (ticket 6 close, task 20: draft-time titles echoed the opener
+      // the strip was about to remove and contradicted their own answers).
+      const needsTitle =
         thread.type === 'regular' &&
-        (thread.title === null || thread.title === DEFAULT_NEW_THREAD_TITLE)
-      ) {
-        // Provisional title immediately (never a blank row in the chat list),
-        // then a model-written 2–4 word one replaces it via thread_updated.
-        // First words only, never the whole message — when the generator's
-        // title is rejected, this provisional is what the user keeps, and a
-        // verbatim question as a title is the prompt-echo class (§3.5).
+        (thread.title === null || thread.title === DEFAULT_NEW_THREAD_TITLE);
+      if (needsTitle) {
         const provisional = message.split(/\s+/).slice(0, PROVISIONAL_TITLE_WORDS).join(' ');
         await updateThreadTitle(threadId, provisional.slice(0, MAX_TITLE_CHARS));
-        void generateThreadTitle(userId, threadId, message);
       }
 
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
@@ -337,6 +335,8 @@ threadsRouter.post(
             ...(result.choices && { choices: result.choices }),
             ...(result.taskResult && { result: result.taskResult }),
           });
+          // Title from the FINAL, post-strip reply (task 20) — never from a draft.
+          if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
           // Persist + broadcast the terminal status. The thread becomes a task
           // once a run sent a request or reported a structured result.
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;

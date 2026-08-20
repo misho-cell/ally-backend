@@ -413,7 +413,9 @@ export const PARAM_TEXTS = {
     'Goethe-Institut, AHK). Contacts are often tagged with the institution, never the country — ' +
     'without this list those contacts are invisible.',
   netaiInfoTopic:
-    'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities.',
+    'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities, ' +
+    'screens (the app map — which page holds what, and the only contact address; NEVER invent ' +
+    'a screen or an address).',
   optOutReason: "Optional: the user's own words, if they gave a reason. Never ask for one.",
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:

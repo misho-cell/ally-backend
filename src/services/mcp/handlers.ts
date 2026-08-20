@@ -46,7 +46,7 @@ import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
 import { getCountryChannels } from '../tools/countryChannels';
 import { getNetaiInfo } from '../tools/netaiInfo';
-import { optOutFromAsks, resumeAsks } from '../askOptOut.service';
+import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from '../askOptOut.service';
 import {
   NOTE_EMPTY_INSIGHT,
   NOTE_EMPTY_SECOND_DEGREE,
@@ -439,12 +439,22 @@ export async function mcpUnblockContact(
 }
 
 export async function mcpListBlocked(userId: string): Promise<McpToolPayload> {
-  const blocked = await getBlockedByUser(userId);
+  // Ask opt-out is a separate store from per-contact blocks — surface both
+  // (ticket 6 close, answer 4: the empty block list masked a global opt-out).
+  const [blocked, asksOptedOut] = await Promise.all([
+    getBlockedByUser(userId),
+    isOptedOutFromAsks(Number(userId)),
+  ]);
   return {
     blocked: blocked.map((entry) => ({
       name: entry.name,
       contact_ref: encodeContactRef(userId, entry.phone),
     })),
+    asks_opted_out: asksOptedOut,
+    note: asksOptedOut
+      ? 'The user has said "stop contacting me": NO questions from any Netai user reach them, ' +
+        'separate from the per-contact blocks above. allow_contacting_me lifts it.'
+      : 'Receiving questions is ON (no global opt-out).',
   };
 }
 

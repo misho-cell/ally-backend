@@ -11,13 +11,16 @@ const TITLE_TIMEOUT_MS = 10_000;
 const TITLE_MAX_WORDS = 4;
 const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
+// Bilingual on purpose: an English user message with Georgian-only
+// instructions made the cheap model answer with its own English apologies —
+// which then BECAME titles ("I dont have access", ticket 6 close §C.10.3).
 const TITLE_PROMPT =
-  'მომხმარებლის შეტყობინებიდან შეადგინე საუბრის სათაური: ზუსტად 2–4 სიტყვა, მხოლოდ იმ ენაზე, ' +
-  'რომელზეც შეტყობინებაა — ენების შერევა აკრძალულია. გამოიყენე მხოლოდ ის საგანი/სიტყვები, რაც ' +
-  'შეტყობინებაშია — არაფერი გამოიგონო; თუ მკაფიო საგანი არ ჩანს, გამოიყენე შეტყობინების პირველი ' +
-  'სიტყვები. საკუთარ თავზე (ასისტენტზე) სათაური არასდროს — ასეთ კითხვას უპასუხე შეტყობინების ' +
-  'სიტყვებით. უპასუხე მხოლოდ თვითონ სათაურით: არავითარი „სათაური:", ბრჭყალები, ემოჯი, წერტილი ' +
-  'ან ახსნა. ტელეფონის ნომერი სათაურში არასდროს ჩაწერო.';
+  'You write a 2-4 word conversation title from the exchange below, in the SAME language as ' +
+  "the user's message — never mix languages, never answer the question, never apologize, " +
+  'never refuse: whatever the content, output ONLY a short subject title using words that ' +
+  'appear in the exchange. No "Title:", no quotes, no emoji, no trailing period, no phone ' +
+  'numbers, nothing about yourself as an assistant. ' +
+  'ქართული შეტყობინებისთვის: ზუსტად 2–4 სიტყვა ქართულად, მხოლოდ საუბრის საგნის სიტყვებით.';
 
 // The generator's own preamble, in every wording it has produced live —
 // "სათაური: X" and "საუბრის სათაური: X" reached users as the visible title
@@ -32,6 +35,11 @@ const CYRILLIC = /\p{Script=Cyrillic}/u;
 // Claude" reached a user as a visible title (ticket 6 B3, thread 9103). The
 // product's assistant has no such name anywhere in the UI.
 const VENDOR_NAME = /claude|anthropic|კლოდ/iu;
+// The cheap model's own refusals/apologies must never become titles — six of
+// six English titles on 20 Aug were exactly this class ("I dont have access",
+// "I appreciate you reaching", ვწუხვარ…).
+const REFUSAL_TITLE_RE =
+  /^(i\s|i['’]?m\b|i\s?do?n['’]?t|i\s?can|i\s?appreciate|sorry|unfortunately|as an ai|ვწუხვარ|უკაცრავად|ბოდიშ|ვერ\s)/i;
 
 /**
  * Strip the generator's label and quotes/markdown/emoji, collapse whitespace,
@@ -41,6 +49,7 @@ const VENDOR_NAME = /claude|anthropic|კლოდ/iu;
 export function sanitizeTitle(raw: string): string | null {
   if (CYRILLIC.test(raw)) return null;
   if (VENDOR_NAME.test(raw)) return null;
+  if (REFUSAL_TITLE_RE.test(raw.trim())) return null;
   const words = raw
     .replace(TITLE_LABEL_PREFIX, '')
     .replace(/["'"„“”«»*_`#]/g, '')
@@ -75,15 +84,22 @@ export async function generateThreadTitle(
   userId: string,
   threadId: number,
   firstMessage: string,
+  // The FINAL reply, post-opener-strip (ticket 6 close, task 20): titles made
+  // from the user message alone contradicted the answers, and a draft-time
+  // title saw text the strip was about to remove.
+  finalReply?: string,
 ): Promise<void> {
   try {
     const { default: anthropic } = await import('../config/anthropic');
+    const exchange = finalReply
+      ? `USER: ${firstMessage.slice(0, TITLE_INPUT_MAX_CHARS)}\nASSISTANT: ${finalReply.slice(0, TITLE_INPUT_MAX_CHARS)}`
+      : firstMessage.slice(0, TITLE_INPUT_MAX_CHARS);
     const response = await anthropic.messages.create(
       {
         model: TITLE_MODEL,
         max_tokens: TITLE_MAX_TOKENS,
         system: TITLE_PROMPT,
-        messages: [{ role: 'user', content: firstMessage.slice(0, TITLE_INPUT_MAX_CHARS) }],
+        messages: [{ role: 'user', content: exchange }],
       },
       { timeout: TITLE_TIMEOUT_MS },
     );

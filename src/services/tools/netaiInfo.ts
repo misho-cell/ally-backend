@@ -15,6 +15,8 @@ export const NETAI_INFO_TOPICS = [
   'privacy',
   'limits',
   'capabilities',
+  // The app map — grounds "where do I…" answers (ticket 6 close, task 2).
+  'screens',
 ] as const;
 
 export async function getNetaiInfo(topic: string): Promise<object> {

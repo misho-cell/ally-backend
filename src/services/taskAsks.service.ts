@@ -44,9 +44,24 @@ export interface TaskAsk {
   created_at: string;
 }
 
+// Machine-readable refusal codes (ticket 6 close, answers 3/4): the assistant
+// and the tester must be able to tell WHY a send was refused without parsing
+// Georgian prose — invented causes ("test mode", "opted out") all traced back
+// to paraphrased error strings.
+export type AskRefusalReason =
+  | 'empty_question'
+  | 'task_not_open'
+  | 'consent_pending'
+  | 'recipient_not_member'
+  | 'recipient_opted_out'
+  | 'recipient_not_on_test_allowlist'
+  | 'self_send'
+  | 'already_asked_on_this_task'
+  | 'daily_cap_reached';
+
 export type CreateAskOutcome =
   | { sent: true; ask_id: number; to_name: string }
-  | { sent: false; error: string };
+  | { sent: false; error: string; reason?: AskRefusalReason };
 
 /**
  * Send a question to ANOTHER member on the task's behalf: creates the ask row,
@@ -62,7 +77,8 @@ export async function createAsk(
   parentAskId?: number,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
-  if (!trimmed) return { sent: false, error: 'Pass a non-empty question.' };
+  if (!trimmed)
+    return { sent: false, reason: 'empty_question', error: 'Pass a non-empty question.' };
 
   // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
   // reaches a real person's phone must never depend on prompt text alone —
@@ -75,7 +91,7 @@ export async function createAsk(
   if (parentAskId === undefined) {
     const task = await getTaskById(taskId);
     if (!task || String(task.user_id) !== fromUserId || task.status !== 'open') {
-      return { sent: false, error: 'Task not found or not open.' };
+      return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
     }
     if (!task.permission_granted) {
       // The wording matters (ticket 3 §6.8): the old text sent the model back
@@ -83,6 +99,7 @@ export async function createAsk(
       // permission prompts for one send (thread 8152).
       return {
         sent: false,
+        reason: 'consent_pending',
         error:
           'ნებართვა არ არის: ამ დავალებაზე grant_task_permission ჯერ არ გამოძახებულა. თუ ' +
           'მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი აქვს („კი, გაუგზავნე") — ხელახლა ' +
@@ -104,7 +121,11 @@ export async function createAsk(
     ASK_QUERY_TIMEOUT_MS,
   );
   if (member.rows.length === 0) {
-    return { sent: false, error: 'ეს კონტაქტი Netai-ს წევრი არ არის — მისწერა ვერ ხერხდება.' };
+    return {
+      sent: false,
+      reason: 'recipient_not_member',
+      error: 'ეს კონტაქტი Netai-ს წევრი არ არის — მისწერა ვერ ხერხდება.',
+    };
   }
   const toUserId = member.rows[0].userId;
   const toName = member.rows[0].name ?? 'კონტაქტი';
@@ -119,6 +140,7 @@ export async function createAsk(
   if ((await isOptedOutFromAsks(toUserId)) || (await isPhoneOptedOut(contactPhone))) {
     return {
       sent: false,
+      reason: 'recipient_opted_out',
       error:
         `${toName}-მ მოითხოვა, რომ Netai-დან შეტყობინებები აღარ მიეღო — ამიტომ მას ვერაფერს ვწერთ, ` +
         'ვერც ამ და ვერც სხვა დავალებაზე. ეს მისი გადაწყვეტილებაა და პატივს ვცემთ. მფლობელს ' +
@@ -141,6 +163,7 @@ export async function createAsk(
     // (ticket 4 item 00-D).
     return {
       sent: false,
+      reason: 'recipient_not_on_test_allowlist',
       error:
         'ვერ გაიგზავნა: აპლიკაცია სატესტო რეჟიმშია და კითხვები ამ ეტაპზე მხოლოდ წინასწარ ' +
         'შერჩეულ სატესტო მიმღებებს ეგზავნებათ. ეს ჩვენი, სისტემის დროებითი შეზღუდვაა — ამ ' +
@@ -150,7 +173,7 @@ export async function createAsk(
   }
 
   if (String(toUserId) === fromUserId) {
-    return { sent: false, error: 'საკუთარ თავს ვერ მისწერ.' };
+    return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
   }
 
   // One task never asks the same person twice.
@@ -162,7 +185,13 @@ export async function createAsk(
     ASK_QUERY_TIMEOUT_MS,
   );
   if (dup.rows.length > 0) {
-    return { sent: false, error: 'ამ ადამიანს ამ დავალებაზე უკვე მიწერილი აქვს კითხვა.' };
+    return {
+      sent: false,
+      reason: 'already_asked_on_this_task',
+      error:
+        'ამ ადამიანს ამ დავალებაზე (task-ზე) უკვე მიწერილი აქვს კითხვა — წესი დავალებაზეა, არა ' +
+        'ადამიანზე: ახალი, სხვა თემის კითხვისთვის ახალი დავალება გახსენი და გაიგზავნება.',
+    };
   }
 
   const sentToday = await query<{ count: string }>(
@@ -172,7 +201,11 @@ export async function createAsk(
     ASK_QUERY_TIMEOUT_MS,
   );
   if (Number(sentToday.rows[0]?.count ?? 0) >= MAX_ASKS_PER_SENDER_PER_DAY) {
-    return { sent: false, error: 'დღევანდელი მიწერების ლიმიტი ამოიწურა — ხვალ გავაგრძელებ.' };
+    return {
+      sent: false,
+      reason: 'daily_cap_reached',
+      error: 'დღევანდელი მიწერების ლიმიტი ამოიწურა — ხვალ გავაგრძელებ.',
+    };
   }
 
   const fromName = await query<{ name: string | null }>(

@@ -10,11 +10,13 @@ import { intEnv } from '../config/runBudgets';
 const BLOCK_QUERY_TIMEOUT_MS = 5_000;
 // Block names are API-addressable identifiers, not free text.
 const BLOCK_NAME_RE = /^[a-z0-9_]{2,40}$/;
-const MAX_BLOCK_CONTENT_CHARS = 20_000;
+const MAX_BLOCK_CONTENT_CHARS = 30_000;
 // Ceiling for the SUM of enabled block content bound to one mode (on top of
 // the base prompt) — the prompt team asked for a hard stop at save time so a
 // mode can never quietly regrow into the monolith the split was escaping.
-const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 20_000);
+// Raised 20k → 30k on the prompt team's ask (ticket 6 close, task 1):
+// qa_main sat at 19,974/20,000 with two P0 fixes unwritable.
+const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 30_000);
 const HISTORY_KEEP_PER_BLOCK = 10;
 const RUN_STAMP_RETENTION_DAYS = 30;
 const RUN_STAMP_LIST_LIMIT = 50;

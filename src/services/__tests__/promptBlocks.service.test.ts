@@ -139,7 +139,7 @@ describe('upsertPromptBlock', () => {
     await expect(upsertPromptBlock('Bad Name!', { content: 'x' })).rejects.toThrow(
       'invalid block name',
     );
-    await expect(upsertPromptBlock('ok_name', { content: 'y'.repeat(20_001) })).rejects.toThrow(
+    await expect(upsertPromptBlock('ok_name', { content: 'y'.repeat(30_001) })).rejects.toThrow(
       'too long',
     );
     await expect(
@@ -161,8 +161,8 @@ describe('upsertPromptBlock', () => {
 
   it('enforces the per-mode ceiling against OTHER enabled blocks, naming the mode', async () => {
     stubCatalog(null, [
-      block({ name: 'big', content: 'z'.repeat(15_000), modes: ['quick_answer'] }),
-      block({ name: 'off', content: 'z'.repeat(15_000), modes: ['quick_answer'], enabled: false }),
+      block({ name: 'big', content: 'z'.repeat(25_000), modes: ['quick_answer'] }),
+      block({ name: 'off', content: 'z'.repeat(25_000), modes: ['quick_answer'], enabled: false }),
     ]);
 
     const attempt = upsertPromptBlock('more', {
@@ -170,7 +170,7 @@ describe('upsertPromptBlock', () => {
       modes: ['quick_answer'],
     });
 
-    // 15k (enabled 'big'; disabled 'off' does not count) + 6k > 20k ceiling.
+    // 25k (enabled 'big'; disabled 'off' does not count) + 6k > 30k ceiling.
     await expect(attempt).rejects.toThrow(/quick_answer .* ceiling/);
   });
 

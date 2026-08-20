@@ -54,7 +54,7 @@ import {
   TaskAsk,
   IncomingAsk,
 } from './taskAsks.service';
-import { optOutFromAsks, resumeAsks } from './askOptOut.service';
+import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts } from './contactFacts.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
@@ -706,7 +706,9 @@ const GET_NETAI_INFO_TOOL: AnthropicTool = {
       topic: {
         type: 'string',
         description:
-          'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities.',
+          'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities, ' +
+          'screens (the app map — which page holds what, and the only contact address; NEVER ' +
+          'invent a screen or an address).',
       },
     },
     required: ['topic'],
@@ -1558,6 +1560,48 @@ async function runLoggedSearch(
   return result;
 }
 
+// --- Own-number passthrough hardening (ticket 6 close, answer 15) -----------
+// get_own_contact_number returns the number wrapped in ⟦own⟧ markers and asks
+// the model to copy them verbatim — but a model that reformats the number or
+// drops the exotic glyphs left a RAW number in the reply, which the display
+// scrub redacted and the artifact-strip then deleted SILENTLY („, ეს ავთოს
+// შენახული ნომერია." — a comma where the number should be, thread 9692).
+// The numbers a run is explicitly allowed to show are tracked per run and
+// re-wrapped server-side in the final reply, so display never depends on the
+// model reproducing markers.
+const runAllowedNumbers = new Map<string, Set<string>>();
+
+function registerAllowedNumber(runId: string | undefined, phone: string): void {
+  if (!runId) return;
+  const set = runAllowedNumbers.get(runId) ?? new Set<string>();
+  set.add(phone);
+  runAllowedNumbers.set(runId, set);
+}
+
+export function wrapAllowedNumbers(text: string, runId: string): string {
+  const set = runAllowedNumbers.get(runId);
+  if (!set || set.size === 0) return text;
+  let out = text;
+  let tokenIndex = 0;
+  const restores: Array<[string, string]> = [];
+  for (const phone of set) {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 6) continue;
+    // Any spelling of the number (spaces/dashes/dots between digits, optional +)
+    // becomes a placeholder token first — a token cannot re-match, so already-
+    // marked spans and fresh wraps can never nest.
+    const sep = '[\\s\\-().]?';
+    const pattern = new RegExp(`\\+?${digits.split('').join(sep)}`, 'g');
+    const marked = `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
+    out = out.split(marked).join(phone);
+    const token = `\u0000ALLOWED${tokenIndex++}\u0000`;
+    out = out.replace(pattern, token);
+    restores.push([token, marked]);
+  }
+  for (const [token, marked] of restores) out = out.split(token).join(marked);
+  return out;
+}
+
 async function executeToolCall(
   userId: string,
   name: string,
@@ -1686,10 +1730,29 @@ async function executeToolCall(
     case 'unblock_contact':
       await unblockContact(userId, input['phone'] as string);
       return { ok: true };
-    case 'list_blocked_contacts':
-      return { blocked: await getBlockedByUser(userId) };
-    case 'get_own_contact_number':
-      return getOwnContactNumber(userId, input['phone'] as string);
+    case 'list_blocked_contacts': {
+      // The ask opt-out lives in a SEPARATE store from per-contact blocks —
+      // an empty block list read as "receiving is on" while an ask_optouts
+      // row silently refused every question for a week (ticket 6 close,
+      // answer 4). One call now answers both.
+      const [blocked, asksOptedOut] = await Promise.all([
+        getBlockedByUser(userId),
+        isOptedOutFromAsks(userId),
+      ]);
+      return {
+        blocked,
+        asks_opted_out: asksOptedOut,
+        note: asksOptedOut
+          ? 'The user has said "stop contacting me": NO questions from any Netai user reach ' +
+            'them, separate from the per-contact blocks above. allow_contacting_me lifts it.'
+          : 'Receiving questions is ON (no global opt-out).',
+      };
+    }
+    case 'get_own_contact_number': {
+      const ownNumber = await getOwnContactNumber(userId, input['phone'] as string);
+      if ('number' in ownNumber) registerAllowedNumber(runId, (input['phone'] as string).trim());
+      return ownNumber;
+    }
     case 'get_contact_full_profile':
       return scrubEmailsDeep(
         await getContactFullProfile(
@@ -2679,6 +2742,7 @@ export async function processChat(
   if (!effectiveFinal.trim()) {
     // eslint-disable-next-line no-console
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
+    runAllowedNumbers.delete(runId);
     const failureReply =
       'პასუხის ჩამოყალიბება ვერ მოხერხდა — სამუშაო შუა გზაზე შეწყდა. გთხოვ, სცადე თავიდან.';
     await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
@@ -2702,9 +2766,13 @@ export async function processChat(
       `[moderation] run ${runId} thread ${threadId} reply blocked by content filter (len=${cleanedFinal.length})`,
     );
   }
-  const reply = replySafe
-    ? cleanedFinal
-    : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.';
+  const reply = wrapAllowedNumbers(
+    replySafe
+      ? cleanedFinal
+      : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
+    runId,
+  );
+  runAllowedNumbers.delete(runId);
   await saveMessage(userId, threadId, 'assistant', reply, 'message', null, choices ?? null);
 
   // Charge the run's actual ledger cost to the user's token wallet (no-op
