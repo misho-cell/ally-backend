@@ -122,10 +122,15 @@ async function saveToPostgres(
   // every import silently fail (each contact error-counted as "skipped").
   // Verified against information_schema on 2 Aug. The upsert also avoids
   // ON CONFLICT: the unique constraint it needs is not provable in prod.
+  // The reused parameters are cast ONCE, at their first occurrence: a bare $1
+  // in an INSERT…SELECT list and the same $1 in the WHERE resolve to different
+  // types on PostgreSQL 17 (Aurora upgraded from 16), and every import died
+  // with "inconsistent types deduced for parameter $1" (21 Aug, Part 5b
+  // account seeding).
   await withTransaction(async (client: PoolClient) => {
     await client.query(
       `INSERT INTO "UserAlias" (phone, "contactId", alias)
-       SELECT $1, $2, $3
+       SELECT $1::text, $2::int, $3::text
        WHERE NOT EXISTS (
          SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2 AND alias = $3
        )`,
@@ -142,7 +147,7 @@ async function saveToPostgres(
       if ((bumped.rowCount ?? 0) === 0) {
         await client.query(
           `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount")
-           SELECT $1, $2, $3, 1
+           SELECT $1::text, $2::int, $3::text, 1
            WHERE NOT EXISTS (
              SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2 AND tag = $3
            )`,
