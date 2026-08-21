@@ -49,6 +49,8 @@ export interface JobStatus {
   processed: number;
   failed: number;
   startedAt: string | null;
+  /** Failure message of the last run, when it failed (N12.4). */
+  error?: string | null;
 }
 
 export type JobType = 'full' | 'incremental' | 'neo4j_backfill';
@@ -377,6 +379,7 @@ export class EnrichmentJob {
         processed: number;
         failed: number;
         started_at: string | null;
+        error: string | null;
       }>(
         'SELECT id, status, total, processed, failed, started_at, error FROM enrichment_jobs ORDER BY created_at DESC LIMIT 1',
       );
@@ -399,6 +402,9 @@ export class EnrichmentJob {
         processed: row.processed,
         failed: row.failed,
         startedAt: row.started_at,
+        // Why the run failed — one field turns a silent night into a one-line
+        // diagnosis for the tester's seat too (ticket 6 verify, N12.4).
+        error: row.error,
       };
     }
     return {

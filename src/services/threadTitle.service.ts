@@ -11,16 +11,26 @@ const TITLE_TIMEOUT_MS = 10_000;
 const TITLE_MAX_WORDS = 4;
 const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
-// Bilingual on purpose: an English user message with Georgian-only
-// instructions made the cheap model answer with its own English apologies —
-// which then BECAME titles ("I dont have access", ticket 6 close §C.10.3).
-const TITLE_PROMPT =
-  'You write a 2-4 word conversation title from the exchange below, in the SAME language as ' +
-  "the user's message — never mix languages, never answer the question, never apologize, " +
-  'never refuse: whatever the content, output ONLY a short subject title using words that ' +
-  'appear in the exchange. No "Title:", no quotes, no emoji, no trailing period, no phone ' +
-  'numbers, nothing about yourself as an assistant. ' +
-  'ქართული შეტყობინებისთვის: ზუსტად 2–4 სიტყვა ქართულად, მხოლოდ საუბრის საგნის სიტყვებით.';
+// The language is DETECTED server-side and named explicitly — asking the
+// cheap model to infer "the same language" produced Georgian titles on 6 of
+// 10 English conversations (ticket 6 verify, N12.1).
+function detectTitleLanguage(text: string): string {
+  if (/[ა-ჿ]/.test(text)) return 'Georgian';
+  if (/[а-яё]/i.test(text)) return 'Russian';
+  if (/[áéíóúñ¿¡]/i.test(text)) return 'Spanish';
+  return 'English';
+}
+
+function buildTitlePrompt(language: string): string {
+  return (
+    `You write a 2-4 word conversation title from the exchange below. Write the title in ` +
+    `${language} — ONLY ${language}, never mix languages. Never answer the question, never ` +
+    'apologize, never refuse: whatever the content, output ONLY a short subject title using ' +
+    'real, correctly spelled words that appear in the exchange — never invent or distort a ' +
+    'word. No "Title:", no quotes, no emoji, no trailing period, no phone numbers, nothing ' +
+    'about yourself as an assistant.'
+  );
+}
 
 // The generator's own preamble, in every wording it has produced live —
 // "სათაური: X" and "საუბრის სათაური: X" reached users as the visible title
@@ -98,7 +108,7 @@ export async function generateThreadTitle(
       {
         model: TITLE_MODEL,
         max_tokens: TITLE_MAX_TOKENS,
-        system: TITLE_PROMPT,
+        system: buildTitlePrompt(detectTitleLanguage(firstMessage)),
         messages: [{ role: 'user', content: exchange }],
       },
       { timeout: TITLE_TIMEOUT_MS },

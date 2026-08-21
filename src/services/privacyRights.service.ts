@@ -127,23 +127,27 @@ function bareName(table: string): string {
  */
 export async function getMyDataSummary(userId: string): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
-  for (const { table, column } of OWNED_TABLES) {
-    try {
-      // Untyped $1 on purpose: the id columns drift between INTEGER and TEXT
-      // in prod (tasks.user_id, contact_facts.submitted_by_user_id are TEXT) —
-      // a $1 cast made those comparisons throw, the catch swallowed it,
-      // and the tables silently vanished from the summary (ticket 6 follow-up).
-      const result = await query<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = $1`,
-        [userId],
-        ERASURE_TIMEOUT_MS,
-      );
-      const n = Number(result.rows[0]?.count ?? 0);
-      if (n > 0) counts[bareName(table)] = n;
-    } catch {
-      // A table that does not exist in this environment simply has no data.
-    }
-  }
+  // All counts CONCURRENTLY: run one-by-one they took 14.4s on the founder's
+  // account while the privacy page sat empty (ticket 6 verify, N12.3).
+  // Untyped $1 on purpose: the id columns drift between INTEGER and TEXT in
+  // prod (tasks.user_id, contact_facts.submitted_by_user_id) — a ::int cast
+  // made those comparisons throw, the catch swallowed it, and the tables
+  // silently vanished from the summary.
+  await Promise.all(
+    OWNED_TABLES.map(async ({ table, column }) => {
+      try {
+        const result = await query<{ count: string }>(
+          `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = $1`,
+          [userId],
+          ERASURE_TIMEOUT_MS,
+        );
+        const n = Number(result.rows[0]?.count ?? 0);
+        if (n > 0) counts[bareName(table)] = n;
+      } catch {
+        // A table that does not exist in this environment simply has no data.
+      }
+    }),
+  );
   return counts;
 }
 
