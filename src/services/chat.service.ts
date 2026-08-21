@@ -1893,12 +1893,16 @@ async function executeToolCall(
     case 'update_task': {
       const status = input['status'] as string;
       if (!isTaskStatus(status)) return { updated: false, error: 'Invalid status.' };
+      const taskIdToUpdate = Number(input['task_id']);
       const ok = await updateTask(
         userId,
-        input['task_id'] as number,
+        taskIdToUpdate,
         status,
         input['note'] as string | undefined,
       );
+      // Closing by ANY route cancels what is in flight (round 1: an
+      // update_task-closed goal left its ask 'sent' on the recipient's phone).
+      if (ok && status === 'closed') await cancelAsksForTask(taskIdToUpdate);
       return { updated: ok };
     }
     case 'grant_task_permission':

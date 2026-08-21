@@ -622,6 +622,10 @@ export async function mcpUpdateTask(
     return { updated: false, error: 'status must be open, paused, or closed.' };
   }
   const ok = await updateTask(userId, taskId, args.status, args.note);
+  // Closing by ANY route cancels what is in flight — a closed goal whose
+  // question still sits on someone's phone chases them for nothing (round 1:
+  // update_task-closed task 1688 left ask 830 'sent').
+  if (ok && args.status === 'closed') await cancelAsksForTask(taskId);
   return ok ? { updated: true } : { updated: false, error: 'No such task.' };
 }
 
