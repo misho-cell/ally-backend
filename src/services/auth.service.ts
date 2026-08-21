@@ -97,21 +97,26 @@ function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
 }
 
 // --- Store/marketplace review login ------------------------------------------
-// Reviewers (Paddle, app stores) must log into the live app but cannot receive
-// a Georgian SMS. When BOTH env vars are set, the single designated number
-// verifies with the fixed code and no message is ever sent to it. Active only
-// while the vars exist — unset them the moment the review is over.
-function reviewLoginDigits(): string | null {
-  const phone = process.env.REVIEW_PHONE;
-  if (!phone || !process.env.REVIEW_OTP) return null;
-  return phoneDigits(normalizePhone(phone)) || null;
+// Reviewers (Paddle, app stores) and the QA test accounts must log into the
+// live app but cannot receive a Georgian SMS. When BOTH env vars are set,
+// every number on the comma-separated REVIEW_PHONE list verifies with the
+// fixed code and no message is ever sent to it. Active only while the vars
+// exist — unset them the moment the review/testing window is over.
+function reviewLoginDigits(): ReadonlySet<string> {
+  const phones = process.env.REVIEW_PHONE;
+  if (!phones || !process.env.REVIEW_OTP) return new Set();
+  return new Set(
+    phones
+      .split(',')
+      .map((p) => phoneDigits(normalizePhone(p.trim())))
+      .filter(Boolean),
+  );
 }
 
 function isReviewPhone(phone: string): boolean {
-  const review = reviewLoginDigits();
   // Normalize before comparing so the local "5XX…" spelling the login screen
   // itself suggests matches the env value's full form.
-  return review !== null && phoneDigits(normalizePhone(phone)) === review;
+  return reviewLoginDigits().has(phoneDigits(normalizePhone(phone)));
 }
 
 function isReviewLogin(phone: string, code: string): boolean {

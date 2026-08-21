@@ -151,6 +151,25 @@ describe('review login bypass (REVIEW_PHONE + REVIEW_OTP)', () => {
     await expect(verifyOTP(PHONE, REVIEW_CODE, 'AUTH')).rejects.toThrow();
   });
 
+  it('accepts EVERY number on a comma-separated list (with spaces and mixed formats)', async () => {
+    process.env.REVIEW_PHONE = '+995555000001, 555 00 00 02,+995555000003';
+
+    await requestOTP('+995555000002', 'AUTH');
+    expect(mockWhatsApp).not.toHaveBeenCalled();
+
+    await verifyOTP('+995555000003', REVIEW_CODE, 'AUTH');
+    const marker = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('INSERT INTO phone_verifications'),
+    );
+    expect(marker).toBeDefined();
+  });
+
+  it('a number NOT on the list stays ordinary even when the list is set', async () => {
+    process.env.REVIEW_PHONE = '+995555000001,+995555000002';
+
+    await expect(verifyOTP(PHONE, REVIEW_CODE, 'AUTH')).rejects.toThrow();
+  });
+
   it('is fully inert when the env vars are unset', async () => {
     delete process.env.REVIEW_PHONE;
     delete process.env.REVIEW_OTP;
