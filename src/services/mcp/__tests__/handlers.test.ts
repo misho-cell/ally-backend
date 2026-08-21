@@ -32,6 +32,22 @@ jest.mock('../../introduction.service', () => ({
   __esModule: true,
 }));
 jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModule: true }));
+jest.mock('../../taskStore.service', () => ({
+  createTask: jest.fn(),
+  getMyTasks: jest.fn(),
+  getTaskById: jest.fn(),
+  grantTaskPermission: jest.fn(),
+  isTaskStatus: jest.requireActual('../../taskStore.service').isTaskStatus,
+  setTaskBrief: jest.fn(),
+  setTaskWake: jest.fn(),
+  updateTask: jest.fn(),
+  __esModule: true,
+}));
+jest.mock('../../taskAsks.service', () => ({
+  cancelAsksForTask: jest.fn().mockResolvedValue(undefined),
+  createAsk: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../../askOptOut.service', () => ({
   optOutFromAsks: jest.fn().mockResolvedValue(undefined),
   resumeAsks: jest.fn().mockResolvedValue(undefined),
@@ -94,6 +110,7 @@ import {
   mcpSearchSecondDegree,
   mcpStopContactingMe,
   mcpUnblockContact,
+  mcpUpdateTask,
 } from '../handlers';
 import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
 import {
@@ -104,6 +121,11 @@ import {
 } from '../../block.service';
 import { normalizePhone } from '../../phone';
 import { optOutFromAsks } from '../../askOptOut.service';
+import { updateTask } from '../../taskStore.service';
+import { cancelAsksForTask } from '../../taskAsks.service';
+
+const mockUpdateTask = updateTask as jest.MockedFunction<typeof updateTask>;
+const mockCancelAsks = cancelAsksForTask as jest.MockedFunction<typeof cancelAsksForTask>;
 
 const mockOptOut = optOutFromAsks as jest.MockedFunction<typeof optOutFromAsks>;
 
@@ -696,5 +718,26 @@ describe('mcpStopContactingMe confirmation gate', () => {
 
     expect(result.stopped).toBe(true);
     expect(mockOptOut).toHaveBeenCalledWith(USER, 'no more');
+  });
+});
+
+describe('mcpUpdateTask close cancels in-flight asks', () => {
+  it('cancels asks when a task is CLOSED via update (round 1: ask 830 stranded)', async () => {
+    mockUpdateTask.mockResolvedValue(true);
+
+    const result = await mcpUpdateTask(USER, { task_ref: 'task_1688', status: 'closed' });
+
+    expect(result.updated).toBe(true);
+    expect(mockCancelAsks).toHaveBeenCalledWith(1688);
+  });
+
+  it('does NOT cancel on pause or when the update failed', async () => {
+    mockUpdateTask.mockResolvedValue(true);
+    await mcpUpdateTask(USER, { task_ref: 'task_5', status: 'paused' });
+
+    mockUpdateTask.mockResolvedValue(false);
+    await mcpUpdateTask(USER, { task_ref: 'task_6', status: 'closed' });
+
+    expect(mockCancelAsks).not.toHaveBeenCalled();
   });
 });
