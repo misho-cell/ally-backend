@@ -243,6 +243,35 @@ describe('registerUser requires a consumed verification', () => {
     expect((phoneInsert?.[1] as unknown[])[0]).toBe('+995599123456');
   });
 
+  it('grants a working subscription when a REVIEW_PHONE number registers', async () => {
+    process.env.REVIEW_PHONE = '+995555000001,+995555000002';
+    process.env.REVIEW_OTP = '135702';
+    try {
+      setup({ verified: true });
+
+      await registerUser('+995555000002', 'Test A');
+
+      const grant = mockQuery.mock.calls.find((c) =>
+        (c[0] as string).includes("subscription_status = 'active'"),
+      );
+      expect(grant).toBeDefined();
+      expect((grant?.[1] as unknown[])[0]).toBe(7);
+    } finally {
+      delete process.env.REVIEW_PHONE;
+      delete process.env.REVIEW_OTP;
+    }
+  });
+
+  it('grants NO subscription to an ordinary registration', async () => {
+    setup({ verified: true });
+
+    await registerUser(PHONE, 'Lika');
+
+    expect(
+      mockQuery.mock.calls.some((c) => (c[0] as string).includes("subscription_status = 'active'")),
+    ).toBe(false);
+  });
+
   it('hands the verification BACK when creation fails after the consume, so the retry works', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('SELECT id FROM "UserPhone"')) return Promise.resolve(rows([]) as never);

@@ -123,6 +123,10 @@ function isReviewLogin(phone: string, code: string): boolean {
   return isReviewPhone(phone) && code === process.env.REVIEW_OTP;
 }
 
+// Long enough to outlive any review or testing window; the accounts stop
+// working anyway once REVIEW_PHONE is unset, because nobody can log into them.
+const REVIEW_SUBSCRIPTION_DAYS = 365;
+
 export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
@@ -303,6 +307,20 @@ export async function registerUser(
        VALUES ($1, $2, $3, $4, NOW(), NOW())`,
       [cleanPhone, phoneCode, phoneNumber, userId],
     );
+
+    // Review/test numbers get a working subscription at the door: the whole
+    // point of those accounts is to exercise the full product, and every
+    // feature past login sits behind requireSubscription. Same lifecycle as
+    // the OTP bypass — gone the moment REVIEW_PHONE is unset.
+    if (isReviewPhone(phone)) {
+      await query(
+        `UPDATE "User"
+         SET subscription_status = 'active', subscription_tier = 'pro',
+             current_period_ends_at = NOW() + make_interval(days => $2)
+         WHERE id = $1`,
+        [userId, REVIEW_SUBSCRIPTION_DAYS],
+      );
+    }
 
     await createUserPhoneNode(cleanPhone);
 
