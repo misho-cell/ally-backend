@@ -530,6 +530,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       title: TOOL_TEXTS.stop_contacting_me.title,
       description: TOOL_TEXTS.stop_contacting_me.description,
       inputSchema: {
+        confirmed: z.boolean().describe(PARAM_TEXTS.optOutConfirmed),
         reason: z.string().optional().describe(PARAM_TEXTS.optOutReason),
       },
       annotations: WRITE,

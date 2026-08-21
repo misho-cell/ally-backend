@@ -212,10 +212,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   stop_contacting_me: {
     title: 'Stop questions reaching this user',
     description:
-      'Call the moment the user says they no longer want to receive questions from Netai ' +
+      'Call ONLY when the user says they never want to receive questions again, from anyone ' +
       '("stop writing to me", "unsubscribe"). Stops EVERY future question from EVERY sender ' +
-      'and cancels anything pending — not just one task. Accept the refusal in one warm ' +
-      'line, never argue or ask why, and say plainly that they can lift it at any time.',
+      'and cancels anything pending — not just one task. Declining ONE question is NOT this ' +
+      'tool — that is simply their answer; relay it. When unclear, ask once whether they mean ' +
+      'everything, and pass confirmed=true only after they confirm. Accept the refusal in one ' +
+      'warm line, never argue or ask why, and say plainly that they can lift it at any time.',
   },
   allow_contacting_me: {
     title: 'Allow questions again',
@@ -417,6 +419,9 @@ export const PARAM_TEXTS = {
     'screens (the app map — which page holds what, and the only contact address; NEVER invent ' +
     'a screen or an address).',
   optOutReason: "Optional: the user's own words, if they gave a reason. Never ask for one.",
+  optOutConfirmed:
+    'true ONLY when the user explicitly said no questions from ANYONE should reach them — ' +
+    'in their own words or after your one confirming question. Without true nothing is written.',
   taskTitle: 'One short line naming the goal, in the user\'s words (e.g. "find a startup lawyer").',
   taskDescription:
     "Optional extra detail about the goal — who/what/constraints, in the user's words.",

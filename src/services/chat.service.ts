@@ -635,21 +635,30 @@ const RELAY_ASK_TOOL: AnthropicTool = {
 const STOP_CONTACTING_TOOL: AnthropicTool = {
   name: 'stop_contacting_me',
   description:
-    'Call this the moment the user says they do not want to receive questions any more ' +
-    '("don\'t write to me again", "stop messaging me", "unsubscribe", "remove me"). It stops ' +
-    'EVERY future question from EVERY sender reaching them, not just this one task, and ' +
-    'cancels anything already pending. Accept the refusal in one warm line, do not argue, do ' +
-    'not ask why, and tell them plainly that no more questions will come and that they can lift ' +
-    'it at any time by telling you so.',
+    'Call this ONLY when the user says they never want to receive questions again, from ' +
+    'anyone ("don\'t write to me again", "stop messaging me", "unsubscribe", "remove me"). ' +
+    'It stops EVERY future question from EVERY sender, not just this one task, and cancels ' +
+    'anything pending. Declining ONE question ("I can\'t answer this", "not my area", "no to ' +
+    'this one") is NOT this tool — that is simply their answer; relay it and close warmly. ' +
+    'When it is not word-for-word clear they mean everything, ask once: "გინდა საერთოდ აღარ ' +
+    'მოგწერონ კითხვები?" — and call only after they confirm. Accept the refusal in one warm ' +
+    'line, never argue or ask why, and say plainly they can lift it at any time.',
   input_schema: {
     type: 'object',
     properties: {
+      confirmed: {
+        type: 'boolean',
+        description:
+          'true ONLY when the user explicitly said no questions from ANYONE should reach ' +
+          'them — in their own words or after your one confirming question. Without true ' +
+          'nothing is written.',
+      },
       reason: {
         type: 'string',
         description: 'Optional: their own words, if they gave a reason. Never ask for one.',
       },
     },
-    required: [],
+    required: ['confirmed'],
   },
 };
 
@@ -1802,6 +1811,20 @@ async function executeToolCall(
       return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
     }
     case 'stop_contacting_me':
+      // Server-side gate (round 1 red, thread 9840): a single-question decline
+      // was written as a GLOBAL opt-out. Without explicit confirmation nothing
+      // is stored — the agent is told to ask, or to treat the decline as the
+      // answer it already is.
+      if (input['confirmed'] !== true) {
+        return {
+          stopped: false,
+          needs_confirmation: true,
+          note:
+            'არაფერი ჩაწერილა. თუ ადამიანმა მხოლოდ ამ ერთ კითხვაზე თქვა უარი — ეს მისი პასუხია, ' +
+            'გადაეცი და დახურე. საერთო გათიშვა მხოლოდ მაშინ, თუ პირდაპირ ამბობს რომ საერთოდ აღარ ' +
+            'უნდა კითხვები — ბუნდოვანებისას ერთხელ ჰკითხე და დადასტურების შემდეგ გამოიძახე confirmed=true-თი.',
+        };
+      }
       await optOutFromAsks(userId, input['reason'] ? String(input['reason']) : undefined);
       return {
         stopped: true,

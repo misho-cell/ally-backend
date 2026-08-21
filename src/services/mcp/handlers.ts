@@ -540,8 +540,20 @@ export async function mcpGetNetaiInfo(args: { topic: string }): Promise<McpToolP
 
 export async function mcpStopContactingMe(
   userId: string,
-  args: { reason?: string },
+  args: { confirmed?: boolean; reason?: string },
 ): Promise<McpToolPayload> {
+  // Same gate as the in-app tool: a single-question decline must never become
+  // a global opt-out — nothing is written without explicit confirmation.
+  if (args.confirmed !== true) {
+    return {
+      stopped: false,
+      needs_confirmation: true,
+      note:
+        'Nothing was written. A decline of one question is simply their answer — relay it. ' +
+        'Call again with confirmed=true only after they explicitly say NO questions from ' +
+        'anyone should ever reach them.',
+    };
+  }
   await optOutFromAsks(userId, args.reason?.trim() || undefined);
   return {
     stopped: true,

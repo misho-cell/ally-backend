@@ -32,6 +32,12 @@ jest.mock('../../introduction.service', () => ({
   __esModule: true,
 }));
 jest.mock('../../moderation.service', () => ({ isReplySafe: jest.fn(), __esModule: true }));
+jest.mock('../../askOptOut.service', () => ({
+  optOutFromAsks: jest.fn().mockResolvedValue(undefined),
+  resumeAsks: jest.fn().mockResolvedValue(undefined),
+  isOptedOutFromAsks: jest.fn().mockResolvedValue(false),
+  __esModule: true,
+}));
 jest.mock('../../contactFacts.service', () => ({
   FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
   normalizeFieldType: (raw: string): string | null => {
@@ -86,6 +92,7 @@ import {
   mcpSearchByInsight,
   mcpSearchContacts,
   mcpSearchSecondDegree,
+  mcpStopContactingMe,
   mcpUnblockContact,
 } from '../handlers';
 import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
@@ -96,6 +103,9 @@ import {
   unblockContact,
 } from '../../block.service';
 import { normalizePhone } from '../../phone';
+import { optOutFromAsks } from '../../askOptOut.service';
+
+const mockOptOut = optOutFromAsks as jest.MockedFunction<typeof optOutFromAsks>;
 
 const mockExcludedSet = getExcludedPhoneSet as jest.MockedFunction<typeof getExcludedPhoneSet>;
 import { getGroupConnectors, getTopConnectors } from '../../graphAnalytics.service';
@@ -669,5 +679,22 @@ describe('graph tools', () => {
     const result = await mcpGetTopConnectors(USER, { limit: 5 });
     expect(result.found).toBe(false);
     expect(result.reason).toBe('no_connectors');
+  });
+});
+
+describe('mcpStopContactingMe confirmation gate', () => {
+  it('writes NOTHING without confirmed=true — a one-question decline stays an answer (thread 9840)', async () => {
+    const result = await mcpStopContactingMe(USER, { reason: 'not my area' });
+
+    expect(result.stopped).toBe(false);
+    expect(result.needs_confirmation).toBe(true);
+    expect(mockOptOut).not.toHaveBeenCalled();
+  });
+
+  it('writes the opt-out when explicitly confirmed', async () => {
+    const result = await mcpStopContactingMe(USER, { confirmed: true, reason: 'no more' });
+
+    expect(result.stopped).toBe(true);
+    expect(mockOptOut).toHaveBeenCalledWith(USER, 'no more');
   });
 });
