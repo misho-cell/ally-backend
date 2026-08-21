@@ -540,7 +540,10 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     "never a greeting — that opening line becomes the title of the thread on the recipient's " +
     'phone, and "hello NAME" as a title makes every question look identical in their list. ' +
     "Every ask carries the sender's name — anonymous asks do not exist in this product; " +
-    'never offer "send without my name" as an option.',
+    'never offer "send without my name" as an option. A PAST refusal (opt-out, cap, any ' +
+    'reason) is a snapshot, not a permanent fact — people lift opt-outs and days roll over. ' +
+    'When the user asks to try again, CALL THE TOOL AGAIN and report its actual result; ' +
+    'repeating an old refusal from memory tells the user a refusal that no longer exists.',
   input_schema: {
     type: 'object',
     properties: {
