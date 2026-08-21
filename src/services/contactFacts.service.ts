@@ -383,7 +383,7 @@ export async function reclassifyPrivateNotes(
   // private notes forever.
   const rows = await backgroundQuery<{ id: number; field_type: string; value: string }>(
     `SELECT id, field_type, value FROM contact_facts
-     WHERE ($1::int IS NULL OR submitted_by_user_id = $1::int)
+     WHERE ($1::text IS NULL OR submitted_by_user_id = $1::text)
        AND is_public = false AND moderated_at IS NULL AND retracted_at IS NULL
        AND field_type NOT IN ('occupation', 'employer', 'city', 'industry')
      ORDER BY id
