@@ -280,6 +280,7 @@ threadsRouter.post(
               void wakeTask(
                 captured.taskId,
                 buildAnswerWakeEvent(captured.answer, captured.fromName),
+                { text: captured.answer, who: captured.fromName },
               )
                 .then((delivered) => (delivered ? markAskWakeDelivered(captured.askId) : undefined))
                 .catch((err: unknown) =>

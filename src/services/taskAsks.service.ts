@@ -360,6 +360,31 @@ export function buildAnswerWakeEvent(answer: string, fromName?: string | null): 
   );
 }
 
+/** What an answer-wake run's final reply MUST contain, verbatim. */
+export interface EnsureQuoted {
+  readonly text: string;
+  readonly who: string | null;
+}
+
+const QUOTE_NORM_RE = /\s+/g;
+
+/**
+ * Server-side guarantee for the wake event's "გადაეცი სიტყვასიტყვით"
+ * instruction: prompt-only enforcement failed live — the first N-01 protocol
+ * round (21 Aug, thread 9835) delivered „ეს TBC-ის საბაზისო პირობებია" with
+ * the actual answer nowhere in the thread. If the model's reply does not
+ * contain the answer text, the quote is prepended — same philosophy as
+ * wrapAllowedNumbers: the model is asked, the server makes it true.
+ */
+export function ensureVerbatimQuote(reply: string, ensure: EnsureQuoted): string {
+  const norm = (s: string): string => s.replace(QUOTE_NORM_RE, ' ').trim();
+  const answer = ensure.text.trim();
+  if (!answer) return reply;
+  if (norm(reply).includes(norm(answer))) return reply;
+  const attribution = ensure.who?.trim() ? ` — ${ensure.who.trim()}` : '';
+  return `„${answer}"${attribution}\n\n${reply}`;
+}
+
 /**
  * Is this thread's task waiting on someone else right now? A thread whose ask
  * is unanswered is `waiting`, never `done` — ticket 4 item 0C.5: thread 8416

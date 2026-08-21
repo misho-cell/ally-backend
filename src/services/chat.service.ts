@@ -51,6 +51,8 @@ import {
   cancelAsksForTask,
   getAsksForTask,
   getAskByThread,
+  ensureVerbatimQuote,
+  EnsureQuoted,
   TaskAsk,
   IncomingAsk,
 } from './taskAsks.service';
@@ -2669,6 +2671,9 @@ export async function processChat(
   threadId: number,
   userMessage: string,
   runId: string,
+  // Answer-wake runs pass the verbatim answer so the reply provably carries
+  // it (see ensureVerbatimQuote) — the model alone dropped it live (N-01).
+  ensureQuoted?: EnsureQuoted,
 ): Promise<ChatResult> {
   const thread = await getThread(threadId, userId);
   if (thread === null) {
@@ -2752,7 +2757,10 @@ export async function processChat(
   // Deterministic opener strip (ticket 6 item 12): a long reply must open
   // with the answer, not "ახლა სრული სურათი მაქვს" — four prompt attempts
   // could not unlearn the habit. Before persistence, so stored text is clean.
-  const cleanedFinal = stripProcessOpener(effectiveFinal, threadId);
+  let cleanedFinal = stripProcessOpener(effectiveFinal, threadId);
+  if (ensureQuoted) {
+    cleanedFinal = ensureVerbatimQuote(cleanedFinal, ensureQuoted);
+  }
 
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false

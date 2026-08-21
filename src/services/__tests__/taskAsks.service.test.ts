@@ -32,6 +32,7 @@ import {
   recordAskAnswer,
   cancelAsksForTask,
   buildAnswerWakeEvent,
+  ensureVerbatimQuote,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -357,6 +358,40 @@ describe('buildAnswerWakeEvent', () => {
     // raw fragment when the answer itself contained one.
     expect(event).not.toContain('ტექსტია: "');
     expect(event).toContain('სიტყვასიტყვით');
+  });
+});
+
+describe('ensureVerbatimQuote', () => {
+  const ANSWER = '12%-დან იწყება, სჭირდება ამონაწერი.';
+
+  it('leaves the reply alone when the answer is already quoted', () => {
+    const reply = `ნინომ გიპასუხა: „${ANSWER}" გინდა შევადაროთ?`;
+
+    expect(ensureVerbatimQuote(reply, { text: ANSWER, who: 'ნინო კახიძე' })).toBe(reply);
+  });
+
+  it('matches across whitespace reflow (newlines vs spaces)', () => {
+    const reply = 'პასუხი:\n12%-დან იწყება,\nსჭირდება ამონაწერი.\nსხვა რამ?';
+
+    expect(ensureVerbatimQuote(reply, { text: ANSWER, who: 'ნინო' })).toBe(reply);
+  });
+
+  it('PREPENDS the quote with attribution when the model paraphrased it away (N-01, thread 9835)', () => {
+    const reply = 'ეს საბაზისო პირობებია. გინდათ სხვა ბანკიდანაც შევადაროთ?';
+
+    const out = ensureVerbatimQuote(reply, { text: ANSWER, who: 'ნინო კახიძე' });
+
+    expect(out).toBe(`„${ANSWER}" — ნინო კახიძე\n\n${reply}`);
+  });
+
+  it('prepends without attribution when the responder is unnamed', () => {
+    const out = ensureVerbatimQuote('პარაფრაზი.', { text: ANSWER, who: null });
+
+    expect(out).toBe(`„${ANSWER}"\n\nპარაფრაზი.`);
+  });
+
+  it('does nothing for an empty answer', () => {
+    expect(ensureVerbatimQuote('პასუხი.', { text: '   ', who: 'ვიღაც' })).toBe('პასუხი.');
   });
 });
 

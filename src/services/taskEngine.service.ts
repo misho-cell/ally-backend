@@ -14,6 +14,7 @@ import {
   markAskWakeDelivered,
   buildAnswerWakeEvent,
   hasPendingAskForThread,
+  EnsureQuoted,
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
@@ -55,7 +56,12 @@ const runningTasks = new Set<number>();
  * that must guarantee delivery (the answer-wake path) use this to decide
  * whether to mark the wake delivered or leave it for the sweep.
  */
-export async function wakeTask(taskId: number, eventText: string): Promise<boolean> {
+export async function wakeTask(
+  taskId: number,
+  eventText: string,
+  // Answer wakes carry the verbatim answer; the run's reply provably quotes it.
+  ensureQuoted?: EnsureQuoted,
+): Promise<boolean> {
   if (runningTasks.has(taskId)) return false;
   runningTasks.add(taskId);
   try {
@@ -90,7 +96,7 @@ export async function wakeTask(taskId: number, eventText: string): Promise<boole
     );
     try {
       const result = await Promise.race([
-        processChat(ownerId, thread.id, `[მოვლენა] ${eventText}`, runId),
+        processChat(ownerId, thread.id, `[მოვლენა] ${eventText}`, runId, ensureQuoted),
         hardTimeout,
       ]);
       if (result.runFailed === true) {
@@ -162,6 +168,10 @@ async function sweepUnwokenAnswers(): Promise<void> {
     const woken = await wakeTask(
       ask.task_id,
       buildAnswerWakeEvent(ask.answer ?? '', ask.from_name),
+      {
+        text: ask.answer ?? '',
+        who: ask.from_name,
+      },
     );
     if (woken) {
       await markAskWakeDelivered(ask.id);
