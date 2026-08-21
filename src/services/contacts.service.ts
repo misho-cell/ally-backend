@@ -8,6 +8,8 @@ import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
+// Prod "TagSource" enum value for tags born from a phonebook import.
+const TAG_SOURCE_IMPORTED = 'IMPORTED_CONTACT';
 
 export async function getUserPhone(userId: string): Promise<string> {
   const result = await pool.query<{ phone: string }>(
@@ -145,13 +147,15 @@ async function saveToPostgres(
         [phone, userId, tag],
       );
       if ((bumped.rowCount ?? 0) === 0) {
+        // source is NOT NULL with no default in prod (the 2 Aug schema check
+        // predates that) — omitting it aborted the whole import transaction.
         await client.query(
-          `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount")
-           SELECT $1::text, $2::int, $3::text, 1
+          `INSERT INTO "UserTags" (phone, "contactId", tag, "weightCount", source)
+           SELECT $1::text, $2::int, $3::text, 1, $4::"TagSource"
            WHERE NOT EXISTS (
              SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2 AND tag = $3
            )`,
-          [phone, userId, tag],
+          [phone, userId, tag, TAG_SOURCE_IMPORTED],
         );
       }
     }
