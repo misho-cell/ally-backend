@@ -44,17 +44,23 @@ describe('georgianToLatin', () => {
 });
 
 describe('buildSearchTerms', () => {
-  it('returns two terms for Georgian query', () => {
+  it('returns the original plus its transliteration for a Georgian query', () => {
     const terms = buildSearchTerms('პროგრამისტი');
-    expect(terms).toHaveLength(2);
     expect(terms[0]).toBe('პროგრამისტი');
-    expect(terms[1]).toBe('programisti');
+    expect(terms).toContain('programisti');
+    // p↔f drift (task 41): ფ is typed as "p" in most real names.
+    expect(terms).toContain('frogramisti');
   });
 
-  it('returns one term for Latin query', () => {
+  it('returns the original plus drift variants for a Latin query', () => {
     const terms = buildSearchTerms('programmer');
-    expect(terms).toHaveLength(1);
     expect(terms[0]).toBe('programmer');
+    expect(terms).toContain('frogrammer');
+  });
+
+  it('bridges the two scripts for ფ-names: ფარქოსაძე reaches Parkosadze', () => {
+    const terms = buildSearchTerms('ფარქოსაძე');
+    expect(terms).toContain('parkosadze');
   });
 
   it('lowercases the original term', () => {

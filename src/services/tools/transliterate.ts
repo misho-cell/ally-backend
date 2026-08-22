@@ -68,6 +68,12 @@ const DRIFT_PAIRS: readonly [string, string][] = [
   ['q', 'k'], // ყ / ქ — "q" → "k"
   ['k', 'q'], // ქ / ყ — "k" → "q"  (Chikava ↔ Chiqava)
   ['zh', 'j'], // ჟ — "zh" → "j"
+  // ფ: the mapping emits "f" but Georgians overwhelmingly spell it "p" in
+  // names — ფარქოსაძე generated only farkosadze/farqosadze and never matched
+  // the label "Parkosadze", so the two scripts returned different sets
+  // (ticket 6 protocol run, task 41).
+  ['f', 'p'], // ფ — "f" → "p" (Parkosadze)
+  ['p', 'f'], // ფ — "p" → "f"
 ];
 
 // Armenian surname endings people spell interchangeably (asriants / asriyants /

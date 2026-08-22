@@ -51,6 +51,17 @@ export async function importContacts(
     skipped += counts.skipped;
   }
 
+  // ALARM, not a shrug: an import that saves nothing from non-empty input is
+  // the exact silent data-loss shape that ran unnoticed for 16 days (5–21
+  // Aug). The per-phone errors are already logged above; this line is the
+  // one to alert on.
+  if (imported === 0 && skipped > 0) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ALARM][import] user ${userId}: 0 of ${skipped} contacts saved — every row failed or was rejected`,
+    );
+  }
+
   return { imported, skipped };
 }
 
@@ -126,9 +137,10 @@ async function saveToPostgres(
   // ON CONFLICT: the unique constraint it needs is not provable in prod.
   // The reused parameters are cast ONCE, at their first occurrence: a bare $1
   // in an INSERT…SELECT list and the same $1 in the WHERE resolve to different
-  // types on PostgreSQL 17 (Aurora upgraded from 16), and every import died
-  // with "inconsistent types deduced for parameter $1" (21 Aug, Part 5b
-  // account seeding).
+  // types on PostgreSQL 17, and every import died with "inconsistent types
+  // deduced for parameter $1". Prod has run 17.7 since May (postmaster start
+  // 25 May) — this endpoint was broken from its 5-Aug rewrite until 21 Aug
+  // and nobody noticed, because the apps import through the legacy service.
   await withTransaction(async (client: PoolClient) => {
     await client.query(
       `INSERT INTO "UserAlias" (phone, "contactId", alias)

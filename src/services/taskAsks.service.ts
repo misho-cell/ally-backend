@@ -189,8 +189,8 @@ export async function createAsk(
       sent: false,
       reason: 'already_asked_on_this_task',
       error:
-        'ამ ადამიანს ამ დავალებაზე (task-ზე) უკვე მიწერილი აქვს კითხვა — წესი დავალებაზეა, არა ' +
-        'ადამიანზე: ახალი, სხვა თემის კითხვისთვის ახალი დავალება გახსენი და გაიგზავნება.',
+        'ამ ადამიანს ამ მიზანზე უკვე მიწერილი აქვს კითხვა — წესი მიზანზეა, არა ' +
+        'ადამიანზე: ახალი, სხვა თემის კითხვისთვის ახალი მიზანი გახსენი და გაიგზავნება.',
     };
   }
 
@@ -284,9 +284,18 @@ export async function recordAskAnswer(
 ): Promise<CapturedAnswer | null> {
   const safe = scrubText(answerText.trim());
   if (!safe) return null;
+  // Append-window rule (ticket 6 protocol run, task 46): later messages join
+  // the answer ONLY until the asker's wake is delivered. After that, whatever
+  // the recipient says in this thread is conversation with their own courier
+  // agent — an opt-out negotiation appended itself onto ask 829's answer and
+  // the verbatim-quote rule would have relayed it into the asker's thread.
   const updated = await query<{ id: number; task_id: number; status: string }>(
     `UPDATE task_asks
-     SET answer = CASE WHEN answer IS NULL THEN $2 ELSE answer || E'\n' || $2 END,
+     SET answer = CASE
+           WHEN answer IS NULL THEN $2
+           WHEN wake_delivered_at IS NULL THEN answer || E'\n' || $2
+           ELSE answer
+         END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,
          answered_at = COALESCE(answered_at, NOW())
      WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')

@@ -143,8 +143,13 @@ export function extractCountryCode(phone: string): string | null {
 // (Javakhishvili → family 0.9), ბიძ matched the first name ბიძინა, and bare
 // დედ matched დედაქალაქი. Kinship შვილ must start its word; ბიძ must not be
 // ბიძინა; დედ/მამ need the possessive form.
+// "X of Y" is kinship to a THIRD person, never to the user: "Husband of
+// Ketevan Khuntsaria" in a note flipped Beso Ortoidze (the founder's own
+// „ძალიან ახლო მეგობარი") to family (ticket 6 protocol run, task 37). English
+// kinship nouns must not be followed by "of"; Georgian ცოლ/ქმარ must not
+// follow a genitive („ქეთევანის ქმარი").
 const EXPLICIT_FAMILY_RE =
-  /ოჯახის წევრ|ჩემი ოჯახ|დეიდ|ბიძ(?!ინ)|ძმ(?!აკაც)(?![ა-ჰ]*ურთ)|დედაჩემ|დედამის|მამაჩემ|მამამის|ცოლ|ქმარ|(?<![ა-ჰ])შვილ|(?:my|his|her|our) family\b|family member\b|\b(?:brother|sister|mother|father|wife|husband|cousin)\b/i;
+  /ოჯახის წევრ|ჩემი ოჯახ|დეიდ|ბიძ(?!ინ)|ძმ(?!აკაც)(?![ა-ჰ]*ურთ)|დედაჩემ|დედამის|მამაჩემ|მამამის|(?<!ის )ცოლ|(?<!ის )ქმარ|(?<![ა-ჰ])შვილ|(?:my|his|her|our) family\b|family member\b|\b(?:brother|sister|mother|father|wife|husband|cousin)\b(?!\s+of\b)/i;
 const EXPLICIT_CLOSE_RE =
   /ახლო|ახლობ|საუკეთესო|უახლოეს|მეგობ|დაქალ|ძმაკაც|\bclose\b|best friend\b|\bfriend\b/i;
 const EXPLICIT_PROFESSIONAL_RE =

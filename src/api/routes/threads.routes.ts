@@ -94,8 +94,30 @@ function statusAfterRun(result: ChatResult, pendingAsk: boolean): ThreadStatus {
 
 threadsRouter.use(authenticateJwt, requireUserRole);
 threadsRouter.use(requireSubscription);
-// Per-user cap on chat/thread traffic (abuse control).
-threadsRouter.use(rateLimit({ windowMs: 60_000, max: 60 }));
+// Per-user cap on chat/thread traffic (abuse control). A rejected SEND leaves
+// a visible error row — thread 9873 sat empty forever after a 429 while the
+// user's message painted optimistically (task 38).
+const MESSAGE_PATH_RE = /^\/(\d+)\/message$/;
+threadsRouter.use(
+  rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    onLimit: (req) => {
+      if (req.method !== 'POST') return;
+      const match = MESSAGE_PATH_RE.exec(req.path);
+      if (!match) return;
+      const userId = (req as AuthenticatedRequest).user?.userId;
+      if (!userId) return;
+      void saveThreadMessage(
+        Number(match[1]),
+        Number(userId),
+        'assistant',
+        'შეტყობინება ვერ მივიღე — ძალიან ბევრი ზედიზედ. ერთ წუთში ისევ სცადე.',
+        'error',
+      ).catch(() => undefined);
+    },
+  }),
+);
 threadsRouter.use(captureDeviceFingerprint);
 
 function handleValidationErrors(

@@ -111,10 +111,27 @@ describe('searchByInsight', () => {
 
     const result = (await searchByInsight('42', 'lawyer real estate')) as Record<string, unknown>;
 
+    // The relevance floor (task 39): a row hitting fewer than half the concept
+    // words is noise and is dropped; survivors carry their score.
     const results = result.results as Array<Record<string, unknown>>;
-    expect(results).toHaveLength(2);
+    expect(results).toHaveLength(1);
     expect(results[0].name).toBe('Both-words');
-    expect(results[1].name).toBe('One-word');
+    expect(results[0].score).toBe(1);
+  });
+
+  it('returns an honest found:false when nothing clears the relevance floor', async () => {
+    // Every row hits only one of four concept words — the German-export case:
+    // 31 crypto advisers used to come back as "found".
+    setup({
+      facts: [{ phone: '+995599000003', name: 'Crypto Adviser', matched: ['industry: crypto'] }],
+    });
+
+    const result = (await searchByInsight('42', 'german companies export deals crypto')) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result.found).toBe(false);
   });
 
   it('sends one LIKE parameter per query word', async () => {

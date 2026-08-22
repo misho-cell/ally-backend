@@ -42,16 +42,19 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
      SELECT phone FROM "UserAlias" WHERE "contactId" = $1
    )`;
 
-// Aggregate the display fields for a set of matched phones: the user's OWN alias
-// for the name, every contributor's tags, and the registered profile fields.
-// UserTags is LEFT-joined so a tagless (alias-only) contact isn't dropped.
+// Aggregate the display fields for a set of matched phones. The REGISTERED
+// name outranks the phonebook label — junk labels ("LIST. … Ally. Force")
+// were handed to the model as the person's name and it reasoned from them
+// (protocol task 42); the raw label always rides in saved_as. Empty strings
+// count as missing (task 43). UserTags is LEFT-joined so a tagless
+// (alias-only) contact isn't dropped.
 const AGG_SELECT = `h.phone,
-        COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+        COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
         MAX(ua.alias)                        AS saved_as,
         array_agg(DISTINCT ut.tag)           AS all_tags,
-        MAX(u.employer)                      AS employer,
-        MAX(u."jobPosition")                 AS "jobPosition",
-        MAX(u.city)                          AS city`;
+        MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+        MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
+        MAX(NULLIF(TRIM(u.city), ''))        AS city`;
 const AGG_JOINS = `FROM hits h
    LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
    LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1

@@ -37,8 +37,24 @@ describe('classifyExplicitRelationship', () => {
     // დედაქალაქი is the capital city, not a mother.
     'დედაქალაქში ცხოვრობს',
     'brotherhood of steel',
+    // "X of Y" is kinship to a THIRD person — the Beso Ortoidze regression:
+    // this note flipped the founder's „ძალიან ახლო მეგობარი" to family.
+    'Husband of Ketevan Khuntsaria; ARCI / G&G Invest orbit.',
+    'sister of the CEO at Grid',
+    // Georgian genitive form of the same class.
+    'ქეთევანის ქმარია',
+    'გიორგის ცოლი მუშაობს ბანკში',
   ])('returns null (or non-family) for: %s', (text) => {
     expect(classifyExplicitRelationship(text)).not.toBe('family');
+  });
+
+  it.each([
+    // First-person kinship still counts after the "X of Y" guard.
+    ['my husband works there', 'family'],
+    ['ჩემი ცოლია', 'family'],
+    ['ჩემი ქმარია', 'family'],
+  ])('still classifies %s as %s', (text, expected) => {
+    expect(classifyExplicitRelationship(text)).toBe(expected);
   });
 
   it('returns null when nothing relational appears', () => {

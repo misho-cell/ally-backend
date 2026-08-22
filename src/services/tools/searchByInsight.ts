@@ -30,20 +30,72 @@ interface FactRow {
 // user's own freshly-saved fact — the save→search loop.
 const FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value))`;
 
+// Function words carry no concept: "works WITH German companies ON export
+// deals" matched 31 people through "with"/"works" alone — crypto advisers
+// ranked above an honest zero (protocol task 39, task 27's acceptance test).
+const STOPWORDS = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'with',
+  'for',
+  'who',
+  'that',
+  'this',
+  'on',
+  'in',
+  'of',
+  'to',
+  'is',
+  'are',
+  'was',
+  'has',
+  'have',
+  'does',
+  'do',
+  'my',
+  'me',
+  'any',
+  'some',
+  'someone',
+  'from',
+  'at',
+  'work',
+  'works',
+  'working',
+  'ვინ',
+  'ვინც',
+  'რომ',
+  'და',
+  'ან',
+  'არის',
+  'აქვს',
+  'მაქვს',
+  'მყავს',
+  'ჩემი',
+  'ჩემს',
+  'ვისაც',
+  'მინდა',
+  'ერთად',
+]);
+
 /**
  * A multi-word query matches per word (OR), not as one contiguous phrase, so
  * "იურისტი უძრავი ქონება" reaches a contact whose facts say only "უძრავი ქონება".
- * Words shorter than MIN_WORD_LEN are dropped as noise; a query that has none
- * (e.g. all short) falls back to the whole trimmed string as one term.
+ * Words shorter than MIN_WORD_LEN and function words are dropped as noise; a
+ * query left with nothing falls back to its raw words, then to the whole string.
  */
 function queryWords(searchQuery: string): string[] {
-  const words = searchQuery
+  const raw = searchQuery
     .toLowerCase()
     .split(/\s+/)
     .map((w) => w.trim())
-    .filter((w) => w.length >= MIN_WORD_LEN)
-    .slice(0, MAX_QUERY_WORDS);
-  if (words.length > 0) return words;
+    .filter((w) => w.length >= MIN_WORD_LEN);
+  const meaningful = raw.filter((w) => !STOPWORDS.has(w)).slice(0, MAX_QUERY_WORDS);
+  if (meaningful.length > 0) return meaningful;
+  if (raw.length > 0) return raw.slice(0, MAX_QUERY_WORDS);
   const whole = searchQuery.trim().toLowerCase();
   return whole ? [whole] : [];
 }
@@ -222,12 +274,25 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       }
     }
 
-    // Best matches first: most query words hit wins.
-    const ranked = [...byPhone.values()].sort((a, b) => wordsHit(b, words) - wordsHit(a, words));
-    if (ranked.length === 0) return { found: false, query: searchQuery };
+    // Relevance floor (protocol task 39): every row carries its score — the
+    // fraction of concept words it actually hit — and a row hitting fewer than
+    // half of them is noise, not a lead. Nothing over the floor = an honest
+    // found:false, which beats 31 crypto advisers for a German-export query.
+    const minHits = Math.max(1, Math.ceil(words.length / 2));
+    const scored = [...byPhone.values()]
+      .map((hit) => ({ hit, hits: wordsHit(hit, words) }))
+      .filter((s) => s.hits >= minHits)
+      .sort((a, b) => b.hits - a.hits);
+    if (scored.length === 0) {
+      return { found: false, query: searchQuery, note: 'nothing matched enough of the query' };
+    }
 
-    const members = await fetchMembersForPhones(ranked.map((r) => r.contact_id));
-    const results = ranked.map((r) => ({ ...r, is_member: isMemberPhone(members, r.contact_id) }));
+    const members = await fetchMembersForPhones(scored.map((s) => s.hit.contact_id));
+    const results = scored.map((s) => ({
+      ...s.hit,
+      score: Math.round((s.hits / words.length) * 100) / 100,
+      is_member: isMemberPhone(members, s.hit.contact_id),
+    }));
 
     return { found: true, count: results.length, results };
   } catch (err) {

@@ -15,6 +15,7 @@ const RESULT_LIMIT = 20;
 
 interface NameRow {
   phone: string;
+  word_hits?: number | string | null;
   name: string | null;
   saved_as: string | null;
   all_tags: string[];
@@ -29,6 +30,10 @@ function toRow(
   members: Set<string>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
+  // A row that matched fewer query words than the query has — or came from
+  // the fuzzy fallback — is a letter-similar neighbour, not the person asked
+  // for. Tag searches already carry the flag; name searches did not (task 40).
+  approximate?: boolean,
 ): Record<string, unknown> {
   const base = applyFacts(
     {
@@ -55,6 +60,7 @@ function toRow(
     ...(rel && { relationship: rel.relationship }),
     // The user's own recorded "not this person, for this" decisions.
     ...(excl && excl.length > 0 && { exclusions: excl }),
+    ...(approximate === true && { approximate: true }),
   };
 }
 
@@ -91,13 +97,18 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
      )`;
+    // name prefers the REGISTERED name over the phonebook label: junk labels
+    // ("LIST. Lika Osepashvili. Ally. Force") were handed to the model as the
+    // person's name and it reasoned from them (task 42). The raw label always
+    // rides in saved_as. Empty strings count as missing everywhere (task 43).
     const aggSelect = `SELECT h.phone,
-              COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+              MAX(h.word_hits)                     AS word_hits,
+              COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
               MAX(ua.alias)                        AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
-              MAX(u.employer)                      AS employer,
-              MAX(u."jobPosition")                 AS "jobPosition",
-              MAX(u.city)                          AS city
+              MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+              MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
+              MAX(NULLIF(TRIM(u.city), ''))        AS city
        FROM hits h
        LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
        LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
@@ -106,15 +117,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        GROUP BY h.phone`;
 
     const [result, countResult] = await Promise.all([
-      query<{
-        phone: string;
-        name: string | null;
-        saved_as: string | null;
-        all_tags: string[];
-        employer: string | null;
-        jobPosition: string | null;
-        city: string | null;
-      }>(
+      query<NameRow>(
         `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
          ${aggSelect}
          ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC, MAX(ua.alias)
@@ -149,15 +152,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
            SELECT phone FROM "UserAlias" WHERE "contactId" = $1
          )`;
 
-        const fuzzyResult = await query<{
-          phone: string;
-          name: string | null;
-          saved_as: string | null;
-          all_tags: string[];
-          employer: string | null;
-          jobPosition: string | null;
-          city: string | null;
-        }>(
+        const fuzzyResult = await query<NameRow>(
           `WITH ${fuzzyMineCte},
            hits AS (
              SELECT DISTINCT a.phone
@@ -169,12 +164,12 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
                AND a.phone != ALL($${fuzzyBlockParamIdx})
            )
            SELECT h.phone,
-                  COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+                  COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
                   MAX(ua.alias)                        AS saved_as,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
-                  MAX(u.employer)                      AS employer,
-                  MAX(u."jobPosition")                 AS "jobPosition",
-                  MAX(u.city)                          AS city
+                  MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+                  MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
+                  MAX(NULLIF(TRIM(u.city), ''))        AS city
            FROM hits h
            LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
            LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
@@ -200,7 +195,9 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
             count: fuzzyRows.length,
             total: fuzzyRows.length,
             fuzzy: true,
-            results: fuzzyRows.map((row) => toRow(row, facts, members, relationships, exclusions)),
+            results: fuzzyRows.map((row) =>
+              toRow(row, facts, members, relationships, exclusions, true),
+            ),
           };
         }
       } catch {
@@ -220,7 +217,16 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       found: true,
       count: rows.length,
       total,
-      results: rows.map((row) => toRow(row, facts, members, relationships, exclusions)),
+      results: rows.map((row) =>
+        toRow(
+          row,
+          facts,
+          members,
+          relationships,
+          exclusions,
+          Number(row.word_hits ?? rawGroups.length) < rawGroups.length,
+        ),
+      ),
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);

@@ -49,6 +49,10 @@ export interface RateLimitOptions {
   // 'device' keys by X-Device-Id (then IP) — for unauthenticated abuse control.
   // Default 'auto' keys by user when authenticated, else IP.
   keyBy?: 'auto' | 'device';
+  // Fired (best-effort, after the 429 is sent) so a route can leave a visible
+  // trace — a rejected chat send used to leave the thread silently empty
+  // forever (ticket 6 protocol run, task 38 / thread 9873).
+  onLimit?: (req: Request) => void;
 }
 
 /**
@@ -74,6 +78,13 @@ export function rateLimit(options: RateLimitOptions) {
         success: false,
         error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, სცადოთ მოგვიანებით.',
       });
+      if (options.onLimit) {
+        try {
+          options.onLimit(req);
+        } catch {
+          // A trace hook must never break the limiter itself.
+        }
+      }
       return;
     }
 
