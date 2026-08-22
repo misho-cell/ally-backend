@@ -4,6 +4,7 @@ import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
 import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
 import { scrubText } from './privacyScrub';
+import { geoName } from './georgianCase';
 
 export interface PendingRequest {
   id: number;
@@ -212,11 +213,11 @@ function outcomeMessage(req: RequestRow, action: IntroductionAction, response?: 
     // Mediated accepts get the richer outcome from deliverAcceptOutcome.
     return direct
       ? `${req.target_name} დათანხმდა გაცნობას.${answer} ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
-      : `${req.target_name}-ზე გაცნობის მოთხოვნა მიღებულია.${answer}`;
+      : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნა მიღებულია.${answer}`;
   }
   return direct
-    ? `${req.target_name}-მ გაცნობაზე ამჯერად უარი თქვა.${answer} სხვა გზა მოვძებნოთ?`
-    : `${req.target_name}-ზე გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${answer} სხვა გზა მოვძებნოთ?`;
+    ? `${geoName(req.target_name, 'erg')} გაცნობაზე ამჯერად უარი თქვა.${answer} სხვა გზა მოვძებნოთ?`
+    : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${answer} სხვა გზა მოვძებნოთ?`;
 }
 
 interface AcceptOutcome {
@@ -278,9 +279,9 @@ async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Prom
         thread.id,
         targetUserId,
         'assistant',
-        `${mediatorName}-მ გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
+        `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
           (req.message?.trim() ? ` — მიზეზი: „${scrubText(req.message.trim())}"` : '.') +
-          `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${mediatorName}-მ გაგაცნოთ. ` +
+          `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
           'შენი ნომერი ამ შეტყობინებით არავის გადაცემია.',
       );
       await sendPushNotification(String(targetUserId), {
@@ -298,13 +299,13 @@ async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Prom
   }
 
   const requesterExtra = targetPhone
-    ? `\n\n${req.target_name}-ის ნომერი ${mediatorName}-ის წიგნაკიდან: ${targetPhone}. ` +
-      `მისწერე და უთხარი, რომ ${mediatorName}-მ გაგაცნოთ${targetUserId !== null ? ' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე' : ''}.`
-    : `\n\nნომერი ავტომატურად ვერ მოვძებნე — ${mediatorName}-ს პირდაპირ ჰკითხე ${req.target_name}-ის კონტაქტი, თანხმობა უკვე გაქვს.`;
+    ? `\n\n${geoName(req.target_name, 'gen')} ნომერი ${geoName(mediatorName, 'gen')} წიგნაკიდან: ${targetPhone}. ` +
+      `მისწერე და უთხარი, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ${targetUserId !== null ? ' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე' : ''}.`
+    : `\n\nნომერი ავტომატურად ვერ მოვძებნე — ${geoName(mediatorName, 'dat')} პირდაპირ ჰკითხე ${geoName(req.target_name, 'gen')} კონტაქტი, თანხმობა უკვე გაქვს.`;
 
   const mediatorFollowUp = targetPhone
-    ? `მადლობა! ${requester}-ს გადავეცი ${req.target_name}-ის კონტაქტი${targetUserId !== null ? ` და ${req.target_name}-საც ვაცნობე` : ''}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`
-    : `მადლობა! ${requester}-ს ვაცნობე შენი თანხმობა. ${req.target_name}-ის კონტაქტი ვერ ვიპოვე შენს წიგნაკში — შესაძლოა ${requester}-მა პირდაპირ გთხოვოს.`;
+    ? `მადლობა! ${geoName(requester, 'dat')} გადავეცი ${geoName(req.target_name, 'gen')} კონტაქტი${targetUserId !== null ? ` და ${geoName(req.target_name, 'dat')}-აც ვაცნობე` : ''}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`
+    : `მადლობა! ${geoName(requester, 'dat')} ვაცნობე შენი თანხმობა. ${geoName(req.target_name, 'gen')} კონტაქტი ვერ ვიპოვე შენს წიგნაკში — შესაძლოა ${geoName(requester, 'erg')} პირდაპირ გთხოვოს.`;
 
   return { requesterExtra, mediatorFollowUp };
 }
@@ -364,8 +365,8 @@ async function syncRequestThreads(
 
 async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void> {
   const body = accepted
-    ? `${req.target_name}-ზე გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
-    : `${req.target_name}-ზე გაცნობის მოთხოვნაზე უარი მიიღე.`;
+    ? `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
+    : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე უარი მიიღე.`;
   await sendPushNotification(String(req.requester_user_id), {
     title: 'Netai — გაცნობის პასუხი',
     body,

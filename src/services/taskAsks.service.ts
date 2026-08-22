@@ -4,6 +4,7 @@ import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
+import { geoName } from './georgianCase';
 import { buildRawWordGroups, toWordStartPattern } from './tools/transliterate';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
@@ -235,7 +236,7 @@ export async function createAsk(
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3).
   const opening =
-    `${senderName}-ის ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
+    `${geoName(senderName, 'gen')} ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
     'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
   await saveThreadMessage(thread.id, toUserId, 'assistant', opening);
 

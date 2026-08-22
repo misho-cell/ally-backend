@@ -126,7 +126,8 @@ describe('createAsk', () => {
     // Plain text on the recipient's phone — no markdown asterisks (§6.3).
     const opening = mockSaveMessage.mock.calls[0][3] as string;
     expect(opening).not.toContain('**');
-    expect(opening).toContain('მიშო-ის ასისტენტი გეკითხება');
+    // Item 27: declined properly, never the hyphenated „მიშო-ის".
+    expect(opening).toContain('მიშოს ასისტენტი გეკითხება');
   });
 
   it('refuses a non-member recipient', async () => {
