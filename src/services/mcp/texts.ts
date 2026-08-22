@@ -138,6 +138,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       "this notifies the other side and can't be undone. Pass on only what the user can " +
       'honestly stand behind; keep a decline private and neutral.',
   },
+  invite_contact: {
+    title: 'Invite a contact to Netai',
+    description:
+      'A personal invite for ONE contact who is NOT on Netai yet: returns ready-to-send text in ' +
+      "the user's language carrying THEIR referral code (never a bare link, never anyone's " +
+      'number), and records it so the same person is not offered twice (already_invited comes ' +
+      'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
+      'contact. The USER sends the text themselves — Netai never messages non-members.',
+  },
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
@@ -376,6 +385,7 @@ export const PARAM_TEXTS = {
     'rules as tags: short, one concept, both scripts across calls.',
   contactRef:
     'The stable id from a search result. Never invent it — always take it from a prior search.',
+  inviteLanguage: "Invite text language: ka | en | ru | es (the conversation's language).",
   mediatorName:
     'The contact who will make the introduction — their name exactly as a search returned it.',
   mediatorRef:

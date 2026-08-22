@@ -249,8 +249,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                 + CASE WHEN up_t."userId" IS NOT NULL AND EXISTS (
                         SELECT 1 FROM task_asks ta
                         WHERE ta.status = 'answered'
-                          AND ((ta.from_user_id = fu."userId"::text AND ta.to_user_id = up_t."userId")
-                            OR (ta.from_user_id = up_t."userId"::text AND ta.to_user_id = fu."userId")))
+                          -- task_asks.from_user_id/to_user_id are INTEGER in prod (verified via
+                          -- information_schema) — unlike contact_facts.submitted_by_user_id
+                          -- (TEXT), which the ::text cast above was correctly modeled on. Applying
+                          -- that same cast here compared an INTEGER column to a TEXT value on
+                          -- every row and broke search_second_degree entirely (P0, 23 Aug — every
+                          -- call failed with "operator does not exist: integer = text").
+                          AND ((ta.from_user_id = fu."userId" AND ta.to_user_id = up_t."userId")
+                            OR (ta.from_user_id = up_t."userId" AND ta.to_user_id = fu."userId")))
                        THEN 0.2 ELSE 0 END
               )))                                                              AS warmth
        FROM ranked r

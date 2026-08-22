@@ -2342,12 +2342,10 @@ function extractText(content: Anthropic.ContentBlock[]): string {
 // Signs of life on a silent run (ticket 6 item 14): the opener reaches the
 // client within the first second; the heartbeat fires whenever nothing else
 // has been emitted for RUN_HEARTBEAT_MS, so a 4-minute research run is never
-// a blank screen.
-const RUN_OPENING_STEP = '🔎 ვიწყებ — ვარკვევ, რა გვჭირდება...';
-// The visible line when the model's whole answer is the tappable buttons.
+// a blank screen. Text itself now comes from RUN_STRINGS[language] (task 22
+// g/h) — these two timing constants are what's left here.
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
-const RUN_HEARTBEAT_STEP = '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...';
 
 async function runToolLoop(
   userId: string,

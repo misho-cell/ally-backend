@@ -16,6 +16,7 @@ import {
   mcpListBlocked,
   mcpRequestIntroduction,
   mcpRespondToRequest,
+  mcpInviteContact,
   mcpSaveContactFact,
   mcpSearchByInsight,
   mcpSearchContacts,
@@ -198,6 +199,21 @@ function registerIntroTools(server: McpServer, userId: string): void {
       annotations: DESTRUCTIVE,
     },
     (args) => runTool(userId, 'respond_to_request', () => mcpRespondToRequest(userId, args)),
+  );
+  // Engine T11: never destructive (nothing is sent to the non-member — the
+  // user pastes the text themselves), so a plain write annotation.
+  server.registerTool(
+    'invite_contact',
+    {
+      title: TOOL_TEXTS.invite_contact.title,
+      description: TOOL_TEXTS.invite_contact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        language: z.string().optional().describe(PARAM_TEXTS.inviteLanguage),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (args) => runTool(userId, 'invite_contact', () => mcpInviteContact(userId, args)),
   );
 }
 

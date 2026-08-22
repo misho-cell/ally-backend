@@ -236,6 +236,38 @@ describe('mcpSearchContacts', () => {
     expect(result.note).toContain('narrowing question');
   });
 
+  it('does NOT collapse two accounts flagged duplicate_name — the dormant-twin fix', async () => {
+    // Two different registered accounts sharing a display name (task 42 made
+    // both render the registered name) — the pre-existing same-name dedup
+    // (for one person under several raw phones) must not eat the second one.
+    mockSearchByName.mockResolvedValue({
+      found: true,
+      count: 2,
+      results: [
+        { ...searchRow(1), name: 'Salome Parkosadze', duplicate_name: true, activity: 'active' },
+        { ...searchRow(2), name: 'Salome Parkosadze', duplicate_name: true, activity: 'dormant' },
+      ],
+    });
+
+    const result = await mcpSearchContacts(USER, { name: 'Salome Parkosadze' });
+
+    const rows = result.results as Record<string, unknown>[];
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.activity)).toEqual(['active', 'dormant']);
+  });
+
+  it('still collapses ordinary same-name rows with no duplicate_name flag', async () => {
+    mockSearchByTag.mockResolvedValue({
+      found: true,
+      count: 2,
+      results: [searchRow(1), { ...searchRow(2), name: 'Contact 1' }],
+    });
+
+    const result = await mcpSearchContacts(USER, { tag: 'ceo' });
+
+    expect((result.results as unknown[]).length).toBe(1);
+  });
+
   it('surfaces a search error as an error, never as "not found"', async () => {
     mockSearchByTag.mockResolvedValue({
       found: false,

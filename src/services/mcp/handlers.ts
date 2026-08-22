@@ -7,6 +7,7 @@ import { searchWithRetry } from '../tools/searchRetry';
 import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
+import { inviteContact } from '../tools/inviteContact';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import {
   normalizeFieldType,
@@ -118,11 +119,23 @@ function normalizedName(row: SearchRow): string | null {
  * Collapse the same person appearing under several raw-contact phones (ISSUE
  * 6): keep the first row per normalized name, drop later duplicates so the
  * 8-slot window fills with distinct people. Nameless rows are never merged.
+ *
+ * A row flagged `duplicate_name` (task 54) is the OPPOSITE case — two
+ * DIFFERENT registered accounts that happen to share a display name — and
+ * must never be collapsed here: task 42 made both Salome accounts render
+ * the same registered name, and this same-purpose-but-different-problem
+ * dedup started swallowing the second one, silently defeating the very flag
+ * built to surface it (ticket 6, 23 Aug: "a flag that says there is another
+ * one without returning the other one does not let anyone choose").
  */
 function dedupeByName(rows: SearchRow[]): SearchRow[] {
   const seen = new Set<string>();
   const out: SearchRow[] = [];
   for (const row of rows) {
+    if (row.duplicate_name === true) {
+      out.push(row);
+      continue;
+    }
     const key = normalizedName(row);
     if (key !== null) {
       if (seen.has(key)) continue;
@@ -380,6 +393,17 @@ const UNAVAILABLE_CONTACT_ERROR = 'This contact is unavailable.';
 async function isExcludedContact(userId: string, phone: string): Promise<boolean> {
   const excluded = await getExcludedPhoneSet(userId);
   return excluded.has(normalizePhone(phone));
+}
+
+export async function mcpInviteContact(
+  userId: string,
+  args: { contact_ref: string; language?: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { success: false, error: UNKNOWN_REF_ERROR };
+  const langRaw = String(args.language ?? 'ka');
+  const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
+  return (await inviteContact(userId, phone, lang)) as unknown as McpToolPayload;
 }
 
 export async function mcpSaveContactFact(
