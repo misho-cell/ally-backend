@@ -2696,6 +2696,30 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
   ];
 }
 
+// P-12, enforced server-side: an internal tool name in a user-facing reply is
+// a leak the prompt keeps failing to prevent („ამისათვის ask_contact-ის
+// გაუქმება…", thread 9845; 6 of 20 replies in the tester's battery carried
+// internal words). The name is replaced with a neutral phrase and logged so
+// the prompt team sees each occurrence. Built from the live tool registry —
+// a new tool is covered the day it exists.
+const INTERNAL_TOOL_NAME_RE = new RegExp(
+  `\\b(${Object.keys(ALL_TOOL_DEFINITIONS).join('|')})\\b`,
+  'g',
+);
+
+export function scrubInternalToolNames(text: string, threadId: number): string {
+  INTERNAL_TOOL_NAME_RE.lastIndex = 0;
+  if (!INTERNAL_TOOL_NAME_RE.test(text)) return text;
+  const replacement = /[ა-ჿ]/.test(text) ? 'შიდა ფუნქცია' : 'an internal function';
+  INTERNAL_TOOL_NAME_RE.lastIndex = 0;
+  const scrubbed = text.replace(INTERNAL_TOOL_NAME_RE, (name) => {
+    // eslint-disable-next-line no-console
+    console.warn(`[p12-scrub] thread ${threadId}: internal tool name "${name}" removed from reply`);
+    return replacement;
+  });
+  return scrubbed;
+}
+
 export async function processChat(
   userId: string,
   threadId: number,
@@ -2791,6 +2815,7 @@ export async function processChat(
   if (ensureQuoted) {
     cleanedFinal = ensureVerbatimQuote(cleanedFinal, ensureQuoted);
   }
+  cleanedFinal = scrubInternalToolNames(cleanedFinal, threadId);
 
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false
