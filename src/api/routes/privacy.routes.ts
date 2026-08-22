@@ -6,6 +6,7 @@ import { ApiResponse } from '../../types';
 import {
   getMyDataSummary,
   deleteMyAccount,
+  exportMyData,
   ErasureReport,
 } from '../../services/privacyRights.service';
 
@@ -32,6 +33,23 @@ privacyRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /privacy/my-data/summary]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// The export the Privacy Policy promises — a legal commitment that had no
+// code behind it (ticket 6 build list, item 6).
+privacyRouter.get(
+  '/my-data/export',
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const data = await exportMyData(String(userId));
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /privacy/my-data/export]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

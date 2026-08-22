@@ -151,6 +151,49 @@ export async function getMyDataSummary(userId: string): Promise<Record<string, n
   return counts;
 }
 
+// An export bigger than this per table is delivered truncated and says so —
+// honesty over an unbounded response body.
+const EXPORT_ROW_CAP = 20_000;
+
+/**
+ * The data-export the published Privacy Policy promises (ticket 6 build list
+ * item 6 — the endpoint did not exist behind the legal commitment). Everything
+ * the account owns, table by table, as JSON: the scrubbed profile row plus
+ * every OWNED_TABLES row, capped and flagged when truncated.
+ */
+export async function exportMyData(userId: string): Promise<Record<string, unknown>> {
+  const profile = await query<Record<string, unknown>>(
+    `SELECT id, name, email, employer, "jobPosition", city, bio, gender, birthday,
+            subscription_tier, subscription_status, "createdAt"
+     FROM "User" WHERE id = $1 LIMIT 1`,
+    [userId],
+    ERASURE_TIMEOUT_MS,
+  );
+  const data: Record<string, unknown> = {
+    exported_at: new Date().toISOString(),
+    profile: profile.rows[0] ?? null,
+  };
+  await Promise.all(
+    OWNED_TABLES.map(async ({ table, column }) => {
+      try {
+        const result = await query<Record<string, unknown>>(
+          `SELECT * FROM ${table} WHERE ${column} = $1 LIMIT ${EXPORT_ROW_CAP + 1}`,
+          [userId],
+          ERASURE_TIMEOUT_MS,
+        );
+        if (result.rows.length === 0) return;
+        data[bareName(table)] = {
+          rows: result.rows.slice(0, EXPORT_ROW_CAP),
+          truncated: result.rows.length > EXPORT_ROW_CAP,
+        };
+      } catch {
+        // A table that does not exist in this environment simply has no data.
+      }
+    }),
+  );
+  return data;
+}
+
 /**
  * Erase the account. Everything Postgres-side happens in ONE transaction: a
  * half-deleted account is worse than none, because the person is told they are

@@ -44,6 +44,7 @@ import {
 } from '../../services/sse.service';
 import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
+import { RUN_STRINGS } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -365,12 +366,16 @@ threadsRouter.post(
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
           const pendingAsk =
             (await hasPendingAskForThread(threadId).catch(() => false)) || pendingIntro;
-          void setThreadStatus(
-            userId,
-            threadId,
-            answered ? 'done' : statusAfterRun(result, pendingAsk),
-            { ...(becameTask && { isTask: true }) },
-          );
+          const finalStatus = answered ? 'done' : statusAfterRun(result, pendingAsk);
+          // The status caption follows the conversation's language (task 22
+          // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
+          const lang = result.language ?? 'ka';
+          const langLine =
+            finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
+          void setThreadStatus(userId, threadId, finalStatus, {
+            statusLine: langLine,
+            ...(becameTask && { isTask: true }),
+          });
           // If the user isn't connected (closed the app / switched away), their
           // answer would sit unseen — push it. No-op when they're live (they see
           // it over SSE) or when VAPID isn't configured. The preview is scrubbed

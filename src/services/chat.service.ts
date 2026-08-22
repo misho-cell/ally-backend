@@ -13,6 +13,7 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount } from './tools/getContactCount';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
+import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
@@ -1619,6 +1620,15 @@ function registerAllowedNumber(runId: string | undefined, phone: string): void {
   runAllowedNumbers.set(runId, set);
 }
 
+// The conversation's language per live run — set at run start from the user's
+// last message; every fixed string (steps, heartbeat, failures, status lines)
+// reads it so an English thread never carries Georgian chrome (task 22 g/h).
+const runLanguages = new Map<string, RunLanguage>();
+
+function runLang(runId: string): RunLanguage {
+  return runLanguages.get(runId) ?? 'ka';
+}
+
 export function wrapAllowedNumbers(text: string, runId: string): string {
   const set = runAllowedNumbers.get(runId);
   if (!set || set.size === 0) return text;
@@ -2033,7 +2043,10 @@ async function processToolBlocks(
   // unaffected: a tool that needs a prior result is only ever emitted in a later
   // turn, after that result is in context.) Promise.all preserves result order.
   for (const block of toolBlocks) {
-    const progressMsg = TOOL_PROGRESS_MESSAGES[block.name];
+    // Step captions follow the conversation's language (task 22 g/h) — the
+    // Georgian map is the base, toolStepCaption overrides for en/ru/es.
+    const progressMsg =
+      toolStepCaption(block.name, runLang(runId)) ?? TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
   }
   return Promise.all(toolBlocks.map((block) => runOneToolBlock(userId, threadId, runId, block)));
@@ -2217,6 +2230,8 @@ function sanitizeTaskResult(input: unknown): TaskResultCard | undefined {
 
 export interface ChatResult {
   reply: string;
+  /** The conversation's language for this run — routes use it for status lines (task 22 g/h). */
+  language?: RunLanguage;
   options?: DisambiguationCandidate[];
   choices?: string[];
   /** The run sent an introduction request — the thread is now waiting on a third party. */
@@ -2240,7 +2255,6 @@ function extractText(content: Anthropic.ContentBlock[]): string {
 // a blank screen.
 const RUN_OPENING_STEP = '🔎 ვიწყებ — ვარკვევ, რა გვჭირდება...';
 // The visible line when the model's whole answer is the tappable buttons.
-const CHOICES_ONLY_REPLY = 'აირჩიე ერთ-ერთი:';
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
 const RUN_HEARTBEAT_STEP = '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...';
@@ -2303,7 +2317,7 @@ async function runToolLoop(
   // opening API call can think for tens of seconds with nothing on screen —
   // three 3-4 minute runs rendered in total silence (ticket 6 item 14). This
   // step line reaches the client within the first second of every run.
-  emitStepSummary(userId, threadId, runId, RUN_OPENING_STEP);
+  emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].opening);
   const heartbeat = setInterval(() => {
     // Self-terminating past the wall clock so an abandoned run can't tick forever.
     if (Date.now() - startedAt > RUN_WALL_CLOCK_BUDGET_MS) {
@@ -2312,7 +2326,7 @@ async function runToolLoop(
     }
     if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
       lastSignalAt = Date.now();
-      emitStepSummary(userId, threadId, runId, RUN_HEARTBEAT_STEP);
+      emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].heartbeat);
     }
   }, RUN_HEARTBEAT_POLL_MS);
   // Initial call: nothing gathered yet, so a failure here propagates and the
@@ -2763,6 +2777,8 @@ export async function processChat(
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
+  const language = detectRunLanguage(userMessage);
+  runLanguages.set(runId, language);
 
   const [agentPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id, thread.id),
@@ -2826,16 +2842,16 @@ export async function processChat(
   // (ticket 6 response §3.1, threads 9146/9149/9150).
   let effectiveFinal = finalText;
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
-    effectiveFinal = CHOICES_ONLY_REPLY;
+    effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }
   if (!effectiveFinal.trim()) {
     // eslint-disable-next-line no-console
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
     runAllowedNumbers.delete(runId);
-    const failureReply =
-      'პასუხის ჩამოყალიბება ვერ მოხერხდა — სამუშაო შუა გზაზე შეწყდა. გთხოვ, სცადე თავიდან.';
+    runLanguages.delete(runId);
+    const failureReply = RUN_STRINGS[language].emptyFinalFailure;
     await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
-    return { reply: failureReply, runFailed: true };
+    return { reply: failureReply, runFailed: true, language };
   }
 
   // Deterministic opener strip (ticket 6 item 12): a long reply must open
@@ -2860,12 +2876,11 @@ export async function processChat(
     );
   }
   const reply = wrapAllowedNumbers(
-    replySafe
-      ? cleanedFinal
-      : 'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
+    replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
   );
   runAllowedNumbers.delete(runId);
+  runLanguages.delete(runId);
   await saveMessage(userId, threadId, 'assistant', reply, 'message', null, choices ?? null);
 
   // Charge the run's actual ledger cost to the user's token wallet (no-op
@@ -2880,6 +2895,7 @@ export async function processChat(
 
   return {
     reply,
+    language,
     ...(options && { options }),
     ...(choices && { choices }),
     ...(requestCreated && { requestCreated: true }),
