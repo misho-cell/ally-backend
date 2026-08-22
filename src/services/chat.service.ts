@@ -14,6 +14,7 @@ import { getContactCount } from './tools/getContactCount';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+import { inviteContact } from './tools/inviteContact';
 import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
@@ -726,6 +727,28 @@ const REMOVE_CONTACT_FROM_NETWORK_TOOL: AnthropicTool = {
       },
     },
     required: ['phone', 'confirmed'],
+  },
+};
+
+// Engine T11: a personal invite for one contact, by CODE, recorded once.
+const INVITE_CONTACT_TOOL: AnthropicTool = {
+  name: 'invite_contact',
+  description:
+    'A personal invite for ONE contact who is NOT on Netai yet: returns ready-to-send text in ' +
+    "the user's language carrying THEIR referral code (never a bare link, never anyone's " +
+    'number), and records it so the same person is not offered twice (already_invited comes ' +
+    'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
+    'contact. The USER sends the text themselves — Netai never messages non-members.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+      language: {
+        type: 'string',
+        description: "Invite text language: ka | en | ru | es (the conversation's language).",
+      },
+    },
+    required: ['phone'],
   },
 };
 
@@ -1942,6 +1965,11 @@ async function executeToolCall(
         String(input['contact_name'] ?? input['phone'] ?? ''),
         input['question'] ? String(input['question']) : undefined,
       );
+    case 'invite_contact': {
+      const langRaw = String(input['language'] ?? 'ka');
+      const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
+      return inviteContact(userId, String(input['phone'] ?? ''), lang);
+    }
     case 'remove_contact_from_network':
       // Same server gate shape as stop_contacting_me: nothing is deleted
       // without the user's explicit confirmation.
@@ -2160,6 +2188,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
+  invite_contact: '💌 მოსაწვევს ვამზადებ...',
 };
 
 interface RunContext {
@@ -2794,6 +2823,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     EXCLUDE_CONTACT_TOOL,
     REMOVE_EXCLUSION_TOOL,
     REMOVE_CONTACT_FROM_NETWORK_TOOL,
+    INVITE_CONTACT_TOOL,
     RETRACT_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
