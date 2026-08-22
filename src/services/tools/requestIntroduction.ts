@@ -92,6 +92,37 @@ export async function requestIntroduction(
   targetPhone?: string,
   askType: IntroAskType = 'intro',
 ): Promise<object> {
+  try {
+    return await requestIntroductionInner(
+      requesterUserId,
+      mediatorName,
+      targetName,
+      message,
+      mediatorPhone,
+      targetUserId,
+      targetPhone,
+      askType,
+    );
+  } catch (err) {
+    // A thrown tool kills the whole model call ("model call failed mid-run —
+    // salvaging") and the user gets a salvage artifact instead of an answer —
+    // the 22 Aug FK crash surfaced exactly this way. A tool NEVER throws.
+    // eslint-disable-next-line no-console
+    console.error('[request_introduction] failed:', (err as Error).message);
+    return { success: false, error: 'მოთხოვნის შექმნა ვერ მოხერხდა — სცადე თავიდან.' };
+  }
+}
+
+async function requestIntroductionInner(
+  requesterUserId: string,
+  mediatorName: string,
+  targetName: string,
+  message?: string,
+  mediatorPhone?: string,
+  targetUserId?: number,
+  targetPhone?: string,
+  askType: IntroAskType = 'intro',
+): Promise<object> {
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
     : await findMediatorPhone(requesterUserId, mediatorName);
@@ -120,13 +151,25 @@ export async function requestIntroduction(
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
   }
 
+  // The model's target_user_id is UNTRUSTED — search results carry no user
+  // ids, so an invented one violated the FK and killed whole runs (22 Aug).
+  // Keep it only when it names a real, live account.
+  let safeTargetUserId: number | null = null;
+  if (targetUserId !== undefined && Number.isFinite(Number(targetUserId))) {
+    const exists = await query<{ id: number }>(
+      `SELECT id FROM "User" WHERE id = $1 AND "deletedAt" IS NULL LIMIT 1`,
+      [Number(targetUserId)],
+    );
+    safeTargetUserId = exists.rows[0]?.id ?? null;
+  }
+
   // DIRECT case (task 18): the "mediator" resolves to the TARGET themself —
   // the user wants to meet a member they already hold. Live row #793 stored
   // mediator = target and introduced a person to herself. A direct request
   // stores NO mediator; the target answers it.
   const normalizedDigits = (p: string): string => p.replace(/\D/g, '');
   const isDirect =
-    (targetUserId !== undefined && Number(targetUserId) === mediatorUserId) ||
+    (safeTargetUserId !== null && safeTargetUserId === mediatorUserId) ||
     (targetPhone !== undefined &&
       normalizedDigits(targetPhone) === normalizedDigits(resolvedPhone)) ||
     mediatorName.trim().toLowerCase() === targetName.trim().toLowerCase();
@@ -194,7 +237,7 @@ export async function requestIntroduction(
             mediatorUserId,
             targetName,
             message ?? null,
-            targetUserId ?? null,
+            safeTargetUserId,
             targetPhone ?? null,
             askType,
           ],
