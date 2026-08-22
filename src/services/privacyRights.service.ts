@@ -162,10 +162,32 @@ const EXPORT_ROW_CAP = 20_000;
  * every OWNED_TABLES row, capped and flagged when truncated.
  */
 export async function exportMyData(userId: string): Promise<Record<string, unknown>> {
+  // Profile columns drift between environments ("bio" does not exist in prod)
+  // — export whatever personal columns actually exist, never the password.
+  const wanted = [
+    'id',
+    'name',
+    'email',
+    'employer',
+    'jobPosition',
+    'city',
+    'bio',
+    'gender',
+    'birthday',
+    'subscription_tier',
+    'subscription_status',
+    'createdAt',
+  ];
+  const present = await query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema = current_schema() AND table_name = 'User'`,
+    [],
+    ERASURE_TIMEOUT_MS,
+  );
+  const presentSet = new Set(present.rows.map((r) => r.column_name));
+  const cols = wanted.filter((c) => presentSet.has(c)).map((c) => `"${c}"`);
   const profile = await query<Record<string, unknown>>(
-    `SELECT id, name, email, employer, "jobPosition", city, bio, gender, birthday,
-            subscription_tier, subscription_status, "createdAt"
-     FROM "User" WHERE id = $1 LIMIT 1`,
+    `SELECT ${cols.join(', ')} FROM "User" WHERE id = $1 LIMIT 1`,
     [userId],
     ERASURE_TIMEOUT_MS,
   );
