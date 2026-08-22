@@ -4,6 +4,7 @@ import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
 import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
 import { scrubText } from './privacyScrub';
+import { recordIntroOutcome } from './partH.service';
 import { geoName } from './georgianCase';
 
 export interface PendingRequest {
@@ -441,6 +442,12 @@ export async function resolveIntroductionRequest(
     source: opts.source,
     request_ref: req.request_ref,
   });
+  // C9.7: the outcome as evidence — declined/accepted land at resolve time.
+  void recordIntroOutcome(
+    req.requester_user_id,
+    req.id,
+    action === 'accept' ? 'accepted' : 'declined',
+  );
   await notifyRequester(req, action === 'accept');
   // A mediated accept must PRODUCE the introduction (task 16); a direct
   // accept's outcome is the target's own yes, already in outcomeMessage.

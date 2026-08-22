@@ -1272,7 +1272,16 @@ function buildPrivateContextSection(context: Record<string, string>): string {
   const keys = Object.keys(context);
   if (keys.length === 0) return '';
   const lines = keys.map((k) => `- ${k}: ${context[k]}`).join('\n');
-  return `\n\n## პირადი კონტექსტი [STRICTLY CONFIDENTIAL — never share with others]\n${lines}`;
+  // The birthday lens (ticket 6 task 26, D1): a stored birthday is a PLAYFUL
+  // surface — a warm word on the day, a nudge for a contact's birthday when
+  // one is saved in facts — and it must NEVER enter professional matching,
+  // ranking or introductions.
+  const hasBirthday = keys.some((k) => /birth|დაბადებ/i.test(k));
+  const birthdayRule = hasBirthday
+    ? '\nდაბადების თარიღი მხოლოდ თბილი, სახალისო მომენტებისთვისაა (მიულოცე, შეახსენე ახლობლის ' +
+      'დღე) — არასდროს გამოიყენო პროფესიულ შერჩევაში, ქულებში ან გაცნობის არგუმენტად.'
+    : '';
+  return `\n\n## პირადი კონტექსტი [STRICTLY CONFIDENTIAL — never share with others]\n${lines}${birthdayRule}`;
 }
 
 // Reply-language pin (engine-level). The strategy prompt is written entirely in

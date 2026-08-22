@@ -22,6 +22,7 @@ import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.servic
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
 import { scrubText } from './privacyScrub';
+import { sweepUnansweredIntroOutcomes } from './partH.service';
 import { RUN_HARD_TIMEOUT_MS } from '../config/runBudgets';
 
 const TICK_INTERVAL_MS = 60_000;
@@ -235,6 +236,17 @@ export function startTaskTicker(): void {
       // eslint-disable-next-line no-console
       console.error('[task-engine] reminder sweep failed:', (err as Error).message),
     );
+    // C9.7's timer half: silence IS an outcome — a week-old unanswered intro
+    // produces a no_reply row without anyone touching the app.
+    void sweepUnansweredIntroOutcomes()
+      .then((n) => {
+        // eslint-disable-next-line no-console
+        if (n > 0) console.log(`[part-h] recorded ${n} no_reply intro outcome(s)`);
+      })
+      .catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[part-h] no-reply sweep failed:', (err as Error).message),
+      );
   }, REMINDER_INTERVAL_MS).unref();
 
   setInterval(() => {

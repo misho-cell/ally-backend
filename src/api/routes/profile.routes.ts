@@ -6,6 +6,12 @@ import {
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
 import { query } from '../../db/postgres/client';
+import {
+  getDimensions,
+  getNextQuestion,
+  getAssumptions,
+  recordAnswer,
+} from '../../services/partH.service';
 import { ApiResponse } from '../../types';
 
 interface ProfileData {
@@ -205,6 +211,102 @@ profileRouter.delete(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[DELETE /profile/photo]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// ─── PART H (ticket 6 task 25): the personalisation surface ─────────────────
+// Selector + dimensions + assumptions + answer recording, over migrations
+// 061 + 069. All behave correctly on an empty bank.
+
+profileRouter.get(
+  '/dimensions',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: { dimensions: await getDimensions(userId) } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/dimensions]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.get(
+  '/next-question',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const surface = typeof req.query.surface === 'string' ? req.query.surface : 'any';
+      const lang = typeof req.query.lang === 'string' ? req.query.lang : 'ka';
+      const result = await getNextQuestion(userId, surface, lang);
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/next-question]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.get(
+  '/assumptions',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: await getAssumptions(userId) });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/assumptions]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.post(
+  '/feedback',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const body = req.body as {
+        question_id?: string;
+        option_ids?: unknown;
+        free_text?: string;
+        skipped?: boolean;
+        surface?: string;
+      };
+      if (!body.question_id || typeof body.question_id !== 'string') {
+        res.status(400).json({ success: false, error: 'question_id აუცილებელია' });
+        return;
+      }
+      const optionIds = Array.isArray(body.option_ids) ? body.option_ids.map(String) : [];
+      const outcome = await recordAnswer(userId, {
+        questionId: body.question_id,
+        optionIds,
+        freeText: typeof body.free_text === 'string' ? body.free_text : undefined,
+        skipped: body.skipped === true,
+        surface: typeof body.surface === 'string' ? body.surface : undefined,
+      });
+      res
+        .status(outcome.recorded ? 200 : 400)
+        .json(
+          outcome.recorded
+            ? { success: true, data: outcome }
+            : { success: false, error: outcome.error ?? 'ჩაწერა ვერ მოხერხდა' },
+        );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /profile/feedback]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
