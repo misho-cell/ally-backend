@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { geoName } from './georgianCase';
 import {
   stripAllowedSpans,
   stripEmDashesForDisplay,
@@ -402,10 +403,10 @@ export async function createIncomingRequestThread(
   );
 
   const openingMessage = direct
-    ? `გამარჯობა! **${requesterName}**-ს შენი გაცნობა უნდა.` +
+    ? `გამარჯობა! **${geoName(requesterName, 'dat')}** შენი გაცნობა უნდა.` +
       (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
       `\n\nდათანხმდები?`
-    : `გამარჯობა! **${requesterName}** გთხოვს, გააცნო **${targetName}**-ს.` +
+    : `გამარჯობა! **${requesterName}** გთხოვს, გააცნო **${geoName(targetName, 'dat')}**.` +
       (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
       `\n\nდაეხმარები? 🤝`;
 
@@ -436,9 +437,9 @@ export async function createOutgoingRequestThread(
   );
 
   const openingMessage = direct
-    ? `**${targetName}**-ს გაეგზავნა შენი გაცნობის თხოვნა.\n\n` +
+    ? `**${geoName(targetName, 'dat')}** გაეგზავნა შენი გაცნობის თხოვნა.\n\n` +
       `Netai-ს გახსნისას ნახავს და გიპასუხებს. 😊`
-    : `**${mediatorName}**-სთვის გაიგზავნა გაცნობის მოთხოვნა **${targetName}**-ზე.\n\n` +
+    : `**${geoName(mediatorName, 'gen')}თვის** გაიგზავნა გაცნობის მოთხოვნა **${geoName(targetName, 'on')}**.\n\n` +
       `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
 
   await saveThreadMessage(thread.id, requesterUserId, 'assistant', openingMessage);
