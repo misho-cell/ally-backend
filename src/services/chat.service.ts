@@ -2390,6 +2390,9 @@ async function runToolLoop(
   let taskResult: TaskResultCard | undefined;
   let iterations = 0;
   let toolCallCount = 0;
+  // Which tools actually ran (item 26): without names, "did it really search
+  // the web / really retry the ask" was unanswerable from the logs.
+  const toolNamesUsed: string[] = [];
   let finalText = '';
   // Signals live in two places: choices/task results in the assistant's
   // tool_use blocks, disambiguation/request-created in the tool RESULTS. Both
@@ -2446,6 +2449,7 @@ async function runToolLoop(
     ) {
       iterations++;
       toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
+      for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
 
       // Stream the model's narration that accompanies this round of tool calls,
       // so the client sees the process step by step rather than one final answer.
@@ -2491,6 +2495,7 @@ async function runToolLoop(
     // (tool_choice: none) so the cached prompt prefix still hits.
     if (response.stop_reason === 'tool_use') {
       toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
+      for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
       const narration = scrubText(extractText(response.content));
@@ -2598,6 +2603,7 @@ async function runToolLoop(
       ) {
         extraRounds++;
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
+        for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
         const narration = scrubText(extractText(continuation.content));
         if (narration) {
           emitStepSummary(userId, threadId, runId, narration);
@@ -2619,6 +2625,7 @@ async function runToolLoop(
       // force the written answer.
       if (continuation.stop_reason === 'tool_use') {
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
+        for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
         scanAssistantBlocks(continuation.content);
         const lastResults = await processToolBlocks(userId, threadId, runId, continuation.content);
         scanToolResults(lastResults);
@@ -2652,7 +2659,8 @@ async function runToolLoop(
   // eslint-disable-next-line no-console
   console.log(
     `[chat] run ${runId} done: ${toolCallCount} tool call(s), ${iterations} iteration(s), ` +
-      `finalLen=${finalText.length}, ${Date.now() - startedAt}ms`,
+      `finalLen=${finalText.length}, ${Date.now() - startedAt}ms` +
+      (toolNamesUsed.length > 0 ? ` — tools: ${toolNamesUsed.join(',')}` : ''),
   );
 
   return { finalText, pending, options, choices, requestCreated, taskResult };

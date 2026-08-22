@@ -10,6 +10,9 @@ import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 const MAX_CONTACTS_PER_IMPORT = 500;
 // Prod "TagSource" enum value for tags born from a phonebook import.
 const TAG_SOURCE_IMPORTED = 'IMPORTED_CONTACT';
+// Provenance stamp for UserAlias rows this endpoint writes (migration 068):
+// the three-phantom-contacts question was unanswerable without it.
+const ALIAS_SOURCE_IMPORT = 'app_import';
 
 export async function getUserPhone(userId: string): Promise<string> {
   const result = await pool.query<{ phone: string }>(
@@ -143,12 +146,12 @@ async function saveToPostgres(
   // and nobody noticed, because the apps import through the legacy service.
   await withTransaction(async (client: PoolClient) => {
     await client.query(
-      `INSERT INTO "UserAlias" (phone, "contactId", alias)
-       SELECT $1::text, $2::int, $3::text
+      `INSERT INTO "UserAlias" (phone, "contactId", alias, source)
+       SELECT $1::text, $2::int, $3::text, $4::text
        WHERE NOT EXISTS (
          SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2 AND alias = $3
        )`,
-      [phone, userId, contact.name.trim()],
+      [phone, userId, contact.name.trim(), ALIAS_SOURCE_IMPORT],
     );
 
     const tags = buildTags(contact);
