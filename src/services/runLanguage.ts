@@ -127,6 +127,7 @@ const TOOL_STEPS_EN: Record<string, string> = {
   exclude_contact: '📝 Noting the decision...',
   remove_contact_exclusion: '📝 Lifting the exclusion...',
   retract_contact_fact: '✏️ Correcting the record...',
+  remove_contact_from_network: '🗑 Removing from your network...',
 };
 
 const TOOL_STEPS_RU: Record<string, string> = {

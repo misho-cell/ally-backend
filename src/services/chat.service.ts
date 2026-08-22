@@ -13,6 +13,7 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount } from './tools/getContactCount';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
+import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
@@ -690,6 +691,35 @@ const RESUME_CONTACT_TOOL: AnthropicTool = {
     'Lift a previous "stop contacting me" — call only when the user explicitly says questions ' +
     'may reach them again. Confirm in one line.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+// D23 path (1): user-initiated unlink. NOT exclude_contact — an exclusion
+// filters a person out for a purpose; this removes them from the user's own
+// first-degree network entirely (they stay reachable as a second-degree
+// bridge through others, and the user's saved notes are kept, detached).
+const REMOVE_CONTACT_FROM_NETWORK_TOOL: AnthropicTool = {
+  name: 'remove_contact_from_network',
+  description:
+    "Remove a contact from the user's OWN network: their phonebook entry, labels and computed " +
+    'relationship view disappear from every search. The person keeps existing in other ' +
+    "people's networks and still appears as a second-degree bridge; the user's saved notes " +
+    'about them are kept. Coming back requires a re-import — treat it as hard to undo. Call ' +
+    'ONLY when the user explicitly asks to remove/delete THIS person from their network ' +
+    '("ამოიღე X ჩემი ქსელიდან") and pass confirmed=true only after their explicit yes. ' +
+    'A "do not offer X for this purpose" wish is exclude_contact, not this.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+      confirmed: {
+        type: 'boolean',
+        description:
+          'true ONLY when the user explicitly confirmed removing this exact person. Without ' +
+          'true nothing is deleted.',
+      },
+    },
+    required: ['phone', 'confirmed'],
+  },
 };
 
 // Ticket 4 item 4C: the channel sweep the prompt could not enforce, as a tool.
@@ -1895,6 +1925,19 @@ async function executeToolCall(
         String(input['contact_name'] ?? input['phone'] ?? ''),
         input['question'] ? String(input['question']) : undefined,
       );
+    case 'remove_contact_from_network':
+      // Same server gate shape as stop_contacting_me: nothing is deleted
+      // without the user's explicit confirmation.
+      if (input['confirmed'] !== true) {
+        return {
+          removed: false,
+          needs_confirmation: true,
+          note:
+            'არაფერი წაშლილა. ჯერ აჩვენე მომხმარებელს ზუსტად ვის აპირებ ამოღებას და რა რჩება ' +
+            '(ჩანაწერები რჩება, დაბრუნება ხელახალი იმპორტით), და დადასტურების შემდეგ გამოიძახე confirmed=true-თი.',
+        };
+      }
+      return removeContactFromNetwork(userId, String(input['phone'] ?? ''));
     case 'exclude_contact':
       return saveContactExclusion(
         userId,
@@ -2099,6 +2142,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
   remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
+  remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
 };
 
 interface RunContext {
@@ -2724,6 +2768,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     RESUME_CONTACT_TOOL,
     EXCLUDE_CONTACT_TOOL,
     REMOVE_EXCLUSION_TOOL,
+    REMOVE_CONTACT_FROM_NETWORK_TOOL,
     RETRACT_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
