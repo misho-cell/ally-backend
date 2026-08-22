@@ -46,10 +46,18 @@ function promptFor(row: BankRow, lang: string): string {
   return row.prompt_ka;
 }
 
+// The real bank (24 Aug load) writes its payoff line into the base
+// `immediate_use` column only — immediate_use_ka/es/en are the FUTURE
+// per-language columns and are NULL on every row today (English-only by the
+// founder's decision). `immediate_use` is therefore the universal fallback,
+// last in every chain — without it every language would render nothing.
 function immediateUseFor(row: BankRow, lang: string): string | null {
-  if (lang === 'es') return row.immediate_use_es ?? row.immediate_use_en ?? row.immediate_use_ka;
-  if (lang === 'en') return row.immediate_use_en ?? row.immediate_use_ka;
-  return row.immediate_use_ka ?? row.immediate_use_en;
+  if (lang === 'es')
+    return (
+      row.immediate_use_es ?? row.immediate_use_en ?? row.immediate_use_ka ?? row.immediate_use
+    );
+  if (lang === 'en') return row.immediate_use_en ?? row.immediate_use_ka ?? row.immediate_use;
+  return row.immediate_use_ka ?? row.immediate_use_en ?? row.immediate_use;
 }
 
 /**
@@ -144,10 +152,21 @@ interface ScoreDelta {
 }
 
 /**
- * Score deltas for one answering. Per-option vectors add up; a multi-select
- * question may instead score by HOW MANY were picked (score_vector._by_count,
- * C9.2's note — one pick means clarity, three means still looking around).
- * An „other" answer moves NOTHING (C9.4): research data, not profile data.
+ * Score deltas for one answering, against the REAL 43-row bank's convention
+ * (confirmed against the founder-approved data, 24 Aug — the shape my first
+ * version guessed at, per-option deltas, does not match it and would have
+ * scored nothing on 41 of 43 questions, silently, forever):
+ *
+ *   - select_mode='multi' with a `_by_count` sub-object (2 of 43 rows) scores
+ *     by HOW MANY options were picked — one pick means clarity, three means
+ *     still looking around (C9.2's note).
+ *   - every other row's score_vector is a FLAT {dimension: delta} map,
+ *     applied ONCE per answered instance, the same regardless of which
+ *     option was chosen — the question itself carries the signal, not the
+ *     specific answer.
+ *
+ * An „other" answer, or an answer that is ONLY "other", moves NOTHING
+ * (C9.4): research data, not profile data.
  */
 function computeDeltas(row: BankRow, optionIds: string[]): ScoreDelta {
   const vector = row.score_vector ?? {};
@@ -157,15 +176,11 @@ function computeDeltas(row: BankRow, optionIds: string[]): ScoreDelta {
   if (row.select_mode === 'multi' && byCount) {
     return byCount[String(real.length)] ?? {};
   }
-  const sum: ScoreDelta = {};
-  for (const id of real) {
-    const delta = vector[id] as ScoreDelta | undefined;
-    if (!delta) continue;
-    for (const [dim, v] of Object.entries(delta)) {
-      if (typeof v === 'number') sum[dim] = (sum[dim] ?? 0) + v;
-    }
+  const flat: ScoreDelta = {};
+  for (const [dim, v] of Object.entries(vector)) {
+    if (dim !== '_by_count' && typeof v === 'number') flat[dim] = v;
   }
-  return sum;
+  return flat;
 }
 
 export async function recordAnswer(userId: string, input: AnswerInput): Promise<AnswerOutcome> {

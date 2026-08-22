@@ -68,6 +68,42 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   { table: '"UserPhone"', column: '"userId"' },
 ];
 
+// Human labels for the summary, so the frontend never has to render a raw
+// table/column name as a section title (task 22(i): the bare word "records"
+// — our own response wrapper key, not a translation — has printed on
+// /profile/data since 14 August). Every OWNED_TABLES entry gets one.
+export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
+  conversations: 'საუბრები',
+  run_prompt_stamps: 'გაშვების ჩანაწერები',
+  pending_updates: 'მოლოდინში მყოფი პასუხები',
+  task_asks: 'გაგზავნილი კითხვები',
+  tasks: 'მიზნები',
+  threads: 'თემები',
+  user_notes: 'ჩანაწერები',
+  user_private_context: 'პირადი კონტექსტი',
+  user_profile_kv: 'პროფილის მონაცემები',
+  contact_insights: 'კონტაქტების ანალიზი',
+  contact_exclusions: 'გამონაკლისები',
+  contact_relationship_scores: 'ურთიერთობის შეფასებები',
+  contact_facts: 'შენახული ფაქტები',
+  contact_enrichment: 'გამდიდრებული მონაცემები',
+  weak_tie_signals: 'სუსტი კავშირების სიგნალები',
+  search_activity: 'ძებნის ისტორია',
+  user_avatars: 'პროფილის ფოტო',
+  ai_notification_log: 'შეტყობინებების ისტორია',
+  ai_notification_settings: 'შეტყობინებების პარამეტრები',
+  push_subscriptions: 'push გამოწერები',
+  device_fingerprints: 'მოწყობილობები',
+  oauth_tokens: 'დაკავშირებული ანგარიშები',
+  product_events: 'აქტივობის ჟურნალი',
+  introduction_requests: 'გაცნობის მოთხოვნები',
+  UserAlias: 'კონტაქტების წიგნაკი',
+  UserTags: 'კონტაქტების ტეგები',
+  UserBlock: 'დაბლოკილები',
+  ContactDeceased: 'გარდაცვლილად მონიშნული კონტაქტები',
+  UserPhone: 'ტელეფონის ნომრები',
+};
+
 // Personal columns on "User" scrubbed when present. The row itself survives so
 // other people's foreign keys stay valid — with nothing personal left in it.
 const USER_COLUMNS_TO_SCRUB = [

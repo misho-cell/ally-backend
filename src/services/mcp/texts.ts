@@ -138,6 +138,25 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       "this notifies the other side and can't be undone. Pass on only what the user can " +
       'honestly stand behind; keep a decline private and neutral.',
   },
+  get_intro_status: {
+    title: 'Check introduction status',
+    description:
+      'Every introduction the user has requested — pending and answered in the last week, who ' +
+      'answered, their words, timestamps. WHEN: the user asks whether someone replied or what ' +
+      'happened to an introduction. Answer FROM this result, never from memory or thread text — ' +
+      'statuses change between turns.',
+  },
+  remove_contact_from_network: {
+    title: 'Remove a contact from your network',
+    description:
+      "Removes a contact from the user's OWN network: their phonebook entry, labels and " +
+      'computed relationship disappear from every search. The person keeps existing in other ' +
+      "people's networks and still appears as a second-degree bridge; the user's saved notes " +
+      'about them are kept. Coming back requires a re-import — treat it as hard to undo. Call ' +
+      'ONLY when the user explicitly asks to remove this exact person, and pass confirmed=true ' +
+      'only after their explicit yes. A "do not offer X for this purpose" wish is a different ' +
+      'tool, not this.',
+  },
   invite_contact: {
     title: 'Invite a contact to Netai',
     description:
@@ -386,6 +405,9 @@ export const PARAM_TEXTS = {
   contactRef:
     'The stable id from a search result. Never invent it — always take it from a prior search.',
   inviteLanguage: "Invite text language: ka | en | ru | es (the conversation's language).",
+  removeConfirmed:
+    'true ONLY when the user explicitly confirmed removing this exact person. Without true ' +
+    'nothing is deleted — call again after they confirm.',
   mediatorName:
     'The contact who will make the introduction — their name exactly as a search returned it.',
   mediatorRef:

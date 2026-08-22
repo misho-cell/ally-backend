@@ -8,6 +8,7 @@ import {
   deleteMyAccount,
   exportMyData,
   ErasureReport,
+  OWNED_TABLE_LABELS_KA,
 } from '../../services/privacyRights.service';
 
 // The rights portal the Privacy Policy already promises (ticket 4, item 0).
@@ -29,7 +30,16 @@ privacyRouter.get(
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const counts = await getMyDataSummary(String(userId));
-      res.status(200).json({ success: true, data: { records: counts } });
+      // "records" (task 22(i)): open since 14 August as an untranslated Latin
+      // word on /profile/data — this wrapper key is where it came from. Kept
+      // for backward compatibility; `counts` is the same content under a name
+      // that was never meant to double as a label, and `labels` gives every
+      // key its Georgian label so nothing on this page has to render a raw
+      // table/column name again.
+      res.status(200).json({
+        success: true,
+        data: { records: counts, counts, labels: OWNED_TABLE_LABELS_KA },
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /privacy/my-data/summary]', error);

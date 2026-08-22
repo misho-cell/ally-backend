@@ -41,7 +41,9 @@ import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graph
 import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
+  getIntroStatusForRequester,
 } from '../introduction.service';
+import { removeContactFromNetwork } from '../tools/removeContactFromNetwork';
 import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
@@ -381,6 +383,36 @@ export async function mcpRespondToRequest(
   }
   const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
   return scrubDeep(raw) as McpToolPayload;
+}
+
+// Task 17: "did she reply?" answered from system data, never from thread
+// text or memory. Missing from the connector until 24 Aug — built in-app,
+// never wired here (the same registration gap invite_contact had).
+export async function mcpGetIntroStatus(userId: string): Promise<McpToolPayload> {
+  const introductions = await getIntroStatusForRequester(userId);
+  return { introductions } as unknown as McpToolPayload;
+}
+
+// D23 path (1), founder-decided unlink. Same registration gap as above —
+// built in-app 22 Aug, never wired into the connector.
+export async function mcpRemoveContactFromNetwork(
+  userId: string,
+  args: { contact_ref: string; confirmed?: boolean },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { removed: false, error: UNKNOWN_REF_ERROR };
+  if (args.confirmed !== true) {
+    return {
+      removed: false,
+      needs_confirmation: true,
+      note:
+        'Nothing was deleted. Show the user exactly who you would remove and what stays ' +
+        '(their notes, the graph bridge through others) — call again with confirmed=true only ' +
+        'after their explicit yes.',
+    };
+  }
+  const raw = await removeContactFromNetwork(userId, phone);
+  return raw as unknown as McpToolPayload;
 }
 
 const UNKNOWN_REF_ERROR =

@@ -14,7 +14,10 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
   return { rows: data, rowCount };
 }
 
-const BANK_ROW = {
+// Shape matches the REAL 43-row bank (24 Aug load), not an invented one: a
+// multi-select question with `_by_count` scoring, exactly like the bank's
+// onb_primary_goal_001.
+const MULTI_COUNT_ROW = {
   question_id: 'q1',
   category: 'goals',
   surface: 'any',
@@ -23,20 +26,41 @@ const BANK_ROW = {
   prompt_en: 'Which kind of people do you need now?',
   options: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'other', free_text: true }],
   score_vector: {
-    a: { goal_clarity: 0.5 },
     _by_count: {
       '1': { goal_clarity: 0.7 },
       '2': { goal_clarity: 0.3 },
       '3': { goal_clarity: -0.1 },
     },
   },
-  immediate_use: 'internal note',
-  immediate_use_ka: 'ამით ზუსტად მივხვდები, ვის შემოგთავაზებ პირველად',
+  immediate_use: 'Your first shortlist is built from this, before you type anything.',
+  immediate_use_ka: null,
   immediate_use_es: null,
-  immediate_use_en: 'This tells me whom to suggest first',
+  immediate_use_en: null,
   select_mode: 'multi',
   select_max: 3,
   goal_bound: false,
+};
+
+// A single-select row whose score_vector is FLAT — the real bank's dominant
+// shape (41 of 43 rows): the delta applies once, the same regardless of
+// which option was picked. My first version of this code assumed per-option
+// deltas and would have scored nothing on rows shaped exactly like this one.
+const FLAT_SINGLE_ROW = {
+  question_id: 'q12',
+  category: 'goal',
+  surface: 'any',
+  prompt_ka: 'ახლა რომელი ტიპის ხალხი გჭირდება მეტად?',
+  prompt_es: null,
+  prompt_en: 'Which kind of people do you need most right now?',
+  options: [{ id: 'clients' }, { id: 'investors' }, { id: 'other', free_text: true }],
+  score_vector: { goal_clarity: 0.2 },
+  immediate_use: "This week's shortlist tilts toward that kind of person.",
+  immediate_use_ka: null,
+  immediate_use_es: null,
+  immediate_use_en: null,
+  select_mode: 'single',
+  select_max: null,
+  goal_bound: true,
 };
 
 const txClient = { query: jest.fn().mockResolvedValue(rows([])) };
@@ -49,7 +73,7 @@ beforeEach(() => {
 
 describe('recordAnswer (C9.2, C9.4)', () => {
   it('refuses a FOURTH pick on a max-3 multi question', async () => {
-    mockQuery.mockResolvedValue(rows([BANK_ROW]) as never);
+    mockQuery.mockResolvedValue(rows([MULTI_COUNT_ROW]) as never);
 
     const out = await recordAnswer('7', { questionId: 'q1', optionIds: ['a', 'b', 'c', 'd'] });
 
@@ -59,19 +83,17 @@ describe('recordAnswer (C9.2, C9.4)', () => {
   });
 
   it('a single-select question still allows exactly one', async () => {
-    mockQuery.mockResolvedValue(
-      rows([{ ...BANK_ROW, question_id: 'q12', select_mode: 'single', select_max: null }]) as never,
-    );
+    mockQuery.mockResolvedValue(rows([FLAT_SINGLE_ROW]) as never);
 
-    const one = await recordAnswer('7', { questionId: 'q12', optionIds: ['a'] });
+    const one = await recordAnswer('7', { questionId: 'q12', optionIds: ['clients'] });
     expect(one.recorded).toBe(true);
 
-    const two = await recordAnswer('7', { questionId: 'q12', optionIds: ['a', 'b'] });
+    const two = await recordAnswer('7', { questionId: 'q12', optionIds: ['clients', 'investors'] });
     expect(two.recorded).toBe(false);
   });
 
-  it('scores by COUNT on the multi question — one pick means clarity', async () => {
-    mockQuery.mockResolvedValue(rows([BANK_ROW]) as never);
+  it('scores by COUNT on the _by_count multi question — one pick means clarity', async () => {
+    mockQuery.mockResolvedValue(rows([MULTI_COUNT_ROW]) as never);
 
     const out = await recordAnswer('7', { questionId: 'q1', optionIds: ['a'] });
 
@@ -82,8 +104,33 @@ describe('recordAnswer (C9.2, C9.4)', () => {
     expect(dimWrite?.[1]).toEqual(['7', 'goal_clarity', 0.7, 1, -1]);
   });
 
+  it('three picks on the same question score the OPPOSITE way — still looking around', async () => {
+    mockQuery.mockResolvedValue(rows([MULTI_COUNT_ROW]) as never);
+
+    await recordAnswer('7', { questionId: 'q1', optionIds: ['a', 'b', 'c'] });
+
+    const dimWrite = txClient.query.mock.calls.find((c) =>
+      (c[0] as string).includes('profile_dimensions'),
+    );
+    expect(dimWrite?.[1]).toEqual(['7', 'goal_clarity', -0.1, 1, -1]);
+  });
+
+  it("applies the FLAT score_vector once, the same regardless of which option was picked — the real bank's dominant shape", async () => {
+    mockQuery.mockResolvedValue(rows([FLAT_SINGLE_ROW]) as never);
+
+    const out = await recordAnswer('7', { questionId: 'q12', optionIds: ['investors'] });
+
+    expect(out.recorded).toBe(true);
+    expect(out.dimensions_moved).toEqual(['goal_clarity']);
+    const dimWrite = txClient.query.mock.calls.find((c) =>
+      (c[0] as string).includes('profile_dimensions'),
+    );
+    // 0.2 either way — "clients" would score identically. That IS the shape.
+    expect(dimWrite?.[1]).toEqual(['7', 'goal_clarity', 0.2, 1, -1]);
+  });
+
   it('„სხვა" with free text stores the text and moves NO dimension (C9.4)', async () => {
-    mockQuery.mockResolvedValue(rows([BANK_ROW]) as never);
+    mockQuery.mockResolvedValue(rows([MULTI_COUNT_ROW]) as never);
 
     const out = await recordAnswer('7', {
       questionId: 'q1',
@@ -103,7 +150,7 @@ describe('recordAnswer (C9.2, C9.4)', () => {
   });
 
   it('supersede: flips the previous current row before inserting, one transaction', async () => {
-    mockQuery.mockResolvedValue(rows([BANK_ROW]) as never);
+    mockQuery.mockResolvedValue(rows([MULTI_COUNT_ROW]) as never);
 
     await recordAnswer('7', { questionId: 'q1', optionIds: ['a'] });
 
@@ -120,7 +167,7 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM question_bank qb'))
-        return Promise.resolve(rows([{ ...BANK_ROW, goal_bound: true }]) as never);
+        return Promise.resolve(rows([FLAT_SINGLE_ROW]) as never);
       if (sql.includes('FROM tasks'))
         return Promise.resolve(rows([{ title: 'კლიენტების პოვნა' }]) as never);
       return Promise.resolve(rows([]) as never);
@@ -131,8 +178,12 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     expect(out.found).toBe(true);
     if (out.found) {
       expect(out.question.prompt.startsWith('[კლიენტების პოვნა] — ')).toBe(true);
-      // C9.1: the payoff line rides WITH the question, in the user's language.
-      expect(out.question.immediate_use).toBe('ამით ზუსტად მივხვდები, ვის შემოგთავაზებ პირველად');
+      // C9.1 + the real load's shape: immediate_use_ka is NULL today (English
+      // only, by the founder's decision) — the base immediate_use column is
+      // the fallback for every language, not just English.
+      expect(out.question.immediate_use).toBe(
+        "This week's shortlist tilts toward that kind of person.",
+      );
     }
   });
 
@@ -140,7 +191,7 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM question_bank qb'))
-        return Promise.resolve(rows([{ ...BANK_ROW, goal_bound: true }]) as never);
+        return Promise.resolve(rows([FLAT_SINGLE_ROW]) as never);
       if (sql.includes('FROM tasks')) return Promise.resolve(rows([]) as never);
       return Promise.resolve(rows([]) as never);
     });
@@ -148,6 +199,24 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     const out = await getNextQuestion('7', 'any', 'ka');
 
     expect(out.found).toBe(false);
+  });
+
+  it('immediate_use falls back to the base column in English too', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM question_bank qb'))
+        return Promise.resolve(rows([MULTI_COUNT_ROW]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await getNextQuestion('7', 'any', 'en');
+
+    expect(out.found).toBe(true);
+    if (out.found) {
+      expect(out.question.immediate_use).toBe(
+        'Your first shortlist is built from this, before you type anything.',
+      );
+    }
   });
 
   it('empty bank returns found:false, never a 500', async () => {

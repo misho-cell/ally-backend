@@ -17,6 +17,8 @@ import {
   mcpRequestIntroduction,
   mcpRespondToRequest,
   mcpInviteContact,
+  mcpGetIntroStatus,
+  mcpRemoveContactFromNetwork,
   mcpSaveContactFact,
   mcpSearchByInsight,
   mcpSearchContacts,
@@ -215,6 +217,16 @@ function registerIntroTools(server: McpServer, userId: string): void {
     },
     (args) => runTool(userId, 'invite_contact', () => mcpInviteContact(userId, args)),
   );
+  server.registerTool(
+    'get_intro_status',
+    {
+      title: TOOL_TEXTS.get_intro_status.title,
+      description: TOOL_TEXTS.get_intro_status.description,
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    () => runTool(userId, 'get_intro_status', () => mcpGetIntroStatus(userId)),
+  );
 }
 
 // Private, reversible writes (facts, blocks) — not destructive in the
@@ -275,6 +287,22 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     () => runTool(userId, 'list_blocked_contacts', () => mcpListBlocked(userId)),
+  );
+  server.registerTool(
+    'remove_contact_from_network',
+    {
+      title: TOOL_TEXTS.remove_contact_from_network.title,
+      description: TOOL_TEXTS.remove_contact_from_network.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        confirmed: z.boolean().optional().describe(PARAM_TEXTS.removeConfirmed),
+      },
+      annotations: DESTRUCTIVE,
+    },
+    (args) =>
+      runTool(userId, 'remove_contact_from_network', () =>
+        mcpRemoveContactFromNetwork(userId, args),
+      ),
   );
 }
 
