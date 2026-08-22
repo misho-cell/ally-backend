@@ -2,7 +2,7 @@ import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
-import { getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
+import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
 import { scrubText } from './privacyScrub';
 
 export interface PendingRequest {
@@ -11,6 +11,8 @@ export interface PendingRequest {
   message: string | null;
   requester_name: string | null;
   created_at: string;
+  /** No mediator stored: the target themself answers (task 18). */
+  direct: boolean;
 }
 
 export interface RespondedRequest {
@@ -28,15 +30,22 @@ export interface RespondedRequest {
 
 const RESPONSE_WINDOW_DAYS = 7;
 
+// A request is answered by its mediator — or, on a DIRECT request (no
+// mediator stored, task 18), by the target themself. One condition, used by
+// every responder-side read so the two shapes never diverge.
+const RESPONDER_COND = (idx: number): string =>
+  `(ir.mediator_user_id = $${idx} OR (ir.mediator_user_id IS NULL AND ir.target_user_id = $${idx}))`;
+
 export async function getPendingRequestsForMediator(
   mediatorUserId: string,
 ): Promise<PendingRequest[]> {
   const result = await query<PendingRequest>(
     `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
-            u.name AS requester_name
+            u.name AS requester_name,
+            (ir.mediator_user_id IS NULL) AS direct
      FROM introduction_requests ir
      LEFT JOIN "User" u ON u.id = ir.requester_user_id
-     WHERE ir.mediator_user_id = $1 AND ir.status = 'pending'
+     WHERE ${RESPONDER_COND(1)} AND ir.status = 'pending'
        AND (ir.snoozed_until IS NULL OR ir.snoozed_until <= NOW())
      ORDER BY ir.created_at ASC`,
     [mediatorUserId],
@@ -55,10 +64,11 @@ export async function getPendingRequestById(
 ): Promise<PendingRequest | null> {
   const result = await query<PendingRequest>(
     `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
-            u.name AS requester_name
+            u.name AS requester_name,
+            (ir.mediator_user_id IS NULL) AS direct
      FROM introduction_requests ir
      LEFT JOIN "User" u ON u.id = ir.requester_user_id
-     WHERE ir.id = $1 AND ir.mediator_user_id = $2 AND ir.status = 'pending'
+     WHERE ir.id = $1 AND ${RESPONDER_COND(2)} AND ir.status = 'pending'
      LIMIT 1`,
     [requestId, mediatorUserId],
   );
@@ -71,13 +81,52 @@ export async function getRecentResponsesForRequester(
   const result = await query<RespondedRequest>(
     `SELECT ir.id, ir.target_name, ir.status, ir.mediator_response, ir.responded_at,
             ir.message, ir.created_at, ir.ask_type,
-            m.name AS mediator_name
+            COALESCE(m.name, ir.target_name) AS mediator_name
      FROM introduction_requests ir
      LEFT JOIN "User" m ON m.id = ir.mediator_user_id
      WHERE ir.requester_user_id = $1
        AND ir.status IN ('accepted', 'declined')
        AND ir.responded_at > NOW() - INTERVAL '${RESPONSE_WINDOW_DAYS} days'
      ORDER BY ir.responded_at DESC`,
+    [requesterUserId],
+  );
+  return result.rows;
+}
+
+export interface IntroStatusRow {
+  target_name: string;
+  responder_name: string | null;
+  status: string;
+  response: string | null;
+  asked_at: string;
+  responded_at: string | null;
+  direct: boolean;
+}
+
+/**
+ * The requester's introductions as SYSTEM DATA (task 17): "did she reply?"
+ * must be answerable from a tool result, never from loose thread text. Both
+ * pending and recently-answered rows, newest first.
+ */
+export async function getIntroStatusForRequester(
+  requesterUserId: string,
+): Promise<IntroStatusRow[]> {
+  const result = await query<IntroStatusRow>(
+    `SELECT ir.target_name,
+            COALESCE(m.name, CASE WHEN ir.mediator_user_id IS NULL THEN ir.target_name END)
+              AS responder_name,
+            ir.status,
+            ir.mediator_response AS response,
+            ir.created_at AS asked_at,
+            ir.responded_at,
+            (ir.mediator_user_id IS NULL) AS direct
+     FROM introduction_requests ir
+     LEFT JOIN "User" m ON m.id = ir.mediator_user_id
+     WHERE ir.requester_user_id = $1
+       AND (ir.status = 'pending'
+            OR ir.responded_at > NOW() - INTERVAL '${RESPONSE_WINDOW_DAYS} days')
+     ORDER BY COALESCE(ir.responded_at, ir.created_at) DESC
+     LIMIT 20`,
     [requesterUserId],
   );
   return result.rows;
@@ -126,7 +175,11 @@ interface RequestRow {
   id: number;
   request_ref: string;
   requester_user_id: number;
+  mediator_user_id: number | null;
   target_name: string;
+  target_user_id: number | null;
+  target_phone: string | null;
+  message: string | null;
   status: string;
 }
 
@@ -136,9 +189,10 @@ async function loadRequestForMediator(
 ): Promise<RequestRow | null> {
   const byRef = target.requestRef !== undefined;
   const result = await query<RequestRow>(
-    `SELECT id, request_ref, requester_user_id, target_name, status
-     FROM introduction_requests
-     WHERE mediator_user_id = $1 AND ${byRef ? 'request_ref = $2' : 'id = $2'}
+    `SELECT ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
+            ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status
+     FROM introduction_requests ir
+     WHERE ${RESPONDER_COND(1)} AND ${byRef ? 'ir.request_ref = $2' : 'ir.id = $2'}
      LIMIT 1`,
     [mediatorUserId, byRef ? target.requestRef : target.requestId],
   );
@@ -152,9 +206,107 @@ async function loadRequestForMediator(
 // PART B miss 3).
 function outcomeMessage(req: RequestRow, action: IntroductionAction, response?: string): string {
   const answer = response?.trim() ? `\n\nპასუხი: „${scrubText(response.trim())}"` : '';
-  return action === 'accept'
-    ? `${req.target_name}-ზე გაცნობის მოთხოვნა მიღებულია. ${answer ? answer : 'დეტალებს გაცნობებ.'}`
+  const direct = req.mediator_user_id === null;
+  if (action === 'accept') {
+    // Direct case (task 18): the target themself agreed — that IS the outcome.
+    // Mediated accepts get the richer outcome from deliverAcceptOutcome.
+    return direct
+      ? `${req.target_name} დათანხმდა გაცნობას.${answer} ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
+      : `${req.target_name}-ზე გაცნობის მოთხოვნა მიღებულია.${answer}`;
+  }
+  return direct
+    ? `${req.target_name}-მ გაცნობაზე ამჯერად უარი თქვა.${answer} სხვა გზა მოვძებნოთ?`
     : `${req.target_name}-ზე გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${answer} სხვა გზა მოვძებნოთ?`;
+}
+
+interface AcceptOutcome {
+  /** Extra lines appended to the requester's outcome message. */
+  requesterExtra: string;
+  /** Closing line for the mediator's own thread — what happens next. */
+  mediatorFollowUp: string;
+}
+
+/**
+ * Task 16 — Accept must PRODUCE something. 13 introductions were accepted on
+ * this system and not one gave the requester a way to talk to the target or
+ * told the target anything. On a mediated accept:
+ *   1. the requester's thread gets the target's contact (the one the mediator
+ *      holds — accepting the introduction IS consenting to connect the two;
+ *      same consent shape as the share_contact path);
+ *   2. a registered target gets their own thread + push saying who is coming
+ *      and on whose word — never the requester's number, only their name;
+ *   3. the mediator's thread says what was done in their name.
+ * Degrades honestly when the target cannot be resolved: the requester is told
+ * to get the contact from the mediator directly.
+ */
+async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Promise<AcceptOutcome> {
+  // The target's phone: the stored one, or the single match in the MEDIATOR's
+  // own phonebook (it is their contact to give).
+  let targetPhone = req.target_phone;
+  if (!targetPhone && req.mediator_user_id !== null) {
+    const found = await query<{ phone: string }>(
+      `SELECT ua.phone FROM "UserAlias" ua
+       WHERE ua."contactId" = $1 AND LOWER(ua.alias) = LOWER($2)
+       LIMIT 2`,
+      [req.mediator_user_id, req.target_name],
+    );
+    if (found.rows.length === 1) targetPhone = found.rows[0].phone;
+  }
+
+  // A registered target learns what happens next (their own thread + push).
+  let targetUserId = req.target_user_id;
+  if (targetUserId === null && targetPhone) {
+    const member = await query<{ userId: number }>(
+      `SELECT "userId" FROM "UserPhone"
+       WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+       LIMIT 1`,
+      [targetPhone],
+    );
+    targetUserId = member.rows[0]?.userId ?? null;
+  }
+
+  const requesterName = await query<{ name: string | null }>(
+    'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
+    [req.requester_user_id],
+  );
+  const requester = requesterName.rows[0]?.name?.trim() || 'Netai-ს მომხმარებელი';
+
+  if (targetUserId !== null && String(targetUserId) !== String(req.requester_user_id)) {
+    try {
+      const thread = await createThread(String(targetUserId), 'regular', `გაცნობა: ${requester}`);
+      await saveThreadMessage(
+        thread.id,
+        targetUserId,
+        'assistant',
+        `${mediatorName}-მ გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
+          (req.message?.trim() ? ` — მიზეზი: „${scrubText(req.message.trim())}"` : '.') +
+          `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${mediatorName}-მ გაგაცნოთ. ` +
+          'შენი ნომერი ამ შეტყობინებით არავის გადაცემია.',
+      );
+      await sendPushNotification(String(targetUserId), {
+        title: 'Netai — გაცნობა',
+        body: `${mediatorName}-მ გაგაცნო ${requester}-ს. გახსენი Netai.`,
+        url: `/chat/${thread.id}`,
+      }).catch(() => undefined);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[intro] target-side outcome failed for request ${req.id}:`,
+        (err as Error).message,
+      );
+    }
+  }
+
+  const requesterExtra = targetPhone
+    ? `\n\n${req.target_name}-ის ნომერი ${mediatorName}-ის წიგნაკიდან: ${targetPhone}. ` +
+      `მისწერე და უთხარი, რომ ${mediatorName}-მ გაგაცნოთ${targetUserId !== null ? ' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე' : ''}.`
+    : `\n\nნომერი ავტომატურად ვერ მოვძებნე — ${mediatorName}-ს პირდაპირ ჰკითხე ${req.target_name}-ის კონტაქტი, თანხმობა უკვე გაქვს.`;
+
+  const mediatorFollowUp = targetPhone
+    ? `მადლობა! ${requester}-ს გადავეცი ${req.target_name}-ის კონტაქტი${targetUserId !== null ? ` და ${req.target_name}-საც ვაცნობე` : ''}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`
+    : `მადლობა! ${requester}-ს ვაცნობე შენი თანხმობა. ${req.target_name}-ის კონტაქტი ვერ ვიპოვე შენს წიგნაკში — შესაძლოა ${requester}-მა პირდაპირ გთხოვოს.`;
+
+  return { requesterExtra, mediatorFollowUp };
 }
 
 /**
@@ -167,6 +319,7 @@ async function syncRequestThreads(
   req: RequestRow,
   action: IntroductionAction,
   response?: string,
+  outcome?: AcceptOutcome,
 ): Promise<void> {
   try {
     const threads = await getThreadsByIntroRequestId(req.id);
@@ -179,6 +332,15 @@ async function syncRequestThreads(
             requestRef: req.request_ref,
           });
         } else {
+          // The mediator sees what happened in their name (task 16).
+          if (outcome?.mediatorFollowUp) {
+            await saveThreadMessage(
+              thread.id,
+              thread.user_id,
+              'assistant',
+              outcome.mediatorFollowUp,
+            ).catch(() => undefined);
+          }
           await setThreadStatus(owner, thread.id, 'done', { requestRef: req.request_ref });
         }
       } else if (thread.type === 'outgoing_request' && action !== 'snooze') {
@@ -186,7 +348,7 @@ async function syncRequestThreads(
           thread.id,
           thread.user_id,
           'assistant',
-          outcomeMessage(req, action, response),
+          outcomeMessage(req, action, response) + (outcome?.requesterExtra ?? ''),
         ).catch(() => undefined);
         await setThreadStatus(owner, thread.id, 'needs_you', {
           statusLine: LINE_RESPONSE_ARRIVED,
@@ -279,6 +441,28 @@ export async function resolveIntroductionRequest(
     request_ref: req.request_ref,
   });
   await notifyRequester(req, action === 'accept');
-  await syncRequestThreads(req, action, opts.response);
+  // A mediated accept must PRODUCE the introduction (task 16); a direct
+  // accept's outcome is the target's own yes, already in outcomeMessage.
+  let outcome: AcceptOutcome | undefined;
+  if (action === 'accept' && req.mediator_user_id !== null) {
+    const mediatorName = await query<{ name: string | null }>(
+      'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
+      [req.mediator_user_id],
+    );
+    outcome = await deliverAcceptOutcome(
+      req,
+      mediatorName.rows[0]?.name?.trim() || 'შუამავალმა',
+    ).catch((err: unknown) => {
+      // The accept itself must never fail on outcome delivery — log and
+      // degrade to the plain acceptance message.
+      // eslint-disable-next-line no-console
+      console.error(
+        `[intro] outcome delivery failed for request ${req.id}:`,
+        (err as Error).message,
+      );
+      return undefined;
+    });
+  }
+  await syncRequestThreads(req, action, opts.response, outcome);
   return { ok: true, status: newStatus };
 }

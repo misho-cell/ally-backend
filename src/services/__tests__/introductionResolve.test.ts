@@ -15,13 +15,14 @@ jest.mock('../threads.service', () => ({
   __esModule: true,
   getThreadsByIntroRequestId: jest.fn().mockResolvedValue([]),
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
+  createThread: jest.fn().mockResolvedValue({ id: 77 }),
 }));
 
 import { query } from '../../db/postgres/client';
 import { sendPushNotification } from '../notification.service';
 import { recordProductEvent } from '../productEvents.service';
 import { setThreadStatus } from '../threadStatus.service';
-import { getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
+import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
 import { resolveIntroductionRequest } from '../introduction.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -31,12 +32,17 @@ const mockSetStatus = setThreadStatus as jest.MockedFunction<typeof setThreadSta
 const mockThreads = getThreadsByIntroRequestId as jest.MockedFunction<
   typeof getThreadsByIntroRequestId
 >;
+const mockCreateThread = createThread as jest.MockedFunction<typeof createThread>;
 
 const REQUEST_ROW = {
   id: 5,
   request_ref: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
   requester_user_id: 9,
+  mediator_user_id: 7,
   target_name: 'გიორგი',
+  target_user_id: null,
+  target_phone: null,
+  message: null,
   status: 'pending',
 };
 
@@ -45,7 +51,12 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 }
 
 // Route mocked query calls by SQL fragment so call order never matters.
-function setup(opts: { request?: Record<string, unknown> | null; updateCount?: number }): void {
+function setup(opts: {
+  request?: Record<string, unknown> | null;
+  updateCount?: number;
+  aliasPhones?: unknown[];
+  memberRows?: unknown[];
+}): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('UPDATE introduction_requests')) {
       const count = opts.updateCount ?? 1;
@@ -56,6 +67,12 @@ function setup(opts: { request?: Record<string, unknown> | null; updateCount?: n
       }
       return Promise.resolve(rows([], count) as never);
     }
+    if (sql.includes('FROM "UserAlias"'))
+      return Promise.resolve(rows(opts.aliasPhones ?? []) as never);
+    if (sql.includes('FROM "UserPhone"'))
+      return Promise.resolve(rows(opts.memberRows ?? []) as never);
+    if (sql.includes('SELECT name FROM "User"'))
+      return Promise.resolve(rows([{ name: 'ნინო კახიძე' }]) as never);
     return Promise.resolve(rows(opts.request ? [opts.request] : []) as never);
   });
 }
@@ -243,5 +260,63 @@ describe('resolveIntroductionRequest', () => {
       (c[0] as string).includes('snoozed_until = NOW()'),
     );
     expect(update?.[1]).toEqual([5, 30]);
+  });
+});
+
+describe('accept outcome (tasks 16/18)', () => {
+  const OUTGOING = { id: 12, user_id: 9, type: 'outgoing_request' };
+  const INCOMING = { id: 11, user_id: 7, type: 'incoming_request' };
+
+  it('a mediated accept hands the requester the contact and tells a registered target', async () => {
+    setup({
+      request: REQUEST_ROW,
+      aliasPhones: [{ phone: '+995555000005' }],
+      memberRows: [{ userId: 170750 }],
+    });
+    mockThreads.mockResolvedValue([INCOMING, OUTGOING] as never);
+
+    const out = await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', {
+      source: 'button',
+    });
+
+    expect(out.ok).toBe(true);
+    // The requester's thread carries a WAY TO TALK: the target's number.
+    const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
+    expect(requesterMsg?.[3]).toContain('+995555000005');
+    // The registered target got their own thread + push.
+    expect(mockCreateThread).toHaveBeenCalledWith('170750', 'regular', expect.any(String));
+    const targetMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 77);
+    expect(targetMsg?.[3]).toContain('ნინო კახიძე');
+    // The mediator sees what happened in their name.
+    const mediatorMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 11);
+    expect(mediatorMsg?.[3]).toContain('გადავეცი');
+  });
+
+  it('degrades honestly when no contact can be found — and never invents one', async () => {
+    setup({ request: REQUEST_ROW, aliasPhones: [], memberRows: [] });
+    mockThreads.mockResolvedValue([OUTGOING] as never);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', { source: 'button' });
+
+    const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
+    expect(requesterMsg?.[3]).toContain('ვერ მოვძებნე');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('a DIRECT accept reads "X agreed" and shares no contact (task 18)', async () => {
+    setup({
+      request: { ...REQUEST_ROW, mediator_user_id: null, target_user_id: 7 },
+    });
+    mockThreads.mockResolvedValue([OUTGOING] as never);
+
+    const out = await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', {
+      source: 'chat',
+    });
+
+    expect(out.ok).toBe(true);
+    const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
+    expect(requesterMsg?.[3]).toContain('დათანხმდა გაცნობას');
+    expect(requesterMsg?.[3]).not.toContain('+995');
+    expect(mockCreateThread).not.toHaveBeenCalled();
   });
 });

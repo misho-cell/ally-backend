@@ -22,6 +22,7 @@ import {
   getPendingRequestsForMediator,
   getPendingRequestById,
   getRecentResponsesForRequester,
+  getIntroStatusForRequester,
   PendingRequest,
   RespondedRequest,
 } from './introduction.service';
@@ -176,7 +177,10 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'request_introduction',
   description:
     "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list." +
-    ' WHEN: to ask a single mediator, only after they confirm.',
+    ' WHEN: to ask a single mediator, only after they confirm. DIRECT case: when the person the ' +
+    'user wants to meet is already their own contact AND a member, pass that person as BOTH ' +
+    'mediator_name and target_name — the request goes to them directly ("X wants to meet you"), ' +
+    'no third person involved.',
   input_schema: {
     type: 'object',
     properties: {
@@ -215,6 +219,20 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
     },
     required: ['mediator_name', 'target_name'],
   },
+};
+
+// Task 17: "did she reply?" must be answered from SYSTEM DATA, never from
+// loose thread text or memory — reachable in every owner-side mode including
+// the outgoing-request thread itself, where the question is actually asked.
+const GET_INTRO_STATUS_TOOL: AnthropicTool = {
+  name: 'get_intro_status',
+  description:
+    'The live status of every introduction the user has requested: pending ones and the last ' +
+    "week's answers (accepted/declined, who answered, their words, timestamps). WHEN: the user " +
+    'asks whether someone replied, what happened to an introduction, or what they are waiting ' +
+    'on. Answer FROM this result — never from thread text or memory: statuses change between ' +
+    'turns.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
@@ -1249,7 +1267,12 @@ function buildPendingRequestsSection(requests: PendingRequest[]): string {
     .map((r) => {
       const who = r.requester_name ?? 'Netai-ს მომხმარებელი';
       const msg = r.message ? ` შეტყობინება: "${r.message}"` : '';
-      return `- მოთხოვნა: ${who} გინდა გეცნოს ${r.target_name}-ს.${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
+      // Direct case (task 18): the reader IS the target — never phrase it as
+      // introducing them to themself.
+      const ask = r.direct
+        ? `${who}-ს ამ მომხმარებლის (ე.ი. შენი მფლობელის) გაცნობა უნდა — მფლობელი თავად წყვეტს.`
+        : `${who} ითხოვს, მფლობელმა გააცნოს ${r.target_name}-ს.`;
+      return `- მოთხოვნა: ${ask}${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
     .join('\n');
   return `\n\n## გაუხსნელი გაცნობის მოთხოვნები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს ახსენე]\n${lines}`;
@@ -1263,7 +1286,8 @@ function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
       // Another user wrote this free text — scrub it before it enters THIS
       // user's prompt (phone numbers etc. must not ride across accounts).
       const info = r.mediator_response ? ` ინფო: "${scrubText(r.mediator_response)}"` : '';
-      return `- ${r.target_name}: შუამავალი ${statusText}.${info}`;
+      const responder = r.mediator_name ?? 'შუამავალმა';
+      return `- ${r.target_name}: ${responder} ${statusText}.${info}`;
     })
     .join('\n');
   return `\n\n## გაცნობის მოთხოვნების პასუხები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს გაუზიარე]\n${lines}`;
@@ -1469,7 +1493,10 @@ async function buildAgentSystemPrompt(
     // code-enforced, not prompt-enforced.
     loadMemory ? getPrivateContext(userId) : Promise.resolve({} as Record<string, string>),
     resolvePendingRequests(userId, threadType, introRequestId),
-    threadType === 'incoming_request' || threadType === 'outgoing_request'
+    // The OUTGOING-request thread is exactly where "did she reply?" gets
+    // asked — starving it of response data forced the model to guess (task
+    // 17). Only the incoming side (another user's request) stays lean.
+    threadType === 'incoming_request'
       ? Promise.resolve([] as RespondedRequest[])
       : getRecentResponsesForRequester(userId),
     loadMemory ? getMyTasks(userId, 'open') : Promise.resolve([] as Task[]),
@@ -1715,6 +1742,8 @@ async function executeToolCall(
         input['accepted'] as boolean,
         input['response'] as string | undefined,
       );
+    case 'get_intro_status':
+      return { introductions: await getIntroStatusForRequester(userId) };
     case 'get_thread_context':
       return getThreadContext(userId);
     case 'save_contact_fact':
@@ -2664,6 +2693,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_OWN_CONTACT_NUMBER_TOOL,
     REQUEST_INTRODUCTION_TOOL,
     RESPOND_TO_INTRODUCTION_TOOL,
+    GET_INTRO_STATUS_TOOL,
     GET_THREAD_CONTEXT_TOOL,
     PRESENT_CHOICES_TOOL,
     SET_TASK_RESULT_TOOL,

@@ -120,6 +120,17 @@ export async function requestIntroduction(
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
   }
 
+  // DIRECT case (task 18): the "mediator" resolves to the TARGET themself —
+  // the user wants to meet a member they already hold. Live row #793 stored
+  // mediator = target and introduced a person to herself. A direct request
+  // stores NO mediator; the target answers it.
+  const normalizedDigits = (p: string): string => p.replace(/\D/g, '');
+  const isDirect =
+    (targetUserId !== undefined && Number(targetUserId) === mediatorUserId) ||
+    (targetPhone !== undefined &&
+      normalizedDigits(targetPhone) === normalizedDigits(resolvedPhone)) ||
+    mediatorName.trim().toLowerCase() === targetName.trim().toLowerCase();
+
   // Person-level opt-out covers EVERY path that puts a message on someone's
   // phone — ticket 4 PART B miss 1: an intro request reached an opted-out
   // recipient because only createAsk enforced the stop. Same rule, same
@@ -141,11 +152,18 @@ export async function requestIntroduction(
       ])
     ).rows.length > 0;
 
+  // For a direct request the ANSWERER is the target; the duplicate check and
+  // the insert both key on whoever will answer.
   const dupResult = await query<{ id: number }>(
-    `SELECT id FROM introduction_requests
-     WHERE requester_user_id = $1 AND mediator_user_id = $2 AND target_name = $3 AND status = 'pending'
-     LIMIT 1`,
-    [requesterUserId, mediatorUserId, targetName],
+    isDirect
+      ? `SELECT id FROM introduction_requests
+         WHERE requester_user_id = $1 AND mediator_user_id IS NULL AND target_user_id = $2
+           AND status = 'pending'
+         LIMIT 1`
+      : `SELECT id FROM introduction_requests
+         WHERE requester_user_id = $1 AND mediator_user_id = $2 AND target_name = $3 AND status = 'pending'
+         LIMIT 1`,
+    isDirect ? [requesterUserId, mediatorUserId] : [requesterUserId, mediatorUserId, targetName],
   );
 
   if (dupResult.rows.length > 0) {
@@ -161,15 +179,25 @@ export async function requestIntroduction(
          (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, request_ref`,
-      [
-        requesterUserId,
-        mediatorUserId,
-        targetName,
-        message ?? null,
-        targetUserId ?? null,
-        targetPhone ?? null,
-        askType,
-      ],
+      isDirect
+        ? [
+            requesterUserId,
+            null,
+            phoneResult.displayName ?? targetName,
+            message ?? null,
+            mediatorUserId,
+            resolvedPhone,
+            'direct',
+          ]
+        : [
+            requesterUserId,
+            mediatorUserId,
+            targetName,
+            message ?? null,
+            targetUserId ?? null,
+            targetPhone ?? null,
+            askType,
+          ],
     ),
     getRequesterName(requesterUserId),
   ]);
@@ -186,12 +214,14 @@ export async function requestIntroduction(
       requesterName,
       targetName,
       message ?? null,
+      isDirect,
     ),
     createOutgoingRequestThread(
       Number(requesterUserId),
       requestId,
       mediatorDisplayName,
       targetName,
+      isDirect,
     ),
   ]);
 
@@ -217,7 +247,9 @@ export async function requestIntroduction(
   if (hasPush) {
     await sendPushNotification(String(mediatorUserId), {
       title: 'Netai — გაცნობის მოთხოვნა',
-      body: `${requesterName} გინდა გეცნოს ${targetName}-ს. გახსენი Netai.`,
+      body: isDirect
+        ? `${requesterName}-ს შენი გაცნობა უნდა. გახსენი Netai.`
+        : `${requesterName} გთხოვს, გააცნო ${targetName}-ს. გახსენი Netai.`,
       url: '/chat',
     });
   }

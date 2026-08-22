@@ -383,8 +383,11 @@ export async function createIncomingRequestThread(
   requesterName: string,
   targetName: string,
   message: string | null,
+  // Direct case (task 18): the reader IS the target — "X wants to meet you",
+  // never "X wants you to introduce them to yourself" (live row #793).
+  direct = false,
 ): Promise<Thread> {
-  const title = `${requesterName} → ${targetName}`;
+  const title = direct ? `${requesterName} → შენ` : `${requesterName} → ${targetName}`;
   // The mediator must answer this request — the thread is born a task awaiting them.
   const thread = await createThread(
     String(mediatorUserId),
@@ -398,10 +401,13 @@ export async function createIncomingRequestThread(
     },
   );
 
-  const openingMessage =
-    `გამარჯობა! **${requesterName}**-ს გინდა გეცნოს **${targetName}**-ს Netai-ის მეშვეობით.` +
-    (message ? `\n\nმათი შეტყობინება: _"${message}"_` : '') +
-    `\n\nდაეხმარები? 🤝`;
+  const openingMessage = direct
+    ? `გამარჯობა! **${requesterName}**-ს შენი გაცნობა უნდა.` +
+      (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
+      `\n\nდათანხმდები?`
+    : `გამარჯობა! **${requesterName}** გთხოვს, გააცნო **${targetName}**-ს.` +
+      (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
+      `\n\nდაეხმარები? 🤝`;
 
   await saveThreadMessage(thread.id, mediatorUserId, 'assistant', openingMessage);
 
@@ -413,8 +419,9 @@ export async function createOutgoingRequestThread(
   introRequestId: number,
   mediatorName: string,
   targetName: string,
+  direct = false,
 ): Promise<Thread> {
-  const title = `${mediatorName} → ${targetName}`;
+  const title = direct ? `გაცნობა: ${targetName}` : `${mediatorName} → ${targetName}`;
   // The requester is waiting on the mediator — born a task in the waiting state.
   const thread = await createThread(
     String(requesterUserId),
@@ -428,9 +435,11 @@ export async function createOutgoingRequestThread(
     },
   );
 
-  const openingMessage =
-    `**${mediatorName}**-სთვის გაიგზავნა გაცნობის მოთხოვნა **${targetName}**-ზე.\n\n` +
-    `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
+  const openingMessage = direct
+    ? `**${targetName}**-ს გაეგზავნა შენი გაცნობის თხოვნა.\n\n` +
+      `Netai-ს გახსნისას ნახავს და გიპასუხებს. 😊`
+    : `**${mediatorName}**-სთვის გაიგზავნა გაცნობის მოთხოვნა **${targetName}**-ზე.\n\n` +
+      `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
 
   await saveThreadMessage(thread.id, requesterUserId, 'assistant', openingMessage);
 
