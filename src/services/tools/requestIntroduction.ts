@@ -91,6 +91,7 @@ export async function requestIntroduction(
   targetUserId?: number,
   targetPhone?: string,
   askType: IntroAskType = 'intro',
+  acceptDormant = false,
 ): Promise<object> {
   try {
     return await requestIntroductionInner(
@@ -102,6 +103,7 @@ export async function requestIntroduction(
       targetUserId,
       targetPhone,
       askType,
+      acceptDormant,
     );
   } catch (err) {
     // A thrown tool kills the whole model call ("model call failed mid-run —
@@ -122,6 +124,7 @@ async function requestIntroductionInner(
   targetUserId?: number,
   targetPhone?: string,
   askType: IntroAskType = 'intro',
+  acceptDormant = false,
 ): Promise<object> {
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
@@ -149,6 +152,27 @@ async function requestIntroductionInner(
 
   if (String(mediatorUserId) === requesterUserId) {
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
+  }
+
+  // Dormant-twin guard (task 54, founder's yes): an introduction must never
+  // be silently aimed at an account that has never been opened — the empty
+  // Salome twin would swallow it forever. The model may proceed only after
+  // the user explicitly accepts (acceptDormant), and must say so out loud.
+  if (!acceptDormant) {
+    const activity = await query<{ threads: string }>(
+      `SELECT COUNT(*) AS threads FROM threads t WHERE t.user_id = $1`,
+      [mediatorUserId],
+    );
+    if (Number(activity.rows[0]?.threads ?? 0) === 0) {
+      return {
+        success: false,
+        reason: 'dormant_account',
+        error:
+          `${mediatorName} Netai-ზე რეგისტრირებულია, მაგრამ აპლიკაცია ჯერ არასდროს გაუხსნია — ` +
+          'მოთხოვნას ვერ ნახავს, სანამ არ შემოვა. უთხარი ეს მომხმარებელს და ჰკითხე, მაინც ' +
+          'გავგზავნო თუ სხვა გზა ვცადოთ; დასტურზე გაიმეორე accept_dormant=true-თი.',
+      };
+    }
   }
 
   // The model's target_user_id is UNTRUSTED — search results carry no user

@@ -218,6 +218,13 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
         description:
           'What to ask the mediator: "intro" (a warm introduction) or "share_contact" (share the target\'s contact — for a target not on Ally). Ask the user which before sending; defaults to "intro".',
       },
+      accept_dormant: {
+        type: 'boolean',
+        description:
+          'A refusal with reason "dormant_account" means the recipient has never opened the ' +
+          'app — tell the user honestly and ask whether to send anyway. Pass true ONLY after ' +
+          'they explicitly say yes.',
+      },
     },
     required: ['mediator_name', 'target_name'],
   },
@@ -1774,6 +1781,7 @@ async function executeToolCall(
         input['target_user_id'] as number | undefined,
         input['target_phone'] as string | undefined,
         input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
+        input['accept_dormant'] === true,
       );
     case 'respond_to_introduction':
       return respondToIntroduction(

@@ -230,7 +230,29 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
               COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
               COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
-              r.warmth                                                         AS warmth
+              -- via_warmth v2 (task 55, founder pulled it forward): the flat
+              -- 0.4 was the unscored-edge baseline. Real signals now blend in,
+              -- computed only for the LIMITed page: the bridge's relationship
+              -- score, how much the bridge actually SAVED about the target
+              -- (tags), whether they submitted facts, and — the strongest —
+              -- whether an ask between them was ever ANSWERED.
+              MAX(LEAST(0.95, GREATEST(
+                COALESCE(r.warmth, 0.3),
+                0.3
+                + 0.05 * LEAST((SELECT COUNT(*) FROM "UserTags" t2
+                                WHERE t2."contactId" = fu."userId" AND t2.phone = r.phone), 4)
+                + CASE WHEN EXISTS (SELECT 1 FROM contact_facts cf2
+                                    WHERE cf2.submitted_by_user_id = fu."userId"::text
+                                      AND cf2.neo4j_contact_id = r.phone
+                                      AND cf2.retracted_at IS NULL)
+                       THEN 0.1 ELSE 0 END
+                + CASE WHEN up_t."userId" IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM task_asks ta
+                        WHERE ta.status = 'answered'
+                          AND ((ta.from_user_id = fu."userId"::text AND ta.to_user_id = up_t."userId")
+                            OR (ta.from_user_id = up_t."userId"::text AND ta.to_user_id = fu."userId")))
+                       THEN 0.2 ELSE 0 END
+              )))                                                              AS warmth
        FROM ranked r
        JOIN matches m               ON m.phone     = r.phone
        JOIN friend_users fu         ON fu."userId" = m."contactId"

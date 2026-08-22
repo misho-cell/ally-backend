@@ -44,7 +44,7 @@ import {
 } from '../../services/sse.service';
 import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
-import { RUN_STRINGS } from '../../services/runLanguage';
+import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -321,8 +321,12 @@ threadsRouter.post(
       }
 
       // The run is in flight — every device's chat list shows "working" from
-      // the server-held state (no more client-local status guessing).
-      void setThreadStatus(userId, threadId, 'working');
+      // the server-held state (no more client-local status guessing). The
+      // caption follows the message's language (22(h)'s in-progress half: an
+      // English thread read „ვმუშაობ…" for the whole run, tester 22 Aug).
+      void setThreadStatus(userId, threadId, 'working', {
+        statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.working,
+      });
 
       // Hard outer timeout: the run's own budget (~90s) normally forces a final
       // answer, but a truly stuck call (a hung external dependency the inner

@@ -213,23 +213,95 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       fetchRelationshipForPhones(userId, phones),
       fetchExclusionsForPhones(userId, phones),
     ]);
+    const mapped = rows.map((row) =>
+      toRow(
+        row,
+        facts,
+        members,
+        relationships,
+        exclusions,
+        Number(row.word_hits ?? rawGroups.length) < rawGroups.length,
+      ),
+    );
+    // Task 27's ranking half: within the page, the record that actually KNOWS
+    // something (facts, role, membership) outranks an empty shell — the empty
+    // twin used to sit above the real Salome.
+    const richness = (r: Record<string, unknown>): number =>
+      (r.employer ? 1 : 0) +
+      (r.jobPosition ? 1 : 0) +
+      (r.city ? 1 : 0) +
+      (r.is_member === true ? 1 : 0) +
+      (r.relationship ? 1 : 0);
+    mapped.sort((a, b) => richness(b) - richness(a));
+    // Task 54: two member rows under ONE name must be tellable apart — attach
+    // member_since / network_size / activity to every row in a duplicated name
+    // group, so neither the user nor the assistant aims at the wrong twin.
+    await attachDuplicateDifferentiators(mapped, members);
     return {
       found: true,
-      count: rows.length,
+      count: mapped.length,
       total,
-      results: rows.map((row) =>
-        toRow(
-          row,
-          facts,
-          members,
-          relationships,
-          exclusions,
-          Number(row.word_hits ?? rawGroups.length) < rawGroups.length,
-        ),
-      ),
+      results: mapped,
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);
     return { found: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * For every group of 2+ MEMBER rows sharing a display name, attach what tells
+ * them apart: registration date, how many contacts their own phonebook holds,
+ * and whether the account has ever been used (dormant = zero threads). One
+ * query, only over the duplicated phones (ticket 6 task 54, founder's yes).
+ */
+async function attachDuplicateDifferentiators(
+  mapped: Array<Record<string, unknown>>,
+  members: Set<string>,
+): Promise<void> {
+  const byName = new Map<string, Array<Record<string, unknown>>>();
+  for (const r of mapped) {
+    if (!isMemberPhone(members, String(r.phone))) continue;
+    const key = String(r.name ?? '')
+      .trim()
+      .toLowerCase();
+    if (!key) continue;
+    const group = byName.get(key) ?? [];
+    group.push(r);
+    byName.set(key, group);
+  }
+  const duplicated = [...byName.values()].filter((g) => g.length > 1).flat();
+  if (duplicated.length === 0) return;
+  try {
+    const dupPhones = duplicated.map((r) => String(r.phone));
+    const info = await query<{
+      phone: string;
+      member_since: string;
+      network_size: string;
+      threads_count: string;
+    }>(
+      `SELECT up.phone,
+              u."createdAt" AS member_since,
+              (SELECT COUNT(*) FROM "UserAlias" ua WHERE ua."contactId" = u.id) AS network_size,
+              (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id) AS threads_count
+       FROM "UserPhone" up
+       JOIN "User" u ON u.id = up."userId"
+       WHERE up.phone = ANY($1) AND u."deletedAt" IS NULL`,
+      [dupPhones],
+    );
+    const byPhone = new Map(info.rows.map((r) => [r.phone, r]));
+    for (const r of duplicated) {
+      const d = byPhone.get(String(r.phone));
+      if (!d) continue;
+      r.duplicate_name = true;
+      r.member_since = d.member_since;
+      r.network_size = Number(d.network_size);
+      // A dormant twin is exactly the account an introduction must not be
+      // silently aimed at (answer 7's problem, both doors now covered).
+      r.activity = Number(d.threads_count) > 0 ? 'active' : 'dormant';
+    }
+  } catch (err) {
+    // Differentiators are best-effort — a failure must not break the search.
+    console.error('duplicate differentiators failed:', (err as Error).message);
   }
 }
