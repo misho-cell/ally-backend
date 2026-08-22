@@ -226,4 +226,24 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
 
     expect(out).toEqual({ found: false });
   });
+
+  it('a language with no prompt text is excluded in SQL, not silently rendered in Georgian', async () => {
+    // FLAT_SINGLE_ROW has prompt_es: null. Asking in Spanish must filter it
+    // out at the query level — the founder's ruling: skip, never substitute.
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM question_bank qb')) {
+        expect(sql).toContain("$4 = 'ka'");
+        expect(params).toEqual(['7', 'any', null, 'es']);
+        // The mock stands in for the DB's own filter: a real Postgres would
+        // have excluded FLAT_SINGLE_ROW here since prompt_es IS NULL.
+        return Promise.resolve(rows([]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await getNextQuestion('7', 'any', 'es');
+
+    expect(out).toEqual({ found: false });
+  });
 });

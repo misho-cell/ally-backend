@@ -40,6 +40,11 @@ interface BankRow {
   goal_bound: boolean;
 }
 
+// The SQL in getNextQuestion already excludes any row missing prompt text in
+// the requested language (skip, never fall back to Georgian — the founder's
+// ruling), so by the time a row reaches here the requested language's column
+// is guaranteed present for es/en, and prompt_ka (required, NOT NULL) always
+// is for ka.
 function promptFor(row: BankRow, lang: string): string {
   if (lang === 'es' && row.prompt_es) return row.prompt_es;
   if (lang === 'en' && row.prompt_en) return row.prompt_en;
@@ -92,6 +97,10 @@ export async function getNextQuestion(
      WHERE qb.active
        AND (qb.surface = $2 OR (qb.surface = 'any' AND $2 != 'after_rejection'))
        AND ($2 = 'after_rejection' OR qb.surface != 'after_rejection')
+       -- a language with no prompt text for this row is SKIPPED, never
+       -- silently rendered in Georgian instead (founder's ruling)
+       AND ($4 = 'ka' OR ($4 = 'es' AND qb.prompt_es IS NOT NULL AND trim(qb.prompt_es) != '')
+                       OR ($4 = 'en' AND qb.prompt_en IS NOT NULL AND trim(qb.prompt_en) != ''))
        AND NOT EXISTS (
          SELECT 1 FROM answer_events ae
          WHERE ae.user_id = $1 AND ae.question_id = qb.question_id AND ae.is_current
@@ -99,7 +108,7 @@ export async function getNextQuestion(
        )
      ORDER BY (qb.category = $3) ASC, qb.question_id
      LIMIT 5`,
-    [userId, surface, avoidCategory],
+    [userId, surface, avoidCategory, lang],
     PARTH_TIMEOUT_MS,
   );
   if (candidates.rows.length === 0) return { found: false };
