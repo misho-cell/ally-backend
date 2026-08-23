@@ -166,6 +166,25 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
       'contact. The USER sends the text themselves — Netai never messages non-members.',
   },
+  get_profile_question: {
+    title: 'Get a personalization question',
+    description:
+      'A short personalization question to ask ONLY at a moment that genuinely fits — drafting ' +
+      'a message, prepping for a meeting, wrapping up a weekly check-in, or right after someone ' +
+      "declines an introduction. Phrase it naturally in the conversation, in the user's " +
+      'language; never as a form, never back-to-back with another one. If found is false, say ' +
+      'nothing and continue normally. When the user answers, call answer_profile_question with ' +
+      'the SAME question_id. WHEN: sparingly, only when the moment actually fits — never mid-' +
+      'task, never because a slot happens to be free.',
+  },
+  answer_profile_question: {
+    title: 'Answer a personalization question',
+    description:
+      "Record the user's answer to a question you asked via get_profile_question, in the same " +
+      'question_id. Pass the option id(s) they picked, or free_text for an open/"other" ' +
+      'answer, or skipped=true if they waved it off. Never call this for a question you did not ' +
+      'just ask.',
+  },
   save_contact_fact: {
     title: 'Remember a fact about a contact',
     description:
@@ -405,6 +424,14 @@ export const PARAM_TEXTS = {
   contactRef:
     'The stable id from a search result. Never invent it — always take it from a prior search.',
   inviteLanguage: "Invite text language: ka | en | ru | es (the conversation's language).",
+  profileQuestionMoment:
+    'What is happening right now: meeting_prep | message_draft | weekly_review | ' +
+    'after_rejection | any. Pick the one that matches, or any if none does.',
+  profileQuestionLanguage: "The conversation's language: ka | en | es.",
+  profileQuestionId: 'question_id from get_profile_question.',
+  profileOptionIds: 'The option id(s) the user picked.',
+  profileFreeText: 'Open text, for an "other" answer.',
+  profileSkipped: 'true if the user did not want to answer.',
   removeConfirmed:
     'true ONLY when the user explicitly confirmed removing this exact person. Without true ' +
     'nothing is deleted — call again after they confirm.',

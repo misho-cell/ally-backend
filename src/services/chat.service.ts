@@ -15,6 +15,7 @@ import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
+import { getNextQuestion, recordAnswer } from './partH.service';
 import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
@@ -1127,6 +1128,50 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       required: ['query'],
     },
   },
+  // Part H (ticket 6, task 3 — the founder's own ruling): personalization
+  // questions belong IN CHAT, at the moment each one fits, never on a
+  // settings-style screen. `onboarding` questions are deliberately not a
+  // valid `moment` here — those 7 rows go into sign-up only.
+  get_profile_question: {
+    name: 'get_profile_question',
+    description:
+      "A short personalization question that helps Netai understand the user better, to ask ONLY at a moment that genuinely fits — drafting a message, prepping for a meeting, wrapping up a weekly check-in, or right after someone declines an introduction. Phrase it naturally in the conversation, in the user's language; never as a form, never back-to-back with another one. If found is false, say nothing and continue normally — there is nothing to ask right now. When the user answers, call answer_profile_question with the SAME question_id." +
+      ' WHEN: sparingly, at most once per few messages, only when the moment actually fits — never mid-task, never because a slot happens to be free.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        moment: {
+          type: 'string',
+          description:
+            'What is happening right now: meeting_prep | message_draft | weekly_review | after_rejection | any. Pick the one that matches, or any if none does.',
+        },
+        language: {
+          type: 'string',
+          description: "The conversation's language: ka | en | es.",
+        },
+      },
+      required: [],
+    },
+  },
+  answer_profile_question: {
+    name: 'answer_profile_question',
+    description:
+      'Record the user\'s answer to a question you asked via get_profile_question, in the same question_id. Pass the option id(s) they picked (from that question\'s options), or free_text for an open/"other" answer, or skipped: true if they waved it off. Never call this for a question you did not just ask.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        question_id: { type: 'string', description: 'question_id from get_profile_question.' },
+        option_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'The option id(s) the user picked.',
+        },
+        free_text: { type: 'string', description: 'Open text, for an "other" answer.' },
+        skipped: { type: 'boolean', description: 'true if the user did not want to answer.' },
+      },
+      required: ['question_id'],
+    },
+  },
 };
 
 function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicTool {
@@ -2061,6 +2106,29 @@ async function executeToolCall(
       const updates = await getPendingUpdates(userId);
       const morePending = await countHeldUpdates(userId);
       return { updates, more_pending: morePending };
+    }
+    case 'get_profile_question': {
+      // onboarding rows are reserved for sign-up (the founder's ruling,
+      // ticket 6 task 3) — the tool description asks the model to never
+      // pass this, but a schema description is not enforcement, so a
+      // literal 'onboarding' moment is remapped here rather than trusted.
+      const requestedMoment = String(input['moment'] ?? 'any');
+      const moment = requestedMoment === 'onboarding' ? 'any' : requestedMoment;
+      const language = String(input['language'] ?? 'ka');
+      return getNextQuestion(userId, moment, language);
+    }
+    case 'answer_profile_question': {
+      const questionId = String(input['question_id'] ?? '').trim();
+      if (!questionId) return { recorded: false, error: 'Pass question_id.' };
+      const optionIds = Array.isArray(input['option_ids'])
+        ? (input['option_ids'] as unknown[]).map(String)
+        : [];
+      return recordAnswer(userId, {
+        questionId,
+        optionIds,
+        freeText: typeof input['free_text'] === 'string' ? input['free_text'] : undefined,
+        skipped: input['skipped'] === true,
+      });
     }
     case 'get_top_connectors':
       return getTopConnectors(userId, input['limit'] as number | undefined);

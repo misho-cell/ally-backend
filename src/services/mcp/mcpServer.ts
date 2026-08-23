@@ -40,6 +40,8 @@ import {
   mcpGetUserNotes,
   mcpQueueResult,
   mcpGetPendingUpdates,
+  mcpGetProfileQuestion,
+  mcpAnswerProfileQuestion,
   McpToolPayload,
 } from './handlers';
 import {
@@ -232,6 +234,42 @@ function registerIntroTools(server: McpServer, userId: string): void {
 // Private, reversible writes (facts, blocks) — not destructive in the
 // third-party sense, so no forced confirmation like request_introduction.
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+
+// Part H (ticket 6 task 3): the same chat-embedded personalization
+// questions, on the connector too — the registryParity test covers this
+// pair so it can't drift the way invite_contact/get_intro_status/
+// remove_contact_from_network once did.
+function registerProfileQuestionTools(server: McpServer, userId: string): void {
+  server.registerTool(
+    'get_profile_question',
+    {
+      title: TOOL_TEXTS.get_profile_question.title,
+      description: TOOL_TEXTS.get_profile_question.description,
+      inputSchema: {
+        moment: z.string().optional().describe(PARAM_TEXTS.profileQuestionMoment),
+        language: z.string().optional().describe(PARAM_TEXTS.profileQuestionLanguage),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_profile_question', () => mcpGetProfileQuestion(userId, args)),
+  );
+  server.registerTool(
+    'answer_profile_question',
+    {
+      title: TOOL_TEXTS.answer_profile_question.title,
+      description: TOOL_TEXTS.answer_profile_question.description,
+      inputSchema: {
+        question_id: z.string().describe(PARAM_TEXTS.profileQuestionId),
+        option_ids: z.array(z.string()).optional().describe(PARAM_TEXTS.profileOptionIds),
+        free_text: z.string().optional().describe(PARAM_TEXTS.profileFreeText),
+        skipped: z.boolean().optional().describe(PARAM_TEXTS.profileSkipped),
+      },
+      annotations: WRITE,
+    },
+    (args) =>
+      runTool(userId, 'answer_profile_question', () => mcpAnswerProfileQuestion(userId, args)),
+  );
+}
 
 function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
@@ -663,6 +701,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerSearchTools(server, userId);
   registerProfileTools(server, userId);
   registerIntroTools(server, userId);
+  registerProfileQuestionTools(server, userId);
   registerMemoryAndBlockTools(server, userId);
   registerGraphTools(server, userId);
   registerGoalTools(server, userId);

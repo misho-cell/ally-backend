@@ -15,6 +15,7 @@ import * as path from 'path';
 // tool is meant to work from both the in-app chat and the MCP connector.
 const REQUIRED_ON_BOTH: readonly string[] = [
   'allow_contacting_me',
+  'answer_profile_question',
   'ask_contact',
   'block_contact',
   'create_task',
@@ -27,6 +28,7 @@ const REQUIRED_ON_BOTH: readonly string[] = [
   'get_my_tasks',
   'get_netai_info',
   'get_pending_updates',
+  'get_profile_question',
   'get_top_connectors',
   'get_user_notes',
   'grant_task_permission',

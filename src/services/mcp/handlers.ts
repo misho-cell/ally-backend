@@ -44,6 +44,7 @@ import {
   getIntroStatusForRequester,
 } from '../introduction.service';
 import { removeContactFromNetwork } from '../tools/removeContactFromNetwork';
+import { getNextQuestion, recordAnswer } from '../partH.service';
 import { isReplySafe } from '../moderation.service';
 import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
@@ -436,6 +437,32 @@ export async function mcpInviteContact(
   const langRaw = String(args.language ?? 'ka');
   const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
   return (await inviteContact(userId, phone, lang)) as unknown as McpToolPayload;
+}
+
+// onboarding rows are reserved for sign-up (ticket 6 task 3, the founder's
+// ruling) — same guard as the chat-tool case, not just prompt wording.
+export async function mcpGetProfileQuestion(
+  userId: string,
+  args: { moment?: string; language?: string },
+): Promise<McpToolPayload> {
+  const requestedMoment = String(args.moment ?? 'any');
+  const moment = requestedMoment === 'onboarding' ? 'any' : requestedMoment;
+  const language = String(args.language ?? 'ka');
+  return (await getNextQuestion(userId, moment, language)) as unknown as McpToolPayload;
+}
+
+export async function mcpAnswerProfileQuestion(
+  userId: string,
+  args: { question_id: string; option_ids?: string[]; free_text?: string; skipped?: boolean },
+): Promise<McpToolPayload> {
+  const questionId = String(args.question_id ?? '').trim();
+  if (!questionId) return { recorded: false, error: 'Pass question_id.' };
+  return (await recordAnswer(userId, {
+    questionId,
+    optionIds: Array.isArray(args.option_ids) ? args.option_ids.map(String) : [],
+    freeText: typeof args.free_text === 'string' ? args.free_text : undefined,
+    skipped: args.skipped === true,
+  })) as unknown as McpToolPayload;
 }
 
 export async function mcpSaveContactFact(
