@@ -1010,9 +1010,12 @@ adminRouter.get('/question-bank', async (_req: Request, res: Response) => {
               select_max, goal_bound, scoring_note, active, updated_at
        FROM question_bank ORDER BY question_id`,
     );
-    res
-      .status(200)
-      .json({ success: true, data: { count: result.rowCount ?? 0, rows: result.rows } });
+    // `data` is the bare row array — same shape as GET /admin/netai-info,
+    // which this editor page's UI was built against. The nested
+    // { count, rows } shape this endpoint shipped with first is why the
+    // page rendered "no questions found" while the request itself
+    // succeeded with all 43 rows.
+    res.status(200).json({ success: true, data: result.rows });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin question-bank list]', error);
@@ -1115,11 +1118,39 @@ adminRouter.post('/question-bank', async (req: Request, res: Response) => {
 });
 
 // Single-question editor, the netai-info page's exact shape (task 25 build
-// list item 2): GET the list, open one, PATCH what changed, save. Every
-// column is COALESCE(new, existing) so a partial body only touches what the
-// admin page actually sent — no full-row resend required, and no risk of a
-// stray field silently resetting select_mode/goal_bound to their defaults
-// the way the bulk POST above did before this change.
+// list item 2): GET the list, open one, PATCH what changed, save.
+//
+// Only a column whose key is actually PRESENT in the request body is
+// touched — omitted keys leave their column alone, and a key sent as
+// `null` clears it. This used to be COALESCE($n, column), which collapses
+// "not sent" and "sent as null" into the same no-op: a save meant to clear
+// a field (e.g. immediate_use_ka) silently kept the old value and still
+// returned 200. Column names below come only from this fixed whitelist,
+// never from the request body, so they're safe to interpolate; every
+// value stays parameterized.
+const QUESTION_BANK_EDITABLE_COLUMNS = [
+  'category',
+  'surface',
+  'prompt_ka',
+  'prompt_es',
+  'prompt_en',
+  'options',
+  'signals',
+  'score_vector',
+  'immediate_use',
+  'immediate_use_ka',
+  'immediate_use_es',
+  'storage_level',
+  'follow_up_rule',
+  'select_mode',
+  'select_max',
+  'goal_bound',
+  'scoring_note',
+  'active',
+] as const;
+
+const QUESTION_BANK_JSON_COLUMNS = new Set<string>(['options', 'score_vector']);
+
 adminRouter.put('/question-bank/:question_id', async (req: Request, res: Response) => {
   try {
     const questionId = String(req.params.question_id ?? '').trim();
@@ -1127,51 +1158,25 @@ adminRouter.put('/question-bank/:question_id', async (req: Request, res: Respons
       res.status(400).json({ success: false, error: 'question_id აუცილებელია' });
       return;
     }
-    const b = req.body as Partial<QuestionRow>;
+    const body = req.body as Record<string, unknown>;
+    const setClauses: string[] = [];
+    const params: unknown[] = [questionId];
+    for (const column of QUESTION_BANK_EDITABLE_COLUMNS) {
+      if (!Object.prototype.hasOwnProperty.call(body, column)) continue;
+      const raw = body[column];
+      const isJsonColumn = QUESTION_BANK_JSON_COLUMNS.has(column);
+      params.push(isJsonColumn && raw !== null ? JSON.stringify(raw) : raw);
+      setClauses.push(`${column} = $${params.length}${isJsonColumn ? '::jsonb' : ''}`);
+    }
+    if (setClauses.length === 0) {
+      res.status(400).json({ success: false, error: 'შესაცვლელი ველი არ გამოგზავნილა' });
+      return;
+    }
     const result = await query<{ question_id: string; updated_at: string }>(
-      `UPDATE question_bank SET
-         category       = COALESCE($2, category),
-         surface        = COALESCE($3, surface),
-         prompt_ka      = COALESCE($4, prompt_ka),
-         prompt_es      = COALESCE($5, prompt_es),
-         prompt_en      = COALESCE($6, prompt_en),
-         options        = COALESCE($7::jsonb, options),
-         signals        = COALESCE($8, signals),
-         score_vector   = COALESCE($9::jsonb, score_vector),
-         immediate_use  = COALESCE($10, immediate_use),
-         immediate_use_ka = COALESCE($11, immediate_use_ka),
-         immediate_use_es = COALESCE($12, immediate_use_es),
-         storage_level  = COALESCE($13, storage_level),
-         follow_up_rule = COALESCE($14, follow_up_rule),
-         select_mode    = COALESCE($15, select_mode),
-         select_max     = COALESCE($16, select_max),
-         goal_bound     = COALESCE($17, goal_bound),
-         scoring_note   = COALESCE($18, scoring_note),
-         active         = COALESCE($19, active),
-         updated_at     = NOW()
+      `UPDATE question_bank SET ${setClauses.join(', ')}, updated_at = NOW()
        WHERE question_id = $1
        RETURNING question_id, updated_at`,
-      [
-        questionId,
-        b.category ?? null,
-        b.surface ?? null,
-        b.prompt_ka ?? null,
-        b.prompt_es ?? null,
-        b.prompt_en ?? null,
-        b.options === undefined ? null : JSON.stringify(b.options),
-        b.signals ?? null,
-        b.score_vector === undefined ? null : JSON.stringify(b.score_vector),
-        b.immediate_use ?? null,
-        b.immediate_use_ka ?? null,
-        b.immediate_use_es ?? null,
-        b.storage_level ?? null,
-        b.follow_up_rule ?? null,
-        b.select_mode ?? null,
-        b.select_max ?? null,
-        b.goal_bound ?? null,
-        b.scoring_note ?? null,
-        b.active ?? null,
-      ],
+      params,
     );
     if (result.rowCount === 0) {
       res.status(404).json({ success: false, error: 'ეს question_id არ არსებობს' });
