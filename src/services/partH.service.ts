@@ -255,11 +255,17 @@ export async function recordAnswer(userId: string, input: AnswerInput): Promise<
       ],
     );
     for (const [dimension, delta] of Object.entries(deltas)) {
+      // Postgres can't infer LEAST/GREATEST's argument type from context
+      // here (nothing else in the expression ties $3/$4/$5 to a column) and
+      // falls back to text, which then fails to assign into the real
+      // `value` column ("column is of type real but expression is of type
+      // text") — caught live, never by the mocked test suite. Explicit
+      // ::real casts remove the ambiguity.
       await client.query(
         `INSERT INTO profile_dimensions (user_id, dimension, value, updated_at)
-         VALUES ($1, $2, LEAST($4, GREATEST($5, $3)), NOW())
+         VALUES ($1, $2, LEAST($4::real, GREATEST($5::real, $3::real)), NOW())
          ON CONFLICT (user_id, dimension)
-         DO UPDATE SET value = LEAST($4, GREATEST($5, profile_dimensions.value + $3)),
+         DO UPDATE SET value = LEAST($4::real, GREATEST($5::real, profile_dimensions.value + $3::real)),
                        updated_at = NOW()`,
         [userId, dimension, delta, DIMENSION_MAX, DIMENSION_MIN],
       );
