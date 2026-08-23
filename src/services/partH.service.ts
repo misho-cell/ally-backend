@@ -51,6 +51,20 @@ function promptFor(row: BankRow, lang: string): string {
   return row.prompt_ka;
 }
 
+// A blank string counts as missing here, the same as null — an admin
+// clearing a language column through the PUT editor (task 2, 23 Aug)
+// writes '' rather than null (that's the fix: null there means "don't
+// touch this field"), and `??` alone does not fall through on ''. Without
+// this, a cleared immediate_use_ka rendered as an empty string instead of
+// falling back to English/the base column, live-caught on
+// col_avoid_intro_704 right after that exact test.
+function firstNonBlank(...values: (string | null)[]): string | null {
+  for (const v of values) {
+    if (v !== null && v.trim() !== '') return v;
+  }
+  return null;
+}
+
 // The real bank (24 Aug load) writes its payoff line into the base
 // `immediate_use` column only — immediate_use_ka/es/en are the FUTURE
 // per-language columns and are NULL on every row today (English-only by the
@@ -58,11 +72,15 @@ function promptFor(row: BankRow, lang: string): string {
 // last in every chain — without it every language would render nothing.
 function immediateUseFor(row: BankRow, lang: string): string | null {
   if (lang === 'es')
-    return (
-      row.immediate_use_es ?? row.immediate_use_en ?? row.immediate_use_ka ?? row.immediate_use
+    return firstNonBlank(
+      row.immediate_use_es,
+      row.immediate_use_en,
+      row.immediate_use_ka,
+      row.immediate_use,
     );
-  if (lang === 'en') return row.immediate_use_en ?? row.immediate_use_ka ?? row.immediate_use;
-  return row.immediate_use_ka ?? row.immediate_use_en ?? row.immediate_use;
+  if (lang === 'en')
+    return firstNonBlank(row.immediate_use_en, row.immediate_use_ka, row.immediate_use);
+  return firstNonBlank(row.immediate_use_ka, row.immediate_use_en, row.immediate_use);
 }
 
 /**

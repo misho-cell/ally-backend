@@ -219,6 +219,26 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     }
   });
 
+  it("a cleared immediate_use_ka ('', not null — the PUT editor's clear semantics) still falls back, live-caught on col_avoid_intro_704", async () => {
+    const clearedRow = { ...FLAT_SINGLE_ROW, immediate_use_ka: '' };
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM question_bank qb'))
+        return Promise.resolve(rows([clearedRow]) as never);
+      if (sql.includes('FROM tasks')) return Promise.resolve(rows([{ title: 'x' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await getNextQuestion('7', 'any', 'ka');
+
+    expect(out.found).toBe(true);
+    if (out.found) {
+      expect(out.question.immediate_use).toBe(
+        "This week's shortlist tilts toward that kind of person.",
+      );
+    }
+  });
+
   it('empty bank returns found:false, never a 500', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
