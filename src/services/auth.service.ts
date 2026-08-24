@@ -5,6 +5,7 @@ import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
+import { runWelcomeStudy } from './welcomeStudy.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { AuthPayload } from '../types';
 import { normalizePhone } from './phone';
@@ -323,6 +324,12 @@ export async function registerUser(
     }
 
     await createUserPhoneNode(cleanPhone);
+
+    // Engine T13: fire-and-forget, never blocks the registration response.
+    void runWelcomeStudy(String(userId), name, cleanPhone).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[welcome-study] user ${userId} failed to start:`, (err as Error).message),
+    );
 
     const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, {
       expiresIn: '30d',
