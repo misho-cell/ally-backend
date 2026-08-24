@@ -13,6 +13,7 @@ import {
   recordAnswer,
 } from '../../services/partH.service';
 import { ApiResponse } from '../../types';
+import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 
 interface ProfileData {
   readonly name: string;
@@ -307,6 +308,34 @@ profileRouter.post(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[POST /profile/feedback]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Engine T4: "your people are here" — during sign-up, right after contact
+// permission and BEFORE the full structured import, the registration
+// screen checks which phones already belong to a member. No subscription
+// gate (unlike /contacts/*) — a brand-new account has not chosen one yet.
+profileRouter.post(
+  '/match-existing-contacts',
+  authenticateJwt,
+  requireUserRole,
+  body('phones').isArray({ min: 1, max: 5000 }).withMessage('phones must be an array'),
+  body('phones.*').isString(),
+  async (req: Request, res: Response<ApiResponse<{ matches: ExistingContactMatch[] }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'phones must be a non-empty array' });
+      return;
+    }
+    try {
+      const { phones } = req.body as { phones: string[] };
+      const matches = await matchExistingContacts(phones);
+      res.status(200).json({ success: true, data: { matches } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /profile/match-existing-contacts]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

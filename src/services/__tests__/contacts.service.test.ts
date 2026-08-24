@@ -12,7 +12,13 @@ jest.mock('../../db/neo4j/client', () => ({
 import { query as _query, withTransaction as _withTransaction } from '../../db/postgres/client';
 import pool from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
-import { getUserPhone, importContacts, parseVcf, createUserPhoneNode } from '../contacts.service';
+import {
+  getUserPhone,
+  importContacts,
+  parseVcf,
+  createUserPhoneNode,
+  matchExistingContacts,
+} from '../contacts.service';
 
 const mockPoolQuery = pool.query as jest.Mock;
 const mockNamedQuery = _query as jest.Mock;
@@ -56,6 +62,37 @@ describe('getUserPhone', () => {
     mockPoolQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     await expect(getUserPhone('99')).rejects.toThrow('User phone not found');
+  });
+});
+
+describe('matchExistingContacts (engine T4)', () => {
+  it('returns [] without querying for an empty or unparseable phone list', async () => {
+    const out = await matchExistingContacts(['not-a-phone', '']);
+
+    expect(out).toEqual([]);
+    expect(mockPoolQuery).not.toHaveBeenCalled();
+  });
+
+  it('normalizes each phone the same way registration does, and returns matched names', async () => {
+    mockPoolQuery.mockResolvedValueOnce({
+      rows: [{ name: 'Salome' }, { name: 'Gia' }],
+      rowCount: 2,
+    });
+
+    const out = await matchExistingContacts(['+995 599 11 22 33', '0599112244']);
+
+    expect(out).toEqual([{ name: 'Salome' }, { name: 'Gia' }]);
+    const [sql, params] = mockPoolQuery.mock.calls[0];
+    expect(sql).toContain('"deletedAt" IS NULL');
+    expect(params[0]).toEqual(['+995599112233', '+995599112244']);
+  });
+
+  it('drops a match whose name column is null rather than showing an empty name', async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [{ name: null }], rowCount: 1 });
+
+    const out = await matchExistingContacts(['+995599112233']);
+
+    expect(out).toEqual([]);
   });
 });
 

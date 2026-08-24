@@ -7,8 +7,17 @@ import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
 import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 import { parsePhonebookLabelsForUser } from './labelParser.service';
+// Aliased: this file already has its own, stricter local normalizePhone()
+// (import-path only, rejects anything not already "+..."). UserPhone is
+// written exclusively through registration's normalizePhone (services/phone,
+// Georgian-local-aware) — matching against it needs that same function.
+import { normalizePhone as normalizeForRegisteredPhoneMatch } from './phone';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
+// Engine T4: the registration-screen preview runs over the WHOLE phonebook,
+// before the capped, structured import — a phone's worth of contacts easily
+// exceeds MAX_CONTACTS_PER_IMPORT.
+const MAX_PHONES_PER_MATCH_CHECK = 5_000;
 // Prod "TagSource" enum value for tags born from a phonebook import.
 const TAG_SOURCE_IMPORTED = 'IMPORTED_CONTACT';
 // Provenance stamp for UserAlias rows this endpoint writes (migration 068):
@@ -332,4 +341,32 @@ export async function createUserPhoneNode(phone: string): Promise<void> {
   } finally {
     await session.close();
   }
+}
+
+export interface ExistingContactMatch {
+  name: string;
+}
+
+/**
+ * Engine T4: "your people are here" — during sign-up, right after contact
+ * permission and before the full structured import, a quick check of which
+ * phones already belong to a registered member. UserPhone (unlike UserAlias)
+ * is written only by this codebase's own registration path, always through
+ * normalizePhone — so a plain equality match against normalized input phones
+ * is reliable, no format-variant matching needed here.
+ */
+export async function matchExistingContacts(rawPhones: string[]): Promise<ExistingContactMatch[]> {
+  const normalized = [
+    ...new Set(
+      rawPhones.map((p) => normalizeForRegisteredPhoneMatch(p)).filter((p) => p.length > 0),
+    ),
+  ].slice(0, MAX_PHONES_PER_MATCH_CHECK);
+  if (normalized.length === 0) return [];
+  const result = await pool.query<{ name: string | null }>(
+    `SELECT u.name FROM "UserPhone" up
+     JOIN "User" u ON u.id = up."userId"
+     WHERE up.phone = ANY($1) AND u."deletedAt" IS NULL`,
+    [normalized],
+  );
+  return result.rows.filter((r) => r.name).map((r) => ({ name: r.name as string }));
 }
