@@ -8,6 +8,7 @@ import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { inviteContact } from '../tools/inviteContact';
+import { getInviteLink } from '../referralLink.service';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import {
   normalizeFieldType,
@@ -437,6 +438,10 @@ export async function mcpInviteContact(
   const langRaw = String(args.language ?? 'ka');
   const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
   return (await inviteContact(userId, phone, lang)) as unknown as McpToolPayload;
+}
+
+export async function mcpGetInviteLink(userId: string): Promise<McpToolPayload> {
+  return (await getInviteLink(userId)) as unknown as McpToolPayload;
 }
 
 // onboarding rows are reserved for sign-up (ticket 6 task 3, the founder's

@@ -166,6 +166,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
       'contact. The USER sends the text themselves — Netai never messages non-members.',
   },
+  get_invite_link: {
+    title: "Get the user's invite link",
+    description:
+      "The user's own personal invite link — unlimited uses, no cap, the same referral code " +
+      'invite_contact carries. Attach it to any message when the user wants to invite someone ' +
+      'not already in their contacts, or asks for "the link" generally. Present it as a link ' +
+      'to share themselves — Netai never messages anyone on their behalf.',
+  },
   get_profile_question: {
     title: 'Get a personalization question',
     description:

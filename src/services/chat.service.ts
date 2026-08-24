@@ -15,6 +15,7 @@ import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
+import { getInviteLink } from './referralLink.service';
 import { getNextQuestion, recordAnswer } from './partH.service';
 import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
@@ -751,6 +752,20 @@ const INVITE_CONTACT_TOOL: AnthropicTool = {
     },
     required: ['phone'],
   },
+};
+
+// Engine T3: a bare, unlimited invite LINK — distinct from invite_contact
+// above, which is pre-filled text for one named contact. This is meant to
+// be attached to any message; the user shares it with whoever they choose
+// through their own phone's share sheet, no pre-filled text at all.
+const GET_INVITE_LINK_TOOL: AnthropicTool = {
+  name: 'get_invite_link',
+  description:
+    "The user's own personal invite link — unlimited uses, no cap, the same referral code " +
+    'invite_contact carries. Attach it to any message when the user wants to invite someone ' +
+    'not already in their contacts, or asks for "the link" generally. Present it as a link to ' +
+    'share themselves — Netai never messages anyone on their behalf.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 // Ticket 4 item 4C: the channel sweep the prompt could not enforce, as a tool.
@@ -2015,6 +2030,8 @@ async function executeToolCall(
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
       return inviteContact(userId, String(input['phone'] ?? ''), lang);
     }
+    case 'get_invite_link':
+      return getInviteLink(userId);
     case 'remove_contact_from_network':
       // Same server gate shape as stop_contacting_me: nothing is deleted
       // without the user's explicit confirmation.
@@ -2890,6 +2907,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     REMOVE_EXCLUSION_TOOL,
     REMOVE_CONTACT_FROM_NETWORK_TOOL,
     INVITE_CONTACT_TOOL,
+    GET_INVITE_LINK_TOOL,
     RETRACT_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,

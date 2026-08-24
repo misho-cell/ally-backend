@@ -65,6 +65,7 @@ import { wakeTask } from '../../services/taskEngine.service';
 import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { getLabelQueue, parsePhonebookLabelsForUser } from '../../services/labelParser.service';
+import { getReferralFunnel } from '../../services/referralLink.service';
 
 const adminRouter = Router();
 
@@ -1042,6 +1043,22 @@ adminRouter.post('/label-parser/backfill', async (req: Request, res: Response) =
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin label-parser backfill]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Engine T3: sent → opened → registered, for one user or the whole product
+// (?user_id= narrows it) — the three events the spec asked to see in
+// analytics.
+adminRouter.get('/referral-funnel', async (req: Request, res: Response) => {
+  try {
+    const rawUserId = req.query.user_id;
+    const userId = typeof rawUserId === 'string' && /^\d+$/.test(rawUserId) ? rawUserId : undefined;
+    const funnel = await getReferralFunnel(userId);
+    res.status(200).json({ success: true, data: funnel });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin referral-funnel]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

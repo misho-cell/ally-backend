@@ -17,6 +17,7 @@ import {
   mcpRequestIntroduction,
   mcpRespondToRequest,
   mcpInviteContact,
+  mcpGetInviteLink,
   mcpGetIntroStatus,
   mcpRemoveContactFromNetwork,
   mcpSaveContactFact,
@@ -218,6 +219,18 @@ function registerIntroTools(server: McpServer, userId: string): void {
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
     (args) => runTool(userId, 'invite_contact', () => mcpInviteContact(userId, args)),
+  );
+  // Engine T3: a bare, unlimited invite link — never messages anyone, no
+  // destructive/write footprint beyond the sent-event log, so READ_ONLY.
+  server.registerTool(
+    'get_invite_link',
+    {
+      title: TOOL_TEXTS.get_invite_link.title,
+      description: TOOL_TEXTS.get_invite_link.description,
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    () => runTool(userId, 'get_invite_link', () => mcpGetInviteLink(userId)),
   );
   server.registerTool(
     'get_intro_status',
