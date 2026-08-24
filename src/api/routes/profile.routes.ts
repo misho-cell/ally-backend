@@ -14,6 +14,7 @@ import {
 } from '../../services/partH.service';
 import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 
 interface ProfileData {
   readonly name: string;
@@ -317,19 +318,56 @@ profileRouter.post(
 // permission and BEFORE the full structured import, the registration
 // screen checks which phones already belong to a member. No subscription
 // gate (unlike /contacts/*) — a brand-new account has not chosen one yet.
+//
+// This is, in shape, a membership directory: send a phone, learn whether
+// its owner is a member and what they're called. Live-caught (24 Aug): 200
+// invented numbers in one call answered in under a second with no cap and
+// no rate limit — exactly the input a purchased contact list would be, and
+// this is the one route that could map it to real names, one account, one
+// loop. Three independent guards, since this is a registration feature
+// that never needs to run more than a handful of times per account:
+//   1. a hard per-request cap (100, generous for a phonebook page);
+//   2. a rate limit, keyed per account (the default 'auto' mode);
+//   3. reachable only in the window right after an account is created —
+//      an account past that window gets a plain refusal, not data.
+const MATCH_EXISTING_CONTACTS_MAX_PHONES = 100;
+const MATCH_EXISTING_CONTACTS_WINDOW_MS = 24 * 60 * 60_000;
+
 profileRouter.post(
   '/match-existing-contacts',
   authenticateJwt,
   requireUserRole,
-  body('phones').isArray({ min: 1, max: 5000 }).withMessage('phones must be an array'),
+  rateLimit({ windowMs: 60 * 60_000, max: 10 }),
+  body('phones')
+    .isArray({ min: 1, max: MATCH_EXISTING_CONTACTS_MAX_PHONES })
+    .withMessage(`phones must be an array of 1-${MATCH_EXISTING_CONTACTS_MAX_PHONES} items`),
   body('phones.*').isString(),
   async (req: Request, res: Response<ApiResponse<{ matches: ExistingContactMatch[] }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      res.status(400).json({ success: false, error: 'phones must be a non-empty array' });
+      res.status(400).json({
+        success: false,
+        error: `phones must be a non-empty array of at most ${MATCH_EXISTING_CONTACTS_MAX_PHONES} items`,
+      });
       return;
     }
     try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const created = await query<{ createdAt: string }>(
+        'SELECT "createdAt" FROM "User" WHERE id = $1 LIMIT 1',
+        [userId],
+      );
+      const createdAt = created.rows[0]?.createdAt;
+      const withinWindow =
+        createdAt &&
+        Date.now() - new Date(createdAt).getTime() <= MATCH_EXISTING_CONTACTS_WINDOW_MS;
+      if (!withinWindow) {
+        res.status(403).json({
+          success: false,
+          error: 'ეს ფუნქცია მხოლოდ რეგისტრაციის დროს არის ხელმისაწვდომი.',
+        });
+        return;
+      }
       const { phones } = req.body as { phones: string[] };
       const matches = await matchExistingContacts(phones);
       res.status(200).json({ success: true, data: { matches } });

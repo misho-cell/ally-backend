@@ -67,6 +67,65 @@ describe('sweepFactsFromExchange (engine T1)', () => {
     );
   });
 
+  it('strips a year the model invented that was never in the exchange — live-caught: told only "starting a construction project in Vake", no date, the model wrote "(2025)" anyway', async () => {
+    mockCreate.mockResolvedValue(
+      anthropicTextResponse(
+        JSON.stringify([
+          {
+            person_name: 'ბესო',
+            field_type: 'note',
+            value: 'ვაკეში ახალ სამშენებლო პროექტს იწყებს (2025)',
+            confidence: 'stated',
+          },
+        ]),
+      ),
+    );
+    mockFindPhones.mockResolvedValue(['995599111222']);
+
+    await sweepFactsFromExchange(
+      '7',
+      42,
+      'ბესო ორთოიძე ვაკეში ახალ სამშენებლო პროექტს იწყებს',
+      'გასაგებია',
+    );
+
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '995599111222',
+      'note',
+      'ვაკეში ახალ სამშენებლო პროექტს იწყებს',
+      'sweep',
+      'stated',
+    );
+  });
+
+  it('keeps a year that genuinely appears in the exchange', async () => {
+    mockCreate.mockResolvedValue(
+      anthropicTextResponse(
+        JSON.stringify([
+          {
+            person_name: 'ბესო',
+            field_type: 'note',
+            value: 'პროექტს იწყებს 2027 წელს',
+            confidence: 'stated',
+          },
+        ]),
+      ),
+    );
+    mockFindPhones.mockResolvedValue(['995599111222']);
+
+    await sweepFactsFromExchange('7', 42, 'ბესო პროექტს იწყებს 2027 წელს', 'გასაგებია');
+
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '995599111222',
+      'note',
+      'პროექტს იწყებს 2027 წელს',
+      'sweep',
+      'stated',
+    );
+  });
+
   it('never writes when the name matches zero or multiple contacts — no guessing', async () => {
     mockCreate.mockResolvedValue(
       anthropicTextResponse(

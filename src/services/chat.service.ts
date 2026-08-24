@@ -38,6 +38,7 @@ import {
   touchThread,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
+import { getLabelQueueForUser } from './labelParser.service';
 import {
   createTask,
   getMyTasks,
@@ -766,6 +767,24 @@ const GET_INVITE_LINK_TOOL: AnthropicTool = {
     'not already in their contacts, or asks for "the link" generally. Present it as a link to ' +
     'share themselves — Netai never messages anyone on their behalf.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+// Engine T2's ambiguity queue, assistant-facing: labels the phonebook parser
+// could not resolve on its own. contact_ref, never a raw phone — the MCP
+// handler encodes it; in-app, this is the phone directly (same as every
+// other in-app tool result).
+const GET_UNRESOLVED_LABELS_TOOL: AnthropicTool = {
+  name: 'get_unresolved_labels',
+  description:
+    'Phonebook labels the automatic parser could not turn into a fact on its own — usually ' +
+    'because the wording was ambiguous or not in the dictionary yet (e.g. "Nika Besos Dzma"). ' +
+    'Use when the user asks what needs cleaning up in their contacts, or to help resolve one: ' +
+    'ask what the label means, then save the real fact yourself with save_contact_fact.',
+  input_schema: {
+    type: 'object',
+    properties: { limit: { type: 'number', description: 'How many to return (default 20).' } },
+    required: [],
+  },
 };
 
 // Ticket 4 item 4C: the channel sweep the prompt could not enforce, as a tool.
@@ -2032,6 +2051,11 @@ async function executeToolCall(
     }
     case 'get_invite_link':
       return getInviteLink(userId);
+    case 'get_unresolved_labels': {
+      const rawLimit = Number(input['limit']);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+      return { entries: await getLabelQueueForUser(userId, limit) };
+    }
     case 'remove_contact_from_network':
       // Same server gate shape as stop_contacting_me: nothing is deleted
       // without the user's explicit confirmation.
@@ -2908,6 +2932,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     REMOVE_CONTACT_FROM_NETWORK_TOOL,
     INVITE_CONTACT_TOOL,
     GET_INVITE_LINK_TOOL,
+    GET_UNRESOLVED_LABELS_TOOL,
     RETRACT_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,

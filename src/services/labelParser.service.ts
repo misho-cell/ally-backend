@@ -195,3 +195,28 @@ export async function getLabelQueue(limit: number): Promise<LabelQueueEntry[]> {
   );
   return result.rows;
 }
+
+export interface OwnLabelQueueEntry {
+  phone: string;
+  alias: string;
+}
+
+/**
+ * One user's OWN unresolved labels, scoped by contact_id — the assistant
+ * tool this backs. In-app, the phone is used the same way every other
+ * in-app tool result is (e.g. to call save_contact_fact on it directly).
+ * The MCP handler wraps this and encodes each phone into a contact_ref
+ * before it reaches the connector — see mcpGetUnresolvedLabels.
+ */
+export async function getLabelQueueForUser(
+  userId: string,
+  limit: number,
+): Promise<OwnLabelQueueEntry[]> {
+  const result = await query<OwnLabelQueueEntry>(
+    `SELECT phone, alias FROM label_parse_queue
+     WHERE contact_id = $1::int ORDER BY id DESC LIMIT $2::int`,
+    [userId, limit],
+    PARSE_TIMEOUT_MS,
+  );
+  return result.rows;
+}

@@ -9,6 +9,7 @@ import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFull
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { inviteContact } from '../tools/inviteContact';
 import { getInviteLink } from '../referralLink.service';
+import { getLabelQueueForUser } from '../labelParser.service';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import {
   normalizeFieldType,
@@ -442,6 +443,30 @@ export async function mcpInviteContact(
 
 export async function mcpGetInviteLink(userId: string): Promise<McpToolPayload> {
   return (await getInviteLink(userId)) as unknown as McpToolPayload;
+}
+
+const DEFAULT_LABEL_QUEUE_LIMIT = 20;
+const MAX_LABEL_QUEUE_LIMIT = 100;
+
+// Ticket 6 (24 Aug): the admin queue view is fine for a human ops route, but
+// the assistant surface must carry the same guarantee every other MCP
+// payload does — no raw phone number ever crosses this boundary.
+export async function mcpGetUnresolvedLabels(
+  userId: string,
+  args: { limit?: number },
+): Promise<McpToolPayload> {
+  const rawLimit = Number(args.limit);
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit > 0
+      ? Math.min(rawLimit, MAX_LABEL_QUEUE_LIMIT)
+      : DEFAULT_LABEL_QUEUE_LIMIT;
+  const entries = await getLabelQueueForUser(userId, limit);
+  return {
+    entries: entries.map((e) => ({
+      contact_ref: encodeContactRef(userId, e.phone),
+      alias: e.alias,
+    })),
+  };
 }
 
 // onboarding rows are reserved for sign-up (ticket 6 task 3, the founder's

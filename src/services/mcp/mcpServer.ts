@@ -18,6 +18,7 @@ import {
   mcpRespondToRequest,
   mcpInviteContact,
   mcpGetInviteLink,
+  mcpGetUnresolvedLabels,
   mcpGetIntroStatus,
   mcpRemoveContactFromNetwork,
   mcpSaveContactFact,
@@ -231,6 +232,18 @@ function registerIntroTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     () => runTool(userId, 'get_invite_link', () => mcpGetInviteLink(userId)),
+  );
+  // Ticket 6 (24 Aug): T2's ambiguity queue, contact_ref only — never a raw
+  // phone number crosses this boundary, same guarantee as every other tool.
+  server.registerTool(
+    'get_unresolved_labels',
+    {
+      title: TOOL_TEXTS.get_unresolved_labels.title,
+      description: TOOL_TEXTS.get_unresolved_labels.description,
+      inputSchema: { limit: z.number().optional().describe(PARAM_TEXTS.labelQueueLimit) },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_unresolved_labels', () => mcpGetUnresolvedLabels(userId, args)),
   );
   server.registerTool(
     'get_intro_status',

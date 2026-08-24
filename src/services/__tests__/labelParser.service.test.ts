@@ -6,7 +6,7 @@ jest.mock('../contactFacts.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { submitContactFact } from '../contactFacts.service';
-import { parsePhonebookLabelsForUser } from '../labelParser.service';
+import { parsePhonebookLabelsForUser, getLabelQueueForUser } from '../labelParser.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
@@ -137,5 +137,20 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
       'label',
       null,
     );
+  });
+});
+
+describe('getLabelQueueForUser', () => {
+  it("scopes to the caller's own queue and returns raw phone + alias (the in-app shape)", async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ phone: '+995500111333', alias: 'Nika Besos Dzma' }]) as never,
+    );
+
+    const out = await getLabelQueueForUser('170751', 20);
+
+    expect(out).toEqual([{ phone: '+995500111333', alias: 'Nika Besos Dzma' }]);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('contact_id = $1::int');
+    expect(params).toEqual(['170751', 20]);
   });
 });

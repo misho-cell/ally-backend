@@ -174,6 +174,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'not already in their contacts, or asks for "the link" generally. Present it as a link ' +
       'to share themselves — Netai never messages anyone on their behalf.',
   },
+  get_unresolved_labels: {
+    title: 'Get unresolved phonebook labels',
+    description:
+      'Phonebook labels the automatic parser could not turn into a fact on its own — usually ' +
+      'because the wording was ambiguous or not in the dictionary yet (e.g. "Nika Besos Dzma"). ' +
+      'Use when the user asks what needs cleaning up in their contacts, or to help resolve one: ' +
+      'ask what the label means, then save the real fact yourself with save_contact_fact.',
+  },
   get_profile_question: {
     title: 'Get a personalization question',
     description:
@@ -432,6 +440,7 @@ export const PARAM_TEXTS = {
   contactRef:
     'The stable id from a search result. Never invent it — always take it from a prior search.',
   inviteLanguage: "Invite text language: ka | en | ru | es (the conversation's language).",
+  labelQueueLimit: 'How many unresolved labels to return (default 20, max 100).',
   profileQuestionMoment:
     'What is happening right now: meeting_prep | message_draft | weekly_review | ' +
     'after_rejection | any. Pick the one that matches, or any if none does.',

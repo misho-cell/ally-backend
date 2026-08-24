@@ -34,12 +34,32 @@ function buildExtractionPrompt(): string {
     'assistant. Field types: occupation, employer, city, industry, or note for anything else ' +
     'worth remembering (a skill, a need, a relationship, context). confidence is "stated" when ' +
     'the user asserted it directly and plainly, "mentioned" when it came up only in passing or ' +
-    'is uncertain. If nothing qualifies, return an empty array. Reply JSON only, no prose: ' +
+    'is uncertain. CRITICAL: value must contain ONLY what was actually said — never add a date, ' +
+    'year, number, or any specific detail the user did not state, even if it seems like a ' +
+    'reasonable guess (e.g. the current year). If a detail like a date genuinely was not given, ' +
+    'leave it out of value entirely rather than inferring one. If nothing qualifies, return an ' +
+    'empty array. Reply JSON only, no prose: ' +
     '[{"person_name": "...", "field_type": "...", "value": "...", "confidence": "stated"}, ...]'
   );
 }
 
-function parseCandidates(raw: string): ExtractedFactCandidate[] {
+// A prompt instruction alone doesn't guarantee compliance — live-caught: told
+// only "starting a new construction project in Vake", no date, the model
+// still wrote "(2025)" into the saved value, stamped with today's date as if
+// confirmed. This is the deterministic backstop: any 4-digit year in a
+// candidate's value that does not appear verbatim in the source exchange is
+// stripped, regardless of what the prompt asked for.
+const YEAR_RE = /\b(19|20)\d{2}\b/g;
+
+function stripUnstatedYears(value: string, sourceText: string): string {
+  return value
+    .replace(YEAR_RE, (year) => (sourceText.includes(year) ? year : ''))
+    .replace(/\(\s*\)/g, '') // an empty parenthetical the strip left behind
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidate[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -53,7 +73,8 @@ function parseCandidates(raw: string): ExtractedFactCandidate[] {
     const c = item as Record<string, unknown>;
     const personName = typeof c.person_name === 'string' ? c.person_name.trim() : '';
     const fieldType = typeof c.field_type === 'string' ? c.field_type.trim().toLowerCase() : '';
-    const value = typeof c.value === 'string' ? c.value.trim() : '';
+    const rawValue = typeof c.value === 'string' ? c.value.trim() : '';
+    const value = rawValue ? stripUnstatedYears(rawValue, sourceText) : '';
     const confidence = c.confidence === 'mentioned' ? 'mentioned' : 'stated';
     if (!personName || !value || !EXTRACTION_FIELD_TYPES.has(fieldType)) continue;
     out.push({ person_name: personName, field_type: fieldType, value, confidence });
@@ -100,7 +121,7 @@ export async function sweepFactsFromExchange(
     }).catch(() => undefined);
 
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-    const candidates = parseCandidates(raw);
+    const candidates = parseCandidates(raw, exchange);
 
     for (const candidate of candidates) {
       const matches = await findContactPhonesByName(
