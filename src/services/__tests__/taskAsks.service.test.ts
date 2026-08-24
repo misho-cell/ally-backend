@@ -59,13 +59,19 @@ beforeEach(() => {
 });
 
 function routeAskQueries(opts: {
-  member?: { userId: number; name: string } | null;
+  member?: { userId: number; name: string; subscriptionStatus?: string } | null;
   dup?: boolean;
   sentToday?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('FROM "UserPhone"'))
-      return Promise.resolve(rows(opts.member ? [opts.member] : []) as never);
+      return Promise.resolve(
+        rows(
+          opts.member
+            ? [{ ...opts.member, subscriptionStatus: opts.member.subscriptionStatus ?? 'active' }]
+            : [],
+        ) as never,
+      );
     if (sql.includes('SELECT id FROM task_asks'))
       return Promise.resolve(rows(opts.dup ? [{ id: 1 }] : []) as never);
     if (sql.includes('COUNT(*)'))
@@ -136,6 +142,16 @@ describe('createAsk', () => {
     const out = await createAsk('42', 3, '+995599111222', 'q');
 
     expect(out.sent).toBe(false);
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it("refuses a registered member with no active subscription (the retired allowlist's replacement, 24 Aug)", async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' } });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(false);
+    expect((out as { reason?: string }).reason).toBe('recipient_not_subscribed');
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
@@ -219,7 +235,7 @@ describe('createRelayAsk', () => {
   function routeRelayQueries(opts: {
     parent?: typeof parentRow | null;
     aliasMatches?: { digits: string }[];
-    member?: { userId: number; name: string } | null;
+    member?: { userId: number; name: string; subscriptionStatus?: string } | null;
   }): void {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('parent_ask_id FROM task_asks'))
@@ -227,7 +243,18 @@ describe('createRelayAsk', () => {
       if (sql.includes('FROM "UserAlias" ua WHERE'))
         return Promise.resolve(rows(opts.aliasMatches ?? []) as never);
       if (sql.includes('FROM "UserPhone"'))
-        return Promise.resolve(rows(opts.member ? [opts.member] : []) as never);
+        return Promise.resolve(
+          rows(
+            opts.member
+              ? [
+                  {
+                    ...opts.member,
+                    subscriptionStatus: opts.member.subscriptionStatus ?? 'active',
+                  },
+                ]
+              : [],
+          ) as never,
+        );
       if (sql.includes('SELECT id FROM task_asks')) return Promise.resolve(rows([]) as never);
       if (sql.includes('COUNT(*)')) return Promise.resolve(rows([{ count: '0' }]) as never);
       if (sql.includes('SELECT name FROM "User"'))

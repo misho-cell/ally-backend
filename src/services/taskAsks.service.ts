@@ -55,7 +55,7 @@ export type AskRefusalReason =
   | 'consent_pending'
   | 'recipient_not_member'
   | 'recipient_opted_out'
-  | 'recipient_not_on_test_allowlist'
+  | 'recipient_not_subscribed'
   | 'self_send'
   | 'already_asked_on_this_task'
   | 'daily_cap_reached';
@@ -112,8 +112,12 @@ export async function createAsk(
   }
 
   // The recipient must be a registered member (format-independent lookup).
-  const member = await query<{ userId: number; name: string | null }>(
-    `SELECT up."userId", u.name
+  const member = await query<{
+    userId: number;
+    name: string | null;
+    subscriptionStatus: string | null;
+  }>(
+    `SELECT up."userId", u.name, u.subscription_status AS "subscriptionStatus"
      FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
        AND u."deletedAt" IS NULL
@@ -149,27 +153,22 @@ export async function createAsk(
     };
   }
 
-  // Live-fire safety switch for the incoming_ask test phase: when set (comma-
-  // separated user ids), asks may reach ONLY those accounts — a mis-picked
-  // contact must not receive a test question about someone else's problem.
-  // Unset (the default) = no restriction.
-  const allowlist = (process.env.ASK_RECIPIENT_ALLOWLIST ?? '')
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
-  if (allowlist.length > 0 && !allowlist.includes(String(toUserId))) {
-    // Worded so it CANNOT be read as the recipient's own choice: on 12 Aug the
-    // model translated the old text into "this person has switched Netai
-    // messages off" — a false statement about a third party's settings
-    // (ticket 4 item 00-D).
+  // The hand-picked test allowlist is retired (founder's decision, 24 Aug):
+  // asks now reach any registered member with an ACTIVE subscription,
+  // rather than a fixed list of ids. Worded so it CANNOT be read as the
+  // recipient's own choice — same principle as the allowlist message it
+  // replaces (12 Aug: the model once translated a similar refusal into "this
+  // person switched Netai messages off", a false statement about a third
+  // party's settings, ticket 4 item 00-D).
+  if (member.rows[0].subscriptionStatus !== 'active') {
     return {
       sent: false,
-      reason: 'recipient_not_on_test_allowlist',
+      reason: 'recipient_not_subscribed',
       error:
-        'ვერ გაიგზავნა: აპლიკაცია სატესტო რეჟიმშია და კითხვები ამ ეტაპზე მხოლოდ წინასწარ ' +
-        'შერჩეულ სატესტო მიმღებებს ეგზავნებათ. ეს ჩვენი, სისტემის დროებითი შეზღუდვაა — ამ ' +
-        'ადამიანს არაფერი გამოურთავს და მისი პარამეტრების შესახებ არაფერი თქვა. მომხმარებელს ' +
-        'უთხარი მხოლოდ: „სატესტო რეჟიმის გამო ამ ადამიანთან მიწერა ჯერ არ შემიძლია".',
+        'ვერ გაიგზავნა: ამ ეტაპზე კითხვები მხოლოდ Netai-ს გამომწერ (subscription) წევრებს ' +
+        'ეგზავნებათ. ეს ჩვენი სისტემის დროებითი წესია — ამ ადამიანს არაფერი გამოურთავს და ' +
+        'მისი ანგარიშის შესახებ არაფერი თქვა. მომხმარებელს უთხარი მხოლოდ: „ამ ეტაპზე ამ ' +
+        'ადამიანთან მიწერა ჯერ არ შემიძლია".',
     };
   }
 
