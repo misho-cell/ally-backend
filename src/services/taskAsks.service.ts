@@ -5,7 +5,7 @@ import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
 import { geoName } from './georgianCase';
-import { buildRawWordGroups, toWordStartPattern } from './tools/transliterate';
+import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
 
@@ -574,41 +574,16 @@ async function resolveRelayContact(
   // in Georgian resolves a contact saved in Latin script. The plain lowercase
   // comparison this replaces told a recipient her own saved contact did not
   // exist and asked her to guess the spelling of her own phonebook.
-  const groups = buildRawWordGroups(contact);
-  if (groups.length === 0) {
-    return { error: RELAY_EMPTY_NAME_ERROR };
+  // (findContactPhonesByName returns [] for an empty query too, same as the
+  // inline check this replaced.)
+  const matches = await findContactPhonesByName(relayerUserId, contact, RELAY_NAME_MATCH_LIMIT);
+  if (matches.length === 0) {
+    return { error: contact.trim() === '' ? RELAY_EMPTY_NAME_ERROR : RELAY_NOT_FOUND_ERROR };
   }
-  // Every word must match (AND across groups); within a word any variant does.
-  let cursor = 2; // $1 = relayer
-  const conds = groups
-    .map((group) => {
-      const alternatives = group
-        .map((_, i) => `(LOWER(label) || '') ~ $${cursor + i}`)
-        .join(' OR ');
-      cursor += group.length;
-      return `(${alternatives})`;
-    })
-    .join(' AND ');
-  const patterns = groups.flat().map(toWordStartPattern);
-  const matches = await query<{ digits: string }>(
-    `SELECT DISTINCT regexp_replace(phone, '\\D', '', 'g') AS digits
-     FROM (
-       SELECT ua.phone, ua.alias AS label FROM "UserAlias" ua WHERE ua."contactId" = $1::int
-       UNION ALL
-       SELECT ut.phone, ut.tag AS label FROM "UserTags" ut WHERE ut."contactId" = $1::int
-     ) labels
-     WHERE ${conds}
-     LIMIT ${RELAY_NAME_MATCH_LIMIT}`,
-    [relayerUserId, ...patterns],
-    ASK_QUERY_TIMEOUT_MS,
-  );
-  if (matches.rows.length === 0) {
-    return { error: RELAY_NOT_FOUND_ERROR };
-  }
-  if (matches.rows.length > 1) {
+  if (matches.length > 1) {
     return { error: RELAY_AMBIGUOUS_ERROR };
   }
-  return { phone: matches.rows[0].digits };
+  return { phone: matches[0] };
 }
 
 /**

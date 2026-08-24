@@ -159,7 +159,7 @@ export async function parsePhonebookLabelsForUser(
   for (const row of candidates.rows) {
     const occupation = matchOccupation(row.alias);
     if (occupation) {
-      await submitContactFact(userId, row.phone, 'occupation', occupation);
+      await submitContactFact(userId, row.phone, 'occupation', occupation, 'label', null);
       parsed++;
       continue;
     }

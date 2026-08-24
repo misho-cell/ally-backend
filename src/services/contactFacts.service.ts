@@ -101,17 +101,20 @@ async function upsertFact(
   neo4jContactId: string,
   fieldType: string,
   value: string,
+  source: FactSource,
+  confidence: FactConfidence | null,
 ): Promise<void> {
   await query(
     // The arbiter is the partial unique index uq_contact_facts_structured, so
     // its predicate (only the four core facts) must be repeated here; free-form
     // keys have no such index and are never routed through this path.
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, source, confidence)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
        WHERE field_type IN ('occupation', 'employer', 'city', 'industry')
-     DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW()`,
-    [neo4jContactId, userId, fieldType, value],
+     DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW(),
+                   source = $5, confidence = $6`,
+    [neo4jContactId, userId, fieldType, value, source, confidence],
   );
 }
 
@@ -152,6 +155,8 @@ async function insertFreeFormFact(
   fieldType: string,
   value: string,
   isPublic: boolean,
+  source: FactSource,
+  confidence: FactConfidence | null,
 ): Promise<void> {
   const existing = await query<{ id: number; value: string }>(
     `SELECT id, value FROM contact_facts
@@ -168,9 +173,9 @@ async function insertFreeFormFact(
     // canonical_value doubles as the "shareable text" for public rows — the
     // read paths COALESCE it, so a public note must carry it. moderated_at
     // marks the row as already agent-checked (the nightly sweep skips it).
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value, moderated_at)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END, NOW())`,
-    [neo4jContactId, userId, fieldType, value, isPublic],
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value, moderated_at, source, confidence)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END, NOW(), $6, $7)`,
+    [neo4jContactId, userId, fieldType, value, isPublic, source, confidence],
   );
 }
 
@@ -231,11 +236,20 @@ async function getOtherFacts(
   return result.rows;
 }
 
+// Where a fact came from, and how sure that source was — ticket 6 engine
+// T1's provenance requirement, shared with T2's label parser. 'chat' is the
+// default: the overwhelming majority of calls are the live assistant saving
+// something the user just said.
+export type FactSource = 'chat' | 'sweep' | 'label' | 'debrief';
+export type FactConfidence = 'stated' | 'mentioned';
+
 export async function submitContactFact(
   userId: string,
   neo4jContactIdRaw: string,
   fieldTypeRaw: string,
   value: string,
+  source: FactSource = 'chat',
+  confidence: FactConfidence | null = 'stated',
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
@@ -251,11 +265,19 @@ export async function submitContactFact(
         ? MEMORY_FIELD_TYPE
         : fieldType;
     const isPublic = await moderateNotePublicity(targetField, value);
-    await insertFreeFormFact(userId, neo4jContactId, targetField, value, isPublic);
+    await insertFreeFormFact(
+      userId,
+      neo4jContactId,
+      targetField,
+      value,
+      isPublic,
+      source,
+      confidence,
+    );
     return { is_public: isPublic, canonical_value: null };
   }
 
-  await upsertFact(userId, neo4jContactId, fieldType, value);
+  await upsertFact(userId, neo4jContactId, fieldType, value, source, confidence);
 
   const others = await getOtherFacts(userId, neo4jContactId, fieldType);
   if (others.length === 0) return { is_public: false, canonical_value: null };

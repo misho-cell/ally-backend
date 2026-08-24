@@ -32,7 +32,14 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     const out = await parsePhonebookLabelsForUser('7');
 
     expect(out).toEqual({ parsed: 1, queued: 0 });
-    expect(mockSubmitFact).toHaveBeenCalledWith('7', '+995500000001', 'occupation', 'სანტექნიკოსი');
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000001',
+      'occupation',
+      'სანტექნიკოსი',
+      'label',
+      null,
+    );
   });
 
   it('an unrecognized multi-word label is queued, not dropped', async () => {
@@ -100,7 +107,14 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     const out = await parsePhonebookLabelsForUser('7');
 
     expect(out).toEqual({ parsed: 1, queued: 0 });
-    expect(mockSubmitFact).toHaveBeenCalledWith('7', '+995500000005', 'occupation', 'სანტექნიკოსი');
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000005',
+      'occupation',
+      'სანტექნიკოსი',
+      'label',
+      null,
+    );
   });
 
   it('an English trade word matches too, case-insensitively', async () => {
@@ -115,6 +129,13 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     const out = await parsePhonebookLabelsForUser('7');
 
     expect(out).toEqual({ parsed: 1, queued: 0 });
-    expect(mockSubmitFact).toHaveBeenCalledWith('7', '+995500000004', 'occupation', 'Plumber');
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000004',
+      'occupation',
+      'Plumber',
+      'label',
+      null,
+    );
   });
 });

@@ -55,7 +55,15 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const [sql, params] = insertCall();
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
-    expect(params as unknown[]).toEqual([PHONE, USER, 'note', 'Approach via warm intro', false]);
+    expect(params as unknown[]).toEqual([
+      PHONE,
+      USER,
+      'note',
+      'Approach via warm intro',
+      false,
+      'chat',
+      'stated',
+    ]);
   });
 
   it('inserts a note as a PUBLIC row when the agent rules it professional', async () => {
@@ -141,7 +149,15 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
     // field_type is normalized (trimmed + lowercased) before storage.
-    expect(params as unknown[]).toEqual([PHONE, USER, 'role', 'CEO @ Leavingstone', false]);
+    expect(params as unknown[]).toEqual([
+      PHONE,
+      USER,
+      'role',
+      'CEO @ Leavingstone',
+      false,
+      'chat',
+      'stated',
+    ]);
   });
 
   it('a repeat of the SAME statement refreshes the existing row instead of piling up (4B.6)', async () => {
