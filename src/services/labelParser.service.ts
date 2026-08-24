@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { submitContactFact } from './contactFacts.service';
+import { buildSearchTerms } from './tools/transliterate';
 
 const PARSE_TIMEOUT_MS = 15_000;
 // A one-word label ("გია", "Nino") is almost certainly a plain name — not
@@ -11,71 +12,95 @@ const MIN_QUEUE_WORDS = 2;
 // in Georgian phonebook labels ("ზურა სანტექნიკოსი"). Deliberately not
 // exhaustive; unresolved labels land in label_parse_queue rather than being
 // silently dropped, so gaps here are visible and the dictionary can grow.
-// Keys are lowercased; values are the occupation fact text to store.
-const OCCUPATION_DICTIONARY: Readonly<Record<string, string>> = {
-  სანტექნიკოსი: 'სანტექნიკოსი',
-  სანტექნიკი: 'სანტექნიკოსი',
-  ხელოსანი: 'ხელოსანი',
-  ელექტრიკოსი: 'ელექტრიკოსი',
-  ექიმი: 'ექიმი',
-  სტომატოლოგი: 'სტომატოლოგი',
-  იურისტი: 'იურისტი',
-  ადვოკატი: 'ადვოკატი',
-  მძღოლი: 'მძღოლი',
-  ტაქსისტი: 'ტაქსისტი',
-  დალაქი: 'დალაქი',
-  პარიკმახერი: 'პარიკმახერი',
-  დამლაგებელი: 'დამლაგებელი',
-  მზარეული: 'მზარეული',
-  შეფი: 'შეფ-მზარეული',
-  მღებავი: 'მღებავი',
-  დურგალი: 'დურგალი',
-  მჭედელი: 'მჭედელი',
-  შემდუღებელი: 'შემდუღებელი',
-  დიზაინერი: 'დიზაინერი',
-  არქიტექტორი: 'არქიტექტორი',
-  პროგრამისტი: 'პროგრამისტი',
-  დეველოპერი: 'დეველოპერი',
-  ბუღალტერი: 'ბუღალტერი',
-  მთარგმნელი: 'მთარგმნელი',
-  ფოტოგრაფი: 'ფოტოგრაფი',
-  მასაჟისტი: 'მასაჟისტი',
-  მასწავლებელი: 'მასწავლებელი',
-  პროფესორი: 'პროფესორი',
-  ინჟინერი: 'ინჟინერი',
-  მენეჯერი: 'მენეჯერი',
-  დირექტორი: 'დირექტორი',
-  დილერი: 'დილერი',
-  აგენტი: 'აგენტი',
-  ბროკერი: 'ბროკერი',
-  დარაჯი: 'დარაჯი',
-  ვეტერინარი: 'ვეტერინარი',
-  ფარმაცევტი: 'ფარმაცევტი',
-  მედდა: 'მედდა',
-  ბანკირი: 'ბანკირი',
-  ჟურნალისტი: 'ჟურნალისტი',
-  მსახიობი: 'მსახიობი',
-  მუსიკოსი: 'მუსიკოსი',
-  მხატვარი: 'მხატვარი',
-  სტილისტი: 'სტილისტი',
-  ვიზაჟისტი: 'ვიზაჟისტი',
-  მწვრთნელი: 'მწვრთნელი',
-  ფინანსისტი: 'ფინანსისტი',
-  ეკონომისტი: 'ეკონომისტი',
-  ნოტარიუსი: 'ნოტარიუსი',
-  ავტომექანიკოსი: 'ავტომექანიკოსი',
-  plumber: 'Plumber',
-  electrician: 'Electrician',
-  doctor: 'Doctor',
-  lawyer: 'Lawyer',
-  driver: 'Driver',
-  photographer: 'Photographer',
-  engineer: 'Engineer',
-  teacher: 'Teacher',
-  accountant: 'Accountant',
-  designer: 'Designer',
-  developer: 'Developer',
-};
+const GEORGIAN_OCCUPATIONS: readonly string[] = [
+  'სანტექნიკოსი',
+  'სანტექნიკი',
+  'ხელოსანი',
+  'ელექტრიკოსი',
+  'ექიმი',
+  'სტომატოლოგი',
+  'იურისტი',
+  'ადვოკატი',
+  'მძღოლი',
+  'ტაქსისტი',
+  'დალაქი',
+  'პარიკმახერი',
+  'დამლაგებელი',
+  'მზარეული',
+  'შეფი',
+  'მღებავი',
+  'დურგალი',
+  'მჭედელი',
+  'შემდუღებელი',
+  'დიზაინერი',
+  'არქიტექტორი',
+  'პროგრამისტი',
+  'დეველოპერი',
+  'ბუღალტერი',
+  'მთარგმნელი',
+  'ფოტოგრაფი',
+  'მასაჟისტი',
+  'მასწავლებელი',
+  'პროფესორი',
+  'ინჟინერი',
+  'მენეჯერი',
+  'დირექტორი',
+  'დილერი',
+  'აგენტი',
+  'ბროკერი',
+  'დარაჯი',
+  'ვეტერინარი',
+  'ფარმაცევტი',
+  'მედდა',
+  'ბანკირი',
+  'ჟურნალისტი',
+  'მსახიობი',
+  'მუსიკოსი',
+  'მხატვარი',
+  'სტილისტი',
+  'ვიზაჟისტი',
+  'მწვრთნელი',
+  'ფინანსისტი',
+  'ეკონომისტი',
+  'ნოტარიუსი',
+  'ავტომექანიკოსი',
+];
+
+const ENGLISH_OCCUPATIONS: readonly string[] = [
+  'plumber',
+  'electrician',
+  'doctor',
+  'lawyer',
+  'driver',
+  'photographer',
+  'engineer',
+  'teacher',
+  'accountant',
+  'designer',
+  'developer',
+];
+
+// Real labels are as often Latin-typed Georgian ("Santeknikosi") as native
+// script, and there is no single canonical spelling (ქ alone types as both
+// "k" and "q" depending on the person) — the same drift problem this
+// codebase already solves for search (buildSearchTerms). Every Georgian
+// entry expands into all of its search-term spelling variants at load time,
+// each pointing back at the one canonical (Georgian-script) value to store.
+// This is not exhaustive — a spelling buildSearchTerms doesn't generate
+// still falls through to the ambiguity queue, not a false negative that
+// looks like success.
+function buildDictionary(): Readonly<Record<string, string>> {
+  const dict: Record<string, string> = {};
+  for (const word of GEORGIAN_OCCUPATIONS) {
+    for (const variant of buildSearchTerms(word)) dict[variant] = word;
+  }
+  for (const word of ENGLISH_OCCUPATIONS) {
+    dict[word] = word.charAt(0).toUpperCase() + word.slice(1);
+  }
+  return dict;
+}
+
+const OCCUPATION_DICTIONARY = buildDictionary();
 
 interface LabelRow {
   contactId: number;

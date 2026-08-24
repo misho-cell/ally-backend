@@ -88,6 +88,21 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     expect(out).toEqual({ parsed: 0, queued: 0 });
   });
 
+  it('a Latin-typed spelling of a Georgian trade word matches too (buildSearchTerms variants)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([{ contactId: 7, phone: '+995500000005', alias: 'Zura Santeknikosi' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 1, queued: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith('7', '+995500000005', 'occupation', 'სანტექნიკოსი');
+  });
+
   it('an English trade word matches too, case-insensitively', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserAlias" ua'))
