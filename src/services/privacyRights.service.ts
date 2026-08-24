@@ -66,6 +66,7 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   // The contact graph this account contributed — their phonebook.
   { table: '"UserAlias"', column: '"contactId"' },
   { table: '"UserTags"', column: '"contactId"' },
+  { table: 'label_parse_queue', column: 'contact_id' },
   { table: '"UserBlock"', column: '"blockerId"' },
   { table: '"ContactDeceased"', column: '"userId"' },
   // The phone rows last: they are how the account is found.
@@ -105,6 +106,7 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
   answer_events: 'კითხვებზე გაცემული პასუხები',
   UserAlias: 'კონტაქტების წიგნაკი',
   UserTags: 'კონტაქტების ტეგები',
+  label_parse_queue: 'გაურკვეველი ეტიკეტები',
   UserBlock: 'დაბლოკილები',
   ContactDeceased: 'გარდაცვლილად მონიშნული კონტაქტები',
   UserPhone: 'ტელეფონის ნომრები',

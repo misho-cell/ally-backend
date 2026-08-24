@@ -6,6 +6,7 @@ import { ImportContact, ImportResult } from '../types';
 import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
 import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
+import { parsePhonebookLabelsForUser } from './labelParser.service';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
 // Prod "TagSource" enum value for tags born from a phonebook import.
@@ -64,6 +65,14 @@ export async function importContacts(
       `[ALARM][import] user ${userId}: 0 of ${skipped} contacts saved — every row failed or was rejected`,
     );
   }
+
+  // Engine T2, fire-and-forget: the import response must not wait on 500
+  // labels being parsed. A failure here is a starter-fact opportunity
+  // missed, never a reason to fail the import itself.
+  void parsePhonebookLabelsForUser(userId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error(`[label-parser] user ${userId} failed:`, (err as Error).message),
+  );
 
   return { imported, skipped };
 }

@@ -64,6 +64,7 @@ import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
+import { getLabelQueue, parsePhonebookLabelsForUser } from '../../services/labelParser.service';
 
 const adminRouter = Router();
 
@@ -992,6 +993,55 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin rescore]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Engine T2 (ticket 6, task 29): the phonebook-label parser's ambiguity
+// queue — labels it could not resolve into a starter fact, so nothing a
+// user wrote is silently dropped.
+adminRouter.get('/label-queue', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+    const entries = await getLabelQueue(limit);
+    res.status(200).json({ success: true, data: { count: entries.length, entries } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin label-queue]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Backfill: run the label parser over one existing user's already-imported
+// phonebook (new users get this automatically on import; this covers
+// everyone who imported before the parser existed).
+adminRouter.post('/label-parser/backfill', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+      return;
+    }
+    void parsePhonebookLabelsForUser(String(userId))
+      .then((result) =>
+        // eslint-disable-next-line no-console
+        console.log(`[label-parser] user ${userId} done: ${JSON.stringify(result)}`),
+      )
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(`[label-parser] user ${userId} FAILED:`, (err as Error).message),
+      );
+    res.status(202).json({
+      success: true,
+      data: {
+        parsing_user: userId,
+        note: 'მიმდინარეობს ფონურად — დასრულება Railway-ს ლოგში ჩანს: [label-parser] user N done',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin label-parser backfill]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
