@@ -247,6 +247,20 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     expect(out).toEqual({ found: false });
   });
 
+  it("an exact surface match outranks 'any' in the ORDER BY — live-caught: three different moments all returned the same 'any' row", async () => {
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM question_bank qb')) {
+        expect(sql).toContain('(qb.surface = $2) DESC');
+        expect(params).toEqual(['7', 'weekly_review', null, 'ka']);
+        return Promise.resolve(rows([]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await getNextQuestion('7', 'weekly_review', 'ka');
+  });
+
   it('a language with no prompt text is excluded in SQL, not silently rendered in Georgian', async () => {
     // FLAT_SINGLE_ROW has prompt_es: null. Asking in Spanish must filter it
     // out at the query level — the founder's ruling: skip, never substitute.

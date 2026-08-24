@@ -124,7 +124,11 @@ export async function getNextQuestion(
          WHERE ae.user_id = $1 AND ae.question_id = qb.question_id AND ae.is_current
            AND ae.skipped = FALSE
        )
-     ORDER BY (qb.category = $3) ASC, qb.question_id
+     -- an exact surface match (e.g. weekly_review) must outrank a generic
+     -- 'any' row when a specific moment was requested — live-caught: three
+     -- different moment values all returned the same 'any' row, because
+     -- nothing here previously distinguished surface specificity at all.
+     ORDER BY (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id
      LIMIT 5`,
     [userId, surface, avoidCategory, lang],
     PARTH_TIMEOUT_MS,

@@ -59,6 +59,10 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   { table: 'oauth_tokens', column: 'user_id' },
   { table: 'product_events', column: 'user_id' },
   { table: 'introduction_requests', column: 'requester_user_id' },
+  // Part H's derived personal data (ticket 6, 24 Aug finding): the most
+  // personal data in the system was the only kind invisible on this page.
+  { table: 'profile_dimensions', column: 'user_id' },
+  { table: 'answer_events', column: 'user_id' },
   // The contact graph this account contributed — their phonebook.
   { table: '"UserAlias"', column: '"contactId"' },
   { table: '"UserTags"', column: '"contactId"' },
@@ -92,11 +96,13 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
   user_avatars: 'პროფილის ფოტო',
   ai_notification_log: 'შეტყობინებების ისტორია',
   ai_notification_settings: 'შეტყობინებების პარამეტრები',
-  push_subscriptions: 'push გამოწერები',
+  push_subscriptions: 'შეტყობინებების გამოწერები',
   device_fingerprints: 'მოწყობილობები',
   oauth_tokens: 'დაკავშირებული ანგარიშები',
   product_events: 'აქტივობის ჟურნალი',
   introduction_requests: 'გაცნობის მოთხოვნები',
+  profile_dimensions: 'პიროვნული პროფილი',
+  answer_events: 'კითხვებზე გაცემული პასუხები',
   UserAlias: 'კონტაქტების წიგნაკი',
   UserTags: 'კონტაქტების ტეგები',
   UserBlock: 'დაბლოკილები',
