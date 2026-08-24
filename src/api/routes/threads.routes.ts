@@ -31,6 +31,7 @@ import {
 import { wakeTask } from '../../services/taskEngine.service';
 import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
+import { sweepFactsFromExchange } from '../../services/factExtraction.service';
 import { ThreadStatus, deleteThread } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
@@ -365,6 +366,9 @@ threadsRouter.post(
           });
           // Title from the FINAL, post-strip reply (task 20) — never from a draft.
           if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
+          // Engine T1: catches facts about named third parties the live
+          // assistant decided not to save mid-conversation.
+          void sweepFactsFromExchange(userId, threadId, message, result.reply);
           // Persist + broadcast the terminal status. The thread becomes a task
           // once a run sent a request or reported a structured result.
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
