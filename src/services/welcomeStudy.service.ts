@@ -116,13 +116,22 @@ export async function runWelcomeStudy(userId: string, name: string, phone: strin
         .join('\n');
       sections.push(`საჯარო წყაროებში მოიძებნა:\n${lines}`);
     }
-    if (sections.length === 0) return;
+    if (sections.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[welcome-study] user ${userId}: nothing found (labels/old-Ally/web all empty)`);
+      return;
+    }
 
     await savePrivateContext(
       userId,
       WELCOME_STUDY_KEY,
       `ახალი მომხმარებლის საწყისი პროფილი, რეგისტრაციისას შეგროვებული:\n\n${sections.join('\n\n')}`,
       'set',
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[welcome-study] user ${userId} done: ${labels.length} labels, ` +
+        `${oldAllyEntries.length} old-Ally status(es), ${webResults.length} web result(s)`,
     );
   } catch (err) {
     // eslint-disable-next-line no-console
