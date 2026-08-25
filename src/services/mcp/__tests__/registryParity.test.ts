@@ -55,6 +55,12 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   relay_ask:
     'UNDECIDED — forwards an existing incoming ask; unclear whether this is in-app-thread-' +
     'specific or a real connector gap',
+  record_search_outcome:
+    "GAP, not a real asymmetry — live-caught 25 Aug: the connector's search tools " +
+    '(mcpSearchContacts etc.) never call logSearchActivity at all, so no MCP search ever ' +
+    'creates a search_activity row or a search_id to reference. Wiring this tool onto the ' +
+    'connector today would ship a tool that always fails there. The real fix is giving MCP ' +
+    'searches the same logging the in-app ones have — flagged, not done tonight.',
 };
 
 const CHAT_SERVICE_PATH = path.join(__dirname, '../../chat.service.ts');

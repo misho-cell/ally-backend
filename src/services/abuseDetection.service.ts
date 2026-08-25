@@ -16,9 +16,9 @@ export async function logSearchActivity(
   tool: string,
   rawQuery: string,
   resultCount: number | null = null,
-): Promise<void> {
+): Promise<number | null> {
   const q = rawQuery.trim().slice(0, MAX_QUERY_LENGTH);
-  if (!q) return;
+  if (!q) return null;
 
   const counts = await query<{ hourly: number; same_target: number }>(
     `SELECT
@@ -35,10 +35,17 @@ export async function logSearchActivity(
   const sameTarget = Number(row?.same_target ?? 0);
   const flagged = hourly >= HOURLY_VOLUME_THRESHOLD || sameTarget >= SAME_TARGET_THRESHOLD;
 
-  await query(
-    `INSERT INTO search_activity (user_id, query, tool, flagged, result_count)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [userId, q, tool, flagged, resultCount],
+  // A row that returned nothing already has its outcome — "no name found",
+  // the first rung of the outcome ladder (ticket 6, founder's answer ②).
+  // Every other rung (refused/accepted/sent/replied/followed_up) needs a
+  // real signal from the conversation, so it starts NULL, not guessed.
+  const outcome = resultCount === 0 ? 'no_result' : null;
+
+  const inserted = await query<{ id: number }>(
+    `INSERT INTO search_activity (user_id, query, tool, flagged, result_count, outcome, outcome_updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $6 IS NOT NULL THEN NOW() END)
+     RETURNING id`,
+    [userId, q, tool, flagged, resultCount, outcome],
   );
 
   if (flagged) {
@@ -47,4 +54,6 @@ export async function logSearchActivity(
       `[abuse] user ${userId} flagged — hourly=${hourly}, same_target("${q}")=${sameTarget}`,
     );
   }
+
+  return inserted.rows[0]?.id ?? null;
 }

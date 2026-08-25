@@ -40,6 +40,30 @@ export async function queueResult(
 }
 
 /**
+ * Queue an update for a FIXED future date — a scheduled check-in, not a
+ * "found result" waiting to trickle out. Deliberately separate from
+ * queueResult: that one's release_at is staggered by how many updates are
+ * already held, which is wrong here — a search outcome follow-up means
+ * "ask in exactly N days", not "whenever the drip queue gets to it".
+ */
+export async function queueFollowUp(
+  userId: string,
+  taskId: number | null,
+  kind: string,
+  payload: Record<string, unknown>,
+  delayDays: number,
+): Promise<{ id: number }> {
+  const result = await query<{ id: number }>(
+    `INSERT INTO pending_updates (user_id, task_id, kind, payload, release_at)
+     VALUES ($1, $2, $3, $4::jsonb, NOW() + ($5 || ' days')::INTERVAL)
+     RETURNING id`,
+    [userId, taskId, kind, JSON.stringify(payload), delayDays],
+    QUERY_TIMEOUT_MS,
+  );
+  return { id: result.rows[0].id };
+}
+
+/**
  * The updates due now (release_at reached), flipped to 'seen' so each is
  * reported once. Held-but-not-yet-due updates stay for a later day.
  */

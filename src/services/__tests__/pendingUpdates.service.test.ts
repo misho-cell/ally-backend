@@ -1,7 +1,12 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { queueResult, getPendingUpdates, countHeldUpdates } from '../pendingUpdates.service';
+import {
+  queueResult,
+  queueFollowUp,
+  getPendingUpdates,
+  countHeldUpdates,
+} from '../pendingUpdates.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -30,6 +35,26 @@ describe('pendingUpdates.service', () => {
       'found',
       JSON.stringify({ summary: 'Nino, a lawyer' }),
       3,
+    ]);
+  });
+
+  it('queueFollowUp releases on a FIXED future date, not the drip schedule — ticket 6, the search-outcome week-later check-in', async () => {
+    mockQuery.mockResolvedValue(result([{ id: 42 }]) as never);
+
+    const out = await queueFollowUp('501', null, 'search_followup', { search_id: 9 }, 7);
+
+    expect(out).toEqual({ id: 42 });
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('INSERT INTO pending_updates');
+    // Fixed delay from a parameter, never the held-count staggering queueResult uses.
+    expect(sql as string).not.toContain('COUNT(*)');
+    expect(sql as string).toContain("|| ' days')::INTERVAL");
+    expect(params as unknown[]).toEqual([
+      '501',
+      null,
+      'search_followup',
+      JSON.stringify({ search_id: 9 }),
+      7,
     ]);
   });
 

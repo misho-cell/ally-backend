@@ -93,6 +93,7 @@ import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
+import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { isCliffhangerReply, CLIFFHANGER_NUDGE, claimsNothingFound } from './replyGuards';
 import {
@@ -987,6 +988,32 @@ const QUEUE_RESULT_TOOL: AnthropicTool = {
   },
 };
 
+const RECORD_SEARCH_OUTCOME_TOOL: AnthropicTool = {
+  name: 'record_search_outcome',
+  description:
+    'Record what actually happened after a search — never call this just because a search ' +
+    'returned a name; a name found is not success. search_id comes from a search result ' +
+    '(search_contacts / search_by_insight / search_second_degree all attach one). Call with ' +
+    '"refused" the moment the user says a suggested name is not who they meant or not a fit — ' +
+    'ask why in one line and pass it as reason, it makes the next search better. Call with ' +
+    '"accepted" once they confirm a name is right, "sent" once you actually relay a message on ' +
+    'their behalf, "replied" once an answer comes back. Never guess "sent" or "replied" — only ' +
+    'record what you directly know happened in this conversation.' +
+    ' WHEN: the moment you learn the real outcome of a search, not when the search returns.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      search_id: { type: 'number', description: 'The search_id from a prior search result' },
+      outcome: {
+        type: 'string',
+        description: `One of: ${SEARCH_OUTCOMES.join(', ')}`,
+      },
+      reason: { type: 'string', description: 'Why refused — only meaningful with outcome=refused' },
+    },
+    required: ['search_id', 'outcome'],
+  },
+};
+
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
@@ -1746,8 +1773,14 @@ async function runLoggedSearch(
   const result = await searchWithRetry(() => run(userId, searchQuery));
   const rawCount = (result as { count?: unknown }).count;
   const resultCount = typeof rawCount === 'number' ? rawCount : 0;
-  void logSearchActivity(userId, tool, searchQuery, resultCount).catch(() => {});
-  return result;
+  // Awaited (not fire-and-forget, unlike before): the outcome ladder needs
+  // this row's id back so record_search_outcome can reference it later —
+  // ticket 6, founder's answer ②. A logging failure must still never break
+  // the search itself, so a caught error just omits search_id.
+  const searchId = await logSearchActivity(userId, tool, searchQuery, resultCount).catch(
+    () => null,
+  );
+  return searchId === null ? result : { ...result, search_id: searchId };
 }
 
 // --- Own-number passthrough hardening (ticket 6 close, answer 15) -----------
@@ -2141,6 +2174,28 @@ async function executeToolCall(
       const taskId = typeof input['task_id'] === 'number' ? (input['task_id'] as number) : null;
       await queueResult(userId, taskId, kind, { summary });
       return { queued: true };
+    }
+    case 'record_search_outcome': {
+      const searchId = Number(input['search_id']);
+      const outcome = (input['outcome'] as string) ?? '';
+      if (!Number.isFinite(searchId) || searchId <= 0) {
+        return { recorded: false, error: 'search_id must be a real id from a search result.' };
+      }
+      if (!isSearchOutcome(outcome)) {
+        return {
+          recorded: false,
+          error: `outcome must be one of: ${SEARCH_OUTCOMES.join(', ')}.`,
+        };
+      }
+      const reason = typeof input['reason'] === 'string' ? (input['reason'] as string) : null;
+      const worked = typeof input['worked'] === 'boolean' ? (input['worked'] as boolean) : null;
+      const recorded = await recordSearchOutcome({ searchId, userId, outcome, reason, worked });
+      return recorded
+        ? { recorded: true }
+        : {
+            recorded: false,
+            error: "That search_id is not one of this conversation's own searches.",
+          };
     }
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.
@@ -2937,6 +2992,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
+    RECORD_SEARCH_OUTCOME_TOOL,
     GET_PENDING_UPDATES_TOOL,
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,
