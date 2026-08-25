@@ -170,6 +170,74 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     );
   });
 
+  it('the specific trade wins over the generic "ხელოსანი" when a label carries both — live-caught: whichever word came first used to win regardless of specificity', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([
+            { contactId: 7, phone: '+995500000009', alias: 'Vano Xelosani Eleqtrikosi' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 1, queued: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000009',
+      'occupation',
+      'ელექტრიკოსი',
+      'label',
+      null,
+    );
+  });
+
+  it('the generic "ხელოსანი" is still stored on its own, when nothing more specific is in the label', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([{ contactId: 7, phone: '+995500000010', alias: 'Vano Xelosani' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 1, queued: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000010',
+      'occupation',
+      'ხელოსანი',
+      'label',
+      null,
+    );
+  });
+
+  it('the mixed q/k spelling "Eleqtriki" matches — live-caught: buildSearchTerms\' global drift swap can only produce all-q or all-k, never the mixed form people actually type', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([{ contactId: 7, phone: '+995500000011', alias: 'Gia Eleqtriki' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 1, queued: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000011',
+      'occupation',
+      'ელექტრიკი',
+      'label',
+      null,
+    );
+  });
+
   it('an English trade word matches too, case-insensitively', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserAlias" ua'))

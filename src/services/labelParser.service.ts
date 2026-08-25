@@ -93,6 +93,29 @@ const ENGLISH_OCCUPATIONS: readonly string[] = [
 // This is not exhaustive — a spelling buildSearchTerms doesn't generate
 // still falls through to the ambiguity queue, not a false negative that
 // looks like success.
+//
+// Live-caught gap (25 Aug): buildSearchTerms's q/k drift is a single global
+// swap over the whole word, so a word with BOTH ქ and კ (elektrikosi has
+// one of each) can only come out all-k or all-q ("elektriki"/"eleqtriqi") —
+// never the mixed spelling a person actually types ("eleqtriki", q for the
+// first letter, k for the second). That's a general limit of the shared
+// transliteration engine, not something to rework here; these are the
+// specific mixed spellings this dictionary is known to be missing.
+const MANUAL_SPELLING_VARIANTS: Readonly<Record<string, string>> = {
+  eleqtriki: 'ელექტრიკი',
+  eleqtrikosi: 'ელექტრიკოსი',
+};
+
+// ხელოსანი ("handyman/tradesman") is the one deliberately generic entry in
+// this dictionary — every other word names a specific trade. Live-caught
+// (24 Aug): when a label carries both ("Vano Xelosani Eleqtrikosi"),
+// matchOccupation returned whichever word happened to come first, so the
+// vaguer word could win over a more specific one sitting right next to it
+// in the same label. It never adds information the specific word doesn't
+// already carry, so it always loses when anything else in the label also
+// matched.
+const GENERIC_OCCUPATION = 'ხელოსანი';
+
 function buildDictionary(): Readonly<Record<string, string>> {
   const dict: Record<string, string> = {};
   for (const word of GEORGIAN_OCCUPATIONS) {
@@ -101,6 +124,7 @@ function buildDictionary(): Readonly<Record<string, string>> {
   for (const word of ENGLISH_OCCUPATIONS) {
     dict[word] = word.charAt(0).toUpperCase() + word.slice(1);
   }
+  Object.assign(dict, MANUAL_SPELLING_VARIANTS);
   return dict;
 }
 
@@ -126,11 +150,17 @@ function wordsOf(alias: string): string[] {
 }
 
 function matchOccupation(alias: string): string | null {
+  let genericMatch: string | null = null;
   for (const word of wordsOf(alias)) {
     const match = OCCUPATION_DICTIONARY[word];
-    if (match) return match;
+    if (!match) continue;
+    if (match === GENERIC_OCCUPATION) {
+      genericMatch = match;
+      continue;
+    }
+    return match;
   }
-  return null;
+  return genericMatch;
 }
 
 /**
