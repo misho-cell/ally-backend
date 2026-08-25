@@ -4,6 +4,12 @@ import { searchContactByName } from '../tools/searchContactByName';
 import { searchByInsight } from '../tools/searchByInsight';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { searchWithRetry } from '../tools/searchRetry';
+import { logSearchActivity } from '../abuseDetection.service';
+import {
+  recordSearchOutcome,
+  isSearchOutcome,
+  SEARCH_OUTCOMES as SEARCH_OUTCOME_VALUES,
+} from '../searchOutcome.service';
 import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
@@ -151,8 +157,32 @@ function dedupeByName(rows: SearchRow[]): SearchRow[] {
   return out;
 }
 
-function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToolPayload {
+// Live-caught (25 Aug): the connector's search tools never called
+// logSearchActivity at all — every demand-signal row in search_activity came
+// from the in-app surface only, and record_search_outcome (ticket 6, the
+// outcome ladder) had no MCP-side search_id to ever reference. tool +
+// searchQuery identify what was actually searched, matching the shape
+// runLoggedSearch already logs in chat.service.ts. Logging failures are
+// caught and logged, never allowed to break the search itself.
+async function mapSearchResult(
+  userId: string,
+  raw: object,
+  emptyNote: string,
+  tool: string,
+  searchQuery: string,
+): Promise<McpToolPayload> {
   const outcome = raw as SearchOutcome;
+  const resultCount = outcome.total ?? outcome.count ?? outcome.results?.length ?? 0;
+  const searchId = await logSearchActivity(userId, tool, searchQuery, resultCount).catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[search-log] logSearchActivity failed for user ${userId}:`, err);
+      return null;
+    },
+  );
+  const withSearchId = (payload: McpToolPayload): McpToolPayload =>
+    searchId === null ? payload : { ...payload, search_id: searchId };
+
   // A technical failure (timeout, SQL error) must never masquerade as "no
   // results" — the model would tell the user the person doesn't exist. Surface
   // it as an error so the model reports a temporary problem and retries.
@@ -164,7 +194,7 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
     };
   }
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
-    return { found: false, note: emptyNote };
+    return withSearchId({ found: false, note: emptyNote });
   }
   const deduped = dedupeByName(outcome.results);
   // Real total when the tool reports one; else the deduped pool size.
@@ -177,7 +207,7 @@ function mapSearchResult(userId: string, raw: object, emptyNote: string): McpToo
   else if (typeof total === 'number' && total >= TOO_BROAD_TOTAL)
     payload.note = noteTooBroad(total);
   else if (total > rows.length) payload.note = noteTruncated(rows.length, total);
-  return payload;
+  return withSearchId(payload);
 }
 
 // One paced server-side retry absorbs transient search failures (~3 calls in
@@ -196,7 +226,7 @@ export async function mcpSearchContacts(
   const raw = await searchWithRetry(() =>
     tag ? searchByTag(userId, tag) : searchContactByName(userId, name ?? ''),
   );
-  return mapSearchResult(userId, raw, NOTE_EMPTY_TAG);
+  return mapSearchResult(userId, raw, NOTE_EMPTY_TAG, tag ? 'tag' : 'name', tag ?? name ?? '');
 }
 
 export async function mcpSearchByInsight(
@@ -206,7 +236,7 @@ export async function mcpSearchByInsight(
   const insightQuery = args.query?.trim();
   if (!insightQuery) return { error: 'Pass query.' };
   const raw = await searchWithRetry(() => searchByInsight(userId, insightQuery));
-  return mapSearchResult(userId, raw, NOTE_EMPTY_INSIGHT);
+  return mapSearchResult(userId, raw, NOTE_EMPTY_INSIGHT, 'insight', insightQuery);
 }
 
 export async function mcpSearchSecondDegree(
@@ -216,7 +246,7 @@ export async function mcpSearchSecondDegree(
   const searchQuery = args.query?.trim();
   if (!searchQuery) return { error: 'Pass query.' };
   const raw = await searchWithRetry(() => searchSecondDegree(userId, searchQuery));
-  return mapSearchResult(userId, raw, NOTE_EMPTY_SECOND_DEGREE);
+  return mapSearchResult(userId, raw, NOTE_EMPTY_SECOND_DEGREE, 'second_degree', searchQuery);
 }
 
 export async function mcpGetNetworkStats(userId: string): Promise<McpToolPayload> {
@@ -903,6 +933,32 @@ export async function mcpQueueResult(
   if (args.contact_ref) payload.contact_ref = args.contact_ref;
   await queueResult(userId, taskId, kind, payload);
   return { queued: true };
+}
+
+export async function mcpRecordSearchOutcome(
+  userId: string,
+  args: { search_id?: number; outcome?: string; reason?: string },
+): Promise<McpToolPayload> {
+  const searchId = Number(args.search_id);
+  if (!Number.isFinite(searchId) || searchId <= 0) {
+    return { recorded: false, error: 'search_id must be a real id from a search result.' };
+  }
+  const outcome = args.outcome ?? '';
+  if (!isSearchOutcome(outcome)) {
+    return {
+      recorded: false,
+      error: `outcome must be one of: ${SEARCH_OUTCOME_VALUES.join(', ')}.`,
+    };
+  }
+  const recorded = await recordSearchOutcome({
+    searchId,
+    userId,
+    outcome,
+    reason: args.reason ?? null,
+  });
+  return recorded
+    ? { recorded: true }
+    : { recorded: false, error: "That search_id is not one of this conversation's own searches." };
 }
 
 export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {

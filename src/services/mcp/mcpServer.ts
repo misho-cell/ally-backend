@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { recordFixedUsage } from '../costLedger.service';
+import { SEARCH_OUTCOMES } from '../searchOutcome.service';
 import {
   mcpBlockContact,
   mcpCheckInbox,
@@ -41,6 +42,7 @@ import {
   mcpSaveUserNote,
   mcpGetUserNotes,
   mcpQueueResult,
+  mcpRecordSearchOutcome,
   mcpGetPendingUpdates,
   mcpGetProfileQuestion,
   mcpAnswerProfileQuestion,
@@ -463,6 +465,23 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'queue_result', () => mcpQueueResult(userId, args)),
+  );
+  server.registerTool(
+    'record_search_outcome',
+    {
+      title: TOOL_TEXTS.record_search_outcome.title,
+      description: TOOL_TEXTS.record_search_outcome.description,
+      inputSchema: {
+        search_id: z.number().describe('The search_id from a prior search result'),
+        outcome: z.enum(SEARCH_OUTCOMES).describe(`One of: ${SEARCH_OUTCOMES.join(', ')}`),
+        reason: z
+          .string()
+          .optional()
+          .describe('Why refused — only meaningful with outcome=refused'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
   );
   server.registerTool(
     'get_pending_updates',

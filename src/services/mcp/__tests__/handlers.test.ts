@@ -9,6 +9,15 @@ jest.mock('../../tools/searchSecondDegree', () => ({
   searchSecondDegree: jest.fn(),
   __esModule: true,
 }));
+jest.mock('../../abuseDetection.service', () => ({
+  logSearchActivity: jest.fn().mockResolvedValue(null),
+  __esModule: true,
+}));
+jest.mock('../../searchOutcome.service', () => ({
+  ...jest.requireActual('../../searchOutcome.service'),
+  recordSearchOutcome: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../../tools/getContactCount', () => ({ getContactCount: jest.fn(), __esModule: true }));
 jest.mock('../../tools/getContactFullProfile', () => ({
   getContactFullProfile: jest.fn(),
@@ -92,6 +101,8 @@ import {
   getRecentResponsesForRequester,
 } from '../../introduction.service';
 import { getPendingAsksForUser } from '../../taskAsks.service';
+import { logSearchActivity } from '../../abuseDetection.service';
+import { recordSearchOutcome } from '../../searchOutcome.service';
 import { isReplySafe } from '../../moderation.service';
 import { encodeContactRef } from '../contactRef';
 import { containsPhoneLike } from '../privacy';
@@ -113,6 +124,7 @@ import {
   mcpStopContactingMe,
   mcpUnblockContact,
   mcpUpdateTask,
+  mcpRecordSearchOutcome,
 } from '../handlers';
 import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
 import {
@@ -153,6 +165,10 @@ const mockAnswered = getRecentResponsesForRequester as jest.MockedFunction<
   typeof getRecentResponsesForRequester
 >;
 const mockPendingAsks = getPendingAsksForUser as jest.MockedFunction<typeof getPendingAsksForUser>;
+const mockLogSearchActivity = logSearchActivity as jest.MockedFunction<typeof logSearchActivity>;
+const mockRecordSearchOutcome = recordSearchOutcome as jest.MockedFunction<
+  typeof recordSearchOutcome
+>;
 const mockIsSafe = isReplySafe as jest.MockedFunction<typeof isReplySafe>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
 const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFacts>;
@@ -197,6 +213,41 @@ describe('mcpSearchContacts', () => {
     expect(rows[0].contact_ref).toBe(encodeContactRef(USER, '+995599000001'));
     expect(rows[0].phone).toBeUndefined();
     expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it("logs the search and attaches search_id — live-caught 25 Aug: the connector's search tools never called logSearchActivity at all, so no MCP search ever created a search_activity row or a search_id for record_search_outcome to reference", async () => {
+    mockSearchByTag.mockResolvedValue({
+      found: true,
+      count: 2,
+      results: [searchRow(1), searchRow(2)],
+    });
+    mockLogSearchActivity.mockResolvedValue(9001);
+
+    const result = await mcpSearchContacts(USER, { tag: 'ceo' });
+
+    expect(mockLogSearchActivity).toHaveBeenCalledWith(USER, 'tag', 'ceo', 2);
+    expect(result.search_id).toBe(9001);
+  });
+
+  it('still returns the search result when logging fails — a search must never break because logging did', async () => {
+    mockSearchByTag.mockResolvedValue({ found: true, count: 1, results: [searchRow(1)] });
+    mockLogSearchActivity.mockRejectedValue(new Error('db down'));
+
+    const result = await mcpSearchContacts(USER, { tag: 'ceo' });
+
+    expect(result.found).toBe(true);
+    expect(result.search_id).toBeUndefined();
+  });
+
+  it('logs "name" as the tool for a name search, and even an empty result still gets a search_id', async () => {
+    mockSearchByName.mockResolvedValue({ found: false });
+    mockLogSearchActivity.mockResolvedValue(9002);
+
+    const result = await mcpSearchContacts(USER, { name: 'Gio' });
+
+    expect(mockLogSearchActivity).toHaveBeenCalledWith(USER, 'name', 'Gio', 0);
+    expect(result.found).toBe(false);
+    expect(result.search_id).toBe(9002);
   });
 
   it('routes name searches to searchContactByName', async () => {
@@ -335,6 +386,16 @@ describe('mcpSearchContacts', () => {
     expect(empty.found).toBe(false);
     expect(String(empty.note)).not.toContain('try search_by_insight');
   });
+
+  it('logs "insight" as the tool for search_by_insight', async () => {
+    mockSearchByInsight.mockResolvedValue({ found: true, count: 3, results: [searchRow(1)] });
+    mockLogSearchActivity.mockResolvedValue(9003);
+
+    const result = await mcpSearchByInsight(USER, { query: 'who invests' });
+
+    expect(mockLogSearchActivity).toHaveBeenCalledWith(USER, 'insight', 'who invests', 3);
+    expect(result.search_id).toBe(9003);
+  });
 });
 
 describe('mcpSearchSecondDegree', () => {
@@ -361,6 +422,16 @@ describe('mcpSearchSecondDegree', () => {
     expect(row.target_user_id).toBeUndefined();
     expect(row.contact_ref).toBe(encodeContactRef(USER, PHONE));
     expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('logs "second_degree" as the tool, matching the same tool name the in-app surface already uses', async () => {
+    mockSecondDegree.mockResolvedValue({ found: true, count: 1, results: [] });
+    mockLogSearchActivity.mockResolvedValue(9004);
+
+    const result = await mcpSearchSecondDegree(USER, { query: 'lawyer' });
+
+    expect(mockLogSearchActivity).toHaveBeenCalledWith(USER, 'second_degree', 'lawyer', 1);
+    expect(result.search_id).toBe(9004);
   });
 });
 
@@ -813,5 +884,50 @@ describe('mcpUpdateTask close cancels in-flight asks', () => {
     await mcpUpdateTask(USER, { task_ref: 'task_6', status: 'closed' });
 
     expect(mockCancelAsks).not.toHaveBeenCalled();
+  });
+});
+
+describe('mcpRecordSearchOutcome', () => {
+  it('rejects a missing/invalid search_id without calling the service', async () => {
+    const result = await mcpRecordSearchOutcome(USER, { outcome: 'accepted' });
+
+    expect(result.recorded).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(mockRecordSearchOutcome).not.toHaveBeenCalled();
+  });
+
+  it('rejects an outcome outside the six-rung ladder — the model must never invent a new state', async () => {
+    const result = await mcpRecordSearchOutcome(USER, { search_id: 9, outcome: 'successful' });
+
+    expect(result.recorded).toBe(false);
+    expect(String(result.error)).toContain('no_result');
+    expect(mockRecordSearchOutcome).not.toHaveBeenCalled();
+  });
+
+  it('passes a valid call straight through, including the refusal reason', async () => {
+    mockRecordSearchOutcome.mockResolvedValue(true);
+
+    const result = await mcpRecordSearchOutcome(USER, {
+      search_id: 9,
+      outcome: 'refused',
+      reason: 'wrong field entirely',
+    });
+
+    expect(result.recorded).toBe(true);
+    expect(mockRecordSearchOutcome).toHaveBeenCalledWith({
+      searchId: 9,
+      userId: USER,
+      outcome: 'refused',
+      reason: 'wrong field entirely',
+    });
+  });
+
+  it("reports failure honestly when the search_id isn't this user's own", async () => {
+    mockRecordSearchOutcome.mockResolvedValue(false);
+
+    const result = await mcpRecordSearchOutcome(USER, { search_id: 9, outcome: 'accepted' });
+
+    expect(result.recorded).toBe(false);
+    expect(result.error).toBeDefined();
   });
 });

@@ -360,6 +360,18 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'contact_ref if the result is a person. The backend releases a small burst, then one per ' +
       'day — you never invent or rush the rest. Use when you found something for an open task.',
   },
+  record_search_outcome: {
+    title: 'Record what happened after a search',
+    description:
+      'Records what actually happened after a search — never call this just because a search ' +
+      'returned a name; a name found is not success. search_id comes from a search result ' +
+      '(search_contacts / search_by_insight / search_second_degree all attach one). Call with ' +
+      '"refused" the moment the user says a suggested name is not who they meant or not a fit — ' +
+      'ask why in one line and pass it as reason, it makes the next search better. Call with ' +
+      '"accepted" once they confirm a name is right, "sent" once you actually relay a message ' +
+      'on their behalf, "replied" once an answer comes back. Never guess "sent" or "replied" — ' +
+      'only record what you directly know happened in this conversation.',
+  },
   get_pending_updates: {
     title: 'Updates due for the user',
     description:
