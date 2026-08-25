@@ -21,6 +21,14 @@
 -- and blue only" is a product decision about what to SURFACE, not a reason
 -- to discard the other two at the storage layer (ticket 6's own "existing
 -- contacts are the biggest asset" ruling applies here too).
+-- Live-caught (25 Aug): this migration originally also ran the product-wide
+-- backfill INSERT below inline — a JOIN + SORT over UserConnectionPhone's 3M
+-- rows. The migration runner applies every file inside ONE transaction on
+-- ONE connection, so that INSERT hit the connection's statement_timeout,
+-- the whole migration rolled back, and the app crash-looped on every boot
+-- (it re-attempts pending migrations on startup). Split: this file only
+-- creates the table (fast DDL); the backfill is its own admin-triggered,
+-- batched pass — see backfillHumanRelationshipTiers() in relationshipScores.ts.
 CREATE TABLE IF NOT EXISTS human_relationship_tiers (
   user_id       INTEGER NOT NULL,
   contact_phone TEXT NOT NULL,
@@ -29,32 +37,6 @@ CREATE TABLE IF NOT EXISTS human_relationship_tiers (
   set_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, contact_phone)
 );
-
--- One-time backfill from the old-Ally classification, product-wide (~273k
--- rows). allies=green, loyal=blue, connections=yellow, contacts=red — the
--- same weight ordering (1/2/3/4) the old product itself used. A phone with
--- more than one UserConnection row for the same user (rare) keeps its
--- warmest tier via ON CONFLICT DO NOTHING with MIN(weight) pre-selected.
-INSERT INTO human_relationship_tiers (user_id, contact_phone, tier, source, set_at)
-SELECT DISTINCT ON (uc."originUserId", ucp.phone)
-  uc."originUserId",
-  ucp.phone,
-  CASE uc."relationshipStatus"
-    WHEN 'allies' THEN 'green'
-    WHEN 'loyal' THEN 'blue'
-    WHEN 'connections' THEN 'yellow'
-    WHEN 'contacts' THEN 'red'
-  END,
-  'old_ally_classify',
-  NOW()
-FROM "UserConnection" uc
-JOIN "UserConnectionPhone" ucp ON ucp."connectionId" = uc.id
-WHERE uc."relationshipStatus" IN ('allies', 'loyal', 'connections', 'contacts')
-ORDER BY uc."originUserId", ucp.phone,
-  CASE uc."relationshipStatus"
-    WHEN 'allies' THEN 1 WHEN 'loyal' THEN 2 WHEN 'connections' THEN 3 ELSE 4
-  END
-ON CONFLICT (user_id, contact_phone) DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS idx_human_relationship_tiers_user
   ON human_relationship_tiers (user_id);
