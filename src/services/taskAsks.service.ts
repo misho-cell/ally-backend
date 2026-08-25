@@ -461,6 +461,35 @@ export async function getAsksForTask(taskId: number): Promise<TaskAsk[]> {
   return result.rows;
 }
 
+export interface PendingAsk {
+  ask_id: number;
+  from_name: string | null;
+  question: string;
+  created_at: string;
+}
+
+/**
+ * Real questions relayed by another member, still unanswered — a completely
+ * different table from introduction_requests (the mediator "who wants to
+ * meet whom" flow), and one check_my_inbox never queried. Live-caught (25
+ * Aug): two live asks (ids 892, 925) sat on the founder's own inbox sidebar
+ * and in /admin/asks, both status 'sent', while the connector's
+ * check_my_inbox reported `waiting_for_me: []` twice, an hour apart, in the
+ * same run.
+ */
+export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[]> {
+  const result = await query<PendingAsk>(
+    `SELECT ta.id AS ask_id, u.name AS from_name, ta.question, ta.created_at
+     FROM task_asks ta
+     LEFT JOIN "User" u ON u.id = ta.from_user_id
+     WHERE ta.to_user_id = $1::int AND ta.status = 'sent'
+     ORDER BY ta.created_at ASC`,
+    [userId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /** Stop everything in flight when a task closes; tell the recipients honestly. */
 export async function cancelAsksForTask(taskId: number): Promise<void> {
   const cancelled = await query<{ ask_thread_id: number | null; to_user_id: number }>(

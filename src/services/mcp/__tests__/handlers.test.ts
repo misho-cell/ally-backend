@@ -46,6 +46,7 @@ jest.mock('../../taskStore.service', () => ({
 jest.mock('../../taskAsks.service', () => ({
   cancelAsksForTask: jest.fn().mockResolvedValue(undefined),
   createAsk: jest.fn(),
+  getPendingAsksForUser: jest.fn().mockResolvedValue([]),
   __esModule: true,
 }));
 jest.mock('../../askOptOut.service', () => ({
@@ -90,6 +91,7 @@ import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
 } from '../../introduction.service';
+import { getPendingAsksForUser } from '../../taskAsks.service';
 import { isReplySafe } from '../../moderation.service';
 import { encodeContactRef } from '../contactRef';
 import { containsPhoneLike } from '../privacy';
@@ -150,6 +152,7 @@ const mockPending = getPendingRequestsForMediator as jest.MockedFunction<
 const mockAnswered = getRecentResponsesForRequester as jest.MockedFunction<
   typeof getRecentResponsesForRequester
 >;
+const mockPendingAsks = getPendingAsksForUser as jest.MockedFunction<typeof getPendingAsksForUser>;
 const mockIsSafe = isReplySafe as jest.MockedFunction<typeof isReplySafe>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
 const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFacts>;
@@ -512,6 +515,10 @@ describe('mcpRequestIntroduction', () => {
 });
 
 describe('mcpCheckInbox', () => {
+  beforeEach(() => {
+    mockPendingAsks.mockResolvedValue([]);
+  });
+
   it('returns request_refs with the last-line note and scrubbed messages', async () => {
     mockPending.mockResolvedValue([
       {
@@ -565,6 +572,41 @@ describe('mcpCheckInbox', () => {
     mockAnswered.mockResolvedValue([]);
     const result = await mcpCheckInbox(USER);
     expect(result.note).toBeUndefined();
+  });
+
+  it('returns questions relayed by another member — live-caught: two real asks (ids 892, 925) never appeared because this tool only ever queried introduction_requests, never task_asks', async () => {
+    mockPending.mockResolvedValue([]);
+    mockAnswered.mockResolvedValue([]);
+    mockPendingAsks.mockResolvedValue([
+      {
+        ask_id: 892,
+        from_name: 'Giorgi Turashvili',
+        question: `IT მომსახურება, ჩემი ნომერია ${PHONE}`,
+        created_at: '2026-08-24T11:37:13.277Z',
+      },
+    ]);
+
+    const result = await mcpCheckInbox(USER);
+    const questions = result.questions_for_me as Record<string, unknown>[];
+
+    expect(questions[0].ask_id).toBe('892');
+    expect(questions[0].from).toBe('Giorgi Turashvili');
+    expect(questions[0].question).toBe('IT მომსახურება, ჩემი ნომერია [hidden]');
+    expect(result.note).toContain('1 unanswered question');
+    expect(containsPhoneLike(result)).toBe(false);
+  });
+
+  it('counts pending asks toward the note even when no introduction request is waiting', async () => {
+    mockPending.mockResolvedValue([]);
+    mockAnswered.mockResolvedValue([]);
+    mockPendingAsks.mockResolvedValue([
+      { ask_id: 1, from_name: 'A', question: 'q1', created_at: '2026-08-24T00:00:00Z' },
+      { ask_id: 2, from_name: 'B', question: 'q2', created_at: '2026-08-24T00:00:00Z' },
+    ]);
+
+    const result = await mcpCheckInbox(USER);
+
+    expect(result.note).toContain('2 unanswered question');
   });
 });
 

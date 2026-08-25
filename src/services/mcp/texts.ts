@@ -650,9 +650,12 @@ export const NOTE_INTRO_SENT =
   "Introduction request sent. Tell the user they'll get the reply inside Ally; " +
   'never promise it will come.';
 
-export function noteInboxPending(count: number): string {
+export function noteInboxPending(introCount: number, askCount: number): string {
+  const parts: string[] = [];
+  if (introCount > 0) parts.push(`${introCount} unread introduction request(s)`);
+  if (askCount > 0) parts.push(`${askCount} unanswered question(s) relayed by another member`);
   return (
-    `${count} unread introduction request(s). Answer the user's message first; ` +
+    `${parts.join(' and ')}. Answer the user's message first; ` +
     'add these only as the last line of your reply, never as an opener.'
   );
 }

@@ -27,7 +27,7 @@ import {
   setTaskWake,
   updateTask,
 } from '../taskStore.service';
-import { cancelAsksForTask, createAsk } from '../taskAsks.service';
+import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
@@ -345,9 +345,10 @@ export async function mcpRequestIntroduction(
 }
 
 export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
-  const [pending, answered] = await Promise.all([
+  const [pending, answered, pendingAsks] = await Promise.all([
     getPendingRequestsForMediator(userId),
     getRecentResponsesForRequester(userId),
+    getPendingAsksForUser(userId),
   ]);
   const payload: McpToolPayload = {
     waiting_for_me: pending.map((request) => ({
@@ -370,8 +371,19 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
       sent_at: scrubDeep(reply.created_at),
       responded_at: scrubDeep(reply.responded_at),
     })),
+    // A different flow entirely (task_asks, not introduction_requests) — a
+    // question relayed by another member, not a request to meet someone.
+    // Live-caught (25 Aug): this category never appeared here at all.
+    questions_for_me: pendingAsks.map((ask) => ({
+      ask_id: String(ask.ask_id),
+      from: ask.from_name,
+      question: scrubText(ask.question),
+      created_at: scrubDeep(ask.created_at),
+    })),
   };
-  if (pending.length > 0) payload.note = noteInboxPending(pending.length);
+  if (pending.length > 0 || pendingAsks.length > 0) {
+    payload.note = noteInboxPending(pending.length, pendingAsks.length);
+  }
   return payload;
 }
 

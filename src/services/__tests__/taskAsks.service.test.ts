@@ -33,6 +33,7 @@ import {
   cancelAsksForTask,
   buildAnswerWakeEvent,
   ensureVerbatimQuote,
+  getPendingAsksForUser,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -420,6 +421,36 @@ describe('ensureVerbatimQuote', () => {
 
   it('does nothing for an empty answer', () => {
     expect(ensureVerbatimQuote('პასუხი.', { text: '   ', who: 'ვიღაც' })).toBe('პასუხი.');
+  });
+});
+
+describe('getPendingAsksForUser', () => {
+  it("queries task_asks directly, scoped to this user as recipient and status 'sent' — live-caught: check_my_inbox never queried this table at all, only introduction_requests, so two real waiting questions (ids 892, 925) never surfaced", async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        {
+          ask_id: 892,
+          from_name: 'Giorgi Turashvili',
+          question: 'IT მომსახურება',
+          created_at: '2026-08-24T11:37:13.277Z',
+        },
+      ]) as never,
+    );
+
+    const out = await getPendingAsksForUser('501');
+
+    expect(out).toEqual([
+      {
+        ask_id: 892,
+        from_name: 'Giorgi Turashvili',
+        question: 'IT მომსახურება',
+        created_at: '2026-08-24T11:37:13.277Z',
+      },
+    ]);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('to_user_id = $1');
+    expect(sql).toContain("status = 'sent'");
+    expect(params).toEqual(['501']);
   });
 });
 
