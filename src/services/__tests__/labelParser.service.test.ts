@@ -10,6 +10,7 @@ import {
   parsePhonebookLabelsForUser,
   getLabelQueueForUser,
   getLabelQueueTotal,
+  reprocessLabelQueue,
 } from '../labelParser.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -283,5 +284,88 @@ describe('getLabelQueueTotal', () => {
     const out = await getLabelQueueTotal();
 
     expect(out).toBe(2277);
+  });
+});
+
+describe('reprocessLabelQueue (engine T2 catch-up pass)', () => {
+  it('promotes a queued row to a real fact when today\'s dictionary now resolves it, and removes it from the queue — live-caught: the "Eleqtriki" fix never reached rows queued before it shipped', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM label_parse_queue'))
+        return Promise.resolve(
+          rows([
+            { id: 9, contact_id: 501, phone: '+995500000012', alias: 'Gia Eleqtriki' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessLabelQueue();
+
+    expect(out).toEqual({ promoted: 1, removed: 0, remaining: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '501',
+      '+995500000012',
+      'occupation',
+      'ელექტრიკი',
+      'label',
+      null,
+    );
+    const del = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('DELETE'));
+    expect(del?.[1]).toEqual([9]);
+  });
+
+  it('removes a plain-name row that today\'s stricter word-count rule would never have queued — live-caught: 2,277 of one real account\'s 2,698 contacts were just "First Last"', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM label_parse_queue'))
+        return Promise.resolve(
+          rows([
+            { id: 10, contact_id: 501, phone: '+995500000013', alias: 'Gia Kublashvili' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessLabelQueue();
+
+    expect(out).toEqual({ promoted: 0, removed: 1, remaining: 0 });
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+    const del = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('DELETE'));
+    expect(del?.[1]).toEqual([10]);
+  });
+
+  it('leaves a genuine, still-unresolved label untouched', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM label_parse_queue'))
+        return Promise.resolve(
+          rows([
+            { id: 11, contact_id: 501, phone: '+995500000014', alias: 'Nika Besos Dzma' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessLabelQueue();
+
+    expect(out).toEqual({ promoted: 0, removed: 0, remaining: 1 });
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+    expect(mockQuery.mock.calls.some(([sql]) => (sql as string).includes('DELETE'))).toBe(false);
+  });
+
+  it('scopes to one account when userId is given, and sweeps the whole queue otherwise', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await reprocessLabelQueue('501');
+    let call = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM label_parse_queue'),
+    );
+    expect(call?.[0]).toContain('WHERE contact_id');
+    expect(call?.[1]).toEqual(['501']);
+
+    jest.clearAllMocks();
+    mockQuery.mockResolvedValue(rows([]) as never);
+    await reprocessLabelQueue();
+    call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('FROM label_parse_queue'));
+    expect(call?.[0]).not.toContain('WHERE contact_id');
+    expect(call?.[1]).toEqual([]);
   });
 });

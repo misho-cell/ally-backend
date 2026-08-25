@@ -247,6 +247,66 @@ export async function getLabelQueueTotal(): Promise<number> {
   return Number(result.rows[0]?.count ?? 0);
 }
 
+export interface QueueReprocessResult {
+  promoted: number;
+  removed: number;
+  remaining: number;
+}
+
+/**
+ * Re-evaluates every row already sitting in label_parse_queue against
+ * TODAY's dictionary and word-count rule — not just new phonebook imports.
+ * Live-caught (25 Aug): the founder's ruling is that the existing base is
+ * the asset, so a dictionary fix must reach contacts already queued or
+ * already skipped, not just new ones — but parsePhonebookLabelsForUser's own
+ * re-run guard (never touch a phone that already has a fact or a queue row)
+ * means a later dictionary change never revisits what an earlier run
+ * already decided. Proven live: re-running the backfill on a real account
+ * left facts and queue counts completely unchanged after the "Eleqtriki"
+ * fix shipped, because every one of its phones was already queued. This is
+ * the catch-up pass — a queued row is promoted to a fact if today's
+ * dictionary now resolves it, or dropped if today's stricter word-count
+ * rule would never have queued it in the first place; a genuine unresolved
+ * label is left untouched. Scope with userId for one account, omit for the
+ * whole queue.
+ */
+export async function reprocessLabelQueue(userId?: string): Promise<QueueReprocessResult> {
+  const candidates = await query<LabelQueueEntry>(
+    userId
+      ? `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue WHERE contact_id = $1::int`
+      : `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue`,
+    userId ? [userId] : [],
+    PARSE_TIMEOUT_MS,
+  );
+
+  let promoted = 0;
+  let removed = 0;
+  let remaining = 0;
+  for (const row of candidates.rows) {
+    const occupation = matchOccupation(row.alias);
+    if (occupation) {
+      await submitContactFact(
+        String(row.contact_id),
+        row.phone,
+        'occupation',
+        occupation,
+        'label',
+        null,
+      );
+      await query(`DELETE FROM label_parse_queue WHERE id = $1`, [row.id], PARSE_TIMEOUT_MS);
+      promoted++;
+      continue;
+    }
+    if (wordsOf(row.alias).length < MIN_QUEUE_WORDS) {
+      await query(`DELETE FROM label_parse_queue WHERE id = $1`, [row.id], PARSE_TIMEOUT_MS);
+      removed++;
+      continue;
+    }
+    remaining++;
+  }
+  return { promoted, removed, remaining };
+}
+
 export interface OwnLabelQueueEntry {
   phone: string;
   alias: string;

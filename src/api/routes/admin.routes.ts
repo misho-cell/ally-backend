@@ -68,6 +68,7 @@ import {
   getLabelQueue,
   getLabelQueueTotal,
   parsePhonebookLabelsForUser,
+  reprocessLabelQueue,
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 
@@ -1009,12 +1010,13 @@ adminRouter.get('/label-queue', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
-    // "count" was live-caught reading 2 when the real queue held 2,277 — it
-    // was this page's row count, not the queue's size. "total" is the real
-    // number; "count" stays for compatibility but now means what it always
-    // should have: how many rows this response actually carries.
+    // Live-caught twice: a field called "count" next to a field called
+    // "total" reads as "the real number" either way, and got read as the
+    // queue's true size at 500 (this page's row cap) when the real figure
+    // was 2,277. Dropping "count" entirely — "returned" can't be mistaken
+    // for "total" the way "count" could.
     const [entries, total] = await Promise.all([getLabelQueue(limit), getLabelQueueTotal()]);
-    res.status(200).json({ success: true, data: { count: entries.length, total, entries } });
+    res.status(200).json({ success: true, data: { total, returned: entries.length, entries } });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin label-queue]', error);
@@ -1051,6 +1053,41 @@ adminRouter.post('/label-parser/backfill', async (req: Request, res: Response) =
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin label-parser backfill]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Catch-up pass: re-evaluate rows already SITTING in label_parse_queue
+// against today's dictionary and word-count rule — the backfill above only
+// looks at phones with neither a fact nor a queue row yet, so a dictionary
+// fix shipped after a phone was already queued never reaches it on its own.
+// ?user_id= scopes to one account; omit to sweep the whole queue.
+adminRouter.post('/label-parser/reprocess-queue', async (req: Request, res: Response) => {
+  try {
+    const rawUserId = req.query.user_id;
+    const userId = typeof rawUserId === 'string' && /^\d+$/.test(rawUserId) ? rawUserId : undefined;
+    void reprocessLabelQueue(userId)
+      .then((result) =>
+        // eslint-disable-next-line no-console
+        console.log(`[label-parser reprocess] ${userId ?? 'ALL'} done: ${JSON.stringify(result)}`),
+      )
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[label-parser reprocess] ${userId ?? 'ALL'} FAILED:`,
+          (err as Error).message,
+        ),
+      );
+    res.status(202).json({
+      success: true,
+      data: {
+        reprocessing: userId ?? 'all',
+        note: 'მიმდინარეობს ფონურად — დასრულება Railway-ს ლოგში ჩანს: [label-parser reprocess] ... done',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin label-parser reprocess]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
