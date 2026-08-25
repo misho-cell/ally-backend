@@ -3,10 +3,13 @@ import { submitContactFact } from './contactFacts.service';
 import { buildSearchTerms } from './tools/transliterate';
 
 const PARSE_TIMEOUT_MS = 15_000;
-// A one-word label ("გია", "Nino") is almost certainly a plain name — not
-// worth queuing as an unresolved occupation guess. Only multi-word labels
-// reach the ambiguity queue.
-const MIN_QUEUE_WORDS = 2;
+// Live-caught against a real 2,698-contact phonebook (24 Aug): a threshold
+// of 2 queued 2,277 of them — 84%. In a Georgian phonebook almost every
+// contact IS exactly two words, first name and surname ("Gia Kublashvili",
+// "სალომე მიქელაძე") — that is a name, not an unresolved trade. The one
+// genuine positive example found in that same run was three words
+// ("Zviad Elizbarashvili Arkitektura"). Raised to 3 on that evidence.
+const MIN_QUEUE_WORDS = 3;
 
 // v1 dictionary — the common trades and professions that actually show up
 // in Georgian phonebook labels ("ზურა სანტექნიკოსი"). Deliberately not
@@ -17,6 +20,7 @@ const GEORGIAN_OCCUPATIONS: readonly string[] = [
   'სანტექნიკი',
   'ხელოსანი',
   'ელექტრიკოსი',
+  'ელექტრიკი',
   'ექიმი',
   'სტომატოლოგი',
   'იურისტი',
@@ -108,12 +112,17 @@ interface LabelRow {
   alias: string;
 }
 
+// A token with no Georgian or Latin letter in it (an emoji, a bare digit) is
+// never a real word — live-caught: "ლილუ 🐼😊" counted as two words and
+// queued, when it's one name plus decoration.
+const HAS_LETTER_RE = /[a-zა-ჿ]/i;
+
 function wordsOf(alias: string): string[] {
   return alias
     .toLowerCase()
     .split(/[\s,._\-/\\]+/)
     .map((w) => w.trim())
-    .filter(Boolean);
+    .filter((w) => w.length > 0 && HAS_LETTER_RE.test(w));
 }
 
 function matchOccupation(alias: string): string | null {
@@ -194,6 +203,18 @@ export async function getLabelQueue(limit: number): Promise<LabelQueueEntry[]> {
     PARSE_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+// Live-caught: the admin route was reporting this page's row count as the
+// queue's size — reading 2 when there were 2,277. The real total needs its
+// own query.
+export async function getLabelQueueTotal(): Promise<number> {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM label_parse_queue`,
+    [],
+    PARSE_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 export interface OwnLabelQueueEntry {

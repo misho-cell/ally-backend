@@ -35,20 +35,22 @@ describe('getInviteLink (engine T3)', () => {
 });
 
 describe('recordLinkOpened', () => {
-  it("records an 'opened' event for the code's owner", async () => {
+  it("records an 'opened' event for the code's owner and returns true", async () => {
     mockFindByCode.mockResolvedValue({ userId: 9, subscribed: true });
 
-    await recordLinkOpened('ABCD1234');
+    const out = await recordLinkOpened('ABCD1234');
 
+    expect(out).toBe(true);
     const insert = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'opened'"));
     expect(insert?.[1]).toEqual([9]);
   });
 
-  it('silently does nothing for a code that resolves to no one', async () => {
+  it('writes nothing and returns false for a code that resolves to no one — live-caught: an invented code used to get back {recorded:true}', async () => {
     mockFindByCode.mockResolvedValue(null);
 
-    await recordLinkOpened('DOESNOTEXIST');
+    const out = await recordLinkOpened('DOESNOTEXIST');
 
+    expect(out).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 });
@@ -70,7 +72,13 @@ describe('getReferralFunnel', () => {
 
     const out = await getReferralFunnel('7');
 
-    expect(out).toEqual({ sent: 5, opened: 2, registered: 1 });
+    expect(out.sent).toBe(5);
+    expect(out.opened).toBe(2);
+    expect(out.registered).toBe(1);
+    // Live-caught: {"sent":2,"opened":2,"registered":797} read as one
+    // funnel, when "registered" is all-time and the other two only exist
+    // since this feature shipped — the note must say so, not imply parity.
+    expect(out.note).toContain('all-time');
   });
 
   it('scopes to one user when userId is given, and product-wide otherwise', async () => {

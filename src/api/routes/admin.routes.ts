@@ -64,7 +64,11 @@ import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
-import { getLabelQueue, parsePhonebookLabelsForUser } from '../../services/labelParser.service';
+import {
+  getLabelQueue,
+  getLabelQueueTotal,
+  parsePhonebookLabelsForUser,
+} from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 
 const adminRouter = Router();
@@ -1005,8 +1009,12 @@ adminRouter.get('/label-queue', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
-    const entries = await getLabelQueue(limit);
-    res.status(200).json({ success: true, data: { count: entries.length, entries } });
+    // "count" was live-caught reading 2 when the real queue held 2,277 — it
+    // was this page's row count, not the queue's size. "total" is the real
+    // number; "count" stays for compatibility but now means what it always
+    // should have: how many rows this response actually carries.
+    const [entries, total] = await Promise.all([getLabelQueue(limit), getLabelQueueTotal()]);
+    res.status(200).json({ success: true, data: { count: entries.length, total, entries } });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin label-queue]', error);

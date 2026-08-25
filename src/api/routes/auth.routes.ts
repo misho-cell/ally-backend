@@ -226,12 +226,14 @@ authRouter.post(
 
 // Engine T3: the landing page calls this the moment it renders with
 // ?ref=CODE, before the visitor has decided whether to register. No auth —
-// this is hit by an anonymous browser. An unresolvable code is silently
-// ignored (a stale or mistyped link must not error on someone's phone).
+// this is hit by an anonymous browser. An unresolvable code never writes a
+// row (a stale or mistyped link must not error on someone's phone) and now
+// says so honestly — live-caught: an invented code got {"recorded":true}
+// back, which let anyone inflate the "opened" figure risk-free.
 authRouter.post(
   '/referral/opened',
   body('code').isString().trim().notEmpty().withMessage('code is required'),
-  async (req: Request, res: Response<ApiResponse<{ recorded: true }>>) => {
+  async (req: Request, res: Response<ApiResponse<{ recorded: boolean }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, error: 'code is required' });
@@ -239,8 +241,8 @@ authRouter.post(
     }
     try {
       const { code } = req.body as { code: string };
-      await recordLinkOpened(code);
-      res.status(200).json({ success: true, data: { recorded: true } });
+      const recorded = await recordLinkOpened(code);
+      res.status(200).json({ success: true, data: { recorded } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[referral opened] error:', error);

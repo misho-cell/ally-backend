@@ -6,7 +6,11 @@ jest.mock('../contactFacts.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { submitContactFact } from '../contactFacts.service';
-import { parsePhonebookLabelsForUser, getLabelQueueForUser } from '../labelParser.service';
+import {
+  parsePhonebookLabelsForUser,
+  getLabelQueueForUser,
+  getLabelQueueTotal,
+} from '../labelParser.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
@@ -82,6 +86,55 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     ).toBe(false);
   });
 
+  it('a plain two-word name is neither parsed nor queued — live-caught: threshold of 2 queued 84% of a real phonebook, almost all of it just "First Last"', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([{ contactId: 7, phone: '+995500000006', alias: 'Gia Kublashvili' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 0, queued: 0 });
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+  });
+
+  it('a real 3-word unresolved trade still queues (the one genuine positive from that same phonebook)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([
+            {
+              contactId: 7,
+              phone: '+995500000007',
+              alias: 'Zviad Elizbarashvili Arkitektura',
+            },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 0, queued: 1 });
+  });
+
+  it('emoji decoration does not count as words — a name plus emoji is not queued', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserAlias" ua'))
+        return Promise.resolve(
+          rows([{ contactId: 7, phone: '+995500000008', alias: 'ლილუ 🐼😊' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await parsePhonebookLabelsForUser('7');
+
+    expect(out).toEqual({ parsed: 0, queued: 0 });
+  });
+
   it('already-processed and already-queued phones are excluded by the candidate query itself', async () => {
     mockQuery.mockImplementation((sql: string) => {
       expect(sql).toContain('NOT EXISTS');
@@ -152,5 +205,15 @@ describe('getLabelQueueForUser', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('contact_id = $1::int');
     expect(params).toEqual(['170751', 20]);
+  });
+});
+
+describe('getLabelQueueTotal', () => {
+  it("returns the real total, not a page's length — live-caught: the admin route was reporting 2 when the queue held 2,277", async () => {
+    mockQuery.mockResolvedValue(rows([{ count: '2277' }]) as never);
+
+    const out = await getLabelQueueTotal();
+
+    expect(out).toBe(2277);
   });
 });
