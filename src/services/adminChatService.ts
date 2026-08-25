@@ -4,7 +4,7 @@ import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { recordClaudeUsage } from './costLedger.service';
 
-const ADMIN_SYSTEM_PROMPT = `შენ ხარ Ally-ს AI ასისტენტის კონფიგურატორი.
+const ADMIN_SYSTEM_PROMPT = `შენ ხარ Netai-ს AI ასისტენტის კონფიგურატორი.
 შენს მოსაუბრე ყოველთვის არის authenticated ადმინი.
 
 როდესაც message შეიცავს <NEW_PROMPT> tag-ს:
