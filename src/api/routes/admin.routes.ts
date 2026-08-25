@@ -77,7 +77,7 @@ adminRouter.use(authenticateJwt, requireAdminRole);
 
 // App flags an admin may flip from the console. Whitelist on purpose — a typo
 // must not mint a brand-new (fail-open-read) flag row.
-const MANAGED_APP_FLAGS = ['invite_only'] as const;
+const MANAGED_APP_FLAGS = ['invite_only', 'invite_link_ready'] as const;
 
 interface AppFlagRow {
   flag: string;

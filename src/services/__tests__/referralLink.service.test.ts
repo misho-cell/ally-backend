@@ -23,7 +23,31 @@ beforeEach(() => {
 });
 
 describe('getInviteLink (engine T3)', () => {
-  it("returns the join link with the user's own code, and records a 'sent' event", async () => {
+  it('returns an error, not a link, when app_flags.invite_link_ready is off — live-caught: the tool shipped enabled before /join existed, and disabling it via enabled_tools turned out to be a no-op', async () => {
+    mockQuery.mockResolvedValue(rows([{ enabled: false }]) as never);
+
+    const out = await getInviteLink('7');
+
+    expect(out.link).toBeUndefined();
+    expect(out.error).toBeDefined();
+    expect(mockGetCode).not.toHaveBeenCalled();
+  });
+
+  it('also returns an error when the flag row does not exist at all (fail closed)', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const out = await getInviteLink('7');
+
+    expect(out.link).toBeUndefined();
+    expect(out.error).toBeDefined();
+  });
+
+  it("returns the join link with the user's own code, and records a 'sent' event, once the flag is on", async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM app_flags'))
+        return Promise.resolve(rows([{ enabled: true }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
     mockGetCode.mockResolvedValue('ABCD1234');
 
     const out = await getInviteLink('7');

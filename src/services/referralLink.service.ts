@@ -10,12 +10,37 @@ const LINK_TIMEOUT_MS = 8_000;
 const APP_URL = 'https://www.netai.guru';
 
 export interface InviteLink {
-  link: string;
-  code: string;
+  link?: string;
+  code?: string;
+  error?: string;
 }
 
-/** The user's own shareable link. Reuses the same code invite_contact mints. */
+const INVITE_LINK_READY_FLAG = 'invite_link_ready';
+
+/**
+ * The user's own shareable link. Reuses the same code invite_contact mints.
+ * Gated on app_flags.invite_link_ready — checked HERE rather than at either
+ * tool registration, because chat.service.ts's case and the MCP handler
+ * both call this same function, so one check covers both surfaces. Needed
+ * live-caught (24 Aug): this tool shipped enabled before /join existed, and
+ * an attempt to disable it via enabled_tools turned out to be a no-op — that
+ * table isn't consulted by the always-on tool list this was registered in,
+ * or by the MCP connector at all (every registerTool call there is
+ * unconditional, regardless of enabled_tools).
+ */
 export async function getInviteLink(userId: string): Promise<InviteLink> {
+  const flag = await query<{ enabled: boolean }>(
+    `SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1`,
+    [INVITE_LINK_READY_FLAG],
+    LINK_TIMEOUT_MS,
+  );
+  if (flag.rows[0]?.enabled !== true) {
+    return {
+      error:
+        'The invite link is not ready to share yet — tell the user this feature is coming ' +
+        'soon rather than presenting a link.',
+    };
+  }
   const code = await getOrCreateReferralCode(userId);
   await query(
     `INSERT INTO referral_link_events (user_id, event) VALUES ($1, 'sent')`,
