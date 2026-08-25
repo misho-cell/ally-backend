@@ -59,3 +59,23 @@ describe('sanitizeTitle — the 0C.7 malformations', () => {
     expect(sanitizeTitle('პინგი ქსელში 🏓 უბრალოდ')).toBe('პინგი ქსელში უბრალოდ');
   });
 });
+
+// Live-caught 25 Aug: 6 real titles ended in a markdown-style "---"
+// separator the cheap model wrote alongside the actual words — hyphens are
+// legitimately allowed (a real title word can contain one), so this
+// survived untouched and counted as one of the 4 kept words.
+describe('sanitizeTitle — the 25 Aug markdown-separator malformation', () => {
+  it('drops a trailing "---" instead of keeping it as the 4th word', () => {
+    expect(sanitizeTitle('განქორწინების იურიდიული დახმარება ---')).toBe(
+      'განქორწინების იურიდიული დახმარება',
+    );
+  });
+
+  it('drops a "---" in the middle, keeping the real words around it', () => {
+    expect(sanitizeTitle('ბათუმის ფოტოგრაფი --- კითხვა')).toBe('ბათუმის ფოტოგრაფი კითხვა');
+  });
+
+  it('a real hyphenated word is untouched — only a token with NO letters at all is dropped', () => {
+    expect(sanitizeTitle('კარგო-ტიპის სატვირთო მანქანა')).toBe('კარგო-ტიპის სატვირთო მანქანა');
+  });
+});

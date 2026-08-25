@@ -50,6 +50,16 @@ const VENDOR_NAME = /claude|anthropic|კლოდ/iu;
 // "I appreciate you reaching", ვწუხვარ…).
 const REFUSAL_TITLE_RE =
   /^(i\s|i['’]?m\b|i\s?do?n['’]?t|i\s?can|i\s?appreciate|sorry|unfortunately|as an ai|ვწუხვარ|უკაცრავად|ბოდიშ|ვერ\s)/i;
+// Live-caught (25 Aug), 6 real titles: "განქორწინების იურიდიული დახმარება
+// ---", "ბათუმის ფოტოგრაფი --- კითხვა". The cheap model occasionally writes
+// a markdown-style "---" separator alongside the actual title words — a
+// habit from its training, not an instruction it was given. Hyphens are
+// legitimately allowed (real title words can contain one), so
+// TITLE_DISALLOWED_CHARS lets "---" through untouched, and it then counts
+// as one of the 4 words the cap keeps. A token with no letter in it is
+// never a real title word — same fix as the label parser's emoji filter,
+// same root cause (a model/user token that's pure decoration, not content).
+const HAS_LETTER_RE = /[\p{Script=Georgian}\p{Script=Latin}]/u;
 
 /**
  * Strip the generator's label and quotes/markdown/emoji, collapse whitespace,
@@ -68,6 +78,7 @@ export function sanitizeTitle(raw: string): string | null {
     .trim()
     .split(' ')
     .filter(Boolean)
+    .filter((w) => HAS_LETTER_RE.test(w))
     .slice(0, TITLE_MAX_WORDS);
   const title = words.join(' ').replace(/[.:,;]+$/, '');
   if (title.length < 2) return null;
