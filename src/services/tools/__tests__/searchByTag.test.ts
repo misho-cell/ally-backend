@@ -36,15 +36,18 @@ function setup(opts: {
   facts?: unknown[];
   fuzzy?: unknown[];
   relationships?: unknown[];
+  humanTiers?: unknown[];
 }): void {
   const main = opts.main ?? [];
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
   const fuzzy = opts.fuzzy ?? [];
   const relationships = opts.relationships ?? [];
+  const humanTiers = opts.humanTiers ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('human_relationship_tiers')) return Promise.resolve(rows(humanTiers) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
     if (sql.includes('SELECT DISTINCT up.phone')) return Promise.resolve(rows([]) as never); // membership
@@ -69,6 +72,23 @@ describe('searchByTag', () => {
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].name).toBe('ნინო');
     expect(results[0].tags).toContain('engineer');
+  });
+
+  it('carries a hand-set human_relationship_tier alongside a machine relationship — ticket 6 task 4', async () => {
+    setup({
+      main: [mockRow],
+      count: 1,
+      relationships: [
+        { contact_phone: mockRow.phone, relationship_type: 'formal', strength_score: 0.5 },
+      ],
+      humanTiers: [{ contact_phone: mockRow.phone, tier: 'blue' }],
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    expect(results[0].relationship).toBe('formal');
+    expect(results[0].human_relationship_tier).toBe('blue');
   });
 
   it('passes userId, one placeholder per word-start regex, then blocked (Latin)', async () => {

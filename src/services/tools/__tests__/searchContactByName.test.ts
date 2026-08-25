@@ -35,14 +35,17 @@ function setup(opts: {
   count?: number;
   facts?: unknown[];
   relationships?: unknown[];
+  humanTiers?: unknown[];
 }): void {
   const main = opts.main ?? [];
   const count = opts.count ?? main.length;
   const facts = opts.facts ?? [];
   const relationships = opts.relationships ?? [];
+  const humanTiers = opts.humanTiers ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
+    if (sql.includes('human_relationship_tiers')) return Promise.resolve(rows(humanTiers) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(relationships) as never);
     if (sql.includes('word_similarity(')) return Promise.resolve(rows([]) as never); // fuzzy fallback
@@ -84,6 +87,36 @@ describe('searchContactByName', () => {
     await searchContactByName('42', 'George');
 
     expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', '42', []]);
+  });
+
+  it('carries a hand-set human_relationship_tier alongside a machine relationship, one never overwriting the other — ticket 6 task 4', async () => {
+    setup({
+      main: [mockRow],
+      count: 1,
+      relationships: [
+        {
+          contact_phone: mockRow.phone,
+          relationship_type: 'close',
+          strength_score: 0.7,
+        },
+      ],
+      humanTiers: [{ contact_phone: mockRow.phone, tier: 'green' }],
+    });
+
+    const result = (await searchContactByName('42', 'გიორგი')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    expect(results[0].relationship).toBe('close');
+    expect(results[0].human_relationship_tier).toBe('green');
+  });
+
+  it('omits human_relationship_tier entirely when no hand-set tier exists for the contact', async () => {
+    setup({ main: [mockRow], count: 1 });
+
+    const result = (await searchContactByName('42', 'გიორგი')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    expect(results[0].human_relationship_tier).toBeUndefined();
   });
 
   it('returns null name when no alias or registered name', async () => {

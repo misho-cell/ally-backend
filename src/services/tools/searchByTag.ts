@@ -5,7 +5,12 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
-import { fetchRelationshipForPhones, RelationshipInfo } from './relationshipScores';
+import {
+  fetchRelationshipForPhones,
+  RelationshipInfo,
+  fetchHumanTierForPhones,
+  HumanTier,
+} from './relationshipScores';
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
@@ -147,6 +152,7 @@ function shape(
   members: Set<string>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
+  humanTiers: Map<string, HumanTier>,
   approximate: boolean,
 ): Record<string, unknown> {
   const base = applyFacts(
@@ -162,6 +168,7 @@ function shape(
   );
   const rel = relationships.get(row.phone);
   const excl = exclusions.get(phoneDigits(row.phone));
+  const humanTier = humanTiers.get(row.phone);
   const withMeta = {
     ...base,
     is_member: isMemberPhone(members, row.phone),
@@ -172,6 +179,10 @@ function shape(
     // strength stays server-side: a raw score printed to a user is a leak
     // (ticket 3 §6.0 — "relationship_strength 0.65" reached a reply).
     ...(rel && { relationship: rel.relationship }),
+    // A tier the USER set by hand (today: old-Ally's colour classification) —
+    // never computed, never overwritten by `relationship` above (ticket 6
+    // task 4's conflict rule).
+    ...(humanTier && { human_relationship_tier: humanTier }),
     // The user's own recorded "not this person, for this" decisions — the
     // assistant must respect the scope (and only the scope) without a lookup.
     ...(excl && excl.length > 0 && { exclusions: excl }),
@@ -209,15 +220,20 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
     const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
-    const [facts, members, relationships, exclusions] = await Promise.all([
+    const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
       fetchFactsForPhones(userId, allPhones),
       fetchMembersForPhones(allPhones),
       fetchRelationshipForPhones(userId, allPhones),
       fetchExclusionsForPhones(userId, allPhones),
+      fetchHumanTierForPhones(userId, allPhones),
     ]);
     const results = [
-      ...exactRows.map((r) => shape(r, facts, members, relationships, exclusions, false)),
-      ...fuzzyRows.map((r) => shape(r, facts, members, relationships, exclusions, true)),
+      ...exactRows.map((r) =>
+        shape(r, facts, members, relationships, exclusions, humanTiers, false),
+      ),
+      ...fuzzyRows.map((r) =>
+        shape(r, facts, members, relationships, exclusions, humanTiers, true),
+      ),
     ];
     const payload: Record<string, unknown> = {
       found: true,

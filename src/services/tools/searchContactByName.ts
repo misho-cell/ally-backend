@@ -5,7 +5,12 @@ import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
-import { fetchRelationshipForPhones, RelationshipInfo } from './relationshipScores';
+import {
+  fetchRelationshipForPhones,
+  RelationshipInfo,
+  fetchHumanTierForPhones,
+  HumanTier,
+} from './relationshipScores';
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
@@ -30,6 +35,7 @@ function toRow(
   members: Set<string>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
+  humanTiers: Map<string, HumanTier>,
   // A row that matched fewer query words than the query has — or came from
   // the fuzzy fallback — is a letter-similar neighbour, not the person asked
   // for. Tag searches already carry the flag; name searches did not (task 40).
@@ -48,6 +54,7 @@ function toRow(
   );
   const rel = relationships.get(row.phone);
   const excl = exclusions.get(phoneDigits(row.phone));
+  const humanTier = humanTiers.get(row.phone);
   return {
     ...base,
     is_member: isMemberPhone(members, row.phone),
@@ -58,6 +65,11 @@ function toRow(
     // strength stays server-side: a raw score printed to a user is a leak
     // (ticket 3 §6.0 — "relationship_strength 0.65" reached a reply).
     ...(rel && { relationship: rel.relationship }),
+    // A tier the USER set by hand (today: old-Ally's colour classification) —
+    // never computed, never overwritten by `relationship` above (ticket 6
+    // task 4's conflict rule). Separate field on purpose, so the two are
+    // never confused for each other.
+    ...(humanTier && { human_relationship_tier: humanTier }),
     // The user's own recorded "not this person, for this" decisions.
     ...(excl && excl.length > 0 && { exclusions: excl }),
     ...(approximate === true && { approximate: true }),
@@ -184,11 +196,12 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
         if (fuzzyRows.length > 0) {
           const fuzzyPhones = fuzzyRows.map((r) => r.phone);
-          const [facts, members, relationships, exclusions] = await Promise.all([
+          const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
             fetchFactsForPhones(userId, fuzzyPhones),
             fetchMembersForPhones(fuzzyPhones),
             fetchRelationshipForPhones(userId, fuzzyPhones),
             fetchExclusionsForPhones(userId, fuzzyPhones),
+            fetchHumanTierForPhones(userId, fuzzyPhones),
           ]);
           return {
             found: true,
@@ -196,7 +209,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
             total: fuzzyRows.length,
             fuzzy: true,
             results: fuzzyRows.map((row) =>
-              toRow(row, facts, members, relationships, exclusions, true),
+              toRow(row, facts, members, relationships, exclusions, humanTiers, true),
             ),
           };
         }
@@ -207,11 +220,12 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     }
 
     const phones = rows.map((r) => r.phone);
-    const [facts, members, relationships, exclusions] = await Promise.all([
+    const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
       fetchFactsForPhones(userId, phones),
       fetchMembersForPhones(phones),
       fetchRelationshipForPhones(userId, phones),
       fetchExclusionsForPhones(userId, phones),
+      fetchHumanTierForPhones(userId, phones),
     ]);
     const mapped = rows.map((row) =>
       toRow(
@@ -220,6 +234,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         members,
         relationships,
         exclusions,
+        humanTiers,
         Number(row.word_hits ?? rawGroups.length) < rawGroups.length,
       ),
     );
