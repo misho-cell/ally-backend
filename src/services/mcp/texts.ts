@@ -103,7 +103,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'reach you; a connection is made only through request_introduction. It also shows ' +
       'is_member (whether the person is an Ally member) — reach a member through their assistant ' +
       "(a warm intro), invite a strong non-member. Read back the user's own saved facts here " +
-      'even when the public profile says something different.',
+      'even when the public profile says something different. ' +
+      "This profile never includes the user's OWN label for the contact — that only comes from " +
+      "search_contacts' saved_as, a separate call. Keep the two apart when you speak: the " +
+      'user\'s own saved_as is theirs ("you have him as Dato"); a tag\'s contributor_count is ' +
+      'the crowd\'s (say "N other people know him as X", count only — never the count\'s ' +
+      'underlying words as a flat fact list). Never phrase a crowd tag as if the user saved it ' +
+      '("you saved him as X") — that misattributes what dozens of strangers wrote to the one ' +
+      "person you're talking to.",
   },
   request_introduction: {
     title: 'Send an introduction request',
