@@ -40,12 +40,21 @@ export async function logSearchActivity(
   // Every other rung (refused/accepted/sent/replied/followed_up) needs a
   // real signal from the conversation, so it starts NULL, not guessed.
   const outcome = resultCount === 0 ? 'no_result' : null;
+  // Computed in JS, not a SQL CASE reusing $6: live-caught (25 Aug) — a
+  // bare parameter placeholder used twice in one statement (once as a
+  // plain value, once inside a CASE) reads as two different inferred types
+  // on this Postgres version and fails with "could not determine data type
+  // of parameter $6". Same bug class already documented in
+  // contacts.service.ts; this INSERT was hitting it on every single
+  // search, silently — logSearchActivity threw, runLoggedSearch's .catch
+  // swallowed it, and no error ever reached a log.
+  const outcomeUpdatedAt = outcome !== null ? new Date() : null;
 
   const inserted = await query<{ id: number }>(
     `INSERT INTO search_activity (user_id, query, tool, flagged, result_count, outcome, outcome_updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $6 IS NOT NULL THEN NOW() END)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [userId, q, tool, flagged, resultCount, outcome],
+    [userId, q, tool, flagged, resultCount, outcome, outcomeUpdatedAt],
   );
 
   if (flagged) {

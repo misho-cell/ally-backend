@@ -1778,7 +1778,15 @@ async function runLoggedSearch(
   // ticket 6, founder's answer ②. A logging failure must still never break
   // the search itself, so a caught error just omits search_id.
   const searchId = await logSearchActivity(userId, tool, searchQuery, resultCount).catch(
-    () => null,
+    (err: unknown) => {
+      // Live-caught (25 Aug): this used to swallow silently, and a real SQL
+      // bug in logSearchActivity broke it on every search for hours with
+      // nothing anywhere to show for it. Never repeat that — log, then
+      // still let the search itself succeed.
+      // eslint-disable-next-line no-console
+      console.error(`[search-log] logSearchActivity failed for user ${userId}:`, err);
+      return null;
+    },
   );
   return searchId === null ? result : { ...result, search_id: searchId };
 }
