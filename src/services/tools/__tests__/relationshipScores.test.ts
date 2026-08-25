@@ -1,9 +1,18 @@
-jest.mock('../../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../../../db/postgres/client', () => ({
+  query: jest.fn(),
+  backgroundQuery: jest.fn(),
+  __esModule: true,
+}));
 
-import { query } from '../../../db/postgres/client';
-import { fetchRelationshipForPhones, fetchHumanTierForPhones } from '../relationshipScores';
+import { query, backgroundQuery } from '../../../db/postgres/client';
+import {
+  fetchRelationshipForPhones,
+  fetchHumanTierForPhones,
+  backfillHumanRelationshipTiers,
+} from '../relationshipScores';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockBackgroundQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
 
 function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
   return { rows: data, rowCount: data.length };
@@ -46,6 +55,49 @@ describe('fetchHumanTierForPhones', () => {
 
     const [sql] = mockQuery.mock.calls[0];
     expect(sql).not.toContain('contact_relationship_scores');
+  });
+});
+
+describe('backfillHumanRelationshipTiers', () => {
+  it("walks UserConnectionPhone in bounded id-range batches on the BACKGROUND pool — live-caught 25 Aug: the original single unbounded query ran on the default pool's 8s statement_timeout and crashed the app", async () => {
+    mockBackgroundQuery.mockImplementation((sql: string) => {
+      if (sql.includes('MAX(id)'))
+        return Promise.resolve({ rows: [{ max: 250_000 }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 40_000 } as never);
+    });
+
+    const out = await backfillHumanRelationshipTiers();
+
+    // 250,000 / 100,000 batch size = 3 batches (0-100k, 100k-200k, 200k-250k+).
+    expect(out.batches).toBe(3);
+    expect(out.inserted).toBe(120_000);
+    expect(out.maxId).toBe(250_000);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('each batch query stays inside one 100,000-id window, never the whole table', async () => {
+    mockBackgroundQuery.mockImplementation((sql: string) => {
+      if (sql.includes('MAX(id)'))
+        return Promise.resolve({ rows: [{ max: 150_000 }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 0 } as never);
+    });
+
+    await backfillHumanRelationshipTiers();
+
+    const insertCalls = mockBackgroundQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO human_relationship_tiers'),
+    );
+    expect(insertCalls).toHaveLength(2);
+    expect(insertCalls[0][1]).toEqual([0, 100_000]);
+    expect(insertCalls[1][1]).toEqual([100_000, 200_000]);
+  });
+
+  it('does nothing when the table is empty', async () => {
+    mockBackgroundQuery.mockResolvedValue({ rows: [{ max: null }], rowCount: 1 } as never);
+
+    const out = await backfillHumanRelationshipTiers();
+
+    expect(out).toEqual({ batches: 0, inserted: 0, maxId: 0 });
   });
 });
 

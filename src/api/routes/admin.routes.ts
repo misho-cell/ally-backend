@@ -71,6 +71,7 @@ import {
   reprocessLabelQueue,
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
+import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 
 const adminRouter = Router();
 
@@ -1104,6 +1105,36 @@ adminRouter.get('/referral-funnel', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin referral-funnel]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Engine T4: the old-Ally colour backfill (migration 080's table, populated
+// here rather than in the migration itself — that INSERT, run as one
+// statement inside the migration's transaction, exceeded the default pool's
+// 8s statement_timeout and crash-looped the app on 25 Aug). Batched, on the
+// dedicated background pool (30s timeout per query); idempotent, safe to
+// re-run or re-trigger if it's interrupted partway through.
+adminRouter.post('/relationship-tiers/backfill', async (_req: Request, res: Response) => {
+  try {
+    void backfillHumanRelationshipTiers()
+      .then((result) =>
+        // eslint-disable-next-line no-console
+        console.log(`[relationship-tiers backfill] done: ${JSON.stringify(result)}`),
+      )
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[relationship-tiers backfill] FAILED:', (err as Error).message),
+      );
+    res.status(202).json({
+      success: true,
+      data: {
+        note: 'მიმდინარეობს ფონურად (რამდენიმე წუთი) — დასრულება Railway-ს ლოგში ჩანს: [relationship-tiers backfill] done',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin relationship-tiers backfill]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
