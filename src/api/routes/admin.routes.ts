@@ -80,6 +80,12 @@ import { backfillHumanRelationshipTiers } from '../../services/tools/relationshi
 import { findUnmetNeeds, UnmetNeed } from '../../services/unmetNeeds.service';
 import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
 import {
+  generateAndStoreWeeklyReport,
+  getStoredLabReports,
+  currentWeekStartISO,
+  StoredLabReport,
+} from '../../services/labReport.service';
+import {
   openDueCampaigns,
   sendDueCampaignAsks,
   sweepStaleParticipants,
@@ -1700,5 +1706,38 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// T16: manual trigger for the same generator labReport.cron.ts calls weekly,
+// plus a listing of stored snapshots — every number in the report is
+// drillable back to the raw rows it summarizes via the underlying tables
+// (invite_campaigns, contact_facts, etc.), not just this endpoint.
+adminRouter.post('/lab-report/generate', async (req: Request, res: Response) => {
+  try {
+    const weekStart =
+      typeof req.query.week_start === 'string' ? req.query.week_start : currentWeekStartISO();
+    const report = await generateAndStoreWeeklyReport(weekStart);
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin lab-report generate]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get(
+  '/lab-report',
+  async (req: Request, res: Response<ApiResponse<StoredLabReport[]>>) => {
+    try {
+      const rawLimit = Number(req.query.limit);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 52) : 12;
+      const reports = await getStoredLabReports(limit);
+      res.status(200).json({ success: true, data: reports });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin lab-report list]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 export default adminRouter;
