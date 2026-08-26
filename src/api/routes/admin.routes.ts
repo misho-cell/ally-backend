@@ -79,6 +79,12 @@ import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import { findUnmetNeeds, UnmetNeed } from '../../services/unmetNeeds.service';
 import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
+import {
+  openDueCampaigns,
+  sendDueCampaignAsks,
+  sweepStaleParticipants,
+  currentGlobalDial,
+} from '../../services/chorusCampaign.service';
 
 const adminRouter = Router();
 
@@ -1625,5 +1631,74 @@ adminRouter.get(
     }
   },
 );
+
+// T8: manual triggers for the same functions chorusCampaign.cron.ts calls on
+// its own timer (open every 6h, send every 15min, sweep daily) — an ops
+// lever for immediate runs, and how this engine gets verified without
+// waiting out the cron cadence.
+adminRouter.post('/chorus/open-campaigns', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const result = await openDueCampaigns(days);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus open-campaigns]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/chorus/send-asks', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+    const sent = await sendDueCampaignAsks(limit);
+    res.status(200).json({ success: true, data: { sent } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus send-asks]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/chorus/sweep', async (_req: Request, res: Response) => {
+  try {
+    const result = await sweepStaleParticipants();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus sweep]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+    const [campaigns, dial] = await Promise.all([
+      query(
+        `SELECT c.id, c.target_phone, c.target_label, c.city, c.status, c.ask_count_dial,
+                c.opened_at, c.closed_at, c.closed_reason,
+                COUNT(p.id) AS participant_count
+         FROM invite_campaigns c
+         LEFT JOIN invite_campaign_participants p ON p.campaign_id = c.id
+         GROUP BY c.id
+         ORDER BY c.opened_at DESC
+         LIMIT $1`,
+        [limit],
+      ),
+      currentGlobalDial(),
+    ]);
+    res
+      .status(200)
+      .json({ success: true, data: { campaigns: campaigns.rows, current_dial: dial } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus campaigns]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 export default adminRouter;
