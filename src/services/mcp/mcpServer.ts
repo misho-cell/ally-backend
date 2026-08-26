@@ -8,6 +8,7 @@ import {
   mcpGetContactFacts,
   mcpGetContactProfile,
   mcpGetGroupConnectors,
+  mcpGetCuriosityQueue,
   mcpGetCountryChannels,
   mcpGetNetaiInfo,
   mcpStopContactingMe,
@@ -641,6 +642,18 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+  );
+  server.registerTool(
+    'get_curiosity_queue',
+    {
+      title: TOOL_TEXTS.get_curiosity_queue.title,
+      description: TOOL_TEXTS.get_curiosity_queue.description,
+      inputSchema: {
+        limit: z.number().int().positive().optional().describe(PARAM_TEXTS.curiosityLimit),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'get_curiosity_queue', () => mcpGetCuriosityQueue(userId, args)),
   );
   server.registerTool(
     'get_country_channels',

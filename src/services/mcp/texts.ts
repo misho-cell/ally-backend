@@ -265,6 +265,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'to spot a broad-reach person worth activating or inviting. NOT for reaching a specific ' +
       'group or company — use get_group_connectors for that.',
   },
+  get_curiosity_queue: {
+    title: 'Who to be curious about next',
+    description:
+      'Ranked list of contacts worth a light question: people resembling someone the network is ' +
+      'looking for, people who come up a lot, close contacts, well-connected bridges, and warm ' +
+      'contacts with nothing recorded yet. Each item names the one missing fact (occupation, ' +
+      'employer, city, or industry). Weave at most one into natural conversation when it fits — ' +
+      'never interrogate. Save any answer with save_contact_fact as always. Arg: limit (default 15).',
+  },
   get_country_channels: {
     title: 'Institutional channels into a country',
     description:
@@ -516,6 +525,7 @@ export const PARAM_TEXTS = {
     'graph must have enough contacts tagged with it to rank well; if it comes back thin, fall ' +
     'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
+  curiosityLimit: 'How many to return (default 15).',
   country:
     'The country name in EVERY relevant language, space-separated — always Georgian AND English ' +
     'at minimum (e.g. "Germany გერმანია", "პოლონეთი Poland"). Tags are stored in whatever ' +

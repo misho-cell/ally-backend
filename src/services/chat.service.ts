@@ -67,6 +67,7 @@ import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.serv
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
 import { recordCampaignResponse } from './chorusCampaign.service';
+import { buildCuriosityQueue } from './curiosityQueue.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -1062,6 +1063,24 @@ const RECORD_SEARCH_OUTCOME_TOOL: AnthropicTool = {
       reason: { type: 'string', description: 'Why refused — only meaningful with outcome=refused' },
     },
     required: ['search_id', 'outcome'],
+  },
+};
+
+const GET_CURIOSITY_QUEUE_TOOL: AnthropicTool = {
+  name: 'get_curiosity_queue',
+  description:
+    'Who to be curious about next, ranked: people resembling someone the network is looking for, ' +
+    'people who come up a lot, close contacts, well-connected bridges, and warm contacts with ' +
+    'nothing recorded about them yet. Each item names the one missing fact (occupation, employer, ' +
+    'city, or industry) worth asking about. Weave ONE into natural conversation when it fits — never ' +
+    'interrogate, never ask two in a row. Save the answer with save_contact_fact as always.' +
+    ' WHEN: at a natural pause in conversation, to ask one light question about a contact.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      limit: { type: 'number', description: 'How many to return (default 15)' },
+    },
+    required: [],
   },
 };
 
@@ -2317,6 +2336,8 @@ async function executeToolCall(
     }
     case 'get_top_connectors':
       return getTopConnectors(userId, input['limit'] as number | undefined);
+    case 'get_curiosity_queue':
+      return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
     case 'get_group_connectors':
       return getGroupConnectors(
         userId,
@@ -2442,6 +2463,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
   forget_contact_fact: '🗑️ ჩანაწერს სამუდამოდ ვშლი...',
   respond_to_invite_campaign: '📣 პასუხს ვინახავ...',
+  get_curiosity_queue: '🤔 ვინ დამაინტერესოს, ვფიქრობ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
 };
@@ -3072,6 +3094,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FINISH_TASK_TOOL,
     RELAY_ASK_TOOL,
     RESPOND_TO_INVITE_CAMPAIGN_TOOL,
+    GET_CURIOSITY_QUEUE_TOOL,
     STOP_CONTACTING_TOOL,
     RESUME_CONTACT_TOOL,
     EXCLUDE_CONTACT_TOOL,

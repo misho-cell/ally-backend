@@ -47,6 +47,7 @@ import {
 import { normalizePhone } from '../phone';
 import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
+import { buildCuriosityQueue } from '../curiosityQueue.service';
 import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
@@ -637,6 +638,22 @@ export async function mcpGetTopConnectors(
   args: { limit?: number },
 ): Promise<McpToolPayload> {
   return mapConnectors(userId, await getTopConnectors(userId, args.limit), 'reach');
+}
+
+export async function mcpGetCuriosityQueue(
+  userId: string,
+  args: { limit?: number },
+): Promise<McpToolPayload> {
+  const items = await buildCuriosityQueue(userId, args.limit);
+  return {
+    items: items.map((item) => ({
+      contact_ref: encodeContactRef(userId, item.phone),
+      label: item.label,
+      missing_fact: item.missing_fact,
+      question_type: item.question_type,
+      priority: item.priority,
+    })),
+  };
 }
 
 export async function mcpGetGroupConnectors(
