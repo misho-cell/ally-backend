@@ -41,7 +41,11 @@ import {
 import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { getGraphDiagnostic, GraphDiagnostic } from '../../services/graphAnalytics.service';
-import { reclassifyPrivateNotes, ReclassifyResult } from '../../services/contactFacts.service';
+import {
+  reclassifyPrivateNotes,
+  ReclassifyResult,
+  retractFactsFromForeignSync,
+} from '../../services/contactFacts.service';
 import {
   listPromptBlocks,
   upsertPromptBlock,
@@ -646,6 +650,46 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Ticket 6 P0 (25 Aug), Task 2: retract contact_facts the label parser wrote
+// from a foreign contact sync's labels, filed as the contaminated account's
+// own submissions. Synchronous — the scoped query is a handful of rows, not
+// a bulk job (contrast /label-parser/reprocess-queue). General on any
+// (contaminated, sync source) pair, since Task 4 of the same round asks
+// whether other accounts carry the same kind of sync.
+adminRouter.post(
+  '/facts/retract-foreign-sync',
+  body('contaminated_user_id').isInt({ min: 1 }),
+  body('sync_source_user_id').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<{ retracted: number }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const { contaminated_user_id, sync_source_user_id } = req.body as {
+        contaminated_user_id: number;
+        sync_source_user_id: number;
+      };
+      const result = await retractFactsFromForeignSync(
+        String(contaminated_user_id),
+        String(sync_source_user_id),
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin retract-foreign-sync]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

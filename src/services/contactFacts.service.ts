@@ -465,3 +465,40 @@ export async function retractOwnFacts(
   );
   return { retracted: result.rowCount ?? 0 };
 }
+
+/**
+ * Ticket 6 P0 (25 Aug): a foreign contact sync (someone logging into this
+ * account on their own phone, years ago) left that person's phonebook
+ * attached to this account's UserAlias rows. The label parser (T2) later
+ * read those rows and wrote real contact_facts, filed as THIS account's own
+ * submissions — authorship it never had. Scoped narrowly: only source =
+ * 'label' facts (the parser's own output, not manually researched or
+ * chat-entered facts that happen to share a phone with the contamination),
+ * and only where the exact (phone, alias) pair is independently verified —
+ * it exists byte-for-byte under the sync source's OWN UserAlias rows too,
+ * not merely "some contact this account also has." General on purpose (any
+ * contaminatedUserId / syncSourceUserId pair), since Task 4 of this same
+ * round asks whether other accounts carry the same kind of sync.
+ */
+export async function retractFactsFromForeignSync(
+  contaminatedUserId: string,
+  syncSourceUserId: string,
+): Promise<{ retracted: number }> {
+  const result = await query(
+    `UPDATE contact_facts cf
+     SET retracted_at = NOW(), is_public = false, updated_at = NOW()
+     WHERE cf.submitted_by_user_id = $1
+       AND cf.retracted_at IS NULL
+       AND cf.source = 'label'
+       AND EXISTS (
+         SELECT 1 FROM "UserAlias" a
+         WHERE a."contactId" = $1::int AND a.phone = cf.neo4j_contact_id
+           AND EXISTS (
+             SELECT 1 FROM "UserAlias" b
+             WHERE b."contactId" = $2::int AND b.phone = a.phone AND b.alias = a.alias
+           )
+       )`,
+    [contaminatedUserId, syncSourceUserId],
+  );
+  return { retracted: result.rowCount ?? 0 };
+}

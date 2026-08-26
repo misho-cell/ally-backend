@@ -10,7 +10,11 @@ jest.mock('../../config/anthropic', () => ({
 
 import { query } from '../../db/postgres/client';
 import anthropic from '../../config/anthropic';
-import { submitContactFact, getVisibleFacts } from '../contactFacts.service';
+import {
+  submitContactFact,
+  getVisibleFacts,
+  retractFactsFromForeignSync,
+} from '../contactFacts.service';
 import { normalizePhone } from '../phone';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -42,6 +46,42 @@ function insertCall(): [string, unknown[]] {
   );
   return [call?.[0] as string, call?.[1] as unknown[]];
 }
+
+describe("retractFactsFromForeignSync — ticket 6 P0 (25 Aug): a foreign contact sync filed as this account's own submissions", () => {
+  it("scopes to source=label facts on rows whose (phone, alias) exists byte-for-byte under the sync source's OWN phonebook", async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 62 } as never);
+
+    const out = await retractFactsFromForeignSync('501', '118509');
+
+    expect(out).toEqual({ retracted: 62 });
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain("cf.source = 'label'");
+    expect(sql as string).toContain('SET retracted_at = NOW()');
+    expect(sql as string).toContain('is_public = false');
+    expect(params).toEqual(['501', '118509']);
+  });
+
+  it('never touches a fact with a different source (manual research, chat) just because it shares a phone with the contamination', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    await retractFactsFromForeignSync('501', '118509');
+
+    const [sql] = mockQuery.mock.calls[0];
+    // The source filter is a hard condition inside the same UPDATE, not a
+    // separate pass — a fact with source IS NULL or source='chat' never
+    // matches this WHERE clause regardless of the alias-overlap subquery.
+    expect(sql as string).toMatch(/AND cf\.source = 'label'/);
+  });
+
+  it("returns 0 when nothing in this account matches the sync source's phonebook", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    const out = await retractFactsFromForeignSync('501', '999999');
+
+    expect(out).toEqual({ retracted: 0 });
+  });
+});
 
 describe('submitContactFact — free-text notes (agent-moderated publicity)', () => {
   it('inserts a note as a PRIVATE row when the agent rules it personal', async () => {
