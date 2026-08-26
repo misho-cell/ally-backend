@@ -98,13 +98,29 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
  * single request scans unboundedly regardless of how search volume grows.
  */
 export async function findUnmetNeeds(sinceDays: number): Promise<UnmetNeed[]> {
+  // T5's own "Done when": old-Ally's search history must appear in T6's
+  // demand data. It never had — SearchHistory (the old-Ally app's own
+  // search log, 171k+ rows, still being written to live) sat completely
+  // disconnected from search_activity until this UNION. Combined by query
+  // text so the same topic failing on both sides counts once, correctly
+  // weighted, not as two separate rows.
   const failedSearches = await query<{ query: string; ask_count: string; city: string | null }>(
-    `SELECT sa.query, COUNT(*) AS ask_count, MAX(u.city) AS city
-     FROM search_activity sa
-     LEFT JOIN "User" u ON u.id::text = sa.user_id
-     WHERE sa.outcome = 'no_result' AND sa.created_at > NOW() - make_interval(days => $1::int)
-     GROUP BY sa.query
-     ORDER BY COUNT(*) DESC
+    `SELECT query, SUM(cnt) AS ask_count, MAX(city) AS city
+     FROM (
+       SELECT sa.query AS query, COUNT(*) AS cnt, MAX(u.city) AS city
+       FROM search_activity sa
+       LEFT JOIN "User" u ON u.id::text = sa.user_id
+       WHERE sa.outcome = 'no_result' AND sa.created_at > NOW() - make_interval(days => $1::int)
+       GROUP BY sa.query
+       UNION ALL
+       SELECT sh."searchQuery" AS query, COUNT(*) AS cnt, MAX(u.city) AS city
+       FROM "SearchHistory" sh
+       JOIN "User" u ON u.id = sh."originUserId"
+       WHERE sh."foundExactMatch" = false AND sh."createdAt" > NOW() - make_interval(days => $1::int)
+       GROUP BY sh."searchQuery"
+     ) combined
+     GROUP BY query
+     ORDER BY SUM(cnt) DESC
      LIMIT ${TOPIC_LIMIT}`,
     [sinceDays],
     UNMET_NEEDS_QUERY_TIMEOUT_MS,

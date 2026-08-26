@@ -97,4 +97,20 @@ describe('findUnmetNeeds', () => {
     expect(sql as string).toContain('make_interval(days =>');
     expect(params).toEqual([90]);
   });
+
+  it("T5: unions in old-Ally's SearchHistory (still-live, disconnected until now) alongside search_activity", async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await findUnmetNeeds(30);
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('FROM "SearchHistory"');
+    expect(sql as string).toContain('"foundExactMatch" = false');
+    expect(sql as string).toContain('u.id = sh."originUserId"');
+    // One combined query, not a second round-trip.
+    const topicQueries = mockQuery.mock.calls.filter(([s]) =>
+      (s as string).includes('FROM search_activity'),
+    );
+    expect(topicQueries).toHaveLength(1);
+  });
 });
