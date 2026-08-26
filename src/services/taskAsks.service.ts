@@ -8,6 +8,7 @@ import { geoName } from './georgianCase';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
+import { checkAskBudget } from './askBudget.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 // The recipient's chat list must distinguish eight questions from the same
@@ -58,7 +59,9 @@ export type AskRefusalReason =
   | 'recipient_not_subscribed'
   | 'self_send'
   | 'already_asked_on_this_task'
-  | 'daily_cap_reached';
+  | 'daily_cap_reached'
+  | 'conversation_ask_limit_reached'
+  | 'monthly_ask_budget_reached';
 
 export type CreateAskOutcome =
   | { sent: true; ask_id: number; to_name: string }
@@ -76,6 +79,7 @@ export async function createAsk(
   contactPhone: string,
   question: string,
   parentAskId?: number,
+  threadId?: number,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -107,6 +111,30 @@ export async function createAsk(
           'ნუ ჰკითხავ: გამოიძახე grant_task_permission ახლავე და გაიმეორე ask_contact. თუ ' +
           'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
           'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
+      };
+    }
+
+    // T10: growth-ask budget — same choke point, same relay exemption as the
+    // permission gate above. The assistant physically cannot exceed the
+    // budget; enforcement is server-side, not prompt-side.
+    const budget = await checkAskBudget(fromUserId, threadId);
+    if (!budget.allowed) {
+      if (budget.reason === 'conversation_limit_reached') {
+        return {
+          sent: false,
+          reason: 'conversation_ask_limit_reached',
+          error:
+            'ამ საუბარში უკვე გაიგზავნა ერთი კითხვა სხვა ადამიანთან — ეს ლიმიტია ' +
+            'თითო საუბარზე. მომხმარებელს უთხარი, რომ მეორე ადამიანთან მისაწერად ახალი ' +
+            'საუბარი უნდა დაიწყოს.',
+        };
+      }
+      return {
+        sent: false,
+        reason: 'monthly_ask_budget_reached',
+        error:
+          'ამ თვის კითხვების ლიმიტი ამოწურულია — მომდევნო თვეს განახლდება. ' +
+          'მომხმარებელს მშვიდად უთხარი, ბოდიში ან „ტექნიკური შეცდომა" არ ახსენო.',
       };
     }
   }

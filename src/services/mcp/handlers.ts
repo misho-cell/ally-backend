@@ -818,6 +818,8 @@ export async function mcpAskContact(
   if (!task || String(task.user_id) !== userId || task.status !== 'open') {
     return { sent: false, error: 'Task not found or not open.' };
   }
+  // T10: threadId omitted deliberately — MCP has no conversation concept, so
+  // only the monthly budget gate applies here, not the per-conversation one.
   const outcome = await createAsk(userId, taskId, phone, args.question ?? '');
   return scrubDeep(outcome) as McpToolPayload;
 }

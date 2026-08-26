@@ -2062,6 +2062,8 @@ async function executeToolCall(
         taskId,
         String(input['phone'] ?? ''),
         String(input['question'] ?? ''),
+        undefined,
+        threadId,
       );
     }
     case 'set_task_brief': {

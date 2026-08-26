@@ -16,6 +16,10 @@ jest.mock('../askOptOut.service', () => ({
   __esModule: true,
   isOptedOutFromAsks: jest.fn().mockResolvedValue(false),
 }));
+jest.mock('../askBudget.service', () => ({
+  __esModule: true,
+  checkAskBudget: jest.fn().mockResolvedValue({ allowed: true }),
+}));
 jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
@@ -25,6 +29,7 @@ jest.mock('../notification.service', () => ({
 import { query } from '../../db/postgres/client';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
+import { checkAskBudget } from '../askBudget.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import {
   createAsk,
@@ -39,6 +44,7 @@ import {
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockOptedOut = isOptedOutFromAsks as jest.MockedFunction<typeof isOptedOutFromAsks>;
+const mockCheckBudget = checkAskBudget as jest.MockedFunction<typeof checkAskBudget>;
 const mockCreateThread = createThread as jest.MockedFunction<typeof createThread>;
 const mockSaveMessage = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 
@@ -49,6 +55,7 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 beforeEach(() => {
   jest.clearAllMocks();
   mockOptedOut.mockResolvedValue(false);
+  mockCheckBudget.mockResolvedValue({ allowed: true });
   // Default: an open task owned by the caller WITH the blanket permission —
   // the P0 gate lets these through; individual tests flip the fields.
   mockGetTask.mockResolvedValue({
@@ -221,6 +228,48 @@ describe('createAsk', () => {
     const out = await createAsk('42', 3, '+995599111222', 'q');
 
     expect(out.sent).toBe(false);
+  });
+});
+
+describe('createAsk — engine T10, growth-ask budget gate', () => {
+  it('blocks a send when the per-conversation floor is reached', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    mockCheckBudget.mockResolvedValue({ allowed: false, reason: 'conversation_limit_reached' });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q', undefined, 555);
+
+    expect(out.sent).toBe(false);
+    expect((out as { reason?: string }).reason).toBe('conversation_ask_limit_reached');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('blocks a send when the monthly budget is exhausted', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    mockCheckBudget.mockResolvedValue({ allowed: false, reason: 'monthly_budget_reached' });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(false);
+    expect((out as { reason?: string }).reason).toBe('monthly_ask_budget_reached');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('passes the caller thread through so the gate can enforce the per-conversation floor', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'q', undefined, 555);
+
+    expect(mockCheckBudget).toHaveBeenCalledWith('42', 555);
+  });
+
+  it('a relay bypasses the budget gate too — same choke point as the permission gate', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    mockGetTask.mockResolvedValue(null as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'q', 11);
+
+    expect(out.sent).toBe(true);
+    expect(mockCheckBudget).not.toHaveBeenCalled();
   });
 });
 
