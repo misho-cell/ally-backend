@@ -68,6 +68,13 @@ const GEORGIAN_OCCUPATIONS: readonly string[] = [
   'ეკონომისტი',
   'ნოტარიუსი',
   'ავტომექანიკოსი',
+  // Added from real label_parse_queue evidence (26 Aug): these words kept
+  // recurring in the 580-row backlog and were genuinely missing, not just
+  // spelling variants of something already here.
+  'რეჟისორი',
+  'კონსულტანტი',
+  'პროდიუსერი',
+  'ადმინისტრატორი',
 ];
 
 const ENGLISH_OCCUPATIONS: readonly string[] = [
@@ -82,6 +89,10 @@ const ENGLISH_OCCUPATIONS: readonly string[] = [
   'accountant',
   'designer',
   'developer',
+  // Added from real label_parse_queue evidence (26 Aug): "Keti Buckswood
+  // Admin" — short, but not a real word in either language, so collision
+  // risk with an unrelated label is effectively zero.
+  'admin',
 ];
 
 // Real labels are as often Latin-typed Georgian ("Santeknikosi") as native
@@ -104,6 +115,16 @@ const ENGLISH_OCCUPATIONS: readonly string[] = [
 const MANUAL_SPELLING_VARIANTS: Readonly<Record<string, string>> = {
   eleqtriki: 'ელექტრიკი',
   eleqtrikosi: 'ელექტრიკოსი',
+  // Added from real label_parse_queue evidence (26 Aug). hr/pr/cto get their
+  // own entries (not ENGLISH_OCCUPATIONS' generic capitalize-first-letter
+  // rule) so the stored value reads as the acronym ("HR"), not "Hr".
+  // disaineri: "დიზაინერი"'s ზ→z transliteration didn't generate this
+  // ს-spelling ("Irakli Gogua Disaineri") — same shape as the eleqtriki gap
+  // above, not a new class of problem.
+  disaineri: 'დიზაინერი',
+  hr: 'HR',
+  pr: 'PR',
+  cto: 'CTO',
 };
 
 // ხელოსანი ("handyman/tradesman") is the one deliberately generic entry in

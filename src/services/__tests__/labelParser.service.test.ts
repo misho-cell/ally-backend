@@ -48,6 +48,38 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
     );
   });
 
+  it.each([
+    ['Ebg Video Rejisori', 'რეჟისორი'],
+    ['Goga Paysera Konsultanti', 'კონსულტანტი'],
+    ['Irakli Gogua Disaineri', 'დიზაინერი'],
+    ['Nino Bakuriani Administratori', 'ადმინისტრატორი'],
+    ['Tatia Paysera Hr', 'HR'],
+    ['Tea Bolkvadze PR', 'PR'],
+    ['Temo Posta Cto', 'CTO'],
+    ['Keti Buckswood Admin', 'Admin'],
+  ])(
+    'engine T2 dictionary expansion (26 Aug, from real label_parse_queue evidence): %s -> %s',
+    async (alias, expected) => {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('FROM "UserAlias" ua'))
+          return Promise.resolve(rows([{ contactId: 7, phone: '+995500000099', alias }]) as never);
+        return Promise.resolve(rows([]) as never);
+      });
+
+      const out = await parsePhonebookLabelsForUser('7');
+
+      expect(out).toEqual({ parsed: 1, queued: 0 });
+      expect(mockSubmitFact).toHaveBeenCalledWith(
+        '7',
+        '+995500000099',
+        'occupation',
+        expected,
+        'label',
+        null,
+      );
+    },
+  );
+
   it('an unrecognized multi-word label is queued, not dropped', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserAlias" ua'))
