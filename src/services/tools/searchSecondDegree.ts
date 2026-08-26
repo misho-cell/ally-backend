@@ -37,6 +37,61 @@ async function recordWeakTieSignals(userId: string, likeTerms: string[]): Promis
   );
 }
 
+// Engine T15: "match strength returned, fact text never" (ticket 6, 20 Aug
+// spec; named load-bearing again in the P0 round — this is the mechanism
+// aggregate crowd evidence is supposed to reach a searcher through WITHOUT
+// disclosure). A second-degree target's employer/jobPosition only surface
+// when a fact is public or the searcher's own (privacy-correct — see
+// fe/fj above) — which starves to null for almost every real second-degree
+// case today (T10, 4 consecutive rounds: 0 of 936+ facts product-wide are
+// public yet). signal_strength answers a narrower, safe question instead:
+// "how well does this person match the query", scored from EVERY signal on
+// them — public or not, anyone's tag or fact — while the actual matched
+// word never leaves this function. Two components: how many DISTINCT
+// contributors tagged them with a matching word (crowd corroboration, the
+// Dato Q7 pattern — 22 people independently calling one man "shpana" is
+// real signal even though no single submission is public), and whether any
+// fact at all (public or private) matches — a coarse "yes/no" so a single
+// private submission still helps rank without ever being readable.
+const SIGNAL_TAG_WEIGHT = 0.15;
+const SIGNAL_TAG_CAP = 3;
+const SIGNAL_FACT_WEIGHT = 0.5;
+const SIGNAL_MAX = 1.0;
+
+async function fetchSignalStrength(
+  phones: string[],
+  regexTerms: string[],
+): Promise<Map<string, number>> {
+  if (phones.length === 0 || regexTerms.length === 0) return new Map();
+  try {
+    const tagConds = regexTerms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 2}`).join(' OR ');
+    const valueConds = regexTerms.map((_, i) => `(LOWER(cf.value) || '') ~ $${i + 2}`).join(' OR ');
+    const result = await query<{ phone: string; strength: number }>(
+      `SELECT p.phone,
+              LEAST(${SIGNAL_MAX},
+                ${SIGNAL_TAG_WEIGHT} * LEAST(${SIGNAL_TAG_CAP}, (
+                  SELECT COUNT(DISTINCT ut."contactId") FROM "UserTags" ut
+                  WHERE ut.phone = p.phone AND (${tagConds})
+                ))
+                + ${SIGNAL_FACT_WEIGHT} * (CASE WHEN EXISTS (
+                    SELECT 1 FROM contact_facts cf
+                    WHERE cf.neo4j_contact_id = p.phone AND cf.retracted_at IS NULL
+                      AND (${valueConds})
+                  ) THEN 1 ELSE 0 END)
+              ) AS strength
+       FROM unnest($1::text[]) AS p(phone)`,
+      [phones, ...regexTerms],
+      SECOND_DEGREE_QUERY_TIMEOUT_MS,
+    );
+    return new Map(
+      result.rows.filter((r) => Number(r.strength) > 0).map((r) => [r.phone, Number(r.strength)]),
+    );
+  } catch (err) {
+    console.error('fetchSignalStrength error:', (err as Error).message);
+    return new Map();
+  }
+}
+
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   try {
     let userKey: string;
@@ -304,10 +359,16 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
     // later precisely because only the DIRECT tools carried exclusions.
-    const exclusions = await fetchExclusionsForPhones(
-      userId,
-      rows.map((r) => r.phone),
-    );
+    const [exclusions, signalStrength] = await Promise.all([
+      fetchExclusionsForPhones(
+        userId,
+        rows.map((r) => r.phone),
+      ),
+      fetchSignalStrength(
+        rows.map((r) => r.phone),
+        regexTerms,
+      ),
+    ]);
 
     return {
       found: true,
@@ -327,6 +388,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         // 0..1) — how warm the best via's own tie to this person is. Missing
         // when no bridge has a computed score.
         ...(row.warmth != null && { via_warmth: Number(row.warmth) }),
+        // T15: how well this person matches the query, from every tag/fact on
+        // them — public or not. Never the matched word itself, only the
+        // score. Missing when nothing (public or private) matched at all.
+        ...(signalStrength.has(row.phone) && {
+          signal_strength: signalStrength.get(row.phone),
+        }),
         ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
           exclusions: exclusions.get(phoneDigits(row.phone)),
         }),

@@ -140,6 +140,73 @@ describe('searchSecondDegree tag matching', () => {
     expect(results[1]).not.toHaveProperty('via_warmth');
   });
 
+  it('T15: attaches signal_strength from private+public tags/facts, and NEVER the matched word itself', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('tag_hits')) {
+        return Promise.resolve(
+          rows([
+            { phone: '+995500000123', target_user_id: null, name: 'Nino', via_names: ['Gio'] },
+          ]) as never,
+        );
+      }
+      if (sql.includes('unnest($1::text[])')) {
+        return Promise.resolve(rows([{ phone: '+995500000123', strength: 0.65 }]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const result = (await searchSecondDegree('42', 'xelosani')) as Record<string, unknown>;
+
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].signal_strength).toBe(0.65);
+    // The whole point of T15: the payload carries a NUMBER, never the tag or
+    // fact text that produced it — those never left the SQL layer.
+    expect(JSON.stringify(result)).not.toMatch(/xelosan/i);
+  });
+
+  it('T15: omits signal_strength entirely when nothing (public or private) matched', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('tag_hits')) {
+        return Promise.resolve(
+          rows([
+            { phone: '+995500000123', target_user_id: null, name: 'Nino', via_names: ['Gio'] },
+          ]) as never,
+        );
+      }
+      if (sql.includes('unnest($1::text[])')) {
+        return Promise.resolve(rows([{ phone: '+995500000123', strength: 0 }]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const result = (await searchSecondDegree('42', 'xelosani')) as Record<string, unknown>;
+
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0]).not.toHaveProperty('signal_strength');
+  });
+
+  it('T15: a failure in the signal-strength lookup never breaks the search itself', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('tag_hits')) {
+        return Promise.resolve(
+          rows([
+            { phone: '+995500000123', target_user_id: null, name: 'Nino', via_names: ['Gio'] },
+          ]) as never,
+        );
+      }
+      if (sql.includes('unnest($1::text[])')) {
+        return Promise.reject(new Error('db blip'));
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const result = (await searchSecondDegree('42', 'xelosani')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0]).not.toHaveProperty('signal_strength');
+  });
+
   it('returns found:false when the graph has no contacts', async () => {
     mockGetSession.mockReturnValue({
       run: jest.fn().mockResolvedValue({ records: [] }),

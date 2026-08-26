@@ -78,7 +78,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'bridges rather than the target itself, or for "who could introduce me to…". Returns ' +
       'each target with the connector who links them. Prefer this over asking the user "do ' +
       'you know anyone in X?" — surface the people yourself. Match depth to distance: at home ' +
-      'one hop is usually enough; cross-border, go deeper.',
+      'one hop is usually enough; cross-border, go deeper. `employer`/`jobPosition` are often ' +
+      "empty even for a real match — those only show when public or the searcher's own, rare " +
+      'this deep in the network. A result may still carry `signal_strength` (0–1) with no ' +
+      'visible fields at all — the query matched something real about this person that stays ' +
+      'private. Treat it as genuine: rank and mention these people normally, never ask what ' +
+      'the hidden match was, never guess at it.',
   },
   get_network_stats: {
     title: 'Network size and shape',
