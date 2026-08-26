@@ -58,6 +58,43 @@ const SIGNAL_TAG_CAP = 3;
 const SIGNAL_FACT_WEIGHT = 0.5;
 const SIGNAL_MAX = 1.0;
 
+// The 20 Aug spec, verbatim: "Facts tagged sensitive (health, money,
+// politics, religion, love life) or ugly/unlawful are excluded from
+// signalling entirely." No moderation classifier for "ugly/unlawful" exists
+// in this codebase — this denylist is a real but partial safeguard, not the
+// full spec; flagged honestly, not silently shipped as complete. 'note' is
+// excluded outright — it's this codebase's own catch-all for "personal or
+// ambiguous" content (contactFacts.service.ts's moderation comment), the
+// exact shape sensitive material accumulates as, so it never contributes
+// even without a category match.
+const SIGNAL_EXCLUDED_FIELD_TYPES = [
+  'note',
+  'health',
+  'medical',
+  'illness',
+  'diagnosis',
+  'money',
+  'income',
+  'salary',
+  'finance',
+  'debt',
+  'wealth',
+  'politics',
+  'political',
+  'party',
+  'religion',
+  'religious',
+  'faith',
+  'relationship',
+  'love',
+  'dating',
+  'marital_status',
+  'affair',
+  'criminal',
+  'legal_issue',
+  'arrest',
+];
+
 async function fetchSignalStrength(
   phones: string[],
   regexTerms: string[],
@@ -65,6 +102,7 @@ async function fetchSignalStrength(
   if (phones.length === 0 || regexTerms.length === 0) return new Map();
   try {
     const tagConds = regexTerms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 2}`).join(' OR ');
+    const excludedIdx = regexTerms.length + 2;
     const valueConds = regexTerms.map((_, i) => `(LOWER(cf.value) || '') ~ $${i + 2}`).join(' OR ');
     const result = await query<{ phone: string; strength: number }>(
       `SELECT p.phone,
@@ -76,11 +114,12 @@ async function fetchSignalStrength(
                 + ${SIGNAL_FACT_WEIGHT} * (CASE WHEN EXISTS (
                     SELECT 1 FROM contact_facts cf
                     WHERE cf.neo4j_contact_id = p.phone AND cf.retracted_at IS NULL
+                      AND cf.field_type != ALL($${excludedIdx}::text[])
                       AND (${valueConds})
                   ) THEN 1 ELSE 0 END)
               ) AS strength
        FROM unnest($1::text[]) AS p(phone)`,
-      [phones, ...regexTerms],
+      [phones, ...regexTerms, SIGNAL_EXCLUDED_FIELD_TYPES],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
     return new Map(

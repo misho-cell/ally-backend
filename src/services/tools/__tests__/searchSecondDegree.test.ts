@@ -164,6 +164,34 @@ describe('searchSecondDegree tag matching', () => {
     expect(JSON.stringify(result)).not.toMatch(/xelosan/i);
   });
 
+  it('T15: never lets a sensitive-category fact (health/money/politics/religion/love life) contribute to the score — the 20 Aug spec, verbatim', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('tag_hits')) {
+        return Promise.resolve(
+          rows([
+            { phone: '+995500000123', target_user_id: null, name: 'Nino', via_names: ['Gio'] },
+          ]) as never,
+        );
+      }
+      if (sql.includes('unnest($1::text[])')) {
+        return Promise.resolve(rows([{ phone: '+995500000123', strength: 0 }]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await searchSecondDegree('42', 'xelosani');
+
+    const signalCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('unnest($1::text[])'),
+    );
+    const [sql, params] = signalCall as [string, unknown[]];
+    expect(sql).toContain('field_type != ALL(');
+    const excludedTypes = params[params.length - 1] as string[];
+    expect(excludedTypes).toEqual(
+      expect.arrayContaining(['note', 'health', 'money', 'politics', 'religion', 'love']),
+    );
+  });
+
   it('T15: omits signal_strength entirely when nothing (public or private) matched', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('tag_hits')) {
