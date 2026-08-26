@@ -77,6 +77,7 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
+import { findUnmetNeeds, UnmetNeed } from '../../services/unmetNeeds.service';
 
 const adminRouter = Router();
 
@@ -1585,5 +1586,22 @@ adminRouter.get(
     }
   },
 );
+
+// T6 part (b): "which needs went unmet this month, and which non-users would
+// have answered them" — per T7's own dependency on this list (its "Pull"
+// score input). city is the ASKER's city (the closest available "market"
+// proxy — no non-user candidate has a reliable location of their own).
+adminRouter.get('/unmet-needs', async (req: Request, res: Response<ApiResponse<UnmetNeed[]>>) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const result = await findUnmetNeeds(days);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin unmet-needs]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 export default adminRouter;
