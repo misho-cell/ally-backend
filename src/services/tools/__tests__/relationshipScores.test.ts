@@ -62,23 +62,24 @@ describe('backfillHumanRelationshipTiers', () => {
   it("walks UserConnectionPhone in bounded id-range batches on the BACKGROUND pool — live-caught 25 Aug: the original single unbounded query ran on the default pool's 8s statement_timeout and crashed the app", async () => {
     mockBackgroundQuery.mockImplementation((sql: string) => {
       if (sql.includes('MAX(id)'))
-        return Promise.resolve({ rows: [{ max: 250_000 }], rowCount: 1 } as never);
-      return Promise.resolve({ rows: [], rowCount: 40_000 } as never);
+        return Promise.resolve({ rows: [{ max: 62_500 }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 10_000 } as never);
     });
 
     const out = await backfillHumanRelationshipTiers();
 
-    // 250,000 / 100,000 batch size = 3 batches (0-100k, 100k-200k, 200k-250k+).
+    // 62,500 / 25,000 batch size = 3 batches (0-25k, 25k-50k, 50k-62.5k+).
     expect(out.batches).toBe(3);
-    expect(out.inserted).toBe(120_000);
-    expect(out.maxId).toBe(250_000);
+    expect(out.inserted).toBe(30_000);
+    expect(out.maxId).toBe(62_500);
+    expect(out.skippedRanges).toEqual([]);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('each batch query stays inside one 100,000-id window, never the whole table', async () => {
+  it('each batch query stays inside one 25,000-id window, never the whole table', async () => {
     mockBackgroundQuery.mockImplementation((sql: string) => {
       if (sql.includes('MAX(id)'))
-        return Promise.resolve({ rows: [{ max: 150_000 }], rowCount: 1 } as never);
+        return Promise.resolve({ rows: [{ max: 37_500 }], rowCount: 1 } as never);
       return Promise.resolve({ rows: [], rowCount: 0 } as never);
     });
 
@@ -88,8 +89,8 @@ describe('backfillHumanRelationshipTiers', () => {
       (sql as string).includes('INSERT INTO human_relationship_tiers'),
     );
     expect(insertCalls).toHaveLength(2);
-    expect(insertCalls[0][1]).toEqual([0, 100_000]);
-    expect(insertCalls[1][1]).toEqual([100_000, 200_000]);
+    expect(insertCalls[0][1]).toEqual([0, 25_000]);
+    expect(insertCalls[1][1]).toEqual([25_000, 50_000]);
   });
 
   it('does nothing when the table is empty', async () => {
@@ -97,7 +98,41 @@ describe('backfillHumanRelationshipTiers', () => {
 
     const out = await backfillHumanRelationshipTiers();
 
-    expect(out).toEqual({ batches: 0, inserted: 0, maxId: 0 });
+    expect(out).toEqual({ batches: 0, inserted: 0, maxId: 0, skippedRanges: [] });
+  });
+
+  it('a batch that fails once is retried and its retry counts — a transient stall must not skip data (live-caught 26 Aug: two real runs died on intermittent statement timeouts)', async () => {
+    let failedOnce = false;
+    mockBackgroundQuery.mockImplementation((sql: string) => {
+      if (sql.includes('MAX(id)'))
+        return Promise.resolve({ rows: [{ max: 25_000 }], rowCount: 1 } as never);
+      if (!failedOnce) {
+        failedOnce = true;
+        return Promise.reject(new Error('canceling statement due to statement timeout'));
+      }
+      return Promise.resolve({ rows: [], rowCount: 7 } as never);
+    });
+
+    const out = await backfillHumanRelationshipTiers();
+
+    expect(out).toEqual({ batches: 1, inserted: 7, maxId: 25_000, skippedRanges: [] });
+  });
+
+  it('a batch that fails twice is SKIPPED with its range recorded, and the job still reaches the end', async () => {
+    mockBackgroundQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('MAX(id)'))
+        return Promise.resolve({ rows: [{ max: 50_000 }], rowCount: 1 } as never);
+      if ((params as number[])[0] === 0) {
+        return Promise.reject(new Error('canceling statement due to statement timeout'));
+      }
+      return Promise.resolve({ rows: [], rowCount: 5 } as never);
+    });
+
+    const out = await backfillHumanRelationshipTiers();
+
+    expect(out.batches).toBe(2);
+    expect(out.inserted).toBe(5); // second batch's rows still landed
+    expect(out.skippedRanges).toEqual(['0-25000']);
   });
 });
 

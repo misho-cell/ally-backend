@@ -85,12 +85,23 @@ export async function fetchHumanTierForPhones(
 // batched; (2) a 100,000-id range on UserConnectionPhone's own primary key
 // per query, ~3s measured, an index range scan instead of a full table
 // scan every batch.
-const BACKFILL_BATCH_SIZE = 100_000;
+// Live-caught AGAIN on the first two real runs (26 Aug): even at 100k with
+// the 30s pool, two runs died on "canceling statement due to statement
+// timeout" — at DIFFERENT points, with all-fast batches around them
+// (~1.2s/batch measured across the first run's 104s). The database is just
+// intermittently slow under this hobby plan's shared load, so a single
+// slow moment must not kill the whole job. Batch shrunk 4x, and each batch
+// now retries once and then SKIPS with its range logged — the job always
+// reaches the end and reports exactly what it skipped, instead of dying
+// silently partway and looking identical to "still running".
+const BACKFILL_BATCH_SIZE = 25_000;
 
 export interface TierBackfillResult {
   batches: number;
   inserted: number;
   maxId: number;
+  /** id ranges that failed twice and were skipped — rerun to fill them. */
+  skippedRanges: string[];
 }
 
 /**
@@ -110,9 +121,7 @@ export async function backfillHumanRelationshipTiers(): Promise<TierBackfillResu
   );
   const maxId = Number(maxIdResult.rows[0]?.max ?? 0);
 
-  let batches = 0;
-  let inserted = 0;
-  for (let cursor = 0; cursor < maxId; cursor += BACKFILL_BATCH_SIZE) {
+  const insertBatch = async (cursor: number): Promise<number> => {
     const result = await backgroundQuery(
       `INSERT INTO human_relationship_tiers (user_id, contact_phone, tier, source, set_at)
        SELECT uc."originUserId", ucp.phone,
@@ -131,8 +140,29 @@ export async function backfillHumanRelationshipTiers(): Promise<TierBackfillResu
        ON CONFLICT (user_id, contact_phone) DO NOTHING`,
       [cursor, cursor + BACKFILL_BATCH_SIZE],
     );
+    return result.rowCount ?? 0;
+  };
+
+  let batches = 0;
+  let inserted = 0;
+  const skippedRanges: string[] = [];
+  for (let cursor = 0; cursor < maxId; cursor += BACKFILL_BATCH_SIZE) {
+    try {
+      inserted += await insertBatch(cursor);
+    } catch {
+      try {
+        inserted += await insertBatch(cursor); // one retry — transient stalls pass
+      } catch (err) {
+        const range = `${cursor}-${cursor + BACKFILL_BATCH_SIZE}`;
+        skippedRanges.push(range);
+        // eslint-disable-next-line no-console
+        console.error(
+          `[relationship-tiers backfill] batch ${range} skipped after retry:`,
+          (err as Error).message,
+        );
+      }
+    }
     batches++;
-    inserted += result.rowCount ?? 0;
   }
-  return { batches, inserted, maxId };
+  return { batches, inserted, maxId, skippedRanges };
 }
