@@ -45,6 +45,7 @@ import {
   mcpGetUserNotes,
   mcpQueueResult,
   mcpRecordSearchOutcome,
+  mcpRespondToThanksLoopOffer,
   mcpGetPendingUpdates,
   mcpGetProfileQuestion,
   mcpAnswerProfileQuestion,
@@ -484,6 +485,21 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+  );
+  server.registerTool(
+    'respond_to_thanks_loop_offer',
+    {
+      title: TOOL_TEXTS.respond_to_thanks_loop_offer.title,
+      description: TOOL_TEXTS.respond_to_thanks_loop_offer.description,
+      inputSchema: {
+        consented: z.boolean().describe(PARAM_TEXTS.thanksLoopConsented),
+      },
+      annotations: WRITE,
+    },
+    (args) =>
+      runTool(userId, 'respond_to_thanks_loop_offer', () =>
+        mcpRespondToThanksLoopOffer(userId, args),
+      ),
   );
   server.registerTool(
     'get_pending_updates',

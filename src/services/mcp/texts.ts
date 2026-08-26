@@ -386,6 +386,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'on their behalf, "replied" once an answer comes back. Never guess "sent" or "replied" — ' +
       'only record what you directly know happened in this conversation.',
   },
+  respond_to_thanks_loop_offer: {
+    title: 'Respond to a thanks-loop offer',
+    description:
+      'Call ONLY right after record_search_outcome returned thanks_loop_offer=true and the user ' +
+      'has answered whether they want to thank whoever invited them. consented=true sends a warm, ' +
+      'detail-free thank-you note to their inviter; consented=false sends nothing, silently, and ' +
+      'it is never offered again for this result.',
+  },
   get_pending_updates: {
     title: 'Updates due for the user',
     description:
@@ -526,6 +534,7 @@ export const PARAM_TEXTS = {
     'back to insight / second-degree.',
   connectorLimit: 'How many to return (default 10, max 25).',
   curiosityLimit: 'How many to return (default 15).',
+  thanksLoopConsented: 'true = the user wants to send the thank-you.',
   country:
     'The country name in EVERY relevant language, space-separated — always Georgian AND English ' +
     'at minimum (e.g. "Germany გერმანია", "პოლონეთი Poland"). Tags are stored in whatever ' +

@@ -48,6 +48,7 @@ import { normalizePhone } from '../phone';
 import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import { buildCuriosityQueue } from '../curiosityQueue.service';
+import { maybeOfferThanksLoop, respondToThanksLoopOffer } from '../thanksLoop.service';
 import {
   getPendingRequestsForMediator,
   getRecentResponsesForRequester,
@@ -1000,9 +1001,30 @@ export async function mcpRecordSearchOutcome(
     outcome,
     reason: args.reason ?? null,
   });
-  return recorded
-    ? { recorded: true }
-    : { recorded: false, error: "That search_id is not one of this conversation's own searches." };
+  if (!recorded) {
+    return {
+      recorded: false,
+      error: "That search_id is not one of this conversation's own searches.",
+    };
+  }
+  const thanksLoopOffer = await maybeOfferThanksLoop(userId, outcome);
+  return {
+    recorded: true,
+    ...(thanksLoopOffer && {
+      thanks_loop_offer: true,
+      note:
+        'This user was invited to Netai and just got their first real result. Ask, once, if they ' +
+        'would like to thank whoever invited them, as a short yes/no question. Then call ' +
+        'respond_to_thanks_loop_offer with their answer.',
+    }),
+  };
+}
+
+export async function mcpRespondToThanksLoopOffer(
+  userId: string,
+  args: { consented?: boolean },
+): Promise<McpToolPayload> {
+  return { ...(await respondToThanksLoopOffer(userId, args.consented === true)) };
 }
 
 export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {

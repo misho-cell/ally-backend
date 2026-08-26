@@ -68,6 +68,7 @@ import { saveContactExclusion, removeContactExclusion } from './tools/contactExc
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
 import { recordCampaignResponse } from './chorusCampaign.service';
 import { buildCuriosityQueue } from './curiosityQueue.service';
+import { maybeOfferThanksLoop, respondToThanksLoopOffer } from './thanksLoop.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -1063,6 +1064,23 @@ const RECORD_SEARCH_OUTCOME_TOOL: AnthropicTool = {
       reason: { type: 'string', description: 'Why refused — only meaningful with outcome=refused' },
     },
     required: ['search_id', 'outcome'],
+  },
+};
+
+const RESPOND_TO_THANKS_LOOP_OFFER_TOOL: AnthropicTool = {
+  name: 'respond_to_thanks_loop_offer',
+  description:
+    'Call ONLY right after record_search_outcome returned thanks_loop_offer=true and the user has ' +
+    'answered the one-tap choice about thanking whoever invited them. consented=true sends a warm, ' +
+    'detail-free thank-you note to their inviter; consented=false sends nothing, silently, and it ' +
+    'is never offered again for this result.' +
+    ' WHEN: right after the user answers the one-tap thanks-loop choice.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      consented: { type: 'boolean', description: 'true = the user wants to send the thank-you' },
+    },
+    required: ['consented'],
   },
 };
 
@@ -2298,12 +2316,26 @@ async function executeToolCall(
       const reason = typeof input['reason'] === 'string' ? (input['reason'] as string) : null;
       const worked = typeof input['worked'] === 'boolean' ? (input['worked'] as boolean) : null;
       const recorded = await recordSearchOutcome({ searchId, userId, outcome, reason, worked });
-      return recorded
-        ? { recorded: true }
-        : {
-            recorded: false,
-            error: "That search_id is not one of this conversation's own searches.",
-          };
+      if (!recorded) {
+        return {
+          recorded: false,
+          error: "That search_id is not one of this conversation's own searches.",
+        };
+      }
+      // T12: this user's first-ever confirmed result — if they were invited,
+      // offer the one-tap thanks-loop prompt right now, in this same turn.
+      const thanksLoopOffer = await maybeOfferThanksLoop(userId, outcome);
+      return {
+        recorded: true,
+        ...(thanksLoopOffer && {
+          thanks_loop_offer: true,
+          note:
+            'This user was invited to Netai and just got their first real result. Ask, once, if ' +
+            'they would like to thank whoever invited them — present it as a one-tap choice ' +
+            '(present_choices), not a paragraph. Then call respond_to_thanks_loop_offer with ' +
+            'their answer.',
+        }),
+      };
     }
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.
@@ -2338,6 +2370,8 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'respond_to_thanks_loop_offer':
+      return respondToThanksLoopOffer(userId, input['consented'] === true);
     case 'get_group_connectors':
       return getGroupConnectors(
         userId,
@@ -2464,6 +2498,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   forget_contact_fact: '🗑️ ჩანაწერს სამუდამოდ ვშლი...',
   respond_to_invite_campaign: '📣 პასუხს ვინახავ...',
   get_curiosity_queue: '🤔 ვინ დამაინტერესოს, ვფიქრობ...',
+  respond_to_thanks_loop_offer: '💌 მადლობის შეტყობინებას ვამზადებ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
 };
@@ -3095,6 +3130,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     RELAY_ASK_TOOL,
     RESPOND_TO_INVITE_CAMPAIGN_TOOL,
     GET_CURIOSITY_QUEUE_TOOL,
+    RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
     STOP_CONTACTING_TOOL,
     RESUME_CONTACT_TOOL,
     EXCLUDE_CONTACT_TOOL,

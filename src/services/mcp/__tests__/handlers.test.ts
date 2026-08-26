@@ -83,6 +83,11 @@ jest.mock('../../block.service', () => ({
   getExcludedPhoneSet: jest.fn().mockResolvedValue(new Set<string>()),
   __esModule: true,
 }));
+jest.mock('../../thanksLoop.service', () => ({
+  maybeOfferThanksLoop: jest.fn().mockResolvedValue(false),
+  respondToThanksLoopOffer: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../../graphAnalytics.service', () => ({
   getTopConnectors: jest.fn(),
   getGroupConnectors: jest.fn(),
@@ -128,7 +133,9 @@ import {
   mcpUpdateTask,
   mcpRecordSearchOutcome,
   mcpForgetFact,
+  mcpRespondToThanksLoopOffer,
 } from '../handlers';
+import { maybeOfferThanksLoop, respondToThanksLoopOffer } from '../../thanksLoop.service';
 import { getVisibleFacts, submitContactFact, hardDeleteOwnFact } from '../../contactFacts.service';
 import {
   blockContact,
@@ -173,6 +180,12 @@ const mockRecordSearchOutcome = recordSearchOutcome as jest.MockedFunction<
   typeof recordSearchOutcome
 >;
 const mockIsSafe = isReplySafe as jest.MockedFunction<typeof isReplySafe>;
+const mockMaybeOfferThanksLoop = maybeOfferThanksLoop as jest.MockedFunction<
+  typeof maybeOfferThanksLoop
+>;
+const mockRespondToThanksLoopOffer = respondToThanksLoopOffer as jest.MockedFunction<
+  typeof respondToThanksLoopOffer
+>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
 const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFacts>;
 const mockHardDelete = hardDeleteOwnFact as jest.MockedFunction<typeof hardDeleteOwnFact>;
@@ -933,6 +946,44 @@ describe('mcpRecordSearchOutcome', () => {
 
     expect(result.recorded).toBe(false);
     expect(result.error).toBeDefined();
+  });
+
+  it("engine T12: carries thanks_loop_offer through when this is the invited user's first confirmed result", async () => {
+    mockRecordSearchOutcome.mockResolvedValue(true);
+    mockMaybeOfferThanksLoop.mockResolvedValue(true);
+
+    const result = await mcpRecordSearchOutcome(USER, { search_id: 9, outcome: 'accepted' });
+
+    expect(result).toMatchObject({ recorded: true, thanks_loop_offer: true });
+    expect(mockMaybeOfferThanksLoop).toHaveBeenCalledWith(USER, 'accepted');
+  });
+
+  it('omits thanks_loop_offer on an ordinary outcome (no offer to make)', async () => {
+    mockRecordSearchOutcome.mockResolvedValue(true);
+    mockMaybeOfferThanksLoop.mockResolvedValue(false);
+
+    const result = await mcpRecordSearchOutcome(USER, { search_id: 9, outcome: 'sent' });
+
+    expect(result).toEqual({ recorded: true });
+  });
+});
+
+describe('mcpRespondToThanksLoopOffer — engine T12', () => {
+  it('passes the consent flag straight through to the service', async () => {
+    mockRespondToThanksLoopOffer.mockResolvedValue({ sent: true });
+
+    const result = await mcpRespondToThanksLoopOffer(USER, { consented: true });
+
+    expect(result).toEqual({ sent: true });
+    expect(mockRespondToThanksLoopOffer).toHaveBeenCalledWith(USER, true);
+  });
+
+  it('treats a missing/non-true consented as a decline, never a silent send', async () => {
+    mockRespondToThanksLoopOffer.mockResolvedValue({ sent: false });
+
+    await mcpRespondToThanksLoopOffer(USER, {});
+
+    expect(mockRespondToThanksLoopOffer).toHaveBeenCalledWith(USER, false);
   });
 });
 
