@@ -78,6 +78,7 @@ import {
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import { findUnmetNeeds, UnmetNeed } from '../../services/unmetNeeds.service';
+import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
 
 const adminRouter = Router();
 
@@ -1603,5 +1604,26 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response<ApiResponse<U
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// T7: the ranked, explainable weekly target list — built from T6's unmet
+// needs (Pull) and gated in length by T10's ask capacity. Two of the spec's
+// criteria flags (lookalike-to-best-users, per-user goal relevance) have no
+// concept to build on in this schema and are documented, not faked — see
+// targetScoring.service's own header comment.
+adminRouter.get(
+  '/target-list',
+  async (req: Request, res: Response<ApiResponse<TargetScoreEntry[]>>) => {
+    try {
+      const rawDays = Number(req.query.days);
+      const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+      const result = await buildTargetList(days);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin target-list]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 export default adminRouter;

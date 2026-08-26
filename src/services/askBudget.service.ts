@@ -17,8 +17,12 @@ const PER_CONVERSATION_GROWTH_ASK_LIMIT = 1;
 // ladder is a config change, not a deploy"). The ladder may step the monthly
 // dial up to 4x its start value; clamped so a bad env value can't disable
 // the budget outright.
-const MONTHLY_GROWTH_ASK_BUDGET_BASE = Number(process.env.MONTHLY_GROWTH_ASK_BUDGET_BASE ?? 30);
-const MONTHLY_GROWTH_ASK_BUDGET_LADDER = Math.min(
+// Exported for T7's capacity read (list size "driven by ask capacity... under
+// T10 budgets") — it must use the exact same numbers, not a re-guessed copy.
+export const MONTHLY_GROWTH_ASK_BUDGET_BASE = Number(
+  process.env.MONTHLY_GROWTH_ASK_BUDGET_BASE ?? 30,
+);
+export const MONTHLY_GROWTH_ASK_BUDGET_LADDER = Math.min(
   4,
   Math.max(1, Number(process.env.MONTHLY_GROWTH_ASK_BUDGET_LADDER ?? 1)),
 );
@@ -26,7 +30,7 @@ const MONTHLY_GROWTH_ASK_BUDGET_LADDER = Math.min(
 // Each fatigue signal (a refusal or an ignored ask) removes this many asks
 // from the sender's monthly budget for the rest of the month. Env-adjustable
 // for the same "config, not deploy" reason as the ladder itself.
-const FATIGUE_STEP_DOWN_PER_SIGNAL = Number(process.env.FATIGUE_STEP_DOWN_PER_SIGNAL ?? 5);
+export const FATIGUE_STEP_DOWN_PER_SIGNAL = Number(process.env.FATIGUE_STEP_DOWN_PER_SIGNAL ?? 5);
 
 // An unanswered ask this old counts as "ignored" for fatigue purposes — much
 // longer than taskAsks.service's 48h reminder window, since a reminder is
