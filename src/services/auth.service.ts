@@ -7,6 +7,7 @@ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
+import { attributeCampaignJoin } from './chorusCampaign.service';
 import { AuthPayload } from '../types';
 import { normalizePhone } from './phone';
 
@@ -329,6 +330,16 @@ export async function registerUser(
     void runWelcomeStudy(String(userId), name, cleanPhone).catch((err: unknown) =>
       // eslint-disable-next-line no-console
       console.error(`[welcome-study] user ${userId} failed to start:`, (err as Error).message),
+    );
+
+    // Engine T8: the moment T3's own attribution (inviterUserId) lands on a
+    // real registration — did it complete a live Chorus campaign?
+    void attributeCampaignJoin(cleanPhone, gate.inviterUserId ?? null).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(
+        `[chorus] campaign attribution failed for user ${userId}:`,
+        (err as Error).message,
+      ),
     );
 
     const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, {

@@ -21,7 +21,7 @@ export const STATUS_LINES: Readonly<Record<ThreadStatus, string | null>> = {
 export interface Thread {
   id: number;
   user_id: number;
-  type: 'regular' | 'incoming_request' | 'outgoing_request' | 'incoming_ask';
+  type: 'regular' | 'incoming_request' | 'outgoing_request' | 'incoming_ask' | 'campaign_invite';
   title: string | null;
   introduction_request_id: number | null;
   is_task: boolean;

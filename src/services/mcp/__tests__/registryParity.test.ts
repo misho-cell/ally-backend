@@ -46,6 +46,9 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   get_thread_context:
     'reads in-app thread continuity state; the connector has no equivalent thread concept',
   set_task_result: 'internal plumbing for the in-app tool loop, not a real capability',
+  respond_to_invite_campaign:
+    'keyed off the ambient in-app thread (a campaign_invite thread is one participant) — the ' +
+    'connector has no equivalent thread concept, same reasoning as get_thread_context',
   // The three below are genuinely UNRESOLVED — listed so the build stays
   // green, not because the answer is known. Each needs an explicit product
   // call (wire to the connector, or confirm app-only and say why) before

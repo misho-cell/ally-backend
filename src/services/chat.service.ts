@@ -66,6 +66,7 @@ import {
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
+import { recordCampaignResponse } from './chorusCampaign.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -935,6 +936,25 @@ const FORGET_FACT_TOOL: AnthropicTool = {
       },
     },
     required: ['phone'],
+  },
+};
+
+const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
+  name: 'respond_to_invite_campaign',
+  description:
+    "Only usable inside a campaign_invite thread (Netai asked the user, on the network's own " +
+    "initiative, to invite someone they know). Read the user's reply and record what it means: " +
+    '"agreed" they will invite them, "declined" they will not (this ends it — no follow-up), ' +
+    '"told" they already reached out in real life and are just reporting back. Only call once ' +
+    'per reply, matching what was actually said — never guess "agreed" from a vague or ' +
+    'noncommittal answer.' +
+    ' WHEN: the user replies inside a campaign_invite thread.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      response: { type: 'string', description: 'One of: agreed, declined, told' },
+    },
+    required: ['response'],
   },
 };
 
@@ -2182,6 +2202,16 @@ async function executeToolCall(
       );
       return { ...result, needs_confirmation: false };
     }
+    case 'respond_to_invite_campaign': {
+      const response = String(input['response'] ?? '');
+      if (response !== 'agreed' && response !== 'declined' && response !== 'told') {
+        return { recorded: false, error: 'response must be one of: agreed, declined, told.' };
+      }
+      if (threadId === undefined) {
+        return { recorded: false, error: 'No thread context for this call.' };
+      }
+      return recordCampaignResponse(threadId, userId, response);
+    }
     case 'finish_task': {
       const taskId = Number(input['task_id']);
       const summary = String(input['summary'] ?? 'done').slice(0, 500);
@@ -2411,6 +2441,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
   forget_contact_fact: '🗑️ ჩანაწერს სამუდამოდ ვშლი...',
+  respond_to_invite_campaign: '📣 პასუხს ვინახავ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
 };
@@ -3040,6 +3071,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     SET_TASK_WAKE_TOOL,
     FINISH_TASK_TOOL,
     RELAY_ASK_TOOL,
+    RESPOND_TO_INVITE_CAMPAIGN_TOOL,
     STOP_CONTACTING_TOOL,
     RESUME_CONTACT_TOOL,
     EXCLUDE_CONTACT_TOOL,
