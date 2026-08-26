@@ -11,6 +11,7 @@ import {
   getLabelQueueForUser,
   getLabelQueueTotal,
   reprocessLabelQueue,
+  reprocessSavedOccupationFacts,
 } from '../labelParser.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -367,5 +368,98 @@ describe('reprocessLabelQueue (engine T2 catch-up pass)', () => {
     call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('FROM label_parse_queue'));
     expect(call?.[0]).not.toContain('WHERE contact_id');
     expect(call?.[1]).toEqual([]);
+  });
+});
+
+describe('reprocessSavedOccupationFacts — revisits already-saved facts, not just the queue (explicitly asked for on the old list too)', () => {
+  it("upgrades a fact when re-matching the ORIGINAL label against today's logic gives a different, more specific answer", async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('JOIN "UserAlias"')) {
+        return Promise.resolve(
+          rows([
+            {
+              id: 1,
+              submitted_by_user_id: '7',
+              neo4j_contact_id: '+995500000009',
+              value: 'ხელოსანი',
+              alias: 'Vano Xelosani Eleqtrikosi',
+            },
+          ]) as never,
+        );
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessSavedOccupationFacts();
+
+    expect(out).toEqual({ upgraded: 1, unchanged: 0 });
+    expect(mockSubmitFact).toHaveBeenCalledWith(
+      '7',
+      '+995500000009',
+      'occupation',
+      'ელექტრიკოსი',
+      'label',
+      null,
+    );
+  });
+
+  it('leaves a fact untouched when re-matching agrees with what is already saved', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('JOIN "UserAlias"')) {
+        return Promise.resolve(
+          rows([
+            {
+              id: 2,
+              submitted_by_user_id: '7',
+              neo4j_contact_id: '+995500000010',
+              value: 'ექიმი',
+              alias: 'Nino Eqimi',
+            },
+          ]) as never,
+        );
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessSavedOccupationFacts();
+
+    expect(out).toEqual({ upgraded: 0, unchanged: 1 });
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+  });
+
+  it('leaves a fact untouched when the label no longer matches anything (never downgrades to null)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('JOIN "UserAlias"')) {
+        return Promise.resolve(
+          rows([
+            {
+              id: 3,
+              submitted_by_user_id: '7',
+              neo4j_contact_id: '+995500000011',
+              value: 'ხელოსანი',
+              alias: 'Gia Random Name',
+            },
+          ]) as never,
+        );
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await reprocessSavedOccupationFacts();
+
+    expect(out).toEqual({ upgraded: 0, unchanged: 1 });
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+  });
+
+  it('scopes to label-sourced occupation facts only, via a WHERE clause in the same query', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await reprocessSavedOccupationFacts();
+
+    const call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('JOIN "UserAlias"'));
+    const sql = call?.[0] as string;
+    expect(sql).toContain("field_type = 'occupation'");
+    expect(sql).toContain("source = 'label'");
+    expect(sql).toContain('retracted_at IS NULL');
   });
 });

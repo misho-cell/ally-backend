@@ -73,6 +73,7 @@ import {
   getLabelQueueTotal,
   parsePhonebookLabelsForUser,
   reprocessLabelQueue,
+  reprocessSavedOccupationFacts,
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
@@ -1136,6 +1137,26 @@ adminRouter.post('/label-parser/reprocess-queue', async (req: Request, res: Resp
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// Counterpart to /label-parser/reprocess-queue, for facts ALREADY saved
+// rather than rows still queued — explicitly asked for on the old
+// (already-parsed) list, not just new ones. Re-matches every label-sourced
+// occupation fact against the label it actually came from; only writes
+// when today's logic disagrees with what was saved. Synchronous — the
+// table is tiny (81 rows product-wide), not a bulk job.
+adminRouter.post(
+  '/label-parser/reprocess-saved-facts',
+  async (_req: Request, res: Response<ApiResponse<{ upgraded: number; unchanged: number }>>) => {
+    try {
+      const result = await reprocessSavedOccupationFacts();
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin label-parser reprocess-saved-facts]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 // Engine T3: sent → opened → registered, for one user or the whole product
 // (?user_id= narrows it) — the three events the spec asked to see in

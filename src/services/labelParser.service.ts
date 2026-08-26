@@ -149,7 +149,7 @@ function wordsOf(alias: string): string[] {
     .filter((w) => w.length > 0 && HAS_LETTER_RE.test(w));
 }
 
-function matchOccupation(alias: string): string | null {
+export function matchOccupation(alias: string): string | null {
   let genericMatch: string | null = null;
   for (const word of wordsOf(alias)) {
     const match = OCCUPATION_DICTIONARY[word];
@@ -305,6 +305,67 @@ export async function reprocessLabelQueue(userId?: string): Promise<QueueReproce
     remaining++;
   }
   return { promoted, removed, remaining };
+}
+
+export interface SavedFactReprocessResult {
+  upgraded: number;
+  unchanged: number;
+}
+
+/**
+ * The counterpart to reprocessLabelQueue, for the OTHER half of what a
+ * dictionary/matching fix can touch: facts already written, not just rows
+ * still queued. Live-caught 25 Aug: the specificity fix (a generic word
+ * like "ხელოსანი" losing to a specific trade sitting in the same label)
+ * only changes what a FRESH parse decides — a fact already saved under the
+ * old, order-dependent logic keeps whatever it originally matched,
+ * forever, unless something re-runs matchOccupation against the ORIGINAL
+ * label text. Explicitly asked for on the old (already-parsed) list, not
+ * just new ones — re-joins each label-sourced occupation fact back to the
+ * UserAlias row it came from, re-matches with TODAY's logic, and only
+ * writes when the result actually changed (re-submitting an identical
+ * value would be a no-op fact anyway, but skipping it keeps this an
+ * honest "how many actually needed it" count). Goes through
+ * submitContactFact — same path a fresh parse uses — so a corrected value
+ * is re-checked for crowd/public status exactly like any other save, not
+ * force-set. Table is tiny (81 rows product-wide) — no batching needed.
+ */
+export async function reprocessSavedOccupationFacts(): Promise<SavedFactReprocessResult> {
+  const candidates = await query<{
+    id: number;
+    submitted_by_user_id: string;
+    neo4j_contact_id: string;
+    value: string;
+    alias: string;
+  }>(
+    `SELECT cf.id, cf.submitted_by_user_id, cf.neo4j_contact_id, cf.value, ua.alias
+     FROM contact_facts cf
+     JOIN "UserAlias" ua
+       ON ua."contactId" = cf.submitted_by_user_id::int AND ua.phone = cf.neo4j_contact_id
+     WHERE cf.field_type = 'occupation' AND cf.source = 'label' AND cf.retracted_at IS NULL`,
+    [],
+    PARSE_TIMEOUT_MS,
+  );
+
+  let upgraded = 0;
+  let unchanged = 0;
+  for (const row of candidates.rows) {
+    const rematched = matchOccupation(row.alias);
+    if (rematched === null || rematched === row.value) {
+      unchanged++;
+      continue;
+    }
+    await submitContactFact(
+      row.submitted_by_user_id,
+      row.neo4j_contact_id,
+      'occupation',
+      rematched,
+      'label',
+      null,
+    );
+    upgraded++;
+  }
+  return { upgraded, unchanged };
 }
 
 export interface OwnLabelQueueEntry {
