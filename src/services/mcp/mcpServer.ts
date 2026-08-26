@@ -39,6 +39,7 @@ import {
   mcpMarkContactDeceased,
   mcpRemoveExclusion,
   mcpRetractFact,
+  mcpForgetFact,
   mcpSaveUserNote,
   mcpGetUserNotes,
   mcpQueueResult,
@@ -597,6 +598,21 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'retract_contact_fact', () => mcpRetractFact(userId, args)),
+  );
+  server.registerTool(
+    'forget_contact_fact',
+    {
+      title: TOOL_TEXTS.forget_contact_fact.title,
+      description: TOOL_TEXTS.forget_contact_fact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        field_type: z.string().optional().describe(PARAM_TEXTS.retractFieldType),
+        value_fragment: z.string().optional().describe(PARAM_TEXTS.retractValueFragment),
+        confirmed: z.boolean().optional().describe(PARAM_TEXTS.forgetConfirmed),
+      },
+      annotations: DESTRUCTIVE,
+    },
+    (args) => runTool(userId, 'forget_contact_fact', () => mcpForgetFact(userId, args)),
   );
 }
 

@@ -446,6 +446,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'value_fragment; omit both to retract all their facts on that contact. Only affects what ' +
       "this user submitted, never other people's entries.",
   },
+  forget_contact_fact: {
+    title: 'Permanently delete a saved fact',
+    description:
+      'The user wants a saved fact GONE — permanently, not corrected. Different from ' +
+      'retract_contact_fact: retraction is for "this is wrong" and keeps the row for audit; ' +
+      'this is a real delete, unrecoverable. Requires confirmed=true — call once without it to ' +
+      'get the confirmation prompt, relay it to the user, and only call again with ' +
+      'confirmed=true after they explicitly say yes. Narrow with field_type and/or a ' +
+      'value_fragment to avoid deleting more than they meant.',
+  },
 };
 
 export const PARAM_TEXTS = {
@@ -550,6 +560,9 @@ export const PARAM_TEXTS = {
   retractFieldType: 'Optional: limit the retraction to one fact key (occupation, note, …).',
   retractValueFragment:
     'Optional: a fragment of the wrong value to match, so only it is retracted.',
+  forgetConfirmed:
+    'true ONLY when the user explicitly confirmed they want this fact permanently deleted. ' +
+    'Without true nothing is deleted — call again after they confirm.',
 } as const;
 
 // Ready-made scenarios surfaced in claude.ai's "+" menu (MCP prompts).

@@ -72,6 +72,8 @@ jest.mock('../../contactFacts.service', () => ({
   },
   submitContactFact: jest.fn(),
   getVisibleFacts: jest.fn(),
+  retractOwnFacts: jest.fn(),
+  hardDeleteOwnFact: jest.fn(),
   __esModule: true,
 }));
 jest.mock('../../block.service', () => ({
@@ -125,8 +127,9 @@ import {
   mcpUnblockContact,
   mcpUpdateTask,
   mcpRecordSearchOutcome,
+  mcpForgetFact,
 } from '../handlers';
-import { getVisibleFacts, submitContactFact } from '../../contactFacts.service';
+import { getVisibleFacts, submitContactFact, hardDeleteOwnFact } from '../../contactFacts.service';
 import {
   blockContact,
   getBlockedByUser,
@@ -172,6 +175,7 @@ const mockRecordSearchOutcome = recordSearchOutcome as jest.MockedFunction<
 const mockIsSafe = isReplySafe as jest.MockedFunction<typeof isReplySafe>;
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
 const mockGetFacts = getVisibleFacts as jest.MockedFunction<typeof getVisibleFacts>;
+const mockHardDelete = hardDeleteOwnFact as jest.MockedFunction<typeof hardDeleteOwnFact>;
 const mockBlock = blockContact as jest.MockedFunction<typeof blockContact>;
 const mockUnblock = unblockContact as jest.MockedFunction<typeof unblockContact>;
 const mockGetBlocked = getBlockedByUser as jest.MockedFunction<typeof getBlockedByUser>;
@@ -929,5 +933,42 @@ describe('mcpRecordSearchOutcome', () => {
 
     expect(result.recorded).toBe(false);
     expect(result.error).toBeDefined();
+  });
+});
+
+describe('mcpForgetFact — engine T14, genuinely irreversible', () => {
+  it('writes nothing and asks for confirmation when confirmed is not true', async () => {
+    const ref = encodeContactRef(USER, PHONE);
+
+    const result = await mcpForgetFact(USER, { contact_ref: ref });
+
+    expect(result.deleted).toBe(0);
+    expect(result.needs_confirmation).toBe(true);
+    expect(mockHardDelete).not.toHaveBeenCalled();
+  });
+
+  it('deletes only after confirmed=true, scoped by the decoded phone', async () => {
+    const ref = encodeContactRef(USER, PHONE);
+    mockHardDelete.mockResolvedValue({ deleted: 1 });
+
+    const result = await mcpForgetFact(USER, {
+      contact_ref: ref,
+      field_type: 'note',
+      confirmed: true,
+    });
+
+    expect(result).toEqual({ deleted: 1, needs_confirmation: false });
+    expect(mockHardDelete).toHaveBeenCalledWith(USER, PHONE, 'note', undefined);
+  });
+
+  it('rejects a foreign/invented contact_ref without calling the service', async () => {
+    const result = await mcpForgetFact(USER, {
+      contact_ref: encodeContactRef('999', PHONE),
+      confirmed: true,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(result.error).toBeDefined();
+    expect(mockHardDelete).not.toHaveBeenCalled();
   });
 });

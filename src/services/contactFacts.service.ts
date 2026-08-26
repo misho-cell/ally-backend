@@ -467,6 +467,40 @@ export async function retractOwnFacts(
 }
 
 /**
+ * Engine T14 (memory mirror), part (b) — "instant hard delete of any fact
+ * ('forget this') with confirmation... deleted facts are gone from all
+ * layers immediately and stay gone." Deliberately a different action from
+ * retractOwnFacts above: retraction is for "this fact is WRONG" (the row
+ * survives, kept for audit, excluded from reads by retracted_at) — this is
+ * for "I want this gone," a genuine DELETE. contact_facts is the only
+ * layer a fact lives in (Neo4j never stores facts, only graph edges;
+ * UserTags is a separate, distinct label store) — no cross-layer cleanup
+ * is needed for this specific kind of data. Scoped to the caller's own
+ * submissions, same as retraction.
+ */
+export async function hardDeleteOwnFact(
+  userId: string,
+  neo4jContactIdRaw: string,
+  fieldType?: string,
+  valueFragment?: string,
+): Promise<{ deleted: number }> {
+  const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+  const result = await query(
+    `DELETE FROM contact_facts
+     WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
+       AND ($3::text IS NULL OR field_type = $3)
+       AND ($4::text IS NULL OR value ILIKE '%' || $4 || '%')`,
+    [
+      neo4jContactId,
+      userId,
+      fieldType?.trim().toLowerCase() || null,
+      valueFragment?.trim() || null,
+    ],
+  );
+  return { deleted: result.rowCount ?? 0 };
+}
+
+/**
  * Ticket 6 P0 (25 Aug): a foreign contact sync (someone logging into this
  * account on their own phone, years ago) left that person's phonebook
  * attached to this account's UserAlias rows. The label parser (T2) later

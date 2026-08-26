@@ -14,6 +14,7 @@ import {
   submitContactFact,
   getVisibleFacts,
   retractFactsFromForeignSync,
+  hardDeleteOwnFact,
 } from '../contactFacts.service';
 import { normalizePhone } from '../phone';
 
@@ -80,6 +81,38 @@ describe("retractFactsFromForeignSync — ticket 6 P0 (25 Aug): a foreign contac
     const out = await retractFactsFromForeignSync('501', '999999');
 
     expect(out).toEqual({ retracted: 0 });
+  });
+});
+
+describe('hardDeleteOwnFact — engine T14 (memory mirror), "forget this", genuinely irreversible', () => {
+  it('issues a real DELETE, not an UPDATE — the row must not survive at all', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+
+    const out = await hardDeleteOwnFact(USER, RAW_PHONE, 'note', 'old address');
+
+    expect(out).toEqual({ deleted: 1 });
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('DELETE FROM contact_facts');
+    expect(sql as string).not.toContain('retracted_at = NOW()');
+    expect(params).toEqual([PHONE, USER, 'note', 'old address']);
+  });
+
+  it('does NOT require retracted_at IS NULL — an already-retracted row must still be erasable', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    await hardDeleteOwnFact(USER, RAW_PHONE);
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql as string).not.toContain('retracted_at IS NULL');
+  });
+
+  it("is scoped to the caller's own submissions only, same as retraction", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    await hardDeleteOwnFact(USER, RAW_PHONE);
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('submitted_by_user_id = $2');
   });
 });
 

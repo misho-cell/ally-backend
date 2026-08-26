@@ -22,6 +22,7 @@ import {
   getVisibleFacts,
   submitContactFact,
   retractOwnFacts,
+  hardDeleteOwnFact,
 } from '../contactFacts.service';
 import {
   createTask,
@@ -885,6 +886,30 @@ export async function mcpRetractFact(
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { retracted: 0, error: UNKNOWN_CONTACT_REF };
   return retractOwnFacts(userId, phone, args.field_type, args.value_fragment);
+}
+
+export async function mcpForgetFact(
+  userId: string,
+  args: {
+    contact_ref: string;
+    field_type?: string;
+    value_fragment?: string;
+    confirmed?: boolean;
+  },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { deleted: 0, error: UNKNOWN_CONTACT_REF };
+  if (args.confirmed !== true) {
+    return {
+      deleted: 0,
+      needs_confirmation: true,
+      note:
+        'Nothing was deleted. This is permanent — ask the user to explicitly confirm they ' +
+        'want it erased, then call again with confirmed=true.',
+    };
+  }
+  const result = await hardDeleteOwnFact(userId, phone, args.field_type, args.value_fragment);
+  return { ...result, needs_confirmation: false };
 }
 
 export async function mcpMarkContactDeceased(

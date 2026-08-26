@@ -65,7 +65,7 @@ import {
 } from './taskAsks.service';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
-import { retractOwnFacts } from './contactFacts.service';
+import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -901,6 +901,37 @@ const RETRACT_FACT_TOOL: AnthropicTool = {
       value_fragment: {
         type: 'string',
         description: 'Optional: retract only facts whose text contains this fragment.',
+      },
+    },
+    required: ['phone'],
+  },
+};
+
+const FORGET_FACT_TOOL: AnthropicTool = {
+  name: 'forget_contact_fact',
+  description:
+    'The user wants a saved fact GONE — permanently, not corrected. Different from ' +
+    'retract_contact_fact: retraction is for "this is wrong", kept for audit; this is a real ' +
+    'delete, unrecoverable. Requires confirmed=true — call once without it to get the ' +
+    'confirmation prompt, relay it to the user, and only call again with confirmed=true after ' +
+    'they explicitly say yes. Narrow with field_type and/or a value fragment to avoid deleting ' +
+    'more than they meant.' +
+    ' WHEN: the user says "forget", "delete", or "erase" a specific fact about a contact.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id." },
+      field_type: {
+        type: 'string',
+        description: 'Optional: occupation | employer | city | industry | note | …',
+      },
+      value_fragment: {
+        type: 'string',
+        description: 'Optional: delete only facts whose text contains this fragment.',
+      },
+      confirmed: {
+        type: 'boolean',
+        description: 'Must be true, and only after the user explicitly confirmed — irreversible.',
       },
     },
     required: ['phone'],
@@ -2131,6 +2162,24 @@ async function executeToolCall(
         input['field_type'] ? String(input['field_type']) : undefined,
         input['value_fragment'] ? String(input['value_fragment']) : undefined,
       );
+    case 'forget_contact_fact': {
+      if (input['confirmed'] !== true) {
+        return {
+          deleted: 0,
+          needs_confirmation: true,
+          note:
+            'Nothing was deleted. This is permanent — ask the user to explicitly confirm ' +
+            'they want it erased, then call again with confirmed=true.',
+        };
+      }
+      const result = await hardDeleteOwnFact(
+        userId,
+        String(input['phone'] ?? ''),
+        input['field_type'] ? String(input['field_type']) : undefined,
+        input['value_fragment'] ? String(input['value_fragment']) : undefined,
+      );
+      return { ...result, needs_confirmation: false };
+    }
     case 'finish_task': {
       const taskId = Number(input['task_id']);
       const summary = String(input['summary'] ?? 'done').slice(0, 500);
@@ -2359,6 +2408,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
   remove_contact_exclusion: '📝 გამონაკლისს ვხსნი...',
   retract_contact_fact: '✏️ ჩანაწერს ვასწორებ...',
+  forget_contact_fact: '🗑️ ჩანაწერს სამუდამოდ ვშლი...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
 };
@@ -2997,6 +3047,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_INVITE_LINK_TOOL,
     GET_UNRESOLVED_LABELS_TOOL,
     RETRACT_FACT_TOOL,
+    FORGET_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
