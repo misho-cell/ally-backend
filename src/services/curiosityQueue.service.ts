@@ -268,5 +268,30 @@ export async function buildCuriosityQueue(
     });
   }
   items.sort((a, b) => a.priority - b.priority);
-  return items.slice(0, limit);
+  const finalItems = items.slice(0, limit);
+
+  // Fire-and-forget: T16's "curiosity_answer_rate" needs a record of what
+  // was ever shown, but logging that must never slow down or break handing
+  // the queue back to the model.
+  void logSurfacedItems(userId, finalItems).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[curiosity-queue] surfacing log failed:', (err as Error).message),
+  );
+
+  return finalItems;
+}
+
+async function logSurfacedItems(userId: string, items: CuriosityItem[]): Promise<void> {
+  if (items.length === 0) return;
+  await query(
+    `INSERT INTO curiosity_surfacing_log (user_id, phone, question_type, missing_fact)
+     SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[])`,
+    [
+      items.map(() => Number(userId)),
+      items.map((i) => i.phone),
+      items.map((i) => i.question_type),
+      items.map((i) => i.missing_fact),
+    ],
+    QUEUE_QUERY_TIMEOUT_MS,
+  );
 }

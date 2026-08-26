@@ -162,6 +162,33 @@ describe('buildCuriosityQueue', () => {
     expect(out[0].question_type).toBe('close_contact');
   });
 
+  it('T16: logs every returned item to the surfacing log (fire-and-forget)', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000013' }],
+      presence: [],
+    });
+
+    const out = await buildCuriosityQueue('42');
+
+    expect(out).toHaveLength(1);
+    const logCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
+    );
+    expect(logCall).toBeDefined();
+    expect(logCall?.[1]).toEqual([[42], ['+995500000013'], ['close_contact'], ['occupation']]);
+  });
+
+  it('logs nothing when the queue is empty', async () => {
+    routeQueueQueries({});
+
+    await buildCuriosityQueue('42');
+
+    const logCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
+    );
+    expect(logCall).toBeUndefined();
+  });
+
   it('surfaces the bridge-position (Neo4j) tier when it succeeds', async () => {
     mockGetTopConnectors.mockResolvedValue({
       found: true,

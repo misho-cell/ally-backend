@@ -24,6 +24,7 @@ function routeReportQueries(opts: {
   spacing?: { day_offset: string; asked: string; joined: string }[];
   fatigue?: { fatigue_signals: string; users: string }[];
   factsPerWeek?: { week: string; source: string | null; facts: string; users: string }[];
+  curiosityRate?: { surfaced: string; answered: string }[];
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('GROUP BY ask_count_dial, city'))
@@ -32,7 +33,11 @@ function routeReportQueries(opts: {
       return Promise.resolve(rows(opts.spacing ?? []) as never);
     if (sql.includes('fatigue_signals, COUNT(*) AS users'))
       return Promise.resolve(rows(opts.fatigue ?? []) as never);
-    if (sql.includes('FROM contact_facts'))
+    if (sql.includes('FROM curiosity_surfacing_log'))
+      return Promise.resolve(
+        rows(opts.curiosityRate ?? [{ surfaced: '0', answered: '0' }]) as never,
+      );
+    if (sql.includes('GROUP BY week, source'))
       return Promise.resolve(rows(opts.factsPerWeek ?? []) as never);
     return Promise.resolve(rows([]) as never);
   });
@@ -114,7 +119,7 @@ describe('buildLabReport', () => {
     ]);
   });
 
-  it('documents the three components that could not be built, honestly', async () => {
+  it('documents the two components that could still not be built, honestly', async () => {
     routeReportQueries({});
 
     const report = await buildLabReport('2026-08-24');
@@ -122,10 +127,26 @@ describe('buildLabReport', () => {
     expect(report.not_built).toEqual(
       expect.arrayContaining([
         expect.stringContaining('technique_conversion'),
-        expect.stringContaining('curiosity_answer_rate'),
         expect.stringContaining('facts_used_rate'),
       ]),
     );
+    expect(report.not_built.join(' ')).not.toContain('curiosity_answer_rate');
+  });
+
+  it('computes curiosity_answer_rate from the surfacing log, now that one exists', async () => {
+    routeReportQueries({ curiosityRate: [{ surfaced: '20', answered: '5' }] });
+
+    const report = await buildLabReport('2026-08-24');
+
+    expect(report.curiosity_answer_rate).toEqual({ surfaced: 20, answered: 5, answer_rate: 0.25 });
+  });
+
+  it('reports a zero rate rather than dividing by zero when nothing has surfaced yet', async () => {
+    routeReportQueries({ curiosityRate: [{ surfaced: '0', answered: '0' }] });
+
+    const report = await buildLabReport('2026-08-24');
+
+    expect(report.curiosity_answer_rate).toEqual({ surfaced: 0, answered: 0, answer_rate: 0 });
   });
 });
 

@@ -188,6 +188,46 @@ async function buildFactsPerWeek(): Promise<FactsPerWeekRow[]> {
   }));
 }
 
+export interface CuriosityAnswerRate {
+  surfaced: number;
+  answered: number;
+  answer_rate: number;
+}
+
+const CURIOSITY_LOOKBACK_DAYS = 30;
+
+/**
+ * Component 7, now buildable: curiosity_surfacing_log records every item
+ * get_curiosity_queue ever returned. "Answered" means the exact missing
+ * fact it named was later actually saved for that phone by that user — the
+ * same (phone, submitted_by_user_id, field_type) triple
+ * uq_contact_facts_structured already indexes. A correlation, not proof
+ * this report caused the save, but the only real signal available: T11 has
+ * no separate "the user answered this specific question" event.
+ */
+async function buildCuriosityAnswerRate(): Promise<CuriosityAnswerRate> {
+  const result = await query<{ surfaced: string; answered: string }>(
+    `SELECT COUNT(*) AS surfaced,
+            COUNT(*) FILTER (
+              WHERE EXISTS (
+                SELECT 1 FROM contact_facts cf
+                WHERE cf.neo4j_contact_id = csl.phone
+                  AND cf.submitted_by_user_id = csl.user_id::text
+                  AND cf.field_type = csl.missing_fact
+                  AND cf.created_at > csl.surfaced_at
+                  AND cf.retracted_at IS NULL
+              )
+            ) AS answered
+     FROM curiosity_surfacing_log csl
+     WHERE csl.surfaced_at > NOW() - make_interval(days => ${CURIOSITY_LOOKBACK_DAYS})`,
+    [],
+    REPORT_QUERY_TIMEOUT_MS,
+  );
+  const surfaced = Number(result.rows[0]?.surfaced ?? 0);
+  const answered = Number(result.rows[0]?.answered ?? 0);
+  return { surfaced, answered, answer_rate: surfaced > 0 ? answered / surfaced : 0 };
+}
+
 export interface LabReport {
   week_start: string;
   ask_dial_table: AskDialRow[];
@@ -195,12 +235,12 @@ export interface LabReport {
   links_funnel: ReferralFunnel;
   budgets_ladder_state: BudgetsLadderState;
   facts_per_week: FactsPerWeekRow[];
+  curiosity_answer_rate: CuriosityAnswerRate;
   not_built: string[];
 }
 
 const NOT_BUILT = [
   'technique_conversion: no ask anywhere carries a technique tag',
-  'curiosity_answer_rate: T11 has no surfacing log to compute a rate against',
   'facts_used_rate: no search path records whether a stored fact changed its result',
 ];
 
@@ -211,14 +251,21 @@ const NOT_BUILT = [
  * snapshot.
  */
 export async function buildLabReport(weekStart: string): Promise<LabReport> {
-  const [askDialTable, spacingResults, linksFunnel, budgetsLadderState, factsPerWeek] =
-    await Promise.all([
-      buildAskDialTable(),
-      buildSpacingResults(),
-      getReferralFunnel(),
-      buildBudgetsLadderState(),
-      buildFactsPerWeek(),
-    ]);
+  const [
+    askDialTable,
+    spacingResults,
+    linksFunnel,
+    budgetsLadderState,
+    factsPerWeek,
+    curiosityAnswerRate,
+  ] = await Promise.all([
+    buildAskDialTable(),
+    buildSpacingResults(),
+    getReferralFunnel(),
+    buildBudgetsLadderState(),
+    buildFactsPerWeek(),
+    buildCuriosityAnswerRate(),
+  ]);
   return {
     week_start: weekStart,
     ask_dial_table: askDialTable,
@@ -226,6 +273,7 @@ export async function buildLabReport(weekStart: string): Promise<LabReport> {
     links_funnel: linksFunnel,
     budgets_ladder_state: budgetsLadderState,
     facts_per_week: factsPerWeek,
+    curiosity_answer_rate: curiosityAnswerRate,
     not_built: NOT_BUILT,
   };
 }
