@@ -95,7 +95,9 @@ const SIGNAL_EXCLUDED_FIELD_TYPES = [
   'arrest',
 ];
 
-async function fetchSignalStrength(
+// Exported for T15's empty-case fallback in searchByInsight (ticket 7 task
+// 10) — ONE strength vocabulary product-wide, never a re-guessed copy.
+export async function fetchSignalStrength(
   phones: string[],
   regexTerms: string[],
 ): Promise<Map<string, number>> {

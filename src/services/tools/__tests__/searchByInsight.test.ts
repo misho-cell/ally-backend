@@ -28,13 +28,23 @@ const insightRow = {
 // so one bound parameter is never compared to two column types) plus
 // contact_insights (AI enrichment) — then merges by phone. Own vs. public are
 // told apart by their WHERE clause: `submitted_by_user_id = $1` vs. `is_public`.
-function setup(opts: { facts?: unknown[]; publicFacts?: unknown[]; insights?: unknown[] }): void {
+function setup(opts: {
+  facts?: unknown[];
+  publicFacts?: unknown[];
+  insights?: unknown[];
+  pointerCandidates?: unknown[];
+  pointerStrengths?: unknown[];
+}): void {
   const own = opts.facts ?? [];
   const pub = opts.publicFacts ?? [];
   const insights = opts.insights ?? [];
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('cf.submitted_by_user_id = $1')) return Promise.resolve(rows(own) as never);
     if (sql.includes('cf.is_public = true')) return Promise.resolve(rows(pub) as never);
+    if (sql.includes('cf.is_public = false'))
+      return Promise.resolve(rows(opts.pointerCandidates ?? []) as never);
+    if (sql.includes('unnest($1::text[])'))
+      return Promise.resolve(rows(opts.pointerStrengths ?? []) as never);
     if (sql.includes('FROM contact_insights')) return Promise.resolve(rows(insights) as never);
     if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
     throw new Error(`Unexpected query: ${sql}`);
@@ -165,6 +175,40 @@ describe('searchByInsight', () => {
       expect(sql).toMatch(/ORDER BY \(.*bool_or.*\) DESC, MAX\(cf\.created_at\) DESC/s);
       expect(sql.indexOf('ORDER BY')).toBeLessThan(sql.indexOf('LIMIT'));
     }
+  });
+
+  it('T15 fallback (task 10): the empty case surfaces single-source POINTERS — strength only, never the fact text or author', async () => {
+    setup({
+      pointerCandidates: [{ phone: '+995599888888', name: 'დათო მეზობელი' }],
+      pointerStrengths: [{ phone: '+995599888888', strength: 0.65 }],
+    });
+
+    const result = (await searchByInsight('42', 'deep sea fishing')) as Record<string, unknown>;
+
+    expect(result.found).toBe(false);
+    const pointers = result.pointers as Array<Record<string, unknown>>;
+    expect(pointers).toEqual([
+      { contact_id: '+995599888888', name: 'დათო მეზობელი', signal_strength: 0.65 },
+    ]);
+    expect(String(result.pointer_note)).toContain('never state what matched');
+    // The pointer payload must carry no fact value and no submitter identity.
+    expect(JSON.stringify(pointers)).not.toContain('submitted_by');
+    // The candidate query itself excludes sensitive field types and the
+    // searcher's own facts (those already ran in the main pass).
+    const candidateCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('cf.is_public = false'),
+    );
+    expect(candidateCall?.[0]).toContain('cf.field_type != ALL($3::text[])');
+    expect(candidateCall?.[0]).toContain('cf.submitted_by_user_id <> $2');
+  });
+
+  it('T15 fallback: no pointers when no private signal exists — the plain honest found:false', async () => {
+    setup({});
+
+    const result = (await searchByInsight('42', 'deep sea fishing')) as Record<string, unknown>;
+
+    expect(result.found).toBe(false);
+    expect(result).not.toHaveProperty('pointers');
   });
 
   it('returns found: false when neither source matches', async () => {

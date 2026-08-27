@@ -2,11 +2,44 @@ import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { fetchSignalStrength } from './searchSecondDegree';
 
 const RESULT_LIMIT = 20;
 const SEARCH_TIMEOUT_MS = 12_000;
 const MIN_WORD_LEN = 2;
 const MAX_QUERY_WORDS = 6;
+// T15's fallback (ticket 7 task 10): how many single-source pointers the
+// empty case may surface.
+const POINTER_LIMIT = 10;
+// Same sensitivity denylist philosophy as signal_strength — a pointer must
+// never be a covert read of somebody's private note about health/money/etc.
+const POINTER_EXCLUDED_FIELD_TYPES = [
+  'note',
+  'health',
+  'medical',
+  'illness',
+  'diagnosis',
+  'money',
+  'income',
+  'salary',
+  'finance',
+  'debt',
+  'wealth',
+  'politics',
+  'political',
+  'party',
+  'religion',
+  'religious',
+  'faith',
+  'relationship',
+  'love',
+  'dating',
+  'marital_status',
+  'affair',
+  'criminal',
+  'legal_issue',
+  'arrest',
+];
 
 interface InsightHit {
   name: string | null;
@@ -198,6 +231,62 @@ async function searchInsights(
   return result.rows;
 }
 
+interface SingleSourcePointer {
+  contact_id: string;
+  name: string | null;
+  signal_strength: number;
+}
+
+function escapeRegex(word: string): string {
+  return word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Engine T15's fallback (ticket 7 task 10): when nothing over the relevance
+ * floor matched, single-source person-POINTERS fire instead of a bare
+ * found:false — the searcher's own contacts where somebody's unconfirmed,
+ * private, non-sensitive fact matches the query. What crosses: the contact
+ * (named from the searcher's OWN phonebook) and a strength score computed by
+ * the same signal_strength formula second-degree search uses. The fact text
+ * and its author never leave this function.
+ */
+async function searchSingleSourcePointers(
+  userId: string,
+  words: string[],
+  likes: string[],
+  excluded: Set<string>,
+): Promise<SingleSourcePointer[]> {
+  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const orClause = likeOrClause(matchExpr, likes.length, 4);
+  const candidates = await query<{ phone: string; name: string | null }>(
+    `SELECT cf.neo4j_contact_id AS phone, MAX(ua.alias) AS name
+     FROM contact_facts cf
+     JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
+     WHERE cf.is_public = false
+       AND cf.retracted_at IS NULL
+       AND cf.submitted_by_user_id <> $2
+       AND cf.field_type != ALL($3::text[])
+       AND (${orClause})
+     GROUP BY cf.neo4j_contact_id
+     LIMIT $${likes.length + 4}`,
+    [userId, userId, POINTER_EXCLUDED_FIELD_TYPES, ...likes, POINTER_LIMIT],
+    SEARCH_TIMEOUT_MS,
+  );
+  const rows = candidates.rows.filter((r) => !excluded.has(normalizePhone(r.phone)));
+  if (rows.length === 0) return [];
+  const strengths = await fetchSignalStrength(
+    rows.map((r) => r.phone),
+    words.map(escapeRegex),
+  );
+  return rows
+    .map((r) => ({
+      contact_id: r.phone,
+      name: r.name,
+      signal_strength: strengths.get(r.phone) ?? 0,
+    }))
+    .sort((a, b) => b.signal_strength - a.signal_strength);
+}
+
 function settled<T>(result: PromiseSettledResult<T[]>, label: string): T[] {
   if (result.status === 'fulfilled') return result.value;
   console.error(`searchByInsight ${label} query failed:`, (result.reason as Error).message);
@@ -284,7 +373,27 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       .filter((s) => s.hits >= minHits)
       .sort((a, b) => b.hits - a.hits);
     if (scored.length === 0) {
-      return { found: false, query: searchQuery, note: 'nothing matched enough of the query' };
+      // T15's fallback: the honest found:false, now WITH single-source
+      // pointers when unconfirmed private signals exist (ticket 7 task 10).
+      const pointers = await searchSingleSourcePointers(userId, words, likes, excluded).catch(
+        (err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('searchByInsight pointer fallback failed:', (err as Error).message);
+          return [] as SingleSourcePointer[];
+        },
+      );
+      return {
+        found: false,
+        query: searchQuery,
+        note: 'nothing matched enough of the query',
+        ...(pointers.length > 0 && {
+          pointers,
+          pointer_note:
+            'Weak, UNCONFIRMED single-source signals: someone privately recorded something ' +
+            'matching this query about these contacts. Suggest them as "possibly worth asking" ' +
+            'only — never state what matched, who recorded it, or present it as a confirmed fact.',
+        }),
+      };
     }
 
     const members = await fetchMembersForPhones(scored.map((s) => s.hit.contact_id));
