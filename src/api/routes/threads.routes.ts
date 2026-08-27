@@ -21,14 +21,7 @@ import {
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
-import {
-  recordAskAnswerWithRetry,
-  buildAnswerWakeEvent,
-  markAskWakeDelivered,
-  hasPendingAskForThread,
-  cancelAsksForTask,
-} from '../../services/taskAsks.service';
-import { wakeTask } from '../../services/taskEngine.service';
+import { hasPendingAskForThread, cancelAsksForTask } from '../../services/taskAsks.service';
 import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
@@ -282,44 +275,13 @@ threadsRouter.post(
       const runId = randomUUID();
       res.status(202).json({ success: true, runId });
 
-      // An incoming_ask thread is someone ELSE's question — the reply is the
-      // answer. Capture it onto the ask and wake the asking task; this thread's
-      // own run still proceeds normally (the assistant acknowledges). The
-      // capture result is kept: an answered ask must end the run as 'done'
-      // whatever the run itself does (ticket 3 §6.11 — rows stayed red because
-      // the acknowledgement's trailing question flipped the status back to
-      // needs_you).
-      let askAnswerCaptured: Promise<boolean> = Promise.resolve(false);
-      if (thread.type === 'incoming_ask') {
-        // Retried capture + delivery marker (ticket 4 blocker 1): a deploy-
-        // window failure dropped 3 of 7 wakes on 11 Aug. The wake is marked
-        // delivered only after it actually ran; the task-engine sweep
-        // re-delivers anything still unmarked within minutes.
-        askAnswerCaptured = recordAskAnswerWithRetry(threadId, message)
-          .then((captured) => {
-            if (captured?.firstAnswer) {
-              // The verbatim (scrubbed) answer rides IN the wake event, tag-
-              // delimited so quotes inside the answer can't break it (ticket 3
-              // §5; ticket 4 blocker 3).
-              void wakeTask(
-                captured.taskId,
-                buildAnswerWakeEvent(captured.answer, captured.fromName),
-                { text: captured.answer, who: captured.fromName },
-              )
-                .then((delivered) => (delivered ? markAskWakeDelivered(captured.askId) : undefined))
-                .catch((err: unknown) =>
-                  // eslint-disable-next-line no-console
-                  console.error('[ask-wake] failed (sweep will retry):', (err as Error).message),
-                );
-            }
-            return captured !== null;
-          })
-          .catch((err: unknown) => {
-            // eslint-disable-next-line no-console
-            console.error('[ask-capture] failed:', (err as Error).message);
-            return false;
-          });
-      }
+      // Ticket 7 Task 1(c), founder's ruling D48: an incoming_ask thread is a
+      // PRIVATE conversation between the recipient and their own assistant.
+      // The auto-capture that lived here — the recipient's first raw message
+      // becoming the asker's answer before the assistant even ran (asks
+      // 892/925: answered_at preceded the message row) — is removed. The only
+      // path to the asker is now send_answer_to_asker, called by the
+      // assistant with the exact text the recipient approved.
 
       // The run is in flight — every device's chat list shows "working" from
       // the server-held state (no more client-local status guessing). The
@@ -341,11 +303,6 @@ threadsRouter.post(
       );
       Promise.race([processChat(userId, threadId, message, runId), hardTimeout])
         .then(async (result) => {
-          // The recipient's answer was already delivered by the capture above —
-          // the row is 'done' no matter how this run ends. In the 10 Aug live
-          // test the run's failure text told the recipient the answer had
-          // failed while the asker already had it (ticket 3 §1 case 2 / §6.5).
-          const answered = await askAnswerCaptured;
           // Waiting covers BOTH kinds of third-party dependency: an unanswered
           // ask AND an unanswered introduction request (ticket 5 item B2).
           const pendingIntro =
@@ -355,7 +312,7 @@ threadsRouter.post(
           // retryable error, never a "successful" empty answer.
           if (result.runFailed === true) {
             emitRunError(userId, threadId, runId, result.reply);
-            void setThreadStatus(userId, threadId, answered ? 'done' : 'failed');
+            void setThreadStatus(userId, threadId, 'failed');
             return;
           }
           emitRunComplete(userId, threadId, runId, {
@@ -374,7 +331,7 @@ threadsRouter.post(
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
           const pendingAsk =
             (await hasPendingAskForThread(threadId).catch(() => false)) || pendingIntro;
-          const finalStatus = answered ? 'done' : statusAfterRun(result, pendingAsk);
+          const finalStatus = statusAfterRun(result, pendingAsk);
           // The status caption follows the conversation's language (task 22
           // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
           const lang = result.language ?? 'ka';
@@ -400,17 +357,6 @@ threadsRouter.post(
           const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
           // eslint-disable-next-line no-console
           console.error('[POST /threads/:id/message] run failed', error);
-
-          // The answer was already captured and relayed — the thread's only
-          // job is done. A "retry" here would read as "your answer failed"
-          // (it did not) and invite a duplicate answer (ticket 3 §1 case 2).
-          if (await askAnswerCaptured) {
-            const reply = 'პასუხი გადაცემულია — მადლობა!';
-            emitRunComplete(userId, threadId, runId, { reply });
-            void setThreadStatus(userId, threadId, 'done');
-            saveThreadMessage(threadId, Number(userId), 'assistant', reply).catch(() => undefined);
-            return;
-          }
 
           // Timeout with material already gathered → FLUSH it as a partial
           // answer instead of a bare error ("on timeout, deliver what was

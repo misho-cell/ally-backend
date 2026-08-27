@@ -20,6 +20,12 @@ jest.mock('../askBudget.service', () => ({
   __esModule: true,
   checkAskBudget: jest.fn().mockResolvedValue({ allowed: true }),
 }));
+// sendApprovedAskAnswer reaches taskEngine via a dynamic import (static would
+// be a load-order cycle) — the mock intercepts that import all the same.
+jest.mock('../taskEngine.service', () => ({
+  __esModule: true,
+  wakeTask: jest.fn().mockResolvedValue(true),
+}));
 jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
@@ -31,10 +37,12 @@ import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { checkAskBudget } from '../askBudget.service';
 import { createThread, saveThreadMessage } from '../threads.service';
+import { wakeTask } from '../taskEngine.service';
 import {
   createAsk,
   createRelayAsk,
   recordAskAnswer,
+  sendApprovedAskAnswer,
   cancelAsksForTask,
   buildAnswerWakeEvent,
   ensureVerbatimQuote,
@@ -394,6 +402,86 @@ describe('createRelayAsk', () => {
       (sql as string).includes('FROM "UserAlias"'),
     );
     expect(aliasLookups).toHaveLength(0);
+  });
+});
+
+describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)', () => {
+  const mockWakeTask = wakeTask as jest.MockedFunction<typeof wakeTask>;
+
+  function routeApprovedAnswerQueries(opts: {
+    ask?: { to_user_id: number; status: string } | null;
+    captured?: boolean;
+  }): void {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT to_user_id, status'))
+        return Promise.resolve(rows(opts.ask ? [opts.ask] : []) as never);
+      if (sql.includes('UPDATE task_asks') && sql.includes('SET answer'))
+        return Promise.resolve(
+          rows(
+            opts.captured === false ? [] : [{ id: 77, task_id: 3, status: 'answered' }],
+          ) as never,
+        );
+      if (sql.includes('SELECT ta.answer'))
+        return Promise.resolve(
+          rows([{ answer: 'დამტკიცებული ტექსტი', from_name: 'გია' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+  }
+
+  it('records the approved text and wakes the asker with EXACTLY that text', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
+    mockWakeTask.mockResolvedValue(true);
+
+    const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
+
+    expect(out).toEqual({ sent: true });
+    expect(mockWakeTask).toHaveBeenCalledWith(3, expect.stringContaining('დამტკიცებული ტექსტი'), {
+      text: 'დამტკიცებული ტექსტი',
+      who: 'გია',
+    });
+    // Delivered wake gets its marker so the sweep does not re-deliver.
+    const markCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('wake_delivered_at = NOW()'),
+    );
+    expect(markCall?.[1]).toEqual([77]);
+  });
+
+  it('refuses when the thread carries no ask, or the ask is addressed to someone else', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 99, status: 'sent' } });
+
+    const out = await sendApprovedAskAnswer('7', 55, 'ტექსტი');
+
+    expect(out.sent).toBe(false);
+    expect(mockWakeTask).not.toHaveBeenCalled();
+    // Nothing was written.
+    const updates = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('UPDATE task_asks'),
+    );
+    expect(updates).toHaveLength(0);
+  });
+
+  it('refuses a cancelled ask — a closed question can never receive an answer', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'cancelled' } });
+
+    const out = await sendApprovedAskAnswer('7', 55, 'ტექსტი');
+
+    expect(out.sent).toBe(false);
+    expect(mockWakeTask).not.toHaveBeenCalled();
+  });
+
+  it('still reports sent when the instant wake fails — the 5-minute sweep is the backstop', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
+    mockWakeTask.mockRejectedValue(new Error('engine busy'));
+
+    const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
+
+    expect(out).toEqual({ sent: true });
+    // No delivery marker — the sweep must still see it as unwoken.
+    const markCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('wake_delivered_at = NOW()'),
+    );
+    expect(markCall).toBeUndefined();
   });
 });
 

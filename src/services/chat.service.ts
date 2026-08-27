@@ -58,6 +58,7 @@ import {
   cancelAsksForTask,
   getAsksForTask,
   getAskByThread,
+  sendApprovedAskAnswer,
   ensureVerbatimQuote,
   EnsureQuoted,
   TaskAsk,
@@ -663,6 +664,35 @@ const RELAY_ASK_TOOL: AnthropicTool = {
       },
     },
     required: ['ask_id', 'contact_name'],
+  },
+};
+
+// Ticket 7 Task 1(c), founder's ruling D48: the ONLY way anything reaches the
+// asker from an incoming-ask thread. The old auto-relay (the recipient's raw
+// first message captured as the answer before the assistant ran) is removed;
+// this tool carries exactly the text the recipient approved, nothing else.
+const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
+  name: 'send_answer_to_asker',
+  description:
+    'Inside an incoming-ask thread ONLY: sends the answer to the person who asked. NOTHING ' +
+    'reaches them automatically — this call is the only channel. Compose the outbound text ' +
+    'with the user, SHOW it to them verbatim, and call this only after they explicitly ' +
+    'approve, with answer_text being exactly the approved wording and confirmed=true. ' +
+    'Without confirmed=true nothing is sent. Never include a name or detail the user did ' +
+    'not approve for sharing.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      answer_text: {
+        type: 'string',
+        description: 'The exact text the user approved — sent verbatim to the asker.',
+      },
+      confirmed: {
+        type: 'boolean',
+        description: 'Must be true, and only after the user explicitly approved this exact text.',
+      },
+    },
+    required: ['answer_text'],
   },
 };
 
@@ -1606,22 +1636,24 @@ function resolvePendingRequests(
   return getPendingRequestsForMediator(userId);
 }
 
-// The recipient's side of an ask: the question, who asked, and the relay
-// mechanics. The user's plain reply is captured automatically — the assistant
-// carries it verbatim and, on explicit consent, relays. Engine-owned gates
-// (ticket 3 §1): no follow-up interrogation, no delivery talk, no "contact
-// them directly", and no data — the context has none by construction.
+// The recipient's side of an ask: the question, who asked, and the outbound
+// mechanics. Ticket 7 Task 1(c), founder's ruling D48: NOTHING crosses to the
+// asker on its own — the old auto-capture (the user's raw reply becoming the
+// answer before the assistant even ran) is gone. The assistant discusses,
+// composes the outbound text, shows it verbatim, and only an explicit yes +
+// send_answer_to_asker moves it. Engine-owned gates (ticket 3 §1) stand: no
+// "contact them directly", no invented delivery talk.
 function buildIncomingAskSection(ask: IncomingAsk): string {
   const from = ask.from_name ?? 'Netai-ს მომხმარებელი';
   return (
-    `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ relay_ask-ისთვის, პასუხში არასდროს ახსენო]\n` +
+    `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ ინსტრუმენტებისთვის, პასუხში არასდროს ახსენო]\n` +
     `${from} გეკითხება: "${ask.question}"\n` +
-    `- მომხმარებლის ყოველი პასუხი კითხვის ავტორს **უკვე გადაეცა** — ავტომატურად, იმ წამს, როცა მან შეტყობინება გააგზავნა. ეს ცალკე გზაა და ყოველთვის მუშაობს. არასოდეს თქვა „პასუხი ვერ გადაიცა" ან „დაიკარგა" — ეს ტყუილი იქნებოდა.\n` +
-    `- პასუხი გადადის სიტყვასიტყვით. დამაზუსტებელი კითხვები არ დაუსვა — მადლობა და მოკლე დახურვა სრული პასუხია.\n` +
-    `- როცა მომხმარებელი ადამიანს ასახელებს („სალომე ფარქოსაძე") — ეს რეკომენდაციაა და უკვე გადაცემულია. relay_ask მხოლოდ მაშინ, როცა ის პირდაპირ ითხოვს გადაგზავნას („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის.\n` +
-    `- თუ relay_ask-მა კონტაქტი ვერ იპოვა: ორთოგრაფია არ ჰკითხო და ბოდიში არ მოიხადო — სახელი ისედაც გადაცემულია. მადლობა უთხარი და დაასრულე. „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.\n` +
+    `- ეს საუბარი მხოლოდ შენსა და მომხმარებელს შორისაა. **ვერაფერი გადადის კითხვის ავტორთან ავტომატურად** — არც პირველი შეტყობინება, არც სხვა. გადაცემა ხდება მხოლოდ send_answer_to_asker-ით, შენ რომ გამოიძახებ.\n` +
+    `- როცა მომხმარებელთან ერთად პასუხი ჩამოყალიბდა: შეადგინე გასაგზავნი ტექსტი, აჩვენე სიტყვასიტყვით („გავუგზავნო ეს ტექსტი? …"), და მხოლოდ მისი აშკარა თანხმობის შემდეგ გამოიძახე send_answer_to_asker ზუსტად იმ ტექსტით, რომელიც დაამტკიცა. თანხმობამდე გაგზავნა შეუძლებელია — ეს სერვერის წესია.\n` +
+    `- გასაგზავნ ტექსტში მხოლოდ ის უნდა იყოს, რისი გაზიარებაც მომხმარებელმა დაამტკიცა — სახელი ან დეტალი მისი „კი"-ს გარეშე ტექსტში ვერ მოხვდება.\n` +
+    `- relay_ask ცალკე მოქმედებაა — კითხვის მესამე ადამიანთან გადაგზავნა. მხოლოდ მაშინ, როცა მომხმარებელი ამას პირდაპირ ითხოვს („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის. თუ კონტაქტი ვერ მოიძებნა: ორთოგრაფია არ ჰკითხო, ბოდიში არ მოიხადო, „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან პირდაპირ დაკავშირება.\n` +
     `- თუ მომხმარებელი იტყვის, რომ მსგავსი შეტყობინებები აღარ სურს („აღარ მომწერო") — გამოიძახე stop_contacting_me. ეს ნამდვილად აჩერებს ყველა მომავალ კითხვას ყველა ადამიანისგან. დაპირება მხოლოდ სიტყვით არასოდეს მისცე — ჯერ ინსტრუმენტი, მერე დადასტურება.\n` +
-    `- შენ ვერ ხედავ ვერავის ქსელს, კონტაქტებს, მიზნებს, ჩანაწერებსა და სტატისტიკას — ეს მონაცემები ამ საუბარში არ არსებობს და მათზე ვერაფერს იტყვი. კითხვაზე „რა არის ეს აპი?" უპასუხე ერთი წინადადებით და დაბრუნდი კითხვაზე — არავითარი შეთავაზება „შენც დაგეხმარები"-ს სტილში.`
+    `- შენ ვერ ხედავ ვერავის ქსელს, კონტაქტებს, მიზნებს, ჩანაწერებსა და სტატისტიკას — ეს მონაცემები ამ საუბარში ჯერ არ არსებობს და მათზე ვერაფერს იტყვი. კითხვაზე „რა არის ეს აპი?" უპასუხე ერთი წინადადებით და დაბრუნდი კითხვაზე.`
   );
 }
 
@@ -2175,6 +2207,23 @@ async function executeToolCall(
         String(input['contact_name'] ?? input['phone'] ?? ''),
         input['question'] ? String(input['question']) : undefined,
       );
+    case 'send_answer_to_asker': {
+      const answerText = String(input['answer_text'] ?? '').trim();
+      if (!answerText) return { sent: false, error: 'Pass the exact approved text.' };
+      if (input['confirmed'] !== true) {
+        return {
+          sent: false,
+          needs_confirmation: true,
+          note:
+            'არაფერი გაგზავნილა. აჩვენე მომხმარებელს გასაგზავნი ტექსტი სიტყვასიტყვით და მხოლოდ ' +
+            'მისი აშკარა თანხმობის შემდეგ გამოიძახე ხელახლა confirmed=true-თი, ზუსტად იმ ტექსტით.',
+        };
+      }
+      if (threadId === undefined) {
+        return { sent: false, error: 'No thread context for this call.' };
+      }
+      return sendApprovedAskAnswer(userId, threadId, answerText);
+    }
     case 'invite_contact': {
       const langRaw = String(input['language'] ?? 'ka');
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
@@ -2488,6 +2537,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   finish_task: '🏁 დავალებას ვხურავ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
+  send_answer_to_asker: '📨 დამტკიცებულ პასუხს ვაგზავნი...',
   get_country_channels: '🌍 არხებს ვამოწმებ...',
   get_netai_info: 'ℹ️ Netai-ს ინფოს ვკითხულობ...',
   stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
@@ -3090,7 +3140,15 @@ async function buildToolsForThread(userId: string, threadType?: string): Promise
   if (threadType === 'incoming_ask') {
     // get_netai_info carries NO user data — recipients ask "what is this app"
     // in almost every session, and guessing is worse than answering.
-    return [RELAY_ASK_TOOL, STOP_CONTACTING_TOOL, RESUME_CONTACT_TOOL, GET_NETAI_INFO_TOOL];
+    // send_answer_to_asker (Task 1(c)): the only outbound channel now that
+    // the auto-capture is gone. Full owner tools arrive with Task 1(a).
+    return [
+      SEND_ANSWER_TO_ASKER_TOOL,
+      RELAY_ASK_TOOL,
+      STOP_CONTACTING_TOOL,
+      RESUME_CONTACT_TOOL,
+      GET_NETAI_INFO_TOOL,
+    ];
   }
   return buildEnabledTools(userId);
 }

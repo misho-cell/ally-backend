@@ -358,25 +358,62 @@ export async function recordAskAnswer(
   };
 }
 
-// One capture failing during a deploy window loses the wake for a day (ticket
-// 4 blocker 1) — retry the transient before giving up; the wake sweep is the
-// backstop for whatever still slips through.
-const CAPTURE_RETRY_DELAYS_MS = [0, 1_000, 3_000];
-
-export async function recordAskAnswerWithRetry(
+/**
+ * Ticket 7 Task 1(c), founder's ruling D48: nothing leaves an incoming-ask
+ * thread on its own. This is now the ONLY path an answer takes to the asker —
+ * the recipient's assistant composes the text, shows it, and calls this with
+ * the exact wording the recipient approved. The old path (the recipient's
+ * first raw message auto-captured as the answer before the assistant even
+ * ran — asks 892/925's answered_at preceding their own message rows) is
+ * removed from threads.routes.
+ *
+ * Scoped to the recipient: the ask behind this thread must be addressed TO
+ * the caller — the thread id comes from server context, but the ownership
+ * check stays as belt-and-braces.
+ */
+export async function sendApprovedAskAnswer(
+  recipientUserId: string,
   askThreadId: number,
-  answerText: string,
-): Promise<CapturedAnswer | null> {
-  let lastError: unknown;
-  for (const delayMs of CAPTURE_RETRY_DELAYS_MS) {
-    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+  approvedText: string,
+): Promise<{ sent: boolean; error?: string }> {
+  const ask = await query<{ to_user_id: number; status: string }>(
+    `SELECT to_user_id, status FROM task_asks
+     WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
+    [askThreadId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const row = ask.rows[0];
+  if (!row || String(row.to_user_id) !== recipientUserId) {
+    return { sent: false, error: 'ამ თრედს ცოცხალი შემოსული კითხვა არ აქვს.' };
+  }
+  if (row.status !== 'sent' && row.status !== 'answered') {
+    return { sent: false, error: 'ეს კითხვა უკვე დახურულია — პასუხი ვეღარ გაიგზავნება.' };
+  }
+
+  const captured = await recordAskAnswer(askThreadId, approvedText);
+  if (!captured) {
+    return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
+  }
+
+  // Instant wake with the EXACT approved text; the 5-minute unwoken-answer
+  // sweep stays as the backstop if this delivery fails. Dynamic import
+  // because taskEngine statically imports this file — a static import back
+  // would be a load-order cycle.
+  if (captured.firstAnswer) {
     try {
-      return await recordAskAnswer(askThreadId, answerText);
+      const { wakeTask } = await import('./taskEngine.service');
+      const delivered = await wakeTask(
+        captured.taskId,
+        buildAnswerWakeEvent(captured.answer, captured.fromName),
+        { text: captured.answer, who: captured.fromName },
+      );
+      if (delivered) await markAskWakeDelivered(captured.askId);
     } catch (err) {
-      lastError = err;
+      // eslint-disable-next-line no-console
+      console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
     }
   }
-  throw lastError;
+  return { sent: true };
 }
 
 /**

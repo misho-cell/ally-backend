@@ -49,6 +49,9 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   respond_to_invite_campaign:
     'keyed off the ambient in-app thread (a campaign_invite thread is one participant) — the ' +
     'connector has no equivalent thread concept, same reasoning as get_thread_context',
+  send_answer_to_asker:
+    'keyed off the ambient in-app incoming_ask thread (Task 1(c), D48) — the connector has no ' +
+    'incoming-ask thread concept, same reasoning as get_thread_context',
   // The three below are genuinely UNRESOLVED — listed so the build stays
   // green, not because the answer is known. Each needs an explicit product
   // call (wire to the connector, or confirm app-only and say why) before
