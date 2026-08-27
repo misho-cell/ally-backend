@@ -232,15 +232,20 @@ authRouter.post(
 // back, which let anyone inflate the "opened" figure risk-free.
 authRouter.post(
   '/referral/opened',
-  body('code').isString().trim().notEmpty().withMessage('code is required'),
+  // Ticket 7 Task 6 item 1, live-caught by the tester: the deployed /join
+  // page sends {referralCode} while this route demanded {code} — every real
+  // page load was rejected 400 and the funnel never moved. Both spellings
+  // are accepted now; a route this endpoint-shaped must not lose real
+  // events over a field name.
   async (req: Request, res: Response<ApiResponse<{ recorded: boolean }>>) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const bodyIn = req.body as { code?: unknown; referralCode?: unknown };
+    const raw = typeof bodyIn.code === 'string' ? bodyIn.code : bodyIn.referralCode;
+    const code = typeof raw === 'string' ? raw.trim() : '';
+    if (!code) {
       res.status(400).json({ success: false, error: 'code is required' });
       return;
     }
     try {
-      const { code } = req.body as { code: string };
       const recorded = await recordLinkOpened(code);
       res.status(200).json({ success: true, data: { recorded } });
     } catch (error) {
