@@ -68,6 +68,7 @@ import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
 import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
+import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -1823,6 +1824,59 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin foreign-sync remove]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// ─── Ticket 7 Task 7: the two test contacts written into 501 (D47) ─────────
+// D44 documentation:
+//   POST /admin/contacts/remove-one
+//   Body: { user_id: number, phone: string, confirmed: true }
+//   Effect: exactly removeContactFromNetwork's user-initiated semantics
+//     (D23: the account's own UserAlias/UserTags rows, derived views, own
+//     graph edge — the person survives everywhere else), admin-invoked, plus
+//     the contact's rows in the account's label_parse_queue so
+//     get_unresolved_labels stops listing it.
+//   Undo: none in place — restore is a fresh device import only.
+//   Read-back: GET /admin/users/:id network counts drop; the label queue no
+//     longer returns the removed phone's rows.
+// Approved use (founder, via ticket 7 task 7): +995512121212 and
+// +995555123456 out of account 501 — contacts he says he never added.
+adminRouter.post(
+  '/contacts/remove-one',
+  body('user_id').isInt({ min: 1 }),
+  body('phone').isString().notEmpty(),
+  body('confirmed')
+    .custom((v) => v === true)
+    .withMessage('confirmed=true is required'),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const { user_id, phone } = req.body as { user_id: number; phone: string };
+      const outcome = await removeContactFromNetwork(String(user_id), phone);
+      const queueRows = await query(
+        `DELETE FROM label_parse_queue WHERE contact_id = $1 AND phone = $2`,
+        [user_id, phone.trim()],
+        10_000,
+      );
+      res.status(200).json({
+        success: true,
+        data: { ...outcome, label_queue_rows_removed: queueRows.rowCount ?? 0 },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin contact remove-one]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
