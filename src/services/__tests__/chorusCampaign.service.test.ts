@@ -204,7 +204,10 @@ describe('sendDueCampaignAsks', () => {
       (sql as string).includes("state = 'asked'"),
     );
     expect(updates).toHaveLength(1);
-    expect(updates[0][1]).toEqual([1, 77]);
+    // D50: Chorus stamps its own technique tag at send time. The default
+    // config claims only what the fixed message truthfully does — it names
+    // the person (how=5); when/reason are unknown until the founder sets them.
+    expect(updates[0][1]).toEqual([1, 77, null, 5, null]);
     // T9's one list: the ask ALSO becomes a typed chorus_ask pending update,
     // released immediately, so any conversation the inviter opens sees it.
     expect(queueFollowUp).toHaveBeenCalledWith(
@@ -245,6 +248,23 @@ describe('recordCampaignResponse', () => {
     const out = await recordCampaignResponse(77, '10', 'agreed');
 
     expect(out).toEqual({ recorded: true });
+    // No technique reported — every group stays as stamped (COALESCE keeps).
+    const update = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('state = $2'));
+    expect(update?.[1]).toEqual([5, 'agreed', null, null, null]);
+  });
+
+  it("D50: the assistant's reported technique overrides the stamp; out-of-range values fall to unknown, never guessed into range", async () => {
+    routeRespondQueries({ participant: { id: 5, state: 'asked', campaign_id: 900 } });
+
+    const out = await recordCampaignResponse(77, '10', 'agreed', {
+      when: 2,
+      how: 99, // out of range -> null -> stamped value kept
+      reason: 9,
+    });
+
+    expect(out).toEqual({ recorded: true });
+    const update = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('state = $2'));
+    expect(update?.[1]).toEqual([5, 'agreed', 2, null, 9]);
   });
 
   it('refuses an illegal transition (pending -> told)', async () => {

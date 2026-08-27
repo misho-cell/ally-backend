@@ -10,6 +10,39 @@ const CAMPAIGN_QUERY_TIMEOUT_MS = 8_000;
 // The typed pending_updates item a due ask ALSO becomes (T9's one list).
 const CHORUS_ASK_KIND = 'chorus_ask';
 
+// D50 (ticket 7 task 14): the technique tag is THREE values per growth ask —
+// WHEN to ask (1-4), HOW to phrase (5-8), the REASON given (9-10). NULL =
+// unknown, allowed but counted.
+export interface TechniqueTag {
+  when: number | null;
+  how: number | null;
+  reason: number | null;
+}
+
+const TECHNIQUE_RANGES: Record<keyof TechniqueTag, readonly [number, number]> = {
+  when: [1, 4],
+  how: [5, 8],
+  reason: [9, 10],
+};
+
+/** One group's value: an integer inside its range, or null for unknown. */
+export function parseTechniqueValue(group: keyof TechniqueTag, value: unknown): number | null {
+  const n = Number(value);
+  const [min, max] = TECHNIQUE_RANGES[group];
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+// Chorus stamps its OWN three values on every ask it sends (D50) — config,
+// not deploy, so the founder flips them when the fixed message changes. The
+// defaults are what the current message truthfully does: it names the person
+// (technique 5); it is sent on a schedule tied to no conversational moment
+// (when = unknown) and gives no reason (reason = unknown).
+const CHORUS_TECHNIQUE: TechniqueTag = {
+  when: parseTechniqueValue('when', process.env.CHORUS_TECHNIQUE_WHEN),
+  how: parseTechniqueValue('how', process.env.CHORUS_TECHNIQUE_HOW ?? 5),
+  reason: parseTechniqueValue('reason', process.env.CHORUS_TECHNIQUE_REASON),
+};
+
 // Ticket 6, engine T8 ("Chorus"): fully automatic invite campaigns targeting
 // T7's weekly non-user list. Per target: chosen inviter-users, each walking
 // pending -> asked -> agreed/declined -> told -> joined. No manual mode —
@@ -204,9 +237,10 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     );
     await query(
       `UPDATE invite_campaign_participants
-       SET state = 'asked', asked_at = NOW(), thread_id = $2, state_updated_at = NOW()
+       SET state = 'asked', asked_at = NOW(), thread_id = $2, state_updated_at = NOW(),
+           technique_when = $3, technique_how = $4, technique_reason = $5
        WHERE id = $1`,
-      [row.id, thread.id],
+      [row.id, thread.id, CHORUS_TECHNIQUE.when, CHORUS_TECHNIQUE.how, CHORUS_TECHNIQUE.reason],
       CAMPAIGN_QUERY_TIMEOUT_MS,
     );
     // T9 (ticket 7 task 13): the ask also enters the ONE pending_updates list
@@ -221,7 +255,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
         who: label,
         why: 'an invite-campaign ask is waiting for their answer',
         thread_id: thread.id,
-        technique_tag: null,
+        technique_tag: CHORUS_TECHNIQUE,
         instruction:
           `A Netai invite ask about ${label} is waiting in its own thread. If it fits the ` +
           'conversation, remind the user once, lightly, that it is there — their answer ' +
@@ -266,11 +300,16 @@ export interface CampaignResponseOutcome {
  * enforces that the transition is a legal one for the participant's CURRENT
  * state, keyed off the ambient thread (a campaign_invite thread belongs to
  * exactly one participant).
+ *
+ * D50: the assistant reports the three technique values here — it read the
+ * conversation the ask actually happened in, so a value it reports overrides
+ * Chorus's stamped default; a group it leaves out keeps the stamp.
  */
 export async function recordCampaignResponse(
   threadId: number,
   userId: string,
   response: 'agreed' | 'declined' | 'told',
+  technique?: Partial<TechniqueTag>,
 ): Promise<CampaignResponseOutcome> {
   const participant = await query<{ id: number; state: string; campaign_id: number }>(
     `SELECT id, state, campaign_id FROM invite_campaign_participants
@@ -285,8 +324,19 @@ export async function recordCampaignResponse(
     return { recorded: false, error: `Cannot record "${response}" from state "${row.state}".` };
   }
   await query(
-    `UPDATE invite_campaign_participants SET state = $2, state_updated_at = NOW() WHERE id = $1`,
-    [row.id, nextState],
+    `UPDATE invite_campaign_participants
+     SET state = $2, state_updated_at = NOW(),
+         technique_when = COALESCE($3, technique_when),
+         technique_how = COALESCE($4, technique_how),
+         technique_reason = COALESCE($5, technique_reason)
+     WHERE id = $1`,
+    [
+      row.id,
+      nextState,
+      parseTechniqueValue('when', technique?.when),
+      parseTechniqueValue('how', technique?.how),
+      parseTechniqueValue('reason', technique?.reason),
+    ],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
   if (nextState === 'declined') await closeCampaignIfExhausted(row.campaign_id);

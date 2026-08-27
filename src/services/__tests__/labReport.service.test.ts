@@ -22,6 +22,15 @@ const FUNNEL = { sent: 5, opened: 3, registered: 2, note: 'x' };
 function routeReportQueries(opts: {
   askDial?: { ask_count_dial: number; city: string | null; campaigns: string; joins: string }[];
   spacing?: { day_offset: string; asked: string; joined: string }[];
+  technique?: {
+    technique_when: number | null;
+    technique_how: number | null;
+    technique_reason: number | null;
+    asked: string;
+    agreed: string;
+    told: string;
+    joined: string;
+  }[];
   fatigue?: { fatigue_signals: string; users: string }[];
   factsPerWeek?: { week: string; source: string | null; facts: string; users: string }[];
   curiosityRate?: { surfaced: string; answered: string }[];
@@ -29,6 +38,8 @@ function routeReportQueries(opts: {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('GROUP BY ask_count_dial, city'))
       return Promise.resolve(rows(opts.askDial ?? []) as never);
+    if (sql.includes('GROUP BY technique_when, technique_how, technique_reason'))
+      return Promise.resolve(rows(opts.technique ?? []) as never);
     if (sql.includes('FROM invite_campaign_participants p'))
       return Promise.resolve(rows(opts.spacing ?? []) as never);
     if (sql.includes('fatigue_signals, COUNT(*) AS users'))
@@ -119,18 +130,64 @@ describe('buildLabReport', () => {
     ]);
   });
 
-  it('documents the two components that could still not be built, honestly', async () => {
+  it('documents the ONE component that could still not be built, honestly', async () => {
     routeReportQueries({});
 
     const report = await buildLabReport('2026-08-24');
 
-    expect(report.not_built).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('technique_conversion'),
-        expect.stringContaining('facts_used_rate'),
-      ]),
-    );
+    expect(report.not_built).toEqual([expect.stringContaining('facts_used_rate')]);
     expect(report.not_built.join(' ')).not.toContain('curiosity_answer_rate');
+    // D50 (ticket 7 task 14) put the tag on the participant rows —
+    // technique_conversion is a real component now, no longer a gap.
+    expect(report.not_built.join(' ')).not.toContain('technique_conversion');
+  });
+
+  it('D50: builds the technique conversion table, with NULL = unknown as its own counted row', async () => {
+    routeReportQueries({
+      technique: [
+        {
+          technique_when: null,
+          technique_how: 5,
+          technique_reason: null,
+          asked: '10',
+          agreed: '4',
+          told: '2',
+          joined: '1',
+        },
+        {
+          technique_when: 1,
+          technique_how: 7,
+          technique_reason: 9,
+          asked: '3',
+          agreed: '2',
+          told: '1',
+          joined: '1',
+        },
+      ],
+    });
+
+    const report = await buildLabReport('2026-08-24');
+
+    expect(report.technique_conversion).toEqual([
+      {
+        technique_when: null,
+        technique_how: 5,
+        technique_reason: null,
+        asked: 10,
+        agreed: 4,
+        told: 2,
+        joined: 1,
+      },
+      {
+        technique_when: 1,
+        technique_how: 7,
+        technique_reason: 9,
+        asked: 3,
+        agreed: 2,
+        told: 1,
+        joined: 1,
+      },
+    ]);
   });
 
   it('computes curiosity_answer_rate from the surfacing log, now that one exists', async () => {

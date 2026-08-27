@@ -985,12 +985,25 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
     '"agreed" they will invite them, "declined" they will not (this ends it — no follow-up), ' +
     '"told" they already reached out in real life and are just reporting back. Only call once ' +
     'per reply, matching what was actually said — never guess "agreed" from a vague or ' +
-    'noncommittal answer.' +
+    'noncommittal answer. Also report the technique tag of how the ask was ACTUALLY made in this ' +
+    'conversation — three numbers: when (1 the moment it worked, 2 thank them first, 3 the first ' +
+    'session, 4 the failed search), how (5 name the person, 6 the advice ask, 7 make refusing ' +
+    'free, 8 text them now), reason (9 we grow together, 10 the thanks that comes back). Omit any ' +
+    'group that genuinely did not apply — never guess.' +
     ' WHEN: the user replies inside a campaign_invite thread.',
   input_schema: {
     type: 'object',
     properties: {
       response: { type: 'string', description: 'One of: agreed, declined, told' },
+      technique_when: {
+        type: 'number',
+        description: 'WHEN the ask was made: 1-4, omit if unknown',
+      },
+      technique_how: { type: 'number', description: 'HOW it was phrased: 5-8, omit if unknown' },
+      technique_reason: {
+        type: 'number',
+        description: 'The REASON given: 9-10, omit if none was given',
+      },
     },
     required: ['response'],
   },
@@ -2292,7 +2305,13 @@ async function executeToolCall(
       if (threadId === undefined) {
         return { recorded: false, error: 'No thread context for this call.' };
       }
-      return recordCampaignResponse(threadId, userId, response);
+      // D50: out-of-range technique values fall to null inside the service —
+      // unknown is allowed but counted, never guessed into range.
+      return recordCampaignResponse(threadId, userId, response, {
+        when: input['technique_when'] as number | undefined,
+        how: input['technique_how'] as number | undefined,
+        reason: input['technique_reason'] as number | undefined,
+      });
     }
     case 'finish_task': {
       const taskId = Number(input['task_id']);

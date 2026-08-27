@@ -21,19 +21,13 @@ export function currentWeekStartISO(): string {
 const IGNORED_ASK_AFTER_HOURS = 168; // mirrors askBudget.service's own fatigue window
 
 // T16: "the weekly Lab report — reads everything." Of the spec's eight
-// components, five are built here from data that genuinely exists. Three are
-// NOT built, and are not faked with invented numbers:
-//   - "technique conversion" — no ask anywhere in this codebase carries a
-//     technique tag; that concept doesn't exist yet in task_asks or the
-//     campaign tables.
-//   - "curiosity answer rate" — T11's queue is fully live-computed with no
-//     surfacing log, so there is no record of which questions were ever
-//     shown to compute a rate against.
+// components, seven are built here from data that genuinely exists
+// (technique conversion joined in ticket 7 task 14 once D50 put the tag on
+// invite_campaign_participants; curiosity answer rate once the surfacing log
+// existed). One is NOT built, and is not faked with invented numbers:
 //   - "facts-used rate" — no search tool records which stored fact, if any,
 //     changed its result; that would need new instrumentation across every
 //     search path, out of scope for this report to retrofit silently.
-// All three would need new instrumentation IN those other engines, not
-// something this report can compute after the fact.
 
 export interface AskDialRow {
   ask_count_dial: number;
@@ -103,6 +97,56 @@ async function buildSpacingResults(): Promise<SpacingRow[]> {
     asked: Number(r.asked),
     joined: Number(r.joined),
     join_rate: Number(r.asked) > 0 ? Number(r.joined) / Number(r.asked) : 0,
+  }));
+}
+
+export interface TechniqueConversionRow {
+  technique_when: number | null;
+  technique_how: number | null;
+  technique_reason: number | null;
+  asked: number;
+  agreed: number;
+  told: number;
+  joined: number;
+}
+
+/**
+ * Component 2 (D50, ticket 7 task 14): asks -> agreed -> told -> joined per
+ * technique tag, straight off the columns Chorus stamps and the assistant
+ * reports. Counts are CURRENT states of asked participants (the funnel's
+ * live distribution); NULL in any group means "unknown" and is its own row —
+ * allowed but counted, per the ruling, never folded into a guessed value.
+ */
+async function buildTechniqueConversion(): Promise<TechniqueConversionRow[]> {
+  const result = await query<{
+    technique_when: number | null;
+    technique_how: number | null;
+    technique_reason: number | null;
+    asked: string;
+    agreed: string;
+    told: string;
+    joined: string;
+  }>(
+    `SELECT technique_when, technique_how, technique_reason,
+            COUNT(*) AS asked,
+            COUNT(*) FILTER (WHERE state IN ('agreed', 'told')) AS agreed,
+            COUNT(*) FILTER (WHERE state = 'told') AS told,
+            COUNT(*) FILTER (WHERE state = 'joined') AS joined
+     FROM invite_campaign_participants
+     WHERE asked_at IS NOT NULL
+     GROUP BY technique_when, technique_how, technique_reason
+     ORDER BY joined DESC, asked DESC`,
+    [],
+    REPORT_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({
+    technique_when: r.technique_when,
+    technique_how: r.technique_how,
+    technique_reason: r.technique_reason,
+    asked: Number(r.asked),
+    agreed: Number(r.agreed),
+    told: Number(r.told),
+    joined: Number(r.joined),
   }));
 }
 
@@ -231,6 +275,7 @@ async function buildCuriosityAnswerRate(): Promise<CuriosityAnswerRate> {
 export interface LabReport {
   week_start: string;
   ask_dial_table: AskDialRow[];
+  technique_conversion: TechniqueConversionRow[];
   spacing_results: SpacingRow[];
   links_funnel: ReferralFunnel;
   budgets_ladder_state: BudgetsLadderState;
@@ -240,7 +285,6 @@ export interface LabReport {
 }
 
 const NOT_BUILT = [
-  'technique_conversion: no ask anywhere carries a technique tag',
   'facts_used_rate: no search path records whether a stored fact changed its result',
 ];
 
@@ -253,6 +297,7 @@ const NOT_BUILT = [
 export async function buildLabReport(weekStart: string): Promise<LabReport> {
   const [
     askDialTable,
+    techniqueConversion,
     spacingResults,
     linksFunnel,
     budgetsLadderState,
@@ -260,6 +305,7 @@ export async function buildLabReport(weekStart: string): Promise<LabReport> {
     curiosityAnswerRate,
   ] = await Promise.all([
     buildAskDialTable(),
+    buildTechniqueConversion(),
     buildSpacingResults(),
     getReferralFunnel(),
     buildBudgetsLadderState(),
@@ -269,6 +315,7 @@ export async function buildLabReport(weekStart: string): Promise<LabReport> {
   return {
     week_start: weekStart,
     ask_dial_table: askDialTable,
+    technique_conversion: techniqueConversion,
     spacing_results: spacingResults,
     links_funnel: linksFunnel,
     budgets_ladder_state: budgetsLadderState,
