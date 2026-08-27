@@ -518,12 +518,45 @@ export async function countAskableUsers(): Promise<number> {
   return Number(result.rows[0]?.count ?? 0);
 }
 
+// T7 is a WEEKLY list — recomputing ~90 seconds of product-wide scoring on
+// every read made two consecutive reads disagree whenever a per-word timeout
+// skipped one topic under load (live-caught on the double-read check: one
+// candidate dropped between reads 2 minutes apart). Inside the TTL every
+// read returns the SAME built list by construction; expiry or a restart
+// refreshes it. Config, not deploy.
+const TARGET_LIST_CACHE_TTL_MS =
+  Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 60) * 60_000;
+interface TargetListCache {
+  sinceDays: number;
+  builtAt: number;
+  entries: TargetScoreEntry[];
+}
+let targetListCache: TargetListCache | null = null;
+
+/** Test seam: the cache is module-level state and must not leak across tests. */
+export function clearTargetListCache(): void {
+  targetListCache = null;
+}
+
 /**
  * The ranked, explainable target list T7 asks for: every entry carries its
  * score parts (never a bare number), and the list's length is capacity-
  * driven — it grows and shrinks with countAskableUsers(), never a constant.
  */
 export async function buildTargetList(sinceDays: number): Promise<TargetScoreEntry[]> {
+  if (
+    targetListCache !== null &&
+    targetListCache.sinceDays === sinceDays &&
+    Date.now() - targetListCache.builtAt < TARGET_LIST_CACHE_TTL_MS
+  ) {
+    return targetListCache.entries;
+  }
+  const entries = await buildTargetListUncached(sinceDays);
+  targetListCache = { sinceDays, builtAt: Date.now(), entries };
+  return entries;
+}
+
+async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEntry[]> {
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
   // Hard exclude #1 (Task 4 item 1): only Georgian personal mobiles can be

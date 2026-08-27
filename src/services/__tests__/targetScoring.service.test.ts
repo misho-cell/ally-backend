@@ -6,7 +6,11 @@ jest.mock('../unmetNeeds.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from '../unmetNeeds.service';
-import { buildTargetList, countAskableUsers } from '../targetScoring.service';
+import {
+  buildTargetList,
+  clearTargetListCache,
+  countAskableUsers,
+} from '../targetScoring.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockFindUnmetNeeds = findUnmetNeeds as jest.MockedFunction<typeof findUnmetNeeds>;
@@ -73,6 +77,9 @@ function routeScoreQueries(opts: {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // The weekly-list cache is module-level; without this every test after the
+  // first would read the first test's built list.
+  clearTargetListCache();
 });
 
 describe('buildTargetList', () => {
