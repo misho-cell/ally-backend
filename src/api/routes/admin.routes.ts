@@ -78,6 +78,10 @@ import {
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import { findUnmetNeeds } from '../../services/unmetNeeds.service';
+import {
+  previewForeignSyncLinks,
+  removeForeignSyncLinks,
+} from '../../services/foreignSync.service';
 import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
 import {
   generateAndStoreWeeklyReport,
@@ -1744,6 +1748,81 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin lab-report list]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// ─── Ticket 7 Task 2 item 2: the 1,032 sync-borne contact links ────────────
+// Preview-then-execute, per D44 (every data-changing admin operation runs
+// with the founder's yes, with its shape documented):
+//   GET  /admin/contacts/foreign-sync-preview?contaminated_user_id&sync_source_user_id
+//        — pure read: { count, distinct_phones, links[] }. Show this first.
+//   POST /admin/contacts/remove-foreign-sync
+//        body { contaminated_user_id, sync_source_user_id, confirmed: true }
+//        — deletes the byte-identical UserAlias rows; contacts left with no
+//        alias also lose the user's tags, derived views and his own graph
+//        edge (D23: cut the link, keep the person — every other user's rows
+//        survive, so the people stay reachable as second degree).
+//        Undo: none in place — restore is a fresh device import only.
+//        Read-back: the preview returns count 0 after a completed removal.
+adminRouter.get('/contacts/foreign-sync-preview', async (req: Request, res: Response) => {
+  const contaminated = Number(req.query.contaminated_user_id);
+  const source = Number(req.query.sync_source_user_id);
+  if (
+    !Number.isInteger(contaminated) ||
+    contaminated <= 0 ||
+    !Number.isInteger(source) ||
+    source <= 0
+  ) {
+    res.status(400).json({
+      success: false,
+      error: 'contaminated_user_id და sync_source_user_id აუცილებელია',
+    });
+    return;
+  }
+  try {
+    const preview = await previewForeignSyncLinks(String(contaminated), String(source));
+    res.status(200).json({ success: true, data: preview });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin foreign-sync preview]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post(
+  '/contacts/remove-foreign-sync',
+  body('contaminated_user_id').isInt({ min: 1 }),
+  body('sync_source_user_id').isInt({ min: 1 }),
+  body('confirmed')
+    .custom((v) => v === true)
+    .withMessage('confirmed=true is required — preview first'),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const { contaminated_user_id, sync_source_user_id } = req.body as {
+        contaminated_user_id: number;
+        sync_source_user_id: number;
+      };
+      const result = await removeForeignSyncLinks(
+        String(contaminated_user_id),
+        String(sync_source_user_id),
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin foreign-sync remove]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
