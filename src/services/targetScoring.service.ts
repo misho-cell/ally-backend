@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
+import { normalizePhone } from './phone';
 import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
@@ -11,15 +12,13 @@ const SCORE_QUERY_TIMEOUT_MS = 8_000;
 // signal, read here in aggregate rather than per-sender.
 const IGNORED_ASK_AFTER_HOURS = 168;
 
-// T7: weekly scored list of non-users per market. Two of the spec's five
-// criteria flags have no concept to build on anywhere in this schema and are
-// deliberately NOT implemented, rather than faked:
-//   - "lookalike match to our best users" — there is no "best user" concept
-//     recorded anywhere (no quality/value score on User).
-//   - "relevance to a specific user's goals" — there is no goals table, and
-//     it is inherently per-asker, not a property of a weekly product-wide list.
-// The other three (Reach, Pull, Warmth) and two of the four flags (needs-
-// Netai signs, gap-filling trade) are built below.
+// T7: weekly scored list of non-users per market. All five criteria flags are
+// built. The two that were once reported unbuildable joined in ticket 7 task
+// 15: "relevance to a specific user's goals" reads the tasks table (the goals
+// ARE tasks — the earlier "no goals table" note was wrong), and "lookalike
+// match to our best users" uses the founder's D50 definition of a best user —
+// any one of: a confirmed search outcome in the last 30 days, three paid
+// months, or using Netai at least once a week.
 
 // Score-part weights and saturation points — a handful of holders (Reach) or
 // matched searches (Pull) already carries the same signal as a hundred would,
@@ -31,6 +30,25 @@ const PULL_WEIGHT = 0.35;
 const WARMTH_WEIGHT = 0.3;
 const NEEDS_NETAI_BONUS = 0.1;
 const GAP_FILLING_BONUS = 0.05;
+// Ticket 7 task 15: the two remaining criteria flags. A target an open goal
+// is actually looking for outranks a merely-popular one; a lookalike bonus is
+// softer — a correlation, not a demand signal.
+const GOAL_RELEVANCE_BONUS = 0.1;
+const BEST_USER_LOOKALIKE_BONUS = 0.05;
+
+// D50's best-user definition, verbatim: any ONE of the three qualifies.
+const BEST_USER_OUTCOME_DAYS = 30;
+const BEST_USER_PAID_MONTHS = 3;
+// "uses Netai at least once a week", read over the last four weeks: a chat
+// run in four distinct weeks (token_transactions' chat_debit rows — every
+// conversation run writes one, the broadest real usage signal in the schema).
+const BEST_USER_ACTIVE_WEEKS = 4;
+const BEST_USER_ACTIVITY_WINDOW_DAYS = 28;
+// A "confirmed outcome" is any rung at or beyond accepted on D39's ladder.
+const CONFIRMED_OUTCOMES = ['accepted', 'sent', 'replied', 'followed_up'];
+// The lookalike vocabulary comes from the trade-shaped facts recorded about
+// best users themselves — occupations match occupations, never name tokens.
+const LOOKALIKE_FACT_TYPES = ['occupation', 'industry', 'employer'];
 // A topic this scarce in candidates (this or fewer non-user matches) counts
 // its matched trade as gap-filling — genuinely hard to find in the network.
 const GAP_FILLING_POOL_THRESHOLD = 2;
@@ -120,6 +138,12 @@ export interface TargetScoreParts {
   warmth: number;
   needs_netai_signs: boolean;
   gap_filling_trade: boolean;
+  // An OPEN goal of an active subscriber whole-word-matches this target's
+  // label — someone on Netai is looking for exactly this right now.
+  goal_relevant: boolean;
+  // The target's label shares a trade token with facts recorded about D50's
+  // best users — the people Netai demonstrably works for.
+  best_user_lookalike: boolean;
   // ≥2 distinct contributors know this phone by a shared, non-brand name
   // token — the "this is a person" signal. Unconfirmed entries rank last.
   person_confirmed: boolean;
@@ -322,6 +346,111 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
   return result;
 }
 
+/**
+ * D50's best users, exactly as ruled: active subscribers with ANY one of a
+ * confirmed outcome (a rung at or beyond accepted) in the last 30 days,
+ * three paid months (distinct monthly token grants), or a chat run in each
+ * of the last four weeks.
+ */
+async function bestUserIds(): Promise<number[]> {
+  const result = await query<{ id: number }>(
+    `SELECT u.id FROM "User" u
+     WHERE u.subscription_status = 'active' AND (
+       EXISTS (
+         SELECT 1 FROM search_activity sa
+         WHERE sa.user_id = u.id::text AND sa.outcome = ANY($1)
+           AND sa.outcome_updated_at > NOW() - make_interval(days => $2)
+       )
+       OR (
+         SELECT COUNT(DISTINCT tt.period_key) FROM token_transactions tt
+         WHERE tt.user_id = u.id::text AND tt.reason = 'monthly_grant'
+       ) >= $3
+       OR (
+         SELECT COUNT(DISTINCT date_trunc('week', tt.created_at)) FROM token_transactions tt
+         WHERE tt.user_id = u.id::text AND tt.reason = 'chat_debit'
+           AND tt.created_at > NOW() - make_interval(days => $4)
+       ) >= $5
+     )`,
+    [
+      CONFIRMED_OUTCOMES,
+      BEST_USER_OUTCOME_DAYS,
+      BEST_USER_PAID_MONTHS,
+      BEST_USER_ACTIVITY_WINDOW_DAYS,
+      BEST_USER_ACTIVE_WEEKS,
+    ],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.id);
+}
+
+/**
+ * The trade tokens describing best users — occupation/industry/employer fact
+ * values recorded about their own phones, tokenized, brand words out. Name
+ * tokens never enter (facts carry trades, not names), so a lookalike match
+ * means "same kind of person", never "same first name".
+ */
+async function bestUserVocabulary(): Promise<Set<string>> {
+  const ids = await bestUserIds();
+  if (ids.length === 0) return new Set();
+  const phoneRows = await query<{ phone: string }>(
+    `SELECT phone FROM "UserPhone" WHERE "userId" = ANY($1)`,
+    [ids],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  const phones = Array.from(
+    new Set(phoneRows.rows.map((r) => normalizePhone(r.phone)).filter((p) => p !== '')),
+  );
+  if (phones.length === 0) return new Set();
+  const facts = await query<{ value: string }>(
+    `SELECT value FROM contact_facts
+     WHERE neo4j_contact_id = ANY($1) AND field_type = ANY($2) AND retracted_at IS NULL`,
+    [phones, LOOKALIKE_FACT_TYPES],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  const vocabulary = new Set<string>();
+  for (const row of facts.rows) {
+    for (const token of tokenize(row.value)) {
+      if (!BRAND_STOPLIST.has(token)) vocabulary.add(token);
+    }
+  }
+  return vocabulary;
+}
+
+/**
+ * Which candidate phones an OPEN goal is actually looking for: each label
+ * word matched whole-word (`<<%`, the same strict word-similarity operator
+ * the unmet-needs matching uses — goal text is inflected prose, so exact
+ * token equality would miss "სანტექნიკოსი" inside "სანტექნიკოსს ვეძებ")
+ * against active subscribers' open tasks. Explainable and per-goal real —
+ * the criterion the earlier "no goals table" note wrongly skipped.
+ */
+async function goalRelevantPhones(candidates: Map<string, CandidateContext>): Promise<Set<string>> {
+  const pairPhones: string[] = [];
+  const pairWords: string[] = [];
+  for (const [phone, ctx] of candidates) {
+    for (const word of new Set(tokenize(ctx.label))) {
+      if (BRAND_STOPLIST.has(word)) continue;
+      pairPhones.push(phone);
+      pairWords.push(word);
+    }
+  }
+  if (pairPhones.length === 0) return new Set();
+  const result = await query<{ phone: string }>(
+    `SELECT DISTINCT x.phone
+     FROM UNNEST($1::text[], $2::text[]) AS x(phone, word)
+     WHERE EXISTS (
+       SELECT 1 FROM tasks t
+       JOIN "User" u ON u.id = t.user_id AND u.subscription_status = 'active'
+       WHERE t.status = 'open'
+         AND normalize_search_token(x.word) <<% normalize_search_token(
+           COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' || COALESCE(t.brief, ''))
+     )`,
+    [pairPhones, pairWords],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((r) => r.phone));
+}
+
 function isGeorgianPersonalMobile(phone: string): boolean {
   return GEORGIAN_MOBILE_RE.test(phone);
 }
@@ -338,12 +467,16 @@ function combinedScore(parts: {
   warmth: number;
   needsNetai: boolean;
   gapFilling: boolean;
+  goalRelevant: boolean;
+  bestUserLookalike: boolean;
 }): number {
   const normReach = Math.min(1, parts.reach / REACH_SATURATION);
   const normPull = Math.min(1, parts.pull / PULL_SATURATION);
   let score = normReach * REACH_WEIGHT + normPull * PULL_WEIGHT + parts.warmth * WARMTH_WEIGHT;
   if (parts.needsNetai) score += NEEDS_NETAI_BONUS;
   if (parts.gapFilling) score += GAP_FILLING_BONUS;
+  if (parts.goalRelevant) score += GOAL_RELEVANCE_BONUS;
+  if (parts.bestUserLookalike) score += BEST_USER_LOOKALIKE_BONUS;
   return Math.min(1, score);
 }
 
@@ -395,12 +528,19 @@ export async function buildTargetList(sinceDays: number): Promise<TargetScoreEnt
   // people — 0-800 lines, short codes and foreign-prefix normalisations out.
   const phones = Array.from(candidates.keys()).filter(isGeorgianPersonalMobile);
 
-  const [reachMap, warmthMap, aliasMap, capacity] = await Promise.all([
-    reachForPhones(phones),
-    warmthSignalsForPhones(phones),
-    analyzeAliases(phones),
-    countAskableUsers(),
-  ]);
+  const scoredCandidates = new Map(
+    Array.from(candidates.entries()).filter(([phone]) => phones.includes(phone)),
+  );
+  const [reachMap, warmthMap, aliasMap, capacity, goalRelevant, bestVocabulary] = await Promise.all(
+    [
+      reachForPhones(phones),
+      warmthSignalsForPhones(phones),
+      analyzeAliases(phones),
+      countAskableUsers(),
+      goalRelevantPhones(scoredCandidates),
+      bestUserVocabulary(),
+    ],
+  );
 
   const entries: TargetScoreEntry[] = [];
   for (const phone of phones) {
@@ -413,17 +553,29 @@ export async function buildTargetList(sinceDays: number): Promise<TargetScoreEnt
     const warmth = warmthScore(warmthMap.get(phone) ?? { strength: 0, colour: null, factCount: 0 });
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
+    const isGoalRelevant = goalRelevant.has(phone);
+    const isBestUserLookalike = tokenize(ctx.label).some((t) => bestVocabulary.has(t));
     entries.push({
       phone,
       label: ctx.label,
       city: ctx.city,
-      score: combinedScore({ reach, pull: ctx.pull, warmth, needsNetai, gapFilling }),
+      score: combinedScore({
+        reach,
+        pull: ctx.pull,
+        warmth,
+        needsNetai,
+        gapFilling,
+        goalRelevant: isGoalRelevant,
+        bestUserLookalike: isBestUserLookalike,
+      }),
       parts: {
         reach,
         pull: ctx.pull,
         warmth,
         needs_netai_signs: needsNetai,
         gap_filling_trade: gapFilling,
+        goal_relevant: isGoalRelevant,
+        best_user_lookalike: isBestUserLookalike,
         person_confirmed: analysis?.personConfirmed ?? false,
       },
     });

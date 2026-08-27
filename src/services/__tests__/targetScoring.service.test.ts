@@ -36,10 +36,29 @@ function routeScoreQueries(opts: {
   facts?: { phone: string; cnt: string }[];
   aliases?: { phone: string; contactId: number; alias: string }[];
   askableCount?: number;
+  // Ticket 7 task 15: the two once-"unbuildable" criteria.
+  goalRelevantPhones?: string[];
+  bestUserIds?: number[];
+  bestUserPhones?: string[];
+  bestUserFactValues?: string[];
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('CROSS JOIN LATERAL'))
       return Promise.resolve(rows(opts.aliases ?? []) as never);
+    if (sql.includes('FROM tasks t'))
+      return Promise.resolve(
+        rows((opts.goalRelevantPhones ?? []).map((phone) => ({ phone }))) as never,
+      );
+    if (sql.includes('SELECT u.id FROM "User" u'))
+      return Promise.resolve(rows((opts.bestUserIds ?? []).map((id) => ({ id }))) as never);
+    if (sql.includes('FROM "UserPhone"'))
+      return Promise.resolve(
+        rows((opts.bestUserPhones ?? []).map((phone) => ({ phone }))) as never,
+      );
+    if (sql.includes('field_type = ANY'))
+      return Promise.resolve(
+        rows((opts.bestUserFactValues ?? []).map((value) => ({ value }))) as never,
+      );
     if (sql.includes('UNION')) return Promise.resolve(rows(opts.reach ?? []) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(opts.strength ?? []) as never);
@@ -85,6 +104,59 @@ describe('buildTargetList', () => {
     // Matched the second topic's single-candidate pool too — gap-filling.
     expect(target?.parts.gap_filling_trade).toBe(true);
     expect(target?.city).toBe('თბილისი');
+  });
+
+  it('task 15: flags goal_relevant when an OPEN goal whole-word-matches the label, and scores it higher', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('სანტექნიკოსი', [
+        { phone: '+995500000011', label: 'ზურა სანტექნიკოსი' },
+        { phone: '+995500000012', label: 'გია სანტექნიკოსი' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50, goalRelevantPhones: ['+995500000011'] });
+
+    const out = await buildTargetList(30);
+
+    const relevant = out.find((e) => e.phone === '+995500000011');
+    const other = out.find((e) => e.phone === '+995500000012');
+    expect(relevant?.parts.goal_relevant).toBe(true);
+    expect(other?.parts.goal_relevant).toBe(false);
+    expect((relevant?.score ?? 0) > (other?.score ?? 0)).toBe(true);
+  });
+
+  it("task 15: flags best_user_lookalike from a whole-token match against best users' trade facts — never name tokens", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('იურისტი', [
+        { phone: '+995500000013', label: 'დათო იურისტი' },
+        { phone: '+995500000014', label: 'გია მშენებელი' },
+      ]),
+    ]);
+    routeScoreQueries({
+      askableCount: 50,
+      bestUserIds: [7],
+      bestUserPhones: ['+995599123456'],
+      bestUserFactValues: ['იურისტი კორპორატიულ საქმეებში'],
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.find((e) => e.phone === '+995500000013')?.parts.best_user_lookalike).toBe(true);
+    expect(out.find((e) => e.phone === '+995500000014')?.parts.best_user_lookalike).toBe(false);
+  });
+
+  it('task 15: with NO best users, the lookalike flag is false everywhere and no fact query runs', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('იურისტი', [{ phone: '+995500000015', label: 'დათო იურისტი' }]),
+    ]);
+    routeScoreQueries({ askableCount: 50, bestUserIds: [] });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0].parts.best_user_lookalike).toBe(false);
+    const phoneQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM "UserPhone"'),
+    );
+    expect(phoneQuery).toBeUndefined();
   });
 
   it('flags needs-Netai signals from the matched label, explainably', async () => {
