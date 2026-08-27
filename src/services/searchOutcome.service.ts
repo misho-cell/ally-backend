@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { queueFollowUp } from './pendingUpdates.service';
+import { armSearchDebrief } from './debrief.service';
 
 const QUERY_TIMEOUT_MS = 8_000;
 // Ticket 6, founder's answer ②: "success for us is when user get his
@@ -56,6 +57,15 @@ export async function recordSearchOutcome(input: RecordOutcomeInput): Promise<bo
       FOLLOW_UP_KIND,
       { search_id: input.searchId },
       FOLLOW_UP_DELAY_DAYS,
+    );
+  }
+
+  // D49: an accepted name arms the 3-day debrief ("how did it actually go?").
+  // Best-effort — the outcome write above must stand even if arming fails.
+  if (updated && input.outcome === 'accepted') {
+    await armSearchDebrief(input.userId, input.searchId).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[debrief] search arm failed:', (err as Error).message),
     );
   }
 

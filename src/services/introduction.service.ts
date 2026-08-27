@@ -5,6 +5,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
 import { scrubText } from './privacyScrub';
 import { recordIntroOutcome } from './partH.service';
+import { armIntroDebrief } from './debrief.service';
 import { geoName } from './georgianCase';
 
 export interface PendingRequest {
@@ -448,6 +449,15 @@ export async function resolveIntroductionRequest(
     req.id,
     action === 'accept' ? 'accepted' : 'declined',
   );
+  // D49: an accepted introduction arms the requester's 3-day debrief. Best-
+  // effort — the accept itself must never fail on this.
+  if (action === 'accept') {
+    await armIntroDebrief(String(req.requester_user_id), req.id, req.target_name).catch(
+      (err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[debrief] intro arm failed:', (err as Error).message),
+    );
+  }
   await notifyRequester(req, action === 'accept');
   // A mediated accept must PRODUCE the introduction (task 16); a direct
   // accept's outcome is the target's own yes, already in outcomeMessage.

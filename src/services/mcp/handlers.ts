@@ -47,7 +47,8 @@ import {
 import { normalizePhone } from '../phone';
 import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
-import { buildCuriosityQueue } from '../curiosityQueue.service';
+import { buildCuriosityQueue, maybeCuriosityUpdate } from '../curiosityQueue.service';
+import { filterStaleDebriefs, recordDebriefOutcome } from '../debrief.service';
 import { maybeOfferThanksLoop, respondToThanksLoopOffer } from '../thanksLoop.service';
 import {
   getPendingRequestsForMediator,
@@ -542,7 +543,7 @@ export async function mcpAnswerProfileQuestion(
 
 export async function mcpSaveContactFact(
   userId: string,
-  args: { contact_ref: string; field_type: string; value: string },
+  args: { contact_ref: string; field_type: string; value: string; source?: string },
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
@@ -556,7 +557,15 @@ export async function mcpSaveContactFact(
   const value = (args.value ?? '').trim();
   if (!value) return { saved: false, error: 'Pass a non-empty value.' };
 
-  const result = await submitContactFact(userId, phone, fieldType, value);
+  // Only 'debrief' may be claimed by the model; 'sweep' and 'label' are
+  // server-side pipelines and stay unreachable from here (fail-closed).
+  const result = await submitContactFact(
+    userId,
+    phone,
+    fieldType,
+    value,
+    args.source === 'debrief' ? 'debrief' : 'chat',
+  );
   // is_public means the crowd corroborated it; the saved value is still private
   // to this user's assistant either way.
   return { saved: true, field_type: fieldType, crowd_confirmed: result.is_public };
@@ -982,7 +991,7 @@ export async function mcpQueueResult(
 
 export async function mcpRecordSearchOutcome(
   userId: string,
-  args: { search_id?: number; outcome?: string; reason?: string },
+  args: { search_id?: number; outcome?: string; reason?: string; worked?: boolean },
 ): Promise<McpToolPayload> {
   const searchId = Number(args.search_id);
   if (!Number.isFinite(searchId) || searchId <= 0) {
@@ -1000,6 +1009,7 @@ export async function mcpRecordSearchOutcome(
     userId,
     outcome,
     reason: args.reason ?? null,
+    worked: typeof args.worked === 'boolean' ? args.worked : null,
   });
   if (!recorded) {
     return {
@@ -1029,15 +1039,45 @@ export async function mcpRespondToThanksLoopOffer(
 
 export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {
   // Release first, THEN count — so the just-released burst is already 'seen' and
-  // more_pending reflects only what is still waiting.
-  const updates = await getPendingUpdates(userId);
+  // more_pending reflects only what is still waiting. Same unified T9 surface
+  // as the in-app read: stale debriefs dropped (D49 "with no outcome
+  // recorded"), at most one live curiosity item appended.
+  const updates = await filterStaleDebriefs(userId, await getPendingUpdates(userId));
   const morePending = await countHeldUpdates(userId);
-  return {
-    updates: updates.map((u) => ({
+  const curiosity = await maybeCuriosityUpdate(userId).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[curiosity] pending-update check failed:', (err as Error).message);
+    return null;
+  });
+  const items = [
+    ...updates.map((u) => ({
       task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),
       kind: u.kind,
       ...(scrubDeep(u.payload) as McpToolPayload),
     })),
-    more_pending: morePending,
+    ...(curiosity === null
+      ? []
+      : [
+          {
+            task_ref: null,
+            kind: curiosity.kind,
+            contact_ref: encodeContactRef(userId, curiosity.phone),
+            ...(scrubDeep(curiosity.payload) as McpToolPayload),
+          },
+        ]),
+  ];
+  return { updates: items, more_pending: morePending };
+}
+
+export async function mcpRecordDebriefOutcome(
+  userId: string,
+  args: { subject?: string; ref_id?: number; worked?: boolean },
+): Promise<McpToolPayload> {
+  const subject = args.subject;
+  if (subject !== 'introduction' && subject !== 'relayed_ask') {
+    return { recorded: false, error: 'subject must be "introduction" or "relayed_ask".' };
+  }
+  return {
+    ...(await recordDebriefOutcome(userId, subject, Number(args.ref_id), args.worked === true)),
   };
 }

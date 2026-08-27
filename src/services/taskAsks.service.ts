@@ -9,6 +9,7 @@ import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
 import { checkAskBudget } from './askBudget.service';
+import { armAskDebrief } from './debrief.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 // The recipient's chat list must distinguish eight questions from the same
@@ -288,6 +289,14 @@ export async function createAsk(
     body: safeQuestion.slice(0, 120),
     url: `/chat/${thread.id}`,
   }).catch(() => undefined);
+
+  // D49: a relayed ask reaching 'sent' arms the asker's 3-day debrief — if
+  // it is still unanswered by then, the asker hears about it honestly. An
+  // answered ask is dropped at release time. Best-effort: the send stands.
+  await armAskDebrief(fromUserId, ask.rows[0].id, taskId, toName).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[debrief] ask arm failed:', (err as Error).message),
+  );
 
   return { sent: true, ask_id: ask.rows[0].id, to_name: toName };
 }

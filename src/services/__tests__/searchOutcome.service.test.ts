@@ -3,13 +3,19 @@ jest.mock('../pendingUpdates.service', () => ({
   __esModule: true,
   queueFollowUp: jest.fn().mockResolvedValue({ id: 1 }),
 }));
+jest.mock('../debrief.service', () => ({
+  __esModule: true,
+  armSearchDebrief: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../db/postgres/client';
 import { queueFollowUp } from '../pendingUpdates.service';
+import { armSearchDebrief } from '../debrief.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from '../searchOutcome.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockQueueFollowUp = queueFollowUp as jest.MockedFunction<typeof queueFollowUp>;
+const mockArmSearchDebrief = armSearchDebrief as jest.MockedFunction<typeof armSearchDebrief>;
 
 function result(rowCount: number): { rows: unknown[]; rowCount: number } {
   return { rows: [], rowCount };
@@ -78,6 +84,27 @@ describe('recordSearchOutcome — ticket 6, founder\'s answer ②: "a name found
     await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'replied' });
 
     expect(mockQueueFollowUp).not.toHaveBeenCalled();
+  });
+
+  it('reaching "accepted" arms the 3-day debrief (D49) — and only "accepted" does', async () => {
+    mockQuery.mockResolvedValue(result(1) as never);
+
+    await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'accepted' });
+    expect(mockArmSearchDebrief).toHaveBeenCalledWith('501', 9);
+
+    mockArmSearchDebrief.mockClear();
+    await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'sent' });
+    await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'refused' });
+    expect(mockArmSearchDebrief).not.toHaveBeenCalled();
+  });
+
+  it('a failed debrief arm never fails the outcome write itself', async () => {
+    mockQuery.mockResolvedValue(result(1) as never);
+    mockArmSearchDebrief.mockRejectedValue(new Error('debrief store down'));
+
+    const out = await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'accepted' });
+
+    expect(out).toBe(true);
   });
 
   it('carries the "did it work" answer for the followed_up rung', async () => {

@@ -5,7 +5,7 @@ jest.mock('../graphAnalytics.service', () => ({ __esModule: true, getTopConnecto
 import { query } from '../../db/postgres/client';
 import { buildTargetList } from '../targetScoring.service';
 import { getTopConnectors } from '../graphAnalytics.service';
-import { buildCuriosityQueue } from '../curiosityQueue.service';
+import { buildCuriosityQueue, maybeCuriosityUpdate } from '../curiosityQueue.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockBuildTargetList = buildTargetList as jest.MockedFunction<typeof buildTargetList>;
@@ -22,10 +22,13 @@ interface RouteOpts {
   warmEmpty?: { contact_phone: string }[];
   presence?: { phone: string; field_type: string }[];
   labels?: { phone: string; label: string | null }[];
+  recentSurfacing?: { id: number }[];
 }
 
 function routeQueueQueries(opts: RouteOpts): void {
   mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('SELECT id FROM curiosity_surfacing_log'))
+      return Promise.resolve(rows(opts.recentSurfacing ?? []) as never);
     if (sql.includes('normalize_search_token(tag)'))
       return Promise.resolve(rows(opts.lookalike ?? []) as never);
     if (sql.includes('mine_sample')) return Promise.resolve(rows(opts.mentioned ?? []) as never);
@@ -207,5 +210,63 @@ describe('buildCuriosityQueue', () => {
         priority: 4,
       },
     ]);
+  });
+});
+
+describe("maybeCuriosityUpdate — the curiosity trigger in T9's one pending_updates list", () => {
+  // Distinct user ids per test: the empty-queue negative cache is module-level.
+  it('wraps the top queue item as a typed update, phone kept OUTSIDE the payload', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000021' }],
+      presence: [],
+      labels: [{ phone: '+995500000021', label: 'ლევანი' }],
+    });
+
+    const out = await maybeCuriosityUpdate('101');
+
+    expect(out).not.toBeNull();
+    expect(out?.kind).toBe('curiosity');
+    expect(out?.task_id).toBeNull();
+    expect(out?.phone).toBe('+995500000021');
+    expect(out?.payload).toEqual(
+      expect.objectContaining({
+        who: 'ლევანი',
+        missing_fact: 'occupation',
+        question_type: 'close_contact',
+        technique_tag: null,
+        why: expect.any(String),
+        instruction: expect.any(String),
+      }),
+    );
+    expect(out?.payload).not.toHaveProperty('phone');
+  });
+
+  it('returns null while anything curiosity-shaped surfaced within the interval — the budget', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000022' }],
+      presence: [],
+      recentSurfacing: [{ id: 9 }],
+    });
+
+    expect(await maybeCuriosityUpdate('102')).toBeNull();
+    // The five tiers were never computed — the gate comes first.
+    const tierCall = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('mine_sample'));
+    expect(tierCall).toBeUndefined();
+  });
+
+  it('an EMPTY queue is remembered in-process — the expensive tiers are not re-run next call', async () => {
+    routeQueueQueries({});
+
+    expect(await maybeCuriosityUpdate('103')).toBeNull();
+    const tierCallsAfterFirst = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('mine_sample'),
+    ).length;
+    expect(tierCallsAfterFirst).toBe(1);
+
+    expect(await maybeCuriosityUpdate('103')).toBeNull();
+    const tierCallsAfterSecond = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('mine_sample'),
+    ).length;
+    expect(tierCallsAfterSecond).toBe(1);
   });
 });

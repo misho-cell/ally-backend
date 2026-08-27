@@ -400,7 +400,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Returns the results due to be shown today (drip-released) plus a count of how many more ' +
       'are still coming. Call once at the start of a conversation, alongside check_my_inbox; ' +
       'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
-      'Each item is reported only once.',
+      'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
+      'chorus_ask, debrief, curiosity — and each carries its own instruction: follow it.',
+  },
+  record_debrief_outcome: {
+    title: 'Record how a debrief went',
+    description:
+      'Records how an introduction or a relayed ask ACTUALLY went, after the user answered a ' +
+      'debrief question (a kind="debrief" item from get_pending_updates). subject and ref_id ' +
+      'come from that item; worked=true when it genuinely helped. For search debriefs use ' +
+      'record_search_outcome instead. Never call it on a guess — only on what the user just said.',
   },
   ask_contact: {
     title: 'Ask a contact on a task',

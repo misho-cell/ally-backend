@@ -17,9 +17,14 @@ jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../pendingUpdates.service', () => ({
+  __esModule: true,
+  queueFollowUp: jest.fn().mockResolvedValue({ id: 1 }),
+}));
 
 import { query } from '../../db/postgres/client';
 import { buildTargetList } from '../targetScoring.service';
+import { queueFollowUp } from '../pendingUpdates.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import {
   currentGlobalDial,
@@ -200,6 +205,15 @@ describe('sendDueCampaignAsks', () => {
     );
     expect(updates).toHaveLength(1);
     expect(updates[0][1]).toEqual([1, 77]);
+    // T9's one list: the ask ALSO becomes a typed chorus_ask pending update,
+    // released immediately, so any conversation the inviter opens sees it.
+    expect(queueFollowUp).toHaveBeenCalledWith(
+      '10',
+      null,
+      'chorus_ask',
+      expect.objectContaining({ who: 'electrician', thread_id: 77 }),
+      0,
+    );
   });
 
   it('does nothing when nothing is due', async () => {
@@ -207,6 +221,7 @@ describe('sendDueCampaignAsks', () => {
 
     expect(await sendDueCampaignAsks(50)).toBe(0);
     expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(queueFollowUp).not.toHaveBeenCalled();
   });
 });
 

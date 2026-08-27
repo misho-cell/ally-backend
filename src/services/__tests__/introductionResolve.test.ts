@@ -17,8 +17,13 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 77 }),
 }));
+jest.mock('../debrief.service', () => ({
+  __esModule: true,
+  armIntroDebrief: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../db/postgres/client';
+import { armIntroDebrief } from '../debrief.service';
 import { sendPushNotification } from '../notification.service';
 import { recordProductEvent } from '../productEvents.service';
 import { setThreadStatus } from '../threadStatus.service';
@@ -152,6 +157,8 @@ describe('resolveIntroductionRequest', () => {
       statusLine: 'პასუხი მოვიდა',
       requestRef: REQUEST_ROW.request_ref,
     });
+    // D49: the accept arms the REQUESTER's 3-day debrief, keyed to this request.
+    expect(armIntroDebrief).toHaveBeenCalledWith('9', 5, 'გიორგი');
   });
 
   it('is idempotent: repeating the already-applied answer succeeds without re-updating', async () => {
@@ -162,6 +169,7 @@ describe('resolveIntroductionRequest', () => {
     });
 
     expect(out).toEqual({ ok: true, already: true, status: 'accepted' });
+    expect(armIntroDebrief).not.toHaveBeenCalled();
     expect(mockQuery).toHaveBeenCalledTimes(1); // only the SELECT
     expect(mockPush).not.toHaveBeenCalled();
     expect(mockEvent).not.toHaveBeenCalled();

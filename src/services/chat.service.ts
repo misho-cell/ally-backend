@@ -68,8 +68,9 @@ import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.serv
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
 import { recordCampaignResponse } from './chorusCampaign.service';
-import { buildCuriosityQueue } from './curiosityQueue.service';
+import { buildCuriosityQueue, maybeCuriosityUpdate } from './curiosityQueue.service';
 import { maybeOfferThanksLoop, respondToThanksLoopOffer } from './thanksLoop.service';
+import { filterStaleDebriefs, recordDebriefOutcome } from './debrief.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -411,6 +412,11 @@ const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
         type: 'string',
         description:
           'The fact value, concise and in original language (e.g. "ფეხბურთელი", "TBC Bank", "თბილისი")',
+      },
+      source: {
+        type: 'string',
+        description:
+          'Where this fact came from. Omit normally (defaults to "chat"); pass "debrief" ONLY when saving what the user said in answer to a debrief question from get_pending_updates.',
       },
     },
     required: ['phone', 'field_type', 'value'],
@@ -1135,9 +1141,31 @@ const GET_CURIOSITY_QUEUE_TOOL: AnthropicTool = {
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
-    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once.' +
+    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity — and each carries its own instruction in the payload: follow it.' +
     ' WHEN: for what is due today.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+const RECORD_DEBRIEF_OUTCOME_TOOL: AnthropicTool = {
+  name: 'record_debrief_outcome',
+  description:
+    'Record how an introduction or a relayed ask ACTUALLY went, after the user answered a debrief question (a kind="debrief" item from get_pending_updates). subject and ref_id come from that item. worked=true when the connection/answer genuinely helped, false when it did not. For search debriefs use record_search_outcome instead. Never call it on a guess — only on what the user just said.' +
+    ' WHEN: right after the user answers a debrief question.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      subject: {
+        type: 'string',
+        description: 'One of: "introduction" (intro_request_id) or "relayed_ask" (ask_id)',
+      },
+      ref_id: {
+        type: 'number',
+        description: 'The intro_request_id or ask_id from the debrief item payload',
+      },
+      worked: { type: 'boolean', description: 'true = it genuinely helped' },
+    },
+    required: ['subject', 'ref_id', 'worked'],
+  },
 };
 
 const GET_TOP_CONNECTORS_TOOL: AnthropicTool = {
@@ -2032,11 +2060,14 @@ async function executeToolCall(
     case 'get_thread_context':
       return getThreadContext(userId);
     case 'save_contact_fact':
+      // Only 'debrief' may be claimed by the model; 'sweep' and 'label' are
+      // server-side pipelines and stay unreachable from here (fail-closed).
       return submitContactFact(
         userId,
         input['phone'] as string,
         input['field_type'] as string,
         input['value'] as string,
+        input['source'] === 'debrief' ? 'debrief' : 'chat',
       );
     case 'get_contact_facts':
       // Saved contact data masks private emails (a public web email the model
@@ -2353,9 +2384,30 @@ async function executeToolCall(
     }
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.
-      const updates = await getPendingUpdates(userId);
+      // A debrief item whose subject moved on is dropped (D49: "with no outcome
+      // recorded"); at most one live-computed curiosity item joins the same
+      // list — T9's ONE surface for all trigger types.
+      const updates = await filterStaleDebriefs(userId, await getPendingUpdates(userId));
       const morePending = await countHeldUpdates(userId);
-      return { updates, more_pending: morePending };
+      const curiosity = await maybeCuriosityUpdate(userId).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[curiosity] pending-update check failed:', (err as Error).message);
+        return null;
+      });
+      return {
+        updates:
+          curiosity === null
+            ? updates
+            : [
+                ...updates,
+                {
+                  kind: curiosity.kind,
+                  task_id: curiosity.task_id,
+                  payload: { ...curiosity.payload, phone: curiosity.phone },
+                },
+              ],
+        more_pending: morePending,
+      };
     }
     case 'get_profile_question': {
       // onboarding rows are reserved for sign-up (the founder's ruling,
@@ -2386,6 +2438,18 @@ async function executeToolCall(
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
+    case 'record_debrief_outcome': {
+      const subject = input['subject'];
+      if (subject !== 'introduction' && subject !== 'relayed_ask') {
+        return { recorded: false, error: 'subject must be "introduction" or "relayed_ask".' };
+      }
+      return recordDebriefOutcome(
+        userId,
+        subject,
+        Number(input['ref_id']),
+        input['worked'] === true,
+      );
+    }
     case 'get_group_connectors':
       return getGroupConnectors(
         userId,
@@ -2513,6 +2577,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   forget_contact_fact: '🗑️ ჩანაწერს სამუდამოდ ვშლი...',
   respond_to_invite_campaign: '📣 პასუხს ვინახავ...',
   get_curiosity_queue: '🤔 ვინ დამაინტერესოს, ვფიქრობ...',
+  record_debrief_outcome: '📌 შედეგს ვინიშნავ...',
   respond_to_thanks_loop_offer: '💌 მადლობის შეტყობინებას ვამზადებ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
@@ -3159,6 +3224,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_USER_NOTES_TOOL,
     QUEUE_RESULT_TOOL,
     RECORD_SEARCH_OUTCOME_TOOL,
+    RECORD_DEBRIEF_OUTCOME_TOOL,
     GET_PENDING_UPDATES_TOOL,
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,

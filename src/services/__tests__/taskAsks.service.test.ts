@@ -31,8 +31,13 @@ jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../debrief.service', () => ({
+  __esModule: true,
+  armAskDebrief: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../db/postgres/client';
+import { armAskDebrief } from '../debrief.service';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { checkAskBudget } from '../askBudget.service';
@@ -150,6 +155,8 @@ describe('createAsk', () => {
     expect(opening).not.toContain('**');
     // Item 27: declined properly, never the hyphenated „მიშო-ის".
     expect(opening).toContain('მიშოს ასისტენტი გეკითხება');
+    // D49: reaching 'sent' arms the ASKER's 3-day debrief for this ask.
+    expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია');
   });
 
   it('refuses a non-member recipient', async () => {

@@ -6,6 +6,18 @@ const QUERY_TIMEOUT_MS = 8_000;
 const DRIP_BURST = 3;
 const MAX_RELEASED_PER_READ = 10;
 
+// The typed items of T9's ONE surface (ticket 7 task 13): every conversation
+// trigger flows through this list, never through a private side channel.
+// 'found_result'-style kinds from queue_result remain free-form; these five
+// are the engine triggers, each queued with a payload carrying who / why /
+// technique_tag / the thread or search it belongs to.
+export type EngineTriggerKind =
+  | 'search_followup'
+  | 'thanks_loop'
+  | 'chorus_ask'
+  | 'debrief'
+  | 'curiosity';
+
 export interface PendingUpdate {
   id: number;
   task_id: number | null;

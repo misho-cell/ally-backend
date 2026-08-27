@@ -732,7 +732,7 @@ describe('memory tools', () => {
       value: 'MKD Law',
     });
     expect(ok.saved).toBe(true);
-    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'employer', 'MKD Law');
+    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'employer', 'MKD Law', 'chat');
 
     // field_type is free-form now, but must still be a real label — empty and
     // letterless inputs are rejected.
@@ -763,7 +763,7 @@ describe('memory tools', () => {
     });
 
     expect(ok.saved).toBe(true);
-    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'role', 'CEO @ Leavingstone');
+    expect(mockSubmitFact).toHaveBeenCalledWith(USER, PHONE, 'role', 'CEO @ Leavingstone', 'chat');
   });
 
   it('accepts a free-text note as a saveable field type', async () => {
@@ -782,6 +782,7 @@ describe('memory tools', () => {
       PHONE,
       'note',
       'Approach via a warm intro — dislikes cold outreach.',
+      'chat',
     );
   });
 
@@ -936,6 +937,7 @@ describe('mcpRecordSearchOutcome', () => {
       userId: USER,
       outcome: 'refused',
       reason: 'wrong field entirely',
+      worked: null,
     });
   });
 

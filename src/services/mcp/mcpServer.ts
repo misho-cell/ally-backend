@@ -45,6 +45,7 @@ import {
   mcpGetUserNotes,
   mcpQueueResult,
   mcpRecordSearchOutcome,
+  mcpRecordDebriefOutcome,
   mcpRespondToThanksLoopOffer,
   mcpGetPendingUpdates,
   mcpGetProfileQuestion,
@@ -312,6 +313,13 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
         field_type: z.string().describe(PARAM_TEXTS.factFieldType),
         value: z.string().describe(PARAM_TEXTS.factValue),
+        source: z
+          .enum(['chat', 'debrief'])
+          .optional()
+          .describe(
+            'Omit normally (defaults to "chat"); "debrief" ONLY when saving the answer to a ' +
+              'debrief question from get_pending_updates',
+          ),
       },
       annotations: WRITE,
     },
@@ -481,10 +489,31 @@ function registerGoalTools(server: McpServer, userId: string): void {
           .string()
           .optional()
           .describe('Why refused — only meaningful with outcome=refused'),
+        worked: z
+          .boolean()
+          .optional()
+          .describe('With outcome=followed_up: did it actually help (true/false)'),
       },
       annotations: WRITE,
     },
     (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+  );
+  server.registerTool(
+    'record_debrief_outcome',
+    {
+      title: TOOL_TEXTS.record_debrief_outcome.title,
+      description: TOOL_TEXTS.record_debrief_outcome.description,
+      inputSchema: {
+        subject: z
+          .enum(['introduction', 'relayed_ask'])
+          .describe('From the debrief item: "introduction" or "relayed_ask"'),
+        ref_id: z.number().describe('The intro_request_id or ask_id from the debrief item payload'),
+        worked: z.boolean().describe('true = it genuinely helped'),
+      },
+      annotations: WRITE,
+    },
+    (args) =>
+      runTool(userId, 'record_debrief_outcome', () => mcpRecordDebriefOutcome(userId, args)),
   );
   server.registerTool(
     'respond_to_thanks_loop_offer',

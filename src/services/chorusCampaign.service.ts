@@ -1,11 +1,14 @@
 import { query } from '../db/postgres/client';
 import { buildTargetList, TargetScoreEntry } from './targetScoring.service';
+import { queueFollowUp } from './pendingUpdates.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
 
 const CAMPAIGN_QUERY_TIMEOUT_MS = 8_000;
+// The typed pending_updates item a due ask ALSO becomes (T9's one list).
+const CHORUS_ASK_KIND = 'chorus_ask';
 
 // Ticket 6, engine T8 ("Chorus"): fully automatic invite campaigns targeting
 // T7's weekly non-user list. Per target: chosen inviter-users, each walking
@@ -205,6 +208,29 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
        WHERE id = $1`,
       [row.id, thread.id],
       CAMPAIGN_QUERY_TIMEOUT_MS,
+    );
+    // T9 (ticket 7 task 13): the ask also enters the ONE pending_updates list
+    // (kind 'chorus_ask', released immediately), so any conversation the
+    // inviter opens sees it — the dedicated thread alone is not the surface.
+    // Best-effort: the ask itself already stands in its thread.
+    await queueFollowUp(
+      String(row.inviter_user_id),
+      null,
+      CHORUS_ASK_KIND,
+      {
+        who: label,
+        why: 'an invite-campaign ask is waiting for their answer',
+        thread_id: thread.id,
+        technique_tag: null,
+        instruction:
+          `A Netai invite ask about ${label} is waiting in its own thread. If it fits the ` +
+          'conversation, remind the user once, lightly, that it is there — their answer ' +
+          '(„კი" / „არა" / „უთხარი") is recorded in that thread, never here.',
+      },
+      0,
+    ).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[chorus] pending-update queue failed:', (err as Error).message),
     );
     emitThreadCreated(String(row.inviter_user_id), {
       id: thread.id,

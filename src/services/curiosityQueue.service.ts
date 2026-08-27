@@ -281,6 +281,74 @@ export async function buildCuriosityQueue(
   return finalItems;
 }
 
+// T9 (ticket 7 task 13): the curiosity trigger's place in the ONE
+// pending_updates list. At most one curiosity item enters the list, and only
+// when nothing curiosity-shaped was surfaced within the interval — the same
+// budget philosophy as the other triggers, env-configurable, never hardcoded.
+const CURIOSITY_SURFACE_INTERVAL_DAYS = Number(process.env.CURIOSITY_SURFACE_INTERVAL_DAYS ?? 7);
+// An account whose queue came back EMPTY is not re-computed on every
+// conversation start — the five tiers are genuinely expensive. In-process
+// negative cache: a restart retries once, which is honest and cheap.
+const EMPTY_QUEUE_RETRY_MS = 24 * 60 * 60 * 1000;
+const emptyQueueCheckedAt = new Map<string, number>();
+
+export interface CuriosityUpdate {
+  kind: 'curiosity';
+  task_id: null;
+  /**
+   * Kept OUTSIDE payload: each surface addresses contacts its own way — the
+   * in-app read merges the phone in, the connector swaps it for contact_ref.
+   */
+  phone: string;
+  payload: Record<string, unknown>;
+}
+
+/**
+ * The single curiosity item due for this user's conversation start, or null
+ * when one was already surfaced within the interval (via this path OR the
+ * get_curiosity_queue tool — curiosity_surfacing_log covers both) or the
+ * queue is empty. buildCuriosityQueue logs the surfacing itself, which is
+ * exactly what re-arms the interval.
+ */
+export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpdate | null> {
+  const lastEmptyCheck = emptyQueueCheckedAt.get(userId);
+  if (lastEmptyCheck !== undefined && Date.now() - lastEmptyCheck < EMPTY_QUEUE_RETRY_MS) {
+    return null;
+  }
+  const recent = await query<{ id: number }>(
+    `SELECT id FROM curiosity_surfacing_log
+     WHERE user_id = $1::int AND surfaced_at > NOW() - make_interval(days => $2)
+     LIMIT 1`,
+    [userId, CURIOSITY_SURFACE_INTERVAL_DAYS],
+    QUEUE_QUERY_TIMEOUT_MS,
+  );
+  if (recent.rows.length > 0) return null;
+
+  const items = await buildCuriosityQueue(userId, 1);
+  if (items.length === 0) {
+    emptyQueueCheckedAt.set(userId, Date.now());
+    return null;
+  }
+  emptyQueueCheckedAt.delete(userId);
+  const item = items[0];
+  return {
+    kind: 'curiosity',
+    task_id: null,
+    phone: item.phone,
+    payload: {
+      who: item.label,
+      missing_fact: item.missing_fact,
+      question_type: item.question_type,
+      why: `their ${item.missing_fact} is not recorded and this person ranks first on the curiosity queue (${item.question_type})`,
+      technique_tag: null,
+      instruction:
+        'If a natural moment comes up, ask ONE light question about this person — their ' +
+        `${item.missing_fact}. Never interrogate, never force it into an unrelated conversation. ` +
+        'Save the answer with save_contact_fact. Skipping it entirely is fine.',
+    },
+  };
+}
+
 async function logSurfacedItems(userId: string, items: CuriosityItem[]): Promise<void> {
   if (items.length === 0) return;
   await query(
