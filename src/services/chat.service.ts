@@ -38,7 +38,7 @@ import {
   touchThread,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts } from './contactFacts.service';
-import { getLabelQueueForUser } from './labelParser.service';
+import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.service';
 import {
   createTask,
   getMyTasks,
@@ -2243,7 +2243,13 @@ async function executeToolCall(
     case 'get_unresolved_labels': {
       const rawLimit = Number(input['limit']);
       const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
-      return { entries: await getLabelQueueForUser(userId, limit) };
+      // total (task 12 item 10): a full page with no total read as "exactly
+      // that many" — the real queue size travels with every page.
+      const [entries, total] = await Promise.all([
+        getLabelQueueForUser(userId, limit),
+        getLabelQueueTotalForUser(userId),
+      ]);
+      return { entries, total };
     }
     case 'remove_contact_from_network':
       // Same server gate shape as stop_contacting_me: nothing is deleted

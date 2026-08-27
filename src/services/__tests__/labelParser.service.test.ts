@@ -12,6 +12,7 @@ import {
   getLabelQueueTotal,
   reprocessLabelQueue,
   reprocessSavedOccupationFacts,
+  DICTIONARY_VERSION,
 } from '../labelParser.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -392,14 +393,17 @@ describe('reprocessLabelQueue (engine T2 catch-up pass)', () => {
       (sql as string).includes('FROM label_parse_queue'),
     );
     expect(call?.[0]).toContain('WHERE contact_id');
-    expect(call?.[1]).toEqual(['501']);
+    // Task 12 item 7: every sweep also carries the current dictionary version
+    // so rows this dictionary already failed on are skipped.
+    expect(call?.[1]).toEqual(['501', DICTIONARY_VERSION]);
 
     jest.clearAllMocks();
     mockQuery.mockResolvedValue(rows([]) as never);
     await reprocessLabelQueue();
     call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('FROM label_parse_queue'));
     expect(call?.[0]).not.toContain('WHERE contact_id');
-    expect(call?.[1]).toEqual([]);
+    expect(call?.[0]).toContain('last_tried_version');
+    expect(call?.[1]).toEqual([DICTIONARY_VERSION]);
   });
 });
 

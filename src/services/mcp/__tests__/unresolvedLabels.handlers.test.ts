@@ -1,6 +1,7 @@
 jest.mock('../../labelParser.service', () => ({
   __esModule: true,
   getLabelQueueForUser: jest.fn(),
+  getLabelQueueTotalForUser: jest.fn().mockResolvedValue(567),
 }));
 
 import { getLabelQueueForUser } from '../../labelParser.service';

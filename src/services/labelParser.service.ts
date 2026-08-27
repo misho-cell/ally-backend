@@ -151,6 +151,25 @@ function buildDictionary(): Readonly<Record<string, string>> {
 
 const OCCUPATION_DICTIONARY = buildDictionary();
 
+// Ticket 7 task 12 item 7: every re-parse attempt is stamped with the
+// dictionary VERSION that tried it, so a re-run with the same dictionary
+// skips rows it already failed on (cheap), while a changed dictionary
+// automatically revisits the whole existing base (the founder's "existing
+// base is the asset" ruling). The version derives from the dictionary's own
+// content — no manual bump to forget.
+function dictionaryVersion(dict: Readonly<Record<string, string>>): string {
+  const keys = Object.keys(dict).sort();
+  let hash = 5381;
+  for (const key of keys) {
+    for (let i = 0; i < key.length; i++) {
+      hash = ((hash << 5) + hash + key.charCodeAt(i)) | 0;
+    }
+  }
+  return `v${keys.length}-${(hash >>> 0).toString(16)}`;
+}
+
+export const DICTIONARY_VERSION = dictionaryVersion(OCCUPATION_DICTIONARY);
+
 interface LabelRow {
   contactId: number;
   phone: string;
@@ -292,11 +311,16 @@ export interface QueueReprocessResult {
  * whole queue.
  */
 export async function reprocessLabelQueue(userId?: string): Promise<QueueReprocessResult> {
+  // Version stamp (task 12 item 7): rows the CURRENT dictionary already
+  // tried and failed on are skipped — only a changed dictionary revisits them.
   const candidates = await query<LabelQueueEntry>(
     userId
-      ? `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue WHERE contact_id = $1::int`
-      : `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue`,
-    userId ? [userId] : [],
+      ? `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue
+         WHERE contact_id = $1::int
+           AND (last_tried_version IS NULL OR last_tried_version <> $2)`
+      : `SELECT id, contact_id, phone, alias, created_at FROM label_parse_queue
+         WHERE last_tried_version IS NULL OR last_tried_version <> $1`,
+    userId ? [userId, DICTIONARY_VERSION] : [DICTIONARY_VERSION],
     PARSE_TIMEOUT_MS,
   );
 
@@ -323,6 +347,11 @@ export async function reprocessLabelQueue(userId?: string): Promise<QueueReproce
       removed++;
       continue;
     }
+    await query(
+      `UPDATE label_parse_queue SET last_tried_version = $2 WHERE id = $1`,
+      [row.id, DICTIONARY_VERSION],
+      PARSE_TIMEOUT_MS,
+    );
     remaining++;
   }
   return { promoted, removed, remaining };
@@ -412,4 +441,17 @@ export async function getLabelQueueForUser(
     PARSE_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+/**
+ * The user's OWN queue total (ticket 7 task 12 item 10): a page of 100 with
+ * no total read as "exactly 100" — the caller needs the real number.
+ */
+export async function getLabelQueueTotalForUser(userId: string): Promise<number> {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM label_parse_queue WHERE contact_id = $1::int`,
+    [userId],
+    PARSE_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.count ?? 0);
 }

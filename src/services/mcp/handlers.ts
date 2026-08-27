@@ -15,7 +15,7 @@ import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFull
 import { requestIntroduction } from '../tools/requestIntroduction';
 import { inviteContact } from '../tools/inviteContact';
 import { getInviteLink } from '../referralLink.service';
-import { getLabelQueueForUser } from '../labelParser.service';
+import { getLabelQueueForUser, getLabelQueueTotalForUser } from '../labelParser.service';
 import { respondToIntroduction } from '../tools/respondToIntroduction';
 import {
   normalizeFieldType,
@@ -506,12 +506,18 @@ export async function mcpGetUnresolvedLabels(
     Number.isFinite(rawLimit) && rawLimit > 0
       ? Math.min(rawLimit, MAX_LABEL_QUEUE_LIMIT)
       : DEFAULT_LABEL_QUEUE_LIMIT;
-  const entries = await getLabelQueueForUser(userId, limit);
+  // total (ticket 7 task 12 item 10): a full page with no total read as
+  // "exactly that many" — the real queue size travels with every page.
+  const [entries, total] = await Promise.all([
+    getLabelQueueForUser(userId, limit),
+    getLabelQueueTotalForUser(userId),
+  ]);
   return {
     entries: entries.map((e) => ({
       contact_ref: encodeContactRef(userId, e.phone),
       alias: e.alias,
     })),
+    total,
   };
 }
 

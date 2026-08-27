@@ -52,12 +52,25 @@ function openerMode(): OpenerMode {
   return 'patterns';
 }
 
+// D17 (ticket 7 task 12 item 1, the founder's call): invert applies to
+// ENGLISH replies only. Georgian has no capital letters, so invert's
+// "no content marker = drop" heuristic misfires on Georgian prose — a reply
+// carrying any Georgian keeps the patterns behaviour even under
+// OPENER_STRIP=invert.
+const GEORGIAN_CHARS_RE = /[ა-ჿ]/u;
+
+function effectiveMode(reply: string): OpenerMode {
+  const mode = openerMode();
+  if (mode === 'invert' && GEORGIAN_CHARS_RE.test(reply)) return 'patterns';
+  return mode;
+}
+
 /**
  * Remove the reply's first sentence when it is contentless process talk.
  * Applied before the reply is persisted, so the stored text is clean too.
  */
 export function stripProcessOpener(reply: string, threadId: number): string {
-  const mode = openerMode();
+  const mode = effectiveMode(reply);
   if (mode === 'off') return reply;
   const trimmed = reply.trimStart();
   // Short or single-paragraph replies are never touched.

@@ -118,7 +118,7 @@ async function generateNotificationContent(
   const response = await anthropic.messages.create({
     model: NOTIFICATION_MODEL,
     max_tokens: 1024,
-    system: `შენ აგენერირებ პერსონალიზებულ push notification-ს Ally-სთვის — კონტაქტების ქსელის აპლიკაცია.
+    system: `შენ აგენერირებ პერსონალიზებულ push notification-ს Netai-სთვის — კონტაქტების ქსელის აპლიკაცია.
 მთავარი მიზანი: მომხმარებელი გახსნის app-ს ამ notification-ის გამო.
 
 წესები:

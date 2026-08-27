@@ -235,9 +235,13 @@ export async function getCountryChannels(
       found: true,
       country: trimmed,
       channels,
+      // Surface-neutral wording (ticket 7 task 12 item 6): this note travels
+      // to BOTH surfaces, where the profile tool has different names
+      // (get_contact_full_profile in-app, get_contact_profile on the
+      // connector) — naming either one misleads the other.
       note:
         'Name EVERY channel in the answer, including the empty ones — "no alumni angle in your ' +
-        'network" is information the user needs. Use get_contact_full_profile before ' +
+        'network" is information the user needs. Open the contact\'s full profile before ' +
         'recommending anyone from a sample.',
     };
   } catch (err) {
