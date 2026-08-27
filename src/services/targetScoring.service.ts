@@ -524,8 +524,7 @@ export async function countAskableUsers(): Promise<number> {
 // candidate dropped between reads 2 minutes apart). Inside the TTL every
 // read returns the SAME built list by construction; expiry or a restart
 // refreshes it. Config, not deploy.
-const TARGET_LIST_CACHE_TTL_MS =
-  Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 60) * 60_000;
+const TARGET_LIST_CACHE_TTL_MS = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 60) * 60_000;
 interface TargetListCache {
   sinceDays: number;
   builtAt: number;
