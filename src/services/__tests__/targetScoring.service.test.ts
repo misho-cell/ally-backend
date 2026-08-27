@@ -5,7 +5,7 @@ jest.mock('../unmetNeeds.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { findUnmetNeeds } from '../unmetNeeds.service';
+import { findUnmetNeeds, UnmetNeed } from '../unmetNeeds.service';
 import { buildTargetList, countAskableUsers } from '../targetScoring.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -15,14 +15,31 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
   return { rows: data, rowCount: data.length };
 }
 
+function need(
+  topic: string,
+  candidates: { phone: string; label: string }[],
+  city: string | null = null,
+): UnmetNeed {
+  return {
+    query: topic,
+    ask_count: 1,
+    sources: { netai: 1, old_ally: 0 },
+    city,
+    candidates: candidates.map((c) => ({ ...c, source: 'tag' as const })),
+  };
+}
+
 function routeScoreQueries(opts: {
   reach?: { phone: string; reach: string }[];
   strength?: { contact_phone: string; strength: number }[];
   colour?: { phone: string; status: string }[];
   facts?: { phone: string; cnt: string }[];
+  aliases?: { phone: string; contactId: number; alias: string }[];
   askableCount?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('CROSS JOIN LATERAL'))
+      return Promise.resolve(rows(opts.aliases ?? []) as never);
     if (sql.includes('UNION')) return Promise.resolve(rows(opts.reach ?? []) as never);
     if (sql.includes('contact_relationship_scores'))
       return Promise.resolve(rows(opts.strength ?? []) as never);
@@ -49,21 +66,15 @@ describe('buildTargetList', () => {
 
   it('dedupes a candidate across topics, summing Pull and keeping the smallest matched pool', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      {
-        query: 'ვეტერინარი',
-        ask_count: 2,
-        city: 'თბილისი',
-        candidates: [
-          { phone: '+995500000001', label: 'ვეტერინარი გია', source: 'alias' },
-          { phone: '+995500000002', label: 'other vet', source: 'alias' },
+      need(
+        'ვეტერინარი',
+        [
+          { phone: '+995500000001', label: 'ვეტერინარი გია' },
+          { phone: '+995500000002', label: 'other vet' },
         ],
-      },
-      {
-        query: 'vet',
-        ask_count: 1,
-        city: null,
-        candidates: [{ phone: '+995500000001', label: 'ვეტერინარი გია', source: 'alias' }],
-      },
+        'თბილისი',
+      ),
+      need('vet', [{ phone: '+995500000001', label: 'ვეტერინარი გია' }]),
     ]);
     routeScoreQueries({ askableCount: 50 });
 
@@ -78,12 +89,7 @@ describe('buildTargetList', () => {
 
   it('flags needs-Netai signals from the matched label, explainably', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      {
-        query: 'director',
-        ask_count: 1,
-        city: null,
-        candidates: [{ phone: '+995500000003', label: 'Sales Director', source: 'tag' }],
-      },
+      need('director', [{ phone: '+995500000003', label: 'Sales Director' }]),
     ]);
     routeScoreQueries({ askableCount: 50 });
 
@@ -94,12 +100,7 @@ describe('buildTargetList', () => {
 
   it('combines Reach and Warmth signals into the score parts', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      {
-        query: 'ელექტრიკოსი',
-        ask_count: 1,
-        city: null,
-        candidates: [{ phone: '+995500000004', label: 'electrician', source: 'tag' }],
-      },
+      need('ელექტრიკოსი', [{ phone: '+995500000004', label: 'electrician' }]),
     ]);
     routeScoreQueries({
       reach: [{ phone: '+995500000004', reach: '3' }],
@@ -118,16 +119,11 @@ describe('buildTargetList', () => {
 
   it("caps the list length at the network's current ask capacity", async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      {
-        query: 'x',
-        ask_count: 1,
-        city: null,
-        candidates: [
-          { phone: '+995500000005', label: 'a', source: 'tag' },
-          { phone: '+995500000006', label: 'b', source: 'tag' },
-          { phone: '+995500000007', label: 'c', source: 'tag' },
-        ],
-      },
+      need('x', [
+        { phone: '+995500000005', label: 'a' },
+        { phone: '+995500000006', label: 'b' },
+        { phone: '+995500000007', label: 'c' },
+      ]),
     ]);
     routeScoreQueries({ askableCount: 1 });
 
@@ -138,15 +134,10 @@ describe('buildTargetList', () => {
 
   it('ranks the highest score first', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      {
-        query: 'x',
-        ask_count: 1,
-        city: null,
-        candidates: [
-          { phone: '+995500000008', label: 'plain label', source: 'tag' },
-          { phone: '+995500000009', label: 'Director plain label', source: 'tag' },
-        ],
-      },
+      need('x', [
+        { phone: '+995500000008', label: 'plain label' },
+        { phone: '+995500000009', label: 'Director plain label' },
+      ]),
     ]);
     routeScoreQueries({ askableCount: 50 });
 
@@ -154,6 +145,99 @@ describe('buildTargetList', () => {
 
     expect(out[0].phone).toBe('+995500000009');
     expect(out[0].score).toBeGreaterThan(out[1].score);
+  });
+
+  // ─── Ticket 7 Task 4 item 1: a target must be a person ────────────────────
+
+  it('HARD-EXCLUDES anything that is not a Georgian personal mobile — 0-800 lines, short codes, foreign prefixes', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995800100100', label: '0800 hotline' }, // 0-800 line
+        { phone: '+15551234567', label: 'foreign' }, // foreign prefix
+        { phone: '+99532123456', label: 'landline' }, // not a 5xx mobile
+        { phone: '+995500000010', label: 'real person' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50 });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000010']);
+  });
+
+  it('HARD-EXCLUDES a hotline: a brand stoplist word dominating the aliases at reach > 100 (the wissol/maksima evidence)', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000011', label: 'wissol' },
+        { phone: '+995500000012', label: 'დათო ვეტერინარი' },
+      ]),
+    ]);
+    routeScoreQueries({
+      reach: [
+        { phone: '+995500000011', reach: '644' },
+        { phone: '+995500000012', reach: '143' },
+      ],
+      aliases: [
+        { phone: '+995500000011', contactId: 1, alias: 'wissol' },
+        { phone: '+995500000011', contactId: 2, alias: 'wissol hotline' },
+        { phone: '+995500000011', contactId: 3, alias: 'wissol 24/7' },
+        // The popular vet: high reach but his top token is his name/trade,
+        // not a brand — he is a person and stays.
+        { phone: '+995500000012', contactId: 4, alias: 'დათო ვეტერინარი' },
+        { phone: '+995500000012', contactId: 5, alias: 'დათო ვეტი' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000012']);
+    expect(out[0].parts.person_confirmed).toBe(true);
+  });
+
+  it('person_confirmed requires ≥2 DISTINCT contributors sharing a non-brand token — and unconfirmed entries rank last', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000013', label: 'confirmed person' },
+        { phone: '+995500000014', label: 'lone save, higher score' },
+      ]),
+    ]);
+    routeScoreQueries({
+      // The unconfirmed one has far higher reach — a raw score sort would put
+      // it first; person_confirmed must outrank score.
+      reach: [
+        { phone: '+995500000013', reach: '2' },
+        { phone: '+995500000014', reach: '90' },
+      ],
+      aliases: [
+        { phone: '+995500000013', contactId: 1, alias: 'gia melashvili' },
+        { phone: '+995500000013', contactId: 2, alias: 'gia gldani' },
+        { phone: '+995500000014', contactId: 3, alias: 'someone once' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.parts.person_confirmed)).toEqual([true, false]);
+    expect(out[0].phone).toBe('+995500000013');
+  });
+
+  it('is deterministic: equal scores break by phone, so two reads return the same order', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000017', label: 'same' },
+        { phone: '+995500000015', label: 'same' },
+        { phone: '+995500000016', label: 'same' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50 });
+
+    const first = await buildTargetList(30);
+    const second = await buildTargetList(30);
+
+    expect(first.map((e) => e.phone)).toEqual(['+995500000015', '+995500000016', '+995500000017']);
+    expect(second.map((e) => e.phone)).toEqual(first.map((e) => e.phone));
   });
 });
 

@@ -77,7 +77,7 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
-import { findUnmetNeeds, UnmetNeed } from '../../services/unmetNeeds.service';
+import { findUnmetNeeds } from '../../services/unmetNeeds.service';
 import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
 import {
   generateAndStoreWeeklyReport,
@@ -1604,12 +1604,21 @@ adminRouter.get(
 // have answered them" — per T7's own dependency on this list (its "Pull"
 // score input). city is the ASKER's city (the closest available "market"
 // proxy — no non-user candidate has a reliable location of their own).
-adminRouter.get('/unmet-needs', async (req: Request, res: Response<ApiResponse<UnmetNeed[]>>) => {
+adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
   try {
     const rawDays = Number(req.query.days);
     const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
     const result = await findUnmetNeeds(days);
-    res.status(200).json({ success: true, data: result });
+    // Ticket 7 Task 4 item 4: the T5 merge must be visible — per-topic
+    // `sources` on each row plus the overall split here.
+    const sourceTotals = result.reduce(
+      (acc, row) => ({
+        netai: acc.netai + row.sources.netai,
+        old_ally: acc.old_ally + row.sources.old_ally,
+      }),
+      { netai: 0, old_ally: 0 },
+    );
+    res.status(200).json({ success: true, data: { topics: result, source_totals: sourceTotals } });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin unmet-needs]', error);

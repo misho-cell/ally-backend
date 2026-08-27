@@ -65,12 +65,64 @@ const NEEDS_NETAI_KEYWORDS = [
   'organizer',
 ];
 
+// ─── Ticket 7 Task 4 item 1: a target must be a PERSON ─────────────────────
+// The signals used, stated per the tester's own ask ("change them if you
+// have better signals, but say which you used"):
+//   HARD EXCLUDE (never on the list):
+//   - phone not a Georgian personal mobile (+9955########, 13 chars after
+//     normalizePhone) — kills 0-800 hotlines, short codes and anything that
+//     normalised to a foreign prefix out of a Georgian phonebook;
+//   - a brand/company stoplist word is the phone's MOST FREQUENT alias token
+//     AND reach > 100 — the tester's own draft, literally (wissol at reach
+//     644, maksima, a bank line). Reach alone is deliberately NOT an
+//     exclusion: a popular tradesman ("დათო ვეტერინარი", reach 143) is a
+//     person; his top token is his trade or name, not a brand.
+//   RANK, not exclude:
+//   - person_confirmed = at least 2 distinct contributors saved this phone
+//     with aliases sharing a non-stoplist word token (people are known by
+//     the same name across phonebooks; unconfirmed phones sort last).
+const GEORGIAN_MOBILE_RE = /^\+9955\d{8}$/;
+const HOTLINE_REACH_THRESHOLD = 100;
+const BRAND_STOPLIST: ReadonlySet<string> = new Set([
+  'wissol',
+  'rompetrol',
+  'socar',
+  'sokari',
+  'maksima',
+  'gulf',
+  'magti',
+  'magticom',
+  'silknet',
+  'geocell',
+  'beeline',
+  'bank',
+  'banki',
+  'tbc',
+  'bog',
+  'liberty',
+  'servisi',
+  'service',
+  'servis',
+  'delivery',
+  'express',
+  'hotline',
+  'taxi',
+  'taksi',
+]);
+// How many aliases per phone the token analysis samples — enough to see the
+// dominant token on a hotline without pulling a 644-row fan-in whole.
+const ALIAS_SAMPLE_PER_PHONE = 25;
+const MIN_TOKEN_LENGTH = 3;
+
 export interface TargetScoreParts {
   reach: number;
   pull: number;
   warmth: number;
   needs_netai_signs: boolean;
   gap_filling_trade: boolean;
+  // ≥2 distinct contributors know this phone by a shared, non-brand name
+  // token — the "this is a person" signal. Unconfirmed entries rank last.
+  person_confirmed: boolean;
 }
 
 export interface TargetScoreEntry {
@@ -202,6 +254,84 @@ function hasNeedsNetaiSignal(label: string): boolean {
   return NEEDS_NETAI_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()));
 }
 
+interface AliasAnalysis {
+  /** Most frequent alias token across contributors (normalized), if any. */
+  topToken: string | null;
+  /** ≥2 distinct contributors share a non-stoplist token — the person test. */
+  personConfirmed: boolean;
+}
+
+function tokenize(label: string): string[] {
+  return label
+    .toLowerCase()
+    .split(/[^a-zა-ჿ0-9]+/)
+    .filter((t) => t.length >= MIN_TOKEN_LENGTH && /[a-zა-ჿ]/.test(t));
+}
+
+/**
+ * Samples up to ALIAS_SAMPLE_PER_PHONE aliases per phone (LATERAL, 21ms for
+ * 3 phones via idx_user_alias_phone — EXPLAIN ANALYZE on prod) and computes
+ * the two Task 4 person-signals per phone: the dominant token (the hotline
+ * test's input) and whether ≥2 distinct contributors share a non-brand token.
+ */
+async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalysis>> {
+  const result = new Map<string, AliasAnalysis>();
+  if (phones.length === 0) return result;
+  const rows = await query<{ phone: string; contactId: number; alias: string }>(
+    `SELECT p.phone, a."contactId", a.alias
+     FROM UNNEST($1::text[]) AS p(phone)
+     CROSS JOIN LATERAL (
+       SELECT "contactId", alias FROM "UserAlias" ua WHERE ua.phone = p.phone
+       LIMIT ${ALIAS_SAMPLE_PER_PHONE}
+     ) a`,
+    [phones],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+
+  const byPhone = new Map<string, { contactId: number; tokens: string[] }[]>();
+  for (const row of rows.rows) {
+    if (!byPhone.has(row.phone)) byPhone.set(row.phone, []);
+    byPhone.get(row.phone)?.push({ contactId: row.contactId, tokens: tokenize(row.alias) });
+  }
+
+  for (const phone of phones) {
+    const entries = byPhone.get(phone) ?? [];
+    const tokenCounts = new Map<string, number>();
+    const tokenContributors = new Map<string, Set<number>>();
+    for (const entry of entries) {
+      for (const token of new Set(entry.tokens)) {
+        tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + 1);
+        if (!tokenContributors.has(token)) tokenContributors.set(token, new Set());
+        tokenContributors.get(token)?.add(entry.contactId);
+      }
+    }
+    let topToken: string | null = null;
+    let topCount = 0;
+    for (const [token, count] of tokenCounts) {
+      // Deterministic: ties broken alphabetically, never by Map order.
+      if (count > topCount || (count === topCount && topToken !== null && token < topToken)) {
+        topToken = token;
+        topCount = count;
+      }
+    }
+    const personConfirmed = Array.from(tokenContributors.entries()).some(
+      ([token, contributors]) => !BRAND_STOPLIST.has(token) && contributors.size >= 2,
+    );
+    result.set(phone, { topToken, personConfirmed });
+  }
+  return result;
+}
+
+function isGeorgianPersonalMobile(phone: string): boolean {
+  return GEORGIAN_MOBILE_RE.test(phone);
+}
+
+function isHotline(analysis: AliasAnalysis | undefined, reach: number): boolean {
+  if (reach <= HOTLINE_REACH_THRESHOLD) return false;
+  const topToken = analysis?.topToken;
+  return topToken != null && BRAND_STOPLIST.has(topToken);
+}
+
 function combinedScore(parts: {
   reach: number;
   pull: number;
@@ -261,21 +391,29 @@ export async function countAskableUsers(): Promise<number> {
 export async function buildTargetList(sinceDays: number): Promise<TargetScoreEntry[]> {
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
-  const phones = Array.from(candidates.keys());
+  // Hard exclude #1 (Task 4 item 1): only Georgian personal mobiles can be
+  // people — 0-800 lines, short codes and foreign-prefix normalisations out.
+  const phones = Array.from(candidates.keys()).filter(isGeorgianPersonalMobile);
 
-  const [reachMap, warmthMap, capacity] = await Promise.all([
+  const [reachMap, warmthMap, aliasMap, capacity] = await Promise.all([
     reachForPhones(phones),
     warmthSignalsForPhones(phones),
+    analyzeAliases(phones),
     countAskableUsers(),
   ]);
 
-  const entries: TargetScoreEntry[] = phones.map((phone) => {
+  const entries: TargetScoreEntry[] = [];
+  for (const phone of phones) {
     const ctx = candidates.get(phone) as CandidateContext;
     const reach = reachMap.get(phone) ?? 0;
+    const analysis = aliasMap.get(phone);
+    // Hard exclude #2: a brand word dominating the aliases at hotline reach
+    // is a line, not a person (the tester's wissol/maksima/0-800 evidence).
+    if (isHotline(analysis, reach)) continue;
     const warmth = warmthScore(warmthMap.get(phone) ?? { strength: 0, colour: null, factCount: 0 });
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
-    return {
+    entries.push({
       phone,
       label: ctx.label,
       city: ctx.city,
@@ -286,10 +424,20 @@ export async function buildTargetList(sinceDays: number): Promise<TargetScoreEnt
         warmth,
         needs_netai_signs: needsNetai,
         gap_filling_trade: gapFilling,
+        person_confirmed: analysis?.personConfirmed ?? false,
       },
-    };
-  });
+    });
+  }
 
-  entries.sort((a, b) => b.score - a.score);
+  // Deterministic order (Task 4's "two reads a minute apart match"):
+  // person-confirmed first, then score, then the phone string as the final
+  // total tiebreak — no cluster of equal scores can shuffle the top-20 cut.
+  entries.sort((a, b) => {
+    if (a.parts.person_confirmed !== b.parts.person_confirmed) {
+      return a.parts.person_confirmed ? -1 : 1;
+    }
+    if (b.score !== a.score) return b.score - a.score;
+    return a.phone.localeCompare(b.phone);
+  });
   return entries.slice(0, capacity);
 }
