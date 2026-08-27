@@ -1653,45 +1653,8 @@ function buildIncomingAskSection(ask: IncomingAsk): string {
     `- გასაგზავნ ტექსტში მხოლოდ ის უნდა იყოს, რისი გაზიარებაც მომხმარებელმა დაამტკიცა — სახელი ან დეტალი მისი „კი"-ს გარეშე ტექსტში ვერ მოხვდება.\n` +
     `- relay_ask ცალკე მოქმედებაა — კითხვის მესამე ადამიანთან გადაგზავნა. მხოლოდ მაშინ, როცა მომხმარებელი ამას პირდაპირ ითხოვს („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის. თუ კონტაქტი ვერ მოიძებნა: ორთოგრაფია არ ჰკითხო, ბოდიში არ მოიხადო, „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან პირდაპირ დაკავშირება.\n` +
     `- თუ მომხმარებელი იტყვის, რომ მსგავსი შეტყობინებები აღარ სურს („აღარ მომწერო") — გამოიძახე stop_contacting_me. ეს ნამდვილად აჩერებს ყველა მომავალ კითხვას ყველა ადამიანისგან. დაპირება მხოლოდ სიტყვით არასოდეს მისცე — ჯერ ინსტრუმენტი, მერე დადასტურება.\n` +
-    `- შენ ვერ ხედავ ვერავის ქსელს, კონტაქტებს, მიზნებს, ჩანაწერებსა და სტატისტიკას — ეს მონაცემები ამ საუბარში ჯერ არ არსებობს და მათზე ვერაფერს იტყვი. კითხვაზე „რა არის ეს აპი?" უპასუხე ერთი წინადადებით და დაბრუნდი კითხვაზე.`
+    `- შენ მომხმარებლის საკუთარი ასისტენტი ხარ, მისი სრული კონტექსტით და ინსტრუმენტებით. თუ ის იტყვის „ნახე ჩემს კონტაქტებში" — ეძებე ნამდვილად, მის ქსელში, და უთხარი რეალური სახელები ამ საუბარშივე. ეს მონაცემები მხოლოდ მისია: კითხვის ავტორთან მათგან გადადის მხოლოდ ის, რასაც ის send_answer_to_asker-ის ტექსტში ცალსახად დაამტკიცებს.`
   );
-}
-
-// Fail-safe identity for the isolated incoming_ask context: even with every
-// prompt block disabled, the model must know it is a courier for one question
-// and nothing more.
-const INCOMING_ASK_IDENTITY =
-  'შენ Netai-ს ასისტენტი ხარ, რომელიც მომხმარებელს ესაუბრება ერთი კონკრეტული, სხვისგან მოსული ' +
-  'კითხვის გამო. შენი ერთადერთი საქმეა ამ კითხვაზე პასუხის მიღება და მადლობა — სხვა თემა, ' +
-  'ინსტრუმენტი თუ მონაცემი ამ საუბარში არ არსებობს.';
-
-// Ticket 3 §1 (CRITICAL, code-enforced): an incoming_ask thread talks to the
-// OTHER side of an ask — a person who never consented to see anyone's data.
-// Its context window gets NO base playbook, NO profile/tasks/notes/private
-// context/insight fields/pending requests and (see buildToolsForThread) NO
-// tools beyond relay_ask. Three live leaks came from data that had no business
-// being in this window; two prompt rewrites failed to hold the boundary, so
-// the data itself stays out.
-async function buildIncomingAskPrompt(
-  userId: string,
-  threadId?: number,
-): Promise<AgentPromptResult> {
-  const [modeBlocks, incomingAsk, nameResult] = await Promise.all([
-    composeBlocksForMode('incoming_ask', userId),
-    threadId != null ? getAskByThread(threadId) : Promise.resolve(null),
-    query<{ name: string | null }>('SELECT name FROM "User" WHERE id = $1 LIMIT 1', [userId]),
-  ]);
-  const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
-  const nameSection = registeredName
-    ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე.`
-    : '';
-  const prompt =
-    INCOMING_ASK_IDENTITY +
-    INJECTION_DEFENSE_PROMPT +
-    modeBlocks.text +
-    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
-    nameSection;
-  return { prompt, runMode: 'incoming_ask', blockNames: modeBlocks.names };
 }
 
 // Engine-owned section for a task-bound thread: the task's state and the
@@ -1740,11 +1703,13 @@ async function buildAgentSystemPrompt(
   // a live thread in that state. Real runs never pass it.
   forcedMode?: RunMode,
 ): Promise<AgentPromptResult> {
-  // The isolated recipient-side context — checked FIRST so nothing below
-  // (base prompt, memory, tasks, profile) is even loaded for it.
-  if (threadType === 'incoming_ask' || forcedMode === 'incoming_ask') {
-    return buildIncomingAskPrompt(userId, threadId);
-  }
+  // Ticket 7 Task 1(a)(e), founder's ruling D48: an incoming-ask thread runs
+  // as the recipient's OWN assistant — same base playbook, name, notes, goals
+  // and memory as the normal chat (the old fully-isolated context is gone;
+  // the wall now stands at the OUTBOUND boundary, send_answer_to_asker, not
+  // at the input). Resolved through the normal path below: resolveRunMode
+  // keeps runMode='incoming_ask' so the ask_main prompt block still applies,
+  // and buildIncomingAskSection carries the ask itself.
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
@@ -1851,7 +1816,7 @@ export async function buildPromptPreview(userId: string, mode: RunMode): Promise
   const [{ prompt, blockNames }, tools] = await Promise.all([
     buildAgentSystemPrompt(userId, PREVIEW_THREAD_TYPE[mode], null, undefined, mode),
     // The preview must show the mode's REAL toolset — incoming_ask carries
-    // relay_ask only (ticket 3 §1).
+    // the full owner set plus send_answer_to_asker (Task 1(a), D48).
     buildToolsForThread(userId, PREVIEW_THREAD_TYPE[mode]),
   ]);
   const not_rendered: string[] = [];
@@ -3130,25 +3095,16 @@ async function salvageFinalAnswer(
   }
 }
 
-// Ticket 3 §1: the recipient-side agent gets exactly one capability — relaying
-// the ask onward with the user's consent. Search, tasks, notes, profile and
-// every other tool belong to account-owner modes and must not be reachable
-// from an incoming_ask thread.
+// Ticket 7 Task 1(a), founder's ruling D48: the recipient's assistant carries
+// EVERYTHING the normal chat has — search, second degree, facts, notes,
+// goals — because the recipient is talking to their OWN assistant about
+// their OWN data. The privacy wall moved from the toolset to the outbound
+// boundary: send_answer_to_asker (this mode's one extra tool) is the only
+// channel to the asker, and it sends nothing without the recipient's yes on
+// the exact text.
 async function buildToolsForThread(userId: string, threadType?: string): Promise<AnthropicTool[]> {
-  // Relaying onward, and the ability to say "stop" and have it enforced
-  // (ticket 4 item 00) — nothing else is reachable from a recipient's thread.
   if (threadType === 'incoming_ask') {
-    // get_netai_info carries NO user data — recipients ask "what is this app"
-    // in almost every session, and guessing is worse than answering.
-    // send_answer_to_asker (Task 1(c)): the only outbound channel now that
-    // the auto-capture is gone. Full owner tools arrive with Task 1(a).
-    return [
-      SEND_ANSWER_TO_ASKER_TOOL,
-      RELAY_ASK_TOOL,
-      STOP_CONTACTING_TOOL,
-      RESUME_CONTACT_TOOL,
-      GET_NETAI_INFO_TOOL,
-    ];
+    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId))];
   }
   return buildEnabledTools(userId);
 }
