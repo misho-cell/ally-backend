@@ -440,7 +440,9 @@ async function goalRelevantPhones(candidates: Map<string, CandidateContext>): Pr
      FROM UNNEST($1::text[], $2::text[]) AS x(phone, word)
      WHERE EXISTS (
        SELECT 1 FROM tasks t
-       JOIN "User" u ON u.id = t.user_id AND u.subscription_status = 'active'
+       -- tasks.user_id is TEXT on prod while "User".id is INTEGER — compare
+       -- as text (live-caught: integer = text 500'd the whole target list).
+       JOIN "User" u ON u.id::text = t.user_id AND u.subscription_status = 'active'
        WHERE t.status = 'open'
          AND normalize_search_token(x.word) <<% normalize_search_token(
            COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' || COALESCE(t.brief, ''))
