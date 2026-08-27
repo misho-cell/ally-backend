@@ -222,12 +222,20 @@ async function countWhere(sql: string, userId: number): Promise<number> {
 async function getNetwork(userId: number): Promise<UserNetwork> {
   // Separate statements (each its own timeout) so the large UserAlias/UserTags
   // scans don't share one budget and time out the way a bundled query would.
-  const [contacts, tags, blocked, deceased, reach] = await Promise.all([
+  const [contacts, tags, blocked, deceased, reach, tiers] = await Promise.all([
     countWhere('SELECT COUNT(*) AS count FROM "UserAlias" WHERE "contactId" = $1', userId),
     countWhere('SELECT COUNT(*) AS count FROM "UserTags" WHERE "contactId" = $1', userId),
     countWhere('SELECT COUNT(*) AS count FROM "UserBlock" WHERE "blockerId" = $1', userId),
     countWhere('SELECT COUNT(*) AS count FROM "ContactDeceased" WHERE "userId" = $1', userId),
     getNeo4jReach(userId),
+    // Ticket 7 task 16: the tier backfill counted by colour — comparable
+    // against the founder's own old-Ally 69 green + 150 blue (D38).
+    query<{ label: string; count: string }>(
+      `SELECT tier AS label, COUNT(*) AS count FROM human_relationship_tiers
+       WHERE user_id = $1 GROUP BY tier ORDER BY COUNT(*) DESC`,
+      [userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
   ]);
 
   return {
@@ -237,6 +245,7 @@ async function getNetwork(userId: number): Promise<UserNetwork> {
     deceasedCount: deceased,
     firstDegree: reach.firstDegree,
     secondDegree: reach.secondDegree,
+    tiersByColour: toLabeledCounts(tiers.rows),
   };
 }
 
@@ -592,6 +601,7 @@ const EMPTY_NETWORK: UserNetwork = {
   deceasedCount: 0,
   firstDegree: null,
   secondDegree: null,
+  tiersByColour: [],
 };
 const EMPTY_ACTIVITY: UserActivity = {
   threadsCount: 0,

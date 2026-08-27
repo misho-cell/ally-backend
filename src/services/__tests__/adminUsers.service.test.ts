@@ -59,6 +59,11 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('FROM "UserTags" WHERE "contactId"')) return rows([{ count: '40' }]);
   if (sql.includes('FROM "UserBlock" WHERE "blockerId"')) return rows([{ count: '2' }]);
   if (sql.includes('FROM "ContactDeceased" WHERE "userId"')) return rows([{ count: '1' }]);
+  if (sql.includes('FROM human_relationship_tiers'))
+    return rows([
+      { label: 'green', count: '69' },
+      { label: 'blue', count: '150' },
+    ]);
   if (sql.includes('AS threads'))
     return rows([{ threads: '3', messages: '88', first_at: '2026-01-02', last_at: '2026-06-30' }]);
   if (sql.includes('GROUP BY DATE(created_at)')) return rows([{ day: '2026-06-30', count: '4' }]);
@@ -221,6 +226,11 @@ describe('getAdminUserDetail', () => {
     // Ticket 7 task 5: the ladder rung rides on every recent search row,
     // and outcomes counts the rungs ('none' = unrecorded).
     expect(profile?.searches.recent[0].outcome).toBe('accepted');
+    // Ticket 7 task 16: the tier backfill counted by colour (D38 comparison).
+    expect(profile?.network.tiersByColour).toEqual([
+      { label: 'green', count: 69 },
+      { label: 'blue', count: 150 },
+    ]);
     expect(profile?.outcomes.searchOutcomesByRung).toEqual([
       { label: 'none', count: 46 },
       { label: 'accepted', count: 3 },

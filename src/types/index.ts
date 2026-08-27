@@ -185,6 +185,9 @@ export interface UserNetwork {
   deceasedCount: number;
   firstDegree: number | null;
   secondDegree: number | null;
+  // Ticket 7 task 16: the old-Ally colour backfill counted by tier (green/
+  // blue/yellow/red), comparable against the founder's own 69+150 (D38).
+  tiersByColour: LabeledCount[];
 }
 
 export interface UserActivity {
