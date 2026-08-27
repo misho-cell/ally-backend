@@ -6,11 +6,7 @@ jest.mock('../unmetNeeds.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from '../unmetNeeds.service';
-import {
-  buildTargetList,
-  clearTargetListCache,
-  countAskableUsers,
-} from '../targetScoring.service';
+import { buildTargetList, clearTargetListCache, countAskableUsers } from '../targetScoring.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockFindUnmetNeeds = findUnmetNeeds as jest.MockedFunction<typeof findUnmetNeeds>;

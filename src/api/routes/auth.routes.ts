@@ -9,7 +9,12 @@ import {
   completeLogin,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
-import { recordLinkOpened } from '../../services/referralLink.service';
+import { recordLinkOpened, recordLinkShared } from '../../services/referralLink.service';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
 import { ApiResponse, EligibilityMode, EligibilityReason } from '../../types';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 
@@ -251,6 +256,27 @@ authRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[referral opened] error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Ticket 7 task 6 item 3: the REAL 'sent' — the app calls this when the user
+// actually takes the share action (native share sheet opened / share-box
+// copy). Authenticated: only the sharer can move their own funnel. The
+// get_invite_link tool call itself now counts as 'issued', never 'sent'.
+authRouter.post(
+  '/referral/shared',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<{ recorded: boolean }>>) => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      await recordLinkShared(userId);
+      res.status(200).json({ success: true, data: { recorded: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[referral shared] error:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

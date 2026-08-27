@@ -96,6 +96,17 @@ runMigrations()
       console.log(`Server listening on port ${port}`);
     });
     server.timeout = 5 * 60 * 1000;
+    // Ticket 7 task 12 item 2 — the intermittent 502s under concurrent MCP
+    // calls (26 Aug 22:30–22:33, five origin_bad_gateway, always with 3–6
+    // calls in flight, every retry clean): Node's DEFAULT keepAliveTimeout is
+    // 5s, shorter than the edge proxy's idle window, so Node closes a
+    // kept-alive socket at the exact moment the proxy assigns it a new
+    // request — the proxy sees a reset and reports the origin bad. The
+    // server-side close must come LATER than the proxy's: keep-alive well
+    // above the edge idle timeout, and headersTimeout above keepAliveTimeout
+    // so a socket can never out-live its header clock.
+    server.keepAliveTimeout = 95_000;
+    server.headersTimeout = 100_000;
     EnrichmentJob.startCron();
     startSubscriptionCron();
     startAiNotificationCron();

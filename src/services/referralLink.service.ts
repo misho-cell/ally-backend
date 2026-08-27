@@ -42,12 +42,28 @@ export async function getInviteLink(userId: string): Promise<InviteLink> {
     };
   }
   const code = await getOrCreateReferralCode(userId);
+  // Ticket 7 task 6 item 3: handing the user their link is 'issued', not
+  // 'sent' — one tool call used to move the funnel with nothing shared.
+  // 'sent' is written only by recordLinkShared, off the real share action.
+  await query(
+    `INSERT INTO referral_link_events (user_id, event) VALUES ($1, 'issued')`,
+    [userId],
+    LINK_TIMEOUT_MS,
+  );
+  return { link: `${APP_URL}/join?ref=${code}`, code };
+}
+
+/**
+ * The REAL 'sent': the app calls this when the user actually takes the share
+ * action (the share-sheet opens / the copy button on the share box) — the
+ * closest observable event to "attached to a message" a backend can have.
+ */
+export async function recordLinkShared(userId: string): Promise<void> {
   await query(
     `INSERT INTO referral_link_events (user_id, event) VALUES ($1, 'sent')`,
     [userId],
     LINK_TIMEOUT_MS,
   );
-  return { link: `${APP_URL}/join?ref=${code}`, code };
 }
 
 /**
@@ -72,6 +88,10 @@ export async function recordLinkOpened(code: string): Promise<boolean> {
 }
 
 export interface ReferralFunnel {
+  // The assistant handed the user their link (the get_invite_link call).
+  issued: number;
+  // The user actually took the share action (share sheet / copy) — task 6
+  // item 3's real 'sent'.
   sent: number;
   opened: number;
   registered: number;
@@ -91,8 +111,9 @@ export interface ReferralFunnel {
 // than implying one.
 const FUNNEL_NOTE =
   "'registered' counts every account ever attributed to this user (all-time, any attribution " +
-  "path — the phone-based one predates this table); 'sent'/'opened' only exist since this " +
-  'feature shipped. Not yet a directly comparable conversion funnel.';
+  "path — the phone-based one predates this table); 'issued'/'sent'/'opened' only exist since " +
+  "this feature shipped, and rows written before 27 Aug were re-labelled 'issued' (they were " +
+  'tool calls, not shares). Not yet a directly comparable conversion funnel.';
 
 /** The three-step funnel for one user, or the whole product when omitted. */
 export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel> {
@@ -112,6 +133,7 @@ export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel
   );
   const byEvent = new Map(eventCounts.rows.map((r) => [r.event, Number(r.count)]));
   return {
+    issued: byEvent.get('issued') ?? 0,
     sent: byEvent.get('sent') ?? 0,
     opened: byEvent.get('opened') ?? 0,
     registered: Number(registered.rows[0]?.count ?? 0),

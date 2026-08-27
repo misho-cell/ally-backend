@@ -42,7 +42,7 @@ describe('getInviteLink (engine T3)', () => {
     expect(out.error).toBeDefined();
   });
 
-  it("returns the join link with the user's own code, and records a 'sent' event, once the flag is on", async () => {
+  it("returns the join link with the user's own code, and records an 'issued' event (task 6 item 3: a tool call is not a share), once the flag is on", async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM app_flags'))
         return Promise.resolve(rows([{ enabled: true }]) as never);
@@ -53,8 +53,11 @@ describe('getInviteLink (engine T3)', () => {
     const out = await getInviteLink('7');
 
     expect(out).toEqual({ link: 'https://www.netai.guru/join?ref=ABCD1234', code: 'ABCD1234' });
-    const insert = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'sent'"));
+    const insert = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'issued'"));
     expect(insert?.[1]).toEqual(['7']);
+    // 'sent' is reserved for the real share action (recordLinkShared).
+    const sent = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'sent'"));
+    expect(sent).toBeUndefined();
   });
 });
 
@@ -85,6 +88,7 @@ describe('getReferralFunnel', () => {
       if (sql.includes('FROM referral_link_events'))
         return Promise.resolve(
           rows([
+            { event: 'issued', count: '9' },
             { event: 'sent', count: '5' },
             { event: 'opened', count: '2' },
           ]) as never,
@@ -96,6 +100,7 @@ describe('getReferralFunnel', () => {
 
     const out = await getReferralFunnel('7');
 
+    expect(out.issued).toBe(9);
     expect(out.sent).toBe(5);
     expect(out.opened).toBe(2);
     expect(out.registered).toBe(1);
