@@ -64,10 +64,25 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('GROUP BY DATE(created_at)')) return rows([{ day: '2026-06-30', count: '4' }]);
   if (sql.includes('FILTER (WHERE flagged)'))
     return rows([{ total: '50', flagged: '1', successful: '37' }]);
+  if (sql.includes("COALESCE(outcome, 'none') AS label"))
+    return rows([
+      { label: 'none', count: '46' },
+      { label: 'accepted', count: '3' },
+      { label: 'refused', count: '1' },
+    ]);
   if (sql.includes('tool AS label')) return rows([{ label: 'name', count: '30' }]);
   if (sql.includes('query, tool, flagged, result_count'))
     return rows([
-      { query: 'gio', tool: 'name', flagged: false, result_count: 4, created_at: '2026-06-30' },
+      {
+        query: 'gio',
+        tool: 'name',
+        flagged: false,
+        result_count: 4,
+        outcome: 'accepted',
+        outcome_reason: null,
+        outcome_worked: null,
+        created_at: '2026-06-30',
+      },
     ]);
   if (sql.includes('status AS label')) return rows([{ label: 'accepted', count: '5' }]);
   if (sql.includes('mediator_user_id = $1')) return rows([{ count: '2' }]);
@@ -203,6 +218,14 @@ describe('getAdminUserDetail', () => {
     expect(profile?.searches.flaggedCount).toBe(1);
     expect(profile?.searches.successfulSearches).toBe(37);
     expect(profile?.searches.recent[0].resultCount).toBe(4);
+    // Ticket 7 task 5: the ladder rung rides on every recent search row,
+    // and outcomes counts the rungs ('none' = unrecorded).
+    expect(profile?.searches.recent[0].outcome).toBe('accepted');
+    expect(profile?.outcomes.searchOutcomesByRung).toEqual([
+      { label: 'none', count: 46 },
+      { label: 'accepted', count: 3 },
+      { label: 'refused', count: 1 },
+    ]);
     expect(profile?.outcomes.introRequestsMade).toBe(5);
     expect(profile?.outcomes.factsSubmitted).toBe(23);
     expect(profile?.memory.profile).toEqual([

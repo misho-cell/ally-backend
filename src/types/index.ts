@@ -115,7 +115,8 @@ export interface LabeledCount {
 export interface CoreUsageMetrics {
   searchesByType: LabeledCount[];
   totalSearches: number;
-  // Searches that returned at least one result (NULL-count legacy rows excluded).
+  // D39 (ticket 7 task 5): a recorded outcome at accepted or beyond — never
+  // "a name came out".
   successfulSearches: number;
   introsByStatus: LabeledCount[];
   avgNetworkSize: number;
@@ -199,6 +200,12 @@ export interface RecentSearch {
   tool: string | null;
   flagged: boolean;
   resultCount: number | null;
+  // D39's six-rung ladder per search (ticket 7 task 5): the recorded outcome,
+  // the refusal reason when one was given, and the "did it actually work"
+  // answer from the follow-up. null = no outcome recorded yet.
+  outcome: string | null;
+  outcomeReason: string | null;
+  outcomeWorked: boolean | null;
   createdAt: string;
 }
 
@@ -206,8 +213,9 @@ export interface UserSearches {
   totalSearches: number;
   byType: LabeledCount[];
   flaggedCount: number;
-  // Searches that returned at least one result. NULL-count rows (logged before
-  // result tracking existed) are excluded from this tally.
+  // D39 (ticket 7 task 5): success is a recorded outcome at accepted or
+  // beyond — never "a name came out" (this counted resultCount > 0 until
+  // 27 Aug, exactly the miscount the founder's ruling forbids).
   successfulSearches: number;
   recent: RecentSearch[];
 }
@@ -218,6 +226,9 @@ export interface UserOutcomes {
   introRequestsMediated: number;
   insightsSaved: number;
   factsSubmitted: number;
+  // The ladder counted per rung (ticket 7 task 5); 'none' = searches with no
+  // outcome recorded yet.
+  searchOutcomesByRung: LabeledCount[];
 }
 
 export interface UserContextEntry {

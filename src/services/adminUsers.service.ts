@@ -282,10 +282,13 @@ async function getActivity(userId: number): Promise<UserActivity> {
 async function getSearches(userId: number): Promise<UserSearches> {
   const id = String(userId);
   const [totals, byType, recent] = await Promise.all([
+    // D39 (ticket 7 task 5): "successful" is a recorded outcome at accepted
+    // or beyond, never result_count > 0 — a returned name proves nothing.
     query<{ total: string; flagged: string; successful: string }>(
       `SELECT COUNT(*) AS total,
-              COUNT(*) FILTER (WHERE flagged)           AS flagged,
-              COUNT(*) FILTER (WHERE result_count > 0)  AS successful
+              COUNT(*) FILTER (WHERE flagged) AS flagged,
+              COUNT(*) FILTER (WHERE outcome IN ('accepted', 'sent', 'replied', 'followed_up'))
+                AS successful
        FROM search_activity WHERE user_id = $1`,
       [id],
     ),
@@ -300,9 +303,13 @@ async function getSearches(userId: number): Promise<UserSearches> {
       tool: string | null;
       flagged: boolean;
       result_count: number | null;
+      outcome: string | null;
+      outcome_reason: string | null;
+      outcome_worked: boolean | null;
       created_at: string;
     }>(
-      `SELECT query, tool, flagged, result_count, created_at
+      `SELECT query, tool, flagged, result_count, outcome, outcome_reason, outcome_worked,
+              created_at
        FROM search_activity WHERE user_id = $1
        ORDER BY created_at DESC LIMIT $2`,
       [id, RECENT_SEARCH_LIMIT],
@@ -314,6 +321,9 @@ async function getSearches(userId: number): Promise<UserSearches> {
     tool: r.tool,
     flagged: r.flagged,
     resultCount: r.result_count,
+    outcome: r.outcome,
+    outcomeReason: r.outcome_reason,
+    outcomeWorked: r.outcome_worked,
     createdAt: r.created_at,
   }));
   return {
@@ -327,7 +337,7 @@ async function getSearches(userId: number): Promise<UserSearches> {
 
 async function getOutcomes(userId: number): Promise<UserOutcomes> {
   const id = String(userId);
-  const [byStatus, mediated, insights, facts] = await Promise.all([
+  const [byStatus, mediated, insights, facts, searchRungs] = await Promise.all([
     query<{ label: string | null; count: string }>(
       `SELECT status AS label, COUNT(*) AS count
        FROM introduction_requests WHERE requester_user_id = $1
@@ -345,6 +355,13 @@ async function getOutcomes(userId: number): Promise<UserOutcomes> {
       'SELECT COUNT(*) AS count FROM contact_facts WHERE submitted_by_user_id = $1',
       [userId],
     ),
+    // Ticket 7 task 5: the ladder counted per rung; 'none' = still unrecorded.
+    query<{ label: string; count: string }>(
+      `SELECT COALESCE(outcome, 'none') AS label, COUNT(*) AS count
+       FROM search_activity WHERE user_id = $1
+       GROUP BY COALESCE(outcome, 'none') ORDER BY COUNT(*) DESC`,
+      [id],
+    ),
   ]);
 
   const introRequestsByStatus = toLabeledCounts(byStatus.rows);
@@ -355,6 +372,7 @@ async function getOutcomes(userId: number): Promise<UserOutcomes> {
     introRequestsMediated: toNumber(mediated.rows[0]?.count),
     insightsSaved: toNumber(insights.rows[0]?.count),
     factsSubmitted: toNumber(facts.rows[0]?.count),
+    searchOutcomesByRung: toLabeledCounts(searchRungs.rows),
   };
 }
 
@@ -595,6 +613,7 @@ const EMPTY_OUTCOMES: UserOutcomes = {
   introRequestsMediated: 0,
   insightsSaved: 0,
   factsSubmitted: 0,
+  searchOutcomesByRung: [],
 };
 const EMPTY_MEMORY: UserMemory = {
   profile: [],

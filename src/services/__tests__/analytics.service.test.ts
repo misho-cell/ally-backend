@@ -23,7 +23,8 @@ function routeQuery(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('AS dau')) return rows([{ dau: '10', wau: '40', mau: '90' }]);
   if (sql.includes('FROM conversations') && sql.includes('AS count'))
     return rows([{ day: '2026-06-29', count: '7' }]);
-  if (sql.includes('WHERE result_count > 0')) return rows([{ count: '33' }]);
+  if (sql.includes("outcome IN ('accepted', 'sent', 'replied', 'followed_up')"))
+    return rows([{ count: '33' }]);
   if (sql.includes('kind AS label')) return rows([{ label: 'chat', total: '4.20' }]);
   if (sql.includes('ue.user_id') && sql.includes('SUM(ue.cost_usd)'))
     return rows([{ user_id: '7', name: 'ლიკა', total: '2.50' }]);

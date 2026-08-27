@@ -125,8 +125,11 @@ async function getCoreUsage(): Promise<CoreUsageMetrics> {
         [],
         ANALYTICS_QUERY_TIMEOUT_MS,
       ),
+      // D39 (ticket 7 task 5): success = a recorded outcome at accepted or
+      // beyond, never result_count > 0 — a returned name proves nothing.
       query<{ count: string }>(
-        'SELECT COUNT(*) AS count FROM search_activity WHERE result_count > 0',
+        `SELECT COUNT(*) AS count FROM search_activity
+         WHERE outcome IN ('accepted', 'sent', 'replied', 'followed_up')`,
         [],
         ANALYTICS_QUERY_TIMEOUT_MS,
       ),
