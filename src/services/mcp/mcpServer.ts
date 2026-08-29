@@ -46,6 +46,9 @@ import {
   mcpQueueResult,
   mcpRecordSearchOutcome,
   mcpRecordDebriefOutcome,
+  mcpSaveContactRelationship,
+  mcpForgetContactRelationship,
+  mcpGetContactRelationships,
   mcpRespondToThanksLoopOffer,
   mcpGetPendingUpdates,
   mcpGetProfileQuestion,
@@ -497,6 +500,53 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+  );
+  server.registerTool(
+    'save_contact_relationship',
+    {
+      title: TOOL_TEXTS.save_contact_relationship.title,
+      description: TOOL_TEXTS.save_contact_relationship.description,
+      inputSchema: {
+        contact_ref_a: z.string().describe(PARAM_TEXTS.contactRef),
+        contact_ref_b: z.string().describe(PARAM_TEXTS.contactRef),
+        relation: z
+          .string()
+          .describe('The tie, short and lowercase: brother, spouse, colleague, business_partner…'),
+      },
+      annotations: WRITE,
+    },
+    (args) =>
+      runTool(userId, 'save_contact_relationship', () => mcpSaveContactRelationship(userId, args)),
+  );
+  server.registerTool(
+    'forget_contact_relationship',
+    {
+      title: TOOL_TEXTS.forget_contact_relationship.title,
+      description: TOOL_TEXTS.forget_contact_relationship.description,
+      inputSchema: {
+        contact_ref_a: z.string().describe(PARAM_TEXTS.contactRef),
+        contact_ref_b: z.string().describe(PARAM_TEXTS.contactRef),
+        relation: z.string().optional().describe('The specific tie to remove; omit for all'),
+      },
+      annotations: DESTRUCTIVE,
+    },
+    (args) =>
+      runTool(userId, 'forget_contact_relationship', () =>
+        mcpForgetContactRelationship(userId, args),
+      ),
+  );
+  server.registerTool(
+    'get_contact_relationships',
+    {
+      title: TOOL_TEXTS.get_contact_relationships.title,
+      description: TOOL_TEXTS.get_contact_relationships.description,
+      inputSchema: {
+        contact_ref: z.string().optional().describe(PARAM_TEXTS.contactRef),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) =>
+      runTool(userId, 'get_contact_relationships', () => mcpGetContactRelationships(userId, args)),
   );
   server.registerTool(
     'record_debrief_outcome',

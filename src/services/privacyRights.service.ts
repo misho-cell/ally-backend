@@ -63,6 +63,8 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   // personal data in the system was the only kind invisible on this page.
   { table: 'profile_dimensions', column: 'user_id' },
   { table: 'answer_events', column: 'user_id' },
+  // D34: private relationship edges the user recorded between their contacts.
+  { table: 'contact_relationships', column: 'user_id' },
   // The contact graph this account contributed — their phonebook.
   { table: '"UserAlias"', column: '"contactId"' },
   { table: '"UserTags"', column: '"contactId"' },
@@ -104,6 +106,7 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
   introduction_requests: 'გაცნობის მოთხოვნები',
   profile_dimensions: 'პიროვნული პროფილი',
   answer_events: 'კითხვებზე გაცემული პასუხები',
+  contact_relationships: 'კონტაქტებს შორის კავშირები',
   UserAlias: 'კონტაქტების წიგნაკი',
   UserTags: 'კონტაქტების ტეგები',
   label_parse_queue: 'გაურკვეველი ეტიკეტები',

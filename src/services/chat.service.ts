@@ -71,6 +71,11 @@ import { recordCampaignResponse } from './chorusCampaign.service';
 import { buildCuriosityQueue, maybeCuriosityUpdate } from './curiosityQueue.service';
 import { maybeOfferThanksLoop, respondToThanksLoopOffer } from './thanksLoop.service';
 import { filterStaleDebriefs, recordDebriefOutcome } from './debrief.service';
+import {
+  saveContactRelationship,
+  forgetContactRelationship,
+  listOwnRelationships,
+} from './contactRelationships.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
@@ -1157,6 +1162,56 @@ const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
     'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity — and each carries its own instruction in the payload: follow it.' +
     ' WHEN: for what is due today.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+const SAVE_CONTACT_RELATIONSHIP_TOOL: AnthropicTool = {
+  name: 'save_contact_relationship',
+  description:
+    'Remember a relationship between TWO of the user\'s contacts ("Zura is Gia\'s brother", "they are business partners"). This is PRIVATE knowledge: it quietly improves who gets suggested, but the relationship itself is never told to anyone — not even hinted at. Call when the user states how two of their contacts relate. Both phones come from search results.' +
+    ' WHEN: the user says how two contacts relate to each other.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone_a: { type: 'string', description: "First contact's phone from search results" },
+      phone_b: { type: 'string', description: "Second contact's phone from search results" },
+      relation: {
+        type: 'string',
+        description:
+          'The tie, one short word/phrase, lowercase: brother, sister, spouse, parent, child, colleague, business_partner, friend — or free-form',
+      },
+    },
+    required: ['phone_a', 'phone_b', 'relation'],
+  },
+};
+
+const FORGET_CONTACT_RELATIONSHIP_TOOL: AnthropicTool = {
+  name: 'forget_contact_relationship',
+  description:
+    "Delete a relationship the user previously saved between two of their contacts. Omit relation to remove every tie between the pair. Only touches this user's own records." +
+    ' WHEN: the user asks to forget/correct a saved relationship.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone_a: { type: 'string', description: "First contact's phone" },
+      phone_b: { type: 'string', description: "Second contact's phone" },
+      relation: { type: 'string', description: 'The specific tie to remove; omit for all' },
+    },
+    required: ['phone_a', 'phone_b'],
+  },
+};
+
+const GET_CONTACT_RELATIONSHIPS_TOOL: AnthropicTool = {
+  name: 'get_contact_relationships',
+  description:
+    "The user's OWN saved relationships between their contacts — everything, or just the ties touching one contact. Telling the user back what they themselves recorded is fine; it still must never reach anyone else." +
+    ' WHEN: the user asks what relationships they have saved.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: 'Optional: only ties touching this contact' },
+    },
+    required: [],
+  },
 };
 
 const RECORD_DEBRIEF_OUTCOME_TOOL: AnthropicTool = {
@@ -2468,6 +2523,27 @@ async function executeToolCall(
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
+    case 'save_contact_relationship':
+      return saveContactRelationship(
+        userId,
+        String(input['phone_a'] ?? ''),
+        String(input['phone_b'] ?? ''),
+        String(input['relation'] ?? ''),
+      );
+    case 'forget_contact_relationship':
+      return forgetContactRelationship(
+        userId,
+        String(input['phone_a'] ?? ''),
+        String(input['phone_b'] ?? ''),
+        typeof input['relation'] === 'string' ? (input['relation'] as string) : undefined,
+      );
+    case 'get_contact_relationships':
+      return {
+        relationships: await listOwnRelationships(
+          userId,
+          typeof input['phone'] === 'string' ? (input['phone'] as string) : undefined,
+        ),
+      };
     case 'record_debrief_outcome': {
       const subject = input['subject'];
       if (subject !== 'introduction' && subject !== 'relayed_ask' && subject !== 'search') {
@@ -2612,6 +2688,9 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   respond_to_invite_campaign: '📣 პასუხს ვინახავ...',
   get_curiosity_queue: '🤔 ვინ დამაინტერესოს, ვფიქრობ...',
   record_debrief_outcome: '📌 შედეგს ვინიშნავ...',
+  save_contact_relationship: '🔗 კავშირს ვინახავ...',
+  forget_contact_relationship: '🗑️ კავშირს ვშლი...',
+  get_contact_relationships: '🔗 შენახულ კავშირებს ვკითხულობ...',
   respond_to_thanks_loop_offer: '💌 მადლობის შეტყობინებას ვამზადებ...',
   remove_contact_from_network: '🗑 ქსელიდან ვიღებ...',
   invite_contact: '💌 მოსაწვევს ვამზადებ...',
@@ -3259,6 +3338,9 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     QUEUE_RESULT_TOOL,
     RECORD_SEARCH_OUTCOME_TOOL,
     RECORD_DEBRIEF_OUTCOME_TOOL,
+    SAVE_CONTACT_RELATIONSHIP_TOOL,
+    FORGET_CONTACT_RELATIONSHIP_TOOL,
+    GET_CONTACT_RELATIONSHIPS_TOOL,
     GET_PENDING_UPDATES_TOOL,
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,

@@ -113,18 +113,23 @@ describe('searchSecondDegree tag matching', () => {
   });
 
   it('warm bridges rank above cold ones and warmth is surfaced as via_warmth', async () => {
-    mockQuery.mockResolvedValue(
-      rows([
-        {
-          phone: '+995500000123',
-          target_user_id: null,
-          name: 'Nino',
-          via_names: ['Gio'],
-          warmth: 0.85,
-        },
-        { phone: '+995500000124', target_user_id: 7, name: 'Dato', via_names: ['Keti'] },
-      ]) as never,
-    );
+    mockQuery.mockImplementation((sql: string) => {
+      // D34's relationship read must stay empty here — this test is about the
+      // enrichment-computed warmth alone.
+      if (sql.includes('contact_relationships')) return Promise.resolve(rows([]) as never);
+      return Promise.resolve(
+        rows([
+          {
+            phone: '+995500000123',
+            target_user_id: null,
+            name: 'Nino',
+            via_names: ['Gio'],
+            warmth: 0.85,
+          },
+          { phone: '+995500000124', target_user_id: 7, name: 'Dato', via_names: ['Keti'] },
+        ]) as never,
+      );
+    });
 
     const result = (await searchSecondDegree('42', 'buralteri')) as Record<string, unknown>;
 
@@ -190,6 +195,37 @@ describe('searchSecondDegree tag matching', () => {
     expect(excludedTypes).toEqual(
       expect.arrayContaining(['note', 'health', 'money', 'politics', 'religion', 'love']),
     );
+  });
+
+  it('D34: a relationship edge the searcher owns lifts via_warmth — and the relation itself never appears', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('contact_relationships'))
+        return Promise.resolve(rows([{ phone: '+995500000123' }]) as never);
+      if (sql.includes('tag_hits'))
+        return Promise.resolve(
+          rows([
+            {
+              phone: '+995500000123',
+              target_user_id: null,
+              name: 'Nino',
+              via_names: ['Gio'],
+              warmth: 0.6,
+            },
+            { phone: '+995500000124', target_user_id: 7, name: 'Dato', via_names: ['Keti'] },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const result = (await searchSecondDegree('42', 'buralteri')) as Record<string, unknown>;
+
+    const results = result.results as Array<Record<string, unknown>>;
+    // 0.6 + 0.2 bonus, capped at 0.95.
+    expect(results[0].via_warmth).toBeCloseTo(0.8, 5);
+    // The untouched row keeps no warmth; and NOTHING in the payload names the
+    // relation — the edge only exists as a number.
+    expect(results[1]).not.toHaveProperty('via_warmth');
+    expect(JSON.stringify(result)).not.toContain('relation');
   });
 
   it('T15: omits signal_strength entirely when nothing (public or private) matched', async () => {

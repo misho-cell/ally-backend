@@ -403,6 +403,27 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
       'chorus_ask, debrief, curiosity — and each carries its own instruction: follow it.',
   },
+  save_contact_relationship: {
+    title: 'Remember how two contacts relate',
+    description:
+      "Saves a PRIVATE relationship between two of the user's contacts (\"Zura is Gia's " +
+      'brother"). It quietly improves who gets suggested but is never told to anyone — not ' +
+      'even hinted at. Call when the user states how two of their contacts relate; both ' +
+      'contact_refs come from search results.',
+  },
+  forget_contact_relationship: {
+    title: 'Forget a saved relationship',
+    description:
+      'Deletes a relationship the user previously saved between two of their contacts. Omit ' +
+      "relation to remove every tie between the pair. Only touches this user's own records.",
+  },
+  get_contact_relationships: {
+    title: "The user's saved relationships",
+    description:
+      "The user's OWN saved ties between their contacts — everything, or just the ones " +
+      'touching one contact. Telling the user back what they recorded is fine; it still must ' +
+      'never reach anyone else.',
+  },
   record_debrief_outcome: {
     title: 'Record how a debrief went',
     description:

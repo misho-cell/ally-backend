@@ -8,6 +8,10 @@ import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { normalizePhone } from '../phone';
+import {
+  applyRelationshipWarmth,
+  relationshipTouchedPhones,
+} from '../contactRelationships.service';
 import { OWNERSHIP } from './searchResultMeta';
 
 const MAX_FRIEND_PHONES = 3000;
@@ -400,7 +404,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
     // later precisely because only the DIRECT tools carried exclusions.
-    const [exclusions, signalStrength] = await Promise.all([
+    const [exclusions, signalStrength, relationshipTouched] = await Promise.all([
       fetchExclusionsForPhones(
         userId,
         rows.map((r) => r.phone),
@@ -408,6 +412,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       fetchSignalStrength(
         rows.map((r) => r.phone),
         regexTerms,
+      ),
+      // D34: an edge the SEARCHER recorded touching a result lifts its
+      // warmth. Membership only — the relation text never enters a response.
+      relationshipTouchedPhones(
+        userId,
+        rows.map((r) => r.phone),
       ),
     ]);
 
@@ -427,8 +437,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         via: row.via_names ?? [],
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing
-        // when no bridge has a computed score.
-        ...(row.warmth != null && { via_warmth: Number(row.warmth) }),
+        // when no bridge has a computed score. A D34 relationship edge the
+        // searcher owns lifts it (never says why — the edge itself is
+        // private by design).
+        ...(relationshipTouched.has(normalizePhone(row.phone))
+          ? { via_warmth: applyRelationshipWarmth(row.warmth) }
+          : row.warmth != null && { via_warmth: Number(row.warmth) }),
         // T15: how well this person matches the query, from every tag/fact on
         // them — public or not. Never the matched word itself, only the
         // score. Missing when nothing (public or private) matched at all.

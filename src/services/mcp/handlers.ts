@@ -49,6 +49,11 @@ import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import { buildCuriosityQueue, maybeCuriosityUpdate } from '../curiosityQueue.service';
 import { filterStaleDebriefs, recordDebriefOutcome } from '../debrief.service';
+import {
+  saveContactRelationship,
+  forgetContactRelationship,
+  listOwnRelationships,
+} from '../contactRelationships.service';
 import { maybeOfferThanksLoop, respondToThanksLoopOffer } from '../thanksLoop.service';
 import {
   getPendingRequestsForMediator,
@@ -1073,6 +1078,44 @@ export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPaylo
         ]),
   ];
   return { updates: items, more_pending: morePending };
+}
+
+export async function mcpSaveContactRelationship(
+  userId: string,
+  args: { contact_ref_a?: string; contact_ref_b?: string; relation?: string },
+): Promise<McpToolPayload> {
+  const phoneA = decodeContactRef(userId, args.contact_ref_a ?? '');
+  const phoneB = decodeContactRef(userId, args.contact_ref_b ?? '');
+  if (!phoneA || !phoneB) return { saved: false, error: UNKNOWN_REF_ERROR };
+  return { ...(await saveContactRelationship(userId, phoneA, phoneB, args.relation ?? '')) };
+}
+
+export async function mcpForgetContactRelationship(
+  userId: string,
+  args: { contact_ref_a?: string; contact_ref_b?: string; relation?: string },
+): Promise<McpToolPayload> {
+  const phoneA = decodeContactRef(userId, args.contact_ref_a ?? '');
+  const phoneB = decodeContactRef(userId, args.contact_ref_b ?? '');
+  if (!phoneA || !phoneB) return { removed: 0, error: UNKNOWN_REF_ERROR };
+  return { ...(await forgetContactRelationship(userId, phoneA, phoneB, args.relation)) };
+}
+
+export async function mcpGetContactRelationships(
+  userId: string,
+  args: { contact_ref?: string },
+): Promise<McpToolPayload> {
+  const phone = args.contact_ref ? decodeContactRef(userId, args.contact_ref) : undefined;
+  if (args.contact_ref && !phone) return { relationships: [], error: UNKNOWN_REF_ERROR };
+  const rows = await listOwnRelationships(userId, phone ?? undefined);
+  // The owner reads their own records back — but phones still never cross
+  // the connector boundary: each side becomes a contact_ref.
+  return {
+    relationships: rows.map((r) => ({
+      contact_ref_a: encodeContactRef(userId, r.phone_a),
+      contact_ref_b: encodeContactRef(userId, r.phone_b),
+      relation: r.relation,
+    })),
+  };
 }
 
 export async function mcpRecordDebriefOutcome(
