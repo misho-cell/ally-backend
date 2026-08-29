@@ -93,18 +93,20 @@ async function autoMergeRegisteredAccounts(): Promise<{ people: number; phones: 
  * Candidate signal 2 (design doc): two phones that MIN_CO_OWNERS+ different
  * owners each saved under the SAME normalized alias — people are known by the
  * same name across phonebooks. Never auto-merged: queued for the admin with
- * the evidence. Scanned in owner-id ranges so cost stays bounded.
+ * the evidence.
+ *
+ * Two bounded steps (live-caught on the first scan: counting co-owners
+ * INSIDE the owner range undercounts — three owners spread across three
+ * batches would never reach the threshold): the range only DISCOVERS pairs
+ * (one owner holding both phones under one normalized alias is enough to
+ * discover), then each discovered pair's co-owner count runs GLOBALLY,
+ * phone-indexed, so the threshold means what it says.
  */
+const PAIR_CAP_PER_BATCH = Number(process.env.IDENTITY_PAIR_CAP_PER_BATCH ?? 300);
+
 async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Promise<number> {
-  const pairs = await query<{
-    phone_1: string;
-    phone_2: string;
-    co_owners: string;
-    sample_alias: string;
-  }>(
-    `SELECT a.phone AS phone_1, b.phone AS phone_2,
-            COUNT(DISTINCT a."contactId") AS co_owners,
-            MIN(a.alias) AS sample_alias
+  const discovered = await query<{ phone_1: string; phone_2: string; sample_alias: string }>(
+    `SELECT a.phone AS phone_1, b.phone AS phone_2, MIN(a.alias) AS sample_alias
      FROM "UserAlias" a
      JOIN "UserAlias" b
        ON b."contactId" = a."contactId"
@@ -113,12 +115,25 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
      WHERE a."contactId" BETWEEN $1 AND $2
        AND LENGTH(TRIM(a.alias)) >= 3
      GROUP BY a.phone, b.phone
-     HAVING COUNT(DISTINCT a."contactId") >= $3`,
-    [fromOwner, toOwner, MIN_CO_OWNERS],
+     LIMIT $3`,
+    [fromOwner, toOwner, PAIR_CAP_PER_BATCH],
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   let added = 0;
-  for (const pair of pairs.rows) {
+  for (const pair of discovered.rows) {
+    const coOwners = await query<{ co_owners: string }>(
+      `SELECT COUNT(DISTINCT a."contactId") AS co_owners
+       FROM "UserAlias" a
+       JOIN "UserAlias" b
+         ON b."contactId" = a."contactId"
+        AND b.phone = $2
+        AND normalize_search_token(b.alias) = normalize_search_token(a.alias)
+       WHERE a.phone = $1`,
+      [pair.phone_1, pair.phone_2],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    );
+    const owners = Number(coOwners.rows[0]?.co_owners ?? 0);
+    if (owners < MIN_CO_OWNERS) continue;
     const phones = [pair.phone_1, pair.phone_2].sort();
     const inserted = await query<{ id: number }>(
       `INSERT INTO identity_candidates (phones, confidence, evidence)
@@ -130,7 +145,7 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
         NAME_MATCH_CONFIDENCE,
         JSON.stringify({
           signal: 'same_normalized_alias_across_owners',
-          co_owners: Number(pair.co_owners),
+          co_owners: owners,
           sample_alias: pair.sample_alias,
         }),
       ],

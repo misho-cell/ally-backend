@@ -35,8 +35,10 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
       if (sql.includes('INSERT INTO person_merge_log')) return Promise.resolve(rows([]) as never);
       if (sql.includes('MAX("contactId")'))
         return Promise.resolve(rows([{ max: opts.maxOwner ?? 100 }]) as never);
-      if (sql.includes('HAVING COUNT(DISTINCT a."contactId")'))
+      if (sql.includes('MIN(a.alias) AS sample_alias'))
         return Promise.resolve(rows(opts.pairs ?? []) as never);
+      if (sql.includes('COUNT(DISTINCT a."contactId") AS co_owners'))
+        return Promise.resolve(rows([{ co_owners: opts.pairs?.[0]?.co_owners ?? '0' }]) as never);
       if (sql.includes('INSERT INTO identity_candidates'))
         return Promise.resolve(rows(opts.candidateInserted === false ? [] : [{ id: 1 }]) as never);
       return Promise.resolve(rows([]) as never);
