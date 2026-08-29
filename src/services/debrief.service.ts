@@ -56,7 +56,8 @@ export async function armIntroDebrief(
         'actually connect, and was it useful? Save anything learned about that person with ' +
         'save_contact_fact (source="debrief"). Then record the result with record_debrief_outcome ' +
         `(subject="introduction", ref_id=${introRequestId}, worked=true/false). If they have not ` +
-        'met yet, drop the topic — record nothing and never push.',
+        `met yet, call record_debrief_outcome (subject="introduction", ref_id=${introRequestId}, ` +
+        'not_yet=true) and drop the topic — the question quietly returns once, then stops.',
     },
     DEBRIEF_DELAY_DAYS,
   );
@@ -90,7 +91,8 @@ export async function armAskDebrief(
         'the user honestly and ask how they want to proceed — keep waiting, or try someone else. ' +
         'If the matter got resolved outside the app, save what was learned with save_contact_fact ' +
         '(source="debrief") and record record_debrief_outcome (subject="relayed_ask", ' +
-        `ref_id=${askId}, worked=true/false).`,
+        `ref_id=${askId}, worked=true/false). If they simply want to keep waiting, call it with ` +
+        'not_yet=true — the question quietly returns once, then stops.',
     },
     DEBRIEF_DELAY_DAYS,
   );
@@ -125,7 +127,9 @@ export async function armSearchDebrief(userId: string, searchId: number): Promis
         'learned with save_contact_fact (source="debrief") and advance the ladder with ' +
         `record_search_outcome (search_id=${searchId}): "sent" if they reached out, "replied" if ` +
         'an answer came back, "followed_up" with worked=true/false if they know the result. If ' +
-        'nothing has happened yet, drop the topic and record nothing.',
+        `nothing has happened yet, call record_debrief_outcome (subject="search", ` +
+        `ref_id=${searchId}, not_yet=true) and drop the topic — the question quietly returns ` +
+        'once, then stops.',
     },
     DEBRIEF_DELAY_DAYS,
   );
@@ -196,32 +200,30 @@ async function hasDebriefRung(subjectType: string, refId: number): Promise<boole
   return existing.rows.length > 0;
 }
 
-export type DebriefOutcomeSubject = 'introduction' | 'relayed_ask';
+export type DebriefOutcomeSubject = 'introduction' | 'relayed_ask' | 'search';
 
 export interface DebriefOutcomeResult {
   recorded: boolean;
   /** A rung already stood for this subject — treated as success (idempotent). */
   already?: boolean;
+  /** not_yet only: whether the question was re-queued (false = already used its one re-ask). */
+  rearmed?: boolean;
+  note?: string;
   error?: string;
 }
 
-/**
- * The debrief answer's rung for non-search subjects (searches use their own
- * ladder via record_search_outcome). Scoped to the caller's own introduction
- * or ask — a ref_id is never trusted alone, the same rule as every reference
- * in this codebase. One rung per subject: worked and did_not_work never
- * coexist.
- */
-export async function recordDebriefOutcome(
+const SUBJECT_TO_KIND: Record<DebriefOutcomeSubject, DebriefArmKind> = {
+  introduction: 'intro_request',
+  relayed_ask: 'task_ask',
+  search: 'search',
+};
+
+/** The caller must own the subject — a ref_id is never trusted alone. */
+async function ownsDebriefSubject(
   userId: string,
   subject: DebriefOutcomeSubject,
   refId: number,
-  worked: boolean,
-): Promise<DebriefOutcomeResult> {
-  if (!Number.isFinite(refId) || refId <= 0) {
-    return { recorded: false, error: 'Pass the ref_id from the debrief item itself.' };
-  }
-  const subjectType = subject === 'introduction' ? 'intro_request' : 'task_ask';
+): Promise<boolean> {
   const owned =
     subject === 'introduction'
       ? await query<{ id: number }>(
@@ -229,14 +231,150 @@ export async function recordDebriefOutcome(
           [refId, userId],
           DEBRIEF_QUERY_TIMEOUT_MS,
         )
-      : await query<{ id: number }>(
-          `SELECT id FROM task_asks WHERE id = $1 AND from_user_id = $2::int LIMIT 1`,
-          [refId, userId],
-          DEBRIEF_QUERY_TIMEOUT_MS,
-        );
-  if (owned.rows.length === 0) {
-    return { recorded: false, error: 'No such introduction or ask of yours.' };
+      : subject === 'relayed_ask'
+        ? await query<{ id: number }>(
+            `SELECT id FROM task_asks WHERE id = $1 AND from_user_id = $2::int LIMIT 1`,
+            [refId, userId],
+            DEBRIEF_QUERY_TIMEOUT_MS,
+          )
+        : await query<{ id: number }>(
+            `SELECT id FROM search_activity WHERE id = $1 AND user_id = $2 LIMIT 1`,
+            [refId, userId],
+            DEBRIEF_QUERY_TIMEOUT_MS,
+          );
+  return owned.rows.length > 0;
+}
+
+// The founder's yes (29 Aug) on the re-arm: "we have not met yet" re-queues
+// the SAME question once, on the same clock, then stops for good.
+// rearmed_at IS NULL is the one-shot guard.
+async function rearmDebriefOnce(
+  userId: string,
+  subject: DebriefOutcomeSubject,
+  refId: number,
+): Promise<boolean> {
+  const kind = SUBJECT_TO_KIND[subject];
+  const claimed = await query<{ ref_id: number }>(
+    `UPDATE debrief_arms SET rearmed_at = NOW()
+     WHERE kind = $1 AND ref_id = $2 AND user_id = $3::int AND rearmed_at IS NULL
+     RETURNING ref_id`,
+    [kind, refId, userId],
+    DEBRIEF_QUERY_TIMEOUT_MS,
+  );
+  if (claimed.rows.length === 0) return false;
+
+  const { who, taskId } = await rearmContext(userId, subject, refId);
+  const refField =
+    subject === 'introduction'
+      ? 'intro_request_id'
+      : subject === 'relayed_ask'
+        ? 'ask_id'
+        : 'search_id';
+  const about =
+    subject === 'introduction'
+      ? 'introduction'
+      : subject === 'relayed_ask'
+        ? 'relayed_ask'
+        : 'search';
+  await queueFollowUp(
+    userId,
+    taskId,
+    DEBRIEF_KIND,
+    {
+      about,
+      [refField]: refId,
+      who,
+      why: `the user said "not yet" last time — this is the ONE follow-up, ${DEBRIEF_DELAY_DAYS} days later`,
+      technique_tag: null,
+      instruction:
+        `Second and LAST debrief${who ? ` about ${who}` : ''}: the user previously said it had ` +
+        'not happened yet. Ask once, lightly. Record the result the same way as before ' +
+        '(save_contact_fact source="debrief"; record_search_outcome for searches, ' +
+        'record_debrief_outcome otherwise). If still nothing, drop it for good — never ask again.',
+    },
+    DEBRIEF_DELAY_DAYS,
+  );
+  return true;
+}
+
+/** The little context a re-asked question needs to sound human. Best-effort. */
+async function rearmContext(
+  userId: string,
+  subject: DebriefOutcomeSubject,
+  refId: number,
+): Promise<{ who: string | null; taskId: number | null }> {
+  try {
+    if (subject === 'introduction') {
+      const r = await query<{ target_name: string }>(
+        `SELECT target_name FROM introduction_requests WHERE id = $1 LIMIT 1`,
+        [refId],
+        DEBRIEF_QUERY_TIMEOUT_MS,
+      );
+      return { who: r.rows[0]?.target_name ?? null, taskId: null };
+    }
+    if (subject === 'relayed_ask') {
+      const r = await query<{ task_id: number; name: string | null }>(
+        `SELECT ta.task_id, u.name FROM task_asks ta
+         LEFT JOIN "User" u ON u.id = ta.to_user_id
+         WHERE ta.id = $1 LIMIT 1`,
+        [refId],
+        DEBRIEF_QUERY_TIMEOUT_MS,
+      );
+      return { who: r.rows[0]?.name ?? null, taskId: r.rows[0]?.task_id ?? null };
+    }
+    const r = await query<{ query: string }>(
+      `SELECT query FROM search_activity WHERE id = $1 LIMIT 1`,
+      [refId],
+      DEBRIEF_QUERY_TIMEOUT_MS,
+    );
+    return { who: r.rows[0]?.query ?? null, taskId: null };
+  } catch {
+    return { who: null, taskId: null };
   }
+}
+
+/**
+ * The debrief answer's rung for non-search subjects (searches use their own
+ * ladder via record_search_outcome). Scoped to the caller's own subject — a
+ * ref_id is never trusted alone, the same rule as every reference in this
+ * codebase. One rung per subject: worked and did_not_work never coexist.
+ * notYet writes NO rung: it spends the subject's single re-ask instead —
+ * subject "search" is accepted ONLY on this path.
+ */
+export async function recordDebriefOutcome(
+  userId: string,
+  subject: DebriefOutcomeSubject,
+  refId: number,
+  worked: boolean,
+  notYet = false,
+): Promise<DebriefOutcomeResult> {
+  if (!Number.isFinite(refId) || refId <= 0) {
+    return { recorded: false, error: 'Pass the ref_id from the debrief item itself.' };
+  }
+  if (!(await ownsDebriefSubject(userId, subject, refId))) {
+    return { recorded: false, error: 'No such introduction, ask or search of yours.' };
+  }
+
+  if (notYet) {
+    const rearmed = await rearmDebriefOnce(userId, subject, refId);
+    return {
+      recorded: true,
+      rearmed,
+      note: rearmed
+        ? `Noted — the question will quietly return once, in ${DEBRIEF_DELAY_DAYS} days.`
+        : 'Noted — this was already the follow-up ask; the topic is closed for good now.',
+    };
+  }
+
+  if (subject === 'search') {
+    return {
+      recorded: false,
+      error:
+        'A search outcome goes through record_search_outcome — this tool only takes not_yet for searches.',
+    };
+  }
+
+  const subjectType = SUBJECT_TO_KIND[subject];
   if (await hasDebriefRung(subjectType, refId)) {
     return { recorded: true, already: true };
   }

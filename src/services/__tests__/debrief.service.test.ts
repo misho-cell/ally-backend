@@ -207,3 +207,62 @@ describe('recordDebriefOutcome — the answer becomes a rung', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 });
+
+describe('not_yet — the ONE re-ask (approved 29 Aug)', () => {
+  it('re-queues the question once, 3 days out, and spends the one-shot guard', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM introduction_requests') && sql.includes('requester_user_id'))
+        return Promise.resolve(rows([{ id: 5 }]) as never);
+      if (sql.includes('UPDATE debrief_arms SET rearmed_at'))
+        return Promise.resolve(rows([{ ref_id: 5 }]) as never);
+      if (sql.includes('SELECT target_name'))
+        return Promise.resolve(rows([{ target_name: 'გიორგი' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await recordDebriefOutcome('9', 'introduction', 5, false, true);
+
+    expect(out.recorded).toBe(true);
+    expect(out.rearmed).toBe(true);
+    expect(mockQueueFollowUp).toHaveBeenCalledWith(
+      '9',
+      null,
+      'debrief',
+      expect.objectContaining({ about: 'introduction', intro_request_id: 5, who: 'გიორგი' }),
+      3,
+    );
+    // A not_yet never writes a rung.
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO outcome_events'),
+    );
+    expect(insert).toBeUndefined();
+  });
+
+  it('a SECOND not_yet re-queues nothing — rearmed_at is the one-shot guard', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM introduction_requests') && sql.includes('requester_user_id'))
+        return Promise.resolve(rows([{ id: 5 }]) as never);
+      if (sql.includes('UPDATE debrief_arms SET rearmed_at'))
+        return Promise.resolve(rows([]) as never); // already spent
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await recordDebriefOutcome('9', 'introduction', 5, false, true);
+
+    expect(out.recorded).toBe(true);
+    expect(out.rearmed).toBe(false);
+    expect(mockQueueFollowUp).not.toHaveBeenCalled();
+  });
+
+  it('subject "search" is accepted ONLY with not_yet — a worked write is refused toward record_search_outcome', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM search_activity') && sql.includes('user_id'))
+        return Promise.resolve(rows([{ id: 77 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const refused = await recordDebriefOutcome('501', 'search', 77, true, false);
+    expect(refused.recorded).toBe(false);
+    expect(String(refused.error)).toContain('record_search_outcome');
+  });
+});

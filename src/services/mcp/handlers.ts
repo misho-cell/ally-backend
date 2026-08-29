@@ -1077,13 +1077,19 @@ export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPaylo
 
 export async function mcpRecordDebriefOutcome(
   userId: string,
-  args: { subject?: string; ref_id?: number; worked?: boolean },
+  args: { subject?: string; ref_id?: number; worked?: boolean; not_yet?: boolean },
 ): Promise<McpToolPayload> {
   const subject = args.subject;
-  if (subject !== 'introduction' && subject !== 'relayed_ask') {
-    return { recorded: false, error: 'subject must be "introduction" or "relayed_ask".' };
+  if (subject !== 'introduction' && subject !== 'relayed_ask' && subject !== 'search') {
+    return { recorded: false, error: 'subject must be "introduction", "relayed_ask" or "search".' };
   }
   return {
-    ...(await recordDebriefOutcome(userId, subject, Number(args.ref_id), args.worked === true)),
+    ...(await recordDebriefOutcome(
+      userId,
+      subject,
+      Number(args.ref_id),
+      args.worked === true,
+      args.not_yet === true,
+    )),
   };
 }

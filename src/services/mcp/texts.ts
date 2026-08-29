@@ -408,8 +408,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     description:
       'Records how an introduction or a relayed ask ACTUALLY went, after the user answered a ' +
       'debrief question (a kind="debrief" item from get_pending_updates). subject and ref_id ' +
-      'come from that item; worked=true when it genuinely helped. For search debriefs use ' +
-      'record_search_outcome instead. Never call it on a guess — only on what the user just said.',
+      'come from that item; worked=true when it genuinely helped. If the user says it has NOT ' +
+      'happened yet, call with not_yet=true — the question quietly returns once, then stops ' +
+      '(for searches only this not_yet path goes through here; real search outcomes use ' +
+      'record_search_outcome). Never call it on a guess — only on what the user just said.',
   },
   ask_contact: {
     title: 'Ask a contact on a task',

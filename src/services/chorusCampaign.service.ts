@@ -196,8 +196,14 @@ export async function openDueCampaigns(sinceDays: number): Promise<{ opened: num
   return { opened };
 }
 
+// The founder's call (29 Aug, via Misho, closing D50's open half): the ask
+// now GIVES a reason — technique 9, "we grow together". The technique stamp
+// must always match what the text actually does: reason changes here →
+// CHORUS_TECHNIQUE_REASON on Railway changes with it, never one without the
+// other.
 const CAMPAIGN_ASK_MESSAGE = (label: string): string =>
-  `${label}-ს იცნობ და Netai-ზე ჯერ არ არის. თუ გინდა, შეგიძლია მოიწვიო — ` +
+  `${label}-ს იცნობ და Netai-ზე ჯერ არ არის. რაც მეტი ახლობელი ადამიანია ქსელში, ` +
+  'მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. თუ გინდა, შეგიძლია მოიწვიო — ' +
   'უბრალოდ უპასუხე ამ თრედში: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
   'შესთავაზე, „უთხარი" (უთხარი და ველოდები).';
 

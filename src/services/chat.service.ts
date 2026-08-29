@@ -1162,22 +1162,27 @@ const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
 const RECORD_DEBRIEF_OUTCOME_TOOL: AnthropicTool = {
   name: 'record_debrief_outcome',
   description:
-    'Record how an introduction or a relayed ask ACTUALLY went, after the user answered a debrief question (a kind="debrief" item from get_pending_updates). subject and ref_id come from that item. worked=true when the connection/answer genuinely helped, false when it did not. For search debriefs use record_search_outcome instead. Never call it on a guess — only on what the user just said.' +
+    'Record how an introduction or a relayed ask ACTUALLY went, after the user answered a debrief question (a kind="debrief" item from get_pending_updates). subject and ref_id come from that item. worked=true when the connection/answer genuinely helped, false when it did not. If the user says it has NOT happened yet, call with not_yet=true instead — the question quietly returns once, then stops. For search debriefs use record_search_outcome for real outcomes; only not_yet goes through here (subject="search"). Never call it on a guess — only on what the user just said.' +
     ' WHEN: right after the user answers a debrief question.',
   input_schema: {
     type: 'object',
     properties: {
       subject: {
         type: 'string',
-        description: 'One of: "introduction" (intro_request_id) or "relayed_ask" (ask_id)',
+        description:
+          'One of: "introduction" (intro_request_id), "relayed_ask" (ask_id), or "search" (search_id, not_yet only)',
       },
       ref_id: {
         type: 'number',
-        description: 'The intro_request_id or ask_id from the debrief item payload',
+        description: 'The intro_request_id, ask_id or search_id from the debrief item payload',
       },
-      worked: { type: 'boolean', description: 'true = it genuinely helped' },
+      worked: { type: 'boolean', description: 'true = it genuinely helped (ignored when not_yet)' },
+      not_yet: {
+        type: 'boolean',
+        description: 'true = the user says it has not happened yet — re-queue the question once',
+      },
     },
-    required: ['subject', 'ref_id', 'worked'],
+    required: ['subject', 'ref_id'],
   },
 };
 
@@ -2465,14 +2470,18 @@ async function executeToolCall(
       return respondToThanksLoopOffer(userId, input['consented'] === true);
     case 'record_debrief_outcome': {
       const subject = input['subject'];
-      if (subject !== 'introduction' && subject !== 'relayed_ask') {
-        return { recorded: false, error: 'subject must be "introduction" or "relayed_ask".' };
+      if (subject !== 'introduction' && subject !== 'relayed_ask' && subject !== 'search') {
+        return {
+          recorded: false,
+          error: 'subject must be "introduction", "relayed_ask" or "search".',
+        };
       }
       return recordDebriefOutcome(
         userId,
         subject,
         Number(input['ref_id']),
         input['worked'] === true,
+        input['not_yet'] === true,
       );
     }
     case 'get_group_connectors':
