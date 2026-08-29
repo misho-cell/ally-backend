@@ -1,0 +1,177 @@
+jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+
+import { query } from '../../db/postgres/client';
+import {
+  runIdentityScan,
+  listIdentityCandidates,
+  approveIdentityCandidate,
+  rejectIdentityCandidate,
+  unmergePerson,
+} from '../identity.service';
+
+const mockQuery = query as jest.MockedFunction<typeof query>;
+
+function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCount: number } {
+  return { rows: data, rowCount };
+}
+
+beforeEach(() => jest.clearAllMocks());
+
+describe('runIdentityScan — the shadow scan: mapping only, raw data untouched', () => {
+  function routeScanQueries(opts: {
+    multiPhoneAccounts?: { userId: number; phones: string[] }[];
+    autoInserted?: string[];
+    maxOwner?: number;
+    pairs?: { phone_1: string; phone_2: string; co_owners: string; sample_alias: string }[];
+    candidateInserted?: boolean;
+  }): void {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('HAVING COUNT(*) >= 2'))
+        return Promise.resolve(rows(opts.multiPhoneAccounts ?? []) as never);
+      if (sql.includes('INSERT INTO person_identities'))
+        return Promise.resolve(
+          rows((opts.autoInserted ?? []).map((phone) => ({ phone }))) as never,
+        );
+      if (sql.includes('INSERT INTO person_merge_log')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")'))
+        return Promise.resolve(rows([{ max: opts.maxOwner ?? 100 }]) as never);
+      if (sql.includes('HAVING COUNT(DISTINCT a."contactId")'))
+        return Promise.resolve(rows(opts.pairs ?? []) as never);
+      if (sql.includes('INSERT INTO identity_candidates'))
+        return Promise.resolve(rows(opts.candidateInserted === false ? [] : [{ id: 1 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+  }
+
+  it("auto-merges ONLY a registered account's own numbers — confidence 1.0 by definition", async () => {
+    routeScanQueries({
+      multiPhoneAccounts: [{ userId: 7, phones: ['+995599000001', '599000002'] }],
+      autoInserted: ['+995599000001', '+995599000002'],
+      maxOwner: 10,
+    });
+
+    const out = await runIdentityScan(1);
+
+    expect(out.auto_merged_people).toBe(1);
+    expect(out.auto_merged_phones).toBe(2);
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO person_identities'),
+    );
+    // Normalized to one canonical form, confidence literal 1.0 in the SQL.
+    expect(insert?.[0]).toContain('1.0');
+    expect(insert?.[1]?.[1]).toEqual(['+995599000001', '+995599000002']);
+  });
+
+  it('queues a name-match pair as a CANDIDATE with its evidence — never merges it', async () => {
+    routeScanQueries({
+      maxOwner: 100,
+      pairs: [
+        {
+          phone_1: '+995599000005',
+          phone_2: '+995599000006',
+          co_owners: '4',
+          sample_alias: 'Giorgi Potskhveria',
+        },
+      ],
+    });
+
+    const out = await runIdentityScan(1);
+
+    expect(out.candidates_added).toBe(1);
+    const candidateInsert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO identity_candidates'),
+    );
+    expect(candidateInsert).toBeDefined();
+    // A candidate never writes person_identities on its own — only two
+    // person_identities writers exist: the auto-merge and an admin approve.
+    const identityWrites = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO person_identities'),
+    );
+    expect(identityWrites).toHaveLength(0);
+  });
+
+  it('walks owner ranges and reports where to resume', async () => {
+    routeScanQueries({ maxOwner: 10_000 });
+
+    const out = await runIdentityScan(1);
+
+    expect(out.done).toBe(false);
+    expect(out.next_from).toBe(out.owners_scanned.to + 1);
+
+    const last = await runIdentityScan(9_500);
+    expect(last.done).toBe(true);
+    expect(last.next_from).toBeNull();
+  });
+});
+
+describe('approve / reject / unmerge — the human half, always logged', () => {
+  it('approve gives the phones ONE person_id, reuses an existing one, and logs the prior state', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM identity_candidates'))
+        return Promise.resolve(
+          rows([
+            { id: 5, phones: ['+995599000005', '+995599000006'], evidence: { signal: 'x' } },
+          ]) as never,
+        );
+      if (sql.includes('SELECT phone, person_id FROM person_identities'))
+        return Promise.resolve(
+          rows([
+            { phone: '+995599000005', person_id: '11111111-1111-1111-1111-111111111111' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await approveIdentityCandidate(5, 'admin:167250');
+
+    expect(out.ok).toBe(true);
+    // Extends the EXISTING person rather than inventing a rival id.
+    expect(out.person_id).toBe('11111111-1111-1111-1111-111111111111');
+    const log = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO person_merge_log'),
+    );
+    expect(log?.[1]?.[2]).toEqual(['11111111-1111-1111-1111-111111111111']);
+    const close = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes("status = 'approved'"),
+    );
+    expect(close?.[1]).toEqual([5, 'admin:167250']);
+  });
+
+  it('reject closes a pending candidate and refuses a missing one', async () => {
+    mockQuery.mockResolvedValueOnce(rows([], 1) as never);
+    expect((await rejectIdentityCandidate(5, 'admin:1')).ok).toBe(true);
+
+    mockQuery.mockResolvedValueOnce(rows([], 0) as never);
+    expect((await rejectIdentityCandidate(999, 'admin:1')).ok).toBe(false);
+  });
+
+  it('unmerge removes the mapping rows and logs exactly what was removed', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('DELETE FROM person_identities'))
+        return Promise.resolve(
+          rows([{ phone: '+995599000005' }, { phone: '+995599000006' }]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await unmergePerson('11111111-1111-1111-1111-111111111111', 'admin:167250');
+
+    expect(out.ok).toBe(true);
+    const log = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'unmerge'"));
+    expect(log?.[1]?.[1]).toEqual(['+995599000005', '+995599000006']);
+  });
+});
+
+describe('listIdentityCandidates', () => {
+  it('returns the page plus the real total', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('COUNT(*)')) return Promise.resolve(rows([{ count: '321' }]) as never);
+      return Promise.resolve(rows([{ id: 1 }]) as never);
+    });
+
+    const out = await listIdentityCandidates('pending', 50);
+
+    expect(out.total).toBe(321);
+    expect(out.candidates).toHaveLength(1);
+  });
+});

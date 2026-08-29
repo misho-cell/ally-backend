@@ -70,6 +70,13 @@ import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import {
+  runIdentityScan,
+  listIdentityCandidates,
+  approveIdentityCandidate,
+  rejectIdentityCandidate,
+  unmergePerson,
+} from '../../services/identity.service';
+import {
   getLabelQueue,
   getLabelQueueTotal,
   parsePhonebookLabelsForUser,
@@ -1881,5 +1888,96 @@ adminRouter.post(
     }
   },
 );
+
+// ─── D35 shadow phase (approved 29 Aug): the identity map, admin-only ──────
+// D44 documentation:
+//   POST /admin/identity/scan { from_owner?: number }
+//     Effect: auto-merges registered accounts' own numbers (definitionally
+//     one person) into person_identities and walks ONE owner-range of the
+//     name-match candidate scan into identity_candidates. Writes only the
+//     mapping/queue tables — raw data untouched; no read path consumes the
+//     map yet. Re-run with the returned next_from until done.
+//   GET  /admin/identity/candidates?status=pending&limit=50 — the review queue.
+//   POST /admin/identity/candidates/:id/approve | /reject — the human call;
+//     approve extends an existing person when one of the phones is mapped.
+//   POST /admin/identity/unmerge { person_id } — exact restore, logged.
+adminRouter.post('/identity/scan', async (req: Request, res: Response) => {
+  try {
+    const rawFrom = Number((req.body as Record<string, unknown>)?.from_owner);
+    const fromOwner = Number.isInteger(rawFrom) && rawFrom > 0 ? rawFrom : 1;
+    const result = await runIdentityScan(fromOwner);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity scan]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get('/identity/candidates', async (req: Request, res: Response) => {
+  try {
+    const status = ['pending', 'approved', 'rejected'].includes(String(req.query.status))
+      ? String(req.query.status)
+      : 'pending';
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+    res.status(200).json({ success: true, data: await listIdentityCandidates(status, limit) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity candidates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/identity/candidates/:id/approve', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'candidate id აუცილებელია' });
+      return;
+    }
+    const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
+    const outcome = await approveIdentityCandidate(id, actor);
+    res.status(outcome.ok ? 200 : 404).json({ success: outcome.ok, data: outcome });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity approve]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/identity/candidates/:id/reject', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'candidate id აუცილებელია' });
+      return;
+    }
+    const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
+    const outcome = await rejectIdentityCandidate(id, actor);
+    res.status(outcome.ok ? 200 : 404).json({ success: outcome.ok, data: outcome });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity reject]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/identity/unmerge', async (req: Request, res: Response) => {
+  try {
+    const personId = String((req.body as Record<string, unknown>)?.person_id ?? '').trim();
+    if (!personId) {
+      res.status(400).json({ success: false, error: 'person_id აუცილებელია' });
+      return;
+    }
+    const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
+    const outcome = await unmergePerson(personId, actor);
+    res.status(outcome.ok ? 200 : 404).json({ success: outcome.ok, data: outcome });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity unmerge]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 export default adminRouter;
