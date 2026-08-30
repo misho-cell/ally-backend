@@ -88,6 +88,34 @@ profileRouter.get(
 // Edit the public profile fields. PATCH semantics: only the keys present in
 // the body change; an explicit null clears a field (name may not be cleared —
 // the ask flow introduces the sender by it).
+
+// Ticket 7 task 16, second half (F6): the user's OWN old-Ally colour counts,
+// self-service — the same numbers the admin sees in tiersByColour, scoped to
+// the caller. The frontend renders this as the colour table on /profile/data.
+profileRouter.get(
+  '/network-tiers',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const result = await query<{ label: string; count: string }>(
+        `SELECT tier AS label, COUNT(*) AS count FROM human_relationship_tiers
+         WHERE user_id = $1::int GROUP BY tier ORDER BY COUNT(*) DESC`,
+        [userId],
+      );
+      res.status(200).json({
+        success: true,
+        data: { tiers: result.rows.map((r) => ({ label: r.label, count: Number(r.count) })) },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[profile network-tiers] error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 profileRouter.patch(
   '/',
   authenticateJwt,
