@@ -404,6 +404,27 @@ describe('mcpSearchContacts', () => {
     expect(String(empty.note)).not.toContain('try search_by_insight');
   });
 
+  it("T15 pointers survive the connector boundary as contact_refs (ticket 8 task 4)", async () => {
+    mockSearchByInsight.mockResolvedValue({
+      found: false,
+      query: 'breeds alpacas',
+      note: 'nothing matched enough of the query',
+      pointers: [{ contact_id: '+995599000001', name: 'ზაზა', signal_strength: 0.45 }],
+      pointer_note: 'Weak, UNCONFIRMED single-source signals…',
+    } as never);
+
+    const empty = await mcpSearchByInsight(USER, { query: 'breeds alpacas' });
+
+    expect(empty.found).toBe(false);
+    const pointers = empty.pointers as { contact_ref: string; name: string | null }[];
+    expect(pointers).toHaveLength(1);
+    expect(pointers[0].name).toBe('ზაზა');
+    // The raw phone must NOT cross the boundary — a contact_ref stands in.
+    expect(pointers[0].contact_ref).toBeDefined();
+    expect(JSON.stringify(empty)).not.toContain('+995599000001');
+    expect(empty.pointer_note).toBeDefined();
+  });
+
   it('logs "insight" as the tool for search_by_insight', async () => {
     mockSearchByInsight.mockResolvedValue({ found: true, count: 3, results: [searchRow(1)] });
     mockLogSearchActivity.mockResolvedValue(9003);
