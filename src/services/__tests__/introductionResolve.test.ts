@@ -114,7 +114,12 @@ describe('resolveIntroductionRequest', () => {
       'assistant',
       expect.stringContaining('უარი'),
     );
-    expect(mockSaveThreadMessage.mock.calls[0][3]).toContain('ვერ დავეხმარები');
+    const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
+    expect(requesterMsg?.[3]).toContain('ვერ დავეხმარები');
+    // Ticket 8 task 3: the RESPONDER's own thread gets a closing line too —
+    // request 925's accepter got pure silence, just a status flip.
+    const responderMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 11);
+    expect(responderMsg?.[3]).toContain('უარი');
   });
 
   it('accepts a pending request: updates, notifies requester, records analytics, syncs threads', async () => {
@@ -135,9 +140,12 @@ describe('resolveIntroductionRequest', () => {
     const update = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('UPDATE introduction_requests'),
     );
-    // The pending-only guard makes simultaneous answers race-safe.
+    // The pending-only guard makes simultaneous answers race-safe. The row
+    // carries WHO responded (ticket 8 task 3 — the caller, works for direct
+    // requests where mediator_user_id is NULL by design).
     expect(update?.[0]).toContain("status = 'pending'");
-    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5]);
+    expect(update?.[0]).toContain('responded_by_user_id');
+    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7']);
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),

@@ -62,6 +62,7 @@ import {
   ModeTotal,
   RunStamp,
   RUN_MODES,
+  MAX_BLOCK_CONTENT_CHARS,
 } from '../../services/promptBlocks.service';
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
@@ -75,10 +76,13 @@ import {
   approveIdentityCandidate,
   rejectIdentityCandidate,
   unmergePerson,
+  getIdentitySummary,
 } from '../../services/identity.service';
+import { adminListGoals } from '../../services/goalQuestions.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
+  getRawLabelEvidence,
   parsePhonebookLabelsForUser,
   reprocessLabelQueue,
   reprocessSavedOccupationFacts,
@@ -197,7 +201,11 @@ adminRouter.get(
 
 adminRouter.put(
   '/prompt-blocks/:name',
-  body('content').optional().isString().isLength({ max: 20_000 }).withMessage('content too long'),
+  body('content')
+    .optional()
+    .isString()
+    .isLength({ max: MAX_BLOCK_CONTENT_CHARS })
+    .withMessage(`content too long (max ${MAX_BLOCK_CONTENT_CHARS} chars per block)`),
   body('modes').optional().isArray().withMessage('modes must be an array'),
   body('modes.*').optional().isString(),
   body('sort_order').optional().isInt({ min: 0, max: 100_000 }),
@@ -1035,6 +1043,26 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
   }
 });
 
+// Ticket 8 Task 2(c), Q-29: the admin read path for GOALS — per goal: the
+// brief, the next wake, how many wakes actually entered the thread, how many
+// asks went out, and the question the goal is blocked on right now. Open
+// goals first, then the rest by recency.
+adminRouter.get('/goals', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+      return;
+    }
+    const goals = await adminListGoals(String(userId));
+    res.status(200).json({ success: true, data: { goals } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin goals]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // Recompute one account's relationship scores NOW (ticket 4 items 4B.2/4B.5):
 // the explicit-insight override applies to new saves immediately, but scores
 // computed before the fix stay wrong until re-scored — this runs the same pass
@@ -1078,6 +1106,25 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
 // Engine T2 (ticket 6, task 29): the phonebook-label parser's ambiguity
 // queue — labels it could not resolve into a starter fact, so nothing a
 // user wrote is silently dropped.
+// D40 (ticket 8 task 14): one contact's raw labels, aggregated with the
+// contributor identity and count behind each, next to the parsed conclusion.
+// Reads the stores where every raw label already lives with its writer —
+// nothing is discarded at parse time; this is the read that proves it.
+adminRouter.get('/contacts/raw-labels', async (req: Request, res: Response) => {
+  try {
+    const phone = String(req.query.phone ?? '').trim();
+    if (phone.replace(/\D/g, '').length < 6) {
+      res.status(400).json({ success: false, error: 'phone აუცილებელია' });
+      return;
+    }
+    res.status(200).json({ success: true, data: await getRawLabelEvidence(phone) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin raw-labels]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/label-queue', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
@@ -1470,10 +1517,12 @@ adminRouter.get('/intro-requests', async (req: Request, res: Response) => {
               ir.mediator_response, ir.ask_type, ir.snoozed_until,
               ir.requester_user_id, rq.name AS requester_name,
               ir.mediator_user_id, md.name AS mediator_name,
+              ir.responded_by_user_id, rb.name AS responded_by_name,
               ir.created_at, ir.responded_at
        FROM introduction_requests ir
        LEFT JOIN "User" rq ON rq.id = ir.requester_user_id
        LEFT JOIN "User" md ON md.id = ir.mediator_user_id
+       LEFT JOIN "User" rb ON rb.id = ir.responded_by_user_id
        WHERE ($1::int IS NULL OR ir.requester_user_id = $1::int OR ir.mediator_user_id = $1::int)
        ORDER BY ir.id DESC
        LIMIT $2::int`,
@@ -1910,6 +1959,18 @@ adminRouter.post('/identity/scan', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin identity scan]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The shadow map's merged TOTALS in one read (ticket 8 task 13.3 — eleven
+// guessed spellings 404'd; this is the route).
+adminRouter.get('/identity/summary', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await getIdentitySummary() });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity summary]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

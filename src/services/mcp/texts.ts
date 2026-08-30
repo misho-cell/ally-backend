@@ -401,7 +401,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'are still coming. Call once at the start of a conversation, alongside check_my_inbox; ' +
       'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
       'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
-      'chorus_ask, debrief, curiosity — and each carries its own instruction: follow it.',
+      'chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction: ' +
+      'follow it.',
+  },
+  answer_goal_question: {
+    title: "Deliver the user's answer to a blocked goal",
+    description:
+      'Delivers the user\'s answer BACK to a goal that was blocked on it (a kind="goal_question" ' +
+      'item from get_pending_updates). task_id comes from that item; answer is what the user ' +
+      'actually said, in their words. The goal wakes and acts on it — without this call it ' +
+      'stays blocked. Call it right after the user answers.',
   },
   save_contact_relationship: {
     title: 'Remember how two contacts relate',

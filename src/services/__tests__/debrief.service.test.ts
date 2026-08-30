@@ -122,10 +122,24 @@ describe("filterStaleDebriefs — D49's 'with no outcome recorded', applied at r
     expect(await filterStaleDebriefs('42', updates)).toEqual(updates);
   });
 
-  it('drops a search debrief once the ladder moved past accepted', async () => {
+  it('KEEPS a search debrief whose ladder moved past accepted but worked is unanswered', async () => {
+    // A rung advance is progress, not an answer — live-caught 30 Aug: the
+    // model advanced accepted → followed_up while the user was ANSWERING the
+    // debrief, and the question silently died with the success lost.
     mockQuery.mockResolvedValue(rows([{ outcome: 'replied', outcome_worked: null }]) as never);
 
+    const updates = [item({ about: 'search', search_id: 77 })];
+    expect(await filterStaleDebriefs('501', updates)).toEqual(updates);
+  });
+
+  it('drops a search debrief once worked is recorded, or the search regressed to refused', async () => {
+    mockQuery.mockResolvedValue(rows([{ outcome: 'followed_up', outcome_worked: true }]) as never);
     expect(await filterStaleDebriefs('501', [item({ about: 'search', search_id: 77 })])).toEqual(
+      [],
+    );
+
+    mockQuery.mockResolvedValue(rows([{ outcome: 'refused', outcome_worked: null }]) as never);
+    expect(await filterStaleDebriefs('501', [item({ about: 'search', search_id: 78 })])).toEqual(
       [],
     );
   });

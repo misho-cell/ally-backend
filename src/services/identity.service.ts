@@ -213,6 +213,46 @@ export async function listIdentityCandidates(
   return { candidates: page.rows, total: Number(total.rows[0]?.count ?? 0) };
 }
 
+export interface IdentitySummary {
+  people: number;
+  mapped_phones: number;
+  candidates_pending: number;
+  candidates_approved: number;
+  candidates_rejected: number;
+  merge_log_entries: number;
+}
+
+/** Ticket 8 task 13.3: the merged TOTALS, one read — the shadow map's size. */
+export async function getIdentitySummary(): Promise<IdentitySummary> {
+  const result = await query<{
+    people: string;
+    mapped_phones: string;
+    candidates_pending: string;
+    candidates_approved: string;
+    candidates_rejected: string;
+    merge_log_entries: string;
+  }>(
+    `SELECT
+       (SELECT COUNT(DISTINCT person_id) FROM person_identities) AS people,
+       (SELECT COUNT(*) FROM person_identities) AS mapped_phones,
+       (SELECT COUNT(*) FROM identity_candidates WHERE status = 'pending') AS candidates_pending,
+       (SELECT COUNT(*) FROM identity_candidates WHERE status = 'approved') AS candidates_approved,
+       (SELECT COUNT(*) FROM identity_candidates WHERE status = 'rejected') AS candidates_rejected,
+       (SELECT COUNT(*) FROM person_merge_log) AS merge_log_entries`,
+    [],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return {
+    people: Number(row.people),
+    mapped_phones: Number(row.mapped_phones),
+    candidates_pending: Number(row.candidates_pending),
+    candidates_approved: Number(row.candidates_approved),
+    candidates_rejected: Number(row.candidates_rejected),
+    merge_log_entries: Number(row.merge_log_entries),
+  };
+}
+
 export interface DecisionOutcome {
   ok: boolean;
   person_id?: string;

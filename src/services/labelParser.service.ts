@@ -262,12 +262,14 @@ export interface LabelQueueEntry {
   phone: string;
   alias: string;
   created_at: string;
+  /** Dictionary version of the last re-parse attempt (migration 090). */
+  last_tried_version: string | null;
 }
 
 /** The ambiguity queue, newest first — what the parser could not place. */
 export async function getLabelQueue(limit: number): Promise<LabelQueueEntry[]> {
   const result = await query<LabelQueueEntry>(
-    `SELECT id, contact_id, phone, alias, created_at
+    `SELECT id, contact_id, phone, alias, created_at, last_tried_version
      FROM label_parse_queue ORDER BY id DESC LIMIT $1::int`,
     [limit],
     PARSE_TIMEOUT_MS,
@@ -447,6 +449,76 @@ export async function getLabelQueueForUser(
  * The user's OWN queue total (ticket 7 task 12 item 10): a page of 100 with
  * no total read as "exactly 100" — the caller needs the real number.
  */
+export interface RawLabelRow {
+  label: string;
+  contributors: number;
+  contributor_ids: number[];
+}
+
+export interface RawLabelEvidence {
+  phone: string;
+  labels: RawLabelRow[];
+  parsed_facts: { value: string; submitted_by_user_id: string; source: string | null }[];
+}
+
+const RAW_LABEL_LIMIT = 100;
+const RAW_LABEL_CONTRIBUTOR_SAMPLE = 20;
+
+/**
+ * D40 (ticket 8 task 14): one contact's RAW labels, aggregated, with the
+ * contributor identity behind each — read straight off the two stores where
+ * every raw label already lives with its writer (UserAlias for Netai sync,
+ * UserConnection for the old-Ally layer; nothing is discarded at parse time,
+ * the parser only DERIVES facts from these rows). Kept separate from the
+ * contact's own record by construction: this is an admin evidence view over
+ * other people's phonebooks, never merged into profile reads.
+ */
+export async function getRawLabelEvidence(phone: string): Promise<RawLabelEvidence> {
+  const labels = await query<{ label: string; contributors: string; contributor_ids: number[] }>(
+    `SELECT label, COUNT(DISTINCT contributor)::text AS contributors,
+            (ARRAY_AGG(DISTINCT contributor))[1:$2] AS contributor_ids
+     FROM (
+       SELECT ua.alias AS label, ua."contactId" AS contributor
+       FROM "UserAlias" ua
+       WHERE regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+       UNION ALL
+       SELECT uc.name AS label, uc."originUserId" AS contributor
+       FROM "UserConnectionPhone" ucp
+       JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
+       WHERE regexp_replace(ucp.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+     ) raw
+     WHERE label IS NOT NULL AND TRIM(label) <> ''
+     GROUP BY label
+     ORDER BY COUNT(DISTINCT contributor) DESC, label
+     LIMIT $3`,
+    [phone, RAW_LABEL_CONTRIBUTOR_SAMPLE, RAW_LABEL_LIMIT],
+    PARSE_TIMEOUT_MS,
+  );
+  const facts = await query<{
+    value: string;
+    submitted_by_user_id: string;
+    source: string | null;
+  }>(
+    `SELECT COALESCE(canonical_value, value) AS value, submitted_by_user_id, source
+     FROM contact_facts
+     WHERE regexp_replace(neo4j_contact_id, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+       AND field_type = 'occupation' AND retracted_at IS NULL
+     ORDER BY id DESC
+     LIMIT $2`,
+    [phone, RAW_LABEL_LIMIT],
+    PARSE_TIMEOUT_MS,
+  );
+  return {
+    phone,
+    labels: labels.rows.map((r) => ({
+      label: r.label,
+      contributors: Number(r.contributors),
+      contributor_ids: r.contributor_ids,
+    })),
+    parsed_facts: facts.rows,
+  };
+}
+
 export async function getLabelQueueTotalForUser(userId: string): Promise<number> {
   const result = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM label_parse_queue WHERE contact_id = $1::int`,

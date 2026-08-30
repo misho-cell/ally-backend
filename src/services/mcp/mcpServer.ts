@@ -46,6 +46,7 @@ import {
   mcpQueueResult,
   mcpRecordSearchOutcome,
   mcpRecordDebriefOutcome,
+  mcpAnswerGoalQuestion,
   mcpSaveContactRelationship,
   mcpForgetContactRelationship,
   mcpGetContactRelationships,
@@ -564,6 +565,19 @@ function registerGoalTools(server: McpServer, userId: string): void {
     },
     (args) =>
       runTool(userId, 'record_debrief_outcome', () => mcpRecordDebriefOutcome(userId, args)),
+  );
+  server.registerTool(
+    'answer_goal_question',
+    {
+      title: TOOL_TEXTS.answer_goal_question.title,
+      description: TOOL_TEXTS.answer_goal_question.description,
+      inputSchema: {
+        task_id: z.number().describe('The goal the question belongs to (from the item payload)'),
+        answer: z.string().describe("The user's answer, verbatim or near it"),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'answer_goal_question', () => mcpAnswerGoalQuestion(userId, args)),
   );
   server.registerTool(
     'respond_to_thanks_loop_offer',

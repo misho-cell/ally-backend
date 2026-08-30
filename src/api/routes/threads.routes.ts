@@ -22,6 +22,11 @@ import {
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { hasPendingAskForThread, cancelAsksForTask } from '../../services/taskAsks.service';
+import { getOpenTaskByThread } from '../../services/taskStore.service';
+import {
+  clearGoalQuestionForThread,
+  goalQuestionFlaggedSince,
+} from '../../services/goalQuestions.service';
 import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
@@ -76,13 +81,31 @@ function buildPushPreview(reply: string): string {
  * Lika, unanswered — was filed as finished and sank to the bottom of the list
  * (ticket 4 item 0C.5).
  */
-function statusAfterRun(result: ChatResult, pendingAsk: boolean): ThreadStatus {
+function statusAfterRun(
+  result: ChatResult,
+  pendingAsk: boolean,
+  opts: {
+    /** The thread carries a work item (open task, incoming ask, campaign). */
+    workItem: boolean;
+    /** The model registered a blocking question during THIS run. */
+    flagged: boolean;
+  },
+): ThreadStatus {
+  // An explicit ask_owner_decision outranks everything: the model itself said
+  // the work is blocked on the owner (ticket 8 task 2b).
+  if (opts.flagged) return 'needs_you';
   if (result.requestCreated === true) return 'waiting';
   // Third-party dependency outranks the reply's own shape: while an ask or an
   // introduction sits unanswered on someone else's phone the user owes
   // nothing, however chatty the acknowledgement was (ticket 6 B2: thread 8556
   // stayed needs_you because its reply ended with a question).
   if (pendingAsk) return 'waiting';
+  // Ticket 8 task 2(b): the badge means "this thread waits for the user",
+  // nothing else — and only a WORK item can wait for the user. A plain
+  // conversation whose last reply happens to end with a question is finished
+  // when the user walks away, not flagged forever (442 stale flags on one
+  // account, fourteen of the tester's forty visible threads).
+  if (!opts.workItem) return 'done';
   if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
   return 'done';
 }
@@ -291,6 +314,12 @@ threadsRouter.post(
         statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.working,
       });
 
+      // The owner showed up in the goal's own thread — whatever question was
+      // pending for them is being engaged right now; the model re-flags with
+      // ask_owner_decision if it is still blocked after this exchange.
+      void clearGoalQuestionForThread(userId, threadId).catch(() => undefined);
+      const runStartedAt = new Date();
+
       // Hard outer timeout: the run's own budget (~90s) normally forces a final
       // answer, but a truly stuck call (a hung external dependency the inner
       // watchdogs miss) could otherwise leave the client waiting forever with the
@@ -331,7 +360,14 @@ threadsRouter.post(
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
           const pendingAsk =
             (await hasPendingAskForThread(threadId).catch(() => false)) || pendingIntro;
-          const finalStatus = statusAfterRun(result, pendingAsk);
+          const openTask = await getOpenTaskByThread(threadId).catch(() => null);
+          const flagged =
+            openTask !== null &&
+            (await goalQuestionFlaggedSince(openTask.id, runStartedAt).catch(() => false));
+          const finalStatus = statusAfterRun(result, pendingAsk, {
+            workItem: thread.type !== 'regular' || openTask !== null || becameTask,
+            flagged,
+          });
           // The status caption follows the conversation's language (task 22
           // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
           const lang = result.language ?? 'ka';

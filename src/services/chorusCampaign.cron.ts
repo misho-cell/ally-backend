@@ -41,9 +41,11 @@ export function startChorusCampaignCron(): void {
 
   setInterval(() => {
     void sweepStaleParticipants()
-      .then(({ timedOut }) => {
+      .then(({ timedOut, closed }) => {
         // eslint-disable-next-line no-console
         if (timedOut > 0) console.log(`[chorus-cron] timed out ${timedOut} silent participant(s)`);
+        // eslint-disable-next-line no-console
+        if (closed > 0) console.log(`[chorus-cron] closed ${closed} empty/expired campaign(s)`);
       })
       .catch((err: unknown) =>
         // eslint-disable-next-line no-console

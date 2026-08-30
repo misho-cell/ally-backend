@@ -300,7 +300,10 @@ export async function registerUser(
       `INSERT INTO "User" (name, password, "hasAccessToAlly", "inviterReferralUserId", "createdAt", "updatedAt")
        VALUES ($1, $2, true, $3, NOW(), NOW())
        RETURNING id`,
-      [name, password, gate.inviterUserId ?? null],
+      // Trimmed at the door: a trailing space in a stored name renders as
+      // "**Name **" on every recipient's phone (three accounts carried one —
+      // ticket 8 task 12; migration 099 cleans the stock).
+      [name.trim(), password, gate.inviterUserId ?? null],
     );
 
     const userId = userResult.rows[0].id;

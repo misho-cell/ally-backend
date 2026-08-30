@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { setThreadStatus } from './threadStatus.service';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const OPEN_TASKS_LIMIT = 50;
@@ -26,6 +27,8 @@ export interface Task {
   autonomy: string;
   brief: string | null;
   next_wake_at: string | null;
+  /** Ticket 8 Task 2: the exact question this goal is blocked on, if any. */
+  pending_question: string | null;
   created_at: string;
   last_activity_at: string;
 }
@@ -61,7 +64,8 @@ export async function createTask(
 }
 
 const TASK_COLUMNS = `id, title, description, task_type, status, permission_granted,
-            thread_id, autonomy, brief, next_wake_at, created_at, last_activity_at`;
+            thread_id, autonomy, brief, next_wake_at, pending_question,
+            created_at, last_activity_at`;
 
 /** The open task bound to a thread — what makes a run a "task step" run. */
 export async function getOpenTaskByThread(threadId: number): Promise<Task | null> {
@@ -193,17 +197,28 @@ export async function updateTask(
   status: TaskStatus,
   note?: string,
 ): Promise<boolean> {
-  const result = await query(
+  const result = await query<{ thread_id: number | null }>(
     `UPDATE tasks
      SET status = $3,
          closed_reason = CASE WHEN $3 = 'closed' THEN $4 ELSE closed_reason END,
+         pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
+         pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
          updated_at = NOW(),
          last_activity_at = NOW()
-     WHERE id = $1 AND user_id = $2`,
+     WHERE id = $1 AND user_id = $2
+     RETURNING thread_id`,
     [taskId, userId, status, note ?? null],
     QUERY_TIMEOUT_MS,
   );
-  return (result.rowCount ?? 0) > 0;
+  const updated = (result.rowCount ?? 0) > 0;
+  // A closed goal's thread stops waiting for anyone — one of the tester's
+  // flagged-badge cases was a CLOSED goal still shown as "needs you"
+  // (ticket 8 task 2b). Every close route lands here, so the badge follows.
+  const threadId = result.rows[0]?.thread_id;
+  if (updated && status === 'closed' && threadId != null) {
+    void setThreadStatus(userId, threadId, 'done', { isTask: true });
+  }
+  return updated;
 }
 
 /** Record the one blanket "ok to ask around" consent for a task. */

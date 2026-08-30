@@ -49,6 +49,7 @@ import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import { buildCuriosityQueue, maybeCuriosityUpdate } from '../curiosityQueue.service';
 import { filterStaleDebriefs, recordDebriefOutcome } from '../debrief.service';
+import { answerGoalQuestion } from '../goalQuestions.service';
 import {
   saveContactRelationship,
   forgetContactRelationship,
@@ -203,7 +204,26 @@ async function mapSearchResult(
     };
   }
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
-    return withSearchId({ found: false, note: emptyNote });
+    // T15's empty-case pointers must survive the connector boundary too
+    // (ticket 8 task 4: the in-app tool returned them, this mapper dropped
+    // them). Phones become contact_refs, same rule as every result row.
+    const empty = outcome as {
+      pointers?: { contact_id: string; name: string | null; signal_strength: number }[];
+      pointer_note?: string;
+    };
+    const pointers = Array.isArray(empty.pointers) ? empty.pointers : [];
+    return withSearchId({
+      found: false,
+      note: emptyNote,
+      ...(pointers.length > 0 && {
+        pointers: pointers.map((p) => ({
+          contact_ref: encodeContactRef(userId, p.contact_id),
+          name: p.name,
+          signal_strength: p.signal_strength,
+        })),
+        ...(empty.pointer_note !== undefined && { pointer_note: empty.pointer_note }),
+      }),
+    });
   }
   const deduped = dedupeByName(outcome.results);
   // Real total when the tool reports one; else the deduped pool size.
@@ -1115,6 +1135,15 @@ export async function mcpGetContactRelationships(
       contact_ref_b: encodeContactRef(userId, r.phone_b),
       relation: r.relation,
     })),
+  };
+}
+
+export async function mcpAnswerGoalQuestion(
+  userId: string,
+  args: { task_id?: number; answer?: string },
+): Promise<McpToolPayload> {
+  return {
+    ...(await answerGoalQuestion(userId, Number(args.task_id), String(args.answer ?? ''))),
   };
 }
 

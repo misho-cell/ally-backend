@@ -335,15 +335,19 @@ async function syncRequestThreads(
             requestRef: req.request_ref,
           });
         } else {
-          // The mediator sees what happened in their name (task 16).
-          if (outcome?.mediatorFollowUp) {
-            await saveThreadMessage(
-              thread.id,
-              thread.user_id,
-              'assistant',
-              outcome.mediatorFollowUp,
-            ).catch(() => undefined);
-          }
+          // The responder sees what happened in their name (task 16) — on
+          // EVERY resolve, not only a mediated accept: request 925's direct
+          // accepter got pure silence, just a thread flipping to done
+          // (ticket 8 task 3). The richer mediated-accept follow-up wins
+          // when it exists; otherwise a plain honest close.
+          const close =
+            outcome?.mediatorFollowUp ??
+            (action === 'accept'
+              ? 'მადლობა! შენი თანხმობა გადაეცა — მან იცის, რომ დათანხმდი, და შესაძლოა მალე დაგიკავშირდეს.'
+              : 'გასაგებია — უარი მშვიდად გადაეცა. შენი სახელით მეტი არაფერი გაკეთდება ამ თხოვნაზე.');
+          await saveThreadMessage(thread.id, thread.user_id, 'assistant', close).catch(
+            () => undefined,
+          );
           await setThreadStatus(owner, thread.id, 'done', { requestRef: req.request_ref });
         }
       } else if (thread.type === 'outgoing_request' && action !== 'snooze') {
@@ -430,9 +434,10 @@ export async function resolveIntroductionRequest(
   // exactly one wins; the loser sees rowCount 0 and reports the conflict.
   const updated = await query(
     `UPDATE introduction_requests
-     SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL
+     SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL,
+         responded_by_user_id = $4::int
      WHERE id = $3 AND status = 'pending'`,
-    [newStatus, opts.response ?? null, req.id],
+    [newStatus, opts.response ?? null, req.id, mediatorUserId],
   );
   if ((updated.rowCount ?? 0) === 0) {
     return { ok: false, code: 'conflict', error: ERR_ALREADY_ANSWERED };

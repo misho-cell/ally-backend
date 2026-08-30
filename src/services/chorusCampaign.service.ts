@@ -25,22 +25,28 @@ const TECHNIQUE_RANGES: Record<keyof TechniqueTag, readonly [number, number]> = 
   reason: [9, 10],
 };
 
-/** One group's value: an integer inside its range, or null for unknown. */
+/**
+ * One group's value: an integer inside its range, 0 for an explicit "none"
+ * (ticket 8 task 5: known, and known to be absent — a scheduled ask has no
+ * conversational moment, a message without reason text gave no reason), or
+ * null for genuinely unknown. Out-of-range → null, never approximated.
+ */
 export function parseTechniqueValue(group: keyof TechniqueTag, value: unknown): number | null {
   const n = Number(value);
   const [min, max] = TECHNIQUE_RANGES[group];
-  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+  return Number.isInteger(n) && (n === 0 || (n >= min && n <= max)) ? n : null;
 }
 
 // Chorus stamps its OWN three values on every ask it sends (D50) — config,
 // not deploy, so the founder flips them when the fixed message changes. The
 // defaults are what the current message truthfully does: it names the person
-// (technique 5); it is sent on a schedule tied to no conversational moment
-// (when = unknown) and gives no reason (reason = unknown).
+// (technique 5), is sent on a schedule tied to no conversational moment
+// (when = 0, explicit none), and gives whatever reason the env declares
+// (9 since 29 Aug; 0 = none if the reason text is ever removed).
 const CHORUS_TECHNIQUE: TechniqueTag = {
-  when: parseTechniqueValue('when', process.env.CHORUS_TECHNIQUE_WHEN),
+  when: parseTechniqueValue('when', process.env.CHORUS_TECHNIQUE_WHEN ?? 0),
   how: parseTechniqueValue('how', process.env.CHORUS_TECHNIQUE_HOW ?? 5),
-  reason: parseTechniqueValue('reason', process.env.CHORUS_TECHNIQUE_REASON),
+  reason: parseTechniqueValue('reason', process.env.CHORUS_TECHNIQUE_REASON ?? 0),
 };
 
 // Ticket 6, engine T8 ("Chorus"): fully automatic invite campaigns targeting
@@ -190,7 +196,20 @@ export async function openDueCampaigns(sinceDays: number): Promise<{ opened: num
     );
     const campaignId = inserted.rows[0]?.id;
     if (campaignId === undefined) continue;
-    await scheduleParticipants(campaignId, target.phone, dial);
+    const scheduled = await scheduleParticipants(campaignId, target.phone, dial);
+    // Nobody eligible to ask = the campaign is over the moment it opens —
+    // 44 of the 49 standing campaigns were exactly this, open forever with
+    // zero participants (ticket 8 task 6).
+    if (scheduled === 0) {
+      await query(
+        `UPDATE invite_campaigns SET status = 'closed_no_inviters', closed_at = NOW(),
+           closed_reason = 'no eligible inviter (active subscriber holding this contact)'
+         WHERE id = $1 AND status = 'open'`,
+        [campaignId],
+        CAMPAIGN_QUERY_TIMEOUT_MS,
+      );
+      continue;
+    }
     opened++;
   }
   return { opened };
@@ -372,8 +391,12 @@ async function closeCampaignIfExhausted(campaignId: number): Promise<void> {
 // open indefinitely waiting on a reply that will never come.
 const NO_REPLY_TIMEOUT_DAYS = Number(process.env.CHORUS_NO_REPLY_TIMEOUT_DAYS ?? 21);
 
+// Nothing bounded a campaign's lifetime (ticket 8 task 6: 49 open, 0 ever
+// closed). Past this age it closes as expired whatever state its asks are in.
+const CAMPAIGN_MAX_AGE_DAYS = Number(process.env.CHORUS_CAMPAIGN_MAX_AGE_DAYS ?? 45);
+
 /** Times out asked-but-silent participants, then closes any campaign that leaves fully exhausted. */
-export async function sweepStaleParticipants(): Promise<{ timedOut: number }> {
+export async function sweepStaleParticipants(): Promise<{ timedOut: number; closed: number }> {
   const stale = await query<{ campaign_id: number }>(
     `UPDATE invite_campaign_participants
      SET state = 'declined', state_updated_at = NOW()
@@ -384,7 +407,30 @@ export async function sweepStaleParticipants(): Promise<{ timedOut: number }> {
   );
   const uniqueCampaigns = new Set(stale.rows.map((r) => r.campaign_id));
   for (const campaignId of uniqueCampaigns) await closeCampaignIfExhausted(campaignId);
-  return { timedOut: stale.rows.length };
+
+  // Terminal-state guarantees: an empty campaign (no eligible inviter) and an
+  // over-age campaign both close here, daily — a campaign can always END.
+  const closedEmpty = await query(
+    `UPDATE invite_campaigns c
+     SET status = 'closed_no_inviters', closed_at = NOW(),
+         closed_reason = 'no eligible inviter (active subscriber holding this contact)'
+     WHERE c.status = 'open'
+       AND NOT EXISTS (SELECT 1 FROM invite_campaign_participants p WHERE p.campaign_id = c.id)`,
+    [],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  const closedExpired = await query(
+    `UPDATE invite_campaigns
+     SET status = 'closed_expired', closed_at = NOW(),
+         closed_reason = 'open past ' || $1 || ' days'
+     WHERE status = 'open' AND opened_at < NOW() - make_interval(days => $1)`,
+    [CAMPAIGN_MAX_AGE_DAYS],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  return {
+    timedOut: stale.rows.length,
+    closed: (closedEmpty.rowCount ?? 0) + (closedExpired.rowCount ?? 0),
+  };
 }
 
 /**

@@ -18,6 +18,11 @@ import {
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
+import {
+  flagGoalQuestion,
+  goalQuestionFlaggedSince,
+  extractTrailingQuestion,
+} from './goalQuestions.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
@@ -95,6 +100,7 @@ export async function wakeTask(
     const hardTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
     );
+    const runStartedAt = new Date();
     try {
       const result = await Promise.race([
         processChat(ownerId, thread.id, `[მოვლენა] ${eventText}`, runId, ensureQuoted),
@@ -111,16 +117,34 @@ export async function wakeTask(
         reply: result.reply,
         ...(result.taskResult && { result: result.taskResult }),
       });
+      // Ticket 8 Task 2(b): in an ENGINE run the reply's audience is the owner
+      // — a question here means "blocked on the owner", and that outranks the
+      // third-party wait (the inverse of the user-run rule, where a chatty
+      // acknowledgement ending in "?" must not beat a pending ask — B2).
+      // The model registers its question via ask_owner_decision; the fallback
+      // catches a questioning reply it forgot to register and files the same
+      // pending item, so the question reaches the one list either way.
+      const flagged = await goalQuestionFlaggedSince(taskId, runStartedAt).catch(() => false);
+      const asksOwner =
+        flagged ||
+        result.choices !== undefined ||
+        result.options !== undefined ||
+        endsWithQuestion(result.reply);
       // A task whose question is unanswered on someone else's phone is waiting,
       // not finished (ticket 4 item 0C.5).
       const pendingAsk = await hasPendingAskForThread(thread.id).catch(() => false);
-      const status = result.requestCreated
-        ? 'waiting'
-        : endsWithQuestion(result.reply)
-          ? 'needs_you'
-          : pendingAsk
-            ? 'waiting'
-            : 'done';
+      const status = asksOwner
+        ? 'needs_you'
+        : result.requestCreated || pendingAsk
+          ? 'waiting'
+          : 'done';
+      if (asksOwner && !flagged) {
+        await flagGoalQuestion(ownerId, taskId, extractTrailingQuestion(result.reply)).catch(
+          (err: unknown) =>
+            // eslint-disable-next-line no-console
+            console.error('[goal-question] fallback flag failed:', (err as Error).message),
+        );
+      }
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });
       if (!hasActiveConnection(ownerId)) {
         const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
@@ -206,7 +230,9 @@ async function nightlyReview(): Promise<void> {
       task.id,
       'ღამის გადახედვა: ქსელში გუშინდელის მერე ახალი ხალხი/ინფორმაცია შეიძლება გაჩნდა. ' +
         'გაიმეორე ძირითადი ძიებები და შეადარე brief-ს — მფლობელს მხოლოდ რეალური სიახლე აცნობე; ' +
-        'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე.',
+        'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე. ' +
+        'თუ წინსვლა მფლობელის პასუხზეა ჩამოკიდებული — გამოიძახე ask_owner_decision ზუსტი ' +
+        'კითხვით: ის კითხვას მფლობელის მომდევნო საუბარში იტანს.',
     );
   }
   if (stale.length > 0) {

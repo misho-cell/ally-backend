@@ -206,8 +206,10 @@ describe('sendDueCampaignAsks', () => {
     expect(updates).toHaveLength(1);
     // D50: Chorus stamps its own technique tag at send time. The default
     // config claims only what the fixed message truthfully does — it names
-    // the person (how=5); when/reason are unknown until the founder sets them.
-    expect(updates[0][1]).toEqual([1, 77, null, 5, null]);
+    // the person (how=5); when/reason default to 0 = explicit NONE (a
+    // scheduled ask has no conversational moment; no reason unless the env
+    // says the message carries one) — ticket 8 task 5.
+    expect(updates[0][1]).toEqual([1, 77, 0, 5, 0]);
     // T9's one list: the ask ALSO becomes a typed chorus_ask pending update,
     // released immediately, so any conversation the inviter opens sees it.
     expect(queueFollowUp).toHaveBeenCalledWith(
@@ -320,11 +322,26 @@ describe('sweepStaleParticipants', () => {
 
     const out = await sweepStaleParticipants();
 
-    expect(out).toEqual({ timedOut: 1 });
+    expect(out).toEqual({ timedOut: 1, closed: 0 });
     const closeCalls = mockQuery.mock.calls.filter(([sql]) =>
       (sql as string).includes('closed_declined_all'),
     );
     expect(closeCalls).toHaveLength(1);
+  });
+
+  it('closes empty and over-age campaigns — a campaign can always END (ticket 8 task 6)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("state = 'asked' AND asked_at <")) return Promise.resolve(rows([]) as never);
+      if (sql.includes('closed_no_inviters'))
+        return Promise.resolve({ rows: [], rowCount: 44 } as never);
+      if (sql.includes('closed_expired'))
+        return Promise.resolve({ rows: [], rowCount: 2 } as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await sweepStaleParticipants();
+
+    expect(out).toEqual({ timedOut: 0, closed: 46 });
   });
 });
 

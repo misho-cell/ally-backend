@@ -49,6 +49,10 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   respond_to_invite_campaign:
     'keyed off the ambient in-app thread (a campaign_invite thread is one participant) — the ' +
     'connector has no equivalent thread concept, same reasoning as get_thread_context',
+  ask_owner_decision:
+    "called by ENGINE runs (nightly goal wakes) inside the goal's own in-app thread — the " +
+    "connector never runs a goal step; the owner's side of the loop (answer_goal_question) " +
+    'IS on the connector',
   send_answer_to_asker:
     'keyed off the ambient in-app incoming_ask thread (Task 1(c), D48) — the connector has no ' +
     'incoming-ask thread concept, same reasoning as get_thread_context',

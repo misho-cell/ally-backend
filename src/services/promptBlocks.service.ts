@@ -10,7 +10,11 @@ import { intEnv } from '../config/runBudgets';
 const BLOCK_QUERY_TIMEOUT_MS = 5_000;
 // Block names are API-addressable identifiers, not free text.
 const BLOCK_NAME_RE = /^[a-z0-9_]{2,40}$/;
-const MAX_BLOCK_CONTENT_CHARS = 30_000;
+// Exported: the admin route's validator reads THIS number — it sat at a
+// stale 20,000 after the 20k → 30k raise below, so a 20,286-char PUT bounced
+// with an undocumented cap while the page's counter said "of 30,000"
+// (ticket 8 task 10 / Q-38). One constant, one truth.
+export const MAX_BLOCK_CONTENT_CHARS = 30_000;
 // Ceiling for the SUM of enabled block content bound to one mode (on top of
 // the base prompt) — the prompt team asked for a hard stop at save time so a
 // mode can never quietly regrow into the monolith the split was escaping.

@@ -78,6 +78,7 @@ import {
 } from './contactRelationships.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
+import { flagGoalQuestion, answerGoalQuestion } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import {
@@ -1104,8 +1105,11 @@ const RECORD_SEARCH_OUTCOME_TOOL: AnthropicTool = {
     '"refused" the moment the user says a suggested name is not who they meant or not a fit — ' +
     'ask why in one line and pass it as reason, it makes the next search better. Call with ' +
     '"accepted" once they confirm a name is right, "sent" once you actually relay a message on ' +
-    'their behalf, "replied" once an answer comes back. Never guess "sent" or "replied" — only ' +
-    'record what you directly know happened in this conversation.' +
+    'their behalf, "replied" once an answer comes back, "followed_up" once they actually met or ' +
+    'used the person. Never guess "sent" or "replied" — only record what you directly know ' +
+    'happened in this conversation. When the user says whether it GENUINELY helped (a debrief ' +
+    'answer, a follow-up), pass worked=true/false along with the outcome — that is the success ' +
+    'signal; without it the answer is lost.' +
     ' WHEN: the moment you learn the real outcome of a search, not when the search returns.',
   input_schema: {
     type: 'object',
@@ -1116,6 +1120,12 @@ const RECORD_SEARCH_OUTCOME_TOOL: AnthropicTool = {
         description: `One of: ${SEARCH_OUTCOMES.join(', ')}`,
       },
       reason: { type: 'string', description: 'Why refused — only meaningful with outcome=refused' },
+      worked: {
+        type: 'boolean',
+        description:
+          'Did it genuinely help, per the user\'s own words ("კარგად გამოვიდა" = true, ' +
+          '"არ გამოადგა" = false). Omit when they have not said.',
+      },
     },
     required: ['search_id', 'outcome'],
   },
@@ -1159,9 +1169,42 @@ const GET_CURIOSITY_QUEUE_TOOL: AnthropicTool = {
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
-    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity — and each carries its own instruction in the payload: follow it.' +
+    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction in the payload: follow it.' +
     ' WHEN: for what is due today.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+const ASK_OWNER_DECISION_TOOL: AnthropicTool = {
+  name: 'ask_owner_decision',
+  description:
+    "Register the exact question a GOAL is blocked on, so it reaches the owner wherever they show up next (their pending list, every surface) instead of dying inside this thread. Call it whenever a goal cannot move without the owner's answer — especially at the end of a scheduled/night check the owner is not watching live. One live question per goal: a new call replaces the old. Never call it for rhetorical or optional questions — only for a real blocker." +
+    ' WHEN: a goal is blocked on the owner and they are not in this conversation.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The blocked goal (task_id)' },
+      question: {
+        type: 'string',
+        description: 'The exact question, one or two sentences, ready to show the owner',
+      },
+    },
+    required: ['task_id', 'question'],
+  },
+};
+
+const ANSWER_GOAL_QUESTION_TOOL: AnthropicTool = {
+  name: 'answer_goal_question',
+  description:
+    'Deliver the owner\'s answer BACK to a blocked goal (a kind="goal_question" item from get_pending_updates). task_id comes from that item; answer is what the owner actually said, in their words. The goal wakes and acts on it. Call it right after the owner answers — without it the goal stays blocked.' +
+    ' WHEN: right after the owner answers a goal_question item.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The goal the question belongs to' },
+      answer: { type: 'string', description: "The owner's answer, verbatim or near it" },
+    },
+    required: ['task_id', 'answer'],
+  },
 };
 
 const SAVE_CONTACT_RELATIONSHIP_TOOL: AnthropicTool = {
@@ -2467,6 +2510,14 @@ async function executeToolCall(
         }),
       };
     }
+    case 'ask_owner_decision': {
+      const question = String(input['question'] ?? '');
+      return flagGoalQuestion(userId, Number(input['task_id']), question);
+    }
+    case 'answer_goal_question': {
+      const answer = String(input['answer'] ?? '');
+      return answerGoalQuestion(userId, Number(input['task_id']), answer);
+    }
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.
       // A debrief item whose subject moved on is dropped (D49: "with no outcome
@@ -3342,6 +3393,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FORGET_CONTACT_RELATIONSHIP_TOOL,
     GET_CONTACT_RELATIONSHIPS_TOOL,
     GET_PENDING_UPDATES_TOOL,
+    ASK_OWNER_DECISION_TOOL,
+    ANSWER_GOAL_QUESTION_TOOL,
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,
     GET_GROUP_CONNECTORS_TOOL,

@@ -41,9 +41,14 @@ export interface RecordOutcomeInput {
  * founder's own instruction to reuse it.
  */
 export async function recordSearchOutcome(input: RecordOutcomeInput): Promise<boolean> {
+  // COALESCE on outcome_worked: a later ladder move without the worked flag
+  // must never erase a recorded success/failure (live-caught 30 Aug: the chat
+  // tool had no worked field, the model advanced the rung, and A's "it worked"
+  // was overwritten with NULL and silently lost).
   const result = await query(
     `UPDATE search_activity
-     SET outcome = $3, outcome_reason = $4, outcome_worked = $5, outcome_updated_at = NOW()
+     SET outcome = $3, outcome_reason = $4,
+         outcome_worked = COALESCE($5, outcome_worked), outcome_updated_at = NOW()
      WHERE id = $1 AND user_id = $2`,
     [input.searchId, input.userId, input.outcome, input.reason ?? null, input.worked ?? null],
     QUERY_TIMEOUT_MS,

@@ -181,7 +181,17 @@ async function debriefStillDue(userId: string, payload: Record<string, unknown>)
       DEBRIEF_QUERY_TIMEOUT_MS,
     );
     const row = search.rows[0];
-    return row !== undefined && row.outcome === 'accepted' && row.outcome_worked === null;
+    // Still due while "did it actually WORK" is unanswered — a ladder move
+    // past 'accepted' (sent/replied/followed_up) is progress, not an answer
+    // (live-caught 30 Aug: the rung advanced while the debrief was being
+    // answered and the question silently died). A regression to refused /
+    // no_result closes it: there is nothing left to debrief.
+    return (
+      row !== undefined &&
+      row.outcome_worked === null &&
+      row.outcome !== 'refused' &&
+      row.outcome !== 'no_result'
+    );
   }
   if (about === 'introduction') {
     return !(await hasDebriefRung('intro_request', Number(payload['intro_request_id'])));
