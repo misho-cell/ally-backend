@@ -404,7 +404,7 @@ describe('mcpSearchContacts', () => {
     expect(String(empty.note)).not.toContain('try search_by_insight');
   });
 
-  it("T15 pointers survive the connector boundary as contact_refs (ticket 8 task 4)", async () => {
+  it('T15 pointers survive the connector boundary as contact_refs (ticket 8 task 4)', async () => {
     mockSearchByInsight.mockResolvedValue({
       found: false,
       query: 'breeds alpacas',
