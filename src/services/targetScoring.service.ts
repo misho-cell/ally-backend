@@ -147,6 +147,11 @@ export interface TargetScoreParts {
   // ≥2 distinct contributors know this phone by a shared, non-brand name
   // token — the "this is a person" signal. Unconfirmed entries rank last.
   person_confirmed: boolean;
+  // How many active/trialing subscribers (with human-sized phonebooks — the
+  // same predicate as the registration gate's social proof) hold this number.
+  // The founder's target rule (31 Aug, via Misho): invite ONLY people the
+  // door would let in, i.e. holders >= the gate's own threshold.
+  subscribed_holders: number;
 }
 
 export interface TargetScoreEntry {
@@ -555,6 +560,42 @@ export async function buildTargetList(sinceDays: number): Promise<TargetScoreEnt
   return entries;
 }
 
+// The founder's target rule (31 Aug, via Misho): Chorus invites only people
+// the registration door would let in. The door's social proof asks for
+// MIN_SUBSCRIBED_OWNERS subscribed holders (2 since the same ruling) — this
+// mirrors that number and stays env-adjustable in lockstep with it.
+const MIN_TARGET_SUBSCRIBED_HOLDERS = Number(
+  process.env.CHORUS_MIN_SUBSCRIBED_HOLDERS ?? process.env.SOCIAL_PROOF_MIN_SUBSCRIBED_OWNERS ?? 2,
+);
+const SUBSCRIBED_STATUSES = ['active', 'trialing'];
+// Same human-phonebook cap as the gate's social proof: a purchased 40k-row
+// list must not vouch for a target here either.
+const MAX_HUMAN_PHONEBOOK_ROWS = Number(process.env.SOCIAL_PROOF_MAX_OWNER_CONTACTS ?? 15000);
+
+/**
+ * How many active/trialing subscribers (human-sized phonebooks only) hold
+ * each phone — the SAME predicate as the registration gate's social proof,
+ * minus the spelling-variant fan-out: these phones come straight from
+ * UserAlias rows, and the gate's variant matching can only find MORE owners,
+ * so a target passing here is guaranteed to pass the door.
+ */
+async function subscribedHoldersForPhones(phones: string[]): Promise<Map<string, number>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; holders: string }>(
+    `SELECT ua.phone, COUNT(DISTINCT ua."contactId") AS holders
+     FROM "UserAlias" ua
+     JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
+       AND u.subscription_status = ANY($2)
+     WHERE ua.phone = ANY($1)
+       AND (SELECT COUNT(*) FROM "UserAlias" b
+            WHERE b."contactId" = ua."contactId") <= $3
+     GROUP BY ua.phone`,
+    [phones, SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return new Map(result.rows.map((r) => [r.phone, Number(r.holders)]));
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEntry[]> {
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
@@ -565,16 +606,16 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
   const scoredCandidates = new Map(
     Array.from(candidates.entries()).filter(([phone]) => phones.includes(phone)),
   );
-  const [reachMap, warmthMap, aliasMap, capacity, goalRelevant, bestVocabulary] = await Promise.all(
-    [
+  const [reachMap, warmthMap, aliasMap, capacity, goalRelevant, bestVocabulary, holdersMap] =
+    await Promise.all([
       reachForPhones(phones),
       warmthSignalsForPhones(phones),
       analyzeAliases(phones),
       countAskableUsers(),
       goalRelevantPhones(scoredCandidates),
       bestUserVocabulary(),
-    ],
-  );
+      subscribedHoldersForPhones(phones),
+    ]);
 
   const entries: TargetScoreEntry[] = [];
   for (const phone of phones) {
@@ -584,6 +625,12 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     // Hard exclude #2: a brand word dominating the aliases at hotline reach
     // is a line, not a person (the tester's wissol/maksima/0-800 evidence).
     if (isHotline(analysis, reach)) continue;
+    // Hard exclude #3 (the founder's target rule, 31 Aug via Misho): invite
+    // ONLY people the registration door would let in — held by at least the
+    // gate's own threshold of subscribers. An invited person who cannot
+    // register is a wasted ask and a bad first impression.
+    const subscribedHolders = holdersMap.get(phone) ?? 0;
+    if (subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS) continue;
     const warmth = warmthScore(warmthMap.get(phone) ?? { strength: 0, colour: null, factCount: 0 });
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
@@ -611,6 +658,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
         goal_relevant: isGoalRelevant,
         best_user_lookalike: isBestUserLookalike,
         person_confirmed: analysis?.personConfirmed ?? false,
+        subscribed_holders: subscribedHolders,
       },
     });
   }

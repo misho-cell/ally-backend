@@ -8,8 +8,12 @@ const INVITE_ONLY_FLAG = 'invite_only';
 const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 // The registering phone must already sit in the contact books of at least this
 // many subscribers, OR this many users of any kind ("the bubble knows them").
-const MIN_SUBSCRIBED_OWNERS = 3;
-const MIN_TOTAL_OWNERS = 20;
+// Lowered 3 → 2 on the founder's call (31 Aug, via Misho): the door and the
+// Chorus target rule now say the same thing — held by two subscribers is
+// enough to enter, and exactly the people Chorus invites. Env-adjustable so
+// the founder can raise it back without a deploy.
+const MIN_SUBSCRIBED_OWNERS = Number(process.env.SOCIAL_PROOF_MIN_SUBSCRIBED_OWNERS ?? 2);
+const MIN_TOTAL_OWNERS = Number(process.env.SOCIAL_PROOF_MIN_TOTAL_OWNERS ?? 20);
 // A full Georgian number in digits: '995' + the 9-digit local part.
 const GEORGIA_CC = '995';
 const GEORGIA_FULL_DIGITS = 12;

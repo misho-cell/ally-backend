@@ -41,8 +41,24 @@ function routeScoreQueries(opts: {
   bestUserIds?: number[];
   bestUserPhones?: string[];
   bestUserFactValues?: string[];
+  /** phone -> subscribed holders; unlisted phones default to 2 (gate-passable). */
+  subscribedHolders?: Record<string, number>;
 }): void {
-  mockQuery.mockImplementation((sql: string) => {
+  mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    if (sql.includes('AS holders')) {
+      // Every asked phone passes the gate by default (holders=2), so the
+      // pre-existing scoring tests keep testing scoring, not the new hard
+      // filter; a test of the filter itself overrides via subscribedHolders.
+      const asked = Array.isArray(params?.[0]) ? (params?.[0] as string[]) : [];
+      return Promise.resolve(
+        rows(
+          asked.map((phone) => ({
+            phone,
+            holders: String(opts.subscribedHolders?.[phone] ?? 2),
+          })),
+        ) as never,
+      );
+    }
     if (sql.includes('CROSS JOIN LATERAL'))
       return Promise.resolve(rows(opts.aliases ?? []) as never);
     if (sql.includes('FROM tasks t'))
@@ -107,6 +123,27 @@ describe('buildTargetList', () => {
     // Matched the second topic's single-candidate pool too — gap-filling.
     expect(target?.parts.gap_filling_trade).toBe(true);
     expect(target?.city).toBe('თბილისი');
+  });
+
+  it("founder's target rule (31 Aug): only gate-passable people — held by 2+ subscribers", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('ბუღალტერი', [
+        { phone: '+995500000021', label: 'ნათია ბუღალტერი' },
+        { phone: '+995500000022', label: 'გია ბუღალტერი' },
+      ]),
+    ]);
+    routeScoreQueries({
+      askableCount: 50,
+      subscribedHolders: { '+995500000021': 2, '+995500000022': 1 },
+    });
+
+    const out = await buildTargetList(30);
+
+    // Held by 2 subscribers: on the list, with the count in parts.
+    const kept = out.find((e) => e.phone === '+995500000021');
+    expect(kept?.parts.subscribed_holders).toBe(2);
+    // Held by 1: the door would refuse them — never invited.
+    expect(out.find((e) => e.phone === '+995500000022')).toBeUndefined();
   });
 
   it('task 15: flags goal_relevant when an OPEN goal whole-word-matches the label, and scores it higher', async () => {

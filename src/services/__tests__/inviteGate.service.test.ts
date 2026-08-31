@@ -81,8 +81,8 @@ describe('checkRegistrationEligibility', () => {
     expect(result).toEqual({ eligible: true, mode: 'existing' });
   });
 
-  it('passes on social proof via 3 subscribed owners', async () => {
-    setWorld({ ...CLOSED_WORLD, totalOwners: 5, subscribedOwners: 3 });
+  it('passes on social proof via 2 subscribed owners (lowered 3 → 2, founder 31 Aug)', async () => {
+    setWorld({ ...CLOSED_WORLD, totalOwners: 3, subscribedOwners: 2 });
 
     const result = await checkRegistrationEligibility('+995599000001');
 
@@ -98,7 +98,7 @@ describe('checkRegistrationEligibility', () => {
   });
 
   it('stays closed just below both thresholds', async () => {
-    setWorld({ ...CLOSED_WORLD, totalOwners: 19, subscribedOwners: 2 });
+    setWorld({ ...CLOSED_WORLD, totalOwners: 19, subscribedOwners: 1 });
 
     const result = await checkRegistrationEligibility('+995599000001');
 
