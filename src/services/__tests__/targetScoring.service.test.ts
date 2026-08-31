@@ -43,8 +43,12 @@ function routeScoreQueries(opts: {
   bestUserFactValues?: string[];
   /** phone -> subscribed holders; unlisted phones default to 2 (gate-passable). */
   subscribedHolders?: Record<string, number>;
+  /** The founder's gate-passable pool source (default empty). */
+  poolPeople?: { phone: string; label: string }[];
 }): void {
   mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    if (sql.includes('mode() WITHIN GROUP'))
+      return Promise.resolve(rows(opts.poolPeople ?? []) as never);
     if (sql.includes('AS holders')) {
       // Every asked phone passes the gate by default (holders=2), so the
       // pre-existing scoring tests keep testing scoring, not the new hard
@@ -125,6 +129,18 @@ describe('buildTargetList', () => {
     expect(target?.city).toBe('თბილისი');
   });
 
+  it("founder's pool (31 Aug): a gate-passable person nobody searched for still makes the list", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([]);
+    routeScoreQueries({ askableCount: 50, poolPeople: [{ phone: '+995500000031', label: 'ეკა' }] });
+
+    const out = await buildTargetList(30);
+
+    const pooled = out.find((e) => e.phone === '+995500000031');
+    expect(pooled).toBeDefined();
+    expect(pooled?.parts.pull).toBe(0);
+    expect(pooled?.parts.gap_filling_trade).toBe(false);
+  });
+
   it("founder's target rule (31 Aug): only gate-passable people — held by 2+ subscribers", async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('ბუღალტერი', [
@@ -193,8 +209,12 @@ describe('buildTargetList', () => {
     const out = await buildTargetList(30);
 
     expect(out[0].parts.best_user_lookalike).toBe(false);
-    const phoneQuery = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('FROM "UserPhone"'),
+    // The best-users PHONE lookup must be skipped (the pool source's own SQL
+    // also mentions UserPhone in a NOT EXISTS — that one is not this).
+    const phoneQuery = mockQuery.mock.calls.find(
+      ([sql]) =>
+        (sql as string).includes('FROM "UserPhone"') &&
+        !(sql as string).includes('mode() WITHIN GROUP'),
     );
     expect(phoneQuery).toBeUndefined();
   });

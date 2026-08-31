@@ -572,6 +572,42 @@ const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 // list must not vouch for a target here either.
 const MAX_HUMAN_PHONEBOOK_ROWS = Number(process.env.SOCIAL_PROOF_MAX_OWNER_CONTACTS ?? 15000);
 
+// How many gate-passable people the pool source contributes per build — the
+// capacity cut happens after scoring anyway; this only bounds the query.
+const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
+
+/**
+ * The founder's pool (31 Aug): every UNREGISTERED number held by 2+ active
+ * subscribers — exactly the people the door would let in. This is the invite
+ * engine's PRIMARY candidate source now; unmet-needs matches still add pull
+ * on top, but a person nobody searched for is a legitimate target when two
+ * subscribers already carry them ("ეს სია შეგიძლია ბაზაში გადაამოწმო ხოლმე").
+ * The label is the most common alias — display material, same as tag labels.
+ */
+async function gatePassablePool(): Promise<{ phone: string; label: string }[]> {
+  const result = await query<{ phone: string; label: string }>(
+    `SELECT ua.phone, mode() WITHIN GROUP (ORDER BY ua.alias) AS label
+     FROM "UserAlias" ua
+     JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
+       AND u.subscription_status = ANY($1)
+     WHERE NOT EXISTS (
+         SELECT 1 FROM "UserPhone" up
+         WHERE regexp_replace(up.phone, '\\D', '', 'g') =
+               regexp_replace(ua.phone, '\\D', '', 'g')
+       )
+       AND (SELECT COUNT(*) FROM "UserAlias" b
+            WHERE b."contactId" = ua."contactId") <= $2
+     GROUP BY ua.phone
+     HAVING COUNT(DISTINCT ua."contactId") >= $3
+     ORDER BY COUNT(DISTINCT ua."contactId") DESC
+     LIMIT $4`,
+    [SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS, MIN_TARGET_SUBSCRIBED_HOLDERS,
+      GATE_PASSABLE_POOL_LIMIT],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /**
  * How many active/trialing subscribers (human-sized phonebooks only) hold
  * each phone — the SAME predicate as the registration gate's social proof,
@@ -599,6 +635,20 @@ async function subscribedHoldersForPhones(phones: string[]): Promise<Map<string,
 async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEntry[]> {
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
+  // The founder's pool joins as the primary source: gate-passable people
+  // nobody happened to search for still belong on the list (pull 0, no
+  // gap-filling claim); an unmet-needs match on the same phone keeps its
+  // richer context from gatherCandidates.
+  for (const person of await gatePassablePool()) {
+    if (!candidates.has(person.phone)) {
+      candidates.set(person.phone, {
+        label: person.label,
+        city: null,
+        pull: 0,
+        smallestPoolForItsTopics: Number.POSITIVE_INFINITY,
+      });
+    }
+  }
   // Hard exclude #1 (Task 4 item 1): only Georgian personal mobiles can be
   // people — 0-800 lines, short codes and foreign-prefix normalisations out.
   const phones = Array.from(candidates.keys()).filter(isGeorgianPersonalMobile);
