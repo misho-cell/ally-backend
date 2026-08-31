@@ -157,10 +157,13 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
 }
 
 /**
- * One shadow-scan batch, admin-triggered (never a cron): auto-merges the
- * registered accounts' own numbers (cheap, product-wide, idempotent) and
- * walks one owner-range of the name-match candidate scan. Returns where to
- * resume so the whole base is coverable in safe steps.
+ * One shadow-scan batch: auto-merges the registered accounts' own numbers
+ * (cheap, product-wide, idempotent) and walks one owner-range of the
+ * name-match candidate scan. Returns where to resume so the whole base is
+ * coverable in safe steps. Triggered by the admin route, or — since 31 Aug —
+ * by the server's own tick (runIdentityScanTick below): the shell loop that
+ * drove it externally died with its session container three times while the
+ * writes themselves were always safe to resume.
  */
 export async function runIdentityScan(fromOwner: number): Promise<IdentityScanResult> {
   const auto = await autoMergeRegisteredAccounts();
@@ -180,6 +183,45 @@ export async function runIdentityScan(fromOwner: number): Promise<IdentityScanRe
     owners_scanned: { from: fromOwner, to },
     done,
     next_from: done ? null : to + 1,
+  };
+}
+
+export interface IdentityScanTickResult {
+  ran: boolean;
+  done: boolean;
+  next_from: number | null;
+  candidates_added?: number;
+}
+
+/**
+ * One self-driven step of the shadow scan, resumed from the server-held
+ * progress row (migration 100). Skips instantly once done — the cron can
+ * keep ticking forever at zero cost. Progress is written AFTER the batch,
+ * so a crash mid-batch re-walks that batch (idempotent inserts make the
+ * overlap harmless), never skips one.
+ */
+export async function runIdentityScanTick(): Promise<IdentityScanTickResult> {
+  const progress = await query<{ next_from: number; done: boolean }>(
+    `SELECT next_from, done FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
+    [],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  const row = progress.rows[0];
+  if (!row || row.done) return { ran: false, done: row?.done ?? false, next_from: null };
+
+  const result = await runIdentityScan(row.next_from);
+  await query(
+    `UPDATE identity_scan_progress
+     SET next_from = COALESCE($1, next_from), done = $2, updated_at = NOW()
+     WHERE id = 1`,
+    [result.next_from, result.done],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  return {
+    ran: true,
+    done: result.done,
+    next_from: result.next_from,
+    candidates_added: result.candidates_added,
   };
 }
 
@@ -220,6 +262,8 @@ export interface IdentitySummary {
   candidates_approved: number;
   candidates_rejected: number;
   merge_log_entries: number;
+  /** The self-driven scan's position: null = migration 100 not applied yet. */
+  scan: { next_from: number; done: boolean; updated_at: string } | null;
 }
 
 /** Ticket 8 task 13.3: the merged TOTALS, one read — the shadow map's size. */
@@ -243,6 +287,11 @@ export async function getIdentitySummary(): Promise<IdentitySummary> {
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
+  const scan = await query<{ next_from: number; done: boolean; updated_at: string }>(
+    `SELECT next_from, done, updated_at FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
+    [],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  ).catch(() => ({ rows: [] as { next_from: number; done: boolean; updated_at: string }[] }));
   return {
     people: Number(row.people),
     mapped_phones: Number(row.mapped_phones),
@@ -250,6 +299,7 @@ export async function getIdentitySummary(): Promise<IdentitySummary> {
     candidates_approved: Number(row.candidates_approved),
     candidates_rejected: Number(row.candidates_rejected),
     merge_log_entries: Number(row.merge_log_entries),
+    scan: scan.rows[0] ?? null,
   };
 }
 

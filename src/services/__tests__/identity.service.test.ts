@@ -3,6 +3,7 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 import { query } from '../../db/postgres/client';
 import {
   runIdentityScan,
+  runIdentityScanTick,
   listIdentityCandidates,
   approveIdentityCandidate,
   rejectIdentityCandidate,
@@ -103,6 +104,41 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
     const last = await runIdentityScan(9_500);
     expect(last.done).toBe(true);
     expect(last.next_from).toBeNull();
+  });
+});
+
+describe('runIdentityScanTick — the scan drives itself (migration 100)', () => {
+  it('resumes from the stored row, runs one batch, persists the new position', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM identity_scan_progress'))
+        return Promise.resolve(rows([{ next_from: 13001, done: false }]) as never);
+      if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")'))
+        return Promise.resolve(rows([{ max: 171012 }]) as never);
+      if (sql.includes('MIN(a.alias) AS sample_alias')) return Promise.resolve(rows([]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await runIdentityScanTick();
+
+    expect(out.ran).toBe(true);
+    expect(out.done).toBe(false);
+    const persist = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('UPDATE identity_scan_progress'),
+    );
+    expect(persist?.[1]).toEqual([out.next_from, false]);
+  });
+
+  it('is a no-op once the scan is done — the cron can tick forever for free', async () => {
+    mockQuery.mockResolvedValue(rows([{ next_from: 171013, done: true }]) as never);
+
+    const out = await runIdentityScanTick();
+
+    expect(out).toEqual({ ran: false, done: true, next_from: null });
+    const scans = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('MAX("contactId")'),
+    );
+    expect(scans).toHaveLength(0);
   });
 });
 

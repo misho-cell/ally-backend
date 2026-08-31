@@ -24,6 +24,7 @@ import { startSubscriptionCron } from './services/subscription.cron';
 import { startAiNotificationCron } from './services/aiNotification.cron';
 import { startChorusCampaignCron } from './services/chorusCampaign.cron';
 import { startLabReportCron } from './services/labReport.cron';
+import { startIdentityScanCron } from './services/identityScan.cron';
 import { startRunReaper } from './services/runReaper.service';
 import { startTaskTicker } from './services/taskEngine.service';
 import { ApiResponse } from './types';
@@ -114,6 +115,7 @@ runMigrations()
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();
+    startIdentityScanCron();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
   })
