@@ -1,0 +1,12 @@
+-- 101: restart the D35 shadow scan from owner 1 — this time with full
+-- coverage guaranteed.
+--
+-- The old shell driver "advanced on timeout": when a batch's HTTP response
+-- was cut it assumed the server had finished and skipped 500 owners forward.
+-- The cron's first honest ticks (31 Aug) showed what that hid — the
+-- discovery join really does blow the 30s statement budget on dense ranges,
+-- so parts of owners 1–13000 were only partially scanned before the driver
+-- moved on. The scan queries now run on their own 120s budget
+-- (IDENTITY_SCAN_QUERY_TIMEOUT_MS) and every write is idempotent, so
+-- re-walking the whole base costs ~26 extra batches and buys certainty.
+UPDATE identity_scan_progress SET next_from = 1, done = FALSE, updated_at = NOW() WHERE id = 1;

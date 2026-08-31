@@ -103,6 +103,12 @@ async function autoMergeRegisteredAccounts(): Promise<{ people: number; phones: 
  * phone-indexed, so the threshold means what it says.
  */
 const PAIR_CAP_PER_BATCH = Number(process.env.IDENTITY_PAIR_CAP_PER_BATCH ?? 300);
+// The scan's two heavy queries get their own, background-appropriate budget:
+// at the shared 30s limit the discovery join over a dense owner-range blew
+// "statement timeout" on every cron tick (31 Aug, six ticks in a row, zero
+// progress) — and the old shell driver's advance-on-timeout was silently
+// leaving such ranges partially scanned. A cron can afford to wait.
+const SCAN_QUERY_TIMEOUT_MS = Number(process.env.IDENTITY_SCAN_QUERY_TIMEOUT_MS ?? 120_000);
 
 async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Promise<number> {
   const discovered = await query<{ phone_1: string; phone_2: string; sample_alias: string }>(
@@ -117,7 +123,7 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
      GROUP BY a.phone, b.phone
      LIMIT $3`,
     [fromOwner, toOwner, PAIR_CAP_PER_BATCH],
-    IDENTITY_QUERY_TIMEOUT_MS,
+    SCAN_QUERY_TIMEOUT_MS,
   );
   let added = 0;
   for (const pair of discovered.rows) {
@@ -130,7 +136,7 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
         AND normalize_search_token(b.alias) = normalize_search_token(a.alias)
        WHERE a.phone = $1`,
       [pair.phone_1, pair.phone_2],
-      IDENTITY_QUERY_TIMEOUT_MS,
+      SCAN_QUERY_TIMEOUT_MS,
     );
     const owners = Number(coOwners.rows[0]?.co_owners ?? 0);
     if (owners < MIN_CO_OWNERS) continue;
