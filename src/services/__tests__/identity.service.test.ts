@@ -39,7 +39,17 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
       if (sql.includes('MIN(a.alias) AS sample_alias'))
         return Promise.resolve(rows(opts.pairs ?? []) as never);
       if (sql.includes('COUNT(DISTINCT a."contactId") AS co_owners'))
-        return Promise.resolve(rows([{ co_owners: opts.pairs?.[0]?.co_owners ?? '0' }]) as never);
+        // One query counts every discovered pair; the rows come back keyed by
+        // the pair, not as a bare number.
+        return Promise.resolve(
+          rows(
+            (opts.pairs ?? []).map((p) => ({
+              phone_1: p.phone_1,
+              phone_2: p.phone_2,
+              co_owners: p.co_owners,
+            })),
+          ) as never,
+        );
       if (sql.includes('INSERT INTO identity_candidates'))
         return Promise.resolve(rows(opts.candidateInserted === false ? [] : [{ id: 1 }]) as never);
       return Promise.resolve(rows([]) as never);
