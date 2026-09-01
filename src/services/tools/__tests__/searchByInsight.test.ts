@@ -190,7 +190,10 @@ describe('searchByInsight', () => {
     expect(pointers).toEqual([
       { contact_id: '+995599888888', name: 'დათო მეზობელი', signal_strength: 0.65 },
     ]);
-    expect(String(result.pointer_note)).toContain('never state what matched');
+    // The two rules the note must always carry, whatever its wording: say
+    // nothing about the matched text, and name only the people in the list.
+    expect(String(result.pointer_note)).toContain('Never say what matched');
+    expect(String(result.pointer_note)).toContain('ONLY these names');
     // The pointer payload must carry no fact value and no submitter identity.
     expect(JSON.stringify(pointers)).not.toContain('submitted_by');
     // The candidate query itself excludes sensitive field types and the
