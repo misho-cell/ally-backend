@@ -254,11 +254,11 @@ async function searchInsights(
 // the payload at all, so this is guidance, not the guarantee — the guarantee
 // is that there is nothing to quote.
 const POINTER_NOTE =
-  'Weak, UNCONFIRMED single-source signals: someone privately recorded something matching this ' +
-  'query about these contacts. NAME them to the user as uncertain leads worth asking — do not ' +
-  'drop them silently, they are often the only lead there is. But never state what matched, who ' +
-  'recorded it, or present it as a confirmed fact: say only that they may be worth asking about ' +
-  'this, and let the user decide.';
+  'Weak, UNCONFIRMED single-source signals. Say exactly this and nothing more: these NAMED people ' +
+  'may be worth asking about the query, the signal is uncertain. Use the names in this list ' +
+  'verbatim and ONLY these names — the signal belongs to them, and attributing it to anyone else ' +
+  'is a false statement about that person. Never say what matched, who recorded it, or that it is ' +
+  'confirmed. Do not ask permission to name them; name them and let the user decide what to do.';
 
 interface SingleSourcePointer {
   contact_id: string;
