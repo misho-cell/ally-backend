@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from './costLedger.service';
+import { parseModelJson } from './modelJson';
 // Background pool on purpose: enrichment reads/writes (nightly job AND the
 // fire-and-forget per-import trigger) must never contend with user queries.
 import { backgroundQuery as query } from '../db/postgres/client';
@@ -498,11 +499,9 @@ async function runAiEnrichment(data: ContactRawData): Promise<AiEnrichmentResult
     .map((b) => b.text)
     .join('');
 
-  try {
-    return JSON.parse(text) as AiEnrichmentResult;
-  } catch {
-    return null;
-  }
+  // Fenced replies parsed as failures here for months — industry, seniority
+  // and is_decision_maker were null on all 8,014 enriched contacts.
+  return parseModelJson<AiEnrichmentResult>(text);
 }
 
 export async function enrichContact(phone: string): Promise<void> {

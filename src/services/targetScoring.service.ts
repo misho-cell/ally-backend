@@ -601,8 +601,12 @@ async function gatePassablePool(): Promise<{ phone: string; label: string }[]> {
      HAVING COUNT(DISTINCT ua."contactId") >= $3
      ORDER BY COUNT(DISTINCT ua."contactId") DESC
      LIMIT $4`,
-    [SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS, MIN_TARGET_SUBSCRIBED_HOLDERS,
-      GATE_PASSABLE_POOL_LIMIT],
+    [
+      SUBSCRIBED_STATUSES,
+      MAX_HUMAN_PHONEBOOK_ROWS,
+      MIN_TARGET_SUBSCRIBED_HOLDERS,
+      GATE_PASSABLE_POOL_LIMIT,
+    ],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return result.rows;

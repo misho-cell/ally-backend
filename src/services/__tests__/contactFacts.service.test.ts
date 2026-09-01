@@ -150,6 +150,20 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     expect((params as unknown[])[4]).toBe(true);
   });
 
+  it('reads a FENCED verdict — the bug that kept every fact private for two months', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    // Verbatim reply shape from claude-haiku-4-5 (captured live, 1 Sep):
+    // the old bare JSON.parse threw on this and failed closed, every time.
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: '```json\n{"public": true}\n```' }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'education', 'Harvard MBA');
+
+    expect(result.is_public).toBe(true);
+  });
+
   it('stays private (fail-closed) when the moderation call fails', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
     mockCreate.mockRejectedValue(new Error('model down'));
@@ -185,6 +199,37 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const upsertSql = mockQuery.mock.calls[0][0] as string;
     expect(upsertSql).toContain('ON CONFLICT');
     expect(upsertSql).toContain("field_type IN ('occupation', 'employer', 'city', 'industry')");
+  });
+
+  it("publishes a TRUSTED CURATOR's core fact immediately — no second source, no model call", async () => {
+    process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const result = await submitContactFact('501', RAW_PHONE, 'occupation', 'იურისტი');
+
+    // The founder's ruling (1 Sep): his value IS the canonical, straight away.
+    expect(result).toEqual({ is_public: true, canonical_value: 'იურისტი' });
+    const publish = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SET is_public = true'),
+    );
+    expect(publish?.[1]).toEqual(['იურისტი', PHONE, '501', 'occupation']);
+    // No crowd matching runs for a curator — nobody else has to agree.
+    expect(mockCreate).not.toHaveBeenCalled();
+    delete process.env.TRUSTED_FACT_CURATOR_USER_IDS;
+  });
+
+  it('keeps the two-source rule for everyone who is NOT a curator', async () => {
+    process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'occupation', 'იურისტი');
+
+    expect(result).toEqual({ is_public: false, canonical_value: null });
+    const publish = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SET is_public = true'),
+    );
+    expect(publish).toBeUndefined();
+    delete process.env.TRUSTED_FACT_CURATOR_USER_IDS;
   });
 
   it('reroutes a narrative-length core value to a note, never the crowd upsert', async () => {

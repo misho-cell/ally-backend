@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from './costLedger.service';
 import { query, backgroundQuery } from '../db/postgres/client';
 import { normalizePhone } from './phone';
+import { parseModelJson } from './modelJson';
 import anthropic from '../config/anthropic';
 
 // The four core, crowd-confirmable facts — one value per field per contact,
@@ -46,7 +47,7 @@ interface FactRow {
   value: string;
 }
 
-interface SemanticResult {
+export interface SemanticResult {
   canonical: string | null;
   matching_indices: number[];
 }
@@ -64,7 +65,10 @@ export interface VisibleFactsResult {
   ask_about: string | null;
 }
 
-async function runSemanticMatching(fieldType: string, values: string[]): Promise<SemanticResult> {
+export async function runSemanticMatching(
+  fieldType: string,
+  values: string[],
+): Promise<SemanticResult> {
   const listed = values.map((v, i) => `${i}: "${v}"`).join(', ');
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -89,11 +93,8 @@ async function runSemanticMatching(fieldType: string, values: string[]): Promise
     .map((b) => b.text)
     .join('');
 
-  try {
-    return JSON.parse(text) as SemanticResult;
-  } catch {
-    return { canonical: null, matching_indices: [] };
-  }
+  // An unparseable reply means "no match found" — the fail-closed default.
+  return parseModelJson<SemanticResult>(text) ?? { canonical: null, matching_indices: [] };
 }
 
 async function upsertFact(
@@ -215,8 +216,8 @@ export async function moderateNotePublicity(fieldType: string, value: string): P
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('');
-    const parsed = JSON.parse(text) as { public?: unknown };
-    return parsed.public === true;
+    const parsed = parseModelJson<{ public?: unknown }>(text);
+    return parsed?.public === true;
   } catch {
     return false;
   }
@@ -242,6 +243,48 @@ async function getOtherFacts(
 // something the user just said.
 export type FactSource = 'chat' | 'sweep' | 'label' | 'debrief';
 export type FactConfidence = 'stated' | 'mentioned';
+
+// The founder's ruling (1 Sep, via Misho): the two-source rule stays for
+// everyone, with ONE exception — the accounts listed here are trusted
+// curators seeding the network, and a core fact they record is public the
+// moment they write it, with no second source needed. Config, not code: the
+// list is an env var so the founder can add or drop a curator without a
+// deploy, and an empty list (the default) means "no exceptions at all".
+let curatorCache: { raw: string; ids: readonly string[] } | null = null;
+
+/** The configured curator ids, re-read whenever the variable itself changes. */
+export function trustedFactCuratorIds(): readonly string[] {
+  const raw = process.env.TRUSTED_FACT_CURATOR_USER_IDS ?? '';
+  if (curatorCache === null || curatorCache.raw !== raw) {
+    curatorCache = {
+      raw,
+      ids: raw
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0),
+    };
+  }
+  return curatorCache.ids;
+}
+
+export function isTrustedFactCurator(userId: string): boolean {
+  return trustedFactCuratorIds().includes(userId.trim());
+}
+
+/** A curator's core fact is published as written — their value IS the canonical. */
+async function publishAsCurator(
+  userId: string,
+  neo4jContactId: string,
+  fieldType: string,
+  value: string,
+): Promise<void> {
+  await query(
+    `UPDATE contact_facts SET is_public = true, canonical_value = $1, updated_at = NOW()
+     WHERE neo4j_contact_id = $2 AND submitted_by_user_id = $3 AND field_type = $4
+       AND retracted_at IS NULL`,
+    [value, neo4jContactId, userId, fieldType],
+  );
+}
 
 export async function submitContactFact(
   userId: string,
@@ -278,6 +321,15 @@ export async function submitContactFact(
   }
 
   await upsertFact(userId, neo4jContactId, fieldType, value, source, confidence);
+
+  // A trusted curator needs no second source (the founder's ruling, 1 Sep).
+  // Everyone else's rows are untouched: they keep confirming each other by the
+  // normal rule, and a later matching save publishes them through the path
+  // below — which now counts the curator's value among the candidates.
+  if (isTrustedFactCurator(userId)) {
+    await publishAsCurator(userId, neo4jContactId, fieldType, value);
+    return { is_public: true, canonical_value: value };
+  }
 
   const others = await getOtherFacts(userId, neo4jContactId, fieldType);
   if (others.length === 0) return { is_public: false, canonical_value: null };

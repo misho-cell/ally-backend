@@ -79,6 +79,7 @@ import {
   getIdentitySummary,
 } from '../../services/identity.service';
 import { adminListGoals } from '../../services/goalQuestions.service';
+import { republishFacts } from '../../services/factRepublish.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -851,6 +852,11 @@ adminRouter.get(
 const GRANT_DEFAULT_DAYS = 30;
 const GRANT_MAX_DAYS = 365;
 
+// One republish call moderates this many facts: a few model waves, always
+// answering well inside the proxy's window. The caller loops for the rest.
+const DEFAULT_REPUBLISH_LIMIT = 40;
+const MAX_REPUBLISH_LIMIT = 200;
+
 adminRouter.post(
   '/users/:id/subscription',
   param('id').isInt({ min: 1 }),
@@ -1121,6 +1127,25 @@ adminRouter.get('/contacts/raw-labels', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin raw-labels]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The fenced-JSON repair pass (1 Sep): re-runs moderation and crowd
+// confirmation over facts that were saved while every model reply parsed as a
+// failure, and publishes the trusted curators' core facts. Paced by `limit`,
+// idempotent — each step only looks at rows that are still private.
+adminRouter.post('/facts/republish', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(rawLimit, MAX_REPUBLISH_LIMIT)
+        : DEFAULT_REPUBLISH_LIMIT;
+    res.status(200).json({ success: true, data: await republishFacts(limit) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin facts republish]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

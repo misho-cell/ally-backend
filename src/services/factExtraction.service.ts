@@ -1,4 +1,5 @@
 import { recordClaudeUsage } from './costLedger.service';
+import { parseModelJson } from './modelJson';
 import { submitContactFact, FACT_FIELD_TYPES, FactConfidence } from './contactFacts.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 
@@ -60,12 +61,9 @@ function stripUnstatedYears(value: string, sourceText: string): string {
 }
 
 function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidate[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  // The sweep ran 165 times and wrote nothing: every reply arrived fenced and
+  // this parse threw, so the whole batch was dropped as "no candidates".
+  const parsed = parseModelJson<unknown>(raw);
   if (!Array.isArray(parsed)) return [];
   const out: ExtractedFactCandidate[] = [];
   for (const item of parsed) {
