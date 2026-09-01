@@ -201,6 +201,9 @@ export async function getMyDataSummary(userId: string): Promise<Record<string, n
 // An export bigger than this per table is delivered truncated and says so —
 // honesty over an unbounded response body.
 const EXPORT_ROW_CAP = 20_000;
+// Postgres "relation does not exist" — the one error that really does mean
+// this environment has no such table.
+const UNDEFINED_TABLE = '42P01';
 
 /**
  * The data-export the published Privacy Policy promises (ticket 6 build list
@@ -255,8 +258,15 @@ export async function exportMyData(userId: string): Promise<Record<string, unkno
           rows: result.rows.slice(0, EXPORT_ROW_CAP),
           truncated: result.rows.length > EXPORT_ROW_CAP,
         };
-      } catch {
-        // A table that does not exist in this environment simply has no data.
+      } catch (err: unknown) {
+        // A table absent from this environment genuinely has no data. Anything
+        // else — a timeout above all — must NOT be reported as "no data": this
+        // export answers a person asking what we hold about them, and a silent
+        // gap here is a false answer to that question.
+        if ((err as { code?: string }).code === UNDEFINED_TABLE) return;
+        // eslint-disable-next-line no-console
+        console.error(`[privacy export] ${bareName(table)} failed:`, (err as Error).message);
+        data[bareName(table)] = { rows: [], truncated: false, unavailable: true };
       }
     }),
   );
