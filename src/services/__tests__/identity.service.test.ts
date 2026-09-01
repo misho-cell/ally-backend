@@ -93,6 +93,28 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
     expect(identityWrites).toHaveLength(0);
   });
 
+  it('discovers pairs by GROUPING, never by joining UserAlias to itself', async () => {
+    // The scan sat dead for 35 hours (31 Aug 09:37 → 1 Sep 20:30, every cron
+    // tick "canceling statement due to statement timeout") because discovery
+    // self-joined the table inside each owner: one live phonebook holds 10,736
+    // aliases, so that owner alone is ~115M normalize() comparisons. Grouping
+    // by (owner, normalized alias) runs the same range in 1.8s. A self-join
+    // here must never come back.
+    routeScanQueries({ maxOwner: 100 });
+
+    await runIdentityScan(1);
+
+    const discovery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('MIN(a.alias) AS sample_alias'),
+    );
+    const sql = discovery?.[0] as string;
+    expect(sql).toContain('GROUP BY a."contactId", normalize_search_token(a.alias)');
+    expect(sql).not.toMatch(/JOIN\s+"UserAlias"/);
+    // A name held by many phones in ONE book is a role word, not a person.
+    expect(sql).toContain('HAVING COUNT(DISTINCT a.phone) BETWEEN 2 AND $4');
+    expect(discovery?.[1]?.[3]).toBe(20);
+  });
+
   it('walks owner ranges and reports where to resume', async () => {
     routeScanQueries({ maxOwner: 10_000 });
 

@@ -109,20 +109,36 @@ const PAIR_CAP_PER_BATCH = Number(process.env.IDENTITY_PAIR_CAP_PER_BATCH ?? 300
 // progress) — and the old shell driver's advance-on-timeout was silently
 // leaving such ranges partially scanned. A cron can afford to wait.
 const SCAN_QUERY_TIMEOUT_MS = Number(process.env.IDENTITY_SCAN_QUERY_TIMEOUT_MS ?? 120_000);
+// One name held by this many phones inside a SINGLE phonebook is not an
+// identity signal, it is a role word — "მამა", "ტაქსი", "დირექტორი". Capping
+// the group both removes that noise and stops one crowded name from
+// generating thousands of pairs.
+const MAX_PHONES_PER_NAME_GROUP = Number(process.env.IDENTITY_MAX_PHONES_PER_NAME ?? 20);
 
 async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Promise<number> {
+  // Group, don't self-join. The old query joined "UserAlias" to itself inside
+  // each owner: one phonebook of 10,736 aliases (owner 1735, live) is ~115M
+  // normalize() comparisons, and every cron tick from 31 Aug 09:37 to 1 Sep
+  // 20:30 died on "canceling statement due to statement timeout" — 35 hours,
+  // zero progress, because raising the app-side budget to 120s does not make
+  // a quadratic join finish. Grouping by (owner, normalized alias) is one
+  // pass over the covering index; the pairs are expanded from the group.
   const discovered = await query<{ phone_1: string; phone_2: string; sample_alias: string }>(
-    `SELECT a.phone AS phone_1, b.phone AS phone_2, MIN(a.alias) AS sample_alias
-     FROM "UserAlias" a
-     JOIN "UserAlias" b
-       ON b."contactId" = a."contactId"
-      AND b.phone > a.phone
-      AND normalize_search_token(b.alias) = normalize_search_token(a.alias)
-     WHERE a."contactId" BETWEEN $1 AND $2
-       AND LENGTH(TRIM(a.alias)) >= 3
-     GROUP BY a.phone, b.phone
+    `WITH name_groups AS (
+       SELECT array_agg(DISTINCT a.phone) AS phones, MIN(a.alias) AS sample_alias
+       FROM "UserAlias" a
+       WHERE a."contactId" BETWEEN $1 AND $2
+         AND LENGTH(TRIM(a.alias)) >= 3
+       GROUP BY a."contactId", normalize_search_token(a.alias)
+       HAVING COUNT(DISTINCT a.phone) BETWEEN 2 AND $4
+     )
+     SELECT x.p AS phone_1, y.p AS phone_2, g.sample_alias
+     FROM name_groups g
+     CROSS JOIN LATERAL unnest(g.phones) WITH ORDINALITY AS x(p, i)
+     CROSS JOIN LATERAL unnest(g.phones) WITH ORDINALITY AS y(p, j)
+     WHERE y.j > x.i
      LIMIT $3`,
-    [fromOwner, toOwner, PAIR_CAP_PER_BATCH],
+    [fromOwner, toOwner, PAIR_CAP_PER_BATCH, MAX_PHONES_PER_NAME_GROUP],
     SCAN_QUERY_TIMEOUT_MS,
   );
   let added = 0;
