@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
+import { georgianStem } from './georgianStem';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
 import { fetchSignalStrength } from './searchSecondDegree';
 
@@ -130,9 +131,13 @@ function queryWords(searchQuery: string): string[] {
     .split(/\s+/)
     .map((w) => w.trim())
     .filter((w) => w.length >= MIN_WORD_LEN);
+  // Each word is reduced to its Georgian stem, so a query in one case finds a
+  // fact recorded in another ("ინვესტორი" → the stored "ინვესტორს"). One stem
+  // per word: the count the relevance floor works from is unchanged, and a
+  // stem is a prefix, so nothing that matched before stops matching.
   const meaningful = raw.filter((w) => !STOPWORDS.has(w)).slice(0, MAX_QUERY_WORDS);
-  if (meaningful.length > 0) return meaningful;
-  if (raw.length > 0) return raw.slice(0, MAX_QUERY_WORDS);
+  if (meaningful.length > 0) return meaningful.map(georgianStem);
+  if (raw.length > 0) return raw.slice(0, MAX_QUERY_WORDS).map(georgianStem);
   const whole = searchQuery.trim().toLowerCase();
   return whole ? [whole] : [];
 }
