@@ -5,7 +5,10 @@ import { runIdentityScanTick } from './identity.service';
 // (migration 100). Same shape as the other tickers — setInterval + unref,
 // errors logged, never thrown. Once done it costs one SELECT per tick.
 // IDENTITY_SCAN_AUTO=off is the kill switch (config, not deploy).
-const TICK_INTERVAL_MS = Number(process.env.IDENTITY_SCAN_TICK_MS ?? 5 * 60_000);
+// A batch is ~3s of work now (it was minutes), and the scan has ~1.4M pairs to
+// walk. At five minutes a tick that is weeks; at one minute it is hours, and
+// the tick still spends 95% of its time idle.
+const TICK_INTERVAL_MS = Number(process.env.IDENTITY_SCAN_TICK_MS ?? 60_000);
 const AUTO_ENABLED = (process.env.IDENTITY_SCAN_AUTO ?? 'on') !== 'off';
 
 // One batch at a time even if a batch outlives the interval.

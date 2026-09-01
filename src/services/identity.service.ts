@@ -32,6 +32,8 @@ export interface IdentityScanResult {
   owners_scanned: { from: number; to: number };
   done: boolean;
   next_from: number | null;
+  /** Where to resume INSIDE the range; 0 once the range is drained. */
+  next_pair_offset: number;
 }
 
 /**
@@ -126,7 +128,11 @@ async function autoMergeRegisteredAccounts(): Promise<{ people: number; phones: 
  * discover), then each discovered pair's co-owner count runs GLOBALLY,
  * phone-indexed, so the threshold means what it says.
  */
-const PAIR_CAP_PER_BATCH = Number(process.env.IDENTITY_PAIR_CAP_PER_BATCH ?? 300);
+// One page of pairs. 300 was a guess made when each pair cost its own query;
+// measured on a live 500-owner range, 2,000 pairs cost the same 2.6s as 300
+// (the group-by dominates, the pair count barely registers), so a page this
+// size means a range drains in ~3 pages instead of ~17.
+export const PAIR_CAP_PER_BATCH = Number(process.env.IDENTITY_PAIR_CAP_PER_BATCH ?? 2000);
 // The scan's two heavy queries get their own, background-appropriate budget:
 // at the shared 30s limit the discovery join over a dense owner-range blew
 // "statement timeout" on every cron tick (31 Aug, six ticks in a row, zero
@@ -139,7 +145,17 @@ const SCAN_QUERY_TIMEOUT_MS = Number(process.env.IDENTITY_SCAN_QUERY_TIMEOUT_MS 
 // generating thousands of pairs.
 const MAX_PHONES_PER_NAME_GROUP = Number(process.env.IDENTITY_MAX_PHONES_PER_NAME ?? 20);
 
-async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Promise<number> {
+interface PairPageResult {
+  added: number;
+  /** A full page means this owner range still holds pairs we have not seen. */
+  pageFull: boolean;
+}
+
+async function scanNameMatchCandidates(
+  fromOwner: number,
+  toOwner: number,
+  pairOffset: number,
+): Promise<PairPageResult> {
   // Group, don't self-join. The old query joined "UserAlias" to itself inside
   // each owner: one phonebook of 10,736 aliases (owner 1735, live) is ~115M
   // normalize() comparisons, and every cron tick from 31 Aug 09:37 to 1 Sep
@@ -161,11 +177,13 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
      CROSS JOIN LATERAL unnest(g.phones) WITH ORDINALITY AS x(p, i)
      CROSS JOIN LATERAL unnest(g.phones) WITH ORDINALITY AS y(p, j)
      WHERE y.j > x.i
-     LIMIT $3`,
-    [fromOwner, toOwner, PAIR_CAP_PER_BATCH, MAX_PHONES_PER_NAME_GROUP],
+     ORDER BY x.p, y.p, g.sample_alias
+     LIMIT $3 OFFSET $5`,
+    [fromOwner, toOwner, PAIR_CAP_PER_BATCH, MAX_PHONES_PER_NAME_GROUP, pairOffset],
     SCAN_QUERY_TIMEOUT_MS,
   );
-  if (discovered.rows.length === 0) return 0;
+  const pageFull = discovered.rows.length === PAIR_CAP_PER_BATCH;
+  if (discovered.rows.length === 0) return { added: 0, pageFull: false };
 
   // Every discovered pair's co-owner count in ONE query. It used to be one
   // query per pair — 300 sequential round trips per batch, which is why a
@@ -209,7 +227,7 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
     );
     if (inserted.rows.length > 0) added++;
   }
-  return added;
+  return { added, pageFull };
 }
 
 /**
@@ -221,7 +239,10 @@ async function scanNameMatchCandidates(fromOwner: number, toOwner: number): Prom
  * drove it externally died with its session container three times while the
  * writes themselves were always safe to resume.
  */
-export async function runIdentityScan(fromOwner: number): Promise<IdentityScanResult> {
+export async function runIdentityScan(
+  fromOwner: number,
+  pairOffset = 0,
+): Promise<IdentityScanResult> {
   const auto = await autoMergeRegisteredAccounts();
   const maxOwner = await query<{ max: number | null }>(
     `SELECT MAX("contactId") AS max FROM "UserAlias"`,
@@ -230,15 +251,23 @@ export async function runIdentityScan(fromOwner: number): Promise<IdentityScanRe
   );
   const last = maxOwner.rows[0]?.max ?? 0;
   const to = Math.min(fromOwner + SCAN_BATCH_OWNERS - 1, last);
-  const candidates = fromOwner <= last ? await scanNameMatchCandidates(fromOwner, to) : 0;
-  const done = to >= last;
+  const page =
+    fromOwner <= last
+      ? await scanNameMatchCandidates(fromOwner, to, pairOffset)
+      : { added: 0, pageFull: false };
+  // A full page means this range still holds pairs: stay on it and move the
+  // offset. Advancing here is what turned the scan into a sample — a live
+  // 500-owner range holds 2,354-5,115 pairs and only 300 were ever read.
+  const rangeDrained = !page.pageFull;
+  const done = rangeDrained && to >= last;
   return {
     auto_merged_people: auto.people,
     auto_merged_phones: auto.phones,
-    candidates_added: candidates,
+    candidates_added: page.added,
     owners_scanned: { from: fromOwner, to },
     done,
-    next_from: done ? null : to + 1,
+    next_from: done ? null : rangeDrained ? to + 1 : fromOwner,
+    next_pair_offset: rangeDrained ? 0 : pairOffset + PAIR_CAP_PER_BATCH,
   };
 }
 
@@ -257,20 +286,20 @@ export interface IdentityScanTickResult {
  * overlap harmless), never skips one.
  */
 export async function runIdentityScanTick(): Promise<IdentityScanTickResult> {
-  const progress = await query<{ next_from: number; done: boolean }>(
-    `SELECT next_from, done FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
+  const progress = await query<{ next_from: number; done: boolean; pair_offset: number }>(
+    `SELECT next_from, done, pair_offset FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
     [],
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   const row = progress.rows[0];
   if (!row || row.done) return { ran: false, done: row?.done ?? false, next_from: null };
 
-  const result = await runIdentityScan(row.next_from);
+  const result = await runIdentityScan(row.next_from, row.pair_offset);
   await query(
     `UPDATE identity_scan_progress
-     SET next_from = COALESCE($1, next_from), done = $2, updated_at = NOW()
+     SET next_from = COALESCE($1, next_from), done = $2, pair_offset = $3, updated_at = NOW()
      WHERE id = 1`,
-    [result.next_from, result.done],
+    [result.next_from, result.done, result.next_pair_offset],
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   return {
@@ -311,6 +340,13 @@ export async function listIdentityCandidates(
   return { candidates: page.rows, total: Number(total.rows[0]?.count ?? 0) };
 }
 
+export interface ScanProgressRow {
+  next_from: number;
+  done: boolean;
+  pair_offset: number;
+  updated_at: string;
+}
+
 export interface IdentitySummary {
   people: number;
   mapped_phones: number;
@@ -319,7 +355,7 @@ export interface IdentitySummary {
   candidates_rejected: number;
   merge_log_entries: number;
   /** The self-driven scan's position: null = migration 100 not applied yet. */
-  scan: { next_from: number; done: boolean; updated_at: string } | null;
+  scan: ScanProgressRow | null;
 }
 
 /** Ticket 8 task 13.3: the merged TOTALS, one read — the shadow map's size. */
@@ -343,11 +379,17 @@ export async function getIdentitySummary(): Promise<IdentitySummary> {
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
-  const scan = await query<{ next_from: number; done: boolean; updated_at: string }>(
-    `SELECT next_from, done, updated_at FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
+  // pair_offset belongs in the summary: a frozen updated_at is how the 35-hour
+  // stall was finally seen, and the offset says WHERE inside a range it froze.
+  const scan = await query<ScanProgressRow>(
+    `SELECT next_from, done, pair_offset, updated_at FROM identity_scan_progress WHERE id = 1 LIMIT 1`,
     [],
     IDENTITY_QUERY_TIMEOUT_MS,
-  ).catch(() => ({ rows: [] as { next_from: number; done: boolean; updated_at: string }[] }));
+  ).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[identity summary] progress row unreadable:', (err as Error).message);
+    return { rows: [] as ScanProgressRow[] };
+  });
   return {
     people: Number(row.people),
     mapped_phones: Number(row.mapped_phones),

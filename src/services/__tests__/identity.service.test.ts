@@ -8,6 +8,7 @@ import {
   approveIdentityCandidate,
   rejectIdentityCandidate,
   unmergePerson,
+  PAIR_CAP_PER_BATCH,
 } from '../identity.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -189,7 +190,7 @@ describe('runIdentityScanTick — the scan drives itself (migration 100)', () =>
   it('resumes from the stored row, runs one batch, persists the new position', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM identity_scan_progress'))
-        return Promise.resolve(rows([{ next_from: 13001, done: false }]) as never);
+        return Promise.resolve(rows([{ next_from: 13001, done: false, pair_offset: 0 }]) as never);
       if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
       if (sql.includes('MAX("contactId")'))
         return Promise.resolve(rows([{ max: 171012 }]) as never);
@@ -204,7 +205,66 @@ describe('runIdentityScanTick — the scan drives itself (migration 100)', () =>
     const persist = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes('UPDATE identity_scan_progress'),
     );
-    expect(persist?.[1]).toEqual([out.next_from, false]);
+    // Range drained (short page): move the owner window on, offset back to 0.
+    expect(persist?.[1]).toEqual([out.next_from, false, 0]);
+  });
+
+  it('stays on a range whose page came back FULL, and advances only the offset', async () => {
+    // The scan used to take 300 pairs from a range and move past it forever.
+    // A live 500-owner range holds 2,354-5,115 pairs — so it was reading
+    // 6-13% of each range and calling the range done.
+    const fullPage = Array.from({ length: PAIR_CAP_PER_BATCH }, (_, i) => ({
+      phone_1: `+99559900${String(i).padStart(4, '0')}`,
+      phone_2: `+99559901${String(i).padStart(4, '0')}`,
+      sample_alias: 'Giorgi',
+    }));
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM identity_scan_progress'))
+        return Promise.resolve(rows([{ next_from: 5001, done: false, pair_offset: 600 }]) as never);
+      if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")'))
+        return Promise.resolve(rows([{ max: 171012 }]) as never);
+      if (sql.includes('MIN(a.alias) AS sample_alias'))
+        return Promise.resolve(rows(fullPage) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await runIdentityScanTick();
+
+    expect(out.next_from).toBe(5001);
+    const discovery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('MIN(a.alias) AS sample_alias'),
+    );
+    // Paging needs a stable order, and it resumes where it stopped.
+    expect(discovery?.[0]).toContain('ORDER BY x.p, y.p, g.sample_alias');
+    expect(discovery?.[1]?.[4]).toBe(600);
+    const persist = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('UPDATE identity_scan_progress'),
+    );
+    expect(persist?.[1]).toEqual([5001, false, 600 + PAIR_CAP_PER_BATCH]);
+  });
+
+  it('never calls itself done while the last range still has pairs', async () => {
+    const fullPage = Array.from({ length: PAIR_CAP_PER_BATCH }, () => ({
+      phone_1: '+995599000001',
+      phone_2: '+995599000002',
+      sample_alias: 'Giorgi',
+    }));
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM identity_scan_progress'))
+        return Promise.resolve(rows([{ next_from: 171000, done: false, pair_offset: 0 }]) as never);
+      if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")'))
+        return Promise.resolve(rows([{ max: 171012 }]) as never);
+      if (sql.includes('MIN(a.alias) AS sample_alias'))
+        return Promise.resolve(rows(fullPage) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await runIdentityScanTick();
+
+    expect(out.done).toBe(false);
+    expect(out.next_from).toBe(171000);
   });
 
   it('is a no-op once the scan is done — the cron can tick forever for free', async () => {
