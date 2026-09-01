@@ -31,15 +31,47 @@ export async function flagGoalQuestion(
 ): Promise<{ flagged: boolean; error?: string }> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed) return { flagged: false, error: 'Pass the question itself.' };
+  return flagGoal(userId, taskId, trimmed);
+}
+
+/**
+ * The engine's fallback: this run ended asking the owner something, but the
+ * model never registered WHAT. The goal is flagged with no question text.
+ *
+ * It used to store the reply's closing paragraph instead. Live on 1 Sep the
+ * nightly reply for goal 1420 (dog trainer) reported on three goals at once and
+ * closed on the Batumi-photographer question — which was then filed as goal
+ * 1420's own question. A question shown against the wrong goal is worse than no
+ * question at all: the owner is told a goal is blocked on something it never
+ * asked. Text now comes only from the model naming its own question through
+ * ask_owner_decision; the fallback carries the badge and the goal's title, and
+ * sends the owner to the thread to read it.
+ */
+export async function flagGoalNeedsOwner(
+  userId: string,
+  taskId: number,
+): Promise<{ flagged: boolean; error?: string }> {
+  return flagGoal(userId, taskId, null);
+}
+
+async function flagGoal(
+  userId: string,
+  taskId: number,
+  question: string | null,
+): Promise<{ flagged: boolean; error?: string }> {
   const task = await getTaskById(taskId);
   if (!task || task.user_id !== userId || task.status !== 'open') {
     return { flagged: false, error: 'No such open goal of yours.' };
   }
 
+  // A fallback flag must not overwrite a question the model DID register on an
+  // earlier run — that text is attributable, this one is not.
   await query(
-    `UPDATE tasks SET pending_question = $3, pending_question_at = NOW()
-     WHERE id = $1 AND user_id = $2`,
-    [taskId, userId, trimmed],
+    question === null
+      ? `UPDATE tasks SET pending_question_at = NOW() WHERE id = $1 AND user_id = $2`
+      : `UPDATE tasks SET pending_question = $3, pending_question_at = NOW()
+         WHERE id = $1 AND user_id = $2`,
+    question === null ? [taskId, userId] : [taskId, userId, question],
     QUERY_TIMEOUT_MS,
   );
   // One live question per goal: drop the previous held item before queueing.
@@ -49,6 +81,9 @@ export async function flagGoalQuestion(
     [userId, taskId, GOAL_QUESTION_KIND],
     QUERY_TIMEOUT_MS,
   );
+  // The stored question may predate this flag (the model registered it on an
+  // earlier run); the held item must carry whatever the goal actually holds.
+  const carried = question ?? task.pending_question;
   await queueFollowUp(
     userId,
     taskId,
@@ -56,12 +91,17 @@ export async function flagGoalQuestion(
     {
       task_id: taskId,
       goal_title: task.title,
-      question: trimmed,
+      ...(carried !== null && { question: carried }),
       instruction:
-        `The goal "${task.title}" is blocked on the owner's answer. Ask them the question ` +
-        'verbatim (translate if the conversation is in another language), get a real answer, ' +
-        'then call answer_goal_question with task_id and what they said — that is what ' +
-        'un-blocks the goal. If they defer, accept it and move on.',
+        carried !== null
+          ? `The goal "${task.title}" is blocked on the owner's answer. Ask them the question ` +
+            'verbatim (translate if the conversation is in another language), get a real answer, ' +
+            'then call answer_goal_question with task_id and what they said — that is what ' +
+            'un-blocks the goal. If they defer, accept it and move on.'
+          : `The goal "${task.title}" ended its last run waiting on the owner, but the question ` +
+            'itself was never registered — you do NOT know what it is, so do not invent one. ' +
+            'Tell them that goal is waiting on them and point them at its thread. If they say ' +
+            'what they want, call answer_goal_question with task_id and their words.',
     },
     0,
   );
@@ -164,18 +204,6 @@ export async function goalQuestionFlaggedSince(taskId: number, since: Date): Pro
     QUERY_TIMEOUT_MS,
   );
   return result.rows.length > 0;
-}
-
-// The engine fallback's question text: the reply's trailing chunk, from the
-// last blank line — the closing paragraph is where the question lives in
-// every wake reply observed live (threads 9406/9736, 29-30 Aug).
-const TRAILING_CHUNK_CHARS = 300;
-
-export function extractTrailingQuestion(reply: string): string {
-  const trimmed = reply.trim();
-  const lastBreak = trimmed.lastIndexOf('\n\n');
-  const tail = lastBreak >= 0 ? trimmed.slice(lastBreak + 2) : trimmed;
-  return tail.length > TRAILING_CHUNK_CHARS ? `…${tail.slice(-TRAILING_CHUNK_CHARS)}` : tail;
 }
 
 export interface AdminGoalRow {

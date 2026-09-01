@@ -18,11 +18,7 @@ import {
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
-import {
-  flagGoalQuestion,
-  goalQuestionFlaggedSince,
-  extractTrailingQuestion,
-} from './goalQuestions.service';
+import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
@@ -139,10 +135,13 @@ export async function wakeTask(
           ? 'waiting'
           : 'done';
       if (asksOwner && !flagged) {
-        await flagGoalQuestion(ownerId, taskId, extractTrailingQuestion(result.reply)).catch(
-          (err: unknown) =>
-            // eslint-disable-next-line no-console
-            console.error('[goal-question] fallback flag failed:', (err as Error).message),
+        // No text: a wake reply may cover several goals, and its closing
+        // paragraph is not reliably THIS goal's question (live, 1 Sep: goal
+        // 1420's reply closed on another goal's question and filed it as its
+        // own). The badge and the goal title are attributable; the text is not.
+        await flagGoalNeedsOwner(ownerId, taskId).catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[goal-question] fallback flag failed:', (err as Error).message),
         );
       }
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });

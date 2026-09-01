@@ -16,7 +16,7 @@ import {
   answerGoalQuestion,
   clearGoalQuestionForThread,
   goalQuestionFlaggedSince,
-  extractTrailingQuestion,
+  flagGoalNeedsOwner,
   adminListGoals,
   GOAL_QUESTION_KIND,
 } from '../goalQuestions.service';
@@ -149,13 +149,44 @@ describe('goalQuestionFlaggedSince', () => {
   });
 });
 
-describe('extractTrailingQuestion — the engine fallback payload', () => {
-  it('takes the closing paragraph, capped', () => {
-    expect(extractTrailingQuestion('found people.\n\nგავუგზავნო კითხვა?')).toBe(
-      'გავუგზავნო კითხვა?',
+describe('flagGoalNeedsOwner — the engine fallback never invents the question', () => {
+  it('flags the goal without writing question text', async () => {
+    // Live, 1 Sep: goal 1420 (dog trainer) woke, reported on three goals at
+    // once and closed on the Batumi-photographer question — which the old
+    // fallback scraped and filed as 1420's own. A question shown against the
+    // wrong goal is worse than none: only ask_owner_decision may write text.
+    mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), pending_question: null } as never);
+
+    const out = await flagGoalNeedsOwner('501', 1420);
+
+    expect(out.flagged).toBe(true);
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('pending_question = $3')),
+    ).toBe(false);
+    const stamp = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('pending_question_at = NOW()'),
     );
-    const long = `intro.\n\n${'ა'.repeat(400)}`;
-    expect(extractTrailingQuestion(long).length).toBeLessThanOrEqual(301);
+    expect(stamp?.[1]).toEqual([1420, '501']);
+    // The held item carries the goal, not a guess at what it wants.
+    const payload = mockQueue.mock.calls[0]?.[3] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('question');
+    expect(String(payload.instruction)).toContain('do not invent one');
+    expect(mockSetStatus).toHaveBeenCalledWith('501', 9406, 'needs_you', { isTask: true });
+  });
+
+  it('still carries a question the model registered on an earlier run', async () => {
+    mockGetTask.mockResolvedValue(OPEN_TASK);
+
+    await flagGoalNeedsOwner('501', 1519);
+
+    const payload = mockQueue.mock.calls[0]?.[3] as Record<string, unknown>;
+    expect(payload.question).toBe('რომელი ხიდი ავირჩიო?');
+  });
+
+  it("refuses another user's goal", async () => {
+    mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), user_id: '7' } as never);
+    expect((await flagGoalNeedsOwner('501', 1519)).flagged).toBe(false);
+    expect(mockQueue).not.toHaveBeenCalled();
   });
 });
 
