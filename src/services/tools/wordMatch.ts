@@ -129,6 +129,20 @@ export function buildExactMatchSql(
        AND cf.retracted_at IS NULL
        AND (cf.submitted_by_user_id = $${factsUserIdx} OR cf.is_public = true)
        AND ${regexOr('cf.value')}
+     UNION ALL
+     -- The founder's third state (1 Sep): a matchable fact of ANY key makes
+     -- its person findable — "Y is looking for an investor" answers a search
+     -- for an investor. Safe by construction, not by prompt: label lives only
+     -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
+     -- so the text can reach the ranking and never the reply.
+     SELECT cf.neo4j_contact_id AS phone, LOWER(cf.value) AS label, 2 AS priority
+     FROM contact_facts cf
+     WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+       AND cf.retracted_at IS NULL
+       AND cf.is_matchable = true
+       AND cf.is_public = false
+       AND cf.submitted_by_user_id <> $${factsUserIdx}
+       AND ${regexOr('cf.value')}
    )`;
 
   let cursor = regexStart;

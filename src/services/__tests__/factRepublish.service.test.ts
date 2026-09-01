@@ -2,21 +2,21 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 jest.mock('../contactFacts.service', () => ({
   __esModule: true,
   FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
-  moderateNotePublicity: jest.fn(),
+  moderateFactVisibility: jest.fn(),
   runSemanticMatching: jest.fn(),
   trustedFactCuratorIds: jest.fn(),
 }));
 
 import { query } from '../../db/postgres/client';
 import {
-  moderateNotePublicity,
+  moderateFactVisibility,
   runSemanticMatching,
   trustedFactCuratorIds,
 } from '../contactFacts.service';
 import { republishFacts } from '../factRepublish.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
-const mockModerate = moderateNotePublicity as jest.MockedFunction<typeof moderateNotePublicity>;
+const mockModerate = moderateFactVisibility as jest.MockedFunction<typeof moderateFactVisibility>;
 const mockMatch = runSemanticMatching as jest.MockedFunction<typeof runSemanticMatching>;
 const mockCurators = trustedFactCuratorIds as jest.MockedFunction<typeof trustedFactCuratorIds>;
 
@@ -73,16 +73,41 @@ describe('republishFacts — the repair pass over facts the fenced-JSON bug left
       if (sql.includes('WHERE id = ANY')) return Promise.resolve(rows([], 1) as never);
       return Promise.resolve(rows([]) as never);
     });
-    mockModerate.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    mockModerate.mockResolvedValueOnce('public').mockResolvedValueOnce('private');
 
     const out = await republishFacts(40);
 
     expect(out).toMatchObject({ free_form_checked: 2, free_form_published: 1 });
     const publish = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('SET is_public = true, canonical_value = value'),
+      (sql as string).includes('SET is_public = true, is_matchable = true'),
     );
     // Only the professional one; the relationship note stays private.
     expect(publish?.[1]?.[0]).toEqual([1]);
+  });
+
+  it('files a MATCHABLE verdict as usable-but-unshowable, never as public', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('field_type <> ALL'))
+        return Promise.resolve(
+          rows([
+            { id: 7, field_type: 'note', value: 'ეძებს ინვესტორს', moderated_at: null },
+          ]) as never,
+        );
+      return Promise.resolve(rows([], 1) as never);
+    });
+    mockModerate.mockResolvedValue('matchable');
+
+    const out = await republishFacts(40);
+
+    expect(out).toMatchObject({ free_form_published: 0, free_form_matchable: 1 });
+    const matchable = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SET is_matchable = true, updated_at'),
+    );
+    expect(matchable?.[1]?.[0]).toEqual([7]);
+    // Nothing was made public — the text stays unshowable.
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('SET is_public = true')),
+    ).toBe(false);
   });
 
   it('re-stamps EVERY checked fact so a rejected one moves to the back of the queue', async () => {
@@ -96,7 +121,7 @@ describe('republishFacts — the repair pass over facts the fenced-JSON bug left
         );
       return Promise.resolve(rows([]) as never);
     });
-    mockModerate.mockResolvedValue(false);
+    mockModerate.mockResolvedValue('private');
 
     const out = await republishFacts(40);
 

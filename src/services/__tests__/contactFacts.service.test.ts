@@ -35,8 +35,13 @@ beforeEach(() => {
 
 // The agent-moderation call: resolves the publicity verdict the model returns.
 function mockModeration(publicVerdict: boolean): void {
+  mockVisibility(publicVerdict ? 'public' : 'private');
+}
+
+// The moderator's three-state verdict (the founder's 1 Sep ruling).
+function mockVisibility(visibility: 'public' | 'matchable' | 'private'): void {
   mockCreate.mockResolvedValue({
-    content: [{ type: 'text', text: JSON.stringify({ public: publicVerdict }) }],
+    content: [{ type: 'text', text: JSON.stringify({ visibility }) }],
     usage: { input_tokens: 1, output_tokens: 1 },
   });
 }
@@ -128,15 +133,35 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     const [sql, params] = insertCall();
     expect(sql as string).toContain('INSERT INTO contact_facts');
     expect(sql as string).not.toContain('ON CONFLICT');
+    // is_public, then is_matchable — the founder's third state sits between
+    // "shown to everyone" and "the author's alone", and a private verdict is
+    // neither.
     expect(params as unknown[]).toEqual([
       PHONE,
       USER,
       'note',
       'Approach via warm intro',
       false,
+      false,
       'chat',
       'stated',
     ]);
+  });
+
+  it('stores a MATCHABLE note: usable for finding people, never shown', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockVisibility('matchable');
+
+    const result = await submitContactFact(USER, RAW_PHONE, 'note', 'ზურას ახლო მეგობარი');
+
+    // Not public — the text must never be displayed or quoted…
+    expect(result.is_public).toBe(false);
+    const [sql, params] = insertCall();
+    expect((params as unknown[])[4]).toBe(false);
+    // …but matchable, so the search can still put this person forward.
+    expect((params as unknown[])[5]).toBe(true);
+    // And no canonical_value: a matchable row carries nothing showable.
+    expect(sql as string).toContain('CASE WHEN $5 THEN $4 END');
   });
 
   it('inserts a note as a PUBLIC row when the agent rules it professional', async () => {
@@ -155,7 +180,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     // Verbatim reply shape from claude-haiku-4-5 (captured live, 1 Sep):
     // the old bare JSON.parse threw on this and failed closed, every time.
     mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: '```json\n{"public": true}\n```' }],
+      content: [{ type: 'text', text: '```json\n{"visibility": "public"}\n```' }],
       usage: { input_tokens: 1, output_tokens: 1 },
     });
 
@@ -272,6 +297,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
       USER,
       'role',
       'CEO @ Leavingstone',
+      false,
       false,
       'chat',
       'stated',

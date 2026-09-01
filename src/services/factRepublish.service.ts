@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import {
   FACT_FIELD_TYPES,
-  moderateNotePublicity,
+  moderateFactVisibility,
   runSemanticMatching,
   trustedFactCuratorIds,
 } from './contactFacts.service';
@@ -28,6 +28,8 @@ export interface RepublishResult {
   curator_core_published: number;
   free_form_checked: number;
   free_form_published: number;
+  // Facts that may now influence WHO is found, with their text still sealed.
+  free_form_matchable: number;
   // The oldest verdict this pass re-asked about. Once it is newer than the
   // moment the repair started, the whole private stock has been re-checked.
   oldest_checked_at: string | null;
@@ -73,9 +75,12 @@ async function publishCuratorCoreFacts(): Promise<number> {
  * `oldest_checked_at` is the caller's stop signal: once it is newer than the
  * moment the repair started, every private fact has been re-asked once.
  */
-async function remoderateFreeFormFacts(
-  limit: number,
-): Promise<{ checked: number; published: number; oldestCheckedAt: string | null }> {
+async function remoderateFreeFormFacts(limit: number): Promise<{
+  checked: number;
+  published: number;
+  madeMatchable: number;
+  oldestCheckedAt: string | null;
+}> {
   const candidates = await query<PrivateFactRow>(
     `SELECT id, field_type, value, moderated_at FROM contact_facts
      WHERE is_public = false AND retracted_at IS NULL
@@ -88,28 +93,39 @@ async function remoderateFreeFormFacts(
   const oldestCheckedAt = candidates.rows[0]?.moderated_at ?? null;
 
   let published = 0;
+  let madeMatchable = 0;
   for (let i = 0; i < candidates.rows.length; i += MODERATION_WAVE_SIZE) {
     const wave = candidates.rows.slice(i, i + MODERATION_WAVE_SIZE);
     const verdicts = await Promise.all(
-      wave.map((row) => moderateNotePublicity(row.field_type, row.value)),
+      wave.map((row) => moderateFactVisibility(row.field_type, row.value)),
     );
     await query(
       `UPDATE contact_facts SET moderated_at = NOW() WHERE id = ANY($1)`,
       [wave.map((row) => row.id)],
       REPUBLISH_QUERY_TIMEOUT_MS,
     );
-    const publishable = wave.filter((_, index) => verdicts[index]).map((row) => row.id);
+    // Three states now: shown, used-silently, or the author's alone.
+    const matchable = wave.filter((_, i) => verdicts[i] === 'matchable').map((row) => row.id);
+    if (matchable.length > 0) {
+      await query(
+        `UPDATE contact_facts SET is_matchable = true, updated_at = NOW() WHERE id = ANY($1)`,
+        [matchable],
+        REPUBLISH_QUERY_TIMEOUT_MS,
+      );
+      madeMatchable += matchable.length;
+    }
+    const publishable = wave.filter((_, i) => verdicts[i] === 'public').map((row) => row.id);
     if (publishable.length === 0) continue;
     const updated = await query(
       `UPDATE contact_facts
-       SET is_public = true, canonical_value = value, updated_at = NOW()
+       SET is_public = true, is_matchable = true, canonical_value = value, updated_at = NOW()
        WHERE id = ANY($1)`,
       [publishable],
       REPUBLISH_QUERY_TIMEOUT_MS,
     );
     published += updated.rowCount ?? 0;
   }
-  return { checked: candidates.rows.length, published, oldestCheckedAt };
+  return { checked: candidates.rows.length, published, madeMatchable, oldestCheckedAt };
 }
 
 interface CoreGroup {
@@ -177,6 +193,7 @@ export async function republishFacts(limit: number): Promise<RepublishResult> {
     curator_core_published: curatorPublished,
     free_form_checked: freeForm.checked,
     free_form_published: freeForm.published,
+    free_form_matchable: freeForm.madeMatchable,
     oldest_checked_at: freeForm.oldestCheckedAt,
     core_groups_checked: core.groups,
     core_facts_published: core.published,

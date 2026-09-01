@@ -203,33 +203,37 @@ async function mapSearchResult(
         'that the search glitched and retry once; do NOT conclude the person is missing.',
     };
   }
+  // Pointers ride on BOTH branches: a matchable private fact adds people to a
+  // successful search too, not only to an empty one (the founder's third
+  // state). Phones become contact_refs, same rule as every result row — and
+  // the fact's own text was never in the payload to begin with.
+  const pointerCarrier = outcome as {
+    pointers?: { contact_id: string; name: string | null; signal_strength: number }[];
+    pointer_note?: string;
+  };
+  const pointerRows = Array.isArray(pointerCarrier.pointers) ? pointerCarrier.pointers : [];
+  const pointerPayload =
+    pointerRows.length === 0
+      ? {}
+      : {
+          pointers: pointerRows.map((p) => ({
+            contact_ref: encodeContactRef(userId, p.contact_id),
+            name: p.name,
+            signal_strength: p.signal_strength,
+          })),
+          ...(pointerCarrier.pointer_note !== undefined && {
+            pointer_note: pointerCarrier.pointer_note,
+          }),
+        };
+
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
-    // T15's empty-case pointers must survive the connector boundary too
-    // (ticket 8 task 4: the in-app tool returned them, this mapper dropped
-    // them). Phones become contact_refs, same rule as every result row.
-    const empty = outcome as {
-      pointers?: { contact_id: string; name: string | null; signal_strength: number }[];
-      pointer_note?: string;
-    };
-    const pointers = Array.isArray(empty.pointers) ? empty.pointers : [];
-    return withSearchId({
-      found: false,
-      note: emptyNote,
-      ...(pointers.length > 0 && {
-        pointers: pointers.map((p) => ({
-          contact_ref: encodeContactRef(userId, p.contact_id),
-          name: p.name,
-          signal_strength: p.signal_strength,
-        })),
-        ...(empty.pointer_note !== undefined && { pointer_note: empty.pointer_note }),
-      }),
-    });
+    return withSearchId({ found: false, note: emptyNote, ...pointerPayload });
   }
   const deduped = dedupeByName(outcome.results);
   // Real total when the tool reports one; else the deduped pool size.
   const total = outcome.total ?? outcome.count ?? deduped.length;
   const rows = deduped.slice(0, MCP_RESULT_LIMIT).map((row) => toPublicRow(userId, row));
-  const payload: McpToolPayload = { found: true, total, results: rows };
+  const payload: McpToolPayload = { found: true, total, results: rows, ...pointerPayload };
   // Fuzzy (approximate) matches are flagged so the model treats them as guesses;
   // this takes priority over the truncation note.
   if (outcome.fuzzy) payload.note = NOTE_FUZZY;

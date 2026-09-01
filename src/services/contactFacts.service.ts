@@ -155,7 +155,7 @@ async function insertFreeFormFact(
   neo4jContactId: string,
   fieldType: string,
   value: string,
-  isPublic: boolean,
+  visibility: FactVisibility,
   source: FactSource,
   confidence: FactConfidence | null,
 ): Promise<void> {
@@ -170,13 +170,25 @@ async function insertFreeFormFact(
     await query(`UPDATE contact_facts SET updated_at = NOW() WHERE id = $1`, [duplicate.id]);
     return;
   }
+  const isPublic = visibility === 'public';
   await query(
     // canonical_value doubles as the "shareable text" for public rows — the
     // read paths COALESCE it, so a public note must carry it. moderated_at
     // marks the row as already agent-checked (the nightly sweep skips it).
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, canonical_value, moderated_at, source, confidence)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN $4 END, NOW(), $6, $7)`,
-    [neo4jContactId, userId, fieldType, value, isPublic, source, confidence],
+    // A matchable row deliberately gets NO canonical_value: nothing that can
+    // be shown, only a row the matcher may count.
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, is_matchable, canonical_value, moderated_at, source, confidence)
+     VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $5 THEN $4 END, NOW(), $7, $8)`,
+    [
+      neo4jContactId,
+      userId,
+      fieldType,
+      value,
+      isPublic,
+      isPublic || visibility === 'matchable',
+      source,
+      confidence,
+    ],
   );
 }
 
@@ -187,7 +199,22 @@ async function insertFreeFormFact(
 const NOTE_MODERATION_MODEL = 'claude-haiku-4-5-20251001';
 const NOTE_MODERATION_MAX_TOKENS = 60;
 
-export async function moderateNotePublicity(fieldType: string, value: string): Promise<boolean> {
+/**
+ * The founder's three states (1 Sep): a fact is shown to everyone, or it is
+ * used to FIND the person while its text never leaves the server, or it stays
+ * with its author alone. The middle state is what makes soft intel worth
+ * recording — "X's close friend", "Y is looking for an investor" should put
+ * the right person in front of someone, without ever being quoted at them.
+ *
+ * Fail-closed twice over: an unparseable or failed call returns 'private',
+ * and anything the model is unsure about is 'private' by instruction.
+ */
+export type FactVisibility = 'public' | 'matchable' | 'private';
+
+export async function moderateFactVisibility(
+  fieldType: string,
+  value: string,
+): Promise<FactVisibility> {
   try {
     const response = await anthropic.messages.create({
       model: NOTE_MODERATION_MODEL,
@@ -197,12 +224,19 @@ export async function moderateNotePublicity(fieldType: string, value: string): P
           role: 'user',
           content:
             `A user saved this about one of their contacts (field "${fieldType}"): "${value}". ` +
-            'Decide if it may be shown to EVERY user of a contacts app. PUBLIC only if it is ' +
-            'purely factual and professional: profession, workplace, role, skills, education, ' +
-            'public achievements, business interests. PRIVATE if it contains personal judgments ' +
-            'or evaluations, relationships, health, money, private life, secrets, contact ' +
-            'details, or anything the person themselves might not want shared. When unsure — ' +
-            'PRIVATE. Reply JSON only: {"public":true} or {"public":false}',
+            'Classify it for a contacts app in ONE of three ways. ' +
+            '"public" — the text itself may be SHOWN to every user: purely factual and ' +
+            'professional (profession, workplace, role, skills, education, public achievements, ' +
+            'business interests, public profile links). ' +
+            '"matchable" — the text must NEVER be shown or quoted, but it may be used silently ' +
+            'to decide WHO to suggest: business relationships and who knows whom, what someone ' +
+            'is looking for or needs, soft professional judgments about work. ' +
+            '"private" — never used at all, not even silently: health, money, debts, religion, ' +
+            'politics, sexuality, romantic or family life, addictions, legal trouble, secrets, ' +
+            'contact details, or anything that could harm or embarrass the person if it ' +
+            'influenced what others see. When unsure between matchable and private — "private". ' +
+            'Reply JSON only: {"visibility":"public"} or {"visibility":"matchable"} or ' +
+            '{"visibility":"private"}',
         },
       ],
     });
@@ -216,10 +250,12 @@ export async function moderateNotePublicity(fieldType: string, value: string): P
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('');
-    const parsed = parseModelJson<{ public?: unknown }>(text);
-    return parsed?.public === true;
+    const parsed = parseModelJson<{ visibility?: unknown }>(text);
+    if (parsed?.visibility === 'public') return 'public';
+    if (parsed?.visibility === 'matchable') return 'matchable';
+    return 'private';
   } catch {
-    return false;
+    return 'private';
   }
 }
 
@@ -271,6 +307,26 @@ export function isTrustedFactCurator(userId: string): boolean {
   return trustedFactCuratorIds().includes(userId.trim());
 }
 
+// The founder's second ruling (1 Sep): a curator's WORK facts are public as
+// written, moderation included — "work fact must be shared". These are the
+// CV-shaped free-form keys; a note or a need is not one of them and still
+// gets a verdict. Config, so the list can change without a deploy.
+const CURATOR_WORK_FIELDS: readonly string[] = (
+  process.env.CURATOR_PUBLIC_FIELD_TYPES ??
+  'role,expertise,education,past_role,affiliation,link,headline'
+)
+  .split(',')
+  .map((f) => f.trim().toLowerCase())
+  .filter((f) => f.length > 0);
+
+export function isCuratorWorkFact(userId: string, fieldType: string): boolean {
+  return isTrustedFactCurator(userId) && CURATOR_WORK_FIELDS.includes(fieldType);
+}
+
+export function curatorWorkFields(): readonly string[] {
+  return CURATOR_WORK_FIELDS;
+}
+
 /** A curator's core fact is published as written — their value IS the canonical. */
 async function publishAsCurator(
   userId: string,
@@ -307,17 +363,23 @@ export async function submitContactFact(
       isCoreFact(fieldType) && value.trim().length > MAX_CORE_FACT_VALUE_LEN
         ? MEMORY_FIELD_TYPE
         : fieldType;
-    const isPublic = await moderateNotePublicity(targetField, value);
+    // A curator's WORK fields go public as written — the founder's words:
+    // "work fact must be shared". Anything outside that list (a note, a need)
+    // still gets a verdict: his own notes carry relationships and judgments
+    // about named third parties.
+    const visibility = isCuratorWorkFact(userId, targetField)
+      ? 'public'
+      : await moderateFactVisibility(targetField, value);
     await insertFreeFormFact(
       userId,
       neo4jContactId,
       targetField,
       value,
-      isPublic,
+      visibility,
       source,
       confidence,
     );
-    return { is_public: isPublic, canonical_value: null };
+    return { is_public: visibility === 'public', canonical_value: null };
   }
 
   await upsertFact(userId, neo4jContactId, fieldType, value, source, confidence);
@@ -467,15 +529,17 @@ export async function reclassifyPrivateNotes(
   const batch = rows.rows.slice(0, cap);
   let published = 0;
   for (const row of batch) {
-    const isPublic = await moderateNotePublicity(row.field_type, row.value);
+    const visibility = await moderateFactVisibility(row.field_type, row.value);
+    const isPublic = visibility === 'public';
     await backgroundQuery(
       `UPDATE contact_facts
        SET moderated_at = NOW(),
            is_public = $2,
+           is_matchable = $3,
            canonical_value = CASE WHEN $2 THEN value ELSE canonical_value END,
            updated_at = CASE WHEN $2 THEN NOW() ELSE updated_at END
        WHERE id = $1`,
-      [row.id, isPublic],
+      [row.id, isPublic, isPublic || visibility === 'matchable'],
     );
     if (isPublic) published++;
     await new Promise<void>((resolve) => setTimeout(resolve, RECLASSIFY_DELAY_MS));

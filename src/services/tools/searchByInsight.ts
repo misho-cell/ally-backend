@@ -13,8 +13,12 @@ const MAX_QUERY_WORDS = 6;
 const POINTER_LIMIT = 10;
 // Same sensitivity denylist philosophy as signal_strength — a pointer must
 // never be a covert read of somebody's private note about health/money/etc.
+// A second, non-model guard on top of the moderator's own verdict: these keys
+// never point at anyone, whatever a verdict said. 'note' left the list on
+// 1 Sep — the founder's third state is exactly about notes ("X's close
+// friend"), and each note now carries a per-value matchable/private judgment
+// rather than being excluded as a category.
 const POINTER_EXCLUDED_FIELD_TYPES = [
-  'note',
   'health',
   'medical',
   'illness',
@@ -231,6 +235,14 @@ async function searchInsights(
   return result.rows;
 }
 
+// What the model is told about a pointer. The text it points at is never in
+// the payload at all, so this is guidance, not the guarantee — the guarantee
+// is that there is nothing to quote.
+const POINTER_NOTE =
+  'Weak, UNCONFIRMED single-source signals: someone privately recorded something matching this ' +
+  'query about these contacts. Suggest them as "possibly worth asking" only — never state what ' +
+  'matched, who recorded it, or present it as a confirmed fact.';
+
 interface SingleSourcePointer {
   contact_id: string;
   name: string | null;
@@ -262,7 +274,8 @@ async function searchSingleSourcePointers(
     `SELECT cf.neo4j_contact_id AS phone, MAX(ua.alias) AS name
      FROM contact_facts cf
      JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
-     WHERE cf.is_public = false
+     WHERE cf.is_matchable = true
+       AND cf.is_public = false
        AND cf.retracted_at IS NULL
        AND cf.submitted_by_user_id <> $2
        AND cf.field_type != ALL($3::text[])
@@ -386,13 +399,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         found: false,
         query: searchQuery,
         note: 'nothing matched enough of the query',
-        ...(pointers.length > 0 && {
-          pointers,
-          pointer_note:
-            'Weak, UNCONFIRMED single-source signals: someone privately recorded something ' +
-            'matching this query about these contacts. Suggest them as "possibly worth asking" ' +
-            'only — never state what matched, who recorded it, or present it as a confirmed fact.',
-        }),
+        ...(pointers.length > 0 && { pointers, pointer_note: POINTER_NOTE }),
       };
     }
 
@@ -403,7 +410,25 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       is_member: isMemberPhone(members, s.hit.contact_id),
     }));
 
-    return { found: true, count: results.length, results };
+    // Matchable facts add people HERE too, not only when the search came back
+    // empty (the founder's 1 Sep ruling: the note works "in backmind and in
+    // matching"). Anyone already in results is dropped — a pointer is the
+    // weaker claim, and the same person must never appear twice.
+    const found = new Set(results.map((r) => normalizePhone(r.contact_id)));
+    const pointers = (
+      await searchSingleSourcePointers(userId, words, likes, excluded).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('searchByInsight pointer pass failed:', (err as Error).message);
+        return [] as SingleSourcePointer[];
+      })
+    ).filter((p) => !found.has(normalizePhone(p.contact_id)));
+
+    return {
+      found: true,
+      count: results.length,
+      results,
+      ...(pointers.length > 0 && { pointers, pointer_note: POINTER_NOTE }),
+    };
   } catch (err) {
     console.error('searchByInsight error:', (err as Error).message);
     return { found: false, error: (err as Error).message };
