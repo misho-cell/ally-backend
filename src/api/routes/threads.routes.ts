@@ -387,6 +387,12 @@ threadsRouter.post(
               body: buildPushPreview(result.reply),
               url: `/chat/${threadId}`,
             }).catch(() => undefined);
+          } else {
+            // The skip itself is a delivery decision — log it (ticket 8 live
+            // session: an iOS tab that closed without tearing the SSE down
+            // read as "live" here and the push silently never fired).
+            // eslint-disable-next-line no-console
+            console.log(`[push] user ${userId}: skipped reply push, SSE looks active`);
           }
         })
         .catch(async (error: unknown) => {

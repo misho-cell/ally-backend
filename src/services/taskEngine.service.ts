@@ -156,6 +156,9 @@ export async function wakeTask(
               : preview || 'დავალებაზე სიახლეა',
           url: `/chat/${thread.id}`,
         }).catch(() => undefined);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(`[push] user ${ownerId}: skipped task push, SSE looks active`);
       }
       return true;
     } catch (err) {
