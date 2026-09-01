@@ -21,6 +21,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('runIdentityScan — the shadow scan: mapping only, raw data untouched', () => {
   function routeScanQueries(opts: {
     multiPhoneAccounts?: { userId: number; phones: string[] }[];
+    alreadyMapped?: { phone: string; person_id: string }[];
     autoInserted?: string[];
     maxOwner?: number;
     pairs?: { phone_1: string; phone_2: string; co_owners: string; sample_alias: string }[];
@@ -29,6 +30,8 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('HAVING COUNT(*) >= 2'))
         return Promise.resolve(rows(opts.multiPhoneAccounts ?? []) as never);
+      if (sql.includes('SELECT phone, person_id FROM person_identities'))
+        return Promise.resolve(rows(opts.alreadyMapped ?? []) as never);
       if (sql.includes('INSERT INTO person_identities'))
         return Promise.resolve(
           rows((opts.autoInserted ?? []).map((phone) => ({ phone }))) as never,
@@ -73,6 +76,49 @@ describe('runIdentityScan — the shadow scan: mapping only, raw data untouched'
     // Normalized to one canonical form, confidence literal 1.0 in the SQL.
     expect(insert?.[0]).toContain('1.0');
     expect(insert?.[1]?.[1]).toEqual(['+995599000001', '+995599000002']);
+  });
+
+  it('writes nothing for an account whose numbers are already merged', async () => {
+    // Auto-merge runs on every scan tick and all 392 multi-phone accounts are
+    // already merged — it was spending the batch on 392 no-op INSERTs.
+    routeScanQueries({
+      multiPhoneAccounts: [{ userId: 7, phones: ['+995599000001', '+995599000002'] }],
+      alreadyMapped: [
+        { phone: '+995599000001', person_id: 'p-1' },
+        { phone: '+995599000002', person_id: 'p-1' },
+      ],
+      maxOwner: 10,
+    });
+
+    const out = await runIdentityScan(1);
+
+    expect(out.auto_merged_people).toBe(0);
+    expect(
+      mockQuery.mock.calls.some(([sql]) =>
+        (sql as string).includes('INSERT INTO person_identities'),
+      ),
+    ).toBe(false);
+  });
+
+  it('joins the person a sibling number already belongs to, never mints a second id', async () => {
+    // One phone mapped, one not: minting a fresh id splits one human across
+    // two person_ids, and ON CONFLICT hides it — the mapped phone keeps the
+    // old id while its sibling takes the new one.
+    routeScanQueries({
+      multiPhoneAccounts: [{ userId: 7, phones: ['+995599000001', '+995599000002'] }],
+      alreadyMapped: [
+        { phone: '+995599000001', person_id: 'ffffffff-0000-0000-0000-000000000001' },
+      ],
+      autoInserted: ['+995599000002'],
+      maxOwner: 10,
+    });
+
+    await runIdentityScan(1);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO person_identities'),
+    );
+    expect(insert?.[1]?.[0]).toBe('ffffffff-0000-0000-0000-000000000001');
   });
 
   it('queues a name-match pair as a CANDIDATE with its evidence — never merges it', async () => {
