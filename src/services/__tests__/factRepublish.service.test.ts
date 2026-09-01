@@ -79,10 +79,36 @@ describe('republishFacts — the repair pass over facts the fenced-JSON bug left
 
     expect(out).toMatchObject({ free_form_checked: 2, free_form_published: 1 });
     const publish = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('WHERE id = ANY'),
+      (sql as string).includes('SET is_public = true, canonical_value = value'),
     );
     // Only the professional one; the relationship note stays private.
     expect(publish?.[1]?.[0]).toEqual([1]);
+  });
+
+  it('re-stamps EVERY checked fact so a rejected one moves to the back of the queue', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('field_type <> ALL'))
+        return Promise.resolve(
+          rows([
+            { id: 1, field_type: 'note', value: 'ახლო მეგობარი', moderated_at: '2026-07-07' },
+            { id: 2, field_type: 'note', value: 'ჯანმრთელობა', moderated_at: '2026-07-07' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    mockModerate.mockResolvedValue(false);
+
+    const out = await republishFacts(40);
+
+    expect(out.free_form_published).toBe(0);
+    // Both rejects are re-stamped — without this the next pass would ask about
+    // exactly these two again, forever.
+    const stamp = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('SET moderated_at = NOW()'),
+    );
+    expect(stamp?.[1]?.[0]).toEqual([1, 2]);
+    // And the caller gets its stop signal: the oldest verdict it just re-asked.
+    expect(out.oldest_checked_at).toBe('2026-07-07');
   });
 
   it('re-runs crowd confirmation for a group with two submitters and publishes the matches', async () => {

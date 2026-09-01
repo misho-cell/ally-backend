@@ -28,6 +28,9 @@ export interface RepublishResult {
   curator_core_published: number;
   free_form_checked: number;
   free_form_published: number;
+  // The oldest verdict this pass re-asked about. Once it is newer than the
+  // moment the repair started, the whole private stock has been re-checked.
+  oldest_checked_at: string | null;
   core_groups_checked: number;
   core_facts_published: number;
 }
@@ -36,6 +39,7 @@ interface PrivateFactRow {
   id: number;
   field_type: string;
   value: string;
+  moderated_at: string | null;
 }
 
 /**
@@ -59,19 +63,29 @@ async function publishCuratorCoreFacts(): Promise<number> {
   return result.rowCount ?? 0;
 }
 
-/** Re-ask the moderator about private free-form facts, in small waves. */
+/**
+ * Re-ask the moderator about private free-form facts, oldest verdict first.
+ *
+ * Every checked row is re-stamped whatever the verdict — a rejected fact must
+ * move to the BACK of the queue, not stay at its head. Without that the pass
+ * re-moderated the same rejected rows forever (live-caught: passes 2-27 of the
+ * repair spent their whole budget on facts already ruled private).
+ * `oldest_checked_at` is the caller's stop signal: once it is newer than the
+ * moment the repair started, every private fact has been re-asked once.
+ */
 async function remoderateFreeFormFacts(
   limit: number,
-): Promise<{ checked: number; published: number }> {
+): Promise<{ checked: number; published: number; oldestCheckedAt: string | null }> {
   const candidates = await query<PrivateFactRow>(
-    `SELECT id, field_type, value FROM contact_facts
+    `SELECT id, field_type, value, moderated_at FROM contact_facts
      WHERE is_public = false AND retracted_at IS NULL
        AND field_type <> ALL($1)
-     ORDER BY id
+     ORDER BY moderated_at ASC NULLS FIRST, id
      LIMIT $2`,
     [FACT_FIELD_TYPES as readonly string[], limit],
     REPUBLISH_QUERY_TIMEOUT_MS,
   );
+  const oldestCheckedAt = candidates.rows[0]?.moderated_at ?? null;
 
   let published = 0;
   for (let i = 0; i < candidates.rows.length; i += MODERATION_WAVE_SIZE) {
@@ -79,18 +93,23 @@ async function remoderateFreeFormFacts(
     const verdicts = await Promise.all(
       wave.map((row) => moderateNotePublicity(row.field_type, row.value)),
     );
+    await query(
+      `UPDATE contact_facts SET moderated_at = NOW() WHERE id = ANY($1)`,
+      [wave.map((row) => row.id)],
+      REPUBLISH_QUERY_TIMEOUT_MS,
+    );
     const publishable = wave.filter((_, index) => verdicts[index]).map((row) => row.id);
     if (publishable.length === 0) continue;
     const updated = await query(
       `UPDATE contact_facts
-       SET is_public = true, canonical_value = value, moderated_at = NOW(), updated_at = NOW()
+       SET is_public = true, canonical_value = value, updated_at = NOW()
        WHERE id = ANY($1)`,
       [publishable],
       REPUBLISH_QUERY_TIMEOUT_MS,
     );
     published += updated.rowCount ?? 0;
   }
-  return { checked: candidates.rows.length, published };
+  return { checked: candidates.rows.length, published, oldestCheckedAt };
 }
 
 interface CoreGroup {
@@ -101,7 +120,7 @@ interface CoreGroup {
 /** Re-run crowd confirmation for one (contact, field) group. */
 async function reconfirmGroup(group: CoreGroup): Promise<number> {
   const facts = await query<PrivateFactRow>(
-    `SELECT id, field_type, value FROM contact_facts
+    `SELECT id, field_type, value, moderated_at FROM contact_facts
      WHERE neo4j_contact_id = $1 AND field_type = $2 AND retracted_at IS NULL
      ORDER BY id`,
     [group.neo4j_contact_id, group.field_type],
@@ -158,6 +177,7 @@ export async function republishFacts(limit: number): Promise<RepublishResult> {
     curator_core_published: curatorPublished,
     free_form_checked: freeForm.checked,
     free_form_published: freeForm.published,
+    oldest_checked_at: freeForm.oldestCheckedAt,
     core_groups_checked: core.groups,
     core_facts_published: core.published,
   };
