@@ -78,7 +78,7 @@ import {
   unmergePerson,
   getIdentitySummary,
 } from '../../services/identity.service';
-import { adminListGoals } from '../../services/goalQuestions.service';
+import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
 import { republishFacts } from '../../services/factRepublish.service';
 import {
   getLabelQueue,
@@ -1065,6 +1065,30 @@ adminRouter.get('/goals', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goals]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Take back a question filed against the wrong goal. The owner's pending list
+// is the one place a goal speaks for itself — a question that is not that
+// goal's own must be removable without waiting three days for its next wake.
+adminRouter.delete('/goals/:taskId/question', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(userId) || userId <= 0 || !Number.isFinite(taskId) || taskId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id და taskId აუცილებელია' });
+      return;
+    }
+    const result = await retractGoalQuestion(String(userId), taskId);
+    if (!result.retracted) {
+      res.status(404).json({ success: false, error: result.error ?? 'ვერ მოიძებნა' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { task_id: taskId, retracted: true } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin goal question retract]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -17,6 +17,7 @@ import {
   clearGoalQuestionForThread,
   goalQuestionFlaggedSince,
   flagGoalNeedsOwner,
+  retractGoalQuestion,
   adminListGoals,
   GOAL_QUESTION_KIND,
 } from '../goalQuestions.service';
@@ -187,6 +188,31 @@ describe('flagGoalNeedsOwner — the engine fallback never invents the question'
     mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), user_id: '7' } as never);
     expect((await flagGoalNeedsOwner('501', 1519)).flagged).toBe(false);
     expect(mockQueue).not.toHaveBeenCalled();
+  });
+});
+
+describe('retractGoalQuestion — taking back a question filed against the wrong goal', () => {
+  it('clears the stored question and drops the held item', async () => {
+    mockGetTask.mockResolvedValue(OPEN_TASK);
+
+    const out = await retractGoalQuestion('501', 1519);
+
+    expect(out.retracted).toBe(true);
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('pending_question = NULL')),
+    ).toBe(true);
+    const del = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('DELETE FROM pending_updates'),
+    );
+    expect(del?.[1]).toEqual([1519, GOAL_QUESTION_KIND]);
+  });
+
+  it("refuses another user's goal and a goal holding no question", async () => {
+    mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), user_id: '7' } as never);
+    expect((await retractGoalQuestion('501', 1519)).retracted).toBe(false);
+
+    mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), pending_question: null } as never);
+    expect((await retractGoalQuestion('501', 1519)).retracted).toBe(false);
   });
 });
 

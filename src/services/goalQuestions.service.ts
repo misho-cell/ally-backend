@@ -179,6 +179,24 @@ export async function clearGoalQuestionForThread(userId: string, threadId: numbe
   }
 }
 
+/**
+ * Retract a question that should never have been filed against this goal.
+ *
+ * Needed the day the fallback was fixed: goal 1420 was already carrying
+ * another goal's question, and nothing but the goal's own next wake (three
+ * days out) or the owner opening the thread would have taken it back down.
+ */
+export async function retractGoalQuestion(
+  userId: string,
+  taskId: number,
+): Promise<{ retracted: boolean; error?: string }> {
+  const task = await getTaskById(taskId);
+  if (!task || task.user_id !== userId) return { retracted: false, error: 'No such goal.' };
+  if (task.pending_question === null) return { retracted: false, error: 'No question stored.' };
+  await clearGoalQuestion(taskId);
+  return { retracted: true };
+}
+
 async function clearGoalQuestion(taskId: number): Promise<void> {
   await query(
     `UPDATE tasks SET pending_question = NULL, pending_question_at = NULL WHERE id = $1`,
