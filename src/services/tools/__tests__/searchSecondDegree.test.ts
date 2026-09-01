@@ -193,8 +193,14 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).toContain('field_type != ALL(');
     const excludedTypes = params[params.length - 1] as string[];
     expect(excludedTypes).toEqual(
-      expect.arrayContaining(['note', 'health', 'money', 'politics', 'religion', 'love']),
+      expect.arrayContaining(['health', 'money', 'politics', 'religion', 'love']),
     );
+    // 'note' left the category denylist on 1 Sep — the founder's third state
+    // is precisely about notes, and each one now carries its own verdict. What
+    // replaces the blanket ban is the visibility gate below: a note that was
+    // never cleared to travel cannot move anyone's score.
+    expect(excludedTypes).not.toContain('note');
+    expect(sql).toContain('cf.is_public OR cf.is_matchable');
   });
 
   it('D34: a relationship edge the searcher owns lifts via_warmth — and the relation itself never appears', async () => {

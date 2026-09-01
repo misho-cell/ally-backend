@@ -56,6 +56,10 @@ export interface VisibleFact {
   field_type: string;
   value: string;
   is_public: boolean;
+  // The founder's three states, spelled out for the reader: is_public alone
+  // cannot tell "used silently" from "the author's alone" — both are false,
+  // and the tester could not verify the classification without this.
+  visibility: FactVisibility;
   // YYYY-MM-DD of the last save/confirmation — absent on crowd-filled values.
   last_confirmed?: string;
 }
@@ -210,6 +214,12 @@ const NOTE_MODERATION_MAX_TOKENS = 60;
  * and anything the model is unsure about is 'private' by instruction.
  */
 export type FactVisibility = 'public' | 'matchable' | 'private';
+
+/** The stored booleans, read back as the one state they encode. */
+export function factVisibilityOf(isPublic: boolean, isMatchable: boolean): FactVisibility {
+  if (isPublic) return 'public';
+  return isMatchable ? 'matchable' : 'private';
+}
 
 export async function moderateFactVisibility(
   fieldType: string,
@@ -441,8 +451,14 @@ export async function getVisibleFacts(
   const [ownResult, publicResult] = await Promise.all([
     // The owner's OWN saved values — ALL of them (free-form keys accumulate), and
     // always shown, even when the crowd's public value for the same field differs.
-    query<{ field_type: string; value: string; is_public: boolean; last_confirmed: string }>(
-      `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public,
+    query<{
+      field_type: string;
+      value: string;
+      is_public: boolean;
+      is_matchable: boolean;
+      last_confirmed: string;
+    }>(
+      `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public, is_matchable,
               TO_CHAR(updated_at, 'YYYY-MM-DD') AS last_confirmed
        FROM contact_facts
        WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
@@ -468,6 +484,7 @@ export async function getVisibleFacts(
     field_type: r.field_type,
     value: r.value,
     is_public: r.is_public,
+    visibility: factVisibilityOf(r.is_public, r.is_matchable),
     last_confirmed: r.last_confirmed,
   }));
 
@@ -479,13 +496,23 @@ export async function getVisibleFacts(
   for (const row of publicResult.rows) {
     if (isCoreFact(row.field_type)) {
       if (!ownFieldTypes.has(row.field_type) && !filledCore.has(row.field_type)) {
-        facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
+        facts.push({
+          field_type: row.field_type,
+          value: row.canonical_value,
+          is_public: true,
+          visibility: 'public',
+        });
         filledCore.add(row.field_type);
       }
     } else {
       const key = `${row.field_type} ${row.canonical_value}`;
       if (!seenValues.has(key)) {
-        facts.push({ field_type: row.field_type, value: row.canonical_value, is_public: true });
+        facts.push({
+          field_type: row.field_type,
+          value: row.canonical_value,
+          is_public: true,
+          visibility: 'public',
+        });
         seenValues.add(key);
       }
     }

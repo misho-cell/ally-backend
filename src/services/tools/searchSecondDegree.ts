@@ -71,8 +71,12 @@ const SIGNAL_MAX = 1.0;
 // ambiguous" content (contactFacts.service.ts's moderation comment), the
 // exact shape sensitive material accumulates as, so it never contributes
 // even without a category match.
+// 'note' left this list on 1 Sep with the pointer denylist it mirrors: a note
+// now carries a per-value public/matchable/private verdict, and excluding the
+// whole category here scored every note-based pointer at exactly 0 — the
+// founder's live run returned four pointers, all strength 0, while a
+// need-based one scored 0.5. Same list, same reasoning, or the number lies.
 const SIGNAL_EXCLUDED_FIELD_TYPES = [
-  'note',
   'health',
   'medical',
   'illness',
@@ -121,6 +125,11 @@ export async function fetchSignalStrength(
                     SELECT 1 FROM contact_facts cf
                     WHERE cf.neo4j_contact_id = p.phone AND cf.retracted_at IS NULL
                       AND cf.field_type != ALL($${excludedIdx}::text[])
+                      -- Only a fact whose author allowed it to travel may move
+                      -- a number other people see. A strictly private fact
+                      -- must not raise a stranger's strength score even by
+                      -- one step: that number would be a covert read of it.
+                      AND (cf.is_public OR cf.is_matchable)
                       AND (${valueConds})
                   ) THEN 1 ELSE 0 END)
               ) AS strength

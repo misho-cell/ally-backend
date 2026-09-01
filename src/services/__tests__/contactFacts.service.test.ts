@@ -375,6 +375,24 @@ describe('getVisibleFacts — owner value never hidden by the crowd (F1)', () =>
 
     const { facts } = await getVisibleFacts(USER, RAW_PHONE);
 
-    expect(facts).toEqual([{ field_type: 'city', value: 'Tbilisi', is_public: true }]);
+    expect(facts).toEqual([
+      { field_type: 'city', value: 'Tbilisi', is_public: true, visibility: 'public' },
+    ]);
+  });
+
+  it('names the state of every own row, so matchable is distinguishable from private', async () => {
+    setup(
+      [
+        { field_type: 'role', value: 'CTO', is_public: true, is_matchable: true },
+        { field_type: 'note', value: 'ეძებს ინვესტორს', is_public: false, is_matchable: true },
+        { field_type: 'note', value: 'პირადი', is_public: false, is_matchable: false },
+      ],
+      [],
+    );
+
+    const { facts } = await getVisibleFacts(USER, RAW_PHONE);
+
+    // is_public alone collapses the last two into one indistinguishable state.
+    expect(facts.map((f) => f.visibility)).toEqual(['public', 'matchable', 'private']);
   });
 });

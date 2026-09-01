@@ -170,8 +170,18 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
   const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
   const orClause = likeOrClause(matchExpr, likes.length, 3);
   const result = await query<FactRow>(
+    // Third fallback for the name: a fact can be saved about someone the owner
+    // has no phonebook entry for (found through a second-degree search, say),
+    // and both earlier sources are then null — the tester saw a result render
+    // as an empty line. Any alias the network has for the number is the same
+    // information second-degree search already returns for a non-contact.
     `SELECT cf.neo4j_contact_id AS phone,
-            COALESCE(MAX(ua.alias), MAX(u.name)) AS name,
+            COALESCE(
+              MAX(ua.alias),
+              MAX(u.name),
+              (SELECT MIN(ua_any.alias) FROM "UserAlias" ua_any
+                WHERE ua_any.phone = cf.neo4j_contact_id)
+            ) AS name,
             ${FACT_MATCH_AGG} AS matched
      FROM contact_facts cf
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
