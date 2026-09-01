@@ -7,7 +7,9 @@
     "test:coverage": "jest --coverage",
     "test:neo4j": "node examples/neo4j_test.js",
     "test:postgres": "node examples/postgres_test.js",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts --max-warnings 0",
+    "verify": "tsc --noEmit && npm run lint && jest --silent --ci",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

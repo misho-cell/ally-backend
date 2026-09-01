@@ -63,3 +63,6 @@
 - [ ] Tests written and passing
 - [ ] No console.log left in production code (use a logger)
 - [ ] Run `npm run lint` before finishing any feature. Zero warnings allowed.
+- [ ] Run `npm run verify` (typecheck + lint + full suite) before pushing.
+      `npm run hooks:install` makes the pre-push hook enforce it, so a red
+      suite cannot reach the remote by inattention.

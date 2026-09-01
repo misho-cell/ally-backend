@@ -2,6 +2,22 @@
 
 Quick notes for local development.
 
+## Pre-push gate
+
+Run this once per clone — git does not clone hooks:
+
+```bash
+npm run hooks:install
+```
+
+It points `core.hooksPath` at `.githooks`, so every `git push` first runs
+`.githooks/pre-push`: typecheck, then lint, then the full jest suite. Any red
+step blocks the push. The same three steps are available on their own as
+`npm run verify`.
+
+If a push has to go out over a known failure, `git push --no-verify` skips the
+gate — deliberately, and only then.
+
 ## Neo4j connection test
 
 A small test script is included at `examples/neo4j_test.js` that uses `dotenv` and `neo4j-driver` to verify connectivity.

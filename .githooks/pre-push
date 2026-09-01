@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Blocks a push whose working tree does not typecheck, lint clean and pass the
+# full test suite.
+#
+# Enabled per clone (hooks are not cloned) with:
+#   npm run hooks:install
+#
+# Emergency override, only when the failure is understood and the push is
+# deliberate:
+#   git push --no-verify
+#
+# Each step is checked on its own: `set -e` is deliberately not relied on, since
+# it does not fire for a failing command inside an && chain — which is how a red
+# step gets past a gate that looks like it is guarding.
+
+fail() {
+  echo "pre-push: $1 FAILED — push blocked (override: git push --no-verify)" >&2
+  exit 1
+}
+
+echo "pre-push: typecheck"
+npx tsc --noEmit || fail "typecheck"
+
+echo "pre-push: lint"
+npm run lint || fail "lint"
+
+echo "pre-push: tests"
+npx jest --silent --ci || fail "tests"
+
+echo "pre-push: green"
