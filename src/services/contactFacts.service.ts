@@ -62,6 +62,8 @@ export interface VisibleFact {
   visibility: FactVisibility;
   // YYYY-MM-DD of the last save/confirmation — absent on crowd-filled values.
   last_confirmed?: string;
+  /** When this fact was FIRST written — distinct from last_confirmed. */
+  first_saved?: string;
 }
 
 export interface VisibleFactsResult {
@@ -457,6 +459,7 @@ export async function getVisibleFacts(
       is_public: boolean;
       is_matchable: boolean;
       last_confirmed: string;
+      first_saved: string;
     }>(
       // created_at is NOT last_confirmed: the sweep re-stamps updated_at when
       // it repeats a fact, so a July note read as written today and nobody
@@ -490,6 +493,7 @@ export async function getVisibleFacts(
     is_public: r.is_public,
     visibility: factVisibilityOf(r.is_public, r.is_matchable),
     last_confirmed: r.last_confirmed,
+    first_saved: r.first_saved,
   }));
 
   // Core facts: fill only when the owner never set the field (their value
