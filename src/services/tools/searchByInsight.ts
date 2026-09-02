@@ -458,7 +458,9 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
 
     const members = await fetchMembersForPhones(scored.map((s) => s.hit.contact_id));
     const results = scored.map((s) => ({
-      ...s.hit,
+      // sql_hits is ranking machinery, not an answer — spreading the hit whole
+      // put it in front of the assistant.
+      ...(({ sql_hits: _ignored, ...rest }) => rest)(s.hit),
       score: Math.round((s.hits / words.length) * 100) / 100,
       is_member: isMemberPhone(members, s.hit.contact_id),
     }));
