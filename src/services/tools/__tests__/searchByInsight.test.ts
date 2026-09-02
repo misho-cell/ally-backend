@@ -214,6 +214,27 @@ describe('searchByInsight', () => {
     expect(result).not.toHaveProperty('pointers');
   });
 
+  it("matches on the searcher's OWN hidden fact but never prints its text", async () => {
+    // Ticket 9 Task 15. Cross-account the wall already held — account B
+    // searching a word from account A's matchable note got a bare pointer
+    // (proved live, 2 Sep). What leaked was the author's own note back to
+    // themselves, which the assistant then quoted into the reply.
+    setup({});
+    await searchByInsight('42', 'ნაცნობი');
+
+    const ownCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('cf.submitted_by_user_id = $1'),
+    );
+    const sql = ownCall?.[0] as string;
+    expect(sql).toContain('WHEN cf.is_public THEN');
+    expect(sql).toContain('matched, not shown');
+    // The public path is untouched — a public fact still prints its value.
+    const publicCall = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('cf.is_public = true'),
+    );
+    expect(publicCall?.[0] as string).not.toContain('matched, not shown');
+  });
+
   it('returns found: false when neither source matches', async () => {
     setup({ facts: [], insights: [] });
 

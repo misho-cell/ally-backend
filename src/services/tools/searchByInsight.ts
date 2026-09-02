@@ -68,6 +68,21 @@ interface FactRow {
 // user's own freshly-saved fact — the save→search loop.
 const FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value))`;
 
+// The same aggregate for the searcher's OWN facts, with one difference: a fact
+// the author marked as not-public keeps its power to FIND the person and loses
+// its text.
+//
+// The third state's promise is "used in matching, text never shown". Until now
+// the own-facts query had no visibility filter at all, so an author searching a
+// word from their own hidden note got the note back in full — and the assistant
+// then quoted it into the reply, once even naming who recorded it and when.
+// Cross-account the wall held (proved live 2 Sep: account B searching the same
+// word got a bare pointer, no text), but "never shown" should mean never, and
+// a reply is the one place this text can travel.
+const OWN_FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' ||
+  CASE WHEN cf.is_public THEN COALESCE(cf.canonical_value, cf.value)
+       ELSE '[your own hidden note — matched, not shown]' END)`;
+
 // Function words carry no concept: "works WITH German companies ON export
 // deals" matched 31 people through "with"/"works" alone — crypto advisers
 // ranked above an honest zero (protocol task 39, task 27's acceptance test).
@@ -182,7 +197,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
               (SELECT MIN(ua_any.alias) FROM "UserAlias" ua_any
                 WHERE ua_any.phone = cf.neo4j_contact_id)
             ) AS name,
-            ${FACT_MATCH_AGG} AS matched
+            ${OWN_FACT_MATCH_AGG} AS matched
      FROM contact_facts cf
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
      LEFT JOIN "UserPhone" up ON up.phone = cf.neo4j_contact_id
