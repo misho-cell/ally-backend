@@ -1,7 +1,20 @@
-jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../../db/postgres/client', () => ({
+  query: jest.fn(),
+  withTransaction: jest.fn(),
+  __esModule: true,
+}));
+jest.mock('../../db/neo4j/client', () => ({
+  __esModule: true,
+  getSession: () => ({
+    run: jest.fn().mockResolvedValue({ records: [] }),
+    close: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
 
-import { query } from '../../db/postgres/client';
-import { exportMyData, getMyDataSummary } from '../privacyRights.service';
+import { query, withTransaction } from '../../db/postgres/client';
+import { exportMyData, getMyDataSummary, deleteMyAccount } from '../privacyRights.service';
+
+const mockTransaction = withTransaction as jest.MockedFunction<typeof withTransaction>;
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -107,5 +120,57 @@ describe('getMyDataSummary — an uncountable category is named, not dropped', (
     const out = await getMyDataSummary('1');
 
     expect(out.uncounted).not.toContain('user_avatars');
+  });
+});
+
+// The erasure ran DELETE FROM contact_enrichment WHERE user_id = $1 against a
+// table that has no user_id column — one wrong pair in a 33-entry list, and
+// Postgres aborted the whole transaction. Every account deletion in production
+// was failing: the person clicked delete, got a 500, and their data stayed.
+describe('deleteMyAccount — one wrong column must not abort the erasure', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('skips a table whose column is missing, reports it, and deletes the rest', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const deleted: string[] = [];
+    const client = {
+      query: jest.fn((sql: string) => {
+        if (sql.includes('information_schema.tables'))
+          return Promise.resolve(
+            rows([{ table_name: 'conversations' }, { table_name: 'contact_enrichment' }]),
+          );
+        if (sql.includes('information_schema.columns') && sql.includes('table_name, column_name'))
+          // contact_enrichment exists but has no user_id — the live shape.
+          return Promise.resolve(
+            rows([
+              { table_name: 'conversations', column_name: 'user_id' },
+              { table_name: 'contact_enrichment', column_name: 'phone' },
+            ]),
+          );
+        if (sql.includes('information_schema.columns')) return Promise.resolve(rows([]));
+        if (sql.startsWith('DELETE FROM') || sql.includes('DELETE FROM')) {
+          deleted.push(sql);
+          return Promise.resolve({ rows: [], rowCount: 3 });
+        }
+        return Promise.resolve(rows([]));
+      }),
+    };
+    mockTransaction.mockImplementation(async (cb: (c: unknown) => Promise<unknown>) => cb(client));
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599000001' }]) as never);
+
+    const report = await deleteMyAccount('1');
+
+    // The conversations delete still ran...
+    expect(deleted.some((sql) => sql.includes('FROM conversations'))).toBe(true);
+    // ...and contact_enrichment was cleared by PHONE, not skipped entirely.
+    expect(deleted.some((sql) => sql.includes('contact_enrichment') && sql.includes('phone'))).toBe(
+      true,
+    );
+    // A user_id delete against it must never be attempted again.
+    expect(
+      deleted.some((sql) => sql.includes('contact_enrichment') && sql.includes('user_id')),
+    ).toBe(false);
+    expect(report.dryRun).toBe(false);
+    consoleSpy.mockRestore();
   });
 });

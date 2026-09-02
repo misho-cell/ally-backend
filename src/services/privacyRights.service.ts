@@ -48,7 +48,6 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   { table: 'contact_exclusions', column: 'user_id' },
   { table: 'contact_relationship_scores', column: 'user_id' },
   { table: 'contact_facts', column: 'submitted_by_user_id' },
-  { table: 'contact_enrichment', column: 'user_id' },
   { table: 'weak_tie_signals', column: 'user_id' },
   { table: 'search_activity', column: 'user_id' },
   { table: 'user_avatars', column: 'user_id' },
@@ -73,6 +72,15 @@ const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
   { table: '"ContactDeceased"', column: '"userId"' },
   // The phone rows last: they are how the account is found.
   { table: '"UserPhone"', column: '"userId"' },
+];
+
+// Owned data keyed by the person's PHONE, not by their user id. Kept apart
+// because the cascade below is user-id shaped: contact_enrichment sat in the
+// list above with column 'user_id', a column it has never had, and every
+// erasure attempt therefore threw undefined_column and rolled the whole
+// transaction back. The right to erasure was returning a 500.
+const OWNED_PHONE_TABLES: ReadonlyArray<{ table: string; column: string }> = [
+  { table: 'contact_enrichment', column: 'phone' },
 ];
 
 // Human labels for the summary, so the frontend never has to render a raw
@@ -154,6 +162,15 @@ async function existingTables(client: PoolClient): Promise<Set<string>> {
   return new Set(result.rows.map((r) => r.table_name));
 }
 
+/** Every "table.column" pair in this schema, so a drift can be skipped not thrown. */
+async function existingColumns(client: PoolClient): Promise<Set<string>> {
+  const result = await client.query<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema = current_schema()`,
+  );
+  return new Set(result.rows.map((r) => `${r.table_name}.${r.column_name}`));
+}
+
 async function existingUserColumns(client: PoolClient): Promise<string[]> {
   const result = await client.query<{ column_name: string }>(
     `SELECT column_name FROM information_schema.columns
@@ -172,6 +189,16 @@ function bareName(table: string): string {
  * Everything this account holds, by category — the summary screen's data and
  * the honest preview shown before a deletion is confirmed.
  */
+/** The account's own numbers, raw as stored — the key for phone-keyed data. */
+async function ownRawPhones(userId: string): Promise<string[]> {
+  const result = await query<{ phone: string }>(
+    'SELECT phone FROM "UserPhone" WHERE "userId" = $1',
+    [userId],
+    ERASURE_TIMEOUT_MS,
+  );
+  return [...new Set(result.rows.map((r) => r.phone).filter(Boolean))];
+}
+
 export interface DataSummary {
   counts: Record<string, number>;
   /**
@@ -216,6 +243,31 @@ export async function getMyDataSummary(userId: string): Promise<DataSummary> {
       }
     }),
   );
+
+  // Phone-keyed data is theirs too. Left out of this loop it would be deleted
+  // on erasure but never shown here — the page would under-report what we
+  // hold, which is the exact failure this function exists to prevent.
+  const rawPhones = await ownRawPhones(userId);
+  if (rawPhones.length > 0) {
+    await Promise.all(
+      OWNED_PHONE_TABLES.map(async ({ table, column }) => {
+        try {
+          const result = await query<{ count: string }>(
+            `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = ANY($1::text[])`,
+            [rawPhones],
+            ERASURE_TIMEOUT_MS,
+          );
+          const n = Number(result.rows[0]?.count ?? 0);
+          if (n > 0) counts[bareName(table)] = n;
+        } catch (err: unknown) {
+          if ((err as { code?: string }).code === UNDEFINED_TABLE) return;
+          // eslint-disable-next-line no-console
+          console.error(`[privacy summary] ${bareName(table)} failed:`, (err as Error).message);
+          uncounted.push(bareName(table));
+        }
+      }),
+    );
+  }
   return { counts, uncounted };
 }
 
@@ -291,6 +343,31 @@ export async function exportMyData(userId: string): Promise<Record<string, unkno
       }
     }),
   );
+
+  const rawPhones = await ownRawPhones(userId);
+  if (rawPhones.length > 0) {
+    await Promise.all(
+      OWNED_PHONE_TABLES.map(async ({ table, column }) => {
+        try {
+          const result = await query<Record<string, unknown>>(
+            `SELECT * FROM ${table} WHERE ${column} = ANY($1::text[]) LIMIT ${EXPORT_ROW_CAP + 1}`,
+            [rawPhones],
+            ERASURE_TIMEOUT_MS,
+          );
+          if (result.rows.length === 0) return;
+          data[bareName(table)] = {
+            rows: result.rows.slice(0, EXPORT_ROW_CAP),
+            truncated: result.rows.length > EXPORT_ROW_CAP,
+          };
+        } catch (err: unknown) {
+          if ((err as { code?: string }).code === UNDEFINED_TABLE) return;
+          // eslint-disable-next-line no-console
+          console.error(`[privacy export] ${bareName(table)} failed:`, (err as Error).message);
+          data[bareName(table)] = { rows: [], truncated: false, unavailable: true };
+        }
+      }),
+    );
+  }
   return data;
 }
 
@@ -310,6 +387,7 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
     ERASURE_TIMEOUT_MS,
   );
   const digits = [...new Set(phones.rows.map((r) => phoneDigits(r.phone)).filter(Boolean))];
+  const rawPhones = [...new Set(phones.rows.map((r) => r.phone).filter(Boolean))];
   const graphKey = compositeKeyFor(phones.rows.map((r) => r.phone));
 
   if (dryRun) {
@@ -350,10 +428,35 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
     // INTEGER and TEXT across prod tables (tasks.user_id,
     // contact_facts.submitted_by_user_id) — a ::int cast throws on the TEXT
     // ones and aborts the whole erasure transaction.
+    // Skip on the COLUMN, not just the table. A table that exists with a
+    // different shape used to abort the entire erasure — and a person being
+    // told "deleted" while nothing was deleted is the worst failure this file
+    // can have. A mismatch is now recorded and reported, never silent.
+    const columns = await existingColumns(client);
     for (const { table, column } of OWNED_TABLES) {
       if (!tables.has(bareName(table))) continue;
+      if (!columns.has(`${bareName(table)}.${bareName(column)}`)) {
+        counts[`${bareName(table)} (SKIPPED — no ${bareName(column)} column)`] = 0;
+        // eslint-disable-next-line no-console
+        console.error(`[erasure] ${bareName(table)} has no ${bareName(column)} column — skipped`);
+        continue;
+      }
       const result = await client.query(`DELETE FROM ${table} WHERE ${column} = $1`, [userId]);
       if ((result.rowCount ?? 0) > 0) counts[bareName(table)] = result.rowCount ?? 0;
+    }
+
+    // The person's own phone-keyed rows (their inferred gender, nationality,
+    // industry — personal data about them, held under their number).
+    if (rawPhones.length > 0) {
+      for (const { table, column } of OWNED_PHONE_TABLES) {
+        if (!tables.has(bareName(table))) continue;
+        if (!columns.has(`${bareName(table)}.${bareName(column)}`)) continue;
+        const result = await client.query(
+          `DELETE FROM ${table} WHERE ${column} = ANY($1::text[])`,
+          [rawPhones],
+        );
+        if ((result.rowCount ?? 0) > 0) counts[bareName(table)] = result.rowCount ?? 0;
+      }
     }
 
     // The person, gone: every personal column emptied, the row kept so other
