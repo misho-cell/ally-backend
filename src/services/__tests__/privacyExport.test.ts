@@ -174,3 +174,52 @@ describe('deleteMyAccount — one wrong column must not abort the erasure', () =
     consoleSpy.mockRestore();
   });
 });
+
+// The second blocker, found only by running a real deletion: the scrub set
+// every personal column to NULL, and "name" is NOT NULL in production. The
+// not-null violation rolled the whole erasure back — the account survived and
+// the person was told the deletion failed.
+describe('deleteMyAccount — a NOT NULL personal column is emptied, not nulled', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("writes '' for NOT NULL text columns and NULL for the rest", async () => {
+    let scrubSql = '';
+    const client = {
+      query: jest.fn((sql: string) => {
+        if (sql.includes('information_schema.tables')) return Promise.resolve(rows([]));
+        if (sql.includes('is_nullable'))
+          return Promise.resolve(
+            rows([
+              { column_name: 'name', is_nullable: 'NO', data_type: 'character varying' },
+              { column_name: 'password', is_nullable: 'NO', data_type: 'character varying' },
+              { column_name: 'city', is_nullable: 'YES', data_type: 'character varying' },
+              {
+                column_name: 'birthday',
+                is_nullable: 'NO',
+                data_type: 'timestamp without time zone',
+              },
+            ]),
+          );
+        if (sql.includes('information_schema.columns')) return Promise.resolve(rows([]));
+        if (sql.includes('UPDATE "User" SET')) {
+          scrubSql = sql;
+          return Promise.resolve(rows([]));
+        }
+        return Promise.resolve(rows([]));
+      }),
+    };
+    mockTransaction.mockImplementation(async (cb: (c: unknown) => Promise<unknown>) => cb(client));
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599000001' }]) as never);
+
+    const report = await deleteMyAccount('1');
+
+    expect(scrubSql).toContain(`"name" = ''`);
+    expect(scrubSql).toContain(`"password" = ''`);
+    expect(scrubSql).toContain('"city" = NULL');
+    // A NOT NULL column that cannot hold '' is reported, never guessed at.
+    expect(scrubSql).not.toContain('"birthday"');
+    expect(Object.keys(report.rowsDeleted).some((k) => k.includes('columns NOT scrubbed'))).toBe(
+      true,
+    );
+  });
+});

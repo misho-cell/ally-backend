@@ -32,6 +32,9 @@ function compositeKeyFor(rawPhones: readonly string[]): string | null {
 
 const ERASURE_TIMEOUT_MS = 30_000;
 
+// Column types that can hold '' when the schema forbids NULL.
+const TEXT_TYPES = new Set(['character varying', 'text', 'character']);
+
 // Tables holding data this account OWNS: every row goes. Ordered so that
 // nothing here depends on anything below it.
 const OWNED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
@@ -171,13 +174,45 @@ async function existingColumns(client: PoolClient): Promise<Set<string>> {
   return new Set(result.rows.map((r) => `${r.table_name}.${r.column_name}`));
 }
 
-async function existingUserColumns(client: PoolClient): Promise<string[]> {
-  const result = await client.query<{ column_name: string }>(
-    `SELECT column_name FROM information_schema.columns
+/**
+ * How to empty each personal column that exists here.
+ *
+ * NULL is wrong for a NOT NULL column, and getting that wrong is not a
+ * cosmetic error: "name" is NOT NULL in production, the scrub set it to NULL,
+ * and the not-null violation rolled the entire erasure back. Live-caught on
+ * the first real deletion after the cascade was fixed — two independent
+ * blockers were stacked, and only running it for real showed the second.
+ * A NOT NULL text column is emptied to '' instead; anything else is left
+ * alone and named, rather than throwing away the whole erasure.
+ */
+async function userScrubAssignments(
+  client: PoolClient,
+): Promise<{ assignments: string[]; skipped: string[] }> {
+  const result = await client.query<{
+    column_name: string;
+    is_nullable: string;
+    data_type: string;
+  }>(
+    `SELECT column_name, is_nullable, data_type FROM information_schema.columns
      WHERE table_schema = current_schema() AND table_name = 'User'`,
   );
-  const present = new Set(result.rows.map((r) => r.column_name));
-  return USER_COLUMNS_TO_SCRUB.filter((c) => present.has(c));
+  const byName = new Map(result.rows.map((r) => [r.column_name, r]));
+  const assignments: string[] = [];
+  const skipped: string[] = [];
+  for (const column of USER_COLUMNS_TO_SCRUB) {
+    const meta = byName.get(column);
+    if (!meta) continue;
+    if (meta.is_nullable === 'YES') {
+      assignments.push(`"${column}" = NULL`);
+    } else if (TEXT_TYPES.has(meta.data_type)) {
+      // '' is not a valid bcrypt hash either, so an emptied password can never
+      // match any input — the account stays unreachable, not just deleted.
+      assignments.push(`"${column}" = ''`);
+    } else {
+      skipped.push(column);
+    }
+  }
+  return { assignments, skipped };
 }
 
 /** Bare table name for the existence check ("UserAlias" → UserAlias). */
@@ -462,12 +497,14 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
     // The person, gone: every personal column emptied, the row kept so other
     // people's references stay valid, and deletedAt set — which every query in
     // the codebase already treats as "this account does not exist".
-    const userColumns = await existingUserColumns(client);
-    const assignments = userColumns.map((c) => `"${c}" = NULL`).join(', ');
-    await client.query(
-      `UPDATE "User" SET ${assignments ? assignments + ', ' : ''}"deletedAt" = NOW() WHERE id = $1`,
-      [userId],
-    );
+    const { assignments, skipped } = await userScrubAssignments(client);
+    if (skipped.length > 0) {
+      counts[`User (columns NOT scrubbed: ${skipped.join(', ')})`] = 0;
+      // eslint-disable-next-line no-console
+      console.error(`[erasure] could not empty User columns: ${skipped.join(', ')}`);
+    }
+    const setClause = assignments.length > 0 ? assignments.join(', ') + ', ' : '';
+    await client.query(`UPDATE "User" SET ${setClause}"deletedAt" = NOW() WHERE id = $1`, [userId]);
 
     // The do-not-contact record outlives the account (see migration 056).
     for (const d of digits) {
