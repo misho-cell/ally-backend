@@ -201,13 +201,17 @@ async function scanNameMatchCandidates(
     SCAN_QUERY_TIMEOUT_MS,
   );
   const coOwnerCount = new Map<string, number>(
-    counts.rows.map((r) => [`${r.phone_1} ${r.phone_2}`, Number(r.co_owners)]),
+    counts.rows.map((r) => [`${r.phone_1}\u0000${r.phone_2}`, Number(r.co_owners)]),
   );
 
+  const passing = discovered.rows.filter(
+    (pair) => (coOwnerCount.get(`${pair.phone_1}\u0000${pair.phone_2}`) ?? 0) >= MIN_CO_OWNERS,
+  );
+  const nameReach = await countPhonesPerName(passing.map((pair) => pair.sample_alias));
+
   let added = 0;
-  for (const pair of discovered.rows) {
-    const owners = coOwnerCount.get(`${pair.phone_1} ${pair.phone_2}`) ?? 0;
-    if (owners < MIN_CO_OWNERS) continue;
+  for (const pair of passing) {
+    const owners = coOwnerCount.get(`${pair.phone_1}\u0000${pair.phone_2}`) ?? 0;
     const phones = [pair.phone_1, pair.phone_2].sort();
     const inserted = await query<{ id: number }>(
       `INSERT INTO identity_candidates (phones, confidence, evidence)
@@ -221,6 +225,7 @@ async function scanNameMatchCandidates(
           signal: 'same_normalized_alias_across_owners',
           co_owners: owners,
           sample_alias: pair.sample_alias,
+          name_distinct_phones: nameReach.get(pair.sample_alias) ?? null,
         }),
       ],
       IDENTITY_QUERY_TIMEOUT_MS,
@@ -228,6 +233,35 @@ async function scanNameMatchCandidates(
     if (inserted.rows.length > 0) added++;
   }
   return { added, pageFull };
+}
+
+/**
+ * How many DIFFERENT phones in the whole network carry each of these names.
+ *
+ * The review queue was ordered by co_owners alone, and the two numbers say
+ * opposite things: co_owners counts how many people wrote the name down, this
+ * counts how many people it could belong to. Live: "saba" sits on 3,270 phones
+ * and "nino" on 4,687 — 79 owners agreeing on "Saba" is evidence of nothing,
+ * while "თორნიკე აბულაძე" sits on 4 and three owners would be plenty. Without
+ * this beside it, the strongest-LOOKING rows in the queue are the worst merges
+ * a reviewer could make, and they sort to the top.
+ */
+async function countPhonesPerName(aliases: string[]): Promise<Map<string, number>> {
+  const unique = Array.from(new Set(aliases.filter((alias) => alias.trim() !== '')));
+  if (unique.length === 0) return new Map();
+  // One scan for the whole page. Fifty correlated sub-selects over 8.4M alias
+  // rows took 17s and hit the statement timeout; this shape answers for any
+  // number of names in about the same time, and it is a background job.
+  const result = await query<{ alias: string; distinct_phones: string }>(
+    `SELECT w.alias, COUNT(DISTINCT ua.phone) AS distinct_phones
+     FROM unnest($1::text[]) AS w(alias)
+     LEFT JOIN "UserAlias" ua
+       ON normalize_search_token(ua.alias) = normalize_search_token(w.alias)
+     GROUP BY w.alias`,
+    [unique],
+    SCAN_QUERY_TIMEOUT_MS,
+  );
+  return new Map(result.rows.map((r) => [r.alias, Number(r.distinct_phones)]));
 }
 
 /**
@@ -317,6 +351,54 @@ export interface IdentityCandidate {
   evidence: Record<string, unknown>;
   status: string;
   created_at: string;
+}
+
+/**
+ * Stamp name_distinct_phones onto candidates queued before it was recorded.
+ * Paced by `limit` and idempotent — rows that already carry the number are
+ * skipped, so re-running it costs one query and finds nothing.
+ */
+export async function backfillCandidateNameReach(
+  limit: number,
+): Promise<{ checked: number; stamped: number; remaining: number }> {
+  const pending = await query<{ id: number; sample_alias: string }>(
+    `SELECT id, evidence->>'sample_alias' AS sample_alias
+     FROM identity_candidates
+     WHERE evidence->>'sample_alias' IS NOT NULL
+       AND evidence->'name_distinct_phones' IS NULL
+     ORDER BY id
+     LIMIT $1`,
+    [limit],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  if (pending.rows.length === 0) return { checked: 0, stamped: 0, remaining: 0 };
+
+  const reach = await countPhonesPerName(pending.rows.map((r) => r.sample_alias));
+  let stamped = 0;
+  for (const row of pending.rows) {
+    const count = reach.get(row.sample_alias);
+    if (count === undefined) continue;
+    await query(
+      `UPDATE identity_candidates
+       SET evidence = evidence || jsonb_build_object('name_distinct_phones', $2::int)
+       WHERE id = $1`,
+      [row.id, count],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    );
+    stamped++;
+  }
+  const left = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM identity_candidates
+     WHERE evidence->>'sample_alias' IS NOT NULL
+       AND evidence->'name_distinct_phones' IS NULL`,
+    [],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  return {
+    checked: pending.rows.length,
+    stamped,
+    remaining: Number(left.rows[0]?.count ?? 0),
+  };
 }
 
 export async function listIdentityCandidates(

@@ -491,7 +491,7 @@ export async function getVisibleFacts(
   // Core facts: fill only when the owner never set the field (their value
   // always wins). Free-form public notes: append every one the owner does not
   // already hold verbatim — they accumulate rather than collapse.
-  const seenValues = new Set(ownResult.rows.map((r) => `${r.field_type} ${r.value}`));
+  const seenValues = new Set(ownResult.rows.map((r) => `${r.field_type}\u0000${r.value}`));
   const filledCore = new Set<string>();
   for (const row of publicResult.rows) {
     if (isCoreFact(row.field_type)) {
@@ -505,7 +505,7 @@ export async function getVisibleFacts(
         filledCore.add(row.field_type);
       }
     } else {
-      const key = `${row.field_type} ${row.canonical_value}`;
+      const key = `${row.field_type}\u0000${row.canonical_value}`;
       if (!seenValues.has(key)) {
         facts.push({
           field_type: row.field_type,

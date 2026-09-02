@@ -71,6 +71,7 @@ import { getThreadMessages } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import {
+  backfillCandidateNameReach,
   runIdentityScan,
   listIdentityCandidates,
   approveIdentityCandidate,
@@ -1999,6 +2000,22 @@ adminRouter.post(
 //   POST /admin/identity/candidates/:id/approve | /reject — the human call;
 //     approve extends an existing person when one of the phones is mapped.
 //   POST /admin/identity/unmerge { person_id } — exact restore, logged.
+// Stamp the name's network-wide reach onto candidates queued before it was
+// recorded — the number that tells a reviewer whether "82 owners agree" means
+// anything. Paced; call until remaining is 0.
+adminRouter.post('/identity/candidates/name-reach', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number((req.body as { limit?: unknown })?.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 1000) : 200;
+    const result = await backfillCandidateNameReach(limit);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity name-reach]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.post('/identity/scan', async (req: Request, res: Response) => {
   try {
     const rawFrom = Number((req.body as Record<string, unknown>)?.from_owner);

@@ -8,6 +8,7 @@ import {
   approveIdentityCandidate,
   rejectIdentityCandidate,
   unmergePerson,
+  backfillCandidateNameReach,
   PAIR_CAP_PER_BATCH,
 } from '../identity.service';
 
@@ -335,6 +336,97 @@ describe('approve / reject / unmerge — the human half, always logged', () => {
     expect(out.ok).toBe(true);
     const log = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'unmerge'"));
     expect(log?.[1]?.[1]).toEqual(['+995599000005', '+995599000006']);
+  });
+});
+
+describe('name reach — the number that keeps a reviewer from a bad merge', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('stores how many phones network-wide carry the name, beside the agreement count', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")')) return Promise.resolve(rows([{ max: 100 }]) as never);
+      if (sql.includes('MIN(a.alias) AS sample_alias'))
+        return Promise.resolve(
+          rows([
+            { phone_1: '+995599000005', phone_2: '+995599000006', sample_alias: 'Saba' },
+          ]) as never,
+        );
+      if (sql.includes('COUNT(DISTINCT a."contactId") AS co_owners'))
+        return Promise.resolve(
+          rows([{ phone_1: '+995599000005', phone_2: '+995599000006', co_owners: '79' }]) as never,
+        );
+      if (sql.includes('COUNT(DISTINCT ua.phone) AS distinct_phones'))
+        return Promise.resolve(rows([{ alias: 'Saba', distinct_phones: '3270' }]) as never);
+      if (sql.includes('INSERT INTO identity_candidates'))
+        return Promise.resolve(rows([{ id: 1 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await runIdentityScan(1);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO identity_candidates'),
+    );
+    const evidence = JSON.parse(String(insert?.[1]?.[2])) as Record<string, unknown>;
+    // 79 people wrote "Saba"; 3,270 phones could BE a Saba. Both, or neither.
+    expect(evidence.co_owners).toBe(79);
+    expect(evidence.name_distinct_phones).toBe(3270);
+  });
+
+  it('asks for the reach of the passing pairs only, once per batch', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('HAVING COUNT(*) >= 2')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('MAX("contactId")')) return Promise.resolve(rows([{ max: 100 }]) as never);
+      if (sql.includes('MIN(a.alias) AS sample_alias'))
+        return Promise.resolve(
+          rows([
+            { phone_1: '+995599000005', phone_2: '+995599000006', sample_alias: 'Kept' },
+            { phone_1: '+995599000007', phone_2: '+995599000008', sample_alias: 'Dropped' },
+          ]) as never,
+        );
+      if (sql.includes('COUNT(DISTINCT a."contactId") AS co_owners'))
+        return Promise.resolve(
+          rows([
+            { phone_1: '+995599000005', phone_2: '+995599000006', co_owners: '9' },
+            { phone_1: '+995599000007', phone_2: '+995599000008', co_owners: '1' },
+          ]) as never,
+        );
+      if (sql.includes('COUNT(DISTINCT ua.phone) AS distinct_phones'))
+        return Promise.resolve(rows([{ alias: 'Kept', distinct_phones: '3' }]) as never);
+      if (sql.includes('INSERT INTO identity_candidates'))
+        return Promise.resolve(rows([{ id: 1 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await runIdentityScan(1);
+
+    const reachCalls = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('COUNT(DISTINCT ua.phone) AS distinct_phones'),
+    );
+    expect(reachCalls).toHaveLength(1);
+    // The pair that failed the co-owner threshold is never asked about.
+    expect(reachCalls[0]?.[1]?.[0]).toEqual(['Kept']);
+  });
+
+  it('backfills only candidates that lack the number, and reports what is left', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("evidence->'name_distinct_phones' IS NULL") && sql.includes('SELECT id'))
+        return Promise.resolve(rows([{ id: 11, sample_alias: 'Lia' }]) as never);
+      if (sql.includes('COUNT(DISTINCT ua.phone) AS distinct_phones'))
+        return Promise.resolve(rows([{ alias: 'Lia', distinct_phones: '1467' }]) as never);
+      if (sql.includes('SELECT COUNT(*) AS count FROM identity_candidates'))
+        return Promise.resolve(rows([{ count: '2315' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await backfillCandidateNameReach(200);
+
+    expect(out).toEqual({ checked: 1, stamped: 1, remaining: 2315 });
+    const update = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('UPDATE identity_candidates'),
+    );
+    expect(update?.[1]).toEqual([11, 1467]);
   });
 });
 
