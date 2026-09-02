@@ -15,6 +15,11 @@ import {
 import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
+import {
+  getOnboardingStatus,
+  markOnboardingSkipped,
+  OnboardingStatus,
+} from '../../services/onboarding.service';
 
 interface ProfileData {
   readonly name: string;
@@ -41,6 +46,46 @@ const EDITABLE_FIELDS = [
 ] as const;
 
 const profileRouter = Router();
+
+// FT-6: the client had no way to ask "has this person finished the contacts
+// step?" and was about to infer it from whether any thread exists — a proxy
+// that is wrong in both directions. This is the server's own answer, the same
+// rule that decides which prompt mode the person gets, so the two sides can
+// never disagree after a refresh.
+profileRouter.get(
+  '/onboarding',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<OnboardingStatus>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: await getOnboardingStatus(String(userId)) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/onboarding]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// A deliberate "skip" was kept only on the client, so "has not done it yet"
+// and "decided not to" looked identical on the next device — and re-asking
+// read as the app forgetting. Idempotent: the first skip keeps its timestamp.
+profileRouter.post(
+  '/onboarding/skip',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<OnboardingStatus>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: await markOnboardingSkipped(String(userId)) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /profile/onboarding/skip]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 profileRouter.get(
   '/',
