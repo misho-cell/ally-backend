@@ -620,6 +620,9 @@ export const PARAM_TEXTS = {
   retractFieldType: 'Optional: limit the retraction to one fact key (occupation, note, …).',
   retractValueFragment:
     'Optional: a fragment of the wrong value to match, so only it is retracted.',
+  retractExactValue:
+    'Optional: the WHOLE wrong value, matched exactly. Use this when a fragment ' +
+    'would also hit a longer, correct note that contains the same words.',
   forgetConfirmed:
     'true ONLY when the user explicitly confirmed they want this fact permanently deleted. ' +
     'Without true nothing is deleted — call again after they confirm.',

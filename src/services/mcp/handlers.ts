@@ -945,11 +945,20 @@ export async function mcpRemoveExclusion(
 
 export async function mcpRetractFact(
   userId: string,
-  args: { contact_ref: string; field_type?: string; value_fragment?: string },
+  args: {
+    contact_ref: string;
+    field_type?: string;
+    value_fragment?: string;
+    exact_value?: string;
+  },
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { retracted: 0, error: UNKNOWN_CONTACT_REF };
-  return retractOwnFacts(userId, phone, args.field_type, args.value_fragment);
+  return retractOwnFacts(userId, phone, {
+    fieldType: args.field_type,
+    valueFragment: args.value_fragment,
+    exactValue: args.exact_value,
+  });
 }
 
 export async function mcpForgetFact(

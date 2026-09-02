@@ -2382,12 +2382,11 @@ async function executeToolCall(
         input['excluded_for'] ? String(input['excluded_for']) : undefined,
       );
     case 'retract_contact_fact':
-      return retractOwnFacts(
-        userId,
-        String(input['phone'] ?? ''),
-        input['field_type'] ? String(input['field_type']) : undefined,
-        input['value_fragment'] ? String(input['value_fragment']) : undefined,
-      );
+      return retractOwnFacts(userId, String(input['phone'] ?? ''), {
+        fieldType: input['field_type'] ? String(input['field_type']) : undefined,
+        valueFragment: input['value_fragment'] ? String(input['value_fragment']) : undefined,
+        exactValue: input['exact_value'] ? String(input['exact_value']) : undefined,
+      });
     case 'forget_contact_fact': {
       if (input['confirmed'] !== true) {
         return {

@@ -458,7 +458,11 @@ export async function getVisibleFacts(
       is_matchable: boolean;
       last_confirmed: string;
     }>(
+      // created_at is NOT last_confirmed: the sweep re-stamps updated_at when
+      // it repeats a fact, so a July note read as written today and nobody
+      // could retract by date. Both dates now travel.
       `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public, is_matchable,
+              TO_CHAR(created_at, 'YYYY-MM-DD') AS first_saved,
               TO_CHAR(updated_at, 'YYYY-MM-DD') AS last_confirmed
        FROM contact_facts
        WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
@@ -585,11 +589,27 @@ export async function reclassifyPrivateNotes(
  * own submissions; others' rows are untouched (the caller's own corrected
  * value already outranks public values in every read).
  */
+export interface RetractFilters {
+  fieldType?: string;
+  /** Substring match — the default, and the reason exactness was needed. */
+  valueFragment?: string;
+  /**
+   * Whole-value match. A cleanup on 2 September could not separate a note the
+   * sweep had written from the user's own July note, because the sweep's text
+   * („ეკონომიკის სამინისტროში აღარ მუშაობს") sits INSIDE the real one — the
+   * fragment matched both and one duplicate had to be left in place.
+   */
+  exactValue?: string;
+  /** Only facts created on or after this moment. */
+  createdAfter?: Date;
+  /** Only facts created before this moment — with the above, one day's writes. */
+  createdBefore?: Date;
+}
+
 export async function retractOwnFacts(
   userId: string,
   neo4jContactIdRaw: string,
-  fieldType?: string,
-  valueFragment?: string,
+  filters: RetractFilters = {},
 ): Promise<{ retracted: number }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   const result = await query(
@@ -598,12 +618,18 @@ export async function retractOwnFacts(
      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2
        AND retracted_at IS NULL
        AND ($3::text IS NULL OR field_type = $3)
-       AND ($4::text IS NULL OR value ILIKE '%' || $4 || '%')`,
+       AND ($4::text IS NULL OR value ILIKE '%' || $4 || '%')
+       AND ($5::text IS NULL OR value = $5)
+       AND ($6::timestamptz IS NULL OR created_at >= $6)
+       AND ($7::timestamptz IS NULL OR created_at < $7)`,
     [
       neo4jContactId,
       userId,
-      fieldType?.trim().toLowerCase() || null,
-      valueFragment?.trim() || null,
+      filters.fieldType?.trim().toLowerCase() || null,
+      filters.valueFragment?.trim() || null,
+      filters.exactValue?.trim() || null,
+      filters.createdAfter ?? null,
+      filters.createdBefore ?? null,
     ],
   );
   return { retracted: result.rowCount ?? 0 };
