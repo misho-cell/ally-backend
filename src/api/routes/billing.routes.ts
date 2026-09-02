@@ -19,6 +19,12 @@ import {
   WalletSummary,
 } from '../../services/tokenWallet.service';
 import { ApiResponse } from '../../types';
+import {
+  createCheckoutSession,
+  createPortalSession,
+  isStripeConfigured,
+  CheckoutResult,
+} from '../../services/stripe.service';
 
 const SPEND_ERRORS: Record<string, { status: number; message: string }> = {
   insufficient_balance: { status: 402, message: 'რეფერალური ბალანსი საკმარისი არ არის' },
@@ -73,6 +79,48 @@ billingRouter.get(
       // eslint-disable-next-line no-console
       console.error('[GET /billing/tokens]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// ── Stripe (2 Sep) ─────────────────────────────────────────────────────────
+// Start the subscription: Checkout collects the card, opens the 5-day trial
+// and charges nothing until it ends. The trial is granted once per PERSON —
+// the response says how many days this particular person is getting, so the
+// screen can tell them the truth rather than always promising five.
+billingRouter.post(
+  '/stripe/checkout',
+  async (req: Request, res: Response<ApiResponse<CheckoutResult>>): Promise<void> => {
+    if (!isStripeConfigured()) {
+      res.status(503).json({ success: false, error: 'გადახდა დროებით მიუწვდომელია' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: await createCheckoutSession(String(userId)) });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /billing/stripe/checkout]', err);
+      res.status(500).json({ success: false, error: 'გადახდის გვერდი ვერ გაიხსნა' });
+    }
+  },
+);
+
+// Manage Subscription — card, invoices and cancellation, all inside Stripe.
+billingRouter.post(
+  '/stripe/portal',
+  async (req: Request, res: Response<ApiResponse<{ url: string }>>): Promise<void> => {
+    if (!isStripeConfigured()) {
+      res.status(503).json({ success: false, error: 'გადახდა დროებით მიუწვდომელია' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      res.status(200).json({ success: true, data: await createPortalSession(String(userId)) });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /billing/stripe/portal]', err);
+      res.status(404).json({ success: false, error: 'გამოწერა ვერ მოიძებნა' });
     }
   },
 );
