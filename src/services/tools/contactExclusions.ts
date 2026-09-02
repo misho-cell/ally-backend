@@ -87,8 +87,15 @@ export async function fetchExclusionsForPhones(
       });
       map.set(row.contact_phone, list);
     }
-  } catch {
-    // Search must survive an exclusions hiccup.
+  } catch (err: unknown) {
+    // Search survives, but not silently: with these missing the assistant
+    // stops seeing "do not suggest this person for work" and may suggest
+    // exactly that. Degrading is right; degrading unnoticed is not.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[exclusions] lookup failed, results carry no exclusions:',
+      (err as Error).message,
+    );
   }
   return map;
 }

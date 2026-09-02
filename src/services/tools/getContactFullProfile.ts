@@ -52,8 +52,10 @@ export async function getContactFullProfile(
   try {
     const insight = await getContactInsight(userId, lookupId);
     insightData = insight?.data ?? null;
-  } catch {
-    // contact_insights.user_id column type mismatch — insight unavailable
+  } catch (err: unknown) {
+    // eslint-disable-next-line no-console
+    console.error('[contact-profile] insight unavailable:', (err as Error).message);
+    // known cause: the contact_insights.user_id column type mismatch
   }
 
   const members = await fetchMembersForPhones([phone]);

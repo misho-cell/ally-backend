@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { exportMyData } from '../privacyRights.service';
+import { exportMyData, getMyDataSummary } from '../privacyRights.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -67,5 +67,45 @@ describe('exportMyData — a table we could not read is never reported as empty'
       rows: [{ id: 1, text: 'შენიშვნა' }],
       truncated: false,
     });
+  });
+});
+
+// The same failure mode one function up: this summary is also the preview a
+// person is shown before they confirm a deletion, so a category we could not
+// read must never be presented as a category they have nothing in.
+describe('getMyDataSummary — an uncountable category is named, not dropped', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('separates categories that failed to read from categories that are empty', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockQuery.mockImplementation((sql: string) => {
+      const table = /FROM (\S+) WHERE/.exec(sql)?.[1] ?? '';
+      if (table === 'user_notes')
+        return Promise.reject(new Error('canceling statement due to statement timeout')) as never;
+      if (table === 'conversations') return Promise.resolve(rows([{ count: '12' }]) as never);
+      return Promise.resolve(rows([{ count: '0' }]) as never);
+    });
+
+    const out = await getMyDataSummary('1');
+
+    expect(out.counts.conversations).toBe(12);
+    expect(out.uncounted).toContain('user_notes');
+    // A read failure never becomes a number.
+    expect(out.counts).not.toHaveProperty('user_notes');
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('says nothing about a table this environment does not have', async () => {
+    const missing = Object.assign(new Error('relation does not exist'), { code: '42P01' });
+    mockQuery.mockImplementation((sql: string) => {
+      const table = /FROM (\S+) WHERE/.exec(sql)?.[1] ?? '';
+      if (table === 'user_avatars') return Promise.reject(missing) as never;
+      return Promise.resolve(rows([{ count: '0' }]) as never);
+    });
+
+    const out = await getMyDataSummary('1');
+
+    expect(out.uncounted).not.toContain('user_avatars');
   });
 });

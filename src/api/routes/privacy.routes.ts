@@ -29,16 +29,20 @@ privacyRouter.get(
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
-      const counts = await getMyDataSummary(String(userId));
+      const { counts, uncounted } = await getMyDataSummary(String(userId));
       // "records" (task 22(i)): open since 14 August as an untranslated Latin
       // word on /profile/data — this wrapper key is where it came from. Kept
       // for backward compatibility; `counts` is the same content under a name
       // that was never meant to double as a label, and `labels` gives every
       // key its Georgian label so nothing on this page has to render a raw
       // table/column name again.
+      // `uncounted` names the categories we could not READ. It stays out of
+      // the counts so a failure is never drawn as a number, and it is present
+      // so the page can say "we could not check these" rather than implying
+      // the person has nothing there.
       res.status(200).json({
         success: true,
-        data: { records: counts, counts, labels: OWNED_TABLE_LABELS_KA },
+        data: { records: counts, counts, uncounted, labels: OWNED_TABLE_LABELS_KA },
       });
     } catch (error) {
       // eslint-disable-next-line no-console

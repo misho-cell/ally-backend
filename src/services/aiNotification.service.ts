@@ -312,8 +312,10 @@ export async function sendAiNotification(userId: string): Promise<void> {
     await query(`UPDATE ai_notification_log SET push_sent = true WHERE id = $1`, [
       logResult.rows[0].id,
     ]);
-  } catch {
-    // push failed — log entry remains with push_sent = false
+  } catch (err: unknown) {
+    // eslint-disable-next-line no-console
+    console.error('[ai-notification] push failed:', (err as Error).message);
+    // the log entry remains with push_sent = false
   }
 
   await query(

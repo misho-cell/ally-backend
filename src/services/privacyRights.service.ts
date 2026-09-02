@@ -172,8 +172,20 @@ function bareName(table: string): string {
  * Everything this account holds, by category — the summary screen's data and
  * the honest preview shown before a deletion is confirmed.
  */
-export async function getMyDataSummary(userId: string): Promise<Record<string, number>> {
+export interface DataSummary {
+  counts: Record<string, number>;
+  /**
+   * Categories we failed to READ, as opposed to categories that are empty.
+   * Kept apart from the counts so a failure can never be rendered as a number,
+   * and can never be mistaken for "you have nothing here" — this same summary
+   * is the preview a person is shown before confirming a deletion.
+   */
+  uncounted: string[];
+}
+
+export async function getMyDataSummary(userId: string): Promise<DataSummary> {
   const counts: Record<string, number> = {};
+  const uncounted: string[] = [];
   // All counts CONCURRENTLY: run one-by-one they took 14.4s on the founder's
   // account while the privacy page sat empty (ticket 6 verify, N12.3).
   // Untyped $1 on purpose: the id columns drift between INTEGER and TEXT in
@@ -190,12 +202,21 @@ export async function getMyDataSummary(userId: string): Promise<Record<string, n
         );
         const n = Number(result.rows[0]?.count ?? 0);
         if (n > 0) counts[bareName(table)] = n;
-      } catch {
-        // A table that does not exist in this environment simply has no data.
+      } catch (err: unknown) {
+        // The twin of the swallow in exportMyData, and the comment above this
+        // function records it biting once already: a cast error made whole
+        // tables vanish from the summary and nobody saw it. Only 42P01 means
+        // the table is genuinely absent here; everything else is a category
+        // this person holds data in that we failed to count, and the summary
+        // must not quietly claim otherwise.
+        if ((err as { code?: string }).code === UNDEFINED_TABLE) return;
+        // eslint-disable-next-line no-console
+        console.error(`[privacy summary] ${bareName(table)} failed:`, (err as Error).message);
+        uncounted.push(bareName(table));
       }
     }),
   );
-  return counts;
+  return { counts, uncounted };
 }
 
 // An export bigger than this per table is delivered truncated and says so —
@@ -294,7 +315,7 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
   if (dryRun) {
     return {
       userId: Number(userId),
-      rowsDeleted: await getMyDataSummary(userId),
+      rowsDeleted: (await getMyDataSummary(userId)).counts,
       phoneOptOuts: digits.length,
       graphEdgesRemoved: 0,
       retained: RETAINED_NOTES,
