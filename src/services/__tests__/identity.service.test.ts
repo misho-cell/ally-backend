@@ -426,7 +426,8 @@ describe('name reach — the number that keeps a reviewer from a bad merge', () 
     const update = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes('UPDATE identity_candidates'),
     );
-    expect(update?.[1]).toEqual([11, 1467]);
+    // One bulk update: parallel arrays of ids and their reach.
+    expect(update?.[1]).toEqual([[11], [1467]]);
   });
 });
 

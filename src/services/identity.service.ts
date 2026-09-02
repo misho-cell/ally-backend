@@ -249,15 +249,23 @@ async function scanNameMatchCandidates(
 async function countPhonesPerName(aliases: string[]): Promise<Map<string, number>> {
   const unique = Array.from(new Set(aliases.filter((alias) => alias.trim() !== '')));
   if (unique.length === 0) return new Map();
-  // One scan for the whole page. Fifty correlated sub-selects over 8.4M alias
-  // rows took 17s and hit the statement timeout; this shape answers for any
-  // number of names in about the same time, and it is a background job.
+  // ONE pass over "UserAlias", whatever the name count. There is no btree on
+  // normalize_search_token(alias), so every shape here pays for 8.4M function
+  // calls once — the mistake to avoid is paying for them PER NAME. A LEFT JOIN
+  // with the function in the ON clause did exactly that: 500 names timed out
+  // past 180s, while this returns them together.
   const result = await query<{ alias: string; distinct_phones: string }>(
-    `SELECT w.alias, COUNT(DISTINCT ua.phone) AS distinct_phones
-     FROM unnest($1::text[]) AS w(alias)
-     LEFT JOIN "UserAlias" ua
-       ON normalize_search_token(ua.alias) = normalize_search_token(w.alias)
-     GROUP BY w.alias`,
+    `WITH names AS (
+       SELECT DISTINCT w.alias, normalize_search_token(w.alias) AS norm
+       FROM unnest($1::text[]) AS w(alias)
+     ), reach AS (
+       SELECT normalize_search_token(ua.alias) AS norm, COUNT(DISTINCT ua.phone) AS distinct_phones
+       FROM "UserAlias" ua
+       WHERE normalize_search_token(ua.alias) IN (SELECT norm FROM names)
+       GROUP BY 1
+     )
+     SELECT n.alias, COALESCE(r.distinct_phones, 0) AS distinct_phones
+     FROM names n LEFT JOIN reach r ON r.norm = n.norm`,
     [unique],
     SCAN_QUERY_TIMEOUT_MS,
   );
@@ -361,6 +369,9 @@ export interface IdentityCandidate {
 export async function backfillCandidateNameReach(
   limit: number,
 ): Promise<{ checked: number; stamped: number; remaining: number }> {
+  // One call does the lot. Paging made it worse, not safer: each page repeats
+  // the same full pass over "UserAlias", so five pages cost five scans to do
+  // what one scan answers.
   const pending = await query<{ id: number; sample_alias: string }>(
     `SELECT id, evidence->>'sample_alias' AS sample_alias
      FROM identity_candidates
@@ -374,18 +385,16 @@ export async function backfillCandidateNameReach(
   if (pending.rows.length === 0) return { checked: 0, stamped: 0, remaining: 0 };
 
   const reach = await countPhonesPerName(pending.rows.map((r) => r.sample_alias));
-  let stamped = 0;
-  for (const row of pending.rows) {
-    const count = reach.get(row.sample_alias);
-    if (count === undefined) continue;
+  const stampable = pending.rows.filter((row) => reach.has(row.sample_alias));
+  if (stampable.length > 0) {
     await query(
-      `UPDATE identity_candidates
-       SET evidence = evidence || jsonb_build_object('name_distinct_phones', $2::int)
-       WHERE id = $1`,
-      [row.id, count],
-      IDENTITY_QUERY_TIMEOUT_MS,
+      `UPDATE identity_candidates c
+       SET evidence = c.evidence || jsonb_build_object('name_distinct_phones', u.reach)
+       FROM unnest($1::bigint[], $2::int[]) AS u(id, reach)
+       WHERE c.id = u.id`,
+      [stampable.map((row) => row.id), stampable.map((row) => reach.get(row.sample_alias) ?? 0)],
+      SCAN_QUERY_TIMEOUT_MS,
     );
-    stamped++;
   }
   const left = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM identity_candidates
@@ -396,7 +405,7 @@ export async function backfillCandidateNameReach(
   );
   return {
     checked: pending.rows.length,
-    stamped,
+    stamped: stampable.length,
     remaining: Number(left.rows[0]?.count ?? 0),
   };
 }
