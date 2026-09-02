@@ -1,3 +1,4 @@
+import { query } from '../db/postgres/client';
 import { recordClaudeUsage } from './costLedger.service';
 import { parseModelJson } from './modelJson';
 import { submitContactFact, FACT_FIELD_TYPES, FactConfidence } from './contactFacts.service';
@@ -30,9 +31,18 @@ interface ExtractedFactCandidate {
 
 function buildExtractionPrompt(): string {
   return (
-    'Read this one exchange from a contacts app. List every NEW factual detail the USER stated ' +
-    'or mentioned about a THIRD PERSON they named — never about themselves, never about the ' +
-    'assistant. Field types: occupation, employer, city, industry, or note for anything else ' +
+    'Read this one exchange from a contacts app. List every NEW factual detail THE USER stated ' +
+    'or explicitly confirmed about a THIRD PERSON they named — never about themselves, never ' +
+    'about the assistant. ' +
+    'THE ASSISTANT BLOCK IS CONTEXT ONLY, NEVER A SOURCE. The assistant guesses, reads web ' +
+    'pages and repeats phonebook labels; none of that is something the user knows. If a detail ' +
+    'appears only in the ASSISTANT block and the user did not confirm it, DO NOT return it. ' +
+    'A short agreement from the user ("yes", "correct", "დიახ", "სწორია") DOES confirm what the ' +
+    'assistant just said; silence does not. ' +
+    'TENSE MATTERS: a role the person no longer holds is field_type "past_role", never ' +
+    '"employer" or "occupation". "Worked at X for 15 years, left in 2022" is past_role, not ' +
+    'employer X. ' +
+    'Field types: occupation, employer, city, industry, past_role, or note for anything else ' +
     'worth remembering (a skill, a need, a relationship, context). confidence is "stated" when ' +
     'the user asserted it directly and plainly, "mentioned" when it came up only in passing or ' +
     'is uncertain. CRITICAL: value must contain ONLY what was actually said — never add a date, ' +
@@ -60,6 +70,110 @@ function stripUnstatedYears(value: string, sourceText: string): string {
     .trim();
 }
 
+// A short agreement turns the assistant's last sentence into something the
+// user confirmed. Anything longer is the user speaking for themselves, and
+// then their own words are the only source.
+const CONFIRMATION_WORDS = new Set([
+  'კი',
+  'დიახ',
+  'ჰო',
+  'სწორია',
+  'ასეა',
+  'ზუსტად',
+  'ნამდვილად',
+  'yes',
+  'yep',
+  'correct',
+  'right',
+  'exactly',
+  'true',
+]);
+// A few of them together still make one agreement — „დიახ, სწორია" is two
+// words and my first version, which allowed only one, refused it.
+const MAX_CONFIRMATION_WORDS = 3;
+
+function isConfirmation(userMessage: string): boolean {
+  const words = userMessage
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.length <= MAX_CONFIRMATION_WORDS &&
+    words.every((w) => CONFIRMATION_WORDS.has(w))
+  );
+}
+
+// A role the person no longer holds. The sweep had no tense at all: "15 years
+// at Wissol, left in 2022" was stored as employer: Wissol, and that false
+// present tense then read back as truth in every later conversation.
+// Georgian marks the past in the verb, so a word list can only ever be the
+// common cases — these are the forms that actually turned up in the live
+// examples. The year rule below is what catches the rest.
+const PAST_MARKERS = [
+  'ყოფილი',
+  'აღარ',
+  'წარსულში',
+  'ადრე',
+  'დატოვა',
+  'წამოვიდა',
+  'წავიდა',
+  'მუშაობდა',
+  'იყო',
+  'ex-',
+  'former',
+  'formerly',
+  'previously',
+  'used to',
+  'left in',
+  'until ',
+  'worked at',
+  'worked for',
+  'no longer',
+];
+// "…, left in 2022" and „2022-ში წამოვიდა" share this shape: a role plus a
+// year that has already passed. Cheaper and more general than chasing verb
+// endings in two languages.
+function mentionsPastYear(haystack: string): boolean {
+  const thisYear = new Date().getFullYear();
+  return (haystack.match(/\b(19|20)\d{2}\b/g) ?? []).some((y) => Number(y) < thisYear);
+}
+const PRESENT_ROLE_FIELDS = new Set(['employer', 'occupation', 'role']);
+
+/** Words worth grounding on — short ones match everything and prove nothing. */
+const MIN_GROUNDING_WORD = 4;
+
+function normalizeForCompare(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Is this candidate actually the USER's knowledge?
+ *
+ * The exchange handed to the model contains the assistant's whole reply, and
+ * the model read it as fact: on 2 September a clinic's web page the assistant
+ * had summarised became four public facts about two real doctors, none of it
+ * typed by anyone. The prompt now says the assistant block is context only —
+ * this is the check that does not depend on the model obeying it.
+ */
+function isGroundedInUser(value: string, userMessage: string): boolean {
+  const user = normalizeForCompare(userMessage);
+  if (isConfirmation(userMessage)) return true; // they agreed to what was just said
+  const words = normalizeForCompare(value)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= MIN_GROUNDING_WORD);
+  if (words.length === 0) return user.includes(normalizeForCompare(value));
+  return words.some((w) => user.includes(w));
+}
+
+/** A present-tense role field whose value or context says otherwise becomes past_role. */
+function correctTense(fieldType: string, value: string, sourceText: string): string {
+  if (!PRESENT_ROLE_FIELDS.has(fieldType)) return fieldType;
+  const haystack = normalizeForCompare(`${value} ${sourceText}`);
+  const past = PAST_MARKERS.some((m) => haystack.includes(m)) || mentionsPastYear(haystack);
+  return past ? 'past_role' : fieldType;
+}
+
 function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidate[] {
   // The sweep ran 165 times and wrote nothing: every reply arrived fenced and
   // this parse threw, so the whole batch was dropped as "no candidates".
@@ -81,6 +195,35 @@ function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidat
 }
 
 /**
+ * Has this user already saved this, in any wording that contains or is
+ * contained by it?
+ *
+ * Eight notes accumulated on one person in one day, the same fact in five
+ * spellings, one per conversation — the sweep had no memory of its own
+ * writes. Substring both ways, because a sweep note is often a shorter
+ * restatement of a note the user wrote themselves.
+ */
+async function alreadyStored(
+  userId: string,
+  phone: string,
+  fieldType: string,
+  value: string,
+): Promise<boolean> {
+  const result = await query<{ value: string }>(
+    `SELECT value FROM contact_facts
+     WHERE submitted_by_user_id = $1 AND neo4j_contact_id = $2
+       AND field_type = $3 AND retracted_at IS NULL`,
+    [userId, phone, fieldType],
+    EXTRACTION_TIMEOUT_MS,
+  );
+  const incoming = normalizeForCompare(value);
+  return result.rows.some((row) => {
+    const existing = normalizeForCompare(row.value);
+    return existing.includes(incoming) || incoming.includes(existing);
+  });
+}
+
+/**
  * Fire-and-forget, called after every completed run (same hook as thread
  * title generation): reads the just-finished exchange, extracts facts about
  * named third parties the live assistant may not have saved, and writes
@@ -95,7 +238,12 @@ export async function sweepFactsFromExchange(
   userMessage: string,
   finalReply?: string,
 ): Promise<void> {
-  if (userMessage.trim().length < MIN_MESSAGE_CHARS_FOR_SWEEP) return;
+  // Short messages are skipped to save a model call — but a confirmation is
+  // short BY NATURE, and „დიახ, სწორია" is the one short message that can
+  // carry a fact: it makes the assistant's last sentence the user's own.
+  // Skipping it meant "what the user confirmed" could never be stored at all.
+  const shortMessage = userMessage.trim().length < MIN_MESSAGE_CHARS_FOR_SWEEP;
+  if (shortMessage && !(isConfirmation(userMessage) && finalReply)) return;
   try {
     const { default: anthropic } = await import('../config/anthropic');
     const exchange = finalReply
@@ -122,16 +270,28 @@ export async function sweepFactsFromExchange(
     const candidates = parseCandidates(raw, exchange);
 
     for (const candidate of candidates) {
+      // The user's own words are the only source. Everything else in the
+      // exchange is the assistant thinking aloud.
+      if (!isGroundedInUser(candidate.value, userMessage)) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[fact-sweep] dropped (not the user's words): ${candidate.field_type} on ` +
+            `${candidate.person_name}`,
+        );
+        continue;
+      }
+      const fieldType = correctTense(candidate.field_type, candidate.value, userMessage);
       const matches = await findContactPhonesByName(
         userId,
         candidate.person_name,
         NAME_MATCH_LIMIT,
       );
       if (matches.length !== 1) continue; // unknown or ambiguous — never guess
+      if (await alreadyStored(userId, matches[0], fieldType, candidate.value)) continue;
       await submitContactFact(
         userId,
         matches[0],
-        candidate.field_type,
+        fieldType,
         candidate.value,
         'sweep',
         candidate.confidence,

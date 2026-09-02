@@ -1,3 +1,10 @@
+// The sweep now reads what it has already stored on a contact before writing
+// again (it used to keep eight copies of one fact), so this suite needs the
+// client mocked — without it the read threw and every write was swallowed.
+jest.mock('../../db/postgres/client', () => ({
+  __esModule: true,
+  query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+}));
 jest.mock('../contactFacts.service', () => ({
   __esModule: true,
   submitContactFact: jest.fn().mockResolvedValue({ is_public: false, canonical_value: null }),
@@ -39,10 +46,22 @@ beforeEach(() => {
 });
 
 describe('sweepFactsFromExchange (engine T1)', () => {
-  it('skips the model call entirely for a very short message', async () => {
-    await sweepFactsFromExchange('7', 42, 'კი', 'კარგი');
+  it('skips the model call for a very short message that confirms nothing', async () => {
+    await sweepFactsFromExchange('7', 42, 'აა', 'კარგი');
 
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('DOES read a short message when it is an agreement with a reply to agree to', async () => {
+    // „კი" used to be skipped by length. But an agreement is short by nature,
+    // and it is the one short message that carries a fact: it makes the
+    // assistant's last sentence the user's own. Skipping it meant "what the
+    // user confirmed" could never be stored.
+    mockCreate.mockResolvedValue(anthropicTextResponse('[]'));
+
+    await sweepFactsFromExchange('7', 42, 'კი', 'ნიკა ბათუმში ცხოვრობს?');
+
+    expect(mockCreate).toHaveBeenCalled();
   });
 
   it("writes a fact tagged source='sweep' when the named person resolves to exactly one contact", async () => {
