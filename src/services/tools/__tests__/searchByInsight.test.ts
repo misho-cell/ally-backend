@@ -235,6 +235,30 @@ describe('searchByInsight', () => {
     expect(publicCall?.[0] as string).not.toContain('matched, not shown');
   });
 
+  it('a redacted own fact still finds the person — the count comes from SQL', async () => {
+    // Redacting the text alone dropped the row under the relevance floor and
+    // the person disappeared from their own search. The hit count is made in
+    // SQL, before the text is hidden, and travels as its own column.
+    setup({
+      facts: [
+        {
+          phone: '+995599777777',
+          name: 'დათო',
+          matched: ['note: [your own hidden note — matched, not shown]'],
+          sql_hits: 1,
+        },
+      ],
+    });
+
+    const result = (await searchByInsight('42', 'ნაცნობი')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    const rows = result.results as Array<Record<string, unknown>>;
+    expect(rows[0].name).toBe('დათო');
+    // The person is found; the note's words are not in the answer.
+    expect(JSON.stringify(rows)).not.toContain('ნინო');
+  });
+
   it('returns found: false when neither source matches', async () => {
     setup({ facts: [], insights: [] });
 

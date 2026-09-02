@@ -51,12 +51,15 @@ interface InsightHit {
   matched: string[];
   info: Record<string, unknown> | null;
   contact_id: string;
+  /** Words hit counted in SQL, where the hidden text is still readable. */
+  sql_hits: number;
 }
 
 interface FactRow {
   phone: string;
   name: string | null;
   matched: string[];
+  sql_hits?: number;
 }
 
 // Every fact query anchors on a single column per bound parameter.
@@ -197,7 +200,8 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
               (SELECT MIN(ua_any.alias) FROM "UserAlias" ua_any
                 WHERE ua_any.phone = cf.neo4j_contact_id)
             ) AS name,
-            ${OWN_FACT_MATCH_AGG} AS matched
+            ${OWN_FACT_MATCH_AGG} AS matched,
+            (${wordHitsClause(matchExpr, likes.length, 3)}) AS sql_hits
      FROM contact_facts cf
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
      LEFT JOIN "UserPhone" up ON up.phone = cf.neo4j_contact_id
@@ -338,12 +342,20 @@ function settled<T>(result: PromiseSettledResult<T[]>, label: string): T[] {
   return [];
 }
 
-/** How many distinct query words appear anywhere in a hit — the ranking key. */
+/**
+ * How many distinct query words appear anywhere in a hit — the ranking key.
+ *
+ * Counted from the printable text AND from the count SQL made before the text
+ * was redacted, whichever is higher. A hidden fact of the searcher's own keeps
+ * its power to find the person exactly because of this: redacting the text
+ * alone dropped the row under the relevance floor and the person vanished from
+ * their own search (caught live, one deploy after the redaction went out).
+ */
 function wordsHit(hit: InsightHit, words: string[]): number {
   const haystack = [hit.name ?? '', ...hit.matched, hit.info ? JSON.stringify(hit.info) : '']
     .join(' ')
     .toLowerCase();
-  return words.filter((w) => haystack.includes(w)).length;
+  return Math.max(words.filter((w) => haystack.includes(w)).length, hit.sql_hits);
 }
 
 /**
@@ -383,12 +395,20 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       const key = normalizePhone(row.phone);
       if (excluded.has(key)) continue;
       const matched = (row.matched ?? []).filter(Boolean);
+      const sqlHits = Number(row.sql_hits ?? 0);
       const existing = byPhone.get(key);
       if (existing) {
         existing.name = existing.name ?? row.name ?? null;
         existing.matched = [...new Set([...existing.matched, ...matched])];
+        existing.sql_hits = Math.max(existing.sql_hits, sqlHits);
       } else {
-        byPhone.set(key, { name: row.name ?? null, matched, info: null, contact_id: row.phone });
+        byPhone.set(key, {
+          name: row.name ?? null,
+          matched,
+          info: null,
+          contact_id: row.phone,
+          sql_hits: sqlHits,
+        });
       }
     }
     for (const row of insightRows) {
@@ -402,6 +422,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         byPhone.set(key, {
           name: row.neo4j_contact_name ?? null,
           matched: [],
+          sql_hits: 0,
           info: row.data,
           contact_id: row.neo4j_contact_id,
         });
