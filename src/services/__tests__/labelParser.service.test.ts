@@ -12,6 +12,8 @@ import {
   getLabelQueueTotal,
   reprocessLabelQueue,
   reprocessSavedOccupationFacts,
+  getRawLabelEvidence,
+  ALIAS_PROVENANCE_BACKFILL_AT,
   DICTIONARY_VERSION,
 } from '../labelParser.service';
 
@@ -497,5 +499,85 @@ describe('reprocessSavedOccupationFacts — revisits already-saved facts, not ju
     expect(sql).toContain("field_type = 'occupation'");
     expect(sql).toContain("source = 'label'");
     expect(sql).toContain('retracted_at IS NULL');
+  });
+});
+
+describe('getRawLabelEvidence — created-at and source per label (ticket 9 task 32.3)', () => {
+  it('reports a known write date, its source, and never invents one for undated rows', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ARRAY_REMOVE')) {
+        return Promise.resolve(
+          rows([
+            {
+              label: 'ზურა სანტექნიკოსი',
+              contributors: '3',
+              contributor_ids: [7, 8, 9],
+              first_seen: new Date('2026-08-27T09:15:00.000Z'),
+              last_seen: new Date('2026-09-01T18:00:00.000Z'),
+              undated_rows: '2',
+              sources: ['app_import'],
+            },
+          ]) as never,
+        );
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await getRawLabelEvidence('+995500000001');
+
+    expect(out.labels).toEqual([
+      {
+        label: 'ზურა სანტექნიკოსი',
+        contributors: 3,
+        contributor_ids: [7, 8, 9],
+        first_seen: '2026-08-27T09:15:00.000Z',
+        last_seen: '2026-09-01T18:00:00.000Z',
+        undated_rows: 2,
+        sources: ['app_import'],
+      },
+    ]);
+  });
+
+  it('a label whose every row predates provenance carries no date at all, not a fabricated one', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ARRAY_REMOVE')) {
+        return Promise.resolve(
+          rows([
+            {
+              label: 'დათო',
+              contributors: '1',
+              contributor_ids: [7],
+              first_seen: null,
+              last_seen: null,
+              undated_rows: '4',
+              sources: null,
+            },
+          ]) as never,
+        );
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await getRawLabelEvidence('+995500000002');
+
+    expect(out.labels[0]).toMatchObject({
+      first_seen: null,
+      last_seen: null,
+      undated_rows: 4,
+      sources: [],
+    });
+  });
+
+  it('counts the migration instant itself as undated — the column was born then, not the label', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await getRawLabelEvidence('+995500000003');
+
+    const call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('ARRAY_REMOVE'));
+    const sql = call?.[0] as string;
+    const params = call?.[1] as unknown[];
+    // Strictly greater than: a row stamped AT the backfill instant is not dated.
+    expect(sql).toContain('ua.created_at > $4::timestamptz');
+    expect(params).toContain(ALIAS_PROVENANCE_BACKFILL_AT);
   });
 });

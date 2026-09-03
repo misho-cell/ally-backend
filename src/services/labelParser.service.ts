@@ -453,6 +453,14 @@ export interface RawLabelRow {
   label: string;
   contributors: number;
   contributor_ids: number[];
+  /** Earliest write of this label whose date is really known — null if none is. */
+  first_seen: string | null;
+  /** Latest such write. Equal to first_seen when only one row is dated. */
+  last_seen: string | null;
+  /** Rows behind this label that carry no true date (see ALIAS_PROVENANCE_BACKFILL_AT). */
+  undated_rows: number;
+  /** Distinct recorded sources. Empty means no writer ever stamped one. */
+  sources: string[];
 }
 
 export interface RawLabelEvidence {
@@ -465,6 +473,20 @@ const RAW_LABEL_LIMIT = 100;
 const RAW_LABEL_CONTRIBUTOR_SAMPLE = 20;
 
 /**
+ * The instant migration 068 created `UserAlias.created_at` (ticket 9 task 32.3).
+ *
+ * It was added as `DEFAULT NOW()`, and PostgreSQL stamps every pre-existing row
+ * with the value at that moment — so 8,407,001 rows share this single instant
+ * to the microsecond. That is when the COLUMN was born, not when the label was
+ * written; the real dates were never stored and cannot be recovered.
+ *
+ * Reporting it as "first seen" would be a fabrication with a timestamp on it,
+ * so rows at or before this instant are counted as undated instead of dated.
+ * Everything strictly after it is a genuine write.
+ */
+export const ALIAS_PROVENANCE_BACKFILL_AT = '2026-08-22T11:40:18.341860Z';
+
+/**
  * D40 (ticket 8 task 14): one contact's RAW labels, aggregated, with the
  * contributor identity behind each — read straight off the two stores where
  * every raw label already lives with its writer (UserAlias for Netai sync,
@@ -472,17 +494,38 @@ const RAW_LABEL_CONTRIBUTOR_SAMPLE = 20;
  * the parser only DERIVES facts from these rows). Kept separate from the
  * contact's own record by construction: this is an admin evidence view over
  * other people's phonebooks, never merged into profile reads.
+ *
+ * Ticket 9 task 32.3 adds the other half of the credit — WHEN each label was
+ * written and by which route. Dates that were never stored are reported as
+ * `undated_rows` rather than dressed up as a date; see
+ * ALIAS_PROVENANCE_BACKFILL_AT.
  */
 export async function getRawLabelEvidence(phone: string): Promise<RawLabelEvidence> {
-  const labels = await query<{ label: string; contributors: string; contributor_ids: number[] }>(
+  const labels = await query<{
+    label: string;
+    contributors: string;
+    contributor_ids: number[];
+    first_seen: Date | null;
+    last_seen: Date | null;
+    undated_rows: string;
+    sources: string[] | null;
+  }>(
     `SELECT label, COUNT(DISTINCT contributor)::text AS contributors,
-            (ARRAY_AGG(DISTINCT contributor))[1:$2] AS contributor_ids
+            (ARRAY_AGG(DISTINCT contributor))[1:$2] AS contributor_ids,
+            MIN(written_at) FILTER (WHERE dated) AS first_seen,
+            MAX(written_at) FILTER (WHERE dated) AS last_seen,
+            COUNT(*) FILTER (WHERE NOT dated)::text AS undated_rows,
+            ARRAY_REMOVE(ARRAY_AGG(DISTINCT source), NULL) AS sources
      FROM (
-       SELECT ua.alias AS label, ua."contactId" AS contributor
+       SELECT ua.alias AS label, ua."contactId" AS contributor, ua.source AS source,
+              ua.created_at AS written_at,
+              (ua.created_at IS NOT NULL AND ua.created_at > $4::timestamptz) AS dated
        FROM "UserAlias" ua
        WHERE regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
        UNION ALL
-       SELECT uc.name AS label, uc."originUserId" AS contributor
+       SELECT uc.name AS label, uc."originUserId" AS contributor, NULL::text AS source,
+              uc."createdAt" AT TIME ZONE 'UTC' AS written_at,
+              uc."createdAt" IS NOT NULL AS dated
        FROM "UserConnectionPhone" ucp
        JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
        WHERE regexp_replace(ucp.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
@@ -491,7 +534,7 @@ export async function getRawLabelEvidence(phone: string): Promise<RawLabelEviden
      GROUP BY label
      ORDER BY COUNT(DISTINCT contributor) DESC, label
      LIMIT $3`,
-    [phone, RAW_LABEL_CONTRIBUTOR_SAMPLE, RAW_LABEL_LIMIT],
+    [phone, RAW_LABEL_CONTRIBUTOR_SAMPLE, RAW_LABEL_LIMIT, ALIAS_PROVENANCE_BACKFILL_AT],
     PARSE_TIMEOUT_MS,
   );
   const facts = await query<{
@@ -514,6 +557,10 @@ export async function getRawLabelEvidence(phone: string): Promise<RawLabelEviden
       label: r.label,
       contributors: Number(r.contributors),
       contributor_ids: r.contributor_ids,
+      first_seen: r.first_seen === null ? null : r.first_seen.toISOString(),
+      last_seen: r.last_seen === null ? null : r.last_seen.toISOString(),
+      undated_rows: Number(r.undated_rows),
+      sources: r.sources ?? [],
     })),
     parsed_facts: facts.rows,
   };
