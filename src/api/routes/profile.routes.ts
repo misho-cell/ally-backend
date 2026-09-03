@@ -20,6 +20,11 @@ import {
   markOnboardingSkipped,
   OnboardingStatus,
 } from '../../services/onboarding.service';
+import {
+  listPrivateContext,
+  deletePrivateContextKeys,
+} from '../../services/userPrivateContext.service';
+import { getUserNotes, deleteUserNotes } from '../../services/userNotes.service';
 
 interface ProfileData {
   readonly name: string;
@@ -52,6 +57,62 @@ const profileRouter = Router();
 // that is wrong in both directions. This is the server's own answer, the same
 // rule that decides which prompt mode the person gets, so the two sides can
 // never disagree after a refresh.
+// Ticket 9 Task 19.3/19.4: the assistant writes to the private-context store
+// and the saved notes on its own, and until now nobody — not the person, not
+// an admin — could read the store back or remove a line. A memory nobody can
+// inspect is not a memory, it is a leak with a long half-life.
+profileRouter.get(
+  '/memory',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const [context, notes] = await Promise.all([
+        listPrivateContext(userId),
+        getUserNotes(userId),
+      ]);
+      res.status(200).json({ success: true, data: { private_context: context, notes } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/memory]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/memory',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const body = req.body as { context_keys?: unknown; note_ids?: unknown };
+      const keys = Array.isArray(body.context_keys) ? body.context_keys.map(String) : [];
+      const noteIds = Array.isArray(body.note_ids)
+        ? body.note_ids.map(Number).filter((n) => Number.isFinite(n))
+        : [];
+      if (keys.length === 0 && noteIds.length === 0) {
+        res.status(400).json({ success: false, error: 'context_keys ან note_ids აუცილებელია' });
+        return;
+      }
+      const [context, notes] = await Promise.all([
+        deletePrivateContextKeys(userId, keys),
+        deleteUserNotes(userId, noteIds),
+      ]);
+      res.status(200).json({
+        success: true,
+        data: { context_deleted: context.deleted, notes_deleted: notes.deleted },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/memory]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 profileRouter.get(
   '/onboarding',
   authenticateJwt,

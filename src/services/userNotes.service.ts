@@ -69,3 +69,20 @@ export async function getUserNotes(userId: string, kind?: UserNoteKind): Promise
     return true;
   });
 }
+
+/**
+ * Delete saved notes by id, for their owner only.
+ *
+ * Nothing could remove a note from any seat — the founder's saved
+ * preferences silently shortened every list and there was no way to take one
+ * back (Ticket 9 Task 19.4).
+ */
+export async function deleteUserNotes(userId: string, ids: number[]): Promise<{ deleted: number }> {
+  if (ids.length === 0) return { deleted: 0 };
+  const result = await query(
+    'DELETE FROM user_notes WHERE user_id = $1 AND id = ANY($2::bigint[])',
+    [userId, ids],
+    QUERY_TIMEOUT_MS,
+  );
+  return { deleted: result.rowCount ?? 0 };
+}
