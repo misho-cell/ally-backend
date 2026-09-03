@@ -160,17 +160,28 @@ describe('upsertPromptBlock', () => {
   });
 
   it('enforces the per-mode ceiling against OTHER enabled blocks, naming the mode', async () => {
+    // Derived from the live budget rather than a hardcoded 30k: the ceiling
+    // moved once (20k → 30k → 40k) and this test pinned the old number, so it
+    // stopped exercising the rule instead of failing loudly.
+    const [{ budget_chars: budget }] = computeModeTotals([]);
+    const existing = budget - 1_000;
+
     stubCatalog(null, [
-      block({ name: 'big', content: 'z'.repeat(25_000), modes: ['quick_answer'] }),
-      block({ name: 'off', content: 'z'.repeat(25_000), modes: ['quick_answer'], enabled: false }),
+      block({ name: 'big', content: 'z'.repeat(existing), modes: ['quick_answer'] }),
+      block({
+        name: 'off',
+        content: 'z'.repeat(existing),
+        modes: ['quick_answer'],
+        enabled: false,
+      }),
     ]);
 
     const attempt = upsertPromptBlock('more', {
-      content: 'y'.repeat(6_000),
+      content: 'y'.repeat(2_000),
       modes: ['quick_answer'],
     });
 
-    // 25k (enabled 'big'; disabled 'off' does not count) + 6k > 30k ceiling.
+    // The disabled block does not count; the enabled one plus 2k passes the top.
     await expect(attempt).rejects.toThrow(/quick_answer .* ceiling/);
   });
 
@@ -242,5 +253,40 @@ describe('name and mode validation', () => {
     ['drafting', false],
   ])('isRunMode(%s) → %s', (mode, expected) => {
     expect(isRunMode(mode)).toBe(expected);
+  });
+});
+
+// Ticket 9 Task 26. The wall the prompt team hit was never the per-block cap:
+// quick_answer held qa_main 19,825 + qa_rules_20_22 10,172 = 29,997 of 30,000,
+// three characters of headroom, while a 20,286-char block saved fine on its
+// own. Two different ceilings, one confusing message.
+describe('the mode budget, and telling it apart from the per-block cap', () => {
+  it('reports what is left, not just what is used', () => {
+    const totals = computeModeTotals([
+      {
+        name: 'qa_main',
+        content: 'x'.repeat(19_825),
+        enabled: true,
+        modes: ['quick_answer'],
+      } as never,
+      {
+        name: 'qa_rules',
+        content: 'x'.repeat(10_172),
+        enabled: true,
+        modes: ['quick_answer'],
+      } as never,
+    ]);
+
+    const qa = totals.find((t) => t.mode === 'quick_answer');
+    expect(qa?.enabled_chars).toBe(29_997);
+    expect(qa?.remaining_chars).toBe(qa!.budget_chars - 29_997);
+  });
+
+  it('does not count a disabled block against the budget', () => {
+    const totals = computeModeTotals([
+      { name: 'off', content: 'x'.repeat(8_306), enabled: false, modes: ['quick_answer'] } as never,
+    ]);
+
+    expect(totals.find((t) => t.mode === 'quick_answer')?.enabled_chars).toBe(0);
   });
 });

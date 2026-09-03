@@ -18,9 +18,16 @@ export const MAX_BLOCK_CONTENT_CHARS = 30_000;
 // Ceiling for the SUM of enabled block content bound to one mode (on top of
 // the base prompt) — the prompt team asked for a hard stop at save time so a
 // mode can never quietly regrow into the monolith the split was escaping.
-// Raised 20k → 30k on the prompt team's ask (ticket 6 close, task 1):
-// qa_main sat at 19,974/20,000 with two P0 fixes unwritable.
-const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 30_000);
+// Raised 20k → 30k (ticket 6 close, task 1), then 30k → 40k (ticket 9 task
+// 26): quick_answer sat at 29,997 of 30,000 — three characters of headroom —
+// with the whole prompt loop blocked behind it.
+//
+// This is the number that actually binds, and it is easy to mistake for the
+// per-block cap: a single block may be 30,000 chars and still be refused
+// because the MODE's blocks already fill the budget. Every enabled block for
+// a mode rides on every call in that mode, so raising this raises the cost of
+// each of those calls — prune before raising again.
+const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 40_000);
 const HISTORY_KEEP_PER_BLOCK = 10;
 const RUN_STAMP_RETENTION_DAYS = 30;
 const RUN_STAMP_LIST_LIMIT = 50;
@@ -74,6 +81,8 @@ export interface ModeTotal {
   mode: RunMode;
   enabled_chars: number;
   budget_chars: number;
+  /** budget − enabled: what can still be pasted before the save is refused. */
+  remaining_chars: number;
 }
 
 /** Invalid admin input — the route maps this (and only this) to a 400. */
@@ -136,6 +145,13 @@ export function computeModeTotals(blocks: readonly PromptBlock[]): ModeTotal[] {
       .filter((b) => b.enabled && b.modes.includes(mode))
       .reduce((sum, b) => sum + b.content.length, 0),
     budget_chars: MODE_BLOCK_BUDGET_CHARS,
+    // The number a person actually needs before pasting. Everyone was
+    // subtracting it by hand, and "29,997 of 30,000" reads as roomy.
+    remaining_chars:
+      MODE_BLOCK_BUDGET_CHARS -
+      blocks
+        .filter((b) => b.enabled && b.modes.includes(mode))
+        .reduce((sum, b) => sum + b.content.length, 0),
   }));
 }
 
@@ -189,7 +205,11 @@ async function assertModeBudgets(merged: PromptBlock): Promise<void> {
     const total = otherChars + merged.content.length;
     if (total > MODE_BLOCK_BUDGET_CHARS) {
       throw new PromptBlockValidationError(
-        `mode ${mode} would hold ${total} chars of blocks — over the ${MODE_BLOCK_BUDGET_CHARS} ceiling by ${total - MODE_BLOCK_BUDGET_CHARS}`,
+        `mode ${mode} would hold ${total} chars of enabled blocks — over the ` +
+          `${MODE_BLOCK_BUDGET_CHARS} ceiling by ${total - MODE_BLOCK_BUDGET_CHARS}. ` +
+          `This is the MODE budget (the sum of every enabled block bound to ${mode}), ` +
+          `not the ${MAX_BLOCK_CONTENT_CHARS}-char per-block cap. Disable or shorten a ` +
+          `block, or raise MODE_BLOCK_BUDGET_CHARS — it is config, no deploy.`,
       );
     }
   }
