@@ -104,6 +104,12 @@ const SIGNAL_EXCLUDED_FIELD_TYPES = [
   'arrest',
 ];
 
+// Where a second-degree row's title and employer come from, in preference
+// order (ticket 9 task 25). Both are read privacy-scoped: a PUBLIC fact, or
+// one the searcher wrote themselves.
+const TITLE_FACT_FIELDS = ['role', 'occupation'];
+const EMPLOYER_FACT_FIELDS = ['employer', 'affiliation'];
+
 // Exported for T15's empty-case fallback in searchByInsight (ticket 7 task
 // 10) — ONE strength vocabulary product-wide, never a re-guessed copy.
 export async function fetchSignalStrength(
@@ -269,6 +275,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
     // parameter cannot carry both types.
     const factsUserIdx = blockParamIdx + 1;
+    // Ticket 9 task 25. The title came only from 'occupation' and the employer
+    // only from 'employer', so a person whose title lives in 'role' — 96 of
+    // its 97 live rows are public, and it is where Lika's researched profiles
+    // put "Co-Founder & CEO @ KLIPY" — read back as null. Order matters: the
+    // first field type present wins.
+    const titleFieldsIdx = factsUserIdx + 1;
+    const employerFieldsIdx = factsUserIdx + 2;
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
     // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
@@ -385,26 +398,43 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN LATERAL (
          SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
          FROM contact_facts cf
-         WHERE cf.neo4j_contact_id = r.phone AND cf.field_type = 'employer'
+         WHERE cf.neo4j_contact_id = r.phone
+           AND cf.field_type = ANY($${employerFieldsIdx}::text[])
            AND cf.retracted_at IS NULL
            AND (cf.is_public OR cf.submitted_by_user_id = $${factsUserIdx})
-         ORDER BY cf.is_public DESC, cf.updated_at DESC
+         -- 'employer' first, then 'affiliation' — array_position keeps the
+         -- preference in the data rather than in a second query.
+         ORDER BY array_position($${employerFieldsIdx}::text[], cf.field_type),
+                  cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fe ON TRUE
        LEFT JOIN LATERAL (
          SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
          FROM contact_facts cf
-         WHERE cf.neo4j_contact_id = r.phone AND cf.field_type = 'occupation'
+         WHERE cf.neo4j_contact_id = r.phone
+           AND cf.field_type = ANY($${titleFieldsIdx}::text[])
            AND cf.retracted_at IS NULL
            AND (cf.is_public OR cf.submitted_by_user_id = $${factsUserIdx})
-         ORDER BY cf.is_public DESC, cf.updated_at DESC
+         -- 'role' first: it is the specific title Lika's profiles carry
+         -- ("Co-Founder & CEO @ KLIPY"), and 96 of its 97 live rows are
+         -- public, while this query only ever read 'occupation'.
+         ORDER BY array_position($${titleFieldsIdx}::text[], cf.field_type),
+                  cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fj ON TRUE
        GROUP BY r.phone, r.bridge_rank, r.warmth
        ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
-      [userId, friendPhones, ...regexTerms, blockedPhones, userId],
+      [
+        userId,
+        friendPhones,
+        ...regexTerms,
+        blockedPhones,
+        userId,
+        TITLE_FACT_FIELDS,
+        EMPLOYER_FACT_FIELDS,
+      ],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 

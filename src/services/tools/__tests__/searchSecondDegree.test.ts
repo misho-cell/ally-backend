@@ -57,8 +57,18 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
     // $3 = word-start regex, $4 = blocked phones, $5 = userId again as TEXT
-    // (the contact_facts role lookup — $1 is inferred int by the joins).
-    expect(params).toEqual(['42', [FRIEND_PHONE], '\\mburalteri', [], '42']);
+    // (the contact_facts role lookup — $1 is inferred int by the joins),
+    // $6/$7 = where the title and the employer may come from, in preference
+    // order (ticket 9 task 25: 'role' was never read and holds 96 public rows).
+    expect(params).toEqual([
+      '42',
+      [FRIEND_PHONE],
+      '\\mburalteri',
+      [],
+      '42',
+      ['role', 'occupation'],
+      ['employer', 'affiliation'],
+    ]);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
@@ -287,5 +297,37 @@ describe('searchSecondDegree tag matching', () => {
 
     expect(result.found).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('second-degree title and employer (ticket 9 task 25)', () => {
+  it("reads the title from 'role' first, then 'occupation', and prefers in that order", async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    // Same single-term query the parameter-index test uses: one term means
+    // $6 and $7 are the two field lists.
+    await searchSecondDegree('42', 'buralteri');
+
+    const sql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('tag_hits'),
+    )?.[0] as string;
+    expect(sql).toContain(`AND cf.field_type = ANY($6::text[])`);
+    expect(sql).toContain(`ORDER BY array_position($6::text[], cf.field_type)`);
+    expect(sql).toContain(`AND cf.field_type = ANY($7::text[])`);
+    expect(sql).toContain(`ORDER BY array_position($7::text[], cf.field_type)`);
+  });
+
+  it('never reads a fact that is neither public nor the searcher own', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    // Same single-term query the parameter-index test uses: one term means
+    // $6 and $7 are the two field lists.
+    await searchSecondDegree('42', 'buralteri');
+
+    const sql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('tag_hits'),
+    )?.[0] as string;
+    // Both lookups carry the same privacy scope.
+    expect(sql.match(/cf\.is_public OR cf\.submitted_by_user_id = \$5/g)).toHaveLength(2);
   });
 });
