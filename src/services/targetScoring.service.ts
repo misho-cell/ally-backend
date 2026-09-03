@@ -25,9 +25,22 @@ const IGNORED_ASK_AFTER_HOURS = 168;
 // so each part is capped before combining rather than left unbounded.
 const REACH_SATURATION = 10;
 const PULL_SATURATION = 5;
-const REACH_WEIGHT = 0.35;
-const PULL_WEIGHT = 0.35;
-const WARMTH_WEIGHT = 0.3;
+// Rule 14 (founder D102, 3 September 2026): "chorus works two direction ways
+// — right targets and right inviters who have good/warm relations with
+// targets". The two halves never mix. FIT × REACH chooses the TARGET; warmth
+// chooses the INVITER and has been taken out of the target score entirely.
+//
+// What forced it: on 3 September every row of the live list scored
+// 0.45 + 0.3 × warmth + bonuses. Warmth is how well the FOUNDER knows someone,
+// so the list answered "who do you know well?" instead of "who is a good
+// customer?" — a colleague ranked first, and his real targets (Tika Rukhadze,
+// Lasha Kiviladze, Vaxo Burchuladze) were not on it at all, because his ties to
+// them are formal. There was no input for fit anywhere in the formula.
+const FIT_REACH_WEIGHT = 0.7;
+// Rule 1: "demand may add at most a tenth of the score, and can never lift
+// anyone over a gate." It was carrying 0.35 — which is how a violin teacher
+// reached the list 54 minutes after somebody searched for one.
+const PULL_BONUS = 0.1;
 const NEEDS_NETAI_BONUS = 0.1;
 const GAP_FILLING_BONUS = 0.05;
 // Ticket 7 task 15: the two remaining criteria flags. A target an open goal
@@ -60,8 +73,6 @@ const OLD_ALLY_COLOUR_BONUS: Record<string, number> = {
   contacts: 0.05,
 };
 const OLD_ALLY_COLOUR_RANK = ['allies', 'loyal', 'connections', 'contacts'];
-const FACT_BONUS_PER_FACT = 0.05;
-const FACT_BONUS_CAP = 0.2;
 
 // Explainable keyword flag, not a classifier — the spec's own examples
 // (business owner, hirer, organiser). Deliberately short: a false negative
@@ -82,6 +93,130 @@ const NEEDS_NETAI_KEYWORDS = [
   'ორგანიზატორი',
   'organizer',
 ];
+
+// ─── Rule 14 (a): fit is read from the facts FIRST ─────────────────────────
+// The founder's order, verbatim: "the public facts already in the store
+// (occupation, role, employer, industry, expertise — live since 1 September,
+// hundreds of people) → the label words (Rule 3) → the company register
+// (Rule 7) → a LinkedIn look-up on the shortlist. Step 4 of the criteria file
+// is no longer 'LinkedIn first'; it is 'LinkedIn last'."
+//
+// Only the first two of the four are readable from this codebase. The register
+// (Rule 7) and LinkedIn (Step 5) are outside it, so a person the facts and the
+// labels cannot judge lands in NOT YET — Rule 6: "'we could not find anything'
+// is a state called NOT YET. It never produces an OUT." They stay on the list
+// and rank last, they are never dropped.
+const FIT_FACT_TYPES = ['occupation', 'role', 'employer', 'industry', 'expertise'];
+// The same three statuses membership.ts counts as an active Netai
+// subscription — an inviter must be a Netai user (Rule 13).
+const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
+
+// Owning or running something (Rule 5 / R2 / R9). A managing partner is an
+// owner; a "senior manager at a real company" is the founder's own IN.
+const OWNERSHIP_WORDS = [
+  'დამფუძნებელი',
+  'თანადამფუძნებელი',
+  'მფლობელი',
+  'პარტნიორი',
+  'თავმჯდომარე',
+  'დირექტორი',
+  'founder',
+  'co-founder',
+  'cofounder',
+  'owner',
+  'ceo',
+  'cto',
+  'cfo',
+  'coo',
+  'partner',
+  'chairman',
+  'chairwoman',
+  'president',
+  'investor',
+  'angel',
+];
+// A commercial or client-facing job — the founder's 8 July ruling that BD and
+// sales count, "their job IS who do I call".
+const ROLE_WORDS = [
+  'მენეჯერი',
+  'ხელმძღვანელი',
+  'დეპარტამენტი',
+  'კონსულტანტი',
+  'director',
+  'manager',
+  'head',
+  'lead',
+  'consultant',
+  'business development',
+  'sales',
+  'commercial',
+  'hr',
+  'recruiter',
+  'board',
+];
+
+export type FitLevel = 'strong' | 'moderate' | 'weak' | 'not_yet';
+
+/**
+ * How much of the target half of the score a fit level earns. `not_yet` is
+ * zero on this term and keeps every bonus — parked, never rejected (Rule 6).
+ */
+const FIT_SCORE: Readonly<Record<FitLevel, number>> = {
+  strong: 1,
+  moderate: 0.6,
+  weak: 0.3,
+  not_yet: 0,
+};
+
+export interface FitSignal {
+  level: FitLevel;
+  /** Which of the four sources answered: the facts, the labels, or neither. */
+  source: 'facts' | 'label' | 'none';
+  /** The stored values that decided it — so a human can check the machine. */
+  evidence: string[];
+}
+
+function containsAny(haystack: string, words: readonly string[]): boolean {
+  const lower = haystack.toLowerCase();
+  return words.some((w) => lower.includes(w));
+}
+
+/**
+ * Fit from the public facts store, per phone. Public only: a fit judgment
+ * built on somebody's private note would put a private claim into a list the
+ * founder reads.
+ */
+async function fitFromFacts(phones: string[]): Promise<Map<string, string[]>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; values: string[] }>(
+    `SELECT neo4j_contact_id AS phone,
+            array_agg(DISTINCT field_type || ': ' || COALESCE(canonical_value, value)) AS values
+     FROM contact_facts
+     WHERE neo4j_contact_id = ANY($1)
+       AND is_public = true
+       AND retracted_at IS NULL
+       AND field_type = ANY($2::text[])
+     GROUP BY neo4j_contact_id`,
+    [phones, FIT_FACT_TYPES],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return new Map(result.rows.map((r) => [r.phone, r.values]));
+}
+
+/** The facts first, then the label words, then NOT YET. Never a rejection. */
+function fitFor(factValues: string[] | undefined, label: string): FitSignal {
+  if (factValues && factValues.length > 0) {
+    const joined = factValues.join(' ');
+    if (containsAny(joined, OWNERSHIP_WORDS)) {
+      return { level: 'strong', source: 'facts', evidence: factValues };
+    }
+    return { level: 'moderate', source: 'facts', evidence: factValues };
+  }
+  if (containsAny(label, OWNERSHIP_WORDS) || containsAny(label, ROLE_WORDS)) {
+    return { level: 'weak', source: 'label', evidence: [label] };
+  }
+  return { level: 'not_yet', source: 'none', evidence: [] };
+}
 
 // ─── Ticket 7 Task 4 item 1: a target must be a PERSON ─────────────────────
 // The signals used, stated per the tester's own ask ("change them if you
@@ -133,9 +268,12 @@ const ALIAS_SAMPLE_PER_PHONE = 25;
 const MIN_TOKEN_LENGTH = 3;
 
 export interface TargetScoreParts {
+  // Rule 14 (a): how well this person fits, and which source said so.
+  fit: FitLevel;
+  fit_source: 'facts' | 'label' | 'none';
+  fit_evidence: string[];
   reach: number;
   pull: number;
-  warmth: number;
   needs_netai_signs: boolean;
   gap_filling_trade: boolean;
   // An OPEN goal of an active subscriber whole-word-matches this target's
@@ -162,6 +300,10 @@ export interface TargetScoreEntry {
   city: string | null;
   score: number;
   parts: TargetScoreParts;
+  // Rule 14 (b): chosen by warmth, separately, and never folded into `score`.
+  inviter: TargetInviter | null;
+  // A target with no warm inviter is worked directly rather than demoted.
+  route: 'chorus' | 'direct';
 }
 
 interface CandidateContext {
@@ -213,69 +355,68 @@ async function reachForPhones(phones: string[]): Promise<Map<string, number>> {
   return new Map(result.rows.map((r) => [r.phone, Number(r.reach)]));
 }
 
-interface WarmthSignals {
-  strength: number;
+/**
+ * Rule 14 (b): warmth chooses the INVITER, not the target.
+ *
+ * Only a Netai user can be asked to carry an invitation — an old-Ally account
+ * has never opened the app, so asking it to invite anyone reaches nobody
+ * (Rule 13). Warmth is read from the two places it exists: the old-Ally colour
+ * on the connection, and the enrichment-computed relationship strength.
+ *
+ * A target with no warm inviter is NOT pushed down the list. The founder's
+ * own words: "a target with no warm inviter goes to direct outreach, not to
+ * the bottom of the list."
+ */
+export interface TargetInviter {
+  user_id: number;
+  warmth: number;
+  /** The old-Ally colour behind it, when that is what made them warm. */
   colour: string | null;
-  factCount: number;
 }
 
-/**
- * Warmth inputs: the best (max) machine-computed relationship strength any
- * user has toward this phone, their old-Ally colour (queried live off
- * UserConnection/UserConnectionPhone — human_relationship_tiers, the
- * backfilled copy of the same data, is still empty pending an admin-token
- * run this session doesn't have), and how many facts exist about them.
- */
-async function warmthSignalsForPhones(phones: string[]): Promise<Map<string, WarmthSignals>> {
+async function bestInviterForPhones(phones: string[]): Promise<Map<string, TargetInviter>> {
   if (phones.length === 0) return new Map();
-  const [strengthRows, colourRows, factRows] = await Promise.all([
-    query<{ contact_phone: string; strength: number }>(
-      `SELECT contact_phone, MAX(strength_score) AS strength
-       FROM contact_relationship_scores WHERE contact_phone = ANY($1) GROUP BY contact_phone`,
-      [phones],
-      SCORE_QUERY_TIMEOUT_MS,
-    ),
-    query<{ phone: string; status: string }>(
-      `SELECT ucp.phone, uc."relationshipStatus" AS status
-       FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
-       WHERE ucp.phone = ANY($1) AND uc."relationshipStatus" IN ('allies', 'loyal', 'connections', 'contacts')`,
-      [phones],
-      SCORE_QUERY_TIMEOUT_MS,
-    ),
-    query<{ phone: string; cnt: string }>(
-      `SELECT neo4j_contact_id AS phone, COUNT(*) AS cnt FROM contact_facts
-       WHERE neo4j_contact_id = ANY($1) AND retracted_at IS NULL GROUP BY neo4j_contact_id`,
-      [phones],
-      SCORE_QUERY_TIMEOUT_MS,
-    ),
-  ]);
-  const strengthMap = new Map(strengthRows.rows.map((r) => [r.contact_phone, Number(r.strength)]));
-  const colourMap = new Map<string, string>();
-  for (const row of colourRows.rows) {
-    const current = colourMap.get(row.phone);
-    if (
-      !current ||
-      OLD_ALLY_COLOUR_RANK.indexOf(row.status) < OLD_ALLY_COLOUR_RANK.indexOf(current)
-    ) {
-      colourMap.set(row.phone, row.status);
+  const result = await query<{
+    phone: string;
+    user_id: number;
+    colour: string | null;
+    strength: number | null;
+  }>(
+    `WITH netai AS (
+       SELECT u.id FROM "User" u
+       WHERE u."deletedAt" IS NULL
+         AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+           OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+           OR u.subscription_status = ANY($2::text[]))
+     )
+     SELECT ucp.phone AS phone, uc."originUserId" AS user_id,
+            uc."relationshipStatus" AS colour, NULL::real AS strength
+     FROM "UserConnectionPhone" ucp
+     JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
+     WHERE ucp.phone = ANY($1)
+       AND uc."relationshipStatus" = ANY($3::text[])
+       AND uc."originUserId" IN (SELECT id FROM netai)
+     UNION ALL
+     SELECT crs.contact_phone, crs.user_id, NULL::text, crs.strength_score
+     FROM contact_relationship_scores crs
+     WHERE crs.contact_phone = ANY($1)
+       AND crs.user_id IN (SELECT id FROM netai)`,
+    [phones, NETAI_ACTIVE_SUBSCRIPTION_STATUSES, OLD_ALLY_COLOUR_RANK],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+
+  const best = new Map<string, TargetInviter>();
+  for (const row of result.rows) {
+    const warmth = row.colour
+      ? (OLD_ALLY_COLOUR_BONUS[row.colour] ?? 0)
+      : Math.min(1, Number(row.strength ?? 0) * 0.5);
+    if (warmth <= 0) continue;
+    const current = best.get(row.phone);
+    if (!current || warmth > current.warmth) {
+      best.set(row.phone, { user_id: row.user_id, warmth, colour: row.colour });
     }
   }
-  const factMap = new Map(factRows.rows.map((r) => [r.phone, Number(r.cnt)]));
-  const result = new Map<string, WarmthSignals>();
-  for (const phone of phones) {
-    result.set(phone, {
-      strength: strengthMap.get(phone) ?? 0,
-      colour: colourMap.get(phone) ?? null,
-      factCount: factMap.get(phone) ?? 0,
-    });
-  }
-  return result;
-}
-
-function warmthScore(signals: WarmthSignals): number {
-  const colourBonus = signals.colour ? (OLD_ALLY_COLOUR_BONUS[signals.colour] ?? 0) : 0;
-  const factBonus = Math.min(FACT_BONUS_CAP, signals.factCount * FACT_BONUS_PER_FACT);
-  return Math.min(1, signals.strength * 0.5 + colourBonus + factBonus);
+  return best;
 }
 
 function hasNeedsNetaiSignal(label: string): boolean {
@@ -468,10 +609,17 @@ function isHotline(analysis: AliasAnalysis | undefined, reach: number): boolean 
   return topToken != null && BRAND_STOPLIST.has(topToken);
 }
 
+/**
+ * The TARGET score. Rule 14 (b): fit × reach, capped, after the filter — and
+ * warmth is not in it. Rule 2: "filter, then rank by reach", so reach ranks
+ * within a fit level rather than deciding across them. Rule 1: demand is a
+ * bonus of at most a tenth and can never lift anyone over a gate, which is why
+ * it sits with the other bonuses instead of carrying a third of the weight.
+ */
 function combinedScore(parts: {
+  fit: FitLevel;
   reach: number;
   pull: number;
-  warmth: number;
   needsNetai: boolean;
   gapFilling: boolean;
   goalRelevant: boolean;
@@ -479,7 +627,7 @@ function combinedScore(parts: {
 }): number {
   const normReach = Math.min(1, parts.reach / REACH_SATURATION);
   const normPull = Math.min(1, parts.pull / PULL_SATURATION);
-  let score = normReach * REACH_WEIGHT + normPull * PULL_WEIGHT + parts.warmth * WARMTH_WEIGHT;
+  let score = FIT_SCORE[parts.fit] * normReach * FIT_REACH_WEIGHT + normPull * PULL_BONUS;
   if (parts.needsNetai) score += NEEDS_NETAI_BONUS;
   if (parts.gapFilling) score += GAP_FILLING_BONUS;
   if (parts.goalRelevant) score += GOAL_RELEVANCE_BONUS;
@@ -660,16 +808,25 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
   const scoredCandidates = new Map(
     Array.from(candidates.entries()).filter(([phone]) => phones.includes(phone)),
   );
-  const [reachMap, warmthMap, aliasMap, capacity, goalRelevant, bestVocabulary, holdersMap] =
-    await Promise.all([
-      reachForPhones(phones),
-      warmthSignalsForPhones(phones),
-      analyzeAliases(phones),
-      countAskableUsers(),
-      goalRelevantPhones(scoredCandidates),
-      bestUserVocabulary(),
-      subscribedHoldersForPhones(phones),
-    ]);
+  const [
+    reachMap,
+    inviterMap,
+    aliasMap,
+    capacity,
+    goalRelevant,
+    bestVocabulary,
+    holdersMap,
+    factsMap,
+  ] = await Promise.all([
+    reachForPhones(phones),
+    bestInviterForPhones(phones),
+    analyzeAliases(phones),
+    countAskableUsers(),
+    goalRelevantPhones(scoredCandidates),
+    bestUserVocabulary(),
+    subscribedHoldersForPhones(phones),
+    fitFromFacts(phones),
+  ]);
 
   const entries: TargetScoreEntry[] = [];
   for (const phone of phones) {
@@ -685,7 +842,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     // register is a wasted ask and a bad first impression.
     const subscribedHolders = holdersMap.get(phone) ?? 0;
     if (subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS) continue;
-    const warmth = warmthScore(warmthMap.get(phone) ?? { strength: 0, colour: null, factCount: 0 });
+    const fit = fitFor(factsMap.get(phone), ctx.label);
+    const inviter = inviterMap.get(phone) ?? null;
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
     const isGoalRelevant = goalRelevant.has(phone);
@@ -695,18 +853,22 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
       label: ctx.label,
       city: ctx.city,
       score: combinedScore({
+        fit: fit.level,
         reach,
         pull: ctx.pull,
-        warmth,
         needsNetai,
         gapFilling,
         goalRelevant: isGoalRelevant,
         bestUserLookalike: isBestUserLookalike,
       }),
+      inviter,
+      route: inviter ? 'chorus' : 'direct',
       parts: {
+        fit: fit.level,
+        fit_source: fit.source,
+        fit_evidence: fit.evidence,
         reach,
         pull: ctx.pull,
-        warmth,
         needs_netai_signs: needsNetai,
         gap_filling_trade: gapFilling,
         goal_relevant: isGoalRelevant,

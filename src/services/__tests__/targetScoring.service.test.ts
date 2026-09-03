@@ -45,8 +45,17 @@ function routeScoreQueries(opts: {
   subscribedHolders?: Record<string, number>;
   /** The founder's gate-passable pool source (default empty). */
   poolPeople?: { phone: string; label: string }[];
+  // Rule 14 (founder D102): the public facts that decide fit, and the warm
+  // Netai user who could carry the invitation.
+  fitFacts?: { phone: string; values: string[] }[];
+  inviters?: { phone: string; user_id: number; colour: string | null; strength: number | null }[];
 }): void {
   mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    // Rule 14's two queries are matched FIRST: both mention strings the older
+    // branches below also match on.
+    if (sql.includes('WITH netai AS')) return Promise.resolve(rows(opts.inviters ?? []) as never);
+    if (sql.includes('array_agg(DISTINCT field_type'))
+      return Promise.resolve(rows(opts.fitFacts ?? []) as never);
     if (sql.includes('mode() WITHIN GROUP'))
       return Promise.resolve(rows(opts.poolPeople ?? []) as never);
     if (sql.includes('AS holders')) {
@@ -230,23 +239,136 @@ describe('buildTargetList', () => {
     expect(out[0].parts.needs_netai_signs).toBe(true);
   });
 
-  it('combines Reach and Warmth signals into the score parts', async () => {
+  it('carries Reach in the parts', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('ელექტრიკოსი', [{ phone: '+995500000004', label: 'electrician' }]),
     ]);
     routeScoreQueries({
       reach: [{ phone: '+995500000004', reach: '3' }],
-      strength: [{ contact_phone: '+995500000004', strength: 0.8 }],
-      colour: [{ phone: '+995500000004', status: 'allies' }],
-      facts: [{ phone: '+995500000004', cnt: '2' }],
       askableCount: 50,
     });
 
     const out = await buildTargetList(30);
 
     expect(out[0].parts.reach).toBe(3);
-    // warmth = min(1, 0.8*0.5 + 0.3 (allies) + min(0.2, 2*0.05)) = 0.8
-    expect(out[0].parts.warmth).toBeCloseTo(0.8, 5);
+  });
+
+  // ─── Rule 14 (founder D102, 3 September 2026) ──────────────────────────────
+  // "chorus works two direction ways — right targets and right inviters who have
+  // good/warm relations with targets". Fit picks the target, warmth picks the
+  // inviter, and the two never mix.
+
+  it('reads fit from the PUBLIC facts first, and an ownership word makes it strong', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('კონსალტინგი', [{ phone: '+995500000030', label: 'Irakli' }]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000030', reach: '10' }],
+      fitFacts: [
+        {
+          phone: '+995500000030',
+          values: ['role: Co-Founder & CEO, IBCCS TAX Georgia', 'industry: tax advisory'],
+        },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0].parts.fit).toBe('strong');
+    expect(out[0].parts.fit_source).toBe('facts');
+    expect(out[0].parts.fit_evidence).toContain('role: Co-Founder & CEO, IBCCS TAX Georgia');
+  });
+
+  it('falls back to the label words, then to NOT YET — which parks, never rejects', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000031', label: 'Nino Sales Manager' },
+        { phone: '+995500000032', label: 'Gia' },
+      ]),
+    ]);
+    routeScoreQueries({ reach: [{ phone: '+995500000032', reach: '50' }], askableCount: 50 });
+
+    const out = await buildTargetList(30);
+    const byPhone = new Map(out.map((e) => [e.phone, e]));
+
+    expect(byPhone.get('+995500000031')?.parts.fit).toBe('weak');
+    expect(byPhone.get('+995500000031')?.parts.fit_source).toBe('label');
+    // Nothing findable is NOT YET: still on the list, ranked last (Rule 6).
+    expect(byPhone.get('+995500000032')?.parts.fit).toBe('not_yet');
+    expect(byPhone.get('+995500000032')).toBeDefined();
+  });
+
+  it('warmth is NOT in the target score — a warm nobody ranks below a fitting stranger', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000033', label: 'warm friend' },
+        { phone: '+995500000034', label: 'stranger' },
+      ]),
+    ]);
+    routeScoreQueries({
+      reach: [
+        { phone: '+995500000033', reach: '10' },
+        { phone: '+995500000034', reach: '10' },
+      ],
+      // The warm one is the founder's closest tie; the other he barely knows.
+      inviters: [{ phone: '+995500000033', user_id: 501, colour: 'allies', strength: null }],
+      fitFacts: [{ phone: '+995500000034', values: ['role: Founder @ DataMind'] }],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0].phone).toBe('+995500000034');
+    expect(out[0].parts.fit).toBe('strong');
+  });
+
+  it('names the inviter separately and routes a target with no warm inviter to direct outreach', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000035', label: 'has a bridge' },
+        { phone: '+995500000036', label: 'has none' },
+      ]),
+    ]);
+    routeScoreQueries({
+      reach: [
+        { phone: '+995500000035', reach: '5' },
+        { phone: '+995500000036', reach: '5' },
+      ],
+      inviters: [
+        { phone: '+995500000035', user_id: 501, colour: 'contacts', strength: null },
+        { phone: '+995500000035', user_id: 502, colour: 'allies', strength: null },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+    const byPhone = new Map(out.map((e) => [e.phone, e]));
+
+    // The warmest of the two candidate inviters wins, and is named.
+    expect(byPhone.get('+995500000035')?.inviter).toEqual({
+      user_id: 502,
+      warmth: 0.3,
+      colour: 'allies',
+    });
+    expect(byPhone.get('+995500000035')?.route).toBe('chorus');
+    expect(byPhone.get('+995500000036')?.inviter).toBeNull();
+    expect(byPhone.get('+995500000036')?.route).toBe('direct');
+  });
+
+  it('only a NETAI user can be an inviter — the query says so, not the caller', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000037', label: 'a' }])]);
+    routeScoreQueries({ askableCount: 50 });
+
+    await buildTargetList(30);
+
+    const inviterQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('WITH netai AS'),
+    );
+    const sql = inviterQuery?.[0] as string;
+    expect(sql).toContain('FROM threads t');
+    expect(sql).toContain('FROM search_activity sa');
+    expect(sql).toContain('IN (SELECT id FROM netai)');
   });
 
   it("caps the list length at the network's current ask capacity", async () => {
