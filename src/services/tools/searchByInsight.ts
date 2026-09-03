@@ -2,6 +2,7 @@ import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
+import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
 import { fetchMembersForPhones, isMemberPhone } from './membership';
 import { fetchSignalStrength } from './searchSecondDegree';
 
@@ -297,6 +298,11 @@ function escapeRegex(word: string): string {
  * (named from the searcher's OWN phonebook) and a strength score computed by
  * the same signal_strength formula second-degree search uses. The fact text
  * and its author never leave this function.
+ *
+ * Ticket 9 task 32.2: the content guard the T15 spec asked for and the v1 did
+ * not have. The field-type denylist below cannot see an accusation typed into
+ * a `note`, and these facts are exactly the ones moderation kept private — so
+ * both the query and the matched text are judged before anyone is named.
  */
 async function searchSingleSourcePointers(
   userId: string,
@@ -304,10 +310,17 @@ async function searchSingleSourcePointers(
   likes: string[],
   excluded: Set<string>,
 ): Promise<SingleSourcePointer[]> {
+  // A query that is itself the accusation gets no pointers: naming people in
+  // answer to "who is a thief" IS the accusation, whatever stays unquoted.
+  if (isUnsafeQuery(words)) return [];
+
   const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
   const orClause = likeOrClause(matchExpr, likes.length, 4);
-  const candidates = await query<{ phone: string; name: string | null }>(
-    `SELECT cf.neo4j_contact_id AS phone, MAX(ua.alias) AS name
+  const candidates = await query<{ phone: string; name: string | null; matched_text: string }>(
+    // matched_text is read only to be judged by the content guard below and is
+    // never returned — same contract as the rest of this function.
+    `SELECT cf.neo4j_contact_id AS phone, MAX(ua.alias) AS name,
+            string_agg(COALESCE(cf.canonical_value, cf.value), ' ') AS matched_text
      FROM contact_facts cf
      JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
      WHERE cf.is_matchable = true
@@ -321,7 +334,9 @@ async function searchSingleSourcePointers(
     [userId, userId, POINTER_EXCLUDED_FIELD_TYPES, ...likes, POINTER_LIMIT],
     SEARCH_TIMEOUT_MS,
   );
-  const rows = candidates.rows.filter((r) => !excluded.has(normalizePhone(r.phone)));
+  const rows = candidates.rows.filter(
+    (r) => !excluded.has(normalizePhone(r.phone)) && !isUnsafeContent(r.matched_text ?? ''),
+  );
   if (rows.length === 0) return [];
   const strengths = await fetchSignalStrength(
     rows.map((r) => r.phone),

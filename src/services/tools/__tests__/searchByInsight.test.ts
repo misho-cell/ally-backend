@@ -205,6 +205,42 @@ describe('searchByInsight', () => {
     expect(candidateCall?.[0]).toContain('cf.submitted_by_user_id <> $2');
   });
 
+  it('T15 content guard (task 32.2): a private note carrying an accusation never makes its subject a pointer', async () => {
+    setup({
+      pointerCandidates: [
+        { phone: '+995599888888', name: 'დათო მეზობელი', matched_text: 'note: ის ქურდია' },
+        { phone: '+995599777777', name: 'ნინო ხელოსანი', matched_text: 'note: კარგი მეთევზეა' },
+      ],
+      pointerStrengths: [
+        { phone: '+995599888888', strength: 0.9 },
+        { phone: '+995599777777', strength: 0.4 },
+      ],
+    });
+
+    const result = (await searchByInsight('42', 'deep sea fishing')) as Record<string, unknown>;
+
+    // The accused person is gone even though their signal was the stronger one.
+    expect(result.pointers).toEqual([
+      { contact_id: '+995599777777', name: 'ნინო ხელოსანი', signal_strength: 0.4 },
+    ]);
+    expect(JSON.stringify(result)).not.toContain('ქურდ');
+  });
+
+  it('T15 content guard: a query that IS the accusation gets no pointers at all', async () => {
+    setup({
+      pointerCandidates: [{ phone: '+995599888888', name: 'დათო მეზობელი', matched_text: 'x' }],
+      pointerStrengths: [{ phone: '+995599888888', strength: 0.9 }],
+    });
+
+    const result = (await searchByInsight('42', 'ვინ არის ქურდი')) as Record<string, unknown>;
+
+    expect(result).not.toHaveProperty('pointers');
+    // The candidate query is never even issued — nothing to leak, nothing to log.
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('cf.is_public = false')),
+    ).toBe(false);
+  });
+
   it('T15 fallback: no pointers when no private signal exists — the plain honest found:false', async () => {
     setup({});
 
