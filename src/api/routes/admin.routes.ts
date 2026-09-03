@@ -80,6 +80,8 @@ import {
   getIdentitySummary,
 } from '../../services/identity.service';
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
+import { deletePrivateContextKeys } from '../../services/userPrivateContext.service';
+import { deleteUserNotes } from '../../services/userNotes.service';
 import { republishFacts } from '../../services/factRepublish.service';
 import {
   getLabelQueue,
@@ -1090,6 +1092,42 @@ adminRouter.delete('/goals/:taskId/question', async (req: Request, res: Response
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goal question retract]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The founder's own decision on his own memory (D94/D95) had nowhere to run:
+// the self-service route needs his session, and an operator carrying out a
+// written instruction should not be borrowing it. Same service functions,
+// same owner scoping, admin-authenticated and logged.
+adminRouter.delete('/users/:id/memory', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.params.id ?? '');
+    const body = req.body as { context_keys?: unknown; note_ids?: unknown };
+    const keys = Array.isArray(body.context_keys) ? body.context_keys.map(String) : [];
+    const noteIds = Array.isArray(body.note_ids)
+      ? body.note_ids.map(Number).filter((n) => Number.isFinite(n))
+      : [];
+    if (!userId || (keys.length === 0 && noteIds.length === 0)) {
+      res.status(400).json({ success: false, error: 'user id და წასაშლელი სია აუცილებელია' });
+      return;
+    }
+    const [context, notes] = await Promise.all([
+      deletePrivateContextKeys(userId, keys),
+      deleteUserNotes(userId, noteIds),
+    ]);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin memory] user ${userId}: ${context.deleted} context key(s), ` +
+        `${notes.deleted} note(s) deleted`,
+    );
+    res.status(200).json({
+      success: true,
+      data: { context_deleted: context.deleted, notes_deleted: notes.deleted },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin memory delete]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
