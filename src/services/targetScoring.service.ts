@@ -297,7 +297,14 @@ async function fitFromFacts(phones: string[]): Promise<Map<string, string[]>> {
 
 interface AccountFacts {
   subscriptionStatus: string;
-  ownContacts: number;
+  /**
+   * Whether their own phonebook reaches MIN_OWN_CONTACTS — a threshold, not a
+   * number, and counted as one. The exact count meant a correlated
+   * COUNT(DISTINCT) over every alias row of every candidate's account, which
+   * timed out the whole route on the first live read; stopping at the
+   * threshold reads at most MIN_OWN_CONTACTS index entries per account.
+   */
+  hasEnoughContacts: boolean;
 }
 
 /**
@@ -315,12 +322,13 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
   }>(
     `SELECT up.phone,
             u.subscription_status,
-            (SELECT COUNT(DISTINCT a.phone) FROM "UserAlias" a WHERE a."contactId" = u.id)
-              AS own_contacts
+            (SELECT COUNT(*) FROM (
+               SELECT 1 FROM "UserAlias" a WHERE a."contactId" = u.id LIMIT $2::int
+             ) capped) AS own_contacts
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = ANY($1) AND u."deletedAt" IS NULL`,
-    [digits],
+    [digits, MIN_OWN_CONTACTS],
     SCORE_QUERY_TIMEOUT_MS,
   );
   const map = new Map<string, AccountFacts>();
@@ -328,7 +336,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     const key = phoneDigits(row.phone);
     const facts = {
       subscriptionStatus: row.subscription_status ?? '',
-      ownContacts: Number(row.own_contacts),
+      hasEnoughContacts: Number(row.own_contacts) >= MIN_OWN_CONTACTS,
     };
     const current = map.get(key);
     // One person, several phone rows: keep the fullest phonebook and any
@@ -338,7 +346,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     } else {
       map.set(key, {
         subscriptionStatus: current.subscriptionStatus || facts.subscriptionStatus,
-        ownContacts: Math.max(current.ownContacts, facts.ownContacts),
+        hasEnoughContacts: current.hasEnoughContacts || facts.hasEnoughContacts,
       });
     }
   }
@@ -373,7 +381,7 @@ function exclusionFor(
   if (account && NETAI_ACTIVE_SUBSCRIPTION_STATUSES.includes(account.subscriptionStatus)) {
     return 'already_paying';
   }
-  if (account && account.ownContacts < MIN_OWN_CONTACTS) return 'phonebook_too_small';
+  if (account && !account.hasEnoughContacts) return 'phonebook_too_small';
   // "Only a trade or a service" — the trade word is the gate, but only when
   // nothing else speaks for the person. A stored fact or a role word in the
   // label means there IS something else, and Rule 5 keeps them.

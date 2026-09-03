@@ -432,8 +432,8 @@ describe('buildTargetList', () => {
     ]);
     routeScoreQueries({
       accounts: [
-        { phone: '+995500000047', subscription_status: 'active', own_contacts: '900' },
-        { phone: '+995500000048', subscription_status: null, own_contacts: '900' },
+        { phone: '+995500000047', subscription_status: 'active', own_contacts: '200' },
+        { phone: '+995500000048', subscription_status: null, own_contacts: '200' },
       ],
       askableCount: 50,
     });
@@ -452,8 +452,10 @@ describe('buildTargetList', () => {
     ]);
     routeScoreQueries({
       accounts: [
+        // own_contacts is counted with a LIMIT at the threshold, so 200 means
+        // "at least 200" and anything below it is the real number.
         { phone: '+995500000049', subscription_status: null, own_contacts: '12' },
-        { phone: '+995500000050', subscription_status: null, own_contacts: '900' },
+        { phone: '+995500000050', subscription_status: null, own_contacts: '200' },
       ],
       askableCount: 50,
     });
