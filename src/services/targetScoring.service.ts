@@ -390,11 +390,14 @@ async function bestInviterForPhones(phones: string[]): Promise<Map<string, Targe
            OR u.subscription_status = ANY($2::text[]))
      )
      SELECT ucp.phone AS phone, uc."originUserId" AS user_id,
-            uc."relationshipStatus" AS colour, NULL::real AS strength
+            uc."relationshipStatus"::text AS colour, NULL::real AS strength
      FROM "UserConnectionPhone" ucp
      JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
      WHERE ucp.phone = ANY($1)
-       AND uc."relationshipStatus" = ANY($3::text[])
+       -- ::text on the column, not the parameter: relationshipStatus is a
+       -- Postgres ENUM ("RelationshipStatus") and has no operator against
+       -- text[]. Caught live — the route returned 500 on the first read.
+       AND uc."relationshipStatus"::text = ANY($3::text[])
        AND uc."originUserId" IN (SELECT id FROM netai)
      UNION ALL
      SELECT crs.contact_phone, crs.user_id, NULL::text, crs.strength_score
