@@ -476,6 +476,23 @@ describe('buildTargetList', () => {
     expect(out.map((e) => e.phone)).toEqual(['+995500000051']);
   });
 
+  it('Rule 14 (c): a role word is not a name — two people typing "ceo" confirms nothing', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000057', label: 'Maxin.ai Ceo' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000057', contactId: 1, alias: 'Maxin.ai Ceo' },
+        { phone: '+995500000057', contactId: 2, alias: 'Maxin.ai Ceo' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out).toEqual([]);
+  });
+
   it('Rule 14 (c): a company label is not a target until a person is confirmed behind it', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [

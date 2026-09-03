@@ -373,7 +373,7 @@ function ownPeopleDigits(): Set<string> {
 function exclusionFor(
   label: string,
   fit: FitSignal,
-  personConfirmed: boolean,
+  nameConfirmed: boolean,
   account: AccountFacts | undefined,
   isOurOwn: boolean,
 ): TargetExclusion | null {
@@ -391,7 +391,7 @@ function exclusionFor(
     }
   }
   // Rule 14 (c): a company name is not a person until a person is confirmed.
-  if (containsAny(label, COMPANY_MARKERS) && !personConfirmed) return 'company_label';
+  if (containsAny(label, COMPANY_MARKERS) && !nameConfirmed) return 'company_label';
   return null;
 }
 
@@ -624,6 +624,30 @@ interface AliasAnalysis {
   topToken: string | null;
   /** ≥2 distinct contributors share a non-stoplist token — the person test. */
   personConfirmed: boolean;
+  /** The same, but the shared token must be a NAME — Rule 14 (c). */
+  nameConfirmed: boolean;
+}
+
+/**
+ * The tokens of a label that could be somebody's NAME (Rule 14 c).
+ *
+ * Split on whitespace first, and drop a whole chunk that carries a company
+ * marker: in „Maxin.ai Ceo" the marker is glued to the company name, so
+ * tokenizing straight through turns „maxin" into a plausible surname — which
+ * is exactly how that row reached rank four. What is left is then stripped of
+ * brands, roles and ownership words, because none of those is a name either.
+ */
+function nameTokens(label: string): string[] {
+  return label
+    .split(/\s+/)
+    .filter((chunk) => chunk !== '' && !containsAny(chunk, COMPANY_MARKERS))
+    .flatMap((chunk) => tokenize(chunk))
+    .filter(
+      (token) =>
+        !BRAND_STOPLIST.has(token) &&
+        !containsAny(token, OWNERSHIP_WORDS) &&
+        !containsAny(token, ROLE_WORDS),
+    );
 }
 
 function tokenize(label: string): string[] {
@@ -653,21 +677,30 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     SCORE_QUERY_TIMEOUT_MS,
   );
 
-  const byPhone = new Map<string, { contactId: number; tokens: string[] }[]>();
+  const byPhone = new Map<string, { contactId: number; tokens: string[]; names: string[] }[]>();
   for (const row of rows.rows) {
     if (!byPhone.has(row.phone)) byPhone.set(row.phone, []);
-    byPhone.get(row.phone)?.push({ contactId: row.contactId, tokens: tokenize(row.alias) });
+    byPhone.get(row.phone)?.push({
+      contactId: row.contactId,
+      tokens: tokenize(row.alias),
+      names: nameTokens(row.alias),
+    });
   }
 
   for (const phone of phones) {
     const entries = byPhone.get(phone) ?? [];
     const tokenCounts = new Map<string, number>();
     const tokenContributors = new Map<string, Set<number>>();
+    const nameContributors = new Map<string, Set<number>>();
     for (const entry of entries) {
       for (const token of new Set(entry.tokens)) {
         tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + 1);
         if (!tokenContributors.has(token)) tokenContributors.set(token, new Set());
         tokenContributors.get(token)?.add(entry.contactId);
+      }
+      for (const token of new Set(entry.names)) {
+        if (!nameContributors.has(token)) nameContributors.set(token, new Set());
+        nameContributors.get(token)?.add(entry.contactId);
       }
     }
     let topToken: string | null = null;
@@ -682,7 +715,13 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     const personConfirmed = Array.from(tokenContributors.entries()).some(
       ([token, contributors]) => !BRAND_STOPLIST.has(token) && contributors.size >= 2,
     );
-    result.set(phone, { topToken, personConfirmed });
+    // Rule 14 (c) asks a stricter question than person_confirmed does: is a
+    // NAME confirmed, not merely a shared word. Two people typing „ceo"
+    // confirms nothing, and „Maxin.ai" is the company, not a surname.
+    const nameConfirmed = Array.from(nameContributors.values()).some(
+      (contributors) => contributors.size >= 2,
+    );
+    result.set(phone, { topToken, personConfirmed, nameConfirmed });
   }
   return result;
 }
@@ -1046,7 +1085,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     const excluded = exclusionFor(
       ctx.label,
       fit,
-      analysis?.personConfirmed ?? false,
+      analysis?.nameConfirmed ?? false,
       accountMap.get(phoneDigits(phone)),
       ourOwn.has(phoneDigits(phone)),
     );
