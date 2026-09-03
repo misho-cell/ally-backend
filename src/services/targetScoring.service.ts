@@ -626,6 +626,12 @@ interface AliasAnalysis {
   personConfirmed: boolean;
   /** The same, but the shared token must be a NAME — Rule 14 (c). */
   nameConfirmed: boolean;
+  /**
+   * The alias most people actually use for this number, among those that
+   * carry a name at all — Rule 14 (c)'s "the person is found first, then
+   * judged". Null when no alias names anybody.
+   */
+  personLabel: string | null;
 }
 
 /**
@@ -677,11 +683,15 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     SCORE_QUERY_TIMEOUT_MS,
   );
 
-  const byPhone = new Map<string, { contactId: number; tokens: string[]; names: string[] }[]>();
+  const byPhone = new Map<
+    string,
+    { contactId: number; alias: string; tokens: string[]; names: string[] }[]
+  >();
   for (const row of rows.rows) {
     if (!byPhone.has(row.phone)) byPhone.set(row.phone, []);
     byPhone.get(row.phone)?.push({
       contactId: row.contactId,
+      alias: row.alias,
       tokens: tokenize(row.alias),
       names: nameTokens(row.alias),
     });
@@ -721,7 +731,29 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     const nameConfirmed = Array.from(nameContributors.values()).some(
       (contributors) => contributors.size >= 2,
     );
-    result.set(phone, { topToken, personConfirmed, nameConfirmed });
+
+    // The label most contributors use, among the ones that name somebody.
+    // „Maxin.ai Ceo" is the commonest alias on Nika Kutsia's number and names
+    // nobody, so it is not eligible; „Nika Kutsia" is.
+    const aliasContributors = new Map<string, Set<number>>();
+    for (const entry of entries) {
+      if (entry.names.length === 0) continue;
+      if (!aliasContributors.has(entry.alias)) aliasContributors.set(entry.alias, new Set());
+      aliasContributors.get(entry.alias)?.add(entry.contactId);
+    }
+    let personLabel: string | null = null;
+    let bestCount = 0;
+    for (const [alias, contributors] of aliasContributors) {
+      // Deterministic: ties broken alphabetically, never by Map order.
+      if (
+        contributors.size > bestCount ||
+        (contributors.size === bestCount && personLabel !== null && alias < personLabel)
+      ) {
+        personLabel = alias;
+        bestCount = contributors.size;
+      }
+    }
+    result.set(phone, { topToken, personConfirmed, nameConfirmed, personLabel });
   }
   return result;
 }
@@ -1095,9 +1127,16 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
     const isGoalRelevant = goalRelevant.has(phone);
     const isBestUserLookalike = tokenize(ctx.label).some((t) => bestVocabulary.has(t));
+    // Rule 14 (c): the person is found first, then judged. When the candidate
+    // label names nobody but the phonebooks do, the row carries the person's
+    // name — a list a human reads must say who it is about.
+    const label =
+      nameTokens(ctx.label).length === 0 && analysis?.personLabel
+        ? analysis.personLabel
+        : ctx.label;
     entries.push({
       phone,
-      label: ctx.label,
+      label,
       city: ctx.city,
       score: combinedScore({
         fit: fit.level,

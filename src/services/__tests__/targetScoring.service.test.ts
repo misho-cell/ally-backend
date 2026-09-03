@@ -476,6 +476,30 @@ describe('buildTargetList', () => {
     expect(out.map((e) => e.phone)).toEqual(['+995500000051']);
   });
 
+  it('Rule 14 (c): when the label names a company but the phonebooks name a person, the row carries the person', async () => {
+    // The real row, live on 3 September: 28 phonebooks hold Nika Kutsia, and
+    // ten of them — the same fixture accounts that carry the „Dato Q7" string
+    // — saved him as „Maxin.ai Ceo", which is what the list was displaying.
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000058', label: 'Maxin.ai Ceo' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000058', contactId: 1, alias: 'Maxin.ai Ceo' },
+        { phone: '+995500000058', contactId: 2, alias: 'Maxin.ai Ceo' },
+        { phone: '+995500000058', contactId: 3, alias: 'Maxin.ai Ceo' },
+        { phone: '+995500000058', contactId: 4, alias: 'Nika Kutsia' },
+        { phone: '+995500000058', contactId: 5, alias: 'Nika Kutsia' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out).toHaveLength(1);
+    expect(out[0].label).toBe('Nika Kutsia');
+  });
+
   it('Rule 14 (c): a role word is not a name — two people typing "ceo" confirms nothing', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [{ phone: '+995500000057', label: 'Maxin.ai Ceo' }]),
