@@ -84,6 +84,7 @@ import { deletePrivateContextKeys } from '../../services/userPrivateContext.serv
 import { deleteUserNotes } from '../../services/userNotes.service';
 import { deleteUserProfileFields, setUserProfileField } from '../../services/userProfile.service';
 import { republishFacts } from '../../services/factRepublish.service';
+import { listImportAttempts } from '../../services/contacts.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -1213,6 +1214,28 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
 // contributor identity and count behind each, next to the parsed conclusion.
 // Reads the stores where every raw label already lives with its writer —
 // nothing is discarded at parse time; this is the read that proves it.
+// Ticket 9 task 24 question 2: who imported, when, and how it went. The
+// August question ("which accounts imported between the upgrade and the fix")
+// was unanswerable because nothing recorded an attempt — only a log line that
+// ages out. `failed_only` is the read that matters: an import that saved
+// nothing from non-empty input is the silent data-loss shape that ran for 16
+// days without anyone seeing it.
+adminRouter.get('/import-attempts', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const rawUserId = String(req.query.user_id ?? '').trim();
+    const userId = /^\d+$/.test(rawUserId) ? Number(rawUserId) : null;
+    const failedOnly = req.query.failed_only === 'true';
+    const attempts = await listImportAttempts({ days, userId, failedOnly });
+    res.status(200).json({ success: true, data: attempts });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin import-attempts]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/contacts/raw-labels', async (req: Request, res: Response) => {
   try {
     const phone = String(req.query.phone ?? '').trim();

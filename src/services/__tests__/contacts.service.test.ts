@@ -113,7 +113,12 @@ describe('importContacts', () => {
     expect(result.imported).toBe(1);
     expect(result.skipped).toBe(0);
     expect(mockWithTransaction).toHaveBeenCalledTimes(1);
-    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    // At least one session: the graph write. The count is deliberately not
+    // pinned — the fire-and-forget enrichment opens its own, and whether it
+    // gets a turn before this line depends on how many awaits the import
+    // happens to have left (the audit write of task 24 added one). Asserting
+    // the exact number was asserting that scheduling accident.
+    expect(mockGetSession).toHaveBeenCalled();
   });
 
   it('skips contact with empty name', async () => {
@@ -346,5 +351,54 @@ describe('createUserPhoneNode', () => {
     await expect(createUserPhoneNode('+995555000000')).resolves.toBeUndefined();
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+});
+
+describe('import_attempts — one row per import (ticket 9 task 24)', () => {
+  const userPhone = '+995555000001';
+
+  beforeEach(() => {
+    mockPoolQuery.mockResolvedValue({ rows: [{ phone: userPhone }], rowCount: 1 });
+  });
+
+  it('records what was asked for and what actually landed, tagged with the route', async () => {
+    await importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }], 'vcf_import');
+
+    const logged = mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO import_attempts'),
+    );
+    expect(logged?.[1]).toEqual(['42', 'vcf_import', 1, 1, 0]);
+  });
+
+  it('defaults to the app route when none is given', async () => {
+    await importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }]);
+
+    const logged = mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO import_attempts'),
+    );
+    expect((logged?.[1] as unknown[])[1]).toBe('app_import');
+  });
+
+  it('records the zero-row case too — that is the whole point of the table', async () => {
+    // A contact with no usable phone: nothing to save, everything skipped.
+    const out = await importContacts('42', [{ name: 'Dato', phones: ['not-a-phone'] }]);
+
+    expect(out).toEqual({ imported: 0, skipped: 1 });
+    const logged = mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO import_attempts'),
+    );
+    expect(logged?.[1]).toEqual(['42', 'app_import', 1, 0, 1]);
+  });
+
+  it('a failing audit write never costs the caller their import', async () => {
+    mockPoolQuery.mockImplementation((sql: string) => {
+      if (String(sql).includes('INSERT INTO import_attempts'))
+        return Promise.reject(new Error('relation "import_attempts" does not exist'));
+      return Promise.resolve({ rows: [{ phone: userPhone }], rowCount: 1 });
+    });
+
+    await expect(
+      importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }]),
+    ).resolves.toEqual({ imported: 1, skipped: 0 });
   });
 });

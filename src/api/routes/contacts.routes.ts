@@ -92,7 +92,7 @@ contactsRouter.post(
         res.status(400).json({ success: false, error: 'vCard ფაილი კონტაქტებს არ შეიცავს' });
         return;
       }
-      const result = await importContacts(userId, contacts);
+      const result = await importContacts(userId, contacts, 'vcf_import');
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'vCard იმპორტი ვერ მოხერხდა';

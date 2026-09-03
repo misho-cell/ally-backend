@@ -1,5 +1,5 @@
 import { PoolClient } from 'pg';
-import { withTransaction } from '../db/postgres/client';
+import { withTransaction, query } from '../db/postgres/client';
 import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { ImportContact, ImportResult } from '../types';
@@ -46,9 +46,75 @@ export async function getUserPhones(userId: string): Promise<string[]> {
   return result.rows.map((r) => r.phone);
 }
 
+/** Where an import came in through — one value per route (migration 106). */
+export type ImportSource = 'app_import' | 'vcf_import';
+
+/**
+ * One row per import attempt (ticket 9 task 24). Never fails the import:
+ * losing the audit row is bad, losing the contacts because of it is worse.
+ */
+async function recordImportAttempt(
+  userId: string,
+  source: ImportSource,
+  requested: number,
+  result: ImportResult,
+): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO import_attempts (user_id, source, requested, imported, skipped)
+       VALUES ($1::int, $2, $3::int, $4::int, $5::int)`,
+      [userId, source, requested, result.imported, result.skipped],
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[import] attempt log failed for user ${userId}:`, (err as Error).message);
+  }
+}
+
+export interface ImportAttemptRow {
+  id: string;
+  user_id: number;
+  user_name: string | null;
+  source: string;
+  requested: number;
+  imported: number;
+  skipped: number;
+  created_at: string;
+}
+
+export interface ImportAttemptFilters {
+  days: number;
+  userId: number | null;
+  failedOnly: boolean;
+}
+
+const IMPORT_ATTEMPT_LIMIT = 200;
+const IMPORT_ATTEMPT_TIMEOUT_MS = 8_000;
+
+/** The admin read over migration 106's record (ticket 9 task 24). */
+export async function listImportAttempts(
+  filters: ImportAttemptFilters,
+): Promise<ImportAttemptRow[]> {
+  const result = await query<ImportAttemptRow>(
+    `SELECT ia.id::text, ia.user_id, u.name AS user_name, ia.source,
+            ia.requested, ia.imported, ia.skipped, ia.created_at::text AS created_at
+     FROM import_attempts ia
+     LEFT JOIN "User" u ON u.id = ia.user_id
+     WHERE ia.created_at > NOW() - make_interval(days => $1::int)
+       AND ($2::int IS NULL OR ia.user_id = $2::int)
+       AND ($3::boolean = false OR ia.imported = 0)
+     ORDER BY ia.created_at DESC
+     LIMIT $4::int`,
+    [filters.days, filters.userId, filters.failedOnly, IMPORT_ATTEMPT_LIMIT],
+    IMPORT_ATTEMPT_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 export async function importContacts(
   userId: string,
   contacts: ImportContact[],
+  source: ImportSource = 'app_import',
 ): Promise<ImportResult> {
   const userPhones = await getUserPhones(userId);
   const userPhoneSet = new Set(userPhones);
@@ -83,7 +149,9 @@ export async function importContacts(
     console.error(`[label-parser] user ${userId} failed:`, (err as Error).message),
   );
 
-  return { imported, skipped };
+  const result = { imported, skipped };
+  await recordImportAttempt(userId, source, contacts.length, result);
+  return result;
 }
 
 async function importSingleContact(
