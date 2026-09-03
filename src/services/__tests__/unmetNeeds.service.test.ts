@@ -199,3 +199,64 @@ describe('findUnmetNeeds', () => {
     expect(topicQueries).toHaveLength(1);
   });
 });
+
+describe('findUnmetNeeds — topics run in batches (ticket 9 task 28.5)', () => {
+  it('keeps each topic with its OWN candidates and in the query order, across batch boundaries', async () => {
+    // Seven topics with a batch size of five, so the seam is exercised.
+    const topics = ['aaa', 'bbb', 'ccc', 'ddd', 'eee', 'fff', 'ggg'].map((q) => ({
+      query: q,
+      netai_count: '1',
+      old_ally_count: '0',
+      city: null,
+    }));
+    // Each word gets its own candidate, so a misaligned batch is visible.
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM "UserPhone"') && sql.includes('"userId"'))
+        return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM search_activity')) return Promise.resolve(rows(topics) as never);
+      if (sql.includes('FROM "UserTags"')) {
+        const word = String((params ?? [])[0]);
+        return Promise.resolve(rows([{ phone: `+9955000000${word}`, tag: word }]) as never);
+      }
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await findUnmetNeeds(30);
+
+    expect(out.map((t) => t.query)).toEqual(['aaa', 'bbb', 'ccc', 'ddd', 'eee', 'fff', 'ggg']);
+    for (const topic of out) {
+      expect(topic.candidates).toEqual([
+        { phone: `+9955000000${topic.query}`, label: topic.query, source: 'tag' },
+      ]);
+    }
+  });
+
+  it('runs a batch concurrently rather than one topic after another', async () => {
+    const topics = ['aaa', 'bbb', 'ccc'].map((q) => ({
+      query: q,
+      netai_count: '1',
+      old_ally_count: '0',
+      city: null,
+    }));
+    let inFlight = 0;
+    let peak = 0;
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"') && sql.includes('"userId"'))
+        return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM search_activity')) return Promise.resolve(rows(topics) as never);
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      return new Promise((resolve) => {
+        setImmediate(() => {
+          inFlight--;
+          resolve(rows([]) as never);
+        });
+      });
+    });
+
+    await findUnmetNeeds(30);
+
+    // Serially this would never exceed the two queries of a single topic.
+    expect(peak).toBeGreaterThan(2);
+  });
+});

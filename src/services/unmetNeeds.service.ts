@@ -27,6 +27,18 @@ const MIN_WORD_LENGTH = 3;
 // topic probes only its first few significant words — candidates almost
 // always fill from the first one.
 const WORDS_PER_TOPIC = 3;
+// Ticket 9 task 28.5. The route was reported as "82–100 s cold"; measured on
+// 3 September it is 54–58 s on EVERY call, warm or not — so the cause was
+// never a cold cache. It is arithmetic: up to 50 topics × up to 3 words × ~1 s
+// per trigram lookup, run strictly one after another. Topics are independent,
+// so they go in batches instead.
+//
+// Three, not more, and the ceiling is the connection pool rather than the
+// database's appetite: the main pool holds 10 connections and each topic
+// issues its two lookups in parallel, so a batch of five would hold all ten
+// and a person's own search would queue behind this weekly report. Three
+// leaves four connections free and still turns ~55 s into ~20 s.
+const TOPIC_BATCH_SIZE = 3;
 
 export type DemandSource = 'netai' | 'old_ally';
 
@@ -140,8 +152,14 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
         if (!found.has(row.phone))
           found.set(row.phone, { phone: row.phone, label: row.alias, source: 'alias' });
       }
-    } catch {
-      // A slow word (statement timeout under load) degrades this word only.
+    } catch (error) {
+      // A slow word (statement timeout under load) degrades this word only —
+      // but it degrades the report silently, so say which word paid for it.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[unmet-needs] candidate lookup skipped for "${word}":`,
+        (error as Error).message,
+      );
     }
   }
   return Array.from(found.values()).slice(0, CANDIDATE_LIMIT_PER_TOPIC);
@@ -194,15 +212,20 @@ export async function findUnmetNeeds(sinceDays: number): Promise<UnmetNeed[]> {
   );
 
   const results: UnmetNeed[] = [];
-  for (const row of failedSearches.rows) {
-    const netai = Number(row.netai_count ?? 0);
-    const oldAlly = Number(row.old_ally_count ?? 0);
-    results.push({
-      query: row.query,
-      ask_count: netai + oldAlly,
-      sources: { netai, old_ally: oldAlly },
-      city: row.city,
-      candidates: await candidatesForTopic(row.query),
+  for (let i = 0; i < failedSearches.rows.length; i += TOPIC_BATCH_SIZE) {
+    const batch = failedSearches.rows.slice(i, i + TOPIC_BATCH_SIZE);
+    const candidates = await Promise.all(batch.map((row) => candidatesForTopic(row.query)));
+    batch.forEach((row, index) => {
+      const netai = Number(row.netai_count ?? 0);
+      const oldAlly = Number(row.old_ally_count ?? 0);
+      results.push({
+        query: row.query,
+        ask_count: netai + oldAlly,
+        sources: { netai, old_ally: oldAlly },
+        city: row.city,
+        // Order is preserved: the batch keeps the query's own ORDER BY.
+        candidates: candidates[index] ?? [],
+      });
     });
   }
   return results;
