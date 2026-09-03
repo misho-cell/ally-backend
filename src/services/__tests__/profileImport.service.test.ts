@@ -210,3 +210,46 @@ describe('importProfiles', () => {
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 });
+
+describe('a human-supplied phone (ticket 9 task 9, Lika fills the column)', () => {
+  it('uses the supplied number and never runs the matcher for that name', async () => {
+    const parsed = parseProfile(FILE);
+
+    const out = await importProfiles([parsed!], '501', false, {
+      'Givi Beridze': '+995599777777',
+    });
+
+    expect(out.rows[0]?.matched_by).toBe('human');
+    expect(out.rows[0]?.phone).toBe('+995599777777');
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockSubmit).toHaveBeenCalledWith(
+      '501',
+      '+995599777777',
+      'employer',
+      'KLIPY',
+      'sweep',
+      'stated',
+    );
+  });
+
+  it('overrides the crowd even where the crowd was sure — a person outranks a heuristic', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '87' }]) as never);
+    const parsed = parseProfile(FILE);
+
+    const out = await importProfiles([parsed!], '501', false, {
+      'Givi Beridze': '+995599222222',
+    });
+
+    expect(out.rows[0]?.phone).toBe('+995599222222');
+  });
+
+  it('still matches by crowd for the names nobody filled in', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '87' }]) as never);
+    const parsed = parseProfile(FILE);
+
+    const out = await importProfiles([parsed!], '501', true, { 'Someone Else': '+995599333333' });
+
+    expect(out.rows[0]?.matched_by).toBe('crowd');
+    expect(out.rows[0]?.phone).toBe('+995599111111');
+  });
+});

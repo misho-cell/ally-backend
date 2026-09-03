@@ -191,7 +191,19 @@ export async function resolveProfilePhone(name: string): Promise<ProfileResoluti
   return { name, reason: 'resolved', phone: winner.phone, candidates };
 }
 
+/**
+ * A phone supplied by a human, keyed by the profile's own name.
+ *
+ * Lika researched these people; she knows which number is theirs, and no crowd
+ * heuristic beats that. An override skips resolution entirely — it is not a
+ * hint that the matcher then weighs, it IS the answer. The matcher only ever
+ * runs for names nobody filled in.
+ */
+export type PhoneOverrides = Readonly<Record<string, string>>;
+
 export interface ProfileImportRow extends ProfileResolution {
+  /** Where the phone came from: a person, or the crowd heuristic. */
+  matched_by: 'human' | 'crowd' | 'none';
   /** How many facts were written (0 on a dry run, or when unresolved). */
   written: number;
   /** How many the file offered — so a dry run still shows the size. */
@@ -216,11 +228,20 @@ export async function importProfiles(
   profiles: ParsedProfile[],
   curatorUserId: string,
   dryRun: boolean,
+  overrides: PhoneOverrides = {},
 ): Promise<ProfileImportResult> {
   const rows: ProfileImportRow[] = [];
   let factsWritten = 0;
   for (const profile of profiles) {
-    const resolution = await resolveProfilePhone(profile.name);
+    const supplied = overrides[profile.name]?.trim();
+    const resolution: ProfileResolution = supplied
+      ? { name: profile.name, reason: 'resolved', phone: supplied, candidates: [] }
+      : await resolveProfilePhone(profile.name);
+    const matchedBy: ProfileImportRow['matched_by'] = supplied
+      ? 'human'
+      : resolution.reason === 'resolved'
+        ? 'crowd'
+        : 'none';
     const available = Object.values(profile.facts).reduce((n, v) => n + v.length, 0);
     let written = 0;
     if (resolution.reason === 'resolved' && resolution.phone !== null && !dryRun) {
@@ -239,7 +260,7 @@ export async function importProfiles(
       }
     }
     factsWritten += written;
-    rows.push({ ...resolution, written, available });
+    rows.push({ ...resolution, matched_by: matchedBy, written, available });
   }
   return {
     dry_run: dryRun,

@@ -1225,7 +1225,12 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
 // ambiguous list before anybody commits.
 adminRouter.post('/profiles/import', async (req: Request, res: Response) => {
   try {
-    const body = req.body as { files?: unknown; curator_user_id?: unknown; dry_run?: unknown };
+    const body = req.body as {
+      files?: unknown;
+      curator_user_id?: unknown;
+      dry_run?: unknown;
+      phone_by_name?: unknown;
+    };
     if (!Array.isArray(body.files) || body.files.length === 0) {
       res.status(400).json({ success: false, error: 'files აუცილებელია' });
       return;
@@ -1245,9 +1250,19 @@ adminRouter.post('/profiles/import', async (req: Request, res: Response) => {
       return;
     }
     const dryRun = body.dry_run !== false;
-    res
-      .status(200)
-      .json({ success: true, data: await importProfiles(profiles, curatorUserId, dryRun) });
+    // Lika's own answers, keyed by the profile name. A supplied number is the
+    // answer, not a hint — the matcher only runs for the names left blank.
+    const overrides: Record<string, string> = {};
+    if (body.phone_by_name && typeof body.phone_by_name === 'object') {
+      for (const [name, phone] of Object.entries(body.phone_by_name as Record<string, unknown>)) {
+        const value = String(phone ?? '').trim();
+        if (value !== '') overrides[name] = value;
+      }
+    }
+    res.status(200).json({
+      success: true,
+      data: await importProfiles(profiles, curatorUserId, dryRun, overrides),
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin profiles import]', error);
