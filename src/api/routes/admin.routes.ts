@@ -85,6 +85,7 @@ import { deleteUserNotes } from '../../services/userNotes.service';
 import { deleteUserProfileFields, setUserProfileField } from '../../services/userProfile.service';
 import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
+import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -1214,6 +1215,46 @@ adminRouter.post('/enrichment/rescore', async (req: Request, res: Response) => {
 // contributor identity and count behind each, next to the parsed conclusion.
 // Reads the stores where every raw label already lives with its writer —
 // nothing is discarded at parse time; this is the read that proves it.
+// Ticket 9 task 9: load Lika's researched profiles at the database level.
+// The body carries the raw files; the server parses them, so the private
+// section is cut here rather than trusted to have been cut by the caller.
+//
+// `dry_run` defaults to TRUE. The task's own warning is that name matching put
+// six facts on the wrong people last time, so the safe direction is the
+// default one: resolve everything, write nothing, and let a human read the
+// ambiguous list before anybody commits.
+adminRouter.post('/profiles/import', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { files?: unknown; curator_user_id?: unknown; dry_run?: unknown };
+    if (!Array.isArray(body.files) || body.files.length === 0) {
+      res.status(400).json({ success: false, error: 'files აუცილებელია' });
+      return;
+    }
+    const curatorUserId = String(body.curator_user_id ?? '').trim();
+    if (!/^\d+$/.test(curatorUserId)) {
+      res.status(400).json({ success: false, error: 'curator_user_id აუცილებელია' });
+      return;
+    }
+    const profiles: ParsedProfile[] = [];
+    for (const file of body.files) {
+      const parsed = parseProfile(String(file));
+      if (parsed) profiles.push(parsed);
+    }
+    if (profiles.length === 0) {
+      res.status(400).json({ success: false, error: 'არცერთი ფაილი არ იკითხება' });
+      return;
+    }
+    const dryRun = body.dry_run !== false;
+    res
+      .status(200)
+      .json({ success: true, data: await importProfiles(profiles, curatorUserId, dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin profiles import]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // Ticket 9 task 24 question 2: who imported, when, and how it went. The
 // August question ("which accounts imported between the upgrade and the fix")
 // was unanswerable because nothing recorded an attempt — only a log line that
