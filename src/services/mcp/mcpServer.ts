@@ -9,6 +9,7 @@ import {
   mcpGetContactProfile,
   mcpGetGroupConnectors,
   mcpGetCuriosityQueue,
+  mcpGetUpcomingBirthdays,
   mcpGetCountryChannels,
   mcpGetNetaiInfo,
   mcpStopContactingMe,
@@ -753,6 +754,19 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+  );
+  server.registerTool(
+    'get_upcoming_birthdays',
+    {
+      title: TOOL_TEXTS.get_upcoming_birthdays.title,
+      description: TOOL_TEXTS.get_upcoming_birthdays.description,
+      inputSchema: {
+        days: z.number().int().positive().optional().describe(PARAM_TEXTS.birthdayWindowDays),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) =>
+      runTool(userId, 'get_upcoming_birthdays', () => mcpGetUpcomingBirthdays(userId, args)),
   );
   server.registerTool(
     'get_curiosity_queue',

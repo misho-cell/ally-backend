@@ -48,6 +48,7 @@ import { normalizePhone } from '../phone';
 import { markContactDeceased } from '../deceased.service';
 import { ConnectorOutcome, getGroupConnectors, getTopConnectors } from '../graphAnalytics.service';
 import { buildCuriosityQueue, maybeCuriosityUpdate } from '../curiosityQueue.service';
+import { getUpcomingBirthdays } from '../birthdayLens.service';
 import { filterStaleDebriefs, recordDebriefOutcome } from '../debrief.service';
 import { answerGoalQuestion } from '../goalQuestions.service';
 import {
@@ -1176,5 +1177,27 @@ export async function mcpRecordDebriefOutcome(
       args.worked === true,
       args.not_yet === true,
     )),
+  };
+}
+
+/**
+ * The birthday lens (D1). Contact ids are encoded like every other read path —
+ * a raw phone never leaves this boundary.
+ */
+export async function mcpGetUpcomingBirthdays(
+  userId: string,
+  args: { days?: number },
+): Promise<McpToolPayload> {
+  const rows = await getUpcomingBirthdays(userId, args.days ?? 30);
+  return {
+    birthdays: rows.map((b) => ({
+      contact_ref: encodeContactRef(userId, b.contact_id),
+      name: b.name,
+      saved_as: b.saved_as,
+      days_until: b.days_until,
+    })),
+    note:
+      'A warm surface only. Never use a birthday in matching, ranking, targeting or as an ' +
+      'argument for an introduction.',
   };
 }

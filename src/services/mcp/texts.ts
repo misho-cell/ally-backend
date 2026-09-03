@@ -265,6 +265,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'to spot a broad-reach person worth activating or inviting. NOT for reaching a specific ' +
       'group or company — use get_group_connectors for that.',
   },
+  get_upcoming_birthdays: {
+    title: 'Upcoming birthdays',
+    description:
+      'Birthdays the user has SAVED about their own contacts, soonest first, with how many ' +
+      'days away each is. A warm, playful surface only — a reason to send a word on the day. ' +
+      'NEVER use a birthday in matching, ranking, targeting or as an argument for an ' +
+      'introduction. Returns only dates the user recorded themselves; it never reads another ' +
+      "member's profile.",
+  },
   get_curiosity_queue: {
     title: 'Who to be curious about next',
     description:
@@ -617,6 +626,7 @@ export const PARAM_TEXTS = {
     'The scope the exclusion applies to, in a few words (e.g. "legal work", "investor intros").',
   exclusionReason: "The user's reason, short and in their words.",
   revisitIf: 'Optional: what would make this stale (e.g. "if he changes jobs").',
+  birthdayWindowDays: 'Optional: how many days ahead to look. Default 30, maximum 365.',
   retractFieldType: 'Optional: limit the retraction to one fact key (occupation, note, …).',
   retractValueFragment:
     'Optional: a fragment of the wrong value to match, so only it is retracted.',
