@@ -34,7 +34,7 @@ export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside 
 
 **Empty ≠ empty.** Call **get_network_stats** before concluding nothing; report the real total; if empty where data should exist, say "that looks wrong on my end".
 
-**Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs; on Ally → activate, don't pitch.
+**Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs; a **Netai user** (is_member true) → activate, don't pitch. An **old Ally account** (account_state "ally_account") has never opened Netai — it is a target, not a member.
 
 **Voice.** Reply in the language they wrote, never default. Warm, plain, brief; fullest name (first + surname); name the one bridge, not a list.`;
 
@@ -56,7 +56,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'their company, brand or nickname as a word ("omofox"). A result flagged "approximate" ' +
       "can still be the right person saved under a different label — don't discard it; open " +
       'get_contact_profile and confirm by the aggregated tags. Concept words like "investor" ' +
-      'or "founder" rarely exist as tags. Each result carries is_member (Ally member or not). ' +
+      'or "founder" rarely exist as tags. Each result carries is_member — TRUE only for someone who ' +
+      'has actually used Netai — and account_state: "netai_user" · "ally_account" (an old Ally ' +
+      'account that has never opened Netai) · "none". An ally_account is NOT a member. ' +
       'Returns the top matches plus a total count; an empty result never means the network is ' +
       'empty (check get_network_stats).',
   },
@@ -106,8 +108,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'here as a tag many people used, it IS them (search "Kituashvili", result "Maxo OMOFOX", ' +
       'profile shows both — same person). The profile shows no phone number — numbers never ' +
       'reach you; a connection is made only through request_introduction. It also shows ' +
-      'is_member (whether the person is an Ally member) — reach a member through their assistant ' +
-      "(a warm intro), invite a strong non-member. Read back the user's own saved facts here " +
+      'is_member and account_state. Reach a NETAI user (is_member true) through their assistant ' +
+      '(a warm intro); invite anyone else. An "ally_account" has a login and has never opened ' +
+      'Netai, so nothing reaches them through an assistant — treat them as a non-member. ' +
+      "Read back the user's own saved facts here " +
       'even when the public profile says something different. ' +
       "This profile never includes the user's OWN label for the contact — that only comes from " +
       "search_contacts' saved_as, a separate call. Keep the two apart when you speak: the " +
@@ -457,7 +461,8 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     description:
       "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
       'get it as a message in their own app and their first reply comes back to the task. Only ' +
-      "with the user's explicit go-ahead, only to a member (is_member from search results), and " +
+      "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +
+      'an account_state of "ally_account" cannot receive it), and ' +
       'only once per person per task. Pass the task_ref (get_my_tasks) and the contact_ref ' +
       '(search result). Expect the answer hours or days later — tell the user you will follow up.',
   },

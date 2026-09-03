@@ -13,6 +13,7 @@ import {
   relationshipTouchedPhones,
 } from '../contactRelationships.service';
 import { OWNERSHIP } from './searchResultMeta';
+import { accountStateFor, fetchAccountStates, isMemberPhone } from './membership';
 
 const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
@@ -413,7 +414,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
     // later precisely because only the DIRECT tools carried exclusions.
-    const [exclusions, signalStrength, relationshipTouched] = await Promise.all([
+    const [exclusions, signalStrength, relationshipTouched, accountStates] = await Promise.all([
       fetchExclusionsForPhones(
         userId,
         rows.map((r) => r.phone),
@@ -428,6 +429,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         userId,
         rows.map((r) => r.phone),
       ),
+      // Rule 13: whether each target has ever actually used Netai, not merely
+      // whether an account row resolved.
+      fetchAccountStates(rows.map((r) => r.phone)),
     ]);
 
     return {
@@ -440,9 +444,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         jobPosition: row.jobPosition ?? null,
         ownership: OWNERSHIP.SECOND_DEGREE,
         // Consistent with the direct-search tools: every person-shaped result
-        // carries is_member. Here a registered target is exactly one with a
-        // resolved "UserPhone" row (target_user_id).
-        is_member: row.target_user_id != null,
+        // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
+        // means a NETAI user, not merely an account. A resolved "UserPhone"
+        // row proves an account exists; it does not prove the person has ever
+        // opened Netai, and 62,146 of the 62,184 accounts never have.
+        is_member: isMemberPhone(accountStates, row.phone),
+        account_state: accountStateFor(accountStates, row.phone),
         via: row.via_names ?? [],
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing

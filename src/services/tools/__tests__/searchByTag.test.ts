@@ -255,12 +255,12 @@ describe('searchByTag', () => {
     expect(r.saved_as).toBe('ჩემი კლასელი');
   });
 
-  it('marks is_member true for a contact that is a registered Ally user', async () => {
+  it('marks is_member true for a contact who has actually used Netai', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"'))
-        return Promise.resolve(rows([{ phone: mockRow.phone }]) as never); // member
+        return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: true }]) as never);
       if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never);
       return Promise.resolve(rows([mockRow]) as never);
     });
@@ -268,14 +268,34 @@ describe('searchByTag', () => {
     const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].is_member).toBe(true);
+    expect(results[0].account_state).toBe('netai_user');
   });
 
-  it('marks is_member false when the contact is not a registered user', async () => {
+  // Rule 13 (founder D102, 3 Sep): the case that used to read as a member and
+  // is the commonest one in the base — 62,146 of 62,184 accounts.
+  it('an old-Ally account that never opened Netai is NOT a member', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: false }]) as never);
+      if (sql.includes('similarity(')) return Promise.resolve(rows([]) as never);
+      return Promise.resolve(rows([mockRow]) as never);
+    });
+
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+    expect(results[0].is_member).toBe(false);
+    expect(results[0].account_state).toBe('ally_account');
+  });
+
+  it('marks is_member false, state none, when there is no account at all', async () => {
     setup({ main: [mockRow], count: 1 }); // membership route returns []
 
     const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].is_member).toBe(false);
+    expect(results[0].account_state).toBe('none');
   });
 
   it('unions the fuzzy pass and flags fuzzy-only rows approximate', async () => {

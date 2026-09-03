@@ -4,7 +4,7 @@ import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
-import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
 import {
   fetchRelationshipForPhones,
   RelationshipInfo,
@@ -149,7 +149,7 @@ async function runFuzzySearch(
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
-  members: Set<string>,
+  accountStates: Map<string, AccountState>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
   humanTiers: Map<string, HumanTier>,
@@ -171,7 +171,8 @@ function shape(
   const humanTier = humanTiers.get(row.phone);
   const withMeta = {
     ...base,
-    is_member: isMemberPhone(members, row.phone),
+    is_member: isMemberPhone(accountStates, row.phone),
+    account_state: accountStateFor(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
     // Enrichment-computed edge category (family/close/professional/formal) —
@@ -220,19 +221,19 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
     const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
-    const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
+    const [facts, accountStates, relationships, exclusions, humanTiers] = await Promise.all([
       fetchFactsForPhones(userId, allPhones),
-      fetchMembersForPhones(allPhones),
+      fetchAccountStates(allPhones),
       fetchRelationshipForPhones(userId, allPhones),
       fetchExclusionsForPhones(userId, allPhones),
       fetchHumanTierForPhones(userId, allPhones),
     ]);
     const results = [
       ...exactRows.map((r) =>
-        shape(r, facts, members, relationships, exclusions, humanTiers, false),
+        shape(r, facts, accountStates, relationships, exclusions, humanTiers, false),
       ),
       ...fuzzyRows.map((r) =>
-        shape(r, facts, members, relationships, exclusions, humanTiers, true),
+        shape(r, facts, accountStates, relationships, exclusions, humanTiers, true),
       ),
     ];
     const payload: Record<string, unknown> = {

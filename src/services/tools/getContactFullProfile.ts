@@ -1,7 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { getContactInsight } from '../insights.service';
 import { getVisibleFacts, VisibleFactsResult } from '../contactFacts.service';
-import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
 
 interface TagSummary {
   tag: string;
@@ -13,6 +13,7 @@ interface ContactFullProfile {
   phone: string;
   // Whether this contact is a registered Ally member — steers intro vs. invite.
   is_member: boolean;
+  account_state: AccountState;
   tags: TagSummary[];
   insights: Record<string, unknown> | null;
   facts_and_ask: VisibleFactsResult;
@@ -58,11 +59,12 @@ export async function getContactFullProfile(
     // known cause: the contact_insights.user_id column type mismatch
   }
 
-  const members = await fetchMembersForPhones([phone]);
+  const accountStates = await fetchAccountStates([phone]);
 
   return {
     phone,
-    is_member: isMemberPhone(members, phone),
+    is_member: isMemberPhone(accountStates, phone),
+    account_state: accountStateFor(accountStates, phone),
     tags: tagsResult.rows.filter((r) => isDisplayableTag(r.tag)),
     insights: insightData,
     facts_and_ask: factsAndAsk,

@@ -4,7 +4,7 @@ import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
-import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
 import {
   fetchRelationshipForPhones,
   RelationshipInfo,
@@ -32,7 +32,7 @@ interface NameRow {
 function toRow(
   row: NameRow,
   facts: Map<string, ContactFactFields>,
-  members: Set<string>,
+  accountStates: Map<string, AccountState>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
   humanTiers: Map<string, HumanTier>,
@@ -57,7 +57,8 @@ function toRow(
   const humanTier = humanTiers.get(row.phone);
   return {
     ...base,
-    is_member: isMemberPhone(members, row.phone),
+    is_member: isMemberPhone(accountStates, row.phone),
+    account_state: accountStateFor(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
     // Enrichment-computed edge category (family/close/professional/formal) —
@@ -196,9 +197,9 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         const fuzzyRows = fuzzyResult.rows.filter((r) => !isExcluded(r.phone));
         if (fuzzyRows.length > 0) {
           const fuzzyPhones = fuzzyRows.map((r) => r.phone);
-          const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
+          const [facts, accountStates, relationships, exclusions, humanTiers] = await Promise.all([
             fetchFactsForPhones(userId, fuzzyPhones),
-            fetchMembersForPhones(fuzzyPhones),
+            fetchAccountStates(fuzzyPhones),
             fetchRelationshipForPhones(userId, fuzzyPhones),
             fetchExclusionsForPhones(userId, fuzzyPhones),
             fetchHumanTierForPhones(userId, fuzzyPhones),
@@ -209,7 +210,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
             total: fuzzyRows.length,
             fuzzy: true,
             results: fuzzyRows.map((row) =>
-              toRow(row, facts, members, relationships, exclusions, humanTiers, true),
+              toRow(row, facts, accountStates, relationships, exclusions, humanTiers, true),
             ),
           };
         }
@@ -220,9 +221,9 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     }
 
     const phones = rows.map((r) => r.phone);
-    const [facts, members, relationships, exclusions, humanTiers] = await Promise.all([
+    const [facts, accountStates, relationships, exclusions, humanTiers] = await Promise.all([
       fetchFactsForPhones(userId, phones),
-      fetchMembersForPhones(phones),
+      fetchAccountStates(phones),
       fetchRelationshipForPhones(userId, phones),
       fetchExclusionsForPhones(userId, phones),
       fetchHumanTierForPhones(userId, phones),
@@ -231,7 +232,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       toRow(
         row,
         facts,
-        members,
+        accountStates,
         relationships,
         exclusions,
         humanTiers,
@@ -251,7 +252,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // Task 54: two member rows under ONE name must be tellable apart — attach
     // member_since / network_size / activity to every row in a duplicated name
     // group, so neither the user nor the assistant aims at the wrong twin.
-    await attachDuplicateDifferentiators(mapped, members);
+    await attachDuplicateDifferentiators(mapped, accountStates);
     return {
       found: true,
       count: mapped.length,
@@ -272,11 +273,11 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
  */
 async function attachDuplicateDifferentiators(
   mapped: Array<Record<string, unknown>>,
-  members: Set<string>,
+  accountStates: Map<string, AccountState>,
 ): Promise<void> {
   const byName = new Map<string, Array<Record<string, unknown>>>();
   for (const r of mapped) {
-    if (!isMemberPhone(members, String(r.phone))) continue;
+    if (!isMemberPhone(accountStates, String(r.phone))) continue;
     const key = String(r.name ?? '')
       .trim()
       .toLowerCase();

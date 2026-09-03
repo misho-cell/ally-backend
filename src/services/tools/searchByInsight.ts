@@ -3,7 +3,7 @@ import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
 import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
-import { fetchMembersForPhones, isMemberPhone } from './membership';
+import { fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
 import { fetchSignalStrength } from './searchSecondDegree';
 
 const RESULT_LIMIT = 20;
@@ -471,13 +471,14 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       };
     }
 
-    const members = await fetchMembersForPhones(scored.map((s) => s.hit.contact_id));
+    const accountStates = await fetchAccountStates(scored.map((s) => s.hit.contact_id));
     const results = scored.map((s) => ({
       // sql_hits is ranking machinery, not an answer — spreading the hit whole
       // put it in front of the assistant.
       ...(({ sql_hits: _ignored, ...rest }) => rest)(s.hit),
       score: Math.round((s.hits / words.length) * 100) / 100,
-      is_member: isMemberPhone(members, s.hit.contact_id),
+      is_member: isMemberPhone(accountStates, s.hit.contact_id),
+      account_state: accountStateFor(accountStates, s.hit.contact_id),
     }));
 
     // Matchable facts add people HERE too, not only when the search came back
