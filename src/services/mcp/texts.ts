@@ -235,7 +235,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     description:
       "Returns the facts saved about one contact by contact_ref — the user's own saved facts " +
       'plus any crowd-confirmed public ones, and which field is still unknown. Use to recall ' +
-      'what the user previously told you about a person before answering or presenting them.',
+      'what the user has SAVED about a person before answering or presenting them.',
   },
   block_contact: {
     title: 'Block a contact',
@@ -334,7 +334,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     title: 'My open goals',
     description:
       "Lists the user's saved goals with their status and whether outreach was permitted. Call " +
-      'this at the START of a conversation so you know what you were already working on for ' +
+      'this at the START of a conversation to read their saved goals for ' +
       'them, and refer back to it naturally. Optional status filter (open/paused/closed).',
   },
   update_task: {
@@ -362,7 +362,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   get_user_notes: {
     title: 'Recall notes about the user',
     description:
-      'Reads back what the user previously told you about themselves — their needs, preferences ' +
+      'Reads back what the user has SAVED about themselves — their needs, preferences ' +
       'and profile. Call this at the start of a conversation alongside get_my_tasks so you ' +
       "already know them and don't re-ask what they've said. Optional kind filter.",
   },

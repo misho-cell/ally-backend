@@ -25,6 +25,7 @@ import {
   deletePrivateContextKeys,
 } from '../../services/userPrivateContext.service';
 import { getUserNotes, deleteUserNotes } from '../../services/userNotes.service';
+import { getUserProfile, deleteUserProfileFields } from '../../services/userProfile.service';
 
 interface ProfileData {
   readonly name: string;
@@ -68,11 +69,15 @@ profileRouter.get(
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     try {
       const userId = String((req as AuthenticatedRequest).user.userId);
-      const [context, notes] = await Promise.all([
+      const [context, notes, profile] = await Promise.all([
         listPrivateContext(userId),
         getUserNotes(userId),
+        getUserProfile(userId),
       ]);
-      res.status(200).json({ success: true, data: { private_context: context, notes } });
+      res.status(200).json({
+        success: true,
+        data: { private_context: context, notes, profile },
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /profile/memory]', error);
@@ -88,22 +93,32 @@ profileRouter.delete(
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     try {
       const userId = String((req as AuthenticatedRequest).user.userId);
-      const body = req.body as { context_keys?: unknown; note_ids?: unknown };
+      const body = req.body as {
+        context_keys?: unknown;
+        note_ids?: unknown;
+        profile_keys?: unknown;
+      };
       const keys = Array.isArray(body.context_keys) ? body.context_keys.map(String) : [];
       const noteIds = Array.isArray(body.note_ids)
         ? body.note_ids.map(Number).filter((n) => Number.isFinite(n))
         : [];
-      if (keys.length === 0 && noteIds.length === 0) {
+      const profileKeys = Array.isArray(body.profile_keys) ? body.profile_keys.map(String) : [];
+      if (keys.length === 0 && noteIds.length === 0 && profileKeys.length === 0) {
         res.status(400).json({ success: false, error: 'context_keys ან note_ids აუცილებელია' });
         return;
       }
-      const [context, notes] = await Promise.all([
+      const [context, notes, profile] = await Promise.all([
         deletePrivateContextKeys(userId, keys),
         deleteUserNotes(userId, noteIds),
+        deleteUserProfileFields(userId, profileKeys),
       ]);
       res.status(200).json({
         success: true,
-        data: { context_deleted: context.deleted, notes_deleted: notes.deleted },
+        data: {
+          context_deleted: context.deleted,
+          notes_deleted: notes.deleted,
+          profile_deleted: profile.deleted,
+        },
       });
     } catch (error) {
       // eslint-disable-next-line no-console

@@ -34,3 +34,21 @@ export async function setUserProfileField(
     );
   }
 }
+
+/**
+ * Delete profile lines by key, for their owner only.
+ *
+ * The saved-preference store shortened every answer the assistant gave and
+ * there was no way to take a line back (Ticket 9 Task 19.4).
+ */
+export async function deleteUserProfileFields(
+  userId: string,
+  keys: string[],
+): Promise<{ deleted: number }> {
+  if (keys.length === 0) return { deleted: 0 };
+  const result = await query(
+    'DELETE FROM user_profile_kv WHERE user_id = $1 AND key = ANY($2::text[])',
+    [userId, keys],
+  );
+  return { deleted: result.rowCount ?? 0 };
+}
