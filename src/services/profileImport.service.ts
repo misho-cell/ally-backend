@@ -130,6 +130,15 @@ export interface ProfileResolution {
  *   - it must be STRICTLY ahead of the runner-up. A tie is not an answer.
  */
 const MIN_WINNING_CONTRIBUTORS = 2;
+/**
+ * And the win must be a rout, not a lead. The first crowd-broken run resolved
+ * 29 of 44, but several margins were 21 against 15, 12 against 10, 3 against
+ * 2 — the shape that put "Nino Niauri" on Kaxa Niauri, and the founder's own
+ * count was that 6 of 15 uncertain matches were plainly wrong. Twice the
+ * runner-up is the line: a real person's own number is saved by everyone who
+ * knows them, a namesake's by their own separate handful.
+ */
+const MIN_DOMINANCE_RATIO = 2;
 
 /**
  * Resolve a full name to ONE phone, or to nothing.
@@ -177,7 +186,7 @@ export async function resolveProfilePhone(name: string): Promise<ProfileResoluti
   if (!winner) return { name, reason: 'no_match', phone: null, candidates };
   const clear =
     winner.contributors >= MIN_WINNING_CONTRIBUTORS &&
-    (runnerUp === undefined || winner.contributors > runnerUp.contributors);
+    (runnerUp === undefined || winner.contributors >= runnerUp.contributors * MIN_DOMINANCE_RATIO);
   if (!clear) return { name, reason: 'ambiguous', phone: null, candidates };
   return { name, reason: 'resolved', phone: winner.phone, candidates };
 }

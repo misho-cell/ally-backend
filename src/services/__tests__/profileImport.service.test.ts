@@ -93,8 +93,8 @@ describe('resolveProfilePhone — key on phone identity, not on name', () => {
   it('breaks a tie by the crowd: the number most people saved under that name wins', async () => {
     mockQuery.mockResolvedValue(
       rows([
-        { phone: '+995599111111', contributors: '17' },
-        { phone: '+995599222222', contributors: '1' },
+        { phone: '+995599111111', contributors: '87' },
+        { phone: '+995599222222', contributors: '2' },
       ]) as never,
     );
 
@@ -102,6 +102,21 @@ describe('resolveProfilePhone — key on phone identity, not on name', () => {
 
     expect(out.reason).toBe('resolved');
     expect(out.phone).toBe('+995599111111');
+  });
+
+  it('a narrow lead is not a rout — 21 against 15 stays unresolved', async () => {
+    // Real margins from the 3 September run: Giorgi Agladze 21 vs 15, Tornike
+    // Chkhaidze 12 vs 10. A namesake with a following looks exactly like this.
+    mockQuery.mockResolvedValue(
+      rows([
+        { phone: '+995599111111', contributors: '21' },
+        { phone: '+995599222222', contributors: '15' },
+      ]) as never,
+    );
+
+    const out = await resolveProfilePhone('Giorgi Agladze');
+
+    expect(out.reason).toBe('ambiguous');
   });
 
   it('an actual tie is not an answer — nobody is picked', async () => {
