@@ -128,9 +128,16 @@ export async function resolveProfilePhone(name: string): Promise<ProfileResoluti
     return { name, reason: 'no_match', phone: null, candidates: [] };
   }
   const result = await query<{ phone: string }>(
+    // The surname drives the index. Without the `<<%` prefilter this is a
+    // sequential scan of 8.4 million aliases with normalize_search_token
+    // applied to every row — it timed out on the first live run, 44 names
+    // deep. `<<%` (strict word similarity) rides idx_user_alias_norm_trgm,
+    // the same prefilter the unmet-needs candidate lookup uses, and the two
+    // whole-token conditions stay as the precision gate behind it.
     `SELECT DISTINCT ua.phone
      FROM "UserAlias" ua
-     WHERE normalize_search_token($1) = ANY(
+     WHERE normalize_search_token($2) <<% normalize_search_token(ua.alias)
+       AND normalize_search_token($1) = ANY(
              regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))
        AND normalize_search_token($2) = ANY(
              regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))`,
