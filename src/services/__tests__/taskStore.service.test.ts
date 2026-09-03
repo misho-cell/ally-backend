@@ -76,3 +76,39 @@ describe('taskStore.service', () => {
     expect(params as unknown[]).toEqual([7, USER]);
   });
 });
+
+describe('createTask retitles a thread left on a closed goal name (ticket 9 task 31.8)', () => {
+  it('replaces the title only when it is a closed goal of this thread', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 77 }], rowCount: 1 } as never);
+
+    await createTask('501', 'ძაღლის ტრენერის პოვნა', null, 'search', 9010);
+
+    const retitle = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE threads'),
+    ) as [string, unknown[]];
+    expect(retitle[0]).toContain("old.status <> 'open'");
+    expect(retitle[0]).toContain('old.title = t.title');
+    expect(retitle[1]).toEqual([9010, 'ძაღლის ტრენერის პოვნა']);
+  });
+
+  it('does not touch any thread when the goal is not bound to one', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 78 }], rowCount: 1 } as never);
+
+    await createTask('501', 'a goal with no thread', null, 'search');
+
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE threads'))).toBe(
+      false,
+    );
+  });
+
+  it('caps the new title the same way the rename route does', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 79 }], rowCount: 1 } as never);
+
+    await createTask('501', 'x'.repeat(200), null, 'search', 9010);
+
+    const retitle = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE threads'),
+    ) as [string, unknown[]];
+    expect((retitle[1][1] as string).length).toBe(80);
+  });
+});

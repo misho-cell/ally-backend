@@ -60,7 +60,38 @@ export async function createTask(
     [userId, title, description, taskType, threadId ?? null, autonomy],
     QUERY_TIMEOUT_MS,
   );
+  if (threadId !== undefined) await retitleThreadIfStale(threadId, title);
   return { id: result.rows[0].id };
+}
+
+/** A thread title is capped the same way the rename route caps one. */
+const MAX_THREAD_TITLE_CHARS = 80;
+
+/**
+ * A thread keeps the name of the goal it was opened for — and thread 9010 was
+ * still called „Netai-ს ბეტა-ტესტერები" while carrying the dog-trainer goal,
+ * because goal 1354 closed there and goal 1420 opened in the same thread
+ * (ticket 9 task 31.8). The "1 task = 1 thread" line above is the intent, not
+ * the data.
+ *
+ * Deliberately narrow: the title is replaced ONLY when it is literally the
+ * title of a goal on this thread that is no longer open. A name the user typed
+ * themselves, or one the summariser derived from the conversation, matches
+ * nothing here and is never touched — renaming somebody's thread out from
+ * under them would be a worse bug than the stale name.
+ */
+async function retitleThreadIfStale(threadId: number, newTitle: string): Promise<void> {
+  await query(
+    `UPDATE threads t
+     SET title = $2, updated_at = NOW()
+     WHERE t.id = $1
+       AND EXISTS (
+         SELECT 1 FROM tasks old
+         WHERE old.thread_id = t.id AND old.status <> 'open' AND old.title = t.title
+       )`,
+    [threadId, newTitle.slice(0, MAX_THREAD_TITLE_CHARS)],
+    QUERY_TIMEOUT_MS,
+  );
 }
 
 const TASK_COLUMNS = `id, title, description, task_type, status, permission_granted,
