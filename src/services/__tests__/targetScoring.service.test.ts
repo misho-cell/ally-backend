@@ -49,6 +49,8 @@ function routeScoreQueries(opts: {
   // Netai user who could carry the invitation.
   fitFacts?: { phone: string; values: string[] }[];
   inviters?: { phone: string; user_id: number; colour: string | null; strength: number | null }[];
+  // Rule 2's gates: the account behind a candidate phone, when there is one.
+  accounts?: { phone: string; subscription_status: string | null; own_contacts: string }[];
 }): void {
   mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
     // Rule 14's two queries are matched FIRST: both mention strings the older
@@ -56,6 +58,7 @@ function routeScoreQueries(opts: {
     if (sql.includes('WITH netai AS')) return Promise.resolve(rows(opts.inviters ?? []) as never);
     if (sql.includes('array_agg(DISTINCT field_type'))
       return Promise.resolve(rows(opts.fitFacts ?? []) as never);
+    if (sql.includes('AS own_contacts')) return Promise.resolve(rows(opts.accounts ?? []) as never);
     if (sql.includes('mode() WITHIN GROUP'))
       return Promise.resolve(rows(opts.poolPeople ?? []) as never);
     if (sql.includes('AS holders')) {
@@ -120,12 +123,12 @@ describe('buildTargetList', () => {
       need(
         'ვეტერინარი',
         [
-          { phone: '+995500000001', label: 'ვეტერინარი გია' },
-          { phone: '+995500000002', label: 'other vet' },
+          { phone: '+995500000001', label: 'გია დირექტორი' },
+          { phone: '+995500000002', label: 'other manager' },
         ],
         'თბილისი',
       ),
-      need('vet', [{ phone: '+995500000001', label: 'ვეტერინარი გია' }]),
+      need('vet', [{ phone: '+995500000001', label: 'გია დირექტორი' }]),
     ]);
     routeScoreQueries({ askableCount: 50 });
 
@@ -173,9 +176,9 @@ describe('buildTargetList', () => {
 
   it('task 15: flags goal_relevant when an OPEN goal whole-word-matches the label, and scores it higher', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      need('სანტექნიკოსი', [
-        { phone: '+995500000011', label: 'ზურა სანტექნიკოსი' },
-        { phone: '+995500000012', label: 'გია სანტექნიკოსი' },
+      need('კონსულტანტი', [
+        { phone: '+995500000011', label: 'ზურა კონსულტანტი' },
+        { phone: '+995500000012', label: 'გია კონსულტანტი' },
       ]),
     ]);
     routeScoreQueries({ askableCount: 50, goalRelevantPhones: ['+995500000011'] });
@@ -223,7 +226,9 @@ describe('buildTargetList', () => {
     const phoneQuery = mockQuery.mock.calls.find(
       ([sql]) =>
         (sql as string).includes('FROM "UserPhone"') &&
-        !(sql as string).includes('mode() WITHIN GROUP'),
+        !(sql as string).includes('mode() WITHIN GROUP') &&
+        // Rule 2's account lookup reads UserPhone too; it is not this.
+        !(sql as string).includes('AS own_contacts'),
     );
     expect(phoneQuery).toBeUndefined();
   });
@@ -241,7 +246,7 @@ describe('buildTargetList', () => {
 
   it('carries Reach in the parts', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
-      need('ელექტრიკოსი', [{ phone: '+995500000004', label: 'electrician' }]),
+      need('კონსულტანტი', [{ phone: '+995500000004', label: 'Nino consultant' }]),
     ]);
     routeScoreQueries({
       reach: [{ phone: '+995500000004', reach: '3' }],
@@ -371,6 +376,145 @@ describe('buildTargetList', () => {
     expect(sql).toContain('IN (SELECT id FROM netai)');
   });
 
+  // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+
+  it("the file's negative test: a violin teacher, a calligrapher and a petrol line cannot reach the list at all", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000040', label: 'violino maswavlebeli' },
+        { phone: '+995500000041', label: 'calligraphy Nino' },
+        { phone: '+995500000042', label: 'wissol' },
+        { phone: '+995500000043', label: 'ზურა სანტექნიკოსი' },
+        { phone: '+995500000044', label: 'Nika Khazaradze Director' },
+      ]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000042', reach: '644' }],
+      aliases: [
+        { phone: '+995500000042', contactId: 1, alias: 'wissol' },
+        { phone: '+995500000042', contactId: 2, alias: 'wissol hotline' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    // Absent, not ranked low: an excluded person is not on the list.
+    expect(out.map((e) => e.phone)).toEqual(['+995500000044']);
+  });
+
+  it('a trade with something else survives — Rule 5: ownership ranks, it does not gate', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000045', label: 'ზურა სანტექნიკოსი' },
+        { phone: '+995500000046', label: 'ლევან სანტექნიკოსი' },
+      ]),
+    ]);
+    routeScoreQueries({
+      // The second plumber owns the firm, and the facts say so.
+      fitFacts: [
+        { phone: '+995500000046', values: ['role: Founder @ AquaService', 'industry: plumbing'] },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000046']);
+  });
+
+  it('excludes an existing paying user — there is nothing to sell them', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000047', label: 'Nino Director' },
+        { phone: '+995500000048', label: 'Gia Director' },
+      ]),
+    ]);
+    routeScoreQueries({
+      accounts: [
+        { phone: '+995500000047', subscription_status: 'active', own_contacts: '900' },
+        { phone: '+995500000048', subscription_status: null, own_contacts: '900' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000048']);
+  });
+
+  it('excludes a phonebook under 200 — the founder\'s "very young and possibly not working" rule', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000049', label: 'Nino Director' },
+        { phone: '+995500000050', label: 'Gia Director' },
+      ]),
+    ]);
+    routeScoreQueries({
+      accounts: [
+        { phone: '+995500000049', subscription_status: null, own_contacts: '12' },
+        { phone: '+995500000050', subscription_status: null, own_contacts: '900' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000050']);
+  });
+
+  it('a phone with no account at all keeps both account gates inapplicable', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000051', label: 'Nino Director' }]),
+    ]);
+    routeScoreQueries({ accounts: [], askableCount: 50 });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000051']);
+  });
+
+  it('Rule 14 (c): a company label is not a target until a person is confirmed behind it', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000052', label: 'Maxin.ai Ceo' },
+        { phone: '+995500000053', label: 'Lika Chxirodze Maxin.ai' },
+      ]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        // Two contributors agree on a real name behind the second number.
+        { phone: '+995500000053', contactId: 1, alias: 'Lika Chxirodze Maxin.ai' },
+        { phone: '+995500000053', contactId: 2, alias: 'Lika Chxirodze' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000053']);
+  });
+
+  it('excludes our own people by the REVIEW_PHONE list auth already owns', async () => {
+    const previous = process.env.REVIEW_PHONE;
+    process.env.REVIEW_PHONE = '+995500000054, +995500000055';
+    try {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [
+          { phone: '+995500000054', label: 'Lika Test' },
+          { phone: '+995500000056', label: 'Nino Director' },
+        ]),
+      ]);
+      routeScoreQueries({ askableCount: 50 });
+
+      const out = await buildTargetList(30);
+
+      expect(out.map((e) => e.phone)).toEqual(['+995500000056']);
+    } finally {
+      process.env.REVIEW_PHONE = previous;
+    }
+  });
+
   it("caps the list length at the network's current ask capacity", async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [
@@ -423,7 +567,7 @@ describe('buildTargetList', () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [
         { phone: '+995500000011', label: 'wissol' },
-        { phone: '+995500000012', label: 'დათო ვეტერინარი' },
+        { phone: '+995500000012', label: 'დათო ხაზარაძე დირექტორი' },
       ]),
     ]);
     routeScoreQueries({
@@ -435,10 +579,11 @@ describe('buildTargetList', () => {
         { phone: '+995500000011', contactId: 1, alias: 'wissol' },
         { phone: '+995500000011', contactId: 2, alias: 'wissol hotline' },
         { phone: '+995500000011', contactId: 3, alias: 'wissol 24/7' },
-        // The popular vet: high reach but his top token is his name/trade,
-        // not a brand — he is a person and stays.
-        { phone: '+995500000012', contactId: 4, alias: 'დათო ვეტერინარი' },
-        { phone: '+995500000012', contactId: 5, alias: 'დათო ვეტი' },
+        // High reach, but his top token is his own name — he is a person and
+        // stays. (The popular vet who used to stand here is now excluded by
+        // G1 instead; see the trade-gate test below.)
+        { phone: '+995500000012', contactId: 4, alias: 'დათო ხაზარაძე დირექტორი' },
+        { phone: '+995500000012', contactId: 5, alias: 'დათო ხაზარაძე' },
       ],
       askableCount: 50,
     });

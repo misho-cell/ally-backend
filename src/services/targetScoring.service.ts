@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
-import { normalizePhone } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
@@ -155,6 +155,98 @@ const ROLE_WORDS = [
   'board',
 ];
 
+// ─── Rule 2's exclusion pass, and Rule 14 (c) ──────────────────────────────
+// The founder, 31 August: "I think this is a good ranker, but after some
+// filtering, when you exclude taxi, mechanics, us, hotlines, people who are
+// already paid users, you can see rest as good target."
+//
+// Five of the exclusions are readable from this database and are applied here.
+// Three are NOT, and are named rather than faked: "not living in Georgia",
+// "too powerful with no gap to fill", and the Argentine cohort — no column in
+// this schema carries any of them, and a gate that guesses is worse than a
+// gate that is missing, because it removes people silently.
+// G1, in the founder's own words: "Only a trade or a service. Plumber,
+// electrician, mechanic, vet, sculptor, calligrapher, photographer, violin
+// teacher, taxi driver." Deliberately NOT the label parser's occupation
+// dictionary, which also holds lawyer, architect, accountant and programmer —
+// those are professions, and gating them out would remove real targets. This
+// list is the founder's examples and the criteria file's own
+// (khelosani, karobka, avtomatika, airbagi), nothing more.
+const TRADE_WORDS = [
+  'ხელოსან',
+  'khelosani',
+  'xelosani',
+  'სანტექნიკ',
+  'santeknik',
+  'plumber',
+  'ელექტრიკ',
+  'eleqtrik',
+  'electrician',
+  'მექანიკ',
+  'mechanic',
+  'karobka',
+  'კარობკა',
+  'avtomatika',
+  'ავტომატიკა',
+  'airbagi',
+  'ეარბეგ',
+  'shpana',
+  'შპანა',
+  'ვეტერინარ',
+  'veterinar',
+  'მოქანდაკე',
+  'moqandake',
+  'sculptor',
+  'კალიგრაფ',
+  'calligraph',
+  'ფოტოგრაფ',
+  'fotograf',
+  'photographer',
+  'ვიოლინ',
+  'violino',
+  'violin',
+  'ტაქსი',
+  'taxi',
+  'taksi',
+  'მძღოლ',
+  'დურგალ',
+  'მღებავ',
+  'შემდუღებ',
+];
+
+const MIN_OWN_CONTACTS = 200;
+// The founder, 31 August: "people with less then 200 contacts are very young
+// and possibly even not working". This also swallows the register-once-and-
+// never-return pattern (one contact or none), which is the same rule at a
+// lower number.
+
+// Rule 14 (c): "a label is never a target — 'Maxin.ai Ceo' names a company;
+// the person is found first, then judged." A label carrying a company marker
+// is only a target once a real person has been confirmed behind the number.
+const COMPANY_MARKERS = [
+  '.ai',
+  '.ge',
+  '.com',
+  '.io',
+  'llc',
+  'ltd',
+  'inc',
+  'შპს',
+  'ooo',
+  'ооо',
+  'group',
+  'studio',
+  'agency',
+  'company',
+];
+
+export type TargetExclusion =
+  | 'trade_only'
+  | 'company_label'
+  | 'our_own_people'
+  | 'already_paying'
+  | 'phonebook_too_small';
+
 export type FitLevel = 'strong' | 'moderate' | 'weak' | 'not_yet';
 
 /**
@@ -201,6 +293,98 @@ async function fitFromFacts(phones: string[]): Promise<Map<string, string[]>> {
     SCORE_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((r) => [r.phone, r.values]));
+}
+
+interface AccountFacts {
+  subscriptionStatus: string;
+  ownContacts: number;
+}
+
+/**
+ * Everything the gates need to know about the ACCOUNT behind a candidate
+ * phone. A phone with no account is absent — it cannot be a paying user and
+ * has no phonebook of its own, so neither of those two gates can apply to it.
+ */
+async function accountFactsForPhones(phones: string[]): Promise<Map<string, AccountFacts>> {
+  if (phones.length === 0) return new Map();
+  const digits = phones.map(phoneDigits).filter(Boolean);
+  const result = await query<{
+    phone: string;
+    subscription_status: string | null;
+    own_contacts: string;
+  }>(
+    `SELECT up.phone,
+            u.subscription_status,
+            (SELECT COUNT(DISTINCT a.phone) FROM "UserAlias" a WHERE a."contactId" = u.id)
+              AS own_contacts
+     FROM "UserPhone" up
+     JOIN "User" u ON u.id = up."userId"
+     WHERE regexp_replace(up.phone, '\\D', '', 'g') = ANY($1) AND u."deletedAt" IS NULL`,
+    [digits],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  const map = new Map<string, AccountFacts>();
+  for (const row of result.rows) {
+    const key = phoneDigits(row.phone);
+    const facts = {
+      subscriptionStatus: row.subscription_status ?? '',
+      ownContacts: Number(row.own_contacts),
+    };
+    const current = map.get(key);
+    // One person, several phone rows: keep the fullest phonebook and any
+    // paying status, so neither gate is dodged by a second row.
+    if (!current) {
+      map.set(key, facts);
+    } else {
+      map.set(key, {
+        subscriptionStatus: current.subscriptionStatus || facts.subscriptionStatus,
+        ownContacts: Math.max(current.ownContacts, facts.ownContacts),
+      });
+    }
+  }
+  return map;
+}
+
+/** Our own team and every test account, from the env list auth already owns. */
+function ownPeopleDigits(): Set<string> {
+  return new Set(
+    (process.env.REVIEW_PHONE ?? '')
+      .split(',')
+      .map((p) => phoneDigits(p.trim()))
+      .filter(Boolean),
+  );
+}
+
+/**
+ * The gates of Rule 2, in the founder's own order. Returns the reason a
+ * candidate is out, or null if they stay. Deliberately NOT a score: an
+ * excluded person is not a low-ranked person, they are absent (the file's own
+ * negative test — "a violin teacher, a calligrapher and a petrol-station line
+ * must not be able to reach the list at all").
+ */
+function exclusionFor(
+  label: string,
+  fit: FitSignal,
+  personConfirmed: boolean,
+  account: AccountFacts | undefined,
+  isOurOwn: boolean,
+): TargetExclusion | null {
+  if (isOurOwn) return 'our_own_people';
+  if (account && NETAI_ACTIVE_SUBSCRIPTION_STATUSES.includes(account.subscriptionStatus)) {
+    return 'already_paying';
+  }
+  if (account && account.ownContacts < MIN_OWN_CONTACTS) return 'phonebook_too_small';
+  // "Only a trade or a service" — the trade word is the gate, but only when
+  // nothing else speaks for the person. A stored fact or a role word in the
+  // label means there IS something else, and Rule 5 keeps them.
+  if (containsAny(label, TRADE_WORDS) && fit.level !== 'strong' && fit.level !== 'moderate') {
+    if (!containsAny(label, OWNERSHIP_WORDS) && !containsAny(label, ROLE_WORDS)) {
+      return 'trade_only';
+    }
+  }
+  // Rule 14 (c): a company name is not a person until a person is confirmed.
+  if (containsAny(label, COMPANY_MARKERS) && !personConfirmed) return 'company_label';
+  return null;
 }
 
 /** The facts first, then the label words, then NOT YET. Never a rejection. */
@@ -820,6 +1004,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     bestVocabulary,
     holdersMap,
     factsMap,
+    accountMap,
   ] = await Promise.all([
     reachForPhones(phones),
     bestInviterForPhones(phones),
@@ -829,7 +1014,9 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     bestUserVocabulary(),
     subscribedHoldersForPhones(phones),
     fitFromFacts(phones),
+    accountFactsForPhones(phones),
   ]);
+  const ourOwn = ownPeopleDigits();
 
   const entries: TargetScoreEntry[] = [];
   for (const phone of phones) {
@@ -846,6 +1033,16 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     const subscribedHolders = holdersMap.get(phone) ?? 0;
     if (subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS) continue;
     const fit = fitFor(factsMap.get(phone), ctx.label);
+    // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
+    // absent from the list, not ranked low on it.
+    const excluded = exclusionFor(
+      ctx.label,
+      fit,
+      analysis?.personConfirmed ?? false,
+      accountMap.get(phoneDigits(phone)),
+      ourOwn.has(phoneDigits(phone)),
+    );
+    if (excluded !== null) continue;
     const inviter = inviterMap.get(phone) ?? null;
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
