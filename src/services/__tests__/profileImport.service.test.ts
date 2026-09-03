@@ -82,7 +82,7 @@ describe('parseProfile', () => {
 
 describe('resolveProfilePhone — key on phone identity, not on name', () => {
   it('resolves when exactly one phone carries BOTH name tokens', async () => {
-    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111' }]) as never);
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
 
     const out = await resolveProfilePhone('Givi Beridze');
 
@@ -90,16 +90,41 @@ describe('resolveProfilePhone — key on phone identity, not on name', () => {
     expect(out.phone).toBe('+995599111111');
   });
 
-  it('refuses an ambiguous name and names every candidate', async () => {
+  it('breaks a tie by the crowd: the number most people saved under that name wins', async () => {
     mockQuery.mockResolvedValue(
-      rows([{ phone: '+995599111111' }, { phone: '+995599222222' }]) as never,
+      rows([
+        { phone: '+995599111111', contributors: '17' },
+        { phone: '+995599222222', contributors: '1' },
+      ]) as never,
+    );
+
+    const out = await resolveProfilePhone('Givi Beridze');
+
+    expect(out.reason).toBe('resolved');
+    expect(out.phone).toBe('+995599111111');
+  });
+
+  it('an actual tie is not an answer — nobody is picked', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { phone: '+995599111111', contributors: '4' },
+        { phone: '+995599222222', contributors: '4' },
+      ]) as never,
     );
 
     const out = await resolveProfilePhone('Nino Niauri');
 
     expect(out.reason).toBe('ambiguous');
     expect(out.phone).toBeNull();
-    expect(out.candidates).toEqual(['+995599111111', '+995599222222']);
+  });
+
+  it('one lone contributor is not a crowd — a single-saver match stays unresolved', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '1' }]) as never);
+
+    const out = await resolveProfilePhone('Nino Niauri');
+
+    expect(out.reason).toBe('ambiguous');
+    expect(out.candidates).toEqual([{ phone: '+995599111111', contributors: 1 }]);
   });
 
   it('requires BOTH tokens in the same alias — the Nino Niauri / Kaxa Niauri case', async () => {
@@ -125,7 +150,7 @@ describe('resolveProfilePhone — key on phone identity, not on name', () => {
 
 describe('importProfiles', () => {
   it('writes nothing on a dry run, but still reports what it would do', async () => {
-    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111' }]) as never);
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
     const parsed = parseProfile(FILE);
 
     const out = await importProfiles([parsed!], '501', true);
@@ -138,7 +163,7 @@ describe('importProfiles', () => {
   });
 
   it('writes every fact against the resolved phone, as the curator', async () => {
-    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111' }]) as never);
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
     const parsed = parseProfile(FILE);
 
     const out = await importProfiles([parsed!], '501', false);
@@ -156,7 +181,10 @@ describe('importProfiles', () => {
 
   it('writes NOTHING for an ambiguous name, even on a real run', async () => {
     mockQuery.mockResolvedValue(
-      rows([{ phone: '+995599111111' }, { phone: '+995599222222' }]) as never,
+      rows([
+        { phone: '+995599111111', contributors: '4' },
+        { phone: '+995599222222', contributors: '4' },
+      ]) as never,
     );
     const parsed = parseProfile(FILE);
 

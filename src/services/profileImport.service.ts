@@ -101,14 +101,35 @@ function employerFromRole(role: string | undefined): string | null {
 
 export type ResolutionReason = 'resolved' | 'no_match' | 'ambiguous';
 
+export interface ProfileCandidate {
+  phone: string;
+  /** Distinct people who saved this number under this full name. */
+  contributors: number;
+}
+
 export interface ProfileResolution {
   name: string;
   reason: ResolutionReason;
   /** The single phone this name resolves to, or null when it does not. */
   phone: string | null;
-  /** Every phone the name matched — the evidence behind an `ambiguous`. */
-  candidates: string[];
+  /** Every phone the name matched, with its crowd count — the audit trail. */
+  candidates: ProfileCandidate[];
 }
+
+/**
+ * A name almost never matches exactly one number in a base of 2.5 million
+ * contacts — the first live dry run resolved 4 of 44 and called 32 ambiguous,
+ * with "Giorgi Razmadze" matching 88 phones. Scoping to the founder's own
+ * phonebook is the opposite failure: he does not hold 82 of the 186 at all.
+ *
+ * So the tie is broken by the crowd, which is the same identity signal the
+ * rest of this codebase already trusts: the phone the most DISTINCT people
+ * saved under that full name. Two conditions, both required, and a failure of
+ * either leaves the profile unresolved for a human:
+ *   - the winner must be saved by at least this many people, and
+ *   - it must be STRICTLY ahead of the runner-up. A tie is not an answer.
+ */
+const MIN_WINNING_CONTRIBUTORS = 2;
 
 /**
  * Resolve a full name to ONE phone, or to nothing.
@@ -127,27 +148,38 @@ export async function resolveProfilePhone(name: string): Promise<ProfileResoluti
   if (tokens.length < 2) {
     return { name, reason: 'no_match', phone: null, candidates: [] };
   }
-  const result = await query<{ phone: string }>(
+  const result = await query<{ phone: string; contributors: string }>(
     // The surname drives the index. Without the `<<%` prefilter this is a
     // sequential scan of 8.4 million aliases with normalize_search_token
     // applied to every row — it timed out on the first live run, 44 names
     // deep. `<<%` (strict word similarity) rides idx_user_alias_norm_trgm,
     // the same prefilter the unmet-needs candidate lookup uses, and the two
     // whole-token conditions stay as the precision gate behind it.
-    `SELECT DISTINCT ua.phone
+    `SELECT ua.phone, COUNT(DISTINCT ua."contactId")::text AS contributors
      FROM "UserAlias" ua
      WHERE normalize_search_token($2) <<% normalize_search_token(ua.alias)
        AND normalize_search_token($1) = ANY(
              regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))
        AND normalize_search_token($2) = ANY(
-             regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))`,
+             regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))
+     GROUP BY ua.phone
+     ORDER BY COUNT(DISTINCT ua."contactId") DESC, ua.phone`,
     [tokens[0], tokens[tokens.length - 1]],
     PROFILE_QUERY_TIMEOUT_MS,
   );
-  const candidates = result.rows.map((r) => r.phone).sort();
+  const candidates: ProfileCandidate[] = result.rows.map((r) => ({
+    phone: r.phone,
+    contributors: Number(r.contributors),
+  }));
   if (candidates.length === 0) return { name, reason: 'no_match', phone: null, candidates };
-  if (candidates.length > 1) return { name, reason: 'ambiguous', phone: null, candidates };
-  return { name, reason: 'resolved', phone: candidates[0] ?? null, candidates };
+
+  const [winner, runnerUp] = candidates;
+  if (!winner) return { name, reason: 'no_match', phone: null, candidates };
+  const clear =
+    winner.contributors >= MIN_WINNING_CONTRIBUTORS &&
+    (runnerUp === undefined || winner.contributors > runnerUp.contributors);
+  if (!clear) return { name, reason: 'ambiguous', phone: null, candidates };
+  return { name, reason: 'resolved', phone: winner.phone, candidates };
 }
 
 export interface ProfileImportRow extends ProfileResolution {
