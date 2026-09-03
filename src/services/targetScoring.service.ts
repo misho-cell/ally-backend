@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { normalizePhone, phoneDigits } from './phone';
+import { roundTo } from './number';
 import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
@@ -602,9 +603,11 @@ async function bestInviterForPhones(phones: string[]): Promise<Map<string, Targe
 
   const best = new Map<string, TargetInviter>();
   for (const row of result.rows) {
-    const warmth = row.colour
-      ? (OLD_ALLY_COLOUR_BONUS[row.colour] ?? 0)
-      : Math.min(1, Number(row.strength ?? 0) * 0.5);
+    const warmth = roundTo(
+      row.colour
+        ? (OLD_ALLY_COLOUR_BONUS[row.colour] ?? 0)
+        : Math.min(1, Number(row.strength ?? 0) * 0.5),
+    );
     if (warmth <= 0) continue;
     const current = best.get(row.phone);
     if (!current || warmth > current.warmth) {
@@ -898,7 +901,8 @@ function combinedScore(parts: {
   if (parts.gapFilling) score += GAP_FILLING_BONUS;
   if (parts.goalRelevant) score += GOAL_RELEVANCE_BONUS;
   if (parts.bestUserLookalike) score += BEST_USER_LOOKALIKE_BONUS;
-  return Math.min(1, score);
+  // Rounded only here, at the edge — never between the parts (task 31.4).
+  return roundTo(Math.min(1, score));
 }
 
 /**

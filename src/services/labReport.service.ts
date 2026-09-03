@@ -5,6 +5,7 @@ import {
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
   FATIGUE_STEP_DOWN_PER_SIGNAL,
 } from './askBudget.service';
+import { roundTo } from './number';
 
 const REPORT_QUERY_TIMEOUT_MS = 8_000;
 
@@ -60,7 +61,7 @@ async function buildAskDialTable(): Promise<AskDialRow[]> {
     city: r.city,
     campaigns: Number(r.campaigns),
     joins: Number(r.joins),
-    join_rate: Number(r.campaigns) > 0 ? Number(r.joins) / Number(r.campaigns) : 0,
+    join_rate: roundTo(Number(r.campaigns) > 0 ? Number(r.joins) / Number(r.campaigns) : 0),
   }));
 }
 
@@ -96,7 +97,7 @@ async function buildSpacingResults(): Promise<SpacingRow[]> {
     day_offset: Number(r.day_offset),
     asked: Number(r.asked),
     joined: Number(r.joined),
-    join_rate: Number(r.asked) > 0 ? Number(r.joined) / Number(r.asked) : 0,
+    join_rate: roundTo(Number(r.asked) > 0 ? Number(r.joined) / Number(r.asked) : 0),
   }));
 }
 
@@ -269,7 +270,7 @@ async function buildCuriosityAnswerRate(): Promise<CuriosityAnswerRate> {
   );
   const surfaced = Number(result.rows[0]?.surfaced ?? 0);
   const answered = Number(result.rows[0]?.answered ?? 0);
-  return { surfaced, answered, answer_rate: surfaced > 0 ? answered / surfaced : 0 };
+  return { surfaced, answered, answer_rate: roundTo(surfaced > 0 ? answered / surfaced : 0) };
 }
 
 export interface LabReport {
