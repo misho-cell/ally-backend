@@ -275,6 +275,41 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<WebhookOut
   }
 }
 
+/**
+ * Cancel whatever this customer is paying for (ticket 9 task 31.1).
+ *
+ * Called when an account is erased. Deleting your account has to stop your
+ * billing: continuing to charge someone who asked to be forgotten is the worst
+ * shape this bug could take, and "we only cleared our own column" would not be
+ * an answer.
+ *
+ * Best-effort by construction — the caller must never fail an erasure because
+ * Stripe was unreachable. It returns how many subscriptions it ended so the
+ * erasure report can say so honestly, and logs what it could not do.
+ */
+export async function cancelSubscriptionsForCustomer(customerId: string): Promise<number> {
+  if (!isStripeConfigured()) return 0;
+  let cancelled = 0;
+  try {
+    const subscriptions = await stripeClient().subscriptions.list({
+      customer: customerId,
+      status: 'all',
+    });
+    for (const subscription of subscriptions.data) {
+      if (!ACTIVE_STATUSES.has(subscription.status)) continue;
+      await stripeClient().subscriptions.cancel(subscription.id);
+      cancelled++;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[stripe] could not cancel subscriptions for ${customerId}:`,
+      (error as Error).message,
+    );
+  }
+  return cancelled;
+}
+
 /** Verify the signature and parse — a body that fails this never reaches the handler. */
 export function constructEvent(rawBody: Buffer, signature: string): Stripe.Event {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;

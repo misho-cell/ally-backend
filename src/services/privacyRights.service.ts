@@ -3,6 +3,7 @@ import { query, withTransaction } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { phoneDigits } from './phone';
 import { buildCompositeKey } from './neo4j.keys';
+import { cancelSubscriptionsForCustomer } from './stripe.service';
 
 // The graph key is built from the account's RAW phone rows (sorted, joined) —
 // it must be captured before those rows are deleted.
@@ -128,6 +129,19 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
 
 // Personal columns on "User" scrubbed when present. The row itself survives so
 // other people's foreign keys stay valid — with nothing personal left in it.
+/**
+ * Columns that are RESET rather than emptied (ticket 9 task 31.1).
+ *
+ * The erased account 171045 still read `subscriptionStatus: active, tier: pro`
+ * the day after it was erased. Both columns are NOT NULL with a default, so
+ * the scrub above skipped them — it can only write NULL or an empty string,
+ * and neither is legal here. The truthful value is the column's own default:
+ * a deleted account has no subscription. Emptying them to '' would have been a
+ * lie of a different shape, and leaving them was a live account in every count
+ * that reads these columns.
+ */
+const USER_COLUMNS_TO_RESET = ['subscription_status', 'subscription_tier'];
+
 const USER_COLUMNS_TO_SCRUB = [
   'name',
   'email',
@@ -185,7 +199,7 @@ async function existingColumns(client: PoolClient): Promise<Set<string>> {
  * A NOT NULL text column is emptied to '' instead; anything else is left
  * alone and named, rather than throwing away the whole erasure.
  */
-async function userScrubAssignments(
+export async function userScrubAssignments(
   client: PoolClient,
 ): Promise<{ assignments: string[]; skipped: string[] }> {
   const result = await client.query<{
@@ -211,6 +225,12 @@ async function userScrubAssignments(
     } else {
       skipped.push(column);
     }
+  }
+  for (const column of USER_COLUMNS_TO_RESET) {
+    if (!byName.has(column)) continue;
+    // DEFAULT is read from the column itself, so this cannot drift away from
+    // whatever "no subscription" means to the rest of the schema.
+    assignments.push(`"${column}" = DEFAULT`);
   }
   return { assignments, skipped };
 }
@@ -492,6 +512,21 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
         );
         if ((result.rowCount ?? 0) > 0) counts[bareName(table)] = result.rowCount ?? 0;
       }
+    }
+
+    // Stop the billing before the row is emptied, while stripeCustomerId is
+    // still readable. Deleting your account has to stop your charges; clearing
+    // our own column and leaving Stripe running would be the worse half of the
+    // same bug. Never fails the erasure — Stripe being unreachable is not a
+    // reason to keep somebody's data.
+    const customer = await client.query<{ stripeCustomerId: string | null }>(
+      'SELECT "stripeCustomerId" FROM "User" WHERE id = $1',
+      [userId],
+    );
+    const customerId = customer.rows[0]?.stripeCustomerId;
+    if (customerId) {
+      const cancelled = await cancelSubscriptionsForCustomer(customerId);
+      if (cancelled > 0) counts['stripe_subscriptions_cancelled'] = cancelled;
     }
 
     // The person, gone: every personal column emptied, the row kept so other
