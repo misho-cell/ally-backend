@@ -237,6 +237,30 @@ export async function recordAnswer(userId: string, input: AnswerInput): Promise<
 
   const deltas = input.skipped ? {} : computeDeltas(row, input.optionIds);
 
+  // Superseding an answer must undo what it moved, or the profile ends up
+  // holding both answers at once (ticket 9 task 32.4, caught live on 3 Sep:
+  // one pick then three picks on question 1 left goal_clarity at 0.7 − 0.1 =
+  // 0.6 — neither of the two things the person actually said). `is_current`
+  // already supersedes the ANSWER; nothing was undoing the SCORE.
+  //
+  // The reversal is computed with today's score_vector, which is the only one
+  // there is: if a question's scoring changed since the old answer, the undo
+  // is approximate. Approximate beats compounding.
+  const previous = await query<{ option_ids: string[] | null; skipped: boolean }>(
+    `SELECT option_ids, skipped FROM answer_events
+     WHERE user_id = $1 AND question_id = $2 AND is_current LIMIT 1`,
+    [userId, input.questionId],
+    PARTH_TIMEOUT_MS,
+  );
+  const priorRow = previous.rows[0];
+  const undo: ScoreDelta =
+    priorRow && !priorRow.skipped ? computeDeltas(row, priorRow.option_ids ?? []) : {};
+
+  const net: ScoreDelta = { ...deltas };
+  for (const [dimension, value] of Object.entries(undo)) {
+    net[dimension] = (net[dimension] ?? 0) - value;
+  }
+
   await withTransaction(async (client) => {
     // The database-enforced supersede rule: flip, then insert, one transaction.
     await client.query(
@@ -258,7 +282,7 @@ export async function recordAnswer(userId: string, input: AnswerInput): Promise<
         input.skipped === true,
       ],
     );
-    for (const [dimension, delta] of Object.entries(deltas)) {
+    for (const [dimension, delta] of Object.entries(net)) {
       // Postgres can't infer LEAST/GREATEST's argument type from context
       // here (nothing else in the expression ties $3/$4/$5 to a column) and
       // falls back to text, which then fails to assign into the real

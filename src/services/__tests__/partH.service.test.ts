@@ -281,3 +281,49 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     expect(out).toEqual({ found: false });
   });
 });
+
+describe('recordAnswer — changing your mind replaces the score (ticket 9 task 32.4)', () => {
+  it('undoes the superseded answer instead of adding both', async () => {
+    // Live-caught 3 Sep: one pick (+0.7) then three picks (-0.1) on question 1
+    // left goal_clarity at 0.6 — neither of the two things the person said.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM question_bank'))
+        return Promise.resolve(rows([MULTI_COUNT_ROW]) as never);
+      if (sql.includes('FROM answer_events'))
+        return Promise.resolve(rows([{ option_ids: ['a'], skipped: false }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await recordAnswer('42', {
+      questionId: MULTI_COUNT_ROW.question_id,
+      optionIds: ['a', 'b', 'c'],
+    });
+
+    expect(out.recorded).toBe(true);
+    const dimensionWrites = txClient.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO profile_dimensions'),
+    );
+    // one pick was +0.7, three picks is -0.1: the net move is -0.8, so the
+    // stored value lands on -0.1 and not on 0.6.
+    expect(dimensionWrites).toHaveLength(1);
+    const params = dimensionWrites[0]?.[1] as unknown[];
+    expect(params[1]).toBe('goal_clarity');
+    expect(params[2]).toBeCloseTo(-0.8, 6);
+  });
+
+  it('a first answer moves exactly its own delta — nothing to undo', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM question_bank'))
+        return Promise.resolve(rows([MULTI_COUNT_ROW]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await recordAnswer('42', { questionId: MULTI_COUNT_ROW.question_id, optionIds: ['a'] });
+
+    const dimensionWrites = txClient.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO profile_dimensions'),
+    );
+    const params = dimensionWrites[0]?.[1] as unknown[];
+    expect(params[2]).toBeCloseTo(0.7, 6);
+  });
+});
