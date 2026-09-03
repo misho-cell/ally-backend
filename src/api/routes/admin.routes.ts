@@ -82,7 +82,7 @@ import {
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
 import { deletePrivateContextKeys } from '../../services/userPrivateContext.service';
 import { deleteUserNotes } from '../../services/userNotes.service';
-import { deleteUserProfileFields } from '../../services/userProfile.service';
+import { deleteUserProfileFields, setUserProfileField } from '../../services/userProfile.service';
 import { republishFacts } from '../../services/factRepublish.service';
 import {
   getLabelQueue,
@@ -1139,6 +1139,29 @@ adminRouter.delete('/users/:id/memory', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin memory delete]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The other half of a memory correction: D95 did not only delete lines, it
+// also extended one ("it is true, but additionally in real estate development
+// business, and in Ally"). Profile keys only — the private context and the
+// notes are the assistant's own writing and are corrected by deleting.
+adminRouter.put('/users/:id/memory', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.params.id ?? '');
+    const { key, value } = req.body as { key?: unknown; value?: unknown };
+    if (!userId || typeof key !== 'string' || !key.trim() || typeof value !== 'string') {
+      res.status(400).json({ success: false, error: 'key და value აუცილებელია' });
+      return;
+    }
+    await setUserProfileField(userId, key.trim(), value, 'set');
+    // eslint-disable-next-line no-console
+    console.log(`[admin memory] user ${userId}: profile line "${key.trim()}" set`);
+    res.status(200).json({ success: true, data: { key: key.trim(), value } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin memory set]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
