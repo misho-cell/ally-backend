@@ -159,6 +159,30 @@ describe('createAsk', () => {
     expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია');
   });
 
+  it('writes down the conversation the ask was sent FROM (ticket 9 task 20 d)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'q', undefined, 9412);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[0]).toContain('origin_thread_id');
+    // The sender's thread, NOT the recipient thread the insert also carries.
+    expect(insert[1][6]).toBe(9412);
+  });
+
+  it('leaves the origin null when an ask has no conversation behind it (a relay)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'q', 11);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[1][6]).toBeNull();
+  });
+
   it('refuses a non-member recipient', async () => {
     routeAskQueries({ member: null });
 

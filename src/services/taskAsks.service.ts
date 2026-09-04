@@ -268,11 +268,17 @@ export async function createAsk(
     'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
   await saveThreadMessage(thread.id, toUserId, 'assistant', opening);
 
+  // origin_thread_id is the SENDER's side; ask_thread_id above is the
+  // recipient's. Ask 727 rides on a goal whose title has nothing to do with
+  // its question, and answering "why" took a reconstruction across two threads
+  // because the conversation an ask came out of was never written down
+  // (ticket 9 task 20 d).
   const ask = await query<{ id: number }>(
-    `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id, parent_ask_id)
-     VALUES ($1, $2::int, $3, $4, $5, $6)
+    `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
+                            parent_ask_id, origin_thread_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [taskId, fromUserId, toUserId, safeQuestion, thread.id, parentAskId ?? null],
+    [taskId, fromUserId, toUserId, safeQuestion, thread.id, parentAskId ?? null, threadId ?? null],
     ASK_QUERY_TIMEOUT_MS,
   );
 

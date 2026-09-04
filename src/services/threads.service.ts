@@ -77,6 +77,60 @@ export interface ThreadListOptions {
   readonly beforeId?: number;
 }
 
+// The list's columns, shared by the page query and the open-goals query so the
+// two can never drift into returning differently-shaped rows.
+const THREAD_LIST_COLUMNS = `t.id,
+       t.user_id,
+       t.type,
+       t.title,
+       t.introduction_request_id,
+       t.is_task,
+       t.status,
+       t.status_line,
+       t.created_at,
+       t.updated_at,
+       ir.request_ref,
+       LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
+       lm.created_at AS last_message_at`;
+
+const THREAD_LIST_JOINS = `FROM threads t
+     LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
+     LEFT JOIN LATERAL (
+       SELECT content, created_at
+       FROM conversations
+       WHERE thread_id = t.id AND content != ''
+       ORDER BY created_at DESC
+       LIMIT 1
+     ) lm ON true`;
+
+/** A thread that carries a goal the user has not closed. */
+const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'open')`;
+
+// One user's open goals all fit on the first page — the tasks store never
+// hands back more than 50 open goals either.
+const MAX_GOAL_THREADS = 50;
+
+/**
+ * The sidebar: open goals first, then conversations by recency (ticket 9 task
+ * 20 c).
+ *
+ * The client asks for `?limit=30`, and a goal thread used to compete for those
+ * thirty places on last-touched date like any chat. A goal is not a chat: it is
+ * a standing piece of work that can sit for a week without a wake and still be
+ * the most important row on the screen — thread 8614 was already down at rank
+ * 26 and drifting, one busy week from falling off the first page of its owner's
+ * sidebar while its goal was still open.
+ *
+ * So the goals do not compete: they are fetched separately and ride at the top,
+ * ALL of them, regardless of age, and the page query never returns them again.
+ * The first page is therefore up to `limit` conversations PLUS the open goals —
+ * a client that asked for thirty may receive a few more rows, and that is the
+ * intended trade.
+ *
+ * Paging is untouched. The cursor is always the last row of the returned array,
+ * which is always a conversation, and cursor pages carry conversations only —
+ * so a goal can be neither repeated on page two nor used as a cursor.
+ */
 export async function getThreadsForUser(
   userId: string,
   opts: ThreadListOptions = {},
@@ -89,35 +143,27 @@ export async function getThreadsForUser(
   const beforeId = opts.beforeId ?? Number.MAX_SAFE_INTEGER;
   const result = await query<ThreadRow>(
     `SELECT
-       t.id,
-       t.user_id,
-       t.type,
-       t.title,
-       t.introduction_request_id,
-       t.is_task,
-       t.status,
-       t.status_line,
-       t.created_at,
-       t.updated_at,
-       ir.request_ref,
-       LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
-       lm.created_at AS last_message_at
-     FROM threads t
-     LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
-     LEFT JOIN LATERAL (
-       SELECT content, created_at
-       FROM conversations
-       WHERE thread_id = t.id AND content != ''
-       ORDER BY created_at DESC
-       LIMIT 1
-     ) lm ON true
+       ${THREAD_LIST_COLUMNS}
+     ${THREAD_LIST_JOINS}
      WHERE t.user_id = $1
        AND ($2::timestamptz IS NULL OR (t.updated_at, t.id) < ($2::timestamptz, $3::bigint))
+       AND NOT ${HAS_OPEN_GOAL}
      ORDER BY t.updated_at DESC, t.id DESC
      LIMIT $4::int`,
     [userId, before, beforeId, limit],
   );
-  return result.rows;
+  if (before !== null) return result.rows;
+  const goals = await query<ThreadRow>(
+    `SELECT
+       ${THREAD_LIST_COLUMNS}
+     ${THREAD_LIST_JOINS}
+     WHERE t.user_id = $1
+       AND ${HAS_OPEN_GOAL}
+     ORDER BY t.updated_at DESC, t.id DESC
+     LIMIT $2::int`,
+    [userId, MAX_GOAL_THREADS],
+  );
+  return [...goals.rows, ...result.rows];
 }
 
 // A brand-new thread is never born titleless: a null title left the row blank
