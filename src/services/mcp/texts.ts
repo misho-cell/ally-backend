@@ -456,6 +456,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       '(for searches only this not_yet path goes through here; real search outcomes use ' +
       'record_search_outcome). Never call it on a guess — only on what the user just said.',
   },
+  save_close_contact: {
+    title: 'Record someone the user is close to',
+    description:
+      'The user names someone they are genuinely CLOSE to — a friend, a relative, someone they ' +
+      'would call without thinking. Record it: this is how Netai learns who a person could ' +
+      'comfortably invite, and it is the difference between asking them about a friend and ' +
+      'asking them about a near-stranger. Pass could_use_netai when they say that person would ' +
+      'find Netai useful. Never infer closeness from a job title or from how often a name comes ' +
+      'up — only from what the user actually said. One call per person named.',
+  },
   ask_contact: {
     title: 'Ask a contact on a task',
     description:

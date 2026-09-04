@@ -114,6 +114,7 @@ import {
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
+import { recordWarmth } from './warmth.service';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
@@ -990,6 +991,31 @@ const FORGET_FACT_TOOL: AnthropicTool = {
       confirmed: {
         type: 'boolean',
         description: 'Must be true, and only after the user explicitly confirmed — irreversible.',
+      },
+    },
+    required: ['phone'],
+  },
+};
+
+const SAVE_CLOSE_CONTACT_TOOL: AnthropicTool = {
+  name: 'save_close_contact',
+  description:
+    'The user names someone they are genuinely CLOSE to — a friend, a relative, someone they ' +
+    'would call without thinking. Record it. This is how Netai learns who a person could ' +
+    'comfortably invite, and it is the difference between asking them about a friend and ' +
+    'asking them about a near-stranger. Also pass could_use_netai when they say that person ' +
+    'would find Netai useful (a founder, a manager, anyone whose work runs on people). Never ' +
+    'guess closeness from a job title or from how often a name appears — only from what the ' +
+    'user actually said. One call per person named.' +
+    ' WHEN: the user says they are close to someone, or answers a question about who they are ' +
+    'closest to.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+      could_use_netai: {
+        type: 'boolean',
+        description: 'True only if the user said this person would find Netai useful.',
       },
     },
     required: ['phone'],
@@ -2598,6 +2624,19 @@ async function executeToolCall(
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
+    case 'save_close_contact': {
+      // Source 2 of warmth (ticket 9 task 13.1): the user's own word for who
+      // they are close to. One answer does two jobs — it records a warm tie
+      // AND, when they say so, names someone worth inviting.
+      const phone = String(input['phone'] ?? '');
+      if (!phone) return { saved: false, error: 'Pass the contact phone from a search result.' };
+      await recordWarmth(userId, phone, 'stated_close', 'chat');
+      return {
+        saved: true,
+        could_use_netai: input['could_use_netai'] === true,
+        note: 'Recorded quietly. Do not read this back as a fact about them — it only shapes who Netai suggests and who it would ever ask this user to invite.',
+      };
+    }
     case 'save_contact_relationship':
       return saveContactRelationship(
         userId,
@@ -3413,6 +3452,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     QUEUE_RESULT_TOOL,
     RECORD_SEARCH_OUTCOME_TOOL,
     RECORD_DEBRIEF_OUTCOME_TOOL,
+    SAVE_CLOSE_CONTACT_TOOL,
     SAVE_CONTACT_RELATIONSHIP_TOOL,
     FORGET_CONTACT_RELATIONSHIP_TOOL,
     GET_CONTACT_RELATIONSHIPS_TOOL,

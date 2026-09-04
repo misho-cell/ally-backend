@@ -3,6 +3,7 @@ import {
   sendDueCampaignAsks,
   sweepStaleParticipants,
 } from './chorusCampaign.service';
+import { queueWarmTieQuestions } from './warmth.service';
 
 // Ticket 6, engine T8 ("Chorus"): "fully automatic, no manual mode" — every
 // step below runs off a timer, the same shape as taskEngine.service's own
@@ -13,6 +14,10 @@ const SEND_ASKS_INTERVAL_MS = 15 * 60 * 1000; // 15min — staggered asks land w
 const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000; // daily
 const TARGET_LIST_LOOKBACK_DAYS = 30;
 const SEND_ASKS_BATCH_LIMIT = 50;
+// Source 2 of warmth (ticket 9 task 13.1): the question that keeps the warm
+// pool from starving. Daily, and only for users whose pool is actually thin —
+// the cooldown lives in the query, not here.
+const WARM_TIE_BATCH_LIMIT = 25;
 
 // A deploy restarts the process and empties the in-process target-list cache;
 // the first admin read then pays the full ~2-minute unmet-needs scan (ticket 8
@@ -60,6 +65,18 @@ export function startChorusCampaignCron(): void {
   }, SEND_ASKS_INTERVAL_MS).unref();
 
   setInterval(() => {
+    void queueWarmTieQuestions(WARM_TIE_BATCH_LIMIT)
+      .then((queued) => {
+        // eslint-disable-next-line no-console
+        if (queued > 0) console.log(`[chorus-cron] queued ${queued} warm-tie question(s)`);
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[chorus-cron] queueWarmTieQuestions failed:', (err as Error).message),
+      );
+  }, SWEEP_INTERVAL_MS).unref();
+
+  setInterval(() => {
     void sweepStaleParticipants()
       .then(({ timedOut, closed }) => {
         // eslint-disable-next-line no-console
@@ -74,5 +91,5 @@ export function startChorusCampaignCron(): void {
   }, SWEEP_INTERVAL_MS).unref();
 
   // eslint-disable-next-line no-console
-  console.log('[chorus-cron] started (open 6h; send 15min; sweep daily)');
+  console.log('[chorus-cron] started (open 6h; send 15min; warm-tie + sweep daily)');
 }

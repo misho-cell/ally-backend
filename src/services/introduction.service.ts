@@ -6,6 +6,7 @@ import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './t
 import { scrubText } from './privacyScrub';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
+import { recordMutualWarmth } from './warmth.service';
 import { geoName } from './georgianCase';
 
 export interface PendingRequest {
@@ -461,6 +462,18 @@ export async function resolveIntroductionRequest(
       (err: unknown) =>
         // eslint-disable-next-line no-console
         console.error('[debrief] intro arm failed:', (err as Error).message),
+    );
+    // An accepted introduction is warmth, on both sides, and it cost the
+    // accepter something real (ticket 9 task 13.1, the founder's third
+    // source). Best-effort: the accept stands whatever this does.
+    void recordMutualWarmth(
+      String(req.requester_user_id),
+      String(mediatorUserId),
+      'intro_accepted',
+      `intro_${req.id}`,
+    ).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[warmth] intro accept failed:', (err as Error).message),
     );
   }
   await notifyRequester(req, action === 'accept');

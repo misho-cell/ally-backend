@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { normalizePhone, phoneDigits } from './phone';
 import { roundTo } from './number';
+import { warmthByPhoneAndUser } from './warmth.service';
 import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
@@ -732,6 +733,7 @@ async function bestInviterForPhones(phones: string[]): Promise<Map<string, Targe
   if (phones.length === 0) return new Map();
   const inviters = await netaiUserIds();
   if (inviters.length === 0) return new Map();
+  const inviterSet = new Set(inviters);
 
   // Two plain queries rather than one with a subquery, and the ids arrive as a
   // list rather than as `IN (SELECT …)`. The single-statement version timed
@@ -772,6 +774,18 @@ async function bestInviterForPhones(phones: string[]): Promise<Map<string, Targe
   }
   for (const row of strengthRows.rows) {
     consider(row.phone, row.user_id, Math.min(1, Number(row.strength ?? 0) * 0.5), null);
+  }
+  // The third input, and the only one that grows by itself (ticket 9 task
+  // 13.1): what these two have actually done inside Netai, and what the user
+  // said about them. Considered on the same footing as a colour, so a tie
+  // proved this month can carry a campaign even where the 2021 phonebook
+  // colour is missing — which is the whole point, since the colours are a
+  // finite 105,000 and do not grow.
+  const events = await warmthByPhoneAndUser(phones);
+  for (const [phone, byUser] of events) {
+    for (const [userId, score] of byUser) {
+      if (inviterSet.has(userId)) consider(phone, userId, score, null);
+    }
   }
   return best;
 }

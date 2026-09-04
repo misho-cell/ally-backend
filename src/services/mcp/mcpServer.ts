@@ -48,6 +48,7 @@ import {
   mcpRecordSearchOutcome,
   mcpRecordDebriefOutcome,
   mcpAnswerGoalQuestion,
+  mcpSaveCloseContact,
   mcpSaveContactRelationship,
   mcpForgetContactRelationship,
   mcpGetContactRelationships,
@@ -502,6 +503,22 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+  );
+  server.registerTool(
+    'save_close_contact',
+    {
+      title: TOOL_TEXTS.save_close_contact.title,
+      description: TOOL_TEXTS.save_close_contact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        could_use_netai: z
+          .boolean()
+          .optional()
+          .describe('True only if the user said this person would find Netai useful.'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'save_close_contact', () => mcpSaveCloseContact(userId, args)),
   );
   server.registerTool(
     'save_contact_relationship',

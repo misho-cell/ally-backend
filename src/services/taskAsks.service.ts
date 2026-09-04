@@ -16,6 +16,7 @@ import {
 } from './askBudget.service';
 import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
+import { recordMutualWarmth } from './warmth.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 // The recipient's chat list must distinguish eight questions from the same
@@ -493,6 +494,27 @@ export async function sendApprovedAskAnswer(
   const captured = await recordAskAnswer(askThreadId, approvedText);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
+  }
+
+  // Two people who write back to each other have a real tie — the founder's
+  // own third source of warmth (ticket 9 task 13.1). Evidence about the PAIR,
+  // so it lands on both sides. Best-effort: the answer is what matters here.
+  const asker = await query<{ from_user_id: number }>(
+    `SELECT from_user_id FROM task_asks WHERE id = $1 LIMIT 1`,
+    [captured.askId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const askerId = asker.rows[0]?.from_user_id;
+  if (askerId !== undefined) {
+    void recordMutualWarmth(
+      String(askerId),
+      recipientUserId,
+      'ask_answered',
+      `ask_${captured.askId}`,
+    ).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[warmth] ask answer failed:', (err as Error).message),
+    );
   }
 
   // Instant wake with the EXACT approved text; the 5-minute unwoken-answer

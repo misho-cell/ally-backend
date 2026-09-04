@@ -69,6 +69,7 @@ import { decodeContactRef, encodeContactRef } from './contactRef';
 import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
 import { getCountryChannels } from '../tools/countryChannels';
 import { getNetaiInfo } from '../tools/netaiInfo';
+import { recordWarmth } from '../warmth.service';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from '../askOptOut.service';
 import {
   NOTE_EMPTY_INSIGHT,
@@ -1117,6 +1118,20 @@ export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPaylo
         ]),
   ];
   return { updates: items, more_pending: morePending };
+}
+
+export async function mcpSaveCloseContact(
+  userId: string,
+  args: { contact_ref?: string; could_use_netai?: boolean },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
+  await recordWarmth(userId, phone, 'stated_close', 'connector');
+  return {
+    saved: true,
+    could_use_netai: args.could_use_netai === true,
+    note: 'Recorded quietly. It only shapes who Netai suggests and who it would ever ask this user to invite — never read it back as a fact about them.',
+  };
 }
 
 export async function mcpSaveContactRelationship(
