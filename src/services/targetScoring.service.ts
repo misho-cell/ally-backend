@@ -215,6 +215,9 @@ const TRADE_WORDS = [
   'შემდუღებ',
 ];
 
+// A first name is not an identification (ticket 9 task 23).
+const MIN_AGREED_NAME_TOKENS = 2;
+
 const MIN_OWN_CONTACTS = 200;
 // The founder, 31 August: "people with less then 200 contacts are very young
 // and possibly even not working". This also swallows the register-once-and-
@@ -241,9 +244,89 @@ const COMPANY_MARKERS = [
   'company',
 ];
 
+// Words that make a label an ORGANISATION rather than a person (ticket 9 task
+// 23: „ახალგაზრდული ასოციაცია" passed `person_confirmed: true`).
+const ORGANISATION_WORDS = [
+  'ასოციაცია',
+  'asociacia',
+  'association',
+  'კავშირი',
+  'ფონდი',
+  'fondi',
+  'foundation',
+  'კლუბი',
+  'klubi',
+  'club',
+  'სკოლა',
+  'skola',
+  'school',
+  'ცენტრი',
+  'centri',
+  'center',
+  'centre',
+  'ორგანიზაცია',
+  'organization',
+  'organisation',
+  'სააგენტო',
+  'agency',
+  'სამსახური',
+  'ministry',
+  'სამინისტრო',
+];
+
+// How people label a relative or a neighbour. „Tornike Mezobeli" is Tornike
+// the neighbour — the second word is a relationship, not a surname, and the
+// list must not treat it as one (ticket 9 task 23).
+const RELATIONSHIP_WORDS = [
+  'მეზობელ',
+  'mezobel',
+  'ძმა',
+  'dzma',
+  // 'და' is deliberately absent. It means "sister" AND "and", and it opens
+  // დათო, დავით and დარეჯან — it removed „დათო ხაზარაძე" from the list during
+  // testing, which is a real person losing his first name to a conjunction.
+  'ბიძა',
+  'bidza',
+  'დეიდა',
+  'deida',
+  'მამიდა',
+  'mamida',
+  'ბიცოლა',
+  'ნათლია',
+  'კუმბარი',
+  'kumbari',
+  'brother',
+  'sister',
+  'uncle',
+  'aunt',
+  'neighbour',
+  'neighbor',
+  'cousin',
+];
+
+// A city is where somebody is, never who they are — and „ბათუმი ორბი 2" is a
+// building, not a person.
+const PLACE_WORDS = [
+  'თბილისი',
+  'tbilisi',
+  'ბათუმი',
+  'batumi',
+  'ქუთაისი',
+  'kutaisi',
+  'რუსთავი',
+  'გორი',
+  'ზუგდიდი',
+  'ფოთი',
+  'თელავი',
+  'ბაკურიანი',
+  'bakuriani',
+  'გუდაური',
+];
+
 export type TargetExclusion =
   | 'trade_only'
   | 'company_label'
+  | 'not_a_person'
   | 'our_own_people'
   | 'already_paying'
   | 'phonebook_too_small';
@@ -393,6 +476,11 @@ function exclusionFor(
   }
   // Rule 14 (c): a company name is not a person until a person is confirmed.
   if (containsAny(label, COMPANY_MARKERS) && !nameConfirmed) return 'company_label';
+  // Task 23: "person_confirmed is a check, not a flag." An organisation, a
+  // first name with no surname, and „Tornike Mezobeli" — Tornike the
+  // neighbour — all used to pass it as a ranking bonus. Nobody the crowd
+  // cannot name twice is a target.
+  if (!nameConfirmed) return 'not_a_person';
   return null;
 }
 
@@ -655,7 +743,11 @@ function nameTokens(label: string): string[] {
       (token) =>
         !BRAND_STOPLIST.has(token) &&
         !containsAny(token, OWNERSHIP_WORDS) &&
-        !containsAny(token, ROLE_WORDS),
+        !containsAny(token, ROLE_WORDS) &&
+        !containsAny(token, ORGANISATION_WORDS) &&
+        !containsAny(token, RELATIONSHIP_WORDS) &&
+        !containsAny(token, PLACE_WORDS) &&
+        !containsAny(token, TRADE_WORDS),
     );
 }
 
@@ -728,22 +820,44 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     const personConfirmed = Array.from(tokenContributors.entries()).some(
       ([token, contributors]) => !BRAND_STOPLIST.has(token) && contributors.size >= 2,
     );
-    // Rule 14 (c) asks a stricter question than person_confirmed does: is a
-    // NAME confirmed, not merely a shared word. Two people typing „ceo"
-    // confirms nothing, and „Maxin.ai" is the company, not a surname.
-    const nameConfirmed = Array.from(nameContributors.values()).some(
-      (contributors) => contributors.size >= 2,
-    );
-
-    // The label most contributors use, among the ones that name somebody.
-    // „Maxin.ai Ceo" is the commonest alias on Nika Kutsia's number and names
-    // nobody, so it is not eligible; „Nika Kutsia" is.
+    // Rule 14 (c) and task 23 ask a stricter question than person_confirmed
+    // does: is a PERSON confirmed, not merely a shared word. Two people typing
+    // „ceo" confirms nothing, „Maxin.ai" is the company rather than a surname,
+    // and „Kato" with fifty savers is still just Kato.
+    //
+    // So the test is on the TOKENS: at least two distinct name words, each of
+    // them written by at least two different people. Per token rather than per
+    // string, because the same person is written slightly differently by
+    // everyone — „Lika Chxirodze Maxin.ai" and „Lika Chxirodze" are two people
+    // agreeing on a name, and demanding the identical string would have thrown
+    // that away. It keeps out an organisation, a bare first name, and
+    // „Tornike Mezobeli" — Tornike the neighbour, whose second word is a
+    // relationship and is stripped before counting.
+    //
+    // The same map gives the label to display: the one most contributors use
+    // among those that name somebody. „Maxin.ai Ceo" is the commonest alias on
+    // Nika Kutsia's number and names nobody, so it is not eligible.
     const aliasContributors = new Map<string, Set<number>>();
     for (const entry of entries) {
       if (entry.names.length === 0) continue;
       if (!aliasContributors.has(entry.alias)) aliasContributors.set(entry.alias, new Set());
       aliasContributors.get(entry.alias)?.add(entry.contactId);
     }
+    // Two conditions, and they answer two different questions. The crowd must
+    // agree on at least one name word — that is what says a person is behind
+    // the number rather than a shop. And SOMEBODY must know them by a full
+    // name — a label carrying two name words — which is what „a first name
+    // without a surname" fails. Requiring the crowd to agree on both halves
+    // would be stricter than the data supports: „Gia Melashvili" and „Gia
+    // Gldani" on one number is one Gia whose surname the crowd is unsure of,
+    // and one number is one person.
+    const someoneAgreesOnAName = Array.from(nameContributors.values()).some(
+      (contributors) => contributors.size >= 2,
+    );
+    const someoneKnowsTheFullName = entries.some(
+      (entry) => new Set(entry.names).size >= MIN_AGREED_NAME_TOKENS,
+    );
+    const nameConfirmed = someoneAgreesOnAName && someoneKnowsTheFullName;
     let personLabel: string | null = null;
     let bestCount = 0;
     for (const [alias, contributors] of aliasContributors) {

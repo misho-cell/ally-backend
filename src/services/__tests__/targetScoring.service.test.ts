@@ -75,8 +75,21 @@ function routeScoreQueries(opts: {
         ) as never,
       );
     }
-    if (sql.includes('CROSS JOIN LATERAL'))
-      return Promise.resolve(rows(opts.aliases ?? []) as never);
+    if (sql.includes('CROSS JOIN LATERAL')) {
+      if (opts.aliases) return Promise.resolve(rows(opts.aliases) as never);
+      // Default: every candidate is a person two people agree on by first name
+      // AND surname — the shape task 23's gate requires. A test that cares
+      // about the alias evidence passes its own `aliases` and overrides this.
+      const asked = Array.isArray(params?.[0]) ? (params?.[0] as string[]) : [];
+      return Promise.resolve(
+        rows(
+          asked.flatMap((phone) => [
+            { phone, contactId: 901, alias: 'ნინო კახიძე' },
+            { phone, contactId: 902, alias: 'ნინო კახიძე' },
+          ]),
+        ) as never,
+      );
+    }
     if (sql.includes('FROM tasks t'))
       return Promise.resolve(
         rows((opts.goalRelevantPhones ?? []).map((phone) => ({ phone }))) as never,
@@ -393,6 +406,9 @@ describe('buildTargetList', () => {
       aliases: [
         { phone: '+995500000042', contactId: 1, alias: 'wissol' },
         { phone: '+995500000042', contactId: 2, alias: 'wissol hotline' },
+        // The one real person in the set, named by two people.
+        { phone: '+995500000044', contactId: 3, alias: 'Nika Khazaradze Director' },
+        { phone: '+995500000044', contactId: 4, alias: 'Nika Khazaradze' },
       ],
       askableCount: 50,
     });
@@ -627,6 +643,7 @@ describe('buildTargetList', () => {
         // G1 instead; see the trade-gate test below.)
         { phone: '+995500000012', contactId: 4, alias: 'დათო ხაზარაძე დირექტორი' },
         { phone: '+995500000012', contactId: 5, alias: 'დათო ხაზარაძე' },
+        { phone: '+995500000012', contactId: 6, alias: 'დათო ხაზარაძე' },
       ],
       askableCount: 50,
     });
@@ -637,7 +654,7 @@ describe('buildTargetList', () => {
     expect(out[0].parts.person_confirmed).toBe(true);
   });
 
-  it('person_confirmed requires ≥2 DISTINCT contributors sharing a non-brand token — and unconfirmed entries rank last', async () => {
+  it('an unconfirmed person is EXCLUDED, not ranked last (task 23: a check, not a flag)', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [
         { phone: '+995500000013', label: 'confirmed person' },
@@ -661,8 +678,10 @@ describe('buildTargetList', () => {
 
     const out = await buildTargetList(30);
 
-    expect(out.map((e) => e.parts.person_confirmed)).toEqual([true, false]);
-    expect(out[0].phone).toBe('+995500000013');
+    // The lone save had far higher reach; before task 23 it merely ranked
+    // last. Nobody the crowd cannot name is a target at all now.
+    expect(out.map((e) => e.phone)).toEqual(['+995500000013']);
+    expect(out[0].parts.person_confirmed).toBe(true);
   });
 
   it('is deterministic: equal scores break by phone, so two reads return the same order', async () => {
@@ -688,5 +707,76 @@ describe('countAskableUsers', () => {
     routeScoreQueries({ askableCount: 21 });
 
     expect(await countAskableUsers()).toBe(21);
+  });
+});
+
+// ─── Task 23: what must never reach the list ───────────────────────────────
+// Every one of these passed `person_confirmed: true` on 2 September.
+
+describe('task 23: an organisation, a bare first name and a relationship word are not people', () => {
+  it.each([
+    ['ახალგაზრდული ასოციაცია', 'an organisation'],
+    ['Kato', 'a first name with no surname'],
+    ['Tornike Mezobeli', 'Tornike the NEIGHBOUR — the second word is a relationship'],
+    ['ბათუმი ორბი 2', 'a building, named after a city'],
+  ])('%s is excluded (%s)', async (label) => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000060', label }])]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000060', reach: '90' }],
+      // Plenty of people agree on the label — agreement was never the problem.
+      aliases: [
+        { phone: '+995500000060', contactId: 1, alias: label },
+        { phone: '+995500000060', contactId: 2, alias: label },
+        { phone: '+995500000060', contactId: 3, alias: label },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('a real first name and surname still passes', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000061', label: 'Nika Kutsia' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000061', contactId: 1, alias: 'Nika Kutsia' },
+        { phone: '+995500000061', contactId: 2, alias: 'Nika Kutsia' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000061']);
+  });
+
+  it('a surname the crowd is unsure of is still a person — one number is one person', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000062', label: 'Gia Melashvili' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000062', contactId: 1, alias: 'Gia Melashvili' },
+        { phone: '+995500000062', contactId: 2, alias: 'Gia Gldani' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000062']);
+  });
+
+  it('the Georgian word for "and" is never a relationship word — it also opens დათო', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000063', label: 'დათო ხაზარაძე' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000063', contactId: 1, alias: 'დათო ხაზარაძე' },
+        { phone: '+995500000063', contactId: 2, alias: 'დათო ხაზარაძე' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000063']);
   });
 });
