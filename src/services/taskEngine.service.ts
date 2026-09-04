@@ -225,6 +225,19 @@ async function sweepUnwokenAnswers(): Promise<void> {
       await markAskWakeDelivered(ask.id);
       continue;
     }
+    // A goal opened through the connector carries no thread, so a wake has no
+    // room to enter and wakeTask returns false for ever — ten such rows would
+    // fill the sweep's worklist and starve every real one behind them. The
+    // answer is not lost: it is on the ask, and the task's own prompt section
+    // reads its asks. Mark it and move on.
+    if (ask.task_thread_id === null) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[task-engine] ask ${ask.id}: task ${ask.task_id} has no thread, nothing to wake`,
+      );
+      await markAskWakeDelivered(ask.id);
+      continue;
+    }
     const woken = await wakeTask(
       ask.task_id,
       buildAnswerWakeEvent(ask.answer ?? '', ask.from_name),

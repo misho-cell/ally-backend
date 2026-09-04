@@ -236,3 +236,21 @@ describe('describeAskBudget — the numbers, readable (ticket 9 task 17)', () =>
     expect((await describeAskBudget('501')).remaining_this_month).toBe(0);
   });
 });
+
+describe('the reset date leaves as a date, not as a sentence', () => {
+  it('formats a driver Date as ISO — the wake note reads its first ten characters', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ask_optout_events'))
+        return Promise.resolve(rows([{ opt_outs: '0', ignored: '0' }]) as never);
+      return Promise.resolve(
+        rows([{ count: '0', resets_at: new Date('2026-10-01T00:00:00.000Z') }]) as never,
+      );
+    });
+
+    const out = await describeAskBudget('501');
+
+    // String(Date) would be "Thu Oct 01 2026 00:00:00 GMT+0000 (…)", which the
+    // wake note truncated to "Thu Oct 0".
+    expect(out.window_resets_at).toBe('2026-10-01T00:00:00.000Z');
+  });
+});

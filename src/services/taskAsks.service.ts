@@ -583,12 +583,15 @@ export interface UnwokenAnswer {
   answer: string | null;
   from_name: string | null;
   task_status: string | null;
+  /** A goal opened through the connector has no thread — nothing to wake INTO. */
+  task_thread_id: number | null;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
 export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status
+    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
+            t.thread_id AS task_thread_id
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
      LEFT JOIN "User" u ON u.id = ta.to_user_id

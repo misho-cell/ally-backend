@@ -150,6 +150,13 @@ function monthlyBudgetFor(fatigueSignals: number): number {
   return Math.max(Math.min(MIN_MONTHLY_ASK_BUDGET, ladderBudget), stepped);
 }
 
+/** A timestamp column, as ISO text, whatever shape the driver returned it in. */
+function isoOrEmpty(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string' && value.length > 0) return new Date(value).toISOString();
+  return '';
+}
+
 export interface AskBudgetState {
   readonly monthly_budget_base: number;
   readonly ladder: number;
@@ -174,7 +181,7 @@ export interface AskBudgetState {
  * /admin/users/:id and get_netai_info("limits").
  */
 export async function describeAskBudget(userId: string): Promise<AskBudgetState> {
-  const sent = await query<{ count: string; resets_at: string }>(
+  const sent = await query<{ count: string; resets_at: string | Date }>(
     `SELECT
        (SELECT COUNT(*) FROM task_asks
          WHERE from_user_id = $1::int AND parent_ask_id IS NULL AND is_follow_up = FALSE
@@ -197,7 +204,11 @@ export async function describeAskBudget(userId: string): Promise<AskBudgetState>
     sent_this_month: sentThisMonth,
     remaining_this_month: Math.max(0, effective - sentThisMonth),
     window: 'calendar_month',
-    window_resets_at: String(sent.rows[0]?.resets_at ?? ''),
+    // node-postgres hands back a Date for a timestamp, and String() on one is
+    // „Thu Oct 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)" — which
+    // the wake note then truncated to „Thu Oct 0". ISO, like every other date
+    // that leaves this server.
+    window_resets_at: isoOrEmpty(sent.rows[0]?.resets_at),
     relay_messages_per_person_per_day: RELAY_MESSAGES_PER_PERSON_PER_DAY,
   };
 }
