@@ -70,6 +70,7 @@ import { scrubDeep, scrubEmailsDeep, scrubText } from './privacy';
 import { getCountryChannels } from '../tools/countryChannels';
 import { getNetaiInfo } from '../tools/netaiInfo';
 import { recordWarmth } from '../warmth.service';
+import { correctContactFact } from '../factCorrections.service';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from '../askOptOut.service';
 import {
   NOTE_EMPTY_INSIGHT,
@@ -1127,6 +1128,21 @@ export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPaylo
         ]),
   ];
   return { updates: items, more_pending: morePending };
+}
+
+export async function mcpCorrectContactFact(
+  userId: string,
+  args: { contact_ref?: string; wrong_value?: string; field_type?: string },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.contact_ref ?? '');
+  if (!phone) return { corrected: false, error: UNKNOWN_REF_ERROR };
+  const outcome = await correctContactFact(userId, phone, args.wrong_value ?? '', args.field_type);
+  return outcome.corrected
+    ? {
+        ...outcome,
+        note: "Recorded. This person will no longer be returned to this user for that claim; nobody else's record changed.",
+      }
+    : { ...outcome };
 }
 
 export async function mcpSaveCloseContact(

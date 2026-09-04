@@ -35,6 +35,7 @@ function setup(opts: {
   insights?: unknown[];
   pointerCandidates?: unknown[];
   pointerStrengths?: unknown[];
+  corrections?: unknown[];
 }): void {
   const own = opts.facts ?? [];
   const pub = opts.publicFacts ?? [];
@@ -48,6 +49,10 @@ function setup(opts: {
       return Promise.resolve(rows(opts.pointerStrengths ?? []) as never);
     if (sql.includes('FROM contact_insights')) return Promise.resolve(rows(insights) as never);
     if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
+    // Corrections the user has made ("he is NOT an investor") — the veto the
+    // search layer reads (ticket 9 task 14). Empty unless a test sets it.
+    if (sql.includes('FROM fact_corrections'))
+      return Promise.resolve(rows(opts.corrections ?? []) as never);
     throw new Error(`Unexpected query: ${sql}`);
   });
 }
@@ -87,7 +92,13 @@ describe('searchByInsight', () => {
 
     await searchByInsight('42', 'CONFERENCE');
 
-    for (const call of mockQuery.mock.calls) {
+    // Every LIKE-taking source gets the lowercased term. The corrections veto
+    // takes plain words, not patterns, so it is not one of them.
+    const likeCalls = mockQuery.mock.calls.filter(
+      ([sql]) => !String(sql).includes('FROM fact_corrections'),
+    );
+    expect(likeCalls.length).toBeGreaterThan(0);
+    for (const call of likeCalls) {
       expect(call[1] as string[]).toContain('%conference%');
     }
   });
@@ -321,6 +332,7 @@ describe('searchByInsight', () => {
         return Promise.reject(new Error('statement timeout'));
       }
       if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
+      if (sql.includes('FROM fact_corrections')) return Promise.resolve(rows([]) as never);
       throw new Error(`Unexpected query: ${sql}`);
     });
 
@@ -347,6 +359,7 @@ describe('searchByInsight', () => {
         return Promise.reject(new Error('statement timeout'));
       if (sql.includes('FROM contact_insights')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([]) as never); // membership
+      if (sql.includes('FROM fact_corrections')) return Promise.resolve(rows([]) as never);
       throw new Error(`Unexpected query: ${sql}`);
     });
 
@@ -437,5 +450,75 @@ describe('15.1 — the two read paths must redact the same note the same way', (
         matched: ['note: write to [email hidden] about the CELA roster'],
       }),
     ]);
+  });
+});
+
+describe('a correction beats the fact it corrects (ticket 9 task 14)', () => {
+  it('drops a person this user has said is NOT that', async () => {
+    // Nodo Ivanidze: corrected on 31 July, offered back as „angel investor"
+    // under the heading „Confirmed active angel investors" on 1 September.
+    setup({
+      publicFacts: [
+        { phone: '+995599111111', name: 'Nodo Ivanidze', matched: ['occupation: Angel Investor'] },
+        { phone: '+995599222222', name: 'სხვა ადამიანი', matched: ['occupation: Angel Investor'] },
+      ],
+      corrections: [{ contact_phone: '+995599111111' }],
+    });
+
+    const out = (await searchByInsight('501', 'angel investor')) as {
+      found: boolean;
+      results: { name: string }[];
+    };
+
+    expect(out.results.map((r) => r.name)).toEqual(['სხვა ადამიანი']);
+  });
+
+  it('asks the veto with the query’s own words', async () => {
+    setup({});
+
+    await searchByInsight('501', 'angel investor');
+
+    const [, params] = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM fact_corrections'),
+    ) as [string, unknown[]];
+    expect(params[0]).toBe('501');
+    expect(params[1]).toEqual(expect.arrayContaining(['angel', 'investor']));
+  });
+});
+
+describe('14.1 — the engine cannot read „not", so it must not pretend to', () => {
+  it.each([
+    'people who are explicitly not investors and never invest their own money',
+    'ვინ არ არის ინვესტორი',
+    'someone who is no longer at TBC',
+  ])('answers a negated query honestly instead of with its opposite: %s', async (q) => {
+    setup({
+      publicFacts: [{ phone: '+995599111111', name: 'Salome', matched: ['occupation: investor'] }],
+    });
+
+    const out = (await searchByInsight('501', q)) as {
+      found: boolean;
+      negated?: boolean;
+      note?: string;
+      results?: unknown[];
+    };
+
+    // Live, twice a day apart: this query returned five people, all five
+    // investors. Returning nobody and saying why is the honest answer.
+    expect(out.found).toBe(false);
+    expect(out.negated).toBe(true);
+    expect(out.results).toBeUndefined();
+    expect(out.note).toContain('correct_contact_fact');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('leaves an ordinary query alone', async () => {
+    setup({
+      publicFacts: [{ phone: '+995599111111', name: 'Salome', matched: ['occupation: investor'] }],
+    });
+
+    const out = (await searchByInsight('501', 'investor')) as { found: boolean };
+
+    expect(out.found).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
 import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
 import { fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
+import { vetoedPhonesFor } from '../factCorrections.service';
 import { fetchSignalStrength } from './searchSecondDegree';
 
 const RESULT_LIMIT = 20;
@@ -160,6 +161,46 @@ function queryWords(searchQuery: string): string[] {
   const whole = searchQuery.trim().toLowerCase();
   return whole ? [whole] : [];
 }
+
+/**
+ * A query that asks for the OPPOSITE of a concept (ticket 9 task 14.1).
+ *
+ * „people who are explicitly not investors and never invest their own money"
+ * returned five people, all five investors — twice, a day apart. The engine
+ * matches words and cannot see negation, so a query meaning the exact opposite
+ * returns the same list, stated as an answer. That is worse than finding
+ * nothing: it is a confident wrong answer built from the user's own words.
+ *
+ * Netai searches for what somebody IS. When the query says what somebody is
+ * NOT, the honest reply is to say so — and, if there is a correction to make,
+ * to make it — rather than hand back the very people the question excludes.
+ */
+const NEGATION_MARKERS = [
+  ' not ',
+  " isn't ",
+  ' never ',
+  ' no longer ',
+  ' without ',
+  ' except ',
+  ' არ ',
+  ' აღარ ',
+  ' არავინ ',
+  ' გარდა ',
+];
+
+export function isNegatedQuery(searchQuery: string): boolean {
+  const padded = ` ${searchQuery.toLowerCase().replace(/\s+/g, ' ').trim()} `;
+  return NEGATION_MARKERS.some((marker) => padded.includes(marker));
+}
+
+const NEGATED_QUERY_NOTE =
+  'This query asks who somebody is NOT, and this search can only find who somebody IS — a ' +
+  'word search would return exactly the people the question excludes (live: „people who are ' +
+  'explicitly not investors" returned five investors). Do NOT answer it with a list. Tell the ' +
+  'user plainly that Netai searches for what a person IS, and ask them to say what they are ' +
+  'looking FOR. If they are correcting a record — „he is no longer an investor" — call ' +
+  'correct_contact_fact for that person instead, which retracts the wrong fact AND stops them ' +
+  'being returned for it again.';
 
 /** `expr LIKE $n OR expr LIKE $n+1 ...` for `count` terms starting at `startIdx`. */
 function likeOrClause(expr: string, count: number, startIdx: number): string {
@@ -408,6 +449,10 @@ function wordsHit(hit: InsightHit, words: string[]): number {
  */
 export async function searchByInsight(userId: string, searchQuery: string): Promise<object> {
   try {
+    // A negated query is answered honestly, never with its own opposite.
+    if (isNegatedQuery(searchQuery)) {
+      return { found: false, query: searchQuery, note: NEGATED_QUERY_NOTE, negated: true };
+    }
     const words = queryWords(searchQuery);
     if (words.length === 0) return { found: false, query: searchQuery };
     const likes = words.map((w) => `%${w}%`);
@@ -416,7 +461,12 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       Promise.allSettled([searchOwnFacts(userId, likes)]).then((r) => r[0]),
       Promise.allSettled([searchPublicFacts(userId, likes)]).then((r) => r[0]),
       Promise.allSettled([searchInsights(userId, likes)]).then((r) => r[0]),
-      getExcludedPhoneSet(userId),
+      // Blocked/deceased, plus everyone this user has said is NOT this
+      // (ticket 9 task 14): a correction the founder made in July must stop
+      // the July claim being offered back to him in September.
+      Promise.all([getExcludedPhoneSet(userId), vetoedPhonesFor(userId, words)]).then(
+        ([blocked, vetoed]) => new Set([...blocked, ...vetoed]),
+      ),
     ]);
 
     const factRows = [

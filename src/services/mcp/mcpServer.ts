@@ -48,6 +48,7 @@ import {
   mcpRecordSearchOutcome,
   mcpRecordDebriefOutcome,
   mcpAnswerGoalQuestion,
+  mcpCorrectContactFact,
   mcpSaveCloseContact,
   mcpSaveContactRelationship,
   mcpForgetContactRelationship,
@@ -503,6 +504,25 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+  );
+  server.registerTool(
+    'correct_contact_fact',
+    {
+      title: TOOL_TEXTS.correct_contact_fact.title,
+      description: TOOL_TEXTS.correct_contact_fact.description,
+      inputSchema: {
+        contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+        wrong_value: z
+          .string()
+          .describe('The claim that is wrong, in its own words: „angel investor", „TBC Bank".'),
+        field_type: z
+          .string()
+          .optional()
+          .describe('Optional: the field it was stored in (occupation, role, employer…).'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'correct_contact_fact', () => mcpCorrectContactFact(userId, args)),
   );
   server.registerTool(
     'save_close_contact',

@@ -456,6 +456,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       '(for searches only this not_yet path goes through here; real search outcomes use ' +
       'record_search_outcome). Never call it on a guess — only on what the user just said.',
   },
+  correct_contact_fact: {
+    title: 'Correct something wrong about a contact',
+    description:
+      'The user says something recorded about a contact is WRONG or out of date — „he is no ' +
+      'longer an investor", „she does not work there any more". Call this, NOT save_contact_fact ' +
+      'with a note: a note is a weaker record than the fact it corrects, so the wrong fact keeps ' +
+      "winning. This retracts the user's own wrong rows AND stops that person being returned to " +
+      'this user for that claim again. Pass wrong_value in the words the claim is stored or ' +
+      'searched in („angel investor"), not the whole sentence. Nobody else\'s record changes.',
+  },
   save_close_contact: {
     title: 'Record someone the user is close to',
     description:

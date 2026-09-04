@@ -115,6 +115,7 @@ import {
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
 import { recordWarmth } from './warmth.service';
+import { correctContactFact } from './factCorrections.service';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
@@ -940,6 +941,35 @@ const REMOVE_EXCLUSION_TOOL: AnthropicTool = {
       excluded_for: { type: 'string', description: 'The scope to lift; omit for all.' },
     },
     required: ['phone'],
+  },
+};
+
+const CORRECT_CONTACT_FACT_TOOL: AnthropicTool = {
+  name: 'correct_contact_fact',
+  description:
+    'The user says something recorded about a contact is WRONG or out of date — "he is no ' +
+    'longer an investor", "she does not work there any more", "that is not his company". Call ' +
+    'this, NOT save_contact_fact with a note. A note is a weaker record than the fact it ' +
+    "corrects, so the wrong fact keeps winning: this retracts the user's own wrong rows AND " +
+    'stops that person being returned to this user for that claim again. Pass wrong_value in ' +
+    'the words the claim is actually stored or searched in ("angel investor"), not the whole ' +
+    "sentence. It changes nothing for anyone else — it is this user's correction of their own " +
+    'record.' +
+    ' WHEN: the user corrects or contradicts something recorded about a contact.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+      wrong_value: {
+        type: 'string',
+        description: 'The claim that is wrong, in its own words: "angel investor", "TBC Bank".',
+      },
+      field_type: {
+        type: 'string',
+        description: 'Optional: the field it was stored in (occupation, role, employer…).',
+      },
+    },
+    required: ['phone', 'wrong_value'],
   },
 };
 
@@ -2624,6 +2654,23 @@ async function executeToolCall(
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
+    case 'correct_contact_fact': {
+      // A correction is not a note (ticket 9 task 14): it retracts the wrong
+      // row AND leaves a standing veto the search layer reads, so the claim
+      // cannot be offered back to this user tomorrow.
+      const outcome = await correctContactFact(
+        userId,
+        String(input['phone'] ?? ''),
+        String(input['wrong_value'] ?? ''),
+        typeof input['field_type'] === 'string' ? (input['field_type'] as string) : undefined,
+      );
+      return outcome.corrected
+        ? {
+            ...outcome,
+            note: "Recorded. Tell the user plainly what you corrected. This person will no longer come back to them for that claim; other people's records are untouched.",
+          }
+        : outcome;
+    }
     case 'save_close_contact': {
       // Source 2 of warmth (ticket 9 task 13.1): the user's own word for who
       // they are close to. One answer does two jobs — it records a warm tie
@@ -3477,6 +3524,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     INVITE_CONTACT_TOOL,
     GET_INVITE_LINK_TOOL,
     GET_UNRESOLVED_LABELS_TOOL,
+    CORRECT_CONTACT_FACT_TOOL,
     RETRACT_FACT_TOOL,
     FORGET_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
