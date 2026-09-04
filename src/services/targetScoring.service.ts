@@ -608,6 +608,30 @@ export interface TargetScoreParts {
   subscribed_holders: number;
 }
 
+/**
+ * The best name the crowd has for each of these phones, right now (ticket 9
+ * task 13.6).
+ *
+ * A campaign stores the label it had when it opened, and an ask sent on day 4
+ * or day 10 still reads it out: the founder was asked to invite „Kato" and
+ * „Maxin.ai Ceo" while the same numbers already resolved to „Ekaterine
+ * Bezhanishvili" and „Nika Kucia Finance". The label the ask SAYS should be
+ * the one the network knows today, not the one it knew in August.
+ *
+ * Returns only phones for which some alias actually names a person; a caller
+ * with no entry keeps whatever it had.
+ */
+export async function bestPersonLabels(phones: string[]): Promise<Map<string, string>> {
+  const analysis = await analyzeAliases(phones);
+  const labels = new Map<string, string>();
+  for (const [phone, a] of analysis) {
+    if (a.personLabel !== null && a.personLabel.trim().length > 0) {
+      labels.set(phone, a.personLabel.trim());
+    }
+  }
+  return labels;
+}
+
 export interface TargetScoreEntry {
   phone: string;
   label: string;

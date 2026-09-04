@@ -112,6 +112,7 @@ import {
   openDueCampaigns,
   sendDueCampaignAsks,
   sweepStaleParticipants,
+  closeStaleCampaigns,
   currentGlobalDial,
 } from '../../services/chorusCampaign.service';
 
@@ -1935,6 +1936,29 @@ adminRouter.post('/chorus/send-asks', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin chorus send-asks]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Ticket 9 task 13.6, run once with the founder's explicit go-ahead
+// (4 September) and kept as an ops lever afterwards.
+//   POST /admin/chorus/close-stale?days=30&dry_run=true|false
+//   body: none. dry_run defaults to TRUE — the list comes back first, and
+//   nothing is written until the caller asks for it in as many words.
+//   Undo: UPDATE invite_campaigns SET status = 'open', closed_at = NULL,
+//         closed_reason = NULL WHERE id = ANY(<the ids in the response>);
+//         the participants and their threads are never touched, only the
+//         campaign's status and the badge on the threads it had asked.
+adminRouter.post('/chorus/close-stale', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const dryRun = req.query.dry_run !== 'false';
+    const result = await closeStaleCampaigns(days, dryRun);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus close-stale]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

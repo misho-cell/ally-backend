@@ -1,7 +1,8 @@
 import { query } from '../db/postgres/client';
-import { buildTargetList, TargetScoreEntry } from './targetScoring.service';
+import { buildTargetList, bestPersonLabels, TargetScoreEntry } from './targetScoring.service';
 import { queueFollowUp } from './pendingUpdates.service';
 import { createThread, saveThreadMessage } from './threads.service';
+import { setThreadStatus } from './threadStatus.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
@@ -290,8 +291,9 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     id: number;
     inviter_user_id: number;
     target_label: string | null;
+    target_phone: string;
   }>(
-    `SELECT p.id, p.inviter_user_id, c.target_label
+    `SELECT p.id, p.inviter_user_id, c.target_label, c.target_phone
      FROM invite_campaign_participants p
      JOIN invite_campaigns c ON c.id = p.campaign_id
      WHERE p.state = 'pending' AND p.scheduled_ask_at <= NOW() AND c.status = 'open'
@@ -313,6 +315,18 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
 
+  // The campaign stored a label when it opened; the ask goes out days later
+  // and must say the name the network knows NOW (ticket 9 task 13.6). „Kato"
+  // and „Maxin.ai Ceo" are the same two numbers the list already resolves to
+  // „Ekaterine Bezhanishvili" and „Nika Kucia Finance".
+  const freshLabels = await bestPersonLabels(due.rows.map((r) => r.target_phone)).catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[chorus] label refresh failed, using stored labels:', (err as Error).message);
+      return new Map<string, string>();
+    },
+  );
+
   // One tick can hold several rows for the same person — the SQL guard cannot
   // see rows it is about to write. The sweep keeps its own list.
   const askedThisTick = new Set<number>();
@@ -320,7 +334,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
   for (const row of due.rows) {
     if (askedThisTick.has(row.inviter_user_id)) continue;
     askedThisTick.add(row.inviter_user_id);
-    const label = row.target_label?.trim() || 'ეს კონტაქტი';
+    const label = freshLabels.get(row.target_phone) ?? row.target_label?.trim() ?? 'ეს კონტაქტი';
     const thread = await createThread(
       String(row.inviter_user_id),
       'campaign_invite',
@@ -507,6 +521,102 @@ export async function sweepStaleParticipants(): Promise<{ timedOut: number; clos
   return {
     timedOut: stale.rows.length,
     closed: (closedEmpty.rowCount ?? 0) + (closedExpired.rowCount ?? 0),
+  };
+}
+
+export interface StaleCampaignRow {
+  readonly id: number;
+  readonly target_label: string | null;
+  readonly asked: number;
+}
+
+export interface CloseStaleOutcome {
+  readonly dry_run: boolean;
+  readonly open_before: number;
+  readonly still_chosen: number;
+  readonly closed: StaleCampaignRow[];
+}
+
+/**
+ * Close every open campaign whose target TODAY'S list no longer chooses
+ * (ticket 9 task 13.6, the founder's go-ahead of 4 September).
+ *
+ * The gates run on every open — the list is rebuilt from scratch each pass —
+ * but they cannot reach backwards, and a campaign opened before them keeps
+ * asking the next inviter on day 4, 7 and 10. So the rule here is exactly the
+ * live rule, applied to what is already standing: if buildTargetList would not
+ * pick this phone now, the campaign should not be running now.
+ *
+ * The campaign's own badge follows: a `campaign_invite` thread whose campaign
+ * has stopped asking must stop saying it waits for the user (the same rule as
+ * ticket 9 task 20 b). Nothing is deleted — the rows, the participants and the
+ * threads stay readable, and if the target ever returns to the list a fresh
+ * campaign opens for it.
+ */
+export async function closeStaleCampaigns(
+  sinceDays: number,
+  dryRun: boolean,
+): Promise<CloseStaleOutcome> {
+  const chosen = new Set((await buildTargetList(sinceDays)).map((t) => t.phone));
+  const open = await query<{
+    id: number;
+    target_phone: string;
+    target_label: string | null;
+    asked: string;
+  }>(
+    `SELECT c.id, c.target_phone, c.target_label,
+            COUNT(p.id) FILTER (WHERE p.state = 'asked') AS asked
+     FROM invite_campaigns c
+     LEFT JOIN invite_campaign_participants p ON p.campaign_id = c.id
+     WHERE c.status = 'open'
+     GROUP BY c.id
+     ORDER BY c.id`,
+    [],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  const stale = open.rows.filter((c) => !chosen.has(c.target_phone));
+  const closed: StaleCampaignRow[] = stale.map((c) => ({
+    id: c.id,
+    target_label: c.target_label,
+    asked: Number(c.asked),
+  }));
+  if (dryRun || stale.length === 0) {
+    return {
+      dry_run: dryRun,
+      open_before: open.rows.length,
+      still_chosen: open.rows.length - stale.length,
+      closed,
+    };
+  }
+
+  const ids = stale.map((c) => c.id);
+  await query(
+    `UPDATE invite_campaigns
+     SET status = 'closed_stale_target', closed_at = NOW(),
+         closed_reason = 'the target list no longer chooses this target'
+     WHERE id = ANY($1::int[]) AND status = 'open'`,
+    [ids],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  // Their asks stop waiting for an answer. Read the threads first so each
+  // owner is told on their own devices, rather than finding out silently.
+  const threads = await query<{ thread_id: number; inviter_user_id: number }>(
+    `SELECT thread_id, inviter_user_id FROM invite_campaign_participants
+     WHERE campaign_id = ANY($1::int[]) AND thread_id IS NOT NULL AND state = 'asked'`,
+    [ids],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  for (const row of threads.rows) {
+    await setThreadStatus(String(row.inviter_user_id), row.thread_id, 'done', {
+      statusLine: null,
+      isTask: true,
+    });
+  }
+  return {
+    dry_run: false,
+    open_before: open.rows.length,
+    still_chosen: open.rows.length - stale.length,
+    closed,
   };
 }
 

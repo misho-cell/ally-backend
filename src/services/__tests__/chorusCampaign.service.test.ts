@@ -1,5 +1,11 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
-jest.mock('../targetScoring.service', () => ({ __esModule: true, buildTargetList: jest.fn() }));
+jest.mock('../targetScoring.service', () => ({
+  __esModule: true,
+  buildTargetList: jest.fn(),
+  // The ask says the name the network knows today (ticket 9 task 13.6); an
+  // empty map means "nothing fresher than the stored label".
+  bestPersonLabels: jest.fn().mockResolvedValue(new Map<string, string>()),
+}));
 jest.mock('../threads.service', () => ({
   __esModule: true,
   createThread: jest.fn().mockResolvedValue({
@@ -13,6 +19,7 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
+jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
@@ -23,13 +30,15 @@ jest.mock('../pendingUpdates.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { buildTargetList } from '../targetScoring.service';
+import { buildTargetList, bestPersonLabels } from '../targetScoring.service';
+import { setThreadStatus } from '../threadStatus.service';
 import { queueFollowUp } from '../pendingUpdates.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import {
   currentGlobalDial,
   openDueCampaigns,
   sendDueCampaignAsks,
+  closeStaleCampaigns,
   recordCampaignResponse,
   sweepStaleParticipants,
   attributeCampaignJoin,
@@ -468,5 +477,157 @@ describe('one invite ask per person per week (ticket 9 task 13.2)', () => {
 
     expect(sent).toEqual([501]);
     expect(count).toBe(1);
+  });
+});
+
+describe('the ask says the name the network knows today (ticket 9 task 13.6)', () => {
+  it('prefers the fresh label over the one the campaign stored in August', async () => {
+    const sent: string[] = [];
+    (bestPersonLabels as jest.Mock).mockResolvedValue(
+      new Map([['+995599111111', 'Ekaterine Bezhanishvili']]),
+    );
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaign_participants p'))
+        return Promise.resolve(
+          rows([
+            {
+              id: 5,
+              inviter_user_id: 501,
+              target_label: 'Kato',
+              target_phone: '+995599111111',
+            },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    (saveThreadMessage as jest.Mock).mockImplementation(
+      (_t: number, _u: number, _r: string, text: string) => {
+        sent.push(text);
+        return Promise.resolve(undefined);
+      },
+    );
+
+    await sendDueCampaignAsks(10);
+
+    expect(sent[0]).toContain('Ekaterine Bezhanishvili');
+    expect(sent[0]).not.toContain('Kato');
+  });
+
+  it('keeps the stored label when the crowd names nobody better', async () => {
+    const sent: string[] = [];
+    (bestPersonLabels as jest.Mock).mockResolvedValue(new Map());
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaign_participants p'))
+        return Promise.resolve(
+          rows([
+            { id: 6, inviter_user_id: 502, target_label: 'ნინო', target_phone: '+995599222222' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    (saveThreadMessage as jest.Mock).mockImplementation(
+      (_t: number, _u: number, _r: string, text: string) => {
+        sent.push(text);
+        return Promise.resolve(undefined);
+      },
+    );
+
+    await sendDueCampaignAsks(10);
+
+    expect(sent[0]).toContain('ნინო');
+  });
+
+  it('sends on the stored label rather than not at all when the refresh breaks', async () => {
+    (bestPersonLabels as jest.Mock).mockRejectedValue(new Error('timeout'));
+    const sent: string[] = [];
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaign_participants p'))
+        return Promise.resolve(
+          rows([
+            { id: 7, inviter_user_id: 503, target_label: 'გიორგი', target_phone: '+995599333333' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    (saveThreadMessage as jest.Mock).mockImplementation(
+      (_t: number, _u: number, _r: string, text: string) => {
+        sent.push(text);
+        return Promise.resolve(undefined);
+      },
+    );
+
+    expect(await sendDueCampaignAsks(10)).toBe(1);
+    expect(sent[0]).toContain('გიორგი');
+  });
+});
+
+describe('closeStaleCampaigns — the filter reaches backwards once (ticket 9 task 13.6)', () => {
+  const OPEN = [
+    { id: 299, target_phone: '+995599000001', target_label: 'ახალგაზრდული ასოციაცია', asked: '1' },
+    { id: 332, target_phone: '+995599000002', target_label: 'Nika Khazaradze', asked: '0' },
+  ];
+
+  function routeClose(): void {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaigns c') && sql.includes("c.status = 'open'"))
+        return Promise.resolve(rows(OPEN) as never);
+      if (sql.includes('SELECT thread_id, inviter_user_id'))
+        return Promise.resolve(rows([{ thread_id: 11762, inviter_user_id: 501 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+    (buildTargetList as jest.Mock).mockResolvedValue([
+      { phone: '+995599000002', label: 'Nika Khazaradze' },
+    ]);
+  }
+
+  it('closes exactly the campaigns today’s list would not choose', async () => {
+    routeClose();
+
+    const out = await closeStaleCampaigns(30, false);
+
+    expect(out.open_before).toBe(2);
+    expect(out.still_chosen).toBe(1);
+    expect(out.closed).toEqual([{ id: 299, target_label: 'ახალგაზრდული ასოციაცია', asked: 1 }]);
+    const update = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("status = 'closed_stale_target'"),
+    ) as [string, unknown[]];
+    expect(update[1][0]).toEqual([299]);
+  });
+
+  it('writes nothing on a dry run, but reports the same list', async () => {
+    routeClose();
+
+    const out = await closeStaleCampaigns(30, true);
+
+    expect(out.dry_run).toBe(true);
+    expect(out.closed.map((c) => c.id)).toEqual([299]);
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes("status = 'closed_stale_target'")),
+    ).toBe(false);
+  });
+
+  it('takes the badge off a thread that has stopped waiting for its user', async () => {
+    routeClose();
+
+    await closeStaleCampaigns(30, false);
+
+    expect(setThreadStatus).toHaveBeenCalledWith('501', 11762, 'done', {
+      statusLine: null,
+      isTask: true,
+    });
+  });
+
+  it('leaves everything alone when every open campaign is still chosen', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaigns c') && sql.includes("c.status = 'open'"))
+        return Promise.resolve(rows([OPEN[1]]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+    (buildTargetList as jest.Mock).mockResolvedValue([{ phone: '+995599000002' }]);
+
+    const out = await closeStaleCampaigns(30, false);
+
+    expect(out.closed).toEqual([]);
+    expect(setThreadStatus).not.toHaveBeenCalled();
   });
 });
