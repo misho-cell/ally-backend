@@ -460,10 +460,14 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     title: 'Ask a contact on a task',
     description:
       "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
-      'get it as a message in their own app and their first reply comes back to the task. Only ' +
+      'get it as a message in their own app and their reply comes back to the task. Only ' +
       "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +
-      'an account_state of "ally_account" cannot receive it), and ' +
-      'only once per person per task. Pass the task_ref (get_my_tasks) and the contact_ref ' +
+      'an account_state of "ally_account" cannot receive it). You may write to the same person ' +
+      'again on the same task: a relayed conversation continues until it is done, later messages ' +
+      'land in the same thread on their phone, and a few a day per person is the budget. Every ' +
+      'single message needs its own go-ahead on the exact wording — more rounds mean more ' +
+      'approvals, never fewer, and never promise to pass something on before you have sent it. ' +
+      'Pass the task_ref (get_my_tasks) and the contact_ref ' +
       '(search result). Expect the answer hours or days later — tell the user you will follow up.',
   },
   set_task_brief: {

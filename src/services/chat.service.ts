@@ -581,8 +581,14 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
   description:
     "Send a question to one of the user's MEMBER contacts on an open task's behalf (pass the " +
     'phone id from a search result). The recipient gets it as a thread + push and answers in ' +
-    'plain text; the answer wakes this task automatically. One task never asks the same person ' +
-    "twice. If the task's autonomy is ask_first, confirm with the user in this thread BEFORE " +
+    'plain text; the answer wakes this task automatically. You MAY write to the same person ' +
+    'again on the same task — a relayed conversation continues until it is finished (their ' +
+    'answer raises a question, they ask one back, a time has to be agreed). Later messages land ' +
+    'in the same thread on their phone; a few a day per person is the budget, and the tool says ' +
+    "so plainly when it is spent. EVERY message needs the user's explicit go-ahead on the exact " +
+    'wording, the second and the fifth exactly like the first — more rounds mean more approvals, ' +
+    'never fewer. Never promise to pass something on before you have actually sent it. ' +
+    "If the task's autonomy is ask_first, confirm with the user in this thread BEFORE " +
     'calling, showing the recipient AND the exact wording you will send. Never put phone numbers ' +
     'inside the question text. WORDING: the first words of the ask are the question itself, ' +
     "never a greeting — that opening line becomes the title of the thread on the recipient's " +

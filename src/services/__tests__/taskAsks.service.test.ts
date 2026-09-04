@@ -19,7 +19,10 @@ jest.mock('../askOptOut.service', () => ({
 jest.mock('../askBudget.service', () => ({
   __esModule: true,
   checkAskBudget: jest.fn().mockResolvedValue({ allowed: true }),
+  checkFollowUpBudget: jest.fn().mockResolvedValue({ allowed: true }),
+  RELAY_MESSAGES_PER_PERSON_PER_DAY: 4,
 }));
+jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus: jest.fn() }));
 // sendApprovedAskAnswer reaches taskEngine via a dynamic import (static would
 // be a load-order cycle) — the mock intercepts that import all the same.
 jest.mock('../taskEngine.service', () => ({
@@ -40,7 +43,8 @@ import { query } from '../../db/postgres/client';
 import { armAskDebrief } from '../debrief.service';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
-import { checkAskBudget } from '../askBudget.service';
+import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
+import { setThreadStatus } from '../threadStatus.service';
 import { createThread, saveThreadMessage } from '../threads.service';
 import { wakeTask } from '../taskEngine.service';
 import {
@@ -58,6 +62,8 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockOptedOut = isOptedOutFromAsks as jest.MockedFunction<typeof isOptedOutFromAsks>;
 const mockCheckBudget = checkAskBudget as jest.MockedFunction<typeof checkAskBudget>;
+const mockFollowUpBudget = checkFollowUpBudget as jest.MockedFunction<typeof checkFollowUpBudget>;
+const mockSetThreadStatus = setThreadStatus as jest.MockedFunction<typeof setThreadStatus>;
 const mockCreateThread = createThread as jest.MockedFunction<typeof createThread>;
 const mockSaveMessage = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 
@@ -69,6 +75,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockOptedOut.mockResolvedValue(false);
   mockCheckBudget.mockResolvedValue({ allowed: true });
+  mockFollowUpBudget.mockResolvedValue({ allowed: true });
   // Default: an open task owned by the caller WITH the blanket permission —
   // the P0 gate lets these through; individual tests flip the fields.
   mockGetTask.mockResolvedValue({
@@ -81,7 +88,8 @@ beforeEach(() => {
 
 function routeAskQueries(opts: {
   member?: { userId: number; name: string; subscriptionStatus?: string } | null;
-  dup?: boolean;
+  /** A live ask already runs between this goal and this person — a follow-up. */
+  liveThread?: number;
   sentToday?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
@@ -93,8 +101,10 @@ function routeAskQueries(opts: {
             : [],
         ) as never,
       );
-    if (sql.includes('SELECT id FROM task_asks'))
-      return Promise.resolve(rows(opts.dup ? [{ id: 1 }] : []) as never);
+    if (sql.includes('SELECT ask_thread_id FROM task_asks'))
+      return Promise.resolve(
+        rows(opts.liveThread ? [{ ask_thread_id: opts.liveThread }] : []) as never,
+      );
     if (sql.includes('COUNT(*)'))
       return Promise.resolve(rows([{ count: String(opts.sentToday ?? 0) }]) as never);
     if (sql.includes('SELECT name FROM "User"'))
@@ -156,7 +166,7 @@ describe('createAsk', () => {
     // Item 27: declined properly, never the hyphenated „მიშო-ის".
     expect(opening).toContain('მიშოს ასისტენტი გეკითხება');
     // D49: reaching 'sent' arms the ASKER's 3-day debrief for this ask.
-    expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია');
+    expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია', false);
   });
 
   it('writes down the conversation the ask was sent FROM (ticket 9 task 20 d)', async () => {
@@ -202,13 +212,60 @@ describe('createAsk', () => {
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
-  it('never asks the same person twice on one task', async () => {
-    routeAskQueries({ member: { userId: 7, name: 'გია' }, dup: true });
+  it('a second message to the same person continues the SAME thread (ticket 9 task 12)', async () => {
+    // Lika asked Tornike when he was free, he answered, and „12:00" had
+    // nowhere to go. It goes into the conversation it belongs to.
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
 
-    const out = await createAsk('42', 3, '+995599111222', 'q');
+    const out = await createAsk('42', 3, '+995599111222', '12:00');
+
+    expect(out.sent).toBe(true);
+    // No new thread in the recipient's list — the message lands in the old one.
+    expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(mockSaveMessage.mock.calls[0][0]).toBe(9413);
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[1][4]).toBe(9413); // ask_thread_id — the live thread
+    expect(insert[1][7]).toBe(true); // is_follow_up
+  });
+
+  it('a follow-up puts the badge back on the recipient — a new round is waiting', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
+
+    await createAsk('42', 3, '+995599111222', '12:00');
+
+    expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 9413, 'needs_you', {
+      statusLine: 'პასუხს ელოდება',
+      isTask: true,
+    });
+  });
+
+  it('a follow-up spends the per-person day budget, never the monthly growth one', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
+
+    await createAsk('42', 3, '+995599111222', '12:00');
+
+    // A reply to a reply is not outreach: the growth budget is not consulted.
+    expect(mockFollowUpBudget).toHaveBeenCalledWith('42', 7, 3);
+    expect(mockCheckBudget).not.toHaveBeenCalled();
+  });
+
+  it('stops the day’s last message to one person, and says so without blaming them', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
+    mockFollowUpBudget.mockResolvedValue({
+      allowed: false,
+      reason: 'person_daily_relay_limit_reached',
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'კიდევ ერთი');
 
     expect(out.sent).toBe(false);
-    expect((out as { error: string }).error).toContain('უკვე');
+    expect((out as { reason?: string }).reason).toBe('person_daily_relay_limit_reached');
+    expect((out as { error: string }).error).toContain('ხვალ');
+    // Nothing reached their phone, and the refusal never says they refused.
+    expect(mockSaveMessage).not.toHaveBeenCalled();
+    expect((out as { error: string }).error).not.toContain('უარი');
   });
 
   it('enforces the daily anti-runaway ceiling', async () => {
@@ -449,13 +506,11 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
       if (sql.includes('UPDATE task_asks') && sql.includes('SET answer'))
         return Promise.resolve(
           rows(
-            opts.captured === false ? [] : [{ id: 77, task_id: 3, status: 'answered' }],
+            opts.captured === false ? [] : [{ id: 77, task_id: 3, answer: 'დამტკიცებული ტექსტი' }],
           ) as never,
         );
-      if (sql.includes('SELECT ta.answer'))
-        return Promise.resolve(
-          rows([{ answer: 'დამტკიცებული ტექსტი', from_name: 'გია' }]) as never,
-        );
+      if (sql.includes('SELECT u.name AS from_name'))
+        return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
       return Promise.resolve(rows([]) as never);
     });
   }
@@ -520,10 +575,10 @@ describe('recordAskAnswer', () => {
   it('captures the FIRST reply and reports which task to wake', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('UPDATE task_asks'))
-        return Promise.resolve(rows([{ id: 77, task_id: 3, status: 'answered' }]) as never);
-      return Promise.resolve(
-        rows([{ answer: 'ბიძაშვილი აკეთებს BMW-ებს', from_name: 'გია' }]) as never,
-      );
+        return Promise.resolve(
+          rows([{ id: 77, task_id: 3, answer: 'ბიძაშვილი აკეთებს BMW-ებს' }]) as never,
+        );
+      return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
     });
 
     const out = await recordAskAnswer(55, 'ბიძაშვილი აკეთებს BMW-ებს');
@@ -537,6 +592,37 @@ describe('recordAskAnswer', () => {
       answer: 'ბიძაშვილი აკეთებს BMW-ებს',
       fromName: 'გია',
     });
+  });
+
+  it('answers the LATEST round, not the first — one thread now carries several', async () => {
+    // Ticket 9 task 12: „12:00" is round two's answer. Without the ordering,
+    // one UPDATE would have written it onto every round on the thread at once.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('UPDATE task_asks'))
+        return Promise.resolve(rows([{ id: 78, task_id: 3, answer: '12:00' }]) as never);
+      return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
+    });
+
+    const out = await recordAskAnswer(55, '12:00');
+
+    expect(out?.askId).toBe(78);
+    expect(out?.firstAnswer).toBe(true);
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('ORDER BY id DESC LIMIT 1');
+  });
+
+  it('a second message inside one round appends and does not re-wake the asker', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('UPDATE task_asks'))
+        return Promise.resolve(
+          rows([{ id: 78, task_id: 3, answer: 'დიახ\nდა კიდევ ერთი რამ' }]) as never,
+        );
+      return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
+    });
+
+    const out = await recordAskAnswer(55, 'და კიდევ ერთი რამ');
+
+    expect(out?.firstAnswer).toBe(false);
   });
 
   it('returns null when the thread carries no live ask', async () => {

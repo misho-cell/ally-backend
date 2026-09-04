@@ -1,7 +1,11 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { checkAskBudget } from '../askBudget.service';
+import {
+  checkAskBudget,
+  checkFollowUpBudget,
+  RELAY_MESSAGES_PER_PERSON_PER_DAY,
+} from '../askBudget.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -80,5 +84,64 @@ describe('checkAskBudget', () => {
     const out = await checkAskBudget('42', undefined);
 
     expect(out).toEqual({ allowed: true });
+  });
+});
+
+describe('checkFollowUpBudget — a relayed conversation may continue (ticket 9 task 12)', () => {
+  it('allows the next message while the day still has room', async () => {
+    mockQuery.mockResolvedValue(rows([{ count: '1' }]) as never);
+
+    expect(await checkFollowUpBudget('42', 7, 3)).toEqual({ allowed: true });
+  });
+
+  it('counts this sender, this person and this goal — nobody else’s day', async () => {
+    mockQuery.mockResolvedValue(rows([{ count: '0' }]) as never);
+
+    await checkFollowUpBudget('42', 7, 3);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('from_user_id = $1::int');
+    expect(sql).toContain('to_user_id = $2');
+    expect(sql).toContain('task_id = $3');
+    expect(sql).toContain("INTERVAL '24 hours'");
+    expect(params).toEqual(['42', 7, 3]);
+  });
+
+  it('stops at the day’s cap, and the reason says which cap it was', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ count: String(RELAY_MESSAGES_PER_PERSON_PER_DAY) }]) as never,
+    );
+
+    expect(await checkFollowUpBudget('42', 7, 3)).toEqual({
+      allowed: false,
+      reason: 'person_daily_relay_limit_reached',
+    });
+  });
+
+  it('never reads the monthly growth budget — a follow-up is not outreach', async () => {
+    mockQuery.mockResolvedValue(rows([{ count: '0' }]) as never);
+
+    await checkFollowUpBudget('42', 7, 3);
+
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes("date_trunc('month'"))).toBe(
+      false,
+    );
+  });
+});
+
+describe('the growth budget counts outreach only (ticket 9 task 12)', () => {
+  it('excludes follow-ups from the month and from the per-conversation floor', async () => {
+    routeBudgetQueries({});
+
+    await checkAskBudget('42', 555);
+
+    const conversation = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('JOIN tasks t'),
+    ) as [string, unknown[]];
+    const month = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("date_trunc('month'"),
+    ) as [string, unknown[]];
+    expect(conversation[0]).toContain('is_follow_up = FALSE');
+    expect(month[0]).toContain('is_follow_up = FALSE');
   });
 });

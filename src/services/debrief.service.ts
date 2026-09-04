@@ -74,8 +74,23 @@ export async function armAskDebrief(
   askId: number,
   taskId: number,
   toName: string,
+  isFollowUp = false,
 ): Promise<void> {
   if (!(await armOnce('task_ask', askId, askerUserId))) return;
+  // One conversation, one chase. Since a goal may write to the same person
+  // several times (ticket 9 task 12), four unanswered rounds in a day would
+  // otherwise queue four identical „no answer for three days" items about one
+  // exchange. The newest message is the one worth asking about, so its arm
+  // supersedes the round before it.
+  if (isFollowUp) {
+    await query(
+      `DELETE FROM pending_updates
+       WHERE user_id = $1::int AND task_id = $2 AND kind = $3 AND status = 'held'
+         AND payload->>'about' = 'relayed_ask'`,
+      [askerUserId, taskId, DEBRIEF_KIND],
+      DEBRIEF_QUERY_TIMEOUT_MS,
+    );
+  }
   await queueFollowUp(
     askerUserId,
     taskId,

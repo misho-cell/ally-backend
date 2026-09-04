@@ -71,6 +71,36 @@ describe('arming — D49: 3 days, once per introduction', () => {
     );
   });
 
+  it('a follow-up supersedes the previous chase — one conversation, one item (ticket 9 task 12)', async () => {
+    mockQuery.mockResolvedValue(rows([{ ref_id: 13 }]) as never);
+
+    await armAskDebrief('42', 13, 3, 'გია', true);
+
+    const drop = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('DELETE FROM pending_updates'),
+    ) as [string, unknown[]];
+    expect(drop[0]).toContain("payload->>'about' = 'relayed_ask'");
+    expect(drop[1]).toEqual(['42', 3, 'debrief']);
+    // The new round still gets its own chase.
+    expect(mockQueueFollowUp).toHaveBeenCalledWith(
+      '42',
+      3,
+      'debrief',
+      expect.objectContaining({ ask_id: 13 }),
+      3,
+    );
+  });
+
+  it('a FIRST ask deletes nothing — there is no earlier round to supersede', async () => {
+    mockQuery.mockResolvedValue(rows([{ ref_id: 12 }]) as never);
+
+    await armAskDebrief('42', 12, 3, 'გია');
+
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes('DELETE FROM pending_updates')),
+    ).toBe(false);
+  });
+
   it("an accepted search arms a debrief naming the search's own topic", async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('INSERT INTO debrief_arms'))

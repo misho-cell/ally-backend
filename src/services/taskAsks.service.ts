@@ -8,7 +8,13 @@ import { geoName } from './georgianCase';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
-import { checkAskBudget } from './askBudget.service';
+import {
+  checkAskBudget,
+  checkFollowUpBudget,
+  GrowthAskRefusalReason,
+  RELAY_MESSAGES_PER_PERSON_PER_DAY,
+} from './askBudget.service';
+import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
@@ -59,20 +65,92 @@ export type AskRefusalReason =
   | 'recipient_opted_out'
   | 'recipient_not_subscribed'
   | 'self_send'
-  | 'already_asked_on_this_task'
   | 'daily_cap_reached'
   | 'conversation_ask_limit_reached'
-  | 'monthly_ask_budget_reached';
+  | 'monthly_ask_budget_reached'
+  | 'person_daily_relay_limit_reached';
 
 export type CreateAskOutcome =
   | { sent: true; ask_id: number; to_name: string }
   | { sent: false; error: string; reason?: AskRefusalReason };
 
 /**
+ * What the assistant is told when a budget refuses a send. One table, keyed by
+ * the budget's own machine-readable reason, so a refusal can never be reported
+ * as something it is not — every invented cause ("test mode", "they opted
+ * out") began life as a paraphrased error string.
+ */
+const RELAY_REFUSALS: Readonly<
+  Record<GrowthAskRefusalReason, { reason: AskRefusalReason; error: (toName: string) => string }>
+> = {
+  conversation_limit_reached: {
+    reason: 'conversation_ask_limit_reached',
+    error: () =>
+      'ამ საუბარში უკვე გაიგზავნა ერთი კითხვა სხვა ადამიანთან — ეს ლიმიტია ' +
+      'თითო საუბარზე. მომხმარებელს უთხარი, რომ მეორე ადამიანთან მისაწერად ახალი ' +
+      'საუბარი უნდა დაიწყოს.',
+  },
+  monthly_budget_reached: {
+    reason: 'monthly_ask_budget_reached',
+    error: () =>
+      'ამ თვის კითხვების ლიმიტი ამოწურულია — მომდევნო თვეს განახლდება. ' +
+      'მომხმარებელს მშვიდად უთხარი, ბოდიში ან „ტექნიკური შეცდომა" არ ახსენო.',
+  },
+  // Not a fault and not a technical problem: the conversation is alive, this
+  // person has simply had their day's worth of it. Say when it reopens.
+  person_daily_relay_limit_reached: {
+    reason: 'person_daily_relay_limit_reached',
+    error: (toName: string) =>
+      `${toName}-სთან ამ მიზანზე დღეს უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} შეტყობინება ` +
+      'გაიგზავნა — ეს დღიური ზღვარია ერთ ადამიანზე, რომ საუბარი დატვირთვად არ იქცეს. ' +
+      'ხვალ ისევ შესაძლებელი იქნება. მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც ' +
+      '„ტექნიკური შეფერხება", და არ თქვა, თითქოს ამ ადამიანმა რამე უარყო.',
+  },
+};
+
+/**
+ * The recipient's thread for a NEW conversation: born a task-shaped item
+ * awaiting their reply, announced to their devices. A follow-up never comes
+ * here — it writes into the thread this one opened.
+ */
+async function openAskThread(
+  toUserId: number,
+  senderName: string,
+  safeQuestion: string,
+): Promise<number> {
+  const thread = await createThread(
+    String(toUserId),
+    'incoming_ask',
+    `${senderName}: ${titleSnippetFrom(safeQuestion)}`,
+    undefined,
+    {
+      isTask: true,
+      status: 'needs_you',
+      statusLine: 'პასუხს ელოდება',
+    },
+  );
+  emitThreadCreated(String(toUserId), {
+    id: thread.id,
+    type: thread.type,
+    title: thread.title,
+    is_task: thread.is_task,
+    status: thread.status,
+    status_line: thread.status_line,
+  });
+  return thread.id;
+}
+
+/**
  * Send a question to ANOTHER member on the task's behalf: creates the ask row,
  * a thread on the recipient's side (type incoming_ask) with the question as
  * the opening assistant message, and a push. The recipient answers with plain
- * text; the capture in threads.routes lands it back here and wakes the task.
+ * text; their assistant relays the approved wording back through
+ * sendApprovedAskAnswer, which wakes this task.
+ *
+ * A goal may write to the same person more than once (ticket 9 task 12): the
+ * second and later messages continue the same recipient thread, count against
+ * a per-person daily budget instead of the monthly growth one, and each still
+ * requires its sender's explicit approval of the exact text.
  */
 export async function createAsk(
   fromUserId: string,
@@ -112,30 +190,6 @@ export async function createAsk(
           'ნუ ჰკითხავ: გამოიძახე grant_task_permission ახლავე და გაიმეორე ask_contact. თუ ' +
           'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
           'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
-      };
-    }
-
-    // T10: growth-ask budget — same choke point, same relay exemption as the
-    // permission gate above. The assistant physically cannot exceed the
-    // budget; enforcement is server-side, not prompt-side.
-    const budget = await checkAskBudget(fromUserId, threadId);
-    if (!budget.allowed) {
-      if (budget.reason === 'conversation_limit_reached') {
-        return {
-          sent: false,
-          reason: 'conversation_ask_limit_reached',
-          error:
-            'ამ საუბარში უკვე გაიგზავნა ერთი კითხვა სხვა ადამიანთან — ეს ლიმიტია ' +
-            'თითო საუბარზე. მომხმარებელს უთხარი, რომ მეორე ადამიანთან მისაწერად ახალი ' +
-            'საუბარი უნდა დაიწყოს.',
-        };
-      }
-      return {
-        sent: false,
-        reason: 'monthly_ask_budget_reached',
-        error:
-          'ამ თვის კითხვების ლიმიტი ამოწურულია — მომდევნო თვეს განახლდება. ' +
-          'მომხმარებელს მშვიდად უთხარი, ბოდიში ან „ტექნიკური შეცდომა" არ ახსენო.',
       };
     }
   }
@@ -205,22 +259,32 @@ export async function createAsk(
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
   }
 
-  // One task never asks the same person twice.
-  const dup = await query<{ id: number }>(
-    `SELECT id FROM task_asks
+  // Is this goal already in a live conversation with this person? If it is,
+  // the message continues it (ticket 9 task 12) — same thread on their phone,
+  // a different budget, and no new thread row in their list. The old rule
+  // ("one task never asks the same person twice") is what stopped Lika from
+  // sending Tornike the hour they had just agreed on.
+  const live = await query<{ ask_thread_id: number | null }>(
+    `SELECT ask_thread_id FROM task_asks
      WHERE task_id = $1 AND to_user_id = $2 AND status IN ('sent', 'answered')
-     LIMIT 1`,
+     ORDER BY id DESC LIMIT 1`,
     [taskId, toUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
-  if (dup.rows.length > 0) {
-    return {
-      sent: false,
-      reason: 'already_asked_on_this_task',
-      error:
-        'ამ ადამიანს ამ მიზანზე უკვე მიწერილი აქვს კითხვა — წესი მიზანზეა, არა ' +
-        'ადამიანზე: ახალი, სხვა თემის კითხვისთვის ახალი მიზანი გახსენი და გაიგზავნება.',
-    };
+  const liveThreadId = live.rows[0]?.ask_thread_id ?? null;
+  const isFollowUp = liveThreadId !== null;
+
+  // Budgets: server-side, same relay exemption as the permission gate above.
+  // Outreach spends the monthly growth budget; a follow-up spends the
+  // recipient's patience instead, capped per person per goal per day.
+  if (parentAskId === undefined) {
+    const budget = isFollowUp
+      ? await checkFollowUpBudget(fromUserId, toUserId, taskId)
+      : await checkAskBudget(fromUserId, threadId);
+    if (!budget.allowed) {
+      const refusal = RELAY_REFUSALS[budget.reason ?? 'monthly_budget_reached'];
+      return { sent: false, reason: refusal.reason, error: refusal.error(toName) };
+    }
   }
 
   const sentToday = await query<{ count: string }>(
@@ -246,27 +310,28 @@ export async function createAsk(
   // the recipient's phone (ticket 3 §6.3).
   const senderName = fromName.rows[0]?.name?.trim() || 'Netai-ს მომხმარებელი';
 
-  // Recipient-side thread: born a task-shaped item awaiting THEIR reply. The
-  // question crosses accounts — scrub it.
+  // The question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
-  const titleSnippet = titleSnippetFrom(safeQuestion);
-  const thread = await createThread(
-    String(toUserId),
-    'incoming_ask',
-    `${senderName}: ${titleSnippet}`,
-    undefined,
-    {
-      isTask: true,
-      status: 'needs_you',
-      statusLine: 'პასუხს ელოდება',
-    },
-  );
+  // A follow-up lands in the conversation it belongs to; only a first ask
+  // opens a thread. Two threads for one exchange would put the answer and the
+  // question that followed it in different rooms (ticket 9 task 12).
+  const askThreadId = liveThreadId ?? (await openAskThread(toUserId, senderName, safeQuestion));
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3).
-  const opening =
-    `${geoName(senderName, 'gen')} ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
-    'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
-  await saveThreadMessage(thread.id, toUserId, 'assistant', opening);
+  const opening = isFollowUp
+    ? `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:\n\n"${safeQuestion}"\n\n` +
+      'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.'
+    : `${geoName(senderName, 'gen')} ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
+      'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
+  await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
+  // The badge on a continued conversation goes back to waiting-on-them: their
+  // last reply closed the previous round, and this is a new one.
+  if (isFollowUp) {
+    await setThreadStatus(String(toUserId), askThreadId, 'needs_you', {
+      statusLine: 'პასუხს ელოდება',
+      isTask: true,
+    });
+  }
 
   // origin_thread_id is the SENDER's side; ask_thread_id above is the
   // recipient's. Ask 727 rides on a goal whose title has nothing to do with
@@ -275,33 +340,35 @@ export async function createAsk(
   // (ticket 9 task 20 d).
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
-                            parent_ask_id, origin_thread_id)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7)
+                            parent_ask_id, origin_thread_id, is_follow_up)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
-    [taskId, fromUserId, toUserId, safeQuestion, thread.id, parentAskId ?? null, threadId ?? null],
+    [
+      taskId,
+      fromUserId,
+      toUserId,
+      safeQuestion,
+      askThreadId,
+      parentAskId ?? null,
+      threadId ?? null,
+      isFollowUp,
+    ],
     ASK_QUERY_TIMEOUT_MS,
   );
 
-  emitThreadCreated(String(toUserId), {
-    id: thread.id,
-    type: thread.type,
-    title: thread.title,
-    is_task: thread.is_task,
-    status: thread.status,
-    status_line: thread.status_line,
-  });
   void sendPushNotification(String(toUserId), {
     title: `Netai — ${senderName} გეკითხება`,
     body: safeQuestion.slice(0, 120),
-    url: `/chat/${thread.id}`,
+    url: `/chat/${askThreadId}`,
   }).catch(() => undefined);
 
   // D49: a relayed ask reaching 'sent' arms the asker's 3-day debrief — if
   // it is still unanswered by then, the asker hears about it honestly. An
   // answered ask is dropped at release time. Best-effort: the send stands.
-  await armAskDebrief(fromUserId, ask.rows[0].id, taskId, toName).catch((err: unknown) =>
-    // eslint-disable-next-line no-console
-    console.error('[debrief] ask arm failed:', (err as Error).message),
+  await armAskDebrief(fromUserId, ask.rows[0].id, taskId, toName, isFollowUp).catch(
+    (err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[debrief] ask arm failed:', (err as Error).message),
   );
 
   return { sent: true, ask_id: ask.rows[0].id, to_name: toName };
@@ -332,7 +399,11 @@ export async function recordAskAnswer(
   // the recipient says in this thread is conversation with their own courier
   // agent — an opt-out negotiation appended itself onto ask 829's answer and
   // the verbatim-quote rule would have relayed it into the asker's thread.
-  const updated = await query<{ id: number; task_id: number; status: string }>(
+  // The LATEST live ask on the thread, not "an" ask: since ticket 9 task 12 a
+  // thread can carry several rounds of the same conversation, and round two's
+  // answer belongs to round two's question. Without the ordering, one reply
+  // would have overwritten every round at once.
+  const updated = await query<{ id: number; task_id: number; answer: string }>(
     `UPDATE task_asks
      SET answer = CASE
            WHEN answer IS NULL THEN $2
@@ -341,26 +412,27 @@ export async function recordAskAnswer(
          END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,
          answered_at = COALESCE(answered_at, NOW())
-     WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
-     RETURNING id, task_id, status`,
+     WHERE id = (
+       SELECT id FROM task_asks
+       WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
+       ORDER BY id DESC LIMIT 1
+     )
+     RETURNING id, task_id, answer`,
     [askThreadId, safe],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
   if (!row) return null;
-  // firstAnswer = the transition happened in THIS update: answered_at was just
-  // set. Detect via a second cheap read of answer history length? Simpler: the
-  // status was 'sent' before when answered_at IS NOW — approximate by checking
-  // whether the stored answer equals exactly this message.
-  const check = await query<{ answer: string; from_name: string | null }>(
-    `SELECT ta.answer, u.name AS from_name
-     FROM task_asks ta
-     LEFT JOIN "User" u ON u.id = ta.to_user_id
-     WHERE ta.ask_thread_id = $1 LIMIT 1`,
-    [askThreadId],
+  // firstAnswer = this message IS the whole stored answer, i.e. the round had
+  // nothing before it. Read off the updated row itself.
+  const firstAnswer = row.answer === safe;
+  const check = await query<{ from_name: string | null }>(
+    `SELECT u.name AS from_name
+     FROM task_asks ta LEFT JOIN "User" u ON u.id = ta.to_user_id
+     WHERE ta.id = $1 LIMIT 1`,
+    [row.id],
     ASK_QUERY_TIMEOUT_MS,
   );
-  const firstAnswer = (check.rows[0]?.answer ?? '') === safe;
   // The scrubbed verbatim text rides back so the wake event can carry it —
   // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
   // answer; giving it the exact words in the event kills that failure mode.
