@@ -114,6 +114,7 @@ import {
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
+import { getCampaignInviteContext, buildCampaignInviteSection } from './campaignInvite.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
@@ -130,6 +131,7 @@ async function resolveRunMode(
 ): Promise<RunMode> {
   if (boundTask) return 'task_step';
   if (threadType === 'incoming_ask') return 'incoming_ask';
+  if (threadType === 'campaign_invite') return 'campaign_invite';
   if (threadType === 'incoming_request' || threadType === 'outgoing_request') {
     return 'request_thread';
   }
@@ -1829,7 +1831,7 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     (task.brief ? `\nსამუშაო გეგმა (brief):\n${task.brief}\n` : '') +
     (askLines ? `\nგაგზავნილი კითხვები:\n${askLines}\n` : '') +
     `\nძრავის წესები:\n` +
-    `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის; ერთ ადამიანს ამ დავალებაზე მხოლოდ ერთხელ. თანხმობის თხოვნისას ყოველთვის აჩვენე ადრესატი და გასაგზავნი ტექსტი სიტყვასიტყვით; ერთხელ ნათქვამი „კი" საკმარისია — მეორედ ნუ ჰკითხავ.\n` +
+    `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის. ერთსა და იმავე ადამიანს ამ მიზანზე რამდენჯერმე შეიძლება მისწერო: დაწყებული მიმოწერა გრძელდება, სანამ საქმე არ დასრულდება (დღეში რამდენიმე შეტყობინება ერთ ადამიანზე). სამაგიეროდ ყოველი ცალკე შეტყობინება ცალკე თანხმობას საჭიროებს — აჩვენე ადრესატი და გასაგზავნი ტექსტი სიტყვასიტყვით, დაელოდე „კი"-ს და მხოლოდ მერე გააგზავნე. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n` +
     `- set_task_brief — ყოველი არსებითი ნაბიჯის ბოლოს განაახლე გეგმა: რა გაკეთდა, ვის ველოდები, რა არის შემდეგი, როდის ვამთავრებ.\n` +
     `- set_task_wake — თუ პასუხებს ელოდები ან მოგვიანებით უნდა დაუბრუნდე, დანიშნე გაღვიძება საათებში (მაგ. 24).\n` +
     `- finish_task — როცა შედეგი ჩაბარებულია ან გზები პატიოსნად ამოიწურა: შეაჯამე და დახურე.\n` +
@@ -1870,6 +1872,7 @@ async function buildAgentSystemPrompt(
     modeBlocks,
     boundAsks,
     incomingAsk,
+    inviteAsk,
     nameResult,
     fieldsResult,
     profile,
@@ -1889,6 +1892,12 @@ async function buildAgentSystemPrompt(
     boundTask ? getAsksForTask(boundTask.id) : Promise.resolve([] as TaskAsk[]),
     threadType === 'incoming_ask' && threadId != null
       ? getAskByThread(threadId)
+      : Promise.resolve(null),
+    // The invite ask this thread was opened for (ticket 9 task 13.7) — who the
+    // target is, how many phonebooks hold them, and what ties them to this
+    // user, so „ვინ არის ეს?" and „რატომ მე?" have answers and „კი" has a tool.
+    threadType === 'campaign_invite' && threadId != null
+      ? getCampaignInviteContext(threadId, userId)
       : Promise.resolve(null),
     // The registered name never reached the model before — with no name key in
     // the profile KV it would sometimes invent one, or guess a gendered
@@ -1925,6 +1934,7 @@ async function buildAgentSystemPrompt(
     modeBlocks.text +
     (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
     (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+    (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
     nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
@@ -1943,6 +1953,7 @@ async function buildAgentSystemPrompt(
 const PREVIEW_THREAD_TYPE: Partial<Record<RunMode, string>> = {
   request_thread: 'incoming_request',
   incoming_ask: 'incoming_ask',
+  campaign_invite: 'campaign_invite',
 };
 
 export interface PromptPreview {
@@ -1975,6 +1986,9 @@ export async function buildPromptPreview(userId: string, mode: RunMode): Promise
   }
   if (mode === 'incoming_ask') {
     not_rendered.push('incoming-ask section (renders only on a thread with a live ask)');
+  }
+  if (mode === 'campaign_invite') {
+    not_rendered.push('invite-ask section (renders only on a thread with a live campaign ask)');
   }
   return {
     mode,

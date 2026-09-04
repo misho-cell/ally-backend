@@ -40,6 +40,9 @@ export const RUN_MODES = [
   'request_thread',
   'task_step',
   'incoming_ask',
+  // A Netai invite ask, waiting in its own thread (ticket 9 task 13.7): the
+  // ordinary chat assistant answered these blind, so „კი" reached nobody.
+  'campaign_invite',
   'onboarding',
 ] as const;
 export type RunMode = (typeof RUN_MODES)[number];

@@ -60,6 +60,13 @@ const CHORUS_TECHNIQUE: TechniqueTag = {
 
 // One campaign per target within this window (spec: "90-day cooldown").
 const COOLDOWN_DAYS = 90;
+/**
+ * And at most one invite ask per INVITER in this window (ticket 9 task 13.2,
+ * the founder's „one at a time"). Six arrived inside one minute because six
+ * campaigns each scheduled him without knowing about the others. A different
+ * number is a config change, not a deploy.
+ */
+const INVITE_ASK_COOLDOWN_DAYS = Number(process.env.INVITE_ASK_COOLDOWN_DAYS ?? 7);
 // "start 6-10" — the low/high ends of a fresh campaign's inviter count.
 const STARTING_DIAL_MIN = 6;
 const STARTING_DIAL_MAX = 10;
@@ -289,14 +296,30 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
      JOIN invite_campaigns c ON c.id = p.campaign_id
      WHERE p.state = 'pending' AND p.scheduled_ask_at <= NOW() AND c.status = 'open'
        AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = p.inviter_user_id)
+       -- At most one invite ask per person per week (ticket 9 task 13.2). On
+       -- 1 September the founder got six pushes inside one minute: six
+       -- campaigns, each scheduling him independently, none of them aware of
+       -- the others. The dial spaces asks WITHIN a campaign; nothing spaced
+       -- them ACROSS campaigns, and the person on the receiving end
+       -- experiences the sum.
+       AND NOT EXISTS (
+         SELECT 1 FROM invite_campaign_participants recent
+         WHERE recent.inviter_user_id = p.inviter_user_id
+           AND recent.asked_at > NOW() - ($2 || ' days')::INTERVAL
+       )
      ORDER BY p.scheduled_ask_at ASC
      LIMIT $1`,
-    [limit],
+    [limit, INVITE_ASK_COOLDOWN_DAYS],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
 
+  // One tick can hold several rows for the same person — the SQL guard cannot
+  // see rows it is about to write. The sweep keeps its own list.
+  const askedThisTick = new Set<number>();
   let sent = 0;
   for (const row of due.rows) {
+    if (askedThisTick.has(row.inviter_user_id)) continue;
+    askedThisTick.add(row.inviter_user_id);
     const label = row.target_label?.trim() || 'ეს კონტაქტი';
     const thread = await createThread(
       String(row.inviter_user_id),

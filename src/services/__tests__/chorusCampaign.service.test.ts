@@ -400,11 +400,13 @@ describe('the ask phrasing varies (ticket 9 task 22)', () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM invite_campaign_participants p'))
         return Promise.resolve(
+          // Four DIFFERENT inviters: one person gets one ask a week now
+          // (task 13.2), so four rows for one user would be one message.
           rows([
             { id: 0, inviter_user_id: 9, target_label: 'ნინო' },
-            { id: 1, inviter_user_id: 9, target_label: 'ნინო' },
-            { id: 2, inviter_user_id: 9, target_label: 'ნინო' },
-            { id: 3, inviter_user_id: 9, target_label: 'ნინო' },
+            { id: 1, inviter_user_id: 10, target_label: 'ნინო' },
+            { id: 2, inviter_user_id: 11, target_label: 'ნინო' },
+            { id: 3, inviter_user_id: 12, target_label: 'ნინო' },
           ]) as never,
         );
       return Promise.resolve(rows([]) as never);
@@ -427,5 +429,44 @@ describe('the ask phrasing varies (ticket 9 task 22)', () => {
       expect(text).toContain('„არა"');
       expect(text).toContain('„უთხარი"');
     }
+  });
+});
+
+describe('one invite ask per person per week (ticket 9 task 13.2)', () => {
+  it('asks the database for it — a person cannot be scheduled twice by two campaigns', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await sendDueCampaignAsks(10);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('recent.inviter_user_id = p.inviter_user_id');
+    expect(sql).toContain('recent.asked_at >');
+    expect(params[1]).toBe(7);
+  });
+
+  it('sends ONE message when one tick holds several rows for the same person', async () => {
+    // The six pushes of 1 September, in one minute: six campaigns, each
+    // scheduling the founder without knowing about the others.
+    const sent: number[] = [];
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaign_participants p'))
+        return Promise.resolve(
+          rows([
+            { id: 100, inviter_user_id: 501, target_label: 'ერთი' },
+            { id: 101, inviter_user_id: 501, target_label: 'ორი' },
+            { id: 102, inviter_user_id: 501, target_label: 'სამი' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    (saveThreadMessage as jest.Mock).mockImplementation((_t: number, u: number) => {
+      sent.push(u);
+      return Promise.resolve(undefined);
+    });
+
+    const count = await sendDueCampaignAsks(10);
+
+    expect(sent).toEqual([501]);
+    expect(count).toBe(1);
   });
 });
