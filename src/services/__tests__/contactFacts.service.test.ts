@@ -243,6 +243,36 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
     delete process.env.TRUSTED_FACT_CURATOR_USER_IDS;
   });
 
+  it("does NOT publish a SWEEP's guess, even on the curator's own account", async () => {
+    // Live on 4 September: „occupation: ქოუჩი" about a real person went
+    // network-public from one unverified source, because the sweep wrote it
+    // under the founder's id. D81 publishes what a curator RECORDS; a
+    // background job guessing from their conversation is not that.
+    process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const result = await submitContactFact('501', RAW_PHONE, 'occupation', 'ქოუჩი', 'sweep');
+
+    expect(result).toEqual({ is_public: false, canonical_value: null });
+    expect(
+      mockQuery.mock.calls.find(([sql]) => (sql as string).includes('SET is_public = true')),
+    ).toBeUndefined();
+    delete process.env.TRUSTED_FACT_CURATOR_USER_IDS;
+  });
+
+  it("a curator's swept WORK fact is moderated like anyone else's, not published", async () => {
+    process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(false);
+
+    const result = await submitContactFact('501', RAW_PHONE, 'role', 'CEO @ Somewhere', 'sweep');
+
+    expect(result.is_public).toBe(false);
+    // The verdict was asked for — the curator bypass did not skip it.
+    expect(mockCreate).toHaveBeenCalled();
+    delete process.env.TRUSTED_FACT_CURATOR_USER_IDS;
+  });
+
   it('keeps the two-source rule for everyone who is NOT a curator', async () => {
     process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
     mockQuery.mockResolvedValue(rows([]) as never);

@@ -331,7 +331,25 @@ const CURATOR_WORK_FIELDS: readonly string[] = (
   .map((f) => f.trim().toLowerCase())
   .filter((f) => f.length > 0);
 
-export function isCuratorWorkFact(userId: string, fieldType: string): boolean {
+/**
+ * A curator's own work fact — and only one they actually WROTE.
+ *
+ * The founder's ruling (D81) is that "a core fact THEY RECORD is public the
+ * moment they write it". A sweep extraction is not the curator recording
+ * anything: it is a background job reading their conversation and guessing on
+ * their behalf. On 4 September that distinction was missing and the sweep
+ * published „occupation: ქოუჩი" about a real person, network-wide, from a
+ * single unverified source, on the founder's account (ticket 9 task 18).
+ *
+ * A swept fact therefore behaves like anyone else's — a second source for a
+ * core fact, a moderation verdict for a free-form one — whoever it came from.
+ */
+export function isCuratorWorkFact(
+  userId: string,
+  fieldType: string,
+  source: FactSource = 'chat',
+): boolean {
+  if (source === 'sweep') return false;
   return isTrustedFactCurator(userId) && CURATOR_WORK_FIELDS.includes(fieldType);
 }
 
@@ -379,7 +397,7 @@ export async function submitContactFact(
     // "work fact must be shared". Anything outside that list (a note, a need)
     // still gets a verdict: his own notes carry relationships and judgments
     // about named third parties.
-    const visibility = isCuratorWorkFact(userId, targetField)
+    const visibility = isCuratorWorkFact(userId, targetField, source)
       ? 'public'
       : await moderateFactVisibility(targetField, value);
     await insertFreeFormFact(
@@ -396,11 +414,10 @@ export async function submitContactFact(
 
   await upsertFact(userId, neo4jContactId, fieldType, value, source, confidence);
 
-  // A trusted curator needs no second source (the founder's ruling, 1 Sep).
-  // Everyone else's rows are untouched: they keep confirming each other by the
-  // normal rule, and a later matching save publishes them through the path
-  // below — which now counts the curator's value among the candidates.
-  if (isTrustedFactCurator(userId)) {
+  // A trusted curator needs no second source (the founder's ruling, 1 Sep) —
+  // for what they WRITE. A sweep guess made from their conversation is not
+  // that, and must earn publication the ordinary way (task 18).
+  if (isTrustedFactCurator(userId) && source !== 'sweep') {
     await publishAsCurator(userId, neo4jContactId, fieldType, value);
     return { is_public: true, canonical_value: value };
   }
