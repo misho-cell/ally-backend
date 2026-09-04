@@ -856,3 +856,23 @@ describe('task 23: the gates read the whole crowd, not one label', () => {
     expect(out[0]?.label).toBe('Kato Boxua');
   });
 });
+
+describe('task 23: a flat, a door and a price are not people either', () => {
+  it.each([
+    ['Wina Korpusis Karebis Nomeri', 'the number of the front building door'],
+    ['Orbi Batumi bina 60 GEL', 'a flat at sixty lari'],
+  ])('%s is excluded (%s)', async (label) => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000080', label }])]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000080', reach: '50' }],
+      aliases: [
+        { phone: '+995500000080', contactId: 1, alias: label },
+        { phone: '+995500000080', contactId: 2, alias: label },
+        { phone: '+995500000080', contactId: 3, alias: label },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+});

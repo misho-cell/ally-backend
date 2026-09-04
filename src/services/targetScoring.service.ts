@@ -307,6 +307,32 @@ const RELATIONSHIP_WORDS = [
   'cousin',
 ];
 
+// Words for a dwelling, a door or a price. After the relabelling, two rows
+// said out loud what they are: „Wina Korpusis Karebis Nomeri" (the number of
+// the front building's door) and „Orbi Batumi bina 60 GEL" (a flat at sixty
+// lari). Generic words, not a brand list — every one of them is a thing rather
+// than a person, in any building in the country.
+const THING_WORDS = [
+  'ბინა',
+  'bina',
+  'კორპუს',
+  'korpus',
+  'კარები',
+  'karebi',
+  'ნომერი',
+  'nomeri',
+  'სადარბაზო',
+  'sadarbazo',
+  'ბინის',
+  'ოთახი',
+  'otaxi',
+  'flat',
+  'apartment',
+  'ლარი',
+  'gel',
+  'usd',
+];
+
 // A city is where somebody is, never who they are — and „ბათუმი ორბი 2" is a
 // building, not a person.
 const PLACE_WORDS = [
@@ -778,6 +804,7 @@ function nameTokens(label: string): string[] {
         !containsAny(token, ORGANISATION_WORDS) &&
         !containsAny(token, RELATIONSHIP_WORDS) &&
         !containsAny(token, PLACE_WORDS) &&
+        !containsAny(token, THING_WORDS) &&
         !containsAny(token, TRADE_WORDS),
     );
 }
