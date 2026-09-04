@@ -113,6 +113,7 @@ import {
   sendDueCampaignAsks,
   sweepStaleParticipants,
   closeStaleCampaigns,
+  seedTestCampaign,
   currentGlobalDial,
 } from '../../services/chorusCampaign.service';
 
@@ -1962,6 +1963,40 @@ adminRouter.post('/chorus/close-stale', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// Verification lever for ticket 9 task 13.7: open ONE invite campaign between
+// our own test accounts so the invite thread's behaviour can be proved without
+// asking a real person about a real person.
+//   POST /admin/chorus/seed-campaign
+//   body: { target_phone, inviter_user_id, label }
+//   Refused unless BOTH sides are on the REVIEW_PHONE list.
+//   Undo: POST /admin/chorus/close-stale (the target is a test number, so the
+//         list never chooses it) or close the campaign row by id.
+adminRouter.post(
+  '/chorus/seed-campaign',
+  body('target_phone').isString().trim().notEmpty(),
+  body('inviter_user_id').isInt({ min: 1 }),
+  body('label').isString().trim().isLength({ min: 1, max: 80 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'target_phone, inviter_user_id, label' });
+      return;
+    }
+    try {
+      const input = req.body as { target_phone: string; inviter_user_id: number; label: string };
+      const result = await seedTestCampaign(
+        input.target_phone,
+        Number(input.inviter_user_id),
+        input.label,
+      );
+      res.status(result.opened ? 201 : 409).json({ success: result.opened, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin chorus seed-campaign]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.post('/chorus/sweep', async (_req: Request, res: Response) => {
   try {

@@ -467,7 +467,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
 }
 
 /** Our own team and every test account, from the env list auth already owns. */
-function ownPeopleDigits(): Set<string> {
+export function ownPeopleDigits(): Set<string> {
   return new Set(
     (process.env.REVIEW_PHONE ?? '')
       .split(',')

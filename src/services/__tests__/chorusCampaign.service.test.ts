@@ -5,6 +5,16 @@ jest.mock('../targetScoring.service', () => ({
   // The ask says the name the network knows today (ticket 9 task 13.6); an
   // empty map means "nothing fresher than the stored label".
   bestPersonLabels: jest.fn().mockResolvedValue(new Map<string, string>()),
+  // The seeder's guard reads the same REVIEW_PHONE list auth owns.
+  ownPeopleDigits: jest.fn(
+    () =>
+      new Set(
+        (process.env.REVIEW_PHONE ?? '')
+          .split(',')
+          .map((p: string) => p.trim().replace(/\D/g, ''))
+          .filter(Boolean),
+      ),
+  ),
 }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
@@ -39,6 +49,7 @@ import {
   openDueCampaigns,
   sendDueCampaignAsks,
   closeStaleCampaigns,
+  seedTestCampaign,
   recordCampaignResponse,
   sweepStaleParticipants,
   attributeCampaignJoin,
@@ -629,5 +640,66 @@ describe('closeStaleCampaigns — the filter reaches backwards once (ticket 9 ta
 
     expect(out.closed).toEqual([]);
     expect(setThreadStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('seedTestCampaign — a verification lever that cannot touch a real person', () => {
+  const OLD_ENV = process.env.REVIEW_PHONE;
+  beforeEach(() => {
+    process.env.REVIEW_PHONE = '+995555000003,+995555000005';
+  });
+  afterEach(() => {
+    process.env.REVIEW_PHONE = OLD_ENV;
+  });
+
+  it('refuses a target that is not one of our own numbers', async () => {
+    const out = await seedTestCampaign('+995599111111', 170748, 'ტესტი');
+
+    expect(out.opened).toBe(false);
+    expect(out.error).toContain('target');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('refuses an inviter who is not one of our own accounts', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599222222' }]) as never);
+
+    const out = await seedTestCampaign('+995555000005', 501, 'ტესტი');
+
+    expect(out.opened).toBe(false);
+    expect(out.error).toContain('inviter');
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO invite_campaigns')),
+    ).toBe(false);
+  });
+
+  it('opens the campaign and schedules the ask for now when both sides are ours', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve(rows([{ phone: '+995555000003' }]) as never);
+      if (sql.includes('INSERT INTO invite_campaigns'))
+        return Promise.resolve(rows([{ id: 400 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await seedTestCampaign('+995555000005', 170748, 'დათო ტესტი');
+
+    expect(out).toEqual({ opened: true, campaign_id: 400 });
+    const participant = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO invite_campaign_participants'),
+    ) as [string, unknown[]];
+    expect(participant[1]).toEqual([400, 170748]);
+  });
+
+  it('does not open a second campaign for a target that already has one', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve(rows([{ phone: '+995555000003' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await seedTestCampaign('+995555000005', 170748, 'ტესტი');
+
+    expect(out.opened).toBe(false);
+    expect(out.error).toContain('already open');
   });
 });

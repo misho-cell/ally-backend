@@ -1,5 +1,10 @@
 import { query } from '../db/postgres/client';
-import { buildTargetList, bestPersonLabels, TargetScoreEntry } from './targetScoring.service';
+import {
+  buildTargetList,
+  bestPersonLabels,
+  ownPeopleDigits,
+  TargetScoreEntry,
+} from './targetScoring.service';
 import { queueFollowUp } from './pendingUpdates.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus } from './threadStatus.service';
@@ -522,6 +527,55 @@ export async function sweepStaleParticipants(): Promise<{ timedOut: number; clos
     timedOut: stale.rows.length,
     closed: (closedEmpty.rowCount ?? 0) + (closedExpired.rowCount ?? 0),
   };
+}
+
+/**
+ * Open ONE campaign by hand, for verification only (ticket 9 task 13.7).
+ *
+ * The invite thread's new behaviour cannot be proved from the outside without
+ * a live invite thread, and waiting for Chorus to choose a pair means waiting
+ * for a real person to be asked about a real person. This opens the pair
+ * itself — and refuses unless BOTH sides are our own test accounts (the
+ * REVIEW_PHONE list auth already owns), so the lever can never put a real
+ * person's name in front of a real user.
+ */
+export async function seedTestCampaign(
+  targetPhone: string,
+  inviterUserId: number,
+  label: string,
+): Promise<{ opened: boolean; campaign_id?: number; error?: string }> {
+  const ours = ownPeopleDigits();
+  if (!ours.has(phoneDigits(targetPhone))) {
+    return { opened: false, error: 'The target must be one of our own test numbers.' };
+  }
+  const inviterPhone = await query<{ phone: string }>(
+    `SELECT phone FROM "UserPhone" WHERE "userId" = $1::int LIMIT 1`,
+    [inviterUserId],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  const digits = phoneDigits(inviterPhone.rows[0]?.phone ?? '');
+  if (!digits || !ours.has(digits)) {
+    return { opened: false, error: 'The inviter must be one of our own test accounts.' };
+  }
+  const campaign = await query<{ id: number }>(
+    `INSERT INTO invite_campaigns (target_phone, target_label, city, status, ask_count_dial)
+     VALUES ($1, $2, NULL, 'open', 1)
+     ON CONFLICT (target_phone) WHERE status = 'open' DO NOTHING
+     RETURNING id`,
+    [targetPhone, label],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  const campaignId = campaign.rows[0]?.id;
+  if (campaignId === undefined) {
+    return { opened: false, error: 'A campaign for this target is already open.' };
+  }
+  await query(
+    `INSERT INTO invite_campaign_participants (campaign_id, inviter_user_id, state, scheduled_ask_at)
+     VALUES ($1, $2, 'pending', NOW())`,
+    [campaignId, inviterUserId],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  return { opened: true, campaign_id: campaignId };
 }
 
 export interface StaleCampaignRow {
