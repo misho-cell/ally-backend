@@ -366,3 +366,41 @@ describe('searchByInsight', () => {
     consoleSpy.mockRestore();
   });
 });
+
+describe("the insight store is the searcher's own (ticket 9 task 15)", () => {
+  it('scopes the insight scan to the owner, and passes the user first', async () => {
+    setup({ insights: [] });
+
+    await searchByInsight('170749', 'ძალიან კარგი სანტექნიკი');
+
+    const [sql, params] = mockQuery.mock.calls.find(([s]) =>
+      String(s).includes('FROM contact_insights'),
+    ) as [string, unknown[]];
+    // Live before this fix: account 170749 searching those words received the
+    // founder's private notes about three real people — „relationship:
+    // ბიძაშვილი", „თორნიკე პარტნიორია Grid Construction-ში". Every other
+    // reader of this table scopes on the owner; this one did not.
+    expect(sql).toContain('WHERE user_id = $1');
+    expect(params[0]).toBe('170749');
+  });
+
+  it('still returns the searcher’s own insight blob', async () => {
+    setup({
+      insights: [
+        {
+          neo4j_contact_id: '+995599111111',
+          neo4j_contact_name: 'Avto Gegenava',
+          data: { quality: 'ძალიან კარგი სანტექნიკი' },
+        },
+      ],
+    });
+
+    const out = (await searchByInsight('501', 'ძალიან კარგი სანტექნიკი')) as {
+      found: boolean;
+      results: { info: Record<string, unknown> | null }[];
+    };
+
+    expect(out.found).toBe(true);
+    expect(out.results[0].info).toEqual({ quality: 'ძალიან კარგი სანტექნიკი' });
+  });
+});

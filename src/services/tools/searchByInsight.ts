@@ -245,14 +245,34 @@ async function searchPublicFacts(userId: string, likes: string[]): Promise<FactR
   return result.rows;
 }
 
+/**
+ * The searcher's OWN insight notes about their OWN contacts.
+ *
+ * `WHERE user_id = $1` is the whole point of this function and it was missing
+ * (ticket 9 task 15). Every other reader of contact_insights scopes on the
+ * owner — insights.service reads `WHERE user_id = $1 AND neo4j_contact_id =
+ * $2`, and privacy erasure treats the table as the user's own data — but this
+ * one searched the table product-wide and returned the matching row's whole
+ * `data` blob as `info`.
+ *
+ * Proved live on 4 September, cross-account, before the fix: test account
+ * 170749 searched „ძალიან კარგი სანტექნიკი" and received the founder's private
+ * characterisations of three real people — „relationship: ბიძაშვილი",
+ * „თორნიკე პარტნიორია Grid Construction-ში", „პარტნიორი და ახლო მეგობარი",
+ * „თორნიკეს პირადი რეკომენდაცია". That is exactly the question the tester
+ * asked first: does this path print text written by a DIFFERENT person? It
+ * did — not through contact_facts, whose three states hold, but through this
+ * table, which had no owner check and no visibility concept at all.
+ */
 async function searchInsights(
+  userId: string,
   likes: string[],
 ): Promise<
   { neo4j_contact_id: string; neo4j_contact_name: string | null; data: Record<string, unknown> }[]
 > {
   const perWord = Array.from(
     { length: likes.length },
-    (_, i) => `(LOWER(neo4j_contact_name) LIKE $${i + 1} OR LOWER(data::text) LIKE $${i + 1})`,
+    (_, i) => `(LOWER(neo4j_contact_name) LIKE $${i + 2} OR LOWER(data::text) LIKE $${i + 2})`,
   ).join(' OR ');
   const result = await query<{
     neo4j_contact_id: string;
@@ -261,10 +281,11 @@ async function searchInsights(
   }>(
     `SELECT neo4j_contact_id, neo4j_contact_name, data
      FROM contact_insights
-     WHERE ${perWord}
+     WHERE user_id = $1
+       AND (${perWord})
      ORDER BY updated_at DESC
-     LIMIT $${likes.length + 1}`,
-    [...likes, RESULT_LIMIT],
+     LIMIT $${likes.length + 2}`,
+    [userId, ...likes, RESULT_LIMIT],
     SEARCH_TIMEOUT_MS,
   );
   return result.rows;
@@ -394,7 +415,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
     const [ownSettled, publicSettled, insightSettled, excluded] = await Promise.all([
       Promise.allSettled([searchOwnFacts(userId, likes)]).then((r) => r[0]),
       Promise.allSettled([searchPublicFacts(userId, likes)]).then((r) => r[0]),
-      Promise.allSettled([searchInsights(likes)]).then((r) => r[0]),
+      Promise.allSettled([searchInsights(userId, likes)]).then((r) => r[0]),
       getExcludedPhoneSet(userId),
     ]);
 
