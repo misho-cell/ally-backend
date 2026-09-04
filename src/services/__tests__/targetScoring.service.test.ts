@@ -57,6 +57,10 @@ function routeScoreQueries(opts: {
     // branches below also match on.
     if (sql.includes('SELECT u.id FROM "User" u') && sql.includes('FROM threads t'))
       return Promise.resolve(rows([{ id: 501 }, { id: 502 }, { id: 1326 }]) as never);
+    // The best-users set: same table, different question (task 23 excludes our
+    // own people from it, so it now reads UserPhone as well).
+    if (sql.includes('SELECT u.id FROM "User" u') && sql.includes("subscription_status = 'active'"))
+      return Promise.resolve(rows((opts.bestUserIds ?? []).map((id) => ({ id }))) as never);
     if (sql.includes('uc."relationshipStatus"::text AS colour'))
       return Promise.resolve(rows((opts.inviters ?? []).filter((i) => i.colour !== null)) as never);
     if (sql.includes('FROM contact_relationship_scores'))
@@ -251,8 +255,10 @@ describe('buildTargetList', () => {
       ([sql]) =>
         (sql as string).includes('FROM "UserPhone"') &&
         !(sql as string).includes('mode() WITHIN GROUP') &&
-        // Rule 2's account lookup reads UserPhone too; it is not this.
-        !(sql as string).includes('AS own_contacts'),
+        // Rule 2's account lookup reads UserPhone too, and so does the
+        // best-users set's own exclusion of our people; neither is this.
+        !(sql as string).includes('AS own_contacts') &&
+        !(sql as string).includes("subscription_status = 'active'"),
     );
     expect(phoneQuery).toBeUndefined();
   });

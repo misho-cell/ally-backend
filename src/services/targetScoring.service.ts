@@ -965,9 +965,23 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
  * of the last four weeks.
  */
 async function bestUserIds(): Promise<number[]> {
+  // Our own people are excluded here too (ticket 9 task 23). Read live on
+  // 4 September the set was seven accounts and FIVE of them were us — the
+  // founder, Misho, a tester, Lika, and two of the seeded test accounts, which
+  // qualify by having been used all week for testing. A "lookalike to our best
+  // users" signal trained on ourselves recommends people who look like us, and
+  // the only lookalike the list ever produced was Luka Iashvili, ex-Ally staff.
+  const ourOwn = Array.from(ownPeopleDigits());
   const result = await query<{ id: number }>(
     `SELECT u.id FROM "User" u
-     WHERE u.subscription_status = 'active' AND (
+     WHERE u.subscription_status = 'active'
+       AND u."deletedAt" IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM "UserPhone" up
+         WHERE up."userId" = u.id
+           AND regexp_replace(up.phone, '\\D', '', 'g') = ANY($6::text[])
+       )
+       AND (
        EXISTS (
          SELECT 1 FROM search_activity sa
          WHERE sa.user_id = u.id::text AND sa.outcome = ANY($1)
@@ -989,6 +1003,7 @@ async function bestUserIds(): Promise<number[]> {
       BEST_USER_PAID_MONTHS,
       BEST_USER_ACTIVITY_WINDOW_DAYS,
       BEST_USER_ACTIVE_WEEKS,
+      ourOwn,
     ],
     SCORE_QUERY_TIMEOUT_MS,
   );
