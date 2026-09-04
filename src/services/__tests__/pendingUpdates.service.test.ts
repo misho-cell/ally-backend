@@ -68,10 +68,31 @@ describe('pendingUpdates.service', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].kind).toBe('found');
     const sql = mockQuery.mock.calls[0][0] as string;
-    expect(sql).toContain("SET status = 'seen'");
+    // News is spent when read; a sticky kind is re-armed instead.
+    expect(sql).toContain("ELSE 'seen'");
     expect(sql).toContain('release_at <= NOW()');
     // A closed goal's queued results must never release.
     expect(sql).toContain("t.status <> 'closed'");
+  });
+
+  // Ticket 9 task 20 (a). A goal's blocking question is a STATE, not news:
+  // read live on 4 September, eleven open goals carried an unanswered question
+  // and nearly all their updates were already 'seen' — goal 1156 blocked since
+  // 31 August, its one update marked seen in the minute it was created.
+  it('re-arms a goal question instead of spending it, while the goal still waits', async () => {
+    mockQuery.mockResolvedValue(
+      result([{ id: 12, task_id: 9, kind: 'goal_question', payload: {} }]) as never,
+    );
+
+    await getPendingUpdates(USER);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("THEN 'held'");
+    expect(sql).toContain("NOW() + ($4 || ' hours')::INTERVAL");
+    // And only while the goal is actually still blocked on somebody.
+    expect(sql).toContain('t.pending_question_at IS NOT NULL');
+    expect(params[2]).toEqual(['goal_question']);
+    expect(params[3]).toBe(24);
   });
 
   it('countHeldUpdates excludes closed-goal updates and returns the number waiting', async () => {

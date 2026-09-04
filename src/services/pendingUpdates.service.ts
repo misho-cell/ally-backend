@@ -58,6 +58,19 @@ export async function queueResult(
  * already held, which is wrong here — a search outcome follow-up means
  * "ask in exactly N days", not "whenever the drip queue gets to it".
  */
+/**
+ * Kinds that describe a STATE rather than an event, and so must not be spent
+ * by being read once (ticket 9 task 20 a).
+ */
+const STICKY_KINDS = ['goal_question'];
+
+/**
+ * How long a sticky item waits before it may surface again. A day: long
+ * enough that it is not nagging inside one conversation, short enough that a
+ * goal cannot sit blocked for a week on nobody's screen.
+ */
+const STICKY_COOLDOWN_HOURS = 24;
+
 export async function queueFollowUp(
   userId: string,
   taskId: number | null,
@@ -81,18 +94,37 @@ export async function queueFollowUp(
  */
 export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]> {
   const result = await query<PendingUpdate>(
+    // Most updates are news: shown once, then done. A GOAL'S BLOCKING QUESTION
+    // is not news — it is a state the goal sits in until somebody answers, and
+    // it was being consumed like news (ticket 9 task 20 a).
+    //
+    // Read live on 4 September: eleven open goals carried an unanswered
+    // question and nearly every one of their updates was already `seen` —
+    // goal 1156 blocked since 31 August, its single update marked seen in the
+    // same minute it was created. Whichever conversation happened next ate the
+    // question, and the goal then waited forever for an answer nobody was ever
+    // shown. That is the tester's sentence, exactly.
+    //
+    // So a sticky kind goes back to 'held' with a cooldown instead of being
+    // spent. It stops coming back the moment the question is answered or
+    // retracted — both paths delete the held row — or the goal closes.
     `UPDATE pending_updates pu
-     SET status = 'seen'
+     SET status = CASE WHEN pu.kind = ANY($3::text[]) THEN 'held' ELSE 'seen' END,
+         release_at = CASE WHEN pu.kind = ANY($3::text[])
+                           THEN NOW() + ($4 || ' hours')::INTERVAL
+                           ELSE pu.release_at END
      WHERE pu.id IN (
        SELECT p.id FROM pending_updates p
        LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
        WHERE p.user_id = $1 AND p.status = 'held' AND p.release_at <= NOW()
          AND (p.task_id IS NULL OR t.status <> 'closed')
+         -- A sticky item survives only while its goal is still waiting.
+         AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
        ORDER BY p.release_at ASC
        LIMIT $2
      )
      RETURNING pu.id, pu.task_id, pu.kind, pu.payload`,
-    [userId, MAX_RELEASED_PER_READ],
+    [userId, MAX_RELEASED_PER_READ, STICKY_KINDS, STICKY_COOLDOWN_HOURS],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
