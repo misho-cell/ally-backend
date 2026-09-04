@@ -235,7 +235,16 @@ async function mapSearchResult(
   // Real total when the tool reports one; else the deduped pool size.
   const total = outcome.total ?? outcome.count ?? deduped.length;
   const rows = deduped.slice(0, MCP_RESULT_LIMIT).map((row) => toPublicRow(userId, row));
-  const payload: McpToolPayload = { found: true, total, results: rows, ...pointerPayload };
+  // The connector redacts a saved email exactly where the in-app path does
+  // (ticket 9 task 15.1): the two read paths must not disagree about the same
+  // note. A public email the model finds on the web is untouched — this is a
+  // stored-contact payload only.
+  const payload: McpToolPayload = {
+    found: true,
+    total,
+    results: scrubEmailsDeep(rows) as McpToolPayload[],
+    ...pointerPayload,
+  };
   // Fuzzy (approximate) matches are flagged so the model treats them as guesses;
   // this takes priority over the truncation note.
   if (outcome.fuzzy) payload.note = NOTE_FUZZY;

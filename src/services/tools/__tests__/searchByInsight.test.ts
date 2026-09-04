@@ -10,6 +10,7 @@ jest.mock('../../block.service', () => ({
 
 import { query } from '../../../db/postgres/client';
 import { searchByInsight } from '../searchByInsight';
+import { scrubEmailsDeep } from '../../privacyScrub';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -402,5 +403,39 @@ describe("the insight store is the searcher's own (ticket 9 task 15)", () => {
 
     expect(out.found).toBe(true);
     expect(out.results[0].info).toEqual({ quality: 'ძალიან კარგი სანტექნიკი' });
+  });
+});
+
+describe('15.1 — the two read paths must redact the same note the same way', () => {
+  it('a saved email inside a matched fact never reaches the payload as an address', async () => {
+    // get_contact_facts printed „[email hidden]" while this path printed the
+    // address in full — same note, same account, same moment. The redaction is
+    // applied at the dispatch choke point for every contact-data tool now, so
+    // this test guards the shape the scrubber sees.
+    setup({
+      publicFacts: [
+        {
+          phone: '+995599111111',
+          name: 'გიორგი',
+          matched: ['note: write to giorgi@example.com about the CELA roster'],
+        },
+      ],
+    });
+
+    const out = (await searchByInsight('501', 'CELA roster')) as {
+      results: { matched: string[] }[];
+    };
+
+    // …and the redaction is the dispatcher's job, one layer up, so that a new
+    // contact-data tool cannot ship without it. This asserts the seam: the
+    // search returns the stored text, and scrubEmailsDeep is what the model
+    // actually receives (see chat.service CONTACT_DATA_TOOLS and the
+    // connector's mapSearchResult).
+    expect(out.results[0].matched[0]).toContain('giorgi@example.com');
+    expect(scrubEmailsDeep(out.results) as unknown).toEqual([
+      expect.objectContaining({
+        matched: ['note: write to [email hidden] about the CELA roster'],
+      }),
+    ]);
   });
 });

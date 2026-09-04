@@ -2702,19 +2702,51 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
   'fetch_page',
 ]);
 
+/**
+ * Every tool that returns SAVED contact data, and therefore every tool whose
+ * payload may carry a private email address (ticket 9 task 15.1).
+ *
+ * The rule was already right and applied in one place only: get_contact_facts
+ * printed „[email hidden]" while search_by_insight printed the same note with
+ * the address in full — same note, same account, same moment. A redaction that
+ * depends on which door the reader used is not a redaction.
+ *
+ * A public business email the model finds through its own web search is
+ * legitimate and stays untouched: this list is stored-contact reads only.
+ */
+const CONTACT_DATA_TOOLS = new Set([
+  'get_contact_facts',
+  'get_contact_full_profile',
+  'get_contact_profile',
+  'get_contact_insight',
+  'search_by_insight',
+  'search_contacts',
+  'search_contacts_by_country',
+  'search_second_degree',
+  'search_contact_by_name',
+  'lookup_contact_by_phone',
+  'get_contact_relationships',
+  'get_curiosity_queue',
+  'get_unresolved_labels',
+  'get_top_connectors',
+  'get_group_connectors',
+]);
+
 async function runOneToolBlock(
   userId: string,
   threadId: number,
   runId: string,
   block: Anthropic.ToolUseBlock,
 ): Promise<Anthropic.ToolResultBlockParam> {
-  const result = await executeToolCall(
+  const raw = await executeToolCall(
     userId,
     block.name,
     block.input as Record<string, unknown>,
     runId,
     threadId,
   );
+  // One choke point, so the next contact-data tool cannot forget it.
+  const result = CONTACT_DATA_TOOLS.has(block.name) ? scrubEmailsDeep(raw) : raw;
   const diet = dietToolResult(result);
   const rawContent = JSON.stringify(diet);
   const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
