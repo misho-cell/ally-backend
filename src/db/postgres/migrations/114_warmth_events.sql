@@ -34,7 +34,12 @@ CREATE TABLE IF NOT EXISTS warmth_events (
   weight        REAL        NOT NULL,
   -- What produced it (ask_id, request_id, 'chat'), for the audit trail.
   ref           TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- The day the evidence landed, in UTC. A stored generated column, because
+  -- `created_at::date` alone is NOT immutable (it reads the session's
+  -- TimeZone) and Postgres refuses it inside an index — which is exactly how
+  -- this migration failed the first time it ran.
+  day           DATE GENERATED ALWAYS AS (((created_at AT TIME ZONE 'UTC')::date)) STORED
 );
 
 ALTER TABLE warmth_events DROP CONSTRAINT IF EXISTS warmth_events_kind_check;
@@ -51,4 +56,4 @@ CREATE INDEX IF NOT EXISTS idx_warmth_events_phone
 -- One automatic event per source per pair per day: two people trading four
 -- messages in an afternoon are not four times as close as two who traded one.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_warmth_events_daily
-  ON warmth_events (user_id, contact_phone, kind, (created_at::date));
+  ON warmth_events (user_id, contact_phone, kind, day);
