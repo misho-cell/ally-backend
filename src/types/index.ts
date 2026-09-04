@@ -1,3 +1,5 @@
+import type { AskBudgetState } from '../services/askBudget.service';
+
 export interface User {
   id: string;
   email: string;
@@ -284,6 +286,12 @@ export interface UserProfile {
   wallet: UserWallet;
   referral: UserReferral;
   timeline: UserTimelineEvent[];
+  /**
+   * The account's growth-ask budget and the fatigue arithmetic behind it
+   * (ticket 9 task 17). Shape owned by askBudget.service; absent only when
+   * that block itself failed, which the diagnostics then name.
+   */
+  askBudget?: AskBudgetState;
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
 }

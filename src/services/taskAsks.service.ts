@@ -68,6 +68,7 @@ export type AskRefusalReason =
   | 'daily_cap_reached'
   | 'conversation_ask_limit_reached'
   | 'monthly_ask_budget_reached'
+  | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached';
 
 export type CreateAskOutcome =
@@ -95,6 +96,18 @@ const RELAY_REFUSALS: Readonly<
     error: () =>
       'ამ თვის კითხვების ლიმიტი ამოწურულია — მომდევნო თვეს განახლდება. ' +
       'მომხმარებელს მშვიდად უთხარი, ბოდიში ან „ტექნიკური შეცდომა" არ ახსენო.',
+  },
+  // A different thing entirely, and it used to wear the same name: the budget
+  // is not spent, it has been narrowed by unanswered asks. Say that, because
+  // "this month's limit is used up" to someone who has sent nothing this month
+  // is simply false (ticket 9 task 17).
+  fatigue_budget_exhausted: {
+    reason: 'ask_fatigue_budget_exhausted',
+    error: () =>
+      'ამ ანგარიშის კითხვების ბიუჯეტი შემცირებულია, რადგან ბოლო პერიოდში გაგზავნილ ' +
+      'რამდენიმე კითხვას პასუხი არ მოჰყოლია — და ამჟამად ამოწურულია. ეს დროებითია: ძველი ' +
+      'უპასუხო კითხვები ფანჯრიდან გამოდის, ან ერთ-ერთს პასუხი მოჰყვება, და ბიუჯეტი ბრუნდება. ' +
+      'მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც „ტექნიკური შეცდომა".',
   },
   // Not a fault and not a technical problem: the conversation is alive, this
   // person has simply had their day's worth of it. Say when it reopens.

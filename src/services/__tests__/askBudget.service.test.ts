@@ -4,6 +4,9 @@ import { query } from '../../db/postgres/client';
 import {
   checkAskBudget,
   checkFollowUpBudget,
+  describeAskBudget,
+  FATIGUE_WINDOW_DAYS,
+  MIN_MONTHLY_ASK_BUDGET,
   RELAY_MESSAGES_PER_PERSON_PER_DAY,
 } from '../askBudget.service';
 
@@ -16,15 +19,29 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 function routeBudgetQueries(opts: {
   inConversation?: number;
   sentThisMonth?: number;
-  fatigueSignals?: number;
+  /** Recipients this sender drove to opt out, inside the window. */
+  optOutsCaused?: number;
+  /** This sender's own asks nobody answered, inside the window. */
+  asksIgnored?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('JOIN tasks t'))
       return Promise.resolve(rows([{ count: String(opts.inConversation ?? 0) }]) as never);
-    if (sql.includes("date_trunc('month'"))
-      return Promise.resolve(rows([{ count: String(opts.sentThisMonth ?? 0) }]) as never);
     if (sql.includes('ask_optout_events'))
-      return Promise.resolve(rows([{ count: String(opts.fatigueSignals ?? 0) }]) as never);
+      return Promise.resolve(
+        rows([
+          {
+            opt_outs: String(opts.optOutsCaused ?? 0),
+            ignored: String(opts.asksIgnored ?? 0),
+          },
+        ]) as never,
+      );
+    if (sql.includes("date_trunc('month'"))
+      return Promise.resolve(
+        rows([
+          { count: String(opts.sentThisMonth ?? 0), resets_at: '2026-10-01T00:00:00.000Z' },
+        ]) as never,
+      );
     return Promise.resolve(rows([]) as never);
   });
 }
@@ -70,16 +87,17 @@ describe('checkAskBudget', () => {
   });
 
   it('steps the monthly budget down as fatigue signals accumulate', async () => {
-    // Base 30, one fatigue signal removes 5 -> effective budget 25.
-    routeBudgetQueries({ sentThisMonth: 25, fatigueSignals: 1 });
+    // Base 30, one ignored ask removes 5 -> effective budget 25.
+    routeBudgetQueries({ sentThisMonth: 25, asksIgnored: 1 });
 
     const out = await checkAskBudget('42', undefined);
 
-    expect(out).toEqual({ allowed: false, reason: 'monthly_budget_reached' });
+    // And it says WHICH cap bit: the budget was narrowed, not spent.
+    expect(out).toEqual({ allowed: false, reason: 'fatigue_budget_exhausted' });
   });
 
   it('a user who has not hit fatigue keeps the full base budget', async () => {
-    routeBudgetQueries({ sentThisMonth: 29, fatigueSignals: 0 });
+    routeBudgetQueries({ sentThisMonth: 29 });
 
     const out = await checkAskBudget('42', undefined);
 
@@ -143,5 +161,78 @@ describe('the growth budget counts outreach only (ticket 9 task 12)', () => {
     ) as [string, unknown[]];
     expect(conversation[0]).toContain('is_follow_up = FALSE');
     expect(month[0]).toContain('is_follow_up = FALSE');
+  });
+});
+
+describe('fatigue is about the network’s reaction, not the user’s own inbox (ticket 9 task 17)', () => {
+  it('counts only opt-outs by people this sender had just written to', async () => {
+    routeBudgetQueries({});
+
+    await checkAskBudget('501', undefined);
+
+    const [sql] = mockQuery.mock.calls.find(([s]) => String(s).includes('ask_optout_events')) as [
+      string,
+      unknown[],
+    ];
+    // The recipient's row, tied to an ask FROM this sender in the week before
+    // it. The old query read the sender's own opt-out rows — the founder's two
+    // "stop asking me" rows from August were being read as evidence that he
+    // tires other people out.
+    expect(sql).toContain('ta.to_user_id = e.user_id');
+    expect(sql).toContain('ta.from_user_id = $1::int');
+    // A resumed opt-out is not a standing signal.
+    expect(sql).toContain("r.action = 'resume'");
+  });
+
+  it('forgets fatigue outside the window — a lifetime counter only ever grows', async () => {
+    routeBudgetQueries({});
+
+    await checkAskBudget('501', undefined);
+
+    const [sql, params] = mockQuery.mock.calls.find(([s]) =>
+      String(s).includes('ask_optout_events'),
+    ) as [string, unknown[]];
+    expect(sql).toContain("($2 || ' days')::INTERVAL");
+    expect(params[1]).toBe(FATIGUE_WINDOW_DAYS);
+  });
+
+  it('never closes the channel completely — the floor survives any amount of fatigue', async () => {
+    // Six signals × 5 = 30 = the whole base budget. That is what silenced the
+    // founder's account on 1 September, on a month with no asks sent.
+    routeBudgetQueries({ asksIgnored: 6, sentThisMonth: 0 });
+
+    expect(await checkAskBudget('501', undefined)).toEqual({ allowed: true });
+  });
+
+  it('the floor is a floor, not an allowance — it is spendable and then it stops', async () => {
+    routeBudgetQueries({ asksIgnored: 6, sentThisMonth: MIN_MONTHLY_ASK_BUDGET });
+
+    expect(await checkAskBudget('501', undefined)).toEqual({
+      allowed: false,
+      reason: 'fatigue_budget_exhausted',
+    });
+  });
+});
+
+describe('describeAskBudget — the numbers, readable (ticket 9 task 17)', () => {
+  it('shows the arithmetic, both signal kinds and what is left', async () => {
+    routeBudgetQueries({ asksIgnored: 2, optOutsCaused: 1, sentThisMonth: 4 });
+
+    const out = await describeAskBudget('501');
+
+    expect(out.fatigue_signals).toEqual({ opt_outs_caused: 1, asks_ignored: 2, total: 3 });
+    // 30 − 3 × 5 = 15, of which four are spent.
+    expect(out.effective_monthly_budget).toBe(15);
+    expect(out.sent_this_month).toBe(4);
+    expect(out.remaining_this_month).toBe(11);
+    expect(out.window).toBe('calendar_month');
+    expect(out.fatigue_window_days).toBe(FATIGUE_WINDOW_DAYS);
+    expect(out.window_resets_at).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('never reports a negative remainder', async () => {
+    routeBudgetQueries({ asksIgnored: 6, sentThisMonth: 40 });
+
+    expect((await describeAskBudget('501')).remaining_this_month).toBe(0);
   });
 });

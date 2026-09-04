@@ -125,6 +125,11 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('FROM referral_transactions'))
     return rows([{ balance: '11.20', earned: '22.19', spent: '10.99', earnings_count: '3' }]);
   if (sql.includes('kind AS label')) return rows([{ label: 'chat', total: '2.80' }]);
+  // The ask budget block (ticket 9 task 17): the month's outreach, then the
+  // two fatigue counts.
+  if (sql.includes("date_trunc('month'"))
+    return rows([{ count: '4', resets_at: '2026-10-01T00:00:00.000Z' }]);
+  if (sql.includes('ask_optout_events')) return rows([{ opt_outs: '0', ignored: '1' }]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 

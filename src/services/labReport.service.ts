@@ -4,6 +4,8 @@ import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
   MONTHLY_GROWTH_ASK_BUDGET_LADDER,
   FATIGUE_STEP_DOWN_PER_SIGNAL,
+  FATIGUE_WINDOW_DAYS,
+  MIN_MONTHLY_ASK_BUDGET,
 } from './askBudget.service';
 import { roundTo } from './number';
 
@@ -186,29 +188,52 @@ export interface BudgetsLadderState {
   monthly_budget_ladder: number;
   effective_monthly_budget: number;
   fatigue_step_down_per_signal: number;
+  fatigue_window_days: number;
+  min_monthly_budget: number;
   fatigue_distribution: FatigueDistributionBucket[];
 }
 
-/** Component 5: the live ladder config plus how fatigue signals are distributed across active users. */
+/**
+ * Component 5: the live ladder config plus how fatigue signals are distributed
+ * across active users.
+ *
+ * The distribution counts exactly what the budget counts (ticket 9 task 17) —
+ * opt-outs this sender CAUSED and this sender's own ignored asks, both inside
+ * the window. It used to count every user's own „stop asking me" rows, for
+ * ever, which is how this screen came to show one user at six signals while
+ * the budget behind it was a different number from a different rule.
+ */
 async function buildBudgetsLadderState(): Promise<BudgetsLadderState> {
   const result = await query<{ fatigue_signals: string; users: string }>(
     `SELECT fatigue_signals, COUNT(*) AS users FROM (
        SELECT u.id,
-         COALESCE(optout.cnt, 0) + COALESCE(ignored.cnt, 0) AS fatigue_signals
+         COALESCE(caused.cnt, 0) + COALESCE(ignored.cnt, 0) AS fatigue_signals
        FROM "User" u
        LEFT JOIN (
-         SELECT user_id, COUNT(*) AS cnt FROM ask_optout_events WHERE action = 'opt_out' GROUP BY user_id
-       ) optout ON optout.user_id = u.id
+         SELECT ta.from_user_id, COUNT(DISTINCT e.user_id) AS cnt
+         FROM ask_optout_events e
+         JOIN task_asks ta ON ta.to_user_id = e.user_id
+           AND ta.created_at <= e.created_at
+           AND ta.created_at > e.created_at - INTERVAL '7 days'
+         WHERE e.action = 'opt_out'
+           AND e.created_at > NOW() - ($1 || ' days')::INTERVAL
+           AND NOT EXISTS (
+             SELECT 1 FROM ask_optout_events r
+             WHERE r.user_id = e.user_id AND r.action = 'resume' AND r.created_at > e.created_at
+           )
+         GROUP BY ta.from_user_id
+       ) caused ON caused.from_user_id = u.id
        LEFT JOIN (
          SELECT from_user_id, COUNT(*) AS cnt FROM task_asks
          WHERE status = 'sent' AND created_at < NOW() - INTERVAL '${IGNORED_ASK_AFTER_HOURS} hours'
+           AND created_at > NOW() - ($1 || ' days')::INTERVAL
          GROUP BY from_user_id
        ) ignored ON ignored.from_user_id = u.id
        WHERE u.subscription_status = 'active'
      ) x
      GROUP BY fatigue_signals
      ORDER BY fatigue_signals`,
-    [],
+    [FATIGUE_WINDOW_DAYS],
     REPORT_QUERY_TIMEOUT_MS,
   );
   return {
@@ -216,6 +241,8 @@ async function buildBudgetsLadderState(): Promise<BudgetsLadderState> {
     monthly_budget_ladder: MONTHLY_GROWTH_ASK_BUDGET_LADDER,
     effective_monthly_budget: MONTHLY_GROWTH_ASK_BUDGET_BASE * MONTHLY_GROWTH_ASK_BUDGET_LADDER,
     fatigue_step_down_per_signal: FATIGUE_STEP_DOWN_PER_SIGNAL,
+    fatigue_window_days: FATIGUE_WINDOW_DAYS,
+    min_monthly_budget: MIN_MONTHLY_ASK_BUDGET,
     fatigue_distribution: result.rows.map((r) => ({
       fatigue_signals: Number(r.fatigue_signals),
       users: Number(r.users),

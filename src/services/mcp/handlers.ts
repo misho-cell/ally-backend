@@ -753,8 +753,13 @@ export async function mcpGetCountryChannels(
   };
 }
 
-export async function mcpGetNetaiInfo(args: { topic: string }): Promise<McpToolPayload> {
-  return (await getNetaiInfo(args.topic ?? '')) as McpToolPayload;
+export async function mcpGetNetaiInfo(
+  userId: string,
+  args: { topic: string },
+): Promise<McpToolPayload> {
+  // The "limits" topic answers about THIS account's budget too (ticket 9 task
+  // 17), so the connector must say who is asking.
+  return (await getNetaiInfo(args.topic ?? '', userId)) as McpToolPayload;
 }
 
 export async function mcpStopContactingMe(

@@ -22,6 +22,7 @@ import {
   UserSearches,
   UserTimelineEvent,
 } from '../types';
+import { describeAskBudget } from './askBudget.service';
 
 const TREND_WINDOW_DAYS = 30;
 const RECENT_SEARCH_LIMIT = 10;
@@ -674,6 +675,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     wallet,
     referral,
     timeline,
+    askBudget,
   ] = await Promise.all([
     runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
     runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
@@ -685,6 +687,10 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     runBlock('wallet', () => getWallet(userId), EMPTY_WALLET, diagnostics),
     runBlock('referral', () => getReferral(userId), EMPTY_REFERRAL, diagnostics),
     runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
+    // The ask budget, with its fatigue arithmetic shown (ticket 9 task 17):
+    // the founder's account refused an ask on a month in which it had sent
+    // none, and no screen could say why.
+    runBlock('askBudget', () => describeAskBudget(String(userId)), null, diagnostics),
   ]);
 
   const profile: UserProfile = {
@@ -699,6 +705,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     wallet,
     referral,
     timeline,
+    ...(askBudget !== null && { askBudget }),
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
   return profile;

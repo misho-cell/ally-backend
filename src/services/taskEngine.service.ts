@@ -18,6 +18,7 @@ import {
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
+import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
@@ -47,6 +48,26 @@ const PUSH_PREVIEW_MAX_CHARS = 120;
 
 // A task advances one step at a time: never two concurrent runs on one task.
 const runningTasks = new Set<number>();
+
+/**
+ * What the wake must know about this account's outreach budget (ticket 9 task
+ * 17). Silent while there is room — a plan does not need to hear about a
+ * budget it cannot exhaust — and explicit when there is none, so the run stops
+ * proposing a send the tool would refuse and stops promising it to the owner.
+ *
+ * A live relayed conversation is deliberately NOT stopped by this: continuing
+ * one spends the recipient's daily patience, not the month's growth budget.
+ */
+export function outreachNoteFor(budget: AskBudgetState | null): string {
+  if (budget === null || budget.remaining_this_month > 0) return '';
+  return (
+    '\n\n[სისტემა] ამ ანგარიშს ამ თვეში ახალი კითხვის გაგზავნის ბიუჯეტი ამოწურული აქვს — ' +
+    'ask_contact ახალ ადამიანთან ვერ გაივლის. ნუ შესთავაზებ მფლობელს მიწერას და ნურაფერს ' +
+    'დაპირდები, რასაც ვერ გააკეთებ; იმუშავე იმით, რაც ხელთ გაქვს (ძებნა, უკვე დაწყებული ' +
+    'მიმოწერის გაგრძელება, გაცნობის თხოვნა). თუ მფლობელი თავად იკითხავს — უთხარი, რომ ' +
+    `ლიმიტი ${budget.window_resets_at.slice(0, 10)}-ს განახლდება.`
+  );
+}
 
 /**
  * Advance a task by one engine-initiated run: the event text enters the task's
@@ -93,6 +114,17 @@ export async function wakeTask(
 
     const runId = randomUUID();
     void setThreadStatus(ownerId, thread.id, 'working');
+    // A wake that proposes something the tool will refuse wastes the run and
+    // hands the owner a promise nobody can keep (ticket 9 task 17: four goals
+    // woke every night offering asks while the account's budget was zero). The
+    // event carries the state of the budget, so the plan is made knowing it.
+    const budgetNote = outreachNoteFor(
+      await describeAskBudget(ownerId).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] budget read failed:', (err as Error).message);
+        return null;
+      }),
+    );
 
     const hardTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
@@ -100,7 +132,7 @@ export async function wakeTask(
     const runStartedAt = new Date();
     try {
       const result = await Promise.race([
-        processChat(ownerId, thread.id, `[მოვლენა] ${eventText}`, runId, ensureQuoted),
+        processChat(ownerId, thread.id, `[მოვლენა] ${eventText}${budgetNote}`, runId, ensureQuoted),
         hardTimeout,
       ]);
       if (result.runFailed === true) {

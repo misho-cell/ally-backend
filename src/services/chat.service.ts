@@ -2307,7 +2307,7 @@ async function executeToolCall(
       await resumeAsks(userId);
       return { resumed: true };
     case 'get_netai_info':
-      return getNetaiInfo(String(input['topic'] ?? ''));
+      return getNetaiInfo(String(input['topic'] ?? ''), userId);
     case 'get_country_channels':
       return getCountryChannels(
         userId,

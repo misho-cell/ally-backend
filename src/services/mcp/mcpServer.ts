@@ -803,7 +803,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_netai_info', () => mcpGetNetaiInfo(args)),
+    (args) => runTool(userId, 'get_netai_info', () => mcpGetNetaiInfo(userId, args)),
   );
   server.registerTool(
     'stop_contacting_me',
