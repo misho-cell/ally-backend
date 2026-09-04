@@ -23,8 +23,8 @@ describe('sweepOrphanedRuns', () => {
   it('marks stale working threads failed and persists a system-styled error', async () => {
     mockQuery.mockResolvedValue({
       rows: [
-        { id: 11, user_id: 7 },
-        { id: 12, user_id: 9 },
+        { id: 11, user_id: 7, status: 'failed', status_line: 'შეფერხდა — სცადე თავიდან' },
+        { id: 12, user_id: 9, status: 'failed', status_line: 'შეფერხდა — სცადე თავიდან' },
       ],
       rowCount: 2,
     } as never);
@@ -34,7 +34,7 @@ describe('sweepOrphanedRuns', () => {
     expect(reaped).toBe(2);
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain(`status = 'working'`);
-    expect(sql).toContain(`SET status = 'failed'`);
+    expect(sql).toContain(`CASE WHEN o.awaits_owner THEN 'needs_you' ELSE 'failed' END`);
     // kind='error' → the client renders a retryable system failure, not
     // assistant speech.
     expect(mockSave).toHaveBeenCalledWith(11, 7, 'assistant', expect.any(String), 'error');
@@ -43,6 +43,27 @@ describe('sweepOrphanedRuns', () => {
       '7',
       expect.objectContaining({ id: 11, status: 'failed' }),
     );
+  });
+
+  it('keeps needs_you on a reaped thread whose goal waits for its owner', async () => {
+    // Ticket 9 task 20 (b): the run died and says so in the error row; the
+    // badge belongs to the standing question, not to the retry.
+    mockQuery.mockResolvedValue({
+      rows: [{ id: 9406, user_id: 501, status: 'needs_you', status_line: 'შენი პასუხი სჭირდება' }],
+      rowCount: 1,
+    } as never);
+
+    await sweepOrphanedRuns(4);
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain(`k.status = 'open'`);
+    expect(sql).toContain('k.pending_question_at IS NOT NULL');
+    expect(mockSave.mock.calls[0]?.[4]).toBe('error');
+    expect(mockEmit).toHaveBeenCalledWith('501', {
+      id: 9406,
+      status: 'needs_you',
+      status_line: 'შენი პასუხი სჭირდება',
+    });
   });
 
   it('does nothing when no thread is stuck', async () => {

@@ -21,6 +21,7 @@ import {
 } from '../../services/threads.service';
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
+import { markRunFailed } from '../../services/runFailure.service';
 import { hasPendingAskForThread, cancelAsksForTask } from '../../services/taskAsks.service';
 import { getOpenTaskByThread } from '../../services/taskStore.service';
 import {
@@ -341,7 +342,7 @@ threadsRouter.post(
           // retryable error, never a "successful" empty answer.
           if (result.runFailed === true) {
             emitRunError(userId, threadId, runId, result.reply);
-            void setThreadStatus(userId, threadId, 'failed');
+            void markRunFailed(userId, threadId, result.language ?? 'ka');
             return;
           }
           emitRunComplete(userId, threadId, runId, {
@@ -424,7 +425,7 @@ threadsRouter.post(
             ? 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.'
             : 'ტექნიკური შეფერხება მოხდა ჩვენს მხარეს. გთხოვ, სცადე თავიდან.';
           emitRunError(userId, threadId, runId, userMessage);
-          void setThreadStatus(userId, threadId, 'failed');
+          void markRunFailed(userId, threadId, detectRunLanguage(message));
           // The SSE event alone is not enough: if the stream dropped mid-run, the
           // user stares at frozen narration forever (three real stalls in one
           // battery run showed no visible timeout). Persist the error INTO the

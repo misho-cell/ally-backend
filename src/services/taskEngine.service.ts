@@ -18,6 +18,7 @@ import {
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
+import { markRunFailed } from './runFailure.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
 import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
 import { sendPushNotification } from './notification.service';
@@ -104,7 +105,7 @@ export async function wakeTask(
       ]);
       if (result.runFailed === true) {
         emitRunError(ownerId, thread.id, runId, result.reply);
-        void setThreadStatus(ownerId, thread.id, 'failed');
+        void markRunFailed(ownerId, thread.id, result.language ?? 'ka');
         // The event itself was persisted into the thread before the run died —
         // it is delivered; the task will see it on its next step.
         return true;
@@ -164,7 +165,7 @@ export async function wakeTask(
       // eslint-disable-next-line no-console
       console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message);
       emitRunError(ownerId, thread.id, runId, 'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით ვცდი.');
-      void setThreadStatus(ownerId, thread.id, 'failed');
+      void markRunFailed(ownerId, thread.id);
       await saveThreadMessage(
         thread.id,
         Number(ownerId),

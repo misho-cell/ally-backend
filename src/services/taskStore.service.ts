@@ -138,6 +138,25 @@ export async function getOpenTaskByThread(threadId: number): Promise<Task | null
   return result.rows[0] ?? null;
 }
 
+/**
+ * Is an OPEN goal on this thread waiting for the owner's answer right now?
+ *
+ * `pending_question_at` and not `pending_question`: the engine's fallback flag
+ * carries the wait without the text (it refuses to guess which goal a wake
+ * reply's closing question belonged to), and a goal waiting with an unnamed
+ * question is still waiting.
+ */
+export async function threadAwaitsOwner(threadId: number): Promise<boolean> {
+  const result = await query<{ id: number }>(
+    `SELECT id FROM tasks
+     WHERE thread_id = $1 AND status = 'open' AND pending_question_at IS NOT NULL
+     LIMIT 1`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
 export async function getTaskById(taskId: number): Promise<(Task & { user_id: string }) | null> {
   const result = await query<Task & { user_id: string }>(
     `SELECT user_id, ${TASK_COLUMNS} FROM tasks WHERE id = $1 LIMIT 1`,

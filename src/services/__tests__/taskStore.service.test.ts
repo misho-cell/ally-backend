@@ -1,7 +1,13 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { createTask, getMyTasks, updateTask, grantTaskPermission } from '../taskStore.service';
+import {
+  createTask,
+  getMyTasks,
+  updateTask,
+  grantTaskPermission,
+  threadAwaitsOwner,
+} from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -134,5 +140,26 @@ describe('a thread carries its goal from the moment the goal exists (ticket 9 ta
     expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('SET is_task = TRUE'))).toBe(
       false,
     );
+  });
+});
+
+describe('threadAwaitsOwner — a badge asks the thread, not the run (ticket 9 task 20 b)', () => {
+  it('is true while an open goal on the thread holds a question', async () => {
+    mockQuery.mockResolvedValue(result([{ id: 1519 }]) as never);
+
+    expect(await threadAwaitsOwner(9406)).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0];
+    // The engine's fallback flag carries the wait with NO question text, and a
+    // goal waiting on an unnamed question is still waiting — so the timestamp
+    // is the test, not the text.
+    expect(sql as string).toContain('pending_question_at IS NOT NULL');
+    expect(sql as string).toContain(`status = 'open'`);
+    expect(params as unknown[]).toEqual([9406]);
+  });
+
+  it('ignores a question left on a goal that is no longer open', async () => {
+    mockQuery.mockResolvedValue(result([]) as never);
+
+    expect(await threadAwaitsOwner(9010)).toBe(false);
   });
 });
