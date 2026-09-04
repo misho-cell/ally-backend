@@ -882,3 +882,80 @@ describe('task 23: a flat, a door and a price are not people either', () => {
     expect(await buildTargetList(30)).toEqual([]);
   });
 });
+
+describe('what MOST people call the number decides what it is (ticket 9, second pass)', () => {
+  it('a Batumi flat stays out even when one saver’s label reads like a name', async () => {
+    // The live row: 38 of 39 savers call +995557582210 „ბათუმი ორბი 2", and
+    // its cloud is „Orbi Batumi bina 60 GEL", „Orbi Plaza", „ბინა ბათუმი".
+    // It reached the list because ONE saver wrote „ORBI IAFAD", which
+    // tokenises to two unknown words and reads as a full name.
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000090', label: 'ბათუმი ორბი 2' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        ...Array.from({ length: 6 }, (_, i) => ({
+          phone: '+995500000090',
+          contactId: i + 1,
+          alias: 'ბათუმი ორბი 2',
+        })),
+        { phone: '+995500000090', contactId: 90, alias: 'ORBI IAFAD' },
+        { phone: '+995500000090', contactId: 91, alias: 'Orbi Plaza' },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('a real person whose commonest label is just a first name still passes', async () => {
+    // The place/thing test must not swallow „Kato": her label carries no
+    // place and no thing, so the crowd rule never fires on her.
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000091', label: 'Kato' }])]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000091', contactId: 1, alias: 'Kato' },
+        { phone: '+995500000091', contactId: 2, alias: 'Kato' },
+        { phone: '+995500000091', contactId: 3, alias: 'Kato Boxua' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000091']);
+  });
+});
+
+describe('our own people, named by the crowd (task 10 item 3)', () => {
+  it('excludes someone 38 people saved as „(Ally)"', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000092', label: 'Luka Iashvili (Ally)' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000092', contactId: 1, alias: 'Luka Iashvili' },
+        { phone: '+995500000092', contactId: 2, alias: 'Luka Iashvili (Ally)' },
+        { phone: '+995500000092', contactId: 3, alias: 'Luka Iashvili Ally' },
+        { phone: '+995500000092', contactId: 4, alias: 'Ally Luka Iashvili' },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('one stray „ally" in a label is a typo, not a job', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000093', label: 'Nino Alalishvili' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000093', contactId: 1, alias: 'Nino Alalishvili' },
+        { phone: '+995500000093', contactId: 2, alias: 'Nino Alalishvili' },
+        { phone: '+995500000093', contactId: 3, alias: 'nino ally' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000093']);
+  });
+});

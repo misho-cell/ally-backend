@@ -222,6 +222,15 @@ const MIN_AGREED_NAME_TOKENS = 2;
 /** One person calling him a taxi is an opinion; two is the crowd's verdict. */
 const MIN_TRADE_VOTES = 2;
 
+/**
+ * Our own company, as the crowd writes it. A phone whose aliases carry it from
+ * this many different savers belongs to one of ours (ticket 9 task 10 item 3).
+ * Three, not one: a stray „ally" in somebody's label is a typo, three people
+ * agreeing is a job.
+ */
+const OWN_COMPANY_MARKERS = ['ally', 'ელაი', 'netai', 'ნეტაი'];
+const MIN_OWN_COMPANY_VOTES = 3;
+
 const MIN_OWN_CONTACTS = 200;
 // The founder, 31 August: "people with less then 200 contacts are very young
 // and possibly even not working". This also swallows the register-once-and-
@@ -359,7 +368,9 @@ export type TargetExclusion =
   | 'not_a_person'
   | 'our_own_people'
   | 'already_paying'
-  | 'phonebook_too_small';
+  | 'phonebook_too_small'
+  /** What most savers call it is a place or a thing — a flat, not a person. */
+  | 'place_or_thing';
 
 export type FitLevel = 'strong' | 'moderate' | 'weak' | 'not_yet';
 
@@ -491,8 +502,16 @@ function exclusionFor(
   nameConfirmed: boolean,
   account: AccountFacts | undefined,
   isOurOwn: boolean,
+  crowd: { dominantIsPlaceOrThing: boolean; ownCompanyVotes: number },
 ): TargetExclusion | null {
   if (isOurOwn) return 'our_own_people';
+  // The crowd knows our own people better than any internal list: 38 savers
+  // wrote „Luka Iashvili (Ally)" and 15 more „Luka Iashvili Ally". A real
+  // person, a fine target for somebody, not for us (task 10 item 3).
+  if (crowd.ownCompanyVotes >= MIN_OWN_COMPANY_VOTES) return 'our_own_people';
+  // What MOST people call the number decides what it IS. „ბათუმი ორბი 2" is a
+  // flat, whatever a single saver's „ORBI IAFAD" tokenises to (task 23).
+  if (crowd.dominantIsPlaceOrThing) return 'place_or_thing';
   if (account && NETAI_ACTIVE_SUBSCRIPTION_STATUSES.includes(account.subscriptionStatus)) {
     return 'already_paying';
   }
@@ -799,6 +818,28 @@ interface AliasAnalysis {
   /** Most frequent alias token across contributors (normalized), if any. */
   topToken: string | null;
   /**
+   * What MOST people call this number, and whether that label is a place or a
+   * thing rather than a person (ticket 9 task 23, second pass).
+   *
+   * „ბათუმი ორბი 2" is what 38 of 39 savers call +995557582210, and the rest
+   * of its cloud is „Orbi Batumi bina 60 GEL", „Orbi Plaza", „ბინა ბათუმი",
+   * „bina batumshi" — a Batumi flat-rental number. It reached the target list
+   * anyway, because ONE saver had written „ORBI IAFAD", which tokenises to two
+   * unknown words and reads as a full name. A single outlier must not outvote
+   * the crowd about what a number IS.
+   */
+  dominantLabel: string | null;
+  dominantIsPlaceOrThing: boolean;
+  /**
+   * How many DISTINCT people saved this number under OUR OWN company's name.
+   *
+   * Task 10 item 3 keeps our own people off the list, and the crowd says who
+   * they are better than any internal list can: 38 people saved
+   * +995571232023 as „Luka Iashvili (Ally)", 15 more as „Luka Iashvili Ally".
+   * He is a real person and a fine target for somebody — just not for us.
+   */
+  ownCompanyVotes: number;
+  /**
    * How many DISTINCT people saved this number under a trade word.
    *
    * The gates used to read one label — the one the candidate happened to
@@ -953,9 +994,33 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     // than in labels: one person calling him a taxi is an opinion, two is
     // evidence.
     const tradeContributors = new Set<number>();
+    const ownCompanyContributors = new Set<number>();
     for (const entry of entries) {
       if (containsAny(entry.alias, TRADE_WORDS)) tradeContributors.add(entry.contactId);
+      if (containsAny(entry.alias, OWN_COMPANY_MARKERS)) {
+        ownCompanyContributors.add(entry.contactId);
+      }
     }
+    // What most people call this number — counted in PEOPLE, not in rows.
+    const labelContributors = new Map<string, Set<number>>();
+    for (const entry of entries) {
+      if (!labelContributors.has(entry.alias)) labelContributors.set(entry.alias, new Set());
+      labelContributors.get(entry.alias)?.add(entry.contactId);
+    }
+    let dominantLabel: string | null = null;
+    let dominantVotes = 0;
+    for (const [alias, contributors] of labelContributors) {
+      if (
+        contributors.size > dominantVotes ||
+        (contributors.size === dominantVotes && dominantLabel !== null && alias < dominantLabel)
+      ) {
+        dominantLabel = alias;
+        dominantVotes = contributors.size;
+      }
+    }
+    const dominantIsPlaceOrThing =
+      dominantLabel !== null &&
+      (containsAny(dominantLabel, PLACE_WORDS) || containsAny(dominantLabel, THING_WORDS));
 
     const someoneAgreesOnAName = Array.from(nameContributors.values()).some(
       (contributors) => contributors.size >= 2,
@@ -987,6 +1052,9 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     }
     result.set(phone, {
       topToken,
+      dominantLabel,
+      dominantIsPlaceOrThing,
+      ownCompanyVotes: ownCompanyContributors.size,
       tradeVotes: tradeContributors.size,
       personConfirmed,
       nameConfirmed,
@@ -1375,6 +1443,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
       analysis?.nameConfirmed ?? false,
       accountMap.get(phoneDigits(phone)),
       ourOwn.has(phoneDigits(phone)),
+      {
+        dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
+        ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,
+      },
     );
     if (excluded !== null) continue;
     const inviter = inviterMap.get(phone) ?? null;
