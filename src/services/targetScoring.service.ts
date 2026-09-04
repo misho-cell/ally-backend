@@ -655,52 +655,64 @@ export interface TargetInviter {
   colour: string | null;
 }
 
-async function bestInviterForPhones(phones: string[]): Promise<Map<string, TargetInviter>> {
-  if (phones.length === 0) return new Map();
-  const result = await query<{
-    phone: string;
-    user_id: number;
-    colour: string | null;
-    strength: number | null;
-  }>(
-    `WITH netai AS (
-       SELECT u.id FROM "User" u
-       WHERE u."deletedAt" IS NULL
-         AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
-           OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-           OR u.subscription_status = ANY($2::text[]))
-     )
-     SELECT ucp.phone AS phone, uc."originUserId" AS user_id,
-            uc."relationshipStatus"::text AS colour, NULL::real AS strength
-     FROM "UserConnectionPhone" ucp
-     JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
-     WHERE ucp.phone = ANY($1)
-       -- ::text on the column, not the parameter: relationshipStatus is a
-       -- Postgres ENUM ("RelationshipStatus") and has no operator against
-       -- text[]. Caught live — the route returned 500 on the first read.
-       AND uc."relationshipStatus"::text = ANY($3::text[])
-       AND uc."originUserId" IN (SELECT id FROM netai)
-     UNION ALL
-     SELECT crs.contact_phone, crs.user_id, NULL::text, crs.strength_score
-     FROM contact_relationship_scores crs
-     WHERE crs.contact_phone = ANY($1)
-       AND crs.user_id IN (SELECT id FROM netai)`,
-    [phones, NETAI_ACTIVE_SUBSCRIPTION_STATUSES, OLD_ALLY_COLOUR_RANK],
+/** The Netai users, all forty-two of them — read once, passed as a list. */
+async function netaiUserIds(): Promise<number[]> {
+  const result = await query<{ id: number }>(
+    `SELECT u.id FROM "User" u
+     WHERE u."deletedAt" IS NULL
+       AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+         OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+         OR u.subscription_status = ANY($1::text[]))`,
+    [NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
     SCORE_QUERY_TIMEOUT_MS,
   );
+  return result.rows.map((r) => r.id);
+}
+
+async function bestInviterForPhones(phones: string[]): Promise<Map<string, TargetInviter>> {
+  if (phones.length === 0) return new Map();
+  const inviters = await netaiUserIds();
+  if (inviters.length === 0) return new Map();
+
+  // Two plain queries rather than one with a subquery, and the ids arrive as a
+  // list rather than as `IN (SELECT …)`. The single-statement version timed
+  // out the whole route live: with the netai set inside the query the planner
+  // walked every connection of every Netai user — tens of thousands of rows
+  // out of a 7.2-million-row table — instead of driving from the phones, which
+  // are indexed on both sides.
+  const [colourRows, strengthRows] = await Promise.all([
+    query<{ phone: string; user_id: number; colour: string }>(
+      `SELECT ucp.phone, uc."originUserId" AS user_id, uc."relationshipStatus"::text AS colour
+       FROM "UserConnectionPhone" ucp
+       JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
+       WHERE ucp.phone = ANY($1)
+         AND uc."originUserId" = ANY($2::int[])
+         AND uc."relationshipStatus"::text = ANY($3::text[])`,
+      [phones, inviters, OLD_ALLY_COLOUR_RANK],
+      SCORE_QUERY_TIMEOUT_MS,
+    ),
+    query<{ phone: string; user_id: number; strength: number | null }>(
+      `SELECT contact_phone AS phone, user_id, strength_score AS strength
+       FROM contact_relationship_scores
+       WHERE contact_phone = ANY($1) AND user_id = ANY($2::int[])`,
+      [phones, inviters],
+      SCORE_QUERY_TIMEOUT_MS,
+    ),
+  ]);
 
   const best = new Map<string, TargetInviter>();
-  for (const row of result.rows) {
-    const warmth = roundTo(
-      row.colour
-        ? (OLD_ALLY_COLOUR_BONUS[row.colour] ?? 0)
-        : Math.min(1, Number(row.strength ?? 0) * 0.5),
-    );
-    if (warmth <= 0) continue;
-    const current = best.get(row.phone);
+  const consider = (phone: string, userId: number, warmth: number, colour: string | null): void => {
+    if (warmth <= 0) return;
+    const current = best.get(phone);
     if (!current || warmth > current.warmth) {
-      best.set(row.phone, { user_id: row.user_id, warmth, colour: row.colour });
+      best.set(phone, { user_id: userId, warmth: roundTo(warmth), colour });
     }
+  };
+  for (const row of colourRows.rows) {
+    consider(row.phone, row.user_id, OLD_ALLY_COLOUR_BONUS[row.colour] ?? 0, row.colour);
+  }
+  for (const row of strengthRows.rows) {
+    consider(row.phone, row.user_id, Math.min(1, Number(row.strength ?? 0) * 0.5), null);
   }
   return best;
 }

@@ -53,9 +53,20 @@ function routeScoreQueries(opts: {
   accounts?: { phone: string; subscription_status: string | null; own_contacts: string }[];
 }): void {
   mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
-    // Rule 14's two queries are matched FIRST: both mention strings the older
+    // Rule 14's queries are matched FIRST: they mention strings the older
     // branches below also match on.
-    if (sql.includes('WITH netai AS')) return Promise.resolve(rows(opts.inviters ?? []) as never);
+    if (sql.includes('SELECT u.id FROM "User" u') && sql.includes('FROM threads t'))
+      return Promise.resolve(rows([{ id: 501 }, { id: 502 }, { id: 1326 }]) as never);
+    if (sql.includes('uc."relationshipStatus"::text AS colour'))
+      return Promise.resolve(rows((opts.inviters ?? []).filter((i) => i.colour !== null)) as never);
+    if (sql.includes('FROM contact_relationship_scores'))
+      return Promise.resolve(
+        rows(
+          (opts.inviters ?? [])
+            .filter((i) => i.colour === null)
+            .map((i) => ({ phone: i.phone, user_id: i.user_id, strength: i.strength })),
+        ) as never,
+      );
     if (sql.includes('array_agg(DISTINCT field_type'))
       return Promise.resolve(rows(opts.fitFacts ?? []) as never);
     if (sql.includes('AS own_contacts')) return Promise.resolve(rows(opts.accounts ?? []) as never);
@@ -374,19 +385,29 @@ describe('buildTargetList', () => {
     expect(byPhone.get('+995500000036')?.route).toBe('direct');
   });
 
-  it('only a NETAI user can be an inviter — the query says so, not the caller', async () => {
+  it('only a NETAI user can be an inviter — the ids are resolved first, then passed in', async () => {
     mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000037', label: 'a' }])]);
     routeScoreQueries({ askableCount: 50 });
 
     await buildTargetList(30);
 
-    const inviterQuery = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('WITH netai AS'),
+    // Who counts as a Netai user: a thread, a search, or a subscription.
+    const whoQuery = mockQuery.mock.calls.find(
+      ([sql]) =>
+        (sql as string).includes('SELECT u.id FROM "User" u') &&
+        (sql as string).includes('FROM threads t'),
     );
-    const sql = inviterQuery?.[0] as string;
-    expect(sql).toContain('FROM threads t');
-    expect(sql).toContain('FROM search_activity sa');
-    expect(sql).toContain('IN (SELECT id FROM netai)');
+    expect(whoQuery?.[0]).toContain('FROM search_activity sa');
+
+    // And the two lookups are driven from the PHONES, with those ids as a
+    // list — the subquery version walked every connection of every Netai user
+    // and timed the route out live.
+    const colourQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('uc."relationshipStatus"::text AS colour'),
+    ) as [string, unknown[]];
+    expect(colourQuery[0]).toContain('ucp.phone = ANY($1)');
+    expect(colourQuery[0]).toContain('uc."originUserId" = ANY($2::int[])');
+    expect(colourQuery[1][1]).toEqual([501, 502, 1326]);
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
