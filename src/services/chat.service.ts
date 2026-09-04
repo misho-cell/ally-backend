@@ -114,7 +114,12 @@ import {
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
 import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
-import { getCampaignInviteContext, buildCampaignInviteSection } from './campaignInvite.service';
+import {
+  getCampaignInviteContext,
+  buildCampaignInviteSection,
+  ensureInviteAnswerRecorded,
+  ensureInviteLinkInReply,
+} from './campaignInvite.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
@@ -3547,6 +3552,23 @@ export async function processChat(
     cleanedFinal = ensureVerbatimQuote(cleanedFinal, ensureQuoted);
   }
   cleanedFinal = scrubInternalToolNames(cleanedFinal, threadId);
+  // „კი" / „არა" / „უთხარი" typed into an invite thread must reach the
+  // campaign whatever the run did with them (ticket 9 task 13.7). Live on
+  // 4 September the „კი" path worked and a bare „არა" did not — the reply was
+  // right, the tool call simply never happened. The model is asked; the server
+  // makes it true. Only fires when the participant is still waiting.
+  if (thread.type === 'campaign_invite') {
+    const recorded = await ensureInviteAnswerRecorded(threadId, userId, userMessage).catch(
+      (err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[invite] answer capture failed:', (err as Error).message);
+        return null;
+      },
+    );
+    if (recorded === 'agreed') {
+      cleanedFinal = await ensureInviteLinkInReply(cleanedFinal, userId).catch(() => cleanedFinal);
+    }
+  }
 
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false

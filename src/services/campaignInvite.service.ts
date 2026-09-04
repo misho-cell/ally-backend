@@ -1,4 +1,6 @@
 import { query } from '../db/postgres/client';
+import { recordCampaignResponse } from './chorusCampaign.service';
+import { getInviteLink } from './referralLink.service';
 
 const INVITE_QUERY_TIMEOUT_MS = 8_000;
 
@@ -111,6 +113,80 @@ export async function getCampaignInviteContext(
     city: row.city,
   };
 }
+
+/**
+ * The three words the invite message itself prints, and the handful of ways a
+ * person actually types them. Whole-message matches only: „არა, მაგრამ სხვას
+ * ვიცნობ" is a conversation, not a protocol answer, and must reach the model
+ * rather than be classified here.
+ */
+const PROTOCOL_WORDS: Readonly<Record<string, 'agreed' | 'declined' | 'told'>> = {
+  კი: 'agreed',
+  დიახ: 'agreed',
+  ki: 'agreed',
+  yes: 'agreed',
+  'თანახმა ვარ': 'agreed',
+  არა: 'declined',
+  ara: 'declined',
+  no: 'declined',
+  'ამჯერად არა': 'declined',
+  უთხარი: 'told',
+  ვუთხარი: 'told',
+  'უკვე ვუთხარი': 'told',
+};
+
+/** Trailing decoration a person adds to a one-word answer. */
+const ANSWER_DECOR_RE = /[\s.!,?;:„""''\p{Extended_Pictographic}️‍]+/gu;
+
+export function protocolResponse(message: string): 'agreed' | 'declined' | 'told' | null {
+  const bare = message.replace(ANSWER_DECOR_RE, ' ').trim().toLowerCase();
+  return PROTOCOL_WORDS[bare] ?? null;
+}
+
+/**
+ * The server's own guarantee that the three words reach the campaign (ticket 9
+ * task 13.7).
+ *
+ * Proved live on 4 September, on the deployed fix: „კი" worked — the model
+ * called the tool and handed over the link — and a bare „არა" in a thread
+ * whose owner also had an introduction request waiting did not. The reply was
+ * polite and correct („გასაგებია, პრობლემა არ არის"), the model simply moved
+ * on to the other item and never called the tool, so the campaign stayed
+ * `asked` exactly as it did on 1 September.
+ *
+ * Prompt text cannot make that certain; this can. Same philosophy as
+ * ensureVerbatimQuote and wrapAllowedNumbers: the model is asked, the server
+ * makes it true. The model's own call still wins — this only fires when the
+ * participant is still waiting after the run.
+ */
+export async function ensureInviteAnswerRecorded(
+  threadId: number,
+  userId: string,
+  userMessage: string,
+): Promise<'agreed' | 'declined' | 'told' | null> {
+  const response = protocolResponse(userMessage);
+  if (response === null) return null;
+  const participant = await query<{ id: number }>(
+    `SELECT id FROM invite_campaign_participants
+     WHERE thread_id = $1 AND inviter_user_id = $2::int AND state = 'asked'
+     LIMIT 1`,
+    [threadId, userId],
+    INVITE_QUERY_TIMEOUT_MS,
+  );
+  if (participant.rows.length === 0) return null;
+  const { recorded } = await recordCampaignResponse(threadId, userId, response);
+  return recorded ? response : null;
+}
+
+/** The link, appended when the user said yes and the reply forgot to carry one. */
+export async function ensureInviteLinkInReply(reply: string, userId: string): Promise<string> {
+  if (INVITE_LINK_RE.test(reply)) return reply;
+  const invite = await getInviteLink(userId);
+  if (!invite.link) return reply;
+  return `${reply}\n\n${invite.link}`;
+}
+
+const INVITE_LINK_RE = /netai\.guru\/join/i;
 
 /** The old-Ally colours, in the words a person would use for them. */
 const COLOUR_WORDS: Readonly<Record<string, string>> = {

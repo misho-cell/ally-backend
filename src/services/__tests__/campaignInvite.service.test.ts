@@ -1,9 +1,21 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../chorusCampaign.service', () => ({
+  __esModule: true,
+  recordCampaignResponse: jest.fn().mockResolvedValue({ recorded: true }),
+}));
+jest.mock('../referralLink.service', () => ({
+  __esModule: true,
+  getInviteLink: jest.fn().mockResolvedValue({ link: 'https://www.netai.guru/join?ref=ABC12345' }),
+}));
 
 import { query } from '../../db/postgres/client';
+import { recordCampaignResponse } from '../chorusCampaign.service';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
+  ensureInviteAnswerRecorded,
+  ensureInviteLinkInReply,
+  protocolResponse,
   CampaignInviteContext,
 } from '../campaignInvite.service';
 
@@ -136,5 +148,72 @@ describe('buildCampaignInviteSection — the two questions get real answers', ()
     const text = buildCampaignInviteSection({ ...base, relationship_colour: null });
 
     expect(text).toContain('ფერი არ არის ჩაწერილი');
+  });
+});
+
+describe('protocolResponse — the three words, and only the three words', () => {
+  it.each([
+    ['კი', 'agreed'],
+    ['კი!', 'agreed'],
+    ['დიახ', 'agreed'],
+    ['თანახმა ვარ', 'agreed'],
+    ['არა', 'declined'],
+    ['არა.', 'declined'],
+    ['no', 'declined'],
+    ['უთხარი', 'told'],
+    ['უკვე ვუთხარი', 'told'],
+  ])('%s → %s', (message, expected) => {
+    expect(protocolResponse(message)).toBe(expected);
+  });
+
+  it.each(['არა, მაგრამ სხვას ვიცნობ', 'კი, ოღონდ ჯერ მითხარი ვინ არის', 'ვინ არის ეს?', ''])(
+    'leaves a real sentence to the model: %s',
+    (message) => {
+      expect(protocolResponse(message)).toBeNull();
+    },
+  );
+});
+
+describe('ensureInviteAnswerRecorded — the server makes the answer true', () => {
+  it('records a bare „არა" the run forgot to record', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 168 }]) as never);
+
+    expect(await ensureInviteAnswerRecorded(12740, '170749', 'არა')).toBe('declined');
+    expect(recordCampaignResponse).toHaveBeenCalledWith(12740, '170749', 'declined');
+  });
+
+  it('does nothing when the participant is no longer waiting — the model got there first', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await ensureInviteAnswerRecorded(12739, '170748', 'კი')).toBeNull();
+    expect(recordCampaignResponse).not.toHaveBeenCalled();
+  });
+
+  it('asks only about a participant still in the asked state', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await ensureInviteAnswerRecorded(12740, '170749', 'უთხარი');
+
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("state = 'asked'");
+  });
+
+  it('never classifies a sentence — that conversation belongs to the model', async () => {
+    expect(await ensureInviteAnswerRecorded(12740, '170749', 'არა, ის ჩემი ნათესავია')).toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('ensureInviteLinkInReply — „კი" hands over the link in the same reply', () => {
+  it('appends the link when the reply promised one but did not carry it', async () => {
+    const out = await ensureInviteLinkInReply('კარგი, გამოგიგზავნი ბმულს.', '170748');
+
+    expect(out).toContain('https://www.netai.guru/join?ref=ABC12345');
+  });
+
+  it('leaves a reply that already carries a link alone', async () => {
+    const reply = 'აი ბმული: https://www.netai.guru/join?ref=XYZ99999';
+
+    expect(await ensureInviteLinkInReply(reply, '170748')).toBe(reply);
   });
 });
