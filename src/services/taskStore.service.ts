@@ -60,8 +60,36 @@ export async function createTask(
     [userId, title, description, taskType, threadId ?? null, autonomy],
     QUERY_TIMEOUT_MS,
   );
-  if (threadId !== undefined) await retitleThreadIfStale(threadId, title);
+  if (threadId !== undefined) {
+    await retitleThreadIfStale(threadId, title);
+    await markThreadAsGoal(threadId);
+  }
   return { id: result.rows[0].id };
+}
+
+/**
+ * The thread carries a goal from the moment the goal exists (ticket 9 task
+ * 20 e).
+ *
+ * Four goals opened from chat on 2 September read `is_task: false` through
+ * turns two, three and four — after „ბრიფი ჩაწერილია" and after a wake was
+ * set — and only turned true on `finish_task`. The chat route flipped the flag
+ * on `requestCreated || taskResult`, and opening a goal is neither: it sends no
+ * introduction request and reports no finished result. So nothing on the thread
+ * told the sidebar, the badge or a reader that the conversation belonged to an
+ * open goal.
+ *
+ * Set here rather than in the route, because the connector opens goals too and
+ * the fact is the same wherever it happened. The flag only ever moves to true:
+ * a thread that has carried a goal has carried one.
+ */
+async function markThreadAsGoal(threadId: number): Promise<void> {
+  await query(
+    `UPDATE threads SET is_task = TRUE, updated_at = NOW()
+     WHERE id = $1 AND is_task = FALSE`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
 }
 
 /** A thread title is capped the same way the rename route caps one. */

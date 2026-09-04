@@ -375,7 +375,10 @@ threadsRouter.post(
             finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
           void setThreadStatus(userId, threadId, finalStatus, {
             statusLine: langLine,
-            ...(becameTask && { isTask: true }),
+            // An OPEN goal on this thread is the same fact (ticket 9 task
+            // 20 e) — it covers threads whose goal predates the flag being
+            // written at creation time.
+            ...((becameTask || openTask !== null) && { isTask: true }),
           });
           // If the user isn't connected (closed the app / switched away), their
           // answer would sit unseen — push it. No-op when they're live (they see

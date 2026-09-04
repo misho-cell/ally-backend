@@ -112,3 +112,27 @@ describe('createTask retitles a thread left on a closed goal name (ticket 9 task
     expect((retitle[1][1] as string).length).toBe(80);
   });
 });
+
+describe('a thread carries its goal from the moment the goal exists (ticket 9 task 20 e)', () => {
+  it('flips is_task on the goal thread at creation, not at finish_task', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 80 }], rowCount: 1 } as never);
+
+    await createTask('501', 'ძაღლის ტრენერის პოვნა', null, 'search', 9010);
+
+    const flag = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('SET is_task = TRUE'),
+    ) as [string, unknown[]];
+    expect(flag[0]).toContain('is_task = FALSE');
+    expect(flag[1]).toEqual([9010]);
+  });
+
+  it('does not touch any thread for a goal with no thread', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 81 }], rowCount: 1 } as never);
+
+    await createTask('501', 'a goal with no thread', null, 'search');
+
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('SET is_task = TRUE'))).toBe(
+      false,
+    );
+  });
+});
