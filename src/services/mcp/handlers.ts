@@ -121,6 +121,9 @@ interface SearchOutcome {
   // Set when the rows came from the spelling-similar fuzzy fallback, not exact.
   readonly fuzzy?: boolean;
   readonly results?: SearchRow[];
+  /** The query asked who somebody is NOT — an honest refusal, not an empty result. */
+  readonly negated?: boolean;
+  readonly note?: string;
 }
 
 function toPublicRow(userId: string, row: SearchRow): McpToolPayload {
@@ -230,7 +233,12 @@ async function mapSearchResult(
         };
 
   if (!outcome.found || !Array.isArray(outcome.results) || outcome.results.length === 0) {
-    return withSearchId({ found: false, note: emptyNote, ...pointerPayload });
+    // A NEGATED query is not an empty result (ticket 9 task 14.1): the generic
+    // „nothing matched, keep looking" note sends the model back for another
+    // word search, which is exactly how the query's own opposite came back as
+    // an answer. The search's own explanation wins here.
+    const note = outcome.negated === true ? (outcome.note ?? emptyNote) : emptyNote;
+    return withSearchId({ found: false, note, ...pointerPayload });
   }
   const deduped = dedupeByName(outcome.results);
   // Real total when the tool reports one; else the deduped pool size.

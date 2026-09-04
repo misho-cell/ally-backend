@@ -404,6 +404,26 @@ describe('mcpSearchContacts', () => {
     expect(String(empty.note)).not.toContain('try search_by_insight');
   });
 
+  it('a NEGATED query keeps its own explanation on the connector (ticket 9 task 14.1)', async () => {
+    // The generic empty note tells the model to keep trying other searches —
+    // which is exactly how „people who are explicitly not investors" came back
+    // as five investors. The search's own refusal has to survive the boundary.
+    mockSearchByInsight.mockResolvedValue({
+      found: false,
+      query: 'x',
+      negated: true,
+      note: 'This query asks who somebody is NOT… call correct_contact_fact…',
+    });
+
+    const out = await mcpSearchByInsight(USER, {
+      query: 'people who are explicitly not investors',
+    });
+
+    expect(out.found).toBe(false);
+    expect(String(out.note)).toContain('correct_contact_fact');
+    expect(String(out.note)).not.toContain('No saved facts matched');
+  });
+
   it('T15 pointers survive the connector boundary as contact_refs (ticket 8 task 4)', async () => {
     mockSearchByInsight.mockResolvedValue({
       found: false,
