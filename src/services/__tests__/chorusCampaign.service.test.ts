@@ -33,6 +33,7 @@ import {
   recordCampaignResponse,
   sweepStaleParticipants,
   attributeCampaignJoin,
+  techniqueHowFor,
 } from '../chorusCampaign.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -209,7 +210,9 @@ describe('sendDueCampaignAsks', () => {
     // the person (how=5); when/reason default to 0 = explicit NONE (a
     // scheduled ask has no conversational moment; no reason unless the env
     // says the message carries one) — ticket 8 task 5.
-    expect(updates[0][1]).toEqual([1, 77, 0, 5, 0]);
+    // HOW is the variant actually sent, not the env default (ticket 9 task 22):
+    // participant 1 gets the second of the four phrasings.
+    expect(updates[0][1]).toEqual([1, 77, 0, 6, 0]);
     // T9's one list: the ask ALSO becomes a typed chorus_ask pending update,
     // released immediately, so any conversation the inviter opens sees it.
     expect(queueFollowUp).toHaveBeenCalledWith(
@@ -380,5 +383,49 @@ describe('attributeCampaignJoin', () => {
       (sql as string).includes("state = 'joined'"),
     );
     expect(joinedCalls).toHaveLength(0);
+  });
+});
+
+describe('the ask phrasing varies (ticket 9 task 22)', () => {
+  it('rotates evenly across all four HOW values, deterministically', () => {
+    const seen = [0, 1, 2, 3, 4, 5, 6, 7].map((id) => techniqueHowFor(id));
+
+    expect(seen).toEqual([5, 6, 7, 8, 5, 6, 7, 8]);
+    // Same row, same message, every time — a test never fights a coin toss.
+    expect(techniqueHowFor(42)).toBe(techniqueHowFor(42));
+  });
+
+  it('every variant carries the three-word reply protocol the parser depends on', async () => {
+    const sent: string[] = [];
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_campaign_participants p'))
+        return Promise.resolve(
+          rows([
+            { id: 0, inviter_user_id: 9, target_label: 'ნინო' },
+            { id: 1, inviter_user_id: 9, target_label: 'ნინო' },
+            { id: 2, inviter_user_id: 9, target_label: 'ნინო' },
+            { id: 3, inviter_user_id: 9, target_label: 'ნინო' },
+          ]) as never,
+        );
+      return Promise.resolve(rows([]) as never);
+    });
+    (saveThreadMessage as jest.Mock).mockImplementation(
+      (_t: number, _u: number, _r: string, text: string) => {
+        sent.push(text);
+        return Promise.resolve(undefined);
+      },
+    );
+
+    await sendDueCampaignAsks(10);
+
+    expect(sent).toHaveLength(4);
+    // Four different messages, and every one of them still tells the user the
+    // exact three words the response parser understands.
+    expect(new Set(sent).size).toBe(4);
+    for (const text of sent) {
+      expect(text).toContain('„კი"');
+      expect(text).toContain('„არა"');
+      expect(text).toContain('„უთხარი"');
+    }
   });
 });

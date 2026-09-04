@@ -37,12 +37,15 @@ export function parseTechniqueValue(group: keyof TechniqueTag, value: unknown): 
   return Number.isInteger(n) && (n === 0 || (n >= min && n <= max)) ? n : null;
 }
 
-// Chorus stamps its OWN three values on every ask it sends (D50) — config,
-// not deploy, so the founder flips them when the fixed message changes. The
-// defaults are what the current message truthfully does: it names the person
-// (technique 5), is sent on a schedule tied to no conversational moment
-// (when = 0, explicit none), and gives whatever reason the env declares
-// (9 since 29 Aug; 0 = none if the reason text is ever removed).
+// Chorus stamps its own values on every ask it sends (D50) — config, not
+// deploy, so the founder flips them when the fixed message changes. WHEN is a
+// schedule with no conversational moment (0, explicit none) and REASON is
+// whatever the env declares (9 since 29 Aug; 0 = none if the text loses it).
+//
+// HOW is no longer read from here (ticket 9 task 22): it comes from the
+// variant actually sent, so the stamp cannot drift from the words. The env
+// default stays for the follow-up payload's shape and for anyone reading the
+// config expecting all three.
 const CHORUS_TECHNIQUE: TechniqueTag = {
   when: parseTechniqueValue('when', process.env.CHORUS_TECHNIQUE_WHEN ?? 0),
   how: parseTechniqueValue('how', process.env.CHORUS_TECHNIQUE_HOW ?? 5),
@@ -216,15 +219,63 @@ export async function openDueCampaigns(sinceDays: number): Promise<{ opened: num
 }
 
 // The founder's call (29 Aug, via Misho, closing D50's open half): the ask
-// now GIVES a reason — technique 9, "we grow together". The technique stamp
-// must always match what the text actually does: reason changes here →
-// CHORUS_TECHNIQUE_REASON on Railway changes with it, never one without the
-// other.
-const CAMPAIGN_ASK_MESSAGE = (label: string): string =>
-  `${label}-ს იცნობ და Netai-ზე ჯერ არ არის. რაც მეტი ახლობელი ადამიანია ქსელში, ` +
-  'მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. თუ გინდა, შეგიძლია მოიწვიო — ' +
-  'უბრალოდ უპასუხე ამ თრედში: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
+// GIVES a reason — technique 9, "we grow together". The technique stamp must
+// always match what the text actually does.
+//
+// Ticket 9 task 22 — why there are four of these now. All 27 asks ever sent
+// carry when=0, how=5, reason=9 or 0. The columns are full; what is missing is
+// VARIATION. A conversion table over a constant can never converge — it was
+// measuring one phrasing against itself and calling the other two thirds
+// empty.
+//
+// So HOW varies across its four values, each with the text that value NAMES,
+// and the stamp follows the text by construction rather than by an env var
+// somebody has to remember to change. WHEN stays 0 honestly: Chorus sends on a
+// schedule, so there is no conversational moment to record, and inventing one
+// would fabricate the very number the table exists to measure. REASON stays 9
+// on all four — varying two dimensions at once over 27 rows would leave every
+// cell too thin to read.
+const CAMPAIGN_REPLY_PROTOCOL =
+  'უპასუხე ამ თრედში: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
   'შესთავაზე, „უთხარი" (უთხარი და ველოდები).';
+
+/** technique_how → the message that phrasing actually is. */
+const CAMPAIGN_ASK_VARIANTS: Readonly<Record<number, (label: string) => string>> = {
+  // 5 — name the person.
+  5: (label) =>
+    `${label}-ს იცნობ და Netai-ზე ჯერ არ არის. რაც მეტი ახლობელი ადამიანია ქსელში, ` +
+    `მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. თუ გინდა, შეგიძლია მოიწვიო — ` +
+    `უბრალოდ ${CAMPAIGN_REPLY_PROTOCOL}`,
+  // 6 — the advice ask: their judgment first, the invitation second.
+  6: (label) =>
+    `შენი აზრი მაინტერესებს: ${label} Netai-სთვის გამოსადეგი ადამიანი იქნებოდა? ` +
+    `რაც მეტი ახლობელი ადამიანია ქსელში, მით უკეთ მუშაობს ის ყველასთვის — ერთად ` +
+    `ვიზრდებით. ${CAMPAIGN_REPLY_PROTOCOL}`,
+  // 7 — make refusing free: say the "no" out loud, first.
+  7: (label) =>
+    `${label} Netai-ზე ჯერ არ არის. თუ არ გინდა ან დრო არ გაქვს, სრულიად ნორმალურია — ` +
+    `„არა" საკმარისი პასუხია და აღარ გკითხავ. თუ გინდა კი — რაც მეტი ახლობელია ` +
+    `ქსელში, მით უკეთ მუშაობს ყველასთვის, ერთად ვიზრდებით. ${CAMPAIGN_REPLY_PROTOCOL}`,
+  // 8 — text them now: one message, this minute.
+  8: (label) =>
+    `${label}-ს ერთი შეტყობინება თუ მისწერე ახლა, ის Netai-ზე იქნება. რაც მეტი ` +
+    `ახლობელი ადამიანია ქსელში, მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. ` +
+    CAMPAIGN_REPLY_PROTOCOL,
+};
+
+const CAMPAIGN_HOW_VALUES = [5, 6, 7, 8];
+
+/**
+ * Which phrasing this ask uses. Deterministic on the participant id rather
+ * than random: the split stays even, the same row always reproduces the same
+ * message, and a test never has to fight a coin toss.
+ */
+export function techniqueHowFor(participantId: number): number {
+  return CAMPAIGN_HOW_VALUES[participantId % CAMPAIGN_HOW_VALUES.length] as number;
+}
+
+const CAMPAIGN_ASK_MESSAGE = (label: string, how: number): string =>
+  (CAMPAIGN_ASK_VARIANTS[how] ?? CAMPAIGN_ASK_VARIANTS[5])?.(label) ?? '';
 
 /** Sends every due (state='pending', scheduled_ask_at elapsed) campaign ask — a cron tick's own worklist. */
 export async function sendDueCampaignAsks(limit: number): Promise<number> {
@@ -254,18 +305,21 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
       undefined,
       { isTask: true, status: 'needs_you', statusLine: 'პასუხს ელოდება' },
     );
+    const how = techniqueHowFor(row.id);
     await saveThreadMessage(
       thread.id,
       row.inviter_user_id,
       'assistant',
-      CAMPAIGN_ASK_MESSAGE(label),
+      CAMPAIGN_ASK_MESSAGE(label, how),
     );
     await query(
       `UPDATE invite_campaign_participants
        SET state = 'asked', asked_at = NOW(), thread_id = $2, state_updated_at = NOW(),
            technique_when = $3, technique_how = $4, technique_reason = $5
        WHERE id = $1`,
-      [row.id, thread.id, CHORUS_TECHNIQUE.when, CHORUS_TECHNIQUE.how, CHORUS_TECHNIQUE.reason],
+      // `how` comes from the variant actually sent, never from the env — the
+      // stamp cannot drift from the text if it is read off the same value.
+      [row.id, thread.id, CHORUS_TECHNIQUE.when, how, CHORUS_TECHNIQUE.reason],
       CAMPAIGN_QUERY_TIMEOUT_MS,
     );
     // T9 (ticket 7 task 13): the ask also enters the ONE pending_updates list
@@ -280,7 +334,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
         who: label,
         why: 'an invite-campaign ask is waiting for their answer',
         thread_id: thread.id,
-        technique_tag: CHORUS_TECHNIQUE,
+        technique_tag: { ...CHORUS_TECHNIQUE, how },
         instruction:
           `A Netai invite ask about ${label} is waiting in its own thread. If it fits the ` +
           'conversation, remind the user once, lightly, that it is there — their answer ' +

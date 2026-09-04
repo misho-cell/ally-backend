@@ -38,6 +38,20 @@ export interface AskDialRow {
   join_rate: number;
 }
 
+/**
+ * A technique value as a reader should see it.
+ *
+ * 0 is a real, deliberate answer — "there was no such thing", stored by
+ * migration 097 so an absent technique is distinguishable from an unrecorded
+ * one. Printed as a bare 0 next to counts it reads as "zero asks", which is
+ * exactly how the 2 September report was misread.
+ */
+function techniqueLabel(value: number | null): string {
+  if (value === null) return 'unknown';
+  if (value === 0) return 'none';
+  return String(value);
+}
+
 /** Component 1: campaigns per dial setting (and city) -> joins -> join rate. */
 async function buildAskDialTable(): Promise<AskDialRow[]> {
   const result = await query<{
@@ -105,6 +119,10 @@ export interface TechniqueConversionRow {
   technique_when: number | null;
   technique_how: number | null;
   technique_reason: number | null;
+  /** The same three, printed: a technique number, `none`, or `unknown`. */
+  technique_when_label: string;
+  technique_how_label: string;
+  technique_reason_label: string;
   asked: number;
   agreed: number;
   told: number;
@@ -144,6 +162,13 @@ async function buildTechniqueConversion(): Promise<TechniqueConversionRow[]> {
     technique_when: r.technique_when,
     technique_how: r.technique_how,
     technique_reason: r.technique_reason,
+    // Ticket 9 task 22: the STORED 0 means "explicitly none" and the row was
+    // read as a zero count — „technique_when 0 · technique_reason 0" in the
+    // 2 September report, when both were values on five real asks. A number
+    // that means a word should be printed as the word.
+    technique_when_label: techniqueLabel(r.technique_when),
+    technique_how_label: techniqueLabel(r.technique_how),
+    technique_reason_label: techniqueLabel(r.technique_reason),
     asked: Number(r.asked),
     agreed: Number(r.agreed),
     told: Number(r.told),
