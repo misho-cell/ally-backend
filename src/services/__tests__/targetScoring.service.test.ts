@@ -801,3 +801,58 @@ describe('task 23: an organisation, a bare first name and a relationship word ar
     expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000063']);
   });
 });
+
+describe('task 23: the gates read the whole crowd, not one label', () => {
+  it('excludes a taxi driver whose own candidate label says nothing — two other people do', async () => {
+    // The real row: „Zura T" on the list, while „Taxi Zura" and
+    // „ზურა ტაქსი ყვარელი" sit on the same number.
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000070', label: 'Zura T' }]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000070', reach: '40' }],
+      aliases: [
+        { phone: '+995500000070', contactId: 1, alias: 'Taxi Zura' },
+        { phone: '+995500000070', contactId: 2, alias: 'ზურა ტაქსი ყვარელი' },
+        { phone: '+995500000070', contactId: 3, alias: 'ზურა როზომაშვილი' },
+        { phone: '+995500000070', contactId: 4, alias: 'ზურა როზომაშვილი' },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('one lone voice calling him a taxi is not the crowd', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000071', label: 'Zura Rozomashvili' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000071', contactId: 1, alias: 'Taxi Zura' },
+        { phone: '+995500000071', contactId: 2, alias: 'ზურა როზომაშვილი' },
+        { phone: '+995500000071', contactId: 3, alias: 'ზურა როზომაშვილი' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000071']);
+  });
+
+  it('shows the fuller name: „Kato" is what twelve people typed, „Kato Boxua" is who she is', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000072', label: 'Kato' }])]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000072', contactId: 1, alias: 'Kato' },
+        { phone: '+995500000072', contactId: 2, alias: 'Kato' },
+        { phone: '+995500000072', contactId: 3, alias: 'Kato' },
+        { phone: '+995500000072', contactId: 4, alias: 'Kato Boxua' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0]?.label).toBe('Kato Boxua');
+  });
+});

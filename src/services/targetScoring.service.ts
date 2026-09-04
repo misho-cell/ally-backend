@@ -218,6 +218,9 @@ const TRADE_WORDS = [
 // A first name is not an identification (ticket 9 task 23).
 const MIN_AGREED_NAME_TOKENS = 2;
 
+/** One person calling him a taxi is an opinion; two is the crowd's verdict. */
+const MIN_TRADE_VOTES = 2;
+
 const MIN_OWN_CONTACTS = 200;
 // The founder, 31 August: "people with less then 200 contacts are very young
 // and possibly even not working". This also swallows the register-once-and-
@@ -457,6 +460,7 @@ function ownPeopleDigits(): Set<string> {
 function exclusionFor(
   label: string,
   fit: FitSignal,
+  tradeVotes: number,
   nameConfirmed: boolean,
   account: AccountFacts | undefined,
   isOurOwn: boolean,
@@ -469,7 +473,12 @@ function exclusionFor(
   // "Only a trade or a service" — the trade word is the gate, but only when
   // nothing else speaks for the person. A stored fact or a role word in the
   // label means there IS something else, and Rule 5 keeps them.
-  if (containsAny(label, TRADE_WORDS) && fit.level !== 'strong' && fit.level !== 'moderate') {
+  const crowdSaysTrade = tradeVotes >= MIN_TRADE_VOTES;
+  if (
+    (containsAny(label, TRADE_WORDS) || crowdSaysTrade) &&
+    fit.level !== 'strong' &&
+    fit.level !== 'moderate'
+  ) {
     if (!containsAny(label, OWNERSHIP_WORDS) && !containsAny(label, ROLE_WORDS)) {
       return 'trade_only';
     }
@@ -725,6 +734,16 @@ function hasNeedsNetaiSignal(label: string): boolean {
 interface AliasAnalysis {
   /** Most frequent alias token across contributors (normalized), if any. */
   topToken: string | null;
+  /**
+   * How many DISTINCT people saved this number under a trade word.
+   *
+   * The gates used to read one label — the one the candidate happened to
+   * arrive with — while the evidence is spread across everything anybody ever
+   * called this number. „Zura T" carries no trade word and is a taxi driver:
+   * two other people saved him as „Taxi Zura" and „ზურა ტაქსი ყვარელი"
+   * (ticket 9 task 23).
+   */
+  tradeVotes: number;
   /** ≥2 distinct contributors share a non-stoplist token — the person test. */
   personConfirmed: boolean;
   /** The same, but the shared token must be a NAME — Rule 14 (c). */
@@ -850,10 +869,12 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     // among those that name somebody. „Maxin.ai Ceo" is the commonest alias on
     // Nika Kutsia's number and names nobody, so it is not eligible.
     const aliasContributors = new Map<string, Set<number>>();
+    const aliasNameCount = new Map<string, number>();
     for (const entry of entries) {
       if (entry.names.length === 0) continue;
       if (!aliasContributors.has(entry.alias)) aliasContributors.set(entry.alias, new Set());
       aliasContributors.get(entry.alias)?.add(entry.contactId);
+      aliasNameCount.set(entry.alias, new Set(entry.names).size);
     }
     // Two conditions, and they answer two different questions. The crowd must
     // agree on at least one name word — that is what says a person is behind
@@ -863,6 +884,14 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     // would be stricter than the data supports: „Gia Melashvili" and „Gia
     // Gldani" on one number is one Gia whose surname the crowd is unsure of,
     // and one number is one person.
+    // The crowd's own verdict on what this number IS, counted in people rather
+    // than in labels: one person calling him a taxi is an opinion, two is
+    // evidence.
+    const tradeContributors = new Set<number>();
+    for (const entry of entries) {
+      if (containsAny(entry.alias, TRADE_WORDS)) tradeContributors.add(entry.contactId);
+    }
+
     const someoneAgreesOnAName = Array.from(nameContributors.values()).some(
       (contributors) => contributors.size >= 2,
     );
@@ -870,19 +899,34 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
       (entry) => new Set(entry.names).size >= MIN_AGREED_NAME_TOKENS,
     );
     const nameConfirmed = someoneAgreesOnAName && someoneKnowsTheFullName;
+    // Prefer a label that carries a FULL name over one that carries half of
+    // it: „Kato" is what twelve people typed, but „Kato Boxua" is who she is,
+    // and a list a human reads in two seconds needs the surname. Within the
+    // same number of name words, the most-used label wins; ties break
+    // alphabetically, never by Map order.
     let personLabel: string | null = null;
+    let bestNames = 0;
     let bestCount = 0;
     for (const [alias, contributors] of aliasContributors) {
-      // Deterministic: ties broken alphabetically, never by Map order.
-      if (
-        contributors.size > bestCount ||
-        (contributors.size === bestCount && personLabel !== null && alias < personLabel)
-      ) {
+      const names = aliasNameCount.get(alias) ?? 0;
+      const better =
+        names > bestNames ||
+        (names === bestNames &&
+          (contributors.size > bestCount ||
+            (contributors.size === bestCount && personLabel !== null && alias < personLabel)));
+      if (better) {
         personLabel = alias;
+        bestNames = names;
         bestCount = contributors.size;
       }
     }
-    result.set(phone, { topToken, personConfirmed, nameConfirmed, personLabel });
+    result.set(phone, {
+      topToken,
+      tradeVotes: tradeContributors.size,
+      personConfirmed,
+      nameConfirmed,
+      personLabel,
+    });
   }
   return result;
 }
@@ -1247,6 +1291,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     const excluded = exclusionFor(
       ctx.label,
       fit,
+      analysis?.tradeVotes ?? 0,
       analysis?.nameConfirmed ?? false,
       accountMap.get(phoneDigits(phone)),
       ourOwn.has(phoneDigits(phone)),
@@ -1261,7 +1306,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     // label names nobody but the phonebooks do, the row carries the person's
     // name — a list a human reads must say who it is about.
     const label =
-      nameTokens(ctx.label).length === 0 && analysis?.personLabel
+      analysis?.personLabel &&
+      nameTokens(analysis.personLabel).length > nameTokens(ctx.label).length
         ? analysis.personLabel
         : ctx.label;
     entries.push({
