@@ -11,6 +11,8 @@ import {
 } from './askBudget.service';
 
 const SCORE_QUERY_TIMEOUT_MS = 8_000;
+/** Reach is not optional: every row is scored on it, so it gets its own room. */
+const REACH_QUERY_TIMEOUT_MS = 20_000;
 // Must mirror askBudget.service's own fatigue window — this is the same
 // signal, read here in aggregate rather than per-sender.
 const IGNORED_ASK_AFTER_HOURS = 168;
@@ -843,15 +845,23 @@ function gatherCandidates(needs: UnmetNeed[]): Map<string, CandidateContext> {
 async function reachForPhones(phones: string[]): Promise<Map<string, number>> {
   if (phones.length === 0) return new Map();
   const result = await query<{ phone: string; reach: string }>(
+    // UNION ALL, not UNION: COUNT(DISTINCT uid) already removes the duplicate
+    // a person present in both branches would create, so the set-level dedupe
+    // was a second sort over every row for an answer that could not change.
+    //
+    // And a longer timeout than the rest. This is the one read the whole build
+    // needs — every row is scored on reach — and at 865 candidates it came in
+    // at 8.3s against the shared 8s limit and took the list down with it. The
+    // per-topic lookups can afford to be dropped; this cannot.
     `SELECT phone, COUNT(DISTINCT uid) AS reach FROM (
        SELECT phone, "contactId"::text AS uid FROM "UserAlias" WHERE phone = ANY($1)
-       UNION
+       UNION ALL
        SELECT ucp.phone, uc."originUserId"::text AS uid
        FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
        WHERE ucp.phone = ANY($1)
      ) x GROUP BY phone`,
     [phones],
-    SCORE_QUERY_TIMEOUT_MS,
+    REACH_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((r) => [r.phone, Number(r.reach)]));
 }
