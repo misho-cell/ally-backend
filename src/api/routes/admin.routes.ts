@@ -78,6 +78,10 @@ import {
   rejectIdentityCandidate,
   unmergePerson,
   getIdentitySummary,
+  getIdentityTotals,
+  exportIdentityCandidates,
+  applyIdentityDecisions,
+  RarityBand,
 } from '../../services/identity.service';
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
 import { deletePrivateContextKeys } from '../../services/userPrivateContext.service';
@@ -2256,6 +2260,10 @@ adminRouter.post('/identity/scan', async (req: Request, res: Response) => {
 
 // The shadow map's merged TOTALS in one read (ticket 8 task 13.3 — eleven
 // guessed spellings 404'd; this is the route).
+// One call carries at most this many of the founder's answers — a spreadsheet
+// paste is a few hundred rows, and each one is a real merge.
+const MAX_IDENTITY_DECISIONS = 500;
+
 adminRouter.get('/identity/summary', async (_req: Request, res: Response) => {
   try {
     res.status(200).json({ success: true, data: await getIdentitySummary() });
@@ -2266,6 +2274,15 @@ adminRouter.get('/identity/summary', async (_req: Request, res: Response) => {
   }
 });
 
+// The review queue, in the order the founder reviews it (ticket 9 task 29):
+//   GET /admin/identity/candidates
+//       ?status=pending &limit=200 &offset=0
+//       &sort=rarity|confidence   — rarity = rarest names first (D97)
+//       &band=rare|uncommon|common
+//       &names_only=true          — leave out „Voice Recorder", „Test Referral"…
+// Each row now carries sample_alias, co_owners, name_distinct_phones, band and
+// looks_like_a_name at the top level: the screen showed „— → — 80%" on 2,316
+// rows because all of that was buried inside `evidence`.
 adminRouter.get('/identity/candidates', async (req: Request, res: Response) => {
   try {
     const status = ['pending', 'approved', 'rejected'].includes(String(req.query.status))
@@ -2273,10 +2290,105 @@ adminRouter.get('/identity/candidates', async (req: Request, res: Response) => {
       : 'pending';
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
-    res.status(200).json({ success: true, data: await listIdentityCandidates(status, limit) });
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
+    const band = ['rare', 'uncommon', 'common'].includes(String(req.query.band))
+      ? (String(req.query.band) as RarityBand)
+      : undefined;
+    const sort = String(req.query.sort) === 'rarity' ? 'rarity' : 'confidence';
+    res.status(200).json({
+      success: true,
+      data: await listIdentityCandidates(status, limit, {
+        offset,
+        sort,
+        ...(band ? { band } : {}),
+        namesOnly: String(req.query.names_only) === 'true',
+      }),
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin identity candidates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// How much is waiting, in which band, and how much of it is not even a name.
+adminRouter.get('/identity/totals', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await getIdentityTotals() });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity totals]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The whole queue as a spreadsheet, rarest first, with an empty Decision
+// column — the founder reviews from a file (D97) and the file stopped at 200.
+//   GET /admin/identity/export?format=csv|json&names_only=true|false
+adminRouter.get('/identity/export', async (req: Request, res: Response) => {
+  try {
+    const namesOnly = String(req.query.names_only) !== 'false';
+    const out = await exportIdentityCandidates(namesOnly);
+    if (String(req.query.format) === 'json') {
+      res.status(200).json({ success: true, data: out });
+      return;
+    }
+    const header =
+      'id,name_as_saved,people_who_saved_both,numbers_with_this_name,band,number_1,number_2,decision';
+    const escape = (v: unknown): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const csv = [
+      header,
+      ...out.rows.map((r) =>
+        [
+          r.id,
+          escape(r.name_as_saved),
+          r.people_who_saved_both ?? '',
+          r.numbers_with_this_name ?? '',
+          r.band,
+          escape(r.number_1),
+          escape(r.number_2),
+          '',
+        ].join(','),
+      ),
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="identity_candidates.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity export]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// His answers, loaded back: POST /admin/identity/decisions
+//   body: { decisions: [{ id, decision: "yes" | "no" | anything else }] }
+// „yes" merges the pair, „no" rejects it, anything else stays PENDING — an
+// unsure pair is not a decision and must not become one. Undo per pair:
+// POST /admin/identity/candidates/:id/unmerge (existing).
+adminRouter.post('/identity/decisions', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { decisions?: { id?: unknown; decision?: unknown }[] };
+    const decisions = Array.isArray(body.decisions) ? body.decisions : [];
+    if (decisions.length === 0) {
+      res.status(400).json({ success: false, error: 'decisions: [{id, decision}]' });
+      return;
+    }
+    if (decisions.length > MAX_IDENTITY_DECISIONS) {
+      res
+        .status(400)
+        .json({ success: false, error: `at most ${MAX_IDENTITY_DECISIONS} decisions per call` });
+      return;
+    }
+    const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
+    const parsed = decisions
+      .map((d) => ({ id: Number(d.id), decision: String(d.decision ?? '') }))
+      .filter((d) => Number.isInteger(d.id) && d.id > 0);
+    res.status(200).json({ success: true, data: await applyIdentityDecisions(parsed, actor) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity decisions]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -410,16 +410,39 @@ export async function backfillCandidateNameReach(
   };
 }
 
+/**
+ * The review queue, in the order the founder actually reviews it (ticket 9
+ * task 29, D97): rarest names first, one band at a time, paging past the first
+ * 200, with the name and the evidence ON the row instead of buried in a JSON
+ * blob — the screen showed „— → — 80%" for 2,316 rows because everything a
+ * human needs was inside `evidence` and nothing lifted it out.
+ */
 export async function listIdentityCandidates(
   status: string,
   limit: number,
-): Promise<{ candidates: IdentityCandidate[]; total: number }> {
-  const [page, total] = await Promise.all([
+  opts: CandidateQuery = {},
+): Promise<{ candidates: ReviewCandidate[]; total: number; matched: number }> {
+  const rarity = `COALESCE((evidence->>'name_distinct_phones')::int, 0)`;
+  const bandClause =
+    opts.band === 'rare'
+      ? ` AND ${rarity} <= ${RARE_MAX_PHONES}`
+      : opts.band === 'uncommon'
+        ? ` AND ${rarity} > ${RARE_MAX_PHONES} AND ${rarity} <= ${UNCOMMON_MAX_PHONES}`
+        : opts.band === 'common'
+          ? ` AND ${rarity} > ${UNCOMMON_MAX_PHONES}`
+          : '';
+  // Rarest first, and a rarity of 0 (never stamped) sorts with the rare names
+  // rather than ahead of them.
+  const order =
+    opts.sort === 'rarity'
+      ? `ORDER BY NULLIF(${rarity}, 0) ASC NULLS FIRST, id ASC`
+      : `ORDER BY confidence DESC, id ASC`;
+  const [page, total, matched] = await Promise.all([
     query<IdentityCandidate>(
       `SELECT id, phones, confidence, evidence, status, created_at
-       FROM identity_candidates WHERE status = $1
-       ORDER BY confidence DESC, id ASC LIMIT $2`,
-      [status, limit],
+       FROM identity_candidates WHERE status = $1${bandClause}
+       ${order} LIMIT $2 OFFSET $3`,
+      [status, limit, opts.offset ?? 0],
       IDENTITY_QUERY_TIMEOUT_MS,
     ),
     query<{ count: string }>(
@@ -427,8 +450,166 @@ export async function listIdentityCandidates(
       [status],
       IDENTITY_QUERY_TIMEOUT_MS,
     ),
+    query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM identity_candidates WHERE status = $1${bandClause}`,
+      [status],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    ),
   ]);
-  return { candidates: page.rows, total: Number(total.rows[0]?.count ?? 0) };
+  const rows = page.rows.map(toReviewCandidate);
+  return {
+    candidates: opts.namesOnly ? rows.filter((r) => r.looks_like_a_name) : rows,
+    total: Number(total.rows[0]?.count ?? 0),
+    matched: Number(matched.rows[0]?.count ?? 0),
+  };
+}
+
+export interface IdentityTotals {
+  by_status: Record<string, number>;
+  by_band: Record<RarityBand, number>;
+  /** Pending rows whose label is not a person's name at all. */
+  not_a_name: number;
+  bands: { rare: string; uncommon: string; common: string };
+}
+
+/**
+ * The totals route (ticket 8 task 13.3, still 404 on 2 September): how many
+ * pairs are waiting, in which band, and how many of them are placeholders
+ * rather than names — the number that says how much of the queue is worth a
+ * human's evening.
+ */
+export async function getIdentityTotals(): Promise<IdentityTotals> {
+  const rarity = `COALESCE((evidence->>'name_distinct_phones')::int, 0)`;
+  const [statuses, bands, pending] = await Promise.all([
+    query<{ status: string; count: string }>(
+      `SELECT status, COUNT(*) AS count FROM identity_candidates GROUP BY status`,
+      [],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    ),
+    query<{ band: string; count: string }>(
+      `SELECT CASE
+                WHEN ${rarity} <= ${RARE_MAX_PHONES} THEN 'rare'
+                WHEN ${rarity} <= ${UNCOMMON_MAX_PHONES} THEN 'uncommon'
+                ELSE 'common' END AS band,
+              COUNT(*) AS count
+       FROM identity_candidates WHERE status = 'pending' GROUP BY band`,
+      [],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    ),
+    query<{ sample_alias: string | null }>(
+      `SELECT evidence->>'sample_alias' AS sample_alias
+       FROM identity_candidates WHERE status = 'pending'`,
+      [],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    ),
+  ]);
+  const byBand: Record<RarityBand, number> = { rare: 0, uncommon: 0, common: 0 };
+  for (const row of bands.rows) byBand[row.band as RarityBand] = Number(row.count);
+  return {
+    by_status: Object.fromEntries(statuses.rows.map((r) => [r.status, Number(r.count)])),
+    by_band: byBand,
+    not_a_name: pending.rows.filter((r) => !looksLikeAName(r.sample_alias)).length,
+    bands: {
+      rare: `the name is on at most ${RARE_MAX_PHONES} numbers in the whole base`,
+      uncommon: `${RARE_MAX_PHONES + 1}–${UNCOMMON_MAX_PHONES} numbers`,
+      common: `more than ${UNCOMMON_MAX_PHONES} numbers — these wait (D97)`,
+    },
+  };
+}
+
+/**
+ * The rarity bands the founder reviews by (ticket 9 task 29, D97: "he reviews
+ * the pairs himself, rare names first, nobody merges before his yes per pair,
+ * common names wait").
+ *
+ * Rarity is `evidence.name_distinct_phones` — how many different numbers in
+ * the whole base carry this name. Two numbers sharing „Levani Shalamberidze"
+ * (9 numbers carry it) is weaker evidence than two sharing a name only they
+ * have.
+ */
+export type RarityBand = 'rare' | 'uncommon' | 'common';
+const RARE_MAX_PHONES = 2;
+const UNCOMMON_MAX_PHONES = 5;
+
+export function rarityBand(namePhones: number | null): RarityBand {
+  if (namePhones === null || namePhones <= RARE_MAX_PHONES) return 'rare';
+  if (namePhones <= UNCOMMON_MAX_PHONES) return 'uncommon';
+  return 'common';
+}
+
+/**
+ * Label shapes that are not a person's name, so the founder never reads them.
+ *
+ * The first 200 rare-band rows he was given are full of these: „Voice Recorder
+ * (don't forget to merge calls)" on 30 candidates, „AT&T Service Contacts" on
+ * 13, „Test Referral" with 168 co-owners, „Aaa Aaa", „Sg Sg", „Abo Abo". They
+ * are rare precisely because nothing else in the base carries them, which is
+ * how a placeholder floats to the top of a rarity sort.
+ *
+ * Never auto-rejected — nobody merges or discards anyone without his yes. They
+ * are FLAGGED, and the export leaves them out by default while saying how many
+ * it left out.
+ */
+const NON_NAME_MARKERS = [
+  'voice recorder',
+  'service contacts',
+  'at&t',
+  'test referral',
+  'undefined',
+  'no name',
+  'unknown',
+  'sim ',
+  'sms',
+  'voicemail',
+  'ავტომოპასუხე',
+  'ხმის ჩამწერი',
+];
+
+export function looksLikeAName(alias: string | null): boolean {
+  const label = (alias ?? '').trim().toLowerCase();
+  if (label.length < 3) return false;
+  if (NON_NAME_MARKERS.some((m) => label.includes(m))) return false;
+  const words = label.split(/\s+/).filter(Boolean);
+  // „Aaa Aaa", „Sg Sg", „Abo Abo" — the same short token twice is a filler.
+  if (words.length === 2 && words[0] === words[1] && words[0].length <= 4) return false;
+  // A sentence is not a name: „Voice Recorder (don't forget to merge calls)".
+  if (words.length > 5) return false;
+  return true;
+}
+
+export interface ReviewCandidate extends IdentityCandidate {
+  sample_alias: string | null;
+  co_owners: number | null;
+  name_distinct_phones: number | null;
+  band: RarityBand;
+  looks_like_a_name: boolean;
+}
+
+/** Lift the evidence a reviewer needs out of the JSON blob and onto the row. */
+export function toReviewCandidate(row: IdentityCandidate): ReviewCandidate {
+  const e = row.evidence ?? {};
+  const alias = typeof e.sample_alias === 'string' ? e.sample_alias : null;
+  const namePhones =
+    typeof e.name_distinct_phones === 'number' ? (e.name_distinct_phones as number) : null;
+  return {
+    ...row,
+    sample_alias: alias,
+    co_owners: typeof e.co_owners === 'number' ? (e.co_owners as number) : null,
+    name_distinct_phones: namePhones,
+    band: rarityBand(namePhones),
+    looks_like_a_name: looksLikeAName(alias),
+  };
+}
+
+export interface CandidateQuery {
+  status?: string;
+  limit?: number;
+  offset?: number;
+  /** 'rarity' puts the rarest names first — the order he actually reviews in. */
+  sort?: 'rarity' | 'confidence';
+  band?: RarityBand;
+  /** Leave out the placeholders that are not names at all. */
+  namesOnly?: boolean;
 }
 
 export interface ScanProgressRow {
@@ -581,4 +762,100 @@ export async function unmergePerson(personId: string, actor: string): Promise<De
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   return { ok: true, person_id: personId };
+}
+
+export interface ExportRow {
+  id: number;
+  name_as_saved: string;
+  people_who_saved_both: number | null;
+  numbers_with_this_name: number | null;
+  band: RarityBand;
+  number_1: string;
+  number_2: string;
+  decision: '';
+}
+
+/**
+ * The whole queue as the founder reviews it (ticket 9 task 29): a spreadsheet,
+ * rarest first, one row per pair, with an empty Decision column he fills in.
+ *
+ * The numbers are shown as their last four digits, exactly as in the file he
+ * already has — a review list is not a place to publish 4,632 phone numbers.
+ * Placeholders („Voice Recorder…", „Test Referral", „Aaa Aaa") are left out by
+ * default and counted, because a rarity sort floats them to the very top: they
+ * are rare precisely because nothing else in the base carries them.
+ */
+export async function exportIdentityCandidates(
+  namesOnly = true,
+): Promise<{ rows: ExportRow[]; skipped_not_a_name: number; total_pending: number }> {
+  const result = await query<IdentityCandidate>(
+    `SELECT id, phones, confidence, evidence, status, created_at
+     FROM identity_candidates WHERE status = 'pending'
+     ORDER BY NULLIF(COALESCE((evidence->>'name_distinct_phones')::int, 0), 0) ASC NULLS FIRST,
+              id ASC`,
+    [],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  const all = result.rows.map(toReviewCandidate);
+  const keep = namesOnly ? all.filter((r) => r.looks_like_a_name) : all;
+  const last4 = (phone: string): string => `…${phone.slice(-4)}`;
+  return {
+    rows: keep.map((r) => ({
+      id: r.id,
+      name_as_saved: r.sample_alias ?? '',
+      people_who_saved_both: r.co_owners,
+      numbers_with_this_name: r.name_distinct_phones,
+      band: r.band,
+      number_1: last4(r.phones[0] ?? ''),
+      number_2: last4(r.phones[1] ?? ''),
+      decision: '',
+    })),
+    skipped_not_a_name: all.length - keep.length,
+    total_pending: all.length,
+  };
+}
+
+export interface BulkDecision {
+  id: number;
+  /** yes = the same person, no = different people. Anything else is left pending. */
+  decision: string;
+}
+
+/**
+ * His answers, loaded back (ticket 9 task 29). „yes" approves the pair, „no"
+ * rejects it, and anything else — „unsure", blank — is deliberately left
+ * pending: an unsure pair is not a decision and must not become one.
+ *
+ * Nobody merges anyone without a yes per pair (D97), so this is that yes,
+ * applied through exactly the same approve/reject path as a single click.
+ */
+export async function applyIdentityDecisions(
+  decisions: readonly BulkDecision[],
+  actor: string,
+): Promise<{ approved: number; rejected: number; skipped: number; errors: string[] }> {
+  let approved = 0;
+  let rejected = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+  for (const row of decisions) {
+    const verdict = String(row.decision ?? '')
+      .trim()
+      .toLowerCase();
+    const yes = ['yes', 'y', 'კი', 'დიახ', 'true', '1'].includes(verdict);
+    const no = ['no', 'n', 'არა', 'false', '0'].includes(verdict);
+    if (!yes && !no) {
+      skipped += 1;
+      continue;
+    }
+    const outcome = yes
+      ? await approveIdentityCandidate(row.id, actor)
+      : await rejectIdentityCandidate(row.id, actor);
+    if (outcome.ok) {
+      if (yes) approved += 1;
+      else rejected += 1;
+    } else {
+      errors.push(`#${row.id}: ${outcome.error ?? 'failed'}`);
+    }
+  }
+  return { approved, rejected, skipped, errors };
 }

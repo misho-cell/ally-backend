@@ -10,6 +10,9 @@ import {
   unmergePerson,
   backfillCandidateNameReach,
   PAIR_CAP_PER_BATCH,
+  exportIdentityCandidates,
+  applyIdentityDecisions,
+  looksLikeAName,
 } from '../identity.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -442,5 +445,125 @@ describe('listIdentityCandidates', () => {
 
     expect(out.total).toBe(321);
     expect(out.candidates).toHaveLength(1);
+  });
+});
+
+describe('the review queue the founder actually reads (ticket 9 task 29)', () => {
+  it('sorts rarest first when asked, and pages past the first 200', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await listIdentityCandidates('pending', 200, { sort: 'rarity', offset: 200 });
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('name_distinct_phones');
+    expect(sql).toContain('ASC NULLS FIRST');
+    expect(sql).toContain('OFFSET');
+    expect(params).toEqual(['pending', 200, 200]);
+  });
+
+  it('filters to one rarity band', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await listIdentityCandidates('pending', 50, { band: 'rare' });
+
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('<= 2');
+  });
+
+  it('lifts the name, the counts and the band onto the row', async () => {
+    // The screen showed „— → — 80%" on 2,316 rows: everything a human needs
+    // was inside `evidence` and nothing lifted it out.
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          id: 3,
+          phones: ['+12023400819', '+995511249744'],
+          confidence: 0.8,
+          evidence: {
+            sample_alias: 'Levani Shalamberidze',
+            co_owners: 7,
+            name_distinct_phones: 9,
+          },
+          status: 'pending',
+          created_at: 'now',
+        },
+      ],
+      rowCount: 1,
+    } as never);
+
+    const out = await listIdentityCandidates('pending', 50, {});
+
+    expect(out.candidates[0]).toMatchObject({
+      sample_alias: 'Levani Shalamberidze',
+      co_owners: 7,
+      name_distinct_phones: 9,
+      band: 'common',
+      looks_like_a_name: true,
+    });
+  });
+});
+
+describe('a label that is not a name (ticket 9 task 29)', () => {
+  it.each([
+    ['Voice Recorder (don’t forget to merge calls)', 'an app'],
+    ['AT&T Service Contacts', 'a carrier'],
+    ['Test Referral', 'a test row'],
+    ['Aaa Aaa', 'a filler'],
+    ['Sg Sg', 'a filler'],
+    ['Abo Abo', 'a filler'],
+    ['', 'nothing at all'],
+  ])('%s is not a name (%s)', (alias) => {
+    expect(looksLikeAName(alias)).toBe(false);
+  });
+
+  it.each(['Levani Shalamberidze', 'ნინო კახიძე', 'Kato Boxua'])('%s is a name', (alias) => {
+    expect(looksLikeAName(alias)).toBe(true);
+  });
+
+  it('never rejects them by itself — they are only left out of the export', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          id: 1,
+          phones: ['+995111', '+995222'],
+          confidence: 0.8,
+          evidence: { sample_alias: 'Test Referral', co_owners: 168, name_distinct_phones: 1 },
+          status: 'pending',
+          created_at: 'now',
+        },
+        {
+          id: 2,
+          phones: ['+995333', '+995444'],
+          confidence: 0.8,
+          evidence: { sample_alias: 'Nino Kakhidze', co_owners: 4, name_distinct_phones: 1 },
+          status: 'pending',
+          created_at: 'now',
+        },
+      ],
+      rowCount: 2,
+    } as never);
+
+    const out = await exportIdentityCandidates(true);
+
+    expect(out.rows.map((r) => r.id)).toEqual([2]);
+    expect(out.skipped_not_a_name).toBe(1);
+    expect(out.total_pending).toBe(2);
+    // The numbers leave as last-four only — a review list is not a place to
+    // publish 4,632 phone numbers.
+    expect(out.rows[0].number_1).toBe('…5333');
+  });
+});
+
+describe('loading the founder’s answers back (ticket 9 task 29)', () => {
+  it('an unsure answer stays PENDING — it is not a decision', async () => {
+    const out = await applyIdentityDecisions(
+      [
+        { id: 1, decision: 'unsure' },
+        { id: 2, decision: '' },
+      ],
+      'admin:1',
+    );
+
+    expect(out).toEqual({ approved: 0, rejected: 0, skipped: 2, errors: [] });
   });
 });
