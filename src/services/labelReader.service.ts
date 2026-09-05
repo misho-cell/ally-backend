@@ -153,7 +153,14 @@ export function isNameToken(token: string, firstInLabel: boolean): boolean {
  * Georgia, and they do not have to. They list what a company ISN'T.
  */
 export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
-  if (isNameToken(token, firstInLabel)) return 'name';
+  // A name we KNOW is a name, before anything else.
+  if (GEORGIAN_FIRST_NAMES.has(token)) return 'name';
+  if (firstInLabel && AMBIGUOUS_FIRST_NAMES.has(token)) return 'name';
+  // Then the dictionaries — BEFORE the surname-ending guess, and this order is
+  // the whole point. Georgian builds agent nouns on „-ელი": „დამლაგებელი" (a
+  // cleaner) and „მასწავლებელი" (a teacher) both end exactly like a surname.
+  // Asked in the other order, the first live run read „დამლაგებელი" as this
+  // person's family name and searched the web for it.
   if (containsAny(token, TRADE_WORDS)) return 'trade';
   if (containsAny(token, PROFESSION_WITH_CLIENTS)) return 'profession_with_clients';
   if (containsAny(token, RELATIONSHIP_WORDS)) return 'relation';
@@ -162,6 +169,8 @@ export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
   // not a company either, and `fit` already reads it — so it is set aside
   // rather than counted as the company word.
   if (containsAny(token, ROLE_WORDS) || containsAny(token, OWNERSHIP_WORDS)) return 'role';
+  // Only now the ending: a word no dictionary claims, shaped like a surname.
+  if (isNameToken(token, firstInLabel)) return 'name';
   return 'organisation';
 }
 

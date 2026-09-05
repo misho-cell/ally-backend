@@ -87,6 +87,19 @@ describe('L2 — what a context token is', () => {
   it('a role word is set aside, never counted as a company', () => {
     expect(classifyToken('direktori', false)).toBe('role');
   });
+
+  // Georgian builds agent nouns on „-ელი", exactly like a surname. Asked in
+  // the wrong order, the first live run read „დამლაგებელი" — a cleaner — as
+  // this person's family name and searched the web for it.
+  it('a trade that ends like a surname is still a trade', () => {
+    expect(classifyToken('დამლაგებელი', false)).toBe('trade');
+    expect(classifyToken('მასწავლებელი', false)).toBe('trade');
+  });
+
+  it('but a real surname with the same ending is still a name', () => {
+    expect(classifyToken('ქოიავა', false)).toBe('name');
+    expect(classifyToken('burchuladze', false)).toBe('name');
+  });
 });
 
 describe('L3/L4 — the three numbers and the signals', () => {
