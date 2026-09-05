@@ -435,6 +435,15 @@ export interface TargetListBuild {
   survived: number;
   /** The ask capacity that decided the list's length. */
   capacity: number;
+  /**
+   * Who counted as social proof on this build. `parts.subscribed_holders`
+   * keeps its name for the readers that already parse it, but under
+   * `netai_users` it counts Netai users, not subscribers — so the basis has
+   * to travel with the numbers.
+   */
+  social_proof_basis: SocialProofBasis;
+  /** How many holders a candidate needed, whoever was allowed to be one. */
+  social_proof_min_holders: number;
 }
 
 /** Counts gate hits and decides, in one place, whether a hit removes. */
@@ -1451,6 +1460,34 @@ export async function buildTargetListWithGates(
 const MIN_TARGET_SUBSCRIBED_HOLDERS = Number(
   process.env.CHORUS_MIN_SUBSCRIBED_HOLDERS ?? process.env.SOCIAL_PROOF_MIN_SUBSCRIBED_OWNERS ?? 2,
 );
+
+/**
+ * WHO counts as social proof — the founder's seed-phase ruling (5 September).
+ *
+ * The rule "two holders must already be paying" is right for a product with a
+ * subscriber base. With 22 active subscribers it means "two of those 22 must
+ * have this number", and of 42 researched businessmen it let exactly ONE
+ * through. `netai_users` widens the same threshold to anyone who has actually
+ * opened Netai — a thread, a search, or a subscription — which passed 23 of
+ * the same 42 when measured. The number of holders required does not change,
+ * only who is allowed to be one.
+ *
+ * TARGET_SOCIAL_PROOF=netai_users|subscribers (default subscribers)
+ */
+type SocialProofBasis = 'subscribers' | 'netai_users';
+
+function socialProofBasis(): SocialProofBasis {
+  return process.env.TARGET_SOCIAL_PROOF === 'netai_users' ? 'netai_users' : 'subscribers';
+}
+
+/**
+ * The holder ids social proof accepts, or null for "decide it by subscription
+ * status inside the query". Read once per build and passed to both places
+ * that count holders, so the pool and the per-phone count can never disagree.
+ */
+async function socialProofHolderIds(): Promise<number[] | null> {
+  return socialProofBasis() === 'netai_users' ? await netaiUserIds() : null;
+}
 const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 // Same human-phonebook cap as the gate's social proof: a purchased 40k-row
 // list must not vouch for a target here either.
@@ -1468,12 +1505,14 @@ const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
  * subscribers already carry them ("ეს სია შეგიძლია ბაზაში გადაამოწმო ხოლმე").
  * The label is the most common alias — display material, same as tag labels.
  */
-async function gatePassablePool(): Promise<{ phone: string; label: string }[]> {
+async function gatePassablePool(
+  holderIds: number[] | null,
+): Promise<{ phone: string; label: string }[]> {
   const result = await query<{ phone: string; label: string }>(
     `SELECT ua.phone, mode() WITHIN GROUP (ORDER BY ua.alias) AS label
      FROM "UserAlias" ua
      JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
-       AND u.subscription_status = ANY($1)
+       AND ${holderIds === null ? 'u.subscription_status = ANY($1)' : 'u.id = ANY($1::int[])'}
      WHERE NOT EXISTS (
          SELECT 1 FROM "UserPhone" up
          WHERE regexp_replace(up.phone, '\\D', '', 'g') =
@@ -1486,7 +1525,7 @@ async function gatePassablePool(): Promise<{ phone: string; label: string }[]> {
      ORDER BY COUNT(DISTINCT ua."contactId") DESC
      LIMIT $4`,
     [
-      SUBSCRIBED_STATUSES,
+      holderIds ?? SUBSCRIBED_STATUSES,
       MAX_HUMAN_PHONEBOOK_ROWS,
       MIN_TARGET_SUBSCRIBED_HOLDERS,
       GATE_PASSABLE_POOL_LIMIT,
@@ -1497,24 +1536,29 @@ async function gatePassablePool(): Promise<{ phone: string; label: string }[]> {
 }
 
 /**
- * How many active/trialing subscribers (human-sized phonebooks only) hold
- * each phone — the SAME predicate as the registration gate's social proof,
- * minus the spelling-variant fan-out: these phones come straight from
- * UserAlias rows, and the gate's variant matching can only find MORE owners,
- * so a target passing here is guaranteed to pass the door.
+ * How many qualifying holders (human-sized phonebooks only) hold each phone —
+ * the SAME predicate as the registration gate's social proof, minus the
+ * spelling-variant fan-out: these phones come straight from UserAlias rows,
+ * and the gate's variant matching can only find MORE owners, so a target
+ * passing here is guaranteed to pass the door. Who qualifies is
+ * socialProofBasis()'s answer, and it must be the same one gatePassablePool()
+ * was given.
  */
-async function subscribedHoldersForPhones(phones: string[]): Promise<Map<string, number>> {
+async function subscribedHoldersForPhones(
+  phones: string[],
+  holderIds: number[] | null,
+): Promise<Map<string, number>> {
   if (phones.length === 0) return new Map();
   const result = await query<{ phone: string; holders: string }>(
     `SELECT ua.phone, COUNT(DISTINCT ua."contactId") AS holders
      FROM "UserAlias" ua
      JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
-       AND u.subscription_status = ANY($2)
+       AND ${holderIds === null ? 'u.subscription_status = ANY($2)' : 'u.id = ANY($2::int[])'}
      WHERE ua.phone = ANY($1)
        AND (SELECT COUNT(*) FROM "UserAlias" b
             WHERE b."contactId" = ua."contactId") <= $3
      GROUP BY ua.phone`,
-    [phones, SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS],
+    [phones, holderIds ?? SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((r) => [r.phone, Number(r.holders)]));
@@ -1522,13 +1566,17 @@ async function subscribedHoldersForPhones(phones: string[]): Promise<Map<string,
 
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
+  // Read once: the pool and the per-phone count MUST agree on who counts as
+  // social proof, or a candidate can enter the pool and then fail the gate
+  // that let them in.
+  const holderIds = await socialProofHolderIds();
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
   // The founder's pool joins as the primary source: gate-passable people
   // nobody happened to search for still belong on the list (pull 0, no
   // gap-filling claim); an unmet-needs match on the same phone keeps its
   // richer context from gatherCandidates.
-  for (const person of await gatePassablePool()) {
+  for (const person of await gatePassablePool(holderIds)) {
     if (!candidates.has(person.phone)) {
       candidates.set(person.phone, {
         label: person.label,
@@ -1568,7 +1616,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     countAskableUsers(),
     goalRelevantPhones(scoredCandidates),
     bestUserVocabulary(),
-    subscribedHoldersForPhones(phones),
+    subscribedHoldersForPhones(phones, holderIds),
     fitFromFacts(phones),
     accountFactsForPhones(phones),
   ]);
@@ -1672,5 +1720,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     candidates_in: candidatesIn,
     survived: entries.length,
     capacity,
+    social_proof_basis: socialProofBasis(),
+    social_proof_min_holders: MIN_TARGET_SUBSCRIBED_HOLDERS,
   };
 }

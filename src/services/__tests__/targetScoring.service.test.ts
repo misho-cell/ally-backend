@@ -439,6 +439,58 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // The founder's seed-phase ruling (5 September): with 22 subscribers, "two
+  // holders must already be paying" passed 1 of 42 researched businessmen.
+  describe('who counts as social proof', () => {
+    afterEach(() => {
+      delete process.env.TARGET_SOCIAL_PROOF;
+    });
+
+    it('asks for subscribers by default, and says so', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50 });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.social_proof_basis).toBe('subscribers');
+      const poolQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('mode() WITHIN GROUP'),
+      ) as [string, unknown[]];
+      expect(poolQuery[0]).toContain('u.subscription_status = ANY($1)');
+    });
+
+    it('under netai_users both holder queries read the SAME id list', async () => {
+      process.env.TARGET_SOCIAL_PROOF = 'netai_users';
+      mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000060', label: 'გია' }])]);
+      routeScoreQueries({ askableCount: 50 });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.social_proof_basis).toBe('netai_users');
+      const poolQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('mode() WITHIN GROUP'),
+      ) as [string, unknown[]];
+      const holdersQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('AS holders'),
+      ) as [string, unknown[]];
+      expect(poolQuery[0]).toContain('u.id = ANY($1::int[])');
+      expect(holdersQuery[0]).toContain('u.id = ANY($2::int[])');
+      // A candidate that entered the pool must not then fail the very gate
+      // that admitted them — same list, both places.
+      expect(poolQuery[1][0]).toEqual([501, 502, 1326]);
+      expect(holdersQuery[1][1]).toEqual([501, 502, 1326]);
+    });
+
+    it('the threshold itself does not move — only who may meet it', async () => {
+      process.env.TARGET_SOCIAL_PROOF = 'netai_users';
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50 });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.social_proof_min_holders).toBe(2);
+    });
+  });
 
   // The founder's own ask: an exclusion rule you cannot count is a rule you
   // cannot argue with. Every gate reports what it caught and what it removed.

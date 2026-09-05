@@ -1962,6 +1962,8 @@ adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
         survived: build.survived,
         capacity: build.capacity,
         listed: build.entries.length,
+        social_proof_basis: build.social_proof_basis,
+        social_proof_min_holders: build.social_proof_min_holders,
         gates: build.gates,
       },
     });
