@@ -6,7 +6,13 @@ jest.mock('../unmetNeeds.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from '../unmetNeeds.service';
-import { buildTargetList, clearTargetListCache, countAskableUsers } from '../targetScoring.service';
+import {
+  buildTargetList,
+  buildTargetListWithGates,
+  clearTargetListCache,
+  countAskableUsers,
+  TARGET_GATES,
+} from '../targetScoring.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockFindUnmetNeeds = findUnmetNeeds as jest.MockedFunction<typeof findUnmetNeeds>;
@@ -433,6 +439,79 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+
+  // The founder's own ask: an exclusion rule you cannot count is a rule you
+  // cannot argue with. Every gate reports what it caught and what it removed.
+  describe('the gate ledger', () => {
+    const CROWD = [
+      { phone: '+995500000042', reach: '644' },
+      { phone: '+995500000044', reach: '9' },
+    ];
+    const ALIASES = [
+      { phone: '+995500000042', contactId: 1, alias: 'wissol' },
+      { phone: '+995500000042', contactId: 2, alias: 'wissol hotline' },
+      { phone: '+995500000044', contactId: 3, alias: 'Nika Khazaradze Director' },
+      { phone: '+995500000044', contactId: 4, alias: 'Nika Khazaradze' },
+    ];
+
+    function mixedSet(): void {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [
+          { phone: '+995500000042', label: 'wissol' },
+          { phone: '+995500000043', label: 'ზურა სანტექნიკოსი' },
+          { phone: '+995500000044', label: 'Nika Khazaradze Director' },
+          { phone: '0800100100', label: 'ცხელი ხაზი' },
+        ]),
+      ]);
+      routeScoreQueries({ reach: CROWD, aliases: ALIASES, askableCount: 50 });
+    }
+
+    it('names every gate, and counts the ones that fired', async () => {
+      mixedSet();
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.gates.map((g) => g.gate)).toEqual([...TARGET_GATES]);
+      expect(build.candidates_in).toBe(4);
+      const fired = new Map(
+        build.gates.filter((g) => g.removed > 0).map((g) => [g.gate, g.removed]),
+      );
+      expect(fired.get('not_a_plausible_mobile')).toBe(1);
+      expect(fired.get('hotline')).toBe(1);
+      expect(build.entries.map((e) => e.phone)).toEqual(['+995500000044']);
+      expect(build.survived).toBe(1);
+    });
+
+    it('every gate is enabled by default and removes what it matches', async () => {
+      mixedSet();
+
+      const build = await buildTargetListWithGates(30);
+
+      for (const gate of build.gates) {
+        expect(gate.enabled).toBe(true);
+        expect(gate.removed).toBe(gate.matched);
+      }
+    });
+
+    it('a gate named in TARGET_GATES_OFF still counts, but stops removing', async () => {
+      process.env.TARGET_GATES_OFF = 'hotline';
+      try {
+        mixedSet();
+
+        const build = await buildTargetListWithGates(30);
+
+        const hotline = build.gates.find((g) => g.gate === 'hotline');
+        expect(hotline).toEqual({ gate: 'hotline', enabled: false, removed: 0, matched: 1 });
+        // The line walks on to the next gate instead of vanishing here — the
+        // ledger shows exactly which rule is really keeping it out. „wissol"
+        // and „wissol hotline" name nobody, so the person check takes it.
+        expect(build.gates.find((g) => g.gate === 'not_a_person')?.removed).toBe(1);
+        expect(build.entries.map((e) => e.phone)).toEqual(['+995500000044']);
+      } finally {
+        delete process.env.TARGET_GATES_OFF;
+      }
+    });
+  });
 
   it("the file's negative test: a violin teacher, a calligrapher and a petrol line cannot reach the list at all", async () => {
     mockFindUnmetNeeds.mockResolvedValue([

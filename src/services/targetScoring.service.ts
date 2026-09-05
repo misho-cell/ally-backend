@@ -372,6 +372,99 @@ export type TargetExclusion =
   /** What most savers call it is a place or a thing — a flat, not a person. */
   | 'place_or_thing';
 
+/**
+ * Every check that can remove a candidate, by the name it reports under. The
+ * three ahead of `exclusionFor` are gates in their own right and were the
+ * three nobody could count: a `continue` leaves no trace, so "how many did
+ * rule 3 take out this week" had no answer.
+ */
+export type TargetGate =
+  | 'not_a_plausible_mobile'
+  | 'foreign_without_crowd'
+  | 'hotline'
+  | 'too_few_subscribed_holders'
+  | TargetExclusion;
+
+export const TARGET_GATES: readonly TargetGate[] = [
+  'not_a_plausible_mobile',
+  'foreign_without_crowd',
+  'hotline',
+  'too_few_subscribed_holders',
+  'our_own_people',
+  'place_or_thing',
+  'already_paying',
+  'phonebook_too_small',
+  'trade_only',
+  'company_label',
+  'not_a_person',
+];
+
+/**
+ * Gates named here stop removing anyone. They still report what they WOULD
+ * have taken out, so switching one off answers "who is this rule costing us"
+ * without a deploy and without losing the count.
+ *
+ * TARGET_GATES_OFF=phonebook_too_small,trade_only
+ */
+function disabledGates(): ReadonlySet<string> {
+  return new Set(
+    (process.env.TARGET_GATES_OFF ?? '')
+      .split(',')
+      .map((g) => g.trim())
+      .filter(Boolean),
+  );
+}
+
+/** What one gate did on one build. */
+export interface GateReport {
+  gate: TargetGate;
+  enabled: boolean;
+  /** Candidates this gate actually removed. Zero while it is switched off. */
+  removed: number;
+  /** Candidates it matched, whether or not it was allowed to act. */
+  matched: number;
+}
+
+/** A build, with the reason every candidate that is missing is missing. */
+export interface TargetListBuild {
+  entries: TargetScoreEntry[];
+  gates: GateReport[];
+  /** Candidates the two sources offered, before any gate. */
+  candidates_in: number;
+  /** How many survived every gate — before the capacity cut. */
+  survived: number;
+  /** The ask capacity that decided the list's length. */
+  capacity: number;
+}
+
+/** Counts gate hits and decides, in one place, whether a hit removes. */
+class GateLedger {
+  private readonly off: ReadonlySet<string>;
+  private readonly matched = new Map<TargetGate, number>();
+  private readonly removed = new Map<TargetGate, number>();
+
+  constructor() {
+    this.off = disabledGates();
+  }
+
+  /** Records a hit; returns true when the candidate must be dropped. */
+  hit(gate: TargetGate): boolean {
+    this.matched.set(gate, (this.matched.get(gate) ?? 0) + 1);
+    if (this.off.has(gate)) return false;
+    this.removed.set(gate, (this.removed.get(gate) ?? 0) + 1);
+    return true;
+  }
+
+  report(): GateReport[] {
+    return TARGET_GATES.map((gate) => ({
+      gate,
+      enabled: !this.off.has(gate),
+      removed: this.removed.get(gate) ?? 0,
+      matched: this.matched.get(gate) ?? 0,
+    }));
+  }
+}
+
 export type FitLevel = 'strong' | 'moderate' | 'weak' | 'not_yet';
 
 /**
@@ -1296,7 +1389,7 @@ const TARGET_LIST_CACHE_TTL_MS = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTE
 interface TargetListCache {
   sinceDays: number;
   builtAt: number;
-  entries: TargetScoreEntry[];
+  build: TargetListBuild;
 }
 let targetListCache: TargetListCache | null = null;
 
@@ -1326,17 +1419,29 @@ export async function buildTargetList(
   sinceDays: number,
   options: TargetListOptions = {},
 ): Promise<TargetScoreEntry[]> {
+  return (await buildTargetListWithGates(sinceDays, options)).entries;
+}
+
+/**
+ * The same build, with the gate ledger — which check removed how many, and
+ * which checks are currently switched off. The founder's own ask: an
+ * exclusion rule you cannot count is a rule you cannot argue with.
+ */
+export async function buildTargetListWithGates(
+  sinceDays: number,
+  options: TargetListOptions = {},
+): Promise<TargetListBuild> {
   if (
     options.refresh !== true &&
     targetListCache !== null &&
     targetListCache.sinceDays === sinceDays &&
     Date.now() - targetListCache.builtAt < TARGET_LIST_CACHE_TTL_MS
   ) {
-    return targetListCache.entries;
+    return targetListCache.build;
   }
-  const entries = await buildTargetListUncached(sinceDays);
-  targetListCache = { sinceDays, builtAt: Date.now(), entries };
-  return entries;
+  const build = await buildTargetListUncached(sinceDays);
+  targetListCache = { sinceDays, builtAt: Date.now(), build };
+  return build;
 }
 
 // The founder's target rule (31 Aug, via Misho): Chorus invites only people
@@ -1415,7 +1520,8 @@ async function subscribedHoldersForPhones(phones: string[]): Promise<Map<string,
   return new Map(result.rows.map((r) => [r.phone, Number(r.holders)]));
 }
 
-async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEntry[]> {
+async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
+  const gates = new GateLedger();
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
   // The founder's pool joins as the primary source: gate-passable people
@@ -1437,7 +1543,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
   // out — and a FOREIGN number then has to be held by the crowd (below, once
   // reach is known), because „a Georgian mobile or nothing" also excluded
   // every Georgian living abroad.
-  const phones = Array.from(candidates.keys()).filter(isPlausibleMobile);
+  const candidatesIn = candidates.size;
+  const phones = Array.from(candidates.keys()).filter(
+    (phone) => isPlausibleMobile(phone) || !gates.hit('not_a_plausible_mobile'),
+  );
 
   const scoredCandidates = new Map(
     Array.from(candidates.entries()).filter(([phone]) => phones.includes(phone)),
@@ -1471,17 +1580,22 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     const reach = reachMap.get(phone) ?? 0;
     // A foreign number one person saved is noise; one that many phonebooks
     // carry is a person who happens to live abroad.
-    if (!foreignNumberHasCrowd(phone, reach)) continue;
+    if (!foreignNumberHasCrowd(phone, reach) && gates.hit('foreign_without_crowd')) continue;
     const analysis = aliasMap.get(phone);
     // Hard exclude #2: a brand word dominating the aliases at hotline reach
     // is a line, not a person (the tester's wissol/maksima/0-800 evidence).
-    if (isHotline(analysis, reach)) continue;
+    if (isHotline(analysis, reach) && gates.hit('hotline')) continue;
     // Hard exclude #3 (the founder's target rule, 31 Aug via Misho): invite
     // ONLY people the registration door would let in — held by at least the
     // gate's own threshold of subscribers. An invited person who cannot
     // register is a wasted ask and a bad first impression.
     const subscribedHolders = holdersMap.get(phone) ?? 0;
-    if (subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS) continue;
+    if (
+      subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS &&
+      gates.hit('too_few_subscribed_holders')
+    ) {
+      continue;
+    }
     const fit = fitFor(factsMap.get(phone), ctx.label);
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
@@ -1497,7 +1611,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
         ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,
       },
     );
-    if (excluded !== null) continue;
+    if (excluded !== null && gates.hit(excluded)) continue;
     const inviter = inviterMap.get(phone) ?? null;
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
@@ -1552,5 +1666,11 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
     if (b.score !== a.score) return b.score - a.score;
     return a.phone.localeCompare(b.phone);
   });
-  return entries.slice(0, capacity);
+  return {
+    entries: entries.slice(0, capacity),
+    gates: gates.report(),
+    candidates_in: candidatesIn,
+    survived: entries.length,
+    capacity,
+  };
 }

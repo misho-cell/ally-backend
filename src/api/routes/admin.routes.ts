@@ -108,7 +108,11 @@ import {
   previewForeignSyncLinks,
   removeForeignSyncLinks,
 } from '../../services/foreignSync.service';
-import { buildTargetList, TargetScoreEntry } from '../../services/targetScoring.service';
+import {
+  buildTargetList,
+  buildTargetListWithGates,
+  TargetScoreEntry,
+} from '../../services/targetScoring.service';
 import {
   generateAndStoreWeeklyReport,
   getStoredLabReports,
@@ -1936,6 +1940,37 @@ adminRouter.get(
     }
   },
 );
+
+// The gate ledger behind the same list: which check removed how many, and
+// which ones are currently switched off (TARGET_GATES_OFF). A rule nobody can
+// count is a rule nobody can argue with — the founder asked for exactly this,
+// per exclusion, with its number.
+//   GET /admin/target-list/gates?days=30&refresh=true
+// `matched` is what a gate caught, `removed` what it was allowed to act on —
+// they differ only for a gate named in TARGET_GATES_OFF, which then shows the
+// cost of the rule without anyone having to ship a change to find out.
+adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const refresh = req.query.refresh === 'true';
+    const build = await buildTargetListWithGates(days, { refresh });
+    res.status(200).json({
+      success: true,
+      data: {
+        candidates_in: build.candidates_in,
+        survived: build.survived,
+        capacity: build.capacity,
+        listed: build.entries.length,
+        gates: build.gates,
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target-list gates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // T8: manual triggers for the same functions chorusCampaign.cron.ts calls on
 // its own timer (open every 6h, send every 15min, sweep daily) — an ops
