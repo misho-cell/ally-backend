@@ -113,8 +113,9 @@ const THREAD_LIST_JOINS = `FROM threads t
 /** A thread that carries a goal the user has not closed. */
 const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'open')`;
 
-// One user's open goals all fit on the first page — the tasks store never
-// hands back more than 50 open goals either.
+// How many open goals page one lifts above the conversations. Not a limit on
+// how many a user may have: anything past this is reachable through ordinary
+// paging (see promotedGoalThreadIds). The most any user carries today is 7.
 const MAX_GOAL_THREADS = 50;
 
 /**
@@ -134,9 +135,12 @@ const MAX_GOAL_THREADS = 50;
  * a client that asked for thirty may receive a few more rows, and that is the
  * intended trade.
  *
- * Paging is untouched. The cursor is always the last row of the returned array,
- * which is always a conversation, and cursor pages carry conversations only —
- * so a goal can be neither repeated on page two nor used as a cursor.
+ * Paging excludes exactly the goal threads page one PROMOTED — by their ids,
+ * not by "has an open goal". The difference is the 51st goal: excluding the
+ * predicate hid it on every page at once, because page one had already cut the
+ * list at MAX_GOAL_THREADS and every later page then filtered goals out again.
+ * Excluding the ids instead leaves anything past the cap to reach the reader
+ * the ordinary way, in date order.
  */
 export async function getThreadsForUser(
   userId: string,
@@ -148,29 +152,50 @@ export async function getThreadsForUser(
   // Tie-break so a page boundary landing between two threads with the same
   // updated_at can neither skip nor repeat one.
   const beforeId = opts.beforeId ?? Number.MAX_SAFE_INTEGER;
+  // The same promoted set on every page, recomputed rather than carried in the
+  // cursor: the client sends a date and an id, and adding a list of ids to the
+  // cursor contract to fix a server-side rule is the wrong trade.
+  const promoted = await promotedGoalThreadIds(userId);
   const result = await query<ThreadRow>(
     `SELECT
        ${THREAD_LIST_COLUMNS}
      ${THREAD_LIST_JOINS}
      WHERE t.user_id = $1
        AND ($2::timestamptz IS NULL OR (t.updated_at, t.id) < ($2::timestamptz, $3::bigint))
-       AND NOT ${HAS_OPEN_GOAL}
+       AND NOT (t.id = ANY($5::bigint[]))
      ORDER BY t.updated_at DESC, t.id DESC
      LIMIT $4::int`,
-    [userId, before, beforeId, limit],
+    [userId, before, beforeId, limit, promoted],
   );
-  if (before !== null) return result.rows;
+  if (before !== null || promoted.length === 0) return result.rows;
   const goals = await query<ThreadRow>(
     `SELECT
        ${THREAD_LIST_COLUMNS}
      ${THREAD_LIST_JOINS}
+     WHERE t.id = ANY($1::bigint[])
+     ORDER BY t.updated_at DESC, t.id DESC`,
+    [promoted],
+  );
+  return [...goals.rows, ...result.rows];
+}
+
+/**
+ * The open-goal threads page one lifts to the top, newest first, capped.
+ *
+ * The cap exists so one user's goals cannot swallow a page; the ids are
+ * returned so the cap cannot also make the goals past it disappear.
+ */
+async function promotedGoalThreadIds(userId: string): Promise<number[]> {
+  const result = await query<{ id: string }>(
+    `SELECT t.id
+     FROM threads t
      WHERE t.user_id = $1
        AND ${HAS_OPEN_GOAL}
      ORDER BY t.updated_at DESC, t.id DESC
      LIMIT $2::int`,
     [userId, MAX_GOAL_THREADS],
   );
-  return [...goals.rows, ...result.rows];
+  return result.rows.map((r) => Number(r.id));
 }
 
 // A brand-new thread is never born titleless: a null title left the row blank
