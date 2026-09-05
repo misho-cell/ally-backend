@@ -141,6 +141,29 @@ describe('the wake-up wording', () => {
     expect(message).not.toContain('წერია: Arci');
   });
 
+  // A role fact is a career, not a sentence.
+  it('says the current role, not the whole career line', () => {
+    const message = buildWakeUpMessage(
+      {
+        ...CANDIDATE,
+        facts: [
+          'role: CEO @ Arci (2020–present); rose from Finance Officer (2005) to CEO within the one company',
+        ],
+      },
+      'ბესო',
+    );
+
+    expect(message).toContain('წერია: CEO @ Arci (2020–present).');
+    expect(message).not.toContain('Finance Officer');
+  });
+
+  it('says nothing rather than a paragraph, when even the current role is long', () => {
+    const long = 'a'.repeat(200);
+    const message = buildWakeUpMessage({ ...CANDIDATE, facts: [`role: ${long}`] }, 'ბესო');
+
+    expect(message).not.toContain('ჩვენს ჩანაწერში');
+  });
+
   it('falls back to the company when that is all the record has', () => {
     const message = buildWakeUpMessage({ ...CANDIDATE, facts: ['employer: Arci'] }, 'ბესო');
 

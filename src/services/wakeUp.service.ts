@@ -148,10 +148,21 @@ function groupThousands(n: number): string {
  */
 const DESCRIBING_FACT_ORDER = ['role', 'occupation', 'headline', 'expertise', 'employer'];
 
+/**
+ * A role fact is a career, not a sentence: „CEO @ Arci (2020–present); rose
+ * from Finance Officer (2005) to CEO within the one company". Read out whole
+ * it turns the message into a database dump. The part before the first
+ * semicolon is the CURRENT role, which is the only part a greeting needs, and
+ * anything still too long for a line is not worth saying at all.
+ */
+const MAX_DESCRIBING_CHARS = 80;
+
 function describingFact(facts: readonly string[]): string {
   for (const wanted of DESCRIBING_FACT_ORDER) {
     const found = facts.find((f) => f.startsWith(`${wanted}: `));
-    if (found !== undefined) return found.slice(wanted.length + 2).trim();
+    if (found === undefined) continue;
+    const current = (found.slice(wanted.length + 2).split(';')[0] ?? '').trim();
+    if (current !== '' && current.length <= MAX_DESCRIBING_CHARS) return current;
   }
   return '';
 }
