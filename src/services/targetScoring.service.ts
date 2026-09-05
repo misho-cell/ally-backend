@@ -1275,18 +1275,30 @@ async function goalRelevantPhones(candidates: Map<string, CandidateContext>): Pr
   if (words.size === 0) return new Set();
   let matched: Set<string>;
   try {
+    // Read the goals' vocabulary ONCE and join on it. The EXISTS form asked a
+    // trigram question per word against every open goal — thousands of them
+    // for the 28 goals that exist — and still timed out after the per-pair fix.
+    //
+    // `<<%` was only ever the index prefilter in front of a whole-token
+    // membership test, so an equality join on the same normalised tokens is
+    // the same question, asked once.
     const result = await query<{ word: string }>(
-      `SELECT DISTINCT x.word
-       FROM UNNEST($1::text[]) AS x(word)
-       WHERE EXISTS (
-         SELECT 1 FROM tasks t
+      `WITH goal_tokens AS (
+         SELECT DISTINCT unnest(regexp_split_to_array(
+                  normalize_search_token(
+                    COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' ||
+                    COALESCE(t.brief, '')),
+                  '[^a-z0-9]+')) AS token
+         FROM tasks t
          -- tasks.user_id is TEXT on prod while "User".id is INTEGER — compare
          -- as text (live-caught: integer = text 500'd the whole target list).
          JOIN "User" u ON u.id::text = t.user_id AND u.subscription_status = 'active'
          WHERE t.status = 'open'
-           AND normalize_search_token(x.word) <<% normalize_search_token(
-             COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' || COALESCE(t.brief, ''))
-       )`,
+       )
+       SELECT DISTINCT x.word
+       FROM UNNEST($1::text[]) AS x(word)
+       JOIN goal_tokens g ON g.token = normalize_search_token(x.word)
+       WHERE g.token <> ''`,
       [[...words]],
       SCORE_QUERY_TIMEOUT_MS,
     );

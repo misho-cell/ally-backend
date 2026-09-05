@@ -290,6 +290,13 @@ describe('buildTargetList', () => {
     // Four names and one shared trade word — five rows, not eight pairs.
     expect(goalQuery[0]).toContain('UNNEST($1::text[]) AS x(word)');
     expect(new Set(goalQuery[1][0] as string[]).size).toBe((goalQuery[1][0] as string[]).length);
+    // And the goals' vocabulary is read once and joined on, not re-asked per
+    // word: the EXISTS form timed out even after the pairs were collapsed.
+    expect(goalQuery[0]).toContain('WITH goal_tokens AS');
+    expect(goalQuery[0]).toContain(
+      'JOIN goal_tokens g ON g.token = normalize_search_token(x.word)',
+    );
+    expect(goalQuery[0]).not.toContain('<<%');
   });
 
   it("task 15: flags best_user_lookalike from a whole-token match against best users' trade facts — never name tokens", async () => {
