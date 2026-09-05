@@ -118,6 +118,7 @@ import {
 } from '../../services/targetScoring.service';
 import {
   applyTargetDecisions,
+  clearTargetDecision,
   listTargetDecisions,
   TargetDecisionInput,
 } from '../../services/targetDecisions.service';
@@ -2071,6 +2072,26 @@ adminRouter.post('/target-list/decisions', async (req: Request, res: Response) =
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target decisions]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Take one answer back: DELETE /admin/target-list/decisions/:phone
+// A review loop without an undo is a trap — a mistaken „არა" would otherwise
+// need hand-written SQL to recover from.
+adminRouter.delete('/target-list/decisions/:phone', async (req: Request, res: Response) => {
+  try {
+    const phone = String(req.params.phone ?? '').trim();
+    if (phone === '') {
+      res.status(400).json({ success: false, error: 'ნომერი აუცილებელია' });
+      return;
+    }
+    const removed = await clearTargetDecision(phone);
+    clearTargetListCache();
+    res.status(200).json({ success: true, data: { phone, removed } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target decision clear]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -3,6 +3,7 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 import { query } from '../../db/postgres/client';
 import {
   applyTargetDecisions,
+  clearTargetDecision,
   listTargetDecisions,
   refusedTargetPhones,
 } from '../targetDecisions.service';
@@ -116,5 +117,17 @@ describe('the founder reads the list and answers', () => {
     const out = await listTargetDecisions();
 
     expect(out[0]?.updated_at).toBe('2026-09-05T10:00:00.000Z');
+  });
+
+  it('an answer can be taken back, and says whether it removed anything', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
+    expect(await clearTargetDecision(' +995500000013 ')).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('DELETE FROM target_decisions');
+    expect(params[0]).toBe('+995500000013');
+
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    // A typo in the phone reads as "nothing happened", never as success.
+    expect(await clearTargetDecision('+99500000000')).toBe(false);
   });
 });

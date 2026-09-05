@@ -117,6 +117,23 @@ export async function refusedTargetPhones(): Promise<Set<string>> {
   return new Set(result.rows.map((r) => r.phone));
 }
 
+/**
+ * Take a standing answer back.
+ *
+ * A review loop without an undo is a trap: the founder marks somebody „არა"
+ * by mistake and the only recovery documented anywhere is hand-written SQL.
+ * Returns whether a row was actually removed, so a typo in the phone reads as
+ * „nothing happened" rather than as success.
+ */
+export async function clearTargetDecision(phone: string): Promise<boolean> {
+  const result = await query(
+    `DELETE FROM target_decisions WHERE phone = $1`,
+    [phone.trim()],
+    DECISION_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 /** Every standing answer, newest first — the audit of who decided what. */
 export async function listTargetDecisions(): Promise<TargetDecision[]> {
   const result = await query<TargetDecision & { updated_at: Date | string }>(
