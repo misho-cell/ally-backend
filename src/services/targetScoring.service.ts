@@ -23,11 +23,17 @@ const IGNORED_ASK_AFTER_HOURS = 168;
 // any one of: a confirmed search outcome in the last 30 days, three paid
 // months, or using Netai at least once a week.
 
-// Score-part weights and saturation points — a handful of holders (Reach) or
-// matched searches (Pull) already carries the same signal as a hundred would,
-// so each part is capped before combining rather than left unbounded.
-const REACH_SATURATION = 10;
+// A handful of matched searches (Pull) already carries the same signal as a
+// hundred would, so demand is capped before combining rather than left
+// unbounded. Reach is not capped at a count any more — it rides the founder's
+// diminishing curve (reachFactor), floored at the evidence minimum.
 const PULL_SATURATION = 5;
+/**
+ * Below three savers there is no crowd to read (THE TARGETS 2.4, "floor 3").
+ * The floor clamps the CURVE, not the row: who counts as a person is the
+ * person gates' question, and a thin row should rank low rather than score 0.
+ */
+const REACH_EVIDENCE_FLOOR = 3;
 // Rule 14 (founder D102, 3 September 2026): "chorus works two direction ways
 // — right targets and right inviters who have good/warm relations with
 // targets". The two halves never mix. FIT × REACH chooses the TARGET; warmth
@@ -39,32 +45,23 @@ const PULL_SATURATION = 5;
 // customer?" — a colleague ranked first, and his real targets (Tika Rukhadze,
 // Lasha Kiviladze, Vaxo Burchuladze) were not on it at all, because his ties to
 // them are formal. There was no input for fit anywhere in the formula.
-const FIT_REACH_WEIGHT = 0.7;
 // Rule 1: "demand may add at most a tenth of the score, and can never lift
 // anyone over a gate." It was carrying 0.35 — which is how a violin teacher
 // reached the list 54 minutes after somebody searched for one.
-const PULL_BONUS = 0.1;
-const NEEDS_NETAI_BONUS = 0.1;
-const GAP_FILLING_BONUS = 0.05;
-// Ticket 7 task 15: the two remaining criteria flags. A target an open goal
-// is actually looking for outranks a merely-popular one; a lookalike bonus is
-// softer — a correlation, not a demand signal.
-const GOAL_RELEVANCE_BONUS = 0.1;
-const BEST_USER_LOOKALIKE_BONUS = 0.05;
+const DEMAND_CAP = 0.1;
+
 /**
- * The bubble bonus (tasks 1–10, the founder's „სიმკვრივე").
+ * How stale an approach makes a target (THE TARGETS 2.4).
  *
- * Reach counts HOW MANY phonebooks hold a number and stops there — so a
- * television presenter 600 strangers saved and a partner everyone in one firm
- * saved look identical to it. Density asks the other question: do the people
- * who saved this number know EACH OTHER? An invitation into a bubble arrives
- * from a dozen directions at once; the same invitation to a famous stranger
- * arrives from nowhere.
- *
- * Scaled small on purpose. This reorders the top of the list; it does not
- * decide who is on it, and it can never lift anyone over a gate.
+ * A person we wrote to last week is not a fresh target with a small penalty —
+ * the reason to write again is genuinely diminished, which is why freshness
+ * multiplies rather than subtracts. The six-month case after a refusal is a
+ * GATE (`declined_recently`), not a freshness of zero: a rule that removes
+ * somebody should be countable in the ledger like every other rule.
  */
-const BUBBLE_DENSITY_BONUS = 0.15;
+const RECENTLY_APPROACHED_DAYS = 90;
+const RECENTLY_APPROACHED_FRESHNESS = 0.3;
+const DECLINED_BLACKOUT_DAYS = 180;
 
 // D50's best-user definition, verbatim: any ONE of the three qualifies.
 const BEST_USER_OUTCOME_DAYS = 30;
@@ -398,6 +395,8 @@ export type TargetGate =
   | 'foreign_without_crowd'
   | 'hotline'
   | 'too_few_subscribed_holders'
+  /** Approached and refused inside the blackout — his answer stands (2.1). */
+  | 'declined_recently'
   /** A human read the row and said no. The only gate no measurement made. */
   | 'founder_said_no'
   | TargetExclusion;
@@ -407,6 +406,7 @@ export const TARGET_GATES: readonly TargetGate[] = [
   'foreign_without_crowd',
   'hotline',
   'too_few_subscribed_holders',
+  'declined_recently',
   'founder_said_no',
   'our_own_people',
   'place_or_thing',
@@ -746,6 +746,9 @@ export interface TargetScoreParts {
   // The founder's target rule (31 Aug, via Misho): invite ONLY people the
   // door would let in, i.e. holders >= the gate's own threshold.
   subscribed_holders: number;
+  // 1.0, or 0.3 when somebody was asked about them inside the last 90 days.
+  // A multiplier on the score, so it belongs on the row that explains it.
+  freshness: number;
   // Do this number's savers know each other? null on a row density was not
   // measured for — it is computed for the plausible top only, so its absence
   // means "not asked", never "measured as zero".
@@ -761,10 +764,7 @@ interface ScoreInputs {
   fit: FitLevel;
   reach: number;
   pull: number;
-  needsNetai: boolean;
-  gapFilling: boolean;
-  goalRelevant: boolean;
-  bestUserLookalike: boolean;
+  freshness: number;
 }
 
 type ScorableEntry = TargetScoreEntry & { scoreInputs: ScoreInputs };
@@ -1408,31 +1408,49 @@ function isHotline(analysis: AliasAnalysis | undefined, reach: number): boolean 
 }
 
 /**
- * The TARGET score. Rule 14 (b): fit × reach, capped, after the filter — and
- * warmth is not in it. Rule 2: "filter, then rank by reach", so reach ranks
- * within a fit level rather than deciding across them. Rule 1: demand is a
- * bonus of at most a tenth and can never lift anyone over a gate, which is why
- * it sits with the other bonuses instead of carrying a third of the weight.
+ * How much a phonebook count is worth, on the founder's own curve (THE TARGETS,
+ * 2.4): `min(1, log10(phonebooks) / 2)`, so 12 is not a tenth of 100.
+ *
+ *   3 → 0.24 · 12 → 0.54 · 30 → 0.74 · 100+ → 1.0
+ *
+ * The floor of three is the evidence floor: below three savers there is no
+ * crowd to read, and clamping up rather than down keeps a thin row ranked low
+ * instead of scored at zero — the person gates decide who is a person, not this.
+ */
+function reachFactor(reach: number): number {
+  return Math.min(1, Math.log10(Math.max(reach, REACH_EVIDENCE_FLOOR)) / 2);
+}
+
+/**
+ * The TARGET score, as THE TARGETS 2.4 defines it:
+ *
+ *     score = fit × reach × freshness   (+ demand, at most 0.10)
+ *
+ * Multiplicative, not additive: a person nobody holds, or one we approached
+ * last week, is not "a good target with a small penalty" — the whole reason to
+ * write to him is diminished, and the arithmetic should say so.
+ *
+ * D71: once the co-saving graph exists, BUBBLE DENSITY REPLACES RAW REACH. It
+ * exists now, so a row that carries it is ranked on it: a company line is held
+ * by hundreds of strangers and a real connector by people who also hold each
+ * other. A row without a measured density falls back to the reach curve, and
+ * absence is never read as a density of zero.
+ *
+ * Warmth is not here (D102) — it ranks inviters, not targets. Neither are
+ * `needs_netai_signs` and `best_user_lookalike`: 2.4 takes both out of the
+ * target score, and they stay on the row as information.
  */
 function combinedScore(parts: {
   fit: FitLevel;
-  /** 0 when density was not measured for this row — never a penalty. */
-  bubbleDensity: number;
+  /** null when density was not measured — fall back to reach, never to zero. */
+  bubbleDensity: number | null;
   reach: number;
   pull: number;
-  needsNetai: boolean;
-  gapFilling: boolean;
-  goalRelevant: boolean;
-  bestUserLookalike: boolean;
+  freshness: number;
 }): number {
-  const normReach = Math.min(1, parts.reach / REACH_SATURATION);
-  const normPull = Math.min(1, parts.pull / PULL_SATURATION);
-  let score = FIT_SCORE[parts.fit] * normReach * FIT_REACH_WEIGHT + normPull * PULL_BONUS;
-  if (parts.needsNetai) score += NEEDS_NETAI_BONUS;
-  if (parts.gapFilling) score += GAP_FILLING_BONUS;
-  if (parts.goalRelevant) score += GOAL_RELEVANCE_BONUS;
-  if (parts.bestUserLookalike) score += BEST_USER_LOOKALIKE_BONUS;
-  score += parts.bubbleDensity * BUBBLE_DENSITY_BONUS;
+  const crowd = parts.bubbleDensity ?? reachFactor(parts.reach);
+  const demand = Math.min(1, parts.pull / PULL_SATURATION) * DEMAND_CAP;
+  const score = FIT_SCORE[parts.fit] * crowd * parts.freshness + demand;
   // Rounded only here, at the edge — never between the parts (task 31.4).
   return roundTo(Math.min(1, score));
 }
@@ -1847,6 +1865,45 @@ export async function readScoreHistory(opts: {
   }));
 }
 
+/** What a past approach did to a target's freshness, and whether it bars him. */
+interface ApproachHistory {
+  freshness: number;
+  declinedRecently: boolean;
+}
+
+/**
+ * How recently each of these people was actually approached (THE TARGETS 2.4).
+ *
+ * "Approached" means somebody was asked about them — the same test the
+ * cooldown uses. A campaign that opened and found nobody to ask reached the
+ * person in no sense at all, and must not spend their freshness any more than
+ * it spends their cooldown.
+ */
+async function approachHistoryForPhones(phones: string[]): Promise<Map<string, ApproachHistory>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; declined: boolean; approached: boolean }>(
+    `SELECT c.target_phone AS phone,
+            bool_or(c.status = 'closed_declined_all'
+                    AND c.opened_at > NOW() - make_interval(days => $2)) AS declined,
+            bool_or(c.opened_at > NOW() - make_interval(days => $3)) AS approached
+     FROM invite_campaigns c
+     WHERE c.target_phone = ANY($1)
+       AND EXISTS (SELECT 1 FROM invite_campaign_participants p WHERE p.campaign_id = c.id)
+     GROUP BY c.target_phone`,
+    [phones, DECLINED_BLACKOUT_DAYS, RECENTLY_APPROACHED_DAYS],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return new Map(
+    result.rows.map((row) => [
+      row.phone,
+      {
+        declinedRecently: row.declined,
+        freshness: row.approached ? RECENTLY_APPROACHED_FRESHNESS : 1,
+      },
+    ]),
+  );
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
   // Read once: the pool and the per-phone count MUST agree on who counts as
@@ -1894,6 +1951,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     holdersMap,
     factsMap,
     accountMap,
+    approachMap,
   ] = await Promise.all([
     reachForPhones(phones),
     bestInviterForPhones(phones),
@@ -1904,6 +1962,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     subscribedHoldersForPhones(phones, holderIds),
     fitFromFacts(phones),
     accountFactsForPhones(phones),
+    approachHistoryForPhones(phones),
   ]);
   const ourOwn = ownPeopleDigits();
 
@@ -1914,6 +1973,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     // A foreign number one person saved is noise; one that many phonebooks
     // carry is a person who happens to live abroad.
     if (refused.has(phone) && gates.hit('founder_said_no')) continue;
+    const approach = approachMap.get(phone);
+    // He was asked and he said no. Asking again inside the blackout is not
+    // persistence, it is not listening.
+    if (approach?.declinedRecently === true && gates.hit('declined_recently')) continue;
     if (!foreignNumberHasCrowd(phone, reach) && gates.hit('foreign_without_crowd')) continue;
     const analysis = aliasMap.get(phone);
     // Hard exclude #2: a brand word dominating the aliases at hotline reach
@@ -1969,11 +2032,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         fit: fit.level,
         reach,
         pull: ctx.pull,
-        needsNetai,
-        gapFilling,
-        goalRelevant: isGoalRelevant,
-        bestUserLookalike: isBestUserLookalike,
-        bubbleDensity: 0,
+        freshness: approach?.freshness ?? 1,
+        bubbleDensity: null,
       }),
       inviter,
       route: inviter ? 'chorus' : 'direct',
@@ -1989,16 +2049,14 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         best_user_lookalike: isBestUserLookalike,
         person_confirmed: analysis?.personConfirmed ?? false,
         subscribed_holders: subscribedHolders,
+        freshness: approach?.freshness ?? 1,
         bubble: null,
       },
       scoreInputs: {
         fit: fit.level,
         reach,
         pull: ctx.pull,
-        needsNetai,
-        gapFilling,
-        goalRelevant: isGoalRelevant,
-        bestUserLookalike: isBestUserLookalike,
+        freshness: approach?.freshness ?? 1,
       },
     });
   }
@@ -2026,6 +2084,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     const bubble = densities.get(entry.phone);
     if (bubble === undefined) continue;
     entry.parts.bubble = bubble;
+    // D71: where density is known it REPLACES raw reach, it does not top it up.
     entry.score = combinedScore({ ...entry.scoreInputs, bubbleDensity: bubble.density });
   }
   shortlist.sort(byScore);

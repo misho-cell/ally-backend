@@ -15,6 +15,11 @@ import {
 } from '../targetScoring.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+
+// „გია დირექტორი" has a role word in the label and no fact, so it fits WEAK
+// (THE TARGETS 2.4: fit 0.3 in the four-level scale this file still uses).
+const FIT_WEIGHT_WEAK = 0.3;
+
 const mockFindUnmetNeeds = findUnmetNeeds as jest.MockedFunction<typeof findUnmetNeeds>;
 
 function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
@@ -59,6 +64,8 @@ function routeScoreQueries(opts: {
   bubbles?: { phone: string; savers: string; edges: string }[];
   /** Phones a human has ruled out. */
   refused?: string[];
+  /** Past approaches: who was written to, and who refused. */
+  approaches?: { phone: string; declined: boolean; approached: boolean }[];
   /** Accounts that may be asked to carry an invitation (default 501, 502, 1326). */
   askableInviters?: number[];
   // Rule 14 (founder D102): the public facts that decide fit, and the warm
@@ -109,6 +116,8 @@ function routeScoreQueries(opts: {
       return Promise.resolve(rows(opts.bubbles ?? []) as never);
     if (sql.includes('FROM target_decisions'))
       return Promise.resolve(rows((opts.refused ?? []).map((phone) => ({ phone }))) as never);
+    if (sql.includes('bool_or(c.status'))
+      return Promise.resolve(rows(opts.approaches ?? []) as never);
     if (sql.includes('AS holders')) {
       // Every asked phone passes the gate by default (holders=2), so the
       // pre-existing scoring tests keep testing scoring, not the new hard
@@ -516,6 +525,102 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // THE TARGETS 2.4: score = fit × reach × freshness (+ demand ≤ 0.10).
+  describe('the score, as THE TARGETS 2.4 defines it', () => {
+    it("reach rides the founder's curve, so 12 is not a tenth of 100", async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        poolPeople: [
+          { phone: '+995500000100', label: 'გია დირექტორი' },
+          { phone: '+995500000101', label: 'ნინო დირექტორი' },
+        ],
+        reach: [
+          { phone: '+995500000100', reach: '100' },
+          { phone: '+995500000101', reach: '12' },
+        ],
+      });
+
+      const out = await buildTargetList(30);
+      const byPhone = new Map(out.map((e) => [e.phone, e.score]));
+
+      // log10(100)/2 = 1.0 · log10(12)/2 = 0.539 — not 100 against 12.
+      expect(byPhone.get('+995500000100')).toBeCloseTo(FIT_WEIGHT_WEAK * 1, 3);
+      expect(byPhone.get('+995500000101')).toBeCloseTo(FIT_WEIGHT_WEAK * 0.5395, 3);
+    });
+
+    it('a thin row is ranked low, never scored at zero by the floor', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        poolPeople: [{ phone: '+995500000102', label: 'გია დირექტორი' }],
+        reach: [{ phone: '+995500000102', reach: '1' }],
+      });
+
+      const out = await buildTargetList(30);
+
+      // Floored at 3 → log10(3)/2 = 0.238. Who counts as a person is the
+      // person gates' question, not the curve's.
+      expect(out[0]!.score).toBeCloseTo(FIT_WEIGHT_WEAK * 0.2386, 3);
+    });
+
+    it('somebody asked about in the last 90 days is worth less this week', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        poolPeople: [
+          { phone: '+995500000103', label: 'გია დირექტორი' },
+          { phone: '+995500000104', label: 'ნინო დირექტორი' },
+        ],
+        reach: [
+          { phone: '+995500000103', reach: '100' },
+          { phone: '+995500000104', reach: '100' },
+        ],
+        approaches: [{ phone: '+995500000104', declined: false, approached: true }],
+      });
+
+      const out = await buildTargetList(30);
+      const byPhone = new Map(out.map((e) => [e.phone, e]));
+
+      expect(byPhone.get('+995500000103')?.parts.freshness).toBe(1);
+      expect(byPhone.get('+995500000104')?.parts.freshness).toBe(0.3);
+      expect(byPhone.get('+995500000104')!.score).toBeCloseTo(FIT_WEIGHT_WEAK * 0.3, 3);
+    });
+
+    it('he said no — asking again inside the blackout is not persistence', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        poolPeople: [
+          { phone: '+995500000105', label: 'გია დირექტორი' },
+          { phone: '+995500000106', label: 'ნინო დირექტორი' },
+        ],
+        approaches: [{ phone: '+995500000106', declined: true, approached: true }],
+      });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.entries.map((e) => e.phone)).toEqual(['+995500000105']);
+      expect(build.gates.find((g) => g.gate === 'declined_recently')?.removed).toBe(1);
+    });
+
+    it('a campaign that asked nobody spends no freshness', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50, poolPeople: [] });
+
+      await buildTargetList(30);
+
+      const approachQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('bool_or(c.status'),
+      ) as [string, unknown[]] | undefined;
+      // Only campaigns with a participant count as an approach — the same
+      // test the cooldown uses.
+      if (approachQuery !== undefined) {
+        expect(approachQuery[0]).toContain('FROM invite_campaign_participants p');
+      }
+    });
+  });
+
   // The one judgment no column in this schema can make. The founder's own
   // example: his wife is the №1 candidate by every machine signal there is.
   it("a human's no removes the person, and the ledger says who removed them", async () => {
@@ -631,8 +736,12 @@ describe('buildTargetList', () => {
       expect(out.map((e) => e.phone)).toEqual(['+995500000070', '+995500000071']);
       expect(out[0]?.parts.bubble).toEqual({ savers: 10, edges: 90, density: 1 });
       expect(out[1]?.parts.bubble).toEqual({ savers: 10, edges: 0, density: 0 });
-      // Worth exactly the bonus, no more.
-      expect(out[0]!.score - out[1]!.score).toBeCloseTo(0.15, 5);
+      // D71: density REPLACES reach. score = fit × density × freshness + demand.
+      // Both rows carry one matched search (demand 1/5 × 0.10 = 0.02); the
+      // bubble everybody is inside carries the whole fit, the crowd of
+      // strangers carries none of it.
+      expect(out[0]!.score).toBeCloseTo(FIT_WEIGHT_WEAK * 1 + 0.02, 5);
+      expect(out[1]!.score).toBeCloseTo(FIT_WEIGHT_WEAK * 0 + 0.02, 5);
     });
 
     it('a single saver has no pairs, so density is 0 and never divides by zero', async () => {
