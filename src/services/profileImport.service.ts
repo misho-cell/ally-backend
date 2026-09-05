@@ -45,6 +45,14 @@ const FIELD_MAP: Readonly<Record<string, string>> = {
   education: 'education',
   language: 'language',
   link: 'link',
+  /**
+   * Membership of a named network (THE TARGETS, target 9). The founder, 5
+   * September: Lika's list IS the Axel roster. It is its own fact and not a
+   * role, because the „axel" label misses most members — staff and portfolio
+   * founders carry the word too, and plenty of real members never do — so
+   * membership has to be stated rather than inferred.
+   */
+  member_of: 'member_of',
 };
 
 export interface ParsedProfile {

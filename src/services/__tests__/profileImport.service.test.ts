@@ -56,6 +56,12 @@ describe('parseProfile', () => {
     expect(parsed?.facts['link']).toEqual(['linkedin.com/in/giviberidze']);
   });
 
+  it('reads member_of — the roster is stated, never inferred from a label', () => {
+    const parsed = parseProfile(`name: X Y\nmember_of: Axel\n`);
+
+    expect(parsed?.facts['member_of']).toEqual(['Axel']);
+  });
+
   it('never imports the PRIVATE section — the file says owner-only, never shared', () => {
     const parsed = parseProfile(FILE);
 
