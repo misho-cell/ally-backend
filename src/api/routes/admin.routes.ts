@@ -93,7 +93,7 @@ import { deleteUserProfileFields, setUserProfileField } from '../../services/use
 import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
-import { listWakeUpCandidates } from '../../services/wakeUp.service';
+import { listWakeUpCandidates, previewWakeUpMessage } from '../../services/wakeUp.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -2122,6 +2122,37 @@ adminRouter.get('/wake-up', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin wake-up]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Show the wake-up wording to named reviewers, inside their own Netai
+// accounts, before it reaches anybody it is actually for.
+//   POST /admin/wake-up/preview   body: { reviewer_user_ids: ["501", "160584"] }
+// Builds the message from the TOP real candidate and their real numbers, and
+// delivers it as a thread to each reviewer. Reaches nobody else: the people
+// this message is for have never opened Netai, so no thread would find them.
+adminRouter.post('/wake-up/preview', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { reviewer_user_ids?: unknown; name?: unknown };
+    const reviewers = Array.isArray(body.reviewer_user_ids)
+      ? body.reviewer_user_ids.map((id) => String(id).trim()).filter((id) => /^\d+$/.test(id))
+      : [];
+    if (reviewers.length === 0) {
+      res.status(400).json({ success: false, error: 'reviewer_user_ids აუცილებელია' });
+      return;
+    }
+    const [top] = await listWakeUpCandidates(1);
+    if (top === undefined) {
+      res.status(404).json({ success: false, error: 'გასაღვიძებელი კანდიდატი არ არის' });
+      return;
+    }
+    const name = String(body.name ?? '').trim();
+    const previews = await previewWakeUpMessage(reviewers, top, name === '' ? 'მეგობარო' : name);
+    res.status(200).json({ success: true, data: { sent_to_reviewers: previews.length, previews } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin wake-up preview]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

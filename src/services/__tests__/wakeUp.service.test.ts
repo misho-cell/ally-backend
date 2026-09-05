@@ -1,7 +1,18 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../threads.service', () => ({
+  __esModule: true,
+  createThread: jest.fn(),
+  saveThreadMessage: jest.fn(),
+}));
+jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
+jest.mock('../notification.service', () => ({
+  __esModule: true,
+  sendPushNotification: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../db/postgres/client';
-import { listWakeUpCandidates } from '../wakeUp.service';
+import { createThread, saveThreadMessage } from '../threads.service';
+import { buildWakeUpMessage, listWakeUpCandidates, previewWakeUpMessage } from '../wakeUp.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -89,5 +100,63 @@ describe('listWakeUpCandidates', () => {
 
     const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(params[2]).toBe(1);
+  });
+});
+
+const CANDIDATE = {
+  user_id: 526,
+  phone: '+995599140815',
+  facts: ['occupation: CEO, Arci'],
+  phonebook: 2386,
+  contacts_on_netai: 16,
+  registered_at: '2026-03-04T10:00:00.000Z',
+};
+
+describe('the wake-up wording', () => {
+  it('says "your network is already here", never "come in"', () => {
+    const message = buildWakeUpMessage(CANDIDATE, 'ბესო');
+
+    // The one number that makes the sentence true, and their own phonebook.
+    expect(message).toContain('16 ადამიანი უკვე იყენებს');
+    expect(message).toContain('2 386');
+    expect(message).toContain('ბესო');
+  });
+
+  it('repeats what the public record says, and offers to be corrected', () => {
+    const message = buildWakeUpMessage(CANDIDATE, 'ბესო');
+
+    expect(message).toContain('CEO, Arci');
+    expect(message).toContain('თუ არაზუსტია');
+  });
+
+  it('claims nothing about somebody the record says nothing about', () => {
+    const message = buildWakeUpMessage({ ...CANDIDATE, facts: [] }, 'ბესო');
+
+    expect(message).not.toContain('ჩვენს ჩანაწერში');
+    expect(message).toContain('16 ადამიანი უკვე იყენებს');
+  });
+});
+
+describe('previewWakeUpMessage', () => {
+  it('delivers the real wording to each reviewer and to nobody else', async () => {
+    (createThread as jest.Mock).mockResolvedValue({
+      id: 9001,
+      type: 'regular',
+      title: 't',
+      is_task: true,
+      status: 'needs_you',
+      status_line: 's',
+    });
+
+    const out = await previewWakeUpMessage(['501', '160584'], CANDIDATE, 'ბესო');
+
+    expect(out).toHaveLength(2);
+    expect(out.map((p) => p.reviewer_user_id)).toEqual(['501', '160584']);
+    // Two threads, both in reviewers' own accounts.
+    expect((createThread as jest.Mock).mock.calls.map((c) => c[0])).toEqual(['501', '160584']);
+    // And the reviewer is told plainly that nothing has gone out.
+    const body = (saveThreadMessage as jest.Mock).mock.calls[0][3] as string;
+    expect(body).toContain('არავისთვის გაგზავნილა');
+    expect(body).toContain('16 ადამიანი უკვე იყენებს');
   });
 });

@@ -1,4 +1,7 @@
 import { query } from '../db/postgres/client';
+import { createThread, saveThreadMessage } from './threads.service';
+import { emitThreadCreated } from './sse.service';
+import { sendPushNotification } from './notification.service';
 
 /**
  * The accounts that already registered and never came back.
@@ -113,4 +116,121 @@ export async function listWakeUpCandidates(limit = DEFAULT_LIMIT): Promise<WakeU
     contacts_on_netai: Number(row.contacts_on_netai),
     registered_at: new Date(row.registered_at).toISOString(),
   }));
+}
+
+/**
+ * The words a wake-up would carry.
+ *
+ * Not an invitation. They already have an account, so „come in" is the wrong
+ * sentence — the true one is „your network is already here", and the number
+ * that makes it true is `contacts_on_netai`: people out of their OWN phonebook
+ * who use Netai today. Everything in the message is measured; nothing about
+ * them is claimed that the public record does not already say.
+ */
+/**
+ * Group thousands with a space, without asking the runtime.
+ * `toLocaleString('ka-GE')` gives a different string depending on which ICU
+ * data the process was built with — a message people read must not vary with
+ * the container it was rendered in.
+ */
+function groupThousands(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+export function buildWakeUpMessage(candidate: WakeUpCandidate, name: string): string {
+  const role = candidate.facts[0]?.split(': ').slice(1).join(': ') ?? '';
+  const lines = [
+    `გამარჯობა, ${name}.`,
+    '',
+    `Netai-ს ანგარიში უკვე გაქვს — და შენი ${groupThousands(candidate.phonebook)} ` +
+      `კონტაქტიდან ${candidate.contacts_on_netai} ადამიანი უკვე იყენებს მას.`,
+  ];
+  if (role !== '') {
+    lines.push(
+      '',
+      `შენ შესახებ ჩვენს ჩანაწერში წერია: ${role}. თუ არაზუსტია, მითხარი და შევასწორებ.`,
+    );
+  }
+  lines.push(
+    '',
+    'Netai შენივე კონტაქტებში ეძებს — ვინ იცნობს იმ ადამიანს, ვინც გჭირდება. ' +
+      'შენი ტელეფონის წიგნი უკვე ჩატვირთულია, ანუ პასუხი პირველივე კითხვაზე მზადაა.',
+    '',
+    'გახსნა: https://netai.guru',
+  );
+  return lines.join('\n');
+}
+
+/** One reviewer's copy of a message that has not been sent to anybody. */
+export interface WakeUpPreview {
+  reviewer_user_id: string;
+  thread_id: number;
+  about_phone: string;
+  message: string;
+}
+
+/**
+ * Show the exact words to a named reviewer, inside their own Netai account.
+ *
+ * The people this message is FOR have never opened Netai, so no thread would
+ * ever reach them — the real channel is SMS or WhatsApp, and neither can carry
+ * free text today (Twilio is Verify, WhatsApp is locked to the OTP template).
+ * A reviewer, though, uses the app: a thread puts the real message in front of
+ * the person who has to approve it, with the real numbers of a real candidate,
+ * and reaches nobody else.
+ */
+export async function previewWakeUpMessage(
+  reviewerUserIds: readonly string[],
+  candidate: WakeUpCandidate,
+  name: string,
+): Promise<WakeUpPreview[]> {
+  const message = buildWakeUpMessage(candidate, name);
+  const previews: WakeUpPreview[] = [];
+  for (const reviewerId of reviewerUserIds) {
+    const thread = await createThread(
+      reviewerId,
+      'regular',
+      `გასაღვიძებელი წერილი — სანიმუშო ტექსტი`,
+      undefined,
+      { isTask: true, status: 'needs_you', statusLine: 'შენს პასუხს ელოდება' },
+    );
+    await saveThreadMessage(
+      thread.id,
+      Number(reviewerId),
+      'assistant',
+      [
+        'ეს არის ის ტექსტი, რომელიც გასაღვიძებელ სიაში მოხვედრილ ადამიანს მიუვიდა.',
+        `ნიმუში აგებულია რეალურ ადამიანზე (${name}) და მის რეალურ ციფრებზე.`,
+        '**არავისთვის გაგზავნილა.**',
+        '',
+        '---',
+        '',
+        message,
+        '',
+        '---',
+        '',
+        'თუ ტექსტი მოგწონს — მითხარი და გავაგზავნი. თუ არა — მითხარი რა შევცვალო.',
+      ].join('\n'),
+    );
+    emitThreadCreated(reviewerId, {
+      id: thread.id,
+      type: thread.type,
+      title: thread.title,
+      is_task: thread.is_task,
+      status: thread.status,
+      status_line: thread.status_line,
+    });
+    void sendPushNotification(reviewerId, {
+      title: 'Netai',
+      body: 'გასაღვიძებელი წერილის ტექსტი — შენს დასამტკიცებლად.',
+      url: `/chat/${thread.id}`,
+    }).catch(() => undefined);
+    previews.push({
+      reviewer_user_id: reviewerId,
+      thread_id: thread.id,
+      about_phone: candidate.phone,
+      message,
+    });
+  }
+  return previews;
 }
