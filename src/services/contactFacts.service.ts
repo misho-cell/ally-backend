@@ -131,12 +131,42 @@ async function upsertFact(
 // deterministic, no model call.
 const DUPLICATE_TOKEN_OVERLAP = 0.8;
 
-function normalizeFactText(text: string): string {
+/**
+ * The same link written two ways is one link. „linkedin.com/in/beso-ortoidze"
+ * and „https://www.linkedin.com/in/beso-ortoidze/" shared only 4 tokens of 7
+ * on 5 September, so the seed import stored both on 57 people's public
+ * records. Scheme, www and the trailing slash carry no information; the path
+ * separators are word breaks like any other punctuation.
+ */
+function normalizeUrlish(text: string): string {
   return text
-    .toLowerCase()
+    .replace(/\bhttps?:\/\//gu, '')
+    .replace(/\bwww\./gu, '')
+    .replace(/\/+(\s|$)/gu, '$1')
+    .replace(/[/?#]/gu, ' ');
+}
+
+function normalizeFactText(text: string): string {
+  return normalizeUrlish(text.toLowerCase())
     .replace(/[.,!?;:„““”"'()—–-]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * A statement that says strictly less than one already on file is not new
+ * information. „CEO, ARCI" arrived beside „CEO @ Arci (2020–present); rose
+ * from Finance Officer (2005) to CEO within the one company" — every word of
+ * it was already there, and it went in anyway because the overlap ratio is
+ * measured against the LONGER text. One word could be a coincidence; two
+ * words fully contained is a restatement.
+ */
+const MIN_CONTAINED_TOKENS = 2;
+
+function isContained(shorter: ReadonlySet<string>, longer: ReadonlySet<string>): boolean {
+  if (shorter.size < MIN_CONTAINED_TOKENS || shorter.size >= longer.size) return false;
+  for (const t of shorter) if (!longer.has(t)) return false;
+  return true;
 }
 
 export function isNearDuplicateFact(a: string, b: string): boolean {
@@ -146,6 +176,7 @@ export function isNearDuplicateFact(a: string, b: string): boolean {
   const ta = new Set(na.split(' ').filter(Boolean));
   const tb = new Set(nb.split(' ').filter(Boolean));
   if (ta.size === 0 || tb.size === 0) return false;
+  if (isContained(ta, tb) || isContained(tb, ta)) return true;
   let shared = 0;
   for (const t of ta) if (tb.has(t)) shared += 1;
   return shared / Math.max(ta.size, tb.size) >= DUPLICATE_TOKEN_OVERLAP;

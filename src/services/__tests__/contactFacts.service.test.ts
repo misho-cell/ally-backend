@@ -15,6 +15,7 @@ import {
   getVisibleFacts,
   retractFactsFromForeignSync,
   hardDeleteOwnFact,
+  isNearDuplicateFact,
 } from '../contactFacts.service';
 import { normalizePhone } from '../phone';
 
@@ -424,5 +425,49 @@ describe('getVisibleFacts — owner value never hidden by the crowd (F1)', () =>
 
     // is_public alone collapses the last two into one indistinguishable state.
     expect(facts.map((f) => f.visibility)).toEqual(['public', 'matchable', 'private']);
+  });
+});
+
+// 5 September: the seed import put the same LinkedIn on 57 people twice, and a
+// bare „CEO, ARCI" beside a full career line, because neither shape counted as
+// a repeat.
+describe('isNearDuplicateFact — the same statement written differently', () => {
+  it('one link written two ways is one link', () => {
+    expect(
+      isNearDuplicateFact(
+        'linkedin.com/in/beso-ortoidze-9064551a0',
+        'https://www.linkedin.com/in/beso-ortoidze-9064551a0/',
+      ),
+    ).toBe(true);
+  });
+
+  it('two different profiles on the same site are still two links', () => {
+    expect(
+      isNearDuplicateFact(
+        'https://www.linkedin.com/in/gurikoiava/',
+        'https://www.linkedin.com/in/levan-lashkarava/',
+      ),
+    ).toBe(false);
+  });
+
+  it('a line whose every word is already on file adds nothing', () => {
+    expect(
+      isNearDuplicateFact(
+        'CEO, ARCI',
+        'CEO @ Arci (2020–present); rose from Finance Officer (2005) to CEO within the one company',
+      ),
+    ).toBe(true);
+  });
+
+  it('a longer line that says something new is not a repeat', () => {
+    expect(
+      isNearDuplicateFact('CEO @ Arci', 'CFO @ Bank of Georgia, then head of the retail board'),
+    ).toBe(false);
+  });
+
+  it('a single shared word is a coincidence, not a restatement', () => {
+    expect(
+      isNearDuplicateFact('Arci', 'CEO @ Arci (2020–present); rose from Finance Officer'),
+    ).toBe(false);
   });
 });
