@@ -93,6 +93,7 @@ import { deleteUserProfileFields, setUserProfileField } from '../../services/use
 import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
+import { listWakeUpCandidates } from '../../services/wakeUp.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -1970,6 +1971,24 @@ adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target-list gates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The wake-up list (founder, 5 September): accounts that registered and never
+// came back, ranked by how much of their own network is already here.
+//   GET /admin/wake-up?limit=100
+// Read-only. NOTHING is sent from here — the channel and the words need the
+// founder's yes, and this route only answers who and why.
+adminRouter.get('/wake-up', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100;
+    const candidates = await listWakeUpCandidates(limit);
+    res.status(200).json({ success: true, data: { total: candidates.length, candidates } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin wake-up]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
