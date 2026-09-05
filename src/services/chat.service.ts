@@ -1140,7 +1140,10 @@ const SAVE_USER_NOTE_TOOL: AnthropicTool = {
 const GET_USER_NOTES_TOOL: AnthropicTool = {
   name: 'get_user_notes',
   description:
-    'Read back what the user told you about themselves (needs, preferences, profile). Call at the start of a chat with get_my_tasks so you already know them. Optional kind filter.' +
+    "Read the user's SAVED notes about themselves (needs, preferences, profile). Call at the " +
+    'start of a chat together with get_my_tasks. These are stored lines, not a conversation you ' +
+    'had: never imply you remember talking to them, and never open with what you „already know". ' +
+    'Optional kind filter.' +
     ' WHEN: for what they have told you about themselves.',
   input_schema: {
     type: 'object',

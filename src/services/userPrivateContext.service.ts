@@ -82,3 +82,44 @@ export async function deletePrivateContextKeys(
   );
   return { deleted: result.rowCount ?? 0 };
 }
+
+export interface ScrubOutcome {
+  scanned: number;
+  changed: number;
+  users: number;
+  samples: string[];
+}
+
+/**
+ * Strip phone numbers from what is ALREADY stored (ticket 9 task 19.3).
+ *
+ * The guard at the door only protects new writes. The founder's own context
+ * still carried a number in plain text inside a line he asked to keep — the
+ * store rides on every call he makes, and until this ran nobody could remove
+ * it: there was no way to edit a value, only to delete the whole key.
+ *
+ * Dry-run by default. Values are rewritten through the same scrubber the
+ * writer uses, so the two can never disagree.
+ */
+export async function scrubStoredPhoneNumbers(dryRun = true): Promise<ScrubOutcome> {
+  const rows = await query<{ user_id: string; key: string; value: string }>(
+    `SELECT user_id, key, value FROM user_private_context`,
+    [],
+  );
+  const dirty = rows.rows.filter((r) => stripPhoneNumbers(r.value) !== r.value);
+  const outcome: ScrubOutcome = {
+    scanned: rows.rows.length,
+    changed: dirty.length,
+    users: new Set(dirty.map((r) => r.user_id)).size,
+    samples: dirty.slice(0, 5).map((r) => `${r.user_id}/${r.key}`),
+  };
+  if (dryRun || dirty.length === 0) return outcome;
+  for (const row of dirty) {
+    await query(
+      `UPDATE user_private_context SET value = $3, updated_at = NOW()
+       WHERE user_id = $1 AND key = $2`,
+      [row.user_id, row.key, stripPhoneNumbers(row.value)],
+    );
+  }
+  return outcome;
+}

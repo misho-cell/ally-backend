@@ -373,11 +373,13 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'contacts). Notes accumulate. Confirm in one short line.',
   },
   get_user_notes: {
-    title: 'Recall notes about the user',
+    title: 'Read the notes saved about the user',
     description:
-      'Reads back what the user has SAVED about themselves — their needs, preferences ' +
-      'and profile. Call this at the start of a conversation alongside get_my_tasks so you ' +
-      "already know them and don't re-ask what they've said. Optional kind filter.",
+      "Reads the user's SAVED notes about themselves — their needs, preferences and profile. " +
+      'Call this at the start of a conversation alongside get_my_tasks so you do not re-ask what ' +
+      'they have already said. These are stored lines, not a conversation you had: never imply ' +
+      'you remember talking to them, and never open with what you „already know". Optional kind ' +
+      'filter.',
   },
   queue_result: {
     title: 'Queue a result for a goal',

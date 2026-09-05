@@ -84,7 +84,10 @@ import {
   RarityBand,
 } from '../../services/identity.service';
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
-import { deletePrivateContextKeys } from '../../services/userPrivateContext.service';
+import {
+  deletePrivateContextKeys,
+  scrubStoredPhoneNumbers,
+} from '../../services/userPrivateContext.service';
 import { deleteUserNotes } from '../../services/userNotes.service';
 import { deleteUserProfileFields, setUserProfileField } from '../../services/userProfile.service';
 import { republishFacts } from '../../services/factRepublish.service';
@@ -2263,6 +2266,24 @@ adminRouter.post('/identity/scan', async (req: Request, res: Response) => {
 // One call carries at most this many of the founder's answers — a spreadsheet
 // paste is a few hundred rows, and each one is a real merge.
 const MAX_IDENTITY_DECISIONS = 500;
+
+// Ticket 9 task 19.3: strip phone numbers from what is ALREADY stored in
+// private context, across every account. The writer's guard only protects new
+// writes, and there was no way to edit a stored value — only to delete the
+// whole key, which is not an option for a line the founder asked to keep.
+//   POST /admin/privacy/scrub-private-context?dry_run=true|false
+//   Undo: none — a removed phone number cannot be un-removed, which is the
+//   point. Run the dry run first; it names the lines it would touch.
+adminRouter.post('/privacy/scrub-private-context', async (req: Request, res: Response) => {
+  try {
+    const dryRun = req.query.dry_run !== 'false';
+    res.status(200).json({ success: true, data: await scrubStoredPhoneNumbers(dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin scrub private context]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.get('/identity/summary', async (_req: Request, res: Response) => {
   try {
