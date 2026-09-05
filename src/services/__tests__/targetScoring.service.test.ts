@@ -58,6 +58,8 @@ function routeScoreQueries(opts: {
   subscribedHolders?: Record<string, number>;
   /** The founder's gate-passable pool source (default empty). */
   poolPeople?: { phone: string; label: string }[];
+  /** The old-Ally pool: accounts that registered and never opened Netai. */
+  oldAllyPool?: { phone: string; label: string | null }[];
   /** Accounts allowed to vouch for a target (default 501, 502, 1326). */
   socialProofHolders?: number[];
   /** Bubble density rows, per phone: how many savers and how many know each other. */
@@ -110,6 +112,7 @@ function routeScoreQueries(opts: {
     if (sql.includes('array_agg(DISTINCT field_type'))
       return Promise.resolve(rows(opts.fitFacts ?? []) as never);
     if (sql.includes('AS own_contacts')) return Promise.resolve(rows(opts.accounts ?? []) as never);
+    if (sql.includes('WITH big AS')) return Promise.resolve(rows(opts.oldAllyPool ?? []) as never);
     if (sql.includes('mode() WITHIN GROUP'))
       return Promise.resolve(rows(opts.poolPeople ?? []) as never);
     if (sql.includes('JOIN "UserAlias" ax ON ax."contactId" = s.uid'))
@@ -542,6 +545,80 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // THE TARGETS Part 1: an old-Ally account is a target — "tens of thousands"
+  // of them — and D61: waking one IS selling Netai. Not one could reach the
+  // list, because the pool asked for a phone with NO account.
+  describe('the old-Ally pool', () => {
+    const ACCOUNT = {
+      phone: '+995500000120',
+      subscription_status: 'inactive',
+      own_contacts: '1443',
+      opens: '9',
+      netai_user: false,
+    };
+
+    it('an account that never opened Netai reaches the list', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        oldAllyPool: [{ phone: '+995500000120', label: 'გია დირექტორი' }],
+        accounts: [ACCOUNT as never],
+      });
+
+      const out = await buildTargetList(30);
+
+      expect(out.map((e) => e.phone)).toEqual(['+995500000120']);
+      expect(out[0]?.parts.state).toBe('ally_account');
+    });
+
+    // Social proof is the registration door's question. They are already
+    // through it — we hold the account — and they are reached directly.
+    it('is not asked for two subscriber vouchers on top of an account', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({
+        askableCount: 50,
+        oldAllyPool: [{ phone: '+995500000121', label: 'გია დირექტორი' }],
+        accounts: [{ ...ACCOUNT, phone: '+995500000121' } as never],
+        subscribedHolders: { '+995500000121': 0 },
+      });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.entries.map((e) => e.phone)).toEqual(['+995500000121']);
+      expect(build.gates.find((g) => g.gate === 'too_few_subscribed_holders')?.removed).toBe(0);
+    });
+
+    it('a phonebook contact still needs its two vouchers', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [{ phone: '+995500000122', label: 'გია დირექტორი' }]),
+      ]);
+      routeScoreQueries({ askableCount: 50, subscribedHolders: { '+995500000122': 0 } });
+
+      const build = await buildTargetListWithGates(30);
+
+      expect(build.entries).toEqual([]);
+      expect(build.gates.find((g) => g.gate === 'too_few_subscribed_holders')?.removed).toBe(1);
+    });
+
+    it('asks only for human-sized phonebooks, above the connector door', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50 });
+
+      await buildTargetList(30);
+
+      const poolQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('WITH big AS'),
+      ) as [string, unknown[]];
+      // 500 is target 8's door; 15000 keeps out the 25,000-row business
+      // databases somebody imported as a phonebook.
+      expect(poolQuery[1][0]).toBe(500);
+      expect(poolQuery[1][1]).toBe(15000);
+      // And never somebody who has actually opened Netai.
+      expect(poolQuery[0]).toContain('NOT EXISTS (SELECT 1 FROM threads t');
+      expect(poolQuery[0]).toContain('FROM search_activity sa');
+    });
+  });
+
   // THE TARGETS Task 1 (D103): the three states, on every row of the list.
   describe('the three states on the row', () => {
     it('a phone with no account is a phonebook contact, with no account numbers', async () => {

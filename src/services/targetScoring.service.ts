@@ -1967,6 +1967,66 @@ async function approachHistoryForPhones(phones: string[]): Promise<Map<string, A
   );
 }
 
+/**
+ * Target 8's door for an old-Ally account (THE TARGETS 2.3): "500+ own
+ * contacts". The same number the pluses use, and far above the 200-contact
+ * gate — this is the connector door, not the floor.
+ */
+const OLD_ALLY_CONNECTOR_CONTACTS = Number(process.env.OLD_ALLY_CONNECTOR_CONTACTS ?? 500);
+
+/**
+ * The second pool: accounts that registered with old Ally and never opened
+ * Netai (THE TARGETS, Part 1 — "tens of thousands", and D61: waking one IS
+ * selling Netai).
+ *
+ * They could not reach the list at all. The gate-passable pool asks for phones
+ * with NO account, which is right for a phonebook contact reached through
+ * somebody else and wrong for these people: we hold their account, their
+ * number and their phonebook already. Measured on 5 September — 62,143 such
+ * accounts, 10,006 of them with 200 or more contacts, and not one could ever
+ * appear. The founder's own acceptance test (Jaba Kikvidze, Nikoloz
+ * Kevkhishvili — "state 2 and in the pool") failed on every build.
+ *
+ * Bounded by the connector door at the bottom and the human-phonebook cap at
+ * the top: the biggest phonebooks in the base run to 25,000 contacts, which is
+ * a business database somebody imported, not a person's phone.
+ */
+async function oldAllyPool(): Promise<{ phone: string; label: string }[]> {
+  const result = await query<{ phone: string; label: string | null }>(
+    `WITH big AS (
+       SELECT "contactId" AS uid, COUNT(*) AS own_contacts
+       FROM "UserAlias" GROUP BY "contactId"
+       HAVING COUNT(*) >= $1 AND COUNT(*) <= $2
+     ),
+     cand AS (
+       SELECT DISTINCT ON (u.id) u.id, up.phone, big.own_contacts
+       FROM big
+       JOIN "User" u ON u.id = big.uid AND u."deletedAt" IS NULL
+         AND u.subscription_status <> ALL($4::text[])
+       JOIN "UserPhone" up ON up."userId" = u.id
+       WHERE NOT EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+         AND NOT EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+       ORDER BY u.id, big.own_contacts DESC
+     )
+     SELECT c.phone,
+            (SELECT mode() WITHIN GROUP (ORDER BY a.alias)
+             FROM "UserAlias" a WHERE a.phone = c.phone) AS label
+     FROM cand c
+     ORDER BY c.own_contacts DESC
+     LIMIT $3`,
+    [
+      OLD_ALLY_CONNECTOR_CONTACTS,
+      MAX_HUMAN_PHONEBOOK_ROWS,
+      GATE_PASSABLE_POOL_LIMIT,
+      NETAI_ACTIVE_SUBSCRIPTION_STATUSES,
+    ],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  // No alias anywhere means nobody else has ever saved them; the person gates
+  // will read that as "not a person" and drop the row, which is correct.
+  return result.rows.map((r) => ({ phone: r.phone, label: r.label ?? '' }));
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
   // Read once: the pool and the per-phone count MUST agree on who counts as
@@ -1981,7 +2041,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // nobody happened to search for still belong on the list (pull 0, no
   // gap-filling claim); an unmet-needs match on the same phone keeps its
   // richer context from gatherCandidates.
-  for (const person of await gatePassablePool(holderIds)) {
+  const [gatePool, allyPool] = await Promise.all([gatePassablePool(holderIds), oldAllyPool()]);
+  for (const person of [...gatePool, ...allyPool]) {
     if (!candidates.has(person.phone)) {
       candidates.set(person.phone, {
         label: person.label,
@@ -2049,14 +2110,21 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     // ONLY people the registration door would let in — held by at least the
     // gate's own threshold of subscribers. An invited person who cannot
     // register is a wasted ask and a bad first impression.
+    const account = accountMap.get(phoneDigits(phone));
     const subscribedHolders = holdersMap.get(phone) ?? 0;
+    // Social proof is the REGISTRATION DOOR's question — will they be let in
+    // when they arrive. An old-Ally account is already through it: we hold the
+    // account. Asking them for two subscriber vouchers on top would keep out
+    // exactly the people the founder calls the company's advantage (D61), and
+    // they are reached directly rather than through somebody else anyway.
+    const isOldAllyAccount = account !== undefined && !account.netaiUser;
     if (
+      !isOldAllyAccount &&
       subscribedHolders < MIN_TARGET_SUBSCRIBED_HOLDERS &&
       gates.hit('too_few_subscribed_holders')
     ) {
       continue;
     }
-    const account = accountMap.get(phoneDigits(phone));
     const fit = fitFor(factsMap.get(phone), ctx.label);
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
