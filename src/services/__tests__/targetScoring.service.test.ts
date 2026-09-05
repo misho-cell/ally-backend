@@ -146,6 +146,22 @@ describe('buildTargetList', () => {
     expect(await buildTargetList(30)).toEqual([]);
   });
 
+  it('serves the hourly cache on a second read, and rebuilds when asked to refresh', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([]);
+    routeScoreQueries({ askableCount: 50, poolPeople: [{ phone: '+995500000041', label: 'ეკა' }] });
+
+    await buildTargetList(30);
+    const afterFirst = mockFindUnmetNeeds.mock.calls.length;
+
+    await buildTargetList(30);
+    expect(mockFindUnmetNeeds.mock.calls.length).toBe(afterFirst);
+
+    // The founder's post-import read: the facts that decide `fit` changed, so
+    // the cached answer is the wrong one to serve.
+    await buildTargetList(30, { refresh: true });
+    expect(mockFindUnmetNeeds.mock.calls.length).toBe(afterFirst + 1);
+  });
+
   it('dedupes a candidate across topics, summing Pull and keeping the smallest matched pool', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need(

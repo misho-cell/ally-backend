@@ -1305,13 +1305,29 @@ export function clearTargetListCache(): void {
   targetListCache = null;
 }
 
+/** Options for a target-list read. */
+export interface TargetListOptions {
+  /**
+   * Ignore the cached list and rebuild now. The founder's own workflow needs
+   * this: a curator import writes the facts that decide `fit`, and without a
+   * forced rebuild the list keeps the pre-import answer for up to an hour —
+   * live-caught on 5 September, when 33 freshly-imported people with public
+   * role facts were missing from a list built minutes before the import.
+   */
+  readonly refresh?: boolean;
+}
+
 /**
  * The ranked, explainable target list T7 asks for: every entry carries its
  * score parts (never a bare number), and the list's length is capacity-
  * driven — it grows and shrinks with countAskableUsers(), never a constant.
  */
-export async function buildTargetList(sinceDays: number): Promise<TargetScoreEntry[]> {
+export async function buildTargetList(
+  sinceDays: number,
+  options: TargetListOptions = {},
+): Promise<TargetScoreEntry[]> {
   if (
+    options.refresh !== true &&
     targetListCache !== null &&
     targetListCache.sinceDays === sinceDays &&
     Date.now() - targetListCache.builtAt < TARGET_LIST_CACHE_TTL_MS

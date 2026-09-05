@@ -1923,7 +1923,11 @@ adminRouter.get(
     try {
       const rawDays = Number(req.query.days);
       const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
-      const result = await buildTargetList(days);
+      // ?refresh=true rebuilds instead of serving the hourly cache — the lever
+      // the founder needs right after a curator import, since the imported
+      // facts are what the `fit` part of every score reads.
+      const refresh = req.query.refresh === 'true';
+      const result = await buildTargetList(days, { refresh });
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       // eslint-disable-next-line no-console
