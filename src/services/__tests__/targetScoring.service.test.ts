@@ -55,6 +55,8 @@ function routeScoreQueries(opts: {
   poolPeople?: { phone: string; label: string }[];
   /** Accounts allowed to vouch for a target (default 501, 502, 1326). */
   socialProofHolders?: number[];
+  /** Bubble density rows, per phone: how many savers and how many know each other. */
+  bubbles?: { phone: string; savers: string; edges: string }[];
   // Rule 14 (founder D102): the public facts that decide fit, and the warm
   // Netai user who could carry the invitation.
   fitFacts?: { phone: string; values: string[] }[];
@@ -92,6 +94,8 @@ function routeScoreQueries(opts: {
     if (sql.includes('AS own_contacts')) return Promise.resolve(rows(opts.accounts ?? []) as never);
     if (sql.includes('mode() WITHIN GROUP'))
       return Promise.resolve(rows(opts.poolPeople ?? []) as never);
+    if (sql.includes('JOIN "UserAlias" ax ON ax."contactId" = s.uid'))
+      return Promise.resolve(rows(opts.bubbles ?? []) as never);
     if (sql.includes('AS holders')) {
       // Every asked phone passes the gate by default (holders=2), so the
       // pre-existing scoring tests keep testing scoring, not the new hard
@@ -496,6 +500,79 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // Tasks 1–10, the founder's „სიმკვრივე": reach counts HOW MANY saved a
+  // number; density asks whether those savers know each other.
+  describe('bubble density', () => {
+    const TWO = [
+      { phone: '+995500000070', label: 'გია დირექტორი' },
+      { phone: '+995500000071', label: 'ნინო დირექტორი' },
+    ];
+
+    it('a tight bubble outranks a famous stranger on an identical score', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([need('x', TWO)]);
+      routeScoreQueries({
+        askableCount: 50,
+        bubbles: [
+          // Everyone who saved 70 carries everyone else: 10 × 9 pairs, all of them.
+          { phone: '+995500000070', savers: '10', edges: '90' },
+          // Ten strangers who saved 71 and know nobody.
+          { phone: '+995500000071', savers: '10', edges: '0' },
+        ],
+      });
+
+      const out = await buildTargetList(30);
+
+      expect(out.map((e) => e.phone)).toEqual(['+995500000070', '+995500000071']);
+      expect(out[0]?.parts.bubble).toEqual({ savers: 10, edges: 90, density: 1 });
+      expect(out[1]?.parts.bubble).toEqual({ savers: 10, edges: 0, density: 0 });
+      // Worth exactly the bonus, no more.
+      expect(out[0]!.score - out[1]!.score).toBeCloseTo(0.15, 5);
+    });
+
+    it('a single saver has no pairs, so density is 0 and never divides by zero', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([need('x', [TWO[0]!])]);
+      routeScoreQueries({
+        askableCount: 50,
+        bubbles: [{ phone: '+995500000070', savers: '1', edges: '0' }],
+      });
+
+      const out = await buildTargetList(30);
+
+      expect(out[0]?.parts.bubble).toEqual({ savers: 1, edges: 0, density: 0 });
+      expect(Number.isFinite(out[0]!.score)).toBe(true);
+    });
+
+    it('a row density was not measured for says so — null, not zero', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([need('x', TWO)]);
+      routeScoreQueries({ askableCount: 50, bubbles: [] });
+
+      const out = await buildTargetList(30);
+
+      expect(out.every((e) => e.parts.bubble === null)).toBe(true);
+    });
+
+    it('measures only the plausible top — capacity times the shortlist factor', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need(
+          'x',
+          Array.from({ length: 40 }, (_, i) => ({
+            phone: `+9955000001${String(i).padStart(2, '0')}`,
+            label: 'გია დირექტორი',
+          })),
+        ),
+      ]);
+      routeScoreQueries({ askableCount: 2, bubbles: [] });
+
+      await buildTargetList(30);
+
+      const densityQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('JOIN "UserAlias" ax ON ax."contactId" = s.uid'),
+      ) as [string, unknown[]];
+      // countAskableUsers said 2, the factor is 3 — six rows asked, not forty.
+      expect((densityQuery[1][0] as string[]).length).toBe(6);
+    });
+  });
+
   // The founder's seed-phase ruling (5 September): with 22 subscribers, "two
   // holders must already be paying" passed 1 of 42 researched businessmen.
   describe('who counts as social proof', () => {

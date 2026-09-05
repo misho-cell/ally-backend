@@ -50,6 +50,20 @@ const GAP_FILLING_BONUS = 0.05;
 // softer — a correlation, not a demand signal.
 const GOAL_RELEVANCE_BONUS = 0.1;
 const BEST_USER_LOOKALIKE_BONUS = 0.05;
+/**
+ * The bubble bonus (tasks 1–10, the founder's „სიმკვრივე").
+ *
+ * Reach counts HOW MANY phonebooks hold a number and stops there — so a
+ * television presenter 600 strangers saved and a partner everyone in one firm
+ * saved look identical to it. Density asks the other question: do the people
+ * who saved this number know EACH OTHER? An invitation into a bubble arrives
+ * from a dozen directions at once; the same invitation to a famous stranger
+ * arrives from nowhere.
+ *
+ * Scaled small on purpose. This reorders the top of the list; it does not
+ * decide who is on it, and it can never lift anyone over a gate.
+ */
+const BUBBLE_DENSITY_BONUS = 0.15;
 
 // D50's best-user definition, verbatim: any ONE of the three qualifies.
 const BEST_USER_OUTCOME_DAYS = 30;
@@ -728,7 +742,28 @@ export interface TargetScoreParts {
   // The founder's target rule (31 Aug, via Misho): invite ONLY people the
   // door would let in, i.e. holders >= the gate's own threshold.
   subscribed_holders: number;
+  // Do this number's savers know each other? null on a row density was not
+  // measured for — it is computed for the plausible top only, so its absence
+  // means "not asked", never "measured as zero".
+  bubble: BubbleDensity | null;
 }
+
+/**
+ * The score inputs, kept beside the entry so the shortlist can be rescored
+ * once density is known without re-deriving fit, reach and pull. Never leaves
+ * this module — it is stripped before the list is returned.
+ */
+interface ScoreInputs {
+  fit: FitLevel;
+  reach: number;
+  pull: number;
+  needsNetai: boolean;
+  gapFilling: boolean;
+  goalRelevant: boolean;
+  bestUserLookalike: boolean;
+}
+
+type ScorableEntry = TargetScoreEntry & { scoreInputs: ScoreInputs };
 
 /**
  * The best name the crowd has for each of these phones, right now (ticket 9
@@ -1365,6 +1400,8 @@ function isHotline(analysis: AliasAnalysis | undefined, reach: number): boolean 
  */
 function combinedScore(parts: {
   fit: FitLevel;
+  /** 0 when density was not measured for this row — never a penalty. */
+  bubbleDensity: number;
   reach: number;
   pull: number;
   needsNetai: boolean;
@@ -1379,6 +1416,7 @@ function combinedScore(parts: {
   if (parts.gapFilling) score += GAP_FILLING_BONUS;
   if (parts.goalRelevant) score += GOAL_RELEVANCE_BONUS;
   if (parts.bestUserLookalike) score += BEST_USER_LOOKALIKE_BONUS;
+  score += parts.bubbleDensity * BUBBLE_DENSITY_BONUS;
   // Rounded only here, at the edge — never between the parts (task 31.4).
   return roundTo(Math.min(1, score));
 }
@@ -1632,6 +1670,83 @@ async function subscribedHoldersForPhones(
   return new Map(result.rows.map((r) => [r.phone, Number(r.holders)]));
 }
 
+/** How many of a candidate's savers the density sample looks at. */
+const DENSITY_SAVER_SAMPLE = Number(process.env.TARGET_DENSITY_SAVER_SAMPLE ?? 60);
+/**
+ * How far past the capacity cut density is measured. It refines the ORDER of
+ * the plausible top, so it is computed for a few times the number of rows that
+ * can be listed and nowhere else — measuring it for every survivor would cost
+ * far more and change nothing below the cut.
+ */
+const DENSITY_SHORTLIST_FACTOR = Number(process.env.TARGET_DENSITY_SHORTLIST_FACTOR ?? 3);
+
+export interface BubbleDensity {
+  /** Savers sampled — capped at DENSITY_SAVER_SAMPLE, not the full reach. */
+  savers: number;
+  /** Ordered pairs (a, b) of those savers where a carries b's number. */
+  edges: number;
+  /** edges / possible ordered pairs. 0 = strangers, 1 = everyone knows everyone. */
+  density: number;
+}
+
+/**
+ * Do the people who saved this number know each other?
+ *
+ * Two joins on indexed columns per candidate, over a capped sample of savers:
+ * who saved the number, what their own numbers are, and which of them carry
+ * each other. Measured live on 5 September — 22 candidates in 4.2s, the same
+ * as 5, because the cost is the plan, not the rows.
+ *
+ * Matching raw phone strings rather than digits is deliberate: both tables
+ * store E.164, and the digit form defeats every index on the path (the first
+ * version of this query, with regexp_replace on both sides, timed out).
+ */
+async function bubbleDensityForPhones(phones: string[]): Promise<Map<string, BubbleDensity>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; savers: string; edges: string }>(
+    `WITH cand(phone) AS (SELECT unnest($1::text[])),
+     s AS (
+       SELECT c.phone AS cand, x."contactId" AS uid
+       FROM cand c
+       JOIN LATERAL (
+         SELECT DISTINCT ua."contactId" FROM "UserAlias" ua
+         WHERE ua.phone = c.phone LIMIT $2::int
+       ) x ON true
+     ),
+     sd AS (
+       SELECT s.cand, s.uid, up.phone AS p
+       FROM s JOIN "UserPhone" up ON up."userId" = s.uid
+     ),
+     edges AS (
+       SELECT s.cand, COUNT(*) AS e
+       FROM s
+       JOIN sd ON sd.cand = s.cand AND sd.uid <> s.uid
+       JOIN "UserAlias" ax ON ax."contactId" = s.uid AND ax.phone = sd.p
+       GROUP BY 1
+     )
+     SELECT c.phone,
+            (SELECT COUNT(*) FROM s WHERE s.cand = c.phone) AS savers,
+            COALESCE(e.e, 0) AS edges
+     FROM cand c LEFT JOIN edges e ON e.cand = c.phone`,
+    [phones, DENSITY_SAVER_SAMPLE],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  const out = new Map<string, BubbleDensity>();
+  for (const row of result.rows) {
+    const savers = Number(row.savers);
+    const edges = Number(row.edges);
+    // Ordered pairs: a carries b is a different fact from b carries a, and the
+    // query counts both, so the denominator is n(n-1) and not half of it.
+    const possible = savers * (savers - 1);
+    out.set(row.phone, {
+      savers,
+      edges,
+      density: possible === 0 ? 0 : Math.min(1, edges / possible),
+    });
+  }
+  return out;
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
   // Read once: the pool and the per-phone count MUST agree on who counts as
@@ -1690,7 +1805,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   ]);
   const ourOwn = ownPeopleDigits();
 
-  const entries: TargetScoreEntry[] = [];
+  const entries: ScorableEntry[] = [];
   for (const phone of phones) {
     const ctx = candidates.get(phone) as CandidateContext;
     const reach = reachMap.get(phone) ?? 0;
@@ -1745,6 +1860,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
       phone,
       label,
       city: ctx.city,
+      // Density is not known yet — it is measured for the shortlist below and
+      // the score is recomputed there. Every row starts without the bonus.
       score: combinedScore({
         fit: fit.level,
         reach,
@@ -1753,6 +1870,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         gapFilling,
         goalRelevant: isGoalRelevant,
         bestUserLookalike: isBestUserLookalike,
+        bubbleDensity: 0,
       }),
       inviter,
       route: inviter ? 'chorus' : 'direct',
@@ -1768,6 +1886,16 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         best_user_lookalike: isBestUserLookalike,
         person_confirmed: analysis?.personConfirmed ?? false,
         subscribed_holders: subscribedHolders,
+        bubble: null,
+      },
+      scoreInputs: {
+        fit: fit.level,
+        reach,
+        pull: ctx.pull,
+        needsNetai,
+        gapFilling,
+        goalRelevant: isGoalRelevant,
+        bestUserLookalike: isBestUserLookalike,
       },
     });
   }
@@ -1775,15 +1903,32 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // Deterministic order (Task 4's "two reads a minute apart match"):
   // person-confirmed first, then score, then the phone string as the final
   // total tiebreak — no cluster of equal scores can shuffle the top-20 cut.
-  entries.sort((a, b) => {
+  const byScore = (a: ScorableEntry, b: ScorableEntry): number => {
     if (a.parts.person_confirmed !== b.parts.person_confirmed) {
       return a.parts.person_confirmed ? -1 : 1;
     }
     if (b.score !== a.score) return b.score - a.score;
     return a.phone.localeCompare(b.phone);
-  });
+  };
+  // Deterministic order (Task 4's "two reads a minute apart match"):
+  // person-confirmed first, then score, then the phone string as the final
+  // total tiebreak — no cluster of equal scores can shuffle the top-20 cut.
+  entries.sort(byScore);
+
+  // Density last, on the plausible top only, then sort again. It reorders that
+  // top; it never reaches down and pulls somebody up over a gate.
+  const shortlist = entries.slice(0, capacity * DENSITY_SHORTLIST_FACTOR);
+  const densities = await bubbleDensityForPhones(shortlist.map((e) => e.phone));
+  for (const entry of shortlist) {
+    const bubble = densities.get(entry.phone);
+    if (bubble === undefined) continue;
+    entry.parts.bubble = bubble;
+    entry.score = combinedScore({ ...entry.scoreInputs, bubbleDensity: bubble.density });
+  }
+  shortlist.sort(byScore);
+  const ordered = [...shortlist, ...entries.slice(shortlist.length)];
   return {
-    entries: entries.slice(0, capacity),
+    entries: ordered.slice(0, capacity).map(({ scoreInputs: _drop, ...entry }) => entry),
     gates: gates.report(),
     candidates_in: candidatesIn,
     survived: entries.length,
