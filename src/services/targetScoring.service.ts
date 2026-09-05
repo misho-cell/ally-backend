@@ -1509,15 +1509,24 @@ export async function countAskableUsers(): Promise<number> {
 // refreshes it. Config, not deploy.
 const TARGET_LIST_CACHE_TTL_MS = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 60) * 60_000;
 interface TargetListCache {
-  sinceDays: number;
   builtAt: number;
   build: TargetListBuild;
 }
-let targetListCache: TargetListCache | null = null;
+/**
+ * Keyed by window, not a single slot.
+ *
+ * One slot meant that reading the 7-day list evicted the 30-day one and
+ * reading it back rebuilt it — about 35 seconds each way. Harmless while the
+ * only caller passed 30; a trap the moment the review screen offered
+ * 7/14/30/60/90 in a dropdown, where every change of mind costs a full
+ * rebuild. Windows are a handful of small integers, so the map cannot grow
+ * unboundedly.
+ */
+const targetListCache = new Map<number, TargetListCache>();
 
 /** Test seam: the cache is module-level state and must not leak across tests. */
 export function clearTargetListCache(): void {
-  targetListCache = null;
+  targetListCache.clear();
 }
 
 /** Options for a target-list read. */
@@ -1553,16 +1562,16 @@ export async function buildTargetListWithGates(
   sinceDays: number,
   options: TargetListOptions = {},
 ): Promise<TargetListBuild> {
+  const cached = targetListCache.get(sinceDays);
   if (
     options.refresh !== true &&
-    targetListCache !== null &&
-    targetListCache.sinceDays === sinceDays &&
-    Date.now() - targetListCache.builtAt < TARGET_LIST_CACHE_TTL_MS
+    cached !== undefined &&
+    Date.now() - cached.builtAt < TARGET_LIST_CACHE_TTL_MS
   ) {
-    return targetListCache.build;
+    return cached.build;
   }
   const build = await buildTargetListUncached(sinceDays);
-  targetListCache = { sinceDays, builtAt: Date.now(), build };
+  targetListCache.set(sinceDays, { builtAt: Date.now(), build });
   return build;
 }
 

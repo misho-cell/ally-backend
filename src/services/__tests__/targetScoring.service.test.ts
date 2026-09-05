@@ -204,6 +204,23 @@ describe('buildTargetList', () => {
     expect(mockFindUnmetNeeds.mock.calls.length).toBe(afterFirst + 1);
   });
 
+  // The review screen offers 7/14/30/60/90 in a dropdown. One cache slot meant
+  // every change of mind evicted the other window and cost a full rebuild.
+  it('caches each window separately, so switching days does not rebuild', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([]);
+    routeScoreQueries({ askableCount: 50, poolPeople: [{ phone: '+995500000042', label: 'ეკა' }] });
+
+    await buildTargetList(30);
+    await buildTargetList(7);
+    const afterBoth = mockFindUnmetNeeds.mock.calls.length;
+    expect(afterBoth).toBe(2);
+
+    // Back to the first window: still cached, no third build.
+    await buildTargetList(30);
+    await buildTargetList(7);
+    expect(mockFindUnmetNeeds.mock.calls.length).toBe(afterBoth);
+  });
+
   it('dedupes a candidate across topics, summing Pull and keeping the smallest matched pool', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need(
