@@ -131,6 +131,8 @@ describe('openDueCampaigns', () => {
     dial?: number;
     campaignId?: number;
     inviters?: { user_id: number; strength: number | null }[];
+    /** The target those inviters were found for. */
+    inviterPhone?: string;
   }): void {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes("status != 'open'")) return Promise.resolve(rows([]) as never);
@@ -142,8 +144,14 @@ describe('openDueCampaigns', () => {
         );
       if (sql.includes('INSERT INTO invite_campaigns'))
         return Promise.resolve(rows([{ id: opts.campaignId ?? 501 }]) as never);
+      // One query for the whole list now: every row carries the target it
+      // belongs to, so the caller can group them.
       if (sql.includes('contact_relationship_scores crs'))
-        return Promise.resolve(rows(opts.inviters ?? []) as never);
+        return Promise.resolve(
+          rows(
+            (opts.inviters ?? []).map((i) => ({ phone: opts.inviterPhone ?? '', ...i })),
+          ) as never,
+        );
       if (sql.includes('INSERT INTO invite_campaign_participants'))
         return Promise.resolve(rows([]) as never);
       return Promise.resolve(rows([]) as never);
@@ -193,7 +201,11 @@ describe('openDueCampaigns', () => {
     mockBuildTargetList.mockResolvedValue([
       { phone: '+995500000004', label: 'x', city: null, score: 0.5, parts: {} as never },
     ]);
-    routeOpenQueries({ campaignId: 902, inviters: [{ user_id: 12, strength: 0.5 }] });
+    routeOpenQueries({
+      campaignId: 902,
+      inviterPhone: '+995500000004',
+      inviters: [{ user_id: 12, strength: 0.5 }],
+    });
 
     await openDueCampaigns(30);
 
@@ -215,6 +227,7 @@ describe('openDueCampaigns', () => {
     ]);
     routeOpenQueries({
       campaignId: 900,
+      inviterPhone: '+995500000002',
       inviters: [
         { user_id: 10, strength: 0.9 },
         { user_id: 11, strength: 0.4 },

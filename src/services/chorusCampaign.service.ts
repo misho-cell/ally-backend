@@ -151,33 +151,51 @@ interface InviterCandidate {
   strength: number | null;
 }
 
-/** Registered members who have this target saved (Netai or old-Ally), active subscribers, not opted out of asks. */
-async function inviterCandidates(targetPhone: string): Promise<InviterCandidate[]> {
-  const result = await query<{ user_id: number; strength: number | null }>(
-    `SELECT x.uid AS user_id, crs.strength_score AS strength
+/**
+ * Registered members who have these targets saved (Netai or old-Ally), active
+ * subscribers, not opted out of asks — keyed by target phone.
+ *
+ * Asked for the whole list at once. Per target it was one round trip of about
+ * a second, which was invisible while it only ran for the few targets that got
+ * as far as an INSERT, and became the tick's whole budget the moment
+ * eligibility started being checked for every target before opening anything.
+ */
+async function inviterCandidatesForPhones(
+  phones: readonly string[],
+): Promise<Map<string, InviterCandidate[]>> {
+  const out = new Map<string, InviterCandidate[]>();
+  if (phones.length === 0) return out;
+  const result = await query<{ phone: string; user_id: number; strength: number | null }>(
+    `SELECT x.phone, x.uid AS user_id, crs.strength_score AS strength
      FROM (
-       SELECT "contactId" AS uid FROM "UserAlias" WHERE phone = $1
+       SELECT phone, "contactId" AS uid FROM "UserAlias" WHERE phone = ANY($1)
        UNION
-       SELECT uc."originUserId" AS uid
+       SELECT ucp.phone, uc."originUserId" AS uid
        FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
-       WHERE ucp.phone = $1
+       WHERE ucp.phone = ANY($1)
      ) x
      JOIN "User" u ON u.id = x.uid AND u.subscription_status = 'active'
-     LEFT JOIN contact_relationship_scores crs ON crs.user_id = x.uid AND crs.contact_phone = $1
+     LEFT JOIN contact_relationship_scores crs
+       ON crs.user_id = x.uid AND crs.contact_phone = x.phone
      WHERE NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = x.uid)
-     ORDER BY crs.strength_score DESC NULLS LAST`,
-    [targetPhone],
+     ORDER BY x.phone, crs.strength_score DESC NULLS LAST`,
+    [phones],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((r) => ({ userId: r.user_id, strength: r.strength }));
+  for (const row of result.rows) {
+    const list = out.get(row.phone) ?? [];
+    list.push({ userId: row.user_id, strength: row.strength });
+    out.set(row.phone, list);
+  }
+  return out;
 }
 
 async function scheduleParticipants(
   campaignId: number,
-  targetPhone: string,
+  candidatesForTarget: readonly InviterCandidate[],
   dial: number,
 ): Promise<number> {
-  const candidates = (await inviterCandidates(targetPhone)).slice(0, dial);
+  const candidates = candidatesForTarget.slice(0, dial);
   let scheduled = 0;
   for (let i = 0; i < candidates.length; i++) {
     const offsetDays = scheduledOffsetDays(i);
@@ -205,6 +223,7 @@ export async function openDueCampaigns(
   if (targets.length === 0) return { opened: 0, skipped_no_inviter: 0 };
 
   const blocked = await cooldownBlockedTargets(targets.map((t) => t.phone));
+  const inviters = await inviterCandidatesForPhones(targets.map((t) => t.phone));
   const dial = await currentGlobalDial();
   let opened = 0;
   // Reported, not swallowed: "we listed 22 people and could ask nobody about
@@ -216,7 +235,8 @@ export async function openDueCampaigns(
     // Ask BEFORE opening. Opening first and closing a second later produced 46
     // dead rows and read, to anyone looking at the table, like the engine
     // trying and failing rather than never having had anyone to ask.
-    if ((await inviterCandidates(target.phone)).length === 0) {
+    const candidates = inviters.get(target.phone) ?? [];
+    if (candidates.length === 0) {
       skippedNoInviter++;
       continue;
     }
@@ -230,7 +250,7 @@ export async function openDueCampaigns(
     );
     const campaignId = inserted.rows[0]?.id;
     if (campaignId === undefined) continue;
-    const scheduled = await scheduleParticipants(campaignId, target.phone, dial);
+    const scheduled = await scheduleParticipants(campaignId, candidates, dial);
     // Nobody eligible to ask = the campaign is over the moment it opens —
     // 44 of the 49 standing campaigns were exactly this, open forever with
     // zero participants (ticket 8 task 6).
