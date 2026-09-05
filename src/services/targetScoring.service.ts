@@ -1519,6 +1519,12 @@ const MAX_HUMAN_PHONEBOOK_ROWS = Number(process.env.SOCIAL_PROOF_MAX_OWNER_CONTA
 // How many gate-passable people the pool source contributes per build — the
 // capacity cut happens after scoring anyway; this only bounds the query.
 const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
+/**
+ * How much wider the pool query reaches before the already-registered are
+ * removed. Measured on 5 September: of the top 2,000 gate-passable phones,
+ * 1,457 were unregistered — so four times the limit leaves the cut with room.
+ */
+const POOL_OVERFETCH = Number(process.env.CHORUS_POOL_OVERFETCH ?? 4);
 
 /**
  * The founder's pool (31 Aug): every UNREGISTERED number held by 2+ active
@@ -1531,19 +1537,39 @@ const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
 async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; label: string }[]> {
   if (holderIds.length === 0) return [];
   const result = await query<{ phone: string; label: string }>(
-    `SELECT ua.phone, mode() WITHIN GROUP (ORDER BY ua.alias) AS label
-     FROM "UserAlias" ua
-     WHERE ua."contactId" = ANY($1::int[])
-       AND NOT EXISTS (
+    // MATERIALIZED is load-bearing, not decoration. Inlined, the planner pushes
+    // the "not already registered" anti-join underneath the GROUP BY and
+    // evaluates two regexp_replace calls per ALIAS row — hundreds of thousands
+    // of them — which timed the route out live on 5 September as soon as the
+    // holder set grew from 22 accounts to 43. Materialised, the group-by runs
+    // once and the anti-join sees a few thousand rows: 0.8s against 60s+.
+    //
+    // The inner limit is deliberately wider than the outer one: the cut used
+    // to happen after the anti-join, so cutting at $3 here would quietly
+    // shrink the pool by however many of its top rows are already users.
+    `WITH pool AS MATERIALIZED (
+       SELECT ua.phone, mode() WITHIN GROUP (ORDER BY ua.alias) AS label
+       FROM "UserAlias" ua
+       WHERE ua."contactId" = ANY($1::int[])
+       GROUP BY ua.phone
+       HAVING COUNT(DISTINCT ua."contactId") >= $2
+       ORDER BY COUNT(DISTINCT ua."contactId") DESC
+       LIMIT $4
+     )
+     SELECT p.phone, p.label
+     FROM pool p
+     WHERE NOT EXISTS (
          SELECT 1 FROM "UserPhone" up
          WHERE regexp_replace(up.phone, '\\D', '', 'g') =
-               regexp_replace(ua.phone, '\\D', '', 'g')
+               regexp_replace(p.phone, '\\D', '', 'g')
        )
-     GROUP BY ua.phone
-     HAVING COUNT(DISTINCT ua."contactId") >= $2
-     ORDER BY COUNT(DISTINCT ua."contactId") DESC
      LIMIT $3`,
-    [holderIds, MIN_TARGET_SUBSCRIBED_HOLDERS, GATE_PASSABLE_POOL_LIMIT],
+    [
+      holderIds,
+      MIN_TARGET_SUBSCRIBED_HOLDERS,
+      GATE_PASSABLE_POOL_LIMIT,
+      GATE_PASSABLE_POOL_LIMIT * POOL_OVERFETCH,
+    ],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return result.rows;

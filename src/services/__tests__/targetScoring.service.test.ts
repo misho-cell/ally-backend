@@ -470,6 +470,23 @@ describe('buildTargetList', () => {
       expect(holderIdQuery[1][0]).toEqual(['active', 'trialing']);
     });
 
+    // Live, 5 September: inlined, the planner pushed the anti-join under the
+    // GROUP BY and ran two regexp_replace calls per alias row. 60s+ vs 0.8s.
+    it('materialises the pool before removing the already-registered', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50 });
+
+      await buildTargetListWithGates(30);
+
+      const poolQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('mode() WITHIN GROUP'),
+      ) as [string, unknown[]];
+      expect(poolQuery[0]).toContain('WITH pool AS MATERIALIZED');
+      // And it reaches wider than the limit, because the cut happens after the
+      // registered are removed — otherwise the pool silently shrinks.
+      expect(poolQuery[1][3]).toBe((poolQuery[1][2] as number) * 4);
+    });
+
     it('under netai_users both holder queries read the SAME id list', async () => {
       process.env.TARGET_SOCIAL_PROOF = 'netai_users';
       mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000060', label: 'გია' }])]);
