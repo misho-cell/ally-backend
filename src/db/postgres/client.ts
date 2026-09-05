@@ -49,7 +49,56 @@ const backgroundPool = new Pool({
   options: `-c statement_timeout=${BACKGROUND_QUERY_TIMEOUT_MS}`,
 });
 
+/**
+ * A query slower than this is named in the log with how long it took. A
+ * timeout is always named, whatever the threshold.
+ *
+ * On 5 September one config change turned a route into a 500 and the log said
+ * only "canceling statement due to statement timeout" — nothing about WHICH
+ * of the route's fifteen queries had died. Finding it took an hour of timing
+ * candidates by hand against the read replica.
+ *
+ * Only a prefix of the SQL is logged, never the parameters: they carry phone
+ * numbers and names.
+ */
+const SLOW_QUERY_LOG_MS = Number(process.env.SLOW_QUERY_LOG_MS ?? 3000);
+const SQL_LOG_PREFIX_CHARS = 160;
+
+function sqlForLog(queryText: string): string {
+  const oneLine = queryText.replace(/\s+/g, ' ').trim();
+  return oneLine.length > SQL_LOG_PREFIX_CHARS
+    ? `${oneLine.slice(0, SQL_LOG_PREFIX_CHARS)}…`
+    : oneLine;
+}
+
 async function runOnPool<T extends QueryResultRow>(
+  sourcePool: Pool,
+  defaultTimeoutMs: number,
+  queryText: string,
+  params: unknown[] | undefined,
+  timeoutMs: number,
+): Promise<QueryResult<T>> {
+  const startedAt = Date.now();
+  try {
+    return await runOnPoolUntimed<T>(sourcePool, defaultTimeoutMs, queryText, params, timeoutMs);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[db failed] ${Date.now() - startedAt}ms :: ${sqlForLog(queryText)} :: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    throw error;
+  } finally {
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= SLOW_QUERY_LOG_MS) {
+      // eslint-disable-next-line no-console
+      console.warn(`[db slow] ${elapsed}ms :: ${sqlForLog(queryText)}`);
+    }
+  }
+}
+
+async function runOnPoolUntimed<T extends QueryResultRow>(
   sourcePool: Pool,
   defaultTimeoutMs: number,
   queryText: string,
