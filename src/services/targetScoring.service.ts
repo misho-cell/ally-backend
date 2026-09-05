@@ -1884,10 +1884,17 @@ interface ApproachHistory {
 /**
  * How recently each of these people was actually approached (THE TARGETS 2.4).
  *
- * "Approached" means somebody was asked about them — the same test the
- * cooldown uses. A campaign that opened and found nobody to ask reached the
- * person in no sense at all, and must not spend their freshness any more than
- * it spends their cooldown.
+ * "Approached" means an ask about them WENT OUT — `asked_at` is set on at
+ * least one participant. Not that a campaign opened, and not that an ask was
+ * scheduled: the day-1-4-7-10 stagger means a campaign opened this morning has
+ * asked nobody yet, and counting it would have cut every score on the list to
+ * three tenths for a week over messages that had not been sent. Caught the
+ * hour this landed: twenty campaigns opened during a test, and the whole list
+ * read 0.3.
+ *
+ * The cooldown asks a different question — "have we committed to this person
+ * already" — and is right to count a scheduled campaign. Freshness asks
+ * whether we have actually reached him, and only a sent ask answers it.
  */
 async function approachHistoryForPhones(phones: string[]): Promise<Map<string, ApproachHistory>> {
   if (phones.length === 0) return new Map();
@@ -1898,7 +1905,8 @@ async function approachHistoryForPhones(phones: string[]): Promise<Map<string, A
             bool_or(c.opened_at > NOW() - make_interval(days => $3)) AS approached
      FROM invite_campaigns c
      WHERE c.target_phone = ANY($1)
-       AND EXISTS (SELECT 1 FROM invite_campaign_participants p WHERE p.campaign_id = c.id)
+       AND EXISTS (SELECT 1 FROM invite_campaign_participants p
+                   WHERE p.campaign_id = c.id AND p.asked_at IS NOT NULL)
      GROUP BY c.target_phone`,
     [phones, DECLINED_BLACKOUT_DAYS, RECENTLY_APPROACHED_DAYS],
     SCORE_QUERY_TIMEOUT_MS,

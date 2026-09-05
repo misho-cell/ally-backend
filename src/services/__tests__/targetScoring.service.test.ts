@@ -613,10 +613,11 @@ describe('buildTargetList', () => {
       const approachQuery = mockQuery.mock.calls.find(([sql]) =>
         (sql as string).includes('bool_or(c.status'),
       ) as [string, unknown[]] | undefined;
-      // Only campaigns with a participant count as an approach — the same
-      // test the cooldown uses.
+      // Only a SENT ask counts as an approach. A campaign that opened this
+      // morning has asked nobody yet — counting it cut every score on the
+      // live list to three tenths over messages that had not gone out.
       if (approachQuery !== undefined) {
-        expect(approachQuery[0]).toContain('FROM invite_campaign_participants p');
+        expect(approachQuery[0]).toContain('p.asked_at IS NOT NULL');
       }
     });
   });
