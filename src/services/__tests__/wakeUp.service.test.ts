@@ -129,6 +129,24 @@ describe('the wake-up wording', () => {
     expect(message).toContain('თუ არაზუსტია');
   });
 
+  // The facts arrive alphabetically, so the first is „employer: Arci" far more
+  // often than the title. The first live preview read „our record says: Arci".
+  it('says the title, not the company, when it has both', () => {
+    const message = buildWakeUpMessage(
+      { ...CANDIDATE, facts: ['employer: Arci', 'occupation: CEO, Arci'] },
+      'ბესო',
+    );
+
+    expect(message).toContain('წერია: CEO, Arci');
+    expect(message).not.toContain('წერია: Arci');
+  });
+
+  it('falls back to the company when that is all the record has', () => {
+    const message = buildWakeUpMessage({ ...CANDIDATE, facts: ['employer: Arci'] }, 'ბესო');
+
+    expect(message).toContain('წერია: Arci');
+  });
+
   it('claims nothing about somebody the record says nothing about', () => {
     const message = buildWakeUpMessage({ ...CANDIDATE, facts: [] }, 'ბესო');
 

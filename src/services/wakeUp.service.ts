@@ -137,8 +137,27 @@ function groupThousands(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+/**
+ * The fact that describes a person, not merely places them.
+ *
+ * The facts arrive alphabetically, so the first one is „employer: Arci" far
+ * more often than „occupation: CEO, Arci" — and the first preview read „our
+ * record says: Arci", which says nothing about anybody. A title answers "who
+ * are you"; a company alone does not, and is only worth saying when there is
+ * no title to say instead.
+ */
+const DESCRIBING_FACT_ORDER = ['role', 'occupation', 'headline', 'expertise', 'employer'];
+
+function describingFact(facts: readonly string[]): string {
+  for (const wanted of DESCRIBING_FACT_ORDER) {
+    const found = facts.find((f) => f.startsWith(`${wanted}: `));
+    if (found !== undefined) return found.slice(wanted.length + 2).trim();
+  }
+  return '';
+}
+
 export function buildWakeUpMessage(candidate: WakeUpCandidate, name: string): string {
-  const role = candidate.facts[0]?.split(': ').slice(1).join(': ') ?? '';
+  const role = describingFact(candidate.facts);
   const lines = [
     `გამარჯობა, ${name}.`,
     '',
