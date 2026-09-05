@@ -875,15 +875,27 @@ export interface TargetInviter {
   colour: string | null;
 }
 
-/** The Netai users, all forty-two of them — read once, passed as a list. */
-async function netaiUserIds(): Promise<number[]> {
+/**
+ * Who can actually be ASKED to carry an invitation.
+ *
+ * Not the same set as "is a Netai user", and the difference cost 46 campaigns.
+ * The list called a target `route: "chorus"` whenever any Netai user held the
+ * number, while the campaign only ever asks an active subscriber who has not
+ * opted out of asks — and the ask budget is counted over that same set. So a
+ * campaign opened, found nobody it was allowed to ask, and closed as
+ * `closed_no_inviters` the same second: 46 of 93 campaigns, half the engine's
+ * whole output, and every one of those people then sat in cooldown without a
+ * single message having been sent.
+ *
+ * One definition now, used by the display and by the sender.
+ */
+async function askableInviterIds(): Promise<number[]> {
   const result = await query<{ id: number }>(
     `SELECT u.id FROM "User" u
      WHERE u."deletedAt" IS NULL
-       AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
-         OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-         OR u.subscription_status = ANY($1::text[]))`,
-    [NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
+       AND u.subscription_status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = u.id)`,
+    [],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => r.id);
@@ -891,7 +903,7 @@ async function netaiUserIds(): Promise<number[]> {
 
 async function bestInviterForPhones(phones: string[]): Promise<Map<string, TargetInviter>> {
   if (phones.length === 0) return new Map();
-  const inviters = await netaiUserIds();
+  const inviters = await askableInviterIds();
   if (inviters.length === 0) return new Map();
   const inviterSet = new Set(inviters);
 

@@ -132,8 +132,14 @@ export async function currentGlobalDial(): Promise<number> {
 async function cooldownBlockedTargets(phones: string[]): Promise<Set<string>> {
   if (phones.length === 0) return new Set();
   const result = await query<{ target_phone: string }>(
-    `SELECT DISTINCT target_phone FROM invite_campaigns
-     WHERE target_phone = ANY($1) AND opened_at > NOW() - make_interval(days => $2)`,
+    // A campaign that never asked anybody must not burn the target's cooldown.
+    // 46 of 93 campaigns closed as `closed_no_inviters` the second they
+    // opened, and every one of those people was then locked out for the whole
+    // cooldown without a single message having been sent.
+    `SELECT DISTINCT c.target_phone FROM invite_campaigns c
+     WHERE c.target_phone = ANY($1)
+       AND c.opened_at > NOW() - make_interval(days => $2)
+       AND EXISTS (SELECT 1 FROM invite_campaign_participants p WHERE p.campaign_id = c.id)`,
     [phones, COOLDOWN_DAYS],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
@@ -192,16 +198,28 @@ async function scheduleParticipants(
  * open or in cooldown, and schedules its inviters. Meant to run off a cron
  * tick — every step here is server-initiated, never a human action.
  */
-export async function openDueCampaigns(sinceDays: number): Promise<{ opened: number }> {
+export async function openDueCampaigns(
+  sinceDays: number,
+): Promise<{ opened: number; skipped_no_inviter: number }> {
   const targets: TargetScoreEntry[] = await buildTargetList(sinceDays);
-  if (targets.length === 0) return { opened: 0 };
+  if (targets.length === 0) return { opened: 0, skipped_no_inviter: 0 };
 
   const blocked = await cooldownBlockedTargets(targets.map((t) => t.phone));
   const dial = await currentGlobalDial();
   let opened = 0;
+  // Reported, not swallowed: "we listed 22 people and could ask nobody about
+  // 14 of them" is the single most useful number this function produces.
+  let skippedNoInviter = 0;
 
   for (const target of targets) {
     if (blocked.has(target.phone)) continue;
+    // Ask BEFORE opening. Opening first and closing a second later produced 46
+    // dead rows and read, to anyone looking at the table, like the engine
+    // trying and failing rather than never having had anyone to ask.
+    if ((await inviterCandidates(target.phone)).length === 0) {
+      skippedNoInviter++;
+      continue;
+    }
     const inserted = await query<{ id: number }>(
       `INSERT INTO invite_campaigns (target_phone, target_label, city, status, ask_count_dial)
        VALUES ($1, $2, $3, 'open', $4)
@@ -228,7 +246,7 @@ export async function openDueCampaigns(sinceDays: number): Promise<{ opened: num
     }
     opened++;
   }
-  return { opened };
+  return { opened, skipped_no_inviter: skippedNoInviter };
 }
 
 // The founder's call (29 Aug, via Misho, closing D50's open half): the ask

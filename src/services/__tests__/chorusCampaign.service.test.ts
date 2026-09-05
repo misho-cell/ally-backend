@@ -154,7 +154,7 @@ describe('openDueCampaigns', () => {
     mockBuildTargetList.mockResolvedValue([]);
     routeOpenQueries({});
 
-    expect(await openDueCampaigns(30)).toEqual({ opened: 0 });
+    expect(await openDueCampaigns(30)).toEqual({ opened: 0, skipped_no_inviter: 0 });
   });
 
   it('skips a target still in its 90-day cooldown', async () => {
@@ -163,11 +163,44 @@ describe('openDueCampaigns', () => {
     ]);
     routeOpenQueries({ cooldown: ['+995500000001'] });
 
-    expect(await openDueCampaigns(30)).toEqual({ opened: 0 });
+    expect(await openDueCampaigns(30)).toEqual({ opened: 0, skipped_no_inviter: 0 });
     const inserts = mockQuery.mock.calls.filter(([sql]) =>
       (sql as string).includes('INSERT INTO invite_campaigns'),
     );
     expect(inserts).toHaveLength(0);
+  });
+
+  // 46 of 93 campaigns opened and closed as `closed_no_inviters` the same
+  // second, and every one of those people then sat in cooldown without a
+  // single message having been sent.
+  it('never opens a campaign it has nobody to ask', async () => {
+    mockBuildTargetList.mockResolvedValue([
+      { phone: '+995500000003', label: 'x', city: null, score: 0.5, parts: {} as never },
+    ]);
+    routeOpenQueries({ campaignId: 901, inviters: [] });
+
+    const out = await openDueCampaigns(30);
+
+    expect(out).toEqual({ opened: 0, skipped_no_inviter: 1 });
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO invite_campaigns'),
+    );
+    // No row at all: nothing to close, and no cooldown burned.
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('a campaign that asked nobody does not hold the target in cooldown', async () => {
+    mockBuildTargetList.mockResolvedValue([
+      { phone: '+995500000004', label: 'x', city: null, score: 0.5, parts: {} as never },
+    ]);
+    routeOpenQueries({ campaignId: 902, inviters: [{ user_id: 12, strength: 0.5 }] });
+
+    await openDueCampaigns(30);
+
+    const cooldownQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM invite_campaigns c'),
+    ) as [string, unknown[]];
+    expect(cooldownQuery[0]).toContain('FROM invite_campaign_participants p');
   });
 
   it('opens a fresh target and schedules its inviter candidates', async () => {
@@ -190,7 +223,7 @@ describe('openDueCampaigns', () => {
 
     const out = await openDueCampaigns(30);
 
-    expect(out).toEqual({ opened: 1 });
+    expect(out).toEqual({ opened: 1, skipped_no_inviter: 0 });
     const participantInserts = mockQuery.mock.calls.filter(([sql]) =>
       (sql as string).includes('INSERT INTO invite_campaign_participants'),
     );

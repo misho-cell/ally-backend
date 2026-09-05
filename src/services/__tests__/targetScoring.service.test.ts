@@ -59,6 +59,8 @@ function routeScoreQueries(opts: {
   bubbles?: { phone: string; savers: string; edges: string }[];
   /** Phones a human has ruled out. */
   refused?: string[];
+  /** Accounts that may be asked to carry an invitation (default 501, 502, 1326). */
+  askableInviters?: number[];
   // Rule 14 (founder D102): the public facts that decide fit, and the warm
   // Netai user who could carry the invitation.
   fitFacts?: { phone: string; values: string[] }[];
@@ -72,6 +74,13 @@ function routeScoreQueries(opts: {
     if (sql.includes('FROM "UserAlias" b WHERE b."contactId" = u.id'))
       return Promise.resolve(
         rows((opts.socialProofHolders ?? [501, 502, 1326]).map((id) => ({ id }))) as never,
+      );
+    // Who may be ASKED to carry an invitation — the same set the campaign
+    // sender uses. Matched before the best-users branch, which the plain
+    // `subscription_status = 'active'` text would otherwise swallow.
+    if (sql.includes('FROM ask_optouts ao'))
+      return Promise.resolve(
+        rows((opts.askableInviters ?? [501, 502, 1326]).map((id) => ({ id }))) as never,
       );
     // Rule 14's queries are matched FIRST: they mention strings the older
     // branches below also match on.
@@ -478,19 +487,22 @@ describe('buildTargetList', () => {
     expect(byPhone.get('+995500000036')?.route).toBe('direct');
   });
 
-  it('only a NETAI user can be an inviter — the ids are resolved first, then passed in', async () => {
+  // The list used to call anyone a possible inviter if any NETAI user held the
+  // number, while the campaign only ever asks an active subscriber who has not
+  // opted out. 46 of 93 campaigns opened on that gap and closed the same
+  // second. One definition now, for the badge and for the sender.
+  it('an inviter is somebody the campaign could actually ask', async () => {
     mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000037', label: 'a' }])]);
     routeScoreQueries({ askableCount: 50 });
 
     await buildTargetList(30);
 
-    // Who counts as a Netai user: a thread, a search, or a subscription.
-    const whoQuery = mockQuery.mock.calls.find(
-      ([sql]) =>
-        (sql as string).includes('SELECT u.id FROM "User" u') &&
-        (sql as string).includes('FROM threads t'),
-    );
-    expect(whoQuery?.[0]).toContain('FROM search_activity sa');
+    const whoQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM ask_optouts ao'),
+    ) as [string, unknown[]];
+    expect(whoQuery[0]).toContain("subscription_status = 'active'");
+    // Having merely opened Netai is not enough to be asked to invite somebody.
+    expect(whoQuery[0]).not.toContain('FROM threads t');
 
     // And the two lookups are driven from the PHONES, with those ids as a
     // list — the subquery version walked every connection of every Netai user
