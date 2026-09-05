@@ -4,6 +4,7 @@ import {
   moderateFactVisibility,
   runSemanticMatching,
   trustedFactCuratorIds,
+  curatorWorkFields,
 } from './contactFacts.service';
 
 /**
@@ -52,6 +53,13 @@ async function publishCuratorCoreFacts(): Promise<number> {
   const ids = trustedFactCuratorIds();
   if (ids.length === 0) return 0;
 
+  // The core types AND the curator's work fields. Both are public the moment a
+  // curator writes them, so a private one is always config drift rather than a
+  // decision — and only the core half was ever repaired here. Live on
+  // 5 September: 84 „member_of: Axel" facts, written the hour the founder
+  // confirmed the roster, all private because the field had just been added to
+  // the work list and this pass could not see past FACT_FIELD_TYPES.
+  const publishable = [...new Set([...FACT_FIELD_TYPES, ...curatorWorkFields()])];
   const result = await query(
     `UPDATE contact_facts
      SET is_public = true, canonical_value = value, updated_at = NOW()
@@ -59,7 +67,7 @@ async function publishCuratorCoreFacts(): Promise<number> {
        AND field_type = ANY($2)
        AND is_public = false
        AND retracted_at IS NULL`,
-    [ids as string[], FACT_FIELD_TYPES as readonly string[]],
+    [ids as string[], publishable],
     REPUBLISH_QUERY_TIMEOUT_MS,
   );
   return result.rowCount ?? 0;

@@ -5,10 +5,12 @@ jest.mock('../contactFacts.service', () => ({
   moderateFactVisibility: jest.fn(),
   runSemanticMatching: jest.fn(),
   trustedFactCuratorIds: jest.fn(),
+  curatorWorkFields: jest.fn(),
 }));
 
 import { query } from '../../db/postgres/client';
 import {
+  curatorWorkFields,
   moderateFactVisibility,
   runSemanticMatching,
   trustedFactCuratorIds,
@@ -19,6 +21,7 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockModerate = moderateFactVisibility as jest.MockedFunction<typeof moderateFactVisibility>;
 const mockMatch = runSemanticMatching as jest.MockedFunction<typeof runSemanticMatching>;
 const mockCurators = trustedFactCuratorIds as jest.MockedFunction<typeof trustedFactCuratorIds>;
+const mockWorkFields = curatorWorkFields as jest.MockedFunction<typeof curatorWorkFields>;
 
 function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCount: number } {
   return { rows: data, rowCount };
@@ -27,6 +30,7 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 beforeEach(() => {
   jest.clearAllMocks();
   mockCurators.mockReturnValue([]);
+  mockWorkFields.mockReturnValue(['role', 'link', 'member_of']);
   mockQuery.mockResolvedValue(rows([]) as never);
   mockMatch.mockResolvedValue({ canonical: null, matching_indices: [] });
 });
@@ -46,10 +50,23 @@ describe('republishFacts — the repair pass over facts the fenced-JSON bug left
     const update = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes('submitted_by_user_id = ANY'),
     );
-    // Scoped to the curator, to core fields, and only to rows still private.
+    // Scoped to the curator, and only to rows still private.
     expect(update?.[1]?.[0]).toEqual(['501']);
     expect(update?.[0] as string).toContain('is_public = false');
     expect(mockModerate).not.toHaveBeenCalled();
+
+    // Core types AND the curator's work fields. Only the core half was ever
+    // repaired here, so 84 „member_of: Axel" facts stayed private after the
+    // field joined the work list.
+    expect(update?.[1]?.[1]).toEqual([
+      'occupation',
+      'employer',
+      'city',
+      'industry',
+      'role',
+      'link',
+      'member_of',
+    ]);
   });
 
   it('touches nothing when no curator is configured — the exception is opt-in', async () => {
