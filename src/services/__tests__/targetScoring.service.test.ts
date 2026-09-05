@@ -51,6 +51,8 @@ function routeScoreQueries(opts: {
   subscribedHolders?: Record<string, number>;
   /** The founder's gate-passable pool source (default empty). */
   poolPeople?: { phone: string; label: string }[];
+  /** Accounts allowed to vouch for a target (default 501, 502, 1326). */
+  socialProofHolders?: number[];
   // Rule 14 (founder D102): the public facts that decide fit, and the warm
   // Netai user who could carry the invitation.
   fitFacts?: { phone: string; values: string[] }[];
@@ -59,6 +61,12 @@ function routeScoreQueries(opts: {
   accounts?: { phone: string; subscription_status: string | null; own_contacts: string }[];
 }): void {
   mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    // The social-proof holder set, resolved once per build. Matched first: it
+    // is the only query carrying the human-phonebook cap on "User" itself.
+    if (sql.includes('FROM "UserAlias" b WHERE b."contactId" = u.id'))
+      return Promise.resolve(
+        rows((opts.socialProofHolders ?? [501, 502, 1326]).map((id) => ({ id }))) as never,
+      );
     // Rule 14's queries are matched FIRST: they mention strings the older
     // branches below also match on.
     if (sql.includes('SELECT u.id FROM "User" u') && sql.includes('FROM threads t'))
@@ -453,10 +461,13 @@ describe('buildTargetList', () => {
       const build = await buildTargetListWithGates(30);
 
       expect(build.social_proof_basis).toBe('subscribers');
-      const poolQuery = mockQuery.mock.calls.find(([sql]) =>
-        (sql as string).includes('mode() WITHIN GROUP'),
+      const holderIdQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('FROM "UserAlias" b WHERE b."contactId" = u.id'),
       ) as [string, unknown[]];
-      expect(poolQuery[0]).toContain('u.subscription_status = ANY($1)');
+      // Paying only — no thread and no search can stand in for a subscription.
+      expect(holderIdQuery[0]).toContain('u.subscription_status = ANY($1::text[])');
+      expect(holderIdQuery[0]).not.toContain('FROM threads t');
+      expect(holderIdQuery[1][0]).toEqual(['active', 'trialing']);
     });
 
     it('under netai_users both holder queries read the SAME id list', async () => {
@@ -467,14 +478,20 @@ describe('buildTargetList', () => {
       const build = await buildTargetListWithGates(30);
 
       expect(build.social_proof_basis).toBe('netai_users');
+      const holderIdQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('FROM "UserAlias" b WHERE b."contactId" = u.id'),
+      ) as [string, unknown[]];
+      expect(holderIdQuery[0]).toContain('FROM threads t');
+      expect(holderIdQuery[0]).toContain('FROM search_activity sa');
+
       const poolQuery = mockQuery.mock.calls.find(([sql]) =>
         (sql as string).includes('mode() WITHIN GROUP'),
       ) as [string, unknown[]];
       const holdersQuery = mockQuery.mock.calls.find(([sql]) =>
         (sql as string).includes('AS holders'),
       ) as [string, unknown[]];
-      expect(poolQuery[0]).toContain('u.id = ANY($1::int[])');
-      expect(holdersQuery[0]).toContain('u.id = ANY($2::int[])');
+      expect(poolQuery[0]).toContain('ua."contactId" = ANY($1::int[])');
+      expect(holdersQuery[0]).toContain('ua."contactId" = ANY($2::int[])');
       // A candidate that entered the pool must not then fail the very gate
       // that admitted them — same list, both places.
       expect(poolQuery[1][0]).toEqual([501, 502, 1326]);

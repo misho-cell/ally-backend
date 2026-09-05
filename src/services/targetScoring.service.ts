@@ -1481,12 +1481,35 @@ function socialProofBasis(): SocialProofBasis {
 }
 
 /**
- * The holder ids social proof accepts, or null for "decide it by subscription
- * status inside the query". Read once per build and passed to both places
- * that count holders, so the pool and the per-phone count can never disagree.
+ * Every account allowed to vouch for a target, resolved to a list of ids ONCE
+ * per build. There are tens of them, never thousands.
+ *
+ * Resolving the set up front is not a tidiness choice. Both holder queries
+ * used to carry the whole predicate inline, including a correlated
+ * `(SELECT COUNT(*) FROM "UserAlias" WHERE "contactId" = …)` per candidate row
+ * to enforce the human-phonebook cap. That planned acceptably while the
+ * predicate was `subscription_status = ANY(...)` and timed the whole route out
+ * the moment it became an id list (live, 5 September). Counted once for a few
+ * dozen accounts, the cap costs nothing — and both queries are then a plain
+ * `= ANY(int[])`, which cannot disagree with each other either.
  */
-async function socialProofHolderIds(): Promise<number[] | null> {
-  return socialProofBasis() === 'netai_users' ? await netaiUserIds() : null;
+async function socialProofHolderIds(): Promise<number[]> {
+  const basis = socialProofBasis();
+  const netaiClause = `(EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+         OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+         OR u.subscription_status = ANY($1::text[]))`;
+  const result = await query<{ id: number }>(
+    `SELECT u.id FROM "User" u
+     WHERE u."deletedAt" IS NULL
+       AND ${basis === 'netai_users' ? netaiClause : 'u.subscription_status = ANY($1::text[])'}
+       AND (SELECT COUNT(*) FROM "UserAlias" b WHERE b."contactId" = u.id) <= $2`,
+    [
+      basis === 'netai_users' ? NETAI_ACTIVE_SUBSCRIPTION_STATUSES : SUBSCRIBED_STATUSES,
+      MAX_HUMAN_PHONEBOOK_ROWS,
+    ],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.id);
 }
 const SUBSCRIBED_STATUSES = ['active', 'trialing'];
 // Same human-phonebook cap as the gate's social proof: a purchased 40k-row
@@ -1505,31 +1528,22 @@ const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
  * subscribers already carry them ("ეს სია შეგიძლია ბაზაში გადაამოწმო ხოლმე").
  * The label is the most common alias — display material, same as tag labels.
  */
-async function gatePassablePool(
-  holderIds: number[] | null,
-): Promise<{ phone: string; label: string }[]> {
+async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; label: string }[]> {
+  if (holderIds.length === 0) return [];
   const result = await query<{ phone: string; label: string }>(
     `SELECT ua.phone, mode() WITHIN GROUP (ORDER BY ua.alias) AS label
      FROM "UserAlias" ua
-     JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
-       AND ${holderIds === null ? 'u.subscription_status = ANY($1)' : 'u.id = ANY($1::int[])'}
-     WHERE NOT EXISTS (
+     WHERE ua."contactId" = ANY($1::int[])
+       AND NOT EXISTS (
          SELECT 1 FROM "UserPhone" up
          WHERE regexp_replace(up.phone, '\\D', '', 'g') =
                regexp_replace(ua.phone, '\\D', '', 'g')
        )
-       AND (SELECT COUNT(*) FROM "UserAlias" b
-            WHERE b."contactId" = ua."contactId") <= $2
      GROUP BY ua.phone
-     HAVING COUNT(DISTINCT ua."contactId") >= $3
+     HAVING COUNT(DISTINCT ua."contactId") >= $2
      ORDER BY COUNT(DISTINCT ua."contactId") DESC
-     LIMIT $4`,
-    [
-      holderIds ?? SUBSCRIBED_STATUSES,
-      MAX_HUMAN_PHONEBOOK_ROWS,
-      MIN_TARGET_SUBSCRIBED_HOLDERS,
-      GATE_PASSABLE_POOL_LIMIT,
-    ],
+     LIMIT $3`,
+    [holderIds, MIN_TARGET_SUBSCRIBED_HOLDERS, GATE_PASSABLE_POOL_LIMIT],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -1546,19 +1560,16 @@ async function gatePassablePool(
  */
 async function subscribedHoldersForPhones(
   phones: string[],
-  holderIds: number[] | null,
+  holderIds: number[],
 ): Promise<Map<string, number>> {
-  if (phones.length === 0) return new Map();
+  if (phones.length === 0 || holderIds.length === 0) return new Map();
   const result = await query<{ phone: string; holders: string }>(
     `SELECT ua.phone, COUNT(DISTINCT ua."contactId") AS holders
      FROM "UserAlias" ua
-     JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
-       AND ${holderIds === null ? 'u.subscription_status = ANY($2)' : 'u.id = ANY($2::int[])'}
      WHERE ua.phone = ANY($1)
-       AND (SELECT COUNT(*) FROM "UserAlias" b
-            WHERE b."contactId" = ua."contactId") <= $3
+       AND ua."contactId" = ANY($2::int[])
      GROUP BY ua.phone`,
-    [phones, holderIds ?? SUBSCRIBED_STATUSES, MAX_HUMAN_PHONEBOOK_ROWS],
+    [phones, holderIds],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((r) => [r.phone, Number(r.holders)]));
