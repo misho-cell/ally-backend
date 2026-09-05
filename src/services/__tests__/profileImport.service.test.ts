@@ -213,6 +213,7 @@ describe('importProfiles', () => {
 
 describe('a human-supplied phone (ticket 9 task 9, Lika fills the column)', () => {
   it('uses the supplied number and never runs the matcher for that name', async () => {
+    mockQuery.mockResolvedValue(rows([{ savers: '0', agreeing: '0', dominant: null }]) as never);
     const parsed = parseProfile(FILE);
 
     const out = await importProfiles([parsed!], '501', false, {
@@ -221,7 +222,11 @@ describe('a human-supplied phone (ticket 9 task 9, Lika fills the column)', () =
 
     expect(out.rows[0]?.matched_by).toBe('human');
     expect(out.rows[0]?.phone).toBe('+995599777777');
-    expect(mockQuery).not.toHaveBeenCalled();
+    // The name-to-phone matcher never runs — only the crowd cross-check does.
+    const matcherRan = mockQuery.mock.calls.some(([sql]) =>
+      (sql as string).includes('<<% normalize_search_token'),
+    );
+    expect(matcherRan).toBe(false);
     expect(mockSubmit).toHaveBeenCalledWith(
       '501',
       '+995599777777',
@@ -233,7 +238,11 @@ describe('a human-supplied phone (ticket 9 task 9, Lika fills the column)', () =
   });
 
   it('overrides the crowd even where the crowd was sure — a person outranks a heuristic', async () => {
-    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '87' }]) as never);
+    // The matcher's answer is irrelevant; the crowd check on the SUPPLIED
+    // number finds savers who do call it Givi Beridze.
+    mockQuery.mockResolvedValue(
+      rows([{ savers: '40', agreeing: '31', dominant: 'Givi Beridze' }]) as never,
+    );
     const parsed = parseProfile(FILE);
 
     const out = await importProfiles([parsed!], '501', false, {
@@ -241,6 +250,39 @@ describe('a human-supplied phone (ticket 9 task 9, Lika fills the column)', () =
     });
 
     expect(out.rows[0]?.phone).toBe('+995599222222');
+    expect(out.facts_written).toBeGreaterThan(0);
+  });
+
+  // 5 September: an 85-row seed file paired Guri Koiava and Levan Lashkarava
+  // with each other's numbers and the import published each one's LinkedIn on
+  // the other. 113 and 83 phonebooks knew better and were never asked.
+  it('refuses a supplied number that a well-known crowd never calls by this name', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ savers: '113', agreeing: '0', dominant: 'Guri Koiava' }]) as never,
+    );
+    const parsed = parseProfile(FILE);
+
+    const out = await importProfiles([parsed!], '501', false, {
+      'Givi Beridze': '+995558910910',
+    });
+
+    expect(out.rows[0]?.reason).toBe('name_conflict');
+    expect(out.rows[0]?.crowd_says).toEqual({ savers: 113, dominant_alias: 'Guri Koiava' });
+    expect(out.name_conflict).toBe(1);
+    expect(out.facts_written).toBe(0);
+    expect(mockSubmit).not.toHaveBeenCalled();
+  });
+
+  it('a number only a few people saved is not a contradiction — the file still wins', async () => {
+    mockQuery.mockResolvedValue(rows([{ savers: '2', agreeing: '0', dominant: 'Andro' }]) as never);
+    const parsed = parseProfile(FILE);
+
+    const out = await importProfiles([parsed!], '501', false, {
+      'Givi Beridze': '+995599777777',
+    });
+
+    expect(out.rows[0]?.reason).toBe('resolved');
+    expect(out.facts_written).toBeGreaterThan(0);
   });
 
   it('still matches by crowd for the names nobody filled in', async () => {

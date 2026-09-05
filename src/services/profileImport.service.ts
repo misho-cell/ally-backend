@@ -99,7 +99,7 @@ function employerFromRole(role: string | undefined): string | null {
   return employer === '' ? null : employer;
 }
 
-export type ResolutionReason = 'resolved' | 'no_match' | 'ambiguous';
+export type ResolutionReason = 'resolved' | 'no_match' | 'ambiguous' | 'name_conflict';
 
 export interface ProfileCandidate {
   phone: string;
@@ -201,9 +201,69 @@ export async function resolveProfilePhone(name: string): Promise<ProfileResoluti
  */
 export type PhoneOverrides = Readonly<Record<string, string>>;
 
+/**
+ * How many savers a number needs before their silence about a name counts as
+ * a contradiction. Below this the crowd simply does not know the number, and
+ * a researched phone is still the best answer we have.
+ */
+const MIN_CONTRADICTING_SAVERS = Number(process.env.PROFILE_IMPORT_MIN_CONTRADICTORS ?? 5);
+
+interface CrowdVerdict {
+  /** Distinct people who saved this number under any label. */
+  savers: number;
+  /** Of those, how many wrote a label carrying one of the name's tokens. */
+  agreeing: number;
+  /** The commonest label — what to show the human when we refuse the row. */
+  dominantAlias: string | null;
+}
+
+/**
+ * What the phonebooks say about a number, measured against a name.
+ *
+ * A supplied phone is normally the answer and not a hint — Lika researched
+ * these people. But on 5 September an 85-row seed file paired Guri Koiava and
+ * Levan Lashkarava with each other's numbers, and the import published each
+ * one's LinkedIn on the other, because nothing ever asked the 113 and 83
+ * phonebooks that knew both numbers by name. A file is one person typing; a
+ * hundred phonebooks are not.
+ */
+async function crowdVerdict(phone: string, name: string): Promise<CrowdVerdict> {
+  const tokens = name
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2);
+  if (tokens.length === 0) return { savers: 0, agreeing: 0, dominantAlias: null };
+  const result = await query<{ savers: string; agreeing: string; dominant: string | null }>(
+    `WITH a AS (
+       SELECT ua."contactId", ua.alias,
+              EXISTS (
+                SELECT 1 FROM unnest($2::text[]) tok
+                WHERE normalize_search_token(tok) = ANY(
+                        regexp_split_to_array(normalize_search_token(ua.alias), '[^a-z0-9]+'))
+              ) AS agrees
+       FROM "UserAlias" ua
+       WHERE regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+     )
+     SELECT COUNT(DISTINCT "contactId")::text AS savers,
+            COUNT(DISTINCT "contactId") FILTER (WHERE agrees)::text AS agreeing,
+            (SELECT alias FROM a GROUP BY alias ORDER BY COUNT(*) DESC, alias LIMIT 1) AS dominant
+     FROM a`,
+    [phone, tokens],
+    PROFILE_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return {
+    savers: Number(row?.savers ?? 0),
+    agreeing: Number(row?.agreeing ?? 0),
+    dominantAlias: row?.dominant ?? null,
+  };
+}
+
 export interface ProfileImportRow extends ProfileResolution {
   /** Where the phone came from: a person, or the crowd heuristic. */
   matched_by: 'human' | 'crowd' | 'none';
+  /** Set only on a refused row: what the phonebooks call that number instead. */
+  crowd_says?: { savers: number; dominant_alias: string | null };
   /** How many facts were written (0 on a dry run, or when unresolved). */
   written: number;
   /** How many the file offered — so a dry run still shows the size. */
@@ -216,6 +276,8 @@ export interface ProfileImportResult {
   ambiguous: number;
   no_match: number;
   facts_written: number;
+  /** Rows refused because the phonebooks call that number somebody else. */
+  name_conflict: number;
   rows: ProfileImportRow[];
 }
 
@@ -242,6 +304,16 @@ export async function importProfiles(
       : resolution.reason === 'resolved'
         ? 'crowd'
         : 'none';
+    // A supplied phone is still the answer — but not against a crowd that
+    // knows the number well and never once wrote this name on it.
+    let crowdSays: ProfileImportRow['crowd_says'];
+    if (supplied && resolution.phone !== null) {
+      const verdict = await crowdVerdict(resolution.phone, profile.name);
+      if (verdict.savers >= MIN_CONTRADICTING_SAVERS && verdict.agreeing === 0) {
+        resolution.reason = 'name_conflict';
+        crowdSays = { savers: verdict.savers, dominant_alias: verdict.dominantAlias };
+      }
+    }
     const available = Object.values(profile.facts).reduce((n, v) => n + v.length, 0);
     let written = 0;
     if (resolution.reason === 'resolved' && resolution.phone !== null && !dryRun) {
@@ -260,13 +332,20 @@ export async function importProfiles(
       }
     }
     factsWritten += written;
-    rows.push({ ...resolution, matched_by: matchedBy, written, available });
+    rows.push({
+      ...resolution,
+      matched_by: matchedBy,
+      written,
+      available,
+      ...(crowdSays === undefined ? {} : { crowd_says: crowdSays }),
+    });
   }
   return {
     dry_run: dryRun,
     resolved: rows.filter((r) => r.reason === 'resolved').length,
     ambiguous: rows.filter((r) => r.reason === 'ambiguous').length,
     no_match: rows.filter((r) => r.reason === 'no_match').length,
+    name_conflict: rows.filter((r) => r.reason === 'name_conflict').length,
     facts_written: factsWritten,
     rows,
   };
