@@ -2274,6 +2274,61 @@ const MAX_IDENTITY_DECISIONS = 500;
 //   POST /admin/privacy/scrub-private-context?dry_run=true|false
 //   Undo: none — a removed phone number cannot be un-removed, which is the
 //   point. Run the dry run first; it names the lines it would touch.
+// Ticket 9 task 18: take one fact out of the public record.
+//   POST /admin/facts/:id/unpublish   body: { reason }
+// It does NOT delete the row — the fact stays, retracted, with its reason, so
+// the audit trail survives. Used for the „ქოუჩი" row the sweep published under
+// the curator's id before that bypass was closed.
+//   Undo: UPDATE contact_facts SET retracted_at = NULL, is_public = <prior>
+//         WHERE id = <id>;  (the response carries the prior value)
+adminRouter.post('/facts/:id/unpublish', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'fact id აუცილებელია' });
+      return;
+    }
+    const reason = String((req.body as { reason?: unknown })?.reason ?? '').trim();
+    if (!reason) {
+      res.status(400).json({ success: false, error: 'reason აუცილებელია — ეს აუდიტის ჩანაწერია' });
+      return;
+    }
+    const before = await query<{
+      id: number;
+      neo4j_contact_id: string;
+      field_type: string;
+      value: string;
+      is_public: boolean;
+      source: string | null;
+      submitted_by_user_id: string;
+    }>(
+      `SELECT id, neo4j_contact_id, field_type, value, is_public, source, submitted_by_user_id
+       FROM contact_facts WHERE id = $1 LIMIT 1`,
+      [id],
+    );
+    const row = before.rows[0];
+    if (!row) {
+      res.status(404).json({ success: false, error: 'ასეთი ფაქტი არ არსებობს' });
+      return;
+    }
+    await query(
+      `UPDATE contact_facts
+       SET is_public = false, retracted_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND retracted_at IS NULL`,
+      [id],
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin] fact ${id} unpublished by ${(req as AuthenticatedRequest).user?.userId}: ${reason}`,
+    );
+    res.status(200).json({ success: true, data: { unpublished: row, reason } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin fact unpublish]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.post('/privacy/scrub-private-context', async (req: Request, res: Response) => {
   try {
     const dryRun = req.query.dry_run !== 'false';

@@ -1190,6 +1190,33 @@ function isGeorgianPersonalMobile(phone: string): boolean {
   return GEORGIAN_MOBILE_RE.test(phone);
 }
 
+/**
+ * How many phonebooks must hold a FOREIGN number before it is treated as a
+ * person (ticket 9, the Axel list).
+ *
+ * The rule used to be „a Georgian mobile or nothing", written to kill hotlines,
+ * short codes and junk out of Georgian phonebooks. It also killed every
+ * Georgian who lives abroad. Measured on 5 September: 488,840 foreign numbers
+ * in the base, 7,488 of them held by three or more people and 753 held by ten
+ * or more — those are not short codes, they are people, and one of them was on
+ * the founder's own seed list („Giga", +34…, saved by five different people).
+ *
+ * The crowd decides here as it decides everywhere else: a foreign number many
+ * phonebooks carry is a person and goes on to the ordinary person gates; one
+ * that a single phonebook carries stays out.
+ */
+const MIN_FOREIGN_SAVERS = Number(process.env.MIN_FOREIGN_SAVERS ?? 3);
+
+/** Shape only: a Georgian mobile, or any plausible international number. */
+function isPlausibleMobile(phone: string): boolean {
+  return isGeorgianPersonalMobile(phone) || /^\+\d{9,15}$/.test(phone);
+}
+
+/** …and a foreign one has to be held by the crowd before it counts as a person. */
+function foreignNumberHasCrowd(phone: string, reach: number): boolean {
+  return isGeorgianPersonalMobile(phone) || reach >= MIN_FOREIGN_SAVERS;
+}
+
 function isHotline(analysis: AliasAnalysis | undefined, reach: number): boolean {
   if (reach <= HOTLINE_REACH_THRESHOLD) return false;
   const topToken = analysis?.topToken;
@@ -1389,9 +1416,12 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
       });
     }
   }
-  // Hard exclude #1 (Task 4 item 1): only Georgian personal mobiles can be
-  // people — 0-800 lines, short codes and foreign-prefix normalisations out.
-  const phones = Array.from(candidates.keys()).filter(isGeorgianPersonalMobile);
+  // Hard exclude #1 (Task 4 item 1), widened: the gate is „is this a person",
+  // not „is this a Georgian SIM". Shape first — short codes and 0-800 lines
+  // out — and a FOREIGN number then has to be held by the crowd (below, once
+  // reach is known), because „a Georgian mobile or nothing" also excluded
+  // every Georgian living abroad.
+  const phones = Array.from(candidates.keys()).filter(isPlausibleMobile);
 
   const scoredCandidates = new Map(
     Array.from(candidates.entries()).filter(([phone]) => phones.includes(phone)),
@@ -1423,6 +1453,9 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetScoreEn
   for (const phone of phones) {
     const ctx = candidates.get(phone) as CandidateContext;
     const reach = reachMap.get(phone) ?? 0;
+    // A foreign number one person saved is noise; one that many phonebooks
+    // carry is a person who happens to live abroad.
+    if (!foreignNumberHasCrowd(phone, reach)) continue;
     const analysis = aliasMap.get(phone);
     // Hard exclude #2: a brand word dominating the aliases at hotline reach
     // is a line, not a person (the tester's wissol/maksima/0-800 evidence).

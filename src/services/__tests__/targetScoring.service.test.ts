@@ -959,3 +959,45 @@ describe('our own people, named by the crowd (task 10 item 3)', () => {
     expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000093']);
   });
 });
+
+describe('a Georgian who lives abroad is still a person (5 Sep)', () => {
+  it('keeps a foreign number the crowd holds', async () => {
+    // „Giga", +34…, saved by five different people — on the founder's own seed
+    // list, and invisible to the engine because the gate asked for a Georgian
+    // SIM rather than for a person.
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+34689019541', label: 'Giga Demetrashvili' }]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+34689019541', reach: '5' }],
+      aliases: [
+        { phone: '+34689019541', contactId: 1, alias: 'Giga Demetrashvili' },
+        { phone: '+34689019541', contactId: 2, alias: 'Giga Demetrashvili' },
+        { phone: '+34689019541', contactId: 3, alias: 'Giga' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+34689019541']);
+  });
+
+  it('drops a foreign number only one person saved', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+447700900123', label: 'Some Onenumber' }]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+447700900123', reach: '1' }],
+      aliases: [{ phone: '+447700900123', contactId: 1, alias: 'Some Onenumber' }],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('still refuses a short code, whatever its reach', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '8080', label: 'Info Line' }])]);
+    routeScoreQueries({ reach: [{ phone: '8080', reach: '900' }], askableCount: 50 });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+});
