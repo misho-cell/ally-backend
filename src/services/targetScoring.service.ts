@@ -25,6 +25,8 @@ import {
 const SCORE_QUERY_TIMEOUT_MS = 8_000;
 /** Reach is not optional: every row is scored on it, so it gets its own room. */
 const REACH_QUERY_TIMEOUT_MS = 30_000;
+/** Same reasoning for the pool: one query per build, and the build needs it. */
+const POOL_QUERY_TIMEOUT_MS = 20_000;
 // Must mirror askBudget.service's own fatigue window — this is the same
 // signal, read here in aggregate rather than per-sender.
 const IGNORED_ASK_AFTER_HOURS = 168;
@@ -1781,7 +1783,12 @@ async function oldAllyPool(): Promise<{ phone: string; label: string }[]> {
       OLD_ALLY_POOL_LIMIT,
       NETAI_ACTIVE_SUBSCRIPTION_STATUSES,
     ],
-    SCORE_QUERY_TIMEOUT_MS,
+    // Its own budget, for the same reason reach has one: this grouping walks
+    // every alias row in the base to size each phonebook, which is inherently
+    // a couple of seconds and varies with load. At 8.1s against the shared 8s
+    // limit it took the whole build down — and without it the old-Ally half of
+    // the pool does not exist at all.
+    POOL_QUERY_TIMEOUT_MS,
   );
   // No label is fetched here. A correlated mode() per row cost 8.2s against
   // production and would have been thrown away anyway: analyzeAliases already
