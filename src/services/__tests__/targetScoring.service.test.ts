@@ -545,6 +545,28 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // THE TARGETS, target 9: every Axel member is in on membership alone —
+  // "an Axel member with 150 own contacts is still in".
+  it('membership on the roster is a fit on its own', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000130', label: 'ლევან ლაშქარავა' }]),
+    ]);
+    routeScoreQueries({
+      askableCount: 50,
+      fitFacts: [{ phone: '+995500000130', values: ['member_of: Axel'] }],
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0]?.parts.fit).toBe('moderate');
+    expect(out[0]?.parts.fit_source).toBe('facts');
+    // And the roster is asked for by name, not inferred from an „axel" label.
+    const factsQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('array_agg(DISTINCT field_type'),
+    ) as [string, unknown[]];
+    expect(factsQuery[1][1]).toContain('member_of');
+  });
+
   // THE TARGETS Part 1: an old-Ally account is a target — "tens of thousands"
   // of them — and D61: waking one IS selling Netai. Not one could reach the
   // list, because the pool asked for a phone with NO account.

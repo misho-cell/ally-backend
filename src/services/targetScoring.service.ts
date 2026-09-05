@@ -122,7 +122,11 @@ const NEEDS_NETAI_KEYWORDS = [
 // labels cannot judge lands in NOT YET — Rule 6: "'we could not find anything'
 // is a state called NOT YET. It never produces an OUT." They stay on the list
 // and rank last, they are never dropped.
-const FIT_FACT_TYPES = ['occupation', 'role', 'employer', 'industry', 'expertise'];
+// Membership joins them (THE TARGETS, target 9): an Axel member is a target on
+// membership alone, whatever the counts say, and „member_of: Axel" carries no
+// ownership word — so it lands as a fact-based moderate fit, which is exactly
+// the file's "GOOD (9) at least".
+const FIT_FACT_TYPES = ['occupation', 'role', 'employer', 'industry', 'expertise', 'member_of'];
 // The same three statuses membership.ts counts as an active Netai
 // subscription — an inviter must be a Netai user (Rule 13).
 const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
