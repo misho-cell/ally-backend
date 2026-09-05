@@ -12,7 +12,7 @@ import {
 
 const SCORE_QUERY_TIMEOUT_MS = 8_000;
 /** Reach is not optional: every row is scored on it, so it gets its own room. */
-const REACH_QUERY_TIMEOUT_MS = 20_000;
+const REACH_QUERY_TIMEOUT_MS = 30_000;
 // Must mirror askBudget.service's own fatigue window — this is the same
 // signal, read here in aggregate rather than per-sender.
 const IGNORED_ASK_AFTER_HOURS = 168;
@@ -1973,6 +1973,13 @@ async function approachHistoryForPhones(phones: string[]): Promise<Map<string, A
  * gate — this is the connector door, not the floor.
  */
 const OLD_ALLY_CONNECTOR_CONTACTS = Number(process.env.OLD_ALLY_CONNECTOR_CONTACTS ?? 500);
+/**
+ * How many of them join each build. Smaller than the gate-passable pool on
+ * purpose: they are ordered by phonebook size, so the top of that order is
+ * where the connectors are, and every extra candidate is paid for again in
+ * every per-phone query the build runs.
+ */
+const OLD_ALLY_POOL_LIMIT = Number(process.env.OLD_ALLY_POOL_LIMIT ?? 200);
 
 /**
  * The second pool: accounts that registered with old Ally and never opened
@@ -1992,7 +1999,7 @@ const OLD_ALLY_CONNECTOR_CONTACTS = Number(process.env.OLD_ALLY_CONNECTOR_CONTAC
  * a business database somebody imported, not a person's phone.
  */
 async function oldAllyPool(): Promise<{ phone: string; label: string }[]> {
-  const result = await query<{ phone: string; label: string | null }>(
+  const result = await query<{ phone: string }>(
     `WITH big AS (
        SELECT "contactId" AS uid, COUNT(*) AS own_contacts
        FROM "UserAlias" GROUP BY "contactId"
@@ -2008,23 +2015,23 @@ async function oldAllyPool(): Promise<{ phone: string; label: string }[]> {
          AND NOT EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
        ORDER BY u.id, big.own_contacts DESC
      )
-     SELECT c.phone,
-            (SELECT mode() WITHIN GROUP (ORDER BY a.alias)
-             FROM "UserAlias" a WHERE a.phone = c.phone) AS label
+     SELECT c.phone
      FROM cand c
      ORDER BY c.own_contacts DESC
      LIMIT $3`,
     [
       OLD_ALLY_CONNECTOR_CONTACTS,
       MAX_HUMAN_PHONEBOOK_ROWS,
-      GATE_PASSABLE_POOL_LIMIT,
+      OLD_ALLY_POOL_LIMIT,
       NETAI_ACTIVE_SUBSCRIPTION_STATUSES,
     ],
     SCORE_QUERY_TIMEOUT_MS,
   );
-  // No alias anywhere means nobody else has ever saved them; the person gates
-  // will read that as "not a person" and drop the row, which is correct.
-  return result.rows.map((r) => ({ phone: r.phone, label: r.label ?? '' }));
+  // No label is fetched here. A correlated mode() per row cost 8.2s against
+  // production and would have been thrown away anyway: analyzeAliases already
+  // reads every candidate's aliases, and what the crowd calls somebody is a
+  // better name than the commonest string. An empty label is filled in below.
+  return result.rows.map((r) => ({ phone: r.phone, label: '' }));
 }
 
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
@@ -2125,11 +2132,14 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     ) {
       continue;
     }
-    const fit = fitFor(factsMap.get(phone), ctx.label);
+    // A pool row can arrive without a label (the old-Ally pool does not pay for
+    // one). What the crowd calls them is the better name anyway.
+    const candidateLabel = ctx.label !== '' ? ctx.label : (analysis?.personLabel ?? '');
+    const fit = fitFor(factsMap.get(phone), candidateLabel);
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
     const excluded = exclusionFor(
-      ctx.label,
+      candidateLabel,
       fit,
       analysis?.tradeVotes ?? 0,
       analysis?.nameConfirmed ?? false,
@@ -2151,9 +2161,9 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     // name — a list a human reads must say who it is about.
     const label =
       analysis?.personLabel &&
-      nameTokens(analysis.personLabel).length > nameTokens(ctx.label).length
+      nameTokens(analysis.personLabel).length > nameTokens(candidateLabel).length
         ? analysis.personLabel
-        : ctx.label;
+        : candidateLabel;
     entries.push({
       phone,
       label,

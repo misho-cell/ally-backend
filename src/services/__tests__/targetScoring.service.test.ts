@@ -561,7 +561,7 @@ describe('buildTargetList', () => {
       mockFindUnmetNeeds.mockResolvedValue([]);
       routeScoreQueries({
         askableCount: 50,
-        oldAllyPool: [{ phone: '+995500000120', label: 'გია დირექტორი' }],
+        oldAllyPool: [{ phone: '+995500000120', label: null }],
         accounts: [ACCOUNT as never],
       });
 
@@ -569,6 +569,8 @@ describe('buildTargetList', () => {
 
       expect(out.map((e) => e.phone)).toEqual(['+995500000120']);
       expect(out[0]?.parts.state).toBe('ally_account');
+      // The pool fetched no label; the crowd supplied one.
+      expect(out[0]?.label).toBe('ნინო კახიძე');
     });
 
     // Social proof is the registration door's question. They are already
@@ -613,6 +615,9 @@ describe('buildTargetList', () => {
       // databases somebody imported as a phonebook.
       expect(poolQuery[1][0]).toBe(500);
       expect(poolQuery[1][1]).toBe(15000);
+      // And it does not pay for a label: a correlated mode() per row cost 8.2s
+      // against production, for a name analyzeAliases reads better anyway.
+      expect(poolQuery[0]).not.toContain('mode() WITHIN GROUP');
       // And never somebody who has actually opened Netai.
       expect(poolQuery[0]).toContain('NOT EXISTS (SELECT 1 FROM threads t');
       expect(poolQuery[0]).toContain('FROM search_activity sa');
