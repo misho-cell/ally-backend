@@ -42,8 +42,10 @@ function routeScoreQueries(opts: {
   facts?: { phone: string; cnt: string }[];
   aliases?: { phone: string; contactId: number; alias: string }[];
   askableCount?: number;
-  // Ticket 7 task 15: the two once-"unbuildable" criteria.
-  goalRelevantPhones?: string[];
+  // Ticket 7 task 15: the two once-"unbuildable" criteria. Goal relevance is
+  // asked per WORD — the same question for two candidates sharing a word can
+  // only ever have one answer.
+  goalRelevantWords?: string[];
   bestUserIds?: number[];
   bestUserPhones?: string[];
   bestUserFactValues?: string[];
@@ -121,7 +123,7 @@ function routeScoreQueries(opts: {
     }
     if (sql.includes('FROM tasks t'))
       return Promise.resolve(
-        rows((opts.goalRelevantPhones ?? []).map((phone) => ({ phone }))) as never,
+        rows((opts.goalRelevantWords ?? []).map((word) => ({ word }))) as never,
       );
     if (sql.includes('SELECT u.id FROM "User" u'))
       return Promise.resolve(rows((opts.bestUserIds ?? []).map((id) => ({ id }))) as never);
@@ -236,10 +238,10 @@ describe('buildTargetList', () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('კონსულტანტი', [
         { phone: '+995500000011', label: 'ზურა კონსულტანტი' },
-        { phone: '+995500000012', label: 'გია კონსულტანტი' },
+        { phone: '+995500000012', label: 'გია მშენებელი' },
       ]),
     ]);
-    routeScoreQueries({ askableCount: 50, goalRelevantPhones: ['+995500000011'] });
+    routeScoreQueries({ askableCount: 50, goalRelevantWords: ['კონსულტანტი'] });
 
     const out = await buildTargetList(30);
 
@@ -248,6 +250,46 @@ describe('buildTargetList', () => {
     expect(relevant?.parts.goal_relevant).toBe(true);
     expect(other?.parts.goal_relevant).toBe(false);
     expect((relevant?.score ?? 0) > (other?.score ?? 0)).toBe(true);
+  });
+
+  // 5 September: this query timed out at 500 candidates and 500'd the whole
+  // route. It decides a +0.1 bonus.
+  it('task 15: a goal-relevance failure costs the bonus, never the list', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('კონსულტანტი', [{ phone: '+995500000015', label: 'ზურა კონსულტანტი' }]),
+    ]);
+    routeScoreQueries({ askableCount: 50 });
+    const passthrough = mockQuery.getMockImplementation() as jest.Mock;
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) =>
+      sql.includes('FROM tasks t')
+        ? Promise.reject(new Error('canceling statement due to statement timeout'))
+        : (passthrough(sql, params) as never),
+    );
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.phone)).toEqual(['+995500000015']);
+    expect(out[0]?.parts.goal_relevant).toBe(false);
+  });
+
+  it('task 15: asks once per distinct word, not once per candidate-and-word', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('კონსულტანტი', [
+        { phone: '+995500000016', label: 'ზურა კონსულტანტი' },
+        { phone: '+995500000017', label: 'გია კონსულტანტი' },
+        { phone: '+995500000018', label: 'ნინო კონსულტანტი' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50, goalRelevantWords: ['კონსულტანტი'] });
+
+    await buildTargetList(30);
+
+    const goalQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('FROM tasks t'),
+    ) as [string, unknown[]];
+    // Four names and one shared trade word — five rows, not eight pairs.
+    expect(goalQuery[0]).toContain('UNNEST($1::text[]) AS x(word)');
+    expect(new Set(goalQuery[1][0] as string[]).size).toBe((goalQuery[1][0] as string[]).length);
   });
 
   it("task 15: flags best_user_lookalike from a whole-token match against best users' trade facts — never name tokens", async () => {

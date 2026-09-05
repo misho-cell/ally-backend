@@ -1260,32 +1260,51 @@ async function bestUserVocabulary(): Promise<Set<string>> {
  * the criterion the earlier "no goals table" note wrongly skipped.
  */
 async function goalRelevantPhones(candidates: Map<string, CandidateContext>): Promise<Set<string>> {
-  const pairPhones: string[] = [];
-  const pairWords: string[] = [];
+  // One row per DISTINCT WORD, not per (phone, word) pair. Labels share their
+  // words heavily — „დირექტორი", „Axel", a first name — so the pair form asked
+  // the same similarity question dozens of times, and at 500 candidates it
+  // spent the route's whole 8s budget and timed out (live, 5 September).
+  const wordsByPhone = new Map<string, string[]>();
+  const words = new Set<string>();
   for (const [phone, ctx] of candidates) {
-    for (const word of new Set(tokenize(ctx.label))) {
-      if (BRAND_STOPLIST.has(word)) continue;
-      pairPhones.push(phone);
-      pairWords.push(word);
-    }
+    const own = [...new Set(tokenize(ctx.label))].filter((w) => !BRAND_STOPLIST.has(w));
+    if (own.length === 0) continue;
+    wordsByPhone.set(phone, own);
+    for (const word of own) words.add(word);
   }
-  if (pairPhones.length === 0) return new Set();
-  const result = await query<{ phone: string }>(
-    `SELECT DISTINCT x.phone
-     FROM UNNEST($1::text[], $2::text[]) AS x(phone, word)
-     WHERE EXISTS (
-       SELECT 1 FROM tasks t
-       -- tasks.user_id is TEXT on prod while "User".id is INTEGER — compare
-       -- as text (live-caught: integer = text 500'd the whole target list).
-       JOIN "User" u ON u.id::text = t.user_id AND u.subscription_status = 'active'
-       WHERE t.status = 'open'
-         AND normalize_search_token(x.word) <<% normalize_search_token(
-           COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' || COALESCE(t.brief, ''))
-     )`,
-    [pairPhones, pairWords],
-    SCORE_QUERY_TIMEOUT_MS,
-  );
-  return new Set(result.rows.map((r) => r.phone));
+  if (words.size === 0) return new Set();
+  let matched: Set<string>;
+  try {
+    const result = await query<{ word: string }>(
+      `SELECT DISTINCT x.word
+       FROM UNNEST($1::text[]) AS x(word)
+       WHERE EXISTS (
+         SELECT 1 FROM tasks t
+         -- tasks.user_id is TEXT on prod while "User".id is INTEGER — compare
+         -- as text (live-caught: integer = text 500'd the whole target list).
+         JOIN "User" u ON u.id::text = t.user_id AND u.subscription_status = 'active'
+         WHERE t.status = 'open'
+           AND normalize_search_token(x.word) <<% normalize_search_token(
+             COALESCE(t.title, '') || ' ' || COALESCE(t.description, '') || ' ' || COALESCE(t.brief, ''))
+       )`,
+      [[...words]],
+      SCORE_QUERY_TIMEOUT_MS,
+    );
+    matched = new Set(result.rows.map((r) => r.word));
+  } catch (error) {
+    // This decides a +0.1 bonus. A bonus may not be able to take down the
+    // list: without it every candidate simply scores as goal_relevant: false.
+    // eslint-disable-next-line no-console
+    console.error(
+      `[target-list] goal relevance skipped: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return new Set();
+  }
+  const phones = new Set<string>();
+  for (const [phone, own] of wordsByPhone) {
+    if (own.some((w) => matched.has(w))) phones.add(phone);
+  }
+  return phones;
 }
 
 function isGeorgianPersonalMobile(phone: string): boolean {
