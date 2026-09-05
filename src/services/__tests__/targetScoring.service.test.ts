@@ -57,6 +57,8 @@ function routeScoreQueries(opts: {
   socialProofHolders?: number[];
   /** Bubble density rows, per phone: how many savers and how many know each other. */
   bubbles?: { phone: string; savers: string; edges: string }[];
+  /** Phones a human has ruled out. */
+  refused?: string[];
   // Rule 14 (founder D102): the public facts that decide fit, and the warm
   // Netai user who could carry the invitation.
   fitFacts?: { phone: string; values: string[] }[];
@@ -96,6 +98,8 @@ function routeScoreQueries(opts: {
       return Promise.resolve(rows(opts.poolPeople ?? []) as never);
     if (sql.includes('JOIN "UserAlias" ax ON ax."contactId" = s.uid'))
       return Promise.resolve(rows(opts.bubbles ?? []) as never);
+    if (sql.includes('FROM target_decisions'))
+      return Promise.resolve(rows((opts.refused ?? []).map((phone) => ({ phone }))) as never);
     if (sql.includes('AS holders')) {
       // Every asked phone passes the gate by default (holders=2), so the
       // pre-existing scoring tests keep testing scoring, not the new hard
@@ -500,6 +504,24 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // The one judgment no column in this schema can make. The founder's own
+  // example: his wife is the №1 candidate by every machine signal there is.
+  it("a human's no removes the person, and the ledger says who removed them", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000090', label: 'გია დირექტორი' },
+        { phone: '+995500000091', label: 'ნინო დირექტორი' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50, refused: ['+995500000090'] });
+
+    const build = await buildTargetListWithGates(30);
+
+    expect(build.entries.map((e) => e.phone)).toEqual(['+995500000091']);
+    const gate = build.gates.find((g) => g.gate === 'founder_said_no');
+    expect(gate).toEqual({ gate: 'founder_said_no', enabled: true, removed: 1, matched: 1 });
+  });
+
   // Tasks 1–10: every rebuild used to erase the last, so "why was he third
   // last month and fourteenth now" had no answer anywhere.
   describe('score history', () => {

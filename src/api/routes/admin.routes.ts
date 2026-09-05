@@ -112,9 +112,15 @@ import {
 import {
   buildTargetList,
   buildTargetListWithGates,
+  clearTargetListCache,
   readScoreHistory,
   TargetScoreEntry,
 } from '../../services/targetScoring.service';
+import {
+  applyTargetDecisions,
+  listTargetDecisions,
+  TargetDecisionInput,
+} from '../../services/targetDecisions.service';
 import {
   generateAndStoreWeeklyReport,
   getStoredLabReports,
@@ -1993,6 +1999,90 @@ adminRouter.get('/target-list/history', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target-list history]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The founder's review of the weekly list, as a spreadsheet (tasks 1–10).
+//   GET /admin/target-list/review.csv?days=30
+// Every reason the engine had, one row per candidate, and an empty `decision`
+// column. He types კი / არა and sends it back — the one judgment no column in
+// this schema can make (his own example: his wife is the №1 candidate by every
+// machine signal there is).
+adminRouter.get('/target-list/review.csv', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const entries = await buildTargetList(days);
+    const escape = (v: unknown): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header =
+      'phone,name,score,fit,why,reach,bubble_density,subscribed_holders,route,decision,note';
+    const csv = [
+      header,
+      ...entries.map((e) =>
+        [
+          escape(e.phone),
+          escape(e.label),
+          e.score,
+          e.parts.fit,
+          escape(e.parts.fit_evidence.join(' · ')),
+          e.parts.reach,
+          e.parts.bubble === null ? '' : e.parts.bubble.density.toFixed(3),
+          e.parts.subscribed_holders,
+          e.route,
+          '',
+          '',
+        ].join(','),
+      ),
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="target_review.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target review csv]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// His answers, loaded back.
+//   POST /admin/target-list/decisions
+//   body: { decisions: [{ phone, decision: "კი" | "არა" | ..., note? }] }
+// „არა" is a REAL exclusion — the engine drops the person the way it drops a
+// hotline, and the gate ledger counts it as `founder_said_no`, so the cost of
+// his own rulings is as visible as the cost of every other rule. Anything that
+// is neither yes nor no leaves the row untouched: a mis-read „maybe" that
+// lands as „no" would delete somebody from every future list unnoticed.
+//   Undo: POST again with the opposite answer, or
+//         DELETE FROM target_decisions WHERE phone = '<phone>';
+adminRouter.post('/target-list/decisions', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { decisions?: unknown };
+    if (!Array.isArray(body.decisions)) {
+      res.status(400).json({ success: false, error: 'decisions აუცილებელია' });
+      return;
+    }
+    const actor = String((req as AuthenticatedRequest).user?.userId ?? 'admin');
+    const result = await applyTargetDecisions(body.decisions as TargetDecisionInput[], actor);
+    // A ruling changes who is on the list, so the cached list is now the old
+    // answer — the next read must rebuild.
+    clearTargetListCache();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target decisions]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Every standing answer — who decided what, and why when they said why.
+adminRouter.get('/target-list/decisions', async (_req: Request, res: Response) => {
+  try {
+    const decisions = await listTargetDecisions();
+    res.status(200).json({ success: true, data: { total: decisions.length, decisions } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target decisions list]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

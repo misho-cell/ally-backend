@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
+import { refusedTargetPhones } from './targetDecisions.service';
 import { normalizePhone, phoneDigits } from './phone';
 import { roundTo } from './number';
 import { warmthByPhoneAndUser } from './warmth.service';
@@ -397,6 +398,8 @@ export type TargetGate =
   | 'foreign_without_crowd'
   | 'hotline'
   | 'too_few_subscribed_holders'
+  /** A human read the row and said no. The only gate no measurement made. */
+  | 'founder_said_no'
   | TargetExclusion;
 
 export const TARGET_GATES: readonly TargetGate[] = [
@@ -404,6 +407,7 @@ export const TARGET_GATES: readonly TargetGate[] = [
   'foreign_without_crowd',
   'hotline',
   'too_few_subscribed_holders',
+  'founder_said_no',
   'our_own_people',
   'place_or_thing',
   'already_paying',
@@ -1837,6 +1841,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // social proof, or a candidate can enter the pool and then fail the gate
   // that let them in.
   const holderIds = await socialProofHolderIds();
+  // The human answers, read once. A „no" is a real exclusion, not a demotion.
+  const refused = await refusedTargetPhones();
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
   // The founder's pool joins as the primary source: gate-passable people
@@ -1895,6 +1901,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     const reach = reachMap.get(phone) ?? 0;
     // A foreign number one person saved is noise; one that many phonebooks
     // carry is a person who happens to live abroad.
+    if (refused.has(phone) && gates.hit('founder_said_no')) continue;
     if (!foreignNumberHasCrowd(phone, reach) && gates.hit('foreign_without_crowd')) continue;
     const analysis = aliasMap.get(phone);
     // Hard exclude #2: a brand word dominating the aliases at hotline reach
