@@ -1905,6 +1905,8 @@ interface AgentPromptResult {
   prompt: string;
   runMode: RunMode;
   blockNames: string[];
+  /** `name@ISO` per block — the exact revision that ran (ticket 9 task 34). */
+  blockVersions: string[];
 }
 
 async function buildAgentSystemPrompt(
@@ -2005,7 +2007,7 @@ async function buildAgentSystemPrompt(
     buildInsightFieldsSection(fieldsResult.rows) +
     buildPendingRequestsSection(pendingRequests) +
     buildRespondedRequestsSection(recentResponses);
-  return { prompt, runMode, blockNames: modeBlocks.names };
+  return { prompt, runMode, blockNames: modeBlocks.names, blockVersions: modeBlocks.versions };
 }
 
 // What a preview renders when no live thread state exists for the mode: the
@@ -3597,12 +3599,17 @@ export async function processChat(
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
-  void stampRunMode(runId, userId, threadId, agentPrompt.runMode, agentPrompt.blockNames).catch(
-    (err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.warn('[prompt-stamp] failed:', (err as Error).message);
-    },
-  );
+  void stampRunMode(
+    runId,
+    userId,
+    threadId,
+    agentPrompt.runMode,
+    agentPrompt.blockNames,
+    agentPrompt.blockVersions,
+  ).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn('[prompt-stamp] failed:', (err as Error).message);
+  });
   // Pin the reply language to the user's latest message (engine-level, appended
   // last so it wins over the Georgian strategy prompt).
   const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
@@ -3708,7 +3715,13 @@ export async function processChat(
   );
   runAllowedNumbers.delete(runId);
   runLanguages.delete(runId);
-  await saveMessage(userId, threadId, 'assistant', reply, 'message', null, choices ?? null);
+  // The run's id travels WITH the message (ticket 9 task 34). It was passed as
+  // null on every final answer, so 846 assistant messages in five days carried
+  // no run id at all — and `run_prompt_stamps`, which knows exactly which mode
+  // and which blocks produced each run, had nothing to join to. Every question
+  // of the form „which prompt answered this turn?" was unanswerable by
+  // construction, and every „the prompt fixed it" was a guess.
+  await saveMessage(userId, threadId, 'assistant', reply, 'message', runId, choices ?? null);
 
   // Charge the run's actual ledger cost to the user's token wallet (no-op
   // while the wallet flag is off). Never fails the reply.

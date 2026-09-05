@@ -51,6 +51,13 @@ export interface ThreadMessage {
   created_at: string;
   /** Tappable options saved with the message (present_choices) — render as buttons. */
   choices: string[] | null;
+  /**
+   * Which prompt answered this turn (ticket 9 task 34): the run's mode, and
+   * `name@ISO` per block it loaded. Null on a message whose run predates the
+   * stamp link, and on user messages.
+   */
+  prompt_mode?: string | null;
+  prompt_blocks?: string[] | null;
 }
 
 interface ThreadRow extends Thread {
@@ -368,15 +375,23 @@ export async function getThreadMessages(
   const limitIdx = params.length;
   // The inner scan walks the (thread_id, created_at DESC) index backwards from
   // the newest row and stops at LIMIT; the outer flip restores reading order.
+  // Each message carries the prompt that produced it (ticket 9 task 34): the
+  // run's mode and the exact block revisions it loaded, joined from the stamp
+  // the run wrote. Four goal conversations on 2 September showed none of the
+  // goal rules and nothing in the product could say which block had spoken —
+  // `run_id` was null on every message and nothing read the stamps back. A
+  // LEFT JOIN, so a message from before the link existed still renders.
   const result = await query<ThreadMessage>(
-    `SELECT * FROM (
+    `SELECT page.*, s.mode AS prompt_mode, s.block_versions AS prompt_blocks
+     FROM (
        SELECT id, role, content, kind, run_id, created_at, choices
        FROM conversations
        WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
        ORDER BY created_at DESC, id::text DESC
        LIMIT $${limitIdx}::int
      ) page
-     ORDER BY created_at ASC, id::text ASC`,
+     LEFT JOIN run_prompt_stamps s ON s.run_id = page.run_id
+     ORDER BY page.created_at ASC, page.id::text ASC`,
     params,
   );
   // Reveal own-number passthrough spans at this display boundary (stored text

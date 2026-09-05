@@ -189,6 +189,16 @@ interface PromptBlocksListing {
   blocks: PromptBlock[];
   modes: readonly string[];
   mode_totals: ModeTotal[];
+  /**
+   * The per-BLOCK cap, served by the server so the editor cannot show a
+   * different number from the one that validates the save (ticket 9 task 26).
+   * That mismatch is the whole bug: the page counted "of 30,000" while the
+   * validator still refused at 20,000, and a 20,286-char PUT bounced with an
+   * undocumented cap. The mode ceiling is the OTHER limit and travels per mode
+   * in `mode_totals.budget_chars` — a block can be inside this cap and still be
+   * refused because its mode is full.
+   */
+  max_block_content_chars: number;
 }
 
 adminRouter.get(
@@ -198,7 +208,12 @@ adminRouter.get(
       const blocks = await listPromptBlocks();
       res.status(200).json({
         success: true,
-        data: { blocks, modes: RUN_MODES, mode_totals: computeModeTotals(blocks) },
+        data: {
+          blocks,
+          modes: RUN_MODES,
+          mode_totals: computeModeTotals(blocks),
+          max_block_content_chars: MAX_BLOCK_CONTENT_CHARS,
+        },
       });
     } catch (error) {
       // eslint-disable-next-line no-console

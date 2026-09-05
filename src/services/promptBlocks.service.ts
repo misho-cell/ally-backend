@@ -78,6 +78,13 @@ export interface PromptBlockHistoryEntry extends Omit<PromptBlock, 'updated_at'>
 export interface ComposedBlocks {
   text: string;
   names: string[];
+  /**
+   * `name@ISO` per loaded block — its `updated_at`, which IS its version
+   * (ticket 9 task 34). „task_main" alone cannot tell one tuning round from
+   * the round before it; „task_main@2026-09-02T13:04:11.000Z" can, and joins
+   * to prompt_block_history by name and time.
+   */
+  versions: string[];
 }
 
 export interface ModeTotal {
@@ -105,8 +112,8 @@ const BLOCK_COLUMNS = `name, content, modes, sort_order, enabled, enabled_for_us
  */
 export async function composeBlocksForMode(mode: RunMode, userId: string): Promise<ComposedBlocks> {
   try {
-    const result = await query<{ name: string; content: string }>(
-      `SELECT name, content FROM prompt_blocks
+    const result = await query<{ name: string; content: string; updated_at: string | Date }>(
+      `SELECT name, content, updated_at FROM prompt_blocks
        WHERE enabled = TRUE
          AND $1 = ANY(modes)
          AND (cardinality(enabled_for_user_ids) = 0 OR $2::int = ANY(enabled_for_user_ids))
@@ -115,11 +122,16 @@ export async function composeBlocksForMode(mode: RunMode, userId: string): Promi
       BLOCK_QUERY_TIMEOUT_MS,
     );
     const parts = result.rows
-      .map((r) => ({ name: r.name, content: r.content.trim() }))
+      .map((r) => ({
+        name: r.name,
+        content: r.content.trim(),
+        version: r.updated_at instanceof Date ? r.updated_at.toISOString() : String(r.updated_at),
+      }))
       .filter((r) => r.content.length > 0);
     return {
       text: parts.length > 0 ? '\n\n' + parts.map((p) => p.content).join('\n\n') : '',
       names: parts.map((p) => p.name),
+      versions: parts.map((p) => `${p.name}@${p.version}`),
     };
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -127,7 +139,7 @@ export async function composeBlocksForMode(mode: RunMode, userId: string): Promi
       '[prompt-blocks] compose failed — running on base prompt only:',
       (err as Error).message,
     );
-    return { text: '', names: [] };
+    return { text: '', names: [], versions: [] };
   }
 }
 
@@ -330,12 +342,13 @@ export async function stampRunMode(
   threadId: number | null,
   mode: RunMode,
   blockNames: readonly string[],
+  blockVersions: readonly string[] = [],
 ): Promise<void> {
   await query(
-    `INSERT INTO run_prompt_stamps (run_id, user_id, thread_id, mode, block_names)
-     VALUES ($1, $2::int, $3, $4, $5)
+    `INSERT INTO run_prompt_stamps (run_id, user_id, thread_id, mode, block_names, block_versions)
+     VALUES ($1, $2::int, $3, $4, $5, $6)
      ON CONFLICT (run_id) DO NOTHING`,
-    [runId, userId, threadId, mode, [...blockNames]],
+    [runId, userId, threadId, mode, [...blockNames], [...blockVersions]],
     BLOCK_QUERY_TIMEOUT_MS,
   );
   await query(
@@ -351,12 +364,13 @@ export interface RunStamp {
   thread_id: number | null;
   mode: string;
   block_names: string[];
+  block_versions: string[];
   created_at: string;
 }
 
 export async function listRunStamps(threadId?: number): Promise<RunStamp[]> {
   const result = await query<RunStamp>(
-    `SELECT run_id, user_id, thread_id, mode, block_names, created_at
+    `SELECT run_id, user_id, thread_id, mode, block_names, block_versions, created_at
      FROM run_prompt_stamps
      WHERE ($1::int IS NULL OR thread_id = $1)
      ORDER BY created_at DESC

@@ -12,6 +12,7 @@ import {
   computeModeTotals,
   isValidBlockName,
   isRunMode,
+  stampRunMode,
   PromptBlock,
 } from '../promptBlocks.service';
 
@@ -89,13 +90,21 @@ describe('composeBlocksForMode', () => {
   it('skips empty-content blocks entirely', async () => {
     mockQuery.mockResolvedValue(rows([{ name: 'a', content: '   ' }]) as never);
 
-    expect(await composeBlocksForMode('task_step', '1')).toEqual({ text: '', names: [] });
+    expect(await composeBlocksForMode('task_step', '1')).toEqual({
+      text: '',
+      names: [],
+      versions: [],
+    });
   });
 
   it('degrades to no blocks on a DB error — never fails the run', async () => {
     mockQuery.mockRejectedValue(new Error('boom'));
 
-    expect(await composeBlocksForMode('onboarding', '1')).toEqual({ text: '', names: [] });
+    expect(await composeBlocksForMode('onboarding', '1')).toEqual({
+      text: '',
+      names: [],
+      versions: [],
+    });
   });
 });
 
@@ -288,5 +297,43 @@ describe('the mode budget, and telling it apart from the per-block cap', () => {
     ]);
 
     expect(totals.find((t) => t.mode === 'quick_answer')?.enabled_chars).toBe(0);
+  });
+});
+
+describe('which VERSION of a block answered (ticket 9 task 34)', () => {
+  it('stamps name@updated_at per loaded block, beside the names', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          name: 'task_main',
+          content: 'the goal rules',
+          updated_at: new Date('2026-09-02T13:04:11.000Z'),
+        },
+      ],
+      rowCount: 1,
+    } as never);
+
+    const out = await composeBlocksForMode('task_step', '501');
+
+    // „task_main" alone cannot tell one tuning round from the round before it.
+    expect(out.names).toEqual(['task_main']);
+    expect(out.versions).toEqual(['task_main@2026-09-02T13:04:11.000Z']);
+  });
+
+  it('carries the versions into the stamp the run writes', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await stampRunMode(
+      'run-1',
+      '501',
+      12345,
+      'task_step',
+      ['task_main'],
+      ['task_main@2026-09-02T13:04:11.000Z'],
+    );
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('block_versions');
+    expect(params[5]).toEqual(['task_main@2026-09-02T13:04:11.000Z']);
   });
 });
