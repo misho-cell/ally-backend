@@ -94,6 +94,8 @@ import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
 import { listWakeUpCandidates, previewWakeUpMessage } from '../../services/wakeUp.service';
+import { readLabels } from '../../services/labelReader.service';
+import { planResearch, TriggerLedger } from '../../services/researchTriggers.service';
 import {
   getLabelQueue,
   getLabelQueueTotal,
@@ -2104,6 +2106,44 @@ adminRouter.get('/target-list/decisions', async (_req: Request, res: Response) =
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target decisions list]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The research trigger table (THE TARGETS Part 3, Task 3).
+//   GET /admin/research-plan?days=30&limit=50
+// Reads the labels of the people currently on the target list, decides what
+// the engine WOULD look up about each one and where, and reports how many
+// people each rule sent where. Nothing is searched and nothing is written:
+// this is the decision, not the research.
+adminRouter.get('/research-plan', async (req: Request, res: Response) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+    const entries = (await buildTargetList(days)).slice(0, limit);
+    const signals = await readLabels(entries.map((e) => e.phone));
+    const ledger = new TriggerLedger();
+    const plans = entries.map((entry) => {
+      const forPhone = signals.get(entry.phone);
+      if (forPhone === undefined) return null;
+      return {
+        label: entry.label,
+        ...ledger.record(planResearch(entry.phone, entry.label, forPhone)),
+      };
+    });
+    res.status(200).json({
+      success: true,
+      data: {
+        considered: entries.length,
+        triggers: ledger.report(),
+        plans: plans.filter((p) => p !== null),
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin research-plan]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
