@@ -661,6 +661,13 @@ describe('buildTargetList', () => {
       expect(out[0]?.parts.state).toBe('ally_account');
       expect(out[0]?.parts.own_contacts).toBe(1443);
       expect(out[0]?.parts.opens).toBe(9);
+
+      // Counted to the human cap, not to the gate's 200 — otherwise every
+      // account on the screen reads exactly "200" and the number says nothing.
+      const accountQuery = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('AS own_contacts'),
+      ) as [string, unknown[]];
+      expect(accountQuery[1][1]).toBe(15000);
     });
   });
 

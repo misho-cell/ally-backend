@@ -553,9 +553,9 @@ interface AccountFacts {
    */
   hasEnoughContacts: boolean;
   /**
-   * The same count, capped at the threshold — for the human reading the row,
-   * not for the gate. „1,443 contacts and nine opens" is what tells the
-   * founder he is looking at a real old-Ally phonebook.
+   * The real size of their phonebook, up to the human cap. „1,443 contacts and
+   * nine opens" is what tells the founder he is looking at a real old-Ally
+   * phonebook rather than a dormant shell.
    */
   ownContacts: number;
   /** Threads on the account: how often they came back. */
@@ -579,10 +579,11 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     opens: string;
     netai_user: boolean;
   }>(
-    // own_contacts is capped for the gate's sake — the gate only asks whether
-    // it REACHES the threshold — but the screen wants the real size of an
-    // old-Ally phonebook, so the count is taken twice: capped for the decision
-    // (cheap, stops at the threshold) and whole for the human reading the row.
+    // Counted to the HUMAN CAP, not to the gate's threshold. The gate only
+    // asks whether the phonebook reaches 200, and stopping there is cheaper —
+    // but then every account on the screen reads exactly "200", and „1,443
+    // contacts and nine opens" is the whole reason the number is shown.
+    // Measured: counting to 15,000 across 400 accounts costs 1.8s.
     `SELECT up.phone,
             u.subscription_status,
             (SELECT COUNT(*) FROM (
@@ -595,7 +596,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = ANY($1) AND u."deletedAt" IS NULL`,
-    [digits, MIN_OWN_CONTACTS, NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
+    [digits, MAX_HUMAN_PHONEBOOK_ROWS, NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
     SCORE_QUERY_TIMEOUT_MS,
   );
   const map = new Map<string, AccountFacts>();
