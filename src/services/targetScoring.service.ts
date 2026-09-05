@@ -1747,6 +1747,90 @@ async function bubbleDensityForPhones(phones: string[]): Promise<Map<string, Bub
   return out;
 }
 
+/**
+ * Keep what the list said, so a later question about why has an answer.
+ *
+ * Never allowed to fail the build. The history is for us; the list is for the
+ * founder, and a write problem in the record of a decision must not stop the
+ * decision being served.
+ */
+async function recordScoreHistory(
+  builtAt: Date,
+  entries: readonly TargetScoreEntry[],
+  capacity: number,
+): Promise<void> {
+  if (entries.length === 0) return;
+  try {
+    await query(
+      `INSERT INTO target_score_history (built_at, phone, label, score, rank, capacity, parts)
+       SELECT $1, x.phone, x.label, x.score, x.rank, $2, x.parts
+       FROM jsonb_to_recordset($3::jsonb)
+            AS x(phone text, label text, score numeric, rank int, parts jsonb)
+       ON CONFLICT (built_at, phone) DO NOTHING`,
+      [
+        builtAt,
+        capacity,
+        JSON.stringify(
+          entries.map((entry, index) => ({
+            phone: entry.phone,
+            label: entry.label,
+            score: entry.score,
+            rank: index + 1,
+            parts: entry.parts,
+          })),
+        ),
+      ],
+      SCORE_QUERY_TIMEOUT_MS,
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[target-list] score history not written: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/** One build's worth of history, newest first. */
+export interface ScoreHistoryRow {
+  built_at: string;
+  phone: string;
+  label: string;
+  score: number;
+  rank: number;
+  capacity: number;
+  parts: TargetScoreParts;
+}
+
+const MAX_HISTORY_ROWS = 1000;
+
+/**
+ * How a candidate's score has moved, or what a whole build said.
+ *
+ * Without a phone this reads the most recent builds; with one it reads that
+ * person's whole line through them — the question "why was he third last
+ * month and fourteenth now" answered from the record rather than from memory.
+ */
+export async function readScoreHistory(opts: {
+  phone?: string;
+  limit?: number;
+}): Promise<ScoreHistoryRow[]> {
+  const limit = Math.min(Math.max(1, Math.floor(opts.limit ?? 200)), MAX_HISTORY_ROWS);
+  const result = await query<ScoreHistoryRow & { built_at: Date | string; score: string }>(
+    `SELECT built_at, phone, label, score, rank, capacity, parts
+     FROM target_score_history
+     WHERE ($1::text IS NULL OR phone = $1::text)
+     ORDER BY built_at DESC, rank ASC
+     LIMIT $2::int`,
+    [opts.phone ?? null, limit],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => ({
+    ...row,
+    built_at: new Date(row.built_at).toISOString(),
+    score: Number(row.score),
+  }));
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
   // Read once: the pool and the per-phone count MUST agree on who counts as
@@ -1927,8 +2011,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   }
   shortlist.sort(byScore);
   const ordered = [...shortlist, ...entries.slice(shortlist.length)];
+  const listed = ordered.slice(0, capacity).map(({ scoreInputs: _drop, ...entry }) => entry);
+  await recordScoreHistory(new Date(), listed, capacity);
   return {
-    entries: ordered.slice(0, capacity).map(({ scoreInputs: _drop, ...entry }) => entry),
+    entries: listed,
     gates: gates.report(),
     candidates_in: candidatesIn,
     survived: entries.length,

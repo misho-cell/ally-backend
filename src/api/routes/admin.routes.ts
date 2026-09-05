@@ -112,6 +112,7 @@ import {
 import {
   buildTargetList,
   buildTargetListWithGates,
+  readScoreHistory,
   TargetScoreEntry,
 } from '../../services/targetScoring.service';
 import {
@@ -1971,6 +1972,27 @@ adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target-list gates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// What the weekly list said, and when (tasks 1–10).
+//   GET /admin/target-list/history?phone=+995...&limit=200
+// Without a phone: the most recent builds, newest first. With one: that
+// person's whole line through them — "why was he third last month and
+// fourteenth now" answered from the record instead of from memory. Read-only.
+adminRouter.get('/target-list/history', async (req: Request, res: Response) => {
+  try {
+    const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+    const rawLimit = Number(req.query.limit);
+    const rows = await readScoreHistory({
+      ...(phone === '' ? {} : { phone }),
+      ...(Number.isFinite(rawLimit) && rawLimit > 0 ? { limit: rawLimit } : {}),
+    });
+    res.status(200).json({ success: true, data: { total: rows.length, history: rows } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin target-list history]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

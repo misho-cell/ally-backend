@@ -500,6 +500,78 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // Tasks 1–10: every rebuild used to erase the last, so "why was he third
+  // last month and fourteenth now" had no answer anywhere.
+  describe('score history', () => {
+    function historyWrite(): [string, unknown[]] | undefined {
+      return mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('INSERT INTO target_score_history'),
+      ) as [string, unknown[]] | undefined;
+    }
+
+    it('records the listed rows with their rank, capacity and whole parts', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [
+          { phone: '+995500000080', label: 'გია დირექტორი' },
+          { phone: '+995500000081', label: 'ნინო დირექტორი' },
+        ]),
+      ]);
+      routeScoreQueries({ askableCount: 50 });
+
+      await buildTargetList(30);
+
+      const write = historyWrite();
+      expect(write).toBeDefined();
+      const written = JSON.parse(write![1][2] as string) as {
+        phone: string;
+        rank: number;
+        parts: unknown;
+      }[];
+      expect(written.map((r) => r.rank)).toEqual([1, 2]);
+      expect(written[0]?.parts).toHaveProperty('fit');
+      expect(written[0]?.parts).toHaveProperty('reach');
+      // Capacity travels with the row: rank 2 of 50 is not rank 2 of 2.
+      expect(write![1][1]).toBe(50);
+    });
+
+    it('writes the same build once — a retry must not double the record', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [{ phone: '+995500000082', label: 'გია დირექტორი' }]),
+      ]);
+      routeScoreQueries({ askableCount: 50 });
+
+      await buildTargetList(30);
+
+      expect(historyWrite()![0]).toContain('ON CONFLICT (built_at, phone) DO NOTHING');
+    });
+
+    it('a failed history write never costs the caller the list', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [{ phone: '+995500000083', label: 'გია დირექტორი' }]),
+      ]);
+      routeScoreQueries({ askableCount: 50 });
+      const passthrough = mockQuery.getMockImplementation() as jest.Mock;
+      mockQuery.mockImplementation((sql: string, params?: unknown[]) =>
+        sql.includes('INSERT INTO target_score_history')
+          ? Promise.reject(new Error('write failed'))
+          : (passthrough(sql, params) as never),
+      );
+
+      const out = await buildTargetList(30);
+
+      expect(out.map((e) => e.phone)).toEqual(['+995500000083']);
+    });
+
+    it('writes nothing at all when the list is empty', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([]);
+      routeScoreQueries({ askableCount: 50 });
+
+      await buildTargetList(30);
+
+      expect(historyWrite()).toBeUndefined();
+    });
+  });
+
   // Tasks 1–10, the founder's „სიმკვრივე": reach counts HOW MANY saved a
   // number; density asks whether those savers know each other.
   describe('bubble density', () => {
