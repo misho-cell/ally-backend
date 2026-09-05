@@ -78,6 +78,12 @@ export interface LabelSignals {
   org_count: number;
   /** Per organisation word: how many people in the base carry it, and his rank. */
   org_detail: { word: string; savers: number; org_size: number; org_rank: number }[];
+  /**
+   * The name tokens the crowd agreed on, commonest first. The caller needs a
+   * NAME to search with; the label carries the company word glued on, and the
+   * first live run searched the register for „Levan Shalamberidze Axel Member".
+   */
+  name_tokens: string[];
   /** Distinct people who saved this number under any label. */
   savers: number;
   /** Distinct labels used for it — how known he is, not how many directions. */
@@ -250,6 +256,7 @@ export async function readLabels(phones: string[]): Promise<Map<string, LabelSig
     savers: Set<string>;
     labels: Set<string>;
     orgSavers: Map<string, Set<string>>;
+    nameSavers: Map<string, Set<string>>;
     kinds: Set<TokenKind>;
     startupWord: boolean;
   }
@@ -259,6 +266,7 @@ export async function readLabels(phones: string[]): Promise<Map<string, LabelSig
       savers: new Set(),
       labels: new Set(),
       orgSavers: new Map(),
+      nameSavers: new Map(),
       kinds: new Set(),
       startupWord: false,
     };
@@ -270,10 +278,12 @@ export async function readLabels(phones: string[]): Promise<Map<string, LabelSig
         if (containsAny(token, STARTUP_WORDS)) draft.startupWord = true;
         const kind = classifyToken(token, index === 0);
         draft.kinds.add(kind);
-        if (kind !== 'organisation') return;
-        const savers = draft.orgSavers.get(token) ?? new Set();
+        const bucket =
+          kind === 'organisation' ? draft.orgSavers : kind === 'name' ? draft.nameSavers : null;
+        if (bucket === null) return;
+        const savers = bucket.get(token) ?? new Set();
         savers.add(row.contact_id);
-        draft.orgSavers.set(token, savers);
+        bucket.set(token, savers);
       });
     }
     drafts.set(phone, draft);
@@ -317,8 +327,12 @@ export async function readLabels(phones: string[]): Promise<Map<string, LabelSig
     // and counts for nothing" — so one saver's „orbiiafad" must not be able to
     // argue a plumber out of the trade gate.
     const onlyTrade = draft.kinds.has('trade') && words.length === 0;
+    const nameTokens = [...draft.nameSavers.entries()]
+      .sort((a, b) => b[1].size - a[1].size)
+      .map(([token]) => token);
     out.set(phone, {
       org_set: words,
+      name_tokens: nameTokens,
       org_count: words.length,
       org_detail: detail,
       savers: draft.savers.size,

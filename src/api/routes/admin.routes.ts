@@ -2128,9 +2128,13 @@ adminRouter.get('/research-plan', async (req: Request, res: Response) => {
     const plans = entries.map((entry) => {
       const forPhone = signals.get(entry.phone);
       if (forPhone === undefined) return null;
+      // The NAME, not the label: the label carries the company word glued on,
+      // and the first live run searched the register for „Levan Shalamberidze
+      // Axel Member".
+      const name = forPhone.name_tokens.slice(0, 2).join(' ');
       return {
         label: entry.label,
-        ...ledger.record(planResearch(entry.phone, entry.label, forPhone)),
+        ...ledger.record(planResearch(entry.phone, name, forPhone)),
       };
     });
     res.status(200).json({

@@ -100,6 +100,8 @@ export const TRADE_WORDS = [
   'ეარბეგ',
   'shpana',
   'შპანა',
+  'დამლაგებელ',
+  'damlagebel',
   'პედიატრ',
   'pediatri',
   'ექიმ',

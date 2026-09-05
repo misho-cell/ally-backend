@@ -9,6 +9,7 @@ import {
 function signals(over: Partial<LabelSignals> = {}): LabelSignals {
   return {
     org_set: [],
+    name_tokens: [],
     org_count: 0,
     org_detail: [],
     savers: 5,

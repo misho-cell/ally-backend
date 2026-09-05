@@ -171,6 +171,24 @@ describe('L3/L4 — the three numbers and the signals', () => {
     expect(signals?.trade_only).toBe(true);
   });
 
+  // The first live run searched the register for „Levan Shalamberidze Axel
+  // Member" — the label, company word and all. The caller needs a NAME.
+  it('hands back the name it stripped, commonest first', async () => {
+    routeLabelQueries({
+      aliases: [
+        alias('+995500000010', '1', 'Levan Shalamberidze Axel'),
+        alias('+995500000010', '2', 'levan shalamberidze axel'),
+        alias('+995500000010', '3', 'levan shalamberidze'),
+      ],
+      sizes: [{ word: 'axel', org_size: '60' }],
+    });
+
+    const signals = (await readLabels(['+995500000010'])).get('+995500000010');
+
+    expect(signals?.name_tokens.slice(0, 2)).toEqual(['levan', 'shalamberidze']);
+    expect(signals?.name_tokens).not.toContain('axel');
+  });
+
   it('a name and nothing else is NOT YET, never a target as written', async () => {
     routeLabelQueries({
       aliases: [
