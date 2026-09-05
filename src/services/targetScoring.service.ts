@@ -1,4 +1,16 @@
 import { query } from '../db/postgres/client';
+import {
+  BRAND_STOPLIST,
+  COMPANY_MARKERS,
+  ORGANISATION_WORDS,
+  OWNERSHIP_WORDS,
+  OWN_COMPANY_MARKERS,
+  PLACE_WORDS,
+  RELATIONSHIP_WORDS,
+  ROLE_WORDS,
+  THING_WORDS,
+  TRADE_WORDS,
+} from './labelDictionaries';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { refusedTargetPhones } from './targetDecisions.service';
 import { normalizePhone, phoneDigits } from './phone';
@@ -131,122 +143,12 @@ const FIT_FACT_TYPES = ['occupation', 'role', 'employer', 'industry', 'expertise
 // subscription — an inviter must be a Netai user (Rule 13).
 const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
 
-// Owning or running something (Rule 5 / R2 / R9). A managing partner is an
-// owner; a "senior manager at a real company" is the founder's own IN.
-const OWNERSHIP_WORDS = [
-  'დამფუძნებელი',
-  'თანადამფუძნებელი',
-  'მფლობელი',
-  'პარტნიორი',
-  'თავმჯდომარე',
-  'დირექტორი',
-  'founder',
-  'co-founder',
-  'cofounder',
-  'owner',
-  'ceo',
-  'cto',
-  'cfo',
-  'coo',
-  'partner',
-  'chairman',
-  'chairwoman',
-  'president',
-  'investor',
-  'angel',
-];
-// A commercial or client-facing job — the founder's 8 July ruling that BD and
-// sales count, "their job IS who do I call".
-const ROLE_WORDS = [
-  'მენეჯერი',
-  'ხელმძღვანელი',
-  'დეპარტამენტი',
-  'კონსულტანტი',
-  'director',
-  'manager',
-  'head',
-  'lead',
-  'consultant',
-  'business development',
-  'sales',
-  'commercial',
-  'hr',
-  'recruiter',
-  'board',
-];
-
-// ─── Rule 2's exclusion pass, and Rule 14 (c) ──────────────────────────────
-// The founder, 31 August: "I think this is a good ranker, but after some
-// filtering, when you exclude taxi, mechanics, us, hotlines, people who are
-// already paid users, you can see rest as good target."
-//
-// Five of the exclusions are readable from this database and are applied here.
-// Three are NOT, and are named rather than faked: "not living in Georgia",
-// "too powerful with no gap to fill", and the Argentine cohort — no column in
-// this schema carries any of them, and a gate that guesses is worse than a
-// gate that is missing, because it removes people silently.
-// G1, in the founder's own words: "Only a trade or a service. Plumber,
-// electrician, mechanic, vet, sculptor, calligrapher, photographer, violin
-// teacher, taxi driver." Deliberately NOT the label parser's occupation
-// dictionary, which also holds lawyer, architect, accountant and programmer —
-// those are professions, and gating them out would remove real targets. This
-// list is the founder's examples and the criteria file's own
-// (khelosani, karobka, avtomatika, airbagi), nothing more.
-const TRADE_WORDS = [
-  'ხელოსან',
-  'khelosani',
-  'xelosani',
-  'სანტექნიკ',
-  'santeknik',
-  'plumber',
-  'ელექტრიკ',
-  'eleqtrik',
-  'electrician',
-  'მექანიკ',
-  'mechanic',
-  'karobka',
-  'კარობკა',
-  'avtomatika',
-  'ავტომატიკა',
-  'airbagi',
-  'ეარბეგ',
-  'shpana',
-  'შპანა',
-  'ვეტერინარ',
-  'veterinar',
-  'მოქანდაკე',
-  'moqandake',
-  'sculptor',
-  'კალიგრაფ',
-  'calligraph',
-  'ფოტოგრაფ',
-  'fotograf',
-  'photographer',
-  'ვიოლინ',
-  'violino',
-  'violin',
-  'ტაქსი',
-  'taxi',
-  'taksi',
-  'მძღოლ',
-  'დურგალ',
-  'მღებავ',
-  'შემდუღებ',
-];
-
 // A first name is not an identification (ticket 9 task 23).
 const MIN_AGREED_NAME_TOKENS = 2;
 
 /** One person calling him a taxi is an opinion; two is the crowd's verdict. */
 const MIN_TRADE_VOTES = 2;
 
-/**
- * Our own company, as the crowd writes it. A phone whose aliases carry it from
- * this many different savers belongs to one of ours (ticket 9 task 10 item 3).
- * Three, not one: a stray „ally" in somebody's label is a typo, three people
- * agreeing is a job.
- */
-const OWN_COMPANY_MARKERS = ['ally', 'ელაი', 'netai', 'ნეტაი'];
 const MIN_OWN_COMPANY_VOTES = 3;
 
 const MIN_OWN_CONTACTS = 200;
@@ -254,131 +156,6 @@ const MIN_OWN_CONTACTS = 200;
 // and possibly even not working". This also swallows the register-once-and-
 // never-return pattern (one contact or none), which is the same rule at a
 // lower number.
-
-// Rule 14 (c): "a label is never a target — 'Maxin.ai Ceo' names a company;
-// the person is found first, then judged." A label carrying a company marker
-// is only a target once a real person has been confirmed behind the number.
-const COMPANY_MARKERS = [
-  '.ai',
-  '.ge',
-  '.com',
-  '.io',
-  'llc',
-  'ltd',
-  'inc',
-  'შპს',
-  'ooo',
-  'ооо',
-  'group',
-  'studio',
-  'agency',
-  'company',
-];
-
-// Words that make a label an ORGANISATION rather than a person (ticket 9 task
-// 23: „ახალგაზრდული ასოციაცია" passed `person_confirmed: true`).
-const ORGANISATION_WORDS = [
-  'ასოციაცია',
-  'asociacia',
-  'association',
-  'კავშირი',
-  'ფონდი',
-  'fondi',
-  'foundation',
-  'კლუბი',
-  'klubi',
-  'club',
-  'სკოლა',
-  'skola',
-  'school',
-  'ცენტრი',
-  'centri',
-  'center',
-  'centre',
-  'ორგანიზაცია',
-  'organization',
-  'organisation',
-  'სააგენტო',
-  'agency',
-  'სამსახური',
-  'ministry',
-  'სამინისტრო',
-];
-
-// How people label a relative or a neighbour. „Tornike Mezobeli" is Tornike
-// the neighbour — the second word is a relationship, not a surname, and the
-// list must not treat it as one (ticket 9 task 23).
-const RELATIONSHIP_WORDS = [
-  'მეზობელ',
-  'mezobel',
-  'ძმა',
-  'dzma',
-  // 'და' is deliberately absent. It means "sister" AND "and", and it opens
-  // დათო, დავით and დარეჯან — it removed „დათო ხაზარაძე" from the list during
-  // testing, which is a real person losing his first name to a conjunction.
-  'ბიძა',
-  'bidza',
-  'დეიდა',
-  'deida',
-  'მამიდა',
-  'mamida',
-  'ბიცოლა',
-  'ნათლია',
-  'კუმბარი',
-  'kumbari',
-  'brother',
-  'sister',
-  'uncle',
-  'aunt',
-  'neighbour',
-  'neighbor',
-  'cousin',
-];
-
-// Words for a dwelling, a door or a price. After the relabelling, two rows
-// said out loud what they are: „Wina Korpusis Karebis Nomeri" (the number of
-// the front building's door) and „Orbi Batumi bina 60 GEL" (a flat at sixty
-// lari). Generic words, not a brand list — every one of them is a thing rather
-// than a person, in any building in the country.
-const THING_WORDS = [
-  'ბინა',
-  'bina',
-  'კორპუს',
-  'korpus',
-  'კარები',
-  'karebi',
-  'ნომერი',
-  'nomeri',
-  'სადარბაზო',
-  'sadarbazo',
-  'ბინის',
-  'ოთახი',
-  'otaxi',
-  'flat',
-  'apartment',
-  'ლარი',
-  'gel',
-  'usd',
-];
-
-// A city is where somebody is, never who they are — and „ბათუმი ორბი 2" is a
-// building, not a person.
-const PLACE_WORDS = [
-  'თბილისი',
-  'tbilisi',
-  'ბათუმი',
-  'batumi',
-  'ქუთაისი',
-  'kutaisi',
-  'რუსთავი',
-  'გორი',
-  'ზუგდიდი',
-  'ფოთი',
-  'თელავი',
-  'ბაკურიანი',
-  'bakuriani',
-  'გუდაური',
-];
 
 export type TargetExclusion =
   | 'trade_only'
@@ -725,32 +502,6 @@ function fitFor(factValues: string[] | undefined, label: string): FitSignal {
 //     the same name across phonebooks; unconfirmed phones sort last).
 const GEORGIAN_MOBILE_RE = /^\+9955\d{8}$/;
 const HOTLINE_REACH_THRESHOLD = 100;
-const BRAND_STOPLIST: ReadonlySet<string> = new Set([
-  'wissol',
-  'rompetrol',
-  'socar',
-  'sokari',
-  'maksima',
-  'gulf',
-  'magti',
-  'magticom',
-  'silknet',
-  'geocell',
-  'beeline',
-  'bank',
-  'banki',
-  'tbc',
-  'bog',
-  'liberty',
-  'servisi',
-  'service',
-  'servis',
-  'delivery',
-  'express',
-  'hotline',
-  'taxi',
-  'taksi',
-]);
 // How many aliases per phone the token analysis samples — enough to see the
 // dominant token on a hotline without pulling a 644-row fan-in whole.
 const ALIAS_SAMPLE_PER_PHONE = 25;
