@@ -542,6 +542,46 @@ describe('buildTargetList', () => {
   });
 
   // ─── Rule 2's exclusion pass, and the file's own negative test ─────────────
+  // THE TARGETS Task 1 (D103): the three states, on every row of the list.
+  describe('the three states on the row', () => {
+    it('a phone with no account is a phonebook contact, with no account numbers', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [{ phone: '+995500000110', label: 'გია დირექტორი' }]),
+      ]);
+      routeScoreQueries({ askableCount: 50 });
+
+      const out = await buildTargetList(30);
+
+      expect(out[0]?.parts.state).toBe('phonebook_contact');
+      expect(out[0]?.parts.own_contacts).toBeNull();
+      expect(out[0]?.parts.opens).toBeNull();
+    });
+
+    it('an old-Ally account is a TARGET, and carries its phonebook and its opens', async () => {
+      mockFindUnmetNeeds.mockResolvedValue([
+        need('x', [{ phone: '+995500000111', label: 'გია დირექტორი' }]),
+      ]);
+      routeScoreQueries({
+        askableCount: 50,
+        accounts: [
+          {
+            phone: '+995500000111',
+            subscription_status: 'inactive',
+            own_contacts: '1443',
+            opens: '9',
+            netai_user: false,
+          } as never,
+        ],
+      });
+
+      const out = await buildTargetList(30);
+
+      expect(out[0]?.parts.state).toBe('ally_account');
+      expect(out[0]?.parts.own_contacts).toBe(1443);
+      expect(out[0]?.parts.opens).toBe(9);
+    });
+  });
+
   // THE TARGETS 2.4: score = fit × reach × freshness (+ demand ≤ 0.10).
   describe('the score, as THE TARGETS 2.4 defines it', () => {
     it("reach rides the founder's curve, so 12 is not a tenth of 100", async () => {

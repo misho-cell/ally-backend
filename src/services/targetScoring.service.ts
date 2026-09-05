@@ -552,6 +552,16 @@ interface AccountFacts {
    * threshold reads at most MIN_OWN_CONTACTS index entries per account.
    */
   hasEnoughContacts: boolean;
+  /**
+   * The same count, capped at the threshold — for the human reading the row,
+   * not for the gate. „1,443 contacts and nine opens" is what tells the
+   * founder he is looking at a real old-Ally phonebook.
+   */
+  ownContacts: number;
+  /** Threads on the account: how often they came back. */
+  opens: number;
+  /** Has actually used Netai — the difference between state 2 and state 3. */
+  netaiUser: boolean;
 }
 
 /**
@@ -566,16 +576,26 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     phone: string;
     subscription_status: string | null;
     own_contacts: string;
+    opens: string;
+    netai_user: boolean;
   }>(
+    // own_contacts is capped for the gate's sake — the gate only asks whether
+    // it REACHES the threshold — but the screen wants the real size of an
+    // old-Ally phonebook, so the count is taken twice: capped for the decision
+    // (cheap, stops at the threshold) and whole for the human reading the row.
     `SELECT up.phone,
             u.subscription_status,
             (SELECT COUNT(*) FROM (
                SELECT 1 FROM "UserAlias" a WHERE a."contactId" = u.id LIMIT $2::int
-             ) capped) AS own_contacts
+             ) capped) AS own_contacts,
+            (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id) AS opens,
+            (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+             OR u.subscription_status = ANY($3::text[])) AS netai_user
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = ANY($1) AND u."deletedAt" IS NULL`,
-    [digits, MIN_OWN_CONTACTS],
+    [digits, MIN_OWN_CONTACTS, NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
     SCORE_QUERY_TIMEOUT_MS,
   );
   const map = new Map<string, AccountFacts>();
@@ -584,6 +604,9 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     const facts = {
       subscriptionStatus: row.subscription_status ?? '',
       hasEnoughContacts: Number(row.own_contacts) >= MIN_OWN_CONTACTS,
+      ownContacts: Number(row.own_contacts),
+      opens: Number(row.opens),
+      netaiUser: row.netai_user,
     };
     const current = map.get(key);
     // One person, several phone rows: keep the fullest phonebook and any
@@ -594,6 +617,9 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
       map.set(key, {
         subscriptionStatus: current.subscriptionStatus || facts.subscriptionStatus,
         hasEnoughContacts: current.hasEnoughContacts || facts.hasEnoughContacts,
+        ownContacts: Math.max(current.ownContacts, facts.ownContacts),
+        opens: Math.max(current.opens, facts.opens),
+        netaiUser: current.netaiUser || facts.netaiUser,
       });
     }
   }
@@ -751,6 +777,16 @@ export interface TargetScoreParts {
   // 1.0, or 0.3 when somebody was asked about them inside the last 90 days.
   // A multiplier on the score, so it belongs on the row that explains it.
   freshness: number;
+  /**
+   * The three states (THE TARGETS Task 1, D103). `phonebook_contact` has no
+   * account at all; `ally_account` has one and has never opened Netai — a
+   * target, and the cheapest kind to reach; `netai_user` is already in and is
+   * excluded before this row is built.
+   */
+  state: 'phonebook_contact' | 'ally_account' | 'netai_user';
+  /** Old-Ally accounts only: how big their phonebook is, and how often they came back. */
+  own_contacts: number | null;
+  opens: number | null;
   // Do this number's savers know each other? null on a row density was not
   // measured for — it is computed for the plausible top only, so its absence
   // means "not asked", never "measured as zero".
@@ -2020,6 +2056,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     ) {
       continue;
     }
+    const account = accountMap.get(phoneDigits(phone));
     const fit = fitFor(factsMap.get(phone), ctx.label);
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
@@ -2028,7 +2065,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
       fit,
       analysis?.tradeVotes ?? 0,
       analysis?.nameConfirmed ?? false,
-      accountMap.get(phoneDigits(phone)),
+      account,
       ourOwn.has(phoneDigits(phone)),
       {
         dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
@@ -2077,6 +2114,14 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         person_confirmed: analysis?.personConfirmed ?? false,
         subscribed_holders: subscribedHolders,
         freshness: approach?.freshness ?? 1,
+        state:
+          account === undefined
+            ? 'phonebook_contact'
+            : account.netaiUser
+              ? 'netai_user'
+              : 'ally_account',
+        own_contacts: account?.ownContacts ?? null,
+        opens: account?.opens ?? null,
         bubble: null,
       },
       scoreInputs: {
