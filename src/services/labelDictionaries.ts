@@ -39,6 +39,17 @@ export const ROLE_WORDS = [
   'ხელმძღვანელი',
   'დეპარტამენტი',
   'კონსულტანტი',
+  // Georgian typed in Latin letters — how a large share of this base is
+  // actually written („Kaxa Chipashvili Log Programa", „temur kevlishvili
+  // inovaciuri web sivrce"). THE TARGETS asks for both scripts at every step;
+  // the English words were here and their transliterations were not, so a
+  // label reading „Giorgi Direktori" carried no role word at all.
+  'direktor',
+  'menejer',
+  'xelmdzgvanel',
+  'khelmdzghvanel',
+  'departament',
+  'konsultant',
   'director',
   'manager',
   'head',
