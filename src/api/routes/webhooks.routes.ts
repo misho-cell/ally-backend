@@ -4,20 +4,15 @@ import { constructEvent, handleStripeEvent } from '../../services/stripe.service
 
 const webhooksRouter = Router();
 
-// Paddle stays in the codebase but is switched OFF while Stripe takes over
-// (the founder's ruling, 2 Sep): PADDLE_ENABLED=true turns it back on without
-// a deploy. Disabled, it answers 200 so Paddle stops retrying into a service
-// that is deliberately not listening, and logs every event it declined so the
-// silence is visible.
-const PADDLE_ENABLED = (process.env.PADDLE_ENABLED ?? 'false') === 'true';
-
+// Paddle SUBSCRIPTIONS are switched off while Stripe takes over (the founder's
+// ruling, 2 Sep). Token TOP-UPS still go through Paddle and are still on sale,
+// so the two are decided separately — inside processWebhookEvent, next to the
+// handlers they govern. This route's job is only the signature.
+//
+// It used to answer 200 and drop everything before checking the signature,
+// which meant a paid top-up was thrown away in silence: money taken, tokens
+// never credited, nothing logged against the user.
 webhooksRouter.post('/paddle', async (req: Request, res: Response): Promise<void> => {
-  if (!PADDLE_ENABLED) {
-    // eslint-disable-next-line no-console
-    console.log('[paddle] webhook ignored — PADDLE_ENABLED is off');
-    res.status(200).json({ success: true, data: { ignored: true } });
-    return;
-  }
   const rawBody = (req.body as Buffer).toString('utf8');
   const signature = req.headers['paddle-signature'];
 

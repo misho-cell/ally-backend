@@ -20,6 +20,16 @@ function transactionTotalUsd(txn: TransactionNotification): number {
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? '';
 
+/**
+ * Paddle subscriptions, off since the founder's ruling of 2 Sep — Stripe owns
+ * them. PADDLE_ENABLED=true turns them back on without a deploy.
+ *
+ * The flag is read here rather than at the route so that both halves of the
+ * decision sit next to the code they govern. See processWebhookEvent for why
+ * top-ups are governed separately.
+ */
+const PADDLE_SUBSCRIPTIONS_ENABLED = (process.env.PADDLE_ENABLED ?? 'false') === 'true';
+
 const PRICE_TIER_MAP: Record<string, string> = {
   pri_01kvq5da2w9fjgv7cn0eqqqk63: 'premium',
   pri_01kvq5fwfdj2p8j42p663mh3yr: 'pro',
@@ -222,9 +232,45 @@ async function handlePaymentFailed(txn: TransactionNotification): Promise<void> 
   });
 }
 
+/**
+ * Paddle SUBSCRIPTIONS are off (the founder's ruling, 2 Sep) — Stripe owns
+ * them now. Token TOP-UPS were never part of that: they are one-time Paddle
+ * purchases, they were never moved to Stripe, and the buy button is still live
+ * on the profile and chat screens.
+ *
+ * So the two are gated separately. Switching the whole webhook off meant a
+ * subscriber could pay for a thousand tokens and be credited nothing — no
+ * error, no refund, the balance simply never moved. Delivering what somebody
+ * has already paid for is not a product decision.
+ *
+ * To stop selling top-ups, deactivate the rows in topup_packages: then the
+ * button disappears, which is the honest way to withdraw a purchase. This flag
+ * exists to switch off crediting in an emergency, not as the way to retire the
+ * feature.
+ */
+const PADDLE_TOPUP_ENABLED = (process.env.PADDLE_TOPUP_ENABLED ?? 'true') === 'true';
+
 export async function processWebhookEvent(rawBody: string, signatureHeader: string): Promise<void> {
   const event = await paddle.webhooks.unmarshal(rawBody, PADDLE_WEBHOOK_SECRET, signatureHeader);
   if (!event) throw new Error('Invalid Paddle webhook signature');
+
+  // A one-time transaction carries no subscription id — that is the top-up,
+  // and it is the only Paddle event still acted on while subscriptions are
+  // Stripe's. Everything else is logged and dropped, so the silence is visible.
+  const isTopup =
+    event.eventType === EventName.TransactionCompleted &&
+    !(event.data as TransactionNotification).subscriptionId;
+
+  if (!PADDLE_SUBSCRIPTIONS_ENABLED && !isTopup) {
+    // eslint-disable-next-line no-console
+    console.log(`[paddle] ${event.eventType} ignored — Paddle subscriptions are off`);
+    return;
+  }
+  if (isTopup && !PADDLE_TOPUP_ENABLED) {
+    // eslint-disable-next-line no-console
+    console.log('[paddle] top-up ignored — PADDLE_TOPUP_ENABLED is off');
+    return;
+  }
 
   switch (event.eventType) {
     case EventName.SubscriptionCreated:
