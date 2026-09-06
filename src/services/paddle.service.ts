@@ -20,6 +20,9 @@ function transactionTotalUsd(txn: TransactionNotification): number {
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? '';
 
+/** The route matches on this exact message to answer 401 rather than 500. */
+export const INVALID_SIGNATURE = 'Invalid Paddle webhook signature';
+
 /**
  * Paddle subscriptions, off since the founder's ruling of 2 Sep — Stripe owns
  * them. PADDLE_ENABLED=true turns them back on without a deploy.
@@ -251,8 +254,20 @@ async function handlePaymentFailed(txn: TransactionNotification): Promise<void> 
 const PADDLE_TOPUP_ENABLED = (process.env.PADDLE_TOPUP_ENABLED ?? 'true') === 'true';
 
 export async function processWebhookEvent(rawBody: string, signatureHeader: string): Promise<void> {
-  const event = await paddle.webhooks.unmarshal(rawBody, PADDLE_WEBHOOK_SECRET, signatureHeader);
-  if (!event) throw new Error('Invalid Paddle webhook signature');
+  // The SDK signals a bad signature two different ways: a null result for one
+  // it could check and reject, and a thrown error for a header it could not
+  // parse at all. Both mean the same thing to the caller, and both must reach
+  // it as the same error — otherwise the route answers 500 and Paddle retries
+  // a forgery on its schedule for as long as it keeps failing.
+  let event;
+  try {
+    event = await paddle.webhooks.unmarshal(rawBody, PADDLE_WEBHOOK_SECRET, signatureHeader);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[paddle] signature rejected:', (err as Error).message);
+    throw new Error(INVALID_SIGNATURE);
+  }
+  if (!event) throw new Error(INVALID_SIGNATURE);
 
   // A one-time transaction carries no subscription id — that is the top-up,
   // and it is the only Paddle event still acted on while subscriptions are

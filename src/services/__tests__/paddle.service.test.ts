@@ -132,4 +132,16 @@ describe('the signature', () => {
     );
     expect(creditTopup).not.toHaveBeenCalled();
   });
+
+  // A header the SDK cannot even parse THROWS rather than returning null. Left
+  // as its own error it reached the route as a 500, and Paddle retries a 500 —
+  // so a forged header came back on a schedule until it gave up.
+  it('a header the SDK cannot parse is a rejection, not a server fault', async () => {
+    unmarshal.mockRejectedValue(new Error('Invalid signature header format'));
+    const svc = await loadService({ PADDLE_ENABLED: 'false' });
+
+    await expect(svc.processWebhookEvent('{}', 'garbage')).rejects.toThrow(
+      'Invalid Paddle webhook signature',
+    );
+  });
 });

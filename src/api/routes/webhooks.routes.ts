@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { processWebhookEvent } from '../../services/paddle.service';
+import { INVALID_SIGNATURE, processWebhookEvent } from '../../services/paddle.service';
 import { constructEvent, handleStripeEvent } from '../../services/stripe.service';
 
 const webhooksRouter = Router();
@@ -26,7 +26,7 @@ webhooksRouter.post('/paddle', async (req: Request, res: Response): Promise<void
     res.status(200).json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    if (message === 'Invalid Paddle webhook signature') {
+    if (message === INVALID_SIGNATURE) {
       res.status(401).json({ success: false, error: 'Invalid signature' });
       return;
     }
