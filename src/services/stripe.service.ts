@@ -206,8 +206,12 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
   const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
 
   await query(
+    // $1 is cast on both sides on purpose. The column is varchar, so the
+    // assignment deduces varchar for the parameter while the comparison
+    // deduces text, and Postgres refuses the statement outright with
+    // "inconsistent types deduced for parameter $1". The cast settles it.
     `UPDATE "User"
-     SET subscription_status    = $1,
+     SET subscription_status    = $1::text,
          subscription_tier      = CASE WHEN $2 THEN $3 ELSE subscription_tier END,
          trial_ends_at          = $4,
          current_period_ends_at = $5,
@@ -216,7 +220,7 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
          -- too, and each of those would otherwise restart the past_due grace
          -- window and hand out another fortnight.
          subscription_status_changed_at = CASE
-           WHEN subscription_status IS DISTINCT FROM $1 THEN NOW()
+           WHEN subscription_status::text IS DISTINCT FROM $1::text THEN NOW()
            ELSE subscription_status_changed_at
          END,
          "updatedAt"            = NOW()
