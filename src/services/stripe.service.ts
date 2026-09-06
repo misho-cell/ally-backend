@@ -211,6 +211,14 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
          subscription_tier      = CASE WHEN $2 THEN $3 ELSE subscription_tier END,
          trial_ends_at          = $4,
          current_period_ends_at = $5,
+         -- Only when the status actually moves. Stripe sends
+         -- customer.subscription.updated for a card change or a metadata edit
+         -- too, and each of those would otherwise restart the past_due grace
+         -- window and hand out another fortnight.
+         subscription_status_changed_at = CASE
+           WHEN subscription_status IS DISTINCT FROM $1 THEN NOW()
+           ELSE subscription_status_changed_at
+         END,
          "updatedAt"            = NOW()
      WHERE id = $6`,
     [subscription.status, active, TIER, trialEnd, periodEnd(subscription), userId],

@@ -37,6 +37,12 @@ interface ProfileData {
   readonly subscription_status: string;
   readonly trial_ends_at: string | null;
   readonly current_period_ends_at: string | null;
+  /**
+   * When the status last moved. Only interesting while it reads `past_due`:
+   * the grace period for a failed card is counted from here, so the screen can
+   * say how long is left instead of letting access stop without warning.
+   */
+  readonly subscription_status_changed_at: string | null;
   /** Minted on first read — the invite currency (founder decision F.1). */
   referral_code?: string | null;
 }
@@ -180,7 +186,8 @@ profileRouter.get(
                 u.subscription_tier,
                 u.subscription_status,
                 u.trial_ends_at,
-                u.current_period_ends_at
+                u.current_period_ends_at,
+                u.subscription_status_changed_at
          FROM "User" u
          LEFT JOIN "UserPhone" up ON up."userId" = u.id
          WHERE u.id = $1
