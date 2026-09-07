@@ -96,6 +96,7 @@ import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
 import { listWakeUpCandidates, previewWakeUpMessage } from '../../services/wakeUp.service';
 import { composeWeeklySummary, sendWeeklySummary } from '../../services/weeklySummary.service';
+import { streamBaseExport } from '../../services/baseExport.service';
 import {
   createCohort,
   deactivateCohort,
@@ -1052,6 +1053,36 @@ adminRouter.get(
     }
   },
 );
+
+// The whole registered base as one file (Ticket 10 Task 8; Ticket 9 Task 1).
+//   GET /admin/base-export.csv                 every account, streamed in batches
+//   GET /admin/base-export.csv?max=200         a sample
+// One command re-exports it:
+//   curl -H "Authorization: Bearer <admin token>" https://api.netai.guru/admin/base-export.csv > base.csv
+// No full phone number is in the file — the last four digits of one phone are
+// the key for the founder's own review.
+adminRouter.get('/base-export.csv', async (req: Request, res: Response) => {
+  const rawMax = Number(req.query.max);
+  const rawBatch = Number(req.query.batch);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="netai_base.csv"');
+  res.status(200);
+  try {
+    const written = await streamBaseExport((chunk) => res.write(chunk), {
+      ...(Number.isFinite(rawMax) && rawMax > 0 && { maxAccounts: Math.floor(rawMax) }),
+      ...(Number.isFinite(rawBatch) && rawBatch > 0 && { batch: Math.floor(rawBatch) }),
+    });
+    // eslint-disable-next-line no-console
+    console.log(`[admin base-export] wrote ${written} rows`);
+  } catch (error) {
+    // The headers are gone; the honest thing left is to say so inside the file.
+    // eslint-disable-next-line no-console
+    console.error('[admin base-export]', error);
+    res.write(`\n"EXPORT FAILED: ${String((error as Error).message).replace(/"/g, '""')}"\n`);
+  } finally {
+    res.end();
+  }
+});
 
 // The weekly summary (Ticket 10 Task 24 (c); the standard's line 5). The cron
 // sends it Monday 06:00 UTC; these are the tester's fast-forward.
