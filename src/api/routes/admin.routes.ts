@@ -2220,14 +2220,19 @@ adminRouter.get('/target-list/review.csv', async (req: Request, res: Response) =
     const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
     const entries = await buildTargetList(days);
     const escape = (v: unknown): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Task 5: the tier, the pluses and the city ride beside the score, so the
+    // founder reads BEST / GOOD / NOT YET and the reasons in his own words.
     const header =
-      'phone,name,score,fit,why,reach,bubble_density,subscribed_holders,route,decision,note';
+      'phone,name,tier,city,pluses,score,fit,why,reach,bubble_density,subscribed_holders,route,decision,note';
     const csv = [
       header,
       ...entries.map((e) =>
         [
           escape(e.phone),
           escape(e.label),
+          e.parts.tier,
+          escape(e.city ?? ''),
+          escape(e.parts.pluses.map((p) => `${p.code}: ${p.note}`).join(' · ')),
           e.score,
           e.parts.fit,
           escape(e.parts.fit_evidence.join(' · ')),

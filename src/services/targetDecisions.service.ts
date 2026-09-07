@@ -118,6 +118,20 @@ export async function refusedTargetPhones(): Promise<Set<string>> {
 }
 
 /**
+ * The phones a human has said YES to (Ticket 10 Task 5). The founder's yes is
+ * the one signal that carries the LinkedIn and web criteria (R2–R8) into the
+ * list — so a yes lifts the row to BEST, whatever the facts could read.
+ */
+export async function approvedTargetPhones(): Promise<Set<string>> {
+  const result = await query<{ phone: string }>(
+    `SELECT phone FROM target_decisions WHERE decision = 'yes'`,
+    [],
+    DECISION_QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((r) => r.phone));
+}
+
+/**
  * Take a standing answer back.
  *
  * A review loop without an undo is a trap: the founder marks somebody „არა"

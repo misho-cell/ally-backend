@@ -13,7 +13,16 @@ import {
   TRADE_WORDS,
 } from './labelDictionaries';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
-import { refusedTargetPhones } from './targetDecisions.service';
+import { approvedTargetPhones, refusedTargetPhones } from './targetDecisions.service';
+import {
+  doorsFor,
+  inGeorgia,
+  plusesFor,
+  TargetDoors,
+  TargetPlus,
+  TargetTier,
+  tierFor,
+} from './targetTiers';
 import { normalizePhone, phoneDigits } from './phone';
 import { roundTo } from './number';
 import { warmthByPhoneAndUser } from './warmth.service';
@@ -185,6 +194,12 @@ export type TargetGate =
   | 'declined_recently'
   /** A human read the row and said no. The only gate no measurement made. */
   | 'founder_said_no'
+  /**
+   * G3 (Ticket 10 Task 5): a PUBLIC city fact names a place outside Georgia.
+   * Reversible — people move back — and read only where such a fact exists;
+   * no fact means the door is unknown, never failed.
+   */
+  | 'not_in_georgia'
   | TargetExclusion;
 
 export const TARGET_GATES: readonly TargetGate[] = [
@@ -194,6 +209,7 @@ export const TARGET_GATES: readonly TargetGate[] = [
   'too_few_subscribed_holders',
   'declined_recently',
   'founder_said_no',
+  'not_in_georgia',
   'our_own_people',
   'place_or_thing',
   'already_paying',
@@ -324,6 +340,28 @@ async function fitFromFacts(phones: string[]): Promise<Map<string, string[]>> {
     SCORE_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((r) => [r.phone, r.values]));
+}
+
+/**
+ * Where a person lives, from the PUBLIC city facts (Ticket 10 Task 5): the
+ * one place the base actually records a location for a non-user. One value
+ * per phone — the most recent public, unretracted fact.
+ */
+async function cityFromFacts(phones: string[]): Promise<Map<string, string>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; city: string }>(
+    `SELECT DISTINCT ON (neo4j_contact_id) neo4j_contact_id AS phone,
+            COALESCE(canonical_value, value) AS city
+     FROM contact_facts
+     WHERE neo4j_contact_id = ANY($1)
+       AND is_public = true
+       AND retracted_at IS NULL
+       AND field_type = 'city'
+     ORDER BY neo4j_contact_id, created_at DESC`,
+    [phones],
+    SCORE_QUERY_TIMEOUT_MS,
+  );
+  return new Map(result.rows.map((r) => [r.phone, r.city]));
 }
 
 interface AccountFacts {
@@ -558,6 +596,15 @@ export interface TargetScoreParts {
   // measured for — it is computed for the plausible top only, so its absence
   // means "not asked", never "measured as zero".
   bubble: BubbleDensity | null;
+  /**
+   * The criteria file on the row (Ticket 10 Task 5): the tier, the doors the
+   * data can read, and every plus that fired with its evidence.
+   */
+  tier: TargetTier;
+  doors: TargetDoors;
+  pluses: TargetPlus[];
+  /** Where `city` came from: the person's own public fact, or the asker's market. */
+  city_source: 'facts' | 'asker' | null;
 }
 
 /**
@@ -1904,8 +1951,9 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // social proof, or a candidate can enter the pool and then fail the gate
   // that let them in.
   const holderIds = await socialProofHolderIds();
-  // The human answers, read once. A „no" is a real exclusion, not a demotion.
-  const refused = await refusedTargetPhones();
+  // The human answers, read once. A „no" is a real exclusion, not a demotion;
+  // a „yes" is the founder's web judgment and lifts the row to BEST (Task 5).
+  const [refused, approved] = await Promise.all([refusedTargetPhones(), approvedTargetPhones()]);
   const needs = await findUnmetNeeds(sinceDays);
   const candidates = gatherCandidates(needs);
   // The founder's pool joins as the primary source: gate-passable people
@@ -1947,6 +1995,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     factsMap,
     accountMap,
     approachMap,
+    cityMap,
   ] = await Promise.all([
     reachForPhones(phones),
     bestInviterForPhones(phones),
@@ -1958,6 +2007,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     fitFromFacts(phones),
     accountFactsForPhones(phones),
     approachHistoryForPhones(phones),
+    cityFromFacts(phones),
   ]);
   const ourOwn = ownPeopleDigits();
 
@@ -2015,7 +2065,16 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
       },
     );
     if (excluded !== null && gates.hit(excluded)) continue;
+    // G3 (Task 5): the person's OWN public city fact, when there is one, is
+    // the row's city; the asker's market is only a stand-in. A fact naming a
+    // place outside Georgia closes the door — reversibly, like every gate.
+    const factCity = cityMap.get(phone) ?? null;
+    const city = factCity ?? ctx.city;
+    const citySource: TargetScoreParts['city_source'] =
+      factCity !== null ? 'facts' : ctx.city !== null ? 'asker' : null;
+    if (inGeorgia(factCity) === false && gates.hit('not_in_georgia')) continue;
     const inviter = inviterMap.get(phone) ?? null;
+    const approvedByFounder = approved.has(phone);
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
     const isGoalRelevant = goalRelevant.has(phone);
@@ -2031,7 +2090,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     entries.push({
       phone,
       label,
-      city: ctx.city,
+      city,
       // Density is not known yet — it is measured for the shortlist below and
       // the score is recomputed there. Every row starts without the bonus.
       score: combinedScore({
@@ -2065,6 +2124,19 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         own_contacts: account?.ownContacts ?? null,
         opens: account?.opens ?? null,
         bubble: null,
+        tier: tierFor(fit.level, approvedByFounder),
+        doors: doorsFor(factCity, fit.level),
+        // R1 reads the label the role word was found in (the same one `fit`
+        // read), not the person's name the row is shown under.
+        pluses: plusesFor({
+          fit,
+          label: candidateLabel,
+          factValues: factsMap.get(phone),
+          reach,
+          inviter,
+          approvedByFounder,
+        }),
+        city_source: citySource,
       },
       scoreInputs: {
         fit: fit.level,

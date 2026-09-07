@@ -66,6 +66,10 @@ function routeScoreQueries(opts: {
   bubbles?: { phone: string; savers: string; edges: string }[];
   /** Phones a human has ruled out. */
   refused?: string[];
+  /** Phones the founder said yes to (Task 5: his web judgment lifts the row to BEST). */
+  approved?: string[];
+  /** Public city facts, per phone (Task 5: the row's own city, and door G3). */
+  cityFacts?: { phone: string; city: string }[];
   /** Past approaches: who was written to, and who refused. */
   approaches?: { phone: string; declined: boolean; approached: boolean }[];
   /** Accounts that may be asked to carry an invitation (default 501, 502, 1326). */
@@ -109,6 +113,10 @@ function routeScoreQueries(opts: {
             .map((i) => ({ phone: i.phone, user_id: i.user_id, strength: i.strength })),
         ) as never,
       );
+    if (sql.includes("field_type = 'city'"))
+      return Promise.resolve(rows(opts.cityFacts ?? []) as never);
+    if (sql.includes("decision = 'yes'"))
+      return Promise.resolve(rows((opts.approved ?? []).map((phone) => ({ phone }))) as never);
     if (sql.includes('array_agg(DISTINCT field_type'))
       return Promise.resolve(rows(opts.fitFacts ?? []) as never);
     if (sql.includes('AS own_contacts')) return Promise.resolve(rows(opts.accounts ?? []) as never);
@@ -1690,5 +1698,101 @@ describe('a Georgian who lives abroad is still a person (5 Sep)', () => {
     routeScoreQueries({ reach: [{ phone: '8080', reach: '900' }], askableCount: 50 });
 
     expect(await buildTargetList(30)).toEqual([]);
+  });
+});
+
+// Ticket 10 Task 5: the criteria file on the row — BEST / GOOD / NOT YET, the
+// doors the data can read, the pluses with their evidence, and the city.
+describe('tiers, doors, pluses and city (Task 5)', () => {
+  it('BEST from an ownership fact, GOOD from a role word, NOT YET when nothing is readable', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000201', label: 'Irakli' },
+        { phone: '+995500000202', label: 'Nino Sales Manager' },
+        { phone: '+995500000203', label: 'Gia' },
+      ]),
+    ]);
+    routeScoreQueries({
+      fitFacts: [{ phone: '+995500000201', values: ['role: Co-Founder & CEO, IBCCS'] }],
+      reach: [{ phone: '+995500000203', reach: '50' }],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+    const byPhone = new Map(out.map((e) => [e.phone, e]));
+
+    expect(byPhone.get('+995500000201')?.parts.tier).toBe('BEST');
+    expect(byPhone.get('+995500000202')?.parts.tier).toBe('GOOD');
+    // Parked, not dropped (Rule 6) — and door G5 says why.
+    expect(byPhone.get('+995500000203')?.parts.tier).toBe('NOT_YET');
+    expect(byPhone.get('+995500000203')?.parts.doors).toEqual({
+      in_georgia: null,
+      findable: false,
+    });
+  });
+
+  it("the founder's yes lifts a row to BEST — his LinkedIn judgment is the only way R2–R8 enter", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000204', label: 'Gia' }])]);
+    routeScoreQueries({ approved: ['+995500000204'], askableCount: 50 });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0]?.parts.tier).toBe('BEST');
+    expect(out[0]?.parts.pluses.map((p) => p.code)).toContain('F');
+  });
+
+  it("the person's own public city fact is the row's city, ahead of the asker's market", async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000205', label: 'Nino Sales Manager' }], 'თბილისი'),
+    ]);
+    routeScoreQueries({
+      cityFacts: [{ phone: '+995500000205', city: 'Batumi' }],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out[0]?.city).toBe('Batumi');
+    expect(out[0]?.parts.city_source).toBe('facts');
+    expect(out[0]?.parts.doors.in_georgia).toBe(true);
+  });
+
+  it('door G3: a public city fact outside Georgia closes the door, counted in the ledger', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000206', label: 'Nino Sales Manager' },
+        { phone: '+995500000207', label: 'Gia Sales Manager' },
+      ]),
+    ]);
+    routeScoreQueries({
+      cityFacts: [
+        { phone: '+995500000206', city: 'London' },
+        { phone: '+995500000207', city: 'Georgia (moved back from LA)' },
+      ],
+      askableCount: 50,
+    });
+
+    const build = await buildTargetListWithGates(30);
+
+    expect(build.entries.map((e) => e.phone)).toEqual(['+995500000207']);
+    const gate = build.gates.find((g) => g.gate === 'not_in_georgia');
+    expect(gate).toEqual({ gate: 'not_in_georgia', enabled: true, removed: 1, matched: 1 });
+  });
+
+  it('the pluses that fired travel with their evidence: R1, R10 and R11', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000208', label: 'Nino Sales Manager' }]),
+    ]);
+    routeScoreQueries({
+      reach: [{ phone: '+995500000208', reach: '12' }],
+      inviters: [{ phone: '+995500000208', user_id: 501, colour: 'loyal', strength: null }],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+    const codes = out[0]?.parts.pluses.map((p) => p.code);
+
+    expect(codes).toEqual(['R1', 'R10', 'R11']);
+    expect(out[0]?.parts.pluses.find((p) => p.code === 'R10')?.note).toBe('held by 12 phonebooks');
   });
 });
