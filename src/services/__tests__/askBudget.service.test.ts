@@ -254,3 +254,48 @@ describe('the reset date leaves as a date, not as a sentence', () => {
     expect(out.window_resets_at).toBe('2026-10-01T00:00:00.000Z');
   });
 });
+
+// Ticket 10 Task 25 (c), D124: the same switch that moves the token grant
+// moves the growth-ask budget — one limit, one window.
+describe('BUDGET_WINDOW=week', () => {
+  beforeEach(() => {
+    process.env.BUDGET_WINDOW = 'week';
+  });
+  afterEach(() => {
+    delete process.env.BUDGET_WINDOW;
+  });
+
+  it('counts the asks of the calendar week and says so', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ask_optout_events'))
+        return Promise.resolve(rows([{ opt_outs: '0', ignored: '0' }]) as never);
+      return Promise.resolve(
+        rows([{ count: '3', resets_at: new Date('2026-09-14T00:00:00.000Z') }]) as never,
+      );
+    });
+
+    const out = await describeAskBudget('501');
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain("date_trunc('week', NOW())");
+    expect(sql).toContain("INTERVAL '1 week'");
+    expect(sql).not.toContain("date_trunc('month'");
+    expect(out.window).toBe('calendar_week');
+    expect(out.sent_this_month).toBe(3);
+  });
+
+  it('the gate counts the week too', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ask_optout_events'))
+        return Promise.resolve(rows([{ opt_outs: '0', ignored: '0' }]) as never);
+      return Promise.resolve(rows([{ count: '0' }]) as never);
+    });
+
+    await checkAskBudget('42', undefined);
+
+    const monthly = mockQuery.mock.calls.find(([sql]) => String(sql).includes('date_trunc(')) as [
+      string,
+    ];
+    expect(monthly[0]).toContain("date_trunc('week', NOW())");
+  });
+});

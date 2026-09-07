@@ -309,3 +309,118 @@ describe('getWalletSummary', () => {
     });
   });
 });
+
+// Ticket 10 Task 25 (c), D124: one variable moves the grant, its expiry and
+// the summary from the calendar month to the calendar week. Everything above
+// ran with the variable unset, which is the month — nothing changed there.
+describe('BUDGET_WINDOW=week', () => {
+  beforeEach(() => {
+    process.env.BUDGET_WINDOW = 'week';
+    clearPriceCache();
+  });
+  afterEach(() => {
+    delete process.env.BUDGET_WINDOW;
+  });
+
+  it('reads the weekly grant and stamps the row with the ISO week key', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0,
+    });
+
+    await ensurePeriodGrant('7');
+
+    const priceKeys = mockQuery.mock.calls
+      .filter(([sql]) => String(sql).includes('FROM provider_prices'))
+      .map(([, params]) => (params as string[])[0]);
+    expect(priceKeys).toEqual(['tokens.weekly_grant.pro', 'tokens.weekly_grant']);
+    // Neither weekly key is priced yet, so nothing is granted — the founder
+    // sets the number before the switch is thrown.
+    expect(inserts()).toHaveLength(0);
+  });
+
+  it('grants the weekly amount once it is priced, under a w: key', async () => {
+    PRICES['tokens.weekly_grant'] = 250;
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0,
+    });
+
+    await ensurePeriodGrant('7');
+
+    delete PRICES['tokens.weekly_grant'];
+    expect(inserts()[0]).toEqual(['7', 250, 'monthly_grant']);
+    const insertSql = String(
+      mockQuery.mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO token_transactions'),
+      )?.[0],
+    );
+    expect(insertSql).toContain(`'w:' || to_char(NOW(), 'IYYY-"W"IW')`);
+  });
+
+  it("expires only w: grants, against the week's key, and reads the week's spend", async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 700,
+      runCostUsd: 0,
+      staleGrants: [{ period_key: 'w:2026-W35', amount: 300 }],
+      monthDebits: 100,
+    });
+
+    await expireStaleGrants('7');
+
+    const [staleSql, staleParams] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(staleSql).toContain("period_key LIKE $3 || '%'");
+    expect(staleParams[2]).toBe('w:');
+    const spendSql = String(
+      mockQuery.mock.calls.find(([sql]) => String(sql).includes('to_date('))?.[0],
+    );
+    expect(spendSql).toContain(`to_date($2, 'IYYY-"W"IW')`);
+    expect(spendSql).toContain("INTERVAL '1 week'");
+    expect(inserts()[0]).toEqual(['7', -200, 'grant_expiry', 'exp:2026-W35']);
+  });
+
+  it('the summary counts the week', async () => {
+    setWorld({ walletEnabled: false, subscriptionStatus: 'active', balance: 1, runCostUsd: 0 });
+
+    await getWalletSummary('7');
+
+    const summarySql = String(
+      mockQuery.mock.calls.find(([sql]) => String(sql).includes('AS granted'))?.[0],
+    );
+    expect(summarySql).toContain("date_trunc('week', NOW())");
+    expect(summarySql).not.toContain("date_trunc('month'");
+  });
+});
+
+describe('the default window is the month (nothing changed for anyone today)', () => {
+  it('grants under m: and expires m: grants only', async () => {
+    delete process.env.BUDGET_WINDOW;
+    setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0,
+      staleGrants: [],
+    });
+
+    await ensurePeriodGrant('7');
+    await expireStaleGrants('7');
+
+    const insertSql = String(
+      mockQuery.mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO token_transactions'),
+      )?.[0],
+    );
+    expect(insertSql).toContain(`'m:' || to_char(NOW(), 'YYYY-MM')`);
+    const [, staleParams] = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('NOT EXISTS'),
+    ) as [string, unknown[]];
+    expect(staleParams[2]).toBe('m:');
+  });
+});

@@ -22,7 +22,11 @@ import {
 import { processChat, ChatResult } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
-import { hasPendingAskForThread, cancelAsksForTask } from '../../services/taskAsks.service';
+import {
+  hasPendingAskForThread,
+  cancelAsksForTask,
+  runPayerFor,
+} from '../../services/taskAsks.service';
 import { getOpenTaskByThread } from '../../services/taskStore.service';
 import {
   clearGoalQuestionForThread,
@@ -283,8 +287,16 @@ threadsRouter.post(
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
       // (the in-flight one always completes). 402 carries a machine reason so
       // the app can show the right screen.
-      const allowance = await checkRunAllowance(userId);
-      if (!allowance.allowed) {
+      //
+      // On an incoming-ask thread the wallet checked is the ASKER's, not the
+      // helper's (Ticket 10 Task 25 (a), D123: the original requester pays for
+      // the whole chain; helpers are never charged). A helper is never blocked
+      // by the asker's empty wallet either: the answer is what the asker paid
+      // their ask for, so the run goes and the asker's balance takes it — the
+      // asker's own next run is the one that waits for a top-up.
+      const payerId = await runPayerFor(userId, threadId, thread.type);
+      const allowance = await checkRunAllowance(payerId);
+      if (!allowance.allowed && payerId === userId) {
         res.status(402).json({
           success: false,
           error: 'ტოკენები ამოგეწურა — შეიძინე დამატებით ან დაელოდე თვიურ განახლებას',

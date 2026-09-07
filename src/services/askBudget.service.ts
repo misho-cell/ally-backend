@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { BudgetWindow, budgetWindow } from './budgetWindow';
 
 const BUDGET_QUERY_TIMEOUT_MS = 5_000;
 
@@ -168,8 +169,11 @@ export interface AskBudgetState {
   readonly effective_monthly_budget: number;
   readonly sent_this_month: number;
   readonly remaining_this_month: number;
-  /** The budget's window is the calendar month; the fatigue window is rolling. */
-  readonly window: 'calendar_month';
+  /**
+   * The budget's window: the calendar month by default, the calendar week
+   * when BUDGET_WINDOW=week (D124). The fatigue window is rolling either way.
+   */
+  readonly window: BudgetWindow['label'];
   readonly window_resets_at: string;
   readonly relay_messages_per_person_per_day: number;
 }
@@ -181,12 +185,13 @@ export interface AskBudgetState {
  * /admin/users/:id and get_netai_info("limits").
  */
 export async function describeAskBudget(userId: string): Promise<AskBudgetState> {
+  const window = budgetWindow();
   const sent = await query<{ count: string; resets_at: string | Date }>(
     `SELECT
        (SELECT COUNT(*) FROM task_asks
          WHERE from_user_id = $1::int AND parent_ask_id IS NULL AND is_follow_up = FALSE
-           AND created_at > date_trunc('month', NOW())) AS count,
-       (date_trunc('month', NOW()) + INTERVAL '1 month') AS resets_at`,
+           AND created_at > ${window.windowStartSql}) AS count,
+       (${window.windowResetSql}) AS resets_at`,
     [userId],
     BUDGET_QUERY_TIMEOUT_MS,
   );
@@ -203,7 +208,7 @@ export async function describeAskBudget(userId: string): Promise<AskBudgetState>
     effective_monthly_budget: effective,
     sent_this_month: sentThisMonth,
     remaining_this_month: Math.max(0, effective - sentThisMonth),
-    window: 'calendar_month',
+    window: window.label,
     // node-postgres hands back a Date for a timestamp, and String() on one is
     // „Thu Oct 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)" — which
     // the wake note then truncated to „Thu Oct 0". ISO, like every other date
@@ -272,10 +277,11 @@ export async function checkFollowUpBudget(
 }
 
 async function checkMonthlyBudget(fromUserId: string): Promise<AskBudgetOutcome> {
+  // Counted in the window in force (D124) — the month unless BUDGET_WINDOW=week.
   const sentThisMonth = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM task_asks
      WHERE from_user_id = $1::int AND parent_ask_id IS NULL AND is_follow_up = FALSE
-       AND created_at > date_trunc('month', NOW())`,
+       AND created_at > ${budgetWindow().windowStartSql}`,
     [fromUserId],
     BUDGET_QUERY_TIMEOUT_MS,
   );

@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { getPrice } from './costLedger.service';
+import { budgetWindow } from './budgetWindow';
 
 const WALLET_FLAG = 'token_wallet';
 const MONTHLY_GRANT_REASON = 'monthly_grant';
@@ -57,12 +58,16 @@ export async function ensurePeriodGrant(userId: string): Promise<void> {
 
   if (status === 'active') {
     const tier = statusResult.rows[0]?.subscription_tier ?? '';
-    const tierGrant = tier ? await getPrice(`tokens.monthly_grant.${tier}`) : 0;
-    const grant = tierGrant > 0 ? tierGrant : await getPrice('tokens.monthly_grant');
+    // The window decides which grant is read and which key the row carries
+    // (Ticket 10 Task 25 (c), D124): tokens.monthly_grant under 'm:YYYY-MM' by
+    // default, tokens.weekly_grant under 'w:IYYY-Www' when BUDGET_WINDOW=week.
+    const window = budgetWindow();
+    const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
+    const grant = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
     if (grant <= 0) return;
     await query(
       `INSERT INTO token_transactions (user_id, amount, reason, period_key)
-       VALUES ($1, $2, $3, 'm:' || to_char(NOW(), 'YYYY-MM'))
+       VALUES ($1, $2, $3, ${window.currentKeySql})
        ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
       [userId, Math.floor(grant), MONTHLY_GRANT_REASON],
     );
@@ -88,29 +93,34 @@ export async function ensurePeriodGrant(userId: string): Promise<void> {
  * (even a zero one) stops the month from being re-evaluated.
  */
 export async function expireStaleGrants(userId: string): Promise<void> {
+  // Only grants of the window in force are compared against the current key
+  // — 'm:' keys against the month, 'w:' keys against the week — so switching
+  // the window (D124) never burns a grant of the other kind by string order.
+  const window = budgetWindow();
   const stale = await query<{ period_key: string; amount: number }>(
     `SELECT period_key, amount
      FROM token_transactions t
      WHERE user_id = $1 AND reason = $2
-       AND period_key < 'm:' || to_char(NOW(), 'YYYY-MM')
+       AND period_key LIKE $3 || '%'
+       AND period_key < ${window.currentKeySql}
        AND NOT EXISTS (
          SELECT 1 FROM token_transactions e
          WHERE e.user_id = $1
            AND e.period_key = 'exp:' || substring(t.period_key FROM 3)
        )`,
-    [userId, MONTHLY_GRANT_REASON],
+    [userId, MONTHLY_GRANT_REASON, window.keyPrefix],
   );
 
   for (const grant of stale.rows) {
-    const month = grant.period_key.slice(2);
+    const period = grant.period_key.slice(window.keyPrefix.length);
     const [debitsResult, balance] = await Promise.all([
       query<{ spent: string | null }>(
         `SELECT -SUM(amount) AS spent
          FROM token_transactions
          WHERE user_id = $1 AND amount < 0 AND reason <> $3
-           AND created_at >= to_date($2, 'YYYY-MM')
-           AND created_at <  to_date($2, 'YYYY-MM') + INTERVAL '1 month'`,
-        [userId, month, GRANT_EXPIRY_REASON],
+           AND created_at >= ${window.periodStartSql}
+           AND created_at <  ${window.periodEndSql}`,
+        [userId, period, GRANT_EXPIRY_REASON],
       ),
       getBalance(userId),
     ]);
@@ -124,7 +134,7 @@ export async function expireStaleGrants(userId: string): Promise<void> {
       `INSERT INTO token_transactions (user_id, amount, reason, period_key)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
-      [userId, amount, GRANT_EXPIRY_REASON, 'exp:' + month],
+      [userId, amount, GRANT_EXPIRY_REASON, 'exp:' + period],
     );
   }
 }
@@ -256,6 +266,7 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
     await ensurePeriodGrant(userId);
   }
 
+  const window = budgetWindow();
   const result = await query<{
     balance: string | null;
     granted: string | null;
@@ -263,9 +274,9 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
   }>(
     `SELECT SUM(amount) AS balance,
             SUM(amount) FILTER (WHERE amount > 0
-              AND created_at >= date_trunc('month', NOW()))       AS granted,
+              AND created_at >= ${window.windowStartSql})       AS granted,
             -SUM(amount) FILTER (WHERE amount < 0 AND reason <> $2
-              AND created_at >= date_trunc('month', NOW()))       AS spent
+              AND created_at >= ${window.windowStartSql})       AS spent
      FROM token_transactions
      WHERE user_id = $1`,
     [userId, GRANT_EXPIRY_REASON],

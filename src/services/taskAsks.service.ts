@@ -439,10 +439,14 @@ export async function createAsk(
   // its question, and answering "why" took a reconstruction across two threads
   // because the conversation an ask came out of was never written down
   // (ticket 9 task 20 d).
+  // origin_user_id is the account that PAYS for the chain (Ticket 10 Task 25
+  // (a), D123): a direct ask starts with its sender, a relay inherits its
+  // parent's origin. The helper's assistant then runs on the origin's wallet.
+  const originUserId = await chainOriginFor(fromUserId, parentAskId);
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
-                            parent_ask_id, origin_thread_id, is_follow_up)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8)
+                            parent_ask_id, origin_thread_id, is_follow_up, origin_user_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int)
      RETURNING id`,
     [
       taskId,
@@ -453,6 +457,7 @@ export async function createAsk(
       parentAskId ?? null,
       threadId ?? null,
       isFollowUp,
+      originUserId,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -862,6 +867,48 @@ export interface IncomingAsk {
   question: string;
   from_name: string | null;
   status: string;
+}
+
+/**
+ * The account a new ask's chain started from (Ticket 10 Task 25 (a), D123).
+ * A direct ask starts with its sender; a relay inherits its parent's origin,
+ * falling back to the parent's sender for rows older than migration 124.
+ */
+async function chainOriginFor(
+  fromUserId: string,
+  parentAskId: number | undefined,
+): Promise<number> {
+  if (parentAskId === undefined) return Number(fromUserId);
+  const parent = await query<{ origin_user_id: number | null; from_user_id: number }>(
+    `SELECT origin_user_id, from_user_id FROM task_asks WHERE id = $1 LIMIT 1`,
+    [parentAskId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const row = parent.rows[0];
+  if (!row) return Number(fromUserId);
+  return row.origin_user_id ?? row.from_user_id;
+}
+
+/**
+ * Who pays for a run on this thread (Ticket 10 Task 25 (a), D123): on an
+ * incoming-ask thread the chain's ORIGIN — the person who asked — not the
+ * helper whose phone the question landed on. Everywhere else the user.
+ * Returns the user when the ask row is missing or predates the column, so a
+ * lookup failure can never make a run free or charge a stranger.
+ */
+export async function runPayerFor(
+  userId: string,
+  threadId: number,
+  threadType: string | null | undefined,
+): Promise<string> {
+  if (threadType !== 'incoming_ask') return userId;
+  const result = await query<{ origin_user_id: number | null }>(
+    `SELECT origin_user_id FROM task_asks WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
+    [threadId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const origin = result.rows[0]?.origin_user_id;
+  return origin === null || origin === undefined ? userId : String(origin);
 }
 
 /** The live ask behind an incoming_ask thread — injected into the recipient's prompt. */

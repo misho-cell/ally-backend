@@ -60,6 +60,7 @@ import {
   getAsksForTask,
   getAskByThread,
   sendApprovedAskAnswer,
+  runPayerFor,
   ensureVerbatimQuote,
   EnsureQuoted,
   TaskAsk,
@@ -3926,11 +3927,14 @@ export async function processChat(
   // construction, and every „the prompt fixed it" was a guess.
   await saveMessage(userId, threadId, 'assistant', reply, 'message', runId, choices ?? null);
 
-  // Charge the run's actual ledger cost to the user's token wallet (no-op
-  // while the wallet flag is off). Never fails the reply.
+  // Charge the run's actual ledger cost to the PAYER's token wallet (no-op
+  // while the wallet flag is off) — the user, except on an incoming-ask
+  // thread, where the chain's origin pays and the helper is never charged
+  // (Ticket 10 Task 25 (a), D123). Never fails the reply.
   try {
-    const debited = await debitRun(userId, runId);
-    if (debited > 0) emitTokensDebited(userId, threadId, runId, debited);
+    const payerId = await runPayerFor(userId, threadId, thread.type);
+    const debited = await debitRun(payerId, runId);
+    if (debited > 0) emitTokensDebited(payerId, threadId, runId, debited);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[wallet] debit failed for run', runId, (err as Error).message);

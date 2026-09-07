@@ -72,6 +72,7 @@ import {
   buildAnswerWakeEvent,
   ensureVerbatimQuote,
   getPendingAsksForUser,
+  runPayerFor,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -935,5 +936,79 @@ describe('an ask between two roster members', () => {
 
     const opening = mockSaveMessage.mock.calls[0][3] as string;
     expect(opening).not.toContain('წევრი');
+  });
+});
+
+// Ticket 10 Task 25 (a), D123: the original requester pays for the whole
+// chain. Every ask row carries the account it started from, and a run on an
+// incoming-ask thread is charged to that account, never to the helper.
+describe('who pays for a chain (origin_user_id)', () => {
+  it('a direct ask starts its chain with the sender', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'q');
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[0]).toContain('origin_user_id');
+    expect(insert[1][8]).toBe(42);
+  });
+
+  it("a relay inherits its parent's origin — the helper who forwards is never the payer", async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    const base = mockQuery.getMockImplementation() as (sql: string) => Promise<unknown>;
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT origin_user_id, from_user_id FROM task_asks'))
+        return Promise.resolve(rows([{ origin_user_id: 5, from_user_id: 42 }]) as never);
+      return base(sql) as never;
+    });
+
+    await createAsk('42', 3, '+995599111222', 'q', 11);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[1][8]).toBe(5);
+  });
+
+  it("a relay of a pre-124 parent falls back to the parent's sender", async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    const base = mockQuery.getMockImplementation() as (sql: string) => Promise<unknown>;
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT origin_user_id, from_user_id FROM task_asks'))
+        return Promise.resolve(rows([{ origin_user_id: null, from_user_id: 9 }]) as never);
+      return base(sql) as never;
+    });
+
+    await createAsk('42', 3, '+995599111222', 'q', 11);
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[1][8]).toBe(9);
+  });
+});
+
+describe('runPayerFor', () => {
+  it('charges the chain origin for a run on an incoming-ask thread', async () => {
+    mockQuery.mockResolvedValue(rows([{ origin_user_id: 5 }]) as never);
+
+    expect(await runPayerFor('7', 55, 'incoming_ask')).toBe('5');
+    expect(mockQuery.mock.calls[0][1]).toEqual([55]);
+  });
+
+  it('charges the user on every other thread without reading the database', async () => {
+    expect(await runPayerFor('7', 55, 'regular')).toBe('7');
+    expect(await runPayerFor('7', 55, undefined)).toBe('7');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the user when the ask row is missing or predates the column', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
+    expect(await runPayerFor('7', 55, 'incoming_ask')).toBe('7');
+
+    mockQuery.mockResolvedValueOnce(rows([{ origin_user_id: null }]) as never);
+    expect(await runPayerFor('7', 55, 'incoming_ask')).toBe('7');
   });
 });

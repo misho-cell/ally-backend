@@ -260,6 +260,7 @@ describe('adminListGoals — the stage column', () => {
       "THEN 'solved'",
       "THEN 'paused'",
       "THEN 'plan_proposed'",
+      "THEN 'waiting_topup'",
       "THEN 'waiting_on_user'",
       "THEN 'waiting_on_reply'",
       "THEN 'running'",

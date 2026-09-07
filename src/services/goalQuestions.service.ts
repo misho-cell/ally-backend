@@ -239,7 +239,7 @@ export interface AdminGoalRow {
   asks_sent: number;
   /**
    * Where the goal stands (Ticket 10 Task 28 (a), the founder's stages):
-   * understanding · plan_proposed · running · waiting_on_user ·
+   * understanding · plan_proposed · waiting_topup · running · waiting_on_user ·
    * waiting_on_reply · solved · stopped. Derived from state, never stored, so
    * it cannot go stale.
    */
@@ -249,6 +249,7 @@ export interface AdminGoalRow {
 export type GoalStage =
   | 'understanding'
   | 'plan_proposed'
+  | 'waiting_topup'
   | 'running'
   | 'waiting_on_user'
   | 'waiting_on_reply'
@@ -279,6 +280,12 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
               WHEN t.status = 'closed' THEN 'solved'
               WHEN t.status = 'paused' THEN 'paused'
               WHEN t.plan IS NULL AND t.plan_proposed IS NOT NULL THEN 'plan_proposed'
+              -- Task 25 (c): the wallet is on and the owner's balance is gone —
+              -- nothing runs on this goal until a top-up or the window resets.
+              WHEN EXISTS (SELECT 1 FROM app_flags f WHERE f.flag = 'token_wallet' AND f.enabled)
+                AND COALESCE((SELECT SUM(tt.amount) FROM token_transactions tt
+                               WHERE tt.user_id = t.user_id::text), 0) <= 0
+                THEN 'waiting_topup'
               WHEN t.pending_question_at IS NOT NULL THEN 'waiting_on_user'
               WHEN EXISTS (SELECT 1 FROM task_asks a WHERE a.task_id = t.id AND a.status = 'sent')
                 THEN 'waiting_on_reply'
