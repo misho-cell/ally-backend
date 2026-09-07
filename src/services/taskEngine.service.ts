@@ -6,6 +6,8 @@ import {
   getStaleOpenTasks,
   getGoalsUnansweredForADay,
   markQuestionDefaulted,
+  getSilentGoals,
+  markSilentDayWoken,
   touchTaskActivity,
   clearTaskWake,
   Task,
@@ -306,6 +308,33 @@ export async function sweepUnansweredOwnerQuestions(): Promise<number> {
   return taken;
 }
 
+/**
+ * Line 3 of the standard, in code (Ticket 10 Task 24 (a)): a silent day widens
+ * the circle. A goal with a plan whose newest ask has waited a day unanswered,
+ * with nothing newer sent, is woken once with the instruction to write to the
+ * next people the plan names — several, not one. Stamped before the wake.
+ */
+const SILENT_DAY_HOURS = 24;
+const MAX_SILENT_WAKES_PER_SWEEP = 5;
+
+export async function sweepSilentGoals(): Promise<number> {
+  const silent = await getSilentGoals(SILENT_DAY_HOURS, MAX_SILENT_WAKES_PER_SWEEP);
+  let woken = 0;
+  for (const task of silent) {
+    await markSilentDayWoken(task.id);
+    const ok = await wakeTask(
+      task.id,
+      'ერთი დღეა კითხვა უპასუხოდ არის და ახალი არავის მისწერია. სტანდარტის წესია: ჩუმი დღე = ' +
+        'მეტ ადამიანს ჰკითხე. გეგმის „ვის ვკითხავ" სიიდან, ვისაც ჯერ არ მისწერია, ახლა მისწერე — ' +
+        'რამდენიმეს ერთდროულად, არა თითო-თითოდ. ეს გეგმის ფარგლებშია და ცალკე თანხმობა არ სჭირდება. ' +
+        'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
+        'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
+    );
+    if (ok) woken++;
+  }
+  return woken;
+}
+
 async function nightlyReview(): Promise<void> {
   const stale = await getStaleOpenTasks(NIGHTLY_REVIEW_QUIET_HOURS, MAX_NIGHTLY_REVIEWS);
   for (const task of stale) {
@@ -369,6 +398,15 @@ export function startTaskTicker(): void {
       // eslint-disable-next-line no-console
       console.error('[task-engine] reminder sweep failed:', (err as Error).message),
     );
+    void sweepSilentGoals()
+      .then((n) => {
+        // eslint-disable-next-line no-console
+        if (n > 0) console.log(`[task-engine] silent-day widening woke ${n} goal(s)`);
+      })
+      .catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
+      );
     // C9.7's timer half: silence IS an outcome — a week-old unanswered intro
     // produces a no_reply row without anyone touching the app.
     void sweepUnansweredIntroOutcomes()

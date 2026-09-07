@@ -237,7 +237,24 @@ export interface AdminGoalRow {
   last_activity_at: string;
   wakes_delivered: number;
   asks_sent: number;
+  /**
+   * Where the goal stands (Ticket 10 Task 28 (a), the founder's stages):
+   * understanding · plan_proposed · running · waiting_on_user ·
+   * waiting_on_reply · solved · stopped. Derived from state, never stored, so
+   * it cannot go stale.
+   */
+  stage: GoalStage;
 }
+
+export type GoalStage =
+  | 'understanding'
+  | 'plan_proposed'
+  | 'running'
+  | 'waiting_on_user'
+  | 'waiting_on_reply'
+  | 'solved'
+  | 'stopped'
+  | 'paused';
 
 const ADMIN_GOALS_LIMIT = 50;
 
@@ -253,7 +270,21 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
             (SELECT COUNT(*)::int FROM conversations c
               WHERE c.thread_id = t.thread_id AND c.role = 'user'
                 AND c.content LIKE '[მოვლენა]%') AS wakes_delivered,
-            (SELECT COUNT(*)::int FROM task_asks ta WHERE ta.task_id = t.id) AS asks_sent
+            (SELECT COUNT(*)::int FROM task_asks ta WHERE ta.task_id = t.id) AS asks_sent,
+            -- The founder's stages (Task 28 (a)), in the order that decides
+            -- when several are true: closed first, then the plan not yet
+            -- approved, then who the goal is waiting on, then running.
+            CASE
+              WHEN t.status = 'closed' AND COALESCE(t.closed_reason, '') ILIKE '%stop%' THEN 'stopped'
+              WHEN t.status = 'closed' THEN 'solved'
+              WHEN t.status = 'paused' THEN 'paused'
+              WHEN t.plan IS NULL AND t.plan_proposed IS NOT NULL THEN 'plan_proposed'
+              WHEN t.pending_question_at IS NOT NULL THEN 'waiting_on_user'
+              WHEN EXISTS (SELECT 1 FROM task_asks a WHERE a.task_id = t.id AND a.status = 'sent')
+                THEN 'waiting_on_reply'
+              WHEN t.plan IS NOT NULL THEN 'running'
+              ELSE 'understanding'
+            END AS stage
      FROM tasks t
      WHERE t.user_id = $1
      ORDER BY (t.status = 'open') DESC, t.last_activity_at DESC

@@ -111,8 +111,11 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'profile shows both — same person). The profile shows no phone number — numbers never ' +
       'reach you; a connection is made only through request_introduction. It also shows ' +
       'is_member and account_state. Reach a NETAI user (is_member true) through their assistant ' +
-      '(a warm intro); invite anyone else. An "ally_account" has a login and has never opened ' +
-      'Netai, so nothing reaches them through an assistant — treat them as a non-member. ' +
+      '(ask_contact / a warm intro). For anyone NOT on Netai the order is fixed (D122): FIRST ' +
+      'invite_contact — an invite text the user sends themselves; SECOND the user writes to them ' +
+      'directly — draft the message for them; THIRD a mutual acquaintance — request_introduction ' +
+      'with share_contact. Never jump to the third. An "ally_account" has a login and has never ' +
+      'opened Netai, so nothing reaches them through an assistant — treat them as not on Netai. ' +
       "Read back the user's own saved facts here " +
       'even when the public profile says something different. ' +
       "This profile never includes the user's OWN label for the contact — that only comes from " +
@@ -358,6 +361,24 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Changes a goal by its task_ref (from get_my_tasks): pause, resume (status open), or close ' +
       'it. When closing, pass a short note of the outcome ("solved — Nino took it"). Confirm ' +
       'with the user before closing a goal they still care about.',
+  },
+  propose_task_plan: {
+    title: 'Propose the plan for a goal',
+    description:
+      "Writes the goal's plan for the user to approve ONCE (D119): what counts as solved, the " +
+      'routes you will pursue, the people you will involve (each by contact_ref from a search ' +
+      'result, with the route they belong to) and the people the user does NOT want contacted. ' +
+      'Call it as soon as the problem is understood — before any ask goes out — and again for any ' +
+      'CHANGE (a new person, a new route): the change waits for a yes while everything already ' +
+      'approved keeps running. Show the returned summary verbatim and ask for their yes; then ' +
+      'call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
+      'asking again; a person outside the plan is refused until the plan is changed.',
+  },
+  approve_task_plan: {
+    title: "Record the user's yes to the plan",
+    description:
+      'Records the approval of the proposed plan. Call ONLY after the user explicitly approved ' +
+      'the summary you showed — pass confirmed: true. Nothing is recorded without it.',
   },
   grant_task_permission: {
     title: 'Permission to ask around',

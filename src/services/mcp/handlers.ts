@@ -35,6 +35,7 @@ import {
   updateTask,
 } from '../taskStore.service';
 import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
+import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
@@ -882,6 +883,74 @@ export async function mcpGrantTaskPermission(
   }
   const ok = await grantTaskPermission(userId, taskId);
   return ok ? { granted: true } : { granted: false, error: 'No such task.' };
+}
+
+// --- The plan (Ticket 10 Task 21, D119). On the connector people are named
+// by contact_ref, never by phone; the refs are decoded here, on the server,
+// into the phone ids the plan stores and the ask path checks.
+interface McpPlanPerson {
+  name: string;
+  contact_ref: string;
+  route: string;
+}
+interface McpPlanExclusion {
+  name: string;
+  contact_ref?: string;
+}
+export interface McpPlanInput {
+  solved_when: string;
+  routes: { name: string; status?: string }[];
+  people_to_involve: McpPlanPerson[];
+  never_contact: McpPlanExclusion[];
+}
+
+export async function mcpProposeTaskPlan(
+  userId: string,
+  args: { task_ref: string; plan: McpPlanInput },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { proposed: false, error: UNKNOWN_TASK_REF };
+  const plan = args.plan ?? ({} as McpPlanInput);
+  const people: { name: string; phone: string; route: string }[] = [];
+  for (const p of plan.people_to_involve ?? []) {
+    const phone = decodeContactRef(userId, p.contact_ref ?? '');
+    if (!phone) return { proposed: false, error: `${p.name}: ${UNKNOWN_CONTACT_REF}` };
+    people.push({ name: p.name, phone, route: p.route });
+  }
+  const never: { name: string; phone?: string }[] = [];
+  for (const n of plan.never_contact ?? []) {
+    const phone = n.contact_ref ? decodeContactRef(userId, n.contact_ref) : null;
+    never.push(phone ? { name: n.name, phone } : { name: n.name });
+  }
+  const outcome = await proposeTaskPlan(userId, taskId, {
+    solved_when: plan.solved_when,
+    routes: plan.routes,
+    people_to_involve: people,
+    never_contact: never,
+  });
+  return outcome.ok
+    ? { proposed: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
+    : { proposed: false, error: outcome.error };
+}
+
+export async function mcpApproveTaskPlan(
+  userId: string,
+  args: { task_ref: string; confirmed: boolean },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(args.task_ref ?? '');
+  if (taskId === null) return { approved: false, error: UNKNOWN_TASK_REF };
+  if (args.confirmed !== true) {
+    return {
+      approved: false,
+      error:
+        'Not recorded: the user has not said yes to the plan. Show the summary, ask, and call ' +
+        'again with confirmed: true only after their explicit approval.',
+    };
+  }
+  const outcome = await approveTaskPlan(userId, taskId);
+  return outcome.ok
+    ? { approved: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
+    : { approved: false, error: outcome.error };
 }
 
 // --- Task-engine + correction tools (connector parity with the in-app set).

@@ -33,6 +33,8 @@ import {
   mcpGetMyTasks,
   mcpUpdateTask,
   mcpGrantTaskPermission,
+  mcpProposeTaskPlan,
+  mcpApproveTaskPlan,
   mcpAskContact,
   mcpSetTaskBrief,
   mcpSetTaskWake,
@@ -440,6 +442,56 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'grant_task_permission', () => mcpGrantTaskPermission(userId, args)),
+  );
+  server.registerTool(
+    'propose_task_plan',
+    {
+      title: TOOL_TEXTS.propose_task_plan.title,
+      description: TOOL_TEXTS.propose_task_plan.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        plan: z
+          .object({
+            solved_when: z.string().describe('What the user will call solved.'),
+            routes: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  status: z.enum(['running', 'waiting', 'done', 'dropped']).optional(),
+                }),
+              )
+              .describe('The routes you will pursue, a few words each.'),
+            people_to_involve: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
+                  route: z.string().describe("One of the plan's route names."),
+                }),
+              )
+              .describe('Whom you will write to, each with the route they belong to.'),
+            never_contact: z
+              .array(z.object({ name: z.string(), contact_ref: z.string().optional() }))
+              .describe('Whom the user does NOT want contacted.'),
+          })
+          .describe('The plan, in the four parts the user approves.'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'propose_task_plan', () => mcpProposeTaskPlan(userId, args)),
+  );
+  server.registerTool(
+    'approve_task_plan',
+    {
+      title: TOOL_TEXTS.approve_task_plan.title,
+      description: TOOL_TEXTS.approve_task_plan.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        confirmed: z.boolean().describe('true only after the user explicitly said yes.'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'approve_task_plan', () => mcpApproveTaskPlan(userId, args)),
   );
   server.registerTool(
     'save_user_note',

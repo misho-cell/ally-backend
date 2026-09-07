@@ -244,3 +244,30 @@ describe('adminListGoals — Q-29, the per-goal admin view', () => {
     expect(out[0].asks_sent).toBe(2);
   });
 });
+
+// Ticket 10 Task 28 (a): the founder's stages, derived in the read so they
+// cannot go stale. Closed first, then the plan not yet approved, then whom the
+// goal is waiting on, then running.
+describe('adminListGoals — the stage column', () => {
+  it('asks the database for the stage in the founder’s order', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await adminListGoals('501');
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    const order = [
+      "THEN 'stopped'",
+      "THEN 'solved'",
+      "THEN 'paused'",
+      "THEN 'plan_proposed'",
+      "THEN 'waiting_on_user'",
+      "THEN 'waiting_on_reply'",
+      "THEN 'running'",
+      "ELSE 'understanding'",
+    ];
+    const positions = order.map((s) => sql.indexOf(s));
+    expect(positions.every((p) => p > 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    expect(sql).toContain('AS stage');
+  });
+});

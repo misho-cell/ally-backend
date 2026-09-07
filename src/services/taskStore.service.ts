@@ -289,6 +289,42 @@ export async function getGoalsUnansweredForADay(hours: number, limit: number): P
   return result.rows;
 }
 
+/**
+ * Line 3 of the standard (D117, D119): a silent day widens the circle.
+ *
+ * Goals with a plan in force whose newest ask has waited a day with no answer
+ * and nothing newer sent, and that have not been woken for this silence yet.
+ * Without a plan there is no circle to widen inside, so those are left to the
+ * nightly review.
+ */
+export async function getSilentGoals(hours: number, limit: number): Promise<Task[]> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks t
+     WHERE t.status = 'open' AND t.plan IS NOT NULL
+       AND EXISTS (SELECT 1 FROM task_asks a
+                   WHERE a.task_id = t.id AND a.status = 'sent'
+                     AND a.created_at < NOW() - ($1 || ' hours')::interval)
+       AND NOT EXISTS (SELECT 1 FROM task_asks a
+                       WHERE a.task_id = t.id
+                         AND a.created_at >= NOW() - ($1 || ' hours')::interval)
+       AND (t.silent_day_woken_at IS NULL
+            OR t.silent_day_woken_at < NOW() - ($1 || ' hours')::interval)
+     ORDER BY t.last_activity_at ASC
+     LIMIT $2`,
+    [hours, limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function markSilentDayWoken(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET silent_day_woken_at = NOW() WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 /** The default was taken for the question currently open — once per question. */
 export async function markQuestionDefaulted(taskId: number): Promise<void> {
   await query(
