@@ -85,6 +85,7 @@ import {
   RarityBand,
 } from '../../services/identity.service';
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
+import { adminGoalDetail } from '../../services/goalDashboard.service';
 import {
   deletePrivateContextKeys,
   scrubStoredPhoneNumbers,
@@ -1242,6 +1243,30 @@ adminRouter.get('/goals', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goals]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Ticket 10 Task 28 (a): one goal in full — stage, the actions with their
+// times, the blocker, the payer and the outcome. The daily row of the 14-day
+// test is filled from this and the list above.
+adminRouter.get('/goals/:taskId', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(userId) || userId <= 0 || !Number.isFinite(taskId) || taskId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id და taskId აუცილებელია' });
+      return;
+    }
+    const goal = await adminGoalDetail(String(userId), taskId);
+    if (goal === null) {
+      res.status(404).json({ success: false, error: 'მიზანი ვერ მოიძებნა' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { goal } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin goal detail]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

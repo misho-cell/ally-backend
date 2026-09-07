@@ -111,6 +111,57 @@ describe('handleStripeEvent — writing Stripe truth onto the account', () => {
     expect(params?.[1]).toBe(false);
   });
 
+  // Ticket 10 Task 28 (b): the payment history.
+  it('a paid invoice with real money is written into the payment history', async () => {
+    mockSubscriptionsRetrieve.mockResolvedValue(
+      subscription({ status: 'active', trial_end: null }),
+    );
+
+    await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: {
+        object: {
+          id: 'in_1',
+          subscription: 'sub_1',
+          amount_paid: 1999,
+          currency: 'usd',
+          created: 1_800_000_000,
+          status_transitions: { paid_at: 1_800_000_100 },
+        },
+      },
+    } as never);
+
+    const payment = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO payment_events'),
+    );
+    expect(payment?.[1]).toEqual([
+      '42',
+      'stripe',
+      'in_1',
+      'subscription',
+      '19.99',
+      'usd',
+      new Date(1_800_000_100 * 1000).toISOString(),
+    ]);
+  });
+
+  it('the $0 invoice that opens a trial is not a payment', async () => {
+    mockSubscriptionsRetrieve.mockResolvedValue(subscription());
+
+    await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: {
+        object: { id: 'in_0', subscription: 'sub_1', amount_paid: 0, currency: 'usd', created: 1 },
+      },
+    } as never);
+
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('INSERT INTO payment_events')),
+    ).toBe(false);
+    // The status still moved — the trial is real even if the money is not.
+    expect(userUpdate()?.[0]).toBe('trialing');
+  });
+
   it("ignores another product's subscription on the same Stripe account", async () => {
     // The account carries 10 live $1.99/month subscriptions belonging to a
     // different product. Their events reach this endpoint too.

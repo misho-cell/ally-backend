@@ -9,6 +9,7 @@ import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
 import { distributeReferralEarnings } from './referral.service';
 import { creditTopup, findTopupPackageByPriceId } from './tokenWallet.service';
+import { recordPayment } from './payments.service';
 
 // Paddle reports money in minor units (cents).
 const MINOR_UNITS_PER_USD = 100;
@@ -175,6 +176,7 @@ async function handleTopupTransaction(txn: TransactionNotification): Promise<voi
 
     const credited = await creditTopup(userId, pkg.tokens, txn.id);
     if (credited) {
+      await recordTransactionPayment(userId, txn, 'topup');
       await sendPushNotification(userId, {
         title: 'Netai — ტოკენები დაემატა',
         body: `+${pkg.tokens} ტოკენი დაერიცხა შენს ბალანსს 🪙`,
@@ -206,12 +208,36 @@ async function handleTransactionCompleted(txn: TransactionNotification): Promise
   // guard inside the service). Never let this break the webhook.
   const totalUsd = transactionTotalUsd(txn);
   if (totalUsd > 0) {
+    await recordTransactionPayment(String(userId), txn, 'subscription');
     try {
       await distributeReferralEarnings(String(userId), totalUsd, txn.id);
     } catch (err) {
       console.error('[paddle] referral distribution failed for txn', txn.id, err);
     }
   }
+}
+
+/**
+ * The payment history row for a completed transaction (Ticket 10 Task 28 (b)).
+ * Best-effort: the wallet credit or status change above already happened, and
+ * a history row must never fail the webhook.
+ */
+async function recordTransactionPayment(
+  userId: string,
+  txn: TransactionNotification,
+  kind: 'subscription' | 'topup',
+): Promise<void> {
+  await recordPayment({
+    userId,
+    provider: 'paddle',
+    externalId: txn.id,
+    kind,
+    amountMinor: Number(txn.details?.totals?.total ?? 0),
+    currency: txn.currencyCode,
+    paidAt: new Date(),
+  }).catch((err: unknown) => {
+    console.error('[paddle] payment history write failed for txn', txn.id, (err as Error).message);
+  });
 }
 
 async function handlePaymentFailed(txn: TransactionNotification): Promise<void> {

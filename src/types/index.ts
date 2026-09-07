@@ -1,4 +1,5 @@
 import type { AskBudgetState } from '../services/askBudget.service';
+import type { PaymentHistory } from '../services/payments.service';
 
 export interface User {
   id: string;
@@ -291,8 +292,37 @@ export interface UserAccountStates {
   old_ally_paid_source: 'boughtPremiumMapAt IS NOT NULL AND cancelledPremiumMapAt IS NULL';
 }
 
+/**
+ * Usage the way the founder defined it (Ticket 10 Task 28 (b), D127): the
+ * first real goal and the first action on it, the incoming tasks the person
+ * helped on (counted separately), and the payment history.
+ */
+export interface UserUsage {
+  /** The first goal on which a question actually went out, and when. */
+  first_real_task: {
+    task_id: number;
+    title: string;
+    created_at: string;
+    first_action_at: string;
+  } | null;
+  own_tasks: number;
+  /** Goals with at least one ask sent or the ask-around consent given. */
+  tasks_with_action: number;
+  helped_on: {
+    asks_received: number;
+    asks_answered: number;
+    /** Distinct other people's goals this person answered on. */
+    tasks_helped: number;
+  };
+  /** Answers to the feedback questions of the question bank. */
+  feedback_answers: number;
+  payments: PaymentHistory;
+}
+
 export interface UserProfile {
   account: UserAccount;
+  /** Absent only when the block itself failed, which the diagnostics then name. */
+  usage?: UserUsage;
   /** Absent only when the block itself failed, which the diagnostics then name. */
   states?: UserAccountStates;
   network: UserNetwork;

@@ -260,22 +260,12 @@ export type GoalStage =
 const ADMIN_GOALS_LIMIT = 50;
 
 /**
- * Ticket 8 Task 2(c), Q-29: the admin read path for goals — per goal: the
- * brief, the next wake, how many wakes actually entered the thread, how many
- * asks went out, and the question the goal is blocked on right now.
+ * The founder's stages (Task 28 (a)) as one SQL expression over `tasks t`, in
+ * the order that decides when several are true: closed first, then the plan
+ * not yet approved, then the wallet, then who the goal is waiting on, then
+ * running. Shared by the list and the detail so the two can never disagree.
  */
-export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
-  const result = await query<AdminGoalRow>(
-    `SELECT t.id, t.title, t.status, t.brief, t.pending_question, t.pending_question_at,
-            t.next_wake_at, t.thread_id, t.created_at, t.last_activity_at,
-            (SELECT COUNT(*)::int FROM conversations c
-              WHERE c.thread_id = t.thread_id AND c.role = 'user'
-                AND c.content LIKE '[მოვლენა]%') AS wakes_delivered,
-            (SELECT COUNT(*)::int FROM task_asks ta WHERE ta.task_id = t.id) AS asks_sent,
-            -- The founder's stages (Task 28 (a)), in the order that decides
-            -- when several are true: closed first, then the plan not yet
-            -- approved, then who the goal is waiting on, then running.
-            CASE
+export const GOAL_STAGE_SQL = `CASE
               WHEN t.status = 'closed' AND COALESCE(t.closed_reason, '') ILIKE '%stop%' THEN 'stopped'
               WHEN t.status = 'closed' THEN 'solved'
               WHEN t.status = 'paused' THEN 'paused'
@@ -291,7 +281,22 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
                 THEN 'waiting_on_reply'
               WHEN t.plan IS NOT NULL THEN 'running'
               ELSE 'understanding'
-            END AS stage
+            END`;
+
+/**
+ * Ticket 8 Task 2(c), Q-29: the admin read path for goals — per goal: the
+ * brief, the next wake, how many wakes actually entered the thread, how many
+ * asks went out, and the question the goal is blocked on right now.
+ */
+export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
+  const result = await query<AdminGoalRow>(
+    `SELECT t.id, t.title, t.status, t.brief, t.pending_question, t.pending_question_at,
+            t.next_wake_at, t.thread_id, t.created_at, t.last_activity_at,
+            (SELECT COUNT(*)::int FROM conversations c
+              WHERE c.thread_id = t.thread_id AND c.role = 'user'
+                AND c.content LIKE '[მოვლენა]%') AS wakes_delivered,
+            (SELECT COUNT(*)::int FROM task_asks ta WHERE ta.task_id = t.id) AS asks_sent,
+            ${GOAL_STAGE_SQL} AS stage
      FROM tasks t
      WHERE t.user_id = $1
      ORDER BY (t.status = 'open') DESC, t.last_activity_at DESC

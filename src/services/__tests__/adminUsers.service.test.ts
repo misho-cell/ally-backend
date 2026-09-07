@@ -33,6 +33,40 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
         last_active: new Date('2026-06-30T00:00:00Z'),
       },
     ]);
+  // The usage block (Ticket 10 Task 28 (b)) and the payment history behind it.
+  if (sql.includes('AS own_tasks'))
+    return rows([
+      {
+        own_tasks: '3',
+        tasks_with_action: '2',
+        asks_received: '5',
+        asks_answered: '4',
+        tasks_helped: '3',
+        feedback_answers: '1',
+      },
+    ]);
+  if (sql.includes('AS first_action_at'))
+    return rows([
+      {
+        task_id: 1519,
+        title: 'BMW-ს ხელოსანი',
+        created_at: new Date('2026-09-01T10:00:00Z'),
+        first_action_at: new Date('2026-09-03T02:31:00Z'),
+      },
+    ]);
+  if (sql.includes('FROM payment_events') && sql.includes('COUNT(*) AS n'))
+    return rows([{ n: '1' }]);
+  if (sql.includes('FROM payment_events'))
+    return rows([
+      {
+        provider: 'stripe',
+        kind: 'subscription',
+        amount_usd: '19.99',
+        currency: 'usd',
+        paid_at: new Date('2026-09-07T12:00:00Z'),
+      },
+    ]);
+  if (sql.includes("'wallet_topup'")) return rows([]);
   if (sql.includes('JOIN "User" inviter')) return rows([{ id: 5, name: 'მარი' }]);
   if (sql.includes('"inviterReferralUserId" = $1')) return rows([{ count: '2' }]);
   if (sql.includes('FROM "User" WHERE id = $1'))
@@ -259,6 +293,32 @@ describe('getAdminUserDetail', () => {
     // Timeline drops null milestones, normalises Date -> ISO, sorts ascending.
     expect(profile?.timeline.map((e) => e.type)).toEqual(['signup', 'first_search', 'last_active']);
     expect(profile?.timeline[0].at).toBe('2026-01-01T00:00:00.000Z');
+    // Ticket 10 Task 28 (b): usage as the founder defined it.
+    expect(profile?.usage).toEqual({
+      first_real_task: {
+        task_id: 1519,
+        title: 'BMW-ს ხელოსანი',
+        created_at: '2026-09-01T10:00:00.000Z',
+        first_action_at: '2026-09-03T02:31:00.000Z',
+      },
+      own_tasks: 3,
+      tasks_with_action: 2,
+      helped_on: { asks_received: 5, asks_answered: 4, tasks_helped: 3 },
+      feedback_answers: 1,
+      payments: {
+        first_payments: [
+          {
+            provider: 'stripe',
+            kind: 'subscription',
+            amount_usd: 19.99,
+            currency: 'usd',
+            paid_at: '2026-09-07T12:00:00.000Z',
+          },
+        ],
+        recorded_total: 1,
+        inferred: [],
+      },
+    });
   });
 
   it('degrades neo4j reach to null when the graph query fails', async () => {

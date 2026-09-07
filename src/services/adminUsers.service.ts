@@ -22,8 +22,10 @@ import {
   UserWallet,
   UserSearches,
   UserTimelineEvent,
+  UserUsage,
 } from '../types';
 import { describeAskBudget } from './askBudget.service';
+import { paymentHistory } from './payments.service';
 import { isStaffUser } from './staff';
 
 const TREND_WINDOW_DAYS = 30;
@@ -692,6 +694,74 @@ async function getStates(userId: number): Promise<UserAccountStates> {
   };
 }
 
+/**
+ * Usage as the founder defined it (Ticket 10 Task 28 (b)): the first goal on
+ * which a question actually went out — a goal nobody was ever asked about is a
+ * note, not usage — the goals this person helped OTHERS on, counted apart, the
+ * feedback answers, and the payment history.
+ */
+async function getUsage(userId: number): Promise<UserUsage> {
+  const id = String(userId);
+  const [counts, first, payments] = await Promise.all([
+    query<{
+      own_tasks: string;
+      tasks_with_action: string;
+      asks_received: string;
+      asks_answered: string;
+      tasks_helped: string;
+      feedback_answers: string;
+    }>(
+      `SELECT
+         (SELECT COUNT(*) FROM tasks WHERE user_id = $1) AS own_tasks,
+         (SELECT COUNT(*) FROM tasks t WHERE t.user_id = $1
+            AND (t.permission_granted OR EXISTS (SELECT 1 FROM task_asks a WHERE a.task_id = t.id)))
+           AS tasks_with_action,
+         (SELECT COUNT(*) FROM task_asks WHERE to_user_id = $2) AS asks_received,
+         (SELECT COUNT(*) FROM task_asks WHERE to_user_id = $2 AND status = 'answered')
+           AS asks_answered,
+         (SELECT COUNT(DISTINCT task_id) FROM task_asks WHERE to_user_id = $2 AND status = 'answered')
+           AS tasks_helped,
+         (SELECT COUNT(*) FROM answer_events ae JOIN question_bank qb ON qb.question_id = ae.question_id
+            WHERE ae.user_id = $2 AND qb.category = 'feedback' AND ae.answered_at IS NOT NULL
+              AND NOT ae.skipped) AS feedback_answers`,
+      [id, userId],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+    query<{ task_id: number; title: string; created_at: Date; first_action_at: Date }>(
+      `SELECT t.id AS task_id, t.title, t.created_at, MIN(a.created_at) AS first_action_at
+       FROM tasks t JOIN task_asks a ON a.task_id = t.id
+       WHERE t.user_id = $1
+       GROUP BY t.id, t.title, t.created_at
+       ORDER BY MIN(a.created_at)
+       LIMIT 1`,
+      [id],
+      PROFILE_QUERY_TIMEOUT_MS,
+    ),
+    paymentHistory(id),
+  ]);
+  const c = counts.rows[0];
+  const f = first.rows[0];
+  return {
+    first_real_task: f
+      ? {
+          task_id: f.task_id,
+          title: f.title,
+          created_at: toIso(f.created_at) ?? '',
+          first_action_at: toIso(f.first_action_at) ?? '',
+        }
+      : null,
+    own_tasks: toNumber(c?.own_tasks),
+    tasks_with_action: toNumber(c?.tasks_with_action),
+    helped_on: {
+      asks_received: toNumber(c?.asks_received),
+      asks_answered: toNumber(c?.asks_answered),
+      tasks_helped: toNumber(c?.tasks_helped),
+    },
+    feedback_answers: toNumber(c?.feedback_answers),
+    payments,
+  };
+}
+
 export async function getAdminUserDetail(userId: number): Promise<UserProfile | null> {
   // The account is the gate: if the user does not exist we 404, and an account
   // query failure is a genuine 500 (it is cheap and essential).
@@ -729,10 +799,12 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   ]);
 
   const states = await runBlock('states', () => getStates(userId), null, diagnostics);
+  const usage = await runBlock('usage', () => getUsage(userId), null, diagnostics);
 
   const profile: UserProfile = {
     account,
     ...(states !== null && { states }),
+    ...(usage !== null && { usage }),
     network,
     activity,
     searches,

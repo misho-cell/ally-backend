@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
+import { recordPayment } from './payments.service';
 
 // Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
 // trial with the card collected up front, no charge during the trial, then
@@ -191,11 +192,7 @@ function periodEnd(subscription: Stripe.Subscription): Date | null {
 async function applySubscription(subscription: Stripe.Subscription): Promise<void> {
   if (!isOurPrice(subscription)) return;
 
-  const userId =
-    subscription.metadata?.user_id ??
-    (await findUserIdByCustomer(
-      typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
-    ));
+  const userId = await userIdForSubscription(subscription);
   if (!userId) {
     // eslint-disable-next-line no-console
     console.error(`[stripe] subscription ${subscription.id} matches no account — ignored`);
@@ -233,6 +230,47 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
     const user = await findUserById(userId);
     await markTrialConsumed(user?.phone ?? null, subscription.id);
   }
+}
+
+/** The account a subscription belongs to: its metadata first, then the customer id. */
+async function userIdForSubscription(subscription: Stripe.Subscription): Promise<string | null> {
+  return (
+    subscription.metadata?.user_id ??
+    (await findUserIdByCustomer(
+      typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
+    ))
+  );
+}
+
+/**
+ * Write a paid invoice into the payment history (Ticket 10 Task 28 (b)). Only
+ * OUR price, only real money — the $0 invoice that opens a trial is not a
+ * payment. Best-effort: the subscription status above is already written, and
+ * a history row must never fail the webhook.
+ */
+async function recordInvoicePayment(
+  subscription: Stripe.Subscription,
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  if (!isOurPrice(subscription)) return;
+  const userId = await userIdForSubscription(subscription);
+  if (!userId) return;
+  const paidAtSeconds = invoice.status_transitions?.paid_at ?? invoice.created;
+  await recordPayment({
+    userId,
+    provider: 'stripe',
+    externalId: invoice.id,
+    kind: 'subscription',
+    amountMinor: invoice.amount_paid,
+    currency: invoice.currency,
+    paidAt: new Date(paidAtSeconds * 1000),
+  }).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[stripe] payment history write failed for ${invoice.id}:`,
+      (err as Error).message,
+    );
+  });
 }
 
 async function findUserIdByCustomer(customerId: string): Promise<string | null> {
@@ -280,6 +318,7 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<WebhookOut
       if (typeof subscriptionId !== 'string') return { handled: false, type: event.type };
       const subscription = await stripeClient().subscriptions.retrieve(subscriptionId);
       await applySubscription(subscription);
+      if (event.type === 'invoice.paid') await recordInvoicePayment(subscription, invoice);
       return { handled: true, type: event.type };
     }
     default:
