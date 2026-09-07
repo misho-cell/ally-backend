@@ -219,6 +219,32 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     }
   });
 
+  // Ticket 10 Task 20 (a): get_profile_question(weekly_review, en) returned the
+  // prompt in English and the payoff line in Georgian — one call, two languages.
+  it('never hands an English reader a Georgian payoff line — skip, not fall back', async () => {
+    const georgianBase = {
+      ...MULTI_COUNT_ROW,
+      immediate_use: 'კვირის დარჩენილ დღეებში ნაკლებს შემოგთავაზებ.',
+    };
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('ORDER BY ae.asked_at')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('FROM question_bank qb'))
+        return Promise.resolve(rows([georgianBase]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const en = await getNextQuestion('7', 'weekly_review', 'en');
+    expect(en.found).toBe(true);
+    if (en.found) expect(en.question.immediate_use).toBeNull();
+
+    // The same row read in Georgian still carries its line.
+    const ka = await getNextQuestion('7', 'weekly_review', 'ka');
+    expect(ka.found).toBe(true);
+    if (ka.found) {
+      expect(ka.question.immediate_use).toBe('კვირის დარჩენილ დღეებში ნაკლებს შემოგთავაზებ.');
+    }
+  });
+
   it("a cleared immediate_use_ka ('', not null — the PUT editor's clear semantics) still falls back, live-caught on col_avoid_intro_704", async () => {
     const clearedRow = { ...FLAT_SINGLE_ROW, immediate_use_ka: '' };
     mockQuery.mockImplementation((sql: string) => {

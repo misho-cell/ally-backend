@@ -65,22 +65,33 @@ function firstNonBlank(...values: (string | null)[]): string | null {
   return null;
 }
 
+const GEORGIAN_SCRIPT = /[ა-ჿ]/u;
+
+/** The base column, unless it is written in Georgian and the reader is not. */
+function baseImmediateUseFor(row: BankRow, lang: string): string | null {
+  if (row.immediate_use === null) return null;
+  if (lang !== 'ka' && GEORGIAN_SCRIPT.test(row.immediate_use)) return null;
+  return row.immediate_use;
+}
+
 // The real bank (24 Aug load) writes its payoff line into the base
 // `immediate_use` column only — immediate_use_ka/es/en are the FUTURE
 // per-language columns and are NULL on every row today (English-only by the
 // founder's decision). `immediate_use` is therefore the universal fallback,
 // last in every chain — without it every language would render nothing.
+//
+// But the fallback must obey the founder's other ruling: skip, never fall
+// back to Georgian. Ticket 10 Task 20 (a): get_profile_question(weekly_review,
+// en) returned the question in English and the payoff line in Georgian — one
+// call, two languages — because a row's base column had been written in
+// Georgian and an English reader was handed it anyway. A non-Georgian reader
+// now gets the base column only when it is not Georgian, and never the _ka
+// column; a missing payoff line is honest where a wrong-language one is not.
 function immediateUseFor(row: BankRow, lang: string): string | null {
-  if (lang === 'es')
-    return firstNonBlank(
-      row.immediate_use_es,
-      row.immediate_use_en,
-      row.immediate_use_ka,
-      row.immediate_use,
-    );
-  if (lang === 'en')
-    return firstNonBlank(row.immediate_use_en, row.immediate_use_ka, row.immediate_use);
-  return firstNonBlank(row.immediate_use_ka, row.immediate_use_en, row.immediate_use);
+  const base = baseImmediateUseFor(row, lang);
+  if (lang === 'es') return firstNonBlank(row.immediate_use_es, row.immediate_use_en, base);
+  if (lang === 'en') return firstNonBlank(row.immediate_use_en, base);
+  return firstNonBlank(row.immediate_use_ka, row.immediate_use_en, base);
 }
 
 /**

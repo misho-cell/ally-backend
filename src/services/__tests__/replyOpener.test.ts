@@ -55,10 +55,47 @@ describe('stripProcessOpener', () => {
     expect(stripProcessOpener(content, 7)).toBe(content);
   });
 
-  it('removes at most ONE sentence even when two process sentences open the reply', () => {
+  it('removes two process sentences when both match, and stops there', () => {
     const twoOpeners = `ახლა სრული სურათი მაქვს. ვაჯამებ შედეგებს. ${BODY}`;
     const result = stripProcessOpener(twoOpeners, 7);
-    expect(result.startsWith('ვაჯამებ შედეგებს.')).toBe(true);
+    expect(result.startsWith('პირველი აბზაცი')).toBe(true);
+  });
+
+  it('never takes a third sentence, and never one that is not process talk on its own', () => {
+    const three = `ახლა სრული სურათი მაქვს. ვაჯამებ შედეგებს. კარგი კითხვაა. ${BODY}`;
+    expect(stripProcessOpener(three, 7).startsWith('კარგი კითხვაა.')).toBe(true);
+    const contentSecond = `ახლა სრული სურათი მაქვს. ბესო ორთოიძე არის Arci-ის დამფუძნებელი. ${BODY}`;
+    expect(stripProcessOpener(contentSecond, 7).startsWith('ბესო ორთოიძე')).toBe(true);
+  });
+
+  // Ticket 10 Task 19 — thread 12938, 5 Sep: the strip was Georgian-only and
+  // an English reply opened on two sentences of process talk.
+  describe('English process openers (patterns mode)', () => {
+    const EN_BODY =
+      'First paragraph with the answer: the current head is named from the city page.\n\n' +
+      'Second paragraph with details. '.repeat(30);
+
+    it('strips the thread 12938 opener, both sentences', () => {
+      const reply = `Now I have the full picture. Let me put this together for you. ${EN_BODY}`;
+      expect(stripProcessOpener(reply, 12938).startsWith('First paragraph')).toBe(true);
+    });
+
+    it.each([
+      'I have gathered enough information.',
+      "I've looked through the web and your network.",
+      'Great question!',
+      "Here's what I found.",
+      'The picture is now complete.',
+    ])('strips: %s', (opener) => {
+      expect(stripProcessOpener(`${opener} ${EN_BODY}`, 7).startsWith('First paragraph')).toBe(
+        true,
+      );
+    });
+
+    it('keeps an English first sentence that carries the answer', () => {
+      const content = `Beso Ortoidze is the founder of Arci. ${EN_BODY}`;
+      expect(stripProcessOpener(content, 7)).toBe(content);
+    });
   });
 
   it('never strips when the sentence is the whole reply', () => {

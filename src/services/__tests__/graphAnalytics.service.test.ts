@@ -69,6 +69,23 @@ describe('getTopConnectors', () => {
     expect(session.close).toHaveBeenCalled();
   });
 
+  // Ticket 10 Task 20 (b): get_group_connectors("axel") returned a row with
+  // name null and 18 links — a number, not a person.
+  it('drops a node none of the user’s aliases can name — a connector is a person', async () => {
+    mockGetKey.mockResolvedValue('p1');
+    mockGetSession.mockReturnValue(
+      fakeSession([
+        { phoneKey: 'pNameless', reach: neoInt(18) },
+        { phoneKey: 'pA', reach: neoInt(5) },
+      ]) as unknown as ReturnType<typeof getSession>,
+    );
+    mockQuery.mockResolvedValue(rows([{ phone: 'pA', name: 'Alice' }]) as never);
+
+    const result = await getTopConnectors('7');
+
+    expect(result.results).toEqual([{ name: 'Alice', phone: 'pA', score: 5 }]);
+  });
+
   it('drops blocked people from the ranking', async () => {
     const blockedPhone = '+995599000001';
     mockGetKey.mockResolvedValue('p1');

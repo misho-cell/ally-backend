@@ -34,7 +34,25 @@ const OPENER_PATTERNS: readonly RegExp[] = [
   /ვაწყობ|ვაჯამებ|გავაცნო\s+შედეგებ|გაგაცნობ\s+შედეგებ|ჩამოვაყალიბებ|ვწერ\s+პასუხს|პასუხს\s+ვწერ/u,
   // Complimenting the question.
   /კარგი\s+კითხვაა|კარგი\s+შეკითხვაა|სწორი\s+შეკითხვაა|შესანიშნავი\s+კითხვაა/u,
+  // The same five classes in English (Ticket 10 Task 19 — thread 12938 opened
+  // "Now I have the full picture. Let me put this together for you." and the
+  // strip, Georgian-only until then, let both sentences through).
+  /\b(?:full|complete|clear|whole)\s+picture\b|\bpicture\s+is\s+(?:now\s+)?(?:complete|clear)\b/i,
+  /\b(?:gathered|collected|have)\s+(?:enough|all\s+the|the)\s+(?:information|info|details|context)\b/i,
+  /\b(?:i|i've|i have)\s+(?:looked|checked|searched|went|gone)\s+(?:at|through|across)\b[\s\S]{0,40}?\b(?:web|network|sources?|contacts)\b/i,
+  /\b(?:let\s+me|i'll|i\s+will)\s+(?:put|pull|bring)\s+(?:this|it|that|everything)\s+together\b|\bhere(?:'s| is)\s+(?:a\s+)?(?:summary|what\s+i\s+(?:found|put\s+together))\b|\b(?:summarizing|summarising|to\s+summarize|to\s+summarise)\b/i,
+  /\b(?:great|good|excellent|interesting|fair)\s+question\b/i,
 ];
+
+/**
+ * How many process sentences may be removed from the top of one reply.
+ *
+ * One was the rule while the escapes were Georgian one-liners. The English
+ * escape of 5 September was two sentences of pure process — strip one and the
+ * reply opens on "Let me put this together for you." Each sentence removed
+ * must still match a class on its own; nothing is taken on momentum.
+ */
+const MAX_OPENER_SENTENCES = 2;
 
 // Content markers that PROTECT a first sentence in invert mode: a number, a
 // quoted string, or a colon (a finding introduces itself with one).
@@ -76,32 +94,45 @@ export function stripProcessOpener(reply: string, threadId: number): string {
   // Short or single-paragraph replies are never touched.
   if (trimmed.length < OPENER_MIN_REPLY_CHARS || !/\n/.test(trimmed)) return reply;
 
-  const match = FIRST_SENTENCE_RE.exec(trimmed);
-  if (!match) return reply;
+  let current = trimmed;
+  for (let removed = 0; removed < MAX_OPENER_SENTENCES; removed++) {
+    const verdict = firstSentenceVerdict(current, mode);
+    if (verdict.kind === 'keep') {
+      // Invert audits both directions: what it keeps is as informative as
+      // what it drops. Only the untouched first sentence is worth logging.
+      if (mode === 'invert' && removed === 0 && verdict.sentence !== null) {
+        // eslint-disable-next-line no-console
+        console.log(`[opener-keep] thread ${threadId}: "${verdict.sentence}"`);
+      }
+      break;
+    }
+    // eslint-disable-next-line no-console
+    console.log(`[opener-strip] thread ${threadId}: "${verdict.sentence}"`);
+    current = verdict.rest;
+  }
+  return current === trimmed ? reply : current;
+}
+
+type SentenceVerdict =
+  | { kind: 'keep'; sentence: string | null }
+  | { kind: 'strip'; sentence: string; rest: string };
+
+/** Is the text's first sentence contentless process talk that can go? */
+function firstSentenceVerdict(text: string, mode: OpenerMode): SentenceVerdict {
+  const match = FIRST_SENTENCE_RE.exec(text);
+  if (!match) return { kind: 'keep', sentence: null };
   const sentence = match[0];
-  if (sentence.length > OPENER_MAX_SENTENCE_CHARS) return reply;
+  if (sentence.length > OPENER_MAX_SENTENCE_CHARS) return { kind: 'keep', sentence };
   // A digit means a finding, whatever the phrasing — always protected.
-  if (/\d/.test(sentence)) return reply;
+  if (/\d/.test(sentence)) return { kind: 'keep', sentence };
 
   const isProcessTalk = OPENER_PATTERNS.some((p) => p.test(sentence));
   const shouldStrip =
     mode === 'invert' ? isProcessTalk || !CONTENT_MARKERS.test(sentence) : isProcessTalk;
+  if (!shouldStrip) return { kind: 'keep', sentence };
 
-  if (!shouldStrip) {
-    if (mode === 'invert') {
-      // Invert audits both directions: what it keeps is as informative as
-      // what it drops.
-      // eslint-disable-next-line no-console
-      console.log(`[opener-keep] thread ${threadId}: "${sentence}"`);
-    }
-    return reply;
-  }
-
-  const rest = trimmed.slice(sentence.length).trimStart();
+  const rest = text.slice(sentence.length).trimStart();
   // Never remove a sentence that IS the reply.
-  if (rest.length === 0) return reply;
-
-  // eslint-disable-next-line no-console
-  console.log(`[opener-strip] thread ${threadId}: "${sentence}"`);
-  return rest;
+  if (rest.length === 0) return { kind: 'keep', sentence };
+  return { kind: 'strip', sentence, rest };
 }

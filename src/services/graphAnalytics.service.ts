@@ -76,10 +76,14 @@ async function resolveConnectors(
   for (const { phoneKey, score } of ranked) {
     const keyPhones = phoneKey.split('-');
     if (keyPhones.some((p) => excluded.has(normalizePhone(p)))) continue;
-    // Prefer a phone that resolves to a name; else the first phone (for the ref).
+    // A connector is a PERSON who links the user to the group. A node none of
+    // the user's own aliases can name is a number, not a person, and the
+    // assistant can do nothing with it but quote a count against a blank
+    // (Ticket 10 Task 20 b: get_group_connectors("axel") returned a row with
+    // name null and 18 links). Such a node is dropped, not shown nameless.
     const named = keyPhones.find((p) => nameByPhone.get(p));
-    const phone = named ?? keyPhones[0];
-    out.push({ name: named ? (nameByPhone.get(named) ?? null) : null, phone, score });
+    if (named === undefined) continue;
+    out.push({ name: nameByPhone.get(named) ?? null, phone: named, score });
   }
   return out;
 }

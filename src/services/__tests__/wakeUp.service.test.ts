@@ -47,8 +47,49 @@ describe('listWakeUpCandidates', () => {
         phonebook: 2386,
         contacts_on_netai: 16,
         registered_at: '2026-03-04T10:00:00.000Z',
+        reasons: [
+          'never opened Netai',
+          'public record: 1 fact',
+          'phonebook 2386 ≥ 200',
+          '16 of their contacts already on Netai',
+          'not staff, not a curator, not paying',
+        ],
       },
     ]);
+  });
+
+  // Ticket 10 Task 13: 24 of 68 rows on 5 Sep had a phonebook under the
+  // founder's 200-contact floor (D69), because no floor was applied.
+  it('applies the 200-contact floor before the limit, not after', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await listWakeUpCandidates();
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('WHERE s.phonebook >= $4');
+    expect(params[3]).toBe(200);
+    // The floor sits in the outer query, before LIMIT $3.
+    expect(sql.indexOf('WHERE s.phonebook >= $4')).toBeLessThan(sql.indexOf('LIMIT $3'));
+  });
+
+  it('never lists our own people or the curators', async () => {
+    const oldPhones = process.env.REVIEW_PHONE;
+    const oldCurators = process.env.TRUSTED_FACT_CURATOR_USER_IDS;
+    process.env.REVIEW_PHONE = '+995555000003,+995555000004';
+    process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501,160584';
+    mockQuery.mockResolvedValue(rows([]) as never);
+    try {
+      await listWakeUpCandidates();
+    } finally {
+      process.env.REVIEW_PHONE = oldPhones;
+      process.env.TRUSTED_FACT_CURATOR_USER_IDS = oldCurators;
+    }
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('usr.id::text <> ALL($5::text[])');
+    expect(sql).toContain("regexp_replace(up.phone, '\\D', '', 'g') <> ALL($6::text[])");
+    expect(params[4]).toEqual(['501', '160584']);
+    expect(params[5]).toEqual(['995555000003', '995555000004']);
   });
 
   it('only ever names people who have NOT opened Netai', async () => {
@@ -81,7 +122,7 @@ describe('listWakeUpCandidates', () => {
     await listWakeUpCandidates();
 
     const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('ORDER BY contacts_on_netai DESC, phonebook DESC, c.id');
+    expect(sql).toContain('ORDER BY s.contacts_on_netai DESC, s.phonebook DESC, s.id');
   });
 
   it('caps the limit — a bulk read of this is not a bulk send', async () => {

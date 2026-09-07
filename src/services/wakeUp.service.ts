@@ -2,6 +2,8 @@ import { query } from '../db/postgres/client';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
+import { trustedFactCuratorIds } from './contactFacts.service';
+import { ownPeopleDigits } from './targetScoring.service';
 
 /**
  * The accounts that already registered and never came back.
@@ -30,6 +32,14 @@ const WAKE_QUERY_TIMEOUT_MS = 15_000;
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
+/**
+ * The founder's floor (31 Aug, D69; logic Rule 2): a phonebook under this is
+ * not a network worth lighting up. The 5 September read had 24 of 68 rows
+ * under it — 43, 36, 30, 28 … 8 contacts — because the list applied no floor
+ * at all (Ticket 10 Task 13).
+ */
+const MIN_PHONEBOOK = Number(process.env.WAKE_MIN_PHONEBOOK ?? 200);
+
 export interface WakeUpCandidate {
   user_id: number;
   phone: string;
@@ -44,6 +54,34 @@ export interface WakeUpCandidate {
    */
   contacts_on_netai: number;
   registered_at: string;
+  /**
+   * Why this row is on the list, in words — every test the row passed. A list
+   * the founder reads must say why each person is on it (Task 13's "each row
+   * shows why it is in").
+   */
+  reasons: readonly string[];
+}
+
+/** Who is never woken: our own people (the review list) and the curators. */
+function staffFilter(): { userIds: string[]; phoneDigits: string[] } {
+  return {
+    userIds: [...trustedFactCuratorIds()],
+    phoneDigits: Array.from(ownPeopleDigits()),
+  };
+}
+
+function reasonsFor(row: {
+  facts: string[];
+  phonebook: number;
+  contacts_on_netai: number;
+}): string[] {
+  return [
+    `never opened Netai`,
+    `public record: ${row.facts.length} fact${row.facts.length === 1 ? '' : 's'}`,
+    `phonebook ${row.phonebook} ≥ ${MIN_PHONEBOOK}`,
+    `${row.contacts_on_netai} of their contacts already on Netai`,
+    `not staff, not a curator, not paying`,
+  ];
 }
 
 /**
@@ -61,6 +99,7 @@ export interface WakeUpCandidate {
  */
 export async function listWakeUpCandidates(limit = DEFAULT_LIMIT): Promise<WakeUpCandidate[]> {
   const capped = Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT);
+  const staff = staffFilter();
   const result = await query<{
     id: number;
     phone: string;
@@ -69,6 +108,12 @@ export async function listWakeUpCandidates(limit = DEFAULT_LIMIT): Promise<WakeU
     contacts_on_netai: string;
     registered_at: Date | string;
   }>(
+    // The same exclusion pass the target list runs (Rule 2), applied here:
+    // anyone already on Netai or paying is out through `netai`; our own people
+    // and the curators are out by id and by phone; and a phonebook under the
+    // founder's floor is out — sized in `sized` so the floor can read the
+    // count, and applied before the LIMIT so the list is not shortened by the
+    // rows it then drops.
     `WITH netai AS (
        SELECT u.id FROM "User" u
        WHERE u."deletedAt" IS NULL
@@ -91,31 +136,43 @@ export async function listWakeUpCandidates(limit = DEFAULT_LIMIT): Promise<WakeU
        JOIN known k ON k.d = regexp_replace(up.phone, '\\D', '', 'g')
        JOIN "User" usr ON usr.id = up."userId" AND usr."deletedAt" IS NULL
        WHERE NOT EXISTS (SELECT 1 FROM netai n WHERE n.id = usr.id)
+         AND usr.id::text <> ALL($5::text[])
+         AND regexp_replace(up.phone, '\\D', '', 'g') <> ALL($6::text[])
        ORDER BY usr.id
+     ),
+     sized AS (
+       SELECT c.id, c.phone, c.facts, c.registered_at,
+              (SELECT COUNT(*) FROM "UserAlias" a WHERE a."contactId" = c.id) AS phonebook,
+              (SELECT COUNT(DISTINCT n.id)
+               FROM "UserAlias" a
+               JOIN "UserPhone" p2
+                 ON regexp_replace(p2.phone, '\\D', '', 'g') =
+                    regexp_replace(a.phone, '\\D', '', 'g')
+               JOIN netai n ON n.id = p2."userId"
+               WHERE a."contactId" = c.id) AS contacts_on_netai
+       FROM cand c
      )
-     SELECT c.id, c.phone, c.facts, c.registered_at,
-            (SELECT COUNT(*) FROM "UserAlias" a WHERE a."contactId" = c.id) AS phonebook,
-            (SELECT COUNT(DISTINCT n.id)
-             FROM "UserAlias" a
-             JOIN "UserPhone" p2
-               ON regexp_replace(p2.phone, '\\D', '', 'g') =
-                  regexp_replace(a.phone, '\\D', '', 'g')
-             JOIN netai n ON n.id = p2."userId"
-             WHERE a."contactId" = c.id) AS contacts_on_netai
-     FROM cand c
-     ORDER BY contacts_on_netai DESC, phonebook DESC, c.id
+     SELECT * FROM sized s
+     WHERE s.phonebook >= $4
+     ORDER BY s.contacts_on_netai DESC, s.phonebook DESC, s.id
      LIMIT $3`,
-    [ACTIVE_STATUSES, KNOWN_FACT_TYPES, capped],
+    [ACTIVE_STATUSES, KNOWN_FACT_TYPES, capped, MIN_PHONEBOOK, staff.userIds, staff.phoneDigits],
     WAKE_QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((row) => ({
-    user_id: Number(row.id),
-    phone: row.phone,
-    facts: row.facts,
-    phonebook: Number(row.phonebook),
-    contacts_on_netai: Number(row.contacts_on_netai),
-    registered_at: new Date(row.registered_at).toISOString(),
-  }));
+  return result.rows.map((row) => {
+    const shaped = {
+      facts: row.facts,
+      phonebook: Number(row.phonebook),
+      contacts_on_netai: Number(row.contacts_on_netai),
+    };
+    return {
+      user_id: Number(row.id),
+      phone: row.phone,
+      ...shaped,
+      registered_at: new Date(row.registered_at).toISOString(),
+      reasons: reasonsFor(shaped),
+    };
+  });
 }
 
 /**
