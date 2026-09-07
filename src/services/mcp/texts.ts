@@ -395,6 +395,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
       'contacts). Notes accumulate. Confirm in one short line.',
   },
+  search_roster: {
+    title: 'Find a fellow member of a network',
+    description:
+      'The one search that reaches past the user’s own contacts (D121): the members of a named ' +
+      'network — "Axel" — as the public roster states them, for a user who is on that roster ' +
+      'themselves. A non-member is told so and gets no list. Each row carries a contact_ref, ' +
+      'is_member and account_state, and the route that fits: "ask_contact" for a Netai user ' +
+      '(the recipient is told a fellow member is asking), "invite_contact" for an account that ' +
+      'never opened Netai (invite first, D122). Optional name to narrow it.',
+  },
   list_answer_rules: {
     title: "The user's standing answer rules",
     description:

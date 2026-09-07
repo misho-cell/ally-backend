@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { getTaskById } from './taskStore.service';
 import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
+import { sharedRoster } from './roster.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
@@ -407,12 +408,21 @@ export async function createAsk(
   // opens a thread. Two threads for one exchange would put the answer and the
   // question that followed it in different rooms (ticket 9 task 12).
   const askThreadId = liveThreadId ?? (await openAskThread(toUserId, senderName, safeQuestion));
+  // Two members of one network who never saved each other's number (Ticket
+  // 10 Task 23, D121): the recipient's opening line says so (D57) — that is
+  // what makes a stranger's question a colleague's rather than spam.
+  const roster = isFollowUp
+    ? null
+    : await sharedRoster(fromUserId, String(toUserId)).catch(() => null);
+  const senderLine = roster
+    ? `${geoName(senderName, 'gen')} (${roster}-ის წევრი, როგორც შენ) ასისტენტი`
+    : `${geoName(senderName, 'gen')} ასისტენტი`;
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3).
   const opening = isFollowUp
     ? `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:\n\n"${safeQuestion}"\n\n` +
       'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.'
-    : `${geoName(senderName, 'gen')} ასისტენტი გეკითხება:\n\n"${safeQuestion}"\n\n` +
+    : `${senderLine} გეკითხება:\n\n"${safeQuestion}"\n\n` +
       'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
   await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
   // The badge on a continued conversation goes back to waiting-on-them: their

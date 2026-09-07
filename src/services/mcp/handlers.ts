@@ -37,6 +37,7 @@ import {
 import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
+import { searchRoster } from '../tools/searchRoster';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
@@ -721,6 +722,23 @@ export async function mcpGetCuriosityQueue(
       priority: item.priority,
     })),
   };
+}
+
+// Ticket 10 Task 23 (D121): a fellow member of a named network, reachable past
+// the phonebook. Phones become contact_refs before anything is scrubbed.
+export async function mcpSearchRoster(
+  userId: string,
+  args: { group: string; name?: string },
+): Promise<McpToolPayload> {
+  const outcome = await searchRoster(userId, args.group ?? '', args.name ?? '');
+  if (!outcome.found) return scrubDeep(outcome) as McpToolPayload;
+  return scrubDeep({
+    ...outcome,
+    results: outcome.results.map((r) => ({
+      ...r,
+      contact_ref: encodeContactRef(userId, r.phone),
+    })),
+  }) as McpToolPayload;
 }
 
 export async function mcpGetGroupConnectors(

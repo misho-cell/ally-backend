@@ -37,6 +37,7 @@ import {
   mcpApproveTaskPlan,
   mcpListAnswerRules,
   mcpDeleteAnswerRule,
+  mcpSearchRoster,
   mcpAskContact,
   mcpSetTaskBrief,
   mcpSetTaskWake,
@@ -865,6 +866,19 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+  );
+  server.registerTool(
+    'search_roster',
+    {
+      title: TOOL_TEXTS.search_roster.title,
+      description: TOOL_TEXTS.search_roster.description,
+      inputSchema: {
+        group: z.string().describe('The network, e.g. "Axel".'),
+        name: z.string().optional().describe('Optional: words of the name to look for.'),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'search_roster', () => mcpSearchRoster(userId, args)),
   );
   server.registerTool(
     'get_upcoming_birthdays',

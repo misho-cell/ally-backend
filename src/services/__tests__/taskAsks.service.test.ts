@@ -48,10 +48,15 @@ jest.mock('../warmth.service', () => ({
   __esModule: true,
   recordMutualWarmth: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../roster.service', () => ({
+  __esModule: true,
+  sharedRoster: jest.fn().mockResolvedValue(null),
+}));
 
 import { query } from '../../db/postgres/client';
 import { armAskDebrief } from '../debrief.service';
 import { matchAnswerRule, saveAnswerRule } from '../answerRules.service';
+import { sharedRoster } from '../roster.service';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
@@ -85,6 +90,7 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 beforeEach(() => {
   jest.clearAllMocks();
   (matchAnswerRule as jest.Mock).mockResolvedValue(null);
+  (sharedRoster as jest.Mock).mockResolvedValue(null);
   mockOptedOut.mockResolvedValue(false);
   mockCheckBudget.mockResolvedValue({ allowed: true });
   mockFollowUpBudget.mockResolvedValue({ allowed: true });
@@ -905,5 +911,29 @@ describe('the answer rule approved once', () => {
       'BMW-ს კარგი ხელოსანი ხომ არ იცი?',
       'ლევანი',
     );
+  });
+});
+
+// Ticket 10 Task 23 (D121, D57): two members of one network who never saved
+// each other's number — the recipient is told a fellow member is asking.
+describe('an ask between two roster members', () => {
+  it('names the shared network in the opening line', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    (sharedRoster as jest.Mock).mockResolvedValue('Axel');
+
+    await createAsk('42', 3, '+995599111222', 'ინვესტორს ვეძებ სიდ რაუნდისთვის');
+
+    const opening = mockSaveMessage.mock.calls[0][3] as string;
+    expect(opening).toContain('Axel-ის წევრი, როგორც შენ');
+    expect(sharedRoster).toHaveBeenCalledWith('42', '7');
+  });
+
+  it('says nothing about a network the two do not share', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    await createAsk('42', 3, '+995599111222', 'q');
+
+    const opening = mockSaveMessage.mock.calls[0][3] as string;
+    expect(opening).not.toContain('წევრი');
   });
 });

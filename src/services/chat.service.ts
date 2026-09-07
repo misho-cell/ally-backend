@@ -67,6 +67,7 @@ import {
 } from './taskAsks.service';
 import { approveTaskPlan, planInForce, proposeTaskPlan, renderPlan } from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
+import { searchRoster } from './tools/searchRoster';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
@@ -1451,6 +1452,28 @@ const GET_TOP_CONNECTORS_TOOL: AnthropicTool = {
       limit: { type: 'number', description: 'How many to return (default 10, max 25)' },
     },
     required: [],
+  },
+};
+
+// Ticket 10 Task 23 (D121): membership of a named network is enough to write
+// to another member's assistant — the one search that reaches past the user's
+// own phonebook, and only for somebody who is on the roster themselves.
+const SEARCH_ROSTER_TOOL: AnthropicTool = {
+  name: 'search_roster',
+  description:
+    'Find a fellow member of a named network (e.g. "Axel") to write to, even when they are NOT ' +
+    "in the user's contacts. Works only when the user is on that roster themselves; otherwise " +
+    'it says so and the ordinary routes apply. Each row says whether the person has used Netai: ' +
+    'route "ask_contact" (a Netai user — ask_contact with their phone id works, and the ' +
+    'recipient is told a fellow member is asking) or "invite_contact" (an account that never ' +
+    'opened Netai — invite first, D122). Optional name to narrow the list.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      group: { type: 'string', description: 'The network, e.g. "Axel".' },
+      name: { type: 'string', description: 'Optional: words of the name to look for.' },
+    },
+    required: ['group'],
   },
 };
 
@@ -2882,6 +2905,8 @@ async function executeToolCall(
         ((input['group_tag'] as string) ?? '').trim(),
         input['limit'] as number | undefined,
       );
+    case 'search_roster':
+      return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -3701,6 +3726,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FETCH_PAGE_TOOL,
     GET_TOP_CONNECTORS_TOOL,
     GET_GROUP_CONNECTORS_TOOL,
+    SEARCH_ROSTER_TOOL,
     GET_COUNTRY_CHANNELS_TOOL,
     GET_NETAI_INFO_TOOL,
     ...enabledKeys
