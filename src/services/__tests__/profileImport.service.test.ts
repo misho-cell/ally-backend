@@ -69,14 +69,8 @@ describe('parseProfile', () => {
     expect(JSON.stringify(parsed)).not.toContain('Forbes');
   });
 
-  it('lifts the employer out of the CURRENT role, because fit reads employer', () => {
+  it('decides nothing about the employer at parse time — tense is settled against the record', () => {
     const parsed = parseProfile(FILE);
-
-    expect(parsed?.facts['employer']).toEqual(['KLIPY']);
-  });
-
-  it('takes no employer from a past role — a former one would read as current', () => {
-    const parsed = parseProfile(`name: X Y\npast_role: CEO @ OldCo (2019)\n`);
 
     expect(parsed?.facts['employer']).toBeUndefined();
   });
@@ -198,6 +192,123 @@ describe('importProfiles', () => {
       'sweep',
       'stated',
     );
+  });
+
+  it('lifts the employer out of the CURRENT role, because fit reads employer', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
+    const parsed = parseProfile(FILE);
+
+    await importProfiles([parsed!], '501', false);
+
+    expect(mockSubmit).toHaveBeenCalledWith(
+      '501',
+      '+995599111111',
+      'employer',
+      'KLIPY',
+      'sweep',
+      'stated',
+    );
+  });
+
+  it('takes no employer from a past role — a former one would read as current', async () => {
+    mockQuery.mockResolvedValue(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
+    const parsed = parseProfile(`name: Nino Beridze\npast_role: CEO @ OldCo (2019)\n`);
+
+    await importProfiles([parsed!], '501', false);
+
+    const fields = mockSubmit.mock.calls.map((c) => c[2]);
+    expect(fields).not.toContain('employer');
+  });
+
+  // Ticket 10 Task 17. 5 September: „Partner, Audit Quality, Nexia TA" went in
+  // as a CURRENT role for a man whose record said he left Nexia in 2024.
+  describe('a role the record already calls past is written as past (Task 17)', () => {
+    function routeQueries(pastRoles: string[]): void {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes("field_type = 'past_role'")) {
+          return Promise.resolve(rows(pastRoles.map((value) => ({ value }))) as never);
+        }
+        return Promise.resolve(rows([{ phone: '+995599111111', contributors: '9' }]) as never);
+      });
+    }
+
+    it('demotes a role at an employer the record says the person left', async () => {
+      routeQueries([
+        'Partner, Audit Quality @ NEXIA TA Georgia (2019–2024); Senior Auditor @ PwC (2015–2017)',
+      ]);
+      const parsed = parseProfile(
+        `name: Giorgi Samkharadze\nrole: Partner, Audit Quality, Nexia TA\n`,
+      );
+
+      const out = await importProfiles([parsed!], '501', false);
+
+      expect(out.roles_demoted).toBe(1);
+      expect(out.rows[0]?.roles_demoted).toBe(1);
+      expect(mockSubmit).toHaveBeenCalledWith(
+        '501',
+        '+995599111111',
+        'past_role',
+        'Partner, Audit Quality, Nexia TA',
+        'sweep',
+        'stated',
+      );
+      const fields = mockSubmit.mock.calls.map((c) => c[2]);
+      expect(fields).not.toContain('role');
+      expect(fields).not.toContain('employer');
+    });
+
+    it("demotes on the file's own past_role line too, before the record is even read", async () => {
+      routeQueries([]);
+      const parsed = parseProfile(
+        `name: Beka Tchulukhadze\nrole: Head of Product Delivery / COO, De.Fi\npast_role: COO @ De.Fi (2020–2024)\n`,
+      );
+
+      const out = await importProfiles([parsed!], '501', false);
+
+      expect(out.roles_demoted).toBe(1);
+      const pastRoles = mockSubmit.mock.calls.filter((c) => c[2] === 'past_role').map((c) => c[3]);
+      expect(pastRoles).toEqual([
+        'COO @ De.Fi (2020–2024)',
+        'Head of Product Delivery / COO, De.Fi',
+      ]);
+    });
+
+    it('a dated range that has closed is a past role whatever the record says', async () => {
+      routeQueries([]);
+      const parsed = parseProfile(`name: Nino Beridze\nrole: CTO @ Gone Ltd (2019–2022)\n`);
+
+      const out = await importProfiles([parsed!], '501', false);
+
+      expect(out.roles_demoted).toBe(1);
+      expect(mockSubmit.mock.calls.map((c) => c[2])).not.toContain('employer');
+    });
+
+    it('leaves a genuinely current role alone, employer and all', async () => {
+      routeQueries(['Mentor, Techstars (2023)']);
+      const parsed = parseProfile(FILE);
+
+      const out = await importProfiles([parsed!], '501', false);
+
+      expect(out.roles_demoted).toBe(0);
+      expect(mockSubmit).toHaveBeenCalledWith(
+        '501',
+        '+995599111111',
+        'role',
+        'Co-Founder & CEO @ KLIPY, San Francisco Bay Area (2022–present)',
+        'sweep',
+        'stated',
+      );
+    });
+
+    it('a dry run settles tense too, so the preview shows the real field', async () => {
+      routeQueries(['COO @ De.Fi (2020–2024)']);
+      const parsed = parseProfile(`name: Beka Tchulukhadze\nrole: COO, De.Fi\n`);
+
+      const out = await importProfiles([parsed!], '501', true);
+
+      expect(out.roles_demoted).toBe(1);
+      expect(mockSubmit).not.toHaveBeenCalled();
+    });
   });
 
   it('writes NOTHING for an ambiguous name, even on a real run', async () => {
