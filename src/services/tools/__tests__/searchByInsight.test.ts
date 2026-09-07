@@ -522,3 +522,105 @@ describe('14.1 — the engine cannot read „not", so it must not pretend to', (
     expect(out.found).toBe(true);
   });
 });
+
+// Ticket 9 task 14 / 14.1, the 5 Sep finding: „invests in startups" returned
+// FIRST a man whose stored role says „No longer interested in investing in
+// startups… left Axel". A stored value that says the opposite is not a hit.
+describe('a stored fact that says the opposite (task 14 / 14.1)', () => {
+  it('a person whose only matching value is negated is left out, and the caller is told', async () => {
+    setup({
+      publicFacts: [
+        {
+          phone: '+995599000001',
+          name: 'გიორგი',
+          matched: null,
+          negated: ['role: No longer interested in investing in startups, left Axel'],
+          sql_hits: 0,
+        },
+        {
+          phone: '+995599000002',
+          name: 'ნინო',
+          matched: ['occupation: angel investor'],
+          negated: null,
+          sql_hits: 1,
+        },
+      ],
+    });
+
+    const result = (await searchByInsight('42', 'investor')) as Record<string, unknown>;
+
+    const names = (result.results as Array<{ name: string }>).map((r) => r.name);
+    expect(names).toEqual(['ნინო']);
+    expect(result.negated_skipped).toBe(1);
+    expect(String(result.negated_skipped_note)).toContain('OPPOSITE');
+  });
+
+  it('a person with a positive value AND a negated one stays, carrying the caveat', async () => {
+    setup({
+      publicFacts: [
+        {
+          phone: '+995599000003',
+          name: 'დათო',
+          matched: ['occupation: investor'],
+          negated: ['note: no longer active in early-stage investing'],
+          sql_hits: 1,
+        },
+      ],
+    });
+
+    const result = (await searchByInsight('42', 'investor')) as Record<string, unknown>;
+
+    const row = (result.results as Array<Record<string, unknown>>)[0];
+    expect(row.name).toBe('დათო');
+    expect(row.negated).toEqual(['note: no longer active in early-stage investing']);
+    expect(String(row.negated_note)).toContain('SAY THE OPPOSITE');
+    expect(result.negated_skipped).toBeUndefined();
+  });
+
+  it("the searcher's OWN negating note outranks the crowd's public claim — a correction beats the fact", async () => {
+    setup({
+      facts: [
+        {
+          phone: '+995599000004',
+          name: 'ლევან',
+          matched: null,
+          negated: ['note: [your own hidden note — matched, not shown]'],
+          sql_hits: 0,
+        },
+      ],
+      publicFacts: [
+        {
+          phone: '+995599000004',
+          name: 'ლევან',
+          matched: ['occupation: angel investor'],
+          negated: null,
+          sql_hits: 1,
+        },
+      ],
+      insights: [{ ...insightRow, neo4j_contact_id: '+995599000004', data: { note: 'investor' } }],
+    });
+
+    const result = (await searchByInsight('42', 'investor')) as Record<string, unknown>;
+
+    expect(result.found).toBe(false);
+    expect(result.negated_skipped).toBe(1);
+  });
+
+  it('the SQL counts hits on positive values only and aggregates the negated ones apart', async () => {
+    setup({});
+
+    await searchByInsight('42', 'investor');
+
+    const own = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('cf.submitted_by_user_id = $1'),
+    ) as [string];
+    const pub = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('cf.is_public = true'),
+    ) as [string];
+    for (const [sql] of [own, pub]) {
+      expect(sql).toContain('AS negated');
+      expect(sql).toContain('no longer | former | ex-| stopped | left');
+      expect(sql).toContain('bool_or(NOT (');
+    }
+  });
+});

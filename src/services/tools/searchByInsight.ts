@@ -56,18 +56,37 @@ const POINTER_EXCLUDED_FIELD_TYPES = [
 interface InsightHit {
   name: string | null;
   matched: string[];
+  /** Stored values that matched the words but SAY THE OPPOSITE (task 14.1). */
+  negated: string[];
   info: Record<string, unknown> | null;
   contact_id: string;
-  /** Words hit counted in SQL, where the hidden text is still readable. */
+  /** Words hit counted in SQL, where the hidden text is still readable — positive values only. */
   sql_hits: number;
 }
 
 interface FactRow {
   phone: string;
   name: string | null;
-  matched: string[];
+  matched: string[] | null;
+  negated?: string[] | null;
   sql_hits?: number;
 }
+
+/**
+ * A stored value that carries its own negation (ticket 9 task 14 / 14.1, the
+ * 5 Sep finding): `search_by_insight("invests in startups")` returned FIRST a
+ * man whose stored role reads „No longer interested in investing in
+ * startups… left Axel". A word search cannot see „no longer", so the sentence
+ * that says he stopped matched as if it said he does.
+ *
+ * Such a value is still read — it is what the record says — but it never
+ * counts as a positive hit. It travels beside the result as `negated`, so the
+ * assistant sees the caveat instead of the claim. A constant regex over the
+ * value, both scripts, whole words; nothing from the query is interpolated.
+ */
+const NEGATED_VALUE_SQL =
+  `(' ' || LOWER(COALESCE(cf.canonical_value, cf.value)) || ' ') ~ ` +
+  `'( not | never | no longer | former | ex-| stopped | left | quit | retired | აღარ | არ | ყოფილი | დატოვა | წამოვიდა | შეწყვიტა )'`;
 
 // Every fact query anchors on a single column per bound parameter.
 // contact_facts.submitted_by_user_id is TEXT on prod while "UserAlias"."contactId"
@@ -76,7 +95,12 @@ interface FactRow {
 // on every call). The own- and public-fact paths are therefore split into two
 // queries, each also runs in isolation so a slow public scan can't hide the
 // user's own freshly-saved fact — the save→search loop.
-const FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value))`;
+const FACT_MATCH_AGG =
+  `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value)) ` +
+  `FILTER (WHERE NOT ${NEGATED_VALUE_SQL})`;
+const FACT_NEGATED_AGG =
+  `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.canonical_value, cf.value)) ` +
+  `FILTER (WHERE ${NEGATED_VALUE_SQL})`;
 
 // The same aggregate for the searcher's OWN facts, with one difference: a fact
 // the author marked as not-public keeps its power to FIND the person and loses
@@ -89,9 +113,11 @@ const FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' || COALESCE(cf.
 // Cross-account the wall held (proved live 2 Sep: account B searching the same
 // word got a bare pointer, no text), but "never shown" should mean never, and
 // a reply is the one place this text can travel.
-const OWN_FACT_MATCH_AGG = `array_agg(DISTINCT cf.field_type || ': ' ||
+const OWN_FACT_VALUE_SQL = `cf.field_type || ': ' ||
   CASE WHEN cf.is_public THEN COALESCE(cf.canonical_value, cf.value)
-       ELSE '[your own hidden note — matched, not shown]' END)`;
+       ELSE '[your own hidden note — matched, not shown]' END`;
+const OWN_FACT_MATCH_AGG = `array_agg(DISTINCT ${OWN_FACT_VALUE_SQL}) FILTER (WHERE NOT ${NEGATED_VALUE_SQL})`;
+const OWN_FACT_NEGATED_AGG = `array_agg(DISTINCT ${OWN_FACT_VALUE_SQL}) FILTER (WHERE ${NEGATED_VALUE_SQL})`;
 
 // Function words carry no concept: "works WITH German companies ON export
 // deals" matched 31 people through "with"/"works" alone — crypto advisers
@@ -207,6 +233,26 @@ const NEGATED_QUERY_NOTE =
   'correct_contact_fact for that person instead, which retracts the wrong fact AND stops them ' +
   'being returned for it again.';
 
+// What the assistant is told about a value that matched the words and says
+// the opposite: it is a caveat on the person, never the reason they are listed.
+const NEGATED_VALUE_NOTE =
+  'These stored values contain the query words but SAY THE OPPOSITE (no longer / not / former). ' +
+  'They did not count towards the match. If you mention this person, carry the caveat.';
+
+/** The people left out because the record says the opposite of what was asked. */
+function negatedNote(
+  skipped: number,
+): { negated_skipped: number; negated_skipped_note: string } | Record<string, never> {
+  if (skipped === 0) return {};
+  return {
+    negated_skipped: skipped,
+    negated_skipped_note:
+      `${skipped} matching record(s) were left out because the stored fact says the OPPOSITE of the ` +
+      'query (no longer / not / former), or because your own note about the person says so. ' +
+      'Do not list them for this query.',
+  };
+}
+
 /** `expr LIKE $n OR expr LIKE $n+1 ...` for `count` terms starting at `startIdx`. */
 function likeOrClause(expr: string, count: number, startIdx: number): string {
   return Array.from({ length: count }, (_, i) => `${expr} LIKE $${startIdx + i}`).join(' OR ');
@@ -220,9 +266,10 @@ function likeOrClause(expr: string, count: number, startIdx: number): string {
  * post-hoc ranking ever saw it.
  */
 function wordHitsClause(expr: string, count: number, startIdx: number): string {
+  // A value that says the opposite is not a hit (task 14.1).
   return Array.from(
     { length: count },
-    (_, i) => `bool_or(${expr} LIKE $${startIdx + i})::int`,
+    (_, i) => `bool_or(NOT ${NEGATED_VALUE_SQL} AND ${expr} LIKE $${startIdx + i})::int`,
   ).join(' + ');
 }
 
@@ -248,6 +295,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
                 WHERE ua_any.phone = cf.neo4j_contact_id)
             ) AS name,
             ${OWN_FACT_MATCH_AGG} AS matched,
+            ${OWN_FACT_NEGATED_AGG} AS negated,
             (${wordHitsClause(matchExpr, likes.length, 3)}) AS sql_hits
      FROM contact_facts cf
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
@@ -276,7 +324,9 @@ async function searchPublicFacts(userId: string, likes: string[]): Promise<FactR
   const result = await query<FactRow>(
     `SELECT cf.neo4j_contact_id AS phone,
             MAX(ua.alias) AS name,
-            ${FACT_MATCH_AGG} AS matched
+            ${FACT_MATCH_AGG} AS matched,
+            ${FACT_NEGATED_AGG} AS negated,
+            (${wordHitsClause(matchExpr, likes.length, 2)}) AS sql_hits
      FROM contact_facts cf
      JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
      WHERE cf.is_public = true
@@ -474,28 +524,53 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       ),
     ]);
 
-    const factRows = [
-      ...settled(ownSettled, 'own facts'),
-      ...settled(publicSettled, 'public facts'),
-    ];
+    const ownRows = settled(ownSettled, 'own facts');
+    const publicRows = settled(publicSettled, 'public facts');
     const insightRows = settled(insightSettled, 'insights');
+
+    // The searcher's OWN record saying the opposite outranks the crowd's claim
+    // (task 14: "a correction outranks the fact it corrects"). The founder's
+    // note „not an investor, never invests his own money" is a correction
+    // whether or not he ever called correct_contact_fact — so a person his own
+    // facts negate for these words is dropped from THIS search entirely, the
+    // way a recorded veto drops them.
+    const ownNegated = new Set(
+      ownRows
+        .filter((row) => (row.negated ?? []).length > 0)
+        .map((row) => normalizePhone(row.phone)),
+    );
+    // Counted per person, not per source row: one man negated by the searcher's
+    // own note and claimed by the crowd is one person left out.
+    const negatedSkipped = new Set<string>();
 
     // Merge by normalized phone; facts win on name, insights fill the info blob.
     const byPhone = new Map<string, InsightHit>();
-    for (const row of factRows) {
+    for (const row of [...ownRows, ...publicRows]) {
       const key = normalizePhone(row.phone);
       if (excluded.has(key)) continue;
+      if (ownNegated.has(key)) {
+        negatedSkipped.add(key);
+        continue;
+      }
       const matched = (row.matched ?? []).filter(Boolean);
+      const negated = (row.negated ?? []).filter(Boolean);
       const sqlHits = Number(row.sql_hits ?? 0);
+      // Only the opposite was said about this person: not a hit at all (14.1).
+      if (matched.length === 0 && negated.length > 0 && sqlHits === 0) {
+        negatedSkipped.add(key);
+        continue;
+      }
       const existing = byPhone.get(key);
       if (existing) {
         existing.name = existing.name ?? row.name ?? null;
         existing.matched = [...new Set([...existing.matched, ...matched])];
+        existing.negated = [...new Set([...existing.negated, ...negated])];
         existing.sql_hits = Math.max(existing.sql_hits, sqlHits);
       } else {
         byPhone.set(key, {
           name: row.name ?? null,
           matched,
+          negated,
           info: null,
           contact_id: row.phone,
           sql_hits: sqlHits,
@@ -504,7 +579,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
     }
     for (const row of insightRows) {
       const key = normalizePhone(row.neo4j_contact_id);
-      if (excluded.has(key)) continue;
+      if (excluded.has(key) || ownNegated.has(key)) continue;
       const existing = byPhone.get(key);
       if (existing) {
         existing.info = row.data;
@@ -513,6 +588,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         byPhone.set(key, {
           name: row.neo4j_contact_name ?? null,
           matched: [],
+          negated: [],
           sql_hits: 0,
           info: row.data,
           contact_id: row.neo4j_contact_id,
@@ -544,14 +620,18 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         query: searchQuery,
         note: 'nothing matched enough of the query',
         ...(pointers.length > 0 && { pointers, pointer_note: POINTER_NOTE }),
+        ...negatedNote(negatedSkipped.size),
       };
     }
 
     const accountStates = await fetchAccountStates(scored.map((s) => s.hit.contact_id));
     const results = scored.map((s) => ({
       // sql_hits is ranking machinery, not an answer — spreading the hit whole
-      // put it in front of the assistant.
-      ...(({ sql_hits: _ignored, ...rest }) => rest)(s.hit),
+      // put it in front of the assistant. An empty `negated` is noise too.
+      ...(({ sql_hits: _ignored, negated, ...rest }) => ({
+        ...rest,
+        ...(negated.length > 0 && { negated, negated_note: NEGATED_VALUE_NOTE }),
+      }))(s.hit),
       score: Math.round((s.hits / words.length) * 100) / 100,
       is_member: isMemberPhone(accountStates, s.hit.contact_id),
       account_state: accountStateFor(accountStates, s.hit.contact_id),
@@ -576,6 +656,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       count: results.length,
       results,
       ...(pointers.length > 0 && { pointers, pointer_note: POINTER_NOTE }),
+      ...negatedNote(negatedSkipped.size),
     };
   } catch (err) {
     console.error('searchByInsight error:', (err as Error).message);
