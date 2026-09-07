@@ -1204,10 +1204,16 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
     const taskId = Number.isFinite(Number(req.query.task_id)) ? Number(req.query.task_id) : null;
     const userId = Number.isFinite(Number(req.query.user_id)) ? Number(req.query.user_id) : null;
+    // Ticket 9 Task 22, answered where it was asked: these are member-to-member
+    // asks, and the technique tag (WHEN · HOW · REASON, D50) is a property of
+    // CAMPAIGN invites — it lives on /admin/chorus/asks, not on this table.
+    // What this table does carry since Ticket 10: who pays for the chain
+    // (origin_user_id, D123) and whether a standing rule answered (Task 22).
     const result = await query(
       `SELECT ta.id, ta.task_id, ta.parent_ask_id,
               ta.from_user_id, fu.name AS from_name,
               ta.to_user_id, tu.name AS to_name,
+              ta.origin_user_id, ta.automatic, ta.answer_rule_id, ta.is_follow_up,
               ta.status, ta.question, ta.answer, ta.ask_thread_id,
               ta.created_at, ta.answered_at, ta.reminded_at, ta.wake_delivered_at
        FROM task_asks ta
@@ -1219,7 +1225,11 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
        LIMIT $3::int`,
       [taskId, userId, limit],
     );
-    res.status(200).json({ success: true, data: result.rows });
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      note: 'Member-to-member asks. The technique tag (when · how · reason) belongs to campaign invites: GET /admin/chorus/asks.',
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin asks log]', error);
@@ -2614,6 +2624,63 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
   }
 });
 
+/** A technique value printed as what it means: 0 is „none", NULL is „unknown" (migration 097). */
+function techniqueWord(value: number | null): string {
+  if (value === null) return 'unknown';
+  if (value === 0) return 'none';
+  return String(value);
+}
+
+// The campaign asks themselves, one row per inviter asked, WITH the technique
+// tag (Ticket 9 Task 22 — „no technique field on any of 60 /admin/asks rows":
+// those rows were member-to-member asks, which carry no technique; this is the
+// table that does). Each value comes twice: the stored number and the word it
+// means, so a 0 is never again read as a zero count.
+//   GET /admin/chorus/asks?limit=100&campaign_id=&inviter_user_id=
+adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+    const campaignId = Number.isFinite(Number(req.query.campaign_id))
+      ? Number(req.query.campaign_id)
+      : null;
+    const inviterId = Number.isFinite(Number(req.query.inviter_user_id))
+      ? Number(req.query.inviter_user_id)
+      : null;
+    const result = await query<{
+      technique_when: number | null;
+      technique_how: number | null;
+      technique_reason: number | null;
+    }>(
+      `SELECT p.id, p.campaign_id, c.target_label, c.city, c.status AS campaign_status,
+              p.inviter_user_id, u.name AS inviter_name, p.state, p.scheduled_ask_at,
+              p.asked_at, p.thread_id, p.state_updated_at,
+              p.technique_when, p.technique_how, p.technique_reason
+       FROM invite_campaign_participants p
+       JOIN invite_campaigns c ON c.id = p.campaign_id
+       LEFT JOIN "User" u ON u.id = p.inviter_user_id
+       WHERE ($1::int IS NULL OR p.campaign_id = $1::int)
+         AND ($2::int IS NULL OR p.inviter_user_id = $2::int)
+       ORDER BY p.id DESC
+       LIMIT $3::int`,
+      [campaignId, inviterId, limit],
+    );
+    const rows = result.rows.map((r) => ({
+      ...r,
+      technique: {
+        when: techniqueWord(r.technique_when),
+        how: techniqueWord(r.technique_how),
+        reason: techniqueWord(r.technique_reason),
+      },
+    }));
+    res.status(200).json({ success: true, data: rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus asks]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 // T16: manual trigger for the same generator labReport.cron.ts calls weekly,
 // plus a listing of stored snapshots — every number in the report is
 // drillable back to the raw rows it summarizes via the underlying tables
@@ -2905,6 +2972,9 @@ adminRouter.get('/identity/summary', async (_req: Request, res: Response) => {
   }
 });
 
+/** The largest identity page one read may return; the export carries the rest. */
+const IDENTITY_PAGE_MAX = 500;
+
 // The review queue, in the order the founder reviews it (ticket 9 task 29):
 //   GET /admin/identity/candidates
 //       ?status=pending &limit=200 &offset=0
@@ -2920,7 +2990,10 @@ adminRouter.get('/identity/candidates', async (req: Request, res: Response) => {
       ? String(req.query.status)
       : 'pending';
     const rawLimit = Number(req.query.limit);
-    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+    // One page is capped (Ticket 9 Task 29: „the file stopped at 200"); the
+    // queue itself is not — `offset` pages it and /identity/export is all of it.
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, IDENTITY_PAGE_MAX) : 50;
     const rawOffset = Number(req.query.offset);
     const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
     const band = ['rare', 'uncommon', 'common'].includes(String(req.query.band))
