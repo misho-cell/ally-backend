@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { getTaskById } from './taskStore.service';
 import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
+import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
@@ -76,7 +77,8 @@ export type AskRefusalReason =
   | 'person_daily_relay_limit_reached';
 
 export type CreateAskOutcome =
-  | { sent: true; ask_id: number; to_name: string }
+  /** `answered_automatically`: the recipient's standing rule answered it (Task 22). */
+  | { sent: true; ask_id: number; to_name: string; answered_automatically?: true }
   | { sent: false; error: string; reason?: AskRefusalReason };
 
 /**
@@ -445,6 +447,24 @@ export async function createAsk(
     ASK_QUERY_TIMEOUT_MS,
   );
 
+  // Ticket 10 Task 22 (D120): the recipient may already have said how this
+  // kind of question is to be answered. A first question that one of their
+  // standing rules covers is answered from it now — the ask row says so, the
+  // recipient is told in their own thread, and the weekly summary lists it.
+  // A follow-up inside a live conversation is never automatic: the rule was
+  // approved for a question, not for a conversation.
+  if (!isFollowUp) {
+    const rule = await matchAnswerRule(toUserId, safeQuestion).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[answer-rule] match failed:', (err as Error).message);
+      return null;
+    });
+    if (rule) {
+      await answerAutomatically(ask.rows[0].id, askThreadId, String(toUserId), rule);
+      return { sent: true, ask_id: ask.rows[0].id, to_name: toName, answered_automatically: true };
+    }
+  }
+
   void sendPushNotification(String(toUserId), {
     title: `Netai — ${senderName} გეკითხება`,
     body: safeQuestion.slice(0, 120),
@@ -461,6 +481,37 @@ export async function createAsk(
   );
 
   return { sent: true, ask_id: ask.rows[0].id, to_name: toName };
+}
+
+/**
+ * Answer an ask from the recipient's standing rule: the answer is recorded
+ * exactly as the rule holds it, the row is marked automatic, the recipient is
+ * told in their own thread what went out and under which rule, and the asker's
+ * goal is woken the same way a typed answer wakes it.
+ */
+async function answerAutomatically(
+  askId: number,
+  askThreadId: number,
+  recipientUserId: string,
+  rule: AnswerRule,
+): Promise<void> {
+  const captured = await recordAskAnswer(askThreadId, rule.answer);
+  if (!captured) return;
+  await query(
+    `UPDATE task_asks SET automatic = TRUE, answer_rule_id = $2 WHERE id = $1`,
+    [askId, rule.id],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  await recordRuleUse(rule.id).catch(() => undefined);
+  await saveThreadMessage(
+    askThreadId,
+    Number(recipientUserId),
+    'assistant',
+    `შენი წესით („${rule.kind}") ავტომატურად ვუპასუხე:\n\n"${rule.answer}"\n\n` +
+      'თუ ეს წესი აღარ გინდა, მითხარი და გავაუქმებ — შემდეგ ჯერზე ისევ შენ გკითხავ.',
+  );
+  await setThreadStatus(recipientUserId, askThreadId, 'done', { isTask: true });
+  await deliverCapturedAnswer(captured, recipientUserId);
 }
 
 /**
@@ -551,9 +602,13 @@ export async function sendApprovedAskAnswer(
   recipientUserId: string,
   askThreadId: number,
   approvedText: string,
-): Promise<{ sent: boolean; error?: string }> {
-  const ask = await query<{ to_user_id: number; status: string }>(
-    `SELECT to_user_id, status FROM task_asks
+  // Ticket 10 Task 22 (D120): the second thing the confirm turn asks — "and
+  // answer similar questions this way in future". Given only on the user's
+  // explicit yes to THAT; the rule is written after the answer has gone.
+  remember?: { kind: string },
+): Promise<{ sent: boolean; error?: string; rule_saved?: boolean; rule_error?: string }> {
+  const ask = await query<{ to_user_id: number; status: string; question: string }>(
+    `SELECT to_user_id, status, question FROM task_asks
      WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
     [askThreadId],
     ASK_QUERY_TIMEOUT_MS,
@@ -571,6 +626,23 @@ export async function sendApprovedAskAnswer(
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
   }
 
+  await deliverCapturedAnswer(captured, recipientUserId);
+
+  if (remember === undefined) return { sent: true };
+  const saved = await saveAnswerRule(recipientUserId, remember.kind, row.question, approvedText);
+  return saved.ok
+    ? { sent: true, rule_saved: true }
+    : { sent: true, rule_saved: false, rule_error: saved.error };
+}
+
+/**
+ * What every answer does once it is recorded, typed or automatic: the pair's
+ * warmth, and the asker's goal woken with the exact text.
+ */
+async function deliverCapturedAnswer(
+  captured: CapturedAnswer,
+  recipientUserId: string,
+): Promise<void> {
   // Two people who write back to each other have a real tie — the founder's
   // own third source of warmth (ticket 9 task 13.1). Evidence about the PAIR,
   // so it lands on both sides. Best-effort: the answer is what matters here.
@@ -610,7 +682,6 @@ export async function sendApprovedAskAnswer(
       console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
     }
   }
-  return { sent: true };
 }
 
 /**

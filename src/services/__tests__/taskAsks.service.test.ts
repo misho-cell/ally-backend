@@ -38,9 +38,20 @@ jest.mock('../debrief.service', () => ({
   __esModule: true,
   armAskDebrief: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../answerRules.service', () => ({
+  __esModule: true,
+  matchAnswerRule: jest.fn().mockResolvedValue(null),
+  recordRuleUse: jest.fn().mockResolvedValue(undefined),
+  saveAnswerRule: jest.fn().mockResolvedValue({ ok: true, value: {} }),
+}));
+jest.mock('../warmth.service', () => ({
+  __esModule: true,
+  recordMutualWarmth: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../db/postgres/client';
 import { armAskDebrief } from '../debrief.service';
+import { matchAnswerRule, saveAnswerRule } from '../answerRules.service';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
@@ -73,6 +84,7 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (matchAnswerRule as jest.Mock).mockResolvedValue(null);
   mockOptedOut.mockResolvedValue(false);
   mockCheckBudget.mockResolvedValue({ allowed: true });
   mockFollowUpBudget.mockResolvedValue({ allowed: true });
@@ -810,6 +822,88 @@ describe('cancelAsksForTask', () => {
       7,
       'assistant',
       expect.stringContaining('აღარ'),
+    );
+  });
+});
+
+// Ticket 10 Task 22 (D120): the recipient's standing rule answers a first
+// question of its kind on its own — the ask row says so, the recipient is told.
+describe('the answer rule approved once', () => {
+  const RULE = {
+    id: 9,
+    user_id: 7,
+    kind: 'ვინ არის კარგი BMW-ს ხელოსანი',
+    sample_question: 'BMW-ს კარგი ხელოსანი ხომ არ იცი?',
+    answer: 'ლევანი ჯანელიძე, დიდუბეში',
+    active: true,
+    uses: 0,
+    last_used_at: null,
+    created_at: 'x',
+  };
+
+  it('answers automatically, marks the row, tells the recipient, wakes the asker', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    (matchAnswerRule as jest.Mock).mockResolvedValue(RULE);
+    // recordAskAnswer's UPDATE … RETURNING and the from_name read.
+    const base = mockQuery.getMockImplementation()!;
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('SET answer = CASE'))
+        return Promise.resolve(rows([{ id: 9, task_id: 3, answer: RULE.answer }]) as never);
+      if (sql.includes('AS from_name'))
+        return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
+      return base(sql, params);
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'BMW-ს ხელოსანი ხომ არ იცი?');
+
+    expect(out.sent).toBe(true);
+    expect((out as { answered_automatically?: boolean }).answered_automatically).toBe(true);
+    const marked = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('SET automatic = TRUE'),
+    );
+    expect(marked?.[1]).toEqual([9, 9]);
+    const told = mockSaveMessage.mock.calls.map((c) => String(c[3]));
+    expect(told.some((t) => t.includes('ავტომატურად ვუპასუხე') && t.includes(RULE.answer))).toBe(
+      true,
+    );
+    expect(wakeTask).toHaveBeenCalled();
+  });
+
+  it('a follow-up inside a live conversation is never automatic', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
+    (matchAnswerRule as jest.Mock).mockResolvedValue(RULE);
+
+    const out = await createAsk('42', 3, '+995599111222', 'BMW-ს ხელოსანი ხომ არ იცი?');
+
+    expect((out as { answered_automatically?: boolean }).answered_automatically).toBeUndefined();
+    expect(matchAnswerRule).not.toHaveBeenCalled();
+  });
+
+  it('the second yes on the confirm turn saves the rule from the ask’s own question', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT to_user_id, status, question'))
+        return Promise.resolve(
+          rows([
+            { to_user_id: 7, status: 'sent', question: 'BMW-ს კარგი ხელოსანი ხომ არ იცი?' },
+          ]) as never,
+        );
+      if (sql.includes('SET answer = CASE'))
+        return Promise.resolve(rows([{ id: 9, task_id: 3, answer: 'ლევანი' }]) as never);
+      if (sql.includes('AS from_name'))
+        return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
+      if (sql.includes('SELECT from_user_id'))
+        return Promise.resolve(rows([{ from_user_id: 42 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await sendApprovedAskAnswer('7', 55, 'ლევანი', { kind: 'BMW-ს ხელოსანი' });
+
+    expect(out).toEqual({ sent: true, rule_saved: true });
+    expect(saveAnswerRule).toHaveBeenCalledWith(
+      '7',
+      'BMW-ს ხელოსანი',
+      'BMW-ს კარგი ხელოსანი ხომ არ იცი?',
+      'ლევანი',
     );
   });
 });

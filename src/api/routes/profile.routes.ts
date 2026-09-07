@@ -26,6 +26,7 @@ import {
 } from '../../services/userPrivateContext.service';
 import { getUserNotes, deleteUserNotes } from '../../services/userNotes.service';
 import { getUserProfile, deleteUserProfileFields } from '../../services/userProfile.service';
+import { deleteAnswerRule, listAnswerRules } from '../../services/answerRules.service';
 
 interface ProfileData {
   readonly name: string;
@@ -369,6 +370,63 @@ profileRouter.delete(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[DELETE /profile/photo]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// ─── The user's standing answer rules (Ticket 10 Task 22, D120) ──────────────
+// Theirs to see and delete — the data page reads these. A rule is created only
+// from the confirm turn of an incoming ask, never here.
+profileRouter.get(
+  '/answer-rules',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const rules = await listAnswerRules(userId);
+      res.status(200).json({
+        success: true,
+        data: rules.map((r) => ({
+          id: r.id,
+          kind: r.kind,
+          sample_question: r.sample_question,
+          answer: r.answer,
+          uses: r.uses,
+          last_used_at: r.last_used_at,
+          created_at: r.created_at,
+        })),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/answer-rules]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/answer-rules/:id',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const ruleId = Number(req.params.id);
+    if (!Number.isInteger(ruleId) || ruleId <= 0) {
+      res.status(400).json({ success: false, error: 'არასწორი id' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const deleted = await deleteAnswerRule(userId, ruleId);
+      if (!deleted) {
+        res.status(404).json({ success: false, error: 'ასეთი წესი არ არის' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { deleted: true } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/answer-rules/:id]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

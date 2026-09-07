@@ -47,7 +47,7 @@ describe('the words of the weekly summary', () => {
     expect(text).toContain('ქსელში კითხვა [running]');
     expect(text).toContain('2026-09-09-ს ვუბრუნდები');
     expect(text).toContain('ხარჯი ამ კვირაში: 42 ტოკენი');
-    expect(text).toContain('ავტომატურად გაცემული პასუხები: 0 (ეს წესი ჯერ არ არის ჩართული)');
+    expect(text).toContain('შენი წესებით ავტომატურად გაცემული პასუხები: 0.');
   });
 
   it('a goal waiting on the user says so instead of a next step', () => {

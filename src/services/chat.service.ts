@@ -66,6 +66,7 @@ import {
   IncomingAsk,
 } from './taskAsks.service';
 import { approveTaskPlan, planInForce, proposeTaskPlan, renderPlan } from './taskPlans.service';
+import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
@@ -708,7 +709,11 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'with the user, SHOW it to them verbatim, and call this only after they explicitly ' +
     'approve, with answer_text being exactly the approved wording and confirmed=true. ' +
     'Without confirmed=true nothing is sent. Never include a name or detail the user did ' +
-    'not approve for sharing.',
+    'not approve for sharing. When you show the text, ask TWO things at once (D120): send it ' +
+    'now, and answer similar questions this way in future. If they say yes to the second as ' +
+    'well, pass remember_for_similar=true with kind — your one-line description of the kind ' +
+    'of question this answer covers. From then on a matching question is answered ' +
+    'automatically and the weekly summary lists it; they can see and delete their rules.',
   input_schema: {
     type: 'object',
     properties: {
@@ -720,8 +725,41 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
         type: 'boolean',
         description: 'Must be true, and only after the user explicitly approved this exact text.',
       },
+      remember_for_similar: {
+        type: 'boolean',
+        description:
+          'true ONLY when the user also said yes to answering similar questions this way in future.',
+      },
+      kind: {
+        type: 'string',
+        description:
+          'With remember_for_similar: one line saying what kind of question the rule covers, ' +
+          'in the user’s language (e.g. „ვინ არის კარგი BMW-ს ხელოსანი").',
+      },
     },
     required: ['answer_text'],
+  },
+};
+
+// The user's standing answers (Ticket 10 Task 22): theirs to see and delete.
+const LIST_ANSWER_RULES_TOOL: AnthropicTool = {
+  name: 'list_answer_rules',
+  description:
+    "The user's standing answer rules — the kinds of incoming question that are answered " +
+    'automatically with their approved words, how often each was used. Call when they ask ' +
+    'what is answered for them, or before deleting one.',
+  input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+const DELETE_ANSWER_RULE_TOOL: AnthropicTool = {
+  name: 'delete_answer_rule',
+  description:
+    'Stops one standing answer rule (by rule_id from list_answer_rules). From then on that ' +
+    'kind of question is shown to the user again. Confirm which rule first.',
+  input_schema: {
+    type: 'object',
+    properties: { rule_id: { type: 'number', description: 'From list_answer_rules.' } },
+    required: ['rule_id'],
   },
 };
 
@@ -1912,6 +1950,7 @@ function buildIncomingAskSection(ask: IncomingAsk): string {
     `${from} გეკითხება: "${ask.question}"\n` +
     `- ეს საუბარი მხოლოდ შენსა და მომხმარებელს შორისაა. **ვერაფერი გადადის კითხვის ავტორთან ავტომატურად** — არც პირველი შეტყობინება, არც სხვა. გადაცემა ხდება მხოლოდ send_answer_to_asker-ით, შენ რომ გამოიძახებ.\n` +
     `- როცა მომხმარებელთან ერთად პასუხი ჩამოყალიბდა: შეადგინე გასაგზავნი ტექსტი, აჩვენე სიტყვასიტყვით („გავუგზავნო ეს ტექსტი? …"), და მხოლოდ მისი აშკარა თანხმობის შემდეგ გამოიძახე send_answer_to_asker ზუსტად იმ ტექსტით, რომელიც დაამტკიცა. თანხმობამდე გაგზავნა შეუძლებელია — ეს სერვერის წესია.\n` +
+    `- ტექსტის ჩვენებისას ერთდროულად ორი რამ ჰკითხე (D120): „გავუგზავნო?" და „მსგავს კითხვებზე მომავალშიც ასე ვუპასუხო შენს მაგივრად?" — ორი ღილაკი present_choices-ით: „გაუგზავნე" / „გაუგზავნე და დაიმახსოვრე". მეორეზე „კი" = send_answer_to_asker remember_for_similar=true და kind (ერთი სტრიქონი, რა კითხვებს ფარავს). შემდეგ ჯერზე ასეთ კითხვას სისტემა თავად უპასუხებს და მას შეატყობინებს. list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
     `- გასაგზავნ ტექსტში მხოლოდ ის უნდა იყოს, რისი გაზიარებაც მომხმარებელმა დაამტკიცა — სახელი ან დეტალი მისი „კი"-ს გარეშე ტექსტში ვერ მოხვდება.\n` +
     `- relay_ask ცალკე მოქმედებაა — კითხვის მესამე ადამიანთან გადაგზავნა. მხოლოდ მაშინ, როცა მომხმარებელი ამას პირდაპირ ითხოვს („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის. თუ კონტაქტი ვერ მოიძებნა: ორთოგრაფია არ ჰკითხო, ბოდიში არ მოიხადო, „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან პირდაპირ დაკავშირება.\n` +
     `- თუ მომხმარებელი იტყვის, რომ მსგავსი შეტყობინებები აღარ სურს („აღარ მომწერო") — გამოიძახე stop_contacting_me. ეს ნამდვილად აჩერებს ყველა მომავალ კითხვას ყველა ადამიანისგან. დაპირება მხოლოდ სიტყვით არასოდეს მისცე — ჯერ ინსტრუმენტი, მერე დადასტურება.\n` +
@@ -2489,7 +2528,27 @@ async function executeToolCall(
       if (threadId === undefined) {
         return { sent: false, error: 'No thread context for this call.' };
       }
-      return sendApprovedAskAnswer(userId, threadId, answerText);
+      const kind = String(input['kind'] ?? '').trim();
+      const remember = input['remember_for_similar'] === true && kind !== '' ? { kind } : undefined;
+      return sendApprovedAskAnswer(userId, threadId, answerText, remember);
+    }
+    case 'list_answer_rules': {
+      const rules = await listAnswerRules(userId);
+      return {
+        rules: rules.map((r) => ({
+          rule_id: r.id,
+          kind: r.kind,
+          answer: r.answer,
+          uses: r.uses,
+          created_at: r.created_at,
+        })),
+      };
+    }
+    case 'delete_answer_rule': {
+      const ruleId = Number(input['rule_id']);
+      if (!Number.isInteger(ruleId) || ruleId <= 0)
+        return { deleted: false, error: 'Pass rule_id.' };
+      return { deleted: await deleteAnswerRule(userId, ruleId) };
     }
     case 'invite_contact': {
       const langRaw = String(input['language'] ?? 'ka');
@@ -3627,6 +3686,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FORGET_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
+    LIST_ANSWER_RULES_TOOL,
+    DELETE_ANSWER_RULE_TOOL,
     QUEUE_RESULT_TOOL,
     RECORD_SEARCH_OUTCOME_TOOL,
     RECORD_DEBRIEF_OUTCOME_TOOL,

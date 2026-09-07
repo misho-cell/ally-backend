@@ -36,6 +36,7 @@ import {
 } from '../taskStore.service';
 import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
+import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
@@ -1111,6 +1112,29 @@ export async function mcpGetUserNotes(
   return {
     notes: notes.map((n) => ({ kind: n.kind, text: scrubText(n.text) })),
   };
+}
+
+// The user's standing answer rules (Ticket 10 Task 22): theirs to see and delete.
+export async function mcpListAnswerRules(userId: string): Promise<McpToolPayload> {
+  const rules = await listAnswerRules(userId);
+  return {
+    rules: rules.map((r) => ({
+      rule_id: r.id,
+      kind: scrubText(r.kind),
+      answer: scrubText(r.answer),
+      uses: r.uses,
+      created_at: r.created_at,
+    })),
+  };
+}
+
+export async function mcpDeleteAnswerRule(
+  userId: string,
+  args: { rule_id: number },
+): Promise<McpToolPayload> {
+  const ruleId = Number(args.rule_id);
+  if (!Number.isInteger(ruleId) || ruleId <= 0) return { deleted: false, error: 'Pass rule_id.' };
+  return { deleted: await deleteAnswerRule(userId, ruleId) };
 }
 
 export async function mcpQueueResult(

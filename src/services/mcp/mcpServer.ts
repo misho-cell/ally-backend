@@ -35,6 +35,8 @@ import {
   mcpGrantTaskPermission,
   mcpProposeTaskPlan,
   mcpApproveTaskPlan,
+  mcpListAnswerRules,
+  mcpDeleteAnswerRule,
   mcpAskContact,
   mcpSetTaskBrief,
   mcpSetTaskWake,
@@ -520,6 +522,26 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_user_notes', () => mcpGetUserNotes(userId, args)),
+  );
+  server.registerTool(
+    'list_answer_rules',
+    {
+      title: TOOL_TEXTS.list_answer_rules.title,
+      description: TOOL_TEXTS.list_answer_rules.description,
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    () => runTool(userId, 'list_answer_rules', () => mcpListAnswerRules(userId)),
+  );
+  server.registerTool(
+    'delete_answer_rule',
+    {
+      title: TOOL_TEXTS.delete_answer_rule.title,
+      description: TOOL_TEXTS.delete_answer_rule.description,
+      inputSchema: { rule_id: z.number().describe('The rule, from list_answer_rules.') },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'delete_answer_rule', () => mcpDeleteAnswerRule(userId, args)),
   );
   server.registerTool(
     'queue_result',

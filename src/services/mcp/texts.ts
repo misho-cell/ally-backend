@@ -395,6 +395,21 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
       'contacts). Notes accumulate. Confirm in one short line.',
   },
+  list_answer_rules: {
+    title: "The user's standing answer rules",
+    description:
+      'The kinds of incoming question that are answered automatically with the user’s own ' +
+      'approved words (D120), and how often each rule was used. Call when they ask what is ' +
+      'answered for them, or before deleting one. A rule is created only in the app, on the ' +
+      'user’s yes to "answer similar questions this way in future".',
+  },
+  delete_answer_rule: {
+    title: 'Stop one standing answer rule',
+    description:
+      'Deactivates one rule by rule_id (from list_answer_rules). From then on that kind of ' +
+      'question is shown to the user again instead of being answered for them. Confirm which ' +
+      'rule they mean first.',
+  },
   get_user_notes: {
     title: 'Read the notes saved about the user',
     description:

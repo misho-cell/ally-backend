@@ -79,6 +79,18 @@ async function goalsForUser(userId: string): Promise<GoalRow[]> {
   return result.rows;
 }
 
+/** Answers given for the user by their own standing rules this week (Task 22). */
+async function automaticAnswers(userId: string): Promise<number> {
+  const result = await query<{ n: string }>(
+    `SELECT COUNT(*) AS n FROM task_asks
+     WHERE to_user_id = $1::int AND automatic
+       AND answered_at >= NOW() - ($2 || ' days')::interval`,
+    [userId, WEEK_DAYS],
+    SUMMARY_QUERY_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.n ?? 0);
+}
+
 async function tokensSpent(userId: string): Promise<number> {
   const result = await query<{ spent: string | null }>(
     `SELECT COALESCE(-SUM(amount), 0) AS spent FROM token_transactions
@@ -127,15 +139,19 @@ export function renderWeeklySummary(
   lines.push('', `ხარჯი ამ კვირაში: ${tokensSpentThisWeek} ტოკენი.`);
   lines.push(
     automaticAnswers > 0
-      ? `ავტომატურად გაცემული პასუხები: ${automaticAnswers}.`
-      : 'ავტომატურად გაცემული პასუხები: 0 (ეს წესი ჯერ არ არის ჩართული).',
+      ? `შენი წესებით ავტომატურად გაცემული პასუხები: ${automaticAnswers}.`
+      : 'შენი წესებით ავტომატურად გაცემული პასუხები: 0.',
   );
   return lines.join('\n');
 }
 
 /** The week's summary for one user, composed but not sent. */
 export async function composeWeeklySummary(userId: string): Promise<WeeklySummary> {
-  const [rows, spent] = await Promise.all([goalsForUser(userId), tokensSpent(userId)]);
+  const [rows, spent, automatic] = await Promise.all([
+    goalsForUser(userId),
+    tokensSpent(userId),
+    automaticAnswers(userId),
+  ]);
   const goals: GoalSummary[] = rows.map((r) => {
     const plan = planInForce(r);
     return {
@@ -151,16 +167,13 @@ export async function composeWeeklySummary(userId: string): Promise<WeeklySummar
     };
   });
   const weekStart = new Date(Date.now() - WEEK_DAYS * 86_400_000).toISOString().slice(0, 10);
-  // Automatic answers are Task 22's rule, not built yet — the summary says 0
-  // and says why, rather than leaving the line out and letting a reader assume.
-  const automaticAnswers = 0;
   return {
     user_id: userId,
     week_start: weekStart,
     goals,
     tokens_spent: spent,
-    automatic_answers: automaticAnswers,
-    text: renderWeeklySummary(goals, spent, automaticAnswers, weekStart),
+    automatic_answers: automatic,
+    text: renderWeeklySummary(goals, spent, automatic, weekStart),
   };
 }
 
