@@ -94,6 +94,12 @@ import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
 import { listWakeUpCandidates, previewWakeUpMessage } from '../../services/wakeUp.service';
+import {
+  createCohort,
+  deactivateCohort,
+  listCohortMembers,
+  listCohorts,
+} from '../../services/inviteCohorts.service';
 import { readLabels } from '../../services/labelReader.service';
 import { planResearch, TriggerLedger } from '../../services/researchTriggers.service';
 import {
@@ -2197,6 +2203,86 @@ adminRouter.post('/wake-up/preview', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin wake-up preview]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Invite cohorts (Ticket 10 Task 26, D125): a registration code the company
+// hands out, carrying its own free period — the Axel launch gets 20 days, the
+// ordinary door keeps the Stripe trial. Opening a cohort writes config, not a
+// fact about a person; registering through one is the person's own act.
+//   GET    /admin/invite-cohorts                  every cohort, with how many it let in
+//   POST   /admin/invite-cohorts                  { code, name, trial_days, tier?, note? }
+//   DELETE /admin/invite-cohorts/:code            close the door (nobody loses their period)
+//   GET    /admin/invite-cohorts/:code/members    who came through it, and what day they are on
+adminRouter.get('/invite-cohorts', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await listCohorts() });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin invite-cohorts]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/invite-cohorts', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as {
+      code?: unknown;
+      name?: unknown;
+      trial_days?: unknown;
+      tier?: unknown;
+      note?: unknown;
+    };
+    if (typeof body.code !== 'string' || typeof body.name !== 'string') {
+      res.status(400).json({ success: false, error: 'code და name აუცილებელია' });
+      return;
+    }
+    const actor = String((req as AuthenticatedRequest).user?.userId ?? 'admin');
+    const outcome = await createCohort(
+      {
+        code: body.code,
+        name: body.name,
+        trial_days: Number(body.trial_days),
+        ...(typeof body.tier === 'string' && { tier: body.tier }),
+        ...(typeof body.note === 'string' && { note: body.note }),
+      },
+      actor,
+    );
+    if (!outcome.created) {
+      res.status(400).json({ success: false, error: outcome.error });
+      return;
+    }
+    res.status(201).json({ success: true, data: outcome.cohort });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin invite-cohorts create]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.delete('/invite-cohorts/:code', async (req: Request, res: Response) => {
+  try {
+    const closed = await deactivateCohort(String(req.params.code));
+    if (!closed) {
+      res.status(404).json({ success: false, error: 'ასეთი აქტიური კოჰორტა არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { closed: true } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin invite-cohorts close]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get('/invite-cohorts/:code/members', async (req: Request, res: Response) => {
+  try {
+    const members = await listCohortMembers(String(req.params.code));
+    res.status(200).json({ success: true, data: { total: members.length, members } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin invite-cohorts members]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

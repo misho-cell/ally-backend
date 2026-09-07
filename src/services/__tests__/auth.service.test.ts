@@ -19,6 +19,11 @@ jest.mock('../inviteGate.service', () => ({
   checkRegistrationEligibility: jest.fn(),
 }));
 
+jest.mock('../inviteCohorts.service', () => ({
+  findCohortByCode: jest.fn(),
+  grantCohortTrial: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
@@ -29,6 +34,7 @@ import { query } from '../../db/postgres/client';
 import { sendWhatsAppMessage } from '../whatsapp.service';
 import { createUserPhoneNode } from '../contacts.service';
 import { checkRegistrationEligibility } from '../inviteGate.service';
+import { findCohortByCode, grantCohortTrial } from '../inviteCohorts.service';
 import bcrypt from 'bcrypt';
 import {
   requestOTP,
@@ -180,6 +186,39 @@ describe('registerUser', () => {
     );
     expect(userInsertCall?.[0]).toContain('inviterReferralUserId');
     expect(userInsertCall?.[1]).toEqual(['გიორგი', '$2b$12$hashed', 5]);
+  });
+
+  // Ticket 10 Task 26 (D125): a cohort code opens the account already trialing
+  // for the cohort's own days, no card asked.
+  it('grants the cohort’s free period at the door when the gate passes via cohort', async () => {
+    routeRegisterQueries({ userId: 77 });
+    mockGate.mockResolvedValue({ eligible: true, mode: 'cohort', cohortCode: 'AXEL2026' });
+    const cohort = {
+      code: 'AXEL2026',
+      name: 'Axel',
+      trial_days: 20,
+      tier: 'pro',
+      active: true,
+      note: null,
+      created_by: '501',
+      created_at: 'x',
+    };
+    (findCohortByCode as jest.Mock).mockResolvedValue(cohort);
+
+    await registerUser('+995555123456', 'გიორგი', undefined, 'axel2026');
+
+    expect(findCohortByCode).toHaveBeenCalledWith('AXEL2026');
+    expect(grantCohortTrial).toHaveBeenCalledWith(77, '+995555123456', cohort);
+  });
+
+  it('grants nothing when the cohort was closed between the check and the write', async () => {
+    routeRegisterQueries({ userId: 77 });
+    mockGate.mockResolvedValue({ eligible: true, mode: 'cohort', cohortCode: 'AXEL2026' });
+    (findCohortByCode as jest.Mock).mockResolvedValue(null);
+
+    await registerUser('+995555123456', 'გიორგი', undefined, 'axel2026');
+
+    expect(grantCohortTrial).not.toHaveBeenCalled();
   });
 
   it('parses +995 phone code correctly', async () => {

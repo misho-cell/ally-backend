@@ -17,10 +17,13 @@ interface GateWorld {
   referrerId: number | null;
   // Lenient attribution lookup (any registered user, no subscription demand).
   attributedInviterId?: number | null;
+  // An invite cohort behind the typed code (Ticket 10 Task 26).
+  cohort?: { code: string; name: string; trial_days: number; tier: string; active: boolean };
 }
 
 // Route gate queries by a distinctive SQL fragment.
 function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: number } {
+  if (sql.includes('FROM invite_cohorts')) return world.cohort ? rows([world.cohort]) : rows([]);
   if (sql.includes('app_flags')) return rows([{ enabled: world.flagEnabled }]);
   if (sql.includes('SELECT "userId" FROM "UserPhone"'))
     return world.registered ? rows([{ userId: 42 }]) : rows([]);
@@ -64,6 +67,34 @@ describe('isInviteOnlyEnabled', () => {
 });
 
 describe('checkRegistrationEligibility', () => {
+  // Ticket 10 Task 26 (D125): the Axel cohort registers through a code the
+  // company hands out; it opens the door whatever the gate says and carries
+  // its own free period.
+  it('a cohort code opens a closed door and names the cohort', async () => {
+    setWorld({
+      ...CLOSED_WORLD,
+      cohort: { code: 'AXEL2026', name: 'Axel launch', trial_days: 20, tier: 'pro', active: true },
+    });
+
+    const result = await checkRegistrationEligibility('+995599000001', undefined, 'axel2026');
+
+    expect(result).toEqual({ eligible: true, mode: 'cohort', cohortCode: 'AXEL2026' });
+  });
+
+  it('a code that is not a cohort still goes down the personal-referral path', async () => {
+    setWorld({ ...CLOSED_WORLD, cohort: undefined });
+    // No user owns the code either → the door stays closed.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM invite_cohorts')) return Promise.resolve(rows([]) as never);
+      if (sql.includes('UPPER(referral_code)')) return Promise.resolve(rows([]) as never);
+      return Promise.resolve(routeGate(sql, CLOSED_WORLD) as never);
+    });
+
+    const result = await checkRegistrationEligibility('+995599000001', undefined, 'NOSUCH');
+
+    expect(result.eligible).toBe(false);
+  });
+
   it('lets everyone through when the gate is off', async () => {
     setWorld({ ...CLOSED_WORLD, flagEnabled: false });
 

@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
 import { findUserByReferralCode } from './referralCode.service';
+import { findCohortByCode } from './inviteCohorts.service';
 
 const INVITE_ONLY_FLAG = 'invite_only';
 // subscription_status values that count as an active paying/trialing subscriber.
@@ -153,6 +154,12 @@ export async function checkRegistrationEligibility(
   referralPhone?: string,
   referralCode?: string,
 ): Promise<EligibilityCheck> {
+  // A cohort code is an invitation from the company itself (Ticket 10 Task
+  // 26, D125): it opens the door whatever the gate says, and carries its own
+  // free period. Asked before the personal codes, because it outranks them.
+  const cohort = referralCode?.trim() ? await findCohortByCode(referralCode) : null;
+  if (cohort) return { eligible: true, mode: 'cohort', cohortCode: cohort.code };
+
   // A referral CODE resolves first (founder decision, ticket 5 F.1: codes are
   // the invite currency; the phone path stays for backward compatibility).
   const codeOwner = referralCode?.trim() ? await findUserByReferralCode(referralCode) : null;
