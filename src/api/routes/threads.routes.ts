@@ -6,7 +6,7 @@ import {
   requireUserRole,
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
-import { requireSubscription } from '../middleware/subscription.middleware';
+import { requireSubscriptionUnlessAnswering } from '../middleware/subscription.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import {
@@ -112,7 +112,9 @@ function statusAfterRun(
 }
 
 threadsRouter.use(authenticateJwt, requireUserRole);
-threadsRouter.use(requireSubscription);
+// A lapsed account may still open and answer a thread in which somebody is
+// asking THEM (Ticket 10 Task 25 (b), D123) — everything else meets the paywall.
+threadsRouter.use(requireSubscriptionUnlessAnswering);
 // Per-user cap on chat/thread traffic (abuse control). A rejected SEND leaves
 // a visible error row — thread 9873 sat empty forever after a 429 while the
 // user's message painted optimistically (task 38).

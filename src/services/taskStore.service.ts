@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { setThreadStatus } from './threadStatus.service';
+import { goalNamedIn } from './goalMention';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const OPEN_TASKS_LIMIT = 50;
@@ -125,6 +126,27 @@ async function retitleThreadIfStale(threadId: number, newTitle: string): Promise
 const TASK_COLUMNS = `id, title, description, task_type, status, permission_granted,
             thread_id, autonomy, brief, next_wake_at, pending_question,
             created_at, last_activity_at`;
+
+/**
+ * The open goal a message NAMES, when the thread it arrived in is bound to
+ * none (Ticket 10 Task 18 / Task 21 (1)).
+ *
+ * „ბათუმის ფოტოგრაფის მიზანი გავაგრძელოთ. რა ხდება იქ?" typed into a fresh
+ * chat is a turn of the Batumi-photographer goal, and ran as a quick answer
+ * because only `tasks.thread_id` was ever consulted. The title in the message
+ * is as hard a fact as the thread id; the matcher (goalMention.ts) is strict
+ * enough that a shared first name names nothing.
+ */
+export async function findOpenTaskNamedIn(userId: string, message: string): Promise<Task | null> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks
+     WHERE user_id = $1 AND status = 'open'
+     ORDER BY last_activity_at DESC LIMIT $2`,
+    [userId, OPEN_TASKS_LIMIT],
+    QUERY_TIMEOUT_MS,
+  );
+  return goalNamedIn(message, result.rows);
+}
 
 /** The open task bound to a thread — what makes a run a "task step" run. */
 export async function getOpenTaskByThread(threadId: number): Promise<Task | null> {

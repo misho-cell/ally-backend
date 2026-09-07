@@ -64,7 +64,7 @@ export type AskRefusalReason =
   | 'consent_pending'
   | 'recipient_not_member'
   | 'recipient_opted_out'
-  | 'recipient_not_subscribed'
+  | 'recipient_not_on_netai'
   | 'self_send'
   | 'daily_cap_reached'
   | 'conversation_ask_limit_reached'
@@ -166,6 +166,31 @@ async function openAskThread(
  * a per-person daily budget instead of the monthly growth one, and each still
  * requires its sender's explicit approval of the exact text.
  */
+/**
+ * Has this account actually used Netai? The same three signals membership.ts
+ * reads (Rule 13): a thread, a search, or a live subscription. A row in the
+ * shared user table alone is an old-Ally account — a target, not a recipient.
+ */
+async function isNetaiUser(userId: number, subscriptionStatus: string | null): Promise<boolean> {
+  if (subscriptionStatus !== null && NETAI_SUBSCRIPTION_STATUSES.has(subscriptionStatus)) {
+    return true;
+  }
+  const result = await query<{ opened: boolean }>(
+    `SELECT (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = $1)
+             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = $1::text)) AS opened`,
+    [userId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.opened === true;
+}
+
+/** Statuses that on their own prove the account has used Netai. */
+const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
+  'active',
+  'trialing',
+  'past_due',
+]);
+
 export async function createAsk(
   fromUserId: string,
   taskId: number,
@@ -250,22 +275,27 @@ export async function createAsk(
     };
   }
 
-  // The hand-picked test allowlist is retired (founder's decision, 24 Aug):
-  // asks now reach any registered member with an ACTIVE subscription,
-  // rather than a fixed list of ids. Worded so it CANNOT be read as the
-  // recipient's own choice — same principle as the allowlist message it
-  // replaces (12 Aug: the model once translated a similar refusal into "this
-  // person switched Netai messages off", a false statement about a third
-  // party's settings, ticket 4 item 00-D).
-  if (member.rows[0].subscriptionStatus !== 'active') {
+  // The recipient must be a NETAI USER — somebody who has actually opened the
+  // product — not merely a row in the shared user table (D103, D121: "members
+  // must be Netai users; an old-Ally account alone is not enough"). An ask to
+  // an old-Ally account lands in an inbox nobody has ever opened.
+  //
+  // Paying is NOT required (Ticket 10 Task 25 (b), D123: a non-paying member
+  // can answer and help on a paying member's task). Until 7 Sep this gate
+  // demanded an active subscription, so a lapsed friend could not even be
+  // asked. The rule before it (a hand-picked allowlist) was retired on 24 Aug.
+  //
+  // Both refusals are worded so they CANNOT be read as the recipient's own
+  // choice (12 Aug: the model once translated a refusal into "this person
+  // switched Netai messages off", a false statement about a third party).
+  if (!(await isNetaiUser(toUserId, member.rows[0].subscriptionStatus))) {
     return {
       sent: false,
-      reason: 'recipient_not_subscribed',
+      reason: 'recipient_not_on_netai',
       error:
-        'ვერ გაიგზავნა: ამ ეტაპზე კითხვები მხოლოდ Netai-ს გამომწერ (subscription) წევრებს ' +
-        'ეგზავნებათ. ეს ჩვენი სისტემის დროებითი წესია — ამ ადამიანს არაფერი გამოურთავს და ' +
-        'მისი ანგარიშის შესახებ არაფერი თქვა. მომხმარებელს უთხარი მხოლოდ: „ამ ეტაპზე ამ ' +
-        'ადამიანთან მიწერა ჯერ არ შემიძლია".',
+        'ვერ გაიგზავნა: ამ ადამიანს ანგარიში აქვს, მაგრამ Netai ჯერ არ გახსნია — კითხვა ' +
+        'უპასუხოდ დარჩებოდა. მისი ანგარიშის შესახებ არაფერი თქვა. სწორი გზა მოწვევაა: ' +
+        'invite_contact-ით შესთავაზე მფლობელს მოსაწვევი ტექსტი, ან თავად მისწეროს.',
     };
   }
 

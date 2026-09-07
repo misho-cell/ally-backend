@@ -49,6 +49,7 @@ import {
   updateTask,
   getTaskById,
   getOpenTaskByThread,
+  findOpenTaskNamedIn,
   setTaskBrief,
   setTaskWake,
 } from './taskStore.service';
@@ -1899,6 +1900,7 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     `- set_task_brief — ყოველი არსებითი ნაბიჯის ბოლოს განაახლე გეგმა: რა გაკეთდა, ვის ველოდები, რა არის შემდეგი, როდის ვამთავრებ.\n` +
     `- set_task_wake — თუ პასუხებს ელოდები ან მოგვიანებით უნდა დაუბრუნდე, დანიშნე გაღვიძება საათებში (მაგ. 24).\n` +
     `- finish_task — როცა შედეგი ჩაბარებულია ან გზები პატიოსნად ამოიწურა: შეაჯამე და დახურე.\n` +
+    `- თუ მფლობელის ახალი შეტყობინება სხვა საქმეს ეხება და არა ამ მიზანს — ეს ახალი მიზანია: create_task-ით გახსენი ცალკე და არასოდეს გაუშვა ამ მიზნის კითხვად (ask_contact ამ task_id-ით). ამ მიზანზე მიაბი მხოლოდ მაშინ, თუ იგივე თემაა ან მფლობელმა თქვა.\n` +
     `- „[მოვლენა]"-თი დაწყებული შეტყობინება სისტემისგანაა (პასუხი მოვიდა / დრო მოვიდა) — უპასუხე მოქმედებით, არა მისალმებით.\n` +
     `- მიღებული პასუხი მფლობელს გადაეცი ზუსტად, ციტატად — არასოდეს ჩაანაცვლო სათაურით, პერიფრაზით ან სხვა ტექსტით.`
   );
@@ -1920,6 +1922,11 @@ async function buildAgentSystemPrompt(
   // Preview-only override: the admin preview must render a chosen mode without
   // a live thread in that state. Real runs never pass it.
   forcedMode?: RunMode,
+  // The open goal the user's message NAMES, when the thread is bound to none
+  // (Ticket 10 Task 18). Resolved by the caller from the message text through
+  // the strict title matcher — a hard fact, like the thread binding, and it
+  // makes the run a task step with that goal's state loaded.
+  namedTask?: Task | null,
 ): Promise<AgentPromptResult> {
   // Ticket 7 Task 1(a)(e), founder's ruling D48: an incoming-ask thread runs
   // as the recipient's OWN assistant — same base playbook, name, notes, goals
@@ -1931,7 +1938,8 @@ async function buildAgentSystemPrompt(
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
-  const boundTask = threadId != null ? await getOpenTaskByThread(threadId) : null;
+  const boundTask =
+    (threadId != null ? await getOpenTaskByThread(threadId) : null) ?? namedTask ?? null;
   const runMode: RunMode = forcedMode ?? (await resolveRunMode(userId, threadType, boundTask));
   const [
     configResult,
@@ -3595,8 +3603,28 @@ export async function processChat(
   const language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
 
+  // A plain thread whose message names an open goal by title is a turn of
+  // that goal (Ticket 10 Task 18). Only a regular thread qualifies — an ask,
+  // an invite or a request thread is already a situation of its own — and an
+  // engine event never names anything: it addresses the goal it runs in.
+  const namedTask =
+    thread.type === 'regular' && !userMessage.startsWith(RUN_EVENT_PREFIX)
+      ? await findOpenTaskNamedIn(userId, userMessage).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.warn('[goal-mention] lookup failed:', (err as Error).message);
+          return null;
+        })
+      : null;
+
   const [agentPrompt, tools, history] = await Promise.all([
-    buildAgentSystemPrompt(userId, thread.type, thread.introduction_request_id, thread.id),
+    buildAgentSystemPrompt(
+      userId,
+      thread.type,
+      thread.introduction_request_id,
+      thread.id,
+      undefined,
+      namedTask,
+    ),
     buildToolsForThread(userId, thread.type),
     loadHistory(threadId),
   ]);

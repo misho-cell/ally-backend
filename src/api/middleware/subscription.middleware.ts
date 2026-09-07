@@ -59,6 +59,19 @@ export function hasActiveSubscription(row: SubscriptionRow, now: Date = new Date
   return false;
 }
 
+async function userMayUseProduct(userId: string): Promise<boolean> {
+  const result = await query<SubscriptionRow>(
+    `SELECT subscription_status, trial_ends_at, current_period_ends_at,
+            subscription_status_changed_at
+     FROM "User"
+     WHERE id = $1
+     LIMIT 1`,
+    [userId],
+  );
+  const user = result.rows[0];
+  return user !== undefined && hasActiveSubscription(user);
+}
+
 export async function requireSubscription(
   req: Request,
   res: Response<ApiResponse<unknown>>,
@@ -66,25 +79,63 @@ export async function requireSubscription(
 ): Promise<void> {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
-    const result = await query<SubscriptionRow>(
-      `SELECT subscription_status, trial_ends_at, current_period_ends_at,
-              subscription_status_changed_at
-       FROM "User"
-       WHERE id = $1
-       LIMIT 1`,
-      [userId],
-    );
-
-    const user = result.rows[0];
-    if (!user || !hasActiveSubscription(user)) {
+    if (!(await userMayUseProduct(userId))) {
       res.status(403).json({ success: false, error: 'subscription_required' });
       return;
     }
-
     next();
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[requireSubscription]', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/** The thread types a lapsed account may still open: somebody is asking THEM. */
+const ANSWERABLE_WITHOUT_SUBSCRIPTION: ReadonlySet<string> = new Set(['incoming_ask']);
+const THREAD_ID_RE = /^\/(\d+)(?:\/|$)/;
+
+/** Is the thread this request addresses one the user may answer unpaid? */
+async function isAnswerableThread(userId: string, path: string): Promise<boolean> {
+  const match = THREAD_ID_RE.exec(path);
+  if (!match) return false;
+  const result = await query<{ type: string }>(
+    `SELECT type FROM threads WHERE id = $1 AND user_id = $2 LIMIT 1`,
+    [Number(match[1]), userId],
+  );
+  const type = result.rows[0]?.type;
+  return type !== undefined && ANSWERABLE_WITHOUT_SUBSCRIPTION.has(type);
+}
+
+/**
+ * The subscription gate, with one door held open: a thread in which somebody
+ * is asking THIS user a question.
+ *
+ * Ticket 10 Task 25 (b), D123 (7 Sep): a non-paying member can answer and
+ * help on a paying member's task. The whole point of asking a friend is that
+ * the friend can reply, and a lapsed trial must not turn an incoming question
+ * into a paywall on the recipient's phone — the asker paid for that question.
+ * Everything else a lapsed account touches still meets the paywall.
+ */
+export async function requireSubscriptionUnlessAnswering(
+  req: Request,
+  res: Response<ApiResponse<unknown>>,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = (req as AuthenticatedRequest).user.userId;
+    if (await userMayUseProduct(userId)) {
+      next();
+      return;
+    }
+    if (await isAnswerableThread(userId, req.path)) {
+      next();
+      return;
+    }
+    res.status(403).json({ success: false, error: 'subscription_required' });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[requireSubscriptionUnlessAnswering]', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

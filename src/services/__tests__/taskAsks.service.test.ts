@@ -88,6 +88,8 @@ beforeEach(() => {
 
 function routeAskQueries(opts: {
   member?: { userId: number; name: string; subscriptionStatus?: string } | null;
+  /** Has the recipient ever opened Netai (a thread or a search)? Default yes. */
+  onNetai?: boolean;
   /** A live ask already runs between this goal and this person — a follow-up. */
   liveThread?: number;
   sentToday?: number;
@@ -101,6 +103,8 @@ function routeAskQueries(opts: {
             : [],
         ) as never,
       );
+    if (sql.includes(') AS opened'))
+      return Promise.resolve(rows([{ opened: opts.onNetai ?? true }]) as never);
     if (sql.includes('SELECT ask_thread_id FROM task_asks'))
       return Promise.resolve(
         rows(opts.liveThread ? [{ ask_thread_id: opts.liveThread }] : []) as never,
@@ -202,14 +206,42 @@ describe('createAsk', () => {
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
-  it("refuses a registered member with no active subscription (the retired allowlist's replacement, 24 Aug)", async () => {
-    routeAskQueries({ member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' } });
+  // Ticket 10 Task 25 (b), D123: a non-paying member can answer and help on a
+  // paying member's task. Until 7 Sep a lapsed friend could not even be asked.
+  it('reaches a lapsed member who has used Netai — paying is not required', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
+      onNetai: true,
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(true);
+  });
+
+  // D103 / D121: an old-Ally account that never opened Netai is a target, not
+  // a recipient — an ask to it lands in an inbox nobody has ever opened.
+  it('refuses an account that has never opened Netai, and points at the invite route', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
+      onNetai: false,
+    });
 
     const out = await createAsk('42', 3, '+995599111222', 'q');
 
     expect(out.sent).toBe(false);
-    expect((out as { reason?: string }).reason).toBe('recipient_not_subscribed');
+    expect((out as { reason?: string }).reason).toBe('recipient_not_on_netai');
+    expect((out as { error: string }).error).toContain('invite_contact');
     expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('a live subscription proves Netai use without a second query', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია', subscriptionStatus: 'trialing' } });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(true);
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes(') AS opened'))).toBe(false);
   });
 
   it('a second message to the same person continues the SAME thread (ticket 9 task 12)', async () => {
