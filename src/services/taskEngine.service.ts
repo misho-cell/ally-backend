@@ -4,6 +4,8 @@ import {
   getTaskById,
   getDueTasks,
   getStaleOpenTasks,
+  getGoalsUnansweredForADay,
+  markQuestionDefaulted,
   touchTaskActivity,
   clearTaskWake,
   Task,
@@ -26,6 +28,7 @@ import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
 import { scrubText } from './privacyScrub';
 import { sweepUnansweredIntroOutcomes } from './partH.service';
+import { sendWeeklySummaries } from './weeklySummary.service';
 import { RUN_HARD_TIMEOUT_MS } from '../config/runBudgets';
 
 const TICK_INTERVAL_MS = 60_000;
@@ -270,6 +273,39 @@ async function tick(): Promise<void> {
   }
 }
 
+/**
+ * Line 6 of the standard (D117): a question to the user never stops the work.
+ * A day after the question was filed and nobody answered, the goal is woken
+ * once with the instruction to take the harmless default — keep every
+ * approved route running, send nothing new, and say what was assumed. The
+ * question stays open; the work does not wait on it.
+ */
+const UNANSWERED_QUESTION_HOURS = 24;
+const MAX_DEFAULTS_PER_SWEEP = 5;
+
+export async function sweepUnansweredOwnerQuestions(): Promise<number> {
+  const waiting = await getGoalsUnansweredForADay(
+    UNANSWERED_QUESTION_HOURS,
+    MAX_DEFAULTS_PER_SWEEP,
+  );
+  let taken = 0;
+  for (const task of waiting) {
+    // Stamped BEFORE the wake, so a failing run cannot fire the default every
+    // five minutes; the question is still open and the next wake sees it.
+    await markQuestionDefaulted(task.id);
+    const question = task.pending_question ?? 'ის კითხვა, რომელიც წინა ჯერზე დაუსვა';
+    const woken = await wakeTask(
+      task.id,
+      `მფლობელმა ერთი დღეა არ უპასუხა კითხვას („${question}"). კითხვა ღიად რჩება, მაგრამ მუშაობა ` +
+        'მასზე არ ჩერდება: მიიღე უსაფრთხო, უვნებელი დაშვება, გააგრძელე დამტკიცებული გზები ' +
+        '(ახალი არაფერი გაგზავნო გეგმის გარეთ), და მფლობელს ერთი წინადადებით უთხარი რა დაუშვი ' +
+        'და რას აკეთებ ამასობაში. ბოლოს — რა მიდის ახლა და როდის დაბრუნდები.',
+    );
+    if (woken) taken++;
+  }
+  return taken;
+}
+
 async function nightlyReview(): Promise<void> {
   const stale = await getStaleOpenTasks(NIGHTLY_REVIEW_QUIET_HOURS, MAX_NIGHTLY_REVIEWS);
   for (const task of stale) {
@@ -279,6 +315,13 @@ async function nightlyReview(): Promise<void> {
       'ღამის გადახედვა: ქსელში გუშინდელის მერე ახალი ხალხი/ინფორმაცია შეიძლება გაჩნდა. ' +
         'გაიმეორე ძირითადი ძიებები და შეადარე brief-ს — მფლობელს მხოლოდ რეალური სიახლე აცნობე; ' +
         'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე. ' +
+        // The standard, lines 3 and 4 (D117, D119): a silent day widens the
+        // circle inside the plan; three silent days change the method — a
+        // plan change, so a new yes, while the rest keeps running.
+        'თუ გუშინდელი კითხვა უპასუხოდ დარჩა — არ დაელოდე: გეგმის „ვის ვკითხავ" სიიდან შემდეგ ' +
+        'ადამიანებს მისწერე (რამდენიმეს ერთდროულად). თუ სამი დღეა პასუხი არ არის — მეთოდი შეცვალე: ' +
+        'propose_task_plan-ით შესთავაზე ახალი გზა ან ახალი წრე; დამტკიცებული გზები კი გრძელდება. ' +
+        'ყოველი პასუხი დაასრულე ერთი სტრიქონით: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები. ' +
         'თუ წინსვლა მფლობელის პასუხზეა ჩამოკიდებული — გამოიძახე ask_owner_decision ზუსტი ' +
         'კითხვით: ის კითხვას მფლობელის მომდევნო საუბარში იტანს. ეს მაშინაც გააკეთე, როცა ' +
         'ლოდინს თხრობით ამბობ („ველოდები მის გადაწყვეტილებას ორ კანდიდატზე") — მფლობელისგან ' +
@@ -289,6 +332,20 @@ async function nightlyReview(): Promise<void> {
     // eslint-disable-next-line no-console
     console.log(`[task-engine] nightly review woke ${stale.length} task(s)`);
   }
+}
+
+/** Monday 06:00 UTC — 10:00 in Tbilisi, the start of the working week. */
+const WEEKLY_SUMMARY_UTC_DAY = 1;
+const WEEKLY_SUMMARY_UTC_HOUR = 6;
+
+function msUntilWeeklySummary(): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(WEEKLY_SUMMARY_UTC_HOUR, 0, 0, 0);
+  const daysAhead = (WEEKLY_SUMMARY_UTC_DAY - next.getUTCDay() + 7) % 7;
+  next.setUTCDate(next.getUTCDate() + daysAhead);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 7);
+  return next.getTime() - now.getTime();
 }
 
 function msUntilUtcHour(hour: number): number {
@@ -330,7 +387,34 @@ export function startTaskTicker(): void {
       // eslint-disable-next-line no-console
       console.error('[task-engine] answer-wake sweep failed:', (err as Error).message),
     );
+    void sweepUnansweredOwnerQuestions()
+      .then((n) => {
+        // eslint-disable-next-line no-console
+        if (n > 0) console.log(`[task-engine] harmless default taken on ${n} goal(s)`);
+      })
+      .catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] default sweep failed:', (err as Error).message),
+      );
   }, UNWOKEN_SWEEP_INTERVAL_MS).unref();
+
+  // Line 5 of the standard (D55, D127): a weekly summary to every user with an
+  // open goal, whatever the news. Monday morning, Tbilisi time.
+  const scheduleWeekly = (): void => {
+    setTimeout(() => {
+      void sendWeeklySummaries()
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          console.log(`[task-engine] weekly summaries sent to ${n} user(s)`);
+        })
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] weekly summary failed:', (err as Error).message),
+        )
+        .finally(scheduleWeekly);
+    }, msUntilWeeklySummary()).unref();
+  };
+  scheduleWeekly();
 
   const scheduleNightly = (): void => {
     setTimeout(() => {

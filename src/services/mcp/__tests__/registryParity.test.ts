@@ -56,6 +56,12 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   send_answer_to_asker:
     'keyed off the ambient in-app incoming_ask thread (Task 1(c), D48) — the connector has no ' +
     'incoming-ask thread concept, same reasoning as get_thread_context',
+  propose_task_plan:
+    "the plan is shown with the app's approve/change buttons inside the goal's own thread " +
+    '(Ticket 10 Task 21, 7 Sep) — connector wiring is a named follow-up, not a merge',
+  approve_task_plan:
+    "the user's yes to the plan is given on the app's buttons, in the goal's own thread " +
+    '(Ticket 10 Task 21, 7 Sep) — connector wiring is a named follow-up, not a merge',
   // The three below are genuinely UNRESOLVED — listed so the build stays
   // green, not because the answer is known. Each needs an explicit product
   // call (wire to the connector, or confirm app-only and say why) before

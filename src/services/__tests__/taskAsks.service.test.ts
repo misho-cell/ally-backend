@@ -90,6 +90,13 @@ function routeAskQueries(opts: {
   member?: { userId: number; name: string; subscriptionStatus?: string } | null;
   /** Has the recipient ever opened Netai (a thread or a search)? Default yes. */
   onNetai?: boolean;
+  /** The plan in force on the goal (Ticket 10 Task 21). Default none. */
+  plan?: {
+    solved_when: string;
+    routes: { name: string; status: string }[];
+    people_to_involve: { name: string; phone: string; route: string }[];
+    never_contact: { name: string; phone?: string }[];
+  };
   /** A live ask already runs between this goal and this person — a follow-up. */
   liveThread?: number;
   sentToday?: number;
@@ -105,6 +112,14 @@ function routeAskQueries(opts: {
       );
     if (sql.includes(') AS opened'))
       return Promise.resolve(rows([{ opened: opts.onNetai ?? true }]) as never);
+    if (sql.includes('plan_approved_at FROM tasks'))
+      return Promise.resolve(
+        rows(
+          opts.plan
+            ? [{ plan: opts.plan, plan_version: 1, plan_approved_at: '2026-09-07T20:00:00Z' }]
+            : [],
+        ) as never,
+      );
     if (sql.includes('SELECT ask_thread_id FROM task_asks'))
       return Promise.resolve(
         rows(opts.liveThread ? [{ ask_thread_id: opts.liveThread }] : []) as never,
@@ -233,6 +248,44 @@ describe('createAsk', () => {
     expect((out as { reason?: string }).reason).toBe('recipient_not_on_netai');
     expect((out as { error: string }).error).toContain('invite_contact');
     expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  // Ticket 10 Task 21 (D119): with an approved plan, consent is the plan's.
+  describe('the plan in force', () => {
+    const PLAN = {
+      solved_when: 'x',
+      routes: [{ name: 'ქსელი', status: 'running' }],
+      people_to_involve: [{ name: 'გია', phone: '+995 599 111 222', route: 'ქსელი' }],
+      never_contact: [{ name: 'ნანა', phone: '+995599999999' }],
+    };
+
+    it('a person the plan names is written to', async () => {
+      routeAskQueries({ member: { userId: 7, name: 'გია' }, plan: PLAN });
+      expect((await createAsk('42', 3, '+995599111222', 'q')).sent).toBe(true);
+    });
+
+    it('a person on never_contact is refused on every route — a relay too', async () => {
+      routeAskQueries({ member: { userId: 7, name: 'ნანა' }, plan: PLAN });
+      const direct = await createAsk('42', 3, '+995599999999', 'q');
+      expect((direct as { reason?: string }).reason).toBe('never_contact');
+      const relay = await createAsk('42', 3, '+995599999999', 'q', 11);
+      expect((relay as { reason?: string }).reason).toBe('never_contact');
+      expect(mockCreateThread).not.toHaveBeenCalled();
+    });
+
+    it('a person outside the plan is a plan change, with the instruction to propose one', async () => {
+      routeAskQueries({ member: { userId: 7, name: 'ბექა' }, plan: PLAN });
+      const out = await createAsk('42', 3, '+995599000000', 'q');
+      expect((out as { reason?: string }).reason).toBe('outside_plan');
+      expect((out as { error: string }).error).toContain('propose_task_plan');
+      expect(mockCreateThread).not.toHaveBeenCalled();
+    });
+
+    it('a relay is the recipient’s own act — outside_plan does not apply to it', async () => {
+      routeAskQueries({ member: { userId: 7, name: 'ბექა' }, plan: PLAN });
+      mockGetTask.mockResolvedValue(null as never);
+      expect((await createAsk('42', 3, '+995599000000', 'q', 11)).sent).toBe(true);
+    });
   });
 
   it('a live subscription proves Netai use without a second query', async () => {

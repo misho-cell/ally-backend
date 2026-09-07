@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { setThreadStatus } from './threadStatus.service';
 import { goalNamedIn } from './goalMention';
+import type { TaskPlan } from './taskPlans.service';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const OPEN_TASKS_LIMIT = 50;
@@ -30,6 +31,12 @@ export interface Task {
   next_wake_at: string | null;
   /** Ticket 8 Task 2: the exact question this goal is blocked on, if any. */
   pending_question: string | null;
+  /** The plan in force (Ticket 10 Task 21, D119) — consent was given to THIS. */
+  plan: TaskPlan | null;
+  /** The next version, waiting for the user's yes; the one in force keeps running. */
+  plan_proposed: TaskPlan | null;
+  plan_approved_at: string | null;
+  plan_version: number;
   created_at: string;
   last_activity_at: string;
 }
@@ -123,8 +130,9 @@ async function retitleThreadIfStale(threadId: number, newTitle: string): Promise
   );
 }
 
-const TASK_COLUMNS = `id, title, description, task_type, status, permission_granted,
+const TASK_COLUMNS = `id, user_id, title, description, task_type, status, permission_granted,
             thread_id, autonomy, brief, next_wake_at, pending_question,
+            plan, plan_proposed, plan_approved_at, plan_version,
             created_at, last_activity_at`;
 
 /**
@@ -258,6 +266,36 @@ export async function getStaleOpenTasks(
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+/**
+ * Line 6 of the standard (D117): a question to the user never stops the work.
+ * Goals whose question has waited a full day and has not yet had its harmless
+ * default taken — oldest first.
+ */
+export async function getGoalsUnansweredForADay(hours: number, limit: number): Promise<Task[]> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks
+     WHERE status = 'open'
+       AND pending_question_at IS NOT NULL
+       AND pending_question_at < NOW() - ($1 || ' hours')::interval
+       AND (pending_question_defaulted_at IS NULL
+            OR pending_question_defaulted_at < pending_question_at)
+     ORDER BY pending_question_at ASC
+     LIMIT $2`,
+    [hours, limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** The default was taken for the question currently open — once per question. */
+export async function markQuestionDefaulted(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET pending_question_defaulted_at = NOW() WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
 }
 
 export async function touchTaskActivity(taskId: number): Promise<void> {

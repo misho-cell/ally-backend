@@ -65,6 +65,7 @@ import {
   TaskAsk,
   IncomingAsk,
 } from './taskAsks.service';
+import { approveTaskPlan, planInForce, proposeTaskPlan, renderPlan } from './taskPlans.service';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
@@ -1124,6 +1125,50 @@ const GRANT_TASK_PERMISSION_TOOL: AnthropicTool = {
   },
 };
 
+// Ticket 10 Task 21 (D118, D119): the plan is agreed once, then the assistant
+// works inside it on its own. Two tools: propose (the assistant writes it from
+// the conversation and shows it), approve (the user's yes, recorded).
+const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
+  name: 'propose_task_plan',
+  description:
+    "Write the goal's plan for the user to approve ONCE: what counts as solved, the routes you " +
+    'will pursue, the people you will involve (with their phone id from a search result and the ' +
+    'route each belongs to), and the people the user does NOT want contacted. Call it as soon as ' +
+    'the problem is understood — before any ask goes out — and again for any CHANGE (a new person, ' +
+    'a new route): the change waits for a yes while everything already approved keeps running. ' +
+    'Show the returned summary to the user verbatim with two choices (approve / change) via ' +
+    'present_choices, and call approve_task_plan only on their explicit yes.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The open goal.' },
+      plan: {
+        type: 'object',
+        description:
+          '{ solved_when: string, routes: [{name, status: running|waiting|done|dropped}], ' +
+          'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }',
+      },
+    },
+    required: ['task_id', 'plan'],
+  },
+};
+
+const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
+  name: 'approve_task_plan',
+  description:
+    "Record the user's yes to the proposed plan. Call ONLY after they explicitly approved the " +
+    'summary you showed them — pass confirmed: true. From then on, an ask to a person the plan ' +
+    'names goes without asking again; a person outside the plan needs a plan change first.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'The open goal.' },
+      confirmed: { type: 'boolean', description: 'true only after the user said yes.' },
+    },
+    required: ['task_id', 'confirmed'],
+  },
+};
+
 const SAVE_USER_NOTE_TOOL: AnthropicTool = {
   name: 'save_user_note',
   description:
@@ -1889,14 +1934,30 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     task.autonomy === 'autonomous'
       ? 'ავტონომიური — მოქმედებ დაუკითხავად და მხოლოდ აცნობებ მფლობელს.'
       : 'ჯერ-კითხვა — ვინმესთვის მიწერამდე ამ თრედში დაეკითხე მფლობელს და დაელოდე თანხმობას.';
+  const plan = planInForce(task);
+  // Ticket 10 Task 21 (D119): with an approved plan, consent is the PLAN's,
+  // not the message's. Without one, the old per-message rule holds, and the
+  // first job is to propose the plan.
+  const planBlock = plan
+    ? `\n${renderPlan(plan, plan.version, plan.approved_at)}\n` +
+      (task.plan_proposed
+        ? `(გეგმის ცვლილება v${plan.version + 1} მფლობელის „კი"-ს ელოდება — დამტკიცებულის ფარგლებში მუშაობა გრძელდება.)\n`
+        : '')
+    : task.plan_proposed
+      ? `\nგეგმა შეთავაზებულია და მფლობელის „კი"-ს ელოდება — აჩვენე შეჯამება და ჰკითხე; დამტკიცებამდე არავის მისწერო.\n`
+      : `\nგეგმა ჯერ არ არის. პირველი ნაბიჯი: propose_task_plan-ით შესთავაზე — რა ჩაითვლება მოგვარებულად, რა გზებით მიდიხარ, ვის კითხავ (ტელეფონის id ძიების შედეგიდან), ვის არასდროს. მფლობელი ერთხელ ამტკიცებს და მერე გეგმის ფარგლებში დამოუკიდებლად მუშაობ.\n`;
+  const askRule = plan
+    ? `- ask_contact — გეგმაში დასახელებულ ადამიანს, გეგმის საქმეზე, ცალკე თანხმობის გარეშე უგზავნის: გააგზავნე და მფლობელს აცნობე რა და ვის გაუგზავნე. რამდენიმე ადამიანს ერთდროულად მისწერე, არა თითო-თითოდ (მცირე საქმეზე სამს, სერიოზულზე ხუთს). გეგმის გარეთ მყოფი ადამიანი, ახალი გზა ან ახალი მიზეზი = გეგმის ცვლილება: propose_task_plan-ით შესთავაზე და დაელოდე „კი"-ს — დანარჩენი გზები ამასობაში გრძელდება. „ვის არასდროს" სიაში მყოფს არაფერს წერ, ვერც ერთი გზით. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n`
+    : `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის. ერთსა და იმავე ადამიანს ამ მიზანზე რამდენჯერმე შეიძლება მისწერო: დაწყებული მიმოწერა გრძელდება, სანამ საქმე არ დასრულდება (დღეში რამდენიმე შეტყობინება ერთ ადამიანზე). სამაგიეროდ ყოველი ცალკე შეტყობინება ცალკე თანხმობას საჭიროებს — აჩვენე ადრესატი და გასაგზავნი ტექსტი სიტყვასიტყვით, დაელოდე „კი"-ს და მხოლოდ მერე გააგზავნე. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n`;
   return (
     `\n\n## აქტიური დავალება [შიდა: task_id=${task.id} — ინსტრუმენტებისთვის, პასუხის ტექსტში არასდროს ახსენო]\n` +
     `სათაური: ${task.title}\n` +
     `რეჟიმი: ${autonomyLine}\n` +
+    planBlock +
     (task.brief ? `\nსამუშაო გეგმა (brief):\n${task.brief}\n` : '') +
     (askLines ? `\nგაგზავნილი კითხვები:\n${askLines}\n` : '') +
     `\nძრავის წესები:\n` +
-    `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის. ერთსა და იმავე ადამიანს ამ მიზანზე რამდენჯერმე შეიძლება მისწერო: დაწყებული მიმოწერა გრძელდება, სანამ საქმე არ დასრულდება (დღეში რამდენიმე შეტყობინება ერთ ადამიანზე). სამაგიეროდ ყოველი ცალკე შეტყობინება ცალკე თანხმობას საჭიროებს — აჩვენე ადრესატი და გასაგზავნი ტექსტი სიტყვასიტყვით, დაელოდე „კი"-ს და მხოლოდ მერე გააგზავნე. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n` +
+    askRule +
     `- set_task_brief — ყოველი არსებითი ნაბიჯის ბოლოს განაახლე გეგმა: რა გაკეთდა, ვის ველოდები, რა არის შემდეგი, როდის ვამთავრებ.\n` +
     `- set_task_wake — თუ პასუხებს ელოდები ან მოგვიანებით უნდა დაუბრუნდე, დანიშნე გაღვიძება საათებში (მაგ. 24).\n` +
     `- finish_task — როცა შედეგი ჩაბარებულია ან გზები პატიოსნად ამოიწურა: შეაჯამე და დახურე.\n` +
@@ -2545,6 +2606,28 @@ async function executeToolCall(
     }
     case 'grant_task_permission':
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
+    case 'propose_task_plan': {
+      const outcome = await proposeTaskPlan(userId, Number(input['task_id']), input['plan']);
+      return outcome.ok
+        ? { proposed: true, version: outcome.value.version, summary: outcome.value.summary }
+        : { proposed: false, error: outcome.error };
+    }
+    case 'approve_task_plan': {
+      // Server-side gate, the same shape as send_answer_to_asker: without the
+      // user's explicit yes nothing is recorded, whatever the prompt believes.
+      if (input['confirmed'] !== true) {
+        return {
+          approved: false,
+          error:
+            'Not recorded: the user has not said yes to the plan. Show the summary, ask, and ' +
+            'call again with confirmed: true only after their explicit approval.',
+        };
+      }
+      const outcome = await approveTaskPlan(userId, Number(input['task_id']));
+      return outcome.ok
+        ? { approved: true, version: outcome.value.version, summary: outcome.value.summary }
+        : { approved: false, error: outcome.error };
+    }
     case 'save_user_note': {
       const kind = input['kind'] as string;
       if (!isUserNoteKind(kind)) return { saved: false, error: 'Invalid kind.' };
@@ -3521,6 +3604,8 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_MY_TASKS_TOOL,
     UPDATE_TASK_TOOL,
     GRANT_TASK_PERMISSION_TOOL,
+    PROPOSE_TASK_PLAN_TOOL,
+    APPROVE_TASK_PLAN_TOOL,
     ASK_CONTACT_TOOL,
     SET_TASK_BRIEF_TOOL,
     SET_TASK_WAKE_TOOL,

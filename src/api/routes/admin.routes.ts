@@ -95,6 +95,7 @@ import { republishFacts } from '../../services/factRepublish.service';
 import { listImportAttempts } from '../../services/contacts.service';
 import { importProfiles, parseProfile, ParsedProfile } from '../../services/profileImport.service';
 import { listWakeUpCandidates, previewWakeUpMessage } from '../../services/wakeUp.service';
+import { composeWeeklySummary, sendWeeklySummary } from '../../services/weeklySummary.service';
 import {
   createCohort,
   deactivateCohort,
@@ -1051,6 +1052,41 @@ adminRouter.get(
     }
   },
 );
+
+// The weekly summary (Ticket 10 Task 24 (c); the standard's line 5). The cron
+// sends it Monday 06:00 UTC; these are the tester's fast-forward.
+//   GET  /admin/weekly-summary/preview?user_id=501   composes, writes nothing
+//   POST /admin/weekly-summary/run?user_id=501       writes it into the user's goal
+//                                                    threads and pending list NOW
+adminRouter.get('/weekly-summary/preview', async (req: Request, res: Response) => {
+  const userId = String(req.query.user_id ?? '').trim();
+  if (!/^\d+$/.test(userId)) {
+    res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await composeWeeklySummary(userId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin weekly-summary preview]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/weekly-summary/run', async (req: Request, res: Response) => {
+  const userId = String(req.query.user_id ?? '').trim();
+  if (!/^\d+$/.test(userId)) {
+    res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await sendWeeklySummary(userId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin weekly-summary run]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // Fire a task's wake NOW instead of waiting for next_wake_at — the tester's
 // fast-forward (every multi-day goal behavior is otherwise unobservable) and

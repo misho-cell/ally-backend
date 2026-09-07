@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { getTaskById } from './taskStore.service';
+import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { createThread, saveThreadMessage } from './threads.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
@@ -65,6 +66,8 @@ export type AskRefusalReason =
   | 'recipient_not_member'
   | 'recipient_opted_out'
   | 'recipient_not_on_netai'
+  | 'never_contact'
+  | 'outside_plan'
   | 'self_send'
   | 'daily_cap_reached'
   | 'conversation_ask_limit_reached'
@@ -184,6 +187,22 @@ async function isNetaiUser(userId: number, subscriptionStatus: string | null): P
   return result.rows[0]?.opened === true;
 }
 
+/** The task's plan columns, read at send time — a plan may have been approved a second ago. */
+async function planRowFor(
+  taskId: number,
+): Promise<{ plan: TaskPlan | null; plan_version: number; plan_approved_at: string | null }> {
+  const result = await query<{
+    plan: TaskPlan | null;
+    plan_version: number;
+    plan_approved_at: string | null;
+  }>(
+    `SELECT plan, plan_version, plan_approved_at FROM tasks WHERE id = $1 LIMIT 1`,
+    [taskId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? { plan: null, plan_version: 0, plan_approved_at: null };
+}
+
 /** Statuses that on their own prove the account has used Netai. */
 const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
   'active',
@@ -301,6 +320,32 @@ export async function createAsk(
 
   if (String(toUserId) === fromUserId) {
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
+  }
+
+  // The plan in force decides (Ticket 10 Task 21, D119). A person on the
+  // plan's never_contact list is refused on EVERY route, relays included — the
+  // user said never. A person the plan does not name is a change to the plan:
+  // refused with the instruction to propose one, while the people the plan
+  // does name keep being written to. A goal without a plan keeps the old rule.
+  const verdict = planAllows(planInForce(await planRowFor(taskId)), contactPhone);
+  if (!verdict.allowed && verdict.reason === 'never_contact') {
+    return {
+      sent: false,
+      reason: 'never_contact',
+      error:
+        `${toName} მფლობელის გეგმაში „ვის არასდროს" სიაშია — მას არაფერს ვწერთ, არც ამ და არც ` +
+        'სხვა გზით. მფლობელს უთხარი, რომ ეს მისი გეგმის წესია და სხვა ადამიანი შესთავაზე.',
+    };
+  }
+  if (!verdict.allowed && parentAskId === undefined) {
+    return {
+      sent: false,
+      reason: 'outside_plan',
+      error:
+        `${toName} დამტკიცებულ გეგმაში არ არის. ეს გეგმის ცვლილებაა: propose_task_plan-ით ` +
+        'შესთავაზე მფლობელს განახლებული სია (ის, რაც უკვე დამტკიცებულია, უწყვეტად გრძელდება), ' +
+        'დაელოდე „კი"-ს და მხოლოდ მერე მისწერე. სიაში მყოფ ადამიანებს ახლავე შეგიძლია მისწერო.',
+    };
   }
 
   // Is this goal already in a live conversation with this person? If it is,
