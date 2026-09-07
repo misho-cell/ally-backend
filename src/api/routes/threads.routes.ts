@@ -38,6 +38,7 @@ import { sweepFactsFromExchange } from '../../services/factExtraction.service';
 import { ThreadStatus, deleteThread } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
+import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
   emitThreadCreated,
@@ -297,11 +298,16 @@ threadsRouter.post(
       const payerId = await runPayerFor(userId, threadId, thread.type);
       const allowance = await checkRunAllowance(payerId);
       if (!allowance.allowed && payerId === userId) {
+        // The renewal named is the window in force (D124): monthly today,
+        // weekly once BUDGET_WINDOW=week — the text must not promise the
+        // wrong day.
+        const renewal = budgetWindow().unit === 'week' ? 'კვირის' : 'თვიურ';
         res.status(402).json({
           success: false,
-          error: 'ტოკენები ამოგეწურა — შეიძინე დამატებით ან დაელოდე თვიურ განახლებას',
+          error: `ტოკენები ამოგეწურა — შეიძინე დამატებით ან დაელოდე ${renewal} განახლებას`,
           reason: 'insufficient_tokens',
           balance: allowance.balance,
+          window: budgetWindow().label,
         });
         return;
       }
