@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { isStaffUser } from './staff';
 import {
   BRAND_STOPLIST,
   COMPANY_MARKERS,
@@ -327,6 +328,8 @@ async function fitFromFacts(phones: string[]): Promise<Map<string, string[]>> {
 
 interface AccountFacts {
   subscriptionStatus: string;
+  /** Staff, ex-staff or a curator by account id (STAFF_USER_IDS, curators) — never a target. */
+  staff: boolean;
   /**
    * Whether their own phonebook reaches MIN_OWN_CONTACTS — a threshold, not a
    * number, and counted as one. The exact count meant a correlated
@@ -357,6 +360,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
   const digits = phones.map(phoneDigits).filter(Boolean);
   const result = await query<{
     phone: string;
+    user_id: number | null;
     subscription_status: string | null;
     own_contacts: string;
     opens: string;
@@ -368,6 +372,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
     // contacts and nine opens" is the whole reason the number is shown.
     // Measured: counting to 15,000 across 400 accounts costs 1.8s.
     `SELECT up.phone,
+            u.id AS user_id,
             u.subscription_status,
             (SELECT COUNT(*) FROM (
                SELECT 1 FROM "UserAlias" a WHERE a."contactId" = u.id LIMIT $2::int
@@ -391,6 +396,9 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
       ownContacts: Number(row.own_contacts),
       opens: Number(row.opens),
       netaiUser: row.netai_user,
+      // Staff and ex-staff are excluded by account id (D103, Ticket 10 Task 9):
+      // the phone list alone missed Luka Iashvili, ex-Ally staff, ranked first.
+      staff: row.user_id !== null && isStaffUser(row.user_id),
     };
     const current = map.get(key);
     // One person, several phone rows: keep the fullest phonebook and any
@@ -404,6 +412,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
         ownContacts: Math.max(current.ownContacts, facts.ownContacts),
         opens: Math.max(current.opens, facts.opens),
         netaiUser: current.netaiUser || facts.netaiUser,
+        staff: current.staff || facts.staff,
       });
     }
   }
@@ -1321,6 +1330,9 @@ const targetListCache = new Map<number, TargetListCache>();
 /** Test seam: the cache is module-level state and must not leak across tests. */
 export function clearTargetListCache(): void {
   targetListCache.clear();
+  inFlightBuilds.clear();
+  buildStartedAt.clear();
+  lastBuildError.clear();
 }
 
 /** Options for a target-list read. */
@@ -1348,6 +1360,49 @@ export async function buildTargetList(
 }
 
 /**
+ * One build per window at a time (Ticket 10 Task 12).
+ *
+ * A first build of a period takes 35–70 seconds. Every reader who arrived in
+ * that window — the review page, the CSV, the research plan, a retry after a
+ * timeout — started ANOTHER identical build, each one competing for the same
+ * connections. Readers now join the build already running.
+ */
+const inFlightBuilds = new Map<number, Promise<TargetListBuild>>();
+/** When the running build started, and how the last one ended — for the status read. */
+const buildStartedAt = new Map<number, number>();
+const lastBuildError = new Map<number, { at: number; message: string }>();
+
+function runBuild(sinceDays: number): Promise<TargetListBuild> {
+  const running = inFlightBuilds.get(sinceDays);
+  if (running) return running;
+  buildStartedAt.set(sinceDays, Date.now());
+  const build = buildTargetListUncached(sinceDays)
+    .then((result) => {
+      targetListCache.set(sinceDays, { builtAt: Date.now(), build: result });
+      lastBuildError.delete(sinceDays);
+      return result;
+    })
+    .catch((err: unknown) => {
+      lastBuildError.set(sinceDays, { at: Date.now(), message: (err as Error).message });
+      throw err;
+    })
+    .finally(() => {
+      inFlightBuilds.delete(sinceDays);
+      buildStartedAt.delete(sinceDays);
+    });
+  inFlightBuilds.set(sinceDays, build);
+  return build;
+}
+
+function freshCache(sinceDays: number): TargetListBuild | null {
+  const cached = targetListCache.get(sinceDays);
+  if (cached !== undefined && Date.now() - cached.builtAt < TARGET_LIST_CACHE_TTL_MS) {
+    return cached.build;
+  }
+  return null;
+}
+
+/**
  * The same build, with the gate ledger — which check removed how many, and
  * which checks are currently switched off. The founder's own ask: an
  * exclusion rule you cannot count is a rule you cannot argue with.
@@ -1356,17 +1411,63 @@ export async function buildTargetListWithGates(
   sinceDays: number,
   options: TargetListOptions = {},
 ): Promise<TargetListBuild> {
-  const cached = targetListCache.get(sinceDays);
-  if (
-    options.refresh !== true &&
-    cached !== undefined &&
-    Date.now() - cached.builtAt < TARGET_LIST_CACHE_TTL_MS
-  ) {
-    return cached.build;
+  if (options.refresh !== true) {
+    const cached = freshCache(sinceDays);
+    if (cached !== null) return cached;
   }
-  const build = await buildTargetListUncached(sinceDays);
-  targetListCache.set(sinceDays, { builtAt: Date.now(), build });
-  return build;
+  return runBuild(sinceDays);
+}
+
+export type TargetListBuildState = 'ready' | 'building' | 'failed' | 'not_built';
+
+export interface TargetListStatus {
+  days: number;
+  state: TargetListBuildState;
+  /** When the served list was built — the age the reader is looking at. */
+  built_at: string | null;
+  /** When the running build started, if one is running. */
+  building_since: string | null;
+  /** How the last build ended, if it ended badly. */
+  last_error: { at: string; message: string } | null;
+}
+
+/**
+ * Start the build for a window without waiting for it (Ticket 10 Task 12).
+ *
+ * The 60-day period's first build took 68 seconds and the page showed a server
+ * error — nothing cached, nothing to retry. A build should never fail a reader
+ * on time alone, so the page can now ask for the list, be told it is being
+ * built, and come back; the status read says when. Idempotent: a build already
+ * running is not started twice, and a fresh cache starts nothing.
+ */
+export function startTargetListBuild(sinceDays: number, refresh = false): TargetListStatus {
+  if (refresh || freshCache(sinceDays) === null) {
+    runBuild(sinceDays).catch(() => undefined); // the error is kept in lastBuildError
+  }
+  return targetListStatus(sinceDays);
+}
+
+export function targetListStatus(sinceDays: number): TargetListStatus {
+  const cached = targetListCache.get(sinceDays);
+  const startedAt = buildStartedAt.get(sinceDays);
+  const failure = lastBuildError.get(sinceDays);
+  const state: TargetListBuildState =
+    startedAt !== undefined
+      ? 'building'
+      : freshCache(sinceDays) !== null
+        ? 'ready'
+        : failure !== undefined
+          ? 'failed'
+          : 'not_built';
+  return {
+    days: sinceDays,
+    state,
+    built_at: cached ? new Date(cached.builtAt).toISOString() : null,
+    building_since: startedAt !== undefined ? new Date(startedAt).toISOString() : null,
+    last_error: failure
+      ? { at: new Date(failure.at).toISOString(), message: failure.message }
+      : null,
+  };
 }
 
 // The founder's target rule (31 Aug, via Misho): Chorus invites only people
@@ -1907,7 +2008,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
       analysis?.tradeVotes ?? 0,
       analysis?.nameConfirmed ?? false,
       account,
-      ourOwn.has(phoneDigits(phone)),
+      ourOwn.has(phoneDigits(phone)) || account?.staff === true,
       {
         dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
         ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,

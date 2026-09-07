@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { phoneDigits } from '../phone';
+import { isStaffUser } from '../staff';
 
 const MEMBER_TIMEOUT_MS = 8_000;
 
@@ -28,6 +29,29 @@ const MEMBER_TIMEOUT_MS = 8_000;
 export type AccountState = 'none' | 'ally_account' | 'netai_user';
 
 /**
+ * The other half of the picture (Ticket 10 Task 9): the state says whether
+ * they have used Netai; these say whether they PAY for it, whether they paid
+ * for old Ally, and whether they are one of us.
+ *
+ * Old-Ally paid has no status column of its own — the old app sold one thing,
+ * the premium map, and stamped `boughtPremiumMapAt` when it was bought and
+ * `cancelledPremiumMapAt` when it was cancelled. "Old-Ally paying customer" is
+ * therefore: bought, and not cancelled. That is the one line the tester asked
+ * for on how the status is stored.
+ */
+export interface AccountDetails {
+  state: AccountState;
+  /** The account behind the phone — two phones with one id are ONE person. */
+  user_id: number | null;
+  /** A live Netai subscription: active, trialing, or a card being retried. */
+  netai_subscriber: boolean;
+  /** Bought the old Ally premium map and never cancelled it. */
+  old_ally_paid: boolean;
+  /** Staff, ex-staff, a curator or a review number — never a target. */
+  staff: boolean;
+}
+
+/**
  * "Has actually used Netai" has no single column, so it is the union of the
  * three things only Netai writes: a conversation thread, a search, or a
  * subscription. Threads alone give 38 people and all three give 42 — the
@@ -37,10 +61,18 @@ export type AccountState = 'none' | 'ally_account' | 'netai_user';
  */
 const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
 
+const NONE: AccountDetails = {
+  state: 'none',
+  user_id: null,
+  netai_subscriber: false,
+  old_ally_paid: false,
+  staff: false,
+};
+
 /**
- * The account state of each given phone, keyed by its digits. Phones with no
+ * The account behind each given phone, keyed by its digits. Phones with no
  * account are absent from the map rather than mapped to `none` — the caller
- * reads through `accountStateFor`, which supplies the default.
+ * reads through `accountStateFor` / `accountDetailsFor`, which supply the default.
  *
  * The compare is format-independent ON BOTH SIDES: `"UserPhone".phone` was
  * written unnormalized for years ("+995 599 …", "995599…"), and an exact
@@ -49,15 +81,24 @@ const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
  * idx_user_phone_digits (migration 047); the two EXISTS checks ride
  * idx_threads_user_id and idx_search_activity_user_time.
  */
-export async function fetchAccountStates(phones: string[]): Promise<Map<string, AccountState>> {
+export async function fetchAccountStates(phones: string[]): Promise<Map<string, AccountDetails>> {
   const digits = [...new Set(phones.map(phoneDigits))].filter(Boolean);
-  const states = new Map<string, AccountState>();
-  if (digits.length === 0) return states;
-  const result = await query<{ phone: string; netai_user: boolean }>(
-    `SELECT DISTINCT up.phone,
+  const details = new Map<string, AccountDetails>();
+  if (digits.length === 0) return details;
+  const result = await query<{
+    phone: string;
+    user_id: number;
+    netai_user: boolean;
+    netai_subscriber: boolean | null;
+    old_ally_paid: boolean | null;
+  }>(
+    `SELECT DISTINCT up.phone, u.id AS user_id,
             (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
              OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-             OR u.subscription_status = ANY($2::text[])) AS netai_user
+             OR u.subscription_status = ANY($2::text[])) AS netai_user,
+            (u.subscription_status = ANY($2::text[])) AS netai_subscriber,
+            (u."boughtPremiumMapAt" IS NOT NULL AND u."cancelledPremiumMapAt" IS NULL)
+              AS old_ally_paid
      FROM "UserPhone" up
      JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = ANY($1) AND u."deletedAt" IS NULL`,
@@ -66,24 +107,43 @@ export async function fetchAccountStates(phones: string[]): Promise<Map<string, 
   );
   for (const row of result.rows) {
     const key = phoneDigits(row.phone);
+    const current = details.get(key) ?? NONE;
     // One person can hold several phones and several rows; a single Netai
-    // signal on any of them makes them a Netai user.
-    if (row.netai_user || !states.has(key)) {
-      states.set(key, row.netai_user ? 'netai_user' : 'ally_account');
-    }
+    // signal on any of them makes them a Netai user, and any row's payment or
+    // staff flag stands for the person.
+    details.set(key, {
+      state: row.netai_user || current.state === 'netai_user' ? 'netai_user' : 'ally_account',
+      user_id: current.user_id ?? (typeof row.user_id === 'number' ? row.user_id : null),
+      netai_subscriber: current.netai_subscriber || row.netai_subscriber === true,
+      old_ally_paid: current.old_ally_paid || row.old_ally_paid === true,
+      staff: current.staff || isStaffUser(row.user_id),
+    });
   }
-  return states;
+  return details;
+}
+
+/** Everything known about one phone's account, given a map from fetchAccountStates. */
+export function accountDetailsFor(
+  details: Map<string, AccountDetails>,
+  phone: string,
+): AccountDetails {
+  return details.get(phoneDigits(phone)) ?? NONE;
 }
 
 /** The state of one phone, given a map from fetchAccountStates. */
-export function accountStateFor(states: Map<string, AccountState>, phone: string): AccountState {
-  return states.get(phoneDigits(phone)) ?? 'none';
+export function accountStateFor(details: Map<string, AccountDetails>, phone: string): AccountState {
+  return accountDetailsFor(details, phone).state;
 }
 
 /**
  * `is_member` as the assistant reads it: a Netai user, not merely an account.
  * An old-Ally account is deliberately false here — it is a target.
  */
-export function isMemberPhone(states: Map<string, AccountState>, phone: string): boolean {
-  return accountStateFor(states, phone) === 'netai_user';
+export function isMemberPhone(details: Map<string, AccountDetails>, phone: string): boolean {
+  return accountStateFor(details, phone) === 'netai_user';
+}
+
+/** Does this phone's account pay for Netai today? */
+export function isSubscriberPhone(details: Map<string, AccountDetails>, phone: string): boolean {
+  return accountDetailsFor(details, phone).netai_subscriber;
 }

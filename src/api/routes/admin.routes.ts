@@ -45,6 +45,7 @@ import {
   reclassifyPrivateNotes,
   ReclassifyResult,
   retractFactsFromForeignSync,
+  retractFactsByRange,
 } from '../../services/contactFacts.service';
 import {
   listPromptBlocks,
@@ -112,7 +113,7 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
-import { findUnmetNeeds } from '../../services/unmetNeeds.service';
+import { demandExcludedUserIds, findUnmetNeeds } from '../../services/unmetNeeds.service';
 import {
   previewForeignSyncLinks,
   removeForeignSyncLinks,
@@ -123,6 +124,9 @@ import {
   clearTargetListCache,
   readScoreHistory,
   TargetScoreEntry,
+  TargetListStatus,
+  startTargetListBuild,
+  targetListStatus,
 } from '../../services/targetScoring.service';
 import {
   applyTargetDecisions,
@@ -737,6 +741,61 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Ticket 10 Task 7 (continues Ticket 9 Task 18): everything ONE account wrote
+// inside a time window, previewed before it goes. The 2 September test writes
+// could not all be found by hand; created_at finds them.
+//   POST /admin/facts/retract-range
+//   body: { user_id, created_after, created_before, dry_run }   dry_run defaults to TRUE
+//   Undo (per row, from the preview's ids):
+//     UPDATE contact_facts SET retracted_at = NULL, is_public = <prior> WHERE id = <id>;
+adminRouter.post(
+  '/facts/retract-range',
+  body('user_id').isInt({ min: 1 }),
+  body('created_after').isISO8601(),
+  body('created_before').isISO8601(),
+  body('dry_run').optional().isBoolean(),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const input = req.body as {
+        user_id: number;
+        created_after: string;
+        created_before: string;
+        dry_run?: boolean | string;
+      };
+      // Anything but an explicit false is a dry run — the safe reading of a
+      // missing or mistyped flag on a route that retracts.
+      const dryRun = !(input.dry_run === false || input.dry_run === 'false');
+      const result = await retractFactsByRange(
+        String(input.user_id),
+        new Date(input.created_after),
+        new Date(input.created_before),
+        dryRun,
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('window') || message.includes('created_before')) {
+        res.status(400).json({ success: false, error: message });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error('[admin retract-range]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
@@ -1915,7 +1974,10 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
   try {
     const rawDays = Number(req.query.days);
     const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
-    const result = await findUnmetNeeds(days);
+    const [result, excludedUserIds] = await Promise.all([
+      findUnmetNeeds(days),
+      demandExcludedUserIds(),
+    ]);
     // Ticket 7 Task 4 item 4: the T5 merge must be visible — per-topic
     // `sources` on each row plus the overall split here.
     const sourceTotals = result.reduce(
@@ -1925,7 +1987,22 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
       }),
       { netai: 0, old_ally: 0 },
     );
-    res.status(200).json({ success: true, data: { topics: result, source_totals: sourceTotals } });
+    // Ticket 10 Task 6: which accounts' searches were left out of demand (our
+    // own people and the test numbers), and how many candidates are foreign —
+    // named once, on the screen that shows the result of the exclusion.
+    const foreignCandidates = result.reduce(
+      (n, row) => n + row.candidates.filter((c) => c.foreign).length,
+      0,
+    );
+    res.status(200).json({
+      success: true,
+      data: {
+        topics: result,
+        source_totals: sourceTotals,
+        excluded_user_ids: excludedUserIds,
+        foreign_candidates: foreignCandidates,
+      },
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin unmet-needs]', error);
@@ -1938,16 +2015,29 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
 // criteria flags (lookalike-to-best-users, per-user goal relevance) have no
 // concept to build on in this schema and are documented, not faked — see
 // targetScoring.service's own header comment.
+//   GET /admin/target-list?days=30[&refresh=true][&wait=false]
+// `wait=false` (Ticket 10 Task 12): when the list for that window is not
+// built yet, start the build and answer 202 with its status instead of holding
+// the request open for a minute — the 60-day period's first build took 68 s
+// and the page showed a server error with nothing to retry. The page polls
+// /target-list/status until `ready`, then reads the list. Without the flag the
+// old behaviour holds, but a build already running is joined, never doubled.
 adminRouter.get(
   '/target-list',
-  async (req: Request, res: Response<ApiResponse<TargetScoreEntry[]>>) => {
+  async (req: Request, res: Response<ApiResponse<TargetScoreEntry[] | TargetListStatus>>) => {
     try {
-      const rawDays = Number(req.query.days);
-      const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+      const days = targetListDays(req.query.days);
       // ?refresh=true rebuilds instead of serving the hourly cache — the lever
       // the founder needs right after a curator import, since the imported
       // facts are what the `fit` part of every score reads.
       const refresh = req.query.refresh === 'true';
+      if (req.query.wait === 'false') {
+        const status = startTargetListBuild(days, refresh);
+        if (status.state !== 'ready') {
+          res.status(202).json({ success: true, data: status });
+          return;
+        }
+      }
       const result = await buildTargetList(days, { refresh });
       res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -1957,6 +2047,20 @@ adminRouter.get(
     }
   },
 );
+
+// Is the list for this window ready, building, or did the last build fail —
+// and when. Never triggers a build; pair it with `wait=false` above.
+adminRouter.get(
+  '/target-list/status',
+  (req: Request, res: Response<ApiResponse<TargetListStatus>>) => {
+    res.status(200).json({ success: true, data: targetListStatus(targetListDays(req.query.days)) });
+  },
+);
+
+function targetListDays(raw: unknown): number {
+  const days = Number(raw);
+  return Number.isFinite(days) && days > 0 ? Math.min(days, 365) : 30;
+}
 
 // The gate ledger behind the same list: which check removed how many, and
 // which ones are currently switched off (TARGET_GATES_OFF). A rule nobody can

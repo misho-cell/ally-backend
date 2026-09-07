@@ -130,6 +130,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes("date_trunc('month'"))
     return rows([{ count: '4', resets_at: '2026-10-01T00:00:00.000Z' }]);
   if (sql.includes('ask_optout_events')) return rows([{ opt_outs: '0', ignored: '1' }]);
+  if (sql.includes('AS old_ally_paid'))
+    return rows([{ netai_user: true, netai_subscriber: true, old_ally_paid: false }]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 

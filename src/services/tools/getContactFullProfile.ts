@@ -1,7 +1,13 @@
 import { query } from '../../db/postgres/client';
 import { getContactInsight } from '../insights.service';
 import { getVisibleFacts, VisibleFactsResult } from '../contactFacts.service';
-import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
+import {
+  AccountState,
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+  accountStateFor,
+} from './membership';
 
 interface TagSummary {
   tag: string;
@@ -14,6 +20,8 @@ interface ContactFullProfile {
   // Whether this contact is a registered Ally member — steers intro vs. invite.
   is_member: boolean;
   account_state: AccountState;
+  /** Pays for Netai today (Ticket 10 Task 9). */
+  netai_subscriber: boolean;
   tags: TagSummary[];
   insights: Record<string, unknown> | null;
   facts_and_ask: VisibleFactsResult;
@@ -65,6 +73,7 @@ export async function getContactFullProfile(
     phone,
     is_member: isMemberPhone(accountStates, phone),
     account_state: accountStateFor(accountStates, phone),
+    netai_subscriber: isSubscriberPhone(accountStates, phone),
     tags: tagsResult.rows.filter((r) => isDisplayableTag(r.tag)),
     insights: insightData,
     facts_and_ask: factsAndAsk,

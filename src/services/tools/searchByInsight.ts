@@ -3,7 +3,12 @@ import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
 import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
-import { fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
+import {
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+  accountStateFor,
+} from './membership';
 import { vetoedPhonesFor } from '../factCorrections.service';
 import { fetchSignalStrength } from './searchSecondDegree';
 
@@ -550,6 +555,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       score: Math.round((s.hits / words.length) * 100) / 100,
       is_member: isMemberPhone(accountStates, s.hit.contact_id),
       account_state: accountStateFor(accountStates, s.hit.contact_id),
+      netai_subscriber: isSubscriberPhone(accountStates, s.hit.contact_id),
     }));
 
     // Matchable facts add people HERE too, not only when the search came back

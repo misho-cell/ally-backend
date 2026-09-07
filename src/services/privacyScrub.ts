@@ -74,11 +74,17 @@ export function stripAllowedSpans(text: string): string {
 // "[hidden]" goes alone, and leftover doubled spaces / space-before-comma are
 // tidied. Privacy is unchanged — the number was already gone.
 const REDACTED_WRAPPED_RE = /\s*[([]\s*\*{0,2}\[hidden\]\*{0,2}\s*[)\]]/g;
+// A QUOTED placeholder goes with its quotes (Ticket 10 Task 3): on 3 Sep the
+// reply „ვნახოთ ნომრები: ერთია "[hidden]", მეორე "[hidden]"" reached Lika as
+// „ერთია "", მეორე """ — the placeholder gone, the empty quotes left behind to
+// be read as a blank number. Straight, Georgian and guillemet quotes alike.
+const REDACTED_QUOTED_RE = /\s*["„“'«]\s*\*{0,2}\[hidden\]\*{0,2}\s*["”'»]/g;
 const REDACTED_BARE_RE = /\s*\*{0,2}\[hidden\]\*{0,2}/g;
 
 export function stripRedactionArtifactsForDisplay(text: string): string {
   return text
     .replace(REDACTED_WRAPPED_RE, '')
+    .replace(REDACTED_QUOTED_RE, '')
     .replace(REDACTED_BARE_RE, '')
     .replace(/ {2,}/g, ' ')
     .replace(/ ([,.:;!?])/g, '$1');

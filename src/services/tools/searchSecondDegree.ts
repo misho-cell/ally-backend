@@ -13,7 +13,12 @@ import {
   relationshipTouchedPhones,
 } from '../contactRelationships.service';
 import { OWNERSHIP } from './searchResultMeta';
-import { accountStateFor, fetchAccountStates, isMemberPhone } from './membership';
+import {
+  accountStateFor,
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+} from './membership';
 
 const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
@@ -480,6 +485,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         // opened Netai, and 62,146 of the 62,184 accounts never have.
         is_member: isMemberPhone(accountStates, row.phone),
         account_state: accountStateFor(accountStates, row.phone),
+        netai_subscriber: isSubscriberPhone(accountStates, row.phone),
         via: row.via_names ?? [],
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing

@@ -4,7 +4,14 @@ import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
-import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
+import {
+  AccountDetails,
+  accountDetailsFor,
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+  accountStateFor,
+} from './membership';
 import {
   fetchRelationshipForPhones,
   RelationshipInfo,
@@ -32,7 +39,7 @@ interface NameRow {
 function toRow(
   row: NameRow,
   facts: Map<string, ContactFactFields>,
-  accountStates: Map<string, AccountState>,
+  accountStates: Map<string, AccountDetails>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
   humanTiers: Map<string, HumanTier>,
@@ -59,6 +66,7 @@ function toRow(
     ...base,
     is_member: isMemberPhone(accountStates, row.phone),
     account_state: accountStateFor(accountStates, row.phone),
+    netai_subscriber: isSubscriberPhone(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
     // Enrichment-computed edge category (family/close/professional/formal) —
@@ -266,18 +274,26 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
 }
 
 /**
- * For every group of 2+ MEMBER rows sharing a display name, attach what tells
- * them apart: registration date, how many contacts their own phonebook holds,
- * and whether the account has ever been used (dormant = zero threads). One
- * query, only over the duplicated phones (ticket 6 task 54, founder's yes).
+ * For every group of 2+ rows sharing a display name, attach what tells them
+ * apart — never the number, which the assistant cannot see (Ticket 10 Task 3,
+ * D28).
+ *
+ * Two shapes. (1) The rows are ONE PERSON with several numbers: the founder's
+ * two phones sat in Lika's phonebook as two „Tornike Abuladze" rows, and the
+ * assistant, with nothing to tell them apart, asked her which Tornike she
+ * meant. Same account id ⇒ `same_person`, and the assistant is told so in
+ * words. (2) The rows are different people: each carries a `differentiator`
+ * built from what IS visible — company, title, city, how they were saved, the
+ * relationship — and member rows additionally carry registration date, network
+ * size and activity (ticket 6 task 54, founder's yes; one query, duplicated
+ * phones only).
  */
 async function attachDuplicateDifferentiators(
   mapped: Array<Record<string, unknown>>,
-  accountStates: Map<string, AccountState>,
+  accountStates: Map<string, AccountDetails>,
 ): Promise<void> {
   const byName = new Map<string, Array<Record<string, unknown>>>();
   for (const r of mapped) {
-    if (!isMemberPhone(accountStates, String(r.phone))) continue;
     const key = String(r.name ?? '')
       .trim()
       .toLowerCase();
@@ -286,7 +302,26 @@ async function attachDuplicateDifferentiators(
     group.push(r);
     byName.set(key, group);
   }
-  const duplicated = [...byName.values()].filter((g) => g.length > 1).flat();
+  const groups = [...byName.values()].filter((g) => g.length > 1);
+  if (groups.length === 0) return;
+
+  for (const group of groups) {
+    const ids = group.map((r) => accountDetailsFor(accountStates, String(r.phone)).user_id);
+    const onePerson = ids[0] !== null && ids.every((id) => id === ids[0]);
+    for (const r of group) {
+      r.duplicate_name = true;
+      if (onePerson) {
+        r.same_person = true;
+        r.same_person_hint = `One person with ${group.length} numbers — do not ask which one is meant; any of these rows is them.`;
+      } else {
+        r.differentiator = differentiatorFor(r);
+      }
+    }
+  }
+
+  const duplicated = groups
+    .flat()
+    .filter((r) => r.same_person !== true && isMemberPhone(accountStates, String(r.phone)));
   if (duplicated.length === 0) return;
   try {
     const dupPhones = duplicated.map((r) => String(r.phone));
@@ -309,7 +344,6 @@ async function attachDuplicateDifferentiators(
     for (const r of duplicated) {
       const d = byPhone.get(String(r.phone));
       if (!d) continue;
-      r.duplicate_name = true;
       r.member_since = d.member_since;
       r.network_size = Number(d.network_size);
       // A dormant twin is exactly the account an introduction must not be
@@ -320,4 +354,24 @@ async function attachDuplicateDifferentiators(
     // Differentiators are best-effort — a failure must not break the search.
     console.error('duplicate differentiators failed:', (err as Error).message);
   }
+}
+
+/**
+ * What tells one namesake from another, in words the assistant may repeat:
+ * company, title, city, the label they were saved under, the relationship, and
+ * whether they use Netai. Never the number. An empty string means the record
+ * itself cannot tell them apart, and the assistant should say so rather than
+ * quote a blank.
+ */
+function differentiatorFor(r: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof r.jobPosition === 'string' && r.jobPosition) parts.push(r.jobPosition);
+  if (typeof r.employer === 'string' && r.employer) parts.push(r.employer);
+  if (typeof r.city === 'string' && r.city) parts.push(r.city);
+  if (typeof r.saved_as === 'string' && r.saved_as && r.saved_as !== r.name) {
+    parts.push(`saved as „${r.saved_as}"`);
+  }
+  if (typeof r.relationship === 'string' && r.relationship) parts.push(r.relationship);
+  parts.push(r.is_member === true ? 'on Netai' : 'not on Netai');
+  return parts.join(' · ');
 }

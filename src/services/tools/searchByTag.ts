@@ -4,7 +4,13 @@ import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
-import { AccountState, fetchAccountStates, isMemberPhone, accountStateFor } from './membership';
+import {
+  AccountDetails,
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+  accountStateFor,
+} from './membership';
 import {
   fetchRelationshipForPhones,
   RelationshipInfo,
@@ -149,7 +155,7 @@ async function runFuzzySearch(
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
-  accountStates: Map<string, AccountState>,
+  accountStates: Map<string, AccountDetails>,
   relationships: Map<string, RelationshipInfo>,
   exclusions: Map<string, ContactExclusion[]>,
   humanTiers: Map<string, HumanTier>,
@@ -173,6 +179,7 @@ function shape(
     ...base,
     is_member: isMemberPhone(accountStates, row.phone),
     account_state: accountStateFor(accountStates, row.phone),
+    netai_subscriber: isSubscriberPhone(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
     // Enrichment-computed edge category (family/close/professional/formal) —

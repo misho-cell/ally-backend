@@ -62,8 +62,8 @@ describe('findUnmetNeeds', () => {
         sources: { netai: 2, old_ally: 1 },
         city: 'თბილისი',
         candidates: expect.arrayContaining([
-          { phone: '+995500000001', label: 'Wissol', source: 'tag' },
-          { phone: '+995500000002', label: 'Wissol მენეჯერი', source: 'alias' },
+          { phone: '+995500000001', label: 'Wissol', source: 'tag', foreign: false },
+          { phone: '+995500000002', label: 'Wissol მენეჯერი', source: 'alias', foreign: false },
         ]),
       },
     ]);
@@ -226,7 +226,7 @@ describe('findUnmetNeeds — topics run in batches (ticket 9 task 28.5)', () => 
     expect(out.map((t) => t.query)).toEqual(['aaa', 'bbb', 'ccc', 'ddd', 'eee', 'fff', 'ggg']);
     for (const topic of out) {
       expect(topic.candidates).toEqual([
-        { phone: `+9955000000${topic.query}`, label: topic.query, source: 'tag' },
+        { phone: `+9955000000${topic.query}`, label: topic.query, source: 'tag', foreign: false },
       ]);
     }
   });

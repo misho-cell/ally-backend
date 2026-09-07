@@ -17,12 +17,14 @@ import {
   UserOutcomes,
   UserCosts,
   UserProfile,
+  UserAccountStates,
   UserReferral,
   UserWallet,
   UserSearches,
   UserTimelineEvent,
 } from '../types';
 import { describeAskBudget } from './askBudget.service';
+import { isStaffUser } from './staff';
 
 const TREND_WINDOW_DAYS = 30;
 const RECENT_SEARCH_LIMIT = 10;
@@ -657,6 +659,39 @@ async function runBlock<T>(
   }
 }
 
+/**
+ * The three states on the admin's own user page (Ticket 10 Task 9 (1)): the
+ * same reading the connector gives on a search row, so a tester can check one
+ * against the other. Old-Ally paid is read from the premium-map stamps — the
+ * old app sold one thing and left two timestamps behind.
+ */
+const NETAI_LIVE_STATUSES = ['active', 'trialing', 'past_due'];
+
+async function getStates(userId: number): Promise<UserAccountStates> {
+  const result = await query<{
+    netai_user: boolean;
+    netai_subscriber: boolean | null;
+    old_ally_paid: boolean | null;
+  }>(
+    `SELECT (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+             OR u.subscription_status = ANY($2::text[])) AS netai_user,
+            (u.subscription_status = ANY($2::text[])) AS netai_subscriber,
+            (u."boughtPremiumMapAt" IS NOT NULL AND u."cancelledPremiumMapAt" IS NULL)
+              AS old_ally_paid
+     FROM "User" u WHERE u.id = $1`,
+    [userId, NETAI_LIVE_STATUSES],
+  );
+  const row = result.rows[0];
+  return {
+    account_state: row?.netai_user === true ? 'netai_user' : 'ally_account',
+    netai_subscriber: row?.netai_subscriber === true,
+    old_ally_paid: row?.old_ally_paid === true,
+    staff: isStaffUser(userId),
+    old_ally_paid_source: 'boughtPremiumMapAt IS NOT NULL AND cancelledPremiumMapAt IS NULL',
+  };
+}
+
 export async function getAdminUserDetail(userId: number): Promise<UserProfile | null> {
   // The account is the gate: if the user does not exist we 404, and an account
   // query failure is a genuine 500 (it is cheap and essential).
@@ -693,8 +728,11 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     runBlock('askBudget', () => describeAskBudget(String(userId)), null, diagnostics),
   ]);
 
+  const states = await runBlock('states', () => getStates(userId), null, diagnostics);
+
   const profile: UserProfile = {
     account,
+    ...(states !== null && { states }),
     network,
     activity,
     searches,

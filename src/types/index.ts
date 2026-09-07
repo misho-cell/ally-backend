@@ -277,8 +277,24 @@ export interface UserTimelineEvent {
   at: string;
 }
 
+/**
+ * The three states of an account and the flags beside them (Ticket 10 Task 9,
+ * D103): has this person used Netai, do they pay for it, did they pay for old
+ * Ally, and are they one of us.
+ */
+export interface UserAccountStates {
+  account_state: 'ally_account' | 'netai_user';
+  netai_subscriber: boolean;
+  old_ally_paid: boolean;
+  staff: boolean;
+  /** How old-Ally paid is read: bought the premium map and never cancelled it. */
+  old_ally_paid_source: 'boughtPremiumMapAt IS NOT NULL AND cancelledPremiumMapAt IS NULL';
+}
+
 export interface UserProfile {
   account: UserAccount;
+  /** Absent only when the block itself failed, which the diagnostics then name. */
+  states?: UserAccountStates;
   network: UserNetwork;
   activity: UserActivity;
   searches: UserSearches;

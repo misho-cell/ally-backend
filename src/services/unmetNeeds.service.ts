@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { phoneDigits } from './phone';
+import { staffPhoneDigits, staffUserIds } from './staff';
 
 const UNMET_NEEDS_QUERY_TIMEOUT_MS = 8_000;
 // A single word's candidate lookup measured ~1s on prod (strict-word-
@@ -46,6 +46,8 @@ export interface UnmetNeedCandidate {
   phone: string;
   label: string;
   source: 'tag' | 'alias';
+  /** Not a Georgian number. Two thirds of the 3 Sep candidates were (Task 6). */
+  foreign: boolean;
 }
 
 export interface UnmetNeed {
@@ -82,18 +84,43 @@ function significantWords(topic: string): string[] {
  * searches and are not filtered.
  */
 async function testAccountUserIds(): Promise<number[]> {
-  const digits = (process.env.REVIEW_PHONE ?? '')
-    .split(',')
-    .map((p) => phoneDigits(p.trim()))
-    .filter(Boolean);
-  if (digits.length === 0) return [];
+  // Staff, ex-staff and the curators by id (STAFF_USER_IDS, curators — Ticket
+  // 10 Task 6: nine rounds of our own plumber probe were the top "need" on 3
+  // Sep), plus the review numbers resolved to ids.
+  const byId = Array.from(staffUserIds())
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+  const digits = Array.from(staffPhoneDigits());
+  if (digits.length === 0) return byId;
   const result = await query<{ userId: number }>(
     `SELECT "userId" FROM "UserPhone"
      WHERE regexp_replace(phone, '\\D', '', 'g') = ANY($1)`,
     [digits],
     UNMET_NEEDS_QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((r) => r.userId);
+  return [...new Set([...byId, ...result.rows.map((r) => r.userId)])];
+}
+
+/**
+ * The accounts whose searches never count as demand, for the admin read
+ * ("list the accounts once" — Ticket 10 Task 6). The same list the demand
+ * query excludes, so the number on the screen and the filter agree.
+ */
+export async function demandExcludedUserIds(): Promise<number[]> {
+  return testAccountUserIds();
+}
+
+/**
+ * Is this candidate a person's own mobile, as far as its shape can say?
+ * Short codes and hotlines (fewer than nine digits) are out; anything with a
+ * country code and a full number stays, Georgian or not — living abroad is
+ * not a gate (D110). The reader sees `foreign` and decides.
+ */
+const MIN_MOBILE_DIGITS = 9;
+const GEORGIA_PREFIX = '+995';
+
+function plausibleMobile(phone: string): boolean {
+  return phone.replace(/\D/g, '').length >= MIN_MOBILE_DIGITS;
 }
 
 /**
@@ -144,13 +171,27 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
           CANDIDATE_QUERY_TIMEOUT_MS,
         ),
       ]);
+      // The same shape gate the target list applies: a short code or a hotline
+      // is not a candidate for anything (Ticket 10 Task 6 — 2 of 374 on 3 Sep).
       for (const row of tagRows.rows) {
+        if (!plausibleMobile(row.phone)) continue;
         if (!found.has(row.phone))
-          found.set(row.phone, { phone: row.phone, label: row.tag, source: 'tag' });
+          found.set(row.phone, {
+            phone: row.phone,
+            label: row.tag,
+            source: 'tag',
+            foreign: !row.phone.startsWith(GEORGIA_PREFIX),
+          });
       }
       for (const row of aliasRows.rows) {
+        if (!plausibleMobile(row.phone)) continue;
         if (!found.has(row.phone))
-          found.set(row.phone, { phone: row.phone, label: row.alias, source: 'alias' });
+          found.set(row.phone, {
+            phone: row.phone,
+            label: row.alias,
+            source: 'alias',
+            foreign: !row.phone.startsWith(GEORGIA_PREFIX),
+          });
       }
     } catch (error) {
       // A slow word (statement timeout under load) degrades this word only —

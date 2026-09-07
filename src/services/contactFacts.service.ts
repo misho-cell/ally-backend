@@ -687,6 +687,91 @@ export async function retractOwnFacts(
   return { retracted: result.rowCount ?? 0 };
 }
 
+export interface RangeRetractionRow {
+  id: number;
+  /** The contact, as the last four digits only — enough to recognise, never a number. */
+  contact_last4: string;
+  field_type: string;
+  value: string;
+  is_public: boolean;
+  created_at: string;
+}
+
+export interface RangeRetractionResult {
+  dry_run: boolean;
+  /** Facts the range holds (dry run) or held (live run). */
+  matched: number;
+  /** Rows retracted — 0 on a dry run. */
+  retracted: number;
+  rows: RangeRetractionRow[];
+}
+
+const RANGE_RETRACTION_PREVIEW_LIMIT = 200;
+
+/**
+ * Retract everything ONE account wrote inside a time window (Ticket 10 Task 7,
+ * continuing Ticket 9 Task 18).
+ *
+ * The 2 September tests wrote seven facts from the founder's seat; five were
+ * found by hand and retracted, two could not be found at all, because a fact
+ * carried only `last_confirmed`, which the sweep re-stamps. `created_at` was
+ * always there — this is the read that puts it to use: every non-retracted
+ * fact this account submitted with created_at inside [after, before), across
+ * every contact.
+ *
+ * Dry run by default and deliberately so: the same range that holds the test
+ * writes may hold a real one, and the preview is how a human checks before the
+ * rows go. The window is capped so a typo in the dates cannot retract a year.
+ */
+const MAX_RANGE_RETRACTION_DAYS = 31;
+
+export async function retractFactsByRange(
+  userId: string,
+  createdAfter: Date,
+  createdBefore: Date,
+  dryRun: boolean,
+): Promise<RangeRetractionResult> {
+  const spanDays = (createdBefore.getTime() - createdAfter.getTime()) / 86_400_000;
+  if (!(spanDays > 0)) throw new Error('created_before must be after created_after');
+  if (spanDays > MAX_RANGE_RETRACTION_DAYS) {
+    throw new Error(`the window may not exceed ${MAX_RANGE_RETRACTION_DAYS} days`);
+  }
+  const preview = await query<{
+    id: number;
+    neo4j_contact_id: string;
+    field_type: string;
+    value: string;
+    is_public: boolean;
+    created_at: string;
+  }>(
+    `SELECT id, neo4j_contact_id, field_type, value, is_public, created_at
+     FROM contact_facts
+     WHERE submitted_by_user_id = $1 AND retracted_at IS NULL
+       AND created_at >= $2 AND created_at < $3
+     ORDER BY created_at ASC
+     LIMIT $4`,
+    [userId, createdAfter, createdBefore, RANGE_RETRACTION_PREVIEW_LIMIT],
+  );
+  const rows: RangeRetractionRow[] = preview.rows.map((r) => ({
+    id: r.id,
+    contact_last4: r.neo4j_contact_id.replace(/\D/g, '').slice(-4),
+    field_type: r.field_type,
+    value: r.value,
+    is_public: r.is_public,
+    created_at: r.created_at,
+  }));
+  if (dryRun) return { dry_run: true, matched: rows.length, retracted: 0, rows };
+
+  const result = await query(
+    `UPDATE contact_facts
+     SET retracted_at = NOW(), is_public = false, updated_at = NOW()
+     WHERE submitted_by_user_id = $1 AND retracted_at IS NULL
+       AND created_at >= $2 AND created_at < $3`,
+    [userId, createdAfter, createdBefore],
+  );
+  return { dry_run: false, matched: rows.length, retracted: result.rowCount ?? 0, rows };
+}
+
 /**
  * Engine T14 (memory mirror), part (b) — "instant hard delete of any fact
  * ('forget this') with confirmation... deleted facts are gone from all

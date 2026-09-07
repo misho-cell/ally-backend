@@ -36,7 +36,7 @@ function need(
     ask_count: 1,
     sources: { netai: 1, old_ally: 0 },
     city,
-    candidates: candidates.map((c) => ({ ...c, source: 'tag' as const })),
+    candidates: candidates.map((c) => ({ ...c, source: 'tag' as const, foreign: false })),
   };
 }
 

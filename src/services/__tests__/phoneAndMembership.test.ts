@@ -2,7 +2,13 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 
 import { query } from '../../db/postgres/client';
 import { normalizePhone, phoneDigits } from '../phone';
-import { accountStateFor, fetchAccountStates, isMemberPhone } from '../tools/membership';
+import {
+  accountDetailsFor,
+  accountStateFor,
+  fetchAccountStates,
+  isMemberPhone,
+  isSubscriberPhone,
+} from '../tools/membership';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -106,5 +112,61 @@ describe('phoneDigits', () => {
     expect(phoneDigits('+995 599-12-34-56')).toBe('995599123456');
     expect(phoneDigits('0599123456')).toBe('995599123456');
     expect(phoneDigits('')).toBe('');
+  });
+});
+
+// Ticket 10 Task 9: the other half of the picture beside the state — paying
+// for Netai, paid for old Ally, one of us.
+describe('the flags beside the state', () => {
+  it('reads subscriber, old-Ally paid and staff off the account row', async () => {
+    process.env.STAFF_USER_IDS = '4242';
+    try {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            phone: '995599123456',
+            user_id: 4242,
+            netai_user: true,
+            netai_subscriber: true,
+            old_ally_paid: true,
+          },
+        ],
+        rowCount: 1,
+      } as never);
+
+      const details = await fetchAccountStates(['+995599123456']);
+
+      expect(accountDetailsFor(details, '+995599123456')).toEqual({
+        state: 'netai_user',
+        user_id: 4242,
+        netai_subscriber: true,
+        old_ally_paid: true,
+        staff: true,
+      });
+      expect(isSubscriberPhone(details, '599 12 34 56')).toBe(true);
+    } finally {
+      delete process.env.STAFF_USER_IDS;
+    }
+  });
+
+  it('old-Ally paid is read from the premium-map stamps, bought and not cancelled', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await fetchAccountStates(['+995599123456']);
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain(
+      'u."boughtPremiumMapAt" IS NOT NULL AND u."cancelledPremiumMapAt" IS NULL',
+    );
+  });
+
+  it('a phone with no account is none of these', () => {
+    expect(accountDetailsFor(new Map(), '+995599000000')).toEqual({
+      state: 'none',
+      user_id: null,
+      netai_subscriber: false,
+      old_ally_paid: false,
+      staff: false,
+    });
   });
 });

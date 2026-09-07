@@ -291,3 +291,96 @@ describe('searchContactByName', () => {
     expect(results[0].city).toBe('Batumi');
   });
 });
+
+// Ticket 10 Task 3: the founder's two numbers sat in Lika's phonebook as two
+// „Tornike Abuladze" rows and the assistant asked her which Tornike she meant.
+describe('two rows under one name', () => {
+  function setupTwins(accounts: { phone: string; user_id: number }[]): void {
+    const twins = [
+      {
+        ...mockRow,
+        phone: '+995555000001',
+        name: 'Tornike Abuladze',
+        saved_as: 'Tornike Abuladze',
+      },
+      {
+        ...mockRow,
+        phone: '+995555000002',
+        name: 'Tornike Abuladze',
+        saved_as: 'Tornike (Ally)',
+        employer: 'Ally',
+        city: 'Batumi',
+      },
+    ];
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '2' }]) as never);
+      if (sql.includes('AS old_ally_paid'))
+        return Promise.resolve(
+          rows(
+            accounts.map((a) => ({
+              phone: a.phone,
+              user_id: a.user_id,
+              netai_user: true,
+              netai_subscriber: true,
+              old_ally_paid: false,
+            })),
+          ) as never,
+        );
+      if (sql.includes('AS member_since'))
+        return Promise.resolve(
+          rows(
+            accounts.map((a) => ({
+              phone: a.phone,
+              member_since: '2026-01-01',
+              network_size: '10',
+              threads_count: '1',
+            })),
+          ) as never,
+        );
+      if (
+        sql.includes('AS as_of') ||
+        sql.includes('human_relationship_tiers') ||
+        sql.includes('contact_relationship_scores') ||
+        sql.includes('word_similarity(')
+      ) {
+        return Promise.resolve(rows([]) as never);
+      }
+      return Promise.resolve(rows(twins) as never);
+    });
+  }
+
+  it('one account behind both numbers is ONE person, and the assistant is told so', async () => {
+    setupTwins([
+      { phone: '+995555000001', user_id: 501 },
+      { phone: '+995555000002', user_id: 501 },
+    ]);
+
+    const result = (await searchContactByName('42', 'Tornike Abuladze')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    expect(results).toHaveLength(2);
+    for (const r of results) {
+      expect(r.duplicate_name).toBe(true);
+      expect(r.same_person).toBe(true);
+      expect(String(r.same_person_hint)).toContain('One person with 2 numbers');
+      expect(r.differentiator).toBeUndefined();
+    }
+  });
+
+  it('two different people under one name each carry a differentiator that is not the number', async () => {
+    setupTwins([
+      { phone: '+995555000001', user_id: 501 },
+      { phone: '+995555000002', user_id: 777 },
+    ]);
+
+    const result = (await searchContactByName('42', 'Tornike Abuladze')) as Record<string, unknown>;
+    const results = result.results as Array<Record<string, unknown>>;
+
+    const second = results.find((r) => r.phone === '+995555000002');
+    expect(second?.same_person).toBeUndefined();
+    expect(String(second?.differentiator)).toContain('Ally');
+    expect(String(second?.differentiator)).toContain('Batumi');
+    expect(String(second?.differentiator)).toContain('saved as „Tornike (Ally)"');
+    expect(String(second?.differentiator)).not.toMatch(/\d{6}/);
+  });
+});

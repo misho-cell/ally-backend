@@ -30,3 +30,23 @@ describe('scrubText — counts, years and number lists survive', () => {
     expect(scrubText('599123456 2015')).toContain('[hidden]');
   });
 });
+
+import { stripRedactionArtifactsForDisplay } from '../privacyScrub';
+
+// Ticket 10 Task 3: the placeholder went, its quotes stayed, and Lika read
+// „ერთია "", მეორე """ as two blank numbers.
+describe('a quoted placeholder disappears with its quotes', () => {
+  it.each([
+    ['ვნახოთ ნომრები: ერთია "[hidden]", მეორე "[hidden]".', 'ვნახოთ ნომრები: ერთია, მეორე.'],
+    ['ნომერი „[hidden]" არის', 'ნომერი არის'],
+    ['number «[hidden]» here', 'number here'],
+    ["it's '[hidden]' ok", "it's ok"],
+  ])('%s → %s', (input, expected) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(expected);
+  });
+
+  it('still strips the bare and bracketed forms', () => {
+    expect(stripRedactionArtifactsForDisplay('ილია წულაია ([hidden]): კი')).toBe('ილია წულაია: კი');
+    expect(stripRedactionArtifactsForDisplay('a [hidden] b')).toBe('a b');
+  });
+});

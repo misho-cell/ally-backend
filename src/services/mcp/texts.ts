@@ -59,6 +59,8 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'or "founder" rarely exist as tags. Each result carries is_member — TRUE only for someone who ' +
       'has actually used Netai — and account_state: "netai_user" · "ally_account" (an old Ally ' +
       'account that has never opened Netai) · "none". An ally_account is NOT a member. ' +
+      'netai_subscriber says whether they pay for Netai today — a Netai user who does not is ' +
+      'still a member and can still be asked. ' +
       'Returns the top matches plus a total count; an empty result never means the network is ' +
       'empty (check get_network_stats).',
   },
