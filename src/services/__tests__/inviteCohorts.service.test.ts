@@ -6,6 +6,7 @@ import {
   deactivateCohort,
   findCohortByCode,
   grantCohortTrial,
+  listCohortMembers,
   normalizeCohortCode,
 } from '../inviteCohorts.service';
 
@@ -126,5 +127,60 @@ describe('granting the period at the door', () => {
     await grantCohortTrial(9001, '---', AXEL);
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Task 26 / 28: the founder's day-20 and day-40 lists — who used what, who paid.
+describe('listCohortMembers', () => {
+  it('reads usage and payment beside the state, and filters by day', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        {
+          user_id: 171078,
+          name: 'ნინო',
+          registered_at: '2026-08-19T10:00:00.000Z',
+          day: '20',
+          subscription_status: 'trialing',
+          trial_ends_at: '2026-09-08T10:00:00.000Z',
+          threads: '4',
+          tasks_with_action: '1',
+          asks_answered: '2',
+          paid: false,
+          last_active_at: new Date('2026-09-07T18:00:00Z'),
+        },
+      ]) as never,
+    );
+
+    const members = await listCohortMembers('axel2026', 20);
+
+    expect(members).toEqual([
+      {
+        user_id: 171078,
+        name: 'ნინო',
+        registered_at: '2026-08-19T10:00:00.000Z',
+        day: 20,
+        subscription_status: 'trialing',
+        trial_ends_at: '2026-09-08T10:00:00.000Z',
+        threads: 4,
+        tasks_with_action: 1,
+        asks_answered: 2,
+        paid: false,
+        last_active_at: '2026-09-07T18:00:00.000Z',
+      },
+    ]);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('FROM payment_events');
+    expect(sql).toContain('>= $4::int');
+    expect(params).toEqual(['AXEL2026', 500, ['active', 'past_due'], 20]);
+  });
+
+  it('defaults to everybody (day 0) and never a negative day', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await listCohortMembers('AXEL2026');
+    await listCohortMembers('AXEL2026', -5);
+
+    expect((mockQuery.mock.calls[0][1] as unknown[])[3]).toBe(0);
+    expect((mockQuery.mock.calls[1][1] as unknown[])[3]).toBe(0);
   });
 });

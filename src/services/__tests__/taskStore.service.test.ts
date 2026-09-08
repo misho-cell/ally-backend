@@ -7,6 +7,9 @@ import {
   updateTask,
   grantTaskPermission,
   threadAwaitsOwner,
+  ensureNextWake,
+  getGoalsSilentForDays,
+  markMethodChangeWoken,
 } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -161,5 +164,44 @@ describe('threadAwaitsOwner — a badge asks the thread, not the run (ticket 9 t
     mockQuery.mockResolvedValue(result([]) as never);
 
     expect(await threadAwaitsOwner(9010)).toBe(false);
+  });
+});
+
+// The standard in code (Ticket 10 Tasks 10 and 24): an open goal is never
+// parked, and three silent days change the method.
+describe('never parked, and the method changes after three silent days', () => {
+  it('ensureNextWake sets the default only where the run left no wake', async () => {
+    mockQuery.mockResolvedValue(result([], 1) as never);
+
+    expect(await ensureNextWake(1519, 24)).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("status = 'open' AND next_wake_at IS NULL");
+    expect(params).toEqual([1519, 24]);
+
+    mockQuery.mockResolvedValue(result([], 0) as never);
+    expect(await ensureNextWake(1519, 24)).toBe(false);
+  });
+
+  it('getGoalsSilentForDays asks for planned goals with a 3-day-old ask, nothing newer, and no proposal waiting', async () => {
+    mockQuery.mockResolvedValue(result([]) as never);
+
+    await getGoalsSilentForDays(72, 5);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('t.plan IS NOT NULL AND t.plan_proposed IS NULL');
+    expect(sql).toContain("a.status = 'sent'");
+    expect(sql).toContain('a.answered_at >=');
+    expect(sql).toContain('method_change_woken_at');
+    expect(params).toEqual([72, 5]);
+  });
+
+  it('markMethodChangeWoken stamps the goal', async () => {
+    mockQuery.mockResolvedValue(result([], 1) as never);
+
+    await markMethodChangeWoken(1519);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('SET method_change_woken_at = NOW()');
+    expect(params).toEqual([1519]);
   });
 });

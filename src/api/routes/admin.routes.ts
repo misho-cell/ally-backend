@@ -2516,10 +2516,16 @@ adminRouter.delete('/invite-cohorts/:code', async (req: Request, res: Response) 
   }
 });
 
+//   GET /admin/invite-cohorts/:code/members?min_day=20 — the founder's day-20
+//   (and day-40) list: who used what, who paid (Task 26; Task 28 done-when).
 adminRouter.get('/invite-cohorts/:code/members', async (req: Request, res: Response) => {
   try {
-    const members = await listCohortMembers(String(req.params.code));
-    res.status(200).json({ success: true, data: { total: members.length, members } });
+    const rawMinDay = Number(req.query.min_day);
+    const minDay = Number.isFinite(rawMinDay) && rawMinDay > 0 ? Math.floor(rawMinDay) : 0;
+    const members = await listCohortMembers(String(req.params.code), minDay);
+    res
+      .status(200)
+      .json({ success: true, data: { total: members.length, min_day: minDay, members } });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin invite-cohorts members]', error);

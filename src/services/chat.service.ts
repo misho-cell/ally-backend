@@ -150,6 +150,7 @@ async function resolveRunMode(
   return (await isOnboardingUser(userId)) ? 'onboarding' : 'quick_answer';
 }
 import { debitRun } from './tokenWallet.service';
+import { stepLabel } from './stepLabel';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -3275,7 +3276,13 @@ async function runToolLoop(
       // 12 Aug; the same leak the tester logged as 0C.6).
       const narration = answer.emittedText().trim();
       emitAnswerReset(userId, threadId, runId);
-      if (narration && emitNarration) emitStepSummary(userId, threadId, runId, narration);
+      // Ticket 10 Task 2 (b), Lika: a step is one short line saying what is
+      // being done now, never a paragraph. The full narration is still
+      // persisted below (it may be the run's real answer); only the LIVE step
+      // label is cut to its first sentence.
+      if (narration && emitNarration) {
+        emitStepSummary(userId, threadId, runId, stepLabel(narration));
+      }
     }
     turnEmitted = false;
     answer = newTurnStreamer();

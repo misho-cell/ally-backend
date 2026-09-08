@@ -317,6 +317,57 @@ export async function getSilentGoals(hours: number, limit: number): Promise<Task
   return result.rows;
 }
 
+/**
+ * Line 4 of the standard (D117; Ticket 10 Task 24 (b)): three silent days
+ * change the method. Goals with a plan whose newest ask has waited three days
+ * unanswered, with nothing newer sent, no plan change already waiting for the
+ * owner's yes, and no method-change wake in the last three days.
+ */
+export async function getGoalsSilentForDays(hours: number, limit: number): Promise<Task[]> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks t
+     WHERE t.status = 'open' AND t.plan IS NOT NULL AND t.plan_proposed IS NULL
+       AND EXISTS (SELECT 1 FROM task_asks a
+                   WHERE a.task_id = t.id AND a.status = 'sent'
+                     AND a.created_at < NOW() - ($1 || ' hours')::interval)
+       AND NOT EXISTS (SELECT 1 FROM task_asks a
+                       WHERE a.task_id = t.id
+                         AND (a.created_at >= NOW() - ($1 || ' hours')::interval
+                              OR a.answered_at >= NOW() - ($1 || ' hours')::interval))
+       AND (t.method_change_woken_at IS NULL
+            OR t.method_change_woken_at < NOW() - ($1 || ' hours')::interval)
+     ORDER BY t.last_activity_at ASC
+     LIMIT $2`,
+    [hours, limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function markMethodChangeWoken(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET method_change_woken_at = NOW() WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
+/**
+ * Line 9 of the standard, the engine's half (Ticket 10 Task 10 (1)): an open
+ * goal always has a next wake. When a run ends without the model scheduling
+ * one, the default is set here — the goal is revisited, never parked. A wake
+ * the model did set is left exactly as it is.
+ */
+export async function ensureNextWake(taskId: number, hours: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE tasks SET next_wake_at = NOW() + ($2 || ' hours')::interval
+     WHERE id = $1 AND status = 'open' AND next_wake_at IS NULL`,
+    [taskId, hours],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function markSilentDayWoken(taskId: number): Promise<void> {
   await query(
     `UPDATE tasks SET silent_day_woken_at = NOW() WHERE id = $1`,

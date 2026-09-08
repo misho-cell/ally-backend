@@ -185,11 +185,23 @@ export interface CohortMember {
   subscription_status: string | null;
   trial_ends_at: string | null;
   threads: number;
+  /** Task 26 / 28: „who used what" — goals on which a question actually went out. */
+  tasks_with_action: number;
+  /** Other people's goals this person answered on. */
+  asks_answered: number;
+  /** „Who paid": a live subscription or a recorded payment (migration 125). */
+  paid: boolean;
+  last_active_at: string | null;
 }
 
 const COHORT_MEMBERS_LIMIT = 500;
+const PAYING_STATUSES = ['active', 'past_due'];
 
-export async function listCohortMembers(code: string): Promise<CohortMember[]> {
+/**
+ * Optionally only the people at or past a given day — the founder's day-20
+ * and day-40 lists are this read with `minDay` 20 and 40.
+ */
+export async function listCohortMembers(code: string, minDay = 0): Promise<CohortMember[]> {
   const result = await query<{
     user_id: number;
     name: string | null;
@@ -198,21 +210,38 @@ export async function listCohortMembers(code: string): Promise<CohortMember[]> {
     subscription_status: string | null;
     trial_ends_at: string | null;
     threads: string;
+    tasks_with_action: string;
+    asks_answered: string;
+    paid: boolean;
+    last_active_at: string | null;
   }>(
     `SELECT u.id AS user_id, u.name, u."createdAt" AS registered_at,
             (NOW()::date - u."createdAt"::date) AS day,
             u.subscription_status, u.trial_ends_at,
-            (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id) AS threads
+            (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id) AS threads,
+            (SELECT COUNT(*) FROM tasks t WHERE t.user_id = u.id::text
+               AND EXISTS (SELECT 1 FROM task_asks a WHERE a.task_id = t.id)) AS tasks_with_action,
+            (SELECT COUNT(*) FROM task_asks a WHERE a.to_user_id = u.id AND a.status = 'answered')
+              AS asks_answered,
+            (u.subscription_status = ANY($3::text[])
+              OR EXISTS (SELECT 1 FROM payment_events p WHERE p.user_id = u.id)) AS paid,
+            (SELECT MAX(c.created_at) FROM conversations c
+               WHERE c.user_id = u.id AND c.role = 'user') AS last_active_at
      FROM "User" u
      WHERE u.invite_cohort = $1 AND u."deletedAt" IS NULL
+       AND (NOW()::date - u."createdAt"::date) >= $4::int
      ORDER BY u."createdAt" ASC
      LIMIT $2`,
-    [normalizeCohortCode(code), COHORT_MEMBERS_LIMIT],
+    [normalizeCohortCode(code), COHORT_MEMBERS_LIMIT, PAYING_STATUSES, Math.max(0, minDay)],
     COHORT_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => ({
     ...r,
     day: Number(r.day),
     threads: Number(r.threads),
+    tasks_with_action: Number(r.tasks_with_action),
+    asks_answered: Number(r.asks_answered),
+    paid: r.paid === true,
+    last_active_at: r.last_active_at === null ? null : new Date(r.last_active_at).toISOString(),
   }));
 }

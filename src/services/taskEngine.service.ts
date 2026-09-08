@@ -8,6 +8,9 @@ import {
   markQuestionDefaulted,
   getSilentGoals,
   markSilentDayWoken,
+  getGoalsSilentForDays,
+  markMethodChangeWoken,
+  ensureNextWake,
   touchTaskActivity,
   clearTaskWake,
   Task,
@@ -262,6 +265,14 @@ async function sweepUnwokenAnswers(): Promise<void> {
   }
 }
 
+/**
+ * The wake an open goal falls back to when a run ends without scheduling one
+ * (Ticket 10 Task 10 (1): `next_wake_at` is never null on an open goal). A
+ * day, so a goal the model forgot to reschedule is still revisited tomorrow,
+ * not parked until the nightly review's quiet threshold happens to catch it.
+ */
+const DEFAULT_NEXT_WAKE_HOURS = 24;
+
 async function tick(): Promise<void> {
   const due = await getDueTasks(MAX_WAKES_PER_TICK);
   for (const task of due) {
@@ -272,7 +283,42 @@ async function tick(): Promise<void> {
       task.id,
       'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი.',
     );
+    // Line 9: the engine never parks a goal. If the run set no wake, the
+    // default does — and the row can never read `next_wake_at: null` again.
+    await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] default wake failed:', (err as Error).message),
+    );
   }
+}
+
+/**
+ * Line 4 of the standard, in code (Ticket 10 Task 24 (b)): three silent days
+ * change the method. A goal with a plan whose newest ask has waited three days
+ * with nothing newer sent or answered is woken once with the instruction to
+ * PROPOSE a method change — a plan change, so a new yes — while the approved
+ * routes keep running. Stamped before the wake; not repeated for three days;
+ * skipped while a proposed plan already waits for the owner.
+ */
+const METHOD_CHANGE_HOURS = 72;
+const MAX_METHOD_CHANGE_WAKES_PER_SWEEP = 5;
+
+export async function sweepMethodChanges(): Promise<number> {
+  const stuck = await getGoalsSilentForDays(METHOD_CHANGE_HOURS, MAX_METHOD_CHANGE_WAKES_PER_SWEEP);
+  let woken = 0;
+  for (const task of stuck) {
+    await markMethodChangeWoken(task.id);
+    const ok = await wakeTask(
+      task.id,
+      'სამი დღეა კითხვებს პასუხი არ მოჰყოლია და ახალი არავის მისწერია. სტანდარტის წესია: სამი ' +
+        'ჩუმი დღე = მეთოდი შეცვალე, არა მეტი ლოდინი. propose_task_plan-ით შესთავაზე მფლობელს ' +
+        'ახალი გზა ან ახალი წრე (სხვა ადამიანები, ვებ-ძიება, პირდაპირი მიმართვა მისი სახელით) — ' +
+        'ეს გეგმის ცვლილებაა და მისი „კი" სჭირდება; დამტკიცებული გზები კი უწყვეტად გრძელდება. ' +
+        'ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
+    );
+    if (ok) woken++;
+  }
+  return woken;
 }
 
 /**
@@ -356,6 +402,11 @@ async function nightlyReview(): Promise<void> {
         'ლოდინს თხრობით ამბობ („ველოდები მის გადაწყვეტილებას ორ კანდიდატზე") — მფლობელისგან ' +
         'რაღაცის ლოდინი ბლოკია, როგორც არ უნდა ჟღერდეს წინადადება.',
     );
+    // The review woke it; if the run set no wake, tomorrow's is set here.
+    await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] default wake failed:', (err as Error).message),
+    );
   }
   if (stale.length > 0) {
     // eslint-disable-next-line no-console
@@ -406,6 +457,15 @@ export function startTaskTicker(): void {
       .catch((err) =>
         // eslint-disable-next-line no-console
         console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
+      );
+    void sweepMethodChanges()
+      .then((n) => {
+        // eslint-disable-next-line no-console
+        if (n > 0) console.log(`[task-engine] method-change proposal woke ${n} goal(s)`);
+      })
+      .catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] method-change sweep failed:', (err as Error).message),
       );
     // C9.7's timer half: silence IS an outcome — a week-old unanswered intro
     // produces a no_reply row without anyone touching the app.

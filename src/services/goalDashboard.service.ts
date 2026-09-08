@@ -24,6 +24,7 @@ export type GoalActionKind =
   | 'question_to_owner'
   | 'question_defaulted'
   | 'circle_widened'
+  | 'method_change_proposed'
   | 'ask_sent'
   | 'follow_up_sent'
   | 'relay_sent'
@@ -170,6 +171,9 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
        UNION ALL
        SELECT t.silent_day_woken_at, 'circle_widened', NULL, NULL
          FROM tasks t WHERE t.id = $1 AND t.silent_day_woken_at IS NOT NULL
+       UNION ALL
+       SELECT t.method_change_woken_at, 'method_change_proposed', NULL, NULL
+         FROM tasks t WHERE t.id = $1 AND t.method_change_woken_at IS NOT NULL
        UNION ALL
        SELECT t.updated_at, 'closed', t.closed_reason, NULL
          FROM tasks t WHERE t.id = $1 AND t.status = 'closed'
@@ -330,8 +334,9 @@ export async function goalDays(
             EXISTS (SELECT 1 FROM tasks t
                      WHERE t.id = $1 AND t.silent_day_woken_at::date = d.day) AS circle_widened,
             EXISTS (SELECT 1 FROM tasks t
-                     WHERE t.id = $1 AND t.plan_version > 1
-                       AND t.plan_approved_at::date = d.day) AS method_changed,
+                     WHERE t.id = $1
+                       AND ((t.plan_version > 1 AND t.plan_approved_at::date = d.day)
+                            OR t.method_change_woken_at::date = d.day)) AS method_changed,
             (SELECT COUNT(*) FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
               WHERE t.id = $1 AND c.role = 'assistant' AND c.kind = 'message'
                 AND c.created_at::date = d.day) AS status_lines
