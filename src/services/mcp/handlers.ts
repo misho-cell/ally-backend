@@ -21,6 +21,7 @@ import {
   normalizeFieldType,
   getVisibleFacts,
   submitContactFact,
+  FactRefusedError,
   retractOwnFacts,
   hardDeleteOwnFact,
 } from '../contactFacts.service';
@@ -601,7 +602,13 @@ export async function mcpAnswerProfileQuestion(
 
 export async function mcpSaveContactFact(
   userId: string,
-  args: { contact_ref: string; field_type: string; value: string; source?: string },
+  args: {
+    contact_ref: string;
+    field_type: string;
+    value: string;
+    source?: string;
+    confidence?: string;
+  },
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
@@ -617,13 +624,21 @@ export async function mcpSaveContactFact(
 
   // Only 'debrief' may be claimed by the model; 'sweep' and 'label' are
   // server-side pipelines and stay unreachable from here (fail-closed).
-  const result = await submitContactFact(
-    userId,
-    phone,
-    fieldType,
-    value,
-    args.source === 'debrief' ? 'debrief' : 'chat',
-  );
+  let result: { is_public: boolean };
+  try {
+    result = await submitContactFact(
+      userId,
+      phone,
+      fieldType,
+      value,
+      args.source === 'debrief' ? 'debrief' : 'chat',
+      args.confidence === 'mentioned' ? 'mentioned' : 'stated',
+    );
+  } catch (err) {
+    // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
+    if (err instanceof FactRefusedError) return { saved: false, error: err.message };
+    throw err;
+  }
   // is_public means the crowd corroborated it; the saved value is still private
   // to this user's assistant either way.
   return { saved: true, field_type: fieldType, crowd_confirmed: result.is_public };

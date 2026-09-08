@@ -385,6 +385,15 @@ export async function markQuestionDefaulted(taskId: number): Promise<void> {
   );
 }
 
+/** Every open goal on a thread was worked on when the thread got a reply. */
+export async function touchTaskActivityForThread(threadId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET last_activity_at = NOW() WHERE thread_id = $1 AND status = 'open'`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 export async function touchTaskActivity(taskId: number): Promise<void> {
   await query(
     `UPDATE tasks SET last_activity_at = NOW() WHERE id = $1`,
@@ -428,6 +437,9 @@ export async function updateTask(
          closed_reason = CASE WHEN $3 = 'closed' THEN $4 ELSE closed_reason END,
          pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
          pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
+         -- A closed goal has no next wake (Ticket 11 Task 7 (e): goal 1420 read
+         -- closed with a wake still set); paused keeps its date for the resume.
+         next_wake_at = CASE WHEN $3 = 'closed' THEN NULL ELSE next_wake_at END,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2

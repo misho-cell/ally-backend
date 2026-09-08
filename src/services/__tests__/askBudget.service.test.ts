@@ -59,12 +59,13 @@ describe('checkAskBudget', () => {
     expect(out).toEqual({ allowed: true });
   });
 
-  it('blocks a second growth ask in the same conversation — the hard floor', async () => {
+  it('the per-conversation floor is OFF by default (D134): a second ask in one conversation goes', async () => {
     routeBudgetQueries({ inConversation: 1 });
 
     const out = await checkAskBudget('42', 555);
 
-    expect(out).toEqual({ allowed: false, reason: 'conversation_limit_reached' });
+    expect(out).toEqual({ allowed: true });
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('JOIN tasks t'))).toBe(false);
   });
 
   it('skips the per-conversation check entirely when no thread is given (MCP surface)', async () => {
@@ -78,21 +79,29 @@ describe('checkAskBudget', () => {
     expect(conversationQueries).toHaveLength(0);
   });
 
-  it('blocks once the monthly budget is used up', async () => {
+  it('no sending allowance (D134): thirty sent this window and no fatigue is still allowed', async () => {
     routeBudgetQueries({ sentThisMonth: 30 });
 
     const out = await checkAskBudget('42', undefined);
 
-    expect(out).toEqual({ allowed: false, reason: 'monthly_budget_reached' });
+    // Tokens are the one limit; the window count is not even read.
+    expect(out).toEqual({ allowed: true });
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('date_trunc('))).toBe(false);
   });
 
-  it('steps the monthly budget down as fatigue signals accumulate', async () => {
-    // Base 30, one ignored ask removes 5 -> effective budget 25.
+  it('fatigue below the brake does not cap the sender', async () => {
     routeBudgetQueries({ sentThisMonth: 25, asksIgnored: 1 });
 
     const out = await checkAskBudget('42', undefined);
 
-    // And it says WHICH cap bit: the budget was narrowed, not spent.
+    expect(out).toEqual({ allowed: true });
+  });
+
+  it('the brake: enough fatigue signals hold the sender to the floor for the window', async () => {
+    routeBudgetQueries({ sentThisMonth: MIN_MONTHLY_ASK_BUDGET, asksIgnored: 2, optOutsCaused: 1 });
+
+    const out = await checkAskBudget('42', undefined);
+
     expect(out).toEqual({ allowed: false, reason: 'fatigue_budget_exhausted' });
   });
 
@@ -148,18 +157,15 @@ describe('checkFollowUpBudget — a relayed conversation may continue (ticket 9 
 });
 
 describe('the growth budget counts outreach only (ticket 9 task 12)', () => {
-  it('excludes follow-ups from the month and from the per-conversation floor', async () => {
-    routeBudgetQueries({});
+  it('excludes follow-ups from the window count the brake reads', async () => {
+    // Braked, so the window count is read at all.
+    routeBudgetQueries({ asksIgnored: 3 });
 
     await checkAskBudget('42', 555);
 
-    const conversation = mockQuery.mock.calls.find(([sql]) =>
-      String(sql).includes('JOIN tasks t'),
-    ) as [string, unknown[]];
     const month = mockQuery.mock.calls.find(([sql]) =>
       String(sql).includes("date_trunc('month'"),
     ) as [string, unknown[]];
-    expect(conversation[0]).toContain('is_follow_up = FALSE');
     expect(month[0]).toContain('is_follow_up = FALSE');
   });
 });
@@ -221,10 +227,11 @@ describe('describeAskBudget — the numbers, readable (ticket 9 task 17)', () =>
     const out = await describeAskBudget('501');
 
     expect(out.fatigue_signals).toEqual({ opt_outs_caused: 1, asks_ignored: 2, total: 3 });
-    // 30 − 3 × 5 = 15, of which four are spent.
-    expect(out.effective_monthly_budget).toBe(15);
+    // Three signals = the brake (D134): the floor of five is the cap, four spent.
+    expect(out.sending_cap).toBe('fatigue_brake');
+    expect(out.effective_monthly_budget).toBe(MIN_MONTHLY_ASK_BUDGET);
     expect(out.sent_this_month).toBe(4);
-    expect(out.remaining_this_month).toBe(11);
+    expect(out.remaining_this_month).toBe(1);
     expect(out.window).toBe('calendar_month');
     expect(out.fatigue_window_days).toBe(FATIGUE_WINDOW_DAYS);
     expect(out.window_resets_at).toBe('2026-10-01T00:00:00.000Z');
@@ -234,6 +241,16 @@ describe('describeAskBudget — the numbers, readable (ticket 9 task 17)', () =>
     routeBudgetQueries({ asksIgnored: 6, sentThisMonth: 40 });
 
     expect((await describeAskBudget('501')).remaining_this_month).toBe(0);
+  });
+
+  it('an unbraked sender reads no cap at all (D134)', async () => {
+    routeBudgetQueries({ sentThisMonth: 40 });
+
+    const out = await describeAskBudget('501');
+
+    expect(out.sending_cap).toBe('none');
+    expect(out.effective_monthly_budget).toBeNull();
+    expect(out.remaining_this_month).toBeNull();
   });
 });
 
@@ -286,8 +303,9 @@ describe('BUDGET_WINDOW=week', () => {
 
   it('the gate counts the week too', async () => {
     mockQuery.mockImplementation((sql: string) => {
+      // Braked, so the window count is read.
       if (sql.includes('ask_optout_events'))
-        return Promise.resolve(rows([{ opt_outs: '0', ignored: '0' }]) as never);
+        return Promise.resolve(rows([{ opt_outs: '0', ignored: '3' }]) as never);
       return Promise.resolve(rows([{ count: '0' }]) as never);
     });
 

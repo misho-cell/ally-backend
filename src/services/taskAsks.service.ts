@@ -44,6 +44,11 @@ function titleSnippetFrom(question: string): string {
 // limits, the user pays tokens") — one account still must not be able to
 // blanket the network in a day. Env-adjustable.
 const MAX_ASKS_PER_SENDER_PER_DAY = Number(process.env.MAX_ASKS_PER_SENDER_PER_DAY ?? 20);
+// D134 (8 Sep): the brake is on the receiving side — new questions one person
+// may receive from everyone in a day. The founder's number; env-adjustable.
+const MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY = Number(
+  process.env.MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY ?? 2,
+);
 const MAX_QUESTION_CHARS = 600;
 
 export interface TaskAsk {
@@ -72,6 +77,7 @@ export type AskRefusalReason =
   | 'outside_plan'
   | 'self_send'
   | 'daily_cap_reached'
+  | 'recipient_daily_limit_reached'
   | 'conversation_ask_limit_reached'
   | 'monthly_ask_budget_reached'
   | 'ask_fatigue_budget_exhausted'
@@ -323,6 +329,39 @@ export async function createAsk(
 
   if (String(toUserId) === fromUserId) {
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
+  }
+
+  // The brake on the RECEIVING side (D134, 8 Sep): however many people want
+  // to ask, one person's phone takes at most this many NEW questions a day
+  // from everyone together — the founder's „two messages to the same person".
+  // A follow-up inside a live conversation is not a new question and is
+  // capped separately (RELAY_MESSAGES_PER_PERSON_PER_DAY).
+  const receivedToday = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM task_asks
+     WHERE to_user_id = $1 AND is_follow_up = FALSE
+       AND created_at > NOW() - INTERVAL '24 hours'`,
+    [toUserId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const liveWithThisPerson = await query<{ ask_thread_id: number | null }>(
+    `SELECT ask_thread_id FROM task_asks
+     WHERE task_id = $1 AND to_user_id = $2 AND status IN ('sent', 'answered')
+     ORDER BY id DESC LIMIT 1`,
+    [taskId, toUserId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  if (
+    liveWithThisPerson.rows.length === 0 &&
+    Number(receivedToday.rows[0]?.count ?? 0) >= MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY
+  ) {
+    return {
+      sent: false,
+      reason: 'recipient_daily_limit_reached',
+      error:
+        `${toName}-ს დღეს უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა მიუვიდა სხვებისგან — ` +
+        'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ხვალ ისევ შესაძლებელი იქნება; ' +
+        'მფლობელს ეს პირდაპირ უთხარი და სხვა ადამიანი შესთავაზე. ეს ადამიანის გადაწყვეტილება არ არის.',
+    };
   }
 
   // The plan in force decides (Ticket 10 Task 21, D119). A person on the

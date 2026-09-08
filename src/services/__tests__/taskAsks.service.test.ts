@@ -119,6 +119,7 @@ function routeAskQueries(opts: {
   /** A live ask already runs between this goal and this person — a follow-up. */
   liveThread?: number;
   sentToday?: number;
+  receivedToday?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('FROM "UserPhone"'))
@@ -143,6 +144,9 @@ function routeAskQueries(opts: {
       return Promise.resolve(
         rows(opts.liveThread ? [{ ask_thread_id: opts.liveThread }] : []) as never,
       );
+    // The receiving-side brake (D134): new questions this person got today.
+    if (sql.includes('to_user_id = $1 AND is_follow_up = FALSE'))
+      return Promise.resolve(rows([{ count: String(opts.receivedToday ?? 0) }]) as never);
     if (sql.includes('COUNT(*)'))
       return Promise.resolve(rows([{ count: String(opts.sentToday ?? 0) }]) as never);
     if (sql.includes('SELECT name FROM "User"'))
@@ -1010,5 +1014,28 @@ describe('runPayerFor', () => {
 
     mockQuery.mockResolvedValueOnce(rows([{ origin_user_id: null }]) as never);
     expect(await runPayerFor('7', 55, 'incoming_ask')).toBe('7');
+  });
+});
+
+// D134 (8 Sep): the brake moved to the receiving side — one person's phone
+// takes at most two new questions a day from everyone together.
+describe('the receiving-side brake', () => {
+  it('refuses a new question to a person who already got two today, and says it is not their choice', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, receivedToday: 2 });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(false);
+    expect((out as { reason: string }).reason).toBe('recipient_daily_limit_reached');
+    expect((out as { error: string }).error).toContain('ეს ადამიანის გადაწყვეტილება არ არის');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('a live conversation with this person continues past the brake — it is not a new question', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, receivedToday: 5, liveThread: 9413 });
+
+    const out = await createAsk('42', 3, '+995599111222', '12:00');
+
+    expect(out.sent).toBe(true);
   });
 });

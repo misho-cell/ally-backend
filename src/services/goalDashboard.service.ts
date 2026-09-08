@@ -41,8 +41,12 @@ export interface GoalAction {
   kind: GoalActionKind;
   /** The person written to, the question asked, the wake's first line, the close reason. */
   detail: string | null;
-  /** The ask or message row behind the action, when there is one. */
-  ref_id: number | null;
+  /**
+   * The ask or message row behind the action, when there is one — as text,
+   * because a conversation id is a UUID on production while an ask id is an
+   * integer, and a UNION cannot hold both (the 8 Sep 500 on this route).
+   */
+  ref_id: string | null;
 }
 
 export type GoalBlocker =
@@ -110,7 +114,7 @@ interface ActionRow {
   at: Date | string;
   kind: GoalActionKind;
   detail: string | null;
-  ref_id: number | null;
+  ref_id: string | null;
 }
 
 interface PendingAskRow {
@@ -124,7 +128,7 @@ function iso(value: Date | string | null | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-async function goalRow(userId: string, taskId: number): Promise<GoalRow | null> {
+async function goalRow(userId: string | null, taskId: number): Promise<GoalRow | null> {
   const result = await query<GoalRow>(
     `SELECT t.id, t.user_id, t.title, t.status, t.brief, t.closed_reason, t.created_at,
             t.updated_at, t.last_activity_at, t.next_wake_at, t.thread_id, t.plan,
@@ -141,7 +145,7 @@ async function goalRow(userId: string, taskId: number): Promise<GoalRow | null> 
               WHERE o.subject_type = 'task_ask' AND a.task_id = t.id AND o.outcome = 'did_not_work')
               AS asks_did_not_work
      FROM tasks t
-     WHERE t.id = $1 AND t.user_id = $2
+     WHERE t.id = $1 AND ($2::text IS NULL OR t.user_id = $2::text)
      LIMIT 1`,
     [taskId, userId],
     DASHBOARD_QUERY_TIMEOUT_MS,
@@ -157,7 +161,7 @@ async function goalRow(userId: string, taskId: number): Promise<GoalRow | null> 
 async function goalActions(taskId: number): Promise<GoalAction[]> {
   const result = await query<ActionRow>(
     `SELECT at, kind, detail, ref_id FROM (
-       SELECT t.created_at AS at, 'goal_created' AS kind, t.title AS detail, NULL::int AS ref_id
+       SELECT t.created_at AS at, 'goal_created' AS kind, t.title AS detail, NULL::text AS ref_id
          FROM tasks t WHERE t.id = $1
        UNION ALL
        SELECT t.plan_approved_at, 'plan_approved', 'v' || t.plan_version, NULL
@@ -182,24 +186,24 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
               CASE WHEN a.parent_ask_id IS NOT NULL THEN 'relay_sent'
                    WHEN a.is_follow_up THEN 'follow_up_sent'
                    ELSE 'ask_sent' END,
-              u.name, a.id
+              u.name, a.id::text
          FROM task_asks a LEFT JOIN "User" u ON u.id = a.to_user_id WHERE a.task_id = $1
        UNION ALL
        SELECT a.answered_at,
               CASE WHEN a.automatic THEN 'answer_automatic' ELSE 'answer_received' END,
-              u.name, a.id
+              u.name, a.id::text
          FROM task_asks a LEFT JOIN "User" u ON u.id = a.to_user_id
          WHERE a.task_id = $1 AND a.answered_at IS NOT NULL
        UNION ALL
-       SELECT c.created_at, 'wake', LEFT(c.content, $3), c.id
+       SELECT c.created_at, 'wake', LEFT(c.content, $3), c.id::text
          FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
          WHERE t.id = $1 AND c.role = 'user' AND c.content LIKE $4 || '%'
        UNION ALL
-       SELECT c.created_at, 'weekly_summary', NULL, c.id
+       SELECT c.created_at, 'weekly_summary', NULL, c.id::text
          FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
          WHERE t.id = $1 AND c.role = 'assistant' AND c.content LIKE $5 || '%'
        UNION ALL
-       SELECT o.created_at, 'debrief_' || o.outcome, NULL, a.id
+       SELECT o.created_at, 'debrief_' || o.outcome, NULL, a.id::text
          FROM outcome_events o JOIN task_asks a ON a.id::text = o.subject_id
          WHERE o.subject_type = 'task_ask' AND a.task_id = $1
            AND o.outcome IN ('worked', 'did_not_work')
@@ -375,8 +379,14 @@ export async function goalDays(
   };
 }
 
-/** Null when the goal does not exist or is not this user's. */
-export async function adminGoalDetail(userId: string, taskId: number): Promise<GoalDetail | null> {
+/**
+ * Null when the goal does not exist — or, when a user is named, is not theirs.
+ * The admin seat may read any goal by id alone (Ticket 11 Task 12 (b)).
+ */
+export async function adminGoalDetail(
+  userId: string | null,
+  taskId: number,
+): Promise<GoalDetail | null> {
   const row = await goalRow(userId, taskId);
   if (!row) return null;
   const [actions, pending] = await Promise.all([goalActions(taskId), pendingAsks(taskId)]);

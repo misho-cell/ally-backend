@@ -67,7 +67,10 @@ const runningTasks = new Set<number>();
  * one spends the recipient's daily patience, not the month's growth budget.
  */
 export function outreachNoteFor(budget: AskBudgetState | null): string {
-  if (budget === null || budget.remaining_this_month > 0) return '';
+  // D134: the sending side is uncapped (null) unless the fatigue brake is on.
+  if (budget === null || budget.remaining_this_month === null || budget.remaining_this_month > 0) {
+    return '';
+  }
   return (
     '\n\n[სისტემა] ამ ანგარიშს ამ თვეში ახალი კითხვის გაგზავნის ბიუჯეტი ამოწურული აქვს — ' +
     'ask_contact ახალ ადამიანთან ვერ გაივლის. ნუ შესთავაზებ მფლობელს მიწერას და ნურაფერს ' +

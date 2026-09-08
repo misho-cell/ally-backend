@@ -129,7 +129,15 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
   };
 }
 
-/** Propose the next version. The plan in force, if any, keeps running. */
+/**
+ * Propose the next version. The plan in force, if any, keeps running.
+ *
+ * Every proposal is a new version (Ticket 11 Task 8): on 8 Sep the assistant's
+ * proposal and the connector's changed plan both answered „version 1", so a
+ * change could not be told from a repeat and D119's „a change needs a new yes"
+ * could not be audited. The version now moves at the PROPOSAL; the yes binds
+ * the version it was given.
+ */
 export async function proposeTaskPlan(
   userId: string,
   taskId: number,
@@ -139,7 +147,10 @@ export async function proposeTaskPlan(
   if (!parsed.ok) return parsed;
   const result = await query<{ plan_version: number }>(
     `UPDATE tasks
-     SET plan_proposed = $3::jsonb, updated_at = NOW(), last_activity_at = NOW()
+     SET plan_proposed = $3::jsonb,
+         plan_version = plan_version + 1,
+         updated_at = NOW(),
+         last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'
      RETURNING plan_version`,
     [taskId, userId, JSON.stringify(parsed.value)],
@@ -147,14 +158,17 @@ export async function proposeTaskPlan(
   );
   const row = result.rows[0];
   if (!row) return { ok: false, error: 'No such open goal of yours.' };
-  const version = Number(row.plan_version) + 1;
+  const version = Number(row.plan_version);
   return { ok: true, value: { version, summary: renderPlan(parsed.value, version, null) } };
 }
 
 /**
  * The user's yes. The proposed plan becomes the plan in force, and the
  * blanket ask permission is granted with it — approving a plan that names
- * people IS the consent to approach them (D119).
+ * people IS the consent to approach them (D119). This is ONE switch by
+ * design (Ticket 11 Task 8, documented): the plan names whom the assistant
+ * may write to, and the yes on the plan is the yes on those people; a person
+ * the plan does not name is refused by the ask path whatever this flag says.
  */
 export async function approveTaskPlan(
   userId: string,
@@ -164,7 +178,6 @@ export async function approveTaskPlan(
     `UPDATE tasks
      SET plan = plan_proposed,
          plan_proposed = NULL,
-         plan_version = plan_version + 1,
          plan_approved_at = NOW(),
          permission_granted = TRUE,
          updated_at = NOW(),

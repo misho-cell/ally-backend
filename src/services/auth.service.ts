@@ -7,7 +7,12 @@ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
-import { findCohortByCode, grantCohortTrial } from './inviteCohorts.service';
+import {
+  findCohortByCode,
+  grantCohortTrial,
+  launchCohortFor,
+  LAUNCH_COHORT_CODE,
+} from './inviteCohorts.service';
 import { attributeCampaignJoin } from './chorusCampaign.service';
 import { AuthPayload } from '../types';
 import { normalizePhone } from './phone';
@@ -334,7 +339,10 @@ export async function registerUser(
     // cohort is re-read here rather than trusted from the gate result: the
     // door may have been closed between the eligibility check and this write.
     if (gate.mode === 'cohort' && gate.cohortCode) {
-      const cohort = await findCohortByCode(gate.cohortCode);
+      const cohort =
+        gate.cohortCode === LAUNCH_COHORT_CODE
+          ? launchCohortFor(gate.inviterUserId)
+          : await findCohortByCode(gate.cohortCode);
       if (cohort) await grantCohortTrial(userId, cleanPhone, cohort);
     }
 

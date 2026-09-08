@@ -28,7 +28,7 @@ export type RosterSearchOutcome =
   | {
       found: false;
       group: string;
-      reason: 'not_on_roster' | 'no_match' | 'no_group';
+      reason: 'not_on_roster' | 'no_match' | 'no_group' | 'roster_not_loaded';
       note: string;
     };
 
@@ -41,6 +41,20 @@ export async function searchRoster(
   if (!trimmed) {
     return { found: false, group, reason: 'no_group', note: 'Name the network — e.g. "Axel".' };
   }
+  // Ticket 11 Task 12 (g): a network nobody is recorded as a member of is a
+  // roster that has not been loaded — a different answer from „you are not on
+  // it", and the one that says whether the founder's list has landed.
+  const members = await rosterMembers(trimmed);
+  if (members.length === 0) {
+    return {
+      found: false,
+      group: trimmed,
+      reason: 'roster_not_loaded',
+      note:
+        `No roster for „${trimmed}" is loaded — no public member_of facts name it. Until the ` +
+        'list is loaded, membership opens no door here; the user’s own contacts are reachable as always.',
+    };
+  }
   if (!(await isOnRoster(userId, trimmed))) {
     return {
       found: false,
@@ -51,7 +65,6 @@ export async function searchRoster(
         'contacts are reachable as always; anyone else through a mutual acquaintance.',
     };
   }
-  const members = await rosterMembers(trimmed);
   const matched = filterRoster(members, nameQuery)
     .filter((m) => m.user_id === null || String(m.user_id) !== userId)
     .slice(0, RESULT_LIMIT);

@@ -403,6 +403,32 @@ async function publishAsCurator(
   );
 }
 
+/**
+ * A value that is a GUESS about a relationship is not a fact (Ticket 11 Task
+ * 5 (d)): „tagged to Wissol, possibly related to Levan Pxakadze" was stored
+ * on a real person from the family speculation of one reply. Both scripts.
+ */
+const GUESS_MARKERS = [
+  'possibly',
+  'probably',
+  'maybe',
+  'likely',
+  'perhaps',
+  'might be',
+  'may be related',
+  'შეიძლება',
+  'ალბათ',
+  'სავარაუდოდ',
+  'შესაძლოა',
+];
+
+export function isGuessValue(value: string): boolean {
+  const lower = value.toLowerCase();
+  return GUESS_MARKERS.some((m) => lower.includes(m));
+}
+
+export class FactRefusedError extends Error {}
+
 export async function submitContactFact(
   userId: string,
   neo4jContactIdRaw: string,
@@ -413,6 +439,12 @@ export async function submitContactFact(
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
+  if (isGuessValue(value)) {
+    throw new FactRefusedError(
+      'A guess is not a fact. Nothing was saved: „possibly / probably / ალბათ" about a real person ' +
+        'is speculation, and the record holds only what somebody stated or a page said.',
+    );
+  }
 
   // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
   // with other users is the AGENT's call at save time: purely professional
@@ -428,9 +460,12 @@ export async function submitContactFact(
     // "work fact must be shared". Anything outside that list (a note, a need)
     // still gets a verdict: his own notes carry relationships and judgments
     // about named third parties.
-    const visibility = isCuratorWorkFact(userId, targetField, source)
-      ? 'public'
-      : await moderateFactVisibility(targetField, value);
+    // A curator's own words go public; what the assistant took from a web
+    // page or inferred (confidence 'mentioned') never does (Ticket 11 Task 5 c).
+    const visibility =
+      isCuratorWorkFact(userId, targetField, source) && confidence === 'stated'
+        ? 'public'
+        : await moderateFactVisibility(targetField, value);
     await insertFreeFormFact(
       userId,
       neo4jContactId,
@@ -448,7 +483,7 @@ export async function submitContactFact(
   // A trusted curator needs no second source (the founder's ruling, 1 Sep) —
   // for what they WRITE. A sweep guess made from their conversation is not
   // that, and must earn publication the ordinary way (task 18).
-  if (isTrustedFactCurator(userId) && source !== 'sweep') {
+  if (isTrustedFactCurator(userId) && source !== 'sweep' && confidence === 'stated') {
     await publishAsCurator(userId, neo4jContactId, fieldType, value);
     return { is_public: true, canonical_value: value };
   }
@@ -841,4 +876,28 @@ export async function retractFactsFromForeignSync(
     [contaminatedUserId, syncSourceUserId],
   );
   return { retracted: result.rowCount ?? 0 };
+}
+
+/**
+ * Move one fact to another field type (D138, 8 Sep): the founder's rule for
+ * the import — a title that has ended is a PAST job, kept and findable, never
+ * written as the current one — applied to the two Axel-import lines that were
+ * written as `role`. Returns the type it had, so the change can be undone with
+ * the same call.
+ */
+export async function retypeFact(
+  factId: number,
+  newFieldType: string,
+): Promise<{ id: number; from: string; to: string } | null> {
+  const to = newFieldType.trim().toLowerCase().slice(0, MAX_FIELD_TYPE_LEN);
+  if (!to) return null;
+  const result = await query<{ id: number; from: string }>(
+    `WITH before AS (SELECT id, field_type FROM contact_facts WHERE id = $1)
+     UPDATE contact_facts f SET field_type = $2, updated_at = NOW()
+     FROM before WHERE f.id = before.id
+     RETURNING f.id, before.field_type AS from`,
+    [factId, to],
+  );
+  const row = result.rows[0];
+  return row ? { id: row.id, from: row.from, to } : null;
 }

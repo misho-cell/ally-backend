@@ -237,6 +237,11 @@ export interface AdminGoalRow {
   last_activity_at: string;
   wakes_delivered: number;
   asks_sent: number;
+  /** The plan record, readable from the list too (Ticket 11 Task 8). */
+  plan: unknown | null;
+  plan_proposed: unknown | null;
+  plan_version: number;
+  plan_approved_at: string | null;
   /**
    * Where the goal stands (Ticket 10 Task 28 (a), the founder's stages):
    * understanding · plan_proposed · waiting_topup · running · waiting_on_user ·
@@ -292,6 +297,7 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
   const result = await query<AdminGoalRow>(
     `SELECT t.id, t.title, t.status, t.brief, t.pending_question, t.pending_question_at,
             t.next_wake_at, t.thread_id, t.created_at, t.last_activity_at,
+            t.plan, t.plan_proposed, t.plan_version, t.plan_approved_at,
             (SELECT COUNT(*)::int FROM conversations c
               WHERE c.thread_id = t.thread_id AND c.role = 'user'
                 AND c.content LIKE '[მოვლენა]%') AS wakes_delivered,

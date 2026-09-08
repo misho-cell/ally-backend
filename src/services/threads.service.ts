@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
 import {
+  scrubMechanicalForStorage,
   stripAllowedSpans,
   stripEmDashesForDisplay,
   stripRedactionArtifactsForDisplay,
@@ -167,7 +168,7 @@ export async function getThreadsForUser(
      LIMIT $4::int`,
     [userId, before, beforeId, limit, promoted],
   );
-  if (before !== null || promoted.length === 0) return result.rows;
+  if (before !== null || promoted.length === 0) return result.rows.map(cleanPreview);
   const goals = await query<ThreadRow>(
     `SELECT
        ${THREAD_LIST_COLUMNS}
@@ -176,7 +177,20 @@ export async function getThreadsForUser(
      ORDER BY t.updated_at DESC, t.id DESC`,
     [promoted],
   );
-  return [...goals.rows, ...result.rows];
+  return [...goals.rows, ...result.rows].map(cleanPreview);
+}
+
+/**
+ * The one-line preview is a display boundary too (Ticket 11 Task 1 (d), Q-58):
+ * older stored replies still carry raw em dashes and bold, and the list read
+ * them verbatim while the message read was already clean.
+ */
+function cleanPreview(row: ThreadRow): ThreadRow {
+  if (row.last_message === null || row.last_message === undefined) return row;
+  return {
+    ...row,
+    last_message: stripEmDashesForDisplay(scrubMechanicalForStorage(row.last_message)),
+  };
 }
 
 /**

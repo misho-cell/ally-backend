@@ -90,9 +90,12 @@ describe('proposing and approving', () => {
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain('SET plan_proposed = $3::jsonb');
     expect(sql).not.toContain('SET plan =');
+    // Ticket 11 Task 8: every proposal is a new version — the row's version
+    // after the bump is the one returned, so a change can never read as v1 twice.
+    expect(sql).toContain('plan_version = plan_version + 1');
     if (out.ok) {
-      expect(out.value.version).toBe(3);
-      expect(out.value.summary).toContain('გეგმა v3 (დასამტკიცებელი)');
+      expect(out.value.version).toBe(2);
+      expect(out.value.summary).toContain('გეგმა v2 (დასამტკიცებელი)');
       expect(out.value.summary).toContain('ლიკა ოსეფაშვილი — ქსელში კითხვა');
     }
   });

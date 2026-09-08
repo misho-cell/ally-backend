@@ -2,7 +2,7 @@ import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
 import { findUserByReferralCode } from './referralCode.service';
-import { findCohortByCode } from './inviteCohorts.service';
+import { findCohortByCode, launchCohortFor } from './inviteCohorts.service';
 
 const INVITE_ONLY_FLAG = 'invite_only';
 // subscription_status values that count as an active paying/trialing subscriber.
@@ -168,6 +168,13 @@ export async function checkRegistrationEligibility(
     (hasReferralPhone(referralPhone)
       ? await findInviterForAttribution(referralPhone, phone)
       : undefined);
+
+  // D137 (8 Sep): a founder's own invitation inside the launch window carries
+  // the launch cohort's free period — the attribution stays with the inviter.
+  const launch = launchCohortFor(attribution);
+  if (launch) {
+    return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
+  }
 
   if (!(await isInviteOnlyEnabled())) {
     return { eligible: true, mode: 'open', inviterUserId: attribution };

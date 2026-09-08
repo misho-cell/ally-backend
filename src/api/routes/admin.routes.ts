@@ -46,6 +46,7 @@ import {
   ReclassifyResult,
   retractFactsFromForeignSync,
   retractFactsByRange,
+  retypeFact,
 } from '../../services/contactFacts.service';
 import {
   listPromptBlocks,
@@ -101,6 +102,7 @@ import { streamBaseExport } from '../../services/baseExport.service';
 import {
   createCohort,
   deactivateCohort,
+  findCohortAnyState,
   listCohortMembers,
   listCohorts,
 } from '../../services/inviteCohorts.service';
@@ -1260,15 +1262,112 @@ adminRouter.get('/goals', async (req: Request, res: Response) => {
 // Ticket 10 Task 28 (a): one goal in full — stage, the actions with their
 // times, the blocker, the payer and the outcome. The daily row of the 14-day
 // test is filled from this and the list above.
-adminRouter.get('/goals/:taskId', async (req: Request, res: Response) => {
+// Ticket 11 Task 6 (D95, D131): a single private-context key, a single note or
+// a single profile line of one account can be deleted from the admin seat and
+// read back gone. Undo: re-save the value through the same tables' writers.
+//   DELETE /admin/users/:id/private-context/:key
+//   DELETE /admin/users/:id/notes/:noteId
+//   DELETE /admin/users/:id/profile/:key
+adminRouter.delete('/users/:id/private-context/:key', async (req: Request, res: Response) => {
   try {
-    const userId = Number(req.query.user_id);
-    const taskId = Number(req.params.taskId);
-    if (!Number.isFinite(userId) || userId <= 0 || !Number.isFinite(taskId) || taskId <= 0) {
-      res.status(400).json({ success: false, error: 'user_id და taskId აუცილებელია' });
+    const userId = Number(req.params.id);
+    const key = String(req.params.key ?? '').trim();
+    if (!Number.isFinite(userId) || userId <= 0 || key === '') {
+      res.status(400).json({ success: false, error: 'id და key აუცილებელია' });
       return;
     }
-    const goal = await adminGoalDetail(String(userId), taskId);
+    const { deleted } = await deletePrivateContextKeys(String(userId), [key]);
+    if (deleted === 0) {
+      res.status(404).json({ success: false, error: 'ასეთი key არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { user_id: userId, key, deleted } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin private-context delete]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.delete('/users/:id/notes/:noteId', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    const noteId = Number(req.params.noteId);
+    if (!Number.isFinite(userId) || userId <= 0 || !Number.isFinite(noteId) || noteId <= 0) {
+      res.status(400).json({ success: false, error: 'id და noteId აუცილებელია' });
+      return;
+    }
+    const { deleted } = await deleteUserNotes(String(userId), [noteId]);
+    if (deleted === 0) {
+      res.status(404).json({ success: false, error: 'ასეთი ჩანაწერი არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { user_id: userId, note_id: noteId, deleted } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin note delete]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.delete('/users/:id/profile/:key', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    const key = String(req.params.key ?? '').trim();
+    if (!Number.isFinite(userId) || userId <= 0 || key === '') {
+      res.status(400).json({ success: false, error: 'id და key აუცილებელია' });
+      return;
+    }
+    const { deleted } = await deleteUserProfileFields(String(userId), [key]);
+    if (deleted === 0) {
+      res.status(404).json({ success: false, error: 'ასეთი ველი არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { user_id: userId, key, deleted } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin profile delete]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// D138 (8 Sep): a title that has ended is a PAST job — kept and findable, never
+// the current one. Moves one fact to another field type and returns the type
+// it had; the same call with `from` undoes it.
+//   POST /admin/facts/:id/field-type { field_type: "past_role" }
+adminRouter.post('/facts/:id/field-type', async (req: Request, res: Response) => {
+  try {
+    const factId = Number(req.params.id);
+    const body = req.body as { field_type?: unknown };
+    const fieldType = typeof body.field_type === 'string' ? body.field_type.trim() : '';
+    if (!Number.isFinite(factId) || factId <= 0 || fieldType === '') {
+      res.status(400).json({ success: false, error: 'id და field_type აუცილებელია' });
+      return;
+    }
+    const moved = await retypeFact(factId, fieldType);
+    if (moved === null) {
+      res.status(404).json({ success: false, error: 'ასეთი ფაქტი არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: moved });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin fact retype]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+//   GET /admin/goals/:taskId            — the goal, whoever owns it
+//   GET /admin/goals/:taskId?user_id=   — the same, refused unless that user owns it
+adminRouter.get('/goals/:taskId', async (req: Request, res: Response) => {
+  try {
+    const rawUserId = req.query.user_id === undefined ? null : Number(req.query.user_id);
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(taskId) || taskId <= 0 || (rawUserId !== null && !(rawUserId > 0))) {
+      res.status(400).json({ success: false, error: 'taskId აუცილებელია' });
+      return;
+    }
+    const goal = await adminGoalDetail(rawUserId === null ? null : String(rawUserId), taskId);
     if (goal === null) {
       res.status(404).json({ success: false, error: 'მიზანი ვერ მოიძებნა' });
       return;
@@ -2520,6 +2619,11 @@ adminRouter.delete('/invite-cohorts/:code', async (req: Request, res: Response) 
 //   (and day-40) list: who used what, who paid (Task 26; Task 28 done-when).
 adminRouter.get('/invite-cohorts/:code/members', async (req: Request, res: Response) => {
   try {
+    // Ticket 11 Task 12 (e): „no such cohort" and „no members yet" are two answers.
+    if ((await findCohortAnyState(String(req.params.code))) === null) {
+      res.status(404).json({ success: false, error: 'ასეთი კოჰორტა არ არის' });
+      return;
+    }
     const rawMinDay = Number(req.query.min_day);
     const minDay = Number.isFinite(rawMinDay) && rawMinDay > 0 ? Math.floor(rawMinDay) : 0;
     const members = await listCohortMembers(String(req.params.code), minDay);

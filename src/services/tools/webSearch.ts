@@ -19,7 +19,10 @@ const RESULT_GUIDANCE =
   'site) and READ that page with fetch_page before naming anyone — a news ' +
   'snippet may be stale or name a former/acting holder. If fetch_page cannot ' +
   'read the page, you may NOT name the officeholder from these snippets — ' +
-  'say plainly that the official page could not be read.';
+  'say plainly that the official page could not be read. A name you print must ' +
+  'appear in fetched page text you actually received in this conversation, and you ' +
+  'must cite that page; two different names for one office is a failure — when in ' +
+  'doubt, the scripted line („I could not verify") is the right answer.';
 
 // The institution's own domain outranks any news article on "who currently
 // holds this role". Georgian public bodies live under gov.ge; parliament and

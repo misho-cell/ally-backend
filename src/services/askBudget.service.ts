@@ -10,9 +10,21 @@ const BUDGET_QUERY_TIMEOUT_MS = 5_000;
 // server-side choke point as createAsk's own permission gate, not in the
 // prompt.
 
-// Fixed by spec ("hard floor: 1") — the per-conversation cap is NOT part of
-// the testing ladder, which only steps the monthly dial.
-const PER_CONVERSATION_GROWTH_ASK_LIMIT = 1;
+// The founder, 8 September (D134): there is NO separate limit on asks —
+// tokens are the one limit („let them spend that — as many asks as they want").
+// The per-conversation floor of one is therefore OFF by default; the variable
+// keeps it switchable without a deploy (0 = off).
+const PER_CONVERSATION_GROWTH_ASK_LIMIT = Number(
+  process.env.PER_CONVERSATION_GROWTH_ASK_LIMIT ?? 0,
+);
+
+/**
+ * The one brake that stays on the SENDING side (D134): a sender whose asks
+ * keep being ignored or keep causing opt-outs is slowed to the floor for the
+ * window — never stopped. Below this many fatigue signals the sender is not
+ * capped at all.
+ */
+export const FATIGUE_BRAKE_SIGNALS = Number(process.env.FATIGUE_BRAKE_SIGNALS ?? 3);
 
 // Global config, changeable on Railway without a deploy (spec: "the global
 // ladder is a config change, not a deploy"). The ladder may step the monthly
@@ -145,12 +157,6 @@ async function countFatigueSignals(userId: string): Promise<FatigueSignals> {
   return { opt_outs_caused: optOuts, asks_ignored: ignored, total: optOuts + ignored };
 }
 
-function monthlyBudgetFor(fatigueSignals: number): number {
-  const ladderBudget = MONTHLY_GROWTH_ASK_BUDGET_BASE * MONTHLY_GROWTH_ASK_BUDGET_LADDER;
-  const stepped = ladderBudget - fatigueSignals * FATIGUE_STEP_DOWN_PER_SIGNAL;
-  return Math.max(Math.min(MIN_MONTHLY_ASK_BUDGET, ladderBudget), stepped);
-}
-
 /** A timestamp column, as ISO text, whatever shape the driver returned it in. */
 function isoOrEmpty(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
@@ -165,10 +171,17 @@ export interface AskBudgetState {
   readonly fatigue_window_days: number;
   readonly fatigue_step_down_per_signal: number;
   readonly min_monthly_budget: number;
-  /** Base × ladder, minus fatigue, never below the floor. */
-  readonly effective_monthly_budget: number;
+  /**
+   * D134 (8 Sep): the sending side is uncapped — tokens are the limit — unless
+   * the fatigue brake is on, when the floor is the cap for the window.
+   */
+  readonly sending_cap: 'none' | 'fatigue_brake';
+  readonly fatigue_brake_signals: number;
+  /** Null when uncapped; the floor when the brake is on. */
+  readonly effective_monthly_budget: number | null;
   readonly sent_this_month: number;
-  readonly remaining_this_month: number;
+  /** Null when uncapped. */
+  readonly remaining_this_month: number | null;
   /**
    * The budget's window: the calendar month by default, the calendar week
    * when BUDGET_WINDOW=week (D124). The fatigue window is rolling either way.
@@ -196,7 +209,8 @@ export async function describeAskBudget(userId: string): Promise<AskBudgetState>
     BUDGET_QUERY_TIMEOUT_MS,
   );
   const fatigue = await countFatigueSignals(userId);
-  const effective = monthlyBudgetFor(fatigue.total);
+  const braked = fatigue.total >= FATIGUE_BRAKE_SIGNALS;
+  const effective = braked ? MIN_MONTHLY_ASK_BUDGET : null;
   const sentThisMonth = Number(sent.rows[0]?.count ?? 0);
   return {
     monthly_budget_base: MONTHLY_GROWTH_ASK_BUDGET_BASE,
@@ -205,9 +219,11 @@ export async function describeAskBudget(userId: string): Promise<AskBudgetState>
     fatigue_window_days: FATIGUE_WINDOW_DAYS,
     fatigue_step_down_per_signal: FATIGUE_STEP_DOWN_PER_SIGNAL,
     min_monthly_budget: MIN_MONTHLY_ASK_BUDGET,
+    sending_cap: braked ? 'fatigue_brake' : 'none',
+    fatigue_brake_signals: FATIGUE_BRAKE_SIGNALS,
     effective_monthly_budget: effective,
     sent_this_month: sentThisMonth,
-    remaining_this_month: Math.max(0, effective - sentThisMonth),
+    remaining_this_month: effective === null ? null : Math.max(0, effective - sentThisMonth),
     window: window.label,
     // node-postgres hands back a Date for a timestamp, and String() on one is
     // „Thu Oct 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)" — which
@@ -232,7 +248,7 @@ export async function checkAskBudget(
   fromUserId: string,
   threadId: number | undefined,
 ): Promise<AskBudgetOutcome> {
-  if (threadId !== undefined) {
+  if (threadId !== undefined && PER_CONVERSATION_GROWTH_ASK_LIMIT > 0) {
     const inConversation = await query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM task_asks ta
        JOIN tasks t ON t.id = ta.task_id
@@ -276,27 +292,25 @@ export async function checkFollowUpBudget(
   return { allowed: true };
 }
 
+/**
+ * The sending side after D134 (8 Sep): no allowance is counted against — the
+ * tokens are the limit. What remains is the brake: a sender with enough
+ * fatigue signals in the window (asks ignored, opt-outs caused) is held to the
+ * floor for the window, so a channel that keeps not working is narrowed, never
+ * closed. `monthly_budget_reached` is no longer produced.
+ */
 async function checkMonthlyBudget(fromUserId: string): Promise<AskBudgetOutcome> {
+  const fatigue = await countFatigueSignals(fromUserId);
+  if (fatigue.total < FATIGUE_BRAKE_SIGNALS) return { allowed: true };
   // Counted in the window in force (D124) — the month unless BUDGET_WINDOW=week.
-  const sentThisMonth = await query<{ count: string }>(
+  const sentThisWindow = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM task_asks
      WHERE from_user_id = $1::int AND parent_ask_id IS NULL AND is_follow_up = FALSE
        AND created_at > ${budgetWindow().windowStartSql}`,
     [fromUserId],
     BUDGET_QUERY_TIMEOUT_MS,
   );
-  const fatigue = await countFatigueSignals(fromUserId);
-  const effective = monthlyBudgetFor(fatigue.total);
-  const sent = Number(sentThisMonth.rows[0]?.count ?? 0);
-  if (sent < effective) return { allowed: true };
-  // Two different refusals wore one name. On 1 September the founder was told
-  // „ამ თვის კითხვების ლიმიტი ამოწურულია" on a month in which he had sent
-  // nothing at all: the budget was not spent, it had been stepped down to zero
-  // by fatigue. The reason code now says which of the two actually happened
-  // (ticket 9 task 17).
-  const untouched = MONTHLY_GROWTH_ASK_BUDGET_BASE * MONTHLY_GROWTH_ASK_BUDGET_LADDER;
-  return {
-    allowed: false,
-    reason: effective < untouched ? 'fatigue_budget_exhausted' : 'monthly_budget_reached',
-  };
+  const sent = Number(sentThisWindow.rows[0]?.count ?? 0);
+  if (sent < MIN_MONTHLY_ASK_BUDGET) return { allowed: true };
+  return { allowed: false, reason: 'fatigue_budget_exhausted' };
 }

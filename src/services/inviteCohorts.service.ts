@@ -51,9 +51,95 @@ export function normalizeCohortCode(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
+/**
+ * The launch window (D137, 8 Sep): no new code. The 20 days attach to the
+ * EXISTING invitations of the accounts the founder named, from launch day to
+ * 15 October — everyone who registers through one of their referral codes or
+ * links in the window gets the cohort's period, Axel member or not. Settings,
+ * not code: LAUNCH_TRIAL_REFERRER_IDS (comma-separated user ids),
+ * LAUNCH_TRIAL_DAYS (20), LAUNCH_TRIAL_STARTS_AT / LAUNCH_TRIAL_ENDS_AT (ISO).
+ * The registrants are grouped under LAUNCH_COHORT_CODE, so the day-20 and
+ * day-40 lists read from the same members route as any cohort.
+ */
+export const LAUNCH_COHORT_CODE = 'LAUNCH2026';
+const DEFAULT_LAUNCH_TRIAL_DAYS = 20;
+
+function launchReferrerIds(): ReadonlySet<string> {
+  return new Set(
+    (process.env.LAUNCH_TRIAL_REFERRER_IDS ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0),
+  );
+}
+
+function withinLaunchWindow(now: Date): boolean {
+  const starts = process.env.LAUNCH_TRIAL_STARTS_AT;
+  const ends = process.env.LAUNCH_TRIAL_ENDS_AT;
+  if (starts && now < new Date(starts)) return false;
+  if (ends && now > new Date(ends)) return false;
+  return true;
+}
+
+/** Is a registration attributed to this inviter inside the launch window? */
+export function launchCohortFor(
+  inviterUserId: number | undefined,
+  now = new Date(),
+): InviteCohort | null {
+  if (inviterUserId === undefined) return null;
+  const ids = launchReferrerIds();
+  if (ids.size === 0 || !ids.has(String(inviterUserId))) return null;
+  if (!withinLaunchWindow(now)) return null;
+  const days = Number(process.env.LAUNCH_TRIAL_DAYS ?? DEFAULT_LAUNCH_TRIAL_DAYS);
+  return {
+    code: LAUNCH_COHORT_CODE,
+    name: 'Axel launch window (the founders’ own invitations)',
+    trial_days: Number.isFinite(days) && days > 0 ? Math.floor(days) : DEFAULT_LAUNCH_TRIAL_DAYS,
+    tier: 'pro',
+    active: true,
+    note: `referrers ${[...ids].join(', ')} · until ${process.env.LAUNCH_TRIAL_ENDS_AT ?? 'open'}`,
+    created_by: 'founder (D137)',
+    created_at: process.env.LAUNCH_TRIAL_STARTS_AT ?? '',
+  };
+}
+
+/** The cohort row behind a code in ANY state — for the admin reads, not the door. */
+export async function findCohortAnyState(code: string): Promise<InviteCohort | null> {
+  const normalized = normalizeCohortCode(code);
+  if (normalized === LAUNCH_COHORT_CODE) return launchCohortRow();
+  if (normalized === '' || normalized.length > MAX_CODE_CHARS) return null;
+  const result = await query<InviteCohort>(
+    `SELECT code, name, trial_days, tier, active, note, created_by, created_at
+     FROM invite_cohorts WHERE code = $1 LIMIT 1`,
+    [normalized],
+    COHORT_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+/** The launch window as a cohort row for the list, whatever the date. */
+function launchCohortRow(): InviteCohort | null {
+  const ids = launchReferrerIds();
+  if (ids.size === 0) return null;
+  const days = Number(process.env.LAUNCH_TRIAL_DAYS ?? DEFAULT_LAUNCH_TRIAL_DAYS);
+  return {
+    code: LAUNCH_COHORT_CODE,
+    name: 'Axel launch window (the founders’ own invitations)',
+    trial_days: Number.isFinite(days) && days > 0 ? Math.floor(days) : DEFAULT_LAUNCH_TRIAL_DAYS,
+    tier: 'pro',
+    active: withinLaunchWindow(new Date()),
+    note: `referrers ${[...ids].join(', ')} · until ${process.env.LAUNCH_TRIAL_ENDS_AT ?? 'open'}`,
+    created_by: 'founder (D137)',
+    created_at: process.env.LAUNCH_TRIAL_STARTS_AT ?? '',
+  };
+}
+
 /** The active cohort behind a code, or null when the code is not a cohort's. */
 export async function findCohortByCode(code: string): Promise<InviteCohort | null> {
   const normalized = normalizeCohortCode(code);
+  // The launch cohort is not a door of its own: the code alone opens nothing,
+  // only a founder's referral inside the window does (see the invite gate).
+  if (normalized === LAUNCH_COHORT_CODE) return null;
   if (normalized === '' || normalized.length > MAX_CODE_CHARS) return null;
   const result = await query<InviteCohort>(
     `SELECT code, name, trial_days, tier, active, note, created_by, created_at
@@ -121,7 +207,15 @@ export async function listCohorts(): Promise<InviteCohortWithCount[]> {
     [],
     COHORT_QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((r) => ({ ...r, registered: Number(r.registered) }));
+  const rows = result.rows.map((r) => ({ ...r, registered: Number(r.registered) }));
+  const launch = launchCohortRow();
+  if (launch === null) return rows;
+  const registered = await query<{ n: string }>(
+    `SELECT COUNT(*) AS n FROM "User" u WHERE u.invite_cohort = $1 AND u."deletedAt" IS NULL`,
+    [LAUNCH_COHORT_CODE],
+    COHORT_QUERY_TIMEOUT_MS,
+  );
+  return [{ ...launch, registered: Number(registered.rows[0]?.n ?? 0) }, ...rows];
 }
 
 /**

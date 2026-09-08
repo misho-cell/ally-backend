@@ -61,6 +61,33 @@ export function stripEmDashesForDisplay(text: string): string {
   return text.replace(/\s+—\s+/g, ', ').replace(/—/g, '-');
 }
 
+/**
+ * The mechanical classes the prompt cannot hold (Ticket 11 Task 1): bold
+ * markers, markdown headers and em dashes, in the reply and in every button
+ * label — applied BEFORE the reply is stored, so `/threads/:id/messages`, the
+ * list's `last_message` and the SSE stream all read the same clean text.
+ * Four live no-bold instructions were ignored on the 7 Sep build; the render
+ * layer is the only place the rule cannot be argued with.
+ */
+export function scrubMechanicalForStorage(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+    .replace(/\s+—\s+/g, ', ')
+    .replace(/—/g, '-');
+}
+
+/**
+ * A reply that ends by offering alternatives in words („X or Y?", „… თუ …?")
+ * while no buttons were attached — the typed-choice class, logged server-side
+ * so its size per day is a number, not an impression (Ticket 11 Task 1 (e)).
+ */
+export function looksLikeTypedChoice(text: string): boolean {
+  const lastLine = text.trim().split('\n').pop() ?? '';
+  return /\?\s*$/.test(lastLine) && /(\s|,)(or|თუ)\s/i.test(lastLine);
+}
+
 /** Reveal allowed spans at a display boundary: drop the markers, keep the content. */
 export function stripAllowedSpans(text: string): string {
   return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');
