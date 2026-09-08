@@ -24,7 +24,13 @@ import {
   listPrivateContext,
   deletePrivateContextKeys,
 } from '../../services/userPrivateContext.service';
-import { getUserNotes, deleteUserNotes } from '../../services/userNotes.service';
+import {
+  getUserNotes,
+  deleteUserNotes,
+  getTonePreference,
+  setTonePreference,
+  clearTonePreference,
+} from '../../services/userNotes.service';
 import { getUserProfile, deleteUserProfileFields } from '../../services/userProfile.service';
 import { deleteAnswerRule, listAnswerRules } from '../../services/answerRules.service';
 
@@ -69,6 +75,72 @@ const profileRouter = Router();
 // and the saved notes on its own, and until now nobody — not the person, not
 // an admin — could read the store back or remove a line. A memory nobody can
 // inspect is not a memory, it is a leak with a long half-life.
+// Ticket 11 Task 9 (optional, P2): „how Netai talks to you" — the same tone
+// preference the assistant honours when the user says it in chat, readable and
+// editable outside the chat. One preference note with a fixed prefix.
+//   GET    /profile/tone           → { tone: string | null, note_id }
+//   PUT    /profile/tone { tone }  → saves (replaces) it
+//   DELETE /profile/tone           → back to the default voice
+profileRouter.get(
+  '/tone',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const pref = await getTonePreference(userId);
+      res.status(200).json({
+        success: true,
+        data: { tone: pref?.tone ?? null, note_id: pref?.id ?? null },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/tone]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.put(
+  '/tone',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const body = req.body as { tone?: unknown };
+    const tone = typeof body.tone === 'string' ? body.tone.trim() : '';
+    if (tone === '') {
+      res.status(400).json({ success: false, error: 'tone აუცილებელია' });
+      return;
+    }
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const saved = await setTonePreference(userId, tone);
+      res.status(200).json({ success: true, data: { tone: saved.tone, note_id: saved.id } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[PUT /profile/tone]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/tone',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const { deleted } = await clearTonePreference(userId);
+      res.status(200).json({ success: true, data: { deleted } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/tone]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 profileRouter.get(
   '/memory',
   authenticateJwt,

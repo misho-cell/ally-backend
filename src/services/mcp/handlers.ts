@@ -39,6 +39,7 @@ import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
 import { searchRoster } from '../tools/searchRoster';
+import { findWarmPath } from '../tools/findWarmPath';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
@@ -752,6 +753,24 @@ export async function mcpSearchRoster(
     results: outcome.results.map((r) => ({
       ...r,
       contact_ref: encodeContactRef(userId, r.phone),
+    })),
+  }) as McpToolPayload;
+}
+
+export async function mcpFindWarmPath(
+  userId: string,
+  args: { target_ref: string; max_hops?: number },
+): Promise<McpToolPayload> {
+  const phone = decodeContactRef(userId, args.target_ref ?? '');
+  if (!phone) return { error: UNKNOWN_REF_ERROR };
+  const outcome = await findWarmPath(userId, phone, args.max_hops);
+  if (!outcome.found) return scrubDeep(outcome) as McpToolPayload;
+  return scrubDeep({
+    ...outcome,
+    target: { ...outcome.target, contact_ref: args.target_ref },
+    paths: outcome.paths.map((p) => ({
+      ...p,
+      bridges: p.bridges.map((b) => ({ ...b, contact_ref: encodeContactRef(userId, b.phone) })),
     })),
   }) as McpToolPayload;
 }

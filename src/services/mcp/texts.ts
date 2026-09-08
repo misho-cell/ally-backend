@@ -405,6 +405,16 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       '(the recipient is told a fellow member is asking), "invite_contact" for an account that ' +
       'never opened Netai (invite first, D122). Optional name to narrow it.',
   },
+  find_warm_path: {
+    title: 'The warm path to one identified person',
+    description:
+      'The chain of bridges from the user to ONE known person — up to 3 hops, point-to-point ' +
+      '(D132). Only once the target is identified (named by the user or found by a search); ' +
+      'never a way to discover who to ask. Each bridge comes by name with is_member and a ' +
+      'contact_ref; a path is relayable only when every bridge is a Netai user. The first ' +
+      'bridge is a direct contact (ask_contact); each further bridge is asked by their own ' +
+      'assistant before the request passes on. No path → offer an invite or the user’s own message.',
+  },
   list_answer_rules: {
     title: "The user's standing answer rules",
     description:

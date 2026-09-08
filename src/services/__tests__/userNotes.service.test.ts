@@ -1,7 +1,13 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { saveUserNote, getUserNotes, isUserNoteKind } from '../userNotes.service';
+import {
+  saveUserNote,
+  getUserNotes,
+  isUserNoteKind,
+  getTonePreference,
+  setTonePreference,
+} from '../userNotes.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -66,5 +72,36 @@ describe('userNotes.service', () => {
     expect(isUserNoteKind('need')).toBe(true);
     expect(isUserNoteKind('profile')).toBe(true);
     expect(isUserNoteKind('zodiac')).toBe(false);
+  });
+});
+
+// Ticket 11 Task 9: the tone preference the profile page reads and writes —
+// one `preference` note with a fixed prefix, the note the assistant honours.
+describe('the tone preference', () => {
+  it('reads the latest tone note without its prefix, or null', async () => {
+    mockQuery.mockResolvedValueOnce(result([{ id: 9, text: 'ტონი: მოკლედ, პირდაპირ' }]) as never);
+    expect(await getTonePreference(USER)).toEqual({ id: 9, tone: 'მოკლედ, პირდაპირ' });
+
+    mockQuery.mockResolvedValueOnce(result([]) as never);
+    expect(await getTonePreference(USER)).toBeNull();
+  });
+
+  it('setting a tone replaces the previous one and saves under the prefix', async () => {
+    mockQuery
+      .mockResolvedValueOnce(result([], 1) as never) // clear the old tone notes
+      .mockResolvedValueOnce(result([]) as never) // dedupe lookup
+      .mockResolvedValueOnce(result([{ id: 12 }]) as never); // insert
+
+    const saved = await setTonePreference(USER, '  be   warmer ');
+
+    expect(saved).toEqual({ id: 12, tone: 'be warmer' });
+    const [deleteSql] = mockQuery.mock.calls[0] as [string];
+    expect(deleteSql).toContain("kind = 'preference' AND text LIKE $2 || '%'");
+    const insertParams = mockQuery.mock.calls[2][1] as unknown[];
+    expect(insertParams).toEqual([USER, 'preference', 'ტონი: be warmer']);
+  });
+
+  it('an empty tone is refused', async () => {
+    await expect(setTonePreference(USER, '   ')).rejects.toThrow('tone is required');
   });
 });

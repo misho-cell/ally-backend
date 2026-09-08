@@ -38,6 +38,7 @@ import {
   mcpListAnswerRules,
   mcpDeleteAnswerRule,
   mcpSearchRoster,
+  mcpFindWarmPath,
   mcpAskContact,
   mcpSetTaskBrief,
   mcpSetTaskWake,
@@ -879,6 +880,19 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'search_roster', () => mcpSearchRoster(userId, args)),
+  );
+  server.registerTool(
+    'find_warm_path',
+    {
+      title: TOOL_TEXTS.find_warm_path.title,
+      description: TOOL_TEXTS.find_warm_path.description,
+      inputSchema: {
+        target_ref: z.string().describe("The target's contact_ref from a search result."),
+        max_hops: z.number().optional().describe('Optional, 1–3 (default 3).'),
+      },
+      annotations: READ_ONLY,
+    },
+    (args) => runTool(userId, 'find_warm_path', () => mcpFindWarmPath(userId, args)),
   );
   server.registerTool(
     'get_upcoming_birthdays',

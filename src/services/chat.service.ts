@@ -70,6 +70,7 @@ import {
 import { approveTaskPlan, planInForce, proposeTaskPlan, renderPlan } from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
+import { findWarmPath } from './tools/findWarmPath';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
@@ -1489,6 +1490,29 @@ const SEARCH_ROSTER_TOOL: AnthropicTool = {
       name: { type: 'string', description: 'Optional: words of the name to look for.' },
     },
     required: ['group'],
+  },
+};
+
+const FIND_WARM_PATH_TOOL: AnthropicTool = {
+  name: 'find_warm_path',
+  description:
+    'The warm path to ONE identified person: the chain of bridges (who knows whom) from the user ' +
+    'to that person, up to 3 hops, point-to-point (D132). Use ONLY once the target is known — ' +
+    'named by the user or found by a search — never to discover who to ask. Returns each bridge ' +
+    'by name with is_member (a path is relayable only through Netai users). The first bridge is a ' +
+    'direct contact: write to them with ask_contact; each further bridge is asked by their own ' +
+    "assistant before passing it on. If no path: offer an invite or the user's own message.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      target_phone: {
+        type: 'string',
+        description:
+          "The target's phone id from a search result. Reuse it exactly; never show it to the user.",
+      },
+      max_hops: { type: 'number', description: 'Optional, 1–3 (default 3).' },
+    },
+    required: ['target_phone'],
   },
 };
 
@@ -2947,6 +2971,12 @@ async function executeToolCall(
       );
     case 'search_roster':
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
+    case 'find_warm_path':
+      return findWarmPath(
+        userId,
+        String(input['target_phone'] ?? ''),
+        typeof input['max_hops'] === 'number' ? input['max_hops'] : undefined,
+      );
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -2965,6 +2995,7 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
   'search_by_insight',
   'search_second_degree',
   'search_contacts_by_country',
+  'find_warm_path',
   'web_search',
   'fetch_page',
 ]);
@@ -3773,6 +3804,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     GET_TOP_CONNECTORS_TOOL,
     GET_GROUP_CONNECTORS_TOOL,
     SEARCH_ROSTER_TOOL,
+    FIND_WARM_PATH_TOOL,
     GET_COUNTRY_CHANNELS_TOOL,
     GET_NETAI_INFO_TOOL,
     ...enabledKeys

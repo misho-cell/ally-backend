@@ -86,3 +86,47 @@ export async function deleteUserNotes(userId: string, ids: number[]): Promise<{ 
   );
   return { deleted: result.rowCount ?? 0 };
 }
+
+/**
+ * The tone preference as a thing the profile page can read and write (Ticket
+ * 11 Task 9, the optional P2 control). No new store: it is one `preference`
+ * note with a fixed prefix, the same note the assistant already honours when
+ * the user says „მოკლედ" or „be warmer" in chat.
+ */
+export const TONE_NOTE_PREFIX = 'ტონი: ';
+const MAX_TONE_CHARS = 200;
+
+export interface TonePreference {
+  id: number;
+  tone: string;
+}
+
+export async function getTonePreference(userId: string): Promise<TonePreference | null> {
+  const result = await query<{ id: number; text: string }>(
+    `SELECT id, text FROM user_notes
+     WHERE user_id = $1 AND kind = 'preference' AND text LIKE $2 || '%'
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId, TONE_NOTE_PREFIX],
+    QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return row ? { id: row.id, tone: row.text.slice(TONE_NOTE_PREFIX.length).trim() } : null;
+}
+
+/** One tone at a time: the previous tone notes go, the new one is saved. */
+export async function setTonePreference(userId: string, tone: string): Promise<TonePreference> {
+  const clean = tone.replace(/\s+/g, ' ').trim().slice(0, MAX_TONE_CHARS);
+  if (clean === '') throw new Error('tone is required');
+  await clearTonePreference(userId);
+  const { id } = await saveUserNote(userId, 'preference', `${TONE_NOTE_PREFIX}${clean}`);
+  return { id, tone: clean };
+}
+
+export async function clearTonePreference(userId: string): Promise<{ deleted: number }> {
+  const result = await query(
+    `DELETE FROM user_notes WHERE user_id = $1 AND kind = 'preference' AND text LIKE $2 || '%'`,
+    [userId, TONE_NOTE_PREFIX],
+    QUERY_TIMEOUT_MS,
+  );
+  return { deleted: result.rowCount ?? 0 };
+}
