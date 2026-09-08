@@ -26,6 +26,8 @@ interface WalletWorld {
   runCostUsd: number;
   staleGrants?: { period_key: string; amount: number }[];
   monthDebits?: number;
+  /** The run was already debited: the insert hits the unique index and writes nothing. */
+  debitConflict?: boolean;
 }
 
 const PRICES: Record<string, number> = {
@@ -59,7 +61,9 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
       );
     if (sql.includes('INSERT INTO token_transactions')) {
       inserts.push(params ?? []);
-      return Promise.resolve(rows([]) as never);
+      // One row written — the ordinary case. A test of the one-debit-per-run
+      // index (migration 126) overrides this with rowCount 0.
+      return Promise.resolve({ rows: [], rowCount: world.debitConflict ? 0 : 1 } as never);
     }
     if (sql.includes('SUM(cost_usd) AS total FROM usage_events'))
       return Promise.resolve(rows([{ total: String(world.runCostUsd) }]) as never);
@@ -182,6 +186,22 @@ describe('debitRun', () => {
     // 0.253 × 1.10 = 0.2783 → / 0.01 = 27.83 → ceil = 28
     expect(tokens).toBe(28);
     expect(inserts()[0]).toEqual(['7', -28, 'chat_debit', 'run-1']);
+  });
+
+  it('a retried settle of the same run charges nothing — one debit per run (Task 25 e)', async () => {
+    setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 100,
+      runCostUsd: 0.253,
+      debitConflict: true,
+    });
+
+    expect(await debitRun('7', 'run-1')).toBe(0);
+    const [sql] = mockQuery.mock.calls.find(([s]) =>
+      String(s).includes('INSERT INTO token_transactions'),
+    ) as [string];
+    expect(sql).toContain("ON CONFLICT (run_id) WHERE reason = 'chat_debit'");
   });
 
   it('debits nothing when the wallet is off or the run cost is zero', async () => {

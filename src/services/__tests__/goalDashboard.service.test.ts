@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { adminGoalDetail, blockerFor } from '../goalDashboard.service';
+import { adminGoalDetail, blockerFor, goalDays } from '../goalDashboard.service';
 import { GOAL_STAGE_SQL } from '../goalQuestions.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -209,5 +209,72 @@ describe('blockerFor', () => {
     for (const stage of ['running', 'understanding', 'solved', 'stopped', 'paused'] as const) {
       expect(blockerFor(stage, row, [])).toBeNull();
     }
+  });
+});
+
+// The standard, Part I §3: the 14-day table as data — a silent day is a day
+// with none of the five signs.
+describe('goalDays', () => {
+  it('is null for a goal that is not this user’s', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await goalDays('501', 1519)).toBeNull();
+  });
+
+  it('marks silent days, counts them, and clamps the span', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT id FROM tasks'))
+        return Promise.resolve(rows([{ id: 1519 }]) as never);
+      return Promise.resolve(
+        rows([
+          {
+            day: new Date('2026-09-06T00:00:00Z'),
+            asks_sent: '2',
+            replies_in: '0',
+            circle_widened: false,
+            method_changed: false,
+            status_lines: '1',
+          },
+          {
+            day: new Date('2026-09-07T00:00:00Z'),
+            asks_sent: '0',
+            replies_in: '0',
+            circle_widened: false,
+            method_changed: false,
+            status_lines: '0',
+          },
+          {
+            day: new Date('2026-09-08T00:00:00Z'),
+            asks_sent: '0',
+            replies_in: '1',
+            circle_widened: true,
+            method_changed: false,
+            status_lines: '0',
+          },
+        ]) as never,
+      );
+    });
+
+    const report = await goalDays('501', 1519, 500);
+
+    expect(report?.days.map((d) => d.silent)).toEqual([false, true, false]);
+    expect(report?.silent_days).toBe(1);
+    expect(report?.active_days).toBe(2);
+    expect(report?.from).toBe('2026-09-06');
+    expect(report?.to).toBe('2026-09-08');
+    // 500 asked, 60 is the ceiling; 14 is the default.
+    const [, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(params).toEqual([1519, 60]);
+  });
+
+  it('defaults to fourteen days', async () => {
+    mockQuery.mockImplementation((sql: string) =>
+      Promise.resolve(rows(sql.includes('SELECT id FROM tasks') ? [{ id: 1519 }] : []) as never),
+    );
+
+    await goalDays('501', 1519);
+
+    const [, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(params).toEqual([1519, 14]);
   });
 });

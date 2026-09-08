@@ -179,12 +179,15 @@ export async function debitRun(userId: string, runId: string): Promise<number> {
   const tokens = Math.ceil((costUsd * (1 + overheadPct / PERCENT)) / usdPerToken);
   if (tokens <= 0) return 0;
 
-  await query(
+  // One debit per run (Task 25 (e), migration 126): a retried settle is a
+  // no-op, never a second charge. Zero rows written = nothing debited now.
+  const result = await query(
     `INSERT INTO token_transactions (user_id, amount, reason, run_id)
-     VALUES ($1, $2, $3, $4)`,
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (run_id) WHERE reason = 'chat_debit' AND run_id IS NOT NULL DO NOTHING`,
     [userId, -tokens, CHAT_DEBIT_REASON, runId],
   );
-  return tokens;
+  return (result.rowCount ?? 0) > 0 ? tokens : 0;
 }
 
 export interface TopupPackage {

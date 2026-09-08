@@ -85,7 +85,7 @@ import {
   RarityBand,
 } from '../../services/identity.service';
 import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestions.service';
-import { adminGoalDetail } from '../../services/goalDashboard.service';
+import { adminGoalDetail, goalDays } from '../../services/goalDashboard.service';
 import {
   deletePrivateContextKeys,
   scrubStoredPhoneNumbers,
@@ -1277,6 +1277,35 @@ adminRouter.get('/goals/:taskId', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goal detail]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// The 14-day acceptance table (the standard, Part I §3), one row per day, read
+// in one call instead of filled by hand each morning.
+//   GET /admin/goals/:taskId/days?user_id=501&days=14
+adminRouter.get('/goals/:taskId/days', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.query.user_id);
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(userId) || userId <= 0 || !Number.isFinite(taskId) || taskId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id და taskId აუცილებელია' });
+      return;
+    }
+    const rawDays = Number(req.query.days);
+    const report = await goalDays(
+      String(userId),
+      taskId,
+      Number.isFinite(rawDays) && rawDays > 0 ? rawDays : undefined,
+    );
+    if (report === null) {
+      res.status(404).json({ success: false, error: 'მიზანი ვერ მოიძებნა' });
+      return;
+    }
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin goal days]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

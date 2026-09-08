@@ -263,6 +263,113 @@ function outcomeFor(row: GoalRow, stage: GoalStage): GoalOutcome {
   };
 }
 
+/**
+ * The 14-day acceptance test as data (the standard, Part I §3; Task 29).
+ *
+ * One row per day: asks sent (with the user's yes — every ask has one), replies
+ * relayed in, the circle widened or the method changed, a status line to the
+ * user (an assistant reply in the goal's thread), and whether the day was
+ * silent — none of the five. The table the founder's seat was to fill by hand
+ * every morning is read here in one call, so a silent day cannot be missed or
+ * argued about.
+ */
+const ACCEPTANCE_TEST_DAYS = 14;
+const MAX_ACCEPTANCE_DAYS = 60;
+
+export interface GoalDay {
+  day: string;
+  asks_sent: number;
+  replies_in: number;
+  circle_widened: boolean;
+  method_changed: boolean;
+  status_lines: number;
+  silent: boolean;
+}
+
+export interface GoalDaysReport {
+  task_id: number;
+  from: string;
+  to: string;
+  days: GoalDay[];
+  silent_days: number;
+  active_days: number;
+}
+
+interface GoalDayRow {
+  day: Date | string;
+  asks_sent: string;
+  replies_in: string;
+  circle_widened: boolean;
+  method_changed: boolean;
+  status_lines: string;
+}
+
+/** Null when the goal does not exist or is not this user's. */
+export async function goalDays(
+  userId: string,
+  taskId: number,
+  days = ACCEPTANCE_TEST_DAYS,
+): Promise<GoalDaysReport | null> {
+  const span = Math.min(Math.max(1, Math.floor(days)), MAX_ACCEPTANCE_DAYS);
+  const owned = await query<{ id: number }>(
+    `SELECT id FROM tasks WHERE id = $1 AND user_id = $2 LIMIT 1`,
+    [taskId, userId],
+    DASHBOARD_QUERY_TIMEOUT_MS,
+  );
+  if (owned.rows.length === 0) return null;
+  const result = await query<GoalDayRow>(
+    `WITH d AS (
+       SELECT generate_series(
+         (CURRENT_DATE - ($2::int - 1))::date, CURRENT_DATE, INTERVAL '1 day')::date AS day
+     )
+     SELECT d.day,
+            (SELECT COUNT(*) FROM task_asks a
+              WHERE a.task_id = $1 AND a.created_at::date = d.day) AS asks_sent,
+            (SELECT COUNT(*) FROM task_asks a
+              WHERE a.task_id = $1 AND a.answered_at::date = d.day) AS replies_in,
+            EXISTS (SELECT 1 FROM tasks t
+                     WHERE t.id = $1 AND t.silent_day_woken_at::date = d.day) AS circle_widened,
+            EXISTS (SELECT 1 FROM tasks t
+                     WHERE t.id = $1 AND t.plan_version > 1
+                       AND t.plan_approved_at::date = d.day) AS method_changed,
+            (SELECT COUNT(*) FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
+              WHERE t.id = $1 AND c.role = 'assistant' AND c.kind = 'message'
+                AND c.created_at::date = d.day) AS status_lines
+     FROM d
+     ORDER BY d.day`,
+    [taskId, span],
+    DASHBOARD_QUERY_TIMEOUT_MS,
+  );
+  const rows: GoalDay[] = result.rows.map((r) => {
+    const asksSent = Number(r.asks_sent);
+    const repliesIn = Number(r.replies_in);
+    const statusLines = Number(r.status_lines);
+    return {
+      day: (iso(r.day) ?? '').slice(0, 10),
+      asks_sent: asksSent,
+      replies_in: repliesIn,
+      circle_widened: r.circle_widened,
+      method_changed: r.method_changed,
+      status_lines: statusLines,
+      silent:
+        asksSent === 0 &&
+        repliesIn === 0 &&
+        !r.circle_widened &&
+        !r.method_changed &&
+        statusLines === 0,
+    };
+  });
+  const silentDays = rows.filter((r) => r.silent).length;
+  return {
+    task_id: taskId,
+    from: rows[0]?.day ?? '',
+    to: rows[rows.length - 1]?.day ?? '',
+    days: rows,
+    silent_days: silentDays,
+    active_days: rows.length - silentDays,
+  };
+}
+
 /** Null when the goal does not exist or is not this user's. */
 export async function adminGoalDetail(userId: string, taskId: number): Promise<GoalDetail | null> {
   const row = await goalRow(userId, taskId);
