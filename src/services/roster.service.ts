@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { phoneDigits } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 
 /**
  * A roster: the members of a named network, as the public `member_of` facts
@@ -115,4 +115,69 @@ export function filterRoster(members: readonly RosterMember[], nameQuery: string
 /** Digits of the roster phones, for callers that compare numbers not ids. */
 export function rosterDigits(members: readonly RosterMember[]): Set<string> {
   return new Set(members.map((m) => phoneDigits(m.phone)).filter(Boolean));
+}
+
+// The 84 Axel rows of 5 September were written by the founder's account as
+// curator, public and matchable, canonical = the group's name, source 'sweep'
+// (the only import-shaped value the column's CHECK allows). One more member
+// takes exactly that shape, so the roster stays one kind of row.
+const ROSTER_FACT_SOURCE = 'sweep';
+const ROSTER_FACT_CONFIDENCE = 'stated';
+
+export interface RosterChange {
+  changed: boolean;
+  phone: string;
+  group: string;
+  fact_id: number | null;
+}
+
+/**
+ * Put one person on a roster (Ticket 12 Task 10: the founder himself was not
+ * on the Axel list he confirmed, so his own membership opened no door). Idempotent:
+ * a live row for the same phone and group changes nothing.
+ */
+export async function addRosterMember(
+  group: string,
+  phone: string,
+  curatorUserId: string,
+): Promise<RosterChange> {
+  const name = group.trim();
+  const normalized = normalizePhone(phone);
+  if (name === '' || !normalized) return { changed: false, phone, group: name, fact_id: null };
+  const existing = await query<{ id: number }>(
+    `SELECT id FROM contact_facts
+     WHERE neo4j_contact_id = $1 AND field_type = 'member_of' AND retracted_at IS NULL
+       AND LOWER(COALESCE(canonical_value, value)) = LOWER($2)
+     LIMIT 1`,
+    [normalized, name],
+    ROSTER_QUERY_TIMEOUT_MS,
+  );
+  const found = existing.rows[0];
+  if (found) return { changed: false, phone: normalized, group: name, fact_id: found.id };
+  const inserted = await query<{ id: number }>(
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value,
+                                is_public, is_matchable, canonical_value, moderated_at, source, confidence)
+     VALUES ($1, $2, 'member_of', $3, true, true, $3, NOW(), $4, $5)
+     RETURNING id`,
+    [normalized, curatorUserId, name, ROSTER_FACT_SOURCE, ROSTER_FACT_CONFIDENCE],
+    ROSTER_QUERY_TIMEOUT_MS,
+  );
+  return { changed: true, phone: normalized, group: name, fact_id: inserted.rows[0]?.id ?? null };
+}
+
+/** Take one person off a roster — a soft retract of the membership row; the undo of addRosterMember. */
+export async function removeRosterMember(group: string, phone: string): Promise<RosterChange> {
+  const name = group.trim();
+  const normalized = normalizePhone(phone);
+  if (name === '' || !normalized) return { changed: false, phone, group: name, fact_id: null };
+  const result = await query<{ id: number }>(
+    `UPDATE contact_facts SET retracted_at = NOW(), updated_at = NOW()
+     WHERE neo4j_contact_id = $1 AND field_type = 'member_of' AND retracted_at IS NULL
+       AND LOWER(COALESCE(canonical_value, value)) = LOWER($2)
+     RETURNING id`,
+    [normalized, name],
+    ROSTER_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return { changed: row !== undefined, phone: normalized, group: name, fact_id: row?.id ?? null };
 }

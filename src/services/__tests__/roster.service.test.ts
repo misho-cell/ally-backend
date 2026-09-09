@@ -1,7 +1,14 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { filterRoster, isOnRoster, rosterMembers, sharedRoster } from '../roster.service';
+import {
+  addRosterMember,
+  filterRoster,
+  isOnRoster,
+  removeRosterMember,
+  rosterMembers,
+  sharedRoster,
+} from '../roster.service';
 import { searchRoster } from '../tools/searchRoster';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -71,5 +78,55 @@ describe('search_roster — the one search past the phonebook', () => {
     const out = await searchRoster('501', '  ');
     expect(out).toMatchObject({ found: false, reason: 'no_group' });
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+// Ticket 12 Task 10: one person on or off the roster, by phone, in the shape
+// of the 84 rows already there.
+describe('addRosterMember / removeRosterMember', () => {
+  it('writes a public, matchable member_of row once, and reports the repeat as unchanged', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([]) as never)
+      .mockResolvedValueOnce(rows([{ id: 7001 }]) as never);
+
+    const first = await addRosterMember('Axel', '+995 599 93 41 75', '501');
+
+    expect(first).toEqual({ changed: true, phone: '+995599934175', group: 'Axel', fact_id: 7001 });
+    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(sql).toContain("'member_of'");
+    expect(sql).toContain('true, true');
+    expect(params).toEqual(['+995599934175', '501', 'Axel', 'sweep', 'stated']);
+
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7001 }]) as never);
+    expect(await addRosterMember('Axel', '+995599934175', '501')).toEqual({
+      changed: false,
+      phone: '+995599934175',
+      group: 'Axel',
+      fact_id: 7001,
+    });
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses an empty group or an unusable phone without touching the DB', async () => {
+    mockQuery.mockReset();
+    expect((await addRosterMember('  ', '+995599934175', '501')).changed).toBe(false);
+    expect((await addRosterMember('Axel', 'abc', '501')).changed).toBe(false);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('removal is a soft retract and says when there was nothing to remove', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7001 }]) as never);
+    expect(await removeRosterMember('Axel', '+995599934175')).toEqual({
+      changed: true,
+      phone: '+995599934175',
+      group: 'Axel',
+      fact_id: 7001,
+    });
+    expect(mockQuery.mock.calls[0][0] as string).toContain('retracted_at = NOW()');
+
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
+    expect((await removeRosterMember('Axel', '+995599000099')).changed).toBe(false);
   });
 });

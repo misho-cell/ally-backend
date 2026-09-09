@@ -119,6 +119,7 @@ import {
   reprocessSavedOccupationFacts,
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
+import { addRosterMember, removeRosterMember } from '../../services/roster.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import { demandExcludedUserIds, findUnmetNeeds } from '../../services/unmetNeeds.service';
 import {
@@ -2840,6 +2841,44 @@ adminRouter.post(
     }
   },
 );
+
+// Ticket 12 Task 10: one person on or off a roster, by phone. The Axel roster
+// (84 rows) was loaded from the founder's file on 5 September; the founder's
+// own numbers were not in that file, so his membership opened no door.
+//   POST   /admin/roster/:group/members { phone }   → adds (idempotent)
+//   DELETE /admin/roster/:group/members/:phone      → soft-retracts (the undo)
+adminRouter.post('/roster/:group/members', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { phone?: unknown };
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+    if (phone === '') {
+      res.status(400).json({ success: false, error: 'phone აუცილებელია' });
+      return;
+    }
+    const curator = String((req as AuthenticatedRequest).user.userId);
+    const out = await addRosterMember(String(req.params.group), phone, curator);
+    res.status(out.changed ? 201 : 200).json({ success: true, data: out });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin roster add]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.delete('/roster/:group/members/:phone', async (req: Request, res: Response) => {
+  try {
+    const out = await removeRosterMember(String(req.params.group), String(req.params.phone));
+    if (!out.changed) {
+      res.status(404).json({ success: false, error: 'ასეთი წევრი სიაზე არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: out });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin roster remove]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.post('/chorus/sweep', async (_req: Request, res: Response) => {
   try {
