@@ -88,10 +88,13 @@ export async function recordLinkOpened(code: string): Promise<boolean> {
 }
 
 export interface ReferralFunnel {
-  // The assistant handed the user their link (the get_invite_link call).
-  issued: number;
+  // The assistant showed the user their link (every get_invite_link call,
+  // including a plain „what is my link?"). NOT an invitation — Ticket 12
+  // Task 66: reading the link must never count as one issued, so the field
+  // says what it is.
+  link_shown: number;
   // The user actually took the share action (share sheet / copy) — task 6
-  // item 3's real 'sent'.
+  // item 3's real 'sent'. This is the invitation count.
   sent: number;
   opened: number;
   registered: number;
@@ -110,10 +113,11 @@ export interface ReferralFunnel {
 // reconciled into a real conversion rate yet — the note says so rather
 // than implying one.
 const FUNNEL_NOTE =
+  "'sent' is the only invitation count (the share sheet or the copy button). 'link_shown' is " +
+  'how many times the assistant showed the user their own link — a tool call, not a share. ' +
   "'registered' counts every account ever attributed to this user (all-time, any attribution " +
-  "path — the phone-based one predates this table); 'issued'/'sent'/'opened' only exist since " +
-  "this feature shipped, and rows written before 27 Aug were re-labelled 'issued' (they were " +
-  'tool calls, not shares). Not yet a directly comparable conversion funnel.';
+  "path — the phone-based one predates this table); 'link_shown'/'sent'/'opened' only exist " +
+  'since this feature shipped. Not yet a directly comparable conversion funnel.';
 
 /** The three-step funnel for one user, or the whole product when omitted. */
 export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel> {
@@ -133,7 +137,7 @@ export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel
   );
   const byEvent = new Map(eventCounts.rows.map((r) => [r.event, Number(r.count)]));
   return {
-    issued: byEvent.get('issued') ?? 0,
+    link_shown: byEvent.get('issued') ?? 0,
     sent: byEvent.get('sent') ?? 0,
     opened: byEvent.get('opened') ?? 0,
     registered: Number(registered.rows[0]?.count ?? 0),

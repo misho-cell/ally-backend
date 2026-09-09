@@ -19,6 +19,8 @@ interface RunStrings {
   choicesOnly: string;
   emptyFinalFailure: string;
   moderationBlocked: string;
+  /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
+  nameNotVerified: string;
   statusLines: { working: string; waiting: string; needs_you: string; failed: string };
 }
 
@@ -30,6 +32,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'პასუხი ვერ ჩამოყალიბდა — სცადე თავიდან, ან სხვანაირად დასვი კითხვა.',
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
+    nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
     statusLines: {
       working: 'ვმუშაობ…',
       waiting: 'ველოდები პასუხს',
@@ -44,6 +47,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'The reply did not come together — try again, or rephrase the question.',
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
+    nameNotVerified: '(name not verified on an official page)',
     statusLines: {
       working: 'Working…',
       waiting: 'Waiting for a reply',
@@ -58,6 +62,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'Ответ не сложился — попробуй ещё раз или переформулируй вопрос.',
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
+    nameNotVerified: '(имя не подтверждено на официальной странице)',
     statusLines: {
       working: 'Работаю…',
       waiting: 'Жду ответа',
@@ -72,6 +77,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'La respuesta no salió — inténtalo de nuevo o reformula la pregunta.',
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
+    nameNotVerified: '(nombre no verificado en una página oficial)',
     statusLines: {
       working: 'Trabajando…',
       waiting: 'Esperando respuesta',

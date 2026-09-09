@@ -435,7 +435,9 @@ describe('sweepStaleParticipants', () => {
   it('times out silent asked participants and closes exhausted campaigns', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes("state = 'asked' AND asked_at <"))
-        return Promise.resolve(rows([{ campaign_id: 900 }]) as never);
+        return Promise.resolve(
+          rows([{ campaign_id: 900, thread_id: 11749, inviter_user_id: 501 }]) as never,
+        );
       if (sql.includes("state IN ('pending', 'asked', 'agreed', 'told')"))
         return Promise.resolve(rows([{ count: '0' }]) as never);
       return Promise.resolve(rows([]) as never);
@@ -448,6 +450,26 @@ describe('sweepStaleParticipants', () => {
       (sql as string).includes('closed_declined_all'),
     );
     expect(closeCalls).toHaveLength(1);
+    // Ticket 12 Task 60: the timed-out ask's thread stops saying „needs your answer".
+    expect(setThreadStatus).toHaveBeenCalledWith('501', 11749, 'done', {
+      statusLine: null,
+      isTask: true,
+    });
+  });
+
+  it('a timed-out ask without a thread flips nothing', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("state = 'asked' AND asked_at <"))
+        return Promise.resolve(
+          rows([{ campaign_id: 901, thread_id: null, inviter_user_id: 501 }]) as never,
+        );
+      if (sql.includes("state IN ('pending', 'asked', 'agreed', 'told')"))
+        return Promise.resolve(rows([{ count: '1' }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    expect(await sweepStaleParticipants()).toEqual({ timedOut: 1, closed: 0 });
+    expect(setThreadStatus).not.toHaveBeenCalled();
   });
 
   it('closes empty and over-age campaigns — a campaign can always END (ticket 8 task 6)', async () => {

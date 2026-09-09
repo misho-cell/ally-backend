@@ -114,6 +114,7 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { isReplySafe } from './moderation.service';
+import { applyOfficeholderGate, clearRunEvidence, recordRunEvidence } from './officeholderGate';
 import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
@@ -3051,6 +3052,10 @@ async function runOneToolBlock(
     runId,
     threadId,
   );
+  // Ticket 12 Task 46 (D151): a fetched page or the user's own data may carry
+  // an officeholder's name; a search snippet may not (stale, or a former
+  // holder) — so everything but web_search becomes the run's evidence.
+  if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
   // One choke point, so the next contact-data tool cannot forget it.
   const result = CONTACT_DATA_TOOLS.has(block.name) ? scrubEmailsDeep(raw) : raw;
   const diet = dietToolResult(result);
@@ -3860,6 +3865,9 @@ export async function processChat(
   }
   const language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
+  // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
+  // name; tool results join it as they arrive, web-search snippets excepted.
+  recordRunEvidence(runId, userMessage);
 
   // A plain thread whose message names an open goal by title is a turn of
   // that goal (Ticket 10 Task 18). Only a regular thread qualifies — an ask,
@@ -3955,6 +3963,7 @@ export async function processChat(
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
     runAllowedNumbers.delete(runId);
     runLanguages.delete(runId);
+    clearRunEvidence(runId);
     const failureReply = RUN_STRINGS[language].emptyFinalFailure;
     await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
     return { reply: failureReply, runFailed: true, language };
@@ -3986,6 +3995,18 @@ export async function processChat(
     }
   }
 
+  // Ticket 12 Task 46 (D151): an officeholder's name the run never read on a
+  // page (or got from the user's own data) does not reach the screen — the
+  // scripted line stands in its place. Logged by count, never by name.
+  const gate = applyOfficeholderGate(cleanedFinal, runId, language);
+  if (gate.refused.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[officeholder-gate] run ${runId} thread ${threadId}: ${gate.refused.length} unverified name(s) replaced`,
+    );
+    cleanedFinal = gate.reply;
+  }
+
   // Moderate the user-facing reply before persisting/returning it. Blocking
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
@@ -4004,6 +4025,7 @@ export async function processChat(
   );
   runAllowedNumbers.delete(runId);
   runLanguages.delete(runId);
+  clearRunEvidence(runId);
   // The run's id travels WITH the message (ticket 9 task 34). It was passed as
   // null on every final answer, so 846 assistant messages in five days carried
   // no run id at all — and `run_prompt_stamps`, which knows exactly which mode

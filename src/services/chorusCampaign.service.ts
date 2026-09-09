@@ -533,8 +533,12 @@ async function closeCampaignIfExhausted(campaignId: number): Promise<void> {
 
 // A reply this old without resolving is treated as a silent decline — a
 // campaign whose every participant went quiet must still close, not stay
-// open indefinitely waiting on a reply that will never come.
-const NO_REPLY_TIMEOUT_DAYS = Number(process.env.CHORUS_NO_REPLY_TIMEOUT_DAYS ?? 21);
+// open indefinitely waiting on a reply that will never come. Seven days:
+// Chorus asks one person about one target once a week (Ticket 12 Task 40),
+// so a week of silence is the answer, and the „needs your answer" badge on
+// the invite thread comes off with it (Ticket 12 Task 60 — three threads of
+// 1 September still wore it on the 9th).
+const NO_REPLY_TIMEOUT_DAYS = Number(process.env.CHORUS_NO_REPLY_TIMEOUT_DAYS ?? 7);
 
 // Nothing bounded a campaign's lifetime (ticket 8 task 6: 49 open, 0 ever
 // closed). Past this age it closes as expired whatever state its asks are in.
@@ -542,14 +546,26 @@ const CAMPAIGN_MAX_AGE_DAYS = Number(process.env.CHORUS_CAMPAIGN_MAX_AGE_DAYS ??
 
 /** Times out asked-but-silent participants, then closes any campaign that leaves fully exhausted. */
 export async function sweepStaleParticipants(): Promise<{ timedOut: number; closed: number }> {
-  const stale = await query<{ campaign_id: number }>(
+  const stale = await query<{
+    campaign_id: number;
+    thread_id: number | null;
+    inviter_user_id: number;
+  }>(
     `UPDATE invite_campaign_participants
      SET state = 'declined', state_updated_at = NOW()
      WHERE state = 'asked' AND asked_at < NOW() - make_interval(days => $1)
-     RETURNING campaign_id`,
+     RETURNING campaign_id, thread_id, inviter_user_id`,
     [NO_REPLY_TIMEOUT_DAYS],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
+  // The ask is no longer waiting for anyone: its thread stops saying so.
+  for (const row of stale.rows) {
+    if (row.thread_id === null) continue;
+    await setThreadStatus(String(row.inviter_user_id), row.thread_id, 'done', {
+      statusLine: null,
+      isTask: true,
+    });
+  }
   const uniqueCampaigns = new Set(stale.rows.map((r) => r.campaign_id));
   for (const campaignId of uniqueCampaigns) await closeCampaignIfExhausted(campaignId);
 

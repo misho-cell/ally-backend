@@ -100,7 +100,8 @@ describe('getReferralFunnel', () => {
 
     const out = await getReferralFunnel('7');
 
-    expect(out.issued).toBe(9);
+    // Ticket 12 Task 66: the tool call is 'link_shown', never an invitation.
+    expect(out.link_shown).toBe(9);
     expect(out.sent).toBe(5);
     expect(out.opened).toBe(2);
     expect(out.registered).toBe(1);
