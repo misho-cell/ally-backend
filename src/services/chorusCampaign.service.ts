@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { approvedTargetPhones } from './targetDecisions.service';
 import {
   buildTargetList,
   bestPersonLabels,
@@ -216,10 +217,20 @@ async function scheduleParticipants(
  * open or in cooldown, and schedules its inviters. Meant to run off a cron
  * tick — every step here is server-initiated, never a human action.
  */
+async function onlyFounderApproved(targets: TargetScoreEntry[]): Promise<TargetScoreEntry[]> {
+  if ((process.env.CHORUS_REQUIRE_FOUNDER_YES ?? 'true').toLowerCase() === 'false') return targets;
+  const approved = await approvedTargetPhones();
+  return targets.filter((t) => approved.has(t.phone));
+}
+
 export async function openDueCampaigns(
   sinceDays: number,
 ): Promise<{ opened: number; skipped_no_inviter: number }> {
-  const targets: TargetScoreEntry[] = await buildTargetList(sinceDays);
+  // Ticket 12 Task 40 (D102, the founder 9 Sep): Chorus acts only on the
+  // shortlist the founder approved — a target he has not said „yes" to on the
+  // review screen is not asked about. CHORUS_REQUIRE_FOUNDER_YES=false lifts it.
+  const listed: TargetScoreEntry[] = await buildTargetList(sinceDays);
+  const targets = await onlyFounderApproved(listed);
   if (targets.length === 0) return { opened: 0, skipped_no_inviter: 0 };
 
   const blocked = await cooldownBlockedTargets(targets.map((t) => t.phone));

@@ -333,6 +333,14 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
             'Omit normally (defaults to "chat"); "debrief" ONLY when saving the answer to a ' +
               'debrief question from get_pending_updates',
           ),
+        confidence: z
+          .enum(['stated', 'mentioned'])
+          .optional()
+          .describe(
+            '"stated" (default) ONLY when the USER said it in their own words. "mentioned" when it ' +
+              'comes from a web page, a search result, a label or your own reading between the ' +
+              'lines — never published as confirmed. Never save a guess ("possibly", "probably").',
+          ),
       },
       annotations: WRITE,
     },

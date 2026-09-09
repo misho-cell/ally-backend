@@ -772,6 +772,8 @@ export interface ExportRow {
   band: RarityBand;
   number_1: string;
   number_2: string;
+  /** Plain words for the reviewer (Ticket 12 Task 62): what the flag means. */
+  looks_like: string;
   decision: '';
 }
 
@@ -808,6 +810,7 @@ export async function exportIdentityCandidates(
       band: r.band,
       number_1: last4(r.phones[0] ?? ''),
       number_2: last4(r.phones[1] ?? ''),
+      looks_like: r.looks_like_a_name ? 'one person, two numbers' : 'not a person’s name',
       decision: '',
     })),
     skipped_not_a_name: all.length - keep.length,

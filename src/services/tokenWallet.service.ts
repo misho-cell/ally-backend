@@ -22,6 +22,10 @@ export interface WalletSummary {
   balance: number;
   grantedThisPeriod: number;
   spentThisPeriod: number;
+  /** The window the grant counts in (D124): calendar_month or calendar_week. */
+  window: 'calendar_month' | 'calendar_week';
+  /** When the allowance resets — the screen's „renews" date for tokens (Ticket 12 Task 34). */
+  resetsAt: string;
 }
 
 export async function isWalletEnabled(): Promise<boolean> {
@@ -274,22 +278,27 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
     balance: string | null;
     granted: string | null;
     spent: string | null;
+    resets_at: string | Date;
   }>(
     `SELECT SUM(amount) AS balance,
             SUM(amount) FILTER (WHERE amount > 0
               AND created_at >= ${window.windowStartSql})       AS granted,
             -SUM(amount) FILTER (WHERE amount < 0 AND reason <> $2
-              AND created_at >= ${window.windowStartSql})       AS spent
+              AND created_at >= ${window.windowStartSql})       AS spent,
+            (${window.windowResetSql}) AS resets_at
      FROM token_transactions
      WHERE user_id = $1`,
     [userId, GRANT_EXPIRY_REASON],
   );
 
   const row = result.rows[0];
+  const resets = row?.resets_at instanceof Date ? row.resets_at : new Date(row?.resets_at ?? NaN);
   return {
     enabled,
     balance: Number(row?.balance ?? 0),
     grantedThisPeriod: Number(row?.granted ?? 0),
     spentThisPeriod: Number(row?.spent ?? 0),
+    window: window.label,
+    resetsAt: Number.isNaN(resets.getTime()) ? '' : resets.toISOString(),
   };
 }

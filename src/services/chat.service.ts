@@ -2770,6 +2770,14 @@ async function executeToolCall(
         };
       }
       const outcome = await approveTaskPlan(userId, Number(input['task_id']));
+      // Day one starts behind the reply (Ticket 12 Tasks 2 and 5): the user
+      // hears „I am on it" first, the asks go out after. Dynamic import — the
+      // engine imports this module, a static import would be a cycle.
+      if (outcome.ok) {
+        void import('./taskEngine.service').then(({ startDayOne }) =>
+          startDayOne(Number(input['task_id'])),
+        );
+      }
       return outcome.ok
         ? { approved: true, version: outcome.value.version, summary: outcome.value.summary }
         : { approved: false, error: outcome.error };

@@ -47,6 +47,7 @@ import {
   retractFactsFromForeignSync,
   retractFactsByRange,
   retypeFact,
+  retractFactById,
 } from '../../services/contactFacts.service';
 import {
   listPromptBlocks,
@@ -69,7 +70,8 @@ import {
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
-import { getThreadMessages } from '../../services/threads.service';
+import { getThreadMessages, getThreadsForUser } from '../../services/threads.service';
+import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import {
@@ -1327,6 +1329,121 @@ adminRouter.delete('/users/:id/profile/:key', async (req: Request, res: Response
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin profile delete]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// D150 (9 Sep): one fact retracted by id on the founder's word (record 3504).
+// Undo: `retracted_at = NULL` on the id; the response quotes what went.
+//   POST /admin/facts/:id/retract
+adminRouter.post('/facts/:id/retract', async (req: Request, res: Response) => {
+  try {
+    const factId = Number(req.params.id);
+    if (!Number.isFinite(factId) || factId <= 0) {
+      res.status(400).json({ success: false, error: 'id აუცილებელია' });
+      return;
+    }
+    const gone = await retractFactById(factId);
+    if (gone === null) {
+      res.status(404).json({ success: false, error: 'ასეთი ცოცხალი ფაქტი არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: gone });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin fact retract]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Ticket 12 Task 12 (D137): the six launch invitations need a referral code
+// each; two of the six accounts never opened the invite screen, so none was
+// ever minted. Same function the app uses; idempotent.
+//   POST /admin/users/:id/referral-code
+adminRouter.post('/users/:id/referral-code', async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      res.status(400).json({ success: false, error: 'id აუცილებელია' });
+      return;
+    }
+    const code = await getOrCreateReferralCode(String(userId));
+    res.status(200).json({ success: true, data: { user_id: userId, referral_code: code } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin referral code]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Ticket 12 Task 16 (D147, the founder 9 Sep): during the pilot EVERY
+// conversation between a user and Netai is readable from the dashboard — by
+// the founder's own admin login only, nobody else's; temporary; switched off
+// by a date. Two settings: PILOT_CONVERSATION_READER_UNTIL (ISO; unset = off)
+// and PILOT_CONVERSATION_READER_USER_ID (default 501). Every read is logged.
+//   GET /admin/pilot/threads?user_id=171078          — that user's threads
+//   GET /admin/pilot/threads/:id/messages            — one conversation
+function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: string } {
+  const until = process.env.PILOT_CONVERSATION_READER_UNTIL;
+  if (!until) return { allowed: false, reason: 'the pilot reader is switched off' };
+  if (Number.isNaN(new Date(until).getTime()) || new Date() > new Date(until)) {
+    return { allowed: false, reason: 'the pilot reader has ended' };
+  }
+  const readerId = process.env.PILOT_CONVERSATION_READER_USER_ID ?? '501';
+  const adminId = String((req as AuthenticatedRequest).user.userId);
+  if (adminId !== readerId)
+    return { allowed: false, reason: 'only the founder’s account may read' };
+  return { allowed: true };
+}
+
+adminRouter.get('/pilot/threads', async (req: Request, res: Response) => {
+  try {
+    const gate = pilotReaderAllowed(req);
+    if (!gate.allowed) {
+      res.status(403).json({ success: false, error: gate.reason });
+      return;
+    }
+    const userId = Number(req.query.user_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[pilot-reader] threads of ${userId} read by admin ${(req as AuthenticatedRequest).user.userId}`,
+    );
+    const threads = await getThreadsForUser(String(userId));
+    res
+      .status(200)
+      .json({ success: true, data: { user_id: userId, total: threads.length, threads } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin pilot threads]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get('/pilot/threads/:id/messages', async (req: Request, res: Response) => {
+  try {
+    const gate = pilotReaderAllowed(req);
+    if (!gate.allowed) {
+      res.status(403).json({ success: false, error: gate.reason });
+      return;
+    }
+    const threadId = Number(req.params.id);
+    if (!Number.isFinite(threadId) || threadId <= 0) {
+      res.status(400).json({ success: false, error: 'id აუცილებელია' });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[pilot-reader] thread ${threadId} read by admin ${(req as AuthenticatedRequest).user.userId}`,
+    );
+    const messages = await getThreadMessages(threadId);
+    res.status(200).json({ success: true, data: { thread_id: threadId, messages } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin pilot messages]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
@@ -3177,13 +3294,17 @@ adminRouter.get('/identity/export', async (req: Request, res: Response) => {
       res.status(200).json({ success: true, data: out });
       return;
     }
+    // Ticket 12 Task 22: the columns of NETAI_IDENTITY_CANDIDATES_REVIEW_2026-09-02.xlsx,
+    // so the founder's or Lika's answers load back by candidate id (D97, D149:
+    // last four digits only).
     const header =
-      'id,name_as_saved,people_who_saved_both,numbers_with_this_name,band,number_1,number_2,decision';
+      '#,candidate_id,name_as_saved,how_many_saved_both,how_many_numbers_carry_the_name,band,last_4_of_A,last_4_of_B,looks_like,YOUR_DECISION,note';
     const escape = (v: unknown): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = [
       header,
-      ...out.rows.map((r) =>
+      ...out.rows.map((r, i) =>
         [
+          i + 1,
           r.id,
           escape(r.name_as_saved),
           r.people_who_saved_both ?? '',
@@ -3191,6 +3312,8 @@ adminRouter.get('/identity/export', async (req: Request, res: Response) => {
           r.band,
           escape(r.number_1),
           escape(r.number_2),
+          escape(r.looks_like ?? ''),
+          '',
           '',
         ].join(','),
       ),

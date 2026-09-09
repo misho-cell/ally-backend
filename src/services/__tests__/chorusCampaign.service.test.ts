@@ -38,8 +38,20 @@ jest.mock('../pendingUpdates.service', () => ({
   __esModule: true,
   queueFollowUp: jest.fn().mockResolvedValue({ id: 1 }),
 }));
+// Ticket 12 Task 40 (D102): Chorus opens only on targets the founder said
+// „yes" to. The tests below approve every phone they list unless a test
+// narrows the set on purpose.
+jest.mock('../targetDecisions.service', () => ({
+  __esModule: true,
+  approvedTargetPhones: jest
+    .fn()
+    .mockResolvedValue(
+      new Set(['+995500000001', '+995500000002', '+995500000003', '+995500000004']),
+    ),
+}));
 
 import { query } from '../../db/postgres/client';
+import { approvedTargetPhones } from '../targetDecisions.service';
 import { buildTargetList, bestPersonLabels } from '../targetScoring.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { queueFollowUp } from '../pendingUpdates.service';
@@ -243,6 +255,46 @@ describe('openDueCampaigns', () => {
     expect(participantInserts).toHaveLength(2);
     expect(participantInserts[0][1]).toEqual([900, 10, 1]); // first inviter, day-1 offset
     expect(participantInserts[1][1]).toEqual([900, 11, 4]); // second inviter, day-4 offset
+  });
+
+  // Ticket 12 Task 40 (D102): a target the founder has not approved on the
+  // review screen is not opened — even with inviters ready.
+  it('does not open a target the founder has not said yes to', async () => {
+    (approvedTargetPhones as jest.Mock).mockResolvedValueOnce(new Set<string>());
+    mockBuildTargetList.mockResolvedValue([
+      { phone: '+995500000002', label: 'x', city: null, score: 0.7, parts: {} as never },
+    ]);
+    routeOpenQueries({
+      campaignId: 903,
+      inviterPhone: '+995500000002',
+      inviters: [{ user_id: 10, strength: 0.9 }],
+    });
+
+    expect(await openDueCampaigns(30)).toEqual({ opened: 0, skipped_no_inviter: 0 });
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO invite_campaigns'),
+    );
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('CHORUS_REQUIRE_FOUNDER_YES=false lifts the founder gate', async () => {
+    process.env.CHORUS_REQUIRE_FOUNDER_YES = 'false';
+    try {
+      (approvedTargetPhones as jest.Mock).mockResolvedValueOnce(new Set<string>());
+      mockBuildTargetList.mockResolvedValue([
+        { phone: '+995500000002', label: 'x', city: null, score: 0.7, parts: {} as never },
+      ]);
+      routeOpenQueries({
+        campaignId: 904,
+        inviterPhone: '+995500000002',
+        inviters: [{ user_id: 10, strength: 0.9 }],
+      });
+
+      expect(await openDueCampaigns(30)).toEqual({ opened: 1, skipped_no_inviter: 0 });
+      expect(approvedTargetPhones).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.CHORUS_REQUIRE_FOUNDER_YES;
+    }
   });
 });
 

@@ -901,3 +901,20 @@ export async function retypeFact(
   const row = result.rows[0];
   return row ? { id: row.id, from: row.from, to } : null;
 }
+
+/**
+ * Soft-retract ONE fact by id from the admin seat, on the founder's word (D150:
+ * record 3504). Returns what was retracted so the letter can quote it; undo is
+ * `retracted_at = NULL` on the id.
+ */
+export async function retractFactById(
+  factId: number,
+): Promise<{ id: number; field_type: string; value: string } | null> {
+  const result = await query<{ id: number; field_type: string; value: string }>(
+    `UPDATE contact_facts SET retracted_at = NOW(), updated_at = NOW()
+     WHERE id = $1 AND retracted_at IS NULL
+     RETURNING id, field_type, value`,
+    [factId],
+  );
+  return result.rows[0] ?? null;
+}

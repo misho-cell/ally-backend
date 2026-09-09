@@ -296,6 +296,37 @@ async function tick(): Promise<void> {
 }
 
 /**
+ * Line 1 of the standard, in code (Ticket 12 Task 2; D146 Task 5): the day
+ * the plan is approved, the work starts — the sweep, the web, the first three
+ * to five asks to the people the plan names — and it starts in the background,
+ * AFTER the assistant has told the user „I am on it". The approval call
+ * returns at once; this wake runs behind it. If the run sets no wake of its
+ * own, the default of a day is set, so the goal is never without a next check.
+ */
+const DAY_ONE_DELAY_MS = 3_000;
+
+export function startDayOne(taskId: number): void {
+  setTimeout(() => {
+    void wakeTask(
+      taskId,
+      'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
+        'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად (ცალკე თანხმობა არ ' +
+        'სჭირდება — გეგმა დამტკიცებულია), გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და ' +
+        'set_task_wake-ით დანიშნე შემდეგი შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ' +
+        'ვკითხე, როდის დავბრუნდები.',
+    )
+      .then(() => ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS))
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[task-engine] day-one wake failed for task ${taskId}:`,
+          (err as Error).message,
+        ),
+      );
+  }, DAY_ONE_DELAY_MS).unref();
+}
+
+/**
  * Line 4 of the standard, in code (Ticket 10 Task 24 (b)): three silent days
  * change the method. A goal with a plan whose newest ask has waited three days
  * with nothing newer sent or answered is woken once with the instruction to

@@ -1001,6 +1001,10 @@ export async function mcpApproveTaskPlan(
     };
   }
   const outcome = await approveTaskPlan(userId, taskId);
+  // Day one starts behind the answer (Ticket 12 Tasks 2 and 5).
+  if (outcome.ok) {
+    void import('../taskEngine.service').then(({ startDayOne }) => startDayOne(taskId));
+  }
   return outcome.ok
     ? { approved: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
     : { approved: false, error: outcome.error };

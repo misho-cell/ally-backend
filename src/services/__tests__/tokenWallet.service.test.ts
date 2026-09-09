@@ -321,11 +321,16 @@ describe('getWalletSummary', () => {
 
     const summary = await getWalletSummary('7');
 
+    // Ticket 12 Task 34: the summary also says which window the allowance
+    // counts in and when it resets (the mock world carries no resets_at, so
+    // the date is the empty string here).
     expect(summary).toEqual({
       enabled: true,
       balance: 740,
       grantedThisPeriod: 1000,
       spentThisPeriod: 260,
+      window: 'calendar_month',
+      resetsAt: '',
     });
   });
 });
