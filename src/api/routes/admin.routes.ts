@@ -70,7 +70,12 @@ import {
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
-import { getThreadMessages, getThreadsForUser } from '../../services/threads.service';
+import {
+  getThreadMessages,
+  getThreadsForUser,
+  moveThreads,
+  threadIdsCreatedOn,
+} from '../../services/threads.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
@@ -2841,6 +2846,68 @@ adminRouter.post(
     }
   },
 );
+
+// Ticket 12 Task 59: test chats out of the founder's account — moved, not
+// deleted, so one call with the accounts swapped puts them back.
+//   POST /admin/threads/move
+//   body: { from_user_id, to_user_id, thread_ids?: number[], created_on?: 'YYYY-MM-DD', dry_run?: boolean }
+// `dry_run` defaults to TRUE: it lists what would move and moves nothing.
+const MAX_THREADS_PER_MOVE = 500;
+adminRouter.post('/threads/move', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as {
+      from_user_id?: unknown;
+      to_user_id?: unknown;
+      thread_ids?: unknown;
+      created_on?: unknown;
+      dry_run?: unknown;
+    };
+    const from = String(body.from_user_id ?? '').trim();
+    const to = String(body.to_user_id ?? '').trim();
+    if (!/^\d+$/.test(from) || !/^\d+$/.test(to) || from === to) {
+      res.status(400).json({ success: false, error: 'from_user_id და to_user_id აუცილებელია' });
+      return;
+    }
+    const explicit = Array.isArray(body.thread_ids)
+      ? body.thread_ids.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+      : [];
+    const day = typeof body.created_on === 'string' ? body.created_on.trim() : '';
+    if (explicit.length === 0 && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      res.status(400).json({ success: false, error: 'thread_ids ან created_on აუცილებელია' });
+      return;
+    }
+    const byDay = day ? await threadIdsCreatedOn(from, day) : [];
+    const candidates = [...new Set([...explicit, ...byDay.map((t) => t.id)])].slice(
+      0,
+      MAX_THREADS_PER_MOVE,
+    );
+    const dryRun = body.dry_run !== false;
+    if (dryRun) {
+      res.status(200).json({
+        success: true,
+        data: {
+          dry_run: true,
+          from,
+          to,
+          would_move: candidates.length,
+          threads: byDay,
+          thread_ids: candidates,
+        },
+      });
+      return;
+    }
+    const out = await moveThreads(from, to, candidates);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin threads move] ${out.moved.length} threads, ${out.tasks_moved.length} tasks, ${out.messages_moved} messages: ${from} → ${to} by admin ${(req as AuthenticatedRequest).user.userId}`,
+    );
+    res.status(200).json({ success: true, data: { dry_run: false, from, to, ...out } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin threads move]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // Ticket 12 Task 10: one person on or off a roster, by phone. The Axel roster
 // (84 rows) was loaded from the founder's file on 5 September; the founder's

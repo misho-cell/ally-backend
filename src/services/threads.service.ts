@@ -291,6 +291,72 @@ export async function deleteThread(
   });
 }
 
+export interface ThreadMoveOutcome {
+  moved: number[];
+  tasks_moved: number[];
+  messages_moved: number;
+}
+
+/**
+ * Move whole conversations from one account to another (Ticket 12 Task 59:
+ * the test chats run from the founder's seat sit in HIS list). A move, not a
+ * delete: the thread row, its messages and the goal living on it all change
+ * owner in one transaction, and the same call with the two accounts swapped
+ * is the undo. Only threads the source account owns are touched; costs and
+ * run stamps stay where they were incurred (they are an audit trail of the
+ * account that spent, not of who reads the chat now).
+ */
+export async function moveThreads(
+  fromUserId: string,
+  toUserId: string,
+  threadIds: readonly number[],
+): Promise<ThreadMoveOutcome> {
+  if (threadIds.length === 0 || fromUserId === toUserId) {
+    return { moved: [], tasks_moved: [], messages_moved: 0 };
+  }
+  const { withTransaction } = await import('../db/postgres/client');
+  return withTransaction(async (client) => {
+    const owned = await client.query<{ id: number }>(
+      'SELECT id FROM threads WHERE id = ANY($1::int[]) AND user_id = $2 FOR UPDATE',
+      [threadIds, fromUserId],
+    );
+    const ids = owned.rows.map((r) => r.id);
+    if (ids.length === 0) return { moved: [], tasks_moved: [], messages_moved: 0 };
+    const messages = await client.query(
+      'UPDATE conversations SET user_id = $2 WHERE thread_id = ANY($1::int[]) AND user_id = $3',
+      [ids, toUserId, fromUserId],
+    );
+    // tasks.user_id is TEXT (migration 040): the parameters stay uncast.
+    const tasks = await client.query<{ id: number }>(
+      'UPDATE tasks SET user_id = $2 WHERE thread_id = ANY($1::int[]) AND user_id = $3 RETURNING id',
+      [ids, toUserId, fromUserId],
+    );
+    await client.query(
+      'UPDATE threads SET user_id = $2, updated_at = NOW() WHERE id = ANY($1::int[]) AND user_id = $3',
+      [ids, toUserId, fromUserId],
+    );
+    return {
+      moved: ids,
+      tasks_moved: tasks.rows.map((t) => t.id),
+      messages_moved: messages.rowCount ?? 0,
+    };
+  });
+}
+
+/** The threads one account opened on one calendar day (UTC) — the move's usual selection. */
+export async function threadIdsCreatedOn(
+  userId: string,
+  day: string,
+): Promise<{ id: number; title: string | null; is_task: boolean }[]> {
+  const result = await query<{ id: number; title: string | null; is_task: boolean }>(
+    `SELECT id, title, is_task FROM threads
+     WHERE user_id = $1 AND created_at::date = $2::date
+     ORDER BY id`,
+    [userId, day],
+  );
+  return result.rows;
+}
+
 export async function getThreadByIntroRequestId(introRequestId: number): Promise<Thread | null> {
   const result = await query<Thread>(
     `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
