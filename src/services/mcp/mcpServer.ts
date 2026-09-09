@@ -721,10 +721,20 @@ function registerGoalTools(server: McpServer, userId: string): void {
     {
       title: TOOL_TEXTS.get_pending_updates.title,
       description: TOOL_TEXTS.get_pending_updates.description,
-      inputSchema: {},
+      inputSchema: {
+        include_seen: z
+          .boolean()
+          .optional()
+          .describe(
+            'true = also list the updates already shown in earlier conversations (already_shown), read-only. Default false.',
+          ),
+      },
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'get_pending_updates', () => mcpGetPendingUpdates(userId)),
+    (args) =>
+      runTool(userId, 'get_pending_updates', () =>
+        mcpGetPendingUpdates(userId, { include_seen: args.include_seen === true }),
+      ),
   );
   server.registerTool(
     'ask_contact',

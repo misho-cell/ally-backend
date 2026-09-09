@@ -130,6 +130,33 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
   return result.rows;
 }
 
+const SEEN_LIST_LIMIT = 50;
+
+/**
+ * Updates ALREADY shown once (status 'seen'), newest first — a read that
+ * changes nothing. Ticket 12 Task 32: the connector showed 1 item on an
+ * account holding 24 rows; the 23 others had been surfaced in earlier
+ * conversations. This is how the connector lists them again when asked,
+ * without turning news back into news.
+ */
+export async function listSeenUpdates(
+  userId: string,
+  limit = SEEN_LIST_LIMIT,
+): Promise<PendingUpdate[]> {
+  const result = await query<PendingUpdate>(
+    `SELECT p.id, p.task_id, p.kind, p.payload
+     FROM pending_updates p
+     LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
+     WHERE p.user_id = $1 AND p.status = 'seen'
+       AND (p.task_id IS NULL OR t.status <> 'closed')
+     ORDER BY p.release_at DESC
+     LIMIT $2`,
+    [userId, Math.max(1, Math.min(limit, SEEN_LIST_LIMIT))],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /**
  * How many updates are still held for the user (due later) — the "more coming"
  * hint. Excludes updates for a closed goal (they never release), and must be

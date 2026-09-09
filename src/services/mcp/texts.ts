@@ -475,7 +475,8 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
       'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
       'chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction: ' +
-      'follow it.',
+      'follow it. Pass include_seen=true only when the user asks for everything that is ' +
+      'waiting or was shown before: the already_shown list is a read, not new news.',
   },
   answer_goal_question: {
     title: "Deliver the user's answer to a blocked goal",

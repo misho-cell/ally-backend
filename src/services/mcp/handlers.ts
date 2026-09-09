@@ -42,7 +42,12 @@ import { searchRoster } from '../tools/searchRoster';
 import { findWarmPath } from '../tools/findWarmPath';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
-import { countHeldUpdates, getPendingUpdates, queueResult } from '../pendingUpdates.service';
+import {
+  countHeldUpdates,
+  getPendingUpdates,
+  listSeenUpdates,
+  queueResult,
+} from '../pendingUpdates.service';
 import {
   blockContact,
   getBlockedByUser,
@@ -1255,13 +1260,26 @@ export async function mcpRespondToThanksLoopOffer(
   return { ...(await respondToThanksLoopOffer(userId, args.consented === true)) };
 }
 
-export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPayload> {
+export async function mcpGetPendingUpdates(
+  userId: string,
+  args: { include_seen?: boolean } = {},
+): Promise<McpToolPayload> {
   // Release first, THEN count — so the just-released burst is already 'seen' and
   // more_pending reflects only what is still waiting. Same unified T9 surface
   // as the in-app read: stale debriefs dropped (D49 "with no outcome
   // recorded"), at most one live curiosity item appended.
   const updates = await filterStaleDebriefs(userId, await getPendingUpdates(userId));
   const morePending = await countHeldUpdates(userId);
+  // Ticket 12 Task 32: on request, the rows already shown in earlier
+  // conversations ride along under their own key — read, never re-released.
+  const alreadyShown =
+    args.include_seen === true
+      ? (await listSeenUpdates(userId)).map((u) => ({
+          task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),
+          kind: u.kind,
+          ...(scrubDeep(u.payload) as McpToolPayload),
+        }))
+      : null;
   const curiosity = await maybeCuriosityUpdate(userId).catch((err: unknown) => {
     // eslint-disable-next-line no-console
     console.error('[curiosity] pending-update check failed:', (err as Error).message);
@@ -1284,7 +1302,11 @@ export async function mcpGetPendingUpdates(userId: string): Promise<McpToolPaylo
           },
         ]),
   ];
-  return { updates: items, more_pending: morePending };
+  return {
+    updates: items,
+    more_pending: morePending,
+    ...(alreadyShown !== null && { already_shown: alreadyShown }),
+  };
 }
 
 export async function mcpCorrectContactFact(

@@ -6,6 +6,7 @@ import {
   queueFollowUp,
   getPendingUpdates,
   countHeldUpdates,
+  listSeenUpdates,
 } from '../pendingUpdates.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -100,5 +101,31 @@ describe('pendingUpdates.service', () => {
 
     expect(await countHeldUpdates(USER)).toBe(4);
     expect(mockQuery.mock.calls[0][0] as string).toContain("t.status <> 'closed'");
+  });
+});
+
+// Ticket 12 Task 32: the rows already shown, on request — a read, not a release.
+describe('listSeenUpdates', () => {
+  it('reads seen rows of open goals newest first and changes nothing', async () => {
+    mockQuery.mockResolvedValueOnce(
+      result([{ id: 9, task_id: 1156, kind: 'goal_question', payload: { q: 'x' } }]),
+    );
+
+    const out = await listSeenUpdates(USER);
+
+    expect(out).toEqual([{ id: 9, task_id: 1156, kind: 'goal_question', payload: { q: 'x' } }]);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql.trimStart().startsWith('SELECT')).toBe(true);
+    expect(sql).toContain("p.status = 'seen'");
+    expect(sql).toContain("t.status <> 'closed'");
+    expect(params).toEqual([USER, 50]);
+  });
+
+  it('clamps the limit to the ceiling', async () => {
+    mockQuery.mockResolvedValueOnce(result([]));
+
+    await listSeenUpdates(USER, 500);
+
+    expect((mockQuery.mock.calls[0][1] as unknown[])[1]).toBe(50);
   });
 });

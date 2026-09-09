@@ -84,7 +84,12 @@ import {
   listOwnRelationships,
 } from './contactRelationships.service';
 import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
-import { countHeldUpdates, getPendingUpdates, queueResult } from './pendingUpdates.service';
+import {
+  countHeldUpdates,
+  getPendingUpdates,
+  listSeenUpdates,
+  queueResult,
+} from './pendingUpdates.service';
 import { flagGoalQuestion, answerGoalQuestion } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
@@ -1344,8 +1349,18 @@ const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
     'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction in the payload: follow it.' +
-    ' WHEN: for what is due today.',
-  input_schema: { type: 'object', properties: {}, required: [] },
+    ' WHEN: for what is due today. include_seen=true only when the user asks for everything waiting or shown before — already_shown is a read, not new news.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      include_seen: {
+        type: 'boolean',
+        description:
+          'Also list updates already shown in earlier conversations (already_shown). Default false.',
+      },
+    },
+    required: [],
+  },
 };
 
 const ASK_OWNER_DECISION_TOOL: AnthropicTool = {
@@ -2861,7 +2876,10 @@ async function executeToolCall(
         console.error('[curiosity] pending-update check failed:', (err as Error).message);
         return null;
       });
+      // Ticket 12 Task 32: the already-shown rows on request, read-only.
+      const alreadyShown = input['include_seen'] === true ? await listSeenUpdates(userId) : null;
       return {
+        ...(alreadyShown !== null && { already_shown: alreadyShown }),
         updates:
           curiosity === null
             ? updates
