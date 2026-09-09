@@ -470,10 +470,15 @@ export async function saveThreadMessage(
   // never as words the assistant said.
   kind: 'message' | 'error' = 'message',
 ): Promise<void> {
+  // The engine's own sentences (an ask's opening, a campaign invite, a wake
+  // note) are assistant text too — the mechanical scrub applies to them as to
+  // a model reply (Ticket 11 Task 1: three of the first night's messages
+  // still carried an em dash, all three written here).
+  const stored = role === 'assistant' ? scrubMechanicalForStorage(content) : content;
   await query(
     `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind)
      VALUES ($1, $2, $3, $4, NULL, $5)`,
-    [threadId, userId, role, content, kind],
+    [threadId, userId, role, stored, kind],
   );
   await touchThread(threadId);
 }
