@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
+import { UserCohort } from '../types';
 
 /**
  * Invite cohorts — a registration door that carries its own free period.
@@ -131,6 +132,34 @@ function launchCohortRow(): InviteCohort | null {
     note: `referrers ${[...ids].join(', ')} · until ${process.env.LAUNCH_TRIAL_ENDS_AT ?? 'open'}`,
     created_by: 'founder (D137)',
     created_at: process.env.LAUNCH_TRIAL_STARTS_AT ?? '',
+  };
+}
+
+/**
+ * The invitation group ONE account came through, with the day it is on
+ * (Ticket 12 Task 12): the admin user page's line, matched here by the
+ * account's own `invite_cohort` — never by name on the screen.
+ */
+export async function cohortForUser(userId: number): Promise<UserCohort | null> {
+  const result = await query<{
+    invite_cohort: string | null;
+    day: string;
+    trial_ends_at: string | null;
+  }>(
+    `SELECT invite_cohort, (NOW()::date - "createdAt"::date) AS day, trial_ends_at
+     FROM "User" WHERE id = $1 AND "deletedAt" IS NULL LIMIT 1`,
+    [userId],
+    COHORT_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  if (!row || typeof row.invite_cohort !== 'string' || row.invite_cohort === '') return null;
+  const cohort = await findCohortAnyState(row.invite_cohort);
+  return {
+    code: row.invite_cohort,
+    name: cohort?.name ?? row.invite_cohort,
+    day: Number(row.day),
+    trial_days: cohort?.trial_days ?? 0,
+    trial_ends_at: row.trial_ends_at,
   };
 }
 

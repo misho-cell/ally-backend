@@ -2,6 +2,7 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 
 import { query } from '../../db/postgres/client';
 import {
+  cohortForUser,
   createCohort,
   deactivateCohort,
   findCohortByCode,
@@ -182,5 +183,42 @@ describe('listCohortMembers', () => {
 
     expect((mockQuery.mock.calls[0][1] as unknown[])[3]).toBe(0);
     expect((mockQuery.mock.calls[1][1] as unknown[])[3]).toBe(0);
+  });
+});
+
+// Ticket 12 Task 12: the admin user page's „group: LAUNCH2026, day N/20"
+// line is matched on the server by the account's own invite_cohort.
+describe('cohortForUser', () => {
+  it('returns the group, the day and the period for an account that came through one', async () => {
+    mockQuery
+      .mockResolvedValueOnce(
+        rows([
+          { invite_cohort: 'AXEL2026', day: '3', trial_ends_at: '2026-09-26T00:00:00.000Z' },
+        ]) as never,
+      )
+      .mockResolvedValueOnce(rows([AXEL]) as never);
+
+    expect(await cohortForUser(171078)).toEqual({
+      code: 'AXEL2026',
+      name: 'Axel launch, September 2026',
+      day: 3,
+      trial_days: 20,
+      trial_ends_at: '2026-09-26T00:00:00.000Z',
+    });
+  });
+
+  it('is null for an account that came through no group', async () => {
+    mockQuery.mockResolvedValueOnce(
+      rows([{ invite_cohort: null, day: '40', trial_ends_at: null }]) as never,
+    );
+
+    expect(await cohortForUser(501)).toBeNull();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('is null for an account that does not exist', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
+
+    expect(await cohortForUser(999999)).toBeNull();
   });
 });

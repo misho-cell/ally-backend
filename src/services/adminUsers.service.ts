@@ -25,6 +25,7 @@ import {
   UserUsage,
 } from '../types';
 import { describeAskBudget } from './askBudget.service';
+import { cohortForUser } from './inviteCohorts.service';
 import { paymentHistory } from './payments.service';
 import { isStaffUser } from './staff';
 
@@ -779,6 +780,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     costs,
     wallet,
     referral,
+    cohort,
     timeline,
     askBudget,
   ] = await Promise.all([
@@ -791,6 +793,8 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     runBlock('costs', () => getCosts(userId), EMPTY_COSTS, diagnostics),
     runBlock('wallet', () => getWallet(userId), EMPTY_WALLET, diagnostics),
     runBlock('referral', () => getReferral(userId), EMPTY_REFERRAL, diagnostics),
+    // Ticket 12 Task 12: the invitation group and the day, matched here.
+    runBlock('cohort', () => cohortForUser(userId), null, diagnostics),
     runBlock('timeline', () => getTimeline(userId), [] as UserTimelineEvent[], diagnostics),
     // The ask budget, with its fatigue arithmetic shown (ticket 9 task 17):
     // the founder's account refused an ask on a month in which it had sent
@@ -814,6 +818,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     costs,
     wallet,
     referral,
+    cohort,
     timeline,
     ...(askBudget !== null && { askBudget }),
   };

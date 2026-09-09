@@ -334,6 +334,8 @@ export interface UserProfile {
   costs: UserCosts;
   wallet: UserWallet;
   referral: UserReferral;
+  /** null when the account came through no invitation group. */
+  cohort: UserCohort | null;
   timeline: UserTimelineEvent[];
   /**
    * The account's growth-ask budget and the fatigue arithmetic behind it
@@ -380,6 +382,20 @@ export interface UserReferral {
   totalSpentUsd: number;
   earningsCount: number;
   invitedCount: number;
+}
+
+/**
+ * The invitation group the account came through (Ticket 12 Task 12, D137):
+ * the admin page's „group: LAUNCH2026, day N/20" line, matched on the server
+ * so the screen never pairs a person to a group by name.
+ */
+export interface UserCohort {
+  code: string;
+  name: string;
+  /** Calendar days since registration, day 0 = the day they signed up. */
+  day: number;
+  trial_days: number;
+  trial_ends_at: string | null;
 }
 
 export interface AnalyticsOverview {
