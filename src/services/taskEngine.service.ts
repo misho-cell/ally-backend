@@ -304,26 +304,74 @@ async function tick(): Promise<void> {
  * own, the default of a day is set, so the goal is never without a next check.
  */
 const DAY_ONE_DELAY_MS = 3_000;
+// The approval happens INSIDE the user's run, which still owns the thread for
+// a while after approve_task_plan returned — the founder's 10 Sep test (thread
+// 14158): one attempt at +3 s met `status: working`, returned false, and day
+// one never happened (D160). The wake now waits for the thread to be free.
+const WAKE_RETRY_DELAY_MS = 4_000;
+const WAKE_RETRY_ATTEMPTS = 8;
 
-export function startDayOne(taskId: number): void {
+const DAY_ONE_EVENT =
+  'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
+  'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
+  'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
+  'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
+  'შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.';
+
+/**
+ * Wake a goal as soon as its thread is free: the first attempt after `delayMs`,
+ * then every WAKE_RETRY_DELAY_MS until wakeTask enters the thread or the
+ * attempts run out. `stillWanted` is re-read before every attempt so a goal
+ * that closed, or already got what the wake would bring, is left alone.
+ */
+function wakeWhenFree(
+  taskId: number,
+  eventText: string,
+  stillWanted: () => Promise<boolean>,
+  onWoken: () => Promise<void>,
+  delayMs: number,
+  attempt = 1,
+): void {
   setTimeout(() => {
-    void wakeTask(
-      taskId,
-      'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
-        'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად (ცალკე თანხმობა არ ' +
-        'სჭირდება — გეგმა დამტკიცებულია), გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და ' +
-        'set_task_wake-ით დანიშნე შემდეგი შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ' +
-        'ვკითხე, როდის დავბრუნდები.',
-    )
-      .then(() => ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS))
+    void stillWanted()
+      .then(async (wanted) => {
+        if (!wanted) return;
+        const woken = await wakeTask(taskId, eventText);
+        if (woken) {
+          await onWoken();
+          return;
+        }
+        if (attempt < WAKE_RETRY_ATTEMPTS) {
+          wakeWhenFree(taskId, eventText, stillWanted, onWoken, WAKE_RETRY_DELAY_MS, attempt + 1);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(
+            `[task-engine] task ${taskId}: thread still busy after ${attempt} attempts`,
+          );
+        }
+      })
       .catch((err: unknown) =>
         // eslint-disable-next-line no-console
-        console.error(
-          `[task-engine] day-one wake failed for task ${taskId}:`,
-          (err as Error).message,
-        ),
+        console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message),
       );
-  }, DAY_ONE_DELAY_MS).unref();
+  }, delayMs).unref();
+}
+
+async function goalOpen(taskId: number): Promise<boolean> {
+  const task = await getTaskById(taskId);
+  return task !== null && task.status === 'open';
+}
+
+export function startDayOne(taskId: number): void {
+  wakeWhenFree(
+    taskId,
+    DAY_ONE_EVENT,
+    () => goalOpen(taskId),
+    async () => {
+      await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+    },
+    DAY_ONE_DELAY_MS,
+  );
 }
 
 /**
@@ -339,11 +387,11 @@ export function startDayOne(taskId: number): void {
  * the thread is free; a goal that meanwhile got a plan or closed is left alone.
  */
 const PLAN_PROPOSAL_DELAY_MS = 4_000;
-const PLAN_PROPOSAL_ATTEMPTS = 6;
 const PLAN_PROPOSAL_EVENT =
   'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +
   'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
-  'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური. ' +
+  'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური — ' +
+  'ბოლოს present_choices-ით ორი ღილაკი: „დამტკიცებულია" და „შევცვალოთ". ' +
   'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება.';
 
 async function planStillMissing(taskId: number): Promise<boolean> {
@@ -352,22 +400,14 @@ async function planStillMissing(taskId: number): Promise<boolean> {
   return task.plan === null && task.plan_proposed === null;
 }
 
-export function startPlanProposal(taskId: number, attempt = 1): void {
-  setTimeout(() => {
-    void planStillMissing(taskId)
-      .then(async (missing) => {
-        if (!missing) return;
-        const woken = await wakeTask(taskId, PLAN_PROPOSAL_EVENT);
-        if (!woken && attempt < PLAN_PROPOSAL_ATTEMPTS) startPlanProposal(taskId, attempt + 1);
-      })
-      .catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error(
-          `[task-engine] plan proposal failed for task ${taskId}:`,
-          (err as Error).message,
-        ),
-      );
-  }, PLAN_PROPOSAL_DELAY_MS).unref();
+export function startPlanProposal(taskId: number): void {
+  wakeWhenFree(
+    taskId,
+    PLAN_PROPOSAL_EVENT,
+    () => planStillMissing(taskId),
+    () => Promise.resolve(),
+    PLAN_PROPOSAL_DELAY_MS,
+  );
 }
 
 /**

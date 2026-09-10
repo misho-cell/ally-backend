@@ -552,6 +552,11 @@ export function rarityBand(namePhones: number | null): RarityBand {
  */
 const NON_NAME_MARKERS = [
   'voice recorder',
+  'call recorder',
+  'recorder',
+  'merge calls',
+  'taxi',
+  'ტაქსი',
   'service contacts',
   'at&t',
   'test referral',
@@ -574,7 +579,21 @@ export function looksLikeAName(alias: string | null): boolean {
   if (words.length === 2 && words[0] === words[1] && words[0].length <= 4) return false;
   // A sentence is not a name: „Voice Recorder (don't forget to merge calls)".
   if (words.length > 5) return false;
+  // Ticket 14 Task 87: a single word is a first name alone („NINO", 4,687
+  // numbers) or a place — the founder's own rule for the target list (no first
+  // names alone) applies to the review queue too. A name with a hyphen or a
+  // dot is a written-out person and stays.
+  if (words.length === 1 && !/[-.]/.test(words[0])) return false;
   return true;
+}
+
+// A label carried by this many distinct numbers is a common first name or a
+// placeholder, never „one person, two numbers" — the pair is not reviewable.
+const MAX_PHONES_FOR_ONE_PERSON = 200;
+
+export function reviewableCandidate(alias: string | null, namePhones: number | null): boolean {
+  if (!looksLikeAName(alias)) return false;
+  return namePhones === null || namePhones <= MAX_PHONES_FOR_ONE_PERSON;
 }
 
 export interface ReviewCandidate extends IdentityCandidate {
@@ -600,7 +619,7 @@ export function toReviewCandidate(row: IdentityCandidate): ReviewCandidate {
     co_owners: typeof e.co_owners === 'number' ? (e.co_owners as number) : null,
     name_distinct_phones: namePhones,
     band: rarityBand(namePhones),
-    looks_like_a_name: looksLikeAName(alias),
+    looks_like_a_name: reviewableCandidate(alias, namePhones),
   };
 }
 

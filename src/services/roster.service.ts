@@ -50,7 +50,10 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
             f.neo4j_contact_id AS phone,
             COALESCE(f.canonical_value, f.value) AS group,
             u.id AS user_id,
-            u.name,
+            -- Ticket 14 Task 88: 27 of 50 roster rows came back nameless — most
+            -- members are not registered, so "User".name is null for them. The
+            -- name the network saves them under is the fallback.
+            COALESCE(NULLIF(TRIM(u.name), ''), top_alias.alias) AS name,
             (u.id IS NOT NULL AND (
                EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
                OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
@@ -59,6 +62,14 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
      LEFT JOIN "UserPhone" up
        ON regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(f.neo4j_contact_id, '\\D', '', 'g')
      LEFT JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL
+     LEFT JOIN LATERAL (
+       SELECT a.alias
+       FROM "UserAlias" a
+       WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
+       GROUP BY a.alias
+       ORDER BY COUNT(*) DESC, LENGTH(a.alias) DESC
+       LIMIT 1
+     ) top_alias ON TRUE
      WHERE f.field_type = 'member_of' AND f.is_public AND f.retracted_at IS NULL
        AND LOWER(COALESCE(f.canonical_value, f.value)) LIKE $1
      ORDER BY f.neo4j_contact_id, u.id

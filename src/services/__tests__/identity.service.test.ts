@@ -13,6 +13,7 @@ import {
   exportIdentityCandidates,
   applyIdentityDecisions,
   looksLikeAName,
+  reviewableCandidate,
 } from '../identity.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -512,12 +513,22 @@ describe('a label that is not a name (ticket 9 task 29)', () => {
     ['Sg Sg', 'a filler'],
     ['Abo Abo', 'a filler'],
     ['', 'nothing at all'],
+    ['Call Recorder (Remember to Merge Calls)', 'an app (Ticket 14 Task 87)'],
+    ['Taxi Maxim Kutaisi', 'a firm'],
+    ['NINO', 'a first name alone'],
+    ['Noshrevani', 'a place'],
   ])('%s is not a name (%s)', (alias) => {
     expect(looksLikeAName(alias)).toBe(false);
   });
 
   it.each(['Levani Shalamberidze', 'ნინო კახიძე', 'Kato Boxua'])('%s is a name', (alias) => {
     expect(looksLikeAName(alias)).toBe(true);
+  });
+
+  it('a name carried by hundreds of numbers is not „one person, two numbers" (Ticket 14 Task 87)', () => {
+    expect(reviewableCandidate('Nino Beridze', 9)).toBe(true);
+    expect(reviewableCandidate('Nino Beridze', 4687)).toBe(false);
+    expect(reviewableCandidate('Nino Beridze', null)).toBe(true);
   });
 
   it('never rejects them by itself — they are only left out of the export', async () => {

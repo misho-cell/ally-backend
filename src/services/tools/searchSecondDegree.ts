@@ -299,6 +299,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       target_user_id: number | null;
       name: string | null;
       via_names: string[] | null;
+      via_contacts: { name: string | null; phone: string }[] | null;
       employer: string | null;
       jobPosition: string | null;
       warmth: number | null;
@@ -356,6 +357,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
+              -- Ticket 14 [30]: the bridge as an askable person, not just a name.
+              -- The founder's plan named the bridges, the model asked the
+              -- targets' phones, and five asks bounced as „not a member".
+              jsonb_agg(DISTINCT jsonb_build_object(
+                'name', COALESCE(ua_via.alias, u_via.name),
+                'phone', fu.via_phone))                                        AS via_contacts,
               COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
               COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
               -- via_warmth v2 (task 55, founder pulled it forward): the flat
@@ -466,7 +473,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       ),
       // Rule 13: whether each target has ever actually used Netai, not merely
       // whether an account row resolved.
-      fetchAccountStates(rows.map((r) => r.phone)),
+      fetchAccountStates([
+        ...rows.map((r) => r.phone),
+        ...rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
+      ]),
     ]);
 
     return {
@@ -487,6 +497,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         account_state: accountStateFor(accountStates, row.phone),
         netai_subscriber: isSubscriberPhone(accountStates, row.phone),
         via: row.via_names ?? [],
+        via_contacts: (row.via_contacts ?? []).map((bridge) => ({
+          name: bridge.name,
+          phone: bridge.phone,
+          is_member: isMemberPhone(accountStates, bridge.phone),
+        })),
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing
         // when no bridge has a computed score. A D34 relationship edge the

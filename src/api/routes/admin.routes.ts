@@ -3443,7 +3443,9 @@ adminRouter.get('/identity/candidates', async (req: Request, res: Response) => {
         offset,
         sort,
         ...(band ? { band } : {}),
-        namesOnly: String(req.query.names_only) === 'true',
+        // Ticket 14 Task 87: the queue shows people by default; names_only=false
+        // is the explicit way to see the filtered rows.
+        namesOnly: String(req.query.names_only) !== 'false',
       }),
     });
   } catch (error) {

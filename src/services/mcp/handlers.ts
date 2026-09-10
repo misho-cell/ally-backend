@@ -142,6 +142,16 @@ function toPublicRow(userId: string, row: SearchRow): McpToolPayload {
     if (!INTERNAL_ROW_KEYS.has(key)) clean[key] = value;
   }
   const refSource = row.contact_id ?? row.phone;
+  // Bridges (search_second_degree.via_contacts) are people too: their number
+  // becomes a contact_ref like every other row's, never a raw phone.
+  if (Array.isArray(clean.via_contacts)) {
+    clean.via_contacts = (clean.via_contacts as { phone?: unknown }[]).map((bridge) => {
+      const { phone, ...rest } = bridge;
+      return typeof phone === 'string'
+        ? { ...rest, contact_ref: encodeContactRef(userId, phone) }
+        : rest;
+    });
+  }
   const publicRow = scrubDeep(clean) as McpToolPayload;
   if (refSource) publicRow.contact_ref = encodeContactRef(userId, refSource);
   return publicRow;

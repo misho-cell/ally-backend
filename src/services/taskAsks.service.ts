@@ -307,7 +307,10 @@ export async function createAsk(
     return {
       sent: false,
       reason: 'recipient_not_member',
-      error: 'ეს კონტაქტი Netai-ს წევრი არ არის — მისწერა ვერ ხერხდება.',
+      error:
+        'ეს კონტაქტი Netai-ს წევრი არ არის — მისწერა ვერ ხერხდება. თუ ეს ადამიანი მეორე წრიდანაა ' +
+        '(search_second_degree), მისწერე არა მას, არამედ გამტარს — via_contacts-ის ნომერზე, ' +
+        'რომელიც გეგმაშია; მფლობელს კი უთხარი ვინ არის წევრი და ვინ არა, არასოდეს „არავინ არ არის".',
     };
   }
   const toUserId = member.rows[0].userId;

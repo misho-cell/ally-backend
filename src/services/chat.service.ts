@@ -620,11 +620,15 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'again on the same task — a relayed conversation continues until it is finished (their ' +
     'answer raises a question, they ask one back, a time has to be agreed). Later messages land ' +
     'in the same thread on their phone; a few a day per person is the budget, and the tool says ' +
-    "so plainly when it is spent. EVERY message needs the user's explicit go-ahead on the exact " +
-    'wording, the second and the fifth exactly like the first — more rounds mean more approvals, ' +
-    'never fewer. Never promise to pass something on before you have actually sent it. ' +
-    "If the task's autonomy is ask_first, confirm with the user in this thread BEFORE " +
-    'calling, showing the recipient AND the exact wording you will send. Never put phone numbers ' +
+    'so plainly when it is spent. CONSENT: the approved plan IS the consent (D119) — a person the ' +
+    'plan names gets the message without showing drafts or asking again, the second and the ' +
+    'fifth exactly like the first; a person the plan does not name needs a plan change ' +
+    '(propose_task_plan) and the user’s yes to THAT. Only on a goal with no plan at all confirm ' +
+    'once in this thread, showing the recipient AND the exact wording. Never promise to pass ' +
+    'something on before you have actually sent it. RECIPIENT: the phone must be the person you ' +
+    'want to ASK — for someone found through search_second_degree that is the BRIDGE (a phone ' +
+    'from via_contacts), never the second-degree person’s own phone: they are not your contact ' +
+    'and are usually not a member. Never put phone numbers ' +
     'inside the question text. WORDING: the first words of the ask are the question itself, ' +
     "never a greeting — that opening line becomes the title of the thread on the recipient's " +
     'phone, and "hello NAME" as a title makes every question look identical in their list. ' +
@@ -1626,7 +1630,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_second_degree: {
     name: 'search_second_degree',
     description:
-      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via). Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` are often empty here even for a real match — that field only shows when it is public or the searcher's own, which is rare this deep in the network; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` are often empty here even for a real match — that field only shows when it is public or the searcher's own, which is rare this deep in the network; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
       ' WHEN: for one ring beyond their contacts.',
     input_schema: {
       type: 'object',
@@ -2905,7 +2909,18 @@ async function executeToolCall(
         );
       }
       return outcome.ok
-        ? { approved: true, version: outcome.value.version, summary: outcome.value.summary }
+        ? {
+            approved: true,
+            version: outcome.value.version,
+            summary: outcome.value.summary,
+            // Answers-10 / Ticket 14 [1] (D119, D159): the plan IS the consent.
+            note:
+              'The plan is approved and that is the consent: do NOT show drafts, do NOT ask ' +
+              '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
+              'starts by itself right behind your reply and writes to the first 3–5 people the ' +
+              'plan names. Tell the user in one or two sentences that you are on it and when you ' +
+              'will be back. Nothing else.',
+          }
         : { approved: false, error: outcome.error };
     }
     case 'save_user_note': {
@@ -4124,7 +4139,7 @@ export async function processChat(
   // Ticket 12 Task 46 (D151): an officeholder's name the run never read on a
   // page (or got from the user's own data) does not reach the screen — the
   // scripted line stands in its place. Logged by count, never by name.
-  const gate = applyOfficeholderGate(cleanedFinal, runId, language);
+  const gate = await applyOfficeholderGate(cleanedFinal, runId, language, userId);
   if (gate.refused.length > 0) {
     // eslint-disable-next-line no-console
     console.warn(

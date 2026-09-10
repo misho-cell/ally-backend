@@ -1,5 +1,13 @@
-import { georgianToLatin, hasGeorgian } from './tools/transliterate';
+import {
+  buildRawWordGroups,
+  georgianToLatin,
+  hasGeorgian,
+  toWordStartPattern,
+} from './tools/transliterate';
 import { RunLanguage, RUN_STRINGS } from './runLanguage';
+import { query } from '../db/postgres/client';
+
+const PHONEBOOK_LOOKUP_TIMEOUT_MS = 5_000;
 
 /**
  * Ticket 12 Task 46 (D151, the founder 9 Sep): an official's name only from a
@@ -183,11 +191,52 @@ export interface OfficeholderGateOutcome {
  * officeholder name with the scripted line. Pure on its inputs apart from the
  * evidence store; returns the reply unchanged when nothing names an office.
  */
-export function applyOfficeholderGate(
+/**
+ * Ticket 14 (B7, 10 Sep): asked „ვინ მთავს Arci-ში?", the run named the CEO
+ * from the user's own notes without a tool result carrying the name, and the
+ * gate printed „(სახელი ვერ დავადასტურე …)" for a man in the user's own
+ * phonebook. The rule is about PUBLIC officeholders looked up on the web; a
+ * person the user saved is not that. A candidate whose words all appear
+ * (spelling-tolerant, word-start) in ONE of the user's own labels — alias or
+ * tag on one number — is theirs and is never replaced.
+ */
+async function inUsersPhonebook(userId: string | undefined, name: string): Promise<boolean> {
+  if (!userId) return false;
+  const groups = buildRawWordGroups(name);
+  if (groups.length < 2) return false;
+  const patterns = groups.map((group) => `(${group.map(toWordStartPattern).join('|')})`);
+  const aliasConds = patterns.map((_, i) => `LOWER(a.alias) ~ $${i + 2}`).join(' AND ');
+  const tagConds = patterns
+    .map(
+      (_, i) =>
+        `EXISTS (SELECT 1 FROM "UserTags" t WHERE t.phone = m.phone AND t."contactId" = $1 AND LOWER(t.tag) ~ $${i + 2})`,
+    )
+    .join(' AND ');
+  try {
+    const result = await query<{ found: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM "UserAlias" a WHERE a."contactId" = $1 AND ${aliasConds}
+       ) OR EXISTS (
+         SELECT 1 FROM (SELECT DISTINCT phone FROM "UserTags" WHERE "contactId" = $1) m
+         WHERE ${tagConds}
+       ) AS found`,
+      [userId, ...patterns],
+      PHONEBOOK_LOOKUP_TIMEOUT_MS,
+    );
+    return result.rows[0]?.found === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[officeholder-gate] phonebook lookup failed:', (err as Error).message);
+    return false;
+  }
+}
+
+export async function applyOfficeholderGate(
   reply: string,
   runId: string | undefined,
   language: RunLanguage,
-): OfficeholderGateOutcome {
+  userId?: string,
+): Promise<OfficeholderGateOutcome> {
   const evidence = (runId ? (evidenceByRun.get(runId) ?? []) : []).join('\n');
   const refused: string[] = [];
   const sentences = reply.split(SENTENCE_SPLIT_RE);
@@ -196,6 +245,7 @@ export function applyOfficeholderGate(
     if (!namesOffice(sentence) || FORMER_RE.test(sentence)) continue;
     for (const name of nameCandidates(sentence)) {
       if (nameInEvidence(name, evidence)) continue;
+      if (await inUsersPhonebook(userId, name)) continue;
       refused.push(name);
       out = out.split(name).join(RUN_STRINGS[language].nameNotVerified);
     }
