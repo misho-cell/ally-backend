@@ -242,12 +242,14 @@ function isSurnameShaped(token: string): boolean {
 export async function companyWordShare(words: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (words.length === 0) return out;
+  // LIKE, not a regex: the regex form timed out on the live base even for two
+  // words. The substring read is fast; the whole-word test is done here.
   const result = await query<{ word: string; alias: string }>(
     `SELECT w.word, a.alias
      FROM UNNEST($1::text[]) AS w(word)
      CROSS JOIN LATERAL (
        SELECT ua.alias FROM "UserAlias" ua
-       WHERE lower(ua.alias) ~ ('(^|[^a-zა-ჰ])' || w.word || '([^a-zა-ჰ]|$)')
+       WHERE lower(ua.alias) LIKE '%' || w.word || '%'
        LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
      ) a`,
     [words],
@@ -255,9 +257,11 @@ export async function companyWordShare(words: string[]): Promise<Map<string, num
   );
   const perWord = new Map<string, { aliases: number; company: number }>();
   for (const row of result.rows) {
+    const tokens = tokenize(row.alias);
+    if (!tokens.includes(row.word)) continue;
     const stat = perWord.get(row.word) ?? { aliases: 0, company: 0 };
     stat.aliases += 1;
-    const others = tokenize(row.alias).filter((t) => t !== row.word);
+    const others = tokens.filter((t) => t !== row.word);
     const nextToOthers = others.some(
       (t) => isSurnameShaped(t) || containsAny(t, ROLE_WORDS) || containsAny(t, OWNERSHIP_WORDS),
     );
