@@ -1796,3 +1796,62 @@ describe('tiers, doors, pluses and city (Task 5)', () => {
     expect(out[0]?.parts.pluses.find((p) => p.code === 'R10')?.note).toBe('held by 12 phonebooks');
   });
 });
+
+// Ticket 13 Task 18: the founder read „Soso Galuma", „tengo sam prishol
+// tadzari" and „ბაჩანა 2დღეში უნდა დამერეკა" on his 30-day list. The row must
+// show the crowd's fullest NAME, and a row that cannot name a person in full
+// is out.
+describe('Ticket 13 Task 18: the row names the person in full, or is out', () => {
+  it('shows the surname thirty people typed, not the one-saver fragment the pool carried', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000201', label: 'Soso Galuma' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000201', contactId: 1, alias: 'Soso Galuma' },
+        { phone: '+995500000201', contactId: 2, alias: 'Soso Galumashvili' },
+        { phone: '+995500000201', contactId: 3, alias: 'Soso Galumashvili' },
+        { phone: '+995500000201', contactId: 4, alias: 'Soso PR' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.label)).toEqual(['Soso Galumashvili']);
+  });
+
+  it('a four-word phrase never becomes the face of a person', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000202', label: 'tengo sam prishol tadzari' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000202', contactId: 1, alias: 'tengo sam prishol tadzari' },
+        { phone: '+995500000202', contactId: 2, alias: 'Tengo Lomitashvili' },
+        { phone: '+995500000202', contactId: 3, alias: 'Tengo Lomitashvili' },
+      ],
+      askableCount: 50,
+    });
+
+    const out = await buildTargetList(30);
+
+    expect(out.map((e) => e.label)).toEqual(['Tengo Lomitashvili']);
+  });
+
+  it('a first name plus a reminder, with no fuller label anywhere, is out as first_name_only', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000203', label: 'ბაჩანა 2დღეში უნდა დამერეკა' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000203', contactId: 1, alias: 'ბაჩანა 2დღეში უნდა დამერეკა' },
+        { phone: '+995500000203', contactId: 2, alias: 'ბაჩანა' },
+        { phone: '+995500000203', contactId: 3, alias: 'ბაჩანა' },
+      ],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+});

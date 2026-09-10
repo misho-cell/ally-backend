@@ -12,6 +12,7 @@ import {
   THING_WORDS,
   TRADE_WORDS,
 } from './labelDictionaries';
+import { isNameToken } from './labelReader.service';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { approvedTargetPhones, refusedTargetPhones } from './targetDecisions.service';
 import {
@@ -173,6 +174,12 @@ export type TargetExclusion =
   | 'trade_only'
   | 'company_label'
   | 'not_a_person'
+  /**
+   * Ticket 13 Task 18: the row cannot show a FULL name — the best label the
+   * crowd has is a first name plus a trade, a company or a phrase („Nino
+   * Menejeri Maxin AI", „Soso Galuma"). A list a human reads must say who.
+   */
+  | 'first_name_only'
   | 'our_own_people'
   | 'already_paying'
   | 'phonebook_too_small'
@@ -217,6 +224,7 @@ export const TARGET_GATES: readonly TargetGate[] = [
   'trade_only',
   'company_label',
   'not_a_person',
+  'first_name_only',
 ];
 
 /**
@@ -482,6 +490,7 @@ function exclusionFor(
   account: AccountFacts | undefined,
   isOurOwn: boolean,
   crowd: { dominantIsPlaceOrThing: boolean; ownCompanyVotes: number },
+  fullNameShown: boolean,
 ): TargetExclusion | null {
   if (isOurOwn) return 'our_own_people';
   // The crowd knows our own people better than any internal list: 38 savers
@@ -515,6 +524,10 @@ function exclusionFor(
   // neighbour — all used to pass it as a ranking bonus. Nobody the crowd
   // cannot name twice is a target.
   if (!nameConfirmed) return 'not_a_person';
+  // Ticket 13 Task 18: the founder read „Soso Galuma", „Nino Menejeri Maxin
+  // AI" and „ბაჩანა 2დღეში უნდა დამერეკა" on his list. A person the row
+  // cannot name in full is not a row he can decide on.
+  if (!fullNameShown) return 'first_name_only';
   return null;
 }
 
@@ -553,7 +566,10 @@ const GEORGIAN_MOBILE_RE = /^\+9955\d{8}$/;
 const HOTLINE_REACH_THRESHOLD = 100;
 // How many aliases per phone the token analysis samples — enough to see the
 // dominant token on a hotline without pulling a 644-row fan-in whole.
-const ALIAS_SAMPLE_PER_PHONE = 25;
+// 25 missed the full name on a number thirty people saved (Ticket 13 Task 18:
+// „Soso Galuma" shown, „Soso Galumashvili" held by 30) — the sample is
+// unordered, so it has to be big enough to catch the crowd's own label.
+const ALIAS_SAMPLE_PER_PHONE = 80;
 const MIN_TOKEN_LENGTH = 3;
 
 export interface TargetScoreParts {
@@ -909,6 +925,51 @@ function tokenize(label: string): string[] {
 }
 
 /**
+ * Ticket 13 Task 18: the tokens that ARE names — the founder's first-name
+ * list or a surname ending — as opposed to nameTokens(), which keeps every
+ * word no dictionary claims. The looser count let „tengo sam prishol tadzari"
+ * (four unknown words) outrank „Tengo Lomitashvili" (two names) as the label
+ * to show, and put a phrase on the founder's list in a person's place.
+ */
+function strictNameTokens(label: string): string[] {
+  return tokenize(label).filter((token, i) => isNameToken(token, i === 0));
+}
+
+/** A label more than this many words long is a note, not a name. */
+const MAX_NAME_LABEL_TOKENS = 4;
+
+/** Digits inside a word („2დღეში") mark a reminder, never a person's name. */
+function looksLikePhrase(alias: string): boolean {
+  const tokens = tokenize(alias);
+  return tokens.length > MAX_NAME_LABEL_TOKENS || tokens.some((t) => /\d/.test(t));
+}
+
+/**
+ * Does this label name a person in full? At least one word that IS a name
+ * (the founder's list or a surname ending), a second name-like word — „Kato
+ * Boxua", „Nika Kutsia": the surname the lists do not know still counts —
+ * and not a phrase. „Kato" alone, „Nino Menejeri" (a role word is stripped
+ * first) and „ბაჩანა 2დღეში უნდა დამერეკა" all fail.
+ */
+function showsFullName(label: string): boolean {
+  if (label === '' || looksLikePhrase(label)) return false;
+  return strictNameTokens(label).length >= 1 && nameTokens(label).length >= MIN_AGREED_NAME_TOKENS;
+}
+
+/**
+ * The label the row shows: the alias with the most NAME words wins, whether
+ * it came from the pool or from the crowd; a tie goes to the crowd's label,
+ * which is the one most savers actually use.
+ */
+function displayLabelFor(personLabel: string | null, candidateLabel: string): string {
+  if (personLabel === null) return candidateLabel;
+  if (candidateLabel === '') return personLabel;
+  return strictNameTokens(candidateLabel).length > strictNameTokens(personLabel).length
+    ? candidateLabel
+    : personLabel;
+}
+
+/**
  * Samples up to ALIAS_SAMPLE_PER_PHONE aliases per phone (LATERAL, 21ms for
  * 3 phones via idx_user_alias_phone — EXPLAIN ANALYZE on prod) and computes
  * the two Task 4 person-signals per phone: the dominant token (the hotline
@@ -1047,18 +1108,30 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     // and a list a human reads in two seconds needs the surname. Within the
     // same number of name words, the most-used label wins; ties break
     // alphabetically, never by Map order.
+    // Ticket 13 Task 18: ranked by NAME words first (the first-name list and
+    // surname endings), then by the looser word count, then by how many
+    // savers use it. A phrase — five words, or a digit inside a word — is
+    // never the face of a person, whatever it counts.
     let personLabel: string | null = null;
+    let bestStrict = 0;
     let bestNames = 0;
     let bestCount = 0;
     for (const [alias, contributors] of aliasContributors) {
+      if (looksLikePhrase(alias)) continue;
+      const strict = strictNameTokens(alias).length;
       const names = aliasNameCount.get(alias) ?? 0;
       const better =
-        names > bestNames ||
-        (names === bestNames &&
-          (contributors.size > bestCount ||
-            (contributors.size === bestCount && personLabel !== null && alias < personLabel)));
+        strict > bestStrict ||
+        (strict === bestStrict &&
+          (names > bestNames ||
+            (names === bestNames &&
+              (contributors.size > bestCount ||
+                (contributors.size === bestCount &&
+                  personLabel !== null &&
+                  alias < personLabel)))));
       if (better) {
         personLabel = alias;
+        bestStrict = strict;
         bestNames = names;
         bestCount = contributors.size;
       }
@@ -2050,6 +2123,9 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     // one). What the crowd calls them is the better name anyway.
     const candidateLabel = ctx.label !== '' ? ctx.label : (analysis?.personLabel ?? '');
     const fit = fitFor(factsMap.get(phone), candidateLabel);
+    // Rule 14 (c): the person is found first, then judged. The row shows the
+    // label with the most NAME words, the pool's or the crowd's (Task 18).
+    const label = displayLabelFor(analysis?.personLabel ?? null, candidateLabel);
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
     const excluded = exclusionFor(
@@ -2063,6 +2139,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
         ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,
       },
+      showsFullName(label),
     );
     if (excluded !== null && gates.hit(excluded)) continue;
     // G3 (Task 5): the person's OWN public city fact, when there is one, is
@@ -2079,14 +2156,6 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
     const isGoalRelevant = goalRelevant.has(phone);
     const isBestUserLookalike = tokenize(ctx.label).some((t) => bestVocabulary.has(t));
-    // Rule 14 (c): the person is found first, then judged. When the candidate
-    // label names nobody but the phonebooks do, the row carries the person's
-    // name — a list a human reads must say who it is about.
-    const label =
-      analysis?.personLabel &&
-      nameTokens(analysis.personLabel).length > nameTokens(candidateLabel).length
-        ? analysis.personLabel
-        : candidateLabel;
     entries.push({
       phone,
       label,
