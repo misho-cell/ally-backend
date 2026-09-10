@@ -216,6 +216,65 @@ export async function orgSizes(words: string[]): Promise<Map<string, number>> {
   return new Map(result.rows.map((r) => [r.word, Number(r.org_size)]));
 }
 
+/** Aliases sampled per word when asking whether the word is a company. */
+const COMPANY_WORD_ALIAS_SAMPLE = 150;
+/** Fewer aliases than this say nothing about a word. */
+const COMPANY_WORD_MIN_ALIASES = 3;
+/** Above this share of aliases carrying somebody ELSE's surname or a title, the word is a company. */
+const COMPANY_WORD_SHARE = 0.2;
+const COMPANY_WORD_TIMEOUT_MS = 20_000;
+
+function isSurnameShaped(token: string): boolean {
+  if (GEORGIAN_FIRST_NAMES.has(token)) return false;
+  return [...GEORGIAN_SURNAME_ENDINGS, ...LATIN_SURNAME_ENDINGS].some((e) => token.endsWith(e));
+}
+
+/**
+ * Is a word no dictionary knows a COMPANY or a SURNAME? Counting numbers does
+ * not tell them apart — „boxua" is on 254 numbers because it is a common
+ * surname, „maxin" on nine because the company is small. What tells them apart
+ * is the company: its word travels next to OTHER people's surnames and titles
+ * („Lika Chkhirodze Maxin AI", „Maxin.ai Ceo"); a surname travels next to first
+ * names only („Ana Boxua"). Returns, per word, the share of aliases carrying it
+ * that also carry another surname-shaped token or a role word; words with too
+ * few aliases are absent (Ticket 13 Task 18).
+ */
+export async function companyWordShare(words: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (words.length === 0) return out;
+  const result = await query<{ word: string; alias: string }>(
+    `SELECT w.word, a.alias
+     FROM UNNEST($1::text[]) AS w(word)
+     CROSS JOIN LATERAL (
+       SELECT ua.alias FROM "UserAlias" ua
+       WHERE lower(ua.alias) ~ ('(^|[^a-zა-ჰ])' || w.word || '([^a-zა-ჰ]|$)')
+       LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
+     ) a`,
+    [words],
+    COMPANY_WORD_TIMEOUT_MS,
+  );
+  const perWord = new Map<string, { aliases: number; company: number }>();
+  for (const row of result.rows) {
+    const stat = perWord.get(row.word) ?? { aliases: 0, company: 0 };
+    stat.aliases += 1;
+    const others = tokenize(row.alias).filter((t) => t !== row.word);
+    const nextToOthers = others.some(
+      (t) => isSurnameShaped(t) || containsAny(t, ROLE_WORDS) || containsAny(t, OWNERSHIP_WORDS),
+    );
+    if (nextToOthers) stat.company += 1;
+    perWord.set(row.word, stat);
+  }
+  for (const [word, stat] of perWord) {
+    if (stat.aliases >= COMPANY_WORD_MIN_ALIASES) out.set(word, stat.company / stat.aliases);
+  }
+  return out;
+}
+
+/** True when the share says company (see companyWordShare). */
+export function isCompanyWordShare(share: number | undefined): boolean {
+  return share !== undefined && share >= COMPANY_WORD_SHARE;
+}
+
 /**
  * L3's third number: this person's rank, by how many phonebooks hold him,
  * among everybody carrying the word. The most-saved person with a small

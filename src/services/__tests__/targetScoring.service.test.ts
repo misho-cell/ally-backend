@@ -1892,7 +1892,7 @@ describe('Ticket 13 Task 18: the cleanest full name wins, read live on 10 Septem
 });
 
 describe('Ticket 13 Task 18: a first name plus a COMPANY word is not a full name', () => {
-  it('„Nino Maxin AI" is out when „maxin" sits on many numbers; „Kato Boxua" stays when „boxua" sits on one', async () => {
+  it('„Nino Maxin AI" is out when „maxin" travels next to other surnames and titles; „Kato Boxua" stays', async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('x', [
         { phone: '+995500000206', label: 'Nino Maxin AI' },
@@ -1911,11 +1911,17 @@ describe('Ticket 13 Task 18: a first name plus a COMPANY word is not a full name
     });
     const base = mockQuery.getMockImplementation();
     mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
-      if (sql.includes('COUNT(DISTINCT ua.phone) AS org_size'))
+      if (sql.includes('CROSS JOIN LATERAL') && sql.includes('SELECT w.word, a.alias'))
         return Promise.resolve(
           rows([
-            { word: 'maxin', org_size: '14' },
-            { word: 'boxua', org_size: '1' },
+            { word: 'maxin', alias: 'Lika Chkhirodze Maxin AI' },
+            { word: 'maxin', alias: 'Ioseb Khutsishvili Maxin AI' },
+            { word: 'maxin', alias: 'Maxin.ai Ceo' },
+            { word: 'maxin', alias: 'Lika Maxin AI' },
+            { word: 'maxin', alias: 'Ilia Maxin AI' },
+            { word: 'boxua', alias: 'Ana Boxua' },
+            { word: 'boxua', alias: 'Achi Boxua' },
+            { word: 'boxua', alias: 'Kato Boxua' },
           ]) as never,
         );
       return base ? base(sql, params) : Promise.resolve(rows([]) as never);
