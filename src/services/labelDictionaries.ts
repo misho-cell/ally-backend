@@ -84,6 +84,11 @@ export const TRADE_WORDS = [
   'ხელოსან',
   'khelosani',
   'xelosani',
+  // Ticket 13 Task 18, read live 10 Sep: „ქეთი პარიკმახერი ჯიქია" reached the
+  // founder's list — a hairdresser is a trade.
+  'პარიკმახერ',
+  'parikmaxer',
+  'parikmakher',
   'სანტექნიკ',
   'santeknik',
   'plumber',
@@ -228,6 +233,10 @@ export const RELATIONSHIP_WORDS = [
 export const THING_WORDS = [
   'ბინა',
   'bina',
+  // Ticket 13 Task 18: „Giorgi magazia ,,titani"" is a shop, not a person.
+  'მაღაზია',
+  'magazia',
+  'maghazia',
   'კორპუს',
   'korpus',
   'კარები',
