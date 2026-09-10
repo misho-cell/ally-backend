@@ -296,7 +296,11 @@ export const GOAL_STAGE_SQL = `CASE
 export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
   const result = await query<AdminGoalRow>(
     `SELECT t.id, t.title, t.status, t.brief, t.pending_question, t.pending_question_at,
-            t.next_wake_at, t.thread_id, t.created_at, t.last_activity_at,
+            t.next_wake_at, t.thread_id, t.created_at,
+            -- Ticket 14 Task 61: the newest message in the thread counts as activity.
+            GREATEST(t.last_activity_at,
+                     (SELECT MAX(c.created_at) FROM conversations c WHERE c.thread_id = t.thread_id))
+              AS last_activity_at,
             t.plan, t.plan_proposed, t.plan_version, t.plan_approved_at,
             (SELECT COUNT(*)::int FROM conversations c
               WHERE c.thread_id = t.thread_id AND c.role = 'user'
@@ -305,7 +309,7 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
             ${GOAL_STAGE_SQL} AS stage
      FROM tasks t
      WHERE t.user_id = $1
-     ORDER BY (t.status = 'open') DESC, t.last_activity_at DESC
+     ORDER BY (t.status = 'open') DESC, last_activity_at DESC
      LIMIT $2`,
     [userId, ADMIN_GOALS_LIMIT],
     QUERY_TIMEOUT_MS,

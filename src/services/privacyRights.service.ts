@@ -539,7 +539,12 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
       console.error(`[erasure] could not empty User columns: ${skipped.join(', ')}`);
     }
     const setClause = assignments.length > 0 ? assignments.join(', ') + ', ' : '';
-    await client.query(`UPDATE "User" SET ${setClause}"deletedAt" = NOW() WHERE id = $1`, [userId]);
+    // Ticket 14 Task 63: an erased account must not read „subscription active"
+    // anywhere — the Stripe side is cancelled above, the flag follows here.
+    await client.query(
+      `UPDATE "User" SET ${setClause}subscription_status = 'inactive', "deletedAt" = NOW() WHERE id = $1`,
+      [userId],
+    );
 
     // The do-not-contact record outlives the account (see migration 056).
     for (const d of digits) {

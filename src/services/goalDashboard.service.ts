@@ -131,7 +131,12 @@ function iso(value: Date | string | null | undefined): string | null {
 async function goalRow(userId: string | null, taskId: number): Promise<GoalRow | null> {
   const result = await query<GoalRow>(
     `SELECT t.id, t.user_id, t.title, t.status, t.brief, t.closed_reason, t.created_at,
-            t.updated_at, t.last_activity_at, t.next_wake_at, t.thread_id, t.plan,
+            t.updated_at,
+            -- Ticket 14 Task 61: the newest message in the goal's thread counts as
+            -- activity even when a write path forgot to touch the goal.
+            GREATEST(t.last_activity_at,
+                     (SELECT MAX(c.created_at) FROM conversations c WHERE c.thread_id = t.thread_id))
+              AS last_activity_at, t.next_wake_at, t.thread_id, t.plan,
             t.plan_proposed, t.plan_version, t.plan_approved_at, t.pending_question,
             t.pending_question_at,
             ${GOAL_STAGE_SQL} AS stage,
