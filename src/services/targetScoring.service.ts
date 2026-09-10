@@ -12,7 +12,7 @@ import {
   THING_WORDS,
   TRADE_WORDS,
 } from './labelDictionaries';
-import { isNameToken } from './labelReader.service';
+import { isNameToken, orgSizes } from './labelReader.service';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { approvedTargetPhones, refusedTargetPhones } from './targetDecisions.service';
 import {
@@ -970,9 +970,34 @@ function looksLikePhrase(alias: string): boolean {
  * and not a phrase. „Kato" alone, „Nino Menejeri" (a role word is stripped
  * first) and „ბაჩანა 2დღეში უნდა დამერეკა" all fail.
  */
-function showsFullName(label: string): boolean {
+/**
+ * A word carried by this many DIFFERENT numbers across the base is a company,
+ * not a surname („maxin" sits on every Maxin AI employee; „boxua" on one).
+ */
+const COMPANY_WORD_MIN_PHONES = 6;
+
+function showsFullName(label: string, orgSizeByWord: ReadonlyMap<string, number>): boolean {
   if (label === '' || looksLikePhrase(label)) return false;
-  return strictNameTokens(label).length >= 1 && nameTokens(label).length >= MIN_AGREED_NAME_TOKENS;
+  const strict = strictNameTokens(label);
+  const loose = nameTokens(label);
+  if (loose.length < MIN_AGREED_NAME_TOKENS || strict.length === 0) return false;
+  if (strict.length >= MIN_AGREED_NAME_TOKENS) return true;
+  // One real name plus a word no list knows: a surname if few numbers carry
+  // it, a company if many („Nino Maxin AI" — Ticket 13 Task 18, the residual).
+  const strictSet = new Set(strict);
+  return loose
+    .filter((t) => !strictSet.has(t))
+    .every((t) => (orgSizeByWord.get(t) ?? 0) < COMPANY_WORD_MIN_PHONES);
+}
+
+/** The unknown second words of every label the list would show — one base-wide count for all. */
+function unknownNameWords(labels: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const label of labels) {
+    const strictSet = new Set(strictNameTokens(label));
+    for (const t of nameTokens(label)) if (!strictSet.has(t)) out.add(t);
+  }
+  return [...out];
 }
 
 /**
@@ -2096,6 +2121,20 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   ]);
   const ourOwn = ownPeopleDigits();
 
+  // Ticket 13 Task 18: the label each row would show, decided once, and one
+  // base-wide count of the unknown second words — a surname sits on one or two
+  // numbers, a company word on many.
+  const displayLabels = new Map<string, string>();
+  for (const phone of phones) {
+    const ctx = candidates.get(phone) as CandidateContext;
+    const analysis = aliasMap.get(phone);
+    const candidateLabel = ctx.label !== '' ? ctx.label : (analysis?.personLabel ?? '');
+    displayLabels.set(phone, displayLabelFor(analysis?.personLabel ?? null, candidateLabel));
+  }
+  const orgSizeByWord = await orgSizes(unknownNameWords([...displayLabels.values()])).catch(
+    () => new Map<string, number>(),
+  );
+
   const entries: ScorableEntry[] = [];
   for (const phone of phones) {
     const ctx = candidates.get(phone) as CandidateContext;
@@ -2137,7 +2176,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     const fit = fitFor(factsMap.get(phone), candidateLabel);
     // Rule 14 (c): the person is found first, then judged. The row shows the
     // label with the most NAME words, the pool's or the crowd's (Task 18).
-    const label = displayLabelFor(analysis?.personLabel ?? null, candidateLabel);
+    const label = displayLabels.get(phone) ?? candidateLabel;
     // Rule 2's exclusion pass runs BEFORE the score: an excluded person is
     // absent from the list, not ranked low on it.
     const excluded = exclusionFor(
@@ -2151,7 +2190,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
         ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,
       },
-      showsFullName(label),
+      showsFullName(label, orgSizeByWord),
     );
     if (excluded !== null && gates.hit(excluded)) continue;
     // G3 (Task 5): the person's OWN public city fact, when there is one, is

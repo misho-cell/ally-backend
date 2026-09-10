@@ -203,7 +203,7 @@ async function aliasesFor(phones: string[]): Promise<AliasRow[]> {
  * difference is the company's size as the phonebooks see it, and it is what
  * separates "he IS this company" from "he works somewhere big".
  */
-async function orgSizes(words: string[]): Promise<Map<string, number>> {
+export async function orgSizes(words: string[]): Promise<Map<string, number>> {
   if (words.length === 0) return new Map();
   const result = await query<{ word: string; org_size: string }>(
     `SELECT w.word, COUNT(DISTINCT ua.phone) AS org_size

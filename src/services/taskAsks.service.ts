@@ -183,6 +183,34 @@ async function openAskThread(
  * reads (Rule 13): a thread, a search, or a live subscription. A row in the
  * shared user table alone is an old-Ally account — a target, not a recipient.
  */
+/**
+ * Ticket 13 Task 42 (7): a goal that already asked somebody and now asks a
+ * different person has been REROUTED — an outcome row for the ladder.
+ */
+async function recordReroutedIfSecondRoute(
+  fromUserId: string,
+  taskId: number,
+  toUserId: number,
+): Promise<void> {
+  try {
+    const earlier = await query<{ n: string }>(
+      `SELECT COUNT(*) AS n FROM task_asks
+       WHERE task_id = $1 AND to_user_id <> $2 AND is_follow_up = FALSE`,
+      [taskId, toUserId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    if (Number(earlier.rows[0]?.n ?? 0) === 0) return;
+    const { recordTaskOutcome } = await import('./partH.service');
+    await recordTaskOutcome(fromUserId, taskId, 'rerouted');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-asks] rerouted outcome for task ${taskId} failed:`,
+      (err as Error).message,
+    );
+  }
+}
+
 async function isNetaiUser(userId: number, subscriptionStatus: string | null): Promise<boolean> {
   if (subscriptionStatus !== null && NETAI_SUBSCRIPTION_STATUSES.has(subscriptionStatus)) {
     return true;
@@ -500,6 +528,9 @@ export async function createAsk(
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
+  // Ticket 13 Task 42 (7): the same goal now asks a DIFFERENT person than it
+  // asked before — the requester rerouted. Recorded once per goal.
+  if (!isFollowUp) void recordReroutedIfSecondRoute(fromUserId, taskId, toUserId);
 
   // Ticket 10 Task 22 (D120): the recipient may already have said how this
   // kind of question is to be answered. A first question that one of their

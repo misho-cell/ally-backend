@@ -1890,3 +1890,37 @@ describe('Ticket 13 Task 18: the cleanest full name wins, read live on 10 Septem
     expect((await buildTargetList(30)).map((e) => e.label)).toEqual(['Giorgi Gvazava']);
   });
 });
+
+describe('Ticket 13 Task 18: a first name plus a COMPANY word is not a full name', () => {
+  it('„Nino Maxin AI" is out when „maxin" sits on many numbers; „Kato Boxua" stays when „boxua" sits on one', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000206', label: 'Nino Maxin AI' },
+        { phone: '+995500000207', label: 'Kato Boxua' },
+      ]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000206', contactId: 1, alias: 'Nino Maxin AI' },
+        { phone: '+995500000206', contactId: 2, alias: 'Nino Maxin AI' },
+        { phone: '+995500000206', contactId: 3, alias: 'Nino Menejeri Maxin AI' },
+        { phone: '+995500000207', contactId: 1, alias: 'Kato Boxua' },
+        { phone: '+995500000207', contactId: 2, alias: 'Kato Boxua' },
+      ],
+      askableCount: 50,
+    });
+    const base = mockQuery.getMockImplementation();
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('COUNT(DISTINCT ua.phone) AS org_size'))
+        return Promise.resolve(
+          rows([
+            { word: 'maxin', org_size: '14' },
+            { word: 'boxua', org_size: '1' },
+          ]) as never,
+        );
+      return base ? base(sql, params) : Promise.resolve(rows([]) as never);
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.label)).toEqual(['Kato Boxua']);
+  });
+});

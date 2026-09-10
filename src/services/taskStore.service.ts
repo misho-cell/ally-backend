@@ -455,7 +455,32 @@ export async function updateTask(
   if (updated && status === 'closed' && threadId != null) {
     void setThreadStatus(userId, threadId, 'done', { isTask: true });
   }
+  // Ticket 13 Task 42 (7): a goal closed before any question went out was
+  // DROPPED — the outcome ladder's evidence for pressure_response.
+  if (updated && status === 'closed') {
+    void recordDroppedIfNeverAsked(userId, taskId);
+  }
   return updated;
+}
+
+async function recordDroppedIfNeverAsked(userId: string, taskId: number): Promise<void> {
+  try {
+    const asked = await query<{ n: string }>(
+      'SELECT COUNT(*) AS n FROM task_asks WHERE task_id = $1',
+      [taskId],
+      QUERY_TIMEOUT_MS,
+    );
+    if (Number(asked.rows[0]?.n ?? 0) === 0) {
+      const { recordTaskOutcome } = await import('./partH.service');
+      await recordTaskOutcome(userId, taskId, 'dropped');
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-store] dropped outcome for task ${taskId} failed:`,
+      (err as Error).message,
+    );
+  }
 }
 
 /** Record the one blanket "ok to ask around" consent for a task. */

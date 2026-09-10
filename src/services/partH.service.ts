@@ -369,6 +369,26 @@ export async function sweepUnansweredIntroOutcomes(): Promise<number> {
   return result.rowCount ?? 0;
 }
 
+/**
+ * The two outcomes the eight changes named and nothing wrote (Ticket 13 Task
+ * 42, change 7): `dropped` — the user closed a goal on which no question ever
+ * went out; `rerouted` — after one person, the same goal asked somebody else.
+ * Once per goal per outcome; the ladder counts events, not repetitions.
+ */
+export async function recordTaskOutcome(
+  userId: string,
+  taskId: number,
+  outcome: 'dropped' | 'rerouted',
+): Promise<void> {
+  await query(
+    `INSERT INTO outcome_events (user_id, subject_type, subject_id, outcome)
+     VALUES ($1::int, 'task', $2, $3)
+     ON CONFLICT (subject_type, subject_id, outcome) DO NOTHING`,
+    [userId, String(taskId), outcome],
+    PARTH_TIMEOUT_MS,
+  ).catch(() => undefined);
+}
+
 /** declined/accepted land the moment the request resolves (C9.7). */
 export async function recordIntroOutcome(
   requesterUserId: number,
