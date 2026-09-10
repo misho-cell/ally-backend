@@ -117,7 +117,8 @@ describe('listSeenUpdates', () => {
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql.trimStart().startsWith('SELECT')).toBe(true);
     expect(sql).toContain("p.status = 'seen'");
-    expect(sql).toContain("t.status <> 'closed'");
+    // Ticket 13 Task 32: a shown row on a closed goal still counts — no goal filter.
+    expect(sql).not.toContain("t.status <> 'closed'");
     expect(params).toEqual([USER, 50]);
   });
 

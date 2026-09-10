@@ -140,16 +140,22 @@ export async function addRosterMember(
   group: string,
   phone: string,
   curatorUserId: string,
+  opts: { former?: boolean } = {},
 ): Promise<RosterChange> {
   const name = group.trim();
   const normalized = normalizePhone(phone);
   if (name === '' || !normalized) return { changed: false, phone, group: name, fact_id: null };
+  // A FORMER member (Ticket 13 B3 (4)) is loaded with a flag and never as a
+  // member for reach: an `affiliation` fact, which the roster query does not
+  // read, instead of `member_of`.
+  const fieldType = opts.former === true ? 'affiliation' : 'member_of';
+  const value = opts.former === true ? `${name} (former member)` : name;
   const existing = await query<{ id: number }>(
     `SELECT id FROM contact_facts
-     WHERE neo4j_contact_id = $1 AND field_type = 'member_of' AND retracted_at IS NULL
+     WHERE neo4j_contact_id = $1 AND field_type = $3 AND retracted_at IS NULL
        AND LOWER(COALESCE(canonical_value, value)) = LOWER($2)
      LIMIT 1`,
-    [normalized, name],
+    [normalized, value, fieldType],
     ROSTER_QUERY_TIMEOUT_MS,
   );
   const found = existing.rows[0];
@@ -157,9 +163,9 @@ export async function addRosterMember(
   const inserted = await query<{ id: number }>(
     `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value,
                                 is_public, is_matchable, canonical_value, moderated_at, source, confidence)
-     VALUES ($1, $2, 'member_of', $3, true, true, $3, NOW(), $4, $5)
+     VALUES ($1, $2, $6, $3, true, true, $3, NOW(), $4, $5)
      RETURNING id`,
-    [normalized, curatorUserId, name, ROSTER_FACT_SOURCE, ROSTER_FACT_CONFIDENCE],
+    [normalized, curatorUserId, value, ROSTER_FACT_SOURCE, ROSTER_FACT_CONFIDENCE, fieldType],
     ROSTER_QUERY_TIMEOUT_MS,
   );
   return { changed: true, phone: normalized, group: name, fact_id: inserted.rows[0]?.id ?? null };

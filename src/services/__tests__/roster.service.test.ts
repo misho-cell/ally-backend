@@ -93,9 +93,9 @@ describe('addRosterMember / removeRosterMember', () => {
 
     expect(first).toEqual({ changed: true, phone: '+995599934175', group: 'Axel', fact_id: 7001 });
     const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
-    expect(sql).toContain("'member_of'");
+    expect(sql).toContain('INSERT INTO contact_facts');
     expect(sql).toContain('true, true');
-    expect(params).toEqual(['+995599934175', '501', 'Axel', 'sweep', 'stated']);
+    expect(params).toEqual(['+995599934175', '501', 'Axel', 'sweep', 'stated', 'member_of']);
 
     mockQuery.mockReset();
     mockQuery.mockResolvedValueOnce(rows([{ id: 7001 }]) as never);
@@ -128,5 +128,31 @@ describe('addRosterMember / removeRosterMember', () => {
 
     mockQuery.mockResolvedValueOnce(rows([]) as never);
     expect((await removeRosterMember('Axel', '+995599000099')).changed).toBe(false);
+  });
+});
+
+// Ticket 13 B3 (4): a FORMER member is flagged, never a member for reach.
+describe('addRosterMember — former member', () => {
+  it('writes an affiliation fact, not member_of', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce(rows([]) as never)
+      .mockResolvedValueOnce(rows([{ id: 7002 }]) as never);
+
+    const out = await addRosterMember('Axel', '+995599000155', '167250', { former: true });
+
+    expect(out.changed).toBe(true);
+    const [lookupSql, lookupParams] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(lookupSql).toContain('field_type = $3');
+    expect(lookupParams).toEqual(['+995599000155', 'Axel (former member)', 'affiliation']);
+    const [, insertParams] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(insertParams).toEqual([
+      '+995599000155',
+      '167250',
+      'Axel (former member)',
+      'sweep',
+      'stated',
+      'affiliation',
+    ]);
   });
 });

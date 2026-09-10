@@ -157,6 +157,7 @@ import {
   openDueCampaigns,
   sendDueCampaignAsks,
   sweepStaleParticipants,
+  syncChorusAskTechniqueTags,
   closeStaleCampaigns,
   seedTestCampaign,
   currentGlobalDial,
@@ -1395,10 +1396,27 @@ function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: string }
   if (Number.isNaN(new Date(until).getTime()) || new Date() > new Date(until)) {
     return { allowed: false, reason: 'the pilot reader has ended' };
   }
-  const readerId = process.env.PILOT_CONVERSATION_READER_USER_ID ?? '501';
+  // Ticket 13 Task 16: the founder's admin session was refused because his
+  // own account (501) has no admin login — he signs in as another admin. The
+  // reader accepts a LIST of admin ids (PILOT_CONVERSATION_READER_USER_IDS,
+  // comma-separated; the singular variable still works), so the login he
+  // actually uses can be named without opening the reader to every admin.
+  const readers = new Set(
+    (
+      process.env.PILOT_CONVERSATION_READER_USER_IDS ??
+      process.env.PILOT_CONVERSATION_READER_USER_ID ??
+      '501'
+    )
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== ''),
+  );
   const adminId = String((req as AuthenticatedRequest).user.userId);
-  if (adminId !== readerId)
-    return { allowed: false, reason: 'only the founder’s account may read' };
+  if (!readers.has(adminId))
+    return {
+      allowed: false,
+      reason: `only the founder’s account may read (admin ${adminId} is not it)`,
+    };
   return { allowed: true };
 }
 
@@ -2916,14 +2934,16 @@ adminRouter.post('/threads/move', async (req: Request, res: Response) => {
 //   DELETE /admin/roster/:group/members/:phone      → soft-retracts (the undo)
 adminRouter.post('/roster/:group/members', async (req: Request, res: Response) => {
   try {
-    const body = req.body as { phone?: unknown };
+    const body = req.body as { phone?: unknown; former?: unknown };
     const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
     if (phone === '') {
       res.status(400).json({ success: false, error: 'phone აუცილებელია' });
       return;
     }
     const curator = String((req as AuthenticatedRequest).user.userId);
-    const out = await addRosterMember(String(req.params.group), phone, curator);
+    const out = await addRosterMember(String(req.params.group), phone, curator, {
+      former: body.former === true,
+    });
     res.status(out.changed ? 201 : 200).json({ success: true, data: out });
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -2943,6 +2963,19 @@ adminRouter.delete('/roster/:group/members/:phone', async (req: Request, res: Re
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin roster remove]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// Ticket 13 Task 54: copy the participant rows' when/how/reason into every
+// chorus_ask payload that still carries a null (the four asks of 28 August).
+adminRouter.post('/chorus/asks/technique-sync', async (_req: Request, res: Response) => {
+  try {
+    const updated = await syncChorusAskTechniqueTags();
+    res.status(200).json({ success: true, data: { updated } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus technique-sync]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

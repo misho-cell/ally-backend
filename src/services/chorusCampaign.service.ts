@@ -544,6 +544,32 @@ const NO_REPLY_TIMEOUT_DAYS = Number(process.env.CHORUS_NO_REPLY_TIMEOUT_DAYS ??
 // closed). Past this age it closes as expired whatever state its asks are in.
 const CAMPAIGN_MAX_AGE_DAYS = Number(process.env.CHORUS_CAMPAIGN_MAX_AGE_DAYS ?? 45);
 
+/**
+ * Ticket 13 Task 54: the connector reads an ask's technique tag from the
+ * chorus_ask pending update's PAYLOAD, written at send time. The five asks of
+ * 28 August were sent before when/reason existed, so their payloads carry
+ * null where the participant rows carry 0 (D50's explicit NONE). One pass
+ * copies the participant's three values into every chorus_ask payload whose
+ * tag has a null; the participant row is the record, the payload the copy.
+ */
+export async function syncChorusAskTechniqueTags(): Promise<number> {
+  const result = await query(
+    `UPDATE pending_updates pu
+     SET payload = jsonb_set(pu.payload, '{technique_tag}',
+           jsonb_build_object('when', p.technique_when, 'how', p.technique_how, 'reason', p.technique_reason))
+     FROM invite_campaign_participants p
+     WHERE pu.kind = 'chorus_ask'
+       AND (pu.payload->>'thread_id')::int = p.thread_id
+       AND (pu.payload->'technique_tag'->>'when' IS NULL
+            OR pu.payload->'technique_tag'->>'how' IS NULL
+            OR pu.payload->'technique_tag'->>'reason' IS NULL)
+       AND p.technique_when IS NOT NULL AND p.technique_how IS NOT NULL AND p.technique_reason IS NOT NULL`,
+    [],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
+
 /** Times out asked-but-silent participants, then closes any campaign that leaves fully exhausted. */
 export async function sweepStaleParticipants(): Promise<{ timedOut: number; closed: number }> {
   const stale = await query<{
