@@ -239,24 +239,33 @@ function isSurnameShaped(token: string): boolean {
  * that also carry another surname-shaped token or a role word; words with too
  * few aliases are absent (Ticket 13 Task 18).
  */
+/** Words per statement: 104 in one read hit the 20-second budget; a dozen does not. */
+const COMPANY_WORD_CHUNK = 12;
+
 export async function companyWordShare(words: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (words.length === 0) return out;
   // LIKE, not a regex: the regex form timed out on the live base even for two
-  // words. The substring read is fast; the whole-word test is done here.
-  const result = await query<{ word: string; alias: string }>(
-    `SELECT w.word, a.alias
-     FROM UNNEST($1::text[]) AS w(word)
-     CROSS JOIN LATERAL (
-       SELECT ua.alias FROM "UserAlias" ua
-       WHERE lower(ua.alias) LIKE '%' || w.word || '%'
-       LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
-     ) a`,
-    [words],
-    COMPANY_WORD_TIMEOUT_MS,
-  );
+  // words. The substring read is fast; the whole-word test is done here. Read
+  // in chunks so one slow word cannot sink the whole batch.
+  const rows: { word: string; alias: string }[] = [];
+  for (let i = 0; i < words.length; i += COMPANY_WORD_CHUNK) {
+    const chunk = words.slice(i, i + COMPANY_WORD_CHUNK);
+    const result = await query<{ word: string; alias: string }>(
+      `SELECT w.word, a.alias
+       FROM UNNEST($1::text[]) AS w(word)
+       CROSS JOIN LATERAL (
+         SELECT ua.alias FROM "UserAlias" ua
+         WHERE lower(ua.alias) LIKE '%' || w.word || '%'
+         LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
+       ) a`,
+      [chunk],
+      COMPANY_WORD_TIMEOUT_MS,
+    );
+    rows.push(...result.rows);
+  }
   const perWord = new Map<string, { aliases: number; company: number }>();
-  for (const row of result.rows) {
+  for (const row of rows) {
     const tokens = tokenize(row.alias);
     if (!tokens.includes(row.word)) continue;
     const stat = perWord.get(row.word) ?? { aliases: 0, company: 0 };

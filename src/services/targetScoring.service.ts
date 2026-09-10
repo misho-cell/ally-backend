@@ -978,10 +978,10 @@ function isBorderlineName(label: string): boolean {
   return strictNameTokens(label).length === 1 && nameTokens(label).length >= MIN_AGREED_NAME_TOKENS;
 }
 
-/** Drop the surviving rows whose unknown second word the base writes as a company. */
-async function removeCompanyWordRows(entries: ScorableEntry[], gates: GateLedger): Promise<void> {
+/** Drop the rows whose unknown second word the base writes as a company; returns how many. */
+async function removeCompanyWordRows(entries: ScorableEntry[], gates: GateLedger): Promise<number> {
   const borderline = entries.filter((e) => isBorderlineName(e.label));
-  if (borderline.length === 0) return;
+  if (borderline.length === 0) return 0;
   const words = unknownNameWords(borderline.map((e) => e.label));
   const shares = await companyWordShare(words).catch((err: unknown) => {
     // A failed read must not pass a company off as a surname silently.
@@ -995,7 +995,9 @@ async function removeCompanyWordRows(entries: ScorableEntry[], gates: GateLedger
     (e) =>
       !isBorderlineName(e.label) || showsFullName(e.label, shares) || !gates.hit('first_name_only'),
   );
+  const removed = entries.length - kept.length;
   entries.splice(0, entries.length, ...kept);
+  return removed;
 }
 
 function showsFullName(label: string, companyShareByWord: ReadonlyMap<string, number>): boolean {
@@ -2308,13 +2310,6 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     if (b.score !== a.score) return b.score - a.score;
     return a.phone.localeCompare(b.phone);
   };
-  // Ticket 13 Task 18, the last gate: among the survivors, a label of one
-  // real name plus a word no list knows is asked of the base — a surname is
-  // written next to first names only, a company next to other people's
-  // surnames and titles („Nino Maxin AI"). Survivors only, so the read stays
-  // small and inside its budget.
-  await removeCompanyWordRows(entries, gates);
-
   // Deterministic order (Task 4's "two reads a minute apart match"):
   // person-confirmed first, then score, then the phone string as the final
   // total tiebreak — no cluster of equal scores can shuffle the top-20 cut.
@@ -2323,6 +2318,13 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // Density last, on the plausible top only, then sort again. It reorders that
   // top; it never reaches down and pulls somebody up over a gate.
   const shortlist = entries.slice(0, capacity * DENSITY_SHORTLIST_FACTOR);
+  const shortlistSize = shortlist.length;
+  // Ticket 13 Task 18, the last gate, on the shortlist only: a label of one
+  // real name plus a word no list knows is asked of the base — a surname is
+  // written next to first names only, a company next to other people's
+  // surnames and titles („Nino Maxin AI"). Asked of 689 survivors it was 104
+  // words and a timeout; asked of the shortlist it is a handful.
+  const companyRows = await removeCompanyWordRows(shortlist, gates);
   const densities = await bubbleDensityForPhones(shortlist.map((e) => e.phone));
   for (const entry of shortlist) {
     const bubble = densities.get(entry.phone);
@@ -2332,14 +2334,14 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     entry.score = combinedScore({ ...entry.scoreInputs, bubbleDensity: bubble.density });
   }
   shortlist.sort(byScore);
-  const ordered = [...shortlist, ...entries.slice(shortlist.length)];
+  const ordered = [...shortlist, ...entries.slice(shortlistSize)];
   const listed = ordered.slice(0, capacity).map(({ scoreInputs: _drop, ...entry }) => entry);
   await recordScoreHistory(new Date(), listed, capacity);
   return {
     entries: listed,
     gates: gates.report(),
     candidates_in: candidatesIn,
-    survived: entries.length,
+    survived: entries.length - companyRows,
     capacity,
     social_proof_basis: socialProofBasis(),
     social_proof_min_holders: MIN_TARGET_SUBSCRIBED_HOLDERS,
