@@ -78,15 +78,21 @@ describe('searchContactByName', () => {
 
     // $1 userId, then each regex, last = blocked. No LIKE patterns (the trigram
     // GIN path is deliberately unusable — KA extracts ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mგიო\\M', '\\mgio\\M', '42', []]);
+    // „gio" is a form of Giorgi, so the other forms ride along (Answers-12 Part B).
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[0]).toBe('42');
+    expect(params.slice(1, 3)).toEqual(['\\mგიო\\M', '\\mgio\\M']);
+    expect(params).toContain('\\mgiorgi');
+    expect(params.slice(-2)).toEqual(['42', []]);
+    for (const p of params.slice(1, -2)) expect(String(p).startsWith('\\m')).toBe(true);
   });
 
   it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
     setup({ main: [mockRow], count: 1 });
 
-    await searchContactByName('42', 'George');
+    await searchContactByName('42', 'Livingston');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mgeorge', '42', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mlivingston', '42', []]);
   });
 
   it('carries a hand-set human_relationship_tier alongside a machine relationship, one never overwriting the other — ticket 6 task 4', async () => {
@@ -126,6 +132,20 @@ describe('searchContactByName', () => {
 
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].name).toBeNull();
+  });
+
+  it('the fuzzy fallback demands the first two letters at a word start, not a shared -shvili tail (Answers-12 Part B)', async () => {
+    setup({ main: [], count: 0 });
+
+    await searchContactByName('42', 'Xoruashvili');
+
+    const fuzzyCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('word_similarity('),
+    );
+    expect(fuzzyCall).toBeDefined();
+    const sql = (fuzzyCall as [string])[0];
+    expect(sql).toContain("LOWER(a.alias) ~ ('\\m' || LEFT($2, 2))");
+    expect(sql).toContain("LOWER(u2.name) ~ ('\\m' || LEFT($2, 2))");
   });
 
   it('returns found: false when no matches', async () => {

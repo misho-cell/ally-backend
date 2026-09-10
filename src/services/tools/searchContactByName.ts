@@ -23,6 +23,9 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
+// The first letters a fuzzy neighbour must share with the term (see the
+// fallback below): two, at a word start.
+const FUZZY_HEAD_CHARS = 2;
 const RESULT_LIMIT = 20;
 
 interface NameRow {
@@ -160,11 +163,19 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
           .filter(Boolean)
           .flatMap((word) => buildSearchTerms(word))
           .map((t) => t.toLowerCase());
+        // Answers-12 Part B: a similarity hit must also share the term's first
+        // letters at a word start — „Xoruashvili" used to come back as
+        // Shubashvili, Samadashvili, Tarielashvili on the shared -ashvili tail
+        // alone, which is noise, not a near match.
         const fuzzyConds = fuzzyTerms
-          .map(
-            (_, i) =>
-              `word_similarity($${i + 2}, LOWER(a.alias)) > ${FUZZY_THRESHOLD} OR word_similarity($${i + 2}, LOWER(u2.name)) > ${FUZZY_THRESHOLD}`,
-          )
+          .map((_, i) => {
+            const term = `$${i + 2}`;
+            const head = `('\\m' || LEFT(${term}, ${FUZZY_HEAD_CHARS}))`;
+            return (
+              `(word_similarity(${term}, LOWER(a.alias)) > ${FUZZY_THRESHOLD} AND LOWER(a.alias) ~ ${head})` +
+              ` OR (word_similarity(${term}, LOWER(u2.name)) > ${FUZZY_THRESHOLD} AND LOWER(u2.name) ~ ${head})`
+            );
+          })
           .join(' OR ');
         const fuzzyBlockParamIdx = fuzzyTerms.length + 2;
         const fuzzyMineCte = `mine AS (

@@ -51,7 +51,25 @@ describe('recordSearchOutcome — ticket 6, founder\'s answer ②: "a name found
       'refused',
       'wrong field, needed a corporate lawyer not a family one',
       null,
+      false,
     ]);
+  });
+
+  it('a server-inferred rung (onlyIfUnset) never overwrites a rung the user climbed', async () => {
+    mockQuery.mockResolvedValue(result(0) as never);
+
+    const out = await recordSearchOutcome({
+      searchId: 9,
+      userId: '501',
+      outcome: 'sent',
+      reason: 'auto',
+      onlyIfUnset: true,
+    });
+
+    expect(out).toBe(false);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql as string).toContain('($6 = false OR outcome IS NULL)');
+    expect((params as unknown[])[5]).toBe(true);
   });
 
   it("returns false for a search_id that isn't this user's own — never trusted bare, same rule as every other reference", async () => {
@@ -113,6 +131,6 @@ describe('recordSearchOutcome — ticket 6, founder\'s answer ②: "a name found
     await recordSearchOutcome({ searchId: 9, userId: '501', outcome: 'followed_up', worked: true });
 
     const params = mockQuery.mock.calls[0][1];
-    expect(params).toEqual([9, '501', 'followed_up', null, true]);
+    expect(params).toEqual([9, '501', 'followed_up', null, true, false]);
   });
 });

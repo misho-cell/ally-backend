@@ -885,6 +885,33 @@ export async function grantSubscription(
   return result.rows[0] ?? null;
 }
 
+export interface AdminAccessRow {
+  readonly id: number;
+  readonly name: string | null;
+  readonly has_admin_access: boolean;
+}
+
+/**
+ * Answers-12 item 1 (the founder, 10 Sep): account 501 gets its own admin
+ * login, so the pilot reader (D147, „his account only") opens for him as
+ * himself and never for the admin he used to borrow. `hasAccessToAlly` is the
+ * flag adminLogin reads; the account's own email and password stay as they
+ * are. Reversible with enabled=false.
+ */
+export async function setAdminAccess(
+  userId: number,
+  enabled: boolean,
+): Promise<AdminAccessRow | null> {
+  const result = await query<AdminAccessRow>(
+    `UPDATE "User"
+     SET "hasAccessToAlly" = $2, "updatedAt" = NOW()
+     WHERE id = $1 AND "deletedAt" IS NULL
+     RETURNING id, name, "hasAccessToAlly" AS has_admin_access`,
+    [userId, enabled],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function deactivateSubscription(userId: number): Promise<AdminPhoneSearchRow | null> {
   const result = await query<AdminPhoneSearchRow>(
     `UPDATE "User"

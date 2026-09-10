@@ -2288,6 +2288,7 @@ async function runLoggedSearch(
   tool: string,
   searchQuery: string,
   run: (userId: string, q: string) => Promise<object>,
+  runId?: string,
 ): Promise<object> {
   const result = await searchWithRetry(() => run(userId, searchQuery));
   const rawCount = (result as { count?: unknown }).count;
@@ -2307,7 +2308,83 @@ async function runLoggedSearch(
       return null;
     },
   );
+  if (searchId !== null && runId) noteSearchResults(runId, searchId, result);
   return searchId === null ? result : { ...result, search_id: searchId };
+}
+
+// Answers-12 item 11 (second finding): 7,485 searches on the founder's account,
+// 7,209 with no outcome at all — the model never calls record_search_outcome,
+// so the success metric is dead. The one rung the SERVER can prove is `sent`:
+// this run searched, and then asked or introduced a person that search
+// returned. Recorded once, on the newest search that carried the number, and
+// only where nothing was recorded yet — a rung the user climbed is never
+// overwritten by an inference.
+interface RunSearchResults {
+  readonly searchId: number;
+  readonly phones: ReadonlySet<string>;
+}
+const runSearchResults = new Map<string, RunSearchResults[]>();
+const AUTO_SENT_REASON = 'auto: an ask or introduction went to a person this search returned';
+
+function noteSearchResults(runId: string, searchId: number, result: object): void {
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows)) return;
+  const phones = new Set<string>();
+  for (const row of rows) {
+    const phone = (row as { phone?: unknown }).phone;
+    if (typeof phone === 'string' && phone.length > 0) phones.add(normalizePhone(phone));
+  }
+  if (phones.size === 0) return;
+  const list = runSearchResults.get(runId) ?? [];
+  list.push({ searchId, phones });
+  runSearchResults.set(runId, list);
+}
+
+async function markSearchSent(
+  runId: string | undefined,
+  userId: string,
+  rawPhones: readonly unknown[],
+): Promise<void> {
+  if (!runId) return;
+  const list = runSearchResults.get(runId);
+  if (!list) return;
+  const wanted = rawPhones
+    .filter((p): p is string => typeof p === 'string' && p.length > 0)
+    .map(normalizePhone);
+  if (wanted.length === 0) return;
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const search = list[i];
+    if (!wanted.some((p) => search.phones.has(p))) continue;
+    await recordSearchOutcome({
+      searchId: search.searchId,
+      userId,
+      outcome: 'sent',
+      reason: AUTO_SENT_REASON,
+      onlyIfUnset: true,
+    }).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[search-outcome] auto sent failed:', (err as Error).message),
+    );
+    return;
+  }
+}
+
+// Answers-12 item 11: the goals a run opened from an ordinary conversation.
+// The run that saved them ran without the goal prompt, so the plan is proposed
+// in an engine turn right after the reply (taskEngine.startPlanProposal).
+const runCreatedGoals = new Map<string, number[]>();
+
+function noteCreatedGoal(runId: string | undefined, taskId: number): void {
+  if (!runId) return;
+  const list = runCreatedGoals.get(runId) ?? [];
+  list.push(taskId);
+  runCreatedGoals.set(runId, list);
+}
+
+function takeCreatedGoals(runId: string): number[] {
+  const list = runCreatedGoals.get(runId) ?? [];
+  runCreatedGoals.delete(runId);
+  return list;
 }
 
 // --- Own-number passthrough hardening (ticket 6 close, answer 15) -----------
@@ -2335,6 +2412,16 @@ const runLanguages = new Map<string, RunLanguage>();
 
 function runLang(runId: string): RunLanguage {
   return runLanguages.get(runId) ?? 'ka';
+}
+
+// Every per-run map is dropped together at both run exits, so a crashed or
+// empty run never leaves a stale entry behind.
+function clearRunState(runId: string): void {
+  runAllowedNumbers.delete(runId);
+  runLanguages.delete(runId);
+  runSearchResults.delete(runId);
+  runCreatedGoals.delete(runId);
+  clearRunEvidence(runId);
 }
 
 export function wrapAllowedNumbers(text: string, runId: string): string {
@@ -2387,17 +2474,30 @@ async function executeToolCall(
     case 'get_contact_insight':
       return getContactInsight(userId, input['phone'] as string);
     case 'search_contact_by_name':
-      return runLoggedSearch(userId, 'name', input['name_query'] as string, searchContactByName);
+      return runLoggedSearch(
+        userId,
+        'name',
+        input['name_query'] as string,
+        searchContactByName,
+        runId,
+      );
     case 'search_by_tag':
-      return runLoggedSearch(userId, 'tag', input['tag_query'] as string, searchByTag);
+      return runLoggedSearch(userId, 'tag', input['tag_query'] as string, searchByTag, runId);
     case 'search_by_insight':
-      return runLoggedSearch(userId, 'insight', input['search_query'] as string, searchByInsight);
+      return runLoggedSearch(
+        userId,
+        'insight',
+        input['search_query'] as string,
+        searchByInsight,
+        runId,
+      );
     case 'search_second_degree':
       return runLoggedSearch(
         userId,
         'second_degree',
         input['tag_query'] as string,
         searchSecondDegree,
+        runId,
       );
     case 'search_contacts_by_country':
       return searchContactsByCountry(userId, input['country'] as string);
@@ -2442,8 +2542,8 @@ async function executeToolCall(
         input['value'] as string,
         input['mode'] as 'set' | 'append',
       );
-    case 'request_introduction':
-      return requestIntroduction(
+    case 'request_introduction': {
+      const introOutcome = await requestIntroduction(
         userId,
         input['mediator_name'] as string,
         input['target_name'] as string,
@@ -2454,6 +2554,11 @@ async function executeToolCall(
         input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
         input['accept_dormant'] === true,
       );
+      if ((introOutcome as { success?: unknown }).success === true) {
+        await markSearchSent(runId, userId, [input['mediator_phone'], input['target_phone']]);
+      }
+      return introOutcome;
+    }
     case 'respond_to_introduction':
       return respondToIntroduction(
         userId,
@@ -2547,6 +2652,7 @@ async function executeToolCall(
       const autonomyRaw = (input['autonomy'] as string) ?? 'ask_first';
       const autonomy = isTaskAutonomy(autonomyRaw) ? autonomyRaw : 'ask_first';
       const { id } = await createTask(userId, title, description, taskType, threadId, autonomy);
+      noteCreatedGoal(runId, id);
       return { created: true, task_id: id, autonomy };
     }
     case 'ask_contact': {
@@ -2555,7 +2661,7 @@ async function executeToolCall(
       if (!task || String(task.user_id) !== userId || task.status !== 'open') {
         return { sent: false, error: 'Task not found or not open.' };
       }
-      return createAsk(
+      const askOutcome = await createAsk(
         userId,
         taskId,
         String(input['phone'] ?? ''),
@@ -2563,6 +2669,10 @@ async function executeToolCall(
         undefined,
         threadId,
       );
+      if ((askOutcome as { sent?: unknown }).sent === true) {
+        await markSearchSent(runId, userId, [input['phone']]);
+      }
+      return askOutcome;
     }
     case 'set_task_brief': {
       const brief = String(input['brief'] ?? '').trim();
@@ -3979,9 +4089,7 @@ export async function processChat(
   if (!effectiveFinal.trim()) {
     // eslint-disable-next-line no-console
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
-    runAllowedNumbers.delete(runId);
-    runLanguages.delete(runId);
-    clearRunEvidence(runId);
+    clearRunState(runId);
     const failureReply = RUN_STRINGS[language].emptyFinalFailure;
     await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
     return { reply: failureReply, runFailed: true, language };
@@ -4041,9 +4149,15 @@ export async function processChat(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
   );
-  runAllowedNumbers.delete(runId);
-  runLanguages.delete(runId);
-  clearRunEvidence(runId);
+  // Answers-12 item 11: a goal this run opened outside the goal prompt gets
+  // its plan proposed in an engine turn right behind this reply.
+  const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
+  clearRunState(runId);
+  if (freshGoals.length > 0) {
+    void import('./taskEngine.service').then(({ startPlanProposal }) => {
+      for (const taskId of freshGoals) startPlanProposal(taskId);
+    });
+  }
   // The run's id travels WITH the message (ticket 9 task 34). It was passed as
   // null on every final answer, so 846 assistant messages in five days carried
   // no run id at all — and `run_prompt_stamps`, which knows exactly which mode

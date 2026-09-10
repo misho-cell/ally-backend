@@ -327,6 +327,50 @@ export function startDayOne(taskId: number): void {
 }
 
 /**
+ * A goal opened from an ordinary conversation gets its plan in an engine
+ * turn of its own (Answers-12 item 11, plate rows [1][2][5]): the run that
+ * saved the goal ran in quick_answer mode, whose prompt knows nothing about
+ * plans, so both test goals of 10 Sep were saved and then answered with a
+ * question — plan v0, nothing to approve. The thread is bound to the goal
+ * from the moment it exists, so this wake runs in task_step mode and the
+ * model proposes the plan for the owner's yes. Nobody is contacted here —
+ * asks need the approved plan (D119). The user's run still owns the thread
+ * for a few seconds after the tool returned, so the wake is retried until
+ * the thread is free; a goal that meanwhile got a plan or closed is left alone.
+ */
+const PLAN_PROPOSAL_DELAY_MS = 4_000;
+const PLAN_PROPOSAL_ATTEMPTS = 6;
+const PLAN_PROPOSAL_EVENT =
+  'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +
+  'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
+  'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური. ' +
+  'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება.';
+
+async function planStillMissing(taskId: number): Promise<boolean> {
+  const task = await getTaskById(taskId);
+  if (!task || task.status !== 'open') return false;
+  return task.plan === null && task.plan_proposed === null;
+}
+
+export function startPlanProposal(taskId: number, attempt = 1): void {
+  setTimeout(() => {
+    void planStillMissing(taskId)
+      .then(async (missing) => {
+        if (!missing) return;
+        const woken = await wakeTask(taskId, PLAN_PROPOSAL_EVENT);
+        if (!woken && attempt < PLAN_PROPOSAL_ATTEMPTS) startPlanProposal(taskId, attempt + 1);
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[task-engine] plan proposal failed for task ${taskId}:`,
+          (err as Error).message,
+        ),
+      );
+  }, PLAN_PROPOSAL_DELAY_MS).unref();
+}
+
+/**
  * Line 4 of the standard, in code (Ticket 10 Task 24 (b)): three silent days
  * change the method. A goal with a plan whose newest ask has waited three days
  * with nothing newer sent or answered is woken once with the instruction to

@@ -1,3 +1,5 @@
+import { nameFormVariants } from './nameForms';
+
 const GEO_TO_LATIN: readonly [string, string][] = [
   ['ა', 'a'],
   ['ბ', 'b'],
@@ -132,7 +134,24 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
  */
 export function buildRawWordGroups(rawQuery: string): string[][] {
   const words = rawQuery.trim().split(/\s+/).filter(Boolean);
-  return words.map((word) => [...buildSearchTerms(word)]).filter((group) => group.length > 0);
+  return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
+}
+
+// One word's group: its own spelling variants first, then every other form of
+// the first name it may be (Bachana → Bacho, Vasil → Vasiko — Answers-12 Part
+// B), each with ITS spelling variants. Capped so a common name never floods
+// the regex list.
+const MAX_GROUP_TERMS = 24;
+
+function wordVariantGroup(word: string): string[] {
+  const lower = word.toLowerCase();
+  const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
+  const group = new Set<string>(buildSearchTerms(word));
+  for (const form of nameFormVariants(latin)) {
+    if (form === latin) continue;
+    for (const term of buildSearchTerms(form)) group.add(term);
+  }
+  return [...group].slice(0, MAX_GROUP_TERMS);
 }
 
 // A term this short must match a whole token, never a prefix: 'giz' swallowed

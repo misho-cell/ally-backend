@@ -2,6 +2,7 @@ import {
   hasGeorgian,
   georgianToLatin,
   buildSearchTerms,
+  buildRawWordGroups,
   toWordStartPattern,
 } from '../transliterate';
 
@@ -112,6 +113,28 @@ describe('buildSearchTerms', () => {
 
   it('returns nothing for a blank query', () => {
     expect(buildSearchTerms('   ')).toEqual([]);
+  });
+});
+
+describe('buildRawWordGroups — short and full first names (Answers-12 Part B)', () => {
+  it('a full first name reaches the short form the contact was saved under, and back', () => {
+    const groups = buildRawWordGroups('Bachana Khachidze');
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toContain('bachana');
+    expect(groups[0]).toContain('bacho');
+    // Spelling drift still applies to the surname: kh ↔ x.
+    expect(groups[1]).toContain('xachidze');
+    expect(buildRawWordGroups('Bacho')[0]).toContain('bachana');
+  });
+
+  it('a Georgian-script first name is looked up through its Latin form', () => {
+    expect(buildRawWordGroups('ვასიკო')[0]).toContain('vasil');
+  });
+
+  it('never lets one word exceed the group cap', () => {
+    for (const group of buildRawWordGroups('Giorgi Nikoloz Tamar')) {
+      expect(group.length).toBeLessThanOrEqual(24);
+    }
   });
 });
 

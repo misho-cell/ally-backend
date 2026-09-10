@@ -30,6 +30,8 @@ export interface RecordOutcomeInput {
   outcome: SearchOutcome;
   reason?: string | null;
   worked?: boolean | null;
+  /** Server-inferred rungs pass true: a rung the user climbed is never overwritten. */
+  onlyIfUnset?: boolean;
 }
 
 /**
@@ -49,8 +51,15 @@ export async function recordSearchOutcome(input: RecordOutcomeInput): Promise<bo
     `UPDATE search_activity
      SET outcome = $3, outcome_reason = $4,
          outcome_worked = COALESCE($5, outcome_worked), outcome_updated_at = NOW()
-     WHERE id = $1 AND user_id = $2`,
-    [input.searchId, input.userId, input.outcome, input.reason ?? null, input.worked ?? null],
+     WHERE id = $1 AND user_id = $2 AND ($6 = false OR outcome IS NULL)`,
+    [
+      input.searchId,
+      input.userId,
+      input.outcome,
+      input.reason ?? null,
+      input.worked ?? null,
+      input.onlyIfUnset === true,
+    ],
     QUERY_TIMEOUT_MS,
   );
   const updated = (result.rowCount ?? 0) > 0;

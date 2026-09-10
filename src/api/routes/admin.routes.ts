@@ -29,6 +29,8 @@ import {
   deactivateSubscription,
   isGrantTier,
   AdminPhoneSearchRow,
+  setAdminAccess,
+  AdminAccessRow,
 } from '../../services/adminUsers.service';
 import { recordProductEvent } from '../../services/productEvents.service';
 import { getSession } from '../../db/neo4j/client';
@@ -1362,6 +1364,46 @@ adminRouter.post('/facts/:id/retract', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// Answers-12 item 1 (the founder, 10 Sep): give account 501 admin rights so
+// he logs into the dashboard as himself. Logged as a product event; undo is
+// the same call with enabled: false.
+//   POST /admin/users/:id/admin-access { enabled: true|false }
+adminRouter.post(
+  '/users/:id/admin-access',
+  param('id').isInt({ min: 1 }),
+  body('enabled').isBoolean(),
+  async (req: Request, res: Response<ApiResponse<AdminAccessRow>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'არასწორი პარამეტრები' });
+      return;
+    }
+    try {
+      const targetId = Number(req.params.id);
+      const adminId = (req as AuthenticatedRequest).user.userId;
+      const enabled = (req.body as { enabled: boolean }).enabled === true;
+      const updated = await setAdminAccess(targetId, enabled);
+      if (!updated) {
+        res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+        return;
+      }
+      void recordProductEvent(adminId, 'admin_access_change', {
+        target_user_id: targetId,
+        enabled,
+      });
+      // eslint-disable-next-line no-console
+      console.log(
+        `[admin-access] admin ${adminId} set admin access ${enabled} on user ${targetId}`,
+      );
+      res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin access]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 // Ticket 12 Task 12 (D137): the six launch invitations need a referral code
 // each; two of the six accounts never opened the invite screen, so none was

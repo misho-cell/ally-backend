@@ -359,6 +359,7 @@ describe('getAdminUserDetail', () => {
 import {
   searchUsersByPhone,
   grantSubscription,
+  setAdminAccess,
   deactivateSubscription,
   isGrantTier,
 } from '../adminUsers.service';
@@ -414,6 +415,27 @@ describe('grantSubscription / deactivateSubscription', () => {
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain(`subscription_status = 'inactive'`);
     expect(sql).toContain('current_period_ends_at = NOW()');
+  });
+});
+
+describe('setAdminAccess (Answers-12 item 1: the founder logs in as himself)', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('flips hasAccessToAlly on a live account and returns the flag', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 501, name: 'T', has_admin_access: true }]) as never);
+
+    const out = await setAdminAccess(501, true);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('"hasAccessToAlly" = $2');
+    expect(sql).toContain('"deletedAt" IS NULL');
+    expect(params).toEqual([501, true]);
+    expect(out?.has_admin_access).toBe(true);
+  });
+
+  it('returns null for a missing or deleted account', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    expect(await setAdminAccess(999999, false)).toBeNull();
   });
 });
 
