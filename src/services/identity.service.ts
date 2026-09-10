@@ -579,6 +579,8 @@ export function looksLikeAName(alias: string | null): boolean {
 
 export interface ReviewCandidate extends IdentityCandidate {
   sample_alias: string | null;
+  /** The same name under the export's column name (Ticket 13 Task 82: the screen rendered a dash). */
+  name_as_saved: string | null;
   co_owners: number | null;
   name_distinct_phones: number | null;
   band: RarityBand;
@@ -594,6 +596,7 @@ export function toReviewCandidate(row: IdentityCandidate): ReviewCandidate {
   return {
     ...row,
     sample_alias: alias,
+    name_as_saved: alias,
     co_owners: typeof e.co_owners === 'number' ? (e.co_owners as number) : null,
     name_distinct_phones: namePhones,
     band: rarityBand(namePhones),

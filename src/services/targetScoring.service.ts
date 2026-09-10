@@ -938,6 +938,25 @@ function strictNameTokens(label: string): string[] {
 /** A label more than this many words long is a note, not a name. */
 const MAX_NAME_LABEL_TOKENS = 4;
 
+const NAME_SCORE_STRICT = 10;
+const NAME_SCORE_LOOSE = 5;
+
+/**
+ * How well a label names ONE person: two words that are names beat one, a
+ * name-like second word beats none, and every word beyond the name costs a
+ * point — so „Soso Galumashvili" (30) beats „Soso გურჯაანი ისა ესა" (28),
+ * „Giorgi Gvazava" beats „giorgi gvazava marika tsiklauri", and „Kato Boxua"
+ * (20) still beats „Kato" (15). Read live on 10 September: the previous rule
+ * (more unknown words = more name) put all three wrong ones on the list.
+ */
+function labelNameScore(alias: string): number {
+  const tokens = tokenize(alias);
+  const strict = Math.min(strictNameTokens(alias).length, MIN_AGREED_NAME_TOKENS);
+  const loose = Math.min(nameTokens(alias).length, MIN_AGREED_NAME_TOKENS);
+  const extra = Math.max(0, tokens.length - loose);
+  return strict * NAME_SCORE_STRICT + loose * NAME_SCORE_LOOSE - extra;
+}
+
 /** Digits inside a word („2დღეში") mark a reminder, never a person's name. */
 function looksLikePhrase(alias: string): boolean {
   const tokens = tokenize(alias);
@@ -964,7 +983,7 @@ function showsFullName(label: string): boolean {
 function displayLabelFor(personLabel: string | null, candidateLabel: string): string {
   if (personLabel === null) return candidateLabel;
   if (candidateLabel === '') return personLabel;
-  return strictNameTokens(candidateLabel).length > strictNameTokens(personLabel).length
+  return labelNameScore(candidateLabel) > labelNameScore(personLabel)
     ? candidateLabel
     : personLabel;
 }
@@ -1113,26 +1132,19 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     // savers use it. A phrase — five words, or a digit inside a word — is
     // never the face of a person, whatever it counts.
     let personLabel: string | null = null;
-    let bestStrict = 0;
-    let bestNames = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
     let bestCount = 0;
     for (const [alias, contributors] of aliasContributors) {
       if (looksLikePhrase(alias)) continue;
-      const strict = strictNameTokens(alias).length;
-      const names = aliasNameCount.get(alias) ?? 0;
+      const score = labelNameScore(alias);
       const better =
-        strict > bestStrict ||
-        (strict === bestStrict &&
-          (names > bestNames ||
-            (names === bestNames &&
-              (contributors.size > bestCount ||
-                (contributors.size === bestCount &&
-                  personLabel !== null &&
-                  alias < personLabel)))));
+        score > bestScore ||
+        (score === bestScore &&
+          (contributors.size > bestCount ||
+            (contributors.size === bestCount && personLabel !== null && alias < personLabel)));
       if (better) {
         personLabel = alias;
-        bestStrict = strict;
-        bestNames = names;
+        bestScore = score;
         bestCount = contributors.size;
       }
     }

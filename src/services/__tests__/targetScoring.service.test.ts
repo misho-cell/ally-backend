@@ -1855,3 +1855,38 @@ describe('Ticket 13 Task 18: the row names the person in full, or is out', () =>
     expect(await buildTargetList(30)).toEqual([]);
   });
 });
+
+describe('Ticket 13 Task 18: the cleanest full name wins, read live on 10 September', () => {
+  it('„Soso Galumashvili" beats a place-and-two-words label that also carries two name-shaped tokens', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000204', label: 'Soso გურჯაანი ისა ესა' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000204', contactId: 1, alias: 'Soso გურჯაანი ისა ესა' },
+        { phone: '+995500000204', contactId: 2, alias: 'Soso გურჯაანი ისა ესა' },
+        { phone: '+995500000204', contactId: 3, alias: 'Soso Galumashvili' },
+        { phone: '+995500000204', contactId: 4, alias: 'Soso Galumashvili' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.label)).toEqual(['Soso Galumashvili']);
+  });
+
+  it('two people in one label lose to the one person’s clean name', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [{ phone: '+995500000205', label: 'giorgi gvazava marika tsiklauri' }]),
+    ]);
+    routeScoreQueries({
+      aliases: [
+        { phone: '+995500000205', contactId: 1, alias: 'giorgi gvazava marika tsiklauri' },
+        { phone: '+995500000205', contactId: 2, alias: 'Giorgi Gvazava' },
+        { phone: '+995500000205', contactId: 3, alias: 'Giorgi Gvazava' },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.label)).toEqual(['Giorgi Gvazava']);
+  });
+});
