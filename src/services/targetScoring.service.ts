@@ -970,6 +970,34 @@ function looksLikePhrase(alias: string): boolean {
  * and not a phrase. „Kato" alone, „Nino Menejeri" (a role word is stripped
  * first) and „ბაჩანა 2დღეში უნდა დამერეკა" all fail.
  */
+const NO_COMPANY_SHARES: ReadonlyMap<string, number> = new Map();
+
+/** One real name plus a word no list knows — the case only the base can settle. */
+function isBorderlineName(label: string): boolean {
+  if (label === '' || looksLikePhrase(label)) return false;
+  return strictNameTokens(label).length === 1 && nameTokens(label).length >= MIN_AGREED_NAME_TOKENS;
+}
+
+/** Drop the surviving rows whose unknown second word the base writes as a company. */
+async function removeCompanyWordRows(entries: ScorableEntry[], gates: GateLedger): Promise<void> {
+  const borderline = entries.filter((e) => isBorderlineName(e.label));
+  if (borderline.length === 0) return;
+  const words = unknownNameWords(borderline.map((e) => e.label));
+  const shares = await companyWordShare(words).catch((err: unknown) => {
+    // A failed read must not pass a company off as a surname silently.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[target-list] company-word read failed for ${words.length} words: ${(err as Error).message}`,
+    );
+    return new Map<string, number>();
+  });
+  const kept = entries.filter(
+    (e) =>
+      !isBorderlineName(e.label) || showsFullName(e.label, shares) || !gates.hit('first_name_only'),
+  );
+  entries.splice(0, entries.length, ...kept);
+}
+
 function showsFullName(label: string, companyShareByWord: ReadonlyMap<string, number>): boolean {
   if (label === '' || looksLikePhrase(label)) return false;
   const strict = strictNameTokens(label);
@@ -2126,9 +2154,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   ]);
   const ourOwn = ownPeopleDigits();
 
-  // Ticket 13 Task 18: the label each row would show, decided once, and one
-  // base-wide count of the unknown second words — a surname sits on one or two
-  // numbers, a company word on many.
+  // Ticket 13 Task 18: the label each row would show, decided once. The
+  // company-word read for the borderline labels runs AFTER the gates, on the
+  // survivors only — asked for all thousand candidates it timed out (178
+  // words, 20 s) and the read came back empty.
   const displayLabels = new Map<string, string>();
   for (const phone of phones) {
     const ctx = candidates.get(phone) as CandidateContext;
@@ -2136,15 +2165,6 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     const candidateLabel = ctx.label !== '' ? ctx.label : (analysis?.personLabel ?? '');
     displayLabels.set(phone, displayLabelFor(analysis?.personLabel ?? null, candidateLabel));
   }
-  const borderlineWords = unknownNameWords([...displayLabels.values()]);
-  const companyShareByWord = await companyWordShare(borderlineWords).catch((err: unknown) => {
-    // A failed read must not pass a company off as a surname silently.
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[target-list] company-word read failed for ${borderlineWords.length} words: ${(err as Error).message}`,
-    );
-    return new Map<string, number>();
-  });
 
   const entries: ScorableEntry[] = [];
   for (const phone of phones) {
@@ -2201,7 +2221,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         dominantIsPlaceOrThing: analysis?.dominantIsPlaceOrThing ?? false,
         ownCompanyVotes: analysis?.ownCompanyVotes ?? 0,
       },
-      showsFullName(label, companyShareByWord),
+      showsFullName(label, NO_COMPANY_SHARES),
     );
     if (excluded !== null && gates.hit(excluded)) continue;
     // G3 (Task 5): the person's OWN public city fact, when there is one, is
@@ -2288,6 +2308,13 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     if (b.score !== a.score) return b.score - a.score;
     return a.phone.localeCompare(b.phone);
   };
+  // Ticket 13 Task 18, the last gate: among the survivors, a label of one
+  // real name plus a word no list knows is asked of the base — a surname is
+  // written next to first names only, a company next to other people's
+  // surnames and titles („Nino Maxin AI"). Survivors only, so the read stays
+  // small and inside its budget.
+  await removeCompanyWordRows(entries, gates);
+
   // Deterministic order (Task 4's "two reads a minute apart match"):
   // person-confirmed first, then score, then the phone string as the final
   // total tiebreak — no cluster of equal scores can shuffle the top-20 cut.
