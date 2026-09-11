@@ -100,6 +100,7 @@ import { adminListGoals, retractGoalQuestion } from '../../services/goalQuestion
 import { adminGoalDetail, goalDays } from '../../services/goalDashboard.service';
 import {
   deletePrivateContextKeys,
+  savePrivateContext,
   scrubStoredPhoneNumbers,
 } from '../../services/userPrivateContext.service';
 import { deleteUserNotes } from '../../services/userNotes.service';
@@ -1302,6 +1303,57 @@ adminRouter.delete('/users/:id/private-context/:key', async (req: Request, res: 
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+// One memory line, capped the way the assistant's own writer caps them.
+const MAX_PRIVATE_CONTEXT_CHARS = 8000;
+
+// Ticket 16 Task 37: the delete above had no way back, so proving it cost a
+// real memory line. This puts one back — the same value, the same key — which
+// makes the delete reversible and the row testable without losing anything.
+//   PUT /admin/users/:id/private-context/:key { value }
+adminRouter.put(
+  '/users/:id/private-context/:key',
+  param('id').isInt({ min: 1 }),
+  body('value').isString().isLength({ min: 1, max: MAX_PRIVATE_CONTEXT_CHARS }),
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ user_id: number; key: string; restored: boolean }>>,
+  ) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'value აუცილებელია' });
+      return;
+    }
+    try {
+      const userId = Number(req.params.id);
+      const key = String(req.params.key ?? '').trim();
+      if (key === '') {
+        res.status(400).json({ success: false, error: 'key აუცილებელია' });
+        return;
+      }
+      const adminId = (req as AuthenticatedRequest).user.userId;
+      // The same writer the assistant uses, so a restored line is scrubbed of
+      // phone numbers exactly like an original one (D95).
+      await savePrivateContext(
+        String(userId),
+        key,
+        String((req.body as { value: string }).value),
+        'set',
+      );
+      void recordProductEvent(adminId, 'admin_private_context_restore', {
+        target_user_id: userId,
+        key,
+      });
+      // eslint-disable-next-line no-console
+      console.log(`[admin-memory] admin ${adminId} restored key "${key}" on user ${userId}`);
+      res.status(200).json({ success: true, data: { user_id: userId, key, restored: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin private-context restore]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.delete('/users/:id/notes/:noteId', async (req: Request, res: Response) => {
   try {
