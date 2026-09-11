@@ -1,5 +1,13 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
+import {
+  TRADE_WORDS,
+  THING_WORDS,
+  PLACE_WORDS,
+  ORGANISATION_WORDS,
+  COMPANY_MARKERS,
+  RELATIONSHIP_WORDS,
+} from './labelDictionaries';
 import { normalizePhone } from './phone';
 
 const IDENTITY_QUERY_TIMEOUT_MS = 30_000;
@@ -617,11 +625,32 @@ const NON_NAME_MARKERS = [
   'ხმის ჩამწერი',
 ];
 
+// Ticket 16 Task 87 leftover: the founder's own junk rules for the target list
+// (no trades, no companies, no places, no relationship words) apply to the
+// review queue too — „Giorgi Restorani Agaraki", „Posta Niko", „joni bakuriani
+// xelosnebi" are labels for a business or a place, not a person's name.
+const JUNK_WORDS: readonly string[] = [
+  ...TRADE_WORDS,
+  ...THING_WORDS,
+  ...PLACE_WORDS,
+  ...ORGANISATION_WORDS,
+  ...COMPANY_MARKERS,
+  ...RELATIONSHIP_WORDS,
+].map((w) => w.toLowerCase());
+const JUNK_STEM_MIN_CHARS = 5;
+
+function isJunkWord(token: string): boolean {
+  return JUNK_WORDS.some(
+    (w) => token === w || (w.length >= JUNK_STEM_MIN_CHARS && token.startsWith(w)),
+  );
+}
+
 export function looksLikeAName(alias: string | null): boolean {
   const label = (alias ?? '').trim().toLowerCase();
   if (label.length < 3) return false;
   if (NON_NAME_MARKERS.some((m) => label.includes(m))) return false;
   const words = label.split(/\s+/).filter(Boolean);
+  if (words.some((w) => isJunkWord(w.replace(/[.,()]/g, '')))) return false;
   // „Aaa Aaa", „Sg Sg", „Abo Abo" — the same short token twice is a filler.
   if (words.length === 2 && words[0] === words[1] && words[0].length <= 4) return false;
   // A sentence is not a name: „Voice Recorder (don't forget to merge calls)".

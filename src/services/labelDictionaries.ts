@@ -231,6 +231,26 @@ export const RELATIONSHIP_WORDS = [
 // lari). Generic words, not a brand list — every one of them is a thing rather
 // than a person, in any building in the country.
 export const THING_WORDS = [
+  // Ticket 16 Task 87 leftover: business labels in the identity queue
+  // („Giorgi Restorani Agaraki", „Posta Niko") — a place of business, not a person.
+  'რესტორან',
+  'restoran',
+  'კაფე',
+  'kafe',
+  'cafe',
+  'ფოსტა',
+  'posta',
+  'სალონ',
+  'salon',
+  'აფთიაქ',
+  'aptiaq',
+  'apteka',
+  'კლინიკ',
+  'klinik',
+  'clinic',
+  'სასტუმრო',
+  'sastumro',
+  'hotel',
   'ბინა',
   'bina',
   // Ticket 13 Task 18: „Giorgi magazia ,,titani"" is a shop, not a person.

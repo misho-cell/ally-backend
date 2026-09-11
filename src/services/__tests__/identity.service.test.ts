@@ -518,6 +518,9 @@ describe('a label that is not a name (ticket 9 task 29)', () => {
     ['Taxi Maxim Kutaisi', 'a firm'],
     ['NINO', 'a first name alone'],
     ['Noshrevani', 'a place'],
+    ['Giorgi Restorani Agaraki', 'a business (Ticket 16 Task 87 leftover)'],
+    ['joni bakuriani xelosnebi axlebi', 'a trade'],
+    ['Lisi Abano', 'a place'],
   ])('%s is not a name (%s)', (alias) => {
     expect(looksLikeAName(alias)).toBe(false);
   });
