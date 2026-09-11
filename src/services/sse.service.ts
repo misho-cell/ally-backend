@@ -179,6 +179,39 @@ export function emitRunComplete(
   emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...safe });
 }
 
+export interface AppendedMessagePayload {
+  messageId: string;
+  kind: 'pending';
+  content: string;
+  choices: readonly string[];
+  ref: Record<string, unknown>;
+}
+
+/**
+ * Ticket 16 Task 98: a message that is NOT the answer — a waiting request, an
+ * old introduction, a follow-up. The client APPENDS it as its own assistant
+ * bubble with its own buttons; it never replaces the answer above it. Several
+ * may arrive after one run, in order.
+ */
+export function emitMessageAppended(
+  userId: string,
+  threadId: number,
+  runId: string,
+  payload: AppendedMessagePayload,
+): void {
+  emitter.emit(`user:${userId}`, {
+    event: 'message_appended',
+    threadId,
+    runId,
+    messageId: payload.messageId,
+    role: 'assistant',
+    kind: payload.kind,
+    content: displayText(payload.content),
+    choices: scrubDeep(payload.choices),
+    ref: scrubDeep(payload.ref),
+  });
+}
+
 /** Tokens charged for a completed run — lets the client refresh the balance live. */
 export function emitTokensDebited(
   userId: string,

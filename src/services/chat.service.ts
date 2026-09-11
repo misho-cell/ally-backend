@@ -99,6 +99,7 @@ import {
   emitTokensDebited,
   emitAnswerDelta,
   emitAnswerReset,
+  emitMessageAppended,
 } from './sse.service';
 import {
   scrubText,
@@ -147,6 +148,7 @@ import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { isOnboardingUser } from './onboarding.service';
 import { looksLikeGoalRequest, goalTitleFrom } from './goalIntent';
+import { renderPendingMessage, PendingItemInput } from './pendingMessages';
 
 // A mode is a SITUATION — who is in the conversation and what state the
 // account is in — detected from hard facts, never from message content (the
@@ -1763,7 +1765,10 @@ function hasToolResults(msg: Anthropic.MessageParam): boolean {
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     // 'event' rows are engine turns: model history yes, chat view no.
-    "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind IN ('message', 'event') ORDER BY created_at DESC LIMIT $2",
+    // 'pending' rows are things the SERVER said on its own (Ticket 16 Task 98):
+    // the user read them and may be answering one, so they belong in history
+    // exactly like anything else the assistant said.
+    "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind IN ('message', 'event', 'pending') ORDER BY created_at DESC LIMIT $2",
     [threadId, HISTORY_LIMIT],
   );
   const rows = result.rows.reverse().map((row) => ({
@@ -1806,7 +1811,7 @@ async function saveMessage(
   threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
-  kind: 'message' | 'step' | 'error' | 'event' = 'message',
+  kind: 'message' | 'step' | 'error' | 'event' | 'pending' = 'message',
   runId: string | null = null,
   // Display-only tappable choices (present_choices) — persisted with the row
   // so they survive reload (ticket 6 close §15 B1). Never part of model history.
@@ -2394,6 +2399,22 @@ export function canonicalChoiceLabel(label: string): string {
   return trimmed;
 }
 
+// Ticket 16 Task 98: what a run pulled out of the pending list. The items are
+// consumed by the tool call, so they are held here and delivered afterwards as
+// their own messages — the answer answers the question, and nothing else.
+const runPendingItems = new Map<string, PendingItemInput[]>();
+
+function notePendingItems(runId: string | undefined, items: readonly PendingItemInput[]): void {
+  if (!runId || items.length === 0) return;
+  runPendingItems.set(runId, [...(runPendingItems.get(runId) ?? []), ...items]);
+}
+
+function takePendingItems(runId: string): PendingItemInput[] {
+  const items = runPendingItems.get(runId) ?? [];
+  runPendingItems.delete(runId);
+  return items;
+}
+
 // Answers-12 item 11: the goals a run opened from an ordinary conversation.
 // The run that saved them ran without the goal prompt, so the plan is proposed
 // in an engine turn right after the reply (taskEngine.startPlanProposal).
@@ -2446,6 +2467,7 @@ function clearRunState(runId: string): void {
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
+  runPendingItems.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -3024,8 +3046,23 @@ async function executeToolCall(
       });
       // Ticket 12 Task 32: the already-shown rows on request, read-only.
       const alreadyShown = input['include_seen'] === true ? await listSeenUpdates(userId) : null;
+      // Ticket 16 Task 98: each of these goes to the user as its OWN message,
+      // with buttons the server writes, right after this answer. The note is
+      // in the tool RESULT rather than the prompt on purpose — a rule the
+      // model reads in the same breath as the data it applies to, and one that
+      // cannot drift out of sync with the code that enforces it.
+      notePendingItems(runId, updates);
+      const deliveredSeparately = updates.length > 0;
       return {
         ...(alreadyShown !== null && { already_shown: alreadyShown }),
+        ...(deliveredSeparately && {
+          delivery_note:
+            'Each item below is delivered to the user as its OWN message with its own buttons, ' +
+            'immediately after your answer. Do NOT mention, summarise or append any of them to ' +
+            'your answer, and do not offer buttons for them — answer only what the user asked. ' +
+            'They are given to you so you know what the user is about to see, and so you can act ' +
+            'on their reply to one (the instruction on each item says how).',
+        }),
         updates:
           curiosity === null
             ? updates
@@ -4016,6 +4053,60 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
   return scrubbed;
 }
 
+/**
+ * Ticket 16 Task 98. Each pending item as its own message, in order, after the
+ * answer. Two rows per item: an `event` row carrying the engine's instruction
+ * (model history, never the chat view — the same mechanism engine wakes use),
+ * so the next run knows what a tapped button means; and the `pending` row the
+ * user actually reads, with its own buttons.
+ *
+ * Best-effort by contract: the answer is already stored and delivered, and a
+ * failure here must never undo it.
+ */
+async function deliverPendingMessages(
+  userId: string,
+  threadId: number,
+  runId: string,
+  language: RunLanguage,
+  items: readonly PendingItemInput[],
+): Promise<void> {
+  for (const item of items) {
+    try {
+      const rendered = renderPendingMessage(item, language);
+      if (rendered === null) continue;
+      if (rendered.instruction !== '') {
+        await saveMessage(
+          userId,
+          threadId,
+          'user',
+          `${RUN_EVENT_PREFIX} ${rendered.instruction}`,
+          'event',
+        );
+      }
+      const choices = rendered.choices.map(scrubMechanicalForStorage);
+      const messageId = await saveMessage(
+        userId,
+        threadId,
+        'assistant',
+        scrubMechanicalForStorage(rendered.text),
+        'pending',
+        runId,
+        choices,
+      );
+      emitMessageAppended(userId, threadId, runId, {
+        messageId: String(messageId),
+        kind: 'pending',
+        content: rendered.text,
+        choices,
+        ref: rendered.ref,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[pending-message] delivery failed:', (err as Error).message);
+    }
+  }
+}
+
 export interface RunIntent {
   /** The app said this message IS a goal („+ ახალი მიზანი"). */
   asGoal?: boolean;
@@ -4230,6 +4321,7 @@ export async function processChat(
   );
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
+  const pendingItems = takePendingItems(runId);
   const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
   // A goal opened from the message ran as a goal run; if that run still left
   // it without a plan, the proposal turn follows (it checks before waking).
@@ -4258,6 +4350,10 @@ export async function processChat(
     );
   }
   await saveMessage(userId, threadId, 'assistant', storedReply, 'message', runId, storedChoices);
+  // Ticket 16 Task 98: the answer is finished and stored. Anything that was
+  // WAITING — a request, an old introduction, a follow-up — now goes out as
+  // its own message, after it, with buttons the server wrote.
+  await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
   void touchTaskActivityForThread(threadId).catch(() => undefined);
