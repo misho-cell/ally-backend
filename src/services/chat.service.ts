@@ -2379,8 +2379,13 @@ async function markSearchSent(
 // names are the only two the screen shows for approving or changing a plan.
 const APPROVE_LABEL = 'დამტკიცებულია';
 const CHANGE_LABEL = 'შევცვალოთ';
-const APPROVE_LIKE_RE = /^(დამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|approve)/i;
-const CHANGE_LIKE_RE = /^(შევცვალ|შეცვალ|შევცვლ|change the plan|change plan)/i;
+const APPROVE_LIKE_RE =
+  /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|approve)/i;
+// Read live on 11 September: the model typed „შეცვლა" and the stem list had
+// „შევცვლ" but not „შეცვლ", so it slipped through. Every Georgian stem of
+// „change", with and without the ვ.
+const CHANGE_LIKE_RE =
+  /^(შევცვალ|შეცვალ|შევცვლ|შეცვლ|შემიცვალ|change the plan|change plan|edit the plan)/i;
 
 export function canonicalChoiceLabel(label: string): string {
   const trimmed = label.trim();

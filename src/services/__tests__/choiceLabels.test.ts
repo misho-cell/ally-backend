@@ -9,6 +9,9 @@ describe('canonicalChoiceLabel (Ticket 16 Task 96)', () => {
     expect(canonicalChoiceLabel('დამტკიცებულია')).toBe('დამტკიცებულია');
     expect(canonicalChoiceLabel('შევცვალო')).toBe('შევცვალოთ');
     expect(canonicalChoiceLabel('შევცვალოთ გეგმა')).toBe('შევცვალოთ');
+    // Read live on 11 September on a real plan, and it slipped through.
+    expect(canonicalChoiceLabel('შეცვლა')).toBe('შევცვალოთ');
+    expect(canonicalChoiceLabel('დავამტკიცებ')).toBe('დამტკიცებულია');
   });
 
   it('leaves every other button alone', () => {
