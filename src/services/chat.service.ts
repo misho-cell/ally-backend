@@ -2403,6 +2403,11 @@ export function canonicalChoiceLabel(label: string): string {
 // consumed by the tool call, so they are held here and delivered afterwards as
 // their own messages — the answer answers the question, and nothing else.
 const runPendingItems = new Map<string, PendingItemInput[]>();
+// The kill switch. This path has never run against live data — the first
+// account to have a genuinely due item will be a real user — so set
+// PENDING_AS_MESSAGES=off and the product goes back to the old behaviour
+// (items woven into the answer by the prompt) without a deploy.
+const PENDING_AS_MESSAGES_OFF = process.env.PENDING_AS_MESSAGES === 'off';
 
 function notePendingItems(runId: string | undefined, items: readonly PendingItemInput[]): void {
   if (!runId || items.length === 0) return;
@@ -3051,8 +3056,8 @@ async function executeToolCall(
       // in the tool RESULT rather than the prompt on purpose — a rule the
       // model reads in the same breath as the data it applies to, and one that
       // cannot drift out of sync with the code that enforces it.
-      notePendingItems(runId, updates);
-      const deliveredSeparately = updates.length > 0;
+      if (!PENDING_AS_MESSAGES_OFF) notePendingItems(runId, updates);
+      const deliveredSeparately = !PENDING_AS_MESSAGES_OFF && updates.length > 0;
       return {
         ...(alreadyShown !== null && { already_shown: alreadyShown }),
         ...(deliveredSeparately && {
