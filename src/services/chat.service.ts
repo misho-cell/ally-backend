@@ -4084,14 +4084,13 @@ async function deliverPendingMessages(
         );
       }
       const choices = rendered.choices.map(scrubMechanicalForStorage);
-      const messageId = await saveMessage(
+      const messageId = await savePendingMessage(
         userId,
         threadId,
-        'assistant',
-        scrubMechanicalForStorage(rendered.text),
-        'pending',
         runId,
+        scrubMechanicalForStorage(rendered.text),
         choices,
+        rendered,
       );
       emitMessageAppended(userId, threadId, runId, {
         messageId: String(messageId),
@@ -4107,9 +4106,85 @@ async function deliverPendingMessages(
   }
 }
 
+/**
+ * A pending message keeps its own instruction and ref in `content_json`, so
+ * the row is self-describing: when the user later taps one of its buttons the
+ * server can say WHICH item they answered without guessing from order.
+ */
+async function savePendingMessage(
+  userId: string,
+  threadId: number,
+  runId: string,
+  text: string,
+  choices: readonly string[],
+  rendered: { ref: Record<string, unknown>; instruction: string },
+): Promise<number> {
+  const result = await query<{ id: string }>(
+    `INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices)
+     VALUES ($1, $2, 'assistant', $3, $4::jsonb, 'pending', $5, $6::jsonb)
+     RETURNING id`,
+    [
+      userId,
+      threadId,
+      text,
+      JSON.stringify({ text, ref: rendered.ref, instruction: rendered.instruction }),
+      runId,
+      JSON.stringify(choices),
+    ],
+  );
+  await touchThread(threadId);
+  return Number(result.rows[0].id);
+}
+
+/**
+ * Ticket 16 Task 98, the return trip. The app sends `in_reply_to_message_id`
+ * when a button under a PENDING message is tapped. Two pending messages can
+ * sit on screen at once — „did the introduction work?" and „a goal is waiting
+ * on you" — and „მოგვიანებით" under either reads the same. This turns the tap
+ * into an unambiguous line for the model: which message, and what to do about
+ * the answer.
+ *
+ * Scoped to the thread, so an id from somewhere else says nothing. Returns
+ * null for an ordinary message, and on any failure — the run then behaves
+ * exactly as it did before this existed.
+ */
+async function pendingReplyContext(
+  threadId: number,
+  messageId: string | undefined,
+): Promise<string | null> {
+  if (messageId === undefined || messageId.trim() === '') return null;
+  try {
+    const result = await query<{ content_json: unknown }>(
+      `SELECT content_json FROM conversations
+       WHERE id::text = $1 AND thread_id = $2 AND kind = 'pending' LIMIT 1`,
+      [messageId.trim(), threadId],
+      PENDING_REPLY_TIMEOUT_MS,
+    );
+    const body = result.rows[0]?.content_json as
+      | { text?: unknown; instruction?: unknown }
+      | undefined;
+    if (!body) return null;
+    const text = typeof body.text === 'string' ? body.text : '';
+    const instruction = typeof body.instruction === 'string' ? body.instruction : '';
+    if (text === '' && instruction === '') return null;
+    return (
+      `${RUN_EVENT_PREFIX} მომხმარებელი პასუხობს ამ შეტყობინებას: „${text}". ` +
+      `მისი შემდეგი სიტყვები სწორედ ამაზეა. ${instruction}`
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[pending-reply] lookup failed:', (err as Error).message);
+    return null;
+  }
+}
+
+const PENDING_REPLY_TIMEOUT_MS = 5_000;
+
 export interface RunIntent {
   /** The app said this message IS a goal („+ ახალი მიზანი"). */
   asGoal?: boolean;
+  /** The pending message whose button the user tapped, when they tapped one. */
+  inReplyToMessageId?: string;
 }
 
 async function ensureGoalForRequest(
@@ -4209,11 +4284,19 @@ export async function processChat(
   // last so it wins over the Georgian strategy prompt).
   const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
 
-  const messages: Anthropic.MessageParam[] = [...history, { role: 'user', content: userMessage }];
+  // Ticket 16 Task 98: a tap on a pending message's button says what it is
+  // answering, so the model never has to guess between two of them.
+  const replyContext = await pendingReplyContext(threadId, intent?.inReplyToMessageId);
+  const messages: Anthropic.MessageParam[] = [
+    ...history,
+    ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
+    { role: 'user', content: userMessage },
+  ];
 
   // Persist the user message first so it — and the step rows saved during the
   // loop — appear in chronological order and survive a mid-run crash. An engine
   // event is persisted as kind 'event': the model sees it, the user does not.
+  if (replyContext !== null) await saveMessage(userId, threadId, 'user', replyContext, 'event');
   await saveMessage(
     userId,
     threadId,

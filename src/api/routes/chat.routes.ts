@@ -106,7 +106,11 @@ chatRouter.post(
     }
 
     try {
-      const { message, as_goal } = req.body as { message: string; as_goal?: unknown };
+      const { message, as_goal, in_reply_to_message_id } = req.body as {
+        message: string;
+        as_goal?: unknown;
+        in_reply_to_message_id?: unknown;
+      };
       const userId = (req as AuthenticatedRequest).user.userId;
 
       const threadId = await getOrCreateDefaultThread(userId);
@@ -117,6 +121,9 @@ chatRouter.post(
       const result = await Promise.race([
         processChat(userId, threadId, message, randomUUID(), undefined, {
           asGoal: as_goal === true,
+          ...(typeof in_reply_to_message_id === 'string' && {
+            inReplyToMessageId: in_reply_to_message_id,
+          }),
         }),
         timeout,
       ]);
