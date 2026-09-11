@@ -3,6 +3,7 @@ import { buildSearchTerms, buildRawWordGroups } from './transliterate';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { collapseMergedPhones } from './mergedIdentities';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import {
   AccountDetails,
@@ -243,11 +244,13 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
         shape(r, facts, accountStates, relationships, exclusions, humanTiers, true),
       ),
     ];
+    // Ticket 16 Task 23: a pair the founder marked „one person" is one row.
+    const merged = await collapseMergedPhones(results);
     const payload: Record<string, unknown> = {
       found: true,
-      count: results.length,
-      total: exact.total + fuzzyRows.length,
-      results,
+      count: merged.rows.length,
+      total: exact.total + fuzzyRows.length - merged.collapsed,
+      results: merged.rows,
     };
     // Whole result is approximate only when nothing matched exactly.
     if (exactRows.length === 0) payload.fuzzy = true;

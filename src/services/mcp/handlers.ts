@@ -27,7 +27,6 @@ import {
 } from '../contactFacts.service';
 import {
   createTask,
-  getMyTasks,
   getMyTasksPage,
   getTaskById,
   grantTaskPermission,

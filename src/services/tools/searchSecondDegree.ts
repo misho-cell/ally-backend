@@ -8,6 +8,7 @@ import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { normalizePhone } from '../phone';
+import { collapseMergedPhones } from './mergedIdentities';
 import {
   applyRelationshipWarmth,
   relationshipTouchedPhones,
@@ -479,54 +480,53 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       ]),
     ]);
 
-    return {
-      found: true,
-      count: rows.length,
-      results: rows.map((row) => ({
-        phone: row.phone,
-        name: row.name ?? null,
-        employer: row.employer ?? null,
-        jobPosition: row.jobPosition ?? null,
-        ownership: OWNERSHIP.SECOND_DEGREE,
-        // Consistent with the direct-search tools: every person-shaped result
-        // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
-        // means a NETAI user, not merely an account. A resolved "UserPhone"
-        // row proves an account exists; it does not prove the person has ever
-        // opened Netai, and 62,146 of the 62,184 accounts never have.
-        is_member: isMemberPhone(accountStates, row.phone),
-        account_state: accountStateFor(accountStates, row.phone),
-        netai_subscriber: isSubscriberPhone(accountStates, row.phone),
-        via: row.via_names ?? [],
-        via_contacts: (row.via_contacts ?? []).map((bridge) => ({
-          name: bridge.name,
-          phone: bridge.phone,
-          is_member: isMemberPhone(accountStates, bridge.phone),
-        })),
-        // Strongest bridge→target relationship score (enrichment-computed,
-        // 0..1) — how warm the best via's own tie to this person is. Missing
-        // when no bridge has a computed score. A D34 relationship edge the
-        // searcher owns lifts it (never says why — the edge itself is
-        // private by design).
-        ...(relationshipTouched.has(normalizePhone(row.phone))
-          ? { via_warmth: applyRelationshipWarmth(row.warmth) }
-          : row.warmth != null && { via_warmth: Number(row.warmth) }),
-        // T15: how well this person matches the query, from every tag/fact on
-        // them — public or not. Never the matched word itself, only the
-        // score. Missing when nothing (public or private) matched at all.
-        ...(signalStrength.has(row.phone) && {
-          signal_strength: signalStrength.get(row.phone),
-        }),
-        ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
-          exclusions: exclusions.get(phoneDigits(row.phone)),
-        }),
-        // Internal identifiers for agent use — never displayed to the user.
-        // target_user_id is set when the person is a registered Ally user;
-        // target_phone is set when they are not (unregistered contact).
-        ...(row.target_user_id != null
-          ? { target_user_id: row.target_user_id }
-          : { target_phone: row.phone }),
+    const shaped = rows.map((row) => ({
+      phone: row.phone,
+      name: row.name ?? null,
+      employer: row.employer ?? null,
+      jobPosition: row.jobPosition ?? null,
+      ownership: OWNERSHIP.SECOND_DEGREE,
+      // Consistent with the direct-search tools: every person-shaped result
+      // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
+      // means a NETAI user, not merely an account. A resolved "UserPhone"
+      // row proves an account exists; it does not prove the person has ever
+      // opened Netai, and 62,146 of the 62,184 accounts never have.
+      is_member: isMemberPhone(accountStates, row.phone),
+      account_state: accountStateFor(accountStates, row.phone),
+      netai_subscriber: isSubscriberPhone(accountStates, row.phone),
+      via: row.via_names ?? [],
+      via_contacts: (row.via_contacts ?? []).map((bridge) => ({
+        name: bridge.name,
+        phone: bridge.phone,
+        is_member: isMemberPhone(accountStates, bridge.phone),
       })),
-    };
+      // Strongest bridge→target relationship score (enrichment-computed,
+      // 0..1) — how warm the best via's own tie to this person is. Missing
+      // when no bridge has a computed score. A D34 relationship edge the
+      // searcher owns lifts it (never says why — the edge itself is
+      // private by design).
+      ...(relationshipTouched.has(normalizePhone(row.phone))
+        ? { via_warmth: applyRelationshipWarmth(row.warmth) }
+        : row.warmth != null && { via_warmth: Number(row.warmth) }),
+      // T15: how well this person matches the query, from every tag/fact on
+      // them — public or not. Never the matched word itself, only the
+      // score. Missing when nothing (public or private) matched at all.
+      ...(signalStrength.has(row.phone) && {
+        signal_strength: signalStrength.get(row.phone),
+      }),
+      ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
+        exclusions: exclusions.get(phoneDigits(row.phone)),
+      }),
+      // Internal identifiers for agent use — never displayed to the user.
+      // target_user_id is set when the person is a registered Ally user;
+      // target_phone is set when they are not (unregistered contact).
+      ...(row.target_user_id != null
+        ? { target_user_id: row.target_user_id }
+        : { target_phone: row.phone }),
+    }));
+    // Ticket 16 Task 23: one person, one row, in the second circle too.
+    const merged = await collapseMergedPhones(shaped);
+    return { found: true, count: merged.rows.length, results: merged.rows };
   } catch (err) {
     console.error('searchSecondDegree error:', (err as Error).message);
     return { found: false, error: (err as Error).message };

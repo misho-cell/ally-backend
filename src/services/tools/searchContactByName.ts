@@ -21,6 +21,7 @@ import {
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
+import { collapseMergedPhones } from './mergedIdentities';
 
 const FUZZY_THRESHOLD = 0.45;
 // The first letters a fuzzy neighbour must share with the term (see the
@@ -272,11 +273,15 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // member_since / network_size / activity to every row in a duplicated name
     // group, so neither the user nor the assistant aims at the wrong twin.
     await attachDuplicateDifferentiators(mapped, accountStates);
+    // Ticket 16 Task 23: the review's „one person" answers, finally read. The
+    // differentiators above answer the same question for REGISTERED twins by
+    // account id; this covers every pair a human confirmed, registered or not.
+    const merged = await collapseMergedPhones(mapped);
     return {
       found: true,
-      count: mapped.length,
-      total,
-      results: mapped,
+      count: merged.rows.length,
+      total: total - merged.collapsed,
+      results: merged.rows,
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);
