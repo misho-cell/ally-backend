@@ -106,7 +106,7 @@ chatRouter.post(
     }
 
     try {
-      const { message } = req.body as { message: string };
+      const { message, as_goal } = req.body as { message: string; as_goal?: unknown };
       const userId = (req as AuthenticatedRequest).user.userId;
 
       const threadId = await getOrCreateDefaultThread(userId);
@@ -115,7 +115,9 @@ chatRouter.post(
         setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 300_000),
       );
       const result = await Promise.race([
-        processChat(userId, threadId, message, randomUUID()),
+        processChat(userId, threadId, message, randomUUID(), undefined, {
+          asGoal: as_goal === true,
+        }),
         timeout,
       ]);
 

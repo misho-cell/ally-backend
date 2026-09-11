@@ -212,6 +212,7 @@ async function scanNameMatchCandidates(
   let added = 0;
   for (const pair of passing) {
     const owners = coOwnerCount.get(`${pair.phone_1}\u0000${pair.phone_2}`) ?? 0;
+    const reach = nameReach.get(pair.sample_alias) ?? null;
     const phones = [pair.phone_1, pair.phone_2].sort();
     const inserted = await query<{ id: number }>(
       `INSERT INTO identity_candidates (phones, confidence, evidence)
@@ -220,12 +221,12 @@ async function scanNameMatchCandidates(
        RETURNING id`,
       [
         phones,
-        NAME_MATCH_CONFIDENCE,
+        pairConfidence(owners, reach),
         JSON.stringify({
           signal: 'same_normalized_alias_across_owners',
           co_owners: owners,
           sample_alias: pair.sample_alias,
-          name_distinct_phones: nameReach.get(pair.sample_alias) ?? null,
+          name_distinct_phones: reach,
         }),
       ],
       IDENTITY_QUERY_TIMEOUT_MS,
@@ -233,6 +234,24 @@ async function scanNameMatchCandidates(
     if (inserted.rows.length > 0) added++;
   }
   return { added, pageFull };
+}
+
+/**
+ * Ticket 16 Task 91 (D172): the score, computed instead of the flat 0.8.
+ *
+ * `co_owners` = accounts that saved BOTH numbers under the same normalised
+ * name (the query above joins the two numbers on the same "contactId" and the
+ * same normalised alias). `name_distinct_phones` = how many numbers in the
+ * whole base carry that name. The odds that the two numbers are one person
+ * rise with agreeing owners and fall with how many people the name could be:
+ * three owners on „თორნიკე აბულაძე" (4 numbers) → 0.50; 79 owners on „Saba"
+ * (3,270 numbers) → 0.02. Unknown reach falls back to the old flat value.
+ */
+export function pairConfidence(coOwners: number, nameDistinctPhones: number | null): number {
+  if (nameDistinctPhones === null) return NAME_MATCH_CONFIDENCE;
+  const otherNumbers = Math.max(nameDistinctPhones - 1, 0);
+  const score = coOwners / (coOwners + otherNumbers);
+  return Math.round(Math.min(1, Math.max(0, score)) * 100) / 100;
 }
 
 /**
@@ -421,7 +440,12 @@ export async function listIdentityCandidates(
   status: string,
   limit: number,
   opts: CandidateQuery = {},
-): Promise<{ candidates: ReviewCandidate[]; total: number; matched: number }> {
+): Promise<{
+  candidates: ReviewCandidate[];
+  total: number;
+  matched: number;
+  reviewable_total: number;
+}> {
   const rarity = `COALESCE((evidence->>'name_distinct_phones')::int, 0)`;
   const bandClause =
     opts.band === 'rare'
@@ -461,7 +485,25 @@ export async function listIdentityCandidates(
     candidates: opts.namesOnly ? rows.filter((r) => r.looks_like_a_name) : rows,
     total: Number(total.rows[0]?.count ?? 0),
     matched: Number(matched.rows[0]?.count ?? 0),
+    // Ticket 16 Task 87 leftover: the screen showed the pre-filter total.
+    reviewable_total: await countReviewable(status),
   };
+}
+
+// The database-side estimate of the rule looksLikeAName applies per row:
+// 2–5 words, no app/place marker, on at most MAX_PHONES_FOR_ONE_PERSON numbers.
+async function countReviewable(status: string): Promise<number> {
+  const markers = NON_NAME_MARKERS.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM identity_candidates
+     WHERE status = $1
+       AND array_length(regexp_split_to_array(TRIM(evidence->>'sample_alias'), '\\s+'), 1) BETWEEN 2 AND 5
+       AND COALESCE((evidence->>'name_distinct_phones')::int, 0) <= $2
+       AND LOWER(evidence->>'sample_alias') !~ $3`,
+    [status, MAX_PHONES_FOR_ONE_PERSON, `(${markers})`],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 export interface IdentityTotals {
@@ -557,6 +599,11 @@ const NON_NAME_MARKERS = [
   'merge calls',
   'taxi',
   'ტაქსი',
+  'abano',
+  'batumi',
+  'tbilisi',
+  'kutaisi',
+  'rustavi',
   'service contacts',
   'at&t',
   'test referral',

@@ -265,7 +265,7 @@ threadsRouter.post(
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const threadId = Number(req.params.id);
-      const { message } = req.body as { message: string };
+      const { message, as_goal } = req.body as { message: string; as_goal?: unknown };
 
       const thread = await getThread(threadId, userId);
       if (thread === null) {
@@ -351,7 +351,10 @@ threadsRouter.post(
       const hardTimeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
       );
-      Promise.race([processChat(userId, threadId, message, runId), hardTimeout])
+      Promise.race([
+        processChat(userId, threadId, message, runId, undefined, { asGoal: as_goal === true }),
+        hardTimeout,
+      ])
         .then(async (result) => {
           // Waiting covers BOTH kinds of third-party dependency: an unanswered
           // ask AND an unanswered introduction request (ticket 5 item B2).

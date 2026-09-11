@@ -34,6 +34,7 @@ import {
   setTaskBrief,
   setTaskWake,
   updateTask,
+  Task,
 } from '../taskStore.service';
 import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
@@ -918,8 +919,23 @@ export async function mcpGetMyTasks(
       type: t.task_type,
       status: t.status,
       permission_granted: t.permission_granted,
+      // Ticket 16 Task 99: one truth on both screens — the plan's state rides
+      // next to the legacy flag, and `consent` says which one is in force.
+      plan_version: t.plan_version,
+      plan_approved_at: t.plan_approved_at,
+      consent: consentStateFor(t),
     })),
   };
+}
+
+type ConsentState = 'plan_approved' | 'plan_awaiting_yes' | 'legacy_grant' | 'none';
+
+function consentStateFor(
+  t: Pick<Task, 'permission_granted' | 'plan' | 'plan_proposed' | 'plan_approved_at'>,
+): ConsentState {
+  if (t.plan !== null && t.plan_approved_at !== null) return 'plan_approved';
+  if (t.plan_proposed !== null) return 'plan_awaiting_yes';
+  return t.permission_granted ? 'legacy_grant' : 'none';
 }
 
 export async function mcpUpdateTask(

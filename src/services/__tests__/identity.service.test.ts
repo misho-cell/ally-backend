@@ -14,6 +14,7 @@ import {
   applyIdentityDecisions,
   looksLikeAName,
   reviewableCandidate,
+  pairConfidence,
 } from '../identity.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -576,5 +577,17 @@ describe('loading the founder’s answers back (ticket 9 task 29)', () => {
     );
 
     expect(out).toEqual({ approved: 0, rejected: 0, skipped: 2, errors: [] });
+  });
+});
+
+describe('pairConfidence (Ticket 16 Task 91: the score is computed, not 0.8)', () => {
+  it('rises with agreeing owners and falls with how many people the name could be', () => {
+    expect(pairConfidence(3, 4)).toBe(0.5);
+    expect(pairConfidence(79, 3270)).toBe(0.02);
+    expect(pairConfidence(5, 2)).toBe(0.83);
+  });
+
+  it('keeps the old flat value when the name reach is unknown', () => {
+    expect(pairConfidence(3, null)).toBe(0.8);
   });
 });

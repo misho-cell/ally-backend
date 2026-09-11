@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeyForUser } from './neo4j.keys';
@@ -910,6 +911,25 @@ export async function setAdminAccess(
     [userId, enabled],
   );
   return result.rows[0] ?? null;
+}
+
+const PASSWORD_SALT_ROUNDS = 12;
+export const MIN_ADMIN_PASSWORD_CHARS = 10;
+
+/**
+ * Ticket 16 Task 16 (D177): the founder has never had a login of his own —
+ * every admin session was the staff account. This sets the password on HIS
+ * account so he signs in as himself; the hash is bcrypt like every login.
+ * Never logged, never returned.
+ */
+export async function setAdminPassword(userId: number, password: string): Promise<boolean> {
+  const hash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+  const result = await query(
+    `UPDATE "User" SET password = $2, "updatedAt" = NOW()
+     WHERE id = $1 AND "deletedAt" IS NULL`,
+    [userId, hash],
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function deactivateSubscription(userId: number): Promise<AdminPhoneSearchRow | null> {

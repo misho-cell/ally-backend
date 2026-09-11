@@ -31,6 +31,8 @@ import {
   AdminPhoneSearchRow,
   setAdminAccess,
   AdminAccessRow,
+  setAdminPassword,
+  MIN_ADMIN_PASSWORD_CHARS,
 } from '../../services/adminUsers.service';
 import { recordProductEvent } from '../../services/productEvents.service';
 import { getSession } from '../../db/neo4j/client';
@@ -1400,6 +1402,43 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin access]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Ticket 16 Task 16 (D177): a login of his own for the founder's account.
+//   POST /admin/users/:id/admin-password { password }   (≥ 10 characters)
+// The password is never logged and never echoed; the event records only who
+// set it for whom.
+adminRouter.post(
+  '/users/:id/admin-password',
+  param('id').isInt({ min: 1 }),
+  body('password').isString().isLength({ min: MIN_ADMIN_PASSWORD_CHARS }),
+  async (req: Request, res: Response<ApiResponse<{ user_id: number; password_set: boolean }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'პაროლი მინიმუმ 10 სიმბოლო' });
+      return;
+    }
+    try {
+      const targetId = Number(req.params.id);
+      const adminId = (req as AuthenticatedRequest).user.userId;
+      const ok = await setAdminPassword(
+        targetId,
+        String((req.body as { password: string }).password),
+      );
+      if (!ok) {
+        res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+        return;
+      }
+      void recordProductEvent(adminId, 'admin_password_set', { target_user_id: targetId });
+      // eslint-disable-next-line no-console
+      console.log(`[admin-access] admin ${adminId} set a password on user ${targetId}`);
+      res.status(200).json({ success: true, data: { user_id: targetId, password_set: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin password]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

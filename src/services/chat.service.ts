@@ -146,6 +146,7 @@ import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { isOnboardingUser } from './onboarding.service';
+import { looksLikeGoalRequest, goalTitleFrom } from './goalIntent';
 
 // A mode is a SITUATION — who is in the conversation and what state the
 // account is in — detected from hard facts, never from message content (the
@@ -2373,6 +2374,21 @@ async function markSearchSent(
   }
 }
 
+// Ticket 16 Task 96: the plan's two buttons are typed by the model and came
+// out misspelt („დამადასტურებრი" / „შევცვალო"). The two words the goal prompt
+// names are the only two the screen shows for approving or changing a plan.
+const APPROVE_LABEL = 'დამტკიცებულია';
+const CHANGE_LABEL = 'შევცვალოთ';
+const APPROVE_LIKE_RE = /^(დამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|approve)/i;
+const CHANGE_LIKE_RE = /^(შევცვალ|შეცვალ|შევცვლ|change the plan|change plan)/i;
+
+export function canonicalChoiceLabel(label: string): string {
+  const trimmed = label.trim();
+  if (APPROVE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= 2) return APPROVE_LABEL;
+  if (CHANGE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= 3) return CHANGE_LABEL;
+  return trimmed;
+}
+
 // Answers-12 item 11: the goals a run opened from an ordinary conversation.
 // The run that saved them ran without the goal prompt, so the plan is proposed
 // in an engine turn right after the reply (taskEngine.startPlanProposal).
@@ -3559,7 +3575,9 @@ async function runToolLoop(
       if (block.name === 'present_choices') {
         const input = block.input as { items?: unknown };
         if (Array.isArray(input.items)) {
-          choices = input.items.filter((i): i is string => typeof i === 'string');
+          choices = input.items
+            .filter((i): i is string => typeof i === 'string')
+            .map(canonicalChoiceLabel);
         }
       }
       if (block.name === 'set_task_result') {
@@ -3993,6 +4011,42 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
   return scrubbed;
 }
 
+export interface RunIntent {
+  /** The app said this message IS a goal („+ ახალი მიზანი"). */
+  asGoal?: boolean;
+}
+
+async function ensureGoalForRequest(
+  userId: string,
+  threadType: string,
+  threadId: number,
+  userMessage: string,
+  intent: RunIntent | undefined,
+): Promise<number | null> {
+  if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX)) return null;
+  if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
+  try {
+    if ((await getOpenTaskByThread(threadId)) !== null) return null;
+    const { id } = await createTask(
+      userId,
+      goalTitleFrom(userMessage),
+      userMessage.trim(),
+      'solve',
+      threadId,
+      'ask_first',
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[goal-intent] thread ${threadId}: goal ${id} opened from the message (${intent?.asGoal === true ? 'app flag' : 'stated need'})`,
+    );
+    return id;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[goal-intent] could not open the goal:', (err as Error).message);
+    return null;
+  }
+}
+
 export async function processChat(
   userId: string,
   threadId: number,
@@ -4001,11 +4055,16 @@ export async function processChat(
   // Answer-wake runs pass the verbatim answer so the reply provably carries
   // it (see ensureVerbatimQuote) — the model alone dropped it live (N-01).
   ensureQuoted?: EnsureQuoted,
+  intent?: RunIntent,
 ): Promise<ChatResult> {
   const thread = await getThread(threadId, userId);
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
+  // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
+  // answers, so the run is a goal run (plan, one yes, day one) by construction
+  // and not by the model's mood — five requests in two days never became one.
+  const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
   const language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
@@ -4167,6 +4226,9 @@ export async function processChat(
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
   const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
+  // A goal opened from the message ran as a goal run; if that run still left
+  // it without a plan, the proposal turn follows (it checks before waking).
+  if (autoGoalId !== null) freshGoals.push(autoGoalId);
   clearRunState(runId);
   if (freshGoals.length > 0) {
     void import('./taskEngine.service').then(({ startPlanProposal }) => {

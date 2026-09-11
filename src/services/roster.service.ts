@@ -66,8 +66,12 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
        SELECT a.alias
        FROM "UserAlias" a
        WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
+         AND LOWER(TRIM(a.alias)) <> 'first last'
        GROUP BY a.alias
-       ORDER BY COUNT(*) DESC, LENGTH(a.alias) DESC
+       -- Ticket 16 Task 88 leftover: a two-to-four-word label (a name and a
+       -- surname) beats a bare first name, then the most common wins.
+       ORDER BY (array_length(regexp_split_to_array(TRIM(a.alias), '\\s+'), 1) BETWEEN 2 AND 4) DESC,
+                COUNT(*) DESC, LENGTH(a.alias) DESC
        LIMIT 1
      ) top_alias ON TRUE
      WHERE f.field_type = 'member_of' AND f.is_public AND f.retracted_at IS NULL

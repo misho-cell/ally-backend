@@ -287,6 +287,18 @@ export async function createAsk(
           'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
     }
+    // Ticket 16 Task 99 (D119): a plan proposed and not yet approved is the
+    // wall too — goal 1619 carried a legacy grant from August, a proposed plan
+    // v1 and no approval, and an ask still went out. Until the yes, nothing new.
+    if ((task.plan_proposed ?? null) !== null && planInForce(task) === null) {
+      return {
+        sent: false,
+        reason: 'consent_pending',
+        error:
+          'გეგმა შეთავაზებულია და მფლობელის „კი" ჯერ არ არის (approve_task_plan). სანამ ' +
+          'გეგმა არ დამტკიცდება, ახალი კითხვა არავის არ მიდის — აჩვენე გეგმა და სთხოვე დასტური.',
+      };
+    }
   }
 
   // The recipient must be a registered member (format-independent lookup).
