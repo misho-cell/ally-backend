@@ -293,7 +293,20 @@ export const GOAL_STAGE_SQL = `CASE
  * brief, the next wake, how many wakes actually entered the thread, how many
  * asks went out, and the question the goal is blocked on right now.
  */
-export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
+export interface AdminGoalList {
+  goals: AdminGoalRow[];
+  /** Every goal this account has, whatever the page shows (Ticket 16 Task 64). */
+  total: number;
+  truncated: boolean;
+}
+
+/**
+ * Ticket 16 Task 64 (D168): three screens read three numbers for one thing —
+ * the admin card said 65, the connector 53, this list 50. Two of them were
+ * page sizes printed as totals. The page still holds 50 rows; the count that
+ * travels with it is the real one, and `truncated` says a page was cut.
+ */
+export async function adminListGoals(userId: string): Promise<AdminGoalList> {
   const result = await query<AdminGoalRow>(
     `SELECT t.id, t.title, t.status, t.brief, t.pending_question, t.pending_question_at,
             t.next_wake_at, t.thread_id, t.created_at,
@@ -314,5 +327,11 @@ export async function adminListGoals(userId: string): Promise<AdminGoalRow[]> {
     [userId, ADMIN_GOALS_LIMIT],
     QUERY_TIMEOUT_MS,
   );
-  return result.rows;
+  const total = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM tasks WHERE user_id = $1`,
+    [userId],
+  );
+  const goals = result.rows;
+  const count = Number(total.rows[0]?.count ?? goals.length);
+  return { goals, total: count, truncated: goals.length < count };
 }

@@ -1263,8 +1263,9 @@ adminRouter.get('/goals', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'user_id აუცილებელია' });
       return;
     }
-    const goals = await adminListGoals(String(userId));
-    res.status(200).json({ success: true, data: { goals } });
+    const list = await adminListGoals(String(userId));
+    // Ticket 16 Task 64: the page and its true total travel together.
+    res.status(200).json({ success: true, data: list });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goals]', error);

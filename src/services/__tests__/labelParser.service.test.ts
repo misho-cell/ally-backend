@@ -299,17 +299,32 @@ describe('parsePhonebookLabelsForUser (engine T2)', () => {
 });
 
 describe('getLabelQueueForUser', () => {
-  it("scopes to the caller's own queue and returns raw phone + alias (the in-app shape)", async () => {
+  it("scopes to the caller's own queue and returns the label with its date and source (Ticket 16 Task 77)", async () => {
     mockQuery.mockResolvedValue(
-      rows([{ phone: '+995500111333', alias: 'Nika Besos Dzma' }]) as never,
+      rows([
+        {
+          phone: '+995500111333',
+          alias: 'Nika Besos Dzma',
+          written_at: '2026-09-04T10:00:00.000Z',
+          source: 'app_import',
+        },
+      ]) as never,
     );
 
     const out = await getLabelQueueForUser('170751', 20);
 
-    expect(out).toEqual([{ phone: '+995500111333', alias: 'Nika Besos Dzma' }]);
+    expect(out).toEqual([
+      {
+        phone: '+995500111333',
+        alias: 'Nika Besos Dzma',
+        written_at: '2026-09-04T10:00:00.000Z',
+        source: 'app_import',
+      },
+    ]);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('contact_id = $1::int');
-    expect(params).toEqual(['170751', 20]);
+    // The backfill timestamp is excluded, so no row quotes it as a write date.
+    expect(params).toEqual(['170751', 20, ALIAS_PROVENANCE_BACKFILL_AT]);
   });
 });
 

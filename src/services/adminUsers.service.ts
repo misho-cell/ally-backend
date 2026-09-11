@@ -367,8 +367,14 @@ async function getOutcomes(userId: number): Promise<UserOutcomes> {
     query<{ count: string }>('SELECT COUNT(*) AS count FROM contact_insights WHERE user_id = $1', [
       id,
     ]),
-    query<{ count: string }>(
-      'SELECT COUNT(*) AS count FROM contact_facts WHERE submitted_by_user_id = $1',
+    // Ticket 16 Task 92 (D168): the counter only ever rose. A retracted fact is
+    // gone for every reader — the count that proves „this conversation wrote
+    // nothing" must fall when one is taken back. What is still stored is shown
+    // beside it, so nothing is hidden either.
+    query<{ live: string; retracted: string }>(
+      `SELECT COUNT(*) FILTER (WHERE retracted_at IS NULL) AS live,
+              COUNT(*) FILTER (WHERE retracted_at IS NOT NULL) AS retracted
+       FROM contact_facts WHERE submitted_by_user_id = $1`,
       [userId],
     ),
     // Ticket 7 task 5: the ladder counted per rung; 'none' = still unrecorded.
@@ -387,7 +393,8 @@ async function getOutcomes(userId: number): Promise<UserOutcomes> {
     introRequestsByStatus,
     introRequestsMediated: toNumber(mediated.rows[0]?.count),
     insightsSaved: toNumber(insights.rows[0]?.count),
-    factsSubmitted: toNumber(facts.rows[0]?.count),
+    factsSubmitted: toNumber(facts.rows[0]?.live),
+    factsRetracted: toNumber(facts.rows[0]?.retracted),
     searchOutcomesByRung: toLabeledCounts(searchRungs.rows),
   };
 }
@@ -630,6 +637,7 @@ const EMPTY_OUTCOMES: UserOutcomes = {
   introRequestsMediated: 0,
   insightsSaved: 0,
   factsSubmitted: 0,
+  factsRetracted: 0,
   searchOutcomesByRung: [],
 };
 const EMPTY_MEMORY: UserMemory = {

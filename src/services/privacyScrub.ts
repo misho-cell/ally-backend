@@ -107,12 +107,20 @@ const REDACTED_WRAPPED_RE = /\s*[([]\s*\*{0,2}\[hidden\]\*{0,2}\s*[)\]]/g;
 // be read as a blank number. Straight, Georgian and guillemet quotes alike.
 const REDACTED_QUOTED_RE = /\s*["„“'«]\s*\*{0,2}\[hidden\]\*{0,2}\s*["”'»]/g;
 const REDACTED_BARE_RE = /\s*\*{0,2}\[hidden\]\*{0,2}/g;
+// Ticket 16 Task 47 (Ticket 10 [3.1]): the other road to the same blank. A
+// field that is EMPTY — a removed number, an employer nobody filled in — is
+// quoted by the model and reaches the screen as „" with nothing inside. The
+// tool results no longer carry empty fields (dietToolResult), and anything
+// that still slips through loses its quotes here rather than reading as a
+// value the user cannot see. A pair with content is never touched.
+const EMPTY_QUOTES_RE = /\s*(?:["„“]\s*["”]|'\s*'|«\s*»|\(\s*\))/g;
 
 export function stripRedactionArtifactsForDisplay(text: string): string {
   return text
     .replace(REDACTED_WRAPPED_RE, '')
     .replace(REDACTED_QUOTED_RE, '')
     .replace(REDACTED_BARE_RE, '')
+    .replace(EMPTY_QUOTES_RE, '')
     .replace(/ {2,}/g, ' ')
     .replace(/ ([,.:;!?])/g, '$1');
 }

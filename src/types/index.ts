@@ -235,6 +235,8 @@ export interface UserOutcomes {
   introRequestsMediated: number;
   insightsSaved: number;
   factsSubmitted: number;
+  /** Ticket 16 Task 92: facts this account took back — shown, never folded into the count above. */
+  factsRetracted: number;
   // The ladder counted per rung (ticket 7 task 5); 'none' = searches with no
   // outcome recorded yet.
   searchOutcomesByRung: LabeledCount[];

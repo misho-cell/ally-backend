@@ -105,6 +105,7 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
   contact_exclusions: 'გამონაკლისები',
   contact_relationship_scores: 'ურთიერთობის შეფასებები',
   contact_facts: 'შენახული ფაქტები',
+  contact_facts_retracted: 'უკან წაღებული ფაქტები',
   contact_enrichment: 'გამდიდრებული მონაცემები',
   weak_tie_signals: 'სუსტი კავშირების სიგნალები',
   search_activity: 'ძებნის ისტორია',
@@ -265,6 +266,27 @@ export interface DataSummary {
   uncounted: string[];
 }
 
+async function splitRetractedFacts(userId: string, counts: Record<string, number>): Promise<void> {
+  if (counts.contact_facts === undefined) return;
+  try {
+    const result = await query<{ retracted: string }>(
+      `SELECT COUNT(*) AS retracted FROM contact_facts
+       WHERE submitted_by_user_id = $1 AND retracted_at IS NOT NULL`,
+      [userId],
+      ERASURE_TIMEOUT_MS,
+    );
+    const retracted = Number(result.rows[0]?.retracted ?? 0);
+    if (retracted === 0) return;
+    counts.contact_facts -= retracted;
+    counts.contact_facts_retracted = retracted;
+    if (counts.contact_facts === 0) delete counts.contact_facts;
+  } catch (err) {
+    // Best effort: the headline stays as counted rather than going missing.
+    // eslint-disable-next-line no-console
+    console.error('[privacy summary] retracted split failed:', (err as Error).message);
+  }
+}
+
 export async function getMyDataSummary(userId: string): Promise<DataSummary> {
   const counts: Record<string, number> = {};
   const uncounted: string[] = [];
@@ -298,6 +320,13 @@ export async function getMyDataSummary(userId: string): Promise<DataSummary> {
       }
     }),
   );
+
+  // Ticket 16 Task 92 (D168): „შენახული ფაქტები" counted retracted rows too, so
+  // the number could only rise and a retraction could never be proved. The
+  // headline is now the facts that still speak; the ones taken back keep their
+  // own line, so the page still reports everything that is held. OWNED_TABLES
+  // itself is untouched — erasure must keep deleting every row.
+  await splitRetractedFacts(userId, counts);
 
   // Phone-keyed data is theirs too. Left out of this loop it would be deleted
   // on erasure but never shown here — the page would under-report what we

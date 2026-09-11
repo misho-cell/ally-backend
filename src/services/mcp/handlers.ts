@@ -28,6 +28,7 @@ import {
 import {
   createTask,
   getMyTasks,
+  getMyTasksPage,
   getTaskById,
   grantTaskPermission,
   isTaskStatus,
@@ -910,8 +911,13 @@ export async function mcpGetMyTasks(
   args: { status?: string },
 ): Promise<McpToolPayload> {
   const status = args.status && isTaskStatus(args.status) ? args.status : undefined;
-  const tasks = await getMyTasks(userId, status);
+  const { tasks, total } = await getMyTasksPage(userId, status);
   return {
+    // Ticket 16 Task 64: the page size was read as the account's goal count.
+    total,
+    ...(tasks.length < total && {
+      note: `Showing ${tasks.length} of ${total} goals, newest activity first — say so if you name a number.`,
+    }),
     tasks: tasks.map((t) => ({
       task_ref: TASK_REF_PREFIX + String(t.id),
       title: scrubText(t.title),

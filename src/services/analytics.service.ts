@@ -148,7 +148,8 @@ async function getCoreUsage(): Promise<CoreUsageMetrics> {
         ANALYTICS_QUERY_TIMEOUT_MS,
       ),
       query<{ count: string }>(
-        'SELECT COUNT(*) AS count FROM contact_facts',
+        // Ticket 16 Task 92: a retracted fact is not stored knowledge.
+        'SELECT COUNT(*) AS count FROM contact_facts WHERE retracted_at IS NULL',
         [],
         ANALYTICS_QUERY_TIMEOUT_MS,
       ),

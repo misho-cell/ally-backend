@@ -126,7 +126,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('status AS label')) return rows([{ label: 'accepted', count: '5' }]);
   if (sql.includes('mediator_user_id = $1')) return rows([{ count: '2' }]);
   if (sql.includes('FROM contact_insights')) return rows([{ count: '13' }]);
-  if (sql.includes('FROM contact_facts')) return rows([{ count: '23' }]);
+  // Ticket 16 Task 92: live and retracted come back on one row now.
+  if (sql.includes('FROM contact_facts')) return rows([{ live: '23', retracted: '4' }]);
   if (sql.includes('FROM user_profile_kv'))
     return rows([{ key: 'role', value: 'founder', updated_at: '2026-06-01' }]);
   if (sql.includes('FROM user_private_context')) return rows([]);
@@ -279,6 +280,7 @@ describe('getAdminUserDetail', () => {
     ]);
     expect(profile?.outcomes.introRequestsMade).toBe(5);
     expect(profile?.outcomes.factsSubmitted).toBe(23);
+    expect(profile?.outcomes.factsRetracted).toBe(4);
     expect(profile?.memory.profile).toEqual([
       { key: 'role', value: 'founder', updatedAt: '2026-06-01' },
     ]);

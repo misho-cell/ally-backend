@@ -125,3 +125,36 @@ describe('getReferralFunnel', () => {
     expect(call?.[1]).toEqual([]);
   });
 });
+
+describe('getReferralFunnel — Ticket 16 Task 89: only comparable steps may be drawn', () => {
+  it('separates the three event counts from the all-time registration count', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('GROUP BY event')) {
+        return Promise.resolve(
+          rows([
+            { event: 'issued', count: '11' },
+            { event: 'sent', count: '3' },
+            { event: 'opened', count: '26' },
+          ]) as never,
+        );
+      }
+      if (sql.includes('MIN(created_at)')) {
+        return Promise.resolve(rows([{ started_at: '2026-09-08T00:00:00.000Z' }]) as never);
+      }
+      if (sql.includes('"createdAt" >=')) return Promise.resolve(rows([{ count: '2' }]) as never);
+      return Promise.resolve(rows([{ count: '799' }]) as never);
+    });
+
+    const funnel = await getReferralFunnel();
+
+    expect(funnel.comparable_steps).toEqual([
+      { step: 'link_shown', count: 11 },
+      { step: 'sent', count: 3 },
+      { step: 'opened', count: 26 },
+    ]);
+    // The number the screen printed as 7,264% of link_shown is not a step.
+    expect(funnel.comparable_steps.some((s) => s.step === ('registered' as never))).toBe(false);
+    expect(funnel.registered).toBe(799);
+    expect(funnel.registered_since_tracking).toBe(2);
+  });
+});

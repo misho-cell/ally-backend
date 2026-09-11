@@ -239,9 +239,12 @@ describe('adminListGoals — Q-29, the per-goal admin view', () => {
 
     const out = await adminListGoals('501');
 
-    expect(out).toHaveLength(1);
-    expect(out[0].wakes_delivered).toBe(8);
-    expect(out[0].asks_sent).toBe(2);
+    expect(out.goals).toHaveLength(1);
+    expect(out.goals[0].wakes_delivered).toBe(8);
+    expect(out.goals[0].asks_sent).toBe(2);
+    // Ticket 16 Task 64: the page carries the account's real goal count.
+    expect(out.total).toBe(1);
+    expect(out.truncated).toBe(false);
   });
 });
 

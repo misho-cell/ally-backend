@@ -407,6 +407,26 @@ export async function clearTaskWake(taskId: number): Promise<void> {
 }
 
 /** The user's tasks (open by default) — how a fresh chat learns what it was doing. */
+/**
+ * The same page as getMyTasks, with the account's real goal count beside it
+ * (Ticket 16 Task 64): the connector printed the page size as the total.
+ */
+export async function getMyTasksPage(
+  userId: string,
+  status?: TaskStatus,
+): Promise<{ tasks: Task[]; total: number }> {
+  const [tasks, total] = await Promise.all([
+    getMyTasks(userId, status),
+    query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM tasks
+       WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)`,
+      [userId, status ?? null],
+      QUERY_TIMEOUT_MS,
+    ),
+  ]);
+  return { tasks, total: Number(total.rows[0]?.count ?? tasks.length) };
+}
+
 export async function getMyTasks(userId: string, status?: TaskStatus): Promise<Task[]> {
   const result = await query<Task>(
     `SELECT id, title, description, task_type, status, permission_granted,

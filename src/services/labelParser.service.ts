@@ -420,9 +420,25 @@ export async function reprocessSavedOccupationFacts(): Promise<SavedFactReproces
   return { upgraded, unchanged };
 }
 
+/**
+ * The one-time backfill that gave every pre-existing alias row the same
+ * created_at. A date equal to it is not when the label was written, so it is
+ * never quoted as one.
+ */
+export const ALIAS_PROVENANCE_BACKFILL_AT = '2026-08-22T11:40:18.341860Z';
+
 export interface OwnLabelQueueEntry {
   phone: string;
   alias: string;
+  /**
+   * Ticket 16 Task 77: when this label was written and by what path. The
+   * crowd evidence store has carried both since D40; the user's own queue
+   * handed the assistant a bare word with no way to say how old it is. A
+   * label written today and one carried over from the old Ally import read
+   * the same on screen without them. Null when the writer stamped none.
+   */
+  written_at: string | null;
+  source: string | null;
 }
 
 /**
@@ -437,9 +453,21 @@ export async function getLabelQueueForUser(
   limit: number,
 ): Promise<OwnLabelQueueEntry[]> {
   const result = await query<OwnLabelQueueEntry>(
-    `SELECT phone, alias FROM label_parse_queue
-     WHERE contact_id = $1::int ORDER BY id DESC LIMIT $2::int`,
-    [userId, limit],
+    `SELECT q.phone, q.alias,
+            -- The queue row's own date is when we noticed the label; the alias
+            -- row's is when the person actually wrote it. Prefer the truer one,
+            -- and never quote a date that is really the backfill's timestamp.
+            (SELECT MIN(a.created_at) FROM "UserAlias" a
+              WHERE a.phone = q.phone AND a."contactId" = q.contact_id
+                AND a.alias = q.alias AND a.created_at <> $3::timestamptz)
+              AS written_at,
+            (SELECT MIN(a.source) FROM "UserAlias" a
+              WHERE a.phone = q.phone AND a."contactId" = q.contact_id
+                AND a.alias = q.alias AND a.source IS NOT NULL)
+              AS source
+     FROM label_parse_queue q
+     WHERE q.contact_id = $1::int ORDER BY q.id DESC LIMIT $2::int`,
+    [userId, limit, ALIAS_PROVENANCE_BACKFILL_AT],
     PARSE_TIMEOUT_MS,
   );
   return result.rows;
@@ -484,7 +512,6 @@ const RAW_LABEL_CONTRIBUTOR_SAMPLE = 20;
  * so rows at or before this instant are counted as undated instead of dated.
  * Everything strictly after it is a genuine write.
  */
-export const ALIAS_PROVENANCE_BACKFILL_AT = '2026-08-22T11:40:18.341860Z';
 
 /**
  * D40 (ticket 8 task 14): one contact's RAW labels, aggregated, with the

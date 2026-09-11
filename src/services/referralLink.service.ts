@@ -97,7 +97,21 @@ export interface ReferralFunnel {
   // item 3's real 'sent'. This is the invitation count.
   sent: number;
   opened: number;
+  /**
+   * Every account ever attributed to this user, all-time, by any path — the
+   * phone-based one predates this table. NOT a step of the funnel above.
+   */
   registered: number;
+  /**
+   * Ticket 16 Task 89 (D168): the screen divided each number by `link_shown`
+   * and printed „236%" and „7,264%". Only these three count the same
+   * population over the same window, so only these may be drawn as a funnel
+   * or turned into a percentage; `registered` is stated separately and never
+   * over the same base.
+   */
+  comparable_steps: { step: 'link_shown' | 'sent' | 'opened'; count: number }[];
+  /** The part of `registered` that happened after the three above started counting. */
+  registered_since_tracking: number | null;
   note: string;
 }
 
@@ -117,7 +131,10 @@ const FUNNEL_NOTE =
   'how many times the assistant showed the user their own link — a tool call, not a share. ' +
   "'registered' counts every account ever attributed to this user (all-time, any attribution " +
   "path — the phone-based one predates this table); 'link_shown'/'sent'/'opened' only exist " +
-  'since this feature shipped. Not yet a directly comparable conversion funnel.';
+  'since this feature shipped. Draw a funnel or a percentage ONLY over ' +
+  "'comparable_steps'; 'registered' shares no base with them and a percentage of it against " +
+  "'link_shown' is meaningless (it read 7,264% on 11 September). " +
+  "'registered_since_tracking' is the only registration figure that overlaps their window.";
 
 /** The three-step funnel for one user, or the whole product when omitted. */
 export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel> {
@@ -135,12 +152,48 @@ export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel
     userId ? [userId] : [],
     LINK_TIMEOUT_MS,
   );
+  // The window the three event counts cover: nothing before the first event
+  // row can be compared with them.
+  const since = await query<{ started_at: string | null }>(
+    userId
+      ? `SELECT MIN(created_at) AS started_at FROM referral_link_events WHERE user_id = $1`
+      : `SELECT MIN(created_at) AS started_at FROM referral_link_events`,
+    userId ? [userId] : [],
+    LINK_TIMEOUT_MS,
+  );
+  const startedAt = since.rows[0]?.started_at ?? null;
+  const registeredSince =
+    startedAt === null
+      ? null
+      : Number(
+          (
+            await query<{ count: string }>(
+              userId
+                ? `SELECT COUNT(*) AS count FROM "User"
+                   WHERE "inviterReferralUserId" = $1::int AND "createdAt" >= $2`
+                : `SELECT COUNT(*) AS count FROM "User"
+                   WHERE "inviterReferralUserId" IS NOT NULL AND "createdAt" >= $1`,
+              userId ? [userId, startedAt] : [startedAt],
+              LINK_TIMEOUT_MS,
+            )
+          ).rows[0]?.count ?? 0,
+        );
+
   const byEvent = new Map(eventCounts.rows.map((r) => [r.event, Number(r.count)]));
+  const linkShown = byEvent.get('issued') ?? 0;
+  const sent = byEvent.get('sent') ?? 0;
+  const opened = byEvent.get('opened') ?? 0;
   return {
-    link_shown: byEvent.get('issued') ?? 0,
-    sent: byEvent.get('sent') ?? 0,
-    opened: byEvent.get('opened') ?? 0,
+    link_shown: linkShown,
+    sent,
+    opened,
     registered: Number(registered.rows[0]?.count ?? 0),
+    comparable_steps: [
+      { step: 'link_shown', count: linkShown },
+      { step: 'sent', count: sent },
+      { step: 'opened', count: opened },
+    ],
+    registered_since_tracking: registeredSince,
     note: FUNNEL_NOTE,
   };
 }
