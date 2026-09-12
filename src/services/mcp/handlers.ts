@@ -923,7 +923,14 @@ export async function mcpGetMyTasks(
       description: t.description === null ? null : scrubText(t.description),
       type: t.task_type,
       status: t.status,
-      permission_granted: t.permission_granted,
+      // Ticket 17 Task 99: what the ask gate will actually DO, not the raw
+      // column. Goal 1619 read `permission_granted: true` beside
+      // `plan_approved_at: null` — a legacy August grant with a proposed plan
+      // and no yes — and the two were read as a disagreement about whether the
+      // yes ever happened. They were not: the gate refuses that goal, because a
+      // proposed-and-unapproved plan is the wall too (D119). Now the field says
+      // so, and `consent` below says which yes is missing.
+      permission_granted: consentStateFor(t) !== 'plan_awaiting_yes' && t.permission_granted,
       // Ticket 16 Task 99: one truth on both screens — the plan's state rides
       // next to the legacy flag, and `consent` says which one is in force.
       plan_version: t.plan_version,
