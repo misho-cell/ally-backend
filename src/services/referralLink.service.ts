@@ -36,8 +36,12 @@ export interface InviteLink {
  * First draft — the wording is the founder's to change, and one line does it.
  */
 function shareText(link: string): string {
+  // No em dash. The display scrubber (Ticket 11 Task 1) rewrites one into a
+  // comma on the way out, so a dash here would mean the message that reaches
+  // the share sheet is not the message this function wrote. Caught by the
+  // run_complete test, which compared the two.
   return (
-    'Netai-ს ვიყენებ — ეხმარება ნაცნობებში იპოვო ის ადამიანი, ვინც მართლა გჭირდება. ' +
+    'Netai-ს ვიყენებ: ეხმარება ნაცნობებში იპოვო ის ადამიანი, ვინც მართლა გჭირდება. ' +
     `თუ დაგაინტერესებს, აქ არის: ${link}`
   );
 }

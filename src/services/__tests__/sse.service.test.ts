@@ -74,6 +74,31 @@ describe('sse.service phone scrubbing', () => {
     unsubscribe();
   });
 
+  /**
+   * Ticket 17 Task 39, the frontend's own catch on build c5baaa8: the tool
+   * result never leaves the backend, so the share button was picking whichever
+   * paragraph of the answer contained a link. The text now travels as its own
+   * field, and is absent when no invite link was asked for — so the client can
+   * tell "share this" from "there is nothing to share".
+   */
+  it('carries the ready-to-send invitation as its own field, and omits it otherwise', () => {
+    const { res, events } = fakeStream();
+    const unsubscribe = subscribeUserEvents(USER_ID, res);
+    // No em dash, because the display scrub rewrites one — the production text
+    // avoids it for exactly that reason, so what is written is what is sent.
+    const text = 'Netai-ს ვიყენებ: აქ არის https://www.netai.guru/join?ref=ABCD1234';
+
+    emitRunComplete(USER_ID, 1, 'run1', { reply: 'აი შენი ბმული.', share_text: text });
+    emitRunComplete(USER_ID, 1, 'run2', { reply: 'სხვა პასუხი.' });
+
+    const [withText, without] = events().filter(
+      (e) => (e as { event: string }).event === 'run_complete',
+    ) as { share_text?: string }[];
+    expect(withText?.share_text).toBe(text);
+    expect(without && 'share_text' in without).toBe(false);
+    unsubscribe();
+  });
+
   it('keeps ISO dates and short numbers intact', () => {
     const { res, events } = fakeStream();
     const unsubscribe = subscribeUserEvents(USER_ID, res);

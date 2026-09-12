@@ -161,6 +161,15 @@ interface RunCompletePayload {
   // Structured task outcome (who/when/where/topic) the model filled via
   // set_task_result — the client renders it as a result card.
   result?: unknown;
+  /**
+   * Ticket 17 Task 39: the ready-to-send invitation, verbatim as the tool
+   * wrote it, when `get_invite_link` ran during this turn. The share button
+   * sends THIS. It exists because the frontend was otherwise reduced to
+   * picking whichever paragraph of the answer contained a link — which holds
+   * only while the model quotes the text whole, and the one message that goes
+   * out under a user's own name should not rest on that.
+   */
+  share_text?: string;
 }
 
 /** Final answer for a run — the frontend renders this as the assistant message. */
@@ -175,6 +184,12 @@ export function emitRunComplete(
     options: scrubDeep(payload.options),
     choices: scrubDeep(payload.choices),
     result: scrubDeep(payload.result),
+    // The share text carries the user's OWN invite link and no third party's
+    // anything, but it goes through the same scrub as every other field —
+    // nothing reaches a client unscrubbed because of what we believe is in it.
+    ...(payload.share_text !== undefined && {
+      share_text: displayText(payload.share_text),
+    }),
   };
   emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...safe });
 }

@@ -82,9 +82,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'bridges rather than the target itself, or for "who could introduce me to…". Returns ' +
       'each target with the connector who links them. Prefer this over asking the user "do ' +
       'you know anyone in X?" — surface the people yourself. Match depth to distance: at home ' +
-      'one hop is usually enough; cross-border, go deeper. `employer`/`jobPosition` are often ' +
-      "empty even for a real match — those only show when public or the searcher's own, rare " +
-      'this deep in the network. A result may still carry `signal_strength` (0–1) with no ' +
+      'one hop is usually enough; cross-border, go deeper. `employer`/`jobPosition` come ' +
+      "either from a confirmed fact or from the person's own saved label. When they came from " +
+      'the label the row carries `role_source: "label"` — then say it as what it is ("the ' +
+      'network saves him as TBC Capital") and NEVER as a confirmed fact; without that field ' +
+      'the value is confirmed. Both are often empty even for a real match. A result may still ' +
+      'carry `signal_strength` (0–1) with no ' +
       'visible fields at all — the query matched something real about this person that stays ' +
       'private. Treat it as genuine: rank and mention these people normally, never ask what ' +
       'the hidden match was, never guess at it.',

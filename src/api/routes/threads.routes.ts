@@ -382,6 +382,8 @@ threadsRouter.post(
             ...(result.options && { options: result.options }),
             ...(result.choices && { choices: result.choices }),
             ...(result.taskResult && { result: result.taskResult }),
+            // Ticket 17 Task 39: the share button reads this, not the prose.
+            ...(result.shareText && { share_text: result.shareText }),
           });
           // Title from the FINAL, post-strip reply (task 20) — never from a draft.
           if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);

@@ -1633,7 +1633,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_second_degree: {
     name: 'search_second_degree',
     description:
-      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` are often empty here even for a real match — that field only shows when it is public or the searcher's own, which is rare this deep in the network; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` may come from a confirmed fact OR from the person's own saved label — when they came from the label the row carries `role_source: label`, and then you must say it as what it is (the network saves him as TBC Capital) and NEVER as a confirmed fact; without that field the value is confirmed. Both are often empty even for a real match; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
       ' WHEN: for one ring beyond their contacts.',
     input_schema: {
       type: 'object',
@@ -2438,6 +2438,32 @@ function takeCreatedGoals(runId: string): number[] {
   return list;
 }
 
+/**
+ * Ticket 17 Task 39, the frontend's own catch (12 Sep, build c5baaa8).
+ *
+ * `get_invite_link` returns the ready-to-send message, but the tool result
+ * never leaves this process — the client sees only the assistant's prose. So
+ * the share button was picking the paragraph that contained a link and sharing
+ * that, which works only while the model happens to quote the text whole. The
+ * one message that goes out under a user's own name should not depend on a
+ * model's paraphrase.
+ *
+ * The text the tool produced rides the run instead, and `run_complete` carries
+ * it verbatim. The client reads the field and stops parsing prose.
+ */
+const runShareText = new Map<string, string>();
+
+function noteShareText(runId: string | undefined, value: unknown): void {
+  if (!runId || typeof value !== 'string' || value.trim() === '') return;
+  runShareText.set(runId, value);
+}
+
+function takeShareText(runId: string): string | undefined {
+  const text = runShareText.get(runId);
+  runShareText.delete(runId);
+  return text;
+}
+
 // --- Own-number passthrough hardening (ticket 6 close, answer 15) -----------
 // get_own_contact_number returns the number wrapped in ⟦own⟧ markers and asks
 // the model to copy them verbatim — but a model that reformats the number or
@@ -2473,6 +2499,7 @@ function clearRunState(runId: string): void {
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
   runPendingItems.delete(runId);
+  runShareText.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -2820,8 +2847,13 @@ async function executeToolCall(
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
       return inviteContact(userId, String(input['phone'] ?? ''), lang);
     }
-    case 'get_invite_link':
-      return getInviteLink(userId);
+    case 'get_invite_link': {
+      const invite = await getInviteLink(userId);
+      // Ticket 17 Task 39: the sendable text rides the run to run_complete, so
+      // the share button never has to find it inside the model's prose.
+      noteShareText(runId, invite.share_text);
+      return invite;
+    }
     case 'get_unresolved_labels': {
       const rawLimit = Number(input['limit']);
       const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
@@ -3495,6 +3527,12 @@ export interface ChatResult {
   /** The run sent an introduction request — the thread is now waiting on a third party. */
   requestCreated?: boolean;
   taskResult?: TaskResultCard;
+  /**
+   * Ticket 17 Task 39: the ready-to-send invitation, when `get_invite_link`
+   * ran during this turn. The share button sends this verbatim instead of
+   * hunting for a link inside the model's prose.
+   */
+  shareText?: string;
   /** The run could not produce an answer — reply carries the failure text; route must surface run_error. */
   runFailed?: boolean;
 }
@@ -4410,6 +4448,9 @@ export async function processChat(
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
   const pendingItems = takePendingItems(runId);
+  // Read before clearRunState drops it — the share button needs the text the
+  // tool wrote, not whatever the model quoted (Task 39).
+  const shareText = takeShareText(runId);
   const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
   // A goal opened from the message ran as a goal run; if that run still left
   // it without a plan, the proposal turn follows (it checks before waking).
@@ -4466,6 +4507,7 @@ export async function processChat(
     ...(storedChoices && { choices: storedChoices }),
     ...(requestCreated && { requestCreated: true }),
     ...(taskResult && { taskResult }),
+    ...(shareText !== undefined && { shareText }),
   };
 }
 
