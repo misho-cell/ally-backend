@@ -85,6 +85,7 @@ describe('recordLinkOpened', () => {
 describe('getReferralFunnel', () => {
   it('combines link events and the already-existing registration attribution', async () => {
     mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('bool_or')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM referral_link_events'))
         return Promise.resolve(
           rows([
@@ -128,22 +129,7 @@ describe('getReferralFunnel', () => {
 
 describe('getReferralFunnel — Ticket 16 Task 89: only comparable steps may be drawn', () => {
   it('separates the three event counts from the all-time registration count', async () => {
-    mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('GROUP BY event')) {
-        return Promise.resolve(
-          rows([
-            { event: 'issued', count: '11' },
-            { event: 'sent', count: '3' },
-            { event: 'opened', count: '26' },
-          ]) as never,
-        );
-      }
-      if (sql.includes('MIN(created_at)')) {
-        return Promise.resolve(rows([{ started_at: '2026-09-08T00:00:00.000Z' }]) as never);
-      }
-      if (sql.includes('"createdAt" >=')) return Promise.resolve(rows([{ count: '2' }]) as never);
-      return Promise.resolve(rows([{ count: '799' }]) as never);
-    });
+    routeFunnel({});
 
     const funnel = await getReferralFunnel();
 
@@ -156,5 +142,86 @@ describe('getReferralFunnel — Ticket 16 Task 89: only comparable steps may be 
     expect(funnel.comparable_steps.some((s) => s.step === ('registered' as never))).toBe(false);
     expect(funnel.registered).toBe(799);
     expect(funnel.registered_since_tracking).toBe(2);
+  });
+});
+
+/**
+ * Ticket 17 Task 89. The numbers are the ones the screen actually drew on
+ * 12 September — link_shown 12, sent 4, opened 27 — which it turned into
+ * „sent 33% · opened 675% · registered by link 2959%".
+ */
+function routeFunnel(people: Partial<Record<string, string | null>>): void {
+  mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('bool_or')) return Promise.resolve(rows([people]) as never);
+    if (sql.includes('GROUP BY event')) {
+      return Promise.resolve(
+        rows([
+          { event: 'issued', count: '11' },
+          { event: 'sent', count: '3' },
+          { event: 'opened', count: '26' },
+        ]) as never,
+      );
+    }
+    if (sql.includes('MIN(created_at)')) {
+      return Promise.resolve(rows([{ started_at: '2026-09-08T00:00:00.000Z' }]) as never);
+    }
+    if (sql.includes('"createdAt" >=')) return Promise.resolve(rows([{ count: '2' }]) as never);
+    return Promise.resolve(rows([{ count: '799' }]) as never);
+  });
+}
+
+describe('getReferralFunnel — Ticket 17 Task 89: the backend does the arithmetic', () => {
+  const LIVE_PEOPLE = {
+    window_start: '2026-08-27 16:54:35.838486+00',
+    issued_users: '3',
+    sent_users: '3',
+    opened_users: '4',
+    issued_and_sent: '3',
+    sent_and_opened: '3',
+  };
+
+  it('hands the screen finished percentages, over people, from the live counts', async () => {
+    routeFunnel(LIVE_PEOPLE);
+    const funnel = await getReferralFunnel();
+
+    expect(funnel.rates).toEqual([
+      { of: 'sent', per: 'link_shown', percent: 100, people: 3, of_people: 3 },
+      { of: 'opened', per: 'sent', percent: 100, people: 3, of_people: 3 },
+    ]);
+    expect(funnel.rates_blocked).toBeNull();
+  });
+
+  it('can never draw a percentage above 100, whatever the event counts do', async () => {
+    // 27 opens of 4 shared links is where 675% came from. In people it is 3
+    // of 3 — the set of people whose link was opened after sharing it cannot
+    // be larger than the set of people who shared.
+    routeFunnel({ ...LIVE_PEOPLE, opened_users: '4000' });
+    const funnel = await getReferralFunnel();
+    for (const rate of funnel.rates) expect(rate.percent).toBeLessThanOrEqual(100);
+  });
+
+  it('withholds every rate, with a reason, until all three steps have a shared window', async () => {
+    routeFunnel({ ...LIVE_PEOPLE, window_start: null });
+    const funnel = await getReferralFunnel();
+
+    expect(funnel.rates).toEqual([]);
+    expect(funnel.rates_blocked).toContain('no such window yet');
+    // The counts themselves are still there — only the division is withheld.
+    expect(funnel.comparable_steps).toHaveLength(3);
+  });
+
+  it('drops a rate whose denominator is nobody rather than dividing by zero', async () => {
+    routeFunnel({ ...LIVE_PEOPLE, sent_users: '0', sent_and_opened: '0' });
+    const funnel = await getReferralFunnel();
+
+    expect(funnel.rates.map((r) => r.of)).toEqual(['sent']);
+  });
+
+  it('tells the screen to draw only what it was given', async () => {
+    routeFunnel(LIVE_PEOPLE);
+    const funnel = await getReferralFunnel();
+
+    expect(funnel.note).toContain('DRAW ONLY THE PERCENTAGES');
+    expect(funnel.note).toContain('675%');
   });
 });

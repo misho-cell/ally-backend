@@ -112,6 +112,26 @@ export interface ReferralFunnel {
   comparable_steps: { step: 'link_shown' | 'sent' | 'opened'; count: number }[];
   /** The part of `registered` that happened after the three above started counting. */
   registered_since_tracking: number | null;
+  /**
+   * Ticket 17 Task 89 — owning what Ticket 16 got wrong.
+   *
+   * I reported that the impossible percentages „are no longer computed". They
+   * still are. Only FIELDS were added last round; every number the screen was
+   * dividing was left exactly where it was, and a note asking the screen not
+   * to divide is not a fix. Worse, the note was wrong too: „draw a percentage
+   * only over comparable_steps" still yields 675%, because those three count
+   * EVENTS — 27 opens of 4 shared links is a true 675% and a meaningless one.
+   *
+   * So the arithmetic moves here. `rates` holds the only percentages that may
+   * be drawn, each one already computed, each one a share of PEOPLE inside a
+   * set that contains them — so none can pass 100%. The screen renders this
+   * list and divides nothing. When an honest rate cannot be computed the list
+   * is empty and `rates_blocked` says why, and then the screen draws no
+   * percentage at all.
+   */
+  rates: { of: string; per: string; percent: number; people: number; of_people: number }[];
+  /** Why `rates` is empty. Null when it is not. */
+  rates_blocked: string | null;
   note: string;
 }
 
@@ -131,10 +151,98 @@ const FUNNEL_NOTE =
   'how many times the assistant showed the user their own link — a tool call, not a share. ' +
   "'registered' counts every account ever attributed to this user (all-time, any attribution " +
   "path — the phone-based one predates this table); 'link_shown'/'sent'/'opened' only exist " +
-  'since this feature shipped. Draw a funnel or a percentage ONLY over ' +
-  "'comparable_steps'; 'registered' shares no base with them and a percentage of it against " +
-  "'link_shown' is meaningless (it read 7,264% on 11 September). " +
-  "'registered_since_tracking' is the only registration figure that overlaps their window.";
+  'since this feature shipped. ' +
+  "DRAW ONLY THE PERCENTAGES IN 'rates', AND COMPUTE NONE. Every count here is a count of " +
+  "EVENTS, and dividing two of them is how the screen read 675% ('opened') on 12 September — " +
+  '27 opens of 4 shared links is a true ratio and a meaningless one. The percentages that ' +
+  "mean something are counts of PEOPLE inside the window all three steps cover; 'rates' " +
+  "holds them, already computed, and is empty with a reason in 'rates_blocked' when none can " +
+  "be. 'registered' shares no base with the three steps at all (a percentage of it against " +
+  "'link_shown' read 6,658% the same day); 'registered_since_tracking' is the only " +
+  'registration figure that overlaps their window.';
+
+/** The three events, and the only window all three of them cover. */
+const EVENTS = ['issued', 'sent', 'opened'] as const;
+
+interface RatePeople {
+  window_start: string | null;
+  issued_users: string;
+  sent_users: string;
+  opened_users: string;
+  issued_and_sent: string;
+  sent_and_opened: string;
+}
+
+/**
+ * The percentages the backend is willing to stand behind, in people.
+ *
+ * Two conditions, and a rate is withheld unless both hold. First, the window:
+ * `sent` only means the share action since 27 August (migration 091 renamed
+ * the old rows), while `issued` and `opened` run from 24 August — so only the
+ * overlap of all three can be compared, and if any of the three has no rows at
+ * all there is no overlap to find. Second, containment: each rate counts the
+ * people who did BOTH steps, over the people who did the earlier one. A share
+ * of a set that contains it cannot exceed 100%, whatever the event counts do.
+ */
+async function ratesFor(userId?: string): Promise<{
+  rates: ReferralFunnel['rates'];
+  blocked: string | null;
+}> {
+  const where = userId ? 'WHERE user_id = $1' : '';
+  const result = await query<RatePeople>(
+    `WITH firsts AS (
+       SELECT event, MIN(created_at) AS first_seen
+       FROM referral_link_events ${where}
+       GROUP BY event
+     ),
+     win AS (
+       SELECT MAX(first_seen) AS start_at, COUNT(*) AS events_present FROM firsts
+     ),
+     per_user AS (
+       SELECT e.user_id,
+              bool_or(e.event = 'issued') AS issued,
+              bool_or(e.event = 'sent')   AS sent,
+              bool_or(e.event = 'opened') AS opened
+       FROM referral_link_events e, win w
+       WHERE e.created_at >= w.start_at ${userId ? 'AND e.user_id = $1' : ''}
+       GROUP BY e.user_id
+     )
+     SELECT (SELECT CASE WHEN events_present = ${EVENTS.length}
+                         THEN start_at::text END FROM win)      AS window_start,
+            COUNT(*) FILTER (WHERE issued)::text                AS issued_users,
+            COUNT(*) FILTER (WHERE sent)::text                  AS sent_users,
+            COUNT(*) FILTER (WHERE opened)::text                AS opened_users,
+            COUNT(*) FILTER (WHERE issued AND sent)::text       AS issued_and_sent,
+            COUNT(*) FILTER (WHERE sent AND opened)::text       AS sent_and_opened
+     FROM per_user`,
+    userId ? [userId] : [],
+    LINK_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  if (!row || row.window_start === null) {
+    return {
+      rates: [],
+      blocked:
+        'All three of link_shown, sent and opened must have happened before any of them can be ' +
+        'compared: they started counting on different days, so only the window all three cover ' +
+        'is comparable, and there is no such window yet. Draw the counts, draw no percentage.',
+    };
+  }
+  const rates: ReferralFunnel['rates'] = [];
+  const add = (of: string, per: string, people: number, ofPeople: number): void => {
+    if (ofPeople === 0) return;
+    rates.push({
+      of,
+      per,
+      percent: Math.round((people / ofPeople) * 100),
+      people,
+      of_people: ofPeople,
+    });
+  };
+  add('sent', 'link_shown', Number(row.issued_and_sent), Number(row.issued_users));
+  add('opened', 'sent', Number(row.sent_and_opened), Number(row.sent_users));
+  return { rates, blocked: null };
+}
 
 /** The three-step funnel for one user, or the whole product when omitted. */
 export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel> {
@@ -179,6 +287,8 @@ export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel
           ).rows[0]?.count ?? 0,
         );
 
+  const { rates, blocked } = await ratesFor(userId);
+
   const byEvent = new Map(eventCounts.rows.map((r) => [r.event, Number(r.count)]));
   const linkShown = byEvent.get('issued') ?? 0;
   const sent = byEvent.get('sent') ?? 0;
@@ -194,6 +304,8 @@ export async function getReferralFunnel(userId?: string): Promise<ReferralFunnel
       { step: 'opened', count: opened },
     ],
     registered_since_tracking: registeredSince,
+    rates,
+    rates_blocked: blocked,
     note: FUNNEL_NOTE,
   };
 }
