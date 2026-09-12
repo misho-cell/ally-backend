@@ -9,6 +9,7 @@ import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { normalizePhone } from '../phone';
 import { collapseMergedPhones } from './mergedIdentities';
+import { rolesFromLabels } from './labelEmployer';
 import {
   applyRelationshipWarmth,
   relationshipTouchedPhones,
@@ -457,73 +458,96 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
     // later precisely because only the DIRECT tools carried exclusions.
-    const [exclusions, signalStrength, relationshipTouched, accountStates] = await Promise.all([
-      fetchExclusionsForPhones(
-        userId,
-        rows.map((r) => r.phone),
-      ),
-      fetchSignalStrength(
-        rows.map((r) => r.phone),
-        regexTerms,
-      ),
-      // D34: an edge the SEARCHER recorded touching a result lifts its
-      // warmth. Membership only — the relation text never enters a response.
-      relationshipTouchedPhones(
-        userId,
-        rows.map((r) => r.phone),
-      ),
-      // Rule 13: whether each target has ever actually used Netai, not merely
-      // whether an account row resolved.
-      fetchAccountStates([
-        ...rows.map((r) => r.phone),
-        ...rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
-      ]),
-    ]);
+    const [exclusions, signalStrength, relationshipTouched, accountStates, labelRoles] =
+      await Promise.all([
+        fetchExclusionsForPhones(
+          userId,
+          rows.map((r) => r.phone),
+        ),
+        fetchSignalStrength(
+          rows.map((r) => r.phone),
+          regexTerms,
+        ),
+        // D34: an edge the SEARCHER recorded touching a result lifts its
+        // warmth. Membership only — the relation text never enters a response.
+        relationshipTouchedPhones(
+          userId,
+          rows.map((r) => r.phone),
+        ),
+        // Rule 13: whether each target has ever actually used Netai, not merely
+        // whether an account row resolved.
+        fetchAccountStates([
+          ...rows.map((r) => r.phone),
+          ...rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
+        ]),
+        // Ticket 17 Task 8 (D202): where no fact answered, the company or trade
+        // word of the row's OWN label stands in — „მერი ჩაჩანიძე TBC Capital"
+        // works at TBC Capital. Only those words; the rest of the label stays
+        // where it was. See labelEmployer.ts for what is dropped and why.
+        rolesFromLabels(
+          rows.map((r) => ({
+            label: r.name,
+            hasEmployer: r.employer !== null,
+            hasTitle: r.jobPosition !== null,
+          })),
+        ),
+      ]);
 
-    const shaped = rows.map((row) => ({
-      phone: row.phone,
-      name: row.name ?? null,
-      employer: row.employer ?? null,
-      jobPosition: row.jobPosition ?? null,
-      ownership: OWNERSHIP.SECOND_DEGREE,
-      // Consistent with the direct-search tools: every person-shaped result
-      // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
-      // means a NETAI user, not merely an account. A resolved "UserPhone"
-      // row proves an account exists; it does not prove the person has ever
-      // opened Netai, and 62,146 of the 62,184 accounts never have.
-      is_member: isMemberPhone(accountStates, row.phone),
-      account_state: accountStateFor(accountStates, row.phone),
-      netai_subscriber: isSubscriberPhone(accountStates, row.phone),
-      via: row.via_names ?? [],
-      via_contacts: (row.via_contacts ?? []).map((bridge) => ({
-        name: bridge.name,
-        phone: bridge.phone,
-        is_member: isMemberPhone(accountStates, bridge.phone),
-      })),
-      // Strongest bridge→target relationship score (enrichment-computed,
-      // 0..1) — how warm the best via's own tie to this person is. Missing
-      // when no bridge has a computed score. A D34 relationship edge the
-      // searcher owns lifts it (never says why — the edge itself is
-      // private by design).
-      ...(relationshipTouched.has(normalizePhone(row.phone))
-        ? { via_warmth: applyRelationshipWarmth(row.warmth) }
-        : row.warmth != null && { via_warmth: Number(row.warmth) }),
-      // T15: how well this person matches the query, from every tag/fact on
-      // them — public or not. Never the matched word itself, only the
-      // score. Missing when nothing (public or private) matched at all.
-      ...(signalStrength.has(row.phone) && {
-        signal_strength: signalStrength.get(row.phone),
-      }),
-      ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
-        exclusions: exclusions.get(phoneDigits(row.phone)),
-      }),
-      // Internal identifiers for agent use — never displayed to the user.
-      // target_user_id is set when the person is a registered Ally user;
-      // target_phone is set when they are not (unregistered contact).
-      ...(row.target_user_id != null
-        ? { target_user_id: row.target_user_id }
-        : { target_phone: row.phone }),
-    }));
+    const shaped = rows.map((row) => {
+      const fromLabel = (row.name !== null ? labelRoles.get(row.name) : undefined) ?? {};
+      const employer = row.employer ?? fromLabel.employer ?? null;
+      const jobPosition = row.jobPosition ?? fromLabel.title ?? null;
+      return {
+        phone: row.phone,
+        name: row.name ?? null,
+        employer,
+        jobPosition,
+        // The model must not read a label word as a confirmed fact: it is what
+        // this person's savers wrote, not what anyone verified.
+        ...((row.employer === null && employer !== null) ||
+        (row.jobPosition === null && jobPosition !== null)
+          ? { role_source: 'label' }
+          : {}),
+        ownership: OWNERSHIP.SECOND_DEGREE,
+        // Consistent with the direct-search tools: every person-shaped result
+        // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
+        // means a NETAI user, not merely an account. A resolved "UserPhone"
+        // row proves an account exists; it does not prove the person has ever
+        // opened Netai, and 62,146 of the 62,184 accounts never have.
+        is_member: isMemberPhone(accountStates, row.phone),
+        account_state: accountStateFor(accountStates, row.phone),
+        netai_subscriber: isSubscriberPhone(accountStates, row.phone),
+        via: row.via_names ?? [],
+        via_contacts: (row.via_contacts ?? []).map((bridge) => ({
+          name: bridge.name,
+          phone: bridge.phone,
+          is_member: isMemberPhone(accountStates, bridge.phone),
+        })),
+        // Strongest bridge→target relationship score (enrichment-computed,
+        // 0..1) — how warm the best via's own tie to this person is. Missing
+        // when no bridge has a computed score. A D34 relationship edge the
+        // searcher owns lifts it (never says why — the edge itself is
+        // private by design).
+        ...(relationshipTouched.has(normalizePhone(row.phone))
+          ? { via_warmth: applyRelationshipWarmth(row.warmth) }
+          : row.warmth != null && { via_warmth: Number(row.warmth) }),
+        // T15: how well this person matches the query, from every tag/fact on
+        // them — public or not. Never the matched word itself, only the
+        // score. Missing when nothing (public or private) matched at all.
+        ...(signalStrength.has(row.phone) && {
+          signal_strength: signalStrength.get(row.phone),
+        }),
+        ...((exclusions.get(phoneDigits(row.phone))?.length ?? 0) > 0 && {
+          exclusions: exclusions.get(phoneDigits(row.phone)),
+        }),
+        // Internal identifiers for agent use — never displayed to the user.
+        // target_user_id is set when the person is a registered Ally user;
+        // target_phone is set when they are not (unregistered contact).
+        ...(row.target_user_id != null
+          ? { target_user_id: row.target_user_id }
+          : { target_phone: row.phone }),
+      };
+    });
     // Ticket 16 Task 23: one person, one row, in the second circle too.
     const merged = await collapseMergedPhones(shaped);
     return { found: true, count: merged.rows.length, results: merged.rows };

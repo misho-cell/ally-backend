@@ -583,11 +583,17 @@ describe('loading the founder’s answers back (ticket 9 task 29)', () => {
   });
 });
 
-describe('pairConfidence (Ticket 16 Task 91: the score is computed, not 0.8)', () => {
-  it('rises with agreeing owners and falls with how many people the name could be', () => {
-    expect(pairConfidence(3, 4)).toBe(0.5);
-    expect(pairConfidence(79, 3270)).toBe(0.02);
-    expect(pairConfidence(5, 2)).toBe(0.83);
+describe('pairConfidence (Ticket 17 Task 91: rarity is the signal, owners are not)', () => {
+  it('is the odds against the other numbers carrying that name', () => {
+    expect(pairConfidence(3, 2)).toBe(1); // the name is on exactly these two
+    expect(pairConfidence(3, 3)).toBe(0.5);
+    expect(pairConfidence(3, 4)).toBe(0.33);
+    expect(pairConfidence(79, 3270)).toBe(0); // „Saba" — 3,270 numbers carry it
+  });
+
+  it('ignores co_owners entirely — measured AUC 0.378 on the founder’s own 160 answers', () => {
+    expect(pairConfidence(3, 4)).toBe(pairConfidence(26, 4));
+    expect(pairConfidence(1, 10)).toBe(pairConfidence(140, 10));
   });
 
   it('keeps the old flat value when the name reach is unknown', () => {

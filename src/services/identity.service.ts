@@ -245,21 +245,40 @@ async function scanNameMatchCandidates(
 }
 
 /**
- * Ticket 16 Task 91 (D172): the score, computed instead of the flat 0.8.
+ * Ticket 17 Task 91 (D172): the score, measured against the founder's own
+ * answers rather than reasoned about.
  *
- * `co_owners` = accounts that saved BOTH numbers under the same normalised
- * name (the query above joins the two numbers on the same "contactId" and the
- * same normalised alias). `name_distinct_phones` = how many numbers in the
- * whole base carry that name. The odds that the two numbers are one person
- * rise with agreeing owners and fall with how many people the name could be:
- * three owners on „თორნიკე აბულაძე" (4 numbers) → 0.50; 79 owners on „Saba"
- * (3,270 numbers) → 0.02. Unknown reach falls back to the old flat value.
+ * `co_owners` counts ACCOUNTS that saved BOTH numbers under the same
+ * normalised name — the discovery query above joins phone_1 and phone_2 on one
+ * `contactId` with one normalised alias. So the definition was never in doubt.
+ *
+ * What WAS wrong is what we did with it. Scored against the 160 pairs the
+ * founder and Lika actually decided:
+ *
+ *   co_owners alone                AUC 0.378   ← worse than a coin flip
+ *   co/(co + reach − 1)  (old)     AUC 0.679
+ *   1/(reach − 1)        (this)    AUC 0.799
+ *
+ * Below 0.5 means MORE owners predicts TWO different people, not one. The
+ * tester saw why before the numbers did: five unrelated rare names each showed
+ * exactly 26 owners, and those are the same 26 accounts on all 23 such pairs —
+ * one shared phonebook imported 26 times, counted as 26 people agreeing.
+ * Median owners is 4 on the Yes pairs and 4 on the No pairs: it separates
+ * nothing.
+ *
+ * Rarity is the whole signal, and it is the one the founder's answers agree
+ * with — median reach 3 on Yes, 14 on No; of 78 Yes pairs, 55 sit on a name
+ * carried by five numbers or fewer and NOT ONE on a name carried by more than
+ * fifty. `1/(reach − 1)`: a name on exactly these two numbers scores 1.00, on
+ * three numbers 0.50, on fifteen 0.07.
+ *
+ * `co_owners` stays on the row as evidence a human can weigh. It no longer
+ * moves the number that orders Lika's queue.
  */
 export function pairConfidence(coOwners: number, nameDistinctPhones: number | null): number {
   if (nameDistinctPhones === null) return NAME_MATCH_CONFIDENCE;
-  const otherNumbers = Math.max(nameDistinctPhones - 1, 0);
-  const score = coOwners / (coOwners + otherNumbers);
-  return Math.round(Math.min(1, Math.max(0, score)) * 100) / 100;
+  const otherNumbers = Math.max(nameDistinctPhones - 1, 1);
+  return Math.round((1 / otherNumbers) * 100) / 100;
 }
 
 /**

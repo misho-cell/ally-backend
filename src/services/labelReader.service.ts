@@ -99,11 +99,33 @@ export interface LabelSignals {
   name_only: boolean;
 }
 
+/** One word of a label: the spelling the saver typed, and the folded form. */
+export interface LabelToken {
+  readonly raw: string;
+  readonly lower: string;
+}
+
+/**
+ * The words of a label in order, each keeping the spelling it was written in.
+ *
+ * `tokenize` below throws the original away, which is right for every counting
+ * question — but a caller that wants to SHOW a word back („TBC Capital", not
+ * „tbc capital") has nowhere else to get the casing from. One rule for what a
+ * word is, two views of it.
+ */
+export function labelTokens(label: string): LabelToken[] {
+  const out: LabelToken[] = [];
+  for (const match of label.matchAll(/[a-zA-Zა-ჿᲐ-Ჿ0-9]+/gu)) {
+    const lower = match[0].toLowerCase();
+    if (lower.length >= MIN_TOKEN_LENGTH && /[a-zა-ჿ]/.test(lower)) {
+      out.push({ raw: match[0], lower });
+    }
+  }
+  return out;
+}
+
 function tokenize(label: string): string[] {
-  return label
-    .toLowerCase()
-    .split(/[^a-zა-ჿ0-9]+/)
-    .filter((t) => t.length >= MIN_TOKEN_LENGTH && /[a-zა-ჿ]/.test(t));
+  return labelTokens(label).map((t) => t.lower);
 }
 
 function containsAny(haystack: string, words: readonly string[]): boolean {

@@ -545,9 +545,13 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +
       'an account_state of "ally_account" cannot receive it). You may write to the same person ' +
       'again on the same task: a relayed conversation continues until it is done, later messages ' +
-      'land in the same thread on their phone, and a few a day per person is the budget. Every ' +
-      'single message needs its own go-ahead on the exact wording — more rounds mean more ' +
-      'approvals, never fewer, and never promise to pass something on before you have sent it. ' +
+      'land in the same thread on their phone, and a few a day per person is the budget. ' +
+      'CONSENT (Ticket 17, aligning this copy with the in-app rule and D119): an approved plan ' +
+      'IS the consent — a person the plan names gets the message without drafts or a second ' +
+      'yes, the fifth exactly like the first; a person the plan does not name needs a plan ' +
+      'change and the user’s yes to THAT. Only on a goal with no plan at all do you confirm ' +
+      'once, showing the recipient and the exact wording. Never promise to pass something on ' +
+      'before you have sent it. ' +
       'Pass the task_ref (get_my_tasks) and the contact_ref ' +
       '(search result). Expect the answer hours or days later — tell the user you will follow up.',
   },
