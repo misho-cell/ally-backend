@@ -1496,10 +1496,15 @@ export async function countAskableUsers(): Promise<number> {
          WHERE status = 'sent' AND created_at < NOW() - INTERVAL '${IGNORED_ASK_AFTER_HOURS} hours'
          GROUP BY from_user_id
        ) ignored ON ignored.from_user_id = u.id
-       WHERE u.subscription_status = 'active'
+       -- Ticket 17 Task 53. A trialing subscriber can send asks — askBudget
+       -- never asks about status, only about budget — so they carry capacity
+       -- like anyone else, and counting only 'active' understated the list.
+       -- SUBSCRIBED_STATUSES is the same pair this file already uses for
+       -- social proof; one definition, not two that can drift.
+       WHERE u.subscription_status = ANY($1::text[])
      ) x
      WHERE sent_this_month < GREATEST(0, ${monthlyBudget} - fatigue_signals * ${FATIGUE_STEP_DOWN_PER_SIGNAL})`,
-    [],
+    [SUBSCRIBED_STATUSES],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return Number(result.rows[0]?.count ?? 0);

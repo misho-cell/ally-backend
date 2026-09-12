@@ -1463,6 +1463,24 @@ describe('countAskableUsers', () => {
 
     expect(await countAskableUsers()).toBe(21);
   });
+
+  /**
+   * Ticket 17 Task 53. The list is not a sample of the base — it is sized to
+   * how many of our own people can carry an ask. Read live on 12 September:
+   * 617 candidates survived every gate and the list was 28 long, because 28
+   * subscribers were askable. So the count has to be right, and it was
+   * counting only 'active' while askBudget never asks about status at all —
+   * a trialing subscriber sends asks like anyone else.
+   */
+  it('counts a trialing subscriber too — they can send asks like anyone else', async () => {
+    routeScoreQueries({ askableCount: 21 });
+
+    await countAskableUsers();
+
+    const call = mockQuery.mock.calls.find(([sql]) => (sql as string).includes('sent_this_month'));
+    expect(call?.[0]).toContain('u.subscription_status = ANY($1::text[])');
+    expect(call?.[1]).toEqual([['active', 'trialing']]);
+  });
 });
 
 // ─── Task 23: what must never reach the list ───────────────────────────────
