@@ -3125,6 +3125,65 @@ adminRouter.post('/chorus/sweep', async (_req: Request, res: Response) => {
   }
 });
 
+// Ticket 17 row 6: why a notification did or did not arrive, for one account.
+// Built after the frontend showed the question could not be answered from the
+// data: an Apple endpoint does not say WHICH device (web.push.apple.com serves
+// macOS Safari too), and "sent or failed" existed only in the Railway log.
+//   GET /admin/users/:userId/push
+adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.params.userId ?? '');
+    if (!/^\d+$/.test(userId)) {
+      res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
+      return;
+    }
+    const [subs, deliveries] = await Promise.all([
+      query(
+        `SELECT CASE
+                  WHEN endpoint LIKE '%web.push.apple.com%' THEN 'apple'
+                  WHEN endpoint LIKE '%fcm.googleapis%'     THEN 'google'
+                  WHEN endpoint LIKE '%mozilla%'            THEN 'mozilla'
+                  ELSE 'other' END                         AS provider,
+                user_agent,
+                -- The endpoint itself identifies a device and is not needed to
+                -- read the answer; the tail is enough to tell two apart.
+                RIGHT(endpoint, 12)                        AS endpoint_tail,
+                created_at
+         FROM push_subscriptions WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [userId],
+      ),
+      query(
+        `SELECT status, status_code, error, RIGHT(endpoint, 12) AS endpoint_tail, created_at
+         FROM push_deliveries WHERE user_id = $1
+         ORDER BY created_at DESC LIMIT 50`,
+        [userId],
+      ),
+    ]);
+    const sent = deliveries.rows.filter((d) => (d as { status: string }).status === 'sent').length;
+    res.status(200).json({
+      success: true,
+      data: {
+        subscriptions: subs.rows,
+        recent_deliveries: deliveries.rows,
+        sent_recently: sent,
+        failed_recently: deliveries.rows.length - sent,
+        // Said out loud, because it is the trap row 6 fell into: every row
+        // before this shipped is missing, and an Apple subscription with no
+        // user_agent could be a Mac.
+        note:
+          'Deliveries are recorded only from 12 September; anything earlier is absent, not ' +
+          'failed. A subscription with no user_agent predates that field — an apple provider ' +
+          'there may be macOS Safari, not an iPhone.',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin user push]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);

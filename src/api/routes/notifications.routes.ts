@@ -38,6 +38,13 @@ notificationsRouter.post(
   body('endpoint').isString().trim().notEmpty().withMessage('endpoint is required'),
   body('keys.p256dh').isString().trim().notEmpty().withMessage('keys.p256dh is required'),
   body('keys.auth').isString().trim().notEmpty().withMessage('keys.auth is required'),
+  // Ticket 17 row 6: optional, and deliberately NOT allowed to refuse a
+  // subscription. A device we cannot name is still a device we must be able to
+  // notify, and the frontend rightly held the field back until it knew a
+  // strict validator would not break subscribing. It will not: only the three
+  // above are checked, and an absent or odd user_agent is simply stored as
+  // null (see savePushSubscription, which also truncates it).
+  body('user_agent').optional().isString(),
   async (req: Request, res: Response<ApiResponse<null>>) => {
     const errors = validationResult(req);
 
