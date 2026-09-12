@@ -12,7 +12,34 @@ const APP_URL = 'https://www.netai.guru';
 export interface InviteLink {
   link?: string;
   code?: string;
+  /**
+   * Ticket 17 Task 39: „not a link to copy but something sendable". The tool
+   * handed back a bare URL, which left the user — or the model — to write the
+   * message, so every invitation read differently and some read like an
+   * advertisement. This is the whole message, link included, ready to go into
+   * a share sheet with nothing composed on top of it.
+   *
+   * Georgian, because that is the pilot's language; the model may translate it
+   * when the conversation is in another one, and must not add to it.
+   */
+  share_text?: string;
   error?: string;
+}
+
+/**
+ * The invitation, as one sendable message.
+ *
+ * Short on purpose: it goes into WhatsApp under the sender's own name, so it
+ * has to sound like them forwarding something, not like us advertising through
+ * them. No claim about the recipient, no urgency, no exclamation.
+ *
+ * First draft — the wording is the founder's to change, and one line does it.
+ */
+function shareText(link: string): string {
+  return (
+    'Netai-ს ვიყენებ — ეხმარება ნაცნობებში იპოვო ის ადამიანი, ვინც მართლა გჭირდება. ' +
+    `თუ დაგაინტერესებს, აქ არის: ${link}`
+  );
 }
 
 const INVITE_LINK_READY_FLAG = 'invite_link_ready';
@@ -50,7 +77,8 @@ export async function getInviteLink(userId: string): Promise<InviteLink> {
     [userId],
     LINK_TIMEOUT_MS,
   );
-  return { link: `${APP_URL}/join?ref=${code}`, code };
+  const link = `${APP_URL}/join?ref=${code}`;
+  return { link, code, share_text: shareText(link) };
 }
 
 /**

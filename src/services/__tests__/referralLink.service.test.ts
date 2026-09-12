@@ -52,7 +52,13 @@ describe('getInviteLink (engine T3)', () => {
 
     const out = await getInviteLink('7');
 
-    expect(out).toEqual({ link: 'https://www.netai.guru/join?ref=ABCD1234', code: 'ABCD1234' });
+    expect(out.link).toBe('https://www.netai.guru/join?ref=ABCD1234');
+    expect(out.code).toBe('ABCD1234');
+    // Ticket 17 Task 39: "not a link to copy but something sendable" — the
+    // whole message comes back with it, link inside, nothing left to compose.
+    expect(out.share_text).toContain('https://www.netai.guru/join?ref=ABCD1234');
+    expect(out.share_text).toContain('Netai');
+    expect(out.error).toBeUndefined();
     const insert = mockQuery.mock.calls.find(([sql]) => (sql as string).includes("'issued'"));
     expect(insert?.[1]).toEqual(['7']);
     // 'sent' is reserved for the real share action (recordLinkShared).
