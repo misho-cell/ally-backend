@@ -310,26 +310,49 @@ const CAMPAIGN_REPLY_PROTOCOL =
   'უპასუხე ამ თრედში: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
   'შესთავაზე, „უთხარი" (უთხარი და ველოდები).';
 
+/**
+ * Ticket 17 Task 19, second half. Every phrasing below used to state that the
+ * person "is not yet on Netai", and for 512 of the candidates the pool now
+ * admits that is simply false: they registered with old Ally and never opened
+ * Netai. Telling a real person something untrue about a real person is not a
+ * copy detail, and the truth is the better pitch anyway — an account that is
+ * already there and was never opened is a smaller thing to ask for than a
+ * stranger's sign-up.
+ *
+ * So the one clause that was false is the one clause that varies. The four
+ * phrasings keep their numbers: whether the target is returning is a fact
+ * about THEM, not about how we asked, so the technique table stays readable.
+ */
+function standing(returning: boolean): string {
+  return returning
+    ? 'Netai-ზე ანგარიში უკვე აქვს, უბრალოდ ჯერ არ გაუხსნია'
+    : 'Netai-ზე ჯერ არ არის';
+}
+
 /** technique_how → the message that phrasing actually is. */
-const CAMPAIGN_ASK_VARIANTS: Readonly<Record<number, (label: string) => string>> = {
+const CAMPAIGN_ASK_VARIANTS: Readonly<
+  Record<number, (label: string, returning: boolean) => string>
+> = {
   // 5 — name the person.
-  5: (label) =>
-    `${label}-ს იცნობ და Netai-ზე ჯერ არ არის. რაც მეტი ახლობელი ადამიანია ქსელში, ` +
+  5: (label, returning) =>
+    `${label}-ს იცნობ და ${standing(returning)}. რაც მეტი ახლობელი ადამიანია ქსელში, ` +
     `მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. თუ გინდა, შეგიძლია მოიწვიო — ` +
     `უბრალოდ ${CAMPAIGN_REPLY_PROTOCOL}`,
   // 6 — the advice ask: their judgment first, the invitation second.
-  6: (label) =>
+  6: (label, returning) =>
     `შენი აზრი მაინტერესებს: ${label} Netai-სთვის გამოსადეგი ადამიანი იქნებოდა? ` +
+    `${returning ? 'ანგარიში უკვე აქვს, ჯერ არ გაუხსნია. ' : ''}` +
     `რაც მეტი ახლობელი ადამიანია ქსელში, მით უკეთ მუშაობს ის ყველასთვის — ერთად ` +
     `ვიზრდებით. ${CAMPAIGN_REPLY_PROTOCOL}`,
   // 7 — make refusing free: say the "no" out loud, first.
-  7: (label) =>
-    `${label} Netai-ზე ჯერ არ არის. თუ არ გინდა ან დრო არ გაქვს, სრულიად ნორმალურია — ` +
+  7: (label, returning) =>
+    `${label} ${standing(returning)}. თუ არ გინდა ან დრო არ გაქვს, სრულიად ნორმალურია — ` +
     `„არა" საკმარისი პასუხია და აღარ გკითხავ. თუ გინდა კი — რაც მეტი ახლობელია ` +
     `ქსელში, მით უკეთ მუშაობს ყველასთვის, ერთად ვიზრდებით. ${CAMPAIGN_REPLY_PROTOCOL}`,
   // 8 — text them now: one message, this minute.
-  8: (label) =>
-    `${label}-ს ერთი შეტყობინება თუ მისწერე ახლა, ის Netai-ზე იქნება. რაც მეტი ` +
+  8: (label, returning) =>
+    `${label}-ს ერთი შეტყობინება თუ მისწერე ახლა, ` +
+    `${returning ? 'ანგარიშს გახსნის — უკვე აქვს' : 'ის Netai-ზე იქნება'}. რაც მეტი ` +
     `ახლობელი ადამიანია ქსელში, მით უკეთ მუშაობს ის ყველასთვის — ერთად ვიზრდებით. ` +
     CAMPAIGN_REPLY_PROTOCOL,
 };
@@ -345,8 +368,8 @@ export function techniqueHowFor(participantId: number): number {
   return CAMPAIGN_HOW_VALUES[participantId % CAMPAIGN_HOW_VALUES.length] as number;
 }
 
-const CAMPAIGN_ASK_MESSAGE = (label: string, how: number): string =>
-  (CAMPAIGN_ASK_VARIANTS[how] ?? CAMPAIGN_ASK_VARIANTS[5])?.(label) ?? '';
+const CAMPAIGN_ASK_MESSAGE = (label: string, how: number, returning: boolean): string =>
+  (CAMPAIGN_ASK_VARIANTS[how] ?? CAMPAIGN_ASK_VARIANTS[5])?.(label, returning) ?? '';
 
 /** Sends every due (state='pending', scheduled_ask_at elapsed) campaign ask — a cron tick's own worklist. */
 export async function sendDueCampaignAsks(limit: number): Promise<number> {
@@ -355,8 +378,19 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     inviter_user_id: number;
     target_label: string | null;
     target_phone: string;
+    target_returning: boolean;
   }>(
-    `SELECT p.id, p.inviter_user_id, c.target_label, c.target_phone
+    `SELECT p.id, p.inviter_user_id, c.target_label, c.target_phone,
+            -- Ticket 17 Task 19: does this person already HAVE an account? The
+            -- pool only admits numbers whose account has never used Netai, so
+            -- any account row here is an old-Ally sign-up — and the ask must
+            -- not tell the inviter they are "not yet on Netai".
+            EXISTS (
+              SELECT 1 FROM "UserPhone" up
+              JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL
+              WHERE regexp_replace(up.phone, '\\D', '', 'g') =
+                    regexp_replace(c.target_phone, '\\D', '', 'g')
+            ) AS target_returning
      FROM invite_campaign_participants p
      JOIN invite_campaigns c ON c.id = p.campaign_id
      WHERE p.state = 'pending' AND p.scheduled_ask_at <= NOW() AND c.status = 'open'
@@ -424,7 +458,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
       thread.id,
       row.inviter_user_id,
       'assistant',
-      CAMPAIGN_ASK_MESSAGE(label, how),
+      CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true),
     );
     await query(
       `UPDATE invite_campaign_participants

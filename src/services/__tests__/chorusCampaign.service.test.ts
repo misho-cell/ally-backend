@@ -372,6 +372,66 @@ describe('sendDueCampaignAsks', () => {
     expect((due?.[1] as unknown[])[2]).toBe(true);
   });
 
+  /**
+   * Ticket 17 Task 19, second half. Opening the pool to old-Ally accounts made
+   * every phrasing's "is not yet on Netai" false for 512 candidates: they
+   * registered once and never opened it. The ask must not tell a real person
+   * something untrue about a real person.
+   */
+  describe('a target who already has an account', () => {
+    /** Participant 4 gets phrasing 5, the one that names the person's standing. */
+    function routeDue(targetReturning: boolean, participantId = 4): void {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('p.scheduled_ask_at <= NOW()'))
+          return Promise.resolve(
+            rows([
+              {
+                id: participantId,
+                inviter_user_id: 10,
+                target_label: 'Nino',
+                target_phone: '+995500000001',
+                target_returning: targetReturning,
+              },
+            ]) as never,
+          );
+        return Promise.resolve(rows([]) as never);
+      });
+    }
+
+    function sentText(): string {
+      return mockSaveMessage.mock.calls[0]?.[3] as string;
+    }
+
+    it('is never told they are not on Netai — the account is named instead', async () => {
+      routeDue(true);
+
+      await sendDueCampaignAsks(50);
+
+      expect(sentText()).toContain('ანგარიში უკვე აქვს');
+      expect(sentText()).not.toContain('Netai-ზე ჯერ არ არის');
+    });
+
+    it('still reads the old way for somebody with no account at all', async () => {
+      routeDue(false);
+
+      await sendDueCampaignAsks(50);
+
+      expect(sentText()).toContain('Netai-ზე ჯერ არ არის');
+      expect(sentText()).not.toContain('ანგარიში უკვე აქვს');
+    });
+
+    it('keeps the technique stamp on the phrasing, not on who the target is', async () => {
+      routeDue(true, 1);
+      await sendDueCampaignAsks(50);
+      const update = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes("state = 'asked'"),
+      );
+      // Participant 1 still gets phrasing 6, returning or not — how it was
+      // asked is a fact about the message, not about the person asked about.
+      expect((update?.[1] as unknown[])[3]).toBe(6);
+    });
+  });
+
   it('lifts on the same switch as the opening gate, never on one of its own', async () => {
     process.env.CHORUS_REQUIRE_FOUNDER_YES = 'false';
     try {
