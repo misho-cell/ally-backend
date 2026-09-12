@@ -100,6 +100,7 @@ import {
   emitAnswerDelta,
   emitAnswerReset,
   emitMessageAppended,
+  toDisplayText,
 } from './sse.service';
 import {
   scrubText,
@@ -4456,7 +4457,12 @@ export async function processChat(
   const pendingItems = takePendingItems(runId);
   // Read before clearRunState drops it — the share button needs the text the
   // tool wrote, not whatever the model quoted (Task 39).
-  const shareText = takeShareText(runId);
+  //
+  // Scrubbed HERE, once, so the stored row and the SSE event carry the same
+  // bytes by construction. They reach the client by two different paths and
+  // only one of them used to scrub; see toDisplayText for why that mattered.
+  const shareTextRaw = takeShareText(runId);
+  const shareText = shareTextRaw === undefined ? undefined : toDisplayText(shareTextRaw);
   const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
   // A goal opened from the message ran as a goal run; if that run still left
   // it without a plan, the proposal turn follows (it checks before waking).

@@ -99,6 +99,28 @@ describe('sse.service phone scrubbing', () => {
     unsubscribe();
   });
 
+  /**
+   * Ticket 17 Task 39, third round. The share text reaches the client two ways
+   * — this event live, the stored row after a reload — and only this one
+   * scrubbed. They agreed only because the copy happened to contain nothing
+   * the scrub touches, and the wording is the founder's to change at any time.
+   * The value is scrubbed once at the source now, so passing it through here
+   * again must not change it a second time.
+   */
+  it('is idempotent on an already-scrubbed share text', () => {
+    const { res, events } = fakeStream();
+    const unsubscribe = subscribeUserEvents(USER_ID, res);
+    const once = 'Netai-ს ვიყენებ: აქ არის https://www.netai.guru/join?ref=IDEM1';
+
+    emitRunComplete(USER_ID, 1, 'run1', { reply: 'x', share_text: once });
+
+    const done = events().find((e) => (e as { event: string }).event === 'run_complete') as {
+      share_text?: string;
+    };
+    expect(done.share_text).toBe(once);
+    unsubscribe();
+  });
+
   it('keeps ISO dates and short numbers intact', () => {
     const { res, events } = fakeStream();
     const unsubscribe = subscribeUserEvents(USER_ID, res);

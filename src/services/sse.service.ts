@@ -16,6 +16,23 @@ function displayText(text: string): string {
   );
 }
 
+/**
+ * The same treatment, for a value that is STORED and later served by a route
+ * that does not pass through here.
+ *
+ * Ticket 17 Task 39: `share_text` reaches the client two ways — this event on
+ * a live run, and the stored row after a reload. The event scrubbed it and the
+ * row did not, so the two agreed only because the copy happened to contain
+ * nothing the scrub touches. That is agreement by luck, and the wording is
+ * explicitly the founder's to change with one line — after which the share
+ * sheet would have sent different text depending on whether the user had
+ * reloaded. Scrubbing once at the source makes them the same by construction;
+ * every step here is idempotent, so passing through the event again is a no-op.
+ */
+export function toDisplayText(text: string): string {
+  return displayText(text);
+}
+
 const emitter = new EventEmitter();
 emitter.setMaxListeners(0);
 
