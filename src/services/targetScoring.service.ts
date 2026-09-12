@@ -503,6 +503,15 @@ function exclusionFor(
   if (account && NETAI_ACTIVE_SUBSCRIPTION_STATUSES.includes(account.subscriptionStatus)) {
     return 'already_paying';
   }
+  // Ticket 17 Task 19 asked whether this gate should stand aside for an account
+  // reached through social proof rather than through its own phonebook. It was
+  // measured before it was touched, and the measurement said leave it: of the
+  // 511 old-Ally accounts the new anti-join unlocks, 355 already hold 200 or
+  // more contacts and pass unchanged. Only 156 turn on this line, and the
+  // founder's reason for it — "a phonebook under 200 is very young and possibly
+  // not working" — is a judgement about the PERSON, not about the route they
+  // arrived by. Those 156 are his call, with the number in front of him, not a
+  // rule to loosen quietly for a 30% gain.
   if (account && !account.hasEnoughContacts) return 'phonebook_too_small';
   // "Only a trade or a service" — the trade word is the gate, but only when
   // nothing else speaks for the person. A stored fact or a role word in the
@@ -1736,13 +1745,39 @@ const GATE_PASSABLE_POOL_LIMIT = Number(process.env.CHORUS_POOL_LIMIT ?? 500);
 const POOL_OVERFETCH = Number(process.env.CHORUS_POOL_OVERFETCH ?? 4);
 
 /**
- * The founder's pool (31 Aug): every UNREGISTERED number held by 2+ active
- * subscribers — exactly the people the door would let in. This is the invite
- * engine's PRIMARY candidate source now; unmet-needs matches still add pull
- * on top, but a person nobody searched for is a legitimate target when two
+ * The founder's pool (31 Aug): every number NOT ALREADY ON NETAI held by 2+
+ * active subscribers — exactly the people the door would let in. This is the
+ * invite engine's PRIMARY candidate source now; unmet-needs matches still add
+ * pull on top, but a person nobody searched for is a legitimate target when two
  * subscribers already carry them ("ეს სია შეგიძლია ბაზაში გადაამოწმო ხოლმე").
  * The label is the most common alias — display material, same as tag labels.
+ *
+ * Ticket 17 Task 19 (D204). "Not already registered" used to mean "has no row
+ * in UserPhone at all", and that quietly threw away the best targets in the
+ * base: an old-Ally account is a row in UserPhone, so a person who signed up
+ * with Ally once and never opened Netai was removed here exactly as if they
+ * were an active user. Rule 13 (D102) says the opposite everywhere else in the
+ * product — an old-Ally account is a TARGET, not a member — and `oldAllyPool`
+ * below already puts such accounts into the same candidate map through the
+ * connector door.
+ *
+ * Measured on 12 September, over the top 2,000 gate-passable phones:
+ *
+ *   today (no account row at all)          1,451
+ *   excluding Netai USERS instead          1,963   ← this
+ *   old-Ally accounts thereby unlocked       512
+ *
+ * Those 512 are the strongest rows the base has: our own former sign-ups, each
+ * already carried in the phonebooks of two or more people who use Netai today.
+ *
+ * Worth recording against the ticket's own premise: the 62 thousand are NOT in
+ * nobody's phonebook. Sampled at both ends of the base, 1,999 of the newest
+ * 2,000 and 1,985 of the oldest 2,000 are held by at least one saver, and about
+ * two thirds by two or more. They were invisible because of this predicate, not
+ * because the network cannot see them.
  */
+/** One switch back to the old anti-join, without a deploy. */
+const OLD_ALLY_IN_GATE_POOL = process.env.TARGET_POOL_OLD_ALLY !== 'off';
 async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; label: string }[]> {
   if (holderIds.length === 0) return [];
   const result = await query<{ phone: string; label: string }>(
@@ -1769,8 +1804,16 @@ async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; l
      FROM pool p
      WHERE NOT EXISTS (
          SELECT 1 FROM "UserPhone" up
+         ${OLD_ALLY_IN_GATE_POOL ? 'JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL' : ''}
          WHERE regexp_replace(up.phone, '\\D', '', 'g') =
                regexp_replace(p.phone, '\\D', '', 'g')
+         ${
+           OLD_ALLY_IN_GATE_POOL
+             ? `AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+                  OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
+                  OR u.subscription_status = ANY($5::text[]))`
+             : ''
+         }
        )
      LIMIT $3`,
     [
@@ -1778,6 +1821,7 @@ async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; l
       MIN_TARGET_SUBSCRIBED_HOLDERS,
       GATE_PASSABLE_POOL_LIMIT,
       GATE_PASSABLE_POOL_LIMIT * POOL_OVERFETCH,
+      ...(OLD_ALLY_IN_GATE_POOL ? [NETAI_ACTIVE_SUBSCRIPTION_STATUSES] : []),
     ],
     SCORE_QUERY_TIMEOUT_MS,
   );

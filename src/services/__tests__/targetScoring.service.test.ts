@@ -267,6 +267,35 @@ describe('buildTargetList', () => {
     expect(pooled?.parts.gap_filling_trade).toBe(false);
   });
 
+  /**
+   * Ticket 17 Task 19 (D204). The pool's anti-join used to read "already
+   * registered" as "has any row in UserPhone", which removed an old-Ally
+   * account — somebody who signed up once and never opened Netai — exactly as
+   * if they were an active user. Measured over the top 2,000 gate-passable
+   * phones on 12 September: 1,451 survived, 1,963 survive now, and the 512 in
+   * between are our own former sign-ups, each already carried by two or more
+   * people who use Netai today.
+   */
+  it('task 19: the pool removes Netai USERS, not everyone who has an account', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([]);
+    routeScoreQueries({ askableCount: 50, poolPeople: [{ phone: '+995500000031', label: 'ეკა' }] });
+
+    await buildTargetList(30);
+
+    const poolQuery = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('pool AS MATERIALIZED'),
+    );
+    expect(poolQuery).toBeDefined();
+    const sql = poolQuery?.[0] as string;
+    // The anti-join now asks whether the account behind the number has ever
+    // USED Netai — the same three signals the rest of the product reads.
+    expect(sql).toContain('FROM threads t WHERE t.user_id = u.id');
+    expect(sql).toContain('FROM search_activity sa WHERE sa.user_id = u.id::text');
+    expect(sql).toContain('u.subscription_status = ANY($5::text[])');
+    // ...and it is given exactly that list, not the subscriber-only one.
+    expect((poolQuery?.[1] as unknown[])[4]).toEqual(['active', 'trialing', 'past_due']);
+  });
+
   it("founder's target rule (31 Aug): only gate-passable people — held by 2+ subscribers", async () => {
     mockFindUnmetNeeds.mockResolvedValue([
       need('ბუღალტერი', [
