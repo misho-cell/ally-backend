@@ -45,6 +45,24 @@ describe('the roster', () => {
     expect(await sharedRoster('501', '777')).toBeNull();
   });
 
+  /**
+   * Ticket 17 Task 88's leftover. Account 686's own `name` is the unfilled
+   * registration form — „First Last" — and an account's name outranks the
+   * label, so that one Axel row still read „First Last" on 12 September while
+   * the network saves the number as „Hayk Asriyants".
+   */
+  it('steps past an unfilled registration form, in the account name and in the label', async () => {
+    await rosterMembers('axel');
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const placeholders = params[3] as string[];
+
+    expect(placeholders).toContain('first last');
+    // Both readings consult the same list: the account's own name...
+    expect(sql).toContain('LOWER(TRIM(u.name)) = ANY($4::text[])');
+    // ...and the label that stands in for it.
+    expect(sql).toContain('LOWER(TRIM(a.alias)) <> ALL($4::text[])');
+  });
+
   it('filters by every word of a name', () => {
     const members = ROSTER.map((r) => ({ ...r, on_netai: r.on_netai === true }));
     expect(filterRoster(members, 'lika').map((m) => m.user_id)).toEqual([160584]);

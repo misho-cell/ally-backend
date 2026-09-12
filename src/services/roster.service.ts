@@ -21,6 +21,16 @@ const ROSTER_QUERY_TIMEOUT_MS = 8_000;
 const ROSTER_LIMIT = 200;
 const NETAI_LIVE_STATUSES = ['active', 'trialing', 'past_due'];
 
+/**
+ * Registration-form placeholders that were never filled in. A label was
+ * already checked against this; an account's OWN name was not, and it
+ * outranks the label — which is why one Axel row still read literally
+ * „First Last" on 12 September (Ticket 17 Task 88). Account 686: its `name`
+ * is the placeholder, while the network saves that number as „Hayk
+ * Asriyants". Three accounts carry one of these product-wide.
+ */
+const PLACEHOLDER_NAMES = ['first last', 'name surname', 'firstname lastname'];
+
 export interface RosterMember {
   user_id: number | null;
   name: string | null;
@@ -53,7 +63,13 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
             -- Ticket 14 Task 88: 27 of 50 roster rows came back nameless — most
             -- members are not registered, so "User".name is null for them. The
             -- name the network saves them under is the fallback.
-            COALESCE(NULLIF(TRIM(u.name), ''), top_alias.alias) AS name,
+            -- Ticket 17: an unfilled registration form is not a name either, so
+            -- it steps aside for the label the same way an empty one does.
+            COALESCE(
+              CASE WHEN LOWER(TRIM(u.name)) = ANY($4::text[]) THEN NULL
+                   ELSE NULLIF(TRIM(u.name), '') END,
+              top_alias.alias
+            ) AS name,
             (u.id IS NOT NULL AND (
                EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
                OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
@@ -66,7 +82,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
        SELECT a.alias
        FROM "UserAlias" a
        WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
-         AND LOWER(TRIM(a.alias)) <> 'first last'
+         AND LOWER(TRIM(a.alias)) <> ALL($4::text[])
        GROUP BY a.alias
        -- Ticket 16 Task 88 leftover: a two-to-four-word label (a name and a
        -- surname) beats a bare first name, then the most common wins.
@@ -78,7 +94,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
        AND LOWER(COALESCE(f.canonical_value, f.value)) LIKE $1
      ORDER BY f.neo4j_contact_id, u.id
      LIMIT $3`,
-    [pattern, NETAI_LIVE_STATUSES, ROSTER_LIMIT],
+    [pattern, NETAI_LIVE_STATUSES, ROSTER_LIMIT, PLACEHOLDER_NAMES],
     ROSTER_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => ({
