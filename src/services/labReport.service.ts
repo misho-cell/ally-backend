@@ -129,7 +129,36 @@ export interface TechniqueConversionRow {
   agreed: number;
   told: number;
   joined: number;
+  /**
+   * Ticket 17 Task 43. The same four counts, but only over asks sent SINCE the
+   * four phrasings existed side by side — the only rows that are evidence
+   * about a phrasing rather than about the past.
+   */
+  measured_asked: number;
+  measured_agreed: number;
+  measured_told: number;
+  measured_joined: number;
 }
+
+export interface TechniqueConversion {
+  rows: TechniqueConversionRow[];
+  /** When the phrasings first ran against each other. Null before they did. */
+  measured_since: string | null;
+  /** Total asks that count as evidence, across every phrasing. */
+  measured_total: number;
+  /**
+   * What may honestly be concluded. Never a winner on a handful of asks —
+   * the engine is allowed to learn only when this says it can.
+   */
+  verdict: string;
+}
+
+/**
+ * Below this many measured asks, no phrasing may be called better than
+ * another. Thirteen asks across four variants with one agreement between them
+ * is not a result; it is four coin flips.
+ */
+const MIN_ASKS_TO_CONCLUDE = Number(process.env.TECHNIQUE_MIN_ASKS ?? 100);
 
 /**
  * Component 2 (D50, ticket 7 task 14): asks -> agreed -> told -> joined per
@@ -138,7 +167,7 @@ export interface TechniqueConversionRow {
  * live distribution); NULL in any group means "unknown" and is its own row —
  * allowed but counted, per the ruling, never folded into a guessed value.
  */
-async function buildTechniqueConversion(): Promise<TechniqueConversionRow[]> {
+async function buildTechniqueConversion(): Promise<TechniqueConversion> {
   const result = await query<{
     technique_when: number | null;
     technique_how: number | null;
@@ -147,20 +176,46 @@ async function buildTechniqueConversion(): Promise<TechniqueConversionRow[]> {
     agreed: string;
     told: string;
     joined: string;
+    measured_asked: string;
+    measured_agreed: string;
+    measured_told: string;
+    measured_joined: string;
+    measured_since: string | null;
   }>(
-    `SELECT technique_when, technique_how, technique_reason,
+    // Ticket 17 Task 43, read live on 12 September. The all-time table says
+    // phrasing 5 converted 0 of 31 with 28 declines, and every other phrasing
+    // 0 declines — which reads as a verdict and is not one. Phrasings 6, 7 and
+    // 8 first went out on 4 September; 27 of phrasing 5's 31 asks predate that
+    // day, because 5 is also the fallback every older ask was tagged with.
+    // An engine reading this table would learn something false about a
+    // phrasing from a period in which it had no rivals.
+    //
+    // `since` is derived, not a hardcoded date: the first moment an ask went
+    // out under any phrasing other than the fallback is the moment the four
+    // began to compete. Before that there is nothing to compare.
+    `WITH since AS (
+       SELECT MIN(asked_at) AS at FROM invite_campaign_participants
+       WHERE asked_at IS NOT NULL AND technique_how IS NOT NULL AND technique_how <> 5
+     )
+     SELECT p.technique_when, p.technique_how, p.technique_reason,
             COUNT(*) AS asked,
-            COUNT(*) FILTER (WHERE state IN ('agreed', 'told')) AS agreed,
-            COUNT(*) FILTER (WHERE state = 'told') AS told,
-            COUNT(*) FILTER (WHERE state = 'joined') AS joined
-     FROM invite_campaign_participants
-     WHERE asked_at IS NOT NULL
-     GROUP BY technique_when, technique_how, technique_reason
+            COUNT(*) FILTER (WHERE p.state IN ('agreed', 'told')) AS agreed,
+            COUNT(*) FILTER (WHERE p.state = 'told') AS told,
+            COUNT(*) FILTER (WHERE p.state = 'joined') AS joined,
+            COUNT(*) FILTER (WHERE p.asked_at >= s.at) AS measured_asked,
+            COUNT(*) FILTER (WHERE p.asked_at >= s.at
+                             AND p.state IN ('agreed', 'told')) AS measured_agreed,
+            COUNT(*) FILTER (WHERE p.asked_at >= s.at AND p.state = 'told') AS measured_told,
+            COUNT(*) FILTER (WHERE p.asked_at >= s.at AND p.state = 'joined') AS measured_joined,
+            MAX(s.at)::text AS measured_since
+     FROM invite_campaign_participants p, since s
+     WHERE p.asked_at IS NOT NULL
+     GROUP BY p.technique_when, p.technique_how, p.technique_reason
      ORDER BY joined DESC, asked DESC`,
     [],
     REPORT_QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((r) => ({
+  const rows = result.rows.map((r) => ({
     technique_when: r.technique_when,
     technique_how: r.technique_how,
     technique_reason: r.technique_reason,
@@ -175,7 +230,27 @@ async function buildTechniqueConversion(): Promise<TechniqueConversionRow[]> {
     agreed: Number(r.agreed),
     told: Number(r.told),
     joined: Number(r.joined),
+    measured_asked: Number(r.measured_asked),
+    measured_agreed: Number(r.measured_agreed),
+    measured_told: Number(r.measured_told),
+    measured_joined: Number(r.measured_joined),
   }));
+  const measuredSince = result.rows[0]?.measured_since ?? null;
+  const measuredTotal = rows.reduce((sum, r) => sum + r.measured_asked, 0);
+  return {
+    rows,
+    measured_since: measuredSince,
+    measured_total: measuredTotal,
+    verdict:
+      measuredSince === null
+        ? 'Only one phrasing has ever gone out. Nothing to compare; no phrasing may be preferred.'
+        : measuredTotal < MIN_ASKS_TO_CONCLUDE
+          ? `Not enough evidence: ${measuredTotal} asks have gone out since the phrasings began ` +
+            `competing, and ${MIN_ASKS_TO_CONCLUDE} is the floor. Read the all-time columns as ` +
+            `history, never as a verdict — most of them were stamped with the fallback phrasing ` +
+            `before the others existed. No phrasing may be preferred yet.`
+          : `${measuredTotal} measured asks — enough to compare. Read the measured_ columns only.`,
+  };
 }
 
 export interface FatigueDistributionBucket {
@@ -328,7 +403,7 @@ async function buildCuriosityAnswerRate(): Promise<CuriosityAnswerRate> {
 export interface LabReport {
   week_start: string;
   ask_dial_table: AskDialRow[];
-  technique_conversion: TechniqueConversionRow[];
+  technique_conversion: TechniqueConversion;
   spacing_results: SpacingRow[];
   links_funnel: ReferralFunnel;
   budgets_ladder_state: BudgetsLadderState;

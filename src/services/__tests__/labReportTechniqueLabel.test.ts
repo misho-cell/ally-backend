@@ -12,7 +12,10 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 describe('technique labels in the lab report', () => {
   it('prints 0 as "none" and null as "unknown", beside the raw values', async () => {
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('GROUP BY technique_when'))
+      if (
+        sql.includes('technique_when, p.technique_how') ||
+        sql.includes('GROUP BY technique_when')
+      )
         return Promise.resolve({
           rows: [
             {
@@ -31,7 +34,7 @@ describe('technique labels in the lab report', () => {
     });
 
     const report = await buildLabReport();
-    const row = report.technique_conversion[0];
+    const row = report.technique_conversion.rows[0];
 
     expect(row?.technique_when).toBe(0);
     expect(row?.technique_when_label).toBe('none');

@@ -38,7 +38,10 @@ function routeReportQueries(opts: {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('GROUP BY ask_count_dial, city'))
       return Promise.resolve(rows(opts.askDial ?? []) as never);
-    if (sql.includes('GROUP BY technique_when, technique_how, technique_reason'))
+    if (
+      sql.includes('technique_when, p.technique_how') ||
+      sql.includes('GROUP BY technique_when, technique_how, technique_reason')
+    )
       return Promise.resolve(rows(opts.technique ?? []) as never);
     if (sql.includes('FROM invite_campaign_participants p'))
       return Promise.resolve(rows(opts.spacing ?? []) as never);
@@ -153,6 +156,11 @@ describe('buildLabReport', () => {
           agreed: '4',
           told: '2',
           joined: '1',
+          measured_asked: '2',
+          measured_agreed: '1',
+          measured_told: '0',
+          measured_joined: '0',
+          measured_since: '2026-09-04T00:00:00.000Z',
         },
         {
           technique_when: 1,
@@ -162,13 +170,18 @@ describe('buildLabReport', () => {
           agreed: '2',
           told: '1',
           joined: '1',
+          measured_asked: '3',
+          measured_agreed: '2',
+          measured_told: '1',
+          measured_joined: '1',
+          measured_since: '2026-09-04T00:00:00.000Z',
         },
       ],
     });
 
     const report = await buildLabReport('2026-08-24');
 
-    expect(report.technique_conversion).toEqual([
+    expect(report.technique_conversion.rows).toEqual([
       {
         technique_when: null,
         technique_how: 5,
@@ -182,6 +195,10 @@ describe('buildLabReport', () => {
         agreed: 4,
         told: 2,
         joined: 1,
+        measured_asked: 2,
+        measured_agreed: 1,
+        measured_told: 0,
+        measured_joined: 0,
       },
       {
         technique_when: 1,
@@ -194,8 +211,17 @@ describe('buildLabReport', () => {
         agreed: 2,
         told: 1,
         joined: 1,
+        measured_asked: 3,
+        measured_agreed: 2,
+        measured_told: 1,
+        measured_joined: 1,
       },
     ]);
+    // Ticket 17 Task 43: five of the thirteen asks came before the phrasings
+    // competed, and the verdict must refuse to name a winner on the rest.
+    expect(report.technique_conversion.measured_since).toBe('2026-09-04T00:00:00.000Z');
+    expect(report.technique_conversion.measured_total).toBe(5);
+    expect(report.technique_conversion.verdict).toContain('Not enough evidence');
   });
 
   it('computes curiosity_answer_rate from the surfacing log, now that one exists', async () => {
