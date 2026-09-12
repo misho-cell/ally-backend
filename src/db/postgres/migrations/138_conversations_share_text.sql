@@ -1,0 +1,12 @@
+-- Ticket 17 Task 39, the frontend's second catch (build 71931d1).
+--
+-- The ready-to-send invitation travelled only on the SSE run_complete event.
+-- That is enough until the page reloads: GET /threads/:id/messages rebuilds the
+-- thread from stored rows, and a stored row had no such field, so the share
+-- button fell back to a bare URL. The same shape of defect as Task 25's
+-- vanishing buttons, and the same fix the `choices` column already is —
+-- a display-only value persisted WITH the message it belongs to.
+--
+-- Nullable and untouched on every existing row: only a turn that actually
+-- called get_invite_link writes one.
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS share_text TEXT;

@@ -1816,10 +1816,15 @@ async function saveMessage(
   // Display-only tappable choices (present_choices) — persisted with the row
   // so they survive reload (ticket 6 close §15 B1). Never part of model history.
   choices: readonly string[] | null = null,
+  // Ticket 17 Task 39: the ready-to-send invitation, stored WITH the message
+  // for the same reason `choices` is — the SSE event is gone after a reload,
+  // and the share button must not fall back to a bare URL (the frontend's own
+  // catch on build 71931d1, the same shape as Task 25's vanishing buttons).
+  shareText: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
   const result = await query<{ id: number }>(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb) RETURNING id',
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9) RETURNING id',
     [
       userId,
       threadId,
@@ -1829,6 +1834,7 @@ async function saveMessage(
       kind,
       runId,
       choices === null ? null : JSON.stringify(choices),
+      shareText,
     ],
   );
   await touchThread(threadId);
@@ -4478,7 +4484,16 @@ export async function processChat(
       `[typed-choice] run ${runId} thread ${threadId}: alternatives in words, no buttons`,
     );
   }
-  await saveMessage(userId, threadId, 'assistant', storedReply, 'message', runId, storedChoices);
+  await saveMessage(
+    userId,
+    threadId,
+    'assistant',
+    storedReply,
+    'message',
+    runId,
+    storedChoices,
+    shareText ?? null,
+  );
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.

@@ -53,6 +53,13 @@ export interface ThreadMessage {
   /** Tappable options saved with the message (present_choices) — render as buttons. */
   choices: string[] | null;
   /**
+   * Ticket 17 Task 39: the ready-to-send invitation, when this turn produced
+   * one. Stored with the row so it survives a reload — the SSE event that
+   * first carried it is gone by then, and the share button would otherwise
+   * fall back to a bare URL. Null on every other message.
+   */
+  share_text: string | null;
+  /**
    * Which prompt answered this turn (ticket 9 task 34): the run's mode, and
    * `name@ISO` per block it loaded. Null on a message whose run predates the
    * stamp link, and on user messages.
@@ -489,7 +496,7 @@ export async function getThreadMessages(
   const result = await query<ThreadMessage>(
     `SELECT page.*, s.mode AS prompt_mode, s.block_versions AS prompt_blocks
      FROM (
-       SELECT id, role, content, kind, run_id, created_at, choices
+       SELECT id, role, content, kind, run_id, created_at, choices, share_text
        FROM conversations
        WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
        ORDER BY created_at DESC, id::text DESC

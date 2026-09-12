@@ -25,7 +25,8 @@ const SCHEMA_SQL = `
     kind       TEXT NOT NULL DEFAULT 'message',
     run_id     TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
-    choices    JSONB
+    choices    JSONB,
+    share_text TEXT
   );
   CREATE INDEX idx_conv_pg_test ON conversations (thread_id, created_at DESC);
 `;
@@ -60,6 +61,35 @@ maybeDescribe('thread message pagination (prod UUID schema)', () => {
     expect(page[0].content).toBe('msg 36');
     expect(page.every((m) => m.kind === 'message')).toBe(true);
     expect(typeof page[0].id).toBe('string');
+  });
+
+  /**
+   * Ticket 17 Task 39, the frontend's second catch (build 71931d1). The
+   * invitation travelled only on the SSE event, so a reload — which rebuilds
+   * the thread from stored rows — left the share button with a bare URL. Same
+   * shape as Task 25's vanishing buttons; same fix `choices` already is.
+   */
+  it('returns the stored share text, so a reload does not lose the invitation', async () => {
+    const text = 'Netai-ს ვიყენებ: აქ არის https://www.netai.guru/join?ref=RELOAD1';
+    await query(
+      `INSERT INTO conversations (thread_id, role, content, kind, created_at, share_text)
+       VALUES (8, 'assistant', 'აი შენი ბმული.', 'message', TIMESTAMP '2026-08-02', $1)`,
+      [text],
+      30_000,
+    );
+    await query(
+      `INSERT INTO conversations (thread_id, role, content, kind, created_at)
+       VALUES (8, 'assistant', 'სხვა პასუხი.', 'message', TIMESTAMP '2026-08-03')`,
+      [],
+      30_000,
+    );
+
+    const page = await getThreadMessages(8, { limit: 10 });
+
+    expect(page.find((m) => m.content === 'აი შენი ბმული.')?.share_text).toBe(text);
+    // Every other message keeps null — the client tells "share this" from
+    // "there is nothing to share" without guessing.
+    expect(page.find((m) => m.content === 'სხვა პასუხი.')?.share_text).toBeNull();
   });
 
   it('walks the whole history backwards with no skips and no duplicates, ties included', async () => {
