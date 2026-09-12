@@ -217,8 +217,17 @@ async function scheduleParticipants(
  * open or in cooldown, and schedules its inviters. Meant to run off a cron
  * tick — every step here is server-initiated, never a human action.
  */
+/**
+ * D102's switch, read in ONE place. Both gates that enforce it — the one on
+ * opening a campaign and the one on sending its asks — ask this, so they can
+ * never be turned off by halves.
+ */
+function founderYesRequired(): boolean {
+  return (process.env.CHORUS_REQUIRE_FOUNDER_YES ?? 'true').toLowerCase() !== 'false';
+}
+
 async function onlyFounderApproved(targets: TargetScoreEntry[]): Promise<TargetScoreEntry[]> {
-  if ((process.env.CHORUS_REQUIRE_FOUNDER_YES ?? 'true').toLowerCase() === 'false') return targets;
+  if (!founderYesRequired()) return targets;
   const approved = await approvedTargetPhones();
   return targets.filter((t) => approved.has(t.phone));
 }
@@ -351,6 +360,20 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
      FROM invite_campaign_participants p
      JOIN invite_campaigns c ON c.id = p.campaign_id
      WHERE p.state = 'pending' AND p.scheduled_ask_at <= NOW() AND c.status = 'open'
+       -- Ticket 17 Task 40. D102's gate was on OPENING a campaign only, and a
+       -- campaign opened before the gate existed keeps its pending
+       -- participants forever. Read live on 12 September: 50 open campaigns,
+       -- 49 of them opened before 9 September, every one with a pending
+       -- inviter — and target_decisions is EMPTY, nobody has approved
+       -- anything. The next tick would have sent asks about targets the
+       -- founder never said yes to, through the back door of history.
+       --
+       -- The gate belongs at the choke point every ask passes, which is here.
+       -- Same switch as the opening gate, so the two cannot disagree.
+       AND ($3::boolean = false OR EXISTS (
+         SELECT 1 FROM target_decisions d
+         WHERE d.phone = c.target_phone AND d.decision = 'yes'
+       ))
        AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = p.inviter_user_id)
        -- At most one invite ask per person per week (ticket 9 task 13.2). On
        -- 1 September the founder got six pushes inside one minute: six
@@ -365,7 +388,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
        )
      ORDER BY p.scheduled_ask_at ASC
      LIMIT $1`,
-    [limit, INVITE_ASK_COOLDOWN_DAYS],
+    [limit, INVITE_ASK_COOLDOWN_DAYS, founderYesRequired()],
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
 

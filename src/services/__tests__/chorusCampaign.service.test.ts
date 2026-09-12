@@ -349,6 +349,42 @@ describe('sendDueCampaignAsks', () => {
     expect(mockCreateThread).not.toHaveBeenCalled();
     expect(queueFollowUp).not.toHaveBeenCalled();
   });
+
+  /**
+   * Ticket 17 Task 40. D102's gate stood on OPENING a campaign only, so a
+   * campaign opened before the gate existed kept its pending participants and
+   * would still have sent. Read live on 12 September: 50 open campaigns, 49 of
+   * them older than the gate, each with a pending inviter — while
+   * target_decisions held not one row. The gate now stands where every ask
+   * actually passes.
+   */
+  it('asks only about targets the founder said yes to — the gate is on SENDING too', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await sendDueCampaignAsks(50);
+
+    const due = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('p.scheduled_ask_at <= NOW()'),
+    );
+    expect(due?.[0]).toContain('FROM target_decisions d');
+    expect(due?.[0]).toContain("d.decision = 'yes'");
+    // On by default — the founder has to have said yes.
+    expect((due?.[1] as unknown[])[2]).toBe(true);
+  });
+
+  it('lifts on the same switch as the opening gate, never on one of its own', async () => {
+    process.env.CHORUS_REQUIRE_FOUNDER_YES = 'false';
+    try {
+      mockQuery.mockResolvedValue(rows([]) as never);
+      await sendDueCampaignAsks(50);
+      const due = mockQuery.mock.calls.find(([sql]) =>
+        (sql as string).includes('p.scheduled_ask_at <= NOW()'),
+      );
+      expect((due?.[1] as unknown[])[2]).toBe(false);
+    } finally {
+      delete process.env.CHORUS_REQUIRE_FOUNDER_YES;
+    }
+  });
 });
 
 describe('recordCampaignResponse', () => {

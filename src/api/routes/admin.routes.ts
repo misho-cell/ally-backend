@@ -3130,12 +3130,46 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
     const [campaigns, dial] = await Promise.all([
+      // Ticket 17 Task 40. Read on 12 September: 50 open campaigns, every one of
+      // them "with an empty inviter and an empty reason". The data was never
+      // empty — all 50 have participants and 11 have sent an ask. This endpoint
+      // simply never returned either field, and `closed_reason` is null on an
+      // OPEN campaign by definition, so the reason column could only ever be
+      // blank for exactly the rows a reader most wants explained.
+      //
+      // So both are answered now. `inviters` names the people scheduled to ask,
+      // with the state of each (names only — no inviter phone joins an admin
+      // list that already shows the target's). `state_reason` says why the row
+      // stands where it does, and is filled for an open campaign too.
       query(
         `SELECT c.id, c.target_phone, c.target_label, c.city, c.status, c.ask_count_dial,
                 c.opened_at, c.closed_at, c.closed_reason,
-                COUNT(p.id) AS participant_count
+                COUNT(p.id) AS participant_count,
+                COUNT(p.id) FILTER (WHERE p.asked_at IS NOT NULL) AS asked_count,
+                MIN(p.scheduled_ask_at) FILTER (WHERE p.asked_at IS NULL)
+                  AS next_ask_due_at,
+                COALESCE(
+                  jsonb_agg(
+                    jsonb_build_object(
+                      'name', COALESCE(NULLIF(TRIM(u.name), ''), 'უსახელო ანგარიში'),
+                      'state', p.state,
+                      'asked_at', p.asked_at,
+                      'scheduled_ask_at', p.scheduled_ask_at)
+                    ORDER BY p.scheduled_ask_at)
+                    FILTER (WHERE p.id IS NOT NULL),
+                  '[]'::jsonb)                              AS inviters,
+                CASE
+                  WHEN c.status <> 'open'            THEN COALESCE(c.closed_reason, c.status)
+                  WHEN COUNT(p.id) = 0               THEN 'ღიაა, მომწვევის გარეშე — არავინაა სათხოვნელი'
+                  WHEN COUNT(p.id) FILTER (WHERE p.asked_at IS NOT NULL) = 0
+                    THEN 'ღიაა, პირველი კითხვა ჯერ არ გასულა — გრაფიკს ელოდება'
+                  WHEN COUNT(p.id) FILTER (WHERE p.asked_at IS NULL) > 0
+                    THEN 'ღიაა, კითხვა გასულია — შემდეგი მომწვევი გრაფიკზეა'
+                  ELSE 'ღიაა, ყველა მომწვევს უკითხეს — პასუხს ელოდება'
+                END                                         AS state_reason
          FROM invite_campaigns c
          LEFT JOIN invite_campaign_participants p ON p.campaign_id = c.id
+         LEFT JOIN "User" u ON u.id = p.inviter_user_id AND u."deletedAt" IS NULL
          GROUP BY c.id
          ORDER BY c.opened_at DESC
          LIMIT $1`,
