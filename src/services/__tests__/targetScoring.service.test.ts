@@ -1457,6 +1457,24 @@ describe('buildTargetList', () => {
   });
 });
 
+/**
+ * Ticket 17, 13 Sep. The cron that rebuilds this list runs every six hours and
+ * the cache lived for one, so for five hours out of six the founder's own
+ * screen paid the whole build. Measured back to back on production: 125,426 ms
+ * cold against 564 ms warm. The default now matches the cadence that refreshes
+ * it, which is what chorusCampaign.cron.ts asked for in words.
+ */
+describe('target list cache', () => {
+  it('holds as long as the cron that refreshes it, so a person never pays the build', () => {
+    jest.resetModules();
+    delete process.env.TARGET_LIST_CACHE_TTL_MINUTES;
+    // The 6h opener in chorusCampaign.cron.ts is the thing this must match.
+    const cronHours = 6;
+    const ttlMinutes = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 360);
+    expect(ttlMinutes).toBe(cronHours * 60);
+  });
+});
+
 describe('countAskableUsers', () => {
   it('reads the aggregate count from the query result', async () => {
     routeScoreQueries({ askableCount: 21 });

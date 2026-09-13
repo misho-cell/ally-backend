@@ -1516,7 +1516,26 @@ export async function countAskableUsers(): Promise<number> {
 // candidate dropped between reads 2 minutes apart). Inside the TTL every
 // read returns the SAME built list by construction; expiry or a restart
 // refreshes it. Config, not deploy.
-const TARGET_LIST_CACHE_TTL_MS = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 60) * 60_000;
+//
+// Ticket 17, 13 Sep: the default was 60 minutes while the cron that rebuilds
+// this list runs every SIX hours. So for five hours out of every six the cache
+// was expired, and whoever opened the review screen first paid the whole
+// build. Measured on production, back to back:
+//
+//   cold read   125,426 ms   ← what the founder was getting most of the time
+//   warm read       564 ms
+//
+// Two minutes, on his own screen, with no way to tell it apart from a hang.
+// chorusCampaign.cron.ts already says this in words — "with
+// TARGET_LIST_CACHE_TTL_MINUTES raised to match the 6h cadence the admin
+// routes read warm around the clock" — and nobody ever set the variable, so
+// the default is now the thing the comment asked for.
+//
+// Freshness does not change: the cron rebuilds on the same 6h cadence either
+// way, so the list is never older than it was. What changes is that the
+// rebuild is always paid by the cron in the background instead of by a person
+// waiting. A restart is covered by the warm-after-boot the cron already does.
+const TARGET_LIST_CACHE_TTL_MS = Number(process.env.TARGET_LIST_CACHE_TTL_MINUTES ?? 360) * 60_000;
 interface TargetListCache {
   builtAt: number;
   build: TargetListBuild;
