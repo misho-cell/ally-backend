@@ -256,6 +256,40 @@ export async function sendPushNotification(
   }
 }
 
+/**
+ * How long a delivery record is worth keeping. Long enough to answer „what
+ * happened to my notifications last month", not long enough to keep a row from
+ * the spring forever.
+ */
+function retentionDays(): number {
+  return Number(process.env.PUSH_DELIVERY_RETENTION_DAYS ?? 30);
+}
+
+/**
+ * Trim the delivery log.
+ *
+ * This table had no retention and did not badly need one while it held only
+ * sends and failures. Recording SKIPS changed that: a person reading on their
+ * laptop now produces a row for that device on every single answer, so the
+ * table grows with traffic rather than with trouble. A diagnostic that eats
+ * the disk stops being a diagnostic.
+ *
+ * Best-effort and bounded — it runs beside the daily sweep and must never be
+ * able to take anything else down with it.
+ */
+export async function prunePushDeliveries(): Promise<number> {
+  const result = await query<{ id: number }>(
+    `DELETE FROM push_deliveries
+     WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')
+     RETURNING id`,
+    [retentionDays()],
+    PRUNE_TIMEOUT_MS,
+  );
+  return result.rows.length;
+}
+
+const PRUNE_TIMEOUT_MS = 30_000;
+
 export function getVapidPublicKey(): string {
   return VAPID_PUBLIC_KEY;
 }

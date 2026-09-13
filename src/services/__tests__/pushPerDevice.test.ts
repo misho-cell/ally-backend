@@ -55,17 +55,22 @@ function fakeStream(): Response {
 async function load(subscriptions: Sub[]): Promise<{
   sse: typeof import('../sse.service');
   push: typeof import('../notification.service');
+  db: jest.Mock;
 }> {
   let sse!: typeof import('../sse.service');
   let push!: typeof import('../notification.service');
+  let db!: jest.Mock;
   const before = { ...process.env };
   process.env.VAPID_PUBLIC_KEY = 'test-public-key';
   process.env.VAPID_PRIVATE_KEY = 'test-private-key';
   await jest.isolateModulesAsync(async () => {
     sse = await import('../sse.service');
     push = await import('../notification.service');
-    const { query } = await import('../../db/postgres/client');
-    (query as jest.Mock).mockImplementation((sql: string) => {
+    // Taken from INSIDE the isolate and handed back: importing the client out
+    // here returns a different module instance, whose mock records nothing
+    // these modules did.
+    db = (await import('../../db/postgres/client')).query as unknown as jest.Mock;
+    db.mockImplementation((sql: string) => {
       if (sql.includes('FROM push_subscriptions')) {
         return Promise.resolve({
           rows: subscriptions.map((s) => ({ ...s, p256dh: 'p', auth: 'a' })),
@@ -75,7 +80,7 @@ async function load(subscriptions: Sub[]): Promise<{
     });
   });
   process.env = before;
-  return { sse, push };
+  return { sse, push, db };
 }
 
 /** The endpoints webpush was actually asked to deliver to. */
@@ -87,6 +92,37 @@ const PAYLOAD = { title: 'Netai', body: 'answer is ready' };
 
 beforeEach(() => {
   sendNotification.mockClear();
+});
+
+describe('the delivery log stays a diagnostic and does not eat the disk', () => {
+  it('records a skip as its own status, never as a failure', async () => {
+    const { sse, push, db } = await load([row('https://apple/mac', MAC_UA)]);
+
+    const close = sse.subscribeUserEvents(USER_ID, fakeStream(), sse.deviceKey(null, MAC_UA));
+    await push.sendPushNotification(USER_ID, PAYLOAD);
+    close();
+
+    const written = db.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO push_deliveries'),
+    );
+    // A skipped device is not a failed device: the screen that reads this
+    // table exists to tell those two apart.
+    expect((written?.[1] as unknown[])[2]).toBe('skipped');
+  });
+
+  it('prunes delivery records past the retention window', async () => {
+    const { push, db } = await load([]);
+    db.mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] });
+
+    const removed = await push.prunePushDeliveries();
+
+    expect(removed).toBe(2);
+    const [sql, params] = db.mock.calls.at(-1) as [string, unknown[]];
+    expect(sql).toContain('DELETE FROM push_deliveries');
+    // Recording skips means a row per live device per answer — the table now
+    // grows with traffic rather than with trouble, so it needs a horizon.
+    expect(params[0]).toBe(30);
+  });
 });
 
 describe('push presence is per device (ticket 17 row 6)', () => {

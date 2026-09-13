@@ -148,6 +148,7 @@ import {
 } from '../../services/targetScoring.service';
 import { baseWalkStatus } from '../../services/basePool.service';
 import { researchStatus, researchTrail } from '../../services/researchRunner.service';
+import { connectedDevices, deviceKey } from '../../services/sse.service';
 import {
   applyTargetDecisions,
   clearTargetDecision,
@@ -3236,6 +3237,12 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
                   WHEN endpoint LIKE '%mozilla%'            THEN 'mozilla'
                   ELSE 'other' END                         AS provider,
                 user_agent,
+                device_id,
+                -- The last 12, because that is exactly what the diagnostics
+                -- card on the person's own profile shows them. A screenshot
+                -- from their phone then lines up against a row here without
+                -- anybody having to read out a whole UUID.
+                RIGHT(device_id, 12)                       AS device_id_tail,
                 -- The endpoint itself identifies a device and is not needed to
                 -- read the answer; the tail is enough to tell two apart.
                 RIGHT(endpoint, 12)                        AS endpoint_tail,
@@ -3251,21 +3258,40 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
         [userId],
       ),
     ]);
-    const sent = deliveries.rows.filter((d) => (d as { status: string }).status === 'sent').length;
+    const countOf = (want: string): number =>
+      deliveries.rows.filter((d) => (d as { status: string }).status === want).length;
+    // Which of this person's devices is watching RIGHT NOW. This is the whole
+    // of row 6 on one screen: a device marked live is a device we deliberately
+    // did not push to, and without this the skip looks identical to silence.
+    const live = connectedDevices(userId);
+    const subscriptions = subs.rows.map((row) => {
+      const sub = row as { device_id: string | null; user_agent: string | null };
+      const key = deviceKey(sub.device_id, sub.user_agent);
+      return { ...sub, live: key !== null && live.has(key) };
+    });
     res.status(200).json({
       success: true,
       data: {
-        subscriptions: subs.rows,
+        subscriptions,
         recent_deliveries: deliveries.rows,
-        sent_recently: sent,
-        failed_recently: deliveries.rows.length - sent,
+        sent_recently: countOf('sent'),
+        // Counted by name, not by subtraction. Since presence became
+        // per-device there is a third status — 'skipped', the device was live
+        // and we chose not to interrupt it — and "everything that is not sent
+        // is failed" turned every one of those into a failure on the one
+        // screen whose job is to tell them apart.
+        failed_recently: countOf('failed'),
+        skipped_recently: countOf('skipped'),
         // Said out loud, because it is the trap row 6 fell into: every row
         // before this shipped is missing, and an Apple subscription with no
         // user_agent could be a Mac.
         note:
           'Deliveries are recorded only from 12 September; anything earlier is absent, not ' +
           'failed. A subscription with no user_agent predates that field — an apple provider ' +
-          'there may be macOS Safari, not an iPhone.',
+          'there may be macOS Safari, not an iPhone. A "skipped" delivery is not a failure: ' +
+          'that device had the app open and would have seen the answer anyway. A subscription ' +
+          'with no device_id has not re-subscribed since 13 September and still falls back to ' +
+          "the old rule (skipped whenever ANY of this person's devices is live).",
       },
     });
   } catch (error) {

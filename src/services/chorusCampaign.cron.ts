@@ -5,6 +5,7 @@ import {
 } from './chorusCampaign.service';
 import { walkBaseOnce } from './basePool.service';
 import { runResearchOnce } from './researchRunner.service';
+import { prunePushDeliveries } from './notification.service';
 import { queueWarmTieQuestions } from './warmth.service';
 
 // Ticket 6, engine T8 ("Chorus"): "fully automatic, no manual mode" — every
@@ -127,6 +128,18 @@ export function startChorusCampaignCron(): void {
       .catch((err: unknown) =>
         // eslint-disable-next-line no-console
         console.error('[chorus-cron] queueWarmTieQuestions failed:', (err as Error).message),
+      );
+  }, SWEEP_INTERVAL_MS).unref();
+
+  setInterval(() => {
+    void prunePushDeliveries()
+      .then((removed) => {
+        // eslint-disable-next-line no-console
+        if (removed > 0) console.log(`[push] pruned ${removed} old delivery record(s)`);
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[push] delivery prune failed:', (err as Error).message),
       );
   }, SWEEP_INTERVAL_MS).unref();
 
