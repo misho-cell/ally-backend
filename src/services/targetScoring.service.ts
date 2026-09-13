@@ -604,6 +604,14 @@ export interface TargetScoreParts {
   // The founder's target rule (31 Aug, via Misho): invite ONLY people the
   // door would let in, i.e. holders >= the gate's own threshold.
   subscribed_holders: number;
+  /**
+   * Ticket 18 [57], and the founder's answer of 13 September (D216): a foreign
+   * number is MARKED, never deleted. Living abroad has never been a gate here
+   * either (D110) — but the row carried no country at all, so seven of the
+   * thirty rows on the 30-day list were foreign and nothing on the screen said
+   * so. The reader was left to notice a `+1` prefix by eye.
+   */
+  in_georgia: boolean;
   // 1.0, or 0.3 when somebody was asked about them inside the last 90 days.
   // A multiplier on the score, so it belongs on the row that explains it.
   freshness: number;
@@ -2329,6 +2337,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         fit_evidence: fit.evidence,
         reach,
         pull: ctx.pull,
+        in_georgia: isGeorgianPersonalMobile(phone),
         needs_netai_signs: needsNetai,
         gap_filling_trade: gapFilling,
         goal_relevant: isGoalRelevant,

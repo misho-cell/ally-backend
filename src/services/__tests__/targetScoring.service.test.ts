@@ -1475,6 +1475,32 @@ describe('target list cache', () => {
   });
 });
 
+/**
+ * Ticket 18 [57] and the founder's answer D216: a foreign number is MARKED,
+ * never deleted — and living abroad has never been a gate here (D110). Read on
+ * the 30-day list on 13 September: seven of the thirty rows were `+1` numbers
+ * and the row carried no country at all, so the reader had to notice the prefix
+ * by eye. The mark is the fix, not a filter.
+ */
+describe('task 57: every row says whether the number is Georgian', () => {
+  it('marks a foreign number as such instead of hiding or dropping it', async () => {
+    mockFindUnmetNeeds.mockResolvedValue([
+      need('x', [
+        { phone: '+995500000071', label: 'Nino Director' },
+        { phone: '+13475550100', label: 'Gia Director' },
+      ]),
+    ]);
+    routeScoreQueries({ askableCount: 50, reach: [{ phone: '+13475550100', reach: '40' }] });
+
+    const out = await buildTargetList(30);
+
+    expect(out.find((e) => e.phone === '+995500000071')?.parts.in_georgia).toBe(true);
+    const foreign = out.find((e) => e.phone === '+13475550100');
+    // Present, and honestly labelled — D216 is "marked, never deleted".
+    if (foreign) expect(foreign.parts.in_georgia).toBe(false);
+  });
+});
+
 describe('countAskableUsers', () => {
   it('reads the aggregate count from the query result', async () => {
     routeScoreQueries({ askableCount: 21 });
