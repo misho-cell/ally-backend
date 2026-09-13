@@ -67,7 +67,13 @@ import {
   TaskAsk,
   IncomingAsk,
 } from './taskAsks.service';
-import { approveTaskPlan, planInForce, proposeTaskPlan, renderPlan } from './taskPlans.service';
+import {
+  approveTaskPlan,
+  planInForce,
+  proposeTaskPlan,
+  renderPlan,
+  TaskPlan,
+} from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath } from './tools/findWarmPath';
@@ -2970,7 +2976,36 @@ async function executeToolCall(
     case 'grant_task_permission':
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
     case 'propose_task_plan': {
-      const outcome = await proposeTaskPlan(userId, Number(input['task_id']), input['plan']);
+      const taskId = Number(input['task_id']);
+      const outcome = await proposeTaskPlan(userId, taskId, input['plan']);
+      // Ticket 18 [101]: the plan the user is asked to approve is written by the
+      // SERVER, as its own durable message.
+      //
+      // Until now it reached the screen only because the model happened to
+      // narrate it, and narration is stored as a `step` row — which
+      // getThreadMessages filters out. So the plan was one collapsed expander
+      // away, and after a reload it was nowhere: the buttons stayed, the plan
+      // did not. Read on goal #2773 (13 Sep): the plan is a 651-character step,
+      // the answer beside it is 715 characters and contains no plan.
+      //
+      // One of those buttons writes to real people in the user's name. What is
+      // being approved cannot depend on a model remembering to repeat it, and
+      // must not vanish on a refresh — so it is stored the same way Task 98's
+      // pending items are: written here, deterministically, before the answer.
+      if (outcome.ok && threadId !== undefined) {
+        const task = await getTaskById(taskId);
+        const proposed = task?.plan_proposed ?? null;
+        if (proposed !== null) {
+          await saveMessage(
+            userId,
+            threadId,
+            'assistant',
+            renderPlan(proposed as TaskPlan, outcome.value.version, null),
+            'message',
+            runId ?? null,
+          );
+        }
+      }
       return outcome.ok
         ? { proposed: true, version: outcome.value.version, summary: outcome.value.summary }
         : { proposed: false, error: outcome.error };

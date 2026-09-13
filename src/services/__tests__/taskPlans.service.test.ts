@@ -139,3 +139,44 @@ describe('the summary the user approves', () => {
     expect(text).not.toMatch(/\d{6}/);
   });
 });
+
+/**
+ * Ticket 18 [101]. The plan the user is asked to approve reached the screen
+ * only because the model happened to narrate it, and narration is stored as a
+ * `step` row — which getThreadMessages filters out. Read on goal #2773 on
+ * 13 September: the plan was a 651-character step, the 715-character answer
+ * beside it carried the buttons and no plan, and after a reload the plan was
+ * nowhere while the buttons stayed.
+ *
+ * `renderPlan` is what the server now writes as its own durable message, so
+ * what a person approves cannot depend on a model repeating it. This pins the
+ * shape of that text: everything the tester asked to see above the buttons.
+ */
+describe('Ticket 18 [101]: the plan text carries what is being approved', () => {
+  const plan = {
+    solved_when: 'თორნიკე იღებს სანდო ოსტატის კონტაქტს',
+    routes: [{ name: 'ქსელი', status: 'open' }],
+    people_to_involve: [
+      { name: 'Beso Ortoidze', route: 'ქსელი' },
+      { name: 'Tiko Ratiani', route: 'ქსელი' },
+    ],
+    never_contact: [{ name: 'ნანა' }],
+  } as unknown as Parameters<typeof renderPlan>[0];
+
+  it('names the finish criterion, the routes and every person it will write to', () => {
+    const text = renderPlan(plan, 1, null);
+
+    expect(text).toContain('თორნიკე იღებს სანდო ოსტატის კონტაქტს');
+    expect(text).toContain('ქსელი');
+    // The three the tester could not see: who gets written to, by name.
+    expect(text).toContain('Beso Ortoidze');
+    expect(text).toContain('Tiko Ratiani');
+    expect(text).toContain('ნანა');
+    // And that it is still awaiting the yes, not already approved.
+    expect(text).toContain('დასამტკიცებელი');
+  });
+
+  it('says approved once it is, so the two states never read alike', () => {
+    expect(renderPlan(plan, 1, '2026-09-13T10:00:00.000Z')).toContain('დამტკიცებულია');
+  });
+});
