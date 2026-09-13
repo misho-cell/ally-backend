@@ -146,6 +146,7 @@ import {
   startTargetListBuild,
   targetListStatus,
 } from '../../services/targetScoring.service';
+import { baseWalkStatus } from '../../services/basePool.service';
 import {
   applyTargetDecisions,
   clearTargetDecision,
@@ -2629,6 +2630,31 @@ adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin target-list gates]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * How far the base walk has got (ticket 19).
+ *   GET /admin/target-list/base-walk
+ *
+ * The 62,000 old-Ally accounts enter the pool through a background walk, which
+ * means the one question that matters — is it actually finding anybody — is
+ * invisible from outside. Read-only, and the four numbers that answer it:
+ * how many candidates exist, how many are still reachable (never opened
+ * Netai), where the cursor stands, and when the last pass wrote anything.
+ *
+ * A cursor that never moves, or a last_walk that stops advancing, is the walk
+ * being dead — and that is the failure this route exists to make visible
+ * rather than silent.
+ */
+adminRouter.get('/target-list/base-walk', async (_req: Request, res: Response) => {
+  try {
+    const status = await baseWalkStatus();
+    res.status(200).json({ success: true, data: status });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin base-walk]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
