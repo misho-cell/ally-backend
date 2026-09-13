@@ -189,11 +189,27 @@ threadsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
 threadsRouter.get('/stream', (req: Request, res: Response): void => {
   const userId = (req as AuthenticatedRequest).user.userId;
   // Which device is watching, so the push can be withheld from THIS screen and
-  // still reach the others (row 6). The query parameter, not a header, because
-  // EventSource cannot set headers; the user-agent answers it anyway when the
-  // frontend sends nothing.
-  const deviceId = typeof req.query.device_id === 'string' ? req.query.device_id : null;
-  const cleanup = subscribeUserEvents(userId, res, deviceKey(deviceId, req.get('user-agent')));
+  // still reach the others (row 6).
+  //
+  // The query parameter is what the frontend sends, and the right choice for
+  // this route specifically: the stream reconnects on its own, often, and a
+  // custom header puts a preflight round trip in front of every reconnect —
+  // with a failure mode (the stream dies) out of all proportion to what is
+  // being carried. CORS was not the reason: `cors()` here reflects the headers
+  // a browser asks for, so X-Device-Id was always allowed.
+  //
+  // The header is read too, because their authHeaders() already puts it on
+  // every other request and a device named twice is better than one named
+  // never. The user-agent still answers when neither arrives.
+  const cleanup = subscribeUserEvents(
+    userId,
+    res,
+    deviceKey(
+      typeof req.query.device_id === 'string' ? req.query.device_id : null,
+      req.get('x-device-id'),
+      req.get('user-agent'),
+    ),
+  );
   req.on('close', cleanup);
 });
 

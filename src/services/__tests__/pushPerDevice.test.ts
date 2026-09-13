@@ -216,4 +216,16 @@ describe('push presence is per device (ticket 17 row 6)', () => {
     expect(sse.deviceKey(null, '   ')).toBeNull();
     expect(sse.deviceKey(null, null)).toBeNull();
   });
+
+  it('takes the first name it is given: query, then header, then user-agent', async () => {
+    // The stream route offers all three. The frontend sends the id as a query
+    // parameter (a header would put a preflight in front of every reconnect);
+    // the header is read anyway because their authHeaders() already sends it.
+    const { sse } = await load([]);
+    expect(sse.deviceKey('from-query', 'from-header', MAC_UA)).toBe('from-query');
+    expect(sse.deviceKey(null, 'from-header', MAC_UA)).toBe('from-header');
+    expect(sse.deviceKey(null, undefined, MAC_UA)).toBe(MAC_UA.toLowerCase());
+    expect(sse.deviceKey('', '   ', MAC_UA)).toBe(MAC_UA.toLowerCase());
+    expect(sse.deviceKey(null, undefined, null)).toBeNull();
+  });
 });

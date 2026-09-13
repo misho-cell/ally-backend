@@ -62,13 +62,15 @@ const MAX_DEVICE_KEY_CHARS = 400;
  * One device, named the same way on both sides — the stream that arrives and
  * the push subscription that was stored — so the two can be compared at all.
  *
- * A device_id is the frontend saying so explicitly and is believed first. The
- * user-agent is the fallback that needs nothing from anyone: the same browser
- * writes it in both places. It does not tell two identical iPhones apart, and
- * it does not have to — it tells a Mac from a phone, which is row 6.
+ * Candidates in order of how much they are believed, first usable one wins.
+ * A device_id is the frontend saying so explicitly, and it survives the browser
+ * update that rewrites a user-agent string. The user-agent is the fallback that
+ * needs nothing from anyone: the same browser writes it in both places. It does
+ * not tell two identical iPhones apart, and it does not have to — it tells a
+ * Mac from a phone, which is row 6.
  */
-export function deviceKey(deviceId?: string | null, userAgent?: string | null): string | null {
-  for (const raw of [deviceId, userAgent]) {
+export function deviceKey(...candidates: (string | null | undefined)[]): string | null {
+  for (const raw of candidates) {
     if (typeof raw !== 'string') continue;
     const cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
     if (cleaned !== '') return cleaned.slice(0, MAX_DEVICE_KEY_CHARS);

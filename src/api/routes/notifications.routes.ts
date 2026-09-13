@@ -70,6 +70,9 @@ notificationsRouter.post(
       await savePushSubscription(userId, {
         ...subscription,
         user_agent: subscription.user_agent ?? req.get('user-agent'),
+        // Their authHeaders() already carries X-Device-Id on every request, so
+        // the subscription can be named even if the body field is ever dropped.
+        device_id: subscription.device_id ?? req.get('x-device-id'),
       });
       res.status(200).json({ success: true, data: null });
     } catch (error) {
