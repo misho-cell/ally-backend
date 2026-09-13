@@ -1524,11 +1524,44 @@ adminRouter.post('/users/:id/referral-code', async (req: Request, res: Response)
 // and PILOT_CONVERSATION_READER_USER_ID (default 501). Every read is logged.
 //   GET /admin/pilot/threads?user_id=171078          — that user's threads
 //   GET /admin/pilot/threads/:id/messages            — one conversation
-function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: string } {
+/**
+ * Ticket 19 [16], the founder's answer of 13 September: the reader opens for
+ * the one shared admin login, and switches off on "the last day of the 14-day
+ * pilot, whatever the launch date".
+ *
+ * A date alone does not keep that promise. Nothing stopped the date being set
+ * to next year, and "temporary" becomes permanent the day somebody types a far
+ * date and forgets — which is the exact risk raised when this was agreed. So
+ * the window itself is bounded: a date further out than this is refused, and
+ * the reader stays shut until a real one is set. Renewing is one variable;
+ * drifting is not possible.
+ */
+const PILOT_READER_MAX_WINDOW_DAYS = 45;
+
+export function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: string } {
   const until = process.env.PILOT_CONVERSATION_READER_UNTIL;
-  if (!until) return { allowed: false, reason: 'the pilot reader is switched off' };
-  if (Number.isNaN(new Date(until).getTime()) || new Date() > new Date(until)) {
-    return { allowed: false, reason: 'the pilot reader has ended' };
+  if (!until) {
+    return {
+      allowed: false,
+      reason:
+        'the pilot reader is switched off — set PILOT_CONVERSATION_READER_UNTIL to the last ' +
+        'day of the pilot, and PILOT_CONVERSATION_READER_USER_IDS to the admin id that reads',
+    };
+  }
+  const endsAt = new Date(until);
+  if (Number.isNaN(endsAt.getTime())) {
+    return { allowed: false, reason: 'the pilot reader end date is not a date' };
+  }
+  if (new Date() > endsAt) return { allowed: false, reason: 'the pilot reader has ended' };
+  const daysOut = (endsAt.getTime() - Date.now()) / 86_400_000;
+  if (daysOut > PILOT_READER_MAX_WINDOW_DAYS) {
+    return {
+      allowed: false,
+      reason:
+        `the pilot reader end date is ${Math.round(daysOut)} days out; at most ` +
+        `${PILOT_READER_MAX_WINDOW_DAYS} is allowed. Reading other people's conversations is ` +
+        'temporary by decision — set a date inside the pilot and renew it if the pilot is extended',
+    };
   }
   // Ticket 13 Task 16: the founder's admin session was refused because his
   // own account (501) has no admin login — he signs in as another admin. The
