@@ -4,6 +4,7 @@ import {
   sweepStaleParticipants,
 } from './chorusCampaign.service';
 import { walkBaseOnce } from './basePool.service';
+import { runResearchOnce } from './researchRunner.service';
 import { queueWarmTieQuestions } from './warmth.service';
 
 // Ticket 6, engine T8 ("Chorus"): "fully automatic, no manual mode" — every
@@ -17,6 +18,16 @@ import { queueWarmTieQuestions } from './warmth.service';
  * down is itself.
  */
 const BASE_WALK_INTERVAL_MS = Number(process.env.BASE_POOL_WALK_INTERVAL_MS ?? 5 * 60 * 1000);
+
+/**
+ * Ticket 19 [20]: one tick of the automatic research.
+ *
+ * Slower than the base walk because every step is a paid search. The tick does
+ * nothing at all unless RESEARCH_RUNNER is „on", so this timer is harmless
+ * until somebody decides to spend — which is the point: the decision to start
+ * spending is a person's, not a deploy's.
+ */
+const RESEARCH_INTERVAL_MS = Number(process.env.RESEARCH_INTERVAL_MS ?? 15 * 60 * 1000);
 
 const OPEN_CAMPAIGNS_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h — matches T7's own weekly cadence closely enough without a cron-schedule dependency
 const SEND_ASKS_INTERVAL_MS = 15 * 60 * 1000; // 15min — staggered asks land within a reasonable window of their scheduled day
@@ -64,6 +75,24 @@ export function startChorusCampaignCron(): void {
         console.error('[base-walk] failed:', (err as Error).message),
       );
   }, BASE_WALK_INTERVAL_MS).unref();
+
+  setInterval(() => {
+    void runResearchOnce()
+      .then(({ ran, searches, findings, not_attempted }) => {
+        // Silent while switched off — a timer nobody turned on must not write a
+        // line every quarter of an hour for the rest of the year.
+        if (!ran) return;
+        // eslint-disable-next-line no-console
+        console.log(
+          `[research] ${searches} searches, ${findings} findings, ` +
+            `${not_attempted} steps not attempted`,
+        );
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[research] failed:', (err as Error).message),
+      );
+  }, RESEARCH_INTERVAL_MS).unref();
 
   setInterval(() => {
     void openDueCampaigns(TARGET_LIST_LOOKBACK_DAYS)

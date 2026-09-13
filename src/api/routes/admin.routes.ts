@@ -147,6 +147,7 @@ import {
   targetListStatus,
 } from '../../services/targetScoring.service';
 import { baseWalkStatus } from '../../services/basePool.service';
+import { researchStatus, researchTrail } from '../../services/researchRunner.service';
 import {
   applyTargetDecisions,
   clearTargetDecision,
@@ -2648,6 +2649,37 @@ adminRouter.get('/target-list/gates', async (req: Request, res: Response) => {
  * being dead — and that is the failure this route exists to make visible
  * rather than silent.
  */
+/**
+ * What the automatic research has actually done, and what it found (ticket 19
+ * [20]).
+ *   GET /admin/research-findings          — the runner's state
+ *   GET /admin/research-findings?phone=…  — one person's whole trail
+ *
+ * The trail includes the steps that were NOT run, by name and with the reason.
+ * That is the point of the read: „we never looked" and „we looked and found
+ * nothing" are different facts about a real person, and a screen that shows
+ * only findings would silently turn the first into the second.
+ *
+ * Read-only, and it shows evidence — a page, its words, its URL — never a
+ * conclusion about anybody. Whoever reads it does the concluding.
+ */
+adminRouter.get('/research-findings', async (req: Request, res: Response) => {
+  try {
+    const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+    const status = await researchStatus();
+    if (phone === '') {
+      res.status(200).json({ success: true, data: { status, steps: [] } });
+      return;
+    }
+    const steps = await researchTrail(phone);
+    res.status(200).json({ success: true, data: { status, steps } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin research-findings]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/target-list/base-walk', async (_req: Request, res: Response) => {
   try {
     const status = await baseWalkStatus();
