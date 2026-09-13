@@ -487,7 +487,17 @@ export async function listIdentityCandidates(
   const order =
     opts.sort === 'rarity'
       ? `ORDER BY NULLIF(${rarity}, 0) ASC NULLS FIRST, id ASC`
-      : `ORDER BY confidence DESC, id ASC`;
+      : // Ticket 18 [91], the tester's second detail. The rarity score puts 787
+        // rows at exactly 1.00 — every name carried by only these two numbers —
+        // and inside that tie `id ASC` is arbitrary, so a pair with 21 owners
+        // could sit above one with 3. The founder's own 200 answers separate
+        // them: Yes median 4 owners, No median 21. Fewer owners first is the
+        // same reading the score itself is built on — one shared phonebook
+        // counted many times is the pattern that produced the 26-owner cards.
+        // `id` stays last so two reads a minute apart still match.
+        `ORDER BY confidence DESC,
+                  COALESCE((evidence->>'co_owners')::int, 2147483647) ASC,
+                  id ASC`;
   const [page, total, matched] = await Promise.all([
     query<IdentityCandidate>(
       `SELECT id, phones, confidence, evidence, status, created_at

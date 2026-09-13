@@ -94,6 +94,14 @@ export const TRADE_WORDS = [
   'plumber',
   'ელექტრიკ',
   'eleqtrik',
+  // Ticket 18 [8], the tester's second detail: „Soso Elektrikosi" came back with
+  // „Elektrikosi" as his COMPANY while „დათო ელექტრიკოსი" correctly read it as
+  // his trade. One Georgian word, two ordinary Latin spellings — ქ is written
+  // both `q` and `k` — and only one of them was here. The list already carries
+  // such pairs (khelosani/xelosani, parikmaxer/parikmakher); this one was
+  // simply missed, and a trade word absent from the trade list falls through to
+  // „everything else that is not a name", which is the company slot.
+  'elektrik',
   'electrician',
   'მექანიკ',
   'mechanic',

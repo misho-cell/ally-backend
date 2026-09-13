@@ -10,6 +10,7 @@ import {
   TRADE_WORDS,
 } from './labelDictionaries';
 import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
+import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 
 /**
  * Reading a phonebook label for what it can actually say (THE TARGETS 2.2).
@@ -158,11 +159,28 @@ const GEORGIAN_SURNAME_ENDINGS = ['შვილი', 'ძე', 'ია', 'ავ
  */
 const LATIN_SURNAME_ENDINGS = ['shvili', 'svili', 'dze', 'ava', 'iani'];
 
+/**
+ * The same token, and its Latin spelling when it was written in Georgian.
+ *
+ * Ticket 18 [8], the tester's first detail: „ოთარი TBC Insurance" kept „ოთარი"
+ * as the company while „Luka TBC Insurance" correctly dropped „Luka". The cause
+ * is not the rule, it is the list — it holds 1,062 Latin spellings against 275
+ * Georgian ones, so a name present as `otar` is simply absent as `ოთარი`.
+ * Transliterating before the lookup closes the whole gap at once rather than
+ * one name at a time: `ოთარი` → `otari`, which the list already has.
+ */
+function spellings(token: string): string[] {
+  if (!hasGeorgian(token)) return [token];
+  const latin = georgianToLatin(token);
+  return latin === token ? [token] : [token, latin];
+}
+
 export function isNameToken(token: string, firstInLabel: boolean): boolean {
-  if (GEORGIAN_FIRST_NAMES.has(token)) return true;
-  if (firstInLabel && AMBIGUOUS_FIRST_NAMES.has(token)) return true;
+  const forms = spellings(token);
+  if (forms.some((t) => GEORGIAN_FIRST_NAMES.has(t))) return true;
+  if (firstInLabel && forms.some((t) => AMBIGUOUS_FIRST_NAMES.has(t))) return true;
   return [...GEORGIAN_SURNAME_ENDINGS, ...LATIN_SURNAME_ENDINGS].some((ending) =>
-    token.endsWith(ending),
+    forms.some((t) => t.endsWith(ending)),
   );
 }
 
@@ -175,9 +193,12 @@ export function isNameToken(token: string, firstInLabel: boolean): boolean {
  * Georgia, and they do not have to. They list what a company ISN'T.
  */
 export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
+  // Ticket 18 [8]: a Georgian-script token is asked about in both spellings, so
+  // „ოთარი" is recognised as the name the list holds as „otari".
+  const forms = spellings(token);
   // A name we KNOW is a name, before anything else.
-  if (GEORGIAN_FIRST_NAMES.has(token)) return 'name';
-  if (firstInLabel && AMBIGUOUS_FIRST_NAMES.has(token)) return 'name';
+  if (forms.some((t) => GEORGIAN_FIRST_NAMES.has(t))) return 'name';
+  if (firstInLabel && forms.some((t) => AMBIGUOUS_FIRST_NAMES.has(t))) return 'name';
   // Then the dictionaries — BEFORE the surname-ending guess, and this order is
   // the whole point. Georgian builds agent nouns on „-ელი": „დამლაგებელი" (a
   // cleaner) and „მასწავლებელი" (a teacher) both end exactly like a surname.

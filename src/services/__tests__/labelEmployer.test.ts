@@ -77,6 +77,37 @@ describe('the trade word becomes the title, never the employer', () => {
   });
 });
 
+/**
+ * Ticket 18 [8], both details the tester found on the live product. The rule was
+ * right and the dictionaries were short: a Georgian-script first name was absent
+ * where its Latin spelling was present, and one of the two ordinary Latin
+ * spellings of „electrician" was missing from the trade list.
+ */
+describe("the founder's condition holds in Georgian script too", () => {
+  it('drops a Georgian first name the way it drops a Latin one', async () => {
+    const roles = await rolesFromLabels([
+      { label: 'ოთარი TBC Insurance', ...NO_FACTS },
+      { label: 'Luka TBC Insurance', ...NO_FACTS },
+    ]);
+
+    // The pair the tester read side by side: one worked, one did not.
+    expect(roles.get('ოთარი TBC Insurance')?.employer).toBe('TBC Insurance');
+    expect(roles.get('Luka TBC Insurance')?.employer).toBe('TBC Insurance');
+  });
+
+  it('reads a trade as a trade in either Latin spelling', async () => {
+    const roles = await rolesFromLabels([
+      { label: 'Soso Elektrikosi', ...NO_FACTS },
+      { label: 'დათო ელექტრიკოსი', ...NO_FACTS },
+    ]);
+
+    // Same word, same answer, whichever way it was typed — and never a company.
+    expect(roles.get('Soso Elektrikosi')?.title).toBe('Elektrikosi');
+    expect(roles.get('Soso Elektrikosi')?.employer).toBeUndefined();
+    expect(roles.get('დათო ელექტრიკოსი')?.title).toBe('ელექტრიკოსი');
+  });
+});
+
 describe('only the company or trade word travels', () => {
   it('drops the town, the relation and the bare title', async () => {
     const labels = ['გიორგი ბათუმი', 'თორნიკე მეზობელი', 'ლევანი დირექტორი'];
