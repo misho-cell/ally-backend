@@ -3,11 +3,20 @@ import {
   sendDueCampaignAsks,
   sweepStaleParticipants,
 } from './chorusCampaign.service';
+import { walkBaseOnce } from './basePool.service';
 import { queueWarmTieQuestions } from './warmth.service';
 
 // Ticket 6, engine T8 ("Chorus"): "fully automatic, no manual mode" — every
 // step below runs off a timer, the same shape as taskEngine.service's own
 // ticker (setInterval + .unref(), errors caught and logged, never thrown).
+
+/**
+ * Ticket 19: one batch of the base walk, often enough to cross 62,000 accounts
+ * in a few days and slowly enough that nobody notices. It runs on the
+ * background pool's own two connections, so the only thing it can ever slow
+ * down is itself.
+ */
+const BASE_WALK_INTERVAL_MS = Number(process.env.BASE_POOL_WALK_INTERVAL_MS ?? 5 * 60 * 1000);
 
 const OPEN_CAMPAIGNS_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h — matches T7's own weekly cadence closely enough without a cron-schedule dependency
 const SEND_ASKS_INTERVAL_MS = 15 * 60 * 1000; // 15min — staggered asks land within a reasonable window of their scheduled day
@@ -39,6 +48,22 @@ export function startChorusCampaignCron(): void {
         console.error('[chorus-cron] target-list warmup failed:', (err as Error).message),
       );
   }, WARM_TARGET_LIST_AFTER_MS).unref();
+
+  setInterval(() => {
+    void walkBaseOnce()
+      .then(({ examined, written, wrapped }) => {
+        // Quiet by default: a line only when the pass finds something or ends,
+        // so a job that runs all night does not bury the log.
+        // eslint-disable-next-line no-console
+        if (wrapped) console.log('[base-walk] reached the end of the base, starting again');
+        // eslint-disable-next-line no-console
+        else if (written > 0) console.log(`[base-walk] ${written} of ${examined} qualified`);
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[base-walk] failed:', (err as Error).message),
+      );
+  }, BASE_WALK_INTERVAL_MS).unref();
 
   setInterval(() => {
     void openDueCampaigns(TARGET_LIST_LOOKBACK_DAYS)

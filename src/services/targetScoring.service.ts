@@ -15,6 +15,7 @@ import {
 import { companyWordShare, isCompanyWordShare, isNameToken } from './labelReader.service';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { multiplierFor, outcomeLearning } from './outcomeLearning.service';
+import { basePool } from './basePool.service';
 import { approvedTargetPhones, refusedTargetPhones } from './targetDecisions.service';
 import {
   doorsFor,
@@ -2205,8 +2206,21 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // nobody happened to search for still belong on the list (pull 0, no
   // gap-filling claim); an unmet-needs match on the same phone keeps its
   // richer context from gatherCandidates.
-  const [gatePool, allyPool] = await Promise.all([gatePassablePool(holderIds), oldAllyPool()]);
-  for (const person of [...gatePool, ...allyPool]) {
+  // Ticket 19: three ways in, and the third is the one that stops the pool
+  // being our own phonebooks. gatePassablePool is „somebody we use carries
+  // them"; oldAllyPool is the connector door; basePool is the whole base, on
+  // each person's OWN signals, read from what the night already measured.
+  // It fails soft — an empty third source is a thinner list, never a dead one.
+  const [gatePool, allyPool, wholeBase] = await Promise.all([
+    gatePassablePool(holderIds),
+    oldAllyPool(),
+    basePool().catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[base-pool] unavailable, list built without it:', (err as Error).message);
+      return [];
+    }),
+  ]);
+  for (const person of [...gatePool, ...allyPool, ...wholeBase]) {
     if (!candidates.has(person.phone)) {
       candidates.set(person.phone, {
         label: person.label,
