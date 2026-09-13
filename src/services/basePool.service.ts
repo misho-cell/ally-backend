@@ -175,6 +175,19 @@ export async function walkBaseOnce(): Promise<WalkResult> {
  * the live build never measures the base, it only reads what the night already
  * measured. An account that has since opened Netai is filtered here rather than
  * deleted, so the walk does not rediscover it every pass.
+ *
+ * THE STORED FLAG IS NOT ENOUGH, AND THIS IS THE REASON. `opened_netai` is a
+ * photograph taken the last time the walk passed this account, and the walk
+ * crosses the whole base over days. Somebody who opens Netai this morning stays
+ * written down as „never opened" until it comes back round to them — and in
+ * that window the engine would list a Netai USER as a target and invite them to
+ * the product they are already using. That is the one mistake the product must
+ * not make about its own people: a member gets activated, never pitched.
+ *
+ * So the flag stays as the cheap indexed pre-filter, and the same question is
+ * asked again here, live, against the three things that mean somebody arrived:
+ * a conversation, a search, a paid subscription. Three indexed EXISTS over a
+ * few hundred rows cost almost nothing next to being wrong about a person.
  */
 export async function basePool(): Promise<BasePoolRow[]> {
   const result = await query<{ phone: string; label: string | null }>(
@@ -183,10 +196,13 @@ export async function basePool(): Promise<BasePoolRow[]> {
        FROM base_pool_candidates c
        LEFT JOIN "User" u ON u.id = c.user_id AND u."deletedAt" IS NULL
        WHERE c.opened_netai = FALSE
+         AND (u.subscription_status IS NULL OR u.subscription_status <> ALL($2::text[]))
+         AND NOT EXISTS (SELECT 1 FROM threads t WHERE t.user_id = c.user_id)
+         AND NOT EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = c.user_id::text)
        ORDER BY c.own_contacts DESC
        LIMIT $1
      ) top`,
-    [READ_LIMIT],
+    [READ_LIMIT, NETAI_LIVE_STATUSES],
     READ_TIMEOUT_MS,
   );
   // The label is display material and the crowd's name for them is better, so

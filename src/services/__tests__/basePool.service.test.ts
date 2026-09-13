@@ -117,4 +117,23 @@ describe('reading what the night measured', () => {
 
     expect((await basePool())[0].label).toBe('');
   });
+
+  it('asks again, live, whether the person has since arrived', async () => {
+    // The stored flag is a photograph taken the last time the walk passed this
+    // account, and the walk crosses the base over days. Somebody who opens
+    // Netai this morning would stay written down as „never opened" until it
+    // comes round again — and in that window the engine would invite a Netai
+    // USER to Netai. A member gets activated, never pitched.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await basePool();
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM threads');
+    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM search_activity');
+    expect(sql).toContain('subscription_status');
+    // The flag is still there as the cheap indexed pre-filter, not as the
+    // guarantee.
+    expect(sql).toContain('opened_netai = FALSE');
+  });
 });
