@@ -14,6 +14,7 @@ import {
 } from './labelDictionaries';
 import { companyWordShare, isCompanyWordShare, isNameToken } from './labelReader.service';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
+import { multiplierFor, outcomeLearning } from './outcomeLearning.service';
 import { approvedTargetPhones, refusedTargetPhones } from './targetDecisions.service';
 import {
   doorsFor,
@@ -634,6 +635,11 @@ export interface TargetScoreParts {
    * data can read, and every plus that fired with its evidence.
    */
   tier: TargetTier;
+  /**
+   * Ticket 19 [43]: how much earlier cohorts in this tier moved this score.
+   * 1 means outcomes have not earned a say yet — see outcomeLearning.service.
+   */
+  outcome_multiplier: number;
   doors: TargetDoors;
   pluses: TargetPlus[];
   /** Where `city` came from: the person's own public fact, or the asker's market. */
@@ -1469,10 +1475,19 @@ function combinedScore(parts: {
   reach: number;
   pull: number;
   freshness: number;
+  /**
+   * Ticket 19 [43]: what earlier cohorts in this person's tier actually did,
+   * as a multiplier. Exactly 1.0 until a tier has enough concluded campaigns to
+   * have earned a say, so on a base with no outcomes the score is unchanged —
+   * see outcomeLearning.service for why that floor exists.
+   */
+  outcome?: number;
 }): number {
   const crowd = parts.bubbleDensity ?? reachFactor(parts.reach);
   const demand = Math.min(1, parts.pull / PULL_SATURATION) * DEMAND_CAP;
-  const score = FIT_SCORE[parts.fit] * crowd * parts.freshness + demand;
+  // The multiplier scales what the person's own signals say; demand is a
+  // separate, capped addition and outcomes have nothing to say about it.
+  const score = FIT_SCORE[parts.fit] * crowd * parts.freshness * (parts.outcome ?? 1) + demand;
   // Rounded only here, at the edge — never between the parts (task 31.4).
   return roundTo(Math.min(1, score));
 }
@@ -2172,6 +2187,15 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // social proof, or a candidate can enter the pool and then fail the gate
   // that let them in.
   const holderIds = await socialProofHolderIds();
+  // Ticket 19 [43]: what previous cohorts actually did. Read once for the whole
+  // build; every multiplier is 1.0 until a tier has earned a say, so this is a
+  // no-op on a base with no concluded campaigns rather than a silent nudge.
+  const learning = await outcomeLearning().catch((err: unknown) => {
+    // A learner that cannot read its evidence must not change anything.
+    // eslint-disable-next-line no-console
+    console.error('[outcome-learning] unavailable, scores unchanged:', (err as Error).message);
+    return null;
+  });
   // The human answers, read once. A „no" is a real exclusion, not a demotion;
   // a „yes" is the founder's web judgment and lifts the row to BEST (Task 5).
   const [refused, approved] = await Promise.all([refusedTargetPhones(), approvedTargetPhones()]);
@@ -2312,6 +2336,10 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     if (inGeorgia(factCity) === false && gates.hit('not_in_georgia')) continue;
     const inviter = inviterMap.get(phone) ?? null;
     const approvedByFounder = approved.has(phone);
+    // The tier is the engine's own claim about this person; the multiplier is
+    // what earlier campaigns said about that claim (Ticket 19 [43]).
+    const rowTier = tierFor(fit.level, approvedByFounder);
+    const outcomeMultiplier = learning === null ? 1 : multiplierFor(learning, rowTier);
     const needsNetai = hasNeedsNetaiSignal(ctx.label);
     const gapFilling = ctx.smallestPoolForItsTopics <= GAP_FILLING_POOL_THRESHOLD;
     const isGoalRelevant = goalRelevant.has(phone);
@@ -2328,6 +2356,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         pull: ctx.pull,
         freshness: approach?.freshness ?? 1,
         bubbleDensity: null,
+        outcome: outcomeMultiplier,
       }),
       inviter,
       route: inviter ? 'chorus' : 'direct',
@@ -2354,7 +2383,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
         own_contacts: account?.ownContacts ?? null,
         opens: account?.opens ?? null,
         bubble: null,
-        tier: tierFor(fit.level, approvedByFounder),
+        tier: rowTier,
+        outcome_multiplier: outcomeMultiplier,
         doors: doorsFor(factCity, fit.level),
         // R1 reads the label the role word was found in (the same one `fit`
         // read), not the person's name the row is shown under.
@@ -2408,7 +2438,11 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     if (bubble === undefined) continue;
     entry.parts.bubble = bubble;
     // D71: where density is known it REPLACES raw reach, it does not top it up.
-    entry.score = combinedScore({ ...entry.scoreInputs, bubbleDensity: bubble.density });
+    entry.score = combinedScore({
+      ...entry.scoreInputs,
+      bubbleDensity: bubble.density,
+      outcome: entry.parts.outcome_multiplier,
+    });
   }
   shortlist.sort(byScore);
   const ordered = [...shortlist, ...entries.slice(shortlistSize)];
