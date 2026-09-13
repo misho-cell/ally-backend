@@ -49,6 +49,7 @@ import {
   mcpRetractFact,
   mcpForgetFact,
   mcpSaveUserNote,
+  mcpForgetUserNote,
   mcpGetUserNotes,
   mcpQueueResult,
   mcpRecordSearchOutcome,
@@ -532,6 +533,17 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) => runTool(userId, 'get_user_notes', () => mcpGetUserNotes(userId, args)),
+  );
+  server.registerTool(
+    'forget_user_note',
+    {
+      title: TOOL_TEXTS.forget_user_note.title,
+      description: TOOL_TEXTS.forget_user_note.description,
+      inputSchema: {
+        note_ref: z.string().describe('The note_ref from get_user_notes, e.g. note_42'),
+      },
+    },
+    (args) => runTool(userId, 'forget_user_note', () => mcpForgetUserNote(userId, args)),
   );
   server.registerTool(
     'list_answer_rules',

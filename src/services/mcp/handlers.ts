@@ -42,7 +42,7 @@ import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
 import { searchRoster } from '../tools/searchRoster';
 import { findWarmPath } from '../tools/findWarmPath';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
-import { getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
+import { deleteUserNotes, getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
 import {
   countHeldUpdates,
   getPendingUpdates,
@@ -1202,6 +1202,26 @@ export async function mcpSaveUserNote(
   return { saved: true, kind: args.kind };
 }
 
+/**
+ * Ticket 19 (the founder's heads-up, 13 Sep): asked in chat to delete one of
+ * these notes, the product answered „record deleted" and the note was still
+ * there. There was no tool to delete one — only `forget_contact_fact`, which
+ * deletes a CONTACT's fact and can never touch a user's own note — so the model
+ * reached for the nearest thing and reported success it had not achieved.
+ *
+ * A note could not even be named here: this handler returned kind and text and
+ * dropped the id, so on the connector there was nothing to address. It now
+ * carries a `note_ref`, the same shape as `task_ref` — the user's own note, not
+ * a third party's anything.
+ */
+const NOTE_REF_PREFIX = 'note_';
+
+function parseNoteRef(ref: string): number | null {
+  if (!ref.startsWith(NOTE_REF_PREFIX)) return null;
+  const id = Number(ref.slice(NOTE_REF_PREFIX.length));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 export async function mcpGetUserNotes(
   userId: string,
   args: { kind?: string },
@@ -1209,8 +1229,33 @@ export async function mcpGetUserNotes(
   const kind = args.kind && isUserNoteKind(args.kind) ? args.kind : undefined;
   const notes = await getUserNotes(userId, kind);
   return {
-    notes: notes.map((n) => ({ kind: n.kind, text: scrubText(n.text) })),
+    notes: notes.map((n) => ({
+      note_ref: NOTE_REF_PREFIX + String(n.id),
+      kind: n.kind,
+      text: scrubText(n.text),
+    })),
   };
+}
+
+export async function mcpForgetUserNote(
+  userId: string,
+  args: { note_ref: string },
+): Promise<McpToolPayload> {
+  const id = parseNoteRef(args.note_ref ?? '');
+  if (id === null) {
+    return { deleted: false, error: 'Unknown note_ref — take it from get_user_notes.' };
+  }
+  // deleteUserNotes is scoped to the caller, so another account's note is a
+  // no-op here rather than a deletion.
+  const { deleted } = await deleteUserNotes(userId, [id]);
+  return deleted > 0
+    ? { deleted: true, count: deleted }
+    : {
+        deleted: false,
+        error:
+          "Nothing was deleted — that note is not there, or it is not this user's. Do NOT tell " +
+          'them it is gone: read get_user_notes again and say what you actually see.',
+      };
 }
 
 // The user's standing answer rules (Ticket 10 Task 22): theirs to see and delete.

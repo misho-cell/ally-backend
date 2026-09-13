@@ -89,7 +89,13 @@ import {
   forgetContactRelationship,
   listOwnRelationships,
 } from './contactRelationships.service';
-import { getUserNotes, isUserNoteKind, saveUserNote, UserNote } from './userNotes.service';
+import {
+  deleteUserNotes,
+  getUserNotes,
+  isUserNoteKind,
+  saveUserNote,
+  UserNote,
+} from './userNotes.service';
 import {
   countHeldUpdates,
   getPendingUpdates,
@@ -1270,6 +1276,33 @@ const GET_USER_NOTES_TOOL: AnthropicTool = {
     type: 'object',
     properties: { kind: { type: 'string', description: 'need | preference | profile' } },
     required: [],
+  },
+};
+
+/**
+ * Ticket 19 (the founder's heads-up, 13 Sep): asked in chat to delete one saved
+ * note, the product answered „record deleted" and the note was still there.
+ * There was no tool for it — only `forget_contact_fact`, which deletes a
+ * CONTACT's fact and can never touch a user's own note — so the model reached
+ * for the nearest thing and reported a success it had not achieved.
+ *
+ * The data page promises the user they can delete everything they told us. A
+ * promise like that is broken the first time the product says „done" and means
+ * nothing.
+ */
+const FORGET_USER_NOTE_TOOL: AnthropicTool = {
+  name: 'forget_user_note',
+  description:
+    "Delete ONE of the user's own saved notes, by the id from get_user_notes. Use this — never " +
+    'forget_contact_fact, which deletes a fact about a CONTACT and cannot touch a note. ' +
+    'Call get_user_notes first to get the id. ' +
+    'If it returns deleted: false, the note was NOT removed: say so plainly and never claim it ' +
+    "is gone. Only the user's own notes can be reached; another account's note is not found. " +
+    ' WHEN: they ask you to forget, delete or remove something they told you about themselves.',
+  input_schema: {
+    type: 'object',
+    properties: { id: { type: 'number', description: 'The note id from get_user_notes' } },
+    required: ['id'],
   },
 };
 
@@ -3053,6 +3086,22 @@ async function executeToolCall(
       await saveUserNote(userId, kind, text);
       return { saved: true };
     }
+    case 'forget_user_note': {
+      const id = Number(input['id']);
+      if (!Number.isInteger(id) || id <= 0) {
+        return { deleted: false, error: 'Pass the note id from get_user_notes.' };
+      }
+      // Scoped to the caller: another account's note is a no-op, not a delete.
+      const { deleted } = await deleteUserNotes(userId, [id]);
+      return deleted > 0
+        ? { deleted: true, count: deleted }
+        : {
+            deleted: false,
+            error:
+              'Nothing was deleted — that note is not there. Do NOT tell them it is gone: read ' +
+              'get_user_notes again and say what you actually see.',
+          };
+    }
     case 'get_user_notes': {
       const kind = isUserNoteKind(input['kind'] as string)
         ? (input['kind'] as 'need' | 'preference' | 'profile')
@@ -4089,6 +4138,7 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
     FORGET_FACT_TOOL,
     SAVE_USER_NOTE_TOOL,
     GET_USER_NOTES_TOOL,
+    FORGET_USER_NOTE_TOOL,
     LIST_ANSWER_RULES_TOOL,
     DELETE_ANSWER_RULE_TOOL,
     QUEUE_RESULT_TOOL,

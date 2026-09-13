@@ -433,6 +433,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'question is shown to the user again instead of being answered for them. Confirm which ' +
       'rule they mean first.',
   },
+  forget_user_note: {
+    title: "Delete one of the user's own saved notes",
+    description:
+      "Deletes ONE of the user's own saved notes, by the note_ref from get_user_notes. Use this " +
+      '— never forget_contact_fact, which deletes a fact about a CONTACT and can never touch a ' +
+      'note the user wrote about themselves. Call get_user_notes first to get the note_ref. ' +
+      'If it comes back deleted: false the note was NOT removed — say so plainly and never tell ' +
+      'them it is gone. Only their own notes can be reached.',
+  },
   get_user_notes: {
     title: 'Read the notes saved about the user',
     description:
