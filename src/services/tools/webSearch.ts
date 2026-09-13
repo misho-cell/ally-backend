@@ -115,6 +115,18 @@ async function fetchRawPageText(url: string): Promise<string> {
   }
 }
 
+/**
+ * Whether search can work at all.
+ *
+ * Exported so a background job can ask BEFORE it starts, rather than learning
+ * it one failed call at a time — an unconfigured key would otherwise let the
+ * research runner spend its whole daily allowance writing identical error rows.
+ * The key name stays known in one place.
+ */
+export function webSearchConfigured(): boolean {
+  return Boolean(TAVILY_API_KEY);
+}
+
 export async function webSearch(query: string): Promise<object> {
   if (!TAVILY_API_KEY) {
     return { error: 'Web search not configured (TAVILY_API_KEY missing)' };

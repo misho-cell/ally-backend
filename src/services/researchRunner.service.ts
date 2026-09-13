@@ -2,7 +2,7 @@ import { backgroundQuery, query } from '../db/postgres/client';
 import { readLabels } from './labelReader.service';
 import { TriggerLedger, planResearch } from './researchTriggers.service';
 import type { ResearchPlan, ResearchStep } from './researchTriggers.service';
-import { webSearch } from './tools/webSearch';
+import { webSearch, webSearchConfigured } from './tools/webSearch';
 
 /**
  * Ticket 19 [20]: the research runs itself.
@@ -213,6 +213,13 @@ export async function runResearchOnce(): Promise<ResearchTickResult> {
       'Automatic research is off (set RESEARCH_RUNNER=on to start it). Every step is a ' +
         'paid search, so it does not begin on its own.',
     );
+  }
+
+  if (!webSearchConfigured()) {
+    // Asked once, up front. Left to discover it call by call, the runner would
+    // spend its whole daily allowance writing the same error row 200 times and
+    // then report a day's work.
+    return idle('Web search is not configured (TAVILY_API_KEY missing); no step can run.');
   }
 
   const { peoplePerTick, dailyBudget, refreshDays, maxSteps } = dials();

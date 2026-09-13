@@ -20,9 +20,11 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 
 const webSearch = jest.fn();
+const webSearchConfigured = jest.fn(() => true);
 jest.mock('../tools/webSearch', () => ({
   __esModule: true,
   webSearch: (...args: unknown[]): unknown => webSearch(...args),
+  webSearchConfigured: (): boolean => webSearchConfigured(),
 }));
 
 const readLabels = jest.fn();
@@ -126,6 +128,20 @@ describe('the research runner spends nothing it was not told to spend', () => {
     // Not one query either: an off job costs nothing, including a database round trip.
     expect(mockQuery).not.toHaveBeenCalled();
     expect(result.verdict).toContain('RESEARCH_RUNNER=on');
+  });
+
+  it('asks once whether search works at all, instead of finding out 200 times', async () => {
+    // Left to discover it call by call, the runner would spend a whole day's
+    // allowance writing the same error row over and over and then report a
+    // day's work done.
+    webSearchConfigured.mockReturnValueOnce(false);
+    withDatabase();
+
+    const result = await runResearchOnce();
+
+    expect(result.ran).toBe(false);
+    expect(webSearch).not.toHaveBeenCalled();
+    expect(result.verdict).toContain('TAVILY_API_KEY');
   });
 
   it('stops for the day once the budget is spent, and says so', async () => {
