@@ -45,6 +45,9 @@ notificationsRouter.post(
   // above are checked, and an absent or odd user_agent is simply stored as
   // null (see savePushSubscription, which also truncates it).
   body('user_agent').optional().isString(),
+  // Row 6's fix: the frontend's own stable name for this device, if it has one.
+  // Same rule as above — optional, and never a reason to refuse a device.
+  body('device_id').optional().isString(),
   async (req: Request, res: Response<ApiResponse<null>>) => {
     const errors = validationResult(req);
 
@@ -60,7 +63,14 @@ notificationsRouter.post(
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const subscription = req.body as PushSubscriptionPayload;
-      await savePushSubscription(userId, subscription);
+      // When the client sends no user_agent, the request header is the same
+      // browser saying the same thing — so take it rather than store a device
+      // we cannot name. Every subscription made before row 6 is nameless, and
+      // a nameless one can only fall back to the old all-or-nothing rule.
+      await savePushSubscription(userId, {
+        ...subscription,
+        user_agent: subscription.user_agent ?? req.get('user-agent'),
+      });
       res.status(200).json({ success: true, data: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save subscription';

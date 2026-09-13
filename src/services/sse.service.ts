@@ -38,7 +38,78 @@ emitter.setMaxListeners(0);
 
 const KEEPALIVE_INTERVAL_MS = 30_000;
 
-export function subscribeUserEvents(userId: string, res: Response): () => void {
+/**
+ * Ticket 17 row 6: which of a person's DEVICES is watching right now.
+ *
+ * The bug this exists for. Presence was one boolean per person, and the push
+ * was skipped whenever that boolean was true. Lika has four subscriptions; with
+ * a Mac tab open, her phone was told nothing — because the Mac was connected.
+ * That is precisely the reported symptom: „it arrives on the desktop, not on
+ * the phone." The phone was never away from our point of view, because we were
+ * never looking at the phone.
+ *
+ * So presence is counted per device. Nested map rather than a flat key, because
+ * the question asked of it is always „which of THIS user's devices are here".
+ * Counted, not a flag: one device can hold two streams (two tabs), and the
+ * first one closing must not make the device look absent.
+ */
+const connections = new Map<string, Map<string | null, number>>();
+
+/** Long enough for any real user-agent; a guard against an absurd one. */
+const MAX_DEVICE_KEY_CHARS = 400;
+
+/**
+ * One device, named the same way on both sides — the stream that arrives and
+ * the push subscription that was stored — so the two can be compared at all.
+ *
+ * A device_id is the frontend saying so explicitly and is believed first. The
+ * user-agent is the fallback that needs nothing from anyone: the same browser
+ * writes it in both places. It does not tell two identical iPhones apart, and
+ * it does not have to — it tells a Mac from a phone, which is row 6.
+ */
+export function deviceKey(deviceId?: string | null, userAgent?: string | null): string | null {
+  for (const raw of [deviceId, userAgent]) {
+    if (typeof raw !== 'string') continue;
+    const cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (cleaned !== '') return cleaned.slice(0, MAX_DEVICE_KEY_CHARS);
+  }
+  return null;
+}
+
+function openConnection(userId: string, key: string | null): void {
+  const devices = connections.get(userId) ?? new Map<string | null, number>();
+  devices.set(key, (devices.get(key) ?? 0) + 1);
+  connections.set(userId, devices);
+}
+
+function closeConnection(userId: string, key: string | null): void {
+  const devices = connections.get(userId);
+  if (devices === undefined) return;
+  const left = (devices.get(key) ?? 0) - 1;
+  if (left > 0) devices.set(key, left);
+  else devices.delete(key);
+  if (devices.size === 0) connections.delete(userId);
+}
+
+/**
+ * The named devices with a stream open right now.
+ *
+ * Only devices that could be named. A connection whose device we cannot
+ * identify is filed under the null key — which no name can ever collide with,
+ * where a sentinel string could — and is counted by `hasActiveConnection`
+ * alone, so nothing can silently be read as „that device is present".
+ */
+export function connectedDevices(userId: string): ReadonlySet<string> {
+  const devices = connections.get(userId);
+  if (devices === undefined) return new Set<string>();
+  return new Set([...devices.keys()].filter((k): k is string => k !== null));
+}
+
+export function subscribeUserEvents(
+  userId: string,
+  res: Response,
+  device?: string | null,
+): () => void {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -50,16 +121,24 @@ export function subscribeUserEvents(userId: string, res: Response): () => void {
   }, KEEPALIVE_INTERVAL_MS);
 
   const eventName = `user:${userId}`;
+  const key = device ?? null;
 
   function onEvent(data: unknown): void {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   }
 
   emitter.on(eventName, onEvent);
+  openConnection(userId, key);
 
+  let closed = false;
   return (): void => {
+    // Guarded: 'close' can fire more than once, and a double decrement would
+    // make a device that is still watching look away.
+    if (closed) return;
+    closed = true;
     clearInterval(keepalive);
     emitter.off(eventName, onEvent);
+    closeConnection(userId, key);
   };
 }
 
@@ -95,14 +174,15 @@ export function emitThreadUpdated(userId: string, thread: ThreadUpdatePayload): 
 }
 
 /**
- * Whether the user currently has an open SSE stream (an attached listener). Used
- * to decide if a completed run should also fire a push — if they're connected
- * they'll see it live; if not, their answer would otherwise sit unseen. This is
- * connection-level presence, not per-thread, which is the right bar for "notify
- * when away".
+ * Whether the user has ANY stream open, on any device.
+ *
+ * Still the right question for one case only: a push subscription that cannot
+ * name its device. There is nothing to compare it against, so it keeps the old
+ * rule — somebody is here, do not interrupt them. Every subscription that CAN
+ * name its device is decided by `connectedDevices` instead.
  */
 export function hasActiveConnection(userId: string): boolean {
-  return emitter.listenerCount(`user:${userId}`) > 0;
+  return (connections.get(userId)?.size ?? 0) > 0;
 }
 
 // Every text/payload leaving this module is phone-scrubbed here, at the single

@@ -28,7 +28,7 @@ import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
-import { emitRunComplete, emitRunError, hasActiveConnection } from './sse.service';
+import { emitRunComplete, emitRunError } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
 import { scrubText } from './privacyScrub';
@@ -189,20 +189,18 @@ export async function wakeTask(
         );
       }
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });
-      if (!hasActiveConnection(ownerId)) {
-        const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
-        void sendPushNotification(ownerId, {
-          title: 'Netai — დავალებაზე სიახლეა',
-          body:
-            preview.length > PUSH_PREVIEW_MAX_CHARS
-              ? preview.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
-              : preview || 'დავალებაზე სიახლეა',
-          url: `/chat/${thread.id}`,
-        }).catch(() => undefined);
-      } else {
-        // eslint-disable-next-line no-console
-        console.log(`[push] user ${ownerId}: skipped task push, SSE looks active`);
-      }
+      // Sent unconditionally: whether the person is away is decided per DEVICE
+      // inside sendPushNotification, and this gate — one boolean for a person
+      // with four devices — is exactly what silenced Lika's phone (row 6).
+      const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
+      void sendPushNotification(ownerId, {
+        title: 'Netai — დავალებაზე სიახლეა',
+        body:
+          preview.length > PUSH_PREVIEW_MAX_CHARS
+            ? preview.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
+            : preview || 'დავალებაზე სიახლეა',
+        url: `/chat/${thread.id}`,
+      }).catch(() => undefined);
       return true;
     } catch (err) {
       // eslint-disable-next-line no-console

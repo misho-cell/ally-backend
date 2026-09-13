@@ -1,0 +1,16 @@
+-- Ticket 17 row 6, the actual fault behind „it arrives on the desktop, not on
+-- the phone".
+--
+-- Presence was one boolean per PERSON: if any stream was open, the push was
+-- skipped. Lika has four subscriptions, so a Mac tab open meant her phone was
+-- told nothing — the phone was never away from our point of view, because we
+-- were never looking at the phone.
+--
+-- The fix is to decide per device, which needs the stream and the subscription
+-- to be talking about the same device. The user-agent (139) can do that on its
+-- own and needs nothing from anyone. This column is the frontend saying it
+-- explicitly, which survives a browser update changing its user-agent string.
+--
+-- Nullable on purpose and never required: a device we cannot name is still a
+-- device we must be able to notify, and it simply keeps the old rule.
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS device_id TEXT;

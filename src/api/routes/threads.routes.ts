@@ -45,7 +45,7 @@ import {
   emitThreadUpdated,
   emitRunComplete,
   emitRunError,
-  hasActiveConnection,
+  deviceKey,
 } from '../../services/sse.service';
 import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
@@ -188,7 +188,12 @@ threadsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
 
 threadsRouter.get('/stream', (req: Request, res: Response): void => {
   const userId = (req as AuthenticatedRequest).user.userId;
-  const cleanup = subscribeUserEvents(userId, res);
+  // Which device is watching, so the push can be withheld from THIS screen and
+  // still reach the others (row 6). The query parameter, not a header, because
+  // EventSource cannot set headers; the user-agent answers it anyway when the
+  // frontend sends nothing.
+  const deviceId = typeof req.query.device_id === 'string' ? req.query.device_id : null;
+  const cleanup = subscribeUserEvents(userId, res, deviceKey(deviceId, req.get('user-agent')));
   req.on('close', cleanup);
 });
 
@@ -415,23 +420,17 @@ threadsRouter.post(
             // written at creation time.
             ...((becameTask || openTask !== null) && { isTask: true }),
           });
-          // If the user isn't connected (closed the app / switched away), their
-          // answer would sit unseen — push it. No-op when they're live (they see
-          // it over SSE) or when VAPID isn't configured. The preview is scrubbed
+          // Their answer would sit unseen on any device they are not looking
+          // at — push it. Which devices those are is decided per subscription
+          // inside sendPushNotification (row 6: the gate that used to stand
+          // here answered for the person, so one open Mac tab silenced the
+          // phone). No-op when VAPID isn't configured. The preview is scrubbed
           // and truncated so no phone number rides in the notification body.
-          if (!hasActiveConnection(userId)) {
-            void sendPushNotification(userId, {
-              title: 'Netai — პასუხი მზადაა',
-              body: buildPushPreview(result.reply),
-              url: `/chat/${threadId}`,
-            }).catch(() => undefined);
-          } else {
-            // The skip itself is a delivery decision — log it (ticket 8 live
-            // session: an iOS tab that closed without tearing the SSE down
-            // read as "live" here and the push silently never fired).
-            // eslint-disable-next-line no-console
-            console.log(`[push] user ${userId}: skipped reply push, SSE looks active`);
-          }
+          void sendPushNotification(userId, {
+            title: 'Netai — პასუხი მზადაა',
+            body: buildPushPreview(result.reply),
+            url: `/chat/${threadId}`,
+          }).catch(() => undefined);
         })
         .catch(async (error: unknown) => {
           const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
