@@ -208,6 +208,31 @@ export async function runResearchOnce(): Promise<ResearchTickResult> {
     verdict,
   });
 
+  // A tick must never overlap itself.
+  //
+  // One tick is ten people times three steps times twelve seconds of search —
+  // about six minutes against a fifteen-minute timer, which looks safe until
+  // somebody raises RESEARCH_PEOPLE_PER_TICK or RESEARCH_MAX_STEPS. I made
+  // those readable at call time on purpose, so a tick CAN now be told to run
+  // longer than the gap between ticks, and setInterval would then start a
+  // second one on top of the first. Two ticks reading the same budget before
+  // either has written to it spend it twice — the ceiling would hold on paper
+  // and not in the bank.
+  if (running) {
+    return idle('The previous research tick is still running; this one was skipped.');
+  }
+  running = true;
+  try {
+    return await tick(idle);
+  } finally {
+    running = false;
+  }
+}
+
+/** True while a tick is in flight. Per process, which is where the timer is. */
+let running = false;
+
+async function tick(idle: (verdict: string) => ResearchTickResult): Promise<ResearchTickResult> {
   if (!runnerOn()) {
     return idle(
       'Automatic research is off (set RESEARCH_RUNNER=on to start it). Every step is a ' +

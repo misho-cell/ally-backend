@@ -130,6 +130,35 @@ describe('the research runner spends nothing it was not told to spend', () => {
     expect(result.verdict).toContain('RESEARCH_RUNNER=on');
   });
 
+  it('never lets a tick overlap itself and spend the budget twice', async () => {
+    // Two ticks that both read the budget before either has written to it would
+    // each believe the whole remaining allowance is theirs. The dials are
+    // readable at call time, so a tick CAN be told to run longer than the gap
+    // between ticks — the ceiling has to hold in the bank, not only on paper.
+    withDatabase();
+    let release!: () => void;
+    let reached!: () => void;
+    // Deterministic: wait for the first tick to ACTUALLY be inside a search,
+    // rather than guessing how many microtasks it takes to get there.
+    const atSearch = new Promise<void>((r) => (reached = r));
+    webSearch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = (): void => resolve({ results: [] });
+          reached();
+        }),
+    );
+
+    const first = runResearchOnce();
+    await atSearch;
+    const second = await runResearchOnce();
+
+    expect(second.ran).toBe(false);
+    expect(second.verdict).toContain('still running');
+    release();
+    await first;
+  });
+
   it('asks once whether search works at all, instead of finding out 200 times', async () => {
     // Left to discover it call by call, the runner would spend a whole day's
     // allowance writing the same error row over and over and then report a
