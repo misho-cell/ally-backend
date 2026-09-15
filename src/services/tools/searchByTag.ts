@@ -24,6 +24,24 @@ import { OWNERSHIP } from './searchResultMeta';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
+
+/**
+ * pg_trgm's own threshold, which the index-backed `%` operator uses.
+ *
+ * Postgres' default and the value measured on this database (show_limit(), 15
+ * September). The fuzzy pass pairs `%` with an explicit similarity check, and
+ * that pairing only preserves the result set while FUZZY_THRESHOLD is the
+ * STRICTER of the two — otherwise `%` would quietly drop rows the explicit rule
+ * accepts, and a search would lose people with nothing to show for it.
+ */
+const PG_TRGM_DEFAULT_LIMIT = 0.3;
+if (FUZZY_THRESHOLD < PG_TRGM_DEFAULT_LIMIT) {
+  throw new Error(
+    `searchByTag: FUZZY_THRESHOLD ${FUZZY_THRESHOLD} is looser than pg_trgm's ` +
+      `${PG_TRGM_DEFAULT_LIMIT}, so the index pre-filter would silently drop matches.`,
+  );
+}
+
 // The fuzzy pass leans on the functional trigram index idx_user_tags_norm_trgm.
 // Until that index is built (out of band, see migration 036) the pass would
 // seq-scan; a short timeout makes it fail fast and be skipped, leaving the exact
@@ -122,10 +140,31 @@ async function runFuzzySearch(
   blockedPhones: string[],
 ): Promise<TagRow[]> {
   try {
+    // Each term is matched TWICE, and the pair is the whole point.
+    //
+    // `similarity(a, b) > $t` cannot use a trigram index: it is a function
+    // comparison, so the planner has to compute it per row. Measured on the
+    // live database, 15 September:
+    //
+    //   similarity(...) > 0.4   Parallel Index Only Scan, 2,963,065 rows,
+    //                           cost 718,596
+    //   ... % ...               Bitmap Index Scan on idx_user_tags_norm_trgm,
+    //                           cost 7,115
+    //
+    // The `%` operator IS index-backed, but it carries its own threshold —
+    // pg_trgm.similarity_threshold, a session setting, measured at 0.3 here
+    // (show_limit()). So `%` alone would change what the search matches, and
+    // the explicit 0.45 alone cannot reach the index.
+    //
+    // Both: `%` narrows to the index's candidates, `similarity` keeps the
+    // exact rule. Because 0.45 is STRICTER than 0.3, `%` is a superset and the
+    // result set is unchanged. That inequality is the assumption this rests on,
+    // so it is asserted at load rather than left in a comment to rot.
     const conds = terms
       .map(
         (_, i) =>
-          `similarity(normalize_search_token(t.tag), normalize_search_token($${i + 2})) > $${terms.length + 2}`,
+          `(normalize_search_token(t.tag) % normalize_search_token($${i + 2}) AND ` +
+          `similarity(normalize_search_token(t.tag), normalize_search_token($${i + 2})) > $${terms.length + 2})`,
       )
       .join(' OR ');
     const blockParamIdx = terms.length + 3;
@@ -147,8 +186,17 @@ async function runFuzzySearch(
       FUZZY_TIMEOUT_MS,
     );
     return result.rows;
-  } catch {
-    // pg_trgm/index not available or the pass timed out — the exact search stands.
+  } catch (error) {
+    // The exact search still stands, so this stays best-effort — but it is no
+    // longer SILENT. Before today this pass could time out at five seconds on
+    // every single search, return nothing, and cost the user those five seconds
+    // for nothing, with no line anywhere to say so. That is the same shape as
+    // logSearchActivity failing silently on every search for hours in August.
+    // eslint-disable-next-line no-console
+    console.error(
+      `[tag-fuzzy] pass did not run for "${terms.join(' ')}" (exact results stand):`,
+      (error as Error).message,
+    );
     return [];
   }
 }
