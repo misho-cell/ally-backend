@@ -222,3 +222,61 @@ describe('a number and a conjunction are not companies', () => {
     expect(roles.get(label)?.employer).toBe('Service');
   });
 });
+
+/**
+ * Ticket 19 [8], found by measuring rather than by being told — and worse than
+ * what was reported.
+ *
+ * Of the 400 commonest tokens in the whole base, 71 classify as „organisation".
+ * Ten of them cleared BOTH gates above, whole-word count and lead share, and
+ * would have been printed as somebody's employer:
+ *
+ *   დედა / deda   23,734 carriers, .47 lead share   MOTHER
+ *   მამა / mama   16,536             .72            father
+ *   კლიენტი        9,471             .19            client
+ *   სახლი          7,295             .16            house
+ *   მანქანა        5,146             .25            car
+ *   უნდა           5,920             .05            „wants"
+ *
+ * They are in none of the dictionaries. The counting cannot reach them either:
+ * they are common because they are ordinary, and they sit after the name in a
+ * label exactly where a company word sits.
+ */
+describe('the commonest words in a phonebook are not employers', () => {
+  async function employerOf(label: string): Promise<string | undefined> {
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    return roles.get(label)?.employer;
+  }
+
+  it('does not make a mother somebody’s employer', async () => {
+    expect(await employerOf('ნინო დედა')).toBeUndefined();
+    expect(await employerOf('Nino deda')).toBeUndefined();
+  });
+
+  it('drops the other kinship words the dictionaries never held', async () => {
+    expect(await employerOf('გიორგი მამა')).toBeUndefined();
+    expect(await employerOf('Tamta bebo')).toBeUndefined();
+    expect(await employerOf('ლევანი ჩემი')).toBeUndefined();
+  });
+
+  it('drops an ordinary noun and an ordinary verb', async () => {
+    expect(await employerOf('ზურა კლიენტი')).toBeUndefined();
+    expect(await employerOf('Dato saxli')).toBeUndefined();
+    expect(await employerOf('ნიკა მანქანა')).toBeUndefined();
+    expect(await employerOf('Lasha unda')).toBeUndefined();
+  });
+
+  it('drops the word that is not a word', async () => {
+    // 42,694 labels carry „undefined" because something wrote it there.
+    expect(await employerOf('Mariam undefined')).toBeUndefined();
+  });
+
+  it('does not fire on a longer word that merely starts the same way', async () => {
+    // Exact match, not prefix. „ახალგაზრდული ასოციაცია" (a youth association)
+    // begins with „ახალ" and must still reach the field as an organisation —
+    // a prefix rule would read it as „new" and refuse the label.
+    const label = 'ნინო ახალგაზრდული ასოციაცია';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBe('ასოციაცია');
+  });
+});

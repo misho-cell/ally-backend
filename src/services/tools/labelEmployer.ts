@@ -71,6 +71,7 @@ const MAX_LEAD_SHARE = 0.5;
  */
 const DIGITS_ONLY = /^\d+$/u;
 const NEVER_A_COMPANY = new Set([
+  // Conjunctions and negations: the label's grammar, not its content.
   'and',
   'or',
   'the',
@@ -82,6 +83,54 @@ const NEVER_A_COMPANY = new Set([
   'ან',
   'არა',
   'სხვა',
+  // Ticket 19 [8], found after the first fix and worse than what was
+  // reported. Of the 400 commonest tokens in the whole base, 71 classify as
+  // „organisation" — and ten of those cleared the two gates above. They are
+  // not companies and never were:
+  //
+  //   დედა / deda    23,734 carriers, lead share .47 — MOTHER
+  //   მამა / mama    16,536                    .72 — father
+  //   კლიენტი         9,471                    .19 — client
+  //   სახლი           7,295                    .16 — house
+  //   მანქანა         5,146                    .25 — car
+  //   უნდა            5,920                    .05 — „wants"
+  //
+  // „დედა" would have been printed as somebody's EMPLOYER. It is the
+  // commonest word a person writes in a phonebook and it is in none of the
+  // dictionaries — see the note in TASKS.md, which is where the rest of this
+  // belongs: the dictionaries also miss the trades (მძღოლი, ბუღალტერი,
+  // მაკლერი) and the towns (რუსთავი, გორი, ქუთაისი), and those are shared
+  // with the target engine, so they are measured before they are moved.
+  //
+  // Exact match, both scripts, the spellings people actually type. A prefix
+  // rule would read „ახალგაზრდული ასოციაცია" as „new" and drop half a real
+  // company's name.
+  'დედა',
+  'deda',
+  'მამა',
+  'mama',
+  'ბებო',
+  'bebo',
+  'ბებია',
+  'bebia',
+  'ჩემი',
+  'chemi',
+  'კლიენტი',
+  'klienti',
+  'სახლი',
+  'saxli',
+  'sakhli',
+  'მანქანა',
+  'manqana',
+  'mankana',
+  'ახალი',
+  'axali',
+  'akhali',
+  'უნდა',
+  'unda',
+  'new',
+  // Not a word at all: 42,694 labels carry it because something wrote it there.
+  'undefined',
 ]);
 
 function cannotBeACompany(token: string): boolean {
