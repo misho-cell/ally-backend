@@ -2002,19 +2002,26 @@ describe('Ticket 13 Task 18: a first name plus a COMPANY word is not a full name
     });
     const base = mockQuery.getMockImplementation();
     mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
-      if (sql.includes('CROSS JOIN LATERAL') && sql.includes('SELECT w.word, a.alias'))
+      // The company-word read asks one word at a time now, with the pattern
+      // as a parameter ('%maxin%') — through a LATERAL it came from a column
+      // and Postgres could not use the trigram index at all.
+      if (sql.includes('LIKE $1') && sql.includes('"UserAlias"')) {
+        const pattern = String((params ?? [])[0] ?? '');
+        const byWord: Record<string, string[]> = {
+          maxin: [
+            'Lika Chkhirodze Maxin AI',
+            'Ioseb Khutsishvili Maxin AI',
+            'Maxin.ai Ceo',
+            'Lika Maxin AI',
+            'Ilia Maxin AI',
+          ],
+          boxua: ['Ana Boxua', 'Achi Boxua', 'Kato Boxua'],
+        };
+        const word = Object.keys(byWord).find((w) => pattern === `%${w}%`);
         return Promise.resolve(
-          rows([
-            { word: 'maxin', alias: 'Lika Chkhirodze Maxin AI' },
-            { word: 'maxin', alias: 'Ioseb Khutsishvili Maxin AI' },
-            { word: 'maxin', alias: 'Maxin.ai Ceo' },
-            { word: 'maxin', alias: 'Lika Maxin AI' },
-            { word: 'maxin', alias: 'Ilia Maxin AI' },
-            { word: 'boxua', alias: 'Ana Boxua' },
-            { word: 'boxua', alias: 'Achi Boxua' },
-            { word: 'boxua', alias: 'Kato Boxua' },
-          ]) as never,
+          rows((word ? byWord[word] : []).map((alias) => ({ alias }))) as never,
         );
+      }
       return base ? base(sql, params) : Promise.resolve(rows([]) as never);
     });
 

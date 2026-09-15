@@ -257,50 +257,62 @@ describe('L3/L4 — the three numbers and the signals', () => {
  * inside the loop, so the throw left it and sank every word in the call. The
  * chunking gave no isolation at all.
  */
-describe('companyWordShare survives a slow chunk', () => {
-  it('keeps the words it could read and loses only the chunk that failed', async () => {
+describe('companyWordShare asks in a shape the index can answer', () => {
+  it('asks per word, with the pattern as a parameter — not built from a column', async () => {
+    // The old shape passed an ARRAY and joined it through a LATERAL, so the
+    // pattern came from a column and pg_trgm could not read it: EXPLAIN on
+    // prod showed Seq Scan where a literal gets a Bitmap Index Scan on
+    // idx_user_alias_trgm. That was ~2.3s per word and the timeouts the log
+    // recorded on every run.
+    mockQuery.mockResolvedValue(rows([]) as never);
+    const { companyWordShare } = await import('../labelReader.service');
+
+    await companyWordShare(['tbc', 'capital', 'bank']);
+
+    expect(mockQuery.mock.calls).toHaveLength(3);
+    for (const [sql, params] of mockQuery.mock.calls) {
+      expect(sql as string).not.toContain('LATERAL');
+      expect(sql as string).toContain('LIKE $1');
+      // The whole pattern is the parameter; nothing is concatenated in SQL.
+      expect((params as unknown[])[0]).toMatch(/^%.+%$/);
+    }
+    expect((mockQuery.mock.calls[0][1] as unknown[])[0]).toBe('%tbc%');
+  });
+
+  it('keeps the words it could read and loses only the one that failed', async () => {
     const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    // Seven words, so the (now six-word) chunking makes two statements.
-    const asked = ['tbc', 'capital', 'bank', 'service', 'group', 'holding', 'partners'];
     let call = 0;
     mockQuery.mockImplementation(() => {
       call += 1;
       if (call === 1) return Promise.reject(new Error('canceling statement due to timeout'));
-      // The survivor: three aliases carrying "partners", each beside a
-      // surname-shaped token, which is what says "company" rather than "name".
+      // Three aliases carrying the word beside a surname-shaped token, which
+      // is what says "company" rather than "somebody's name".
       return Promise.resolve(
         rows([
-          { word: 'partners', alias: 'nino kakhidze partners' },
-          { word: 'partners', alias: 'dato tsiklauri partners' },
-          { word: 'partners', alias: 'lasha beridze partners' },
+          { alias: 'nino kakhidze partners' },
+          { alias: 'dato tsiklauri partners' },
+          { alias: 'lasha beridze partners' },
         ]) as never,
       );
     });
 
     const { companyWordShare } = await import('../labelReader.service');
-    const out = await companyWordShare(asked);
+    const out = await companyWordShare(['tbc', 'partners']);
 
-    // Before this fix the rejection escaped and there was no result at all.
+    // Before the catch existed the rejection escaped and there was no result
+    // at all — one slow word lost every word in the call.
     expect(out.has('partners')).toBe(true);
-    // And the failure is named rather than silent.
+    expect(out.has('tbc')).toBe(false);
     expect(spy).toHaveBeenCalled();
-    expect(String(spy.mock.calls[0][0])).toContain('company-word chunk failed');
+    expect(String(spy.mock.calls[0][0])).toContain('company-word read failed');
     spy.mockRestore();
   });
 
-  it('asks in chunks small enough to come back', async () => {
-    // One word measured ~1.4s on prod against a 20s budget, so twelve timed
-    // out and six is 2.4s. The assertion is on the shape, not the seconds:
-    // thirteen words must not arrive as one statement.
+  it('asks nothing when there is nothing to ask about', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
     const { companyWordShare } = await import('../labelReader.service');
 
-    await companyWordShare(Array.from({ length: 13 }, (_, i) => `word${i}`));
-
-    expect(mockQuery.mock.calls.length).toBeGreaterThan(1);
-    for (const [, params] of mockQuery.mock.calls) {
-      expect((params as unknown[])[0] as string[]).toHaveProperty('length');
-      expect(((params as unknown[])[0] as string[]).length).toBeLessThanOrEqual(6);
-    }
+    expect((await companyWordShare([])).size).toBe(0);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });

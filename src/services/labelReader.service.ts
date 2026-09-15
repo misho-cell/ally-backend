@@ -351,26 +351,40 @@ function isSurnameShaped(token: string): boolean {
  * few aliases are absent (Ticket 13 Task 18).
  */
 /**
- * Words per statement.
+ * Ticket 19, found in the production log and then in the query plan.
  *
- * It was twelve, on a measurement that said „104 in one read hit the
- * 20-second budget; a dozen does not". That stopped being true as the base
- * grew, and nobody noticed because the failure is silent: measured on prod on
- * 15 September, one word costs ~1.4s and twelve time out at the 20s budget.
- * The deployment log shows it failing every run —
+ * This read was one statement carrying N words through a LATERAL:
  *
- *   [target-list] company-word read failed for 20 words: statement timeout
- *   [target-list] company-word read failed for 17 words: statement timeout
+ *   FROM UNNEST($1::text[]) AS w(word)
+ *   CROSS JOIN LATERAL (SELECT ua.alias FROM "UserAlias" ua
+ *                       WHERE lower(ua.alias) LIKE '%' || w.word || '%' ...)
  *
- * — which means the „is this word a company or a surname" test has been
- * answering NOTHING, and `isCompanyWordShare(undefined)` reads that as „not a
- * company" for every word.
+ * The pattern is built from a COLUMN, so nothing is known when the statement
+ * is planned, pg_trgm cannot extract trigrams from it, and the whole thing
+ * falls to a SEQUENTIAL SCAN. EXPLAIN on prod, 15 September:
  *
- * Six measures 2.4s, with room for the table to keep growing before anyone
- * has to think about it again. A number from a measurement that is written
- * down, so the next person can tell when it has expired.
+ *   literal pattern  -> Bitmap Index Scan on idx_user_alias_trgm
+ *   through LATERAL  -> Seq Scan, no index at all
+ *
+ * That is the ~2.3s per word, the 9-20s per batch, and the timeouts the log
+ * was recording on every run. The index has been there the whole time; the
+ * shape of the query hid it.
+ *
+ * So each word is now asked for on its own, with the pattern as a PARAMETER
+ * rather than built from a column. node-postgres sends these as unnamed
+ * prepared statements, which Postgres re-plans per execution with the value
+ * in hand — so the pattern is known, the trigram index is used, and the same
+ * word measures ~20-250ms instead of ~2,300ms.
+ *
+ * Sequential rather than parallel on purpose: the main pool holds ten
+ * connections and a person's own search must not queue behind a background
+ * read. Twenty words at a few tens of milliseconds is a second in total,
+ * against the ~56s the batched form was spending to answer nothing.
+ *
+ * The words come from labelTokens, which yields letters and digits only, so
+ * no LIKE wildcard can arrive inside one. If that ever stops being true, the
+ * pattern must be escaped before it goes in.
  */
-const COMPANY_WORD_CHUNK = 6;
 
 export async function companyWordShare(words: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
@@ -379,35 +393,26 @@ export async function companyWordShare(words: string[]): Promise<Map<string, num
   // words. The substring read is fast; the whole-word test is done here. Read
   // in chunks so one slow word cannot sink the whole batch.
   const rows: { word: string; alias: string }[] = [];
-  for (let i = 0; i < words.length; i += COMPANY_WORD_CHUNK) {
-    const chunk = words.slice(i, i + COMPANY_WORD_CHUNK);
+  for (const word of words) {
     try {
-      const result = await query<{ word: string; alias: string }>(
-        `SELECT w.word, a.alias
-         FROM UNNEST($1::text[]) AS w(word)
-         CROSS JOIN LATERAL (
-           SELECT ua.alias FROM "UserAlias" ua
-           WHERE lower(ua.alias) LIKE '%' || w.word || '%'
-           LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
-         ) a`,
-        [chunk],
+      const result = await query<{ alias: string }>(
+        `SELECT ua.alias FROM "UserAlias" ua
+         WHERE lower(ua.alias) LIKE $1
+         LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}`,
+        [`%${word}%`],
         COMPANY_WORD_TIMEOUT_MS,
       );
-      rows.push(...result.rows);
+      for (const row of result.rows) rows.push({ word, alias: row.alias });
     } catch (err) {
-      // The chunking was here for exactly this and did not do it: without a
-      // catch the throw left the loop, so one slow chunk lost every word in
-      // the call — which is what the log has been recording. Now it loses its
-      // own words only, and says which.
+      // One word's failure is one word's, never the call's. Without a catch
+      // here the throw left the loop and lost every word — which is what the
+      // log had been recording.
       //
       // Safe to continue on partial data by construction: a word with no
       // answer is absent from the map, and isCompanyWordShare reads absent as
       // „not a company", which is the cautious direction.
       // eslint-disable-next-line no-console
-      console.warn(
-        `[label-reader] company-word chunk failed (${chunk.join(', ')}):`,
-        (err as Error).message,
-      );
+      console.warn(`[label-reader] company-word read failed (${word}):`, (err as Error).message);
     }
   }
   const perWord = new Map<string, { aliases: number; company: number }>();
