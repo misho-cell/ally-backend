@@ -17,7 +17,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { introRequestItems, undeliveredRequests } from '../chat.service';
+import { introRequestItems, requestsToDeliver, undeliveredRequests } from '../chat.service';
 import { renderPendingMessage } from '../pendingMessages';
 import type { PendingRequest } from '../introduction.service';
 
@@ -108,6 +108,53 @@ describe('how often the same request is handed to a person', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     expect(await undeliveredRequests('160584', [REQUEST_1057])).toEqual([REQUEST_1057]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
+/**
+ * Ticket 19 [18], a defect of my own: the request list was read when the
+ * PROMPT was built, and delivered after the run. Between those two moments the
+ * run may have answered the request — the model holds respond_to_introduction,
+ * and the person may simply have said yes in words. The card then arrives
+ * asking them to answer something they have just answered, which is this
+ * item's own complaint pointed backwards.
+ */
+describe('when the list is read', () => {
+  it('reads it after the run, not from the prompt-time snapshot', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    // The run answered 1057; by delivery time nothing is waiting.
+    const afterTheRun = jest.fn().mockResolvedValue([]);
+
+    expect(await requestsToDeliver('160584', true, afterTheRun)).toEqual([]);
+    expect(afterTheRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('delivers what is waiting when the run answered nothing', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    const items = await requestsToDeliver('160584', true, async () => [REQUEST_1057]);
+
+    expect(items).toHaveLength(1);
+    expect(items[0].payload['request_id']).toBe(1057);
+  });
+
+  it('does not read at all where the thread IS the request', async () => {
+    const read = jest.fn();
+    expect(await requestsToDeliver('160584', false, read)).toEqual([]);
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('delivers nothing when the waiting list cannot be read', async () => {
+    // Different from the delivery-history read, which leans the other way:
+    // there we know a request is waiting and only the dedup is unreadable.
+    // Here we do not know what is waiting at all.
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(
+      await requestsToDeliver('160584', true, () => Promise.reject(new Error('timeout'))),
+    ).toEqual([]);
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });

@@ -2224,13 +2224,16 @@ interface AgentPromptResult {
   /** `name@ISO` per block — the exact revision that ran (ticket 9 task 34). */
   blockVersions: string[];
   /**
-   * Ticket 19 [18]: the waiting introduction requests this run owes the user
-   * as their OWN messages. Empty inside the request's own thread (the thread
-   * IS the request) and empty while the kill switch is off — in both cases
-   * the prompt section above still asks the model to mention them, and the
-   * two halves must never both be on.
+   * Ticket 19 [18]: whether waiting introduction requests go to the user as
+   * their OWN messages after the answer. False inside the request's own thread
+   * (the thread IS the request) and false while the kill switch is off — in
+   * both cases the prompt section above asks the model to mention them
+   * instead, and the two halves must never both be on.
+   *
+   * A flag rather than the list itself: the list is read again at delivery
+   * time, because the run may have answered one of them in between.
    */
-  separateRequests: PendingRequest[];
+  deliverRequestsSeparately: boolean;
 }
 
 async function buildAgentSystemPrompt(
@@ -2319,8 +2322,7 @@ async function buildAgentSystemPrompt(
   // Inside an incoming-request thread the request is the whole subject and the
   // app already draws it there; a second copy as a pending message would be the
   // same request twice on one screen.
-  const separateRequests =
-    PENDING_AS_MESSAGES_OFF || threadType === 'incoming_request' ? [] : pendingRequests;
+  const deliverRequestsSeparately = !PENDING_AS_MESSAGES_OFF && threadType !== 'incoming_request';
 
   const base = configResult.rows[0]?.system_prompt ?? '';
   const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
@@ -2341,14 +2343,14 @@ async function buildAgentSystemPrompt(
     buildUserNotesSection(userNotes) +
     buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
-    buildPendingRequestsSection(pendingRequests, separateRequests.length > 0) +
+    buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
     buildRespondedRequestsSection(recentResponses);
   return {
     prompt,
     runMode,
     blockNames: modeBlocks.names,
     blockVersions: modeBlocks.versions,
-    separateRequests,
+    deliverRequestsSeparately,
   };
 }
 
@@ -2597,6 +2599,35 @@ export function introRequestItems(requests: readonly PendingRequest[]): PendingI
  * the old behaviour once more (the prompt appended the request to every
  * answer); a swallowed one is a person who cannot answer at all.
  */
+/**
+ * The waiting requests this run owes the user as their own messages.
+ *
+ * `readWaiting` is passed in rather than called directly so the ORDER is part
+ * of the contract and can be tested: the list must be read AFTER the run, not
+ * from the snapshot the prompt was built with. The run in between may have
+ * answered one of them — the model has respond_to_introduction, and the person
+ * may simply have said yes in words — and a card asking somebody to answer a
+ * request they just answered is this item's own defect pointed backwards.
+ */
+export async function requestsToDeliver(
+  userId: string,
+  deliverSeparately: boolean,
+  readWaiting: () => Promise<PendingRequest[]>,
+): Promise<PendingItemInput[]> {
+  if (!deliverSeparately) return [];
+  let waiting: PendingRequest[];
+  try {
+    waiting = await readWaiting();
+  } catch (err) {
+    // Nothing delivered rather than guessed: unlike the delivery-history read
+    // below, a failure here leaves us not knowing what is waiting at all.
+    // eslint-disable-next-line no-console
+    console.error('[intro-request] waiting list unreadable:', (err as Error).message);
+    return [];
+  }
+  return introRequestItems(await undeliveredRequests(userId, waiting));
+}
+
 export async function undeliveredRequests(
   userId: string,
   requests: readonly PendingRequest[],
@@ -4896,7 +4927,9 @@ export async function processChat(
   // user came here to do.
   notePendingItems(
     runId,
-    introRequestItems(await undeliveredRequests(userId, agentPrompt.separateRequests)),
+    await requestsToDeliver(userId, agentPrompt.deliverRequestsSeparately, () =>
+      getPendingRequestsForMediator(userId),
+    ),
   );
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
