@@ -150,6 +150,12 @@ import { baseWalkStatus } from '../../services/basePool.service';
 import { researchStatus, researchTrail } from '../../services/researchRunner.service';
 import { connectedDevices, deviceKey } from '../../services/sse.service';
 import {
+  isHandoffAuthor,
+  markHandoffRead,
+  postHandoff,
+  readHandoff,
+} from '../../services/handoff.service';
+import {
   applyTargetDecisions,
   clearTargetDecision,
   listTargetDecisions,
@@ -2677,6 +2683,86 @@ adminRouter.get('/research-findings', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin research-findings]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * The tester's channel, inside the panel both sides already have.
+ *
+ *   GET  /admin/handoff?reader=tester&since_id=12   — the thread, oldest first
+ *   POST /admin/handoff   { author, body }          — one message
+ *   POST /admin/handoff/read { reader, last_seen_id }
+ *
+ * Cross-account session messaging is refused by design, so the tester cannot be
+ * reached the way the frontend session is. This is the meeting point instead:
+ * one thread, visible to anyone with the panel, so Misho stops being the wire
+ * and stays the reader.
+ */
+adminRouter.get('/handoff', async (req: Request, res: Response) => {
+  try {
+    const rawSince = Number(req.query.since_id);
+    const rawLimit = Number(req.query.limit);
+    const thread = await readHandoff({
+      ...(typeof req.query.reader === 'string' && { reader: req.query.reader }),
+      ...(Number.isFinite(rawSince) && rawSince > 0 && { sinceId: rawSince }),
+      ...(Number.isFinite(rawLimit) && rawLimit > 0 && { limit: rawLimit }),
+    });
+    res.status(200).json({ success: true, data: thread });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin handoff read]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/handoff', async (req: Request, res: Response) => {
+  try {
+    const { author, body } = req.body as { author?: unknown; body?: unknown };
+    // The author is declared, never guessed. Everyone here posts through an
+    // admin login, so deriving it from the session would file every line I
+    // write under Misho's name — which is the one thing this must not do.
+    if (!isHandoffAuthor(author)) {
+      res.status(400).json({
+        success: false,
+        error: 'author must be one of: claude_backend, claude_frontend, tester, misho',
+      });
+      return;
+    }
+    if (typeof body !== 'string' || body.trim() === '') {
+      res.status(400).json({ success: false, error: 'body is required' });
+      return;
+    }
+    const postedBy = String((req as AuthenticatedRequest).user.userId);
+    const message = await postHandoff(author, body, postedBy);
+    res.status(201).json({ success: true, data: message });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin handoff post]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/handoff/read', async (req: Request, res: Response) => {
+  try {
+    const { reader, last_seen_id: lastSeenId } = req.body as {
+      reader?: unknown;
+      last_seen_id?: unknown;
+    };
+    if (typeof reader !== 'string' || reader.trim() === '') {
+      res.status(400).json({ success: false, error: 'reader is required' });
+      return;
+    }
+    const upTo = Number(lastSeenId);
+    if (!Number.isFinite(upTo) || upTo < 0) {
+      res.status(400).json({ success: false, error: 'last_seen_id must be a number' });
+      return;
+    }
+    const stored = await markHandoffRead(reader, upTo);
+    res.status(200).json({ success: true, data: { last_seen_id: stored } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin handoff read-mark]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
