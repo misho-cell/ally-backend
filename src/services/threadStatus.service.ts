@@ -42,3 +42,38 @@ export async function setThreadStatus(
     console.error(`[thread-status] failed for thread ${threadId}:`, (err as Error).message);
   }
 }
+
+/**
+ * Whether somebody still owes an answer — or whether we could not find out.
+ *
+ * The third value is the whole point. A check that failed is not a „no".
+ */
+export type AskCheck = boolean | 'unknown';
+
+/**
+ * The status an engine run ends on.
+ *
+ * WHY „UNKNOWN" IS NOT „NO". The pending-ask check used to be caught into
+ * `false`, so a database hiccup while asking „is somebody still to answer this"
+ * was rendered as „nobody is" — and the goal went to `done`, on the badge the
+ * owner reads to know whether the thing is finished. An error wearing the
+ * clothes of a confident answer is the same substitution the product made when
+ * it told somebody their note was deleted and it was not, and the same one the
+ * admin screens exist to prevent: „we could not look" quietly becoming „there
+ * is nothing there".
+ *
+ * So unknown counts as waiting. `waiting` claims only that something may still
+ * be out there, which is true when we cannot tell. `done` claims nothing is,
+ * which we do not know.
+ */
+export function runStatus(opts: {
+  asksOwner: boolean;
+  requestCreated: boolean;
+  pendingAsk: AskCheck;
+}): ThreadStatus {
+  if (opts.asksOwner) return 'needs_you';
+  if (opts.requestCreated || opts.pendingAsk === true || opts.pendingAsk === 'unknown') {
+    return 'waiting';
+  }
+  return 'done';
+}

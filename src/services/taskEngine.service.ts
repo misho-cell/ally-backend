@@ -24,7 +24,7 @@ import {
   EnsureQuoted,
 } from './taskAsks.service';
 import { getThread, saveThreadMessage } from './threads.service';
-import { setThreadStatus, endsWithQuestion } from './threadStatus.service';
+import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
@@ -172,12 +172,27 @@ export async function wakeTask(
         endsWithQuestion(result.reply);
       // A task whose question is unanswered on someone else's phone is waiting,
       // not finished (ticket 4 item 0C.5).
-      const pendingAsk = await hasPendingAskForThread(thread.id).catch(() => false);
-      const status = asksOwner
-        ? 'needs_you'
-        : result.requestCreated || pendingAsk
-          ? 'waiting'
-          : 'done';
+      //
+      // A FAILED CHECK IS NOT A NO. This used to catch into `false`, which sent
+      // the goal to „done" — so a database hiccup while asking „is somebody
+      // still to answer" was rendered as „nobody is", on the badge the owner
+      // reads to know whether the thing is finished. That is the same
+      // substitution the product made when it said a note was deleted and it
+      // was not: an error wearing the clothes of a confident answer.
+      //
+      // Unknown is therefore its own value and it counts as waiting. „Waiting"
+      // claims only that something may still be out there, which is true when
+      // we cannot tell; „done" claims nothing is, which we do not know.
+      const pendingAsk = await hasPendingAskForThread(thread.id).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] pending-ask check failed:', (err as Error).message);
+        return 'unknown' as const;
+      });
+      const status = runStatus({
+        asksOwner,
+        requestCreated: result.requestCreated === true,
+        pendingAsk,
+      });
       if (asksOwner && !flagged) {
         // No text: a wake reply may cover several goals, and its closing
         // paragraph is not reliably THIS goal's question (live, 1 Sep: goal

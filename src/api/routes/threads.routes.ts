@@ -388,9 +388,24 @@ threadsRouter.post(
         .then(async (result) => {
           // Waiting covers BOTH kinds of third-party dependency: an unanswered
           // ask AND an unanswered introduction request (ticket 5 item B2).
+          //
+          // A CHECK THAT COULD NOT RUN IS NOT A "NO". Both of these used to
+          // catch into `false`, which reads as "nobody owes an answer" and
+          // sends the thread to done. A database hiccup would then be rendered
+          // to the owner as "finished" — an error wearing the clothes of a
+          // confident answer, which is the same substitution as telling
+          // somebody their note was deleted when it was not. When we cannot
+          // tell, we say waiting: that claims only that something may still be
+          // out there, which is true.
           const pendingIntro =
             thread.type === 'outgoing_request' &&
-            (await hasPendingIntroForThread(thread.introduction_request_id).catch(() => false));
+            (await hasPendingIntroForThread(thread.introduction_request_id).catch(
+              (err: unknown) => {
+                // eslint-disable-next-line no-console
+                console.error('[run] pending-intro check failed:', (err as Error).message);
+                return true;
+              },
+            ));
           // The run itself reports failure (e.g. an empty final) — surface a
           // retryable error, never a "successful" empty answer.
           if (result.runFailed === true) {
@@ -415,7 +430,11 @@ threadsRouter.post(
           // once a run sent a request or reported a structured result.
           const becameTask = result.requestCreated === true || result.taskResult !== undefined;
           const pendingAsk =
-            (await hasPendingAskForThread(threadId).catch(() => false)) || pendingIntro;
+            (await hasPendingAskForThread(threadId).catch((err: unknown) => {
+              // eslint-disable-next-line no-console
+              console.error('[run] pending-ask check failed:', (err as Error).message);
+              return true;
+            })) || pendingIntro;
           const openTask = await getOpenTaskByThread(threadId).catch(() => null);
           const flagged =
             openTask !== null &&

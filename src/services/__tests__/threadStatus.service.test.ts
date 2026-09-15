@@ -7,7 +7,7 @@ jest.mock('../sse.service', () => ({ __esModule: true, emitThreadUpdated: jest.f
 
 import { updateThreadStatus, STATUS_LINES } from '../threads.service';
 import { emitThreadUpdated } from '../sse.service';
-import { setThreadStatus, endsWithQuestion } from '../threadStatus.service';
+import { setThreadStatus, endsWithQuestion, runStatus } from '../threadStatus.service';
 
 const mockUpdate = updateThreadStatus as jest.MockedFunction<typeof updateThreadStatus>;
 const mockEmit = emitThreadUpdated as jest.MockedFunction<typeof emitThreadUpdated>;
@@ -81,5 +81,38 @@ describe('setThreadStatus', () => {
 
     expect(mockEmit).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+});
+
+describe('runStatus — a check that could not run is not a "no"', () => {
+  it('waits when the pending-ask check failed, rather than claiming done', () => {
+    // This is the bug in one line. Caught into `false`, a database hiccup while
+    // asking "is somebody still to answer this" was rendered to the owner as
+    // "finished" — the same substitution as telling somebody their note was
+    // deleted when it was not.
+    expect(runStatus({ asksOwner: false, requestCreated: false, pendingAsk: 'unknown' })).toBe(
+      'waiting',
+    );
+  });
+
+  it('is done only when we actually looked and nobody owes an answer', () => {
+    expect(runStatus({ asksOwner: false, requestCreated: false, pendingAsk: false })).toBe('done');
+  });
+
+  it('waits when somebody really does owe an answer', () => {
+    expect(runStatus({ asksOwner: false, requestCreated: false, pendingAsk: true })).toBe(
+      'waiting',
+    );
+    expect(runStatus({ asksOwner: false, requestCreated: true, pendingAsk: false })).toBe(
+      'waiting',
+    );
+  });
+
+  it('a question for the owner outranks every third-party wait', () => {
+    // Ticket 8 Task 2(b): in an engine run the owner being asked is the fact
+    // that matters, even while something else is outstanding.
+    expect(runStatus({ asksOwner: true, requestCreated: true, pendingAsk: 'unknown' })).toBe(
+      'needs_you',
+    );
   });
 });
