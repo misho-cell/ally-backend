@@ -36,6 +36,7 @@ import {
   getOrCreateDefaultThread,
   getThreadContext,
   touchThread,
+  createThread,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
 import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.service';
@@ -106,6 +107,7 @@ import { flagGoalQuestion, answerGoalQuestion } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import {
+  emitThreadCreated,
   emitToolProgress,
   emitStepSummary,
   emitTokensDebited,
@@ -2830,9 +2832,51 @@ async function executeToolCall(
       const description = ((input['description'] as string) ?? '').trim() || null;
       const autonomyRaw = (input['autonomy'] as string) ?? 'ask_first';
       const autonomy = isTaskAutonomy(autonomyRaw) ? autonomyRaw : 'ask_first';
-      const { id } = await createTask(userId, title, description, taskType, threadId, autonomy);
+      // Ticket 19 [4]: one thread, one open goal.
+      //
+      // ensureGoalForRequest already refuses to open a second goal on a thread
+      // that has one. This tool did not, so the model could do by hand what the
+      // rule forbids — and did: goals 3071 and 3072 sat on thread 14984 three
+      // minutes apart on 15 September.
+      //
+      // Two open goals in one conversation is not a tidiness problem. The
+      // buttons under a plan carry no goal on their face, so a person reading
+      // the thread cannot tell which goal they are approving — and one of those
+      // buttons writes to real people in their name.
+      //
+      // The new goal gets its own thread. Its id comes back in the result so
+      // the model can say where it went, rather than leaving the user to find a
+      // conversation they did not know was opened.
+      const occupied = threadId !== undefined ? await getOpenTaskByThread(threadId) : null;
+      let goalThreadId = threadId;
+      let movedTo: number | undefined;
+      if (occupied !== null && threadId !== undefined) {
+        const fresh = await createThread(userId, 'regular', title);
+        goalThreadId = fresh.id;
+        movedTo = fresh.id;
+        emitThreadCreated(userId, {
+          id: fresh.id,
+          type: fresh.type,
+          title: fresh.title,
+          is_task: true,
+          status: fresh.status,
+          status_line: fresh.status_line,
+        });
+      }
+      const { id } = await createTask(userId, title, description, taskType, goalThreadId, autonomy);
       noteCreatedGoal(runId, id);
-      return { created: true, task_id: id, autonomy };
+      return {
+        created: true,
+        task_id: id,
+        autonomy,
+        ...(movedTo !== undefined && {
+          thread_id: movedTo,
+          note:
+            'This conversation already had an open goal, so the new one was opened in its own ' +
+            'conversation. Tell the user plainly that it is a separate goal and where it is — ' +
+            'two goals in one thread leave the buttons ambiguous about which goal they act on.',
+        }),
+      };
     }
     case 'ask_contact': {
       const taskId = Number(input['task_id']);
