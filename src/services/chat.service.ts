@@ -4122,7 +4122,7 @@ async function runToolLoop(
       // the answer bubble and then disappearing was read as the assistant
       // changing its mind mid-reply ("რაც მანამდე დაწერა ის ქრება" — Lika,
       // 12 Aug; the same leak the tester logged as 0C.6).
-      const narration = answer.emittedText().trim();
+      const narration = scrubStep(threadId, answer.emittedText().trim());
       emitAnswerReset(userId, threadId, runId);
       // Ticket 10 Task 2 (b), Lika: a step is one short line saying what is
       // being done now, never a paragraph. The full narration is still
@@ -4236,7 +4236,7 @@ async function runToolLoop(
       // Persist it (kind='step') so it survives reload.
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubText(extractText(response.content));
+      const narration = scrubStep(threadId, extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -4284,7 +4284,7 @@ async function runToolLoop(
       for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubText(extractText(response.content));
+      const narration = scrubStep(threadId, extractText(response.content));
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -4396,7 +4396,7 @@ async function runToolLoop(
         extraRounds++;
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
         for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
-        const narration = scrubText(extractText(continuation.content));
+        const narration = scrubStep(threadId, extractText(continuation.content));
         if (narration) {
           emitStepSummary(userId, threadId, runId, narration);
           await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -4580,6 +4580,81 @@ export function toolsForRun<T extends { name: string }>(all: T[], ownerAbsent: b
   return ownerAbsent ? all.filter((tool) => !OWNER_CONSENT_TOOL_NAMES.has(tool.name)) : all;
 }
 
+/**
+ * Ticket 19 G8: every tool a run can be offered, in ONE list.
+ *
+ * These used to be spelled out inside buildEnabledTools, which meant the
+ * scrubber below — whose whole job is to keep their names off the screen —
+ * could only see ALL_TOOL_DEFINITIONS, the OPTIONAL registry. Ten tools out of
+ * about sixty, and not one of the ones that actually leak.
+ */
+const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
+  GET_CONTACT_FULL_PROFILE_TOOL,
+  UPDATE_USER_PROFILE_TOOL,
+  SAVE_PRIVATE_CONTEXT_TOOL,
+  SAVE_CONTACT_FACT_TOOL,
+  GET_CONTACT_FACTS_TOOL,
+  SET_USER_STATE_TOOL,
+  MARK_CONTACT_DECEASED_TOOL,
+  BLOCK_CONTACT_TOOL,
+  UNBLOCK_CONTACT_TOOL,
+  LIST_BLOCKED_CONTACTS_TOOL,
+  GET_OWN_CONTACT_NUMBER_TOOL,
+  REQUEST_INTRODUCTION_TOOL,
+  RESPOND_TO_INTRODUCTION_TOOL,
+  GET_INTRO_STATUS_TOOL,
+  GET_THREAD_CONTEXT_TOOL,
+  PRESENT_CHOICES_TOOL,
+  SET_TASK_RESULT_TOOL,
+  CREATE_TASK_TOOL,
+  GET_MY_TASKS_TOOL,
+  UPDATE_TASK_TOOL,
+  GRANT_TASK_PERMISSION_TOOL,
+  PROPOSE_TASK_PLAN_TOOL,
+  APPROVE_TASK_PLAN_TOOL,
+  ASK_CONTACT_TOOL,
+  SET_TASK_BRIEF_TOOL,
+  SET_TASK_WAKE_TOOL,
+  FINISH_TASK_TOOL,
+  RELAY_ASK_TOOL,
+  RESPOND_TO_INVITE_CAMPAIGN_TOOL,
+  GET_CURIOSITY_QUEUE_TOOL,
+  RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
+  STOP_CONTACTING_TOOL,
+  RESUME_CONTACT_TOOL,
+  EXCLUDE_CONTACT_TOOL,
+  REMOVE_EXCLUSION_TOOL,
+  REMOVE_CONTACT_FROM_NETWORK_TOOL,
+  INVITE_CONTACT_TOOL,
+  GET_INVITE_LINK_TOOL,
+  GET_UNRESOLVED_LABELS_TOOL,
+  CORRECT_CONTACT_FACT_TOOL,
+  RETRACT_FACT_TOOL,
+  FORGET_FACT_TOOL,
+  SAVE_USER_NOTE_TOOL,
+  GET_USER_NOTES_TOOL,
+  FORGET_USER_NOTE_TOOL,
+  LIST_ANSWER_RULES_TOOL,
+  DELETE_ANSWER_RULE_TOOL,
+  QUEUE_RESULT_TOOL,
+  RECORD_SEARCH_OUTCOME_TOOL,
+  RECORD_DEBRIEF_OUTCOME_TOOL,
+  SAVE_CLOSE_CONTACT_TOOL,
+  SAVE_CONTACT_RELATIONSHIP_TOOL,
+  FORGET_CONTACT_RELATIONSHIP_TOOL,
+  GET_CONTACT_RELATIONSHIPS_TOOL,
+  GET_PENDING_UPDATES_TOOL,
+  ASK_OWNER_DECISION_TOOL,
+  ANSWER_GOAL_QUESTION_TOOL,
+  FETCH_PAGE_TOOL,
+  GET_TOP_CONNECTORS_TOOL,
+  GET_GROUP_CONNECTORS_TOOL,
+  SEARCH_ROSTER_TOOL,
+  FIND_WARM_PATH_TOOL,
+  GET_COUNTRY_CHANNELS_TOOL,
+  GET_NETAI_INFO_TOOL,
+];
+
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
     getEnabledToolKeys(),
@@ -4587,70 +4662,7 @@ async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<A
   ]);
   const all: AnthropicTool[] = [
     ...insightTools,
-    GET_CONTACT_FULL_PROFILE_TOOL,
-    UPDATE_USER_PROFILE_TOOL,
-    SAVE_PRIVATE_CONTEXT_TOOL,
-    SAVE_CONTACT_FACT_TOOL,
-    GET_CONTACT_FACTS_TOOL,
-    SET_USER_STATE_TOOL,
-    MARK_CONTACT_DECEASED_TOOL,
-    BLOCK_CONTACT_TOOL,
-    UNBLOCK_CONTACT_TOOL,
-    LIST_BLOCKED_CONTACTS_TOOL,
-    GET_OWN_CONTACT_NUMBER_TOOL,
-    REQUEST_INTRODUCTION_TOOL,
-    RESPOND_TO_INTRODUCTION_TOOL,
-    GET_INTRO_STATUS_TOOL,
-    GET_THREAD_CONTEXT_TOOL,
-    PRESENT_CHOICES_TOOL,
-    SET_TASK_RESULT_TOOL,
-    CREATE_TASK_TOOL,
-    GET_MY_TASKS_TOOL,
-    UPDATE_TASK_TOOL,
-    GRANT_TASK_PERMISSION_TOOL,
-    PROPOSE_TASK_PLAN_TOOL,
-    APPROVE_TASK_PLAN_TOOL,
-    ASK_CONTACT_TOOL,
-    SET_TASK_BRIEF_TOOL,
-    SET_TASK_WAKE_TOOL,
-    FINISH_TASK_TOOL,
-    RELAY_ASK_TOOL,
-    RESPOND_TO_INVITE_CAMPAIGN_TOOL,
-    GET_CURIOSITY_QUEUE_TOOL,
-    RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
-    STOP_CONTACTING_TOOL,
-    RESUME_CONTACT_TOOL,
-    EXCLUDE_CONTACT_TOOL,
-    REMOVE_EXCLUSION_TOOL,
-    REMOVE_CONTACT_FROM_NETWORK_TOOL,
-    INVITE_CONTACT_TOOL,
-    GET_INVITE_LINK_TOOL,
-    GET_UNRESOLVED_LABELS_TOOL,
-    CORRECT_CONTACT_FACT_TOOL,
-    RETRACT_FACT_TOOL,
-    FORGET_FACT_TOOL,
-    SAVE_USER_NOTE_TOOL,
-    GET_USER_NOTES_TOOL,
-    FORGET_USER_NOTE_TOOL,
-    LIST_ANSWER_RULES_TOOL,
-    DELETE_ANSWER_RULE_TOOL,
-    QUEUE_RESULT_TOOL,
-    RECORD_SEARCH_OUTCOME_TOOL,
-    RECORD_DEBRIEF_OUTCOME_TOOL,
-    SAVE_CLOSE_CONTACT_TOOL,
-    SAVE_CONTACT_RELATIONSHIP_TOOL,
-    FORGET_CONTACT_RELATIONSHIP_TOOL,
-    GET_CONTACT_RELATIONSHIPS_TOOL,
-    GET_PENDING_UPDATES_TOOL,
-    ASK_OWNER_DECISION_TOOL,
-    ANSWER_GOAL_QUESTION_TOOL,
-    FETCH_PAGE_TOOL,
-    GET_TOP_CONNECTORS_TOOL,
-    GET_GROUP_CONNECTORS_TOOL,
-    SEARCH_ROSTER_TOOL,
-    FIND_WARM_PATH_TOOL,
-    GET_COUNTRY_CHANNELS_TOOL,
-    GET_NETAI_INFO_TOOL,
+    ...ALWAYS_ON_TOOLS,
     ...enabledKeys
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
@@ -4664,12 +4676,33 @@ async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<A
 // a leak the prompt keeps failing to prevent („ამისათვის ask_contact-ის
 // გაუქმება…", thread 9845; 6 of 20 replies in the tester's battery carried
 // internal words). The name is replaced with a neutral phrase and logged so
-// the prompt team sees each occurrence. Built from the live tool registry —
-// a new tool is covered the day it exists.
-const INTERNAL_TOOL_NAME_RE = new RegExp(
-  `\\b(${Object.keys(ALL_TOOL_DEFINITIONS).join('|')})\\b`,
-  'g',
-);
+// the prompt team sees each occurrence.
+//
+// Ticket 19 G8, and this is the part worth reading. The comment here used to
+// say „built from the live tool registry — a new tool is covered the day it
+// exists". It was built from ALL_TOOL_DEFINITIONS, which is the OPTIONAL
+// registry: ten tools out of about sixty, and not one of the ones that leak.
+// Measured against the three strings the tester caught on 15 September, the
+// scrubber removed NOTHING from any of them:
+//
+//   „პირდაპირ propose_task_plan-ზე გადავდივარ"        (15148, 13:36:34)
+//   „list_answer_rules-ს ნახავ ნებისმიერ დროს"        (15115, 13:03:26)
+//   „ნინიას უკვე ვუგზავნე (ask_id 1750)"              (15380, 18:00:59)
+//
+// It is now built from the SAME list the runs are offered, so the comment is
+// true for the first time. Longest first, so a name that contains another is
+// matched whole. Per-user insight tools are not here — their names are built
+// from the account's own fields at call time — and that is a real gap rather
+// than an oversight.
+const INTERNAL_TOOL_NAMES = [
+  ...new Set([...Object.keys(ALL_TOOL_DEFINITIONS), ...ALWAYS_ON_TOOLS.map((t) => t.name)]),
+].sort((a, b) => b.length - a.length);
+
+const INTERNAL_TOOL_NAME_RE = new RegExp(`\\b(${INTERNAL_TOOL_NAMES.join('|')})\\b`, 'g');
+
+// „ask_id 1750", „task_id 3400", „thread_id 15380" — an internal handle with a
+// number after it. A person cannot use one and it is not theirs to read.
+const INTERNAL_ID_RE = /\b(ask_id|task_id|thread_id|run_id|request_id|contact_id)\s*[:=]?\s*\d+/g;
 
 /**
  * Ticket 19 [6]. What survives when the checker replaces a reply's text.
@@ -4691,7 +4724,30 @@ export function attachmentsAfterModeration<C, O>(
   return { choices: attachments.choices ?? null, options: attachments.options };
 }
 
+/**
+ * Ticket 19 G8: a STEP line gets the same scrub a reply gets.
+ *
+ * „ნინიას უკვე ვუგზავნე (ask_id 1750)" (15380, 18:00:59) and „პირდაპირ
+ * propose_task_plan-ზე გადავდივარ" (15148, 13:36:34) are both step lines. The
+ * reply scrub never saw them, because it runs on the reply.
+ *
+ * Applied where the narration is BUILT rather than at each of the nine places
+ * it is then emitted or stored — the two paths cannot drift apart if there is
+ * only one of them.
+ */
+function scrubStep(threadId: number, text: string): string {
+  return scrubInternalToolNames(scrubText(text), threadId);
+}
+
 export function scrubInternalToolNames(text: string, threadId: number): string {
+  // The ids go first and unconditionally: „(ask_id 1750)" carries no tool name
+  // to trip the test below, which is exactly how it reached a screen.
+  const withoutIds = text.replace(INTERNAL_ID_RE, () => {
+    // eslint-disable-next-line no-console
+    console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
+    return /[ა-ჿ]/.test(text) ? 'შიდა ნომერი' : 'an internal id';
+  });
+  text = withoutIds;
   INTERNAL_TOOL_NAME_RE.lastIndex = 0;
   if (!INTERNAL_TOOL_NAME_RE.test(text)) return text;
   const replacement = /[ა-ჿ]/.test(text) ? 'შიდა ფუნქცია' : 'an internal function';
