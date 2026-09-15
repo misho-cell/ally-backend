@@ -121,30 +121,64 @@ interface ChannelHit {
   name: string | null;
 }
 
+interface ChannelSweep {
+  readonly key: string;
+  readonly regexes: readonly string[];
+}
+
 /**
- * One channel = contacts matching the country on ANY of their labels AND the
+ * Every channel in ONE pass.
+ *
+ * A channel = contacts matching the country on any of their labels AND that
  * channel's keywords on any label. Labels = every contributor's tags, the
  * user's aliases, their saved insights and facts — the same surfaces search
  * reads. Every branch is driven FROM the materialized mine set (the
  * estimate-proof plan the search outage taught us).
+ *
+ * This used to run once PER CHANNEL, sequentially. Five channels, six when
+ * institutions are named — and every one of them rebuilt the identical `mine`
+ * and `labels` material from scratch, and re-ran the identical country scan.
+ * Only the channel keywords differed.
+ *
+ * Measured on prod, 15 September, after the log showed it at 8.1s a sweep:
+ *
+ *   one sweep as it was          2278ms
+ *   all six channels together    2058ms
+ *
+ * The same. The label build is the whole cost and the regex passes are nearly
+ * free beside it, so six sweeps were paying six times for one answer — about
+ * 48 seconds of database work for a single get_country_channels call, inside a
+ * live conversation, where a person is waiting.
+ *
+ * The channels now ride in as (key, pattern) pairs and come back keyed, so one
+ * build answers all of them.
  */
-async function sweepChannel(
+async function sweepAllChannels(
   userId: string,
-  channelRegexes: readonly string[],
+  sweeps: readonly ChannelSweep[],
   countryRegexes: readonly string[],
   blockedPhones: readonly string[],
-): Promise<ChannelHit[]> {
-  // $1 userId(int-инferred), then country patterns, then channel patterns,
-  // then facts userId (uncast — prod column is TEXT), then blocked.
-  const countryStart = 2;
-  const channelStart = countryStart + countryRegexes.length;
-  const factsUserIdx = channelStart + channelRegexes.length;
-  const insightsUserIdx = factsUserIdx + 1;
-  const blockIdx = insightsUserIdx + 1;
-  const orChain = (start: number, patterns: readonly string[]): string =>
-    patterns.map((_, i) => `(LOWER(label) || '') ~ $${start + i}`).join(' OR ');
+): Promise<Map<string, ChannelHit[]>> {
+  const hits = new Map<string, ChannelHit[]>();
+  for (const sweep of sweeps) hits.set(sweep.key, []);
+  const channelKeys = sweeps.flatMap((s) => s.regexes.map(() => s.key));
+  const channelRegexes = sweeps.flatMap((s) => [...s.regexes]);
+  if (channelKeys.length === 0) return hits;
 
-  const result = await query<ChannelHit>(
+  // $1 userId, then the country patterns, then the two user ids the fact and
+  // insight tables want (prod's columns are TEXT), then the channel pairs and
+  // the block list.
+  const countryStart = 2;
+  const factsUserIdx = countryStart + countryRegexes.length;
+  const insightsUserIdx = factsUserIdx + 1;
+  const keysIdx = insightsUserIdx + 1;
+  const regexesIdx = keysIdx + 1;
+  const blockIdx = regexesIdx + 1;
+  const countryChain = countryRegexes
+    .map((_, i) => `(LOWER(label) || '') ~ $${countryStart + i}`)
+    .join(' OR ');
+
+  const result = await query<{ key: string; phone: string; name: string | null }>(
     `WITH mine AS MATERIALIZED (
        SELECT phone FROM "UserTags"  WHERE "contactId" = $1
        UNION
@@ -167,18 +201,31 @@ async function sweepChannel(
        FROM contact_insights ci
        WHERE ci.user_id = $${insightsUserIdx}
      ),
-     country_hits AS (SELECT DISTINCT phone FROM labels WHERE ${orChain(countryStart, countryRegexes)}),
-     channel_hits AS (SELECT DISTINCT phone FROM labels WHERE ${orChain(channelStart, channelRegexes)})
-     SELECT c.phone, MAX(ua.alias) AS name
-     FROM country_hits c
-     JOIN channel_hits h ON h.phone = c.phone
-     LEFT JOIN "UserAlias" ua ON ua.phone = c.phone AND ua."contactId" = $1
-     WHERE c.phone != ALL($${blockIdx})
-     GROUP BY c.phone`,
-    [userId, ...countryRegexes, ...channelRegexes, userId, userId, [...blockedPhones]],
+     country_hits AS (SELECT DISTINCT phone FROM labels WHERE ${countryChain}),
+     chan AS (SELECT * FROM UNNEST($${keysIdx}::text[], $${regexesIdx}::text[]) AS t(key, rx)),
+     channel_hits AS (
+       SELECT DISTINCT c.key, l.phone
+       FROM labels l
+       JOIN chan c ON (LOWER(l.label) || '') ~ c.rx
+     )
+     SELECT h.key, h.phone, MAX(ua.alias) AS name
+     FROM channel_hits h
+     JOIN country_hits co ON co.phone = h.phone
+     LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
+     WHERE h.phone != ALL($${blockIdx})
+     GROUP BY h.key, h.phone`,
+    [userId, ...countryRegexes, userId, userId, channelKeys, channelRegexes, [...blockedPhones]],
     CHANNEL_QUERY_TIMEOUT_MS,
   );
-  return result.rows;
+
+  for (const row of result.rows) {
+    // A key the caller did not ask about cannot appear, but a Map miss here
+    // would silently drop a real person — so it is created rather than skipped.
+    const list = hits.get(row.key) ?? [];
+    list.push({ phone: row.phone, name: row.name });
+    hits.set(row.key, list);
+  }
+  return hits;
 }
 
 // The model supplies these — institution names imply their country without
@@ -207,7 +254,7 @@ export async function getCountryChannels(
     const blockedPhones = await getExcludedPhones(userId);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
 
-    const sweeps: { key: string; regexes: readonly string[] }[] = CHANNELS.map((c) => ({
+    const sweeps: ChannelSweep[] = CHANNELS.map((c) => ({
       key: c.key,
       regexes: c.keywords.map(toWordStartPattern),
     }));
@@ -217,11 +264,12 @@ export async function getCountryChannels(
       sweeps.push({ key: 'named_institutions', regexes: institutionRegexes });
     }
 
+    const hitsByChannel = await sweepAllChannels(userId, sweeps, countryRegexes, blockedPhones);
     const channels = [];
     for (const sweep of sweeps) {
-      const hits = (
-        await sweepChannel(userId, sweep.regexes, countryRegexes, blockedPhones)
-      ).filter((h) => !excludedSet.has(normalizePhone(h.phone)));
+      const hits = (hitsByChannel.get(sweep.key) ?? []).filter(
+        (h) => !excludedSet.has(normalizePhone(h.phone)),
+      );
       channels.push({
         channel: sweep.key,
         count: hits.length,

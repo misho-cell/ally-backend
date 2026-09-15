@@ -19,11 +19,17 @@ function channelsOf(result: object): ChannelRow[] {
   return (result as { channels: ChannelRow[] }).channels;
 }
 
-// Every sweep's regex params, flattened across all calls.
+// Every regex param, flattened across all calls. The channel patterns now
+// travel as an ARRAY (one statement answers all channels), so nested values
+// are flattened too — otherwise this quietly stops seeing half of them.
 function allRegexParams(): string[] {
-  return mockQuery.mock.calls.flatMap((c) =>
-    (c[1] as unknown[]).filter((p): p is string => typeof p === 'string' && p.startsWith('\\m')),
-  );
+  const out: string[] = [];
+  const take = (p: unknown): void => {
+    if (typeof p === 'string' && p.startsWith('\\m')) out.push(p);
+    else if (Array.isArray(p)) p.forEach(take);
+  };
+  mockQuery.mock.calls.forEach((c) => (c[1] as unknown[]).forEach(take));
+  return out;
 }
 
 beforeEach(() => {
@@ -93,5 +99,69 @@ describe('getCountryChannels', () => {
     const result = await getCountryChannels('501', 'პოლონეთი', []);
     expect((result as { found: boolean }).found).toBe(true);
     expect(channelsOf(result).length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * 15 September. The log showed this tool at 8.1s a sweep, and it ran one sweep
+ * PER CHANNEL — five, six when institutions are named — each rebuilding the
+ * identical label material and re-running the identical country scan.
+ *
+ * Measured on prod: one sweep 2278ms, all six together 2058ms. The same. So
+ * six sweeps were paying six times for one answer, about 48 seconds of
+ * database work inside a live conversation.
+ *
+ * These hold the shape of the replacement, because the risk of collapsing six
+ * queries into one is not speed — it is handing a person to the wrong channel.
+ */
+describe('one pass, every channel', () => {
+  it('asks the database once, not once per channel', async () => {
+    await getCountryChannels('501', 'Germany', ['GIZ']);
+
+    const sweeps = mockQuery.mock.calls.filter(([sql]) => (sql as string).includes('channel_hits'));
+    expect(sweeps).toHaveLength(1);
+  });
+
+  it('gives each person back to the channel they matched, and only that one', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        { key: 'alumni_universities', phone: '+995500000001', name: 'Nino' },
+        { key: 'alumni_universities', phone: '+995500000002', name: 'Dato' },
+        { key: 'embassies_diplomacy', phone: '+995500000003', name: 'Lasha' },
+      ],
+      rowCount: 3,
+    } as never);
+
+    const channels = channelsOf(await getCountryChannels('501', 'Germany', []));
+    const byKey = new Map(channels.map((c) => [c.channel, c]));
+
+    expect(byKey.get('alumni_universities')?.count).toBe(2);
+    expect(byKey.get('alumni_universities')?.sample.map((s) => s.name)).toEqual(['Nino', 'Dato']);
+    expect(byKey.get('embassies_diplomacy')?.count).toBe(1);
+    // A channel nobody matched still reports itself — "no alumni angle in your
+    // network" is information the user needs, so an empty channel is an answer.
+    expect(byKey.get('clubs_fellowships')?.count).toBe(0);
+    expect(channels).toHaveLength(5);
+  });
+
+  it('carries every channel’s keywords, not just the first channel’s', async () => {
+    await getCountryChannels('501', 'Germany', []);
+
+    const [, params] = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('channel_hits'),
+    ) as [string, unknown[]];
+    const keys = params.find(
+      (p): p is string[] => Array.isArray(p) && p.some((v) => v === 'alumni_universities'),
+    );
+    // Every channel is represented, and each of its patterns carries its key.
+    expect(new Set(keys)).toEqual(
+      new Set([
+        'alumni_universities',
+        'clubs_fellowships',
+        'associations_chambers',
+        'embassies_diplomacy',
+        'bilateral_councils',
+      ]),
+    );
   });
 });
