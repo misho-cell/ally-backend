@@ -148,6 +148,50 @@ function normalizeForCompare(text: string): string {
 }
 
 /**
+ * Ticket 19 [5]. A QUESTION ASSERTS NOTHING.
+ *
+ * The founder's own account, 13 September: seven facts written about seven
+ * real people, every one of them a sentence the assistant had just composed.
+ * Each was let through by a single word:
+ *
+ *   „Who do I know at Bank of Georgia?"          → „won Best Banker … in 2012"
+ *   „Who in my network works in logistics?"      → „13 years in international
+ *                                                   logistics and supply chain"
+ *   „Who runs a family business among my …?"     → „runs Proservice, his
+ *                                                   father's business, as GM"
+ *
+ * A question and its answer share their topic word by construction. So the
+ * topic word can never be evidence that the user knows the answer — it is
+ * evidence of what they asked. Question sentences therefore leave the
+ * grounding source entirely, and what remains is what the user ASSERTED.
+ *
+ * A fact stated only inside a question is lost with them. That is a real
+ * cost, accepted knowingly: the sweep is the backstop, the live assistant's
+ * own save is the path, and a note nobody wrote down costs less than a
+ * sentence about a real person that nobody said.
+ */
+function declarativePart(userMessage: string): string {
+  const sentences = userMessage.match(/[^.!?…]+[.!?…]*/gu) ?? [];
+  return sentences
+    .filter((sentence) => !sentence.trimEnd().endsWith('?'))
+    .join(' ')
+    .trim();
+}
+
+/**
+ * How much of a candidate the user's own words must carry. More than half:
+ * whatever the user did not say is then the smaller part of the sentence,
+ * not the point of it.
+ *
+ * „has formal relationship with user, knows City Hall and construction" is
+ * the case that fixes the boundary. Against „I have a supervision problem
+ * with City Hall" it scores exactly three words in eight — the topic, twice
+ * — while the half that makes it a fact about a person, the relationship,
+ * came from nobody.
+ */
+const MIN_GROUNDED_SHARE = 0.5;
+
+/**
  * Is this candidate actually the USER's knowledge?
  *
  * The exchange handed to the model contains the assistant's whole reply, and
@@ -157,13 +201,15 @@ function normalizeForCompare(text: string): string {
  * this is the check that does not depend on the model obeying it.
  */
 function isGroundedInUser(value: string, userMessage: string): boolean {
-  const user = normalizeForCompare(userMessage);
   if (isConfirmation(userMessage)) return true; // they agreed to what was just said
+  const said = normalizeForCompare(declarativePart(userMessage));
+  if (said === '') return false; // they only asked
   const words = normalizeForCompare(value)
     .split(/[^\p{L}\p{N}]+/u)
     .filter((w) => w.length >= MIN_GROUNDING_WORD);
-  if (words.length === 0) return user.includes(normalizeForCompare(value));
-  return words.some((w) => user.includes(w));
+  if (words.length === 0) return said.includes(normalizeForCompare(value));
+  const grounded = words.filter((w) => said.includes(w)).length;
+  return grounded / words.length > MIN_GROUNDED_SHARE;
 }
 
 /** A present-tense role field whose value or context says otherwise becomes past_role. */
@@ -267,7 +313,14 @@ export async function sweepFactsFromExchange(
     }).catch(() => undefined);
 
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-    const candidates = parseCandidates(raw, exchange);
+    // Ticket 19 [5], the same defect one level down. The year strip asks
+    // whether the user stated the year — and was handed the whole exchange to
+    // check against, so a year the ASSISTANT had just written always passed.
+    // „won Best Banker at Bank of Georgia in 2012": the 2012 was the
+    // assistant's. The user's own words are the source, unless they agreed to
+    // the assistant's sentence, which makes it theirs.
+    const yearSource = isConfirmation(userMessage) ? exchange : userMessage;
+    const candidates = parseCandidates(raw, yearSource);
 
     for (const candidate of candidates) {
       // The user's own words are the only source. Everything else in the
