@@ -38,6 +38,27 @@ token by itself; the other two must be supplied.
 and git. It does **not** allow raw `curl`, so anything not on this list still
 asks.
 
+### It does not take effect in the session that writes it
+
+Learned the hard way on 15 September, at Misho's cost. The file was committed at
+20:16 and he was still being asked for permission at 21:44, four times an hour,
+for the same tool that is written in the allow list.
+
+The allow list is read when a session STARTS. This one started before the file
+existed, so for its whole life the file sat in the repo, correct and inert, and
+every `send_later` still stopped and waited for a person who had already said
+yes — which is the precise opposite of what the file was written to do.
+
+So, plainly:
+
+> A permission written mid-session is a promise to the NEXT session.
+> In this one, stop making the call instead of asking again.
+
+A scheduled `cron` routine is the way round it: it fires on its own, from the
+outside, and needs no tool call and therefore no permission. `send_later` needs
+one every single time. When a chain of self-scheduled wake-ups would be nice to
+have but the allow list is not live yet, the chain is the thing to drop.
+
 That split is not squeamishness, it is the day of 15 September 2026:
 
 - **Writing to people is free.** Answering the tester, telling the frontend
