@@ -3208,7 +3208,24 @@ async function executeToolCall(
     }
     case 'ask_owner_decision': {
       const question = String(input['question'] ?? '');
-      return flagGoalQuestion(userId, Number(input['task_id']), question);
+      const flagged = await flagGoalQuestion(userId, Number(input['task_id']), question);
+      // Ticket 19 [2], the other half of [101]: the QUESTION is written by the
+      // server too, as its own durable message.
+      //
+      // The plan already is — but a clarifying question was only stored on the
+      // goal, so it reached the screen exactly the way the plan used to: because
+      // the model happened to narrate it, into a `step` row the thread view
+      // filters out. The buttons under it are the server's and survive a
+      // reload; the question they answer did not. A person then sees two
+      // buttons and no question — and a button pressed without its question is
+      // not an answer to anything.
+      //
+      // Written the same way and for the same reason: what a person is
+      // answering cannot depend on a model remembering to repeat it.
+      if (threadId !== undefined && question.trim() !== '') {
+        await saveMessage(userId, threadId, 'assistant', question.trim(), 'message', runId ?? null);
+      }
+      return flagged;
     }
     case 'answer_goal_question': {
       const answer = String(input['answer'] ?? '');
