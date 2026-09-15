@@ -170,21 +170,29 @@ export async function proposeTaskPlan(
  * may write to, and the yes on the plan is the yes on those people; a person
  * the plan does not name is refused by the ask path whatever this flag says.
  */
+export type ApprovalRoute = 'chat' | 'admin';
+
 export async function approveTaskPlan(
   userId: string,
   taskId: number,
+  // Ticket 19 item 0: the timeline used to say only WHEN. Defaulted to the
+  // owner's own session because that is where every existing caller approves
+  // from; the admin panel names itself.
+  via: ApprovalRoute = 'chat',
 ): Promise<PlanOutcome<{ version: number; summary: string }>> {
   const result = await query<{ plan: TaskPlan; plan_version: number; plan_approved_at: string }>(
     `UPDATE tasks
      SET plan = plan_proposed,
          plan_proposed = NULL,
          plan_approved_at = NOW(),
+         plan_approved_by = $3::text,
+         plan_approved_via = $4::text,
          permission_granted = TRUE,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open' AND plan_proposed IS NOT NULL
      RETURNING plan, plan_version, plan_approved_at`,
-    [taskId, userId],
+    [taskId, userId, userId, via],
     PLAN_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];

@@ -238,3 +238,45 @@ describe('Ticket 19 [3]: the plan reads like a sentence, not a dump', () => {
     expect(text).toContain('ჯერ არავის');
   });
 });
+
+describe('Ticket 19 [0], third part: the approval records who made it', () => {
+  it('writes the actor and the route, not only the time', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          plan: { solved_when: 'x', routes: [], people_to_involve: [], never_contact: [] },
+          plan_version: 2,
+          plan_approved_at: '2026-09-15T11:00:00.000Z',
+        },
+      ],
+      rowCount: 1,
+    } as never);
+
+    await approveTaskPlan('501', 2872);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('plan_approved_by');
+    expect(sql).toContain('plan_approved_via');
+    // The owner's session is the default route, because that is where every
+    // existing caller approves from.
+    expect(params[3]).toBe('chat');
+    expect(params[2]).toBe('501');
+  });
+
+  it('lets the admin panel name itself instead of borrowing the owner', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          plan: { solved_when: 'x', routes: [], people_to_involve: [], never_contact: [] },
+          plan_version: 1,
+          plan_approved_at: '2026-09-15T11:00:00.000Z',
+        },
+      ],
+      rowCount: 1,
+    } as never);
+
+    await approveTaskPlan('501', 2872, 'admin');
+
+    expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][3]).toBe('admin');
+  });
+});

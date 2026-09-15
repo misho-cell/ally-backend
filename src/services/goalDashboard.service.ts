@@ -169,7 +169,18 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
        SELECT t.created_at AS at, 'goal_created' AS kind, t.title AS detail, NULL::text AS ref_id
          FROM tasks t WHERE t.id = $1
        UNION ALL
-       SELECT t.plan_approved_at, 'plan_approved', 'v' || t.plan_version, NULL
+       SELECT t.plan_approved_at, 'plan_approved',
+              -- Ticket 19 item 0: the entry says WHO, not only when. A row
+              -- from before the column existed says „unknown" rather than
+              -- borrowing the owner's name for something nobody can prove.
+              'v' || t.plan_version || ' — ' ||
+                CASE
+                  WHEN t.plan_approved_via = 'admin' THEN 'ადმინიდან (' ||
+                       COALESCE(t.plan_approved_by, 'უცნობი') || ')'
+                  WHEN t.plan_approved_by IS NOT NULL THEN 'მფლობელმა'
+                  ELSE 'ვინ — არ არის ჩაწერილი'
+                END,
+              NULL
          FROM tasks t WHERE t.id = $1 AND t.plan_approved_at IS NOT NULL
        UNION ALL
        SELECT t.pending_question_at, 'question_to_owner', t.pending_question, NULL
