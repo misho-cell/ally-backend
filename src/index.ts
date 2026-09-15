@@ -27,6 +27,7 @@ import { startLabReportCron } from './services/labReport.cron';
 import { startIdentityScanCron } from './services/identityScan.cron';
 import { startRunReaper } from './services/runReaper.service';
 import { startTaskTicker } from './services/taskEngine.service';
+import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -83,6 +84,18 @@ app.use((req: Request, res: Response<ApiResponse<unknown>>) => {
 });
 
 app.use((error: Error, req: Request, res: Response<ApiResponse<unknown>>, _next: NextFunction) => {
+  // A request the CLIENT got wrong is a 400, not a 500 — see clientError.ts
+  // for the double-encoded body that made this visible.
+  const clientFault = clientErrorReply(error);
+  if (clientFault !== null) {
+    // Named, never silent: being silent is how the broken page stayed hidden.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[bad-request] ${req.method} ${req.path} ${clientFault.status} ${clientFault.type}`,
+    );
+    res.status(clientFault.status).json({ success: false, error: clientFault.error });
+    return;
+  }
   // eslint-disable-next-line no-console
   console.error(error);
   res.status(500).json({ success: false, error: 'Internal server error' });
