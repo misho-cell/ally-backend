@@ -69,13 +69,74 @@ export function stripEmDashesForDisplay(text: string): string {
  * Four live no-bold instructions were ignored on the 7 Sep build; the render
  * layer is the only place the rule cannot be argued with.
  */
-export function scrubMechanicalForStorage(text: string): string {
+/**
+ * Ticket 19 [7]: a line that ends in a colon and is immediately followed by a
+ * list. „აი, რამდენიმე ვარიანტი:" above four bullets is the heading habit
+ * markdown teaches, and the list underneath already says a list is coming.
+ * The colon goes; the sentence stays.
+ */
+const COLON_BEFORE_LIST = /:[ \t]*(\r?\n[ \t]*(?:[-*•]|\d+[.)])\s)/g;
+
+/** Bold markers and markdown headers — the same in prose and in a label. */
+function stripMarkdownMarkers(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*\*/g, '')
-    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '');
+}
+
+export function scrubMechanicalForStorage(text: string): string {
+  return stripMarkdownMarkers(text)
+    .replace(COLON_BEFORE_LIST, '$1')
     .replace(/\s+—\s+/g, ', ')
     .replace(/—/g, '-');
+}
+
+/**
+ * Ticket 19 [7]. A button label, which is not prose and has to survive
+ * different rules from the reply above it.
+ *
+ * Two differences from the reply scrub.
+ *
+ * A QUESTION MARK cannot belong in a label: the button is the answer, and a
+ * button that asks something is a question with no way to answer it.
+ *
+ * And an em dash in a label must NOT become a comma. The reply scrub turns
+ * „ X — Y " into „X, Y", which is right in prose and wrong here — it
+ * manufactures inside a label exactly the comma this item is counting.
+ *
+ * What is NOT done here, deliberately: commas and hyphens are not stripped.
+ * Ninety-five live labels over four days carry nine commas and three
+ * hyphens, and reading them one by one is the whole argument —
+ * „ნებისმიერი, ვინც საიტის შეკვეთებს ამტკიცებს" needs its comma to be
+ * Georgian at all, and the hyphens are all inside words („Archi-ს",
+ * „Giorgi-ს"), where removing one leaves a misspelling. A rule that fixes
+ * „კონდიციონერი, დამამტკიცე" by breaking the other eight is not a fix.
+ * Those are counted instead — see labelCramsTwoThings.
+ */
+export function scrubButtonLabel(label: string): string {
+  return stripMarkdownMarkers(label)
+    .replace(/\s+—\s+/g, ' ')
+    .replace(/—/g, '-')
+    .replace(/\?/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
+ * A label that joined two separate things with a comma — „კონდიციონერი,
+ * დამამტკიცე", „გენერალური დირექტორი, Giorgi Turashvili". Counted, not
+ * rewritten: the defect is in what wrote the label, and a server that
+ * silently repairs it hides how often that happens (the same reasoning as
+ * looksLikeTypedChoice).
+ *
+ * An answer word before the comma („კი, …", „yes, …") is a different shape
+ * and a correct one, so it does not count.
+ */
+const ANSWER_WORD_THEN_COMMA = /^(კი|დიახ|არა|ჰო|yes|no|sure|ok)\s*,/iu;
+
+export function labelCramsTwoThings(label: string): boolean {
+  return label.includes(',') && !ANSWER_WORD_THEN_COMMA.test(label.trim());
 }
 
 /**

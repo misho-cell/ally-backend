@@ -120,6 +120,8 @@ import {
   scrubText,
   scrubEmailsDeep,
   scrubMechanicalForStorage,
+  scrubButtonLabel,
+  labelCramsTwoThings,
   looksLikeTypedChoice,
   ALLOW_OPEN,
   ALLOW_CLOSE,
@@ -4542,7 +4544,7 @@ async function deliverPendingMessages(
           'event',
         );
       }
-      const choices = rendered.choices.map(scrubMechanicalForStorage);
+      const choices = rendered.choices.map(scrubButtonLabel);
       const messageId = await savePendingMessage(
         userId,
         threadId,
@@ -4927,7 +4929,14 @@ export async function processChat(
   // before the reply is stored, in the text and in every button label; a
   // reply that offers alternatives in words with no buttons is counted.
   const storedReply = scrubMechanicalForStorage(reply);
-  const storedChoices = safeChoices ? safeChoices.map(scrubMechanicalForStorage) : null;
+  const storedChoices = safeChoices ? safeChoices.map(scrubButtonLabel) : null;
+  // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
+  for (const label of storedChoices ?? []) {
+    if (labelCramsTwoThings(label)) {
+      // eslint-disable-next-line no-console
+      console.log(`[crammed-label] run ${runId} thread ${threadId}: two things in one button`);
+    }
+  }
   if (storedChoices === null && looksLikeTypedChoice(storedReply)) {
     // eslint-disable-next-line no-console
     console.log(
