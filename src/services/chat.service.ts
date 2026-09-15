@@ -2579,7 +2579,24 @@ async function executeToolCall(
   input: Record<string, unknown>,
   runId?: string,
   threadId?: number,
+  ownerAbsent = false,
 ): Promise<unknown> {
+  // The second door. The tools are already absent from a wake run's list, so
+  // reaching here means a call arrived for one anyway — a replayed block, a
+  // future caller that forgets the flag, a model that names a tool it was not
+  // given. The owner's consent is not something to record on any of those.
+  if (ownerAbsent && OWNER_CONSENT_TOOL_NAMES.has(name)) {
+    // eslint-disable-next-line no-console
+    console.error(`[consent] ${name} refused: no owner in this run (wake/engine)`);
+    return {
+      approved: false,
+      granted: false,
+      error:
+        'Refused: this run was started by the system, not by the owner, so there is nobody ' +
+        'here who could have said yes. A proposed plan stays proposed until the owner ' +
+        'presses the button themselves. Do not tell them it was approved.',
+    };
+  }
   // Block/deceased guard: never surface a single excluded contact via a
   // phone-keyed lookup (format-independent match).
   const phoneField = PHONE_KEYED_TOOL_FIELD[name];
@@ -3373,6 +3390,7 @@ async function runOneToolBlock(
   threadId: number,
   runId: string,
   block: Anthropic.ToolUseBlock,
+  ownerAbsent = false,
 ): Promise<Anthropic.ToolResultBlockParam> {
   const raw = await executeToolCall(
     userId,
@@ -3380,6 +3398,7 @@ async function runOneToolBlock(
     block.input as Record<string, unknown>,
     runId,
     threadId,
+    ownerAbsent,
   );
   // Ticket 12 Task 46 (D151): a fetched page or the user's own data may carry
   // an officeholder's name; a search snippet may not (stale, or a former
@@ -3404,6 +3423,7 @@ async function processToolBlocks(
   threadId: number,
   runId: string,
   content: Anthropic.ContentBlock[],
+  ownerAbsent = false,
 ): Promise<Anthropic.ToolResultBlockParam[]> {
   const toolBlocks = content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
   // Emit progress up front (in order), then run the calls CONCURRENTLY. A single
@@ -3419,7 +3439,9 @@ async function processToolBlocks(
       toolStepCaption(block.name, runLang(runId)) ?? TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
   }
-  return Promise.all(toolBlocks.map((block) => runOneToolBlock(userId, threadId, runId, block)));
+  return Promise.all(
+    toolBlocks.map((block) => runOneToolBlock(userId, threadId, runId, block, ownerAbsent)),
+  );
 }
 
 // Streaming keeps the connection alive token-by-token, so the per-call cap can
@@ -3651,6 +3673,7 @@ async function runToolLoop(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
   tools: AnthropicTool[],
+  ownerAbsent = false,
 ): Promise<{
   finalText: string;
   pending: PendingMessage[];
@@ -3817,7 +3840,13 @@ async function runToolLoop(
 
       scanAssistantBlocks(response.content);
 
-      const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+      const toolResults = await processToolBlocks(
+        userId,
+        threadId,
+        runId,
+        response.content,
+        ownerAbsent,
+      );
       scanToolResults(toolResults);
 
       pending.push({ role: 'assistant', content: response.content });
@@ -3858,7 +3887,13 @@ async function runToolLoop(
       }
 
       scanAssistantBlocks(response.content);
-      const toolResults = await processToolBlocks(userId, threadId, runId, response.content);
+      const toolResults = await processToolBlocks(
+        userId,
+        threadId,
+        runId,
+        response.content,
+        ownerAbsent,
+      );
       scanToolResults(toolResults);
       pending.push({ role: 'assistant', content: response.content });
       pending.push({ role: 'user', content: toolResults });
@@ -3959,7 +3994,13 @@ async function runToolLoop(
           await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         }
         scanAssistantBlocks(continuation.content);
-        const extraResults = await processToolBlocks(userId, threadId, runId, continuation.content);
+        const extraResults = await processToolBlocks(
+          userId,
+          threadId,
+          runId,
+          continuation.content,
+          ownerAbsent,
+        );
         scanToolResults(extraResults);
         pending.push({ role: 'assistant', content: continuation.content });
         pending.push({ role: 'user', content: extraResults });
@@ -3976,7 +4017,13 @@ async function runToolLoop(
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
         for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
         scanAssistantBlocks(continuation.content);
-        const lastResults = await processToolBlocks(userId, threadId, runId, continuation.content);
+        const lastResults = await processToolBlocks(
+          userId,
+          threadId,
+          runId,
+          continuation.content,
+          ownerAbsent,
+        );
         scanToolResults(lastResults);
         pending.push({ role: 'assistant', content: continuation.content });
         pending.push({ role: 'user', content: lastResults });
@@ -4080,19 +4127,57 @@ async function salvageFinalAnswer(
 // boundary: send_answer_to_asker (this mode's one extra tool) is the only
 // channel to the asker, and it sends nothing without the recipient's yes on
 // the exact text.
-async function buildToolsForThread(userId: string, threadType?: string): Promise<AnthropicTool[]> {
+async function buildToolsForThread(
+  userId: string,
+  threadType?: string,
+  ownerAbsent = false,
+): Promise<AnthropicTool[]> {
   if (threadType === 'incoming_ask') {
-    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId))];
+    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId, ownerAbsent))];
   }
-  return buildEnabledTools(userId);
+  return buildEnabledTools(userId, ownerAbsent);
 }
 
-async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
+/**
+ * The two tools that record the OWNER'S CONSENT, and which therefore cannot
+ * exist in a run the owner is not in.
+ *
+ * Ticket 19 item 0, reported 15 Sep and true: a silent-day wake on goal #2872
+ * called approve_task_plan itself, wrote „გეგმა დამტკიცდა v2" on the timeline
+ * one minute after the wake, and went on to ask two real people in the
+ * founder's name. They were spared only because neither had ever opened Netai.
+ *
+ * The old gate was `confirmed !== true` — which asks the model whether the user
+ * said yes. In a chat that is at least a question about something that
+ * happened; in a wake there is nobody in the room to have said it, so the flag
+ * is the model's own word about a conversation that did not take place.
+ *
+ * The tools are therefore REMOVED from what a wake run is offered, not merely
+ * refused when called. A model cannot misuse a tool it does not hold, and the
+ * request was explicit: read the tool list back and find no approve, no grant.
+ */
+export const OWNER_CONSENT_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'approve_task_plan',
+  'grant_task_permission',
+]);
+
+/**
+ * The tools a run is allowed to hold.
+ *
+ * Exported and named so „read the tool list back and find no approve, no
+ * grant" — the condition the report asked to be satisfied — is a thing a test
+ * can actually do, rather than a claim about code nobody can reach.
+ */
+export function toolsForRun<T extends { name: string }>(all: T[], ownerAbsent: boolean): T[] {
+  return ownerAbsent ? all.filter((tool) => !OWNER_CONSENT_TOOL_NAMES.has(tool.name)) : all;
+}
+
+async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
     getEnabledToolKeys(),
     Promise.resolve(getContactInsightTools(userId).map(toAnthropicTool)),
   ]);
-  return [
+  const all: AnthropicTool[] = [
     ...insightTools,
     GET_CONTACT_FULL_PROFILE_TOOL,
     UPDATE_USER_PROFILE_TOOL,
@@ -4162,6 +4247,9 @@ async function buildEnabledTools(userId: string): Promise<AnthropicTool[]> {
       .filter((key) => key in ALL_TOOL_DEFINITIONS)
       .map((key) => ALL_TOOL_DEFINITIONS[key]),
   ];
+  // The same function the tests read, not a second copy of its rule: a copy
+  // would let the tested behaviour and the shipped behaviour drift apart.
+  return toolsForRun(all, ownerAbsent);
 }
 
 // P-12, enforced server-side: an internal tool name in a user-facing reply is
@@ -4367,6 +4455,14 @@ export async function processChat(
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
+  // Is the owner in this run at all?
+  //
+  // A wake arrives as an event the ENGINE wrote, not a line the person typed —
+  // which is already how the turn is filed in the thread, so the same marker
+  // answers the question without a new flag to keep in step. It decides one
+  // thing: whether the tools that record the owner's own consent exist for
+  // this run (ticket 19 item 0).
+  const ownerAbsent = userMessage.startsWith(RUN_EVENT_PREFIX);
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
@@ -4399,7 +4495,7 @@ export async function processChat(
       undefined,
       namedTask,
     ),
-    buildToolsForThread(userId, thread.type),
+    buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
@@ -4447,6 +4543,7 @@ export async function processChat(
     messages,
     systemPrompt,
     tools,
+    ownerAbsent,
   );
 
   // Tool-interaction turns carry the full content_json for model history but
