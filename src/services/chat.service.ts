@@ -1802,6 +1802,46 @@ function hasToolResults(msg: Anthropic.MessageParam): boolean {
   );
 }
 
+/**
+ * One stored row as something the API will accept.
+ *
+ * WHY THIS IS NOT A CAST. It was:
+ *
+ *     row.content_json !== null ? (row.content_json as MessageParam['content']) : row.content
+ *
+ * — which tells TypeScript the shape is right and asks the database nothing. A
+ * `pending` row's content_json is an OBJECT ({ text, instruction, choices }),
+ * neither a string nor a block array, so every run on a thread that had ever
+ * shown a pending card was rejected by the API with „messages.N.content: Input
+ * should be a valid array". The thread was then dead: not one later message
+ * could be answered, because the bad row sat in the history for ever.
+ *
+ * That is ticket 19 item 1 — „a thread must not die after მოგვიანებით on the
+ * goal-waiting message". The goal-waiting message IS the pending card. The tap
+ * was never the cause; being SHOWN the card was.
+ *
+ * The intent of keeping pending rows in history was right — the user read them
+ * and may be answering one. Only the conversion was missing.
+ */
+export function toMessageContent(row: ConversationRow): Anthropic.MessageParam['content'] {
+  const json: unknown = row.content_json;
+  if (typeof json === 'string') return json;
+  if (Array.isArray(json)) return json as Anthropic.MessageParam['content'];
+  if (json !== null && typeof json === 'object') {
+    // A server-authored card. Render what the user actually saw, so the model
+    // has the same text in front of it that they do.
+    const card = json as { text?: unknown; instruction?: unknown };
+    const parts = [card.text, card.instruction].filter(
+      (part): part is string => typeof part === 'string' && part.trim() !== '',
+    );
+    if (parts.length > 0) return parts.join('\n');
+  }
+  // Anything else falls back to the plain column. Empty is fine: the trailing
+  // and leading strippers below drop a message with no usable content, which
+  // is far better than sending one the API refuses.
+  return row.content;
+}
+
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     // 'event' rows are engine turns: model history yes, chat view no.
@@ -1813,10 +1853,7 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
   );
   const rows = result.rows.reverse().map((row) => ({
     role: row.role as 'user' | 'assistant',
-    content:
-      row.content_json !== null
-        ? (row.content_json as Anthropic.MessageParam['content'])
-        : row.content,
+    content: toMessageContent(row),
   }));
 
   // Strip trailing incomplete exchanges — must end with a pure-text assistant message.
