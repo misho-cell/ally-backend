@@ -142,6 +142,7 @@ import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { logSearchActivity } from './abuseDetection.service';
+import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { isCliffhangerReply, CLIFFHANGER_NUDGE, claimsNothingFound } from './replyGuards';
@@ -3943,14 +3944,23 @@ async function runOneToolBlock(
   block: Anthropic.ToolUseBlock,
   ownerAbsent = false,
 ): Promise<Anthropic.ToolResultBlockParam> {
-  const raw = await executeToolCall(
-    userId,
-    block.name,
-    block.input as Record<string, unknown>,
-    runId,
+  const input = block.input as Record<string, unknown>;
+  const startedAt = Date.now();
+  const raw = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+  // Ticket 19 G7: the step caption is written BEFORE the call and says what the
+  // run INTENDS. On 15346 three of them contradicted each other inside eight
+  // minutes and nobody could tell which was true, because what actually
+  // happened was never written down. Not awaited — a debugging record that can
+  // break a user's answer is worse than no debugging record.
+  void logToolCall({
     threadId,
-    ownerAbsent,
-  );
+    runId,
+    userId,
+    tool: block.name,
+    input,
+    result: raw,
+    durationMs: Date.now() - startedAt,
+  });
   // Ticket 12 Task 46 (D151): a fetched page or the user's own data may carry
   // an officeholder's name; a search snippet may not (stale, or a former
   // holder) — so everything but web_search becomes the run's evidence.

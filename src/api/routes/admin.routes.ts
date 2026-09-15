@@ -80,6 +80,7 @@ import {
   moveThreads,
   threadIdsCreatedOn,
 } from '../../services/threads.service';
+import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
@@ -1209,8 +1210,19 @@ adminRouter.get(
         res.status(404).json({ success: false, error: 'thread ვერ მოიძებნა' });
         return;
       }
-      const messages = await getThreadMessages(threadId, { includeSteps: true });
-      res.status(200).json({ success: true, data: { thread: threadResult.rows[0], messages } });
+      // Ticket 19 G7: what the run SAID and what it DID, in one read. The step
+      // captions on 15346 contradicted each other three times in eight minutes
+      // and there was no way to tell which was true; tool_calls is the record
+      // the captions were being mistaken for. Grouped by run_id on the reader's
+      // side — each row carries the run it belongs to.
+      const [messages, toolCalls] = await Promise.all([
+        getThreadMessages(threadId, { includeSteps: true }),
+        getToolCallsForThread(threadId),
+      ]);
+      res.status(200).json({
+        success: true,
+        data: { thread: threadResult.rows[0], messages, tool_calls: toolCalls },
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin thread read]', error);
