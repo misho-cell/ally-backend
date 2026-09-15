@@ -169,7 +169,36 @@ export async function walkBaseOnce(): Promise<WalkResult> {
 }
 
 /**
- * The candidates the walk has found, biggest phonebook first.
+ * The candidates the walk has found — the ones nobody has looked at yet first.
+ *
+ * WHY NOT SIMPLY „BIGGEST PHONEBOOK FIRST", WHICH IS WHAT THIS DID. Measured on
+ * 15 September, once the walk had crossed the whole base:
+ *
+ *   reachable candidates                 10,002
+ *   of them, human-sized (200-1,000)      8,407
+ *   the 300th by phonebook size            2,453 contacts
+ *   base people who ever reached a list       36
+ *
+ * Ordering by size alone and cutting at 300 meant the read returned everybody
+ * above 2,453 contacts — and the SAME three hundred on every build, for ever.
+ * The other 9,700, which is 97% of what the walk found and almost all of the
+ * human-sized ones, could never appear no matter how long the system ran. That
+ * is not a ranking, it is a closed door, and it defeats the point the founder
+ * asked for: „the 62,000 are targets."
+ *
+ * The top of that order was also the wrong end. Fifty-six of those people carry
+ * more than 5,000 numbers and nine sit exactly at the 15,000 cap — a phonebook
+ * that size is an imported business list, which is precisely what the rest of
+ * the engine caps as not-human-sized.
+ *
+ * So the first key is whether anyone has ever been listed, and only then size.
+ * Never-listed people come first, biggest phonebook among them; after that the
+ * ones listed longest ago. It rotates by construction, never empties, and does
+ * not change WHO is eligible — only the order in which they are offered, which
+ * was my arbitrary choice in the first place and never anybody's decision.
+ *
+ * The join is cheap and that was measured too: the whole score history is 2,965
+ * rows over 99 distinct phones.
  *
  * A plain indexed read — this is what makes the whole arrangement affordable:
  * the live build never measures the base, it only reads what the night already
@@ -199,7 +228,9 @@ export async function basePool(): Promise<BasePoolRow[]> {
          AND (u.subscription_status IS NULL OR u.subscription_status <> ALL($2::text[]))
          AND NOT EXISTS (SELECT 1 FROM threads t WHERE t.user_id = c.user_id)
          AND NOT EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = c.user_id::text)
-       ORDER BY c.own_contacts DESC
+       ORDER BY (SELECT MAX(h.built_at) FROM target_score_history h WHERE h.phone = c.phone)
+                  ASC NULLS FIRST,
+                c.own_contacts DESC
        LIMIT $1
      ) top`,
     [READ_LIMIT, NETAI_LIVE_STATUSES],

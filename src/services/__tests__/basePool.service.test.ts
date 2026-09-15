@@ -101,21 +101,35 @@ describe('walking the base', () => {
 });
 
 describe('reading what the night measured', () => {
-  it('returns the biggest phonebooks and never the ones that opened Netai', async () => {
+  it('never returns somebody who has opened Netai', async () => {
     mockQuery.mockResolvedValue(rows([{ phone: '+995500000001', label: 'Nino' }]) as never);
 
     const out = await basePool();
 
     expect(out).toEqual([{ phone: '+995500000001', label: 'Nino' }]);
-    const sql = mockQuery.mock.calls[0][0] as string;
-    expect(sql).toContain('opened_netai = FALSE');
-    expect(sql).toContain('ORDER BY c.own_contacts DESC');
+    expect(mockQuery.mock.calls[0][0] as string).toContain('opened_netai = FALSE');
   });
 
   it('leaves an empty label empty rather than guessing one', async () => {
     mockQuery.mockResolvedValue(rows([{ phone: '+995500000002', label: null }]) as never);
 
     expect((await basePool())[0].label).toBe('');
+  });
+
+  it('offers the never-listed first, so the base cannot be one closed door', async () => {
+    // Measured 15 Sep: ordering by phonebook size alone returned the same 300
+    // people on every build, everybody above 2,453 contacts, while 8,407
+    // human-sized candidates could never appear at all. Size is the tie-break
+    // now, not the key.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await basePool();
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain('target_score_history');
+    expect(sql).toContain('ASC NULLS FIRST');
+    // Size still decides between two people nobody has looked at.
+    expect(sql).toContain('c.own_contacts DESC');
   });
 
   it('asks again, live, whether the person has since arrived', async () => {
