@@ -2416,15 +2416,13 @@ async function buildAgentSystemPrompt(
   // makes the run a task step with that goal's state loaded.
   namedTask?: Task | null,
 ): Promise<AgentPromptResult> {
-  // Ticket 7 Task 1(a)(e), founder's ruling D48: an incoming-ask thread runs
-  // as the recipient's OWN assistant — same base playbook, name, notes, goals
-  // and memory as the normal chat, so the old fully-isolated context is gone
-  // from the PROMPT. Note that the toolset is a separate question and the
-  // answer there is now the opposite one (INCOMING_ASK_TOOLS, Ticket 19 G6):
-  // the run reads its own side but cannot look anyone up. Resolved through the
-  // normal path below: resolveRunMode keeps runMode='incoming_ask' so the
-  // ask_main prompt block still applies, and buildIncomingAskSection carries
-  // the ask itself.
+  // Ticket 7 Task 1(a)(e), founder's ruling D48, re-affirmed 16 September: an
+  // incoming-ask thread runs as the recipient's OWN assistant — same base
+  // playbook, name, notes, goals, memory and tools as the normal chat. The old
+  // fully-isolated context is gone, and the wall stands at the OUTBOUND
+  // boundary instead. Resolved through the normal path below: resolveRunMode
+  // keeps runMode='incoming_ask' so the ask_main prompt block still applies,
+  // and buildIncomingAskSection carries the ask itself.
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
@@ -2769,21 +2767,41 @@ export function answerChunkHandler(opts: {
  * yes — to a draft. A flag cannot tell those apart, because it is the same
  * flag either way.
  *
- * So the server reads what was actually on the screen. A yes counts when the
- * owner's own words say APPROVE, or when the newest thing offering buttons in
- * that thread is a plan card. Under a plan card a bare „კი" still works, which
- * matters: the founder has asked to be interrupted less, not more.
+ * So the server reads what was actually on the screen.
+ *
+ * SECOND PASS, 15 September 21:04, and the first one was not enough. The rule
+ * accepted a yes whenever the newest thing offering buttons was a plan card.
+ * On goal 3433 the plan card also repeated an earlier clarifying question, the
+ * owner typed one word answering THAT — „სააგენტო" — and the card on screen was
+ * the plan card, so it counted. approve_task_plan fired one second later and an
+ * ask went out to a real person (1816, Erekle Zurmukhtashvili). The founder has
+ * let that ask stand and ruled the mechanism out.
+ *
+ * The hole was the shape of the question I asked. „Which card is on screen" is
+ * about the SERVER'S last move; whether somebody approved is about THEIRS. So
+ * the owner's own words now have to carry the yes: the approve label itself,
+ * which is what a tap sends, or a plain affirmative under a plan card. A
+ * detail, a choice or an answer typed under a plan card is not an approval,
+ * however the model reports it.
+ *
+ * A bare „კი" under a plan card still approves. The founder asked to be
+ * interrupted less, and one word that means yes is still a yes — „სააგენტო"
+ * simply never was one.
  */
+const PLAN_YES =
+  /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|approve[d]?)[\s.!,]*$/iu;
+
 export function approvalBelongsToThePlan(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
 ): boolean {
-  if (lastOwnerMessage !== null && canonicalChoiceLabel(lastOwnerMessage) === APPROVE_LABEL) {
-    return true;
-  }
-  return (newestOfferedChoices ?? []).some(
+  const said = lastOwnerMessage?.trim() ?? '';
+  if (said === '') return false;
+  if (canonicalChoiceLabel(said) === APPROVE_LABEL) return true;
+  const planCardOnScreen = (newestOfferedChoices ?? []).some(
     (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
   );
+  return planCardOnScreen && PLAN_YES.test(said);
 }
 
 const PLAN_CONSENT_TIMEOUT_MS = 5_000;
@@ -4703,13 +4721,32 @@ async function salvageFinalAnswer(
   }
 }
 
+/**
+ * Ticket 7 Task 1(a), founder's ruling D48, 26 August, and re-affirmed by him
+ * on 16 September after this file had briefly done the opposite: the
+ * recipient's assistant carries EVERYTHING the normal chat has — search, second
+ * degree, facts, notes, goals — because the recipient is talking to their OWN
+ * assistant about their OWN data. In his words, „I need to have full access to
+ * all kind of tools."
+ *
+ * The G6 report asked for the toolset to be cut to eight, and I cut it, because
+ * ask_main said the thread could not look anything up and the code said
+ * otherwise — a real contradiction. I resolved it on the wrong side, and said
+ * so at the time: the prompt half was left alone and flagged precisely because
+ * it was not mine to decide. It was put to the founder and he ruled for D48, so
+ * the tools come back and ask_main changes instead.
+ *
+ * The wall does not move with them. It stands where D48 put it, at the OUTBOUND
+ * boundary: send_answer_to_asker and relay_ask are the only things that reach
+ * the asker, and neither sends without the recipient.
+ */
 async function buildToolsForThread(
   userId: string,
   threadType?: string,
   ownerAbsent = false,
 ): Promise<AnthropicTool[]> {
   if (threadType === 'incoming_ask') {
-    return toolsForRun(INCOMING_ASK_TOOLS, ownerAbsent);
+    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId, ownerAbsent))];
   }
   return buildEnabledTools(userId, ownerAbsent);
 }
@@ -4827,60 +4864,28 @@ const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
 ];
 
 /**
- * Ticket 19 G6: everything an incoming-ask run is offered, and nothing else.
+ * The two tools an incoming-ask run has that a normal chat does not, and the
+ * only two things that reach the asker (D48).
  *
- * The ask_main block tells the recipient's assistant, in these words, that in
- * this thread it has „the question and nothing else: no network, no search, no
- * contact records, no tags, no profiles, no goals, no notes, on either side"
- * and that it „cannot look anything up here and must never speak as though it
- * could". Until now that was a sentence in a prompt while the run actually
- * held the full owner toolset (founder's ruling D48, Ticket 7 Task 1(a),
- * written before the block said this). On thread 15115 the model did the
- * obvious thing with what it was given: it opened a contact profile and wrapped
- * a paragraph of a third party's employer and praise around the recipient's one
- * line of answer. Check Five of the block's own thirteen forbids exactly that.
- *
- * So the wall is back in the toolset, where a sentence cannot be talked out of
- * it: what the thread needs to carry an answer, a relay, a stop and a standing
- * rule, and no way to look a person up. The list is spelled out as the tool
- * objects themselves rather than as names to match, so it cannot drift from the
- * definitions, and it is built from constants rather than from the enabled-tool
- * table, so turning an optional tool on cannot widen this thread.
- *
- * A standing answer rule is created by send_answer_to_asker's
- * remember_for_similar, not by a tool of its own — list and delete are the
- * whole rule surface here.
+ * Kept as a named list because Ticket 19 G6 asked for the mode's toolset to be
+ * readable rather than inferred, and that part of the request was right even
+ * though its conclusion was overruled: the founder re-affirmed D48 on
+ * 16 September and the rest of the toolset came back.
  */
-const INCOMING_ASK_TOOLS: readonly AnthropicTool[] = [
+const INCOMING_ASK_EXTRA_TOOLS: readonly AnthropicTool[] = [
   SEND_ANSWER_TO_ASKER_TOOL,
   RELAY_ASK_TOOL,
-  PRESENT_CHOICES_TOOL,
-  STOP_CONTACTING_TOOL,
-  RESUME_CONTACT_TOOL,
-  LIST_ANSWER_RULES_TOOL,
-  DELETE_ANSWER_RULE_TOOL,
-  SAVE_USER_NOTE_TOOL,
 ];
 
-/**
- * Exported so „prompt-preview?mode=incoming_ask lists only those" — the
- * condition the report asked to be satisfied — is a thing a test can assert
- * against a list, rather than a claim about code nobody can reach.
- */
-export const INCOMING_ASK_TOOL_NAMES: readonly string[] = INCOMING_ASK_TOOLS.map((t) => t.name);
+/** The outbound boundary, by name, so a test can assert it has not moved. */
+export const ASKER_FACING_TOOL_NAMES: readonly string[] = INCOMING_ASK_EXTRA_TOOLS.map(
+  (t) => t.name,
+);
 
-/**
- * One always-on tool's description, by name.
- *
- * Ticket 19 G3: a tool description is a rule the model obeys, so „this text no
- * longer asks the user to approve wording" has to be assertable. Empty for a
- * name that is not an always-on tool, which a test reads as a failure rather
- * than as a pass.
- */
 export function toolDescription(name: string): string {
   const found =
     ALWAYS_ON_TOOLS.find((tool) => tool.name === name) ??
-    INCOMING_ASK_TOOLS.find((tool) => tool.name === name);
+    INCOMING_ASK_EXTRA_TOOLS.find((tool) => tool.name === name);
   return found?.description ?? '';
 }
 
