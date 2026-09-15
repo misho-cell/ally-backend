@@ -3229,7 +3229,7 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
       return;
     }
-    const [subs, deliveries] = await Promise.all([
+    const [subs, deliveries, recording] = await Promise.all([
       query(
         `SELECT CASE
                   WHEN endpoint LIKE '%web.push.apple.com%' THEN 'apple'
@@ -3257,7 +3257,23 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
          ORDER BY created_at DESC LIMIT 50`,
         [userId],
       ),
+      // The date the counts actually start from. Asked for by the frontend so
+      // its chip can say „from 12 Sep" instead of „since we started
+      // recording" — and the vaguer wording was the thing still leaving room
+      // for the wrong reading.
+      //
+      // Derived, never written down. It was a hardcoded „12 September" here,
+      // which was true the day it was written and stops being true the moment
+      // the 30-day prune first runs: the sentence would then claim six weeks
+      // of history that had just been deleted. Read from the table, it follows
+      // the retention window by itself and cannot drift.
+      query<{ since: string | null }>(
+        `SELECT MIN(created_at)::text AS since FROM push_deliveries`,
+        [],
+      ),
     ]);
+    const recordingSince =
+      (recording.rows[0] as { since: string | null } | undefined)?.since ?? null;
     const countOf = (want: string): number =>
       deliveries.rows.filter((d) => (d as { status: string }).status === want).length;
     // Which of this person's devices is watching RIGHT NOW. This is the whole
@@ -3282,12 +3298,20 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
         // screen whose job is to tell them apart.
         failed_recently: countOf('failed'),
         skipped_recently: countOf('skipped'),
+        // What the three counts above are counting FROM. Null means nothing has
+        // ever been recorded, which is not the same as nobody ever being sent
+        // anything — the counts are then unknown, not zero.
+        recording_since: recordingSince,
         // Said out loud, because it is the trap row 6 fell into: every row
         // before this shipped is missing, and an Apple subscription with no
         // user_agent could be a Mac.
         note:
-          'Deliveries are recorded only from 12 September; anything earlier is absent, not ' +
-          'failed. A subscription with no user_agent predates that field — an apple provider ' +
+          (recordingSince === null
+            ? 'No delivery has ever been recorded, so the counts above are unknown rather ' +
+              'than zero. '
+            : `Deliveries are recorded only from ${recordingSince.slice(0, 10)}; anything ` +
+              'earlier is absent, not failed. ') +
+          'A subscription with no user_agent predates that field — an apple provider ' +
           'there may be macOS Safari, not an iPhone. A "skipped" delivery is not a failure: ' +
           'that device had the app open and would have seen the answer anyway. A subscription ' +
           'with no device_id has not re-subscribed since 13 September and still falls back to ' +
