@@ -230,25 +230,63 @@ export function planAllows(plan: StoredPlan | null, phone: string): PlanVerdict 
   return { allowed: false, reason: 'outside_plan' };
 }
 
-/** The plan as one message the user can read and approve. */
+/**
+ * A route's state in the words a person uses, not the words the code uses.
+ *
+ * Ticket 19 item 3: the plan a user reads carried „[waiting]" — an internal
+ * value in brackets, in English, inside a Georgian sentence. This is the one
+ * message whose whole job is to be understood well enough to approve, and it
+ * was showing the reader a field name.
+ */
+const ROUTE_STATUS_WORDS: Readonly<Record<RouteStatus, string>> = {
+  running: 'მიმდინარეობს',
+  waiting: 'ველოდები',
+  done: 'დასრულდა',
+  dropped: 'შევწყვიტე',
+};
+
+/**
+ * The plan as one message the user can read and approve.
+ *
+ * Every line here is read by somebody deciding whether to let us write to
+ * their friends in their name. It carries no bracketed field values, no
+ * parenthesised placeholders and no name printed twice — all three were in it
+ * until ticket 19 item 3 said so, and a message that reads like a debug dump
+ * is a message people approve without reading.
+ */
 export function renderPlan(plan: TaskPlan, version: number, approvedAt: string | null): string {
-  const routes = plan.routes.map((r) => `- ${r.name} [${r.status}]`).join('\n');
+  const routes = plan.routes
+    .map((r) => `- ${r.name} — ${ROUTE_STATUS_WORDS[r.status] ?? r.status}`)
+    .join('\n');
   const people =
     plan.people_to_involve.length === 0
-      ? '- (ჯერ არავინ)'
-      : plan.people_to_involve.map((p) => `- ${p.name} — ${p.route}`).join('\n');
-  const never =
-    plan.never_contact.length === 0
-      ? '- (არავინ)'
-      : plan.never_contact.map((n) => `- ${n.name}`).join('\n');
+      ? 'ჯერ არავის'
+      : plan.people_to_involve
+          // The route is dropped when it only repeats the person — the live
+          // plan showed „Dato Karada — Dato Karada", which tells the reader
+          // nothing and looks like a fault in the product.
+          .map((p) => (sameText(p.route, p.name) ? `- ${p.name}` : `- ${p.name} — ${p.route}`))
+          .join('\n');
   const head = approvedAt
     ? `გეგმა v${version} (დამტკიცებულია)`
     : `გეგმა v${version} (დასამტკიცებელი)`;
-  return (
-    `${head}\n` +
-    `მოგვარებულია, როცა: ${plan.solved_when}\n` +
-    `გზები:\n${routes}\n` +
-    `ვის ვკითხავ:\n${people}\n` +
-    `ვის არასდროს:\n${never}`
-  );
+  const lines = [
+    head,
+    `მოგვარებულია, როცა: ${plan.solved_when}`,
+    `გზები:\n${routes}`,
+    `ვის ვკითხავ:\n${people}`,
+  ];
+  // „Nobody" is not a list of nobody: an empty exclusion list means the
+  // section has nothing to say, so it is left out rather than printed as an
+  // empty bullet.
+  if (plan.never_contact.length > 0) {
+    lines.push(`ვის არასდროს:\n${plan.never_contact.map((n) => `- ${n.name}`).join('\n')}`);
+  }
+  return lines.join('\n');
+}
+
+/** Two pieces of text that name the same thing, ignoring case and spacing. */
+function sameText(a: string, b: string): boolean {
+  const fold = (t: string): string => t.trim().toLowerCase().replace(/\s+/g, ' ');
+  return fold(a) === fold(b);
 }

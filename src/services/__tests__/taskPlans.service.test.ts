@@ -180,3 +180,61 @@ describe('Ticket 18 [101]: the plan text carries what is being approved', () => 
     expect(renderPlan(plan, 1, '2026-09-13T10:00:00.000Z')).toContain('დამტკიცებულია');
   });
 });
+
+describe('Ticket 19 [3]: the plan reads like a sentence, not a dump', () => {
+  const PLAN = {
+    solved_when: 'ვპოულობ სანტექნიკოსს',
+    routes: [
+      { name: 'ქსელში კითხვა', status: 'waiting' as const },
+      { name: 'ვებ-ძიება', status: 'running' as const },
+    ],
+    people_to_involve: [
+      { name: 'Dato Karada', phone: '+995500000001', route: 'Dato Karada' },
+      { name: 'Nino Beridze', phone: '+995500000002', route: 'ქსელში კითხვა' },
+    ],
+    never_contact: [],
+  };
+
+  it('says the state in words a person uses, not the field value', () => {
+    const text = renderPlan(PLAN, 1, null);
+
+    // „[waiting]" is an internal value, in English, inside a Georgian message
+    // that exists to be understood well enough to approve.
+    expect(text).not.toContain('[waiting]');
+    expect(text).not.toContain('[running]');
+    expect(text).toContain('ველოდები');
+    expect(text).toContain('მიმდინარეობს');
+  });
+
+  it('never prints a person twice', () => {
+    // The live plan read „Dato Karada — Dato Karada", which tells the reader
+    // nothing and looks like a fault in the product.
+    const text = renderPlan(PLAN, 1, null);
+
+    expect(text).toContain('- Dato Karada\n');
+    expect(text).not.toContain('Dato Karada — Dato Karada');
+    // A route that genuinely differs is still shown.
+    expect(text).toContain('Nino Beridze — ქსელში კითხვა');
+  });
+
+  it('leaves out the exclusions section rather than listing nobody', () => {
+    const text = renderPlan(PLAN, 1, null);
+
+    expect(text).not.toContain('(არავინ)');
+    expect(text).not.toContain('ვის არასდროს');
+  });
+
+  it('still shows the exclusions when there are any', () => {
+    const text = renderPlan({ ...PLAN, never_contact: [{ name: 'Giorgi' }] }, 1, null);
+
+    expect(text).toContain('ვის არასდროს');
+    expect(text).toContain('- Giorgi');
+  });
+
+  it('says plainly when nobody is on the list yet', () => {
+    const text = renderPlan({ ...PLAN, people_to_involve: [] }, 1, null);
+
+    expect(text).not.toContain('(ჯერ არავინ)');
+    expect(text).toContain('ჯერ არავის');
+  });
+});
