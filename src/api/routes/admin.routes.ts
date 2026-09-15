@@ -3315,7 +3315,7 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
       return;
     }
-    const [subs, deliveries, recording] = await Promise.all([
+    const [subs, deliveries, recording, counts] = await Promise.all([
       query(
         `SELECT CASE
                   WHEN endpoint LIKE '%web.push.apple.com%' THEN 'apple'
@@ -3357,6 +3357,21 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
         `SELECT MIN(created_at) AS since FROM push_deliveries`,
         [],
       ),
+      // The counts, over EVERY record this person has — not over the fifty the
+      // list above happens to show.
+      //
+      // Ticket 19 item 24 found this: Lika's block read „from 12 Sept: sent 50
+      // · skipped 0 · failed 0" while her real totals were 128, 36 and 0. The
+      // counters were computed from `recent_deliveries`, which is capped at
+      // fifty, so „50 sent" was really „the fifty newest rows, all of them
+      // sends" — and the date beside it promised a range the numbers did not
+      // cover. A tidier story than the truth, on the screen built to stop
+      // exactly that.
+      query<{ status: string; n: string }>(
+        `SELECT status, COUNT(*)::text AS n FROM push_deliveries
+         WHERE user_id = $1 GROUP BY status`,
+        [userId],
+      ),
     ]);
     // ISO 8601, not Postgres's own text. Its form — a space where the T belongs
     // and six-digit microseconds — is not something Safari parses, so the same
@@ -3367,7 +3382,9 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
     const recordingSince =
       rawSince === null || rawSince === undefined ? null : new Date(rawSince).toISOString();
     const countOf = (want: string): number =>
-      deliveries.rows.filter((d) => (d as { status: string }).status === want).length;
+      Number(
+        (counts.rows as { status: string; n: string }[]).find((r) => r.status === want)?.n ?? 0,
+      );
     // Which of this person's devices is watching RIGHT NOW. This is the whole
     // of row 6 on one screen: a device marked live is a device we deliberately
     // did not push to, and without this the skip looks identical to silence.
@@ -3381,7 +3398,11 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
       success: true,
       data: {
         subscriptions,
+        // The newest fifty, for reading. The counts below are NOT taken from
+        // this list — that was the bug in item 24 — so the cap is stated here
+        // rather than left for a reader to infer from the length.
         recent_deliveries: deliveries.rows,
+        recent_deliveries_limit: 50,
         sent_recently: countOf('sent'),
         // Counted by name, not by subtraction. Since presence became
         // per-device there is a third status — 'skipped', the device was live
