@@ -6,23 +6,36 @@ import { rolesFromLabels } from '../tools/labelEmployer';
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
 /**
- * The only DB read this module makes is the crowd size of each word it does
- * not already know. These are the numbers counted live on 12 September.
+ * The only DB read this module makes is the crowd behind each word it does not
+ * already know: how many people carry it as a WHOLE word, and how many of
+ * those labels BEGIN with it.
+ *
+ * Counted live on 15 September, all of them. The second column is Ticket 19
+ * [8]: a first name leads its label, a company word follows one.
  */
-const LIVE_SIZES: Record<string, number> = {
-  tbc: 6369,
-  capital: 375,
-  insurance: 441,
-  bank: 8580,
-  mehmeti: 2,
+const LIVE: Record<string, { carriers: number; leads: number }> = {
+  tbc: { carriers: 6256, leads: 2340 },
+  capital: { carriers: 293, leads: 30 },
+  insurance: { carriers: 437, leads: 40 },
+  bank: { carriers: 2401, leads: 181 },
+  service: { carriers: 1612, leads: 79 },
+  // The tester's three, and what the base actually says about them.
+  elen: { carriers: 112, leads: 82 }, // a name: 73% of its labels start with it
+  near: { carriers: 29, leads: 9 }, // 43 as a substring, 29 as a word
+  თარგმნა: { carriers: 105, leads: 62 },
+  mehmeti: { carriers: 2, leads: 2 },
 };
 
 function sizesFromLive(): void {
   mockQuery.mockImplementation((_sql: string, params?: unknown[]) => {
     const words = (params?.[0] ?? []) as string[];
     const data = words
-      .filter((w) => LIVE_SIZES[w] !== undefined)
-      .map((w) => ({ word: w, org_size: String(LIVE_SIZES[w]) }));
+      .filter((w) => LIVE[w] !== undefined)
+      .map((w) => ({
+        word: w,
+        carriers: String(LIVE[w].carriers),
+        leads: String(LIVE[w].leads),
+      }));
     return Promise.resolve({ rows: data, rowCount: data.length } as never);
   });
 }
@@ -159,5 +172,53 @@ describe('nothing to read', () => {
     expect((await rolesFromLabels([{ label: null, ...NO_FACTS }])).size).toBe(0);
     expect((await rolesFromLabels([{ label: '  ', ...NO_FACTS }])).size).toBe(0);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ticket 19 [8] — the tester's three, and the reason all three got through.
+ *
+ * The floor was counted with LIKE '%word%'. „near" scored 43 out of NEAR
+ * inside other words and cleared a floor of 40 by three; „elen" scored 14,445
+ * out of Elene, Elena and Kelenjeridze. Counted as whole words they are 29 and
+ * 112 — and „elen" begins 73% of the labels it is in, which is where a name
+ * goes and not where a company does.
+ */
+describe('a first name is not an employer', () => {
+  it('drops „Elen" although the crowd is large enough', async () => {
+    const label = 'Elen Kakhidze';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBeUndefined();
+  });
+
+  it('drops „Near", which only ever cleared the floor as a substring', async () => {
+    const label = 'Giorgi Near';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBeUndefined();
+  });
+
+  it('keeps a real company, which is what the same two numbers say it is', async () => {
+    // tbc: 6,256 carriers and it leads only 37% of them.
+    const label = 'მერი ჩაჩანიძე TBC Capital';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBe('TBC Capital');
+  });
+});
+
+describe('a number and a conjunction are not companies', () => {
+  it('drops „100 არა" entirely', async () => {
+    // Three contacts carried this as their employer. „100" is on 1,916 labels
+    // as a whole word and „არა" on 230 — both far over any floor, and neither
+    // has ever been anybody's employer.
+    const label = 'ნიკა 100 არა';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBeUndefined();
+  });
+
+  it('drops the „and" out of „თარგმნა and Service" and keeps the company word', async () => {
+    const label = 'ნინო თარგმნა and Service';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    // „თარგმნა" leads 59% of its labels, so it goes with the conjunction.
+    expect(roles.get(label)?.employer).toBe('Service');
   });
 });

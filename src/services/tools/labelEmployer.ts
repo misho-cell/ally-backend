@@ -1,4 +1,4 @@
-import { classifyToken, labelTokens, orgSizes } from '../labelReader.service';
+import { classifyToken, labelTokens, orgWordStats, OrgWordStat } from '../labelReader.service';
 import { COMPANY_MARKERS, ORGANISATION_WORDS } from '../labelDictionaries';
 
 /**
@@ -40,6 +40,59 @@ const LABEL_ROLES_OFF = process.env.LABEL_ROLES === 'off';
  * to spare.
  */
 const ORG_SIZE_MIN = 40;
+
+/**
+ * Ticket 19 [8], the tester's three: „Elen", „Near", „თარგმნა and Service",
+ * and „100 არა" on three contacts.
+ *
+ * Three things were wrong and they are separable.
+ *
+ * FIRST, the count was a substring count (see orgWordStats). „near" scored 43
+ * out of NEAR inside other words and cleared this floor by three; counted as a
+ * whole word it is 29 and does not.
+ *
+ * SECOND, a word can be common and still be a person. „elen" is on 112 labels
+ * as a whole word — over the floor and staying over it — but it BEGINS 73 of
+ * them, which is where a first name goes and not where a company does. More
+ * often than not at the front of the label means it is somebody's name.
+ */
+const MAX_LEAD_SHARE = 0.5;
+
+/**
+ * THIRD, some words are not company words however they are counted. A bare
+ * number is not an organisation — „100" is on 1,916 labels as a whole word and
+ * is a flat number, a year, a price. And a conjunction or a negation is the
+ * label's grammar, not its content: „არა" survives whole-word counting at 230
+ * and „and" at 923, and neither has ever been anybody's employer.
+ *
+ * Kept short on purpose. This is not a list of words that are not companies —
+ * that list is infinite. It is the handful that the counting genuinely cannot
+ * reach, and every one of them was measured.
+ */
+const DIGITS_ONLY = /^\d+$/u;
+const NEVER_A_COMPANY = new Set([
+  'and',
+  'or',
+  'the',
+  'not',
+  'no',
+  'none',
+  'other',
+  'და',
+  'ან',
+  'არა',
+  'სხვა',
+]);
+
+function cannotBeACompany(token: string): boolean {
+  return DIGITS_ONLY.test(token) || NEVER_A_COMPANY.has(token);
+}
+
+/** Does the crowd say this word is a company rather than a person? */
+function crowdSaysCompany(stat: OrgWordStat | undefined): boolean {
+  if (stat === undefined) return false;
+  return stat.carriers >= ORG_SIZE_MIN && stat.leadShare <= MAX_LEAD_SHARE;
+}
 /** Words asked about in one read. Above this the count query is the search's cost, not a detail. */
 const MAX_WORDS_ASKED = 40;
 /** A field on a row is a couple of words; more than this is the label leaking. */
@@ -99,6 +152,8 @@ function candidatesIn(label: string, wantEmployer: boolean, wantTitle: boolean):
     const kind = classifyToken(token.lower, index === 0);
     if (wantTitle && (kind === 'trade' || kind === 'profession_with_clients')) {
       out.push({ raw: token.raw, lower: token.lower, kind: 'title', needsCount: false });
+    } else if (cannotBeACompany(token.lower)) {
+      // A number or a conjunction never reaches the field, counted or not.
     } else if (wantEmployer && (kind === 'organisation' || certainOrganisation(token.lower))) {
       out.push({
         raw: token.raw,
@@ -147,10 +202,10 @@ export async function rolesFromLabels(
     ),
   ].slice(0, MAX_WORDS_ASKED);
 
-  let sizes = new Map<string, number>();
+  let sizes = new Map<string, OrgWordStat>();
   if (unknown.length > 0) {
     try {
-      sizes = await orgSizes(unknown);
+      sizes = await orgWordStats(unknown);
     } catch (err) {
       // No count, no guess. The dictionary words still answer; every word that
       // needed the crowd is dropped, and the row keeps the empty field it had.
@@ -164,7 +219,7 @@ export async function rolesFromLabels(
     for (const candidate of candidates) {
       if (candidate.kind === 'title') {
         title.push(candidate.raw);
-      } else if (!candidate.needsCount || (sizes.get(candidate.lower) ?? 0) >= ORG_SIZE_MIN) {
+      } else if (!candidate.needsCount || crowdSaysCompany(sizes.get(candidate.lower))) {
         employer.push(candidate.raw);
       }
     }

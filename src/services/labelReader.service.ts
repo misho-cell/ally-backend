@@ -259,6 +259,74 @@ export async function orgSizes(words: string[]): Promise<Map<string, number>> {
   return new Map(result.rows.map((r) => [r.word, Number(r.org_size)]));
 }
 
+/**
+ * Ticket 19 [8]. The same question as orgSizes, asked properly, for the fields
+ * that reach the screen.
+ *
+ * orgSizes counts with LIKE '%word%' — a SUBSTRING. Measured live on
+ * 15 September, that is why „Elen" could be called somebody's employer:
+ *
+ *   word     as a substring   as a whole word
+ *   ──────   ──────────────   ───────────────
+ *   and              59,764               923
+ *   არა              48,162               230
+ *   elen             14,445               112
+ *   near                 43                29
+ *   tbc               6,369             6,256
+ *
+ * „elen" was counted out of Elene, Elena, Kelenjeridze; „and" out of
+ * Alexander and Sandro. The gate meant to separate companies from names was
+ * measuring letter sequences, and a real company barely moves.
+ *
+ * The second number is what tells a first name from a company even when both
+ * are common: a name LEADS its label and a company follows one. Live, again:
+ * nino .91, maia .90, elen .73 against tbc .37, capital .10, bank .08.
+ *
+ * orgSizes itself is deliberately NOT changed here. The target engine reads it
+ * through tiers (3 / 15 / 50) that were set against substring counts, and
+ * moving the floor under them silently is a bigger change than this item, with
+ * its own measuring to do.
+ */
+export interface OrgWordStat {
+  /** People whose label carries this as a whole word. */
+  readonly carriers: number;
+  /** Of those, the share whose label BEGINS with it. */
+  readonly leadShare: number;
+}
+
+/**
+ * The word goes into a regex, so only plain words are asked about. A token
+ * carrying punctuation is not counted rather than escaped: every such token
+ * the caller has is already answered by the dictionaries, and a word we
+ * cannot count is a word we do not use.
+ */
+const PLAIN_WORD = /^[\p{L}\p{N}]+$/u;
+
+export async function orgWordStats(words: string[]): Promise<Map<string, OrgWordStat>> {
+  const asked = words.filter((word) => PLAIN_WORD.test(word));
+  if (asked.length === 0) return new Map();
+  const result = await query<{ word: string; carriers: string; leads: string }>(
+    `SELECT w.word,
+            COUNT(DISTINCT ua.phone) AS carriers,
+            COUNT(DISTINCT ua.phone) FILTER (
+              WHERE lower(ua.alias) ~ ('^' || w.word || '([^[:alnum:]]|$)')
+            ) AS leads
+     FROM UNNEST($1::text[]) AS w(word)
+     JOIN "UserAlias" ua
+       ON lower(ua.alias) LIKE '%' || w.word || '%'
+      AND lower(ua.alias) ~ ('(^|[^[:alnum:]])' || w.word || '([^[:alnum:]]|$)')
+     GROUP BY w.word`,
+    [asked],
+    LABEL_QUERY_TIMEOUT_MS,
+  );
+  return new Map(
+    result.rows.map((row) => {
+      const carriers = Number(row.carriers);
+      return [row.word, { carriers, leadShare: carriers > 0 ? Number(row.leads) / carriers : 0 }];
+    }),
+  );
+}
+
 /** Aliases sampled per word when asking whether the word is a company. */
 const COMPANY_WORD_ALIAS_SAMPLE = 150;
 /** Fewer aliases than this say nothing about a word. */
