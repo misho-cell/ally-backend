@@ -89,8 +89,8 @@ describe('reading the thread', () => {
   it('counts what this reader has not seen', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('MAX(id)')) return Promise.resolve(rows([{ latest: 10 }])) as never;
-      if (sql.includes('FROM handoff_reads')) {
-        return Promise.resolve(rows([{ last_seen_id: 7 }])) as never;
+      if (sql.includes('handoff_reads')) {
+        return Promise.resolve(rows([{ last_seen_id: 7, unread: '3' }])) as never;
       }
       return Promise.resolve(rows([MESSAGE])) as never;
     });
@@ -100,6 +100,31 @@ describe('reading the thread', () => {
     expect(thread.latest_id).toBe(10);
     expect(thread.last_seen_id).toBe(7);
     expect(thread.unread).toBe(3);
+  });
+
+  it('does not call a reader\u2019s own message unread', async () => {
+    // Found by the hourly check on its very first run: it reported one unread
+    // item and the item was my own opening post. A badge that lights up for
+    // what you just wrote teaches people to stop looking at it — and then it
+    // is not there on the day it matters.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('MAX(id)')) return Promise.resolve(rows([{ latest: 5 }])) as never;
+      if (sql.includes('handoff_reads')) {
+        return Promise.resolve(rows([{ last_seen_id: 0, unread: '0' }])) as never;
+      }
+      return Promise.resolve(rows([MESSAGE])) as never;
+    });
+
+    const thread = await readHandoff({ reader: 'claude_backend' });
+
+    // Five messages exist and none have been marked read, yet nothing is new
+    // to this reader: the count asks the database who WROTE them.
+    expect(thread.latest_id).toBe(5);
+    expect(thread.unread).toBe(0);
+    const [sql] = mockQuery.mock.calls.find(([q]) => String(q).includes('handoff_reads')) as [
+      string,
+    ];
+    expect(sql).toContain('m.author <> $1::text');
   });
 
   it('says nothing about unread when nobody asked as a reader', async () => {

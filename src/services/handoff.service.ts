@@ -117,10 +117,24 @@ export async function readHandoff(opts: {
       [],
       QUERY_TIMEOUT_MS,
     ),
+    // Where this reader had got to, and how much of what came after was
+    // written by somebody ELSE.
+    //
+    // YOUR OWN MESSAGE IS NOT NEWS. Counted as plain arithmetic —
+    // latest minus last seen — the badge lit up for the message you had just
+    // written yourself. The very first run of the hourly check reported one
+    // unread item and it was my own opening post. A counter that goes off for
+    // your own writing teaches people to stop looking at it, and then it is
+    // not there on the day it matters.
     reader === null
-      ? Promise.resolve({ rows: [] as { last_seen_id: number }[] })
-      : query<{ last_seen_id: number }>(
-          `SELECT last_seen_id FROM handoff_reads WHERE reader = $1`,
+      ? Promise.resolve({ rows: [] as { last_seen_id: number; unread: string }[] })
+      : query<{ last_seen_id: number; unread: string }>(
+          `SELECT COALESCE(r.last_seen_id, 0) AS last_seen_id,
+                  (SELECT COUNT(*) FROM handoff_messages m
+                    WHERE m.id > COALESCE(r.last_seen_id, 0)
+                      AND m.author <> $1::text)::text AS unread
+           FROM (SELECT last_seen_id FROM handoff_reads WHERE reader = $1::text) r
+           RIGHT JOIN (SELECT 1) one ON TRUE`,
           [reader],
           QUERY_TIMEOUT_MS,
         ),
@@ -128,6 +142,7 @@ export async function readHandoff(opts: {
 
   const latestId = latest.rows[0]?.latest ?? 0;
   const lastSeenId = reader === null ? null : (seen.rows[0]?.last_seen_id ?? 0);
+  const unread = reader === null ? null : Number(seen.rows[0]?.unread ?? 0);
 
   return {
     // ISO 8601 at the boundary: Postgres's own text form is not something
@@ -140,7 +155,7 @@ export async function readHandoff(opts: {
       created_at: new Date(row.created_at).toISOString(),
     })),
     latest_id: latestId,
-    unread: lastSeenId === null ? null : Math.max(0, latestId - lastSeenId),
+    unread,
     last_seen_id: lastSeenId,
   };
 }
