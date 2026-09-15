@@ -2526,6 +2526,78 @@ export function canonicalChoiceLabel(label: string): string {
   return trimmed;
 }
 
+/**
+ * Ticket 19 G2. Does the owner's yes belong to the PLAN?
+ *
+ * Thread 15380, 15 September, all UTC:
+ *
+ *   17:23:22  the plan, v1, three people   buttons: დამტკიცებულია / შევცვალოთ
+ *   17:59:38  a draft of one message       buttons: კი, გააგზავნე / შევცვალოთ
+ *   18:00:17  the founder taps „კი, გააგზავნე"
+ *   18:00:19  the timeline records: plan v1 approved, „მფლობელმა"
+ *   18:01:03  the day-one event, reading that approval, writes to the two
+ *             people the founder had NOT chosen
+ *
+ * He picked one person and one message. The yes was taken from a button that
+ * belonged to a different message, and an engine turn then acted on everybody
+ * the old plan named. The recipients happened to be his family and friends and
+ * he has ruled that nothing is to be retracted — the mechanism is the defect,
+ * and it is the same one as the wake that approved its own plan: a consent
+ * that belonged to something else.
+ *
+ * The gate that existed asked the MODEL whether the user had said yes
+ * (`confirmed !== true`). Here the owner really was there and really did say
+ * yes — to a draft. A flag cannot tell those apart, because it is the same
+ * flag either way.
+ *
+ * So the server reads what was actually on the screen. A yes counts when the
+ * owner's own words say APPROVE, or when the newest thing offering buttons in
+ * that thread is a plan card. Under a plan card a bare „კი" still works, which
+ * matters: the founder has asked to be interrupted less, not more.
+ */
+export function approvalBelongsToThePlan(
+  lastOwnerMessage: string | null,
+  newestOfferedChoices: readonly string[] | null,
+): boolean {
+  if (lastOwnerMessage !== null && canonicalChoiceLabel(lastOwnerMessage) === APPROVE_LABEL) {
+    return true;
+  }
+  return (newestOfferedChoices ?? []).some(
+    (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
+  );
+}
+
+const PLAN_CONSENT_TIMEOUT_MS = 5_000;
+
+/**
+ * The two things the decision above needs, read from the thread itself rather
+ * than passed down through the run: the owner's own last words, and the
+ * buttons on the newest message that offered any. Both are already stored
+ * before a tool runs, so there is nothing to thread through and nothing that
+ * can drift out of step with what the person saw.
+ */
+async function planConsentOnScreen(
+  threadId: number,
+): Promise<{ lastOwnerMessage: string | null; newestOfferedChoices: string[] | null }> {
+  const result = await query<{ last_owner: string | null; newest_choices: unknown }>(
+    `SELECT
+       (SELECT c.content FROM conversations c
+         WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message'
+           AND c.content <> '' AND c.content NOT LIKE $2
+         ORDER BY c.created_at DESC LIMIT 1) AS last_owner,
+       (SELECT c.choices FROM conversations c
+         WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.choices IS NOT NULL
+         ORDER BY c.created_at DESC LIMIT 1) AS newest_choices`,
+    [threadId, `${RUN_EVENT_PREFIX}%`],
+    PLAN_CONSENT_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  const choices = Array.isArray(row?.newest_choices)
+    ? (row.newest_choices as unknown[]).filter((c): c is string => typeof c === 'string')
+    : null;
+  return { lastOwnerMessage: row?.last_owner ?? null, newestOfferedChoices: choices };
+}
+
 // Ticket 16 Task 98: what a run pulled out of the pending list. The items are
 // consumed by the tool call, so they are held here and delivered afterwards as
 // their own messages — the answer answers the question, and nothing else.
@@ -3302,6 +3374,34 @@ async function executeToolCall(
             'Not recorded: the user has not said yes to the plan. Show the summary, ask, and ' +
             'call again with confirmed: true only after their explicit approval.',
         };
+      }
+      // Ticket 19 G2: and the yes has to have been about the PLAN. On
+      // 15 September a tap on a DRAFT's „კი, გააგზავნე" was recorded as
+      // approving a three-person plan, and the day-one turn then wrote to two
+      // people the founder had not chosen. `confirmed` cannot tell that apart
+      // — he did say yes — so the server reads what was on the screen instead.
+      if (threadId !== undefined) {
+        const screen = await planConsentOnScreen(threadId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[plan-consent] could not read the thread:', (err as Error).message);
+          return null;
+        });
+        if (
+          screen !== null &&
+          !approvalBelongsToThePlan(screen.lastOwnerMessage, screen.newestOfferedChoices)
+        ) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[plan-consent] run ${runId ?? '-'} thread ${threadId}: approval refused — the yes was not about the plan`,
+          );
+          return {
+            approved: false,
+            error:
+              "Not recorded: the user's last yes was about something else — the newest buttons " +
+              "on their screen were not a plan's. Show the plan again with its own approve " +
+              'button and call this only after they answer THAT.',
+          };
+        }
       }
       const outcome = await approveTaskPlan(userId, Number(input['task_id']));
       // Day one starts behind the reply (Ticket 12 Tasks 2 and 5): the user
