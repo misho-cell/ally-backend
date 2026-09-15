@@ -2527,6 +2527,57 @@ export function canonicalChoiceLabel(label: string): string {
 }
 
 /**
+ * Ticket 19 [22] / D217 — check first, then show.
+ *
+ * The final turn's text streamed to the screen and the content check ran
+ * after it, so a blocked reply was shown and then withdrawn. Run 38, thread
+ * 14792: the text was replaced by the apology mid-read.
+ *
+ * The founder was asked whether to close that at „2-4 seconds per such
+ * reply", and I put the real price to him through the tester before building
+ * it, because the question and the change are not the same size: there is no
+ * version that shows text as it is written AND guarantees nothing shown is
+ * withdrawn — they are one property with opposite signs. EVERY answer stops
+ * typing out, not only the blocked ones. His answer, 15 September, 22:27
+ * Tbilisi: „yes".
+ *
+ * The revert is one variable and no deploy: ANSWER_STREAMING=on.
+ */
+export function answerStreamingSuppressed(): boolean {
+  return process.env.ANSWER_STREAMING !== 'on';
+}
+
+/**
+ * What happens to one chunk of the model's text.
+ *
+ * Three separate things, and the reason this is a named function rather than
+ * three lines inside the loop is the middle one. The heartbeat exists so a
+ * long run is not silent, and it only fires when nothing else has reached the
+ * client recently — so if a SUPPRESSED chunk still reset that clock, the
+ * screen would go quiet for the whole of a long answer. Withholding the text
+ * and stopping the heartbeat with it is not the change that was approved: the
+ * tester's condition is that the step line keeps showing while the answer is
+ * being made.
+ *
+ * So a suppressed chunk marks that the turn produced text — the narration
+ * still has to move to the steps panel when a turn turns out to be a tool
+ * round — and touches nothing else.
+ */
+export function answerChunkHandler(opts: {
+  readonly suppressed: boolean;
+  readonly onText: () => void;
+  readonly onSignal: () => void;
+  readonly onVisible: (chunk: string) => void;
+}): (chunk: string) => void {
+  return (chunk: string): void => {
+    opts.onText();
+    if (opts.suppressed) return;
+    opts.onSignal();
+    opts.onVisible(chunk);
+  };
+}
+
+/**
  * Ticket 19 G2. Does the owner's yes belong to the PLAN?
  *
  * Thread 15380, 15 September, all UTC:
@@ -4044,12 +4095,20 @@ async function runToolLoop(
   let turnEmitted = false;
   // Anything visibly reaching the client (delta or step) resets the heartbeat.
   let lastSignalAt = Date.now();
+  const suppressed = answerStreamingSuppressed();
   const newTurnStreamer = (): SafeTextStreamer =>
-    createSafeTextStreamer((chunk) => {
-      turnEmitted = true;
-      lastSignalAt = Date.now();
-      emitAnswerDelta(userId, threadId, runId, chunk);
-    });
+    createSafeTextStreamer(
+      answerChunkHandler({
+        suppressed,
+        onText: () => {
+          turnEmitted = true;
+        },
+        onSignal: () => {
+          lastSignalAt = Date.now();
+        },
+        onVisible: (chunk) => emitAnswerDelta(userId, threadId, runId, chunk),
+      }),
+    );
   let answer = newTurnStreamer();
   const stream = (delta: string): void => answer.push(delta);
   // emitNarration=false when the caller has ALREADY emitted this turn's text
