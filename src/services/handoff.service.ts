@@ -49,6 +49,22 @@ export interface HandoffMessage {
   readonly author: string;
   readonly body: string;
   readonly created_at: string;
+  /**
+   * The login the server actually saw, beside the author the message declares.
+   *
+   * Returned so the panel HAS the fact, not because it should be drawn. Today
+   * everyone writes through one shared admin login, so this number is the same
+   * on every row — noise, and noise is where the one row that matters would
+   * hide. It becomes worth showing when each participant has a login of their
+   * own; until then the frontend is right to leave it alone.
+   *
+   * It is deliberately NOT compared to `author` here. They are different
+   * things — a role and an account id — so they „differ" on every row,
+   * including every legitimate one: I write as claude_backend through Misho's
+   * login, which is expected and unavoidable. A flag built on that comparison
+   * would mark everything and mean nothing.
+   */
+  readonly posted_by: string | null;
 }
 
 export interface HandoffThread {
@@ -65,6 +81,7 @@ interface MessageRow {
   id: number;
   author: string;
   body: string;
+  posted_by: string | null;
   created_at: Date | string;
 }
 
@@ -87,7 +104,7 @@ export async function readHandoff(opts: {
 
   const [messages, latest, seen] = await Promise.all([
     query<MessageRow>(
-      `SELECT id, author, body, created_at
+      `SELECT id, author, body, posted_by, created_at
        FROM handoff_messages
        WHERE id > $1::int
        ORDER BY id ASC
@@ -119,6 +136,7 @@ export async function readHandoff(opts: {
       id: row.id,
       author: row.author,
       body: row.body,
+      posted_by: row.posted_by,
       created_at: new Date(row.created_at).toISOString(),
     })),
     latest_id: latestId,
@@ -145,7 +163,7 @@ export async function postHandoff(
   const result = await query<MessageRow>(
     `INSERT INTO handoff_messages (author, body, posted_by)
      VALUES ($1, $2, $3)
-     RETURNING id, author, body, created_at`,
+     RETURNING id, author, body, posted_by, created_at`,
     [author, text.slice(0, MAX_BODY_CHARS), postedBy],
     QUERY_TIMEOUT_MS,
   );
@@ -154,6 +172,7 @@ export async function postHandoff(
     id: row.id,
     author: row.author,
     body: row.body,
+    posted_by: row.posted_by,
     created_at: new Date(row.created_at).toISOString(),
   };
 }

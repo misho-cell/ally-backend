@@ -32,6 +32,7 @@ const MESSAGE = {
   id: 7,
   author: 'claude_backend',
   body: 'ticket 19 is deployed',
+  posted_by: '167250',
   created_at: new Date('2026-09-15T08:00:00.000Z'),
 };
 
@@ -113,6 +114,21 @@ describe('reading the thread', () => {
     // answers, and zero would be the engine inventing the second one.
     expect(thread.unread).toBeNull();
     expect(thread.last_seen_id).toBeNull();
+  });
+
+  it('hands back the login the server saw, without judging it against the author', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('MAX(id)')) return Promise.resolve(rows([{ latest: 7 }])) as never;
+      return Promise.resolve(rows([MESSAGE])) as never;
+    });
+
+    const thread = await readHandoff({});
+
+    // The fact is returned; no comparison is made. `author` is a role and
+    // `posted_by` is an account id, so they differ on every legitimate row too
+    // — a flag built on that would mark everything and mean nothing.
+    expect(thread.messages[0].posted_by).toBe('167250');
+    expect(thread.messages[0].author).toBe('claude_backend');
   });
 
   it('dates a message as ISO 8601, which a phone can read', async () => {
