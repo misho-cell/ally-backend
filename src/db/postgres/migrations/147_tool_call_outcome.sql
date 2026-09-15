@@ -1,0 +1,24 @@
+-- Ticket 19 G7, second pass: „did it work" and „did anything come back" were
+-- not the same question, and the table could answer neither.
+--
+-- Found by reading the table's own first 33 rows, four minutes after it went
+-- live. Two failures, both mine:
+--
+--   ask_contact × 8   result_chars 288, result_empty false — reads as eight
+--                     sends. They were eight REFUSALS; exactly one ask row
+--                     exists for that goal. A refusal looked like a success.
+--
+--   search_second_degree × 3   result_count NULL, result_empty false — reads
+--                     as „something came back". search_activity says 0 for all
+--                     three. The tool returns {found:false, reason:'no_matches'}
+--                     and carries no count key at all, so the reader that only
+--                     knew about `count` and arrays saw a 55-character object
+--                     and called it non-empty.
+--
+-- The second one is the tester's own G7 question — „did it search the second
+-- circle, and what came back" — answered wrongly by the table built to answer
+-- it. So the shape of the answer is recorded rather than guessed at: the
+-- top-level KEY NAMES of what came back, which are schema and not content, and
+-- so cannot leak anything a key name does not already say.
+ALTER TABLE tool_call_log ADD COLUMN IF NOT EXISTS ok BOOLEAN;
+ALTER TABLE tool_call_log ADD COLUMN IF NOT EXISTS result_keys TEXT;

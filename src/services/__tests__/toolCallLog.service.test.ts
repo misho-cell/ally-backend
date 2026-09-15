@@ -11,7 +11,7 @@
  * copy of what people wrote to each other, and a place a full phone number
  * ends up (D149).
  */
-import { redactPhones, resultCountOf, summariseArgs } from '../toolCallLog.service';
+import { outcomeOf, redactPhones, resultCountOf, summariseArgs } from '../toolCallLog.service';
 
 describe('Ticket 19 G7 — summarising a tool call for the admin', () => {
   describe('phones (D149)', () => {
@@ -83,5 +83,79 @@ describe('Ticket 19 G7 — summarising a tool call for the admin', () => {
       expect(resultCountOf({ count: 0 })).toBe(0);
       expect(resultCountOf({ count: 0 })).not.toBeNull();
     });
+  });
+});
+
+/**
+ * The second pass, written from the table's own first 33 rows — four minutes
+ * after it went live, on a real goal thread of the founder's.
+ *
+ * Two things it got wrong about its own subject:
+ *
+ *   ask_contact × 8        chars 288, empty false. Reads as eight sends. They
+ *                          were eight REFUSALS — exactly one ask row exists for
+ *                          that goal. A refusal looked like a success.
+ *
+ *   search_second_degree   count NULL, empty false. Reads as "something came
+ *   × 3                    back". search_activity says 0 for all three.
+ *
+ * The second is the tester's own G7 question — "did it search the second
+ * circle, and what came back" — answered wrongly by the table built to answer
+ * it. Both are one mistake: reading one field and assuming every tool uses it.
+ */
+describe('Ticket 19 G7, second pass — did it work, and did anything come back', () => {
+  // The exact shape search_second_degree returns when it finds nobody.
+  const NO_MATCHES = { found: false, reason: 'no_matches', search_id: 1234 };
+  // The shape of a search that found people.
+  const FOUND = { found: true, count: 24, results: new Array(24).fill({}) };
+
+  it('an empty second-degree search is EMPTY, which it was not before', () => {
+    expect(outcomeOf(NO_MATCHES).empty).toBe(true);
+  });
+
+  it('an empty second-degree search still WORKED — empty is not failed', () => {
+    expect(outcomeOf(NO_MATCHES).ok).toBe(true);
+  });
+
+  it('a search that found people is neither empty nor failed', () => {
+    expect(outcomeOf(FOUND)).toMatchObject({ ok: true, empty: false, count: 24 });
+  });
+
+  it('a refused ask is NOT ok, which is what the eight 288-char rows needed', () => {
+    expect(outcomeOf({ sent: false, error: 'recipient is not on Netai' }).ok).toBe(false);
+  });
+
+  it('a sent ask is ok', () => {
+    expect(outcomeOf({ sent: true, ask_id: 1816, to_name: 'ნინია' }).ok).toBe(true);
+  });
+
+  it.each([
+    ['success', { success: false, error: 'x' }],
+    ['updated', { updated: false }],
+    ['saved', { saved: false }],
+    ['deleted', { deleted: false }],
+  ])('%s: false is a failure too', (_name, result) => {
+    expect(outcomeOf(result).ok).toBe(false);
+  });
+
+  it('records the key NAMES, which is schema and not anyone’s words', () => {
+    expect(outcomeOf(NO_MATCHES).keys).toBe('found,reason,search_id');
+    expect(outcomeOf({ answer: 'ნინია ამბობს კი' }).keys).toBe('answer');
+  });
+
+  it('an empty list is empty even when the tool reports no count', () => {
+    expect(outcomeOf({ results: [] }).empty).toBe(true);
+    expect(outcomeOf({ results: [{}] }).empty).toBe(false);
+  });
+
+  it('survives a result that is not an object at all', () => {
+    expect(outcomeOf('ok')).toMatchObject({ ok: true, empty: false, keys: null });
+    expect(outcomeOf(null)).toMatchObject({ ok: true, empty: true });
+    expect(outcomeOf('')).toMatchObject({ empty: true });
+  });
+
+  it('count 0 and count null stay different answers', () => {
+    expect(outcomeOf({ count: 0 })).toMatchObject({ count: 0, empty: true });
+    expect(outcomeOf({ sent: true })).toMatchObject({ count: null, empty: false });
   });
 });

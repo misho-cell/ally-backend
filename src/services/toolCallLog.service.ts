@@ -51,6 +51,8 @@ export interface ToolCallRow {
   readonly args_summary: string | null;
   readonly result_count: number | null;
   readonly result_empty: boolean | null;
+  readonly ok: boolean | null;
+  readonly result_keys: string | null;
   readonly result_chars: number | null;
   readonly duration_ms: number | null;
   readonly created_at: string;
@@ -92,6 +94,52 @@ export function resultCountOf(result: unknown): number | null {
   return null;
 }
 
+/**
+ * The boolean fields our tools use to say a call did not do the thing.
+ *
+ * `found` is deliberately NOT here. A search that found nobody worked
+ * perfectly; it is empty, not failed, and conflating the two is the confusion
+ * this whole table exists to end.
+ */
+const FAILURE_FLAGS = ['sent', 'success', 'updated', 'ok', 'saved', 'deleted'] as const;
+
+export interface ToolOutcome {
+  /** The call did what it was asked. False for a refusal or an error. */
+  readonly ok: boolean;
+  /** Nothing came back. Independent of ok: a search can succeed and be empty. */
+  readonly empty: boolean;
+  readonly count: number | null;
+  /** The top-level key names of the result — schema, never content. */
+  readonly keys: string | null;
+}
+
+/**
+ * What came back, in the three terms a reader actually asks in.
+ *
+ * Written after reading this table's own first 33 rows. Eight ask_contact
+ * refusals were indistinguishable from eight sends, and three empty
+ * second-degree searches were recorded as „not empty" because
+ * search_second_degree answers {found:false, reason:'no_matches'} and carries
+ * no count key at all. Both are the same mistake: reading one field and
+ * assuming the rest of the world uses it.
+ */
+export function outcomeOf(result: unknown): ToolOutcome {
+  const count = resultCountOf(result);
+  if (result === null || typeof result !== 'object') {
+    const text = typeof result === 'string' ? result : '';
+    return { ok: true, empty: text.trim() === '', count, keys: null };
+  }
+  const record = result as Record<string, unknown>;
+  const failed = 'error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false);
+  const firstList = Object.values(record).find((value) => Array.isArray(value));
+  const empty =
+    count === 0 ||
+    record['found'] === false ||
+    (Array.isArray(firstList) && firstList.length === 0) ||
+    Object.keys(record).length === 0;
+  return { ok: !failed, empty, count, keys: Object.keys(record).sort().join(',') || null };
+}
+
 export interface ToolCallRecord {
   readonly threadId: number;
   readonly runId: string | null;
@@ -112,22 +160,24 @@ export interface ToolCallRecord {
 export async function logToolCall(record: ToolCallRecord): Promise<void> {
   try {
     const serialised = JSON.stringify(record.result ?? null);
-    const count = resultCountOf(record.result);
+    const outcome = outcomeOf(record.result);
     await query(
       `INSERT INTO tool_call_log
          (thread_id, run_id, user_id, tool, args_summary,
-          result_count, result_empty, result_chars, duration_ms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          result_count, result_empty, result_chars, duration_ms, ok, result_keys)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         record.threadId,
         record.runId,
         record.userId,
         record.tool,
         summariseArgs(record.input),
-        count,
-        count === null ? serialised.length <= 2 : count === 0,
+        outcome.count,
+        outcome.empty,
         serialised.length,
         record.durationMs,
+        outcome.ok,
+        outcome.keys,
       ],
       QUERY_TIMEOUT_MS,
     );
@@ -145,8 +195,8 @@ export async function getToolCallsForThread(
   limit = DEFAULT_LIMIT,
 ): Promise<ToolCallRow[]> {
   const result = await query<ToolCallRow>(
-    `SELECT id, run_id, tool, args_summary, result_count, result_empty,
-            result_chars, duration_ms, created_at
+    `SELECT id, run_id, tool, args_summary, ok, result_count, result_empty,
+            result_keys, result_chars, duration_ms, created_at
        FROM tool_call_log
       WHERE thread_id = $1
       ORDER BY id
