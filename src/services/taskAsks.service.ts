@@ -769,11 +769,16 @@ async function deliverCapturedAnswer(
   // because taskEngine statically imports this file — a static import back
   // would be a load-order cycle.
   if (captured.firstAnswer) {
+    // Ticket 19 G10 / D254: whether this answer came back through a bridge
+    // changes what the asker is told and means one person is owed a thank-you.
+    const relay = await relayShapeOf(captured.askId);
     try {
       const { wakeTask } = await import('./taskEngine.service');
       const delivered = await wakeTask(
         captured.taskId,
-        buildAnswerWakeEvent(captured.answer, captured.fromName),
+        relay
+          ? buildRelayAnswerWakeEvent(captured.answer, captured.fromName, relay.bridgeName)
+          : buildAnswerWakeEvent(captured.answer, captured.fromName),
         { text: captured.answer, who: captured.fromName },
       );
       if (delivered) await markAskWakeDelivered(captured.askId);
@@ -781,7 +786,117 @@ async function deliverCapturedAnswer(
       // eslint-disable-next-line no-console
       console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
     }
+    if (relay) await thankTheBridge(relay, captured.fromName);
   }
+}
+
+/**
+ * Ticket 19 G10 / D254: the bridge's side of a relayed answer.
+ *
+ * The bridge is the person who was asked, said „ask Erekle, I will put you in
+ * touch", and then — until now — heard nothing ever again. Their yes was the
+ * whole of their involvement and the product treated it as the end of the
+ * conversation, which is true for the work and wrong for the person.
+ *
+ * Null when the answered ask was not a relay, which is the ordinary case.
+ */
+interface RelayShape {
+  readonly bridgeUserId: number;
+  readonly bridgeThreadId: number | null;
+  readonly bridgeName: string | null;
+}
+
+async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
+  const result = await query<{
+    bridge_user_id: number;
+    bridge_thread_id: number | null;
+    bridge_name: string | null;
+  }>(
+    `SELECT p.to_user_id   AS bridge_user_id,
+            p.ask_thread_id AS bridge_thread_id,
+            b.name          AS bridge_name
+       FROM task_asks c
+       JOIN task_asks p ON p.id = c.parent_ask_id
+       LEFT JOIN "User" b ON b.id = p.to_user_id
+      WHERE c.id = $1
+      LIMIT 1`,
+    [childAskId],
+    ASK_QUERY_TIMEOUT_MS,
+  ).catch((err: unknown) => {
+    // A failure here must not cost the asker their answer, which is already on
+    // its way: the relay extras are the part that can be lost.
+    // eslint-disable-next-line no-console
+    console.error('[relay-close] could not read the relay shape:', (err as Error).message);
+    return null;
+  });
+  const row = result?.rows[0];
+  if (!row || row.bridge_thread_id === null) return null;
+  return {
+    bridgeUserId: row.bridge_user_id,
+    bridgeThreadId: row.bridge_thread_id,
+    bridgeName: row.bridge_name,
+  };
+}
+
+/**
+ * One line to the bridge, and nothing after it (D254).
+ *
+ * Written by the server rather than by a run, for the same reason the opening
+ * line of an ask thread is: this is not a conversation to be continued, and a
+ * run given the chance would offer to keep them posted — which is exactly what
+ * the founder ruled against. It says the answer arrived and went where it was
+ * going, names nothing the named person said, and ends.
+ */
+async function thankTheBridge(relay: RelayShape, namedName: string | null): Promise<void> {
+  if (relay.bridgeThreadId === null) return;
+  // „გიპასუხა" is an aorist, so its subject is ergative: ერეკლემ, not ერეკლე.
+  const who = namedName?.trim() ? geoName(namedName.trim(), 'erg') : 'ადამიანმა';
+  try {
+    await saveThreadMessage(
+      relay.bridgeThreadId,
+      relay.bridgeUserId,
+      'assistant',
+      `${who} გიპასუხა და პასუხი კითხვის ავტორს გადაეცა. დიდი მადლობა, რომ დააკავშირე.`,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[relay-close] thank-you to the bridge failed:', (err as Error).message);
+  }
+}
+
+/**
+ * The wake event when the answer came back through a bridge (D254).
+ *
+ * Three people are in this, and the owner knows only one of them: they asked
+ * their own contact, their contact asked somebody else, and it is that somebody
+ * else who has answered. An event that names only the answerer reads to the
+ * owner as a stranger writing to them out of nowhere, so the path is named.
+ *
+ * And the founder's ruling on what happens next: on a yes, the owner is helped
+ * to write the first message themselves — the product's job ends at the
+ * introduction, and a warm one is worth more than a forwarded one.
+ */
+export function buildRelayAnswerWakeEvent(
+  answer: string,
+  fromName?: string | null,
+  bridgeName?: string | null,
+): string {
+  const who = fromName?.trim()
+    ? geoName(fromName.trim(), 'erg')
+    : 'ადამიანმა, ვისაც კითხვა გადაეგზავნა';
+  const bridge = bridgeName?.trim() ? geoName(bridgeName.trim(), 'gen') : null;
+  const path = bridge
+    ? `${who} გიპასუხა — ის ${bridge} მეშვეობით იკითხა.`
+    : `${who} გიპასუხა შენი კონტაქტის მეშვეობით.`;
+  return (
+    `${path} პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n` +
+    `<answer>\n${answer}\n</answer>\n` +
+    'მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, დაასახელე ვინ უპასუხა და ვისი მეშვეობით — თუ ' +
+    'სხვა ენაზეა, თარგმანიც დაურთე. თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
+    'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
+    'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. შემდეგ გააგრძელე ' +
+    'დავალება.'
+  );
 }
 
 /**

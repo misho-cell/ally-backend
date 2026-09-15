@@ -736,12 +736,24 @@ const FINISH_TASK_TOOL: AnthropicTool = {
 // wrapped around Ninia's question to Tornike, with no Ninia in it and no
 // reason. It is required now, and the server refuses a relay without it.
 //
-// And it said „the answer flows back to the original asker automatically".
-// It does not. `parent_ask_id` is stored and is read in exactly one place —
-// to refuse a second hop. Nothing walks it back to the asker. The tester asked
-// for that sentence to go precisely because the model reads it as done, and
-// they are right: a description that claims a property the code does not have
-// is the most expensive kind of wrong, because it stops anybody looking.
+// The second correction is one I got wrong first, in this file, today.
+//
+// The old text said „the answer flows back to the original asker
+// automatically". I replaced it with „the answer comes back to the user, not to
+// the original asker" — on the strength of a comment saying parent_ask_id is
+// read in exactly one place, to refuse a second hop. That is true of
+// parent_ask_id and irrelevant, because the walk does not go through it: a
+// relayed ask INHERITS the parent's task_id (createAsk(…, row.task_id, …)), so
+// the named person's answer wakes the ASKER'S goal through the ordinary
+// capture path. Verified on the one relay that exists, ask 467: child task 829,
+// parent task 829, asker 501.
+//
+// So I replaced a true sentence with a false one and shipped it. Two comments
+// agreeing with each other is not verification; the code was three lines away
+// the whole time.
+//
+// What was genuinely missing is the BRIDGE's side (D254): they said yes, and
+// then heard nothing ever again. That is now one thank-you and nothing more.
 const RELAY_ASK_TOOL: AnthropicTool = {
   name: 'relay_ask',
   description:
@@ -753,8 +765,10 @@ const RELAY_ASK_TOOL: AnthropicTool = {
     'because that person does not know them — "<user> asks whether you would meet <asker>, ' +
     'who is looking for <what they need>". Never forward the original wording: it was ' +
     'written TO the user, by a stranger to the person receiving it. One relay level deep — ' +
-    "a relayed ask cannot be relayed again. The named person's answer comes back to the " +
-    'user, not to the original asker; do not promise the asker anything.',
+    "a relayed ask cannot be relayed again. The named person's answer reaches the ORIGINAL " +
+    'asker, on their own goal, without passing through this thread. The user gets one ' +
+    'thank-you and nothing after it: their part ended with the yes, so do not promise them ' +
+    'progress reports and do not offer to keep them posted.',
   input_schema: {
     type: 'object',
     properties: {
