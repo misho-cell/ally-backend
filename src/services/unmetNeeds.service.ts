@@ -5,7 +5,15 @@ const UNMET_NEEDS_QUERY_TIMEOUT_MS = 8_000;
 // A single word's candidate lookup measured ~1s on prod (strict-word-
 // similarity bitmap over the 8.4M-row trigram index) — a slow word skips
 // rather than stalling the whole report.
-const CANDIDATE_QUERY_TIMEOUT_MS = 3_000;
+//
+// That measurement was of the prefilter. The statement it was attached to
+// also carried ORDER BY phone, which made it 14s, and so EVERY word has been
+// timing out and skipping — see candidatesForTopic. With the sort gone the
+// measured times are back to 1.0-2.1s, and this budget is raised to leave
+// real headroom under load rather than sitting a few hundred milliseconds
+// above the answer. A slow word still degrades that word alone, and still
+// says so in the log.
+const CANDIDATE_QUERY_TIMEOUT_MS = 6_000;
 
 // T6 part (b): "failed topics are matched against non-user profiles to
 // compute who WOULD have answered them." Part (a) — the outcome ladder
@@ -135,7 +143,32 @@ function plausibleMobile(phone: string): boolean {
  * — and the exact-token ANY(regexp_split_to_array(...)) is the precision
  * gate that killed the "ვეტერინარი"→eteri / "business"→bus / "energy"→
  * synergy class. Labels with no letters (bare number fragments saved as
- * names) are never candidates. ORDER BY phone makes every read deterministic.
+ * names) are never candidates.
+ *
+ * THE SORT IS GONE, and it was doing two kinds of harm (15 September).
+ *
+ * It cost everything. `ORDER BY phone LIMIT 10` cannot stop at ten: every
+ * matching row must be found and sorted first. Measured on prod against the
+ * word the report itself was failing on, „სტომატოლოგი": 14.3s with the sort,
+ * 2.5s without. The budget is 3s. So every word timed out, every run, and the
+ * whole of part (b) — "who WOULD have answered this need" — has been
+ * returning nothing while logging a warning nobody reads. Twenty-one
+ * consecutive skips in each ten-minute window of the deployment log, the same
+ * words each time.
+ *
+ * And it chose the wrong people. Lowest phone number first is not a ranking,
+ * it is an artefact, and it sorts foreign numbers above Georgian ones: the
+ * ordered read returned +1034…, +1042…, +1043…, while the same query without
+ * it returned +995…. This function even labels each candidate `foreign` — so
+ * the sort was quietly biasing a Georgian product's report towards non-
+ * Georgian contacts, for free, forever.
+ *
+ * Determinism is kept where it is free and honest: the rows that come back
+ * are sorted by phone HERE, after the limit. Sorting ten returned rows
+ * carries no selection bias; sorting a hundred thousand to pick ten is what
+ * did. WHICH ten come back is now plan-dependent, and that is the trade taken
+ * deliberately: a perfectly repeatable list of nobody, or a slightly variable
+ * list of real people.
  */
 async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> {
   const words = significantWords(topic);
@@ -152,7 +185,6 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
                regexp_split_to_array(normalize_search_token(t.tag), '[^a-z0-9]+'))
              AND t.tag ~ '[a-zა-ჿ]'
              AND NOT EXISTS (SELECT 1 FROM "UserPhone" up WHERE up.phone = t.phone)
-           ORDER BY t.phone
            LIMIT $2`,
           [word, CANDIDATE_LIMIT_PER_TOPIC],
           CANDIDATE_QUERY_TIMEOUT_MS,
@@ -165,7 +197,6 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
                regexp_split_to_array(normalize_search_token(a.alias), '[^a-z0-9]+'))
              AND a.alias ~ '[a-zა-ჿ]'
              AND NOT EXISTS (SELECT 1 FROM "UserPhone" up WHERE up.phone = a.phone)
-           ORDER BY a.phone
            LIMIT $2`,
           [word, CANDIDATE_LIMIT_PER_TOPIC],
           CANDIDATE_QUERY_TIMEOUT_MS,
@@ -173,7 +204,12 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
       ]);
       // The same shape gate the target list applies: a short code or a hotline
       // is not a candidate for anything (Ticket 10 Task 6 — 2 of 374 on 3 Sep).
-      for (const row of tagRows.rows) {
+      // Sorted after the limit, never in it: ten rows ordered here cost
+      // nothing and read the same twice; a hundred thousand ordered in the
+      // statement cost the whole feature.
+      const byPhone = <T extends { phone: string }>(rows: T[]): T[] =>
+        [...rows].sort((x, y) => x.phone.localeCompare(y.phone));
+      for (const row of byPhone(tagRows.rows)) {
         if (!plausibleMobile(row.phone)) continue;
         if (!found.has(row.phone))
           found.set(row.phone, {
@@ -183,7 +219,7 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
             foreign: !row.phone.startsWith(GEORGIA_PREFIX),
           });
       }
-      for (const row of aliasRows.rows) {
+      for (const row of byPhone(aliasRows.rows)) {
         if (!plausibleMobile(row.phone)) continue;
         if (!found.has(row.phone))
           found.set(row.phone, {

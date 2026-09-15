@@ -99,12 +99,37 @@ describe('findUnmetNeeds', () => {
     );
     expect(candidateQueries.length).toBeGreaterThan(0);
     for (const [sql] of candidateQueries) {
-      // The exact-token gate (the "eteri"/"bus"/"synergy" killer) plus the
-      // deterministic ordering Task 4's stable-read requirement needs.
+      // The exact-token gate — the "eteri"/"bus"/"synergy" killer.
       expect(sql as string).toContain('= ANY');
       expect(sql as string).toContain('regexp_split_to_array');
-      expect(sql as string).toContain('ORDER BY');
+      // And NO sort in the statement. This line used to assert the opposite,
+      // which is how the defect stayed: ORDER BY phone LIMIT 10 cannot stop at
+      // ten — every match must be found and sorted first. Measured on prod,
+      // 15 September, on „სტომატოლოგი": 14.3s with it, 2.5s without, against a
+      // 3s budget. So every word timed out on every run and the whole of
+      // part (b) returned nobody. Ordering happens in TypeScript, after the
+      // limit, where ten rows are free and no selection bias is possible.
+      expect(sql as string).not.toContain('ORDER BY');
     }
+  });
+
+  it('orders the rows it got, rather than ordering to choose them', async () => {
+    // The sort was not only the cost, it picked the wrong people: lowest phone
+    // number first is not a ranking, and it sorts foreign numbers above
+    // Georgian ones (+1034… before +995…) in a report that labels each
+    // candidate `foreign`. Sorting AFTER the limit keeps a stable read with
+    // none of that.
+    routeQueries({
+      topics: [{ query: 'ვეტერინარი', netai_count: '2', old_ally_count: null, city: null }],
+      tags: [
+        { phone: '+995599000009', tag: 'ვეტერინარი' },
+        { phone: '+995599000001', tag: 'ვეტერინარი' },
+      ],
+    });
+
+    const [need] = await findUnmetNeeds(30);
+
+    expect(need.candidates.map((c) => c.phone)).toEqual(['+995599000001', '+995599000009']);
   });
 
   it('Task 4 item 3: review/test-account searches are excluded from both demand sources', async () => {
