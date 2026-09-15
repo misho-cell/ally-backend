@@ -561,9 +561,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'CONSENT (Ticket 17, aligning this copy with the in-app rule and D119): an approved plan ' +
       'IS the consent — a person the plan names gets the message without drafts or a second ' +
       'yes, the fifth exactly like the first; a person the plan does not name needs a plan ' +
-      'change and the user’s yes to THAT. Only on a goal with no plan at all do you confirm ' +
-      'once, showing the recipient and the exact wording. Never promise to pass something on ' +
-      'before you have sent it. ' +
+      'change and the user’s yes to THAT. On a goal with no plan at all (D255, D256): if the ' +
+      'USER named the person and said what they want, that IS the instruction — send it, with ' +
+      'no draft and no second question. Check once, in ONE short line naming only WHO you are ' +
+      'about to write to and never the wording, when YOU chose the person rather than them, or ' +
+      'when the message carries a no, money, or a third person’s situation. ' +
+      'Never promise to pass something on before you have sent it. ' +
       'Pass the task_ref (get_my_tasks) and the contact_ref ' +
       '(search result). Expect the answer hours or days later — tell the user you will follow up.',
   },

@@ -643,8 +643,12 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'so plainly when it is spent. CONSENT: the approved plan IS the consent (D119) — a person the ' +
     'plan names gets the message without showing drafts or asking again, the second and the ' +
     'fifth exactly like the first; a person the plan does not name needs a plan change ' +
-    '(propose_task_plan) and the user’s yes to THAT. Only on a goal with no plan at all confirm ' +
-    'once in this thread, showing the recipient AND the exact wording. Never promise to pass ' +
+    '(propose_task_plan) and the user’s yes to THAT. On a goal with no plan at all (D255, D256): ' +
+    'if the USER named the person and said what they want, that IS the instruction — send it, ' +
+    'no draft, no “გავუგზავნო ეს?”, no button; you know how they speak. Check once, in ONE ' +
+    'short line naming only WHO you are about to write to and never the wording, when YOU chose ' +
+    'the person rather than them, or when the message carries a no, money, or a third person’s ' +
+    'situation. Never promise to pass ' +
     'something on before you have actually sent it. RECIPIENT: the phone must be the person you ' +
     'want to ASK — for someone found through search_second_degree that is the BRIDGE (a phone ' +
     'from via_contacts), never the second-degree person’s own phone: they are not your contact ' +
@@ -778,15 +782,19 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
   name: 'send_answer_to_asker',
   description:
     'Inside an incoming-ask thread ONLY: sends the answer to the person who asked. NOTHING ' +
-    'reaches them automatically — this call is the only channel. Compose the outbound text ' +
-    'with the user, SHOW it to them verbatim, and call this only after they explicitly ' +
-    'approve, with answer_text being exactly the approved wording and confirmed=true. ' +
-    'Without confirmed=true nothing is sent. Never include a name or detail the user did ' +
-    'not approve for sharing. When you show the text, ask TWO things at once (D120): send it ' +
-    'now, and answer similar questions this way in future. If they say yes to the second as ' +
-    'well, pass remember_for_similar=true with kind — your one-line description of the kind ' +
-    'of question this answer covers. From then on a matching question is answered ' +
-    'automatically and the weekly summary lists it; they can see and delete their rules.',
+    'reaches them automatically — this call is the only channel. A CLEAR answer (a name, a ' +
+    'yes, a time, a place, a question back for the asker) goes AT ONCE with confirmed=true, ' +
+    'their words tidied at most (D255, D256): no preview, no “გავუგზავნო ეს?”, no buttons — ' +
+    'the answer is already theirs and you know how they speak. Show the meaning first, in ONE ' +
+    'line with one button, and send only on their yes, when the answer is a no, describes a ' +
+    'third person beyond a name, or touches anything delicate. confirmed=true says the words ' +
+    'are the USER’S answer, not one you composed for them; without it nothing is sent. Never ' +
+    'include a name or detail the user did not give you. A standing rule (D120) is recorded ' +
+    'BY THIS CALL and only by it: pass remember_for_similar=true with kind, your one-line ' +
+    'description of the kind of question this answer covers. So do not hold the answer back to ' +
+    'ask about it first — send, and make the offer in the line that says it went; a yes after ' +
+    'that is recorded on the next answer of the same kind. From then on a matching question is ' +
+    'answered automatically and the weekly summary lists it; they can see and delete their rules.',
   input_schema: {
     type: 'object',
     properties: {
@@ -813,6 +821,21 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     required: ['answer_text'],
   },
 };
+
+/**
+ * What send_answer_to_asker says when confirmed is missing.
+ *
+ * Ticket 19 G3, D255/D256. It used to read „show the user the text verbatim and
+ * call again only after their explicit consent" — the very sentence the founder
+ * objected to, written by the SERVER into a tool result, where no edit to a
+ * prompt block could ever have reached it. A tool result is read as a rule.
+ */
+export const NEEDS_CONFIRMATION_NOTE =
+  'არაფერი გაგზავნილა. confirmed=true ნიშნავს, რომ იგზავნება მომხმარებლის საკუთარი პასუხი და ' +
+  'არა შენ მიერ შედგენილი ტექსტი. თუ პასუხი ნათელია — სახელი, „კი", დრო, ადგილი, ან შეკითხვა ' +
+  'კითხვის ავტორისთვის — გამოიძახე ახლავე confirmed=true-თი, მისივე სიტყვებით, დრაფტის ჩვენების ' +
+  'გარეშე. ჯერ ერთი ხაზით აზრი აჩვენე და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მაშინ, როცა პასუხი ' +
+  'უარია, მოხსენიებულია მესამე ადამიანი სახელს მიღმა, ან საკითხი ნაზია.';
 
 // The user's standing answers (Ticket 10 Task 22): theirs to see and delete.
 const LIST_ANSWER_RULES_TOOL: AnthropicTool = {
@@ -3356,14 +3379,12 @@ async function executeToolCall(
     case 'send_answer_to_asker': {
       const answerText = String(input['answer_text'] ?? '').trim();
       if (!answerText) return { sent: false, error: 'Pass the exact approved text.' };
+      // Ticket 19 G3, D255/D256. This note used to say „show the user the text
+      // verbatim and only after their explicit consent call again" — the same
+      // sentence the founder objected to, written by the SERVER, where no
+      // prompt edit could reach it. A tool result is read as a rule.
       if (input['confirmed'] !== true) {
-        return {
-          sent: false,
-          needs_confirmation: true,
-          note:
-            'არაფერი გაგზავნილა. აჩვენე მომხმარებელს გასაგზავნი ტექსტი სიტყვასიტყვით და მხოლოდ ' +
-            'მისი აშკარა თანხმობის შემდეგ გამოიძახე ხელახლა confirmed=true-თი, ზუსტად იმ ტექსტით.',
-        };
+        return { sent: false, needs_confirmation: true, note: NEEDS_CONFIRMATION_NOTE };
       }
       if (threadId === undefined) {
         return { sent: false, error: 'No thread context for this call.' };
@@ -4823,6 +4844,21 @@ const INCOMING_ASK_TOOLS: readonly AnthropicTool[] = [
  * against a list, rather than a claim about code nobody can reach.
  */
 export const INCOMING_ASK_TOOL_NAMES: readonly string[] = INCOMING_ASK_TOOLS.map((t) => t.name);
+
+/**
+ * One always-on tool's description, by name.
+ *
+ * Ticket 19 G3: a tool description is a rule the model obeys, so „this text no
+ * longer asks the user to approve wording" has to be assertable. Empty for a
+ * name that is not an always-on tool, which a test reads as a failure rather
+ * than as a pass.
+ */
+export function toolDescription(name: string): string {
+  const found =
+    ALWAYS_ON_TOOLS.find((tool) => tool.name === name) ??
+    INCOMING_ASK_TOOLS.find((tool) => tool.name === name);
+  return found?.description ?? '';
+}
 
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
