@@ -2278,11 +2278,13 @@ async function buildAgentSystemPrompt(
 ): Promise<AgentPromptResult> {
   // Ticket 7 Task 1(a)(e), founder's ruling D48: an incoming-ask thread runs
   // as the recipient's OWN assistant — same base playbook, name, notes, goals
-  // and memory as the normal chat (the old fully-isolated context is gone;
-  // the wall now stands at the OUTBOUND boundary, send_answer_to_asker, not
-  // at the input). Resolved through the normal path below: resolveRunMode
-  // keeps runMode='incoming_ask' so the ask_main prompt block still applies,
-  // and buildIncomingAskSection carries the ask itself.
+  // and memory as the normal chat, so the old fully-isolated context is gone
+  // from the PROMPT. Note that the toolset is a separate question and the
+  // answer there is now the opposite one (INCOMING_ASK_TOOLS, Ticket 19 G6):
+  // the run reads its own side but cannot look anyone up. Resolved through the
+  // normal path below: resolveRunMode keeps runMode='incoming_ask' so the
+  // ask_main prompt block still applies, and buildIncomingAskSection carries
+  // the ask itself.
   const loadMemory = shouldLoadMemory(threadType);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
@@ -2409,8 +2411,8 @@ export interface PromptPreview {
 export async function buildPromptPreview(userId: string, mode: RunMode): Promise<PromptPreview> {
   const [{ prompt, blockNames }, tools] = await Promise.all([
     buildAgentSystemPrompt(userId, PREVIEW_THREAD_TYPE[mode], null, undefined, mode),
-    // The preview must show the mode's REAL toolset — incoming_ask carries
-    // the full owner set plus send_answer_to_asker (Task 1(a), D48).
+    // The preview must show the mode's REAL toolset, which is why it goes
+    // through the same function a run does rather than describing it.
     buildToolsForThread(userId, PREVIEW_THREAD_TYPE[mode]),
   ]);
   const not_rendered: string[] = [];
@@ -4554,20 +4556,13 @@ async function salvageFinalAnswer(
   }
 }
 
-// Ticket 7 Task 1(a), founder's ruling D48: the recipient's assistant carries
-// EVERYTHING the normal chat has — search, second degree, facts, notes,
-// goals — because the recipient is talking to their OWN assistant about
-// their OWN data. The privacy wall moved from the toolset to the outbound
-// boundary: send_answer_to_asker (this mode's one extra tool) is the only
-// channel to the asker, and it sends nothing without the recipient's yes on
-// the exact text.
 async function buildToolsForThread(
   userId: string,
   threadType?: string,
   ownerAbsent = false,
 ): Promise<AnthropicTool[]> {
   if (threadType === 'incoming_ask') {
-    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId, ownerAbsent))];
+    return toolsForRun(INCOMING_ASK_TOOLS, ownerAbsent);
   }
   return buildEnabledTools(userId, ownerAbsent);
 }
@@ -4602,8 +4597,11 @@ export const OWNER_CONSENT_TOOL_NAMES: ReadonlySet<string> = new Set([
  * grant" — the condition the report asked to be satisfied — is a thing a test
  * can actually do, rather than a claim about code nobody can reach.
  */
-export function toolsForRun<T extends { name: string }>(all: T[], ownerAbsent: boolean): T[] {
-  return ownerAbsent ? all.filter((tool) => !OWNER_CONSENT_TOOL_NAMES.has(tool.name)) : all;
+export function toolsForRun<T extends { name: string }>(
+  all: readonly T[],
+  ownerAbsent: boolean,
+): T[] {
+  return ownerAbsent ? all.filter((tool) => !OWNER_CONSENT_TOOL_NAMES.has(tool.name)) : [...all];
 }
 
 /**
@@ -4680,6 +4678,49 @@ const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
 ];
+
+/**
+ * Ticket 19 G6: everything an incoming-ask run is offered, and nothing else.
+ *
+ * The ask_main block tells the recipient's assistant, in these words, that in
+ * this thread it has „the question and nothing else: no network, no search, no
+ * contact records, no tags, no profiles, no goals, no notes, on either side"
+ * and that it „cannot look anything up here and must never speak as though it
+ * could". Until now that was a sentence in a prompt while the run actually
+ * held the full owner toolset (founder's ruling D48, Ticket 7 Task 1(a),
+ * written before the block said this). On thread 15115 the model did the
+ * obvious thing with what it was given: it opened a contact profile and wrapped
+ * a paragraph of a third party's employer and praise around the recipient's one
+ * line of answer. Check Five of the block's own thirteen forbids exactly that.
+ *
+ * So the wall is back in the toolset, where a sentence cannot be talked out of
+ * it: what the thread needs to carry an answer, a relay, a stop and a standing
+ * rule, and no way to look a person up. The list is spelled out as the tool
+ * objects themselves rather than as names to match, so it cannot drift from the
+ * definitions, and it is built from constants rather than from the enabled-tool
+ * table, so turning an optional tool on cannot widen this thread.
+ *
+ * A standing answer rule is created by send_answer_to_asker's
+ * remember_for_similar, not by a tool of its own — list and delete are the
+ * whole rule surface here.
+ */
+const INCOMING_ASK_TOOLS: readonly AnthropicTool[] = [
+  SEND_ANSWER_TO_ASKER_TOOL,
+  RELAY_ASK_TOOL,
+  PRESENT_CHOICES_TOOL,
+  STOP_CONTACTING_TOOL,
+  RESUME_CONTACT_TOOL,
+  LIST_ANSWER_RULES_TOOL,
+  DELETE_ANSWER_RULE_TOOL,
+  SAVE_USER_NOTE_TOOL,
+];
+
+/**
+ * Exported so „prompt-preview?mode=incoming_ask lists only those" — the
+ * condition the report asked to be satisfied — is a thing a test can assert
+ * against a list, rather than a claim about code nobody can reach.
+ */
+export const INCOMING_ASK_TOOL_NAMES: readonly string[] = INCOMING_ASK_TOOLS.map((t) => t.name);
 
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
