@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { query } from '../db/postgres/client';
 import { processChat } from './chat.service';
 import {
   getTaskById,
@@ -106,6 +107,27 @@ export async function wakeTask(
     const thread = await getThread(task.thread_id, ownerId);
     if (!thread) return false;
     if (thread.status === 'working') return false; // a live run owns the thread right now
+    // Ticket 19 G1 and G5: and a thread the owner is still TALKING in is not
+    // free either, whatever its status says.
+    //
+    // Thread 15049, 15 September, from run_prompt_stamps:
+    //
+    //   12:38:18.172  1fc625af   the owner's first message
+    //   12:38:31.235  a313be02   this wake — the thread read as free
+    //   12:38:35.155  3eaa2425   the owner's „კი", ON TOP of the running wake
+    //   12:38:36 / :37           both of them reply, a second apart, with two
+    //                            different clarifying questions
+    //
+    // The guard was one-directional. A wake waits for the owner; nothing ever
+    // stopped the owner from starting a run on top of a wake already in
+    // flight, so the status check only ever caught the gap BETWEEN turns —
+    // which in a live conversation is exactly where it lands.
+    //
+    // Giving up is safe here, and that is the point: in a conversation that is
+    // still going, the owner's OWN run does this work. On 15049 it did — run
+    // 777a139a proposed the plan at 12:38:58, unprompted by any wake. The wake
+    // exists for the thread that has gone quiet.
+    if (await ownerSpokeRecently(thread.id)) return false;
 
     // Engine runs spend the owner's tokens like any other run — an exhausted
     // balance pauses the task visibly instead of failing silently.
@@ -321,8 +343,12 @@ const DAY_ONE_DELAY_MS = 3_000;
 // a while after approve_task_plan returned — the founder's 10 Sep test (thread
 // 14158): one attempt at +3 s met `status: working`, returned false, and day
 // one never happened (D160). The wake now waits for the thread to be free.
-const WAKE_RETRY_DELAY_MS = 4_000;
-const WAKE_RETRY_ATTEMPTS = 8;
+// Long enough to sit out an ordinary exchange rather than barge into the gap
+// between two of the owner's messages: 15 attempts at 6s is about 90 seconds,
+// against the 32 it was. A wake that still cannot get in gives up in the log —
+// and in a conversation that busy the owner's own run is doing the work.
+const WAKE_RETRY_DELAY_MS = 6_000;
+const WAKE_RETRY_ATTEMPTS = 15;
 
 const DAY_ONE_EVENT =
   'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
@@ -330,6 +356,44 @@ const DAY_ONE_EVENT =
   'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
   'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
   'შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.';
+
+/**
+ * Has the owner said something themselves in the last few seconds?
+ *
+ * `kind = 'message'` on purpose: an engine EVENT is stored as a user row too,
+ * and counting those would let wakes block each other for ever.
+ */
+const OWNER_QUIET_MS = 25_000;
+const OWNER_QUIET_QUERY_TIMEOUT_MS = 4_000;
+
+export async function ownerSpokeRecently(
+  threadId: number,
+  withinMs: number = OWNER_QUIET_MS,
+): Promise<boolean> {
+  try {
+    const result = await query<{ recent: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM conversations
+         WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+           AND content <> ''
+           AND created_at > NOW() - ($2 || ' milliseconds')::interval
+       ) AS recent`,
+      [threadId, withinMs],
+      OWNER_QUIET_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.recent === true;
+  } catch (err) {
+    // Unreadable means unknown, and unknown means wait: talking over the owner
+    // is the failure this exists to prevent, so it is the one we refuse to
+    // risk. The wake retries, and gives up loudly if it never gets a turn.
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[task-engine] owner-quiet check failed, treating as busy:',
+      (err as Error).message,
+    );
+    return true;
+  }
+}
 
 /**
  * Wake a goal as soon as its thread is free: the first attempt after `delayMs`,
