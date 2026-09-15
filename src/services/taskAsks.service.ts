@@ -1135,17 +1135,33 @@ async function relayAskInner(
   if (row.parent_ask_id !== null) {
     return { sent: false, error: 'ეს კითხვა უკვე გადაგზავნილია ერთხელ — ჯაჭვი აქ ჩერდება.' };
   }
+  // Ticket 19 G10, the founder's ruling of 15 September: the words the named
+  // person reads are written by the BRIDGE's assistant, naming who is asking
+  // and why.
+  //
+  // This used to fall back to `row.question` — the PARENT's wording, written
+  // TO the bridge by somebody the named person has never heard of. Eke would
+  // have received Tornike's name wrapped around Ninia's question to Tornike,
+  // with no Ninia in it and no reason for the request.
+  //
+  // Refused rather than defaulted: the tool description now says the words are
+  // required, and a description is a request, not a guard. The error says what
+  // to write so the next call carries it.
+  const relayed = question?.trim() ?? '';
+  if (relayed === '') {
+    return {
+      sent: false,
+      error:
+        'Write the question as the named person will read it and pass it in `question`: who is ' +
+        'asking, and why. They do not know the person behind it, and the original wording was ' +
+        'written to YOU, not to them.',
+    };
+  }
   const target = await resolveRelayContact(relayerUserId, contact);
   if ('error' in target) {
     return { sent: false, error: target.error };
   }
-  return createAsk(
-    relayerUserId,
-    row.task_id,
-    target.phone,
-    question?.trim() || row.question,
-    row.id,
-  );
+  return createAsk(relayerUserId, row.task_id, target.phone, relayed, row.id);
 }
 
 // One polite reminder per unanswered ask, after this long.

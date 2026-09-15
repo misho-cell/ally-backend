@@ -718,14 +718,38 @@ const FINISH_TASK_TOOL: AnthropicTool = {
   },
 };
 
+// Ticket 19 G10, the founder's ruling on the night of 15 September: the words
+// the named person reads are written by the BRIDGE's own assistant, here, in
+// the bridge's voice — „<bridge> asks you to meet <asker>, because <what the
+// asker needs>".
+//
+// Two things in the old description were wrong, and one of them was a claim.
+//
+// `question` was „optional, defaults to the original" — so a relay went out
+// carrying the PARENT's wording, which was written to the bridge, by somebody
+// the named person has never heard of. Eke would have received Tornike's name
+// wrapped around Ninia's question to Tornike, with no Ninia in it and no
+// reason. It is required now, and the server refuses a relay without it.
+//
+// And it said „the answer flows back to the original asker automatically".
+// It does not. `parent_ask_id` is stored and is read in exactly one place —
+// to refuse a second hop. Nothing walks it back to the asker. The tester asked
+// for that sentence to go precisely because the model reads it as done, and
+// they are right: a description that claims a property the code does not have
+// is the most expensive kind of wrong, because it stops anybody looking.
 const RELAY_ASK_TOOL: AnthropicTool = {
   name: 'relay_ask',
   description:
     'Inside an incoming-ask thread ONLY: when the user offers to forward the question to one ' +
     'of THEIR contacts ("ask Giorgi, he would know"), relay it with their consent. Pass the ' +
     "contact's name exactly as the user said it — the server finds the contact in the user's " +
-    'own phonebook; you never search. The answer flows back to the original asker ' +
-    'automatically. One relay level deep — a relayed ask cannot be relayed again.',
+    'own phonebook; you never search. YOU write the question the named person reads, in ' +
+    "the user's voice, and it goes in `question`: say who is actually asking and WHY, " +
+    'because that person does not know them — "<user> asks whether you would meet <asker>, ' +
+    'who is looking for <what they need>". Never forward the original wording: it was ' +
+    'written TO the user, by a stranger to the person receiving it. One relay level deep — ' +
+    "a relayed ask cannot be relayed again. The named person's answer comes back to the " +
+    'user, not to the original asker; do not promise the asker anything.',
   input_schema: {
     type: 'object',
     properties: {
@@ -737,10 +761,12 @@ const RELAY_ASK_TOOL: AnthropicTool = {
       },
       question: {
         type: 'string',
-        description: 'Optional rephrased question; defaults to the original.',
+        description:
+          "REQUIRED. The question as the named person will read it, in the user's voice, " +
+          'naming who is asking and why. Not the original wording.',
       },
     },
-    required: ['ask_id', 'contact_name'],
+    required: ['ask_id', 'contact_name', 'question'],
   },
 };
 

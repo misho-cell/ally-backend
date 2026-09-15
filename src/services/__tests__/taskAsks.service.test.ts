@@ -519,7 +519,31 @@ describe('createRelayAsk', () => {
     });
   }
 
+  const RELAYED = 'თორნიკე გთხოვს, შეხვდე ნინიას — მარკეტინგის პარტნიორს ეძებს.';
+
   it('resolves a NAME to the one matching contact server-side and relays', async () => {
+    routeRelayQueries({
+      parent: parentRow,
+      aliasMatches: [{ digits: '995599333444' }],
+      member: { userId: 8, name: 'სალომე' },
+    });
+
+    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
+
+    expect(out).toEqual({ sent: true, ask_id: 12, to_name: 'სალომე' });
+  });
+
+  /**
+   * Ticket 19 G10, the founder's ruling of 15 September: the words the named
+   * person reads are written by the BRIDGE's assistant, naming who is asking
+   * and why — "in that case it should be Tornike's assistant to Erekle".
+   *
+   * It used to fall back to the PARENT's wording, which was written TO the
+   * bridge by somebody the named person has never heard of. Eke would have
+   * received Tornike's name wrapped around Ninia's question to Tornike, with
+   * no Ninia in it and no reason for the request.
+   */
+  it('refuses a relay that carries no words of its own', async () => {
     routeRelayQueries({
       parent: parentRow,
       aliasMatches: [{ digits: '995599333444' }],
@@ -528,7 +552,22 @@ describe('createRelayAsk', () => {
 
     const out = await createRelayAsk('42', 11, 'სალომე ბერიძე');
 
-    expect(out).toEqual({ sent: true, ask_id: 12, to_name: 'სალომე' });
+    expect(out.sent).toBe(false);
+    const error = (out as { error: string }).error;
+    // The refusal says what to write, so the next call carries it.
+    expect(error).toContain('who is ');
+    expect(error).toContain('why');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('refuses whitespace as words, too', async () => {
+    routeRelayQueries({
+      parent: parentRow,
+      aliasMatches: [{ digits: '995599333444' }],
+      member: { userId: 8, name: 'სალომე' },
+    });
+
+    expect((await createRelayAsk('42', 11, 'სალომე ბერიძე', '   ')).sent).toBe(false);
   });
 
   it('an ambiguous name asks for the full name — never a candidate list, never counts', async () => {
@@ -537,7 +576,7 @@ describe('createRelayAsk', () => {
       aliasMatches: [{ digits: '995599333444' }, { digits: '995599555666' }],
     });
 
-    const out = await createRelayAsk('42', 11, 'სალომე');
+    const out = await createRelayAsk('42', 11, 'სალომე', RELAYED);
 
     expect(out.sent).toBe(false);
     const error = (out as { error: string }).error;
@@ -550,7 +589,7 @@ describe('createRelayAsk', () => {
   it('a no-match name gives the model an OUT when the user never asked to forward (blocker 2)', async () => {
     routeRelayQueries({ parent: parentRow, aliasMatches: [] });
 
-    const out = await createRelayAsk('42', 11, 'თვითონ');
+    const out = await createRelayAsk('42', 11, 'თვითონ', RELAYED);
 
     expect(out.sent).toBe(false);
     const error = (out as { error: string }).error;
@@ -569,7 +608,7 @@ describe('createRelayAsk', () => {
   it('every refusal carries the neutral-close rule (no "system error", no direct contact)', async () => {
     routeRelayQueries({ parent: { ...parentRow, parent_ask_id: 5 } });
 
-    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე');
+    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
 
     expect(out.sent).toBe(false);
     expect((out as { error: string }).error).toContain('ჯაჭვი');
@@ -582,7 +621,7 @@ describe('createRelayAsk', () => {
   it('only the ask RECIPIENT can relay it', async () => {
     routeRelayQueries({ parent: { ...parentRow, to_user_id: 99 } });
 
-    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე');
+    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
 
     expect(out.sent).toBe(false);
     expect((out as { error: string }).error).toContain('Ask not found.');
@@ -591,7 +630,7 @@ describe('createRelayAsk', () => {
   it('a dictated phone number skips the name lookup and goes straight through', async () => {
     routeRelayQueries({ parent: parentRow, member: { userId: 8, name: 'სალომე' } });
 
-    const out = await createRelayAsk('42', 11, '+995 599 333 444');
+    const out = await createRelayAsk('42', 11, '+995 599 333 444', RELAYED);
 
     expect(out.sent).toBe(true);
     const aliasLookups = mockQuery.mock.calls.filter(([sql]) =>
