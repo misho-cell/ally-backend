@@ -245,3 +245,62 @@ describe('L3/L4 — the three numbers and the signals', () => {
     expect(signals?.axel_hint).toBe(true);
   });
 });
+
+/**
+ * 15 September, found in the production log rather than reported:
+ *
+ *   [target-list] company-word read failed for 20 words: statement timeout
+ *   [target-list] company-word read failed for 17 words: statement timeout
+ *
+ * Every run. The chunking was written for exactly this case — "read in chunks
+ * so one slow word cannot sink the whole batch" — and there was no catch
+ * inside the loop, so the throw left it and sank every word in the call. The
+ * chunking gave no isolation at all.
+ */
+describe('companyWordShare survives a slow chunk', () => {
+  it('keeps the words it could read and loses only the chunk that failed', async () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // Seven words, so the (now six-word) chunking makes two statements.
+    const asked = ['tbc', 'capital', 'bank', 'service', 'group', 'holding', 'partners'];
+    let call = 0;
+    mockQuery.mockImplementation(() => {
+      call += 1;
+      if (call === 1) return Promise.reject(new Error('canceling statement due to timeout'));
+      // The survivor: three aliases carrying "partners", each beside a
+      // surname-shaped token, which is what says "company" rather than "name".
+      return Promise.resolve(
+        rows([
+          { word: 'partners', alias: 'nino kakhidze partners' },
+          { word: 'partners', alias: 'dato tsiklauri partners' },
+          { word: 'partners', alias: 'lasha beridze partners' },
+        ]) as never,
+      );
+    });
+
+    const { companyWordShare } = await import('../labelReader.service');
+    const out = await companyWordShare(asked);
+
+    // Before this fix the rejection escaped and there was no result at all.
+    expect(out.has('partners')).toBe(true);
+    // And the failure is named rather than silent.
+    expect(spy).toHaveBeenCalled();
+    expect(String(spy.mock.calls[0][0])).toContain('company-word chunk failed');
+    spy.mockRestore();
+  });
+
+  it('asks in chunks small enough to come back', async () => {
+    // One word measured ~1.4s on prod against a 20s budget, so twelve timed
+    // out and six is 2.4s. The assertion is on the shape, not the seconds:
+    // thirteen words must not arrive as one statement.
+    mockQuery.mockResolvedValue(rows([]) as never);
+    const { companyWordShare } = await import('../labelReader.service');
+
+    await companyWordShare(Array.from({ length: 13 }, (_, i) => `word${i}`));
+
+    expect(mockQuery.mock.calls.length).toBeGreaterThan(1);
+    for (const [, params] of mockQuery.mock.calls) {
+      expect((params as unknown[])[0] as string[]).toHaveProperty('length');
+      expect(((params as unknown[])[0] as string[]).length).toBeLessThanOrEqual(6);
+    }
+  });
+});

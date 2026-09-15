@@ -350,8 +350,27 @@ function isSurnameShaped(token: string): boolean {
  * that also carry another surname-shaped token or a role word; words with too
  * few aliases are absent (Ticket 13 Task 18).
  */
-/** Words per statement: 104 in one read hit the 20-second budget; a dozen does not. */
-const COMPANY_WORD_CHUNK = 12;
+/**
+ * Words per statement.
+ *
+ * It was twelve, on a measurement that said „104 in one read hit the
+ * 20-second budget; a dozen does not". That stopped being true as the base
+ * grew, and nobody noticed because the failure is silent: measured on prod on
+ * 15 September, one word costs ~1.4s and twelve time out at the 20s budget.
+ * The deployment log shows it failing every run —
+ *
+ *   [target-list] company-word read failed for 20 words: statement timeout
+ *   [target-list] company-word read failed for 17 words: statement timeout
+ *
+ * — which means the „is this word a company or a surname" test has been
+ * answering NOTHING, and `isCompanyWordShare(undefined)` reads that as „not a
+ * company" for every word.
+ *
+ * Six measures 2.4s, with room for the table to keep growing before anyone
+ * has to think about it again. A number from a measurement that is written
+ * down, so the next person can tell when it has expired.
+ */
+const COMPANY_WORD_CHUNK = 6;
 
 export async function companyWordShare(words: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
@@ -362,18 +381,34 @@ export async function companyWordShare(words: string[]): Promise<Map<string, num
   const rows: { word: string; alias: string }[] = [];
   for (let i = 0; i < words.length; i += COMPANY_WORD_CHUNK) {
     const chunk = words.slice(i, i + COMPANY_WORD_CHUNK);
-    const result = await query<{ word: string; alias: string }>(
-      `SELECT w.word, a.alias
-       FROM UNNEST($1::text[]) AS w(word)
-       CROSS JOIN LATERAL (
-         SELECT ua.alias FROM "UserAlias" ua
-         WHERE lower(ua.alias) LIKE '%' || w.word || '%'
-         LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
-       ) a`,
-      [chunk],
-      COMPANY_WORD_TIMEOUT_MS,
-    );
-    rows.push(...result.rows);
+    try {
+      const result = await query<{ word: string; alias: string }>(
+        `SELECT w.word, a.alias
+         FROM UNNEST($1::text[]) AS w(word)
+         CROSS JOIN LATERAL (
+           SELECT ua.alias FROM "UserAlias" ua
+           WHERE lower(ua.alias) LIKE '%' || w.word || '%'
+           LIMIT ${COMPANY_WORD_ALIAS_SAMPLE}
+         ) a`,
+        [chunk],
+        COMPANY_WORD_TIMEOUT_MS,
+      );
+      rows.push(...result.rows);
+    } catch (err) {
+      // The chunking was here for exactly this and did not do it: without a
+      // catch the throw left the loop, so one slow chunk lost every word in
+      // the call — which is what the log has been recording. Now it loses its
+      // own words only, and says which.
+      //
+      // Safe to continue on partial data by construction: a word with no
+      // answer is absent from the map, and isCompanyWordShare reads absent as
+      // „not a company", which is the cautious direction.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[label-reader] company-word chunk failed (${chunk.join(', ')}):`,
+        (err as Error).message,
+      );
+    }
   }
   const perWord = new Map<string, { aliases: number; company: number }>();
   for (const row of rows) {
