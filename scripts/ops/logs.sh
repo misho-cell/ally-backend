@@ -24,11 +24,28 @@ print(json.dumps({"query":"query { deployments(first: %s, input: { projectId: \"
 PY
 )" ;;
   logs)
-    [ -n "${2:-}" ] || { echo "usage: logs.sh logs <deploymentId> [limit]" >&2; exit 1; }
-    ask "$(python3 - "$2" "${3:-500}" <<'PY'
+    # logs <deploymentId> [limit] [filter] [startDate] [endDate]
+    # The filter and the dates are Railway's own log-query arguments; without
+    # them a busy hour does not fit in one page and the line you need is the
+    # one that fell off the end.
+    [ -n "${2:-}" ] || { echo "usage: logs.sh logs <deploymentId> [limit] [filter] [start] [end]" >&2; exit 1; }
+    ask "$(python3 - "$2" "${3:-500}" "${4:-}" "${5:-}" "${6:-}" <<'PY'
 import json,sys
-d,n=sys.argv[1:3]
-print(json.dumps({"query":"query { deploymentLogs(deploymentId: \"%s\", limit: %s) { message timestamp } }" % (d,n)}))
+d,n,f,start,end = sys.argv[1:6]
+args = ['deploymentId: $d', 'limit: $n']
+decl = ['$d: String!', '$n: Int']
+vars = {'d': d, 'n': int(n)}
+for name, value, gql_type in (
+    ('filter', f, 'String'),
+    ('startDate', start, 'DateTime'),
+    ('endDate', end, 'DateTime'),
+):
+    if value:
+        args.append('%s: $%s' % (name, name))
+        decl.append('$%s: %s' % (name, gql_type))
+        vars[name] = value
+q = 'query(%s) { deploymentLogs(%s) { message timestamp } }' % (', '.join(decl), ', '.join(args))
+print(json.dumps({'query': q, 'variables': vars}))
 PY
 )" ;;
   *) echo "logs.sh: unknown command $1 (deployments|logs)" >&2; exit 1 ;;

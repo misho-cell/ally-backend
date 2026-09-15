@@ -1872,6 +1872,105 @@ export function toMessageContent(row: ConversationRow): Anthropic.MessageParam['
   return row.content;
 }
 
+type HistoryBlock = Anthropic.ContentBlockParam;
+
+function blocksOf(content: Anthropic.MessageParam['content']): HistoryBlock[] | null {
+  return Array.isArray(content) ? (content as HistoryBlock[]) : null;
+}
+
+function toolUseIds(msg: Anthropic.MessageParam | undefined): ReadonlySet<string> {
+  const blocks = msg ? blocksOf(msg.content) : null;
+  return new Set((blocks ?? []).filter((b) => b.type === 'tool_use').map((b) => b.id));
+}
+
+function toolResultIds(msg: Anthropic.MessageParam | undefined): ReadonlySet<string> {
+  const blocks = msg ? blocksOf(msg.content) : null;
+  return new Set((blocks ?? []).filter((b) => b.type === 'tool_result').map((b) => b.tool_use_id));
+}
+
+/**
+ * Ticket 19 G4: the half-finished exchange in the MIDDLE of a thread.
+ *
+ * Thread 15148 died at 13:54:20 and stayed dead. The log names the cause with
+ * no room for a guess:
+ *
+ *   400 messages.16: `tool_use` ids were found without `tool_result` blocks
+ *   immediately after: toolu_01WqNSCSfvannXqajBtGLDCG
+ *
+ * A deploy went out at 13:36:34, in the same second run 321e9c8b was replying.
+ * The process died between saving the assistant's tool_use row and saving the
+ * tool_result that answers it. Nothing was corrupt; one row of a pair was
+ * simply never written.
+ *
+ * loadHistory already stripped an unanswered tool_use — but only a TRAILING
+ * one, and only a LEADING orphan result. The moment Ninia wrote again, the
+ * orphan stopped being trailing. It sat at index 16 with real messages on both
+ * sides, and every single run after it was rejected before it began: an error
+ * in under a second, no run_id, for ever. That is why it read as a dead thread
+ * rather than a failed turn.
+ *
+ * So the pairing is enforced across the whole history, not at its two ends. A
+ * tool_use survives only if the next message answers it; a tool_result survives
+ * only if the message before it asked. The two rules are the same intersection
+ * read from either side, which is why one pass over the raw rows is enough.
+ *
+ * This is a repair, not a guard: it fixes the threads that are already dead the
+ * next time they are read, without touching a row.
+ */
+export function repairToolPairs(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const kept: Anthropic.MessageParam[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const blocks = blocksOf(rows[i].content);
+    if (!blocks) {
+      kept.push(rows[i]);
+      continue;
+    }
+    const answered = toolResultIds(rows[i + 1]);
+    const asked = toolUseIds(rows[i - 1]);
+    const clean = blocks.filter((block) => {
+      if (block.type === 'tool_use') return answered.has(block.id);
+      if (block.type === 'tool_result') return asked.has(block.tool_use_id);
+      return true;
+    });
+    if (clean.length > 0) kept.push({ role: rows[i].role, content: clean });
+  }
+  return kept;
+}
+
+function asBlocks(content: Anthropic.MessageParam['content']): HistoryBlock[] {
+  const blocks = blocksOf(content);
+  if (blocks) return blocks;
+  const text = typeof content === 'string' ? content : '';
+  return text.trim() === '' ? [] : [{ type: 'text', text }];
+}
+
+/**
+ * Two messages of the same role in a row, which the API refuses.
+ *
+ * Dropping a half-finished exchange is what creates them: take the assistant
+ * turn out from between two user messages and the two user messages become
+ * neighbours. Joined rather than discarded, because the second one is usually
+ * the line the user is waiting for an answer to. tool_result blocks lead the
+ * joined message, where the API requires them.
+ */
+function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const out: Anthropic.MessageParam[] = [];
+  for (const row of rows) {
+    const previous = out[out.length - 1];
+    if (previous && previous.role === row.role) {
+      const joined = [...asBlocks(previous.content), ...asBlocks(row.content)];
+      const results = joined.filter((b) => b.type === 'tool_result');
+      out[out.length - 1] = {
+        role: row.role,
+        content: [...results, ...joined.filter((b) => b.type !== 'tool_result')],
+      };
+      continue;
+    }
+    out.push({ role: row.role, content: row.content });
+  }
+  return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
+}
+
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     // 'event' rows are engine turns: model history yes, chat view no.
@@ -1881,10 +1980,13 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
     "SELECT role, content, content_json FROM conversations WHERE thread_id = $1 AND kind IN ('message', 'event', 'pending') ORDER BY created_at DESC LIMIT $2",
     [threadId, HISTORY_LIMIT],
   );
-  const rows = result.rows.reverse().map((row) => ({
+  const stored: Anthropic.MessageParam[] = result.rows.reverse().map((row) => ({
     role: row.role as 'user' | 'assistant',
     content: toMessageContent(row),
   }));
+
+  // G4: mid-history first — the two strippers below only reach the ends.
+  const rows = mergeAdjacentSameRole(repairToolPairs(stored));
 
   // Strip trailing incomplete exchanges — must end with a pure-text assistant message.
   // A message with tool_use blocks (even alongside text) is not a valid endpoint because
