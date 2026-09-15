@@ -4479,6 +4479,26 @@ const INTERNAL_TOOL_NAME_RE = new RegExp(
   'g',
 );
 
+/**
+ * Ticket 19 [6]. What survives when the checker replaces a reply's text.
+ *
+ * Buttons and words-in-place-of-buttons are renderings OF the reply. When the
+ * text is withdrawn they are left pointing at something the person was never
+ * shown — Run 38, thread 14792: the apology arrived carrying the blocked
+ * reply's eight goal buttons, and pressing one would have answered a sentence
+ * ruled unfit to show.
+ *
+ * A named function rather than three ternaries, so the next attachment added
+ * to a reply has one obvious place to be considered.
+ */
+export function attachmentsAfterModeration<C, O>(
+  replySafe: boolean,
+  attachments: { choices: C[] | null | undefined; options: O | undefined },
+): { choices: C[] | null; options: O | undefined } {
+  if (!replySafe) return { choices: null, options: undefined };
+  return { choices: attachments.choices ?? null, options: attachments.options };
+}
+
 export function scrubInternalToolNames(text: string, threadId: number): string {
   INTERNAL_TOOL_NAME_RE.lastIndex = 0;
   if (!INTERNAL_TOOL_NAME_RE.test(text)) return text;
@@ -4850,6 +4870,23 @@ export async function processChat(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
   );
+  // Ticket 19 [6]. When the checker replaces the text, everything hanging off
+  // that text goes with it.
+  //
+  // Run 38, thread 14792: „ვინ ხარ შენ?" was blocked, the apology appeared —
+  // and the eight goal buttons the blocked reply had offered were still under
+  // it. So the person was handed an apology for a reply they never saw, with
+  // eight choices belonging to it, and pressing one would have answered a
+  // sentence that had just been ruled unfit to show them.
+  //
+  // The buttons, the words-in-place-of-buttons and the share text are all
+  // renderings OF the blocked reply, so all three go. The task-result card
+  // does not: a tool recorded that outcome, it is not the blocked prose, and
+  // dropping it would hide something that actually happened.
+  const { choices: safeChoices, options: safeOptions } = attachmentsAfterModeration(replySafe, {
+    choices,
+    options,
+  });
   // Ticket 19 [18]: the requests waiting on this person go out as their own
   // messages too, on the same rails. Noted here rather than at prompt-build
   // time so they land LAST — after whatever the run itself surfaced. Another
@@ -4868,7 +4905,7 @@ export async function processChat(
   // Scrubbed HERE, once, so the stored row and the SSE event carry the same
   // bytes by construction. They reach the client by two different paths and
   // only one of them used to scrub; see toDisplayText for why that mattered.
-  const shareTextRaw = takeShareText(runId);
+  const shareTextRaw = replySafe ? takeShareText(runId) : undefined;
   const shareText = shareTextRaw === undefined ? undefined : toDisplayText(shareTextRaw);
   const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
   // A goal opened from the message ran as a goal run; if that run still left
@@ -4890,7 +4927,7 @@ export async function processChat(
   // before the reply is stored, in the text and in every button label; a
   // reply that offers alternatives in words with no buttons is counted.
   const storedReply = scrubMechanicalForStorage(reply);
-  const storedChoices = choices ? choices.map(scrubMechanicalForStorage) : null;
+  const storedChoices = safeChoices ? safeChoices.map(scrubMechanicalForStorage) : null;
   if (storedChoices === null && looksLikeTypedChoice(storedReply)) {
     // eslint-disable-next-line no-console
     console.log(
@@ -4931,7 +4968,7 @@ export async function processChat(
   return {
     reply: storedReply,
     language,
-    ...(options && { options }),
+    ...(safeOptions && { options: safeOptions }),
     ...(storedChoices && { choices: storedChoices }),
     ...(requestCreated && { requestCreated: true }),
     ...(taskResult && { taskResult }),
