@@ -84,27 +84,35 @@ async function flagGoal(
   // The stored question may predate this flag (the model registered it on an
   // earlier run); the held item must carry whatever the goal actually holds.
   const carried = question ?? task.pending_question;
-  await queueFollowUp(
-    userId,
-    taskId,
-    GOAL_QUESTION_KIND,
-    {
-      task_id: taskId,
-      goal_title: task.title,
-      ...(carried !== null && { question: carried }),
-      instruction:
-        carried !== null
-          ? `The goal "${task.title}" is blocked on the owner's answer. Ask them the question ` +
-            'verbatim (translate if the conversation is in another language), get a real answer, ' +
-            'then call answer_goal_question with task_id and what they said — that is what ' +
-            'un-blocks the goal. If they defer, accept it and move on.'
-          : `The goal "${task.title}" ended its last run waiting on the owner, but the question ` +
-            'itself was never registered — you do NOT know what it is, so do not invent one. ' +
-            'Tell them that goal is waiting on them and point them at its thread. If they say ' +
-            'what they want, call answer_goal_question with task_id and their words.',
-    },
-    0,
-  );
+  // Ticket 19 G9: a card is only queued when there IS a question.
+  //
+  // Since Task 98 this item becomes a message of its own with buttons —
+  // „ვუპასუხებ ახლა" / „მოგვიანებით". With no question behind it those
+  // buttons answer nothing: thread 15379, 17:17:25, offered them for a
+  // question whose own instruction admitted „the question itself was never
+  // registered". The person is asked to answer something nobody can state.
+  //
+  // The BADGE still goes up below, and the goal still reads as waiting
+  // everywhere that asks. What is dropped is the card that cannot be
+  // answered — not the fact that the goal is blocked.
+  if (carried !== null) {
+    await queueFollowUp(
+      userId,
+      taskId,
+      GOAL_QUESTION_KIND,
+      {
+        task_id: taskId,
+        goal_title: task.title,
+        question: carried,
+        instruction:
+          `The goal "${task.title}" is blocked on the owner's answer. Ask them the question ` +
+          'verbatim (translate if the conversation is in another language), get a real answer, ' +
+          'then call answer_goal_question with task_id and what they said — that is what ' +
+          'un-blocks the goal. If they defer, accept it and move on.',
+      },
+      0,
+    );
+  }
   // The badge tells the same story immediately (the run's own terminal status
   // will confirm it after the reply lands).
   if (task.thread_id !== null) {
@@ -160,11 +168,29 @@ export async function answerGoalQuestion(
   return { delivered: true };
 }
 
-/** Answered-by-showing-up: the owner wrote in the goal's own thread. */
+/**
+ * Answered-by-showing-up: the owner wrote in the goal's own thread.
+ *
+ * Ticket 19 G9. This asked for `pending_question IS NOT NULL` — the TEXT —
+ * which excludes exactly the rows the fallback creates. The fallback's whole
+ * meaning is „the question is in the thread, go and read it", so the owner
+ * writing in that thread IS the answer to it, and it was the one case this
+ * refused to clear.
+ *
+ * Goal 3136 is the receipt: flagged with a null question at 13:31:07 on
+ * 15 September, the owner answered, an ask went out at 13:31:45, and the goal
+ * was still „waiting on you" hours later. Goal 3400 the same.
+ *
+ * threadAwaitsOwner, four lines away in taskStore, already had the rule right
+ * and says why: „a goal waiting with an unnamed question is still waiting".
+ * So the SETTING side counted a textless flag and the CLEARING side did not —
+ * which is a flag that can go up and never come down.
+ */
 export async function clearGoalQuestionForThread(userId: string, threadId: number): Promise<void> {
   const owned = await query<{ id: number }>(
     `UPDATE tasks SET pending_question = NULL, pending_question_at = NULL
-     WHERE thread_id = $1 AND user_id = $2 AND status = 'open' AND pending_question IS NOT NULL
+     WHERE thread_id = $1 AND user_id = $2 AND status = 'open'
+       AND pending_question_at IS NOT NULL
      RETURNING id`,
     [threadId, userId],
     QUERY_TIMEOUT_MS,
@@ -192,7 +218,9 @@ export async function retractGoalQuestion(
 ): Promise<{ retracted: boolean; error?: string }> {
   const task = await getTaskById(taskId);
   if (!task || task.user_id !== userId) return { retracted: false, error: 'No such goal.' };
-  if (task.pending_question === null) return { retracted: false, error: 'No question stored.' };
+  // Ticket 19 G9, the same asymmetry: a goal flagged by the FALLBACK has no
+  // text, and refusing to retract it left the only other way down blocked too.
+  if (!task.pending_question_at) return { retracted: false, error: 'Not waiting on you.' };
   await clearGoalQuestion(taskId);
   return { retracted: true };
 }

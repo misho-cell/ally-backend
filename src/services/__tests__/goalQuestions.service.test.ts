@@ -40,6 +40,11 @@ const OPEN_TASK = {
   status: 'open',
   thread_id: 9406,
   pending_question: 'რომელი ხიდი ავირჩიო?',
+  // The two are always written together in production — a goal blocked on the
+  // owner always carries the WHEN, and since Ticket 19 G9 the when is what
+  // says it is blocked. The fixture said only the text, which is how it kept
+  // passing while the fallback's textless flag could never be cleared.
+  pending_question_at: '2026-09-15T13:31:07.928Z',
 } as never;
 
 beforeEach(() => {
@@ -168,10 +173,14 @@ describe('flagGoalNeedsOwner — the engine fallback never invents the question'
       (sql as string).includes('pending_question_at = NOW()'),
     );
     expect(stamp?.[1]).toEqual([1420, '501']);
-    // The held item carries the goal, not a guess at what it wants.
-    const payload = mockQueue.mock.calls[0]?.[3] as Record<string, unknown>;
-    expect(payload).not.toHaveProperty('question');
-    expect(String(payload.instruction)).toContain('do not invent one');
+    // Ticket 19 G9: and NO card is queued for it. Since Task 98 this item
+    // becomes a message with „ვუპასუხებ ახლა" / „მოგვიანებით" under it, and
+    // with no question behind them those buttons answer nothing — thread
+    // 15379, 17:17:25, offered them for a question whose own instruction
+    // admitted it was never registered.
+    expect(mockQueue).not.toHaveBeenCalled();
+    // The badge still goes up: the goal IS waiting, and everything that asks
+    // still reads it as waiting. Only the unanswerable card is gone.
     expect(mockSetStatus).toHaveBeenCalledWith('501', 9406, 'needs_you', { isTask: true });
   });
 
@@ -207,12 +216,33 @@ describe('retractGoalQuestion — taking back a question filed against the wrong
     expect(del?.[1]).toEqual([1519, GOAL_QUESTION_KIND]);
   });
 
-  it("refuses another user's goal and a goal holding no question", async () => {
+  it("refuses another user's goal, and a goal that is not waiting at all", async () => {
     mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), user_id: '7' } as never);
     expect((await retractGoalQuestion('501', 1519)).retracted).toBe(false);
 
-    mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), pending_question: null } as never);
+    // Ticket 19 G9: „not waiting" is pending_question_at, not the TEXT. This
+    // line used to pass a goal with no text and expect a refusal — which is
+    // exactly how a goal flagged by the FALLBACK became impossible to take
+    // back down, because the fallback never writes text.
+    mockGetTask.mockResolvedValue({
+      ...(OPEN_TASK as object),
+      pending_question: null,
+      pending_question_at: null,
+    } as never);
     expect((await retractGoalQuestion('501', 1519)).retracted).toBe(false);
+  });
+
+  it('takes down a goal the FALLBACK flagged, which has no question text', async () => {
+    // Goal 3136: flagged with a null question at 13:31:07 on 15 September, the
+    // owner answered, an ask went out at 13:31:45, and it was still „waiting
+    // on you" hours later — nothing could clear it.
+    mockGetTask.mockResolvedValue({
+      ...(OPEN_TASK as object),
+      pending_question: null,
+      pending_question_at: '2026-09-15T13:31:07.928Z',
+    } as never);
+
+    expect((await retractGoalQuestion('501', 3136)).retracted).toBe(true);
   });
 });
 

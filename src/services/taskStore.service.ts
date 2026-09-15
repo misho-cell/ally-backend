@@ -31,6 +31,14 @@ export interface Task {
   next_wake_at: string | null;
   /** Ticket 8 Task 2: the exact question this goal is blocked on, if any. */
   pending_question: string | null;
+  /**
+   * WHEN the goal became blocked on the owner — set even when the question
+   * has no text (the engine's fallback refuses to guess which goal a closing
+   * question belonged to). This, not `pending_question`, is what says a goal
+   * is waiting: threadAwaitsOwner reads it, and Ticket 19 G9 is what happens
+   * when something else reads the text instead.
+   */
+  pending_question_at: string | null;
   /** The plan in force (Ticket 10 Task 21, D119) — consent was given to THIS. */
   plan: TaskPlan | null;
   /** The next version, waiting for the user's yes; the one in force keeps running. */
@@ -131,7 +139,7 @@ async function retitleThreadIfStale(threadId: number, newTitle: string): Promise
 }
 
 const TASK_COLUMNS = `id, user_id, title, description, task_type, status, permission_granted,
-            thread_id, autonomy, brief, next_wake_at, pending_question,
+            thread_id, autonomy, brief, next_wake_at, pending_question, pending_question_at,
             plan, plan_proposed, plan_approved_at, plan_version,
             created_at, last_activity_at`;
 
