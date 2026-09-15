@@ -3267,13 +3267,19 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
       // the 30-day prune first runs: the sentence would then claim six weeks
       // of history that had just been deleted. Read from the table, it follows
       // the retention window by itself and cannot drift.
-      query<{ since: string | null }>(
-        `SELECT MIN(created_at)::text AS since FROM push_deliveries`,
+      query<{ since: Date | string | null }>(
+        `SELECT MIN(created_at) AS since FROM push_deliveries`,
         [],
       ),
     ]);
+    // ISO 8601, not Postgres's own text. Its form — a space where the T belongs
+    // and six-digit microseconds — is not something Safari parses, so the same
+    // date that reads correctly on a Mac becomes "Invalid Date" on an iPhone.
+    // The frontend found that and worked around it on their side; a workaround
+    // there is not a fix here, because the next reader hits it again.
+    const rawSince = (recording.rows[0] as { since: Date | string | null } | undefined)?.since;
     const recordingSince =
-      (recording.rows[0] as { since: string | null } | undefined)?.since ?? null;
+      rawSince === null || rawSince === undefined ? null : new Date(rawSince).toISOString();
     const countOf = (want: string): number =>
       deliveries.rows.filter((d) => (d as { status: string }).status === want).length;
     // Which of this person's devices is watching RIGHT NOW. This is the whole

@@ -351,10 +351,10 @@ export async function researchTrail(phone: string): Promise<ResearchTrailStep[]>
     query: string;
     status: StepStatus;
     note: string | null;
-    ran_at: string;
+    ran_at: Date | string;
     findings: { url: string; title: string | null; snippet: string | null }[] | null;
   }>(
-    `SELECT s.source, s.query, s.status, s.note, s.ran_at::text AS ran_at,
+    `SELECT s.source, s.query, s.status, s.note, s.ran_at,
             COALESCE(
               (SELECT jsonb_agg(jsonb_build_object('url', f.url, 'title', f.title,
                                                    'snippet', f.snippet)
@@ -369,7 +369,13 @@ export async function researchTrail(phone: string): Promise<ResearchTrailStep[]>
     [phone, TRAIL_LIMIT],
     QUERY_TIMEOUT_MS,
   );
-  return result.rows.map((row) => ({ ...row, findings: row.findings ?? [] }));
+  // ISO 8601 at the boundary — Postgres's own text form is not parseable by
+  // Safari, so a date that reads fine on a Mac is „Invalid Date" on a phone.
+  return result.rows.map((row) => ({
+    ...row,
+    ran_at: new Date(row.ran_at).toISOString(),
+    findings: row.findings ?? [],
+  }));
 }
 
 export interface ResearchStatus {
@@ -387,14 +393,14 @@ export async function researchStatus(): Promise<ResearchStatus> {
     searches_today: string;
     people: string;
     findings: string;
-    last_run: string | null;
+    last_run: Date | string | null;
   }>(
     `SELECT (SELECT COUNT(*)::text FROM research_steps
               WHERE ran_at >= date_trunc('day', NOW()) AND status <> 'not_attempted')
                                                                      AS searches_today,
             (SELECT COUNT(DISTINCT phone)::text FROM research_steps) AS people,
             (SELECT COUNT(*)::text FROM research_findings)           AS findings,
-            (SELECT MAX(ran_at)::text FROM research_steps)           AS last_run`,
+            (SELECT MAX(ran_at) FROM research_steps)                 AS last_run`,
     [],
     QUERY_TIMEOUT_MS,
   );
@@ -405,6 +411,9 @@ export async function researchStatus(): Promise<ResearchStatus> {
     daily_budget: dials().dailyBudget,
     people_researched: Number(row?.people ?? 0),
     findings: Number(row?.findings ?? 0),
-    last_run: row?.last_run ?? null,
+    last_run:
+      row?.last_run === null || row?.last_run === undefined
+        ? null
+        : new Date(row.last_run).toISOString(),
   };
 }

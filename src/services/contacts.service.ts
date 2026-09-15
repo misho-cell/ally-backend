@@ -97,7 +97,7 @@ export async function listImportAttempts(
 ): Promise<ImportAttemptRow[]> {
   const result = await query<ImportAttemptRow>(
     `SELECT ia.id::text, ia.user_id, u.name AS user_name, ia.source,
-            ia.requested, ia.imported, ia.skipped, ia.created_at::text AS created_at
+            ia.requested, ia.imported, ia.skipped, ia.created_at
      FROM import_attempts ia
      LEFT JOIN "User" u ON u.id = ia.user_id
      WHERE ia.created_at > NOW() - make_interval(days => $1::int)

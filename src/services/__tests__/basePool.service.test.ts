@@ -5,7 +5,7 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 
 import { backgroundQuery, query } from '../../db/postgres/client';
-import { basePool, walkBaseOnce } from '../basePool.service';
+import { basePool, baseWalkStatus, walkBaseOnce } from '../basePool.service';
 
 const mockBg = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -130,6 +130,39 @@ describe('reading what the night measured', () => {
     expect(sql).toContain('ASC NULLS FIRST');
     // Size still decides between two people nobody has looked at.
     expect(sql).toContain('c.own_contacts DESC');
+  });
+
+  it('reports the last walk as real ISO 8601, which a phone can read', async () => {
+    // Postgres's own text form — a space where the T belongs, six-digit
+    // microseconds — is not something Safari parses, so a date that reads
+    // correctly on a Mac is „Invalid Date" on an iPhone. The frontend hit this
+    // and worked around it; the workaround is on their side, the defect was
+    // on mine.
+    mockQuery.mockResolvedValue(
+      rows([
+        {
+          candidates: '10033',
+          reachable: '10002',
+          cursor: 7956,
+          last_walk: new Date('2026-09-15T07:21:41.318Z'),
+        },
+      ]) as never,
+    );
+
+    const status = await baseWalkStatus();
+
+    expect(status.last_walk).toBe('2026-09-15T07:21:41.318Z');
+    expect(status.candidates).toBe(10033);
+  });
+
+  it('says the walk has never run rather than dating it', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ candidates: '0', reachable: '0', cursor: 0, last_walk: null }]) as never,
+    );
+
+    // Null is its own answer: nobody has walked yet, which is not the same as
+    // walking and finding nobody.
+    expect((await baseWalkStatus()).last_walk).toBeNull();
   });
 
   it('asks again, live, whether the person has since arrived', async () => {

@@ -252,13 +252,13 @@ export async function baseWalkStatus(): Promise<{
     candidates: string;
     reachable: string;
     cursor: number;
-    last_walk: string | null;
+    last_walk: Date | string | null;
   }>(
     `SELECT (SELECT COUNT(*) FROM base_pool_candidates)::text                        AS candidates,
             (SELECT COUNT(*) FROM base_pool_candidates WHERE opened_netai = FALSE)::text
                                                                                     AS reachable,
             (SELECT last_user_id FROM base_pool_cursor WHERE id = TRUE)             AS cursor,
-            (SELECT MAX(refreshed_at)::text FROM base_pool_candidates)              AS last_walk`,
+            (SELECT MAX(refreshed_at) FROM base_pool_candidates)                    AS last_walk`,
     [],
     READ_TIMEOUT_MS,
   );
@@ -267,6 +267,15 @@ export async function baseWalkStatus(): Promise<{
     candidates: Number(row?.candidates ?? 0),
     reachable: Number(row?.reachable ?? 0),
     cursor: Number(row?.cursor ?? 0),
-    last_walk: row?.last_walk ?? null,
+    // Real ISO 8601, not Postgres's own text. Its form („2026-09-12
+    // 21:57:08.551099+00" — a space where the T belongs, six-digit
+    // microseconds) is not something Safari will parse, so the same timestamp
+    // that reads correctly on a Mac becomes „Invalid Date" on an iPhone. The
+    // frontend found this and worked around it; a workaround on their side is
+    // not a fix, because the next reader hits it again.
+    last_walk:
+      row?.last_walk === null || row?.last_walk === undefined
+        ? null
+        : new Date(row.last_walk).toISOString(),
   };
 }
