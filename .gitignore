@@ -6,4 +6,10 @@ dist/
 .DS_Store
 .vscode/
 .idea/
-.claude/
+# Claude Code's local state stays out — but the PROJECT permission rules are
+# meant to be shared and must survive a fresh container, so that one file is
+# tracked. (A plain "!.claude/settings.json" would not work: git will not
+# descend into an excluded directory, so the directory itself is un-excluded
+# and its contents re-excluded instead.)
+.claude/*
+!.claude/settings.json
