@@ -2028,7 +2028,24 @@ function buildReplyLanguageDirective(userMessage: string): string {
   );
 }
 
-function buildPendingRequestsSection(requests: PendingRequest[]): string {
+// Ticket 19 [18]: what the model is told about a waiting request depends on
+// who is going to show it. When the server delivers it as its own message
+// (every thread but the request's own), repeating it in the answer is the
+// defect — two versions of the same request, one of them with real buttons.
+const REQUESTS_HANDLED_HERE =
+  '## გაუხსნელი გაცნობის მოთხოვნები ' +
+  '[ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს ახსენე]';
+const REQUESTS_DELIVERED_SEPARATELY =
+  '## გაუხსნელი გაცნობის მოთხოვნები ' +
+  '[თითოეული მომხმარებელს ცალკე შეტყობინებად მიუვა, შენი პასუხის შემდეგ, თავისი ' +
+  'ღილაკებით. შენს პასუხში არც ახსენო, არც შეაჯამო და ღილაკები არ შესთავაზო — ' +
+  'უპასუხე მხოლოდ იმას, რაც მოგწერა. აქ იმიტომ ხედავ, რომ იცოდე რას დაინახავს ' +
+  'და მისი პასუხი ამოიცნო.]';
+
+function buildPendingRequestsSection(
+  requests: PendingRequest[],
+  deliveredSeparately: boolean,
+): string {
   if (requests.length === 0) return '';
   const lines = requests
     .map((r) => {
@@ -2042,7 +2059,8 @@ function buildPendingRequestsSection(requests: PendingRequest[]): string {
       return `- მოთხოვნა: ${ask}${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
     .join('\n');
-  return `\n\n## გაუხსნელი გაცნობის მოთხოვნები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს ახსენე]\n${lines}`;
+  const header = deliveredSeparately ? REQUESTS_DELIVERED_SEPARATELY : REQUESTS_HANDLED_HERE;
+  return `\n\n${header}\n${lines}`;
 }
 
 function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
@@ -2203,6 +2221,14 @@ interface AgentPromptResult {
   blockNames: string[];
   /** `name@ISO` per block — the exact revision that ran (ticket 9 task 34). */
   blockVersions: string[];
+  /**
+   * Ticket 19 [18]: the waiting introduction requests this run owes the user
+   * as their OWN messages. Empty inside the request's own thread (the thread
+   * IS the request) and empty while the kill switch is off — in both cases
+   * the prompt section above still asks the model to mention them, and the
+   * two halves must never both be on.
+   */
+  separateRequests: PendingRequest[];
 }
 
 async function buildAgentSystemPrompt(
@@ -2288,6 +2314,12 @@ async function buildAgentSystemPrompt(
     loadMemory ? getUserNotes(userId) : Promise.resolve([] as UserNote[]),
   ]);
 
+  // Inside an incoming-request thread the request is the whole subject and the
+  // app already draws it there; a second copy as a pending message would be the
+  // same request twice on one screen.
+  const separateRequests =
+    PENDING_AS_MESSAGES_OFF || threadType === 'incoming_request' ? [] : pendingRequests;
+
   const base = configResult.rows[0]?.system_prompt ?? '';
   const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
   const nameSection = registeredName
@@ -2307,9 +2339,15 @@ async function buildAgentSystemPrompt(
     buildUserNotesSection(userNotes) +
     buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
-    buildPendingRequestsSection(pendingRequests) +
+    buildPendingRequestsSection(pendingRequests, separateRequests.length > 0) +
     buildRespondedRequestsSection(recentResponses);
-  return { prompt, runMode, blockNames: modeBlocks.names, blockVersions: modeBlocks.versions };
+  return {
+    prompt,
+    runMode,
+    blockNames: modeBlocks.names,
+    blockVersions: modeBlocks.versions,
+    separateRequests,
+  };
 }
 
 // What a preview renders when no live thread state exists for the mode: the
@@ -2503,6 +2541,86 @@ function takePendingItems(runId: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
   runPendingItems.delete(runId);
   return items;
+}
+
+// Ticket 19 [18]. How long a delivered incoming-request message stands before
+// the same request may be offered again. It is a cooldown and not a one-shot
+// because a request nobody answers must keep being answerable — request 1057
+// has waited since 5 September — and it is a day rather than a turn because
+// the behaviour being REPLACED was a fresh mention appended to every single
+// answer. The same day the sticky pending updates use.
+const INTRO_REQUEST_REPEAT_HOURS = 24;
+// Another user wrote the message; it crosses accounts, so it is scrubbed, and
+// it is a chat bubble, so it is short.
+const INTRO_REQUEST_MESSAGE_MAX_CHARS = 200;
+
+/**
+ * The request, as the model-facing line that rides with its message: what the
+ * user's tap on one of its buttons means, for the run that reads it next.
+ */
+function introRequestInstruction(requestId: number): string {
+  return (
+    `შემოსული გაცნობის მოთხოვნა, request_id=${requestId}. თუ მომხმარებელი დათანხმდა — ` +
+    `გამოიძახე respond_to_introduction (request_id=${requestId}, accepted=true); თუ უარი ` +
+    `თქვა — იგივე, accepted=false. „მოგვიანებით" ნიშნავს, რომ არაფერი გამოიძახო: მოთხოვნა ` +
+    `ღია რჩება და მოგვიანებით კვლავ მიუვა.`
+  );
+}
+
+export function introRequestItems(requests: readonly PendingRequest[]): PendingItemInput[] {
+  return requests.map((request) => ({
+    kind: 'intro_request',
+    task_id: null,
+    payload: {
+      request_id: request.id,
+      who: request.requester_name,
+      target_name: request.target_name,
+      direct: request.direct,
+      message:
+        request.message === null
+          ? null
+          : scrubText(request.message).slice(0, INTRO_REQUEST_MESSAGE_MAX_CHARS),
+      instruction: introRequestInstruction(request.id),
+    },
+  }));
+}
+
+/**
+ * The waiting requests this user has NOT been shown a message for inside the
+ * cooldown. Read from the messages themselves rather than a new column: the
+ * bubble is the delivery, so the bubble is the record, and there is no second
+ * place for the two to disagree.
+ *
+ * On a read failure the requests are delivered anyway. A duplicate bubble is
+ * the old behaviour once more (the prompt appended the request to every
+ * answer); a swallowed one is a person who cannot answer at all.
+ */
+export async function undeliveredRequests(
+  userId: string,
+  requests: readonly PendingRequest[],
+): Promise<PendingRequest[]> {
+  if (requests.length === 0) return [];
+  try {
+    // 27 rows of kind 'pending' in the whole table against 32,720 rows on
+    // 15 September: the user_id index plus this filter is the whole cost, and
+    // an index of its own would be one to maintain for nothing.
+    const result = await query<{ request_id: string | null }>(
+      `SELECT DISTINCT content_json->'ref'->>'request_id' AS request_id
+       FROM conversations
+       WHERE user_id = $1
+         AND kind = 'pending'
+         AND content_json->'ref'->>'kind' = 'intro_request'
+         AND created_at > NOW() - ($2 || ' hours')::interval`,
+      [userId, INTRO_REQUEST_REPEAT_HOURS],
+      PENDING_REPLY_TIMEOUT_MS,
+    );
+    const shown = new Set(result.rows.map((row) => Number(row.request_id)));
+    return requests.filter((request) => !shown.has(request.id));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro-request] delivery history unreadable:', (err as Error).message);
+    return [...requests];
+  }
 }
 
 // Answers-12 item 11: the goals a run opened from an ordinary conversation.
@@ -4731,6 +4849,15 @@ export async function processChat(
   const reply = wrapAllowedNumbers(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
+  );
+  // Ticket 19 [18]: the requests waiting on this person go out as their own
+  // messages too, on the same rails. Noted here rather than at prompt-build
+  // time so they land LAST — after whatever the run itself surfaced. Another
+  // person's request is the one item on the screen that is not about what the
+  // user came here to do.
+  notePendingItems(
+    runId,
+    introRequestItems(await undeliveredRequests(userId, agentPrompt.separateRequests)),
   );
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.

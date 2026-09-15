@@ -1,3 +1,4 @@
+import { geoName } from './georgianCase';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -34,7 +35,13 @@ export interface RenderedPendingMessage {
   /** Buttons, each naming its own action. */
   readonly choices: string[];
   /** What this message is about, for the client and for the log. */
-  readonly ref: { kind: string; task_id?: number; ask_id?: number; thread_id?: number };
+  readonly ref: {
+    kind: string;
+    task_id?: number;
+    ask_id?: number;
+    thread_id?: number;
+    request_id?: number;
+  };
   /**
    * The model-facing line that rides with it as an `event` row: the tool
    * instruction the engine wrote, so the NEXT run knows what the user's tap
@@ -51,6 +58,10 @@ function str(payload: Record<string, unknown>, key: string): string | null {
 function num(payload: Record<string, unknown>, key: string): number | undefined {
   const value = payload[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function bool(payload: Record<string, unknown>, key: string): boolean {
+  return payload[key] === true;
 }
 
 // The Georgian is the product's language; English is here because a run can be
@@ -72,6 +83,14 @@ interface PendingTexts {
   searchFollowUp: string;
   searchSolved: string;
   searchNot: string;
+  /** The requester's name is missing — a person, still, not a blank. */
+  someone: string;
+  introDirect: (who: string) => string;
+  introMediated: (who: string, target: string) => string;
+  introMessage: (message: string) => string;
+  introAcceptDirect: (who: string) => string;
+  introAcceptMediated: (target: string) => string;
+  introDecline: string;
 }
 
 const TEXTS: Record<'ka' | 'en', PendingTexts> = {
@@ -93,6 +112,14 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     searchFollowUp: 'კვირის წინ რომ ვეძებდით — ის საქმე მოგვარდა?',
     searchSolved: 'მოგვარდა',
     searchNot: 'ვერ მოგვარდა',
+    someone: 'Netai-ს მომხმარებელი',
+    introDirect: (who: string) => `${geoName(who, 'dat')} შენი გაცნობა სურს.`,
+    introMediated: (who: string, target: string) =>
+      `${geoName(who, 'dat')} სურს, ${geoName(target, 'dat')} გააცნო.`,
+    introMessage: (message: string) => ` მისი შეტყობინება: „${message}"`,
+    introAcceptDirect: (who: string) => `დიახ, გავიცნობ ${geoName(who, 'dat')}`,
+    introAcceptMediated: (target: string) => `დიახ, გავაცნობ ${geoName(target, 'dat')}`,
+    introDecline: 'არა, ამჯერად არა',
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -112,6 +139,14 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     searchFollowUp: 'The search from a week ago — did that get solved?',
     searchSolved: 'Solved',
     searchNot: 'Not solved',
+    someone: 'A Netai user',
+    introDirect: (who: string) => `${who} would like to meet you.`,
+    introMediated: (who: string, target: string) =>
+      `${who} is asking you to introduce them to ${target}.`,
+    introMessage: (message: string) => ` Their message: "${message}"`,
+    introAcceptDirect: (who: string) => `Yes, I will meet ${who}`,
+    introAcceptMediated: (target: string) => `Yes, I will introduce them to ${target}`,
+    introDecline: 'No, not now',
   },
 };
 
@@ -169,6 +204,45 @@ export function renderPendingMessage(
         text: t.introHow(who),
         choices: [t.introWorked, t.introFailed, t.notYet],
         ref: { kind: item.kind },
+        instruction,
+      };
+    }
+    // Ticket 19 [18]. A request from another PERSON, waiting on this one.
+    //
+    // It used to reach the screen the way a pending update used to: a line the
+    // prompt asked the model to append to whatever answer it was already
+    // writing, with no buttons of its own. Lika's iPhone, 14 September: the
+    // founder's request arrived folded under a plan's text, under the PLAN's
+    // two buttons — so the only thing she could press answered the plan, and
+    // there was nothing on screen that answered him. Request 1057 is still
+    // pending ten days on, for exactly that reason.
+    //
+    // Same remedy as every other item here: its own message, after the answer,
+    // with buttons that name the person and the act.
+    case 'intro_request': {
+      const requestId = num(p, 'request_id');
+      if (requestId === undefined) return null;
+      const who = str(p, 'who') ?? t.someone;
+      const message = str(p, 'message');
+      const tail = message === null ? '' : t.introMessage(message);
+      const direct = bool(p, 'direct');
+      if (direct) {
+        return {
+          text: t.introDirect(who) + tail,
+          choices: [t.introAcceptDirect(who), t.introDecline, t.later],
+          ref: { kind: item.kind, request_id: requestId },
+          instruction,
+        };
+      }
+      // Mediated: the reader is being asked to introduce the requester to a
+      // third person. Without that person's name the sentence cannot be said
+      // truthfully, so it is not said at all.
+      const target = str(p, 'target_name');
+      if (target === null) return null;
+      return {
+        text: t.introMediated(who, target) + tail,
+        choices: [t.introAcceptMediated(target), t.introDecline, t.later],
+        ref: { kind: item.kind, request_id: requestId },
         instruction,
       };
     }
