@@ -242,9 +242,20 @@ export async function buildCuriosityQueue(
     () => warmLabelEmptyCandidates(userId),
   ];
 
+  // The five tiers are independent of each other and used to run in series,
+  // each under its own 8-second timeout. Nothing was individually slow enough
+  // to look wrong, and get_pending_updates — which runs at the START of a
+  // conversation — was measured at 74,871 ms on 16 September, returning two
+  // items. Seventy-five seconds of somebody watching a spinner, assembled
+  // entirely out of parts that were each inside their budget.
+  //
+  // Run together, the wall clock is the slowest tier instead of their sum. The
+  // merge still walks them IN ORDER and still lets the first tier to claim a
+  // phone keep it, so which tier wins a contact is unchanged.
+  const tiers = await Promise.all(tierBuilders.map((build) => build()));
   const byPhone = new Map<string, TierCandidate>();
-  for (const buildTier of tierBuilders) {
-    for (const candidate of await buildTier()) {
+  for (const tier of tiers) {
+    for (const candidate of tier) {
       if (!byPhone.has(candidate.phone)) byPhone.set(candidate.phone, candidate);
     }
   }
@@ -310,6 +321,36 @@ export interface CuriosityUpdate {
  * queue is empty. buildCuriosityQueue logs the surfacing itself, which is
  * exactly what re-arms the interval.
  */
+/**
+ * How long the OPTIONAL curiosity item may cost a conversation's first breath.
+ *
+ * This is one nice-to-have row joined onto a list the user did ask for. It is
+ * never worth making somebody wait, so it has a wall-clock budget of its own on
+ * top of the per-query timeouts — because the per-query timeouts are exactly
+ * what failed here: five of them in series, all honoured, 75 seconds total.
+ */
+const CURIOSITY_BUDGET_MS = Number(process.env.CURIOSITY_BUDGET_MS ?? 6_000);
+
+/** Give up on a nice-to-have rather than let it hold the answer. */
+async function withinBudget<T>(work: Promise<T>, ms: number, what: string): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined;
+  const budget = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+    // Never hold the process open for a value nobody is waiting on.
+    timer.unref?.();
+  });
+  try {
+    const out = await Promise.race([work, budget]);
+    if (out === null) {
+      // eslint-disable-next-line no-console
+      console.warn(`[curiosity] ${what} gave up after ${ms}ms — the list goes without it`);
+    }
+    return out;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpdate | null> {
   const lastEmptyCheck = emptyQueueCheckedAt.get(userId);
   if (lastEmptyCheck !== undefined && Date.now() - lastEmptyCheck < EMPTY_QUEUE_RETRY_MS) {
@@ -324,7 +365,12 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
   );
   if (recent.rows.length > 0) return null;
 
-  const items = await buildCuriosityQueue(userId, 1);
+  const items = await withinBudget(buildCuriosityQueue(userId, 1), CURIOSITY_BUDGET_MS, 'queue');
+  // Giving up is NOT the same as finding nothing, and the difference lasts a
+  // day: the negative cache below suppresses this account's curiosity for 24
+  // hours, so recording a timeout as „empty" would quietly switch the feature
+  // off for whoever happened to ask on a slow minute.
+  if (items === null) return null;
   if (items.length === 0) {
     emptyQueueCheckedAt.set(userId, Date.now());
     return null;

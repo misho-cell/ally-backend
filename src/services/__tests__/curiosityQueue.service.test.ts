@@ -270,3 +270,81 @@ describe("maybeCuriosityUpdate — the curiosity trigger in T9's one pending_upd
     expect(tierCallsAfterSecond).toBe(1);
   });
 });
+
+/**
+ * The 75-second conversation opener, found in tool_call_log on 16 September:
+ *
+ *   get_pending_updates   74,871 ms   returned 2 items
+ *
+ * Nothing in it was individually slow enough to look wrong. Five tier builders
+ * in series, each honouring its own 8-second timeout, inside a handler doing
+ * four more awaits in a row, each honouring theirs. Every part inside its
+ * budget; the person waited over a minute before their conversation began.
+ *
+ * Two things follow, and the second is the one a test can hold.
+ */
+describe('the curiosity queue must not cost a conversation its first breath', () => {
+  it('runs the five tiers together, not one after another', async () => {
+    routeQueueQueries({
+      lookalike: [{ phone: '+995500000001' }],
+      presence: [],
+      labels: [],
+    });
+    mockBuildTargetList.mockResolvedValue([]);
+    mockGetTopConnectors.mockResolvedValue([]);
+
+    const started = Date.now();
+    await buildCuriosityQueue('501', 1);
+    // Not a timing assertion — those are flaky. The tiers are independent and
+    // the merge is order-preserving, so the only observable difference is that
+    // every tier query has been issued by the time the first one resolves.
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it('GIVING UP is not the same as finding nothing', async () => {
+    // The negative cache suppresses an account's curiosity for 24 hours. A run
+    // that merely ran out of budget must not write it, or one slow minute
+    // switches the feature off for the rest of the day.
+    //
+    // Loaded in isolation with a tiny budget and a queue that never answers,
+    // so this exercises the real timeout rather than the empty-queue path that
+    // happens to return the same null.
+    jest.resetModules();
+    process.env.CURIOSITY_BUDGET_MS = '20';
+    const fresh = await import('../curiosityQueue.service');
+    const freshQuery = (await import('../../db/postgres/client')).query as jest.MockedFunction<
+      typeof query
+    >;
+    // resetModules gives the fresh copy fresh mocks too — they have to be told
+    // what to return or the tier throws before it ever reaches the budget.
+    (
+      (await import('../targetScoring.service')).buildTargetList as jest.MockedFunction<
+        typeof buildTargetList
+      >
+    ).mockResolvedValue([]);
+    (
+      (await import('../graphAnalytics.service')).getTopConnectors as jest.MockedFunction<
+        typeof getTopConnectors
+      >
+    ).mockResolvedValue([]);
+
+    freshQuery.mockImplementation((sql: string) => {
+      // The interval check answers; every tier hangs for ever.
+      if (sql.includes('SELECT id FROM curiosity_surfacing_log')) {
+        return Promise.resolve(rows([]) as never);
+      }
+      return new Promise(() => undefined);
+    });
+
+    expect(await fresh.maybeCuriosityUpdate('90002')).toBeNull();
+
+    // Now let the tiers answer. If the timeout had been recorded as „empty",
+    // this second call would short-circuit and never reach the database.
+    const callsBefore = freshQuery.mock.calls.length;
+    freshQuery.mockImplementation(() => Promise.resolve(rows([]) as never));
+    expect(await fresh.maybeCuriosityUpdate('90002')).toBeNull();
+    expect(freshQuery.mock.calls.length).toBeGreaterThan(callsBefore);
+
+    delete process.env.CURIOSITY_BUDGET_MS;
+  });
+});

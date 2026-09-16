@@ -3799,15 +3799,24 @@ async function executeToolCall(
       // A debrief item whose subject moved on is dropped (D49: "with no outcome
       // recorded"); at most one live-computed curiosity item joins the same
       // list — T9's ONE surface for all trigger types.
-      const updates = await filterStaleDebriefs(userId, await getPendingUpdates(userId));
+      // The curiosity item and the already-shown list depend on NEITHER of the
+      // two below, and they used to wait behind them anyway. Four awaits in a
+      // row, each inside its own timeout, is how this tool reached 74,871 ms on
+      // 16 September while returning two items — a conversation's first breath
+      // spent on work that could have overlapped. The release-then-count pair
+      // stays ordered, because that order is load-bearing: getPendingUpdates
+      // RELEASES rows and countHeldUpdates must not count them again.
+      const [updates, curiosity, alreadyShown] = await Promise.all([
+        getPendingUpdates(userId).then((rows) => filterStaleDebriefs(userId, rows)),
+        maybeCuriosityUpdate(userId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[curiosity] pending-update check failed:', (err as Error).message);
+          return null;
+        }),
+        // Ticket 12 Task 32: the already-shown rows on request, read-only.
+        input['include_seen'] === true ? listSeenUpdates(userId) : Promise.resolve(null),
+      ]);
       const morePending = await countHeldUpdates(userId);
-      const curiosity = await maybeCuriosityUpdate(userId).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[curiosity] pending-update check failed:', (err as Error).message);
-        return null;
-      });
-      // Ticket 12 Task 32: the already-shown rows on request, read-only.
-      const alreadyShown = input['include_seen'] === true ? await listSeenUpdates(userId) : null;
       // Ticket 16 Task 98: each of these goes to the user as its OWN message,
       // with buttons the server writes, right after this answer. The note is
       // in the tool RESULT rather than the prompt on purpose — a rule the
