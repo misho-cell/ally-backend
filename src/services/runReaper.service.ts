@@ -41,6 +41,22 @@ export async function sweepOrphanedRuns(): Promise<number> {
     user_id: number;
     status: ThreadStatus;
     status_line: string | null;
+    /**
+     * Ticket 20 row 3 — a reply DID land on this thread just before it went
+     * quiet, so „your reply could not be completed" would be false.
+     *
+     * Thread 15841, Tornike's volleyball goal, 16 September: run fe7980fa
+     * wrote a complete plan at 15:34:22, and at 15:35:42 this sweep wrote
+     * „ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა" underneath it. The
+     * answer was on the screen directly above the error saying it had failed.
+     *
+     * Something left the thread on 'working' after a run finished and I have
+     * NOT established what — two runs overlapped on that thread and both
+     * status writes are fire-and-forget, which is a candidate and not a
+     * finding. Clearing a stale status is right whatever the cause; telling
+     * the owner their answer failed, while it is visible above, never is.
+     */
+    answered: boolean;
   }>(
     `WITH orphaned AS (
        SELECT t.id,
@@ -48,7 +64,16 @@ export async function sweepOrphanedRuns(): Promise<number> {
                 SELECT 1 FROM tasks k
                 WHERE k.thread_id = t.id AND k.status = 'open'
                   AND k.pending_question_at IS NOT NULL
-              ) AS awaits_owner
+              ) AS awaits_owner,
+              -- Row 3: did this thread actually ANSWER just before it went
+              -- quiet? Twice the silence window, so a reply that landed and
+              -- then left the status stale is still inside it.
+              EXISTS (
+                SELECT 1 FROM conversations c
+                WHERE c.thread_id = t.id AND c.role = 'assistant'
+                  AND c.kind = 'message' AND c.content <> ''
+                  AND c.created_at > NOW() - ($3 || ' seconds')::interval * 2
+              ) AS answered
        FROM threads t
        WHERE t.status = 'working'
          AND t.updated_at < NOW() - ($3 || ' seconds')::interval
@@ -59,14 +84,25 @@ export async function sweepOrphanedRuns(): Promise<number> {
          updated_at = NOW()
      FROM orphaned o
      WHERE o.id = t.id
-     RETURNING t.id, t.user_id, t.status, t.status_line`,
+     RETURNING t.id, t.user_id, t.status, t.status_line, o.answered`,
     [STATUS_LINES.failed, STATUS_LINES.needs_you, RUN_SILENT_SECONDS],
   );
   for (const thread of result.rows) {
     // Persist the failure INTO the thread (kind='error' → system-styled with a
     // retry) and tell every connected device. Best-effort per thread.
     try {
-      await saveThreadMessage(thread.id, thread.user_id, 'assistant', ORPHAN_MESSAGE, 'error');
+      // The status is cleared either way — a thread stuck on 'working' is a
+      // spinner that never stops. The ERROR is written only when nothing was
+      // answered, because it is a claim about the REPLY, not about the row.
+      if (thread.answered) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[run-reaper] thread ${thread.id} was stale on 'working' but had answered — ` +
+            'status cleared, no error shown',
+        );
+      } else {
+        await saveThreadMessage(thread.id, thread.user_id, 'assistant', ORPHAN_MESSAGE, 'error');
+      }
       emitThreadUpdated(String(thread.user_id), {
         id: thread.id,
         status: thread.status,
