@@ -2600,23 +2600,45 @@ async function buildAgentSystemPrompt(
   const nameSection = registeredName
     ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).`
     : '';
+  // Ticket 20 row 130 — STABLE FIRST, VOLATILE LAST, and the order is the
+  // whole point of this expression.
+  //
+  // A cache is a PREFIX match: everything after the first byte that differs is
+  // paid for again. buildTodaySection carries the clock TO THE MINUTE and used
+  // to sit second, immediately after the base prompt — so of a ~32,000-token
+  // system prompt, only the base's ~8,400 could ever be reused between one run
+  // and the next. The other three quarters were re-written every time.
+  //
+  // That is not a theory about the bill, it is most of the bill: cache WRITES
+  // are 66% of our Anthropic spend, at 12.5x the price of a read. And it is
+  // why the OpenAI final answer measured cached_tokens: 0 on all six of its
+  // first live calls — that path makes exactly ONE call per run, so between
+  // runs is the only kind of reuse it has.
+  //
+  // Nothing here changes content. Sections are grouped by how often they
+  // change: global, then per-account, then per-goal, then the clock.
   const prompt =
+    // Global — identical for every account, every run.
     base +
-    buildTodaySection(new Date()) +
     INJECTION_DEFENSE_PROMPT +
     modeBlocks.text +
-    (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
-    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
-    (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
+    // Per-account — the same across this person's runs until they edit it.
     nameSection +
     buildProfileSection(profile) +
     buildMissingUserProfileSection(profile) +
-    buildTasksSection(tasks) +
     buildUserNotesSection(userNotes) +
     buildPrivateContextSection(privateContext) +
     buildInsightFieldsSection(fieldsResult.rows) +
+    // Per-situation — changes when the work does.
+    (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
+    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+    (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
+    buildTasksSection(tasks) +
     buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
-    buildRespondedRequestsSection(recentResponses);
+    buildRespondedRequestsSection(recentResponses) +
+    // Last, because it changes every minute and everything after it in the
+    // string is uncacheable. Row 119's content is untouched; only its place is.
+    buildTodaySection(new Date());
   return {
     prompt,
     runMode,
