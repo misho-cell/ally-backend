@@ -3886,7 +3886,43 @@ async function executeToolCall(
       // Closing by ANY route cancels what is in flight (round 1: an
       // update_task-closed goal left its ask 'sent' on the recipient's phone).
       if (ok && status === 'closed') await cancelAsksForTask(taskIdToUpdate);
-      return { updated: ok };
+      if (!ok) return { updated: false };
+      /**
+       * Ticket 20 row 135 — the result NAMES what it changed.
+       *
+       * 16 September: a second need typed into catering thread 15812 opened
+       * goal 3702 in its own thread. The next line in 15812 was „გააჩერე ეს
+       * მიზანი, ტესტი იყო." — „stop THIS goal" — and update_task was called on
+       * 3702, the goal just created, not 3701, whose chat it was. The reply
+       * said it had stopped. The owner was told something stopped that had
+       * not, and 3701 ran on for another three minutes.
+       *
+       * The server cannot know which goal the owner meant. It knows exactly
+       * which goal owns this thread, and it was answering „updated: true" —
+       * a bare boolean with no subject, which the model can only report as
+       * „stopped". Naming the title makes a wrong target visible in the reply
+       * itself; saying whose chat this is lets the model catch it first.
+       *
+       * Same shape as row 101a: the answer was known and not said.
+       */
+      const changed = await getTaskById(taskIdToUpdate);
+      // threadId is optional on this path (the connector has no conversation),
+      // and without one there is no „this chat's goal" to compare against.
+      const ownGoal = threadId === undefined ? null : await getOpenTaskByThread(threadId);
+      const wrongGoal = ownGoal !== null && ownGoal.id !== taskIdToUpdate;
+      return {
+        updated: true,
+        task_id: taskIdToUpdate,
+        title: changed?.title ?? null,
+        status,
+        ...(wrongGoal && {
+          note:
+            `ყურადღება: ეს საუბარი სხვა მიზანს ეკუთვნის — „${ownGoal.title}" ` +
+            `(task_id=${ownGoal.id}). შენ ახლა „${changed?.title ?? taskIdToUpdate}" შეცვალე. ` +
+            'თუ მფლობელმა „ეს მიზანი" თქვა, იგულისხმა ამ საუბრის მიზანი. ' +
+            'პასუხში აუცილებლად დაასახელე, რომელი მიზანი გააჩერე.',
+        }),
+      };
     }
     case 'grant_task_permission':
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
