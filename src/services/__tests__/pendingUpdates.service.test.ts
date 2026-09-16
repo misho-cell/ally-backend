@@ -96,6 +96,73 @@ describe('pendingUpdates.service', () => {
     expect(params[3]).toBe(24);
   });
 
+  // Ticket 20 row 124. Thread 15676: one line — „ვინ არის ახლა თბილისის მერი?"
+  // — answered at 11:59:11, then seven cards by 11:59:15, one per waiting goal.
+  // All seven were goal_question. The overall cap of ten was doing its job and
+  // was simply far too loose for a class that asks the owner to do work.
+  describe('row 124 — a blocking question is capped on its own', () => {
+    it('releases at most one blocking question per read, whatever the overall cap is', async () => {
+      mockQuery.mockResolvedValue(result([]) as never);
+
+      await getPendingUpdates(USER);
+
+      const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+      // The two caps are separate numbers, and the question cap is the tight one.
+      expect(params[1]).toBe(10);
+      expect(params[4]).toBe(1);
+      expect(sql).toContain('rank_in_class <= $5');
+      expect(Number(params[4])).toBeLessThan(Number(params[1]));
+    });
+
+    it('ranks the two classes apart, so news is not crowded out by questions either', async () => {
+      mockQuery.mockResolvedValue(result([]) as never);
+
+      await getPendingUpdates(USER);
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).toContain('PARTITION BY (p.kind = ANY($3::text[]))');
+      // Read live on 16 September: one account had 6 items due, 5 of them news.
+      // A cap that counted both classes together would have eaten four of them.
+      expect(sql).toContain('WHERE NOT sticky OR rank_in_class <= $5');
+    });
+
+    it('the ones it skips are NOT spent — only the chosen rows are marked', async () => {
+      // This is the whole reason the cap lives in the release query rather than
+      // at delivery time. By the time rows reach the chat they are already
+      // marked seen or re-armed; dropping one there loses it for a day or for
+      // good. Here a skipped row keeps status 'held' and its past release_at,
+      // so the very next read takes it.
+      mockQuery.mockResolvedValue(result([]) as never);
+
+      await getPendingUpdates(USER);
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).toContain('WHERE pu.id IN (SELECT id FROM chosen)');
+      expect(sql).not.toMatch(/UPDATE pending_updates pu[\s\S]*WHERE pu\.user_id = \$1\s*$/);
+    });
+
+    it('still takes the oldest first, so nothing waits behind a newer item forever', async () => {
+      mockQuery.mockResolvedValue(result([]) as never);
+
+      await getPendingUpdates(USER);
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).toContain('ORDER BY p.release_at ASC, p.id ASC');
+      expect(sql).toContain('ORDER BY release_at ASC, id ASC');
+    });
+
+    it('a single due question still comes through — the cap is one, not zero', async () => {
+      mockQuery.mockResolvedValue(
+        result([{ id: 12, task_id: 9, kind: 'goal_question', payload: { q: 'x' } }]) as never,
+      );
+
+      const updates = await getPendingUpdates(USER);
+
+      expect(updates).toHaveLength(1);
+      expect(updates[0].kind).toBe('goal_question');
+    });
+  });
+
   it('countHeldUpdates excludes closed-goal updates and returns the number waiting', async () => {
     mockQuery.mockResolvedValue(result([{ count: '4' }]) as never);
 

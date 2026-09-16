@@ -71,6 +71,33 @@ const STICKY_KINDS = ['goal_question'];
  */
 const STICKY_COOLDOWN_HOURS = 24;
 
+/**
+ * Ticket 20 row 124. How many BLOCKING GOAL QUESTIONS one read may release.
+ *
+ * Thread 15676, 16 September: the owner asked one line — „ვინ არის ახლა
+ * თბილისის მერი?" — and between 11:59:11 and 11:59:15 received the answer plus
+ * seven cards, one per waiting goal: plumber, the FreeUni dean, air
+ * conditioner, Batumi electrician, boat engine, Wissol, Batumi photographer.
+ *
+ * The overall cap of ten was doing its job and was simply far too loose for
+ * this class. Read live while fixing it: of the updates due right now, the
+ * worst account carries FOUR news items and TWELVE blocking questions. The
+ * pile-up is entirely in the sticky class, because news is staggered at queue
+ * time by DRIP_BURST and a sticky question is not — it is re-armed on a flat
+ * 24-hour cooldown, so every question a goal has ever asked comes due together
+ * and stays that way.
+ *
+ * A question is a request for the owner to do work. Seven of them at once is
+ * not seven requests, it is none. One is a request.
+ *
+ * The skipped ones are NOT spent: they stay `held` with their release_at in
+ * the past, so the next read takes the next one. The released one goes to the
+ * back of the queue for a day. That is what makes a cap here safe and a cap at
+ * delivery time a silent swallow — by the time the rows reach the chat they
+ * have already been marked.
+ */
+const MAX_BLOCKING_QUESTIONS_PER_READ = 1;
+
 export async function queueFollowUp(
   userId: string,
   taskId: number | null,
@@ -108,23 +135,42 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
     // So a sticky kind goes back to 'held' with a cooldown instead of being
     // spent. It stops coming back the moment the question is answered or
     // retracted — both paths delete the held row — or the goal closes.
-    `UPDATE pending_updates pu
-     SET status = CASE WHEN pu.kind = ANY($3::text[]) THEN 'held' ELSE 'seen' END,
-         release_at = CASE WHEN pu.kind = ANY($3::text[])
-                           THEN NOW() + ($4 || ' hours')::INTERVAL
-                           ELSE pu.release_at END
-     WHERE pu.id IN (
-       SELECT p.id FROM pending_updates p
+    // Ticket 20 row 124: the oldest few, with the blocking questions among them
+    // capped separately and much harder. `due` ranks each class on its own so
+    // one loud class cannot crowd the other out in either direction.
+    `WITH due AS (
+       SELECT p.id, p.release_at,
+              (p.kind = ANY($3::text[])) AS sticky,
+              ROW_NUMBER() OVER (
+                PARTITION BY (p.kind = ANY($3::text[]))
+                ORDER BY p.release_at ASC, p.id ASC
+              ) AS rank_in_class
+       FROM pending_updates p
        LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
        WHERE p.user_id = $1 AND p.status = 'held' AND p.release_at <= NOW()
          AND (p.task_id IS NULL OR t.status <> 'closed')
          -- A sticky item survives only while its goal is still waiting.
          AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
-       ORDER BY p.release_at ASC
+     ), chosen AS (
+       SELECT id FROM due
+       WHERE NOT sticky OR rank_in_class <= $5
+       ORDER BY release_at ASC, id ASC
        LIMIT $2
      )
+     UPDATE pending_updates pu
+     SET status = CASE WHEN pu.kind = ANY($3::text[]) THEN 'held' ELSE 'seen' END,
+         release_at = CASE WHEN pu.kind = ANY($3::text[])
+                           THEN NOW() + ($4 || ' hours')::INTERVAL
+                           ELSE pu.release_at END
+     WHERE pu.id IN (SELECT id FROM chosen)
      RETURNING pu.id, pu.task_id, pu.kind, pu.payload`,
-    [userId, MAX_RELEASED_PER_READ, STICKY_KINDS, STICKY_COOLDOWN_HOURS],
+    [
+      userId,
+      MAX_RELEASED_PER_READ,
+      STICKY_KINDS,
+      STICKY_COOLDOWN_HOURS,
+      MAX_BLOCKING_QUESTIONS_PER_READ,
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
