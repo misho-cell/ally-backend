@@ -49,11 +49,17 @@ describe('searchSecondDegree tag matching', () => {
     const [sql, params] = mainCall as [string, unknown[]];
     // Word-start on the RAW text for tags and aliases alike — the normalize
     // fold is OUT of second-degree (Khazaradze matched "kasradze"; 'axel'
-    // folded to '%akel%' and exploded every trigram path). The (|| '')
-    // wrapper keeps every filter non-indexable so the LATERAL contactId
-    // probes are the only plan.
-    expect(sql).toContain(`(LOWER(ut.tag) || '') ~ $3`);
-    expect(sql).toContain(`(LOWER(ua_m.alias) || '') ~ $3`);
+    // folded to '%akel%' and exploded every trigram path).
+    //
+    // The `|| ''` wrapper that used to sit on these is gone. It was there to
+    // keep every filter non-indexable so the LATERAL contactId probes were the
+    // only plan; measured on 16 September that cost 6017 ms against 692 ms for
+    // the same 416 rows. It did not make the plan predictable, it removed the
+    // planner's choice. What actually guards against the gita finding is the
+    // `\m` word-start on raw text, asserted below, and that is unchanged.
+    expect(sql).toContain(`LOWER(ut.tag) ~ $3`);
+    expect(sql).toContain(`LOWER(ua_m.alias) ~ $3`);
+    expect(sql).not.toContain(`|| '') ~`);
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
     // $3 = word-start regex, $4 = blocked phones, $5 = userId again as TEXT

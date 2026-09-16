@@ -125,9 +125,9 @@ export async function fetchSignalStrength(
 ): Promise<Map<string, number>> {
   if (phones.length === 0 || regexTerms.length === 0) return new Map();
   try {
-    const tagConds = regexTerms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 2}`).join(' OR ');
+    const tagConds = regexTerms.map((_, i) => `LOWER(ut.tag) ~ $${i + 2}`).join(' OR ');
     const excludedIdx = regexTerms.length + 2;
-    const valueConds = regexTerms.map((_, i) => `(LOWER(cf.value) || '') ~ $${i + 2}`).join(' OR ');
+    const valueConds = regexTerms.map((_, i) => `LOWER(cf.value) ~ $${i + 2}`).join(' OR ');
     const result = await query<{ phone: string; strength: number }>(
       `SELECT p.phone,
               LEAST(${SIGNAL_MAX},
@@ -267,16 +267,33 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // Cross-script coverage still comes from buildSearchTerms' per-script
     // variants; ღ-drift tolerance is deliberately NOT offered here (the direct
     // tag search keeps it, clearly labeled approximate).
-    // The (LOWER(...) || '') wrapper makes every filter non-indexable ON
-    // PURPOSE: combined with the LATERAL below, the planner has exactly one
-    // plan — probe each friend's rows via the contactId btrees and filter in
-    // memory — whose cost is bounded by the friend set and IDENTICAL for
-    // every term. No term can be the next gita.
+    // There used to be a `|| ''` on each LOWER(...) here, making every filter
+    // non-indexable on purpose so the planner had exactly one plan: probe each
+    // friend's rows via the contactId btrees and filter in memory, at a cost
+    // bounded by the friend set and identical for every term. The reasoning was
+    // sound and the price turned out to be very high. Measured on the live
+    // database, 16 September, user 501 (282 friend accounts), term „marketing",
+    // the real LATERAL shape, 416 rows returned BOTH ways:
+    //
+    //   (LOWER(tag) || '') ~ …   6017 ms   282 loops, ~1,987 rows discarded
+    //                                      each, 43,774 heap fetches,
+    //                                      5,165 ms of it waiting on disk
+    //   LOWER(tag) ~ …            692 ms   Bitmap Index Scan on
+    //                                      idx_user_tags_trgm, 598 ms of disk
+    //
+    // 8.7x, for the same answer. Three of these in one goal run is the reason
+    // a search felt like it had hung.
+    //
+    // The wrapper did not make the plan predictable; it took the CHOICE away.
+    // Removing it does not force the trigram path — it lets the planner cost
+    // both and pick, per query, which is what it is for. The gita finding
+    // stands and is handled where it belongs: `\m` word-start on the raw text,
+    // no normalize fold, so „gita" cannot match Margita whichever plan runs.
     // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones
     const n = terms.length;
     const regexTerms = terms.map(toWordStartPattern);
-    const tagConds = terms.map((_, i) => `(LOWER(ut.tag) || '') ~ $${i + 3}`).join(' OR ');
-    const aliasConds = terms.map((_, i) => `(LOWER(ua_m.alias) || '') ~ $${i + 3}`).join(' OR ');
+    const tagConds = terms.map((_, i) => `LOWER(ut.tag) ~ $${i + 3}`).join(' OR ');
+    const aliasConds = terms.map((_, i) => `LOWER(ua_m.alias) ~ $${i + 3}`).join(' OR ');
     const blockParamIdx = 3 + n;
     // userId again, as its own parameter: $1 is inferred as int (contactId
     // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
