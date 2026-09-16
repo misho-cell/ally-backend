@@ -48,5 +48,10 @@ q = 'query(%s) { deploymentLogs(%s) { message timestamp } }' % (', '.join(decl),
 print(json.dumps({'query': q, 'variables': vars}))
 PY
 )" ;;
-  *) echo "logs.sh: unknown command $1 (deployments|logs)" >&2; exit 1 ;;
+  service)
+    # How many instances actually run. A read, and it decides something real:
+    # whether a boot-time sweep may assume the process that just died was the
+    # only one that could have owned a running job.
+    ask "{\"query\": \"query { service(id: \\\"$SERVICE\\\") { name serviceInstances { edges { node { numReplicas region } } } } }\"}" ;;
+  *) echo "logs.sh: unknown command $1 (deployments|logs|service)" >&2; exit 1 ;;
 esac

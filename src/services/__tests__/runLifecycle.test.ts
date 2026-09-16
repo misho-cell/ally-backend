@@ -29,7 +29,7 @@ describe('sweepOrphanedRuns', () => {
       rowCount: 2,
     } as never);
 
-    const reaped = await sweepOrphanedRuns(4);
+    const reaped = await sweepOrphanedRuns();
 
     expect(reaped).toBe(2);
     const sql = mockQuery.mock.calls[0][0] as string;
@@ -53,7 +53,7 @@ describe('sweepOrphanedRuns', () => {
       rowCount: 1,
     } as never);
 
-    await sweepOrphanedRuns(4);
+    await sweepOrphanedRuns();
 
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain(`k.status = 'open'`);
@@ -69,7 +69,7 @@ describe('sweepOrphanedRuns', () => {
   it('does nothing when no thread is stuck', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
-    const reaped = await sweepOrphanedRuns(4);
+    const reaped = await sweepOrphanedRuns();
 
     expect(reaped).toBe(0);
     expect(mockSave).not.toHaveBeenCalled();
@@ -117,5 +117,43 @@ describe('claimsNothingFound (contradiction guard, battery case 8)', () => {
       'აი 15 ადამიანი შენი ქსელიდან: '.padEnd(650, 'დეტალები. ') +
       'ამათ გარდა დამატებით ვერაფერი ვიპოვე.';
     expect(claimsNothingFound(long)).toBe(false);
+  });
+});
+
+/**
+ * Ticket 20 row 114 — a deploy swallowed somebody's line and said nothing.
+ *
+ * 16 September, thread 15610: a message at 09:10:27, steps at 09:10:31, two web
+ * searches by 09:10:41, then 63a401f went live at 09:11:19 and took the process
+ * with it. No answer, no error. The chat sat on „working" with a starting line
+ * on screen until the person gave up and typed it again at 09:14:28.
+ *
+ * The reaper existed and would have caught it — in about five minutes. It asked
+ * an AGE: how long has this thread been working? An age has to sit above the
+ * longest run a person may legitimately wait through, so it can never answer
+ * quickly. And nothing a live run did reached the DATABASE between its steps, so
+ * an age was the only thing there was to ask.
+ *
+ * Now a live run touches its thread on every heartbeat and the question is a
+ * SILENCE. That is a different question, and it is the right one: it does not
+ * care how long the run was meant to take, and it holds whether one process is
+ * running or five.
+ */
+describe('the reaper asks about silence, not about age', () => {
+  it('reaps on how long the thread has been QUIET, in seconds', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await sweepOrphanedRuns();
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("seconds')::interval");
+    // Not minutes, and not the run's age: the old rule is gone rather than
+    // left as an unreachable OR branch beside the new one.
+    expect(sql).not.toContain("minutes')::interval");
+    expect(params[2]).toBe(75);
+  });
+
+  it('takes no age argument at all — one rule, not two', () => {
+    expect(sweepOrphanedRuns).toHaveLength(0);
   });
 });

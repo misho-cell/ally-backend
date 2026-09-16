@@ -4384,6 +4384,17 @@ async function runToolLoop(
     if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
       lastSignalAt = Date.now();
       emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].heartbeat);
+      // Ticket 20 row 114: the same beat, written down. emitStepSummary is SSE
+      // only, so until now nothing a live run did reached the DATABASE between
+      // its steps — and the reaper, having no sign of life to read, could only
+      // go by how long the thread had been working, which must sit above the
+      // longest legitimate run. One UPDATE every 25 seconds turns „how old is
+      // this run" into „when did it last breathe", which is the question worth
+      // asking. Fire-and-forget: a run must never fail over its own heartbeat.
+      void touchThread(threadId).catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.warn(`[heartbeat] could not touch thread ${threadId}:`, (err as Error).message),
+      );
     }
   }, RUN_HEARTBEAT_POLL_MS);
   // Initial call: nothing gathered yet, so a failure here propagates and the
