@@ -20,7 +20,7 @@ import type { recordClaudeUsage as RecordFn } from '../costLedger.service';
  */
 let recordClaudeUsage: jest.MockedFunction<typeof RecordFn>;
 
-const CTX = { userId: '501', runId: 'run-1', city: 'ბათუმი' };
+const CTX = { userId: '501', runId: 'run-1' };
 
 const GOAL = 'ნოტარიუსი მჭირდება ბინის ნასყიდობის ხელშეკრულებისთვის.';
 
@@ -63,18 +63,39 @@ describe('distilSearchQuery', () => {
     expect(out.fromGoal).toBe(GOAL);
   });
 
-  it('gives the model the city, and tells it never to invent one', async () => {
+  /**
+   * D298 — nothing assumes a city. My first version fetched the account's
+   * stored city and offered it to the model; the seat caught it inside the
+   * hour. A place belongs in a search only when the OWNER said it, and
+   * whatever they said is already in the text being read.
+   */
+  it('is never told a city, and is told never to add one', async () => {
     await distilSearchQuery(GOAL, CTX);
 
     const sent = mockCreate.mock.calls[0][0];
-    expect(sent.messages[1].content).toContain('ბათუმი');
-    expect(sent.messages[0].content).toContain('Never invent a place');
+    expect(sent.messages[1].content).toBe(`What they need:\n${GOAL}`);
+    expect(sent.messages[0].content).toContain('NEVER add a place');
+    expect(sent.messages[0].content).toContain('ONLY if the person named one');
   });
 
-  it('says plainly when there is no city, rather than leaving a blank', async () => {
-    await distilSearchQuery(GOAL, { ...CTX, city: null });
+  /**
+   * Goal 3928 repeated 3895's sentence and the distiller answered „ნოტარიუსი
+   * ბინის ნასყიდობის ხელშეკრულება" — shorter, and four of five results were
+   * still articles. The purpose is what pulls them: every notary does those
+   * contracts, so the words only select for people writing about them.
+   */
+  it('is told to drop the purpose and keep what narrows the provider', async () => {
+    // Asserted on the brief as it is sent, because the behaviour it buys
+    // belongs to a model and only the instruction is ours to guarantee.
+    await distilSearchQuery(GOAL, CTX);
+    const brief = mockCreate.mock.calls[0][0].messages[0].content as string;
 
-    expect(mockCreate.mock.calls[0][0].messages[1].content).toContain('none known');
+    expect(brief).toContain('WHAT KIND of provider');
+    expect(brief).toContain('WHY they are wanted');
+    // Both worked examples are real goals of ours, and the rule without them
+    // reads as „be brief" — which is the instruction that produced 3928.
+    expect(brief).toContain('Toyota Prius hybrid battery repair');
+    expect(brief).toContain('law-firm blogs');
   });
 
   it('charges the call, because it is one', async () => {

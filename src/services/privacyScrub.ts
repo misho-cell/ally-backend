@@ -77,6 +77,30 @@ export function stripEmDashesForDisplay(text: string): string {
  */
 const COLON_BEFORE_LIST = /:[ \t]*(\r?\n[ \t]*(?:[-*•]|\d+[.)])\s)/g;
 
+/**
+ * Ticket 20 row 201 — a capital letter from an alphabet that has none.
+ *
+ * Goal 3928: a plan message began its last sentence with U+1C93, a Mtavruli
+ * letter. Mtavruli is Georgian's all-caps style — it exists for headings,
+ * signs and posters, and running Georgian text has no capitals at all. One
+ * Mtavruli letter at the start of a sentence is not a stylistic choice, it is
+ * a model applying an English habit to an alphabet that does not have it.
+ *
+ * The block maps one-to-one onto ordinary Mkhedruli at a fixed offset, so this
+ * is a translation and not a substitution: the letter is the same letter. Two
+ * code points inside the range are unassigned and are left alone rather than
+ * mapped to something that does not exist.
+ */
+const MTAVRULI_RE = /[Ა-ᲺᲽ-Ჿ]/g;
+const MTAVRULI_OFFSET = 0x1c90 - 0x10d0;
+
+export function mtavruliToMkhedruli(text: string): string {
+  return text.replace(MTAVRULI_RE, (char) => {
+    const code = char.codePointAt(0);
+    return code === undefined ? char : String.fromCodePoint(code - MTAVRULI_OFFSET);
+  });
+}
+
 /** Bold markers and markdown headers — the same in prose and in a label. */
 function stripMarkdownMarkers(text: string): string {
   return text
@@ -86,7 +110,7 @@ function stripMarkdownMarkers(text: string): string {
 }
 
 export function scrubMechanicalForStorage(text: string): string {
-  return stripMarkdownMarkers(text)
+  return mtavruliToMkhedruli(stripMarkdownMarkers(text))
     .replace(COLON_BEFORE_LIST, '$1')
     .replace(/\s+—\s+/g, ', ')
     .replace(/—/g, '-');
@@ -115,7 +139,9 @@ export function scrubMechanicalForStorage(text: string): string {
  * Those are counted instead — see labelCramsTwoThings.
  */
 export function scrubButtonLabel(label: string): string {
-  return stripMarkdownMarkers(label)
+  // Row 201 applies here too. A label is the shortest text on the screen and
+  // the likeliest place a model reaches for a capital.
+  return mtavruliToMkhedruli(stripMarkdownMarkers(label))
     .replace(/\s+—\s+/g, ' ')
     .replace(/—/g, '-')
     .replace(/\?/g, '')

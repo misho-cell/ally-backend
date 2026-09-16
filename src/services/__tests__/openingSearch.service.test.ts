@@ -15,29 +15,22 @@ jest.mock('../searchQuery.service', () => ({
   __esModule: true,
   distilSearchQuery: jest.fn(),
 }));
-jest.mock('../../db/postgres/client', () => ({
-  __esModule: true,
-  query: jest.fn().mockResolvedValue({ rows: [{ city: 'ბათუმი' }], rowCount: 1 }),
-}));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import { distilSearchQuery } from '../searchQuery.service';
-import { query as dbQuery } from '../../db/postgres/client';
 import { runOpeningSearches, buildOpeningSearchSection } from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockSecond = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
 const mockDistil = distilSearchQuery as jest.MockedFunction<typeof distilSearchQuery>;
-const mockDb = dbQuery as jest.MockedFunction<typeof dbQuery>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockWeb.mockResolvedValue({ results: ['a plumber in Batumi'] } as never);
   mockSecond.mockResolvedValue({ found: true, count: 2, results: ['Gega'] } as never);
-  mockDb.mockResolvedValue({ rows: [{ city: 'ბათუმი' }], rowCount: 1 } as never);
   // The default is the honest one: distilling that changed nothing.
   mockDistil.mockImplementation(async (text) => ({ query: text }));
 });
@@ -251,32 +244,16 @@ describe('row 126 fourth pass — the web gets a query, not a sentence', () => {
     expect(mockSecond).toHaveBeenCalledWith('501', GOAL);
   });
 
-  it('passes the owner’s city to the distiller', async () => {
+  /**
+   * D298 — nothing assumes a city. The first version of this pass read
+   * User.city and offered it to the distiller; the seat caught it inside the
+   * hour. A place reaches a search only when the OWNER said it, and what they
+   * said is already in the goal text.
+   */
+  it('reads no city from anywhere, and passes none', async () => {
     await runOpeningSearches('501', GOAL, 'run-1', 16006);
 
-    expect(mockDistil).toHaveBeenCalledWith(
-      GOAL,
-      expect.objectContaining({ userId: '501', runId: 'run-1', city: 'ბათუმი' }),
-    );
-  });
-
-  it('a missing city is passed as null, never as a guess', async () => {
-    mockDb.mockResolvedValue({ rows: [{ city: null }], rowCount: 1 } as never);
-
-    await runOpeningSearches('501', GOAL, 'run-1', 16006);
-
-    expect(mockDistil.mock.calls[0][1].city).toBeNull();
-  });
-
-  it('a city lookup that fails does not stop the search', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    mockDb.mockRejectedValue(new Error('statement timeout'));
-
-    const out = await runOpeningSearches('501', GOAL, 'run-1', 16006);
-
-    expect(mockDistil.mock.calls[0][1].city).toBeNull();
-    expect(out.web).not.toBeNull();
-    consoleSpy.mockRestore();
+    expect(mockDistil).toHaveBeenCalledWith(GOAL, { userId: '501', runId: 'run-1' });
   });
 
   it('logs BOTH what was searched and what the owner said', async () => {

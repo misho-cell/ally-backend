@@ -1,6 +1,7 @@
 import {
   labelCramsTwoThings,
   looksLikeTypedChoice,
+  mtavruliToMkhedruli,
   scrubButtonLabel,
   scrubMechanicalForStorage,
 } from '../privacyScrub';
@@ -99,5 +100,48 @@ describe('labelCramsTwoThings', () => {
 
   it('does not count a label with no comma at all', () => {
     expect(labelCramsTwoThings('მოგვიანებით')).toBe(false);
+  });
+});
+
+/**
+ * Ticket 20 row 201 — a capital letter from an alphabet that has none.
+ *
+ * Goal 3928: a plan message began its last sentence with U+1C93, a Mtavruli
+ * letter. Mtavruli is Georgian's all-caps style, for headings and signs;
+ * running text has no capitals, so one at the start of a sentence is an
+ * English habit applied to an alphabet without the concept.
+ */
+describe('row 201 — Mtavruli never reaches a stored message', () => {
+  const MTAVRULI_D = String.fromCodePoint(0x1c93);
+
+  it('turns the reported letter into the ordinary one', () => {
+    expect(mtavruliToMkhedruli(MTAVRULI_D)).toBe('დ');
+  });
+
+  it('maps both ends of the block, and the tail after the gap', () => {
+    expect(mtavruliToMkhedruli(String.fromCodePoint(0x1c90))).toBe('ა');
+    expect(mtavruliToMkhedruli(String.fromCodePoint(0x1cba))).toBe('ჺ');
+    expect(mtavruliToMkhedruli(String.fromCodePoint(0x1cbd))).toBe('ჽ');
+    expect(mtavruliToMkhedruli(String.fromCodePoint(0x1cbf))).toBe('ჿ');
+  });
+
+  it('leaves the two unassigned code points inside the range alone', () => {
+    // Mapping them would produce letters that do not exist.
+    const unassigned = String.fromCodePoint(0x1cbb) + String.fromCodePoint(0x1cbc);
+    expect(mtavruliToMkhedruli(unassigned)).toBe(unassigned);
+  });
+
+  it('touches nothing else — ordinary Georgian, Latin and digits are untouched', () => {
+    const text = 'დილა მშვიდობისა, Tornike — 2026';
+    expect(mtavruliToMkhedruli(text)).toBe(text);
+  });
+
+  it('a stored reply carries no Mtavruli', () => {
+    const reply = `${MTAVRULI_D}ავალება შესრულებულია.`;
+    expect(scrubMechanicalForStorage(reply)).toBe('დავალება შესრულებულია.');
+  });
+
+  it('a button label carries none either', () => {
+    expect(scrubButtonLabel(`${MTAVRULI_D}იახ`)).toBe('დიახ');
   });
 });

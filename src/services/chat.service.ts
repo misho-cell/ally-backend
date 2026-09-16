@@ -4592,6 +4592,27 @@ async function processToolBlocks(
 // aborts a stream that stops emitting events — the actual hang signal.
 const STREAM_TIMEOUT_MS = 180_000;
 const STREAM_STALL_TIMEOUT_MS = 45_000;
+
+/**
+ * Ticket 20 row 202 — how long the FIRST event may take, which is not the same
+ * question as how long a silence mid-stream may last.
+ *
+ * Goal 3928, 16 September: the „goal saved" event arrived at 21:17:15 and the
+ * run died at 21:18:01 with „Request was aborted." — 46 seconds, which is our
+ * own 45-second watchdog and nothing on Anthropic's side. The owner read „the
+ * task step could not finish".
+ *
+ * The two silences are not alike. ONCE A STREAM IS RUNNING, the API sends ping
+ * events, so 45 seconds of nothing means the connection is genuinely hung and
+ * aborting is right. BEFORE THE FIRST EVENT there are no pings to miss, and
+ * the window also contains the SDK's own retry-and-backoff on an overloaded
+ * model — so 45 seconds there is not evidence of a hang, it is evidence of a
+ * busy minute. We were cutting off a request that had not yet had a chance to
+ * fail.
+ *
+ * Kept under STREAM_TIMEOUT_MS so the overall timeout still has the last word.
+ */
+const STREAM_FIRST_EVENT_TIMEOUT_MS = 120_000;
 // Run budgets live in src/config/runBudgets.ts (env-overridable as one
 // family — wall clock, soft budget, iterations, hard ceiling, reaper age).
 // A narration step at least this long is treated as a real (buried) answer, not
@@ -4712,15 +4733,35 @@ async function callClaude(
     { timeout: STREAM_TIMEOUT_MS },
   );
 
-  // Watchdog: a healthy stream emits events continuously; silence means the
-  // connection hung — abort instead of waiting out the full timeout.
+  // Watchdog: a running stream emits ping events continuously, so silence
+  // means the connection hung — abort instead of waiting out the full timeout.
+  //
+  // Row 202: the wait for the FIRST event gets its own, longer window. There
+  // are no pings to miss before a stream starts, and that window holds the
+  // SDK's retry-and-backoff against an overloaded model — so the same 45
+  // seconds that prove a hang mid-stream prove only a busy minute here. Goal
+  // 3928 died in exactly that gap.
   let stallTimer: NodeJS.Timeout | null = null;
+  let started = false;
   const resetStall = (): void => {
     if (stallTimer) clearTimeout(stallTimer);
-    stallTimer = setTimeout(() => stream.abort(), STREAM_STALL_TIMEOUT_MS);
+    const window = started ? STREAM_STALL_TIMEOUT_MS : STREAM_FIRST_EVENT_TIMEOUT_MS;
+    stallTimer = setTimeout(() => {
+      // Named, because „Request was aborted." cost an hour of reading to
+      // attribute to our own watchdog rather than to the API.
+      // eslint-disable-next-line no-console
+      console.error(
+        `[chat] run ${ctx.runId} aborted: ${started ? 'stream stalled' : 'no first event'} ` +
+          `after ${window}ms`,
+      );
+      stream.abort();
+    }, window);
   };
   resetStall();
-  stream.on('streamEvent', resetStall);
+  stream.on('streamEvent', () => {
+    started = true;
+    resetStall();
+  });
   if (opts.onText) stream.on('text', opts.onText);
 
   let response: Anthropic.Message;

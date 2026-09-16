@@ -3,7 +3,6 @@ import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { distilSearchQuery } from './searchQuery.service';
-import { query as dbQuery } from '../db/postgres/client';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -47,10 +46,10 @@ import { query as dbQuery } from '../db/postgres/client';
  * 16 September: it has timed out on both of the goals we have logged.
  *
  * Since row 126's fourth pass the web branch spends part of this on getting
- * the query right before it searches — at most 1s for the city and 2.5s for
- * the distillation, leaving the search no less than 6.5s of the 10. The
- * budget is unchanged on purpose: a better query is not worth making every
- * first reply wait longer for.
+ * the query right before it searches — at most 2.5s for the distillation,
+ * leaving the search no less than 7.5s of the 10. The budget is unchanged on
+ * purpose: a better query is not worth making every first reply wait longer
+ * for. Measured on goal 3928, the distilled search took 1.2s in total.
  */
 const OPENING_SEARCH_BUDGET_MS = 10_000;
 
@@ -58,41 +57,19 @@ const OPENING_SEARCH_BUDGET_MS = 10_000;
 const MAX_QUERY_CHARS = 200;
 
 /**
- * One second for a lookup by primary key.
+ * NO CITY IS READ HERE, AND THE ABSENCE IS THE RULE.
  *
- * Deliberately mean rather than safe. This now sits inside the web branch,
- * ahead of the distillation and the search itself, and all three share the one
- * 10s budget — so every millisecond spent here is taken from the search. A
- * key lookup that cannot answer in a second means the database is in the state
- * row 108 is about, and the right response is to search without the city.
- */
-const CITY_QUERY_TIMEOUT_MS = 1_000;
-
-/**
- * Where the owner is, for the opening query — „notary" is a different search
- * in Batumi than in Tbilisi, and the fourth pass exists because the query was
- * not specific enough.
+ * The fourth pass first fetched User.city and offered it to the distiller.
+ * That was wrong and the seat caught it within the hour: D298 — nothing
+ * assumes a city. A place reaches a search only if the OWNER said it, in the
+ * goal or in answer to being asked, and a column filled months ago is not
+ * them saying it now.
  *
- * A missing city is normal and is passed through as such. Row 126's fourth
- * pass adds no place the owner did not give: the distiller is told the city
- * and told never to invent one, and a null here simply means it has none to
- * add. Asking the owner for their city is the frontend's item twenty-one.
+ * Nothing leaked — the one account it ran on stores no city — but the code
+ * would have assumed one for anybody who does. The distiller is now told to
+ * keep a place the owner named and never to add one, which needs no lookup at
+ * all: whatever the owner said is already in the text it is reading.
  */
-async function cityOf(userId: string): Promise<string | null> {
-  try {
-    const result = await dbQuery<{ city: string | null }>(
-      'SELECT city FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
-      [userId],
-      CITY_QUERY_TIMEOUT_MS,
-    );
-    const city = result.rows[0]?.city;
-    return city === undefined || city === null || city.trim() === '' ? null : city;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[opening-search] could not read the city:', (err as Error).message);
-    return null;
-  }
-}
 
 export interface OpeningSearches {
   readonly web: string | null;
@@ -232,8 +209,7 @@ export async function runOpeningSearches(
    * nothing to it.
    */
   const webWork = (async (): Promise<string> => {
-    const city = await cityOf(userId);
-    const searched = await distilSearchQuery(query, { userId, runId, city });
+    const searched = await distilSearchQuery(query, { userId, runId });
     // Charged like any other web search, because it is one. A pre-fetch that
     // did not reach the ledger would be spend the cost report cannot see.
     await recordFixedUsage({

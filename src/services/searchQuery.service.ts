@@ -60,24 +60,49 @@ const MAX_QUERY_CHARS = 120;
 /** Enough for six words in Georgian, where a word can run long. */
 const MAX_OUTPUT_TOKENS = 64;
 
+/**
+ * The brief, rewritten after the first live test.
+ *
+ * Goal 3928 repeated 3895's sentence word for word and the distiller answered
+ * „ნოტარიუსი ბინის ნასყიდობის ხელშეკრულება" — shorter, and still four of five
+ * results were articles, because it kept what the notary was FOR and the
+ * purpose is exactly what pulls articles. Someone writing about apartment
+ * purchase contracts is not someone who notarises one.
+ *
+ * So the line to draw is not length. It is between a word that narrows WHAT
+ * KIND of person or business is wanted, and a word that says WHY they are
+ * wanted. „Toyota Prius hybrid battery" is the first: it picks out which
+ * mechanic. „For an apartment purchase contract" is the second: every notary
+ * does those. Both examples are in the brief because both are real, both are
+ * ours, and the rule stated without them reads as „be brief", which is the
+ * instruction that produced 3928.
+ */
 const SYSTEM_PROMPT = [
-  'You turn one person’s description of what they need into a short web search query.',
+  'You turn one person’s description of what they need into a short web search query,',
+  'the kind a person types when they want to find a provider — not an article.',
   '',
   'Rules:',
   '- Answer with the query ALONE. No quotes, no explanation, no punctuation at the end.',
-  '- 2 to 6 words. Name the service or thing being looked for, and the place.',
-  '- Write it in the same language the person used.',
+  '- 2 to 5 words. Write it in the same language the person used.',
   '- Drop every first-person word — "I need", "I am looking for", "who will".',
-  '- Keep the words that make the search specific. If someone needs a repairman',
-  '  for a Toyota Prius hybrid battery, the car and the battery are the query and',
-  '  "repairman" is nearly worthless on its own.',
-  '- If the person names no place and a city is given to you below, add that city.',
-  '- Never invent a place, a brand or a detail the person did not give you.',
+  '- KEEP words that narrow WHAT KIND of provider is wanted.',
+  '- DROP words that say WHY they are wanted, or what the result is for. Those',
+  '  words find articles about the subject instead of people who do the work.',
+  '- Two real examples:',
+  '    "I need a repairman who can fix a Toyota Prius hybrid battery"',
+  '      → Toyota Prius hybrid battery repair',
+  '      (the car and the battery say WHICH mechanic — keep them)',
+  '    "I need a notary for an apartment purchase contract"',
+  '      → notary',
+  '      (every notary does those contracts, so "apartment purchase contract"',
+  '       only finds law-firm blogs — drop it)',
+  '- Keep a city, district or country ONLY if the person named one themselves.',
+  '- NEVER add a place. If they named none, the query has none.',
+  '- Never invent a brand, a detail or a place the person did not give you.',
 ].join('\n');
 
-function userPrompt(goalText: string, city: string | null): string {
-  const place = city === null || city.trim() === '' ? 'none known' : city.trim();
-  return `The person’s city: ${place}\n\nWhat they need:\n${goalText}`;
+function userPrompt(goalText: string): string {
+  return `What they need:\n${goalText}`;
 }
 
 /**
@@ -102,10 +127,18 @@ export interface DistilledQuery {
   readonly fromGoal?: string;
 }
 
+/**
+ * No city, on purpose — D298: nothing assumes a city.
+ *
+ * The first version of this took the account's stored city and offered it to
+ * the model. The seat caught it inside the hour. A place belongs in a search
+ * only when the owner said it, in the goal or in answer to being asked, and
+ * whatever they said is already in the text being read — so there is nothing
+ * for this interface to carry.
+ */
 export interface DistilContext {
   readonly userId: string;
   readonly runId: string;
-  readonly city: string | null;
 }
 
 /**
@@ -129,7 +162,7 @@ export async function distilSearchQuery(
         max_completion_tokens: MAX_OUTPUT_TOKENS,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt(goalText, ctx.city) },
+          { role: 'user', content: userPrompt(goalText) },
         ],
       },
       { timeout: DISTIL_BUDGET_MS },
