@@ -64,5 +64,29 @@ case "${1:-read}" in
     call -X POST -H 'Content-Type: application/json' \
       -d "{\"reader\":\"$ME\",\"last_seen_id\":$2}" "$API/admin/handoff/read"
     ;;
-  *) die "unknown command: $1 (read|post|mark)" ;;
+  sync)
+    # Read everything UNREAD, print it, and only then mark it. One command,
+    # because the two-command version is how a message gets lost.
+    #
+    # 16 September: `box.sh post` and `box.sh mark 1290` went out on the same
+    # shell line. 1290 was the tester's row 114 result — the clearance I was
+    # waiting for — and it was marked read without ever being displayed. I then
+    # held a finished change for thirty minutes waiting for permission I already
+    # had, and only found out because they mentioned it in the next message.
+    #
+    # `mark` stays for the case where something was genuinely read another way.
+    # `sync` is the one to reach for.
+    head="$(call "$API/admin/handoff?reader=$ME&limit=1")"
+    read -r unread seen latest <<< "$(python3 -c 'import sys,json;d=json.load(sys.stdin)["data"];print(d["unread"], d["last_seen_id"], d["latest_id"])' <<< "$head")"
+    if [ "$unread" = "0" ]; then
+      echo "box.sh: nothing unread (latest $latest)" >&2
+      exit 0
+    fi
+    # Only what has not been seen — never the whole box.
+    call "$API/admin/handoff?reader=$ME&since_id=$seen&limit=${2:-50}"
+    call -X POST -H 'Content-Type: application/json' \
+      -d "{\"reader\":\"$ME\",\"last_seen_id\":$latest}" "$API/admin/handoff/read" >/dev/null
+    echo "box.sh: marked read to $latest ($unread unread)" >&2
+    ;;
+  *) die "unknown command: $1 (read|post|mark|sync)" ;;
 esac

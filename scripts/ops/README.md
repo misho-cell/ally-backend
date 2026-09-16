@@ -6,7 +6,7 @@ exactly what is written in it, and the file is in git where anyone can read it.
 
 | script | what it can do | can it change anything? |
 |---|---|---|
-| `box.sh` | read / post / mark-read on the tester's handoff box | writes MESSAGES, to two people |
+| `box.sh` | read / post / **sync** / mark-read on the tester's handoff box | writes MESSAGES, to two people |
 | `ro.sh` | one SELECT against production | no — the server refuses anything else |
 | `logs.sh` | Railway deployment list and logs | no — queries only, never mutations |
 
@@ -16,6 +16,22 @@ but a single SELECT. The script cannot lie about that.
 
 `logs.sh` sends GraphQL **queries** only. Changing an environment variable is a
 `variableUpsert` mutation and is deliberately NOT in here — see below.
+
+### Use `sync`, not `read` then `mark`
+
+`box.sh sync` prints everything unread and marks it in the same command. Reach
+for that one.
+
+The two-step version is how a message gets lost, and it did. On 16 September a
+`post` and a `mark 1290` went out on one shell line; 1290 was the tester's row
+114 result — the clearance this session was waiting for — and it was marked read
+without ever being displayed. A finished change then sat unpushed for thirty
+minutes waiting for permission that had already been given, and it only came to
+light because the tester mentioned it in their next message.
+
+> Never pass an id to `mark` that you have not just read on screen.
+
+`mark` stays for the case where something was genuinely read another way.
 
 ## Secrets
 
