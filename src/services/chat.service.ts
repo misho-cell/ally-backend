@@ -2969,9 +2969,45 @@ const GO_AHEAD = [
 /** A go-ahead is a sentence, not a paragraph. Beyond this it is carrying content. */
 const GO_AHEAD_MAX_WORDS = 6;
 
+/**
+ * Ticket 20 row 131 — the go-ahead words are matched as WORDS.
+ *
+ * Found by sweeping for the defect family row 116 turned up in privacyScrub
+ * („tel" matching inside „hotel"), and this is the same mistake in the worst
+ * possible place: the consent path. Measured against the code as it shipped
+ * this morning, all four of these APPROVED A PLAN —
+ *
+ *   „ის მიდის სახლში"        he is going home        → approved
+ *   „გიორგი მიდის ხვალ"      Giorgi is going tomorrow → approved
+ *   „ის გააკეთებს ამას"      he will do it            → approved
+ *   „დაიწყება ხვალ"          it starts tomorrow       → approved
+ *
+ * Georgian inflects on the end of the word, so every imperative in this list
+ * is a prefix of an ordinary descriptive verb: მიდი/მიდის, გააკეთე/გააკეთებს,
+ * დაიწყე/დაიწყება. A substring test cannot tell „go ahead" from „he is going",
+ * and an approval puts real asks on real people's phones.
+ *
+ * Single words must therefore match whole. The multi-word entries („go ahead",
+ * „send them") stay substring tests: a phrase cannot land inside one word, and
+ * requiring exact tokens there would lose „go ahead," to its own comma.
+ */
+const GO_AHEAD_PHRASES = GO_AHEAD.filter((w) => w.includes(' '));
+const GO_AHEAD_WORDS = new Set(GO_AHEAD.filter((w) => !w.includes(' ')));
+
+/** Georgian and Latin letters and digits; everything else separates words. */
+const WORD_SPLIT_RE = /[^\p{L}\p{N}]+/u;
+
+export function wordsOf(text: string): string[] {
+  return text.toLowerCase().split(WORD_SPLIT_RE).filter(Boolean);
+}
+
 function saysGoAhead(said: string): boolean {
   const lower = said.toLowerCase();
-  if (!GO_AHEAD.some((w) => lower.includes(w))) return false;
+  const words = wordsOf(said);
+  const saysGo =
+    words.some((w) => GO_AHEAD_WORDS.has(w)) ||
+    GO_AHEAD_PHRASES.some((phrase) => lower.includes(phrase));
+  if (!saysGo) return false;
   if (/\?\s*$/.test(said)) return false;
   return said.split(/\s+/).filter(Boolean).length <= GO_AHEAD_MAX_WORDS;
 }

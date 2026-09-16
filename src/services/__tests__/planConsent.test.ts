@@ -244,3 +244,72 @@ describe('Ticket 20 row 122 — a typed go-ahead approves', () => {
     expect(approvalBelongsToThePlan('მიდი, გაგზავნე', ['კი, გააგზავნე', 'შევცვალოთ'])).toBe(false);
   });
 });
+
+/**
+ * Ticket 20 row 131 — the go-ahead words were matched as substrings.
+ *
+ * Found on 16 September by sweeping src/ for the defect family row 116 turned
+ * up in privacyScrub, where „tel" matched inside „hotel". This is the same
+ * mistake in the worst place in the codebase: the path that decides whether a
+ * plan was approved, and an approval puts real asks on real people's phones.
+ *
+ * Georgian inflects on the END of a word, so every imperative in the go-ahead
+ * list is a prefix of an ordinary descriptive verb:
+ *
+ *   მიდი  (go!)      is inside  მიდის    (he is going)
+ *   გააკეთე (do it!) is inside  გააკეთებს (he will do it)
+ *   დაიწყე (start!)  is inside  დაიწყება  (it starts)
+ *
+ * All four sentences below APPROVED A PLAN against the code as row 122 shipped
+ * it this morning. Not one of them is addressed to the assistant at all.
+ */
+describe('row 131 — a description of somebody going is not permission to go', () => {
+  const PLAN_CARD = ['დამტკიცებულია', 'შევცვალოთ'];
+
+  it.each([
+    ['ის მიდის სახლში', 'he is going home'],
+    ['გიორგი მიდის ხვალ', 'Giorgi is going tomorrow'],
+    ['ის გააკეთებს ამას', 'he will do it'],
+    ['დაიწყება ხვალ', 'it starts tomorrow'],
+    ['შეხვედრა დაიწყება 5-ზე', 'the meeting starts at five'],
+  ])('„%s" approves nothing (%s)', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+  });
+
+  /** Everything row 122 widened the rule FOR has to keep working. */
+  it.each([
+    'მიდი',
+    'მიდი, გაგზავნე',
+    'კარგი მიდი გააკეთე რაც შეგიძლია',
+    'გაგზავნე რექვესთები',
+    'დაიწყე',
+    'კარგი, გააგრძელე',
+  ])('„%s" still approves', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(true);
+  });
+
+  /**
+   * The multi-word entries stay substring tests on purpose: a phrase cannot
+   * land inside a single word, and exact tokens would lose „go ahead," to its
+   * own comma.
+   */
+  it.each(['go ahead', 'go ahead, send them', 'send it'])(
+    'the English phrase „%s" approves',
+    (s) => {
+      expect(approvalBelongsToThePlan(s, PLAN_CARD)).toBe(true);
+    },
+  );
+
+  it('and the refusals every earlier pass won are all still refusals', () => {
+    for (const said of [
+      'სააგენტო',
+      'ეკრანი 15 დიუიმიანია.',
+      'Gega-ს არ მისწერო.',
+      'მიდი, მაგრამ ჯერ ნინიას არ მისწერო',
+      'გაგზავნო?',
+      'ნუ გაგზავნი',
+    ]) {
+      expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+    }
+  });
+});
