@@ -72,7 +72,14 @@ export interface GoalDetail {
   stage: GoalStage;
   created_at: string;
   last_activity_at: string;
+  /** When this goal will next wake. Null unless it is open — only an open goal wakes. */
   next_wake_at: string | null;
+  /**
+   * The wake time a paused goal is holding for its resume. Never fires while
+   * the goal is not open; kept visible so the read says which of the two it is
+   * instead of presenting a time that cannot happen.
+   */
+  wake_held_at: string | null;
   thread_id: number | null;
   plan: TaskPlan | null;
   plan_proposed: TaskPlan | null;
@@ -414,7 +421,18 @@ export async function adminGoalDetail(
     stage: row.stage,
     created_at: iso(row.created_at) ?? '',
     last_activity_at: iso(row.last_activity_at) ?? '',
-    next_wake_at: iso(row.next_wake_at),
+    // Ticket 20 row 113, asked by the tester on 16 September: goal 2872 read
+    // `paused` with `next_wake_at` two hours in the future, and they could not
+    // tell whether it would fire. It would not — getDueTasks takes only
+    // `status = 'open'` — but the column says otherwise, and a field that
+    // states a time the system will not act on is the same defect this week
+    // has been full of, just in a read instead of a comment.
+    //
+    // The column keeps its value, deliberately: `updateTask` leaves it on a
+    // pause so a resumed goal picks its schedule back up. What is corrected is
+    // the READ, which is where the claim was being made.
+    next_wake_at: row.status === 'open' ? iso(row.next_wake_at) : null,
+    wake_held_at: row.status === 'open' ? null : iso(row.next_wake_at),
     thread_id: row.thread_id,
     plan: row.plan,
     plan_proposed: row.plan_proposed,

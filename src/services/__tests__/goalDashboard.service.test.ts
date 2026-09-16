@@ -278,3 +278,43 @@ describe('goalDays', () => {
     expect(params).toEqual([1519, 14]);
   });
 });
+
+/**
+ * Ticket 20 row 113, the tester's question of 16 September.
+ *
+ * Goal 2872 read `paused` with `next_wake_at` two hours in the future, and they
+ * could not tell from the admin whether it was going to fire. It was not:
+ * getDueTasks takes only `status = 'open'`. But the read said otherwise, and a
+ * field stating a time the system will never act on is the same defect as a
+ * comment claiming a property the code does not have — just in a read.
+ *
+ * updateTask keeps the column on a pause ON PURPOSE, so a resumed goal picks
+ * its schedule back up. The column is right; the read was the thing lying.
+ */
+describe('a wake time the goal will not act on', () => {
+  it('an OPEN goal reports its wake, and holds nothing back', async () => {
+    routeQueries({});
+    const goal = await adminGoalDetail('501', 1519);
+    expect(goal?.next_wake_at).toBe('2026-09-08T02:30:00.000Z');
+    expect(goal?.wake_held_at).toBeNull();
+  });
+
+  it.each(['paused', 'closed'])('a %s goal reports NO next wake', async (status) => {
+    routeQueries({ goal: { ...GOAL, status } });
+    const goal = await adminGoalDetail('501', 1519);
+    expect(goal?.next_wake_at).toBeNull();
+  });
+
+  it('but the held date is still readable, so the reader is not just told nothing', async () => {
+    routeQueries({ goal: { ...GOAL, status: 'paused' } });
+    const goal = await adminGoalDetail('501', 1519);
+    expect(goal?.wake_held_at).toBe('2026-09-08T02:30:00.000Z');
+  });
+
+  it('a paused goal with no wake at all reports neither', async () => {
+    routeQueries({ goal: { ...GOAL, status: 'paused', next_wake_at: null } });
+    const goal = await adminGoalDetail('501', 1519);
+    expect(goal?.next_wake_at).toBeNull();
+    expect(goal?.wake_held_at).toBeNull();
+  });
+});
