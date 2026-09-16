@@ -181,6 +181,67 @@ function alreadyWatching(
  * wrong answer for all but one of them. Deciding per subscription is the only
  * place the question can be asked per device.
  */
+/**
+ * Ticket 20 row 111, the push half — one push per event.
+ *
+ * 15 September: Giorgi received the same notification many times. Twelve call
+ * sites send pushes, so the guard belongs at the sender rather than at any one
+ * of them.
+ *
+ * The key is the person plus the exact words. A notification whose title, body
+ * and link are all identical to one this person was sent minutes ago is the
+ * same event told twice — the engine's wake body is a preview of the reply, so
+ * identical text means an identical reply. Anything genuinely new differs
+ * somewhere and goes through.
+ *
+ * IN MEMORY, DELIBERATELY, and here is what that costs: the service runs one
+ * replica (numReplicas: 1), so one map sees every push. On a restart the map
+ * is empty and one duplicate can slip through, which is the right way round —
+ * a missed suppression sends one extra notification, and a shared cache that
+ * went wrong could silence a real one. If this ever runs on more than one
+ * replica, this stops working and needs the database.
+ */
+const PUSH_DEDUPE_MS = 10 * 60 * 1_000;
+const recentPushes = new Map<string, number>();
+
+function pushKey(userId: string, payload: NotificationPayload): string {
+  return `${userId}\u0000${payload.title}\u0000${payload.body}\u0000${payload.url ?? ''}`;
+}
+
+/** Dropped on every check, so the map cannot grow without a bound. */
+function forgetExpiredPushes(now: number): void {
+  for (const [key, at] of recentPushes) {
+    if (now - at >= PUSH_DEDUPE_MS) recentPushes.delete(key);
+  }
+}
+
+/**
+ * CHECKING and RECORDING are separate, and the existing per-device tests are
+ * what proved they have to be.
+ *
+ * My first version recorded the push the moment it was checked. A
+ * notification suppressed because the person was LOOKING AT THE SCREEN
+ * delivers to nobody — and it was being written down as sent, so the retry
+ * that should go out the moment they look away was silently dropped.
+ *
+ * Over-suppressing costs somebody a notification they needed, which is worse
+ * than the duplicate this row is about. So a push is remembered only once it
+ * has actually reached a device.
+ */
+export function sentThisAlready(userId: string, payload: NotificationPayload): boolean {
+  forgetExpiredPushes(Date.now());
+  return recentPushes.has(pushKey(userId, payload));
+}
+
+export function rememberPush(userId: string, payload: NotificationPayload): void {
+  recentPushes.set(pushKey(userId, payload), Date.now());
+}
+
+/** Tests, and anything that needs a clean slate. */
+export function clearPushDedupe(): void {
+  recentPushes.clear();
+}
+
 export async function sendPushNotification(
   userId: string,
   payload: NotificationPayload,
@@ -188,6 +249,14 @@ export async function sendPushNotification(
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     // eslint-disable-next-line no-console
     console.error('[push] VAPID keys missing — push disabled');
+    return;
+  }
+
+  // Row 111: the same words to the same person inside the window is the same
+  // event told twice.
+  if (sentThisAlready(userId, payload)) {
+    // eslint-disable-next-line no-console
+    console.log(`[push] user ${userId}: identical notification suppressed — "${payload.title}"`);
     return;
   }
 
@@ -206,6 +275,7 @@ export async function sendPushNotification(
   const anyStreamOpen = hasActiveConnection(userId);
   const staleEndpoints: string[] = [];
 
+  let deliveredToAnyone = false;
   await Promise.allSettled(
     result.rows.map(async (row) => {
       const subscription: PushSubscription = {
@@ -223,6 +293,7 @@ export async function sendPushNotification(
 
       try {
         await webpush.sendNotification(subscription, JSON.stringify(payload));
+        deliveredToAnyone = true;
         // eslint-disable-next-line no-console
         console.log(`[push] user ${userId}: sent via ${label}`);
         await recordDelivery(userId, row.endpoint, 'sent', null, null);
@@ -246,6 +317,9 @@ export async function sendPushNotification(
       }
     }),
   );
+  // Row 111: remembered only now, and only if it actually reached somebody. A
+  // push nobody received is not a push this person has already had.
+  if (deliveredToAnyone) rememberPush(userId, payload);
 
   if (staleEndpoints.length > 0) {
     // eslint-disable-next-line no-console
