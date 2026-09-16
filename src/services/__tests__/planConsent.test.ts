@@ -135,3 +135,61 @@ describe('Ticket 19 G2, second pass — the words have to carry the yes', () => 
     expect(approvalBelongsToThePlan('დამტკიცებულია', null)).toBe(true);
   });
 });
+
+/**
+ * Third pass, 16 September — found by checking what people have ACTUALLY typed
+ * rather than what I imagined they type.
+ *
+ * Every approval in the live conversations table, all of them:
+ *
+ *   „დამტკიცებულია"                            × 7
+ *   „დამტკიცებულია. დაიწყე გეგმის მიხედვით."   × 1
+ *
+ * The first is the button: a tap is stored as an ordinary user message, so the
+ * button path and the typing path are the same path — which is also the answer
+ * to the one thing the tester cannot test, because by the founder's rule they
+ * never press approve.
+ *
+ * The second one my own second pass would have REFUSED. canonicalChoiceLabel
+ * only folds an approve word to the label at two words or fewer, and the bare
+ * affirmative list does not match a sentence. Tightening against „სააგენტო" had
+ * taken „approved, start on the plan" with it: one instance in the whole
+ * history, and the kind of regression nobody notices until a real person is
+ * ignored.
+ */
+describe('Ticket 19 G2, third pass — every approval anyone has really typed', () => {
+  const PLAN_CARD = ['დამტკიცებულია', 'შევცვალოთ'];
+
+  it('the button, which is 7 of the 8 and the path nobody can test by hand', () => {
+    expect(approvalBelongsToThePlan('დამტკიცებულია', PLAN_CARD)).toBe(true);
+  });
+
+  it('the 8th, a sentence that opens by approving', () => {
+    expect(approvalBelongsToThePlan('დამტკიცებულია. დაიწყე გეგმის მიხედვით.', PLAN_CARD)).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    'დავამტკიცე, დაიწყე',
+    'ვადასტურებ, მიდი',
+    'approved, go ahead',
+    'დადასტურებულია, გააგრძელე',
+  ])('„%s" approves — an approve word leading the sentence is a yes', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(true);
+  });
+
+  it.each([
+    'დამტკიცებულია, მაგრამ ჯერ ნინიას არ მისწერო',
+    'კი, ოღონდ მხოლოდ ერთ ადამიანს',
+    'approved but not yet',
+    'კი, თუ ლიკაც დაეთანხმება',
+  ])('„%s" does NOT approve — it takes itself back', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+  });
+
+  it('and the hole that started all this is still closed', () => {
+    expect(approvalBelongsToThePlan('სააგენტო', PLAN_CARD)).toBe(false);
+    expect(approvalBelongsToThePlan('ეკრანი 15 დიუიმიანია.', PLAN_CARD)).toBe(false);
+  });
+});

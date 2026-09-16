@@ -2791,13 +2791,46 @@ export function answerChunkHandler(opts: {
 const PLAN_YES =
   /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|approve[d]?)[\s.!,]*$/iu;
 
+/**
+ * A yes that turns on its own heel: „approved, BUT not Ninia yet", „yes if…".
+ * The plan it is about is not the plan on the screen, so it is not a yes to it.
+ */
+const TAKES_IT_BACK = /(მაგრამ|ოღონდ|თუმცა|ჯერ არა|არა,|\bbut\b|\bexcept\b|\bonly if\b|\bif\b)/iu;
+
+/**
+ * Does the owner's own message say yes to THIS plan?
+ *
+ * Found by checking rather than assuming, the morning after the second pass
+ * shipped. Every approval a user has ever typed, read back from the live
+ * conversations table:
+ *
+ *   „დამტკიცებულია"                            × 7   (the button; a tap is
+ *                                                     stored as a plain user
+ *                                                     message, so it arrives
+ *                                                     here exactly like typing)
+ *   „დამტკიცებულია. დაიწყე გეგმის მიხედვით."   × 1
+ *
+ * The second one is an unmistakable approval, and my second pass would have
+ * REFUSED it: canonicalChoiceLabel only folds an approve word to the label at
+ * two words or fewer, and the whole-message affirmative list does not match a
+ * sentence. Tightening the rule against „სააგენტო" had quietly taken „approved,
+ * start on the plan" with it — a regression with one instance in the entire
+ * history, which is exactly the kind nobody notices until a real person is
+ * ignored.
+ *
+ * So an approve word LEADING the message counts however the sentence goes on,
+ * unless the sentence takes it back.
+ */
 export function approvalBelongsToThePlan(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
 ): boolean {
   const said = lastOwnerMessage?.trim() ?? '';
   if (said === '') return false;
-  if (canonicalChoiceLabel(said) === APPROVE_LABEL) return true;
+  if (TAKES_IT_BACK.test(said)) return false;
+  // The approve button, and any sentence that opens by approving.
+  if (canonicalChoiceLabel(said) === APPROVE_LABEL || APPROVE_LIKE_RE.test(said)) return true;
+  // A bare yes only counts when a plan card is the thing being answered.
   const planCardOnScreen = (newestOfferedChoices ?? []).some(
     (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
   );
