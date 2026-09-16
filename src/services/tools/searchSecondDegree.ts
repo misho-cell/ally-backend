@@ -303,6 +303,26 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // both and pick, per query, which is what it is for. The gita finding
     // stands and is handled where it belongs: `\m` word-start on the raw text,
     // no normalize fold, so „gita" cannot match Margita whichever plan runs.
+    //
+    // AND THE SAME WRAPPER IS CORRECT IN wordMatch.ts, which is not a
+    // contradiction — measured both ways on the live base, same term, same day:
+    //
+    //   tag search (mine-scoped LATERAL)      with `|| ''`   150 ms
+    //   „javakhishvili"                       without      1,690 ms
+    //   second degree (friend-scoped LATERAL) with `|| ''`   734 ms
+    //   „javakhishvili"                       without         96 ms
+    //
+    // Eleven times worse there, seven times better here, for the identical
+    // edit. The difference is what the nested loop has to scan. wordMatch
+    // probes `mine` — a few thousand of the user's OWN phones, a handful of
+    // tags each — so the per-phone index is unbeatable and pulling 3,868 global
+    // trigram rows to join against it is waste. This query probes per FRIEND
+    // ACCOUNT, and a friend's row is their whole phonebook: 282 friends x ~1,987
+    // tags is over half a million rows before the filter. There the same 3,868
+    // rows are a bargain.
+    //
+    // So neither file should be „harmonised" with the other. If somebody comes
+    // to make them consistent, this is the measurement that says not to.
     // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones.
     //
     // The patterns are now the flattened per-word groups rather than variants

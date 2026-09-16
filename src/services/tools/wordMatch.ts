@@ -32,13 +32,29 @@ export interface ExactMatchSql {
  *  - every branch joins FROM mine (materialized, a few thousand phones) and is
  *    filtered in memory over that small set — the phone btree indexes drive the
  *    plan, and label filters must NEVER tempt the planner into the trigram GIN
- *    indexes: on this database pg_trgm extracts almost no trigrams from
- *    Georgian script (show_trgm('შენგელია') → 1 gram vs 10 for the Latin
- *    form), so a KA pattern turns a GIN scan into a near-full-index scan and a
- *    statement timeout — every Georgian-script query errored while Latin
- *    worked. The `(expr || '')` wrapper makes the filter expression differ from
- *    the indexed expression, deterministically forcing the mine-driven plan for
- *    every script.
+ *    indexes. The `(expr || '')` wrapper makes the filter expression differ
+ *    from the indexed expression, deterministically forcing the mine-driven
+ *    plan.
+ *
+ *    THE WRAPPER STANDS, BUT NOT FOR THE REASON WRITTEN HERE. This said that
+ *    pg_trgm extracts almost no trigrams from Georgian script
+ *    (show_trgm('შენგელია') → 1 gram vs 10 for Latin), so a KA pattern turned a
+ *    GIN scan into a near-full scan and a timeout. Re-measured 16 September on
+ *    PostgreSQL 17.7: 'შენგელია' yields 9 trigrams against 10 for 'shengelia',
+ *    and the two scripts plan identically (Bitmap Index Scan, cost 7,050 vs
+ *    7,167). Whatever was true when that was written — an older pg_trgm, a
+ *    different locale — is not true now.
+ *
+ *    What IS still true is the second reason below, and it was measured the
+ *    same day on the same term. For „javakhishvili" in THIS shape:
+ *
+ *      with `|| ''`      150 ms   nested loop from mine, per-phone index
+ *      without         1,690 ms   Bitmap Index Scan, 3,868 global rows joined
+ *
+ *    Eleven times worse. Note that the identical edit is seven times BETTER in
+ *    searchSecondDegree, because that query probes per friend ACCOUNT — a whole
+ *    phonebook per row — while this one probes `mine`, a few tags per phone.
+ *    The two files disagree on purpose. Do not harmonise them.
  *  - every pattern is its OWN placeholder, never `ANY(array)`, and the page +
  *    count queries share one gap-free parameter array (an unreferenced bind
  *    parameter is a Postgres error).
