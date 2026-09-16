@@ -126,6 +126,7 @@ import {
   ALLOW_OPEN,
   ALLOW_CLOSE,
 } from './privacyScrub';
+import { georgianSpellingNote } from './ownerNameGeorgian';
 import { createSafeTextStreamer, SafeTextStreamer } from './answerStream';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
@@ -2729,7 +2730,11 @@ async function buildAgentSystemPrompt(
   const base = configResult.rows[0]?.system_prompt ?? '';
   const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
   const nameSection = registeredName
-    ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).`
+    ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).` +
+      // Ticket 20 row 146 found 1: the name is stored in Latin, so every
+      // Georgian rendering of it was a model transliterating on the spot —
+      // and „t" is two Georgian letters. One goal carried both.
+      georgianSpellingNote(registeredName)
     : '';
   // Ticket 20 row 130 — STABLE FIRST, VOLATILE LAST, and the order is the
   // whole point of this expression.
