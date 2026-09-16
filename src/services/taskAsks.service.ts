@@ -1188,10 +1188,37 @@ const RELAY_AMBIGUOUS_ERROR =
   'გადაგზავნა ნამდვილად ითხოვა, ჰკითხე სრული სახელი და გვარი; თუ უბრალოდ ადამიანს ასახელებდა — ' +
   'მადლობა უთხარი და დაასრულე. კანდიდატები ნუ ჩამოთვლი.' +
   RELAY_ALREADY_DELIVERED;
+/**
+ * Ticket 20, the tester's row 125 — the sentence that made an assistant tell a
+ * real user something untrue.
+ *
+ * 16 September, goal 3540. Ninia asked to reach Misho; ask 1849 went to
+ * Tornike as the bridge. At 12:08:36 relay_ask was called from NINIA's own
+ * thread with ask_id 1849 — an ask addressed to Tornike, not to her. The guard
+ * was right to refuse it: only an ask's recipient may forward it.
+ *
+ * What it SAID was „Ask not found.", and the ask was found — it simply was not
+ * hers. Her assistant read that as the person being unreachable and told her,
+ * at 12:11:13, that writing to Misho is impossible. It is not.
+ *
+ * Two different facts had one sentence between them. They now have two, and
+ * the one for the wrong caller says what is actually true, including the part
+ * the model got wrong: this says nothing about whether the person can be
+ * reached.
+ */
+const RELAY_NOT_YOUR_ASK_ERROR =
+  'ეს კითხვა სხვას მიუვიდა — გადაგზავნა მხოლოდ მისმა ადრესატმა შეიძლება. ეს იმას კი არ ნიშნავს, ' +
+  'რომ ამ ადამიანთან მიწვდომა შეუძლებელია: მხოლოდ იმას, რომ ამ კონკრეტული კითხვის გადაგზავნა ' +
+  'ამ საუბრიდან არ ხდება. მომხმარებელს არ უთხრა, რომ ადამიანთან მიწერა შეუძლებელია, და ' +
+  '„სისტემური შეცდომა" არ ახსენო.';
+
 const RELAY_RESOLUTION_ERRORS: ReadonlySet<string> = new Set([
   RELAY_EMPTY_NAME_ERROR,
   RELAY_NOT_FOUND_ERROR,
   RELAY_AMBIGUOUS_ERROR,
+  // Carries its own instruction, and the neutral close — „your answer reached
+  // the asker" — would be a second false statement: nothing was answered here.
+  RELAY_NOT_YOUR_ASK_ERROR,
 ]);
 
 /**
@@ -1259,8 +1286,11 @@ async function relayAskInner(
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = parent.rows[0];
-  if (!row || String(row.to_user_id) !== relayerUserId) {
-    return { sent: false, error: 'Ask not found.' };
+  // Two facts, two sentences — see RELAY_NOT_YOUR_ASK_ERROR. „Not found" is
+  // true only when there is genuinely no such ask.
+  if (!row) return { sent: false, error: 'Ask not found.' };
+  if (String(row.to_user_id) !== relayerUserId) {
+    return { sent: false, error: RELAY_NOT_YOUR_ASK_ERROR };
   }
   if (row.parent_ask_id !== null) {
     return { sent: false, error: 'ეს კითხვა უკვე გადაგზავნილია ერთხელ — ჯაჭვი აქ ჩერდება.' };

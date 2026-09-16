@@ -618,8 +618,37 @@ describe('createRelayAsk', () => {
     expect((out as { error: string }).error).toContain('უკვე გადაეცა');
   });
 
+  /**
+   * This test used to assert that the wrong caller is told „Ask not found."
+   * The refusal is right — only an ask's recipient may forward it — and the
+   * sentence was false, which is a different thing and a costly one.
+   *
+   * 16 September, goal 3540. Ninia asked to reach Misho; ask 1849 went to
+   * Tornike as the bridge. At 12:08:36 her own thread called relay_ask with
+   * ask_id 1849, was told the ask was not found, and at 12:11:13 told her that
+   * writing to Misho is impossible. It is not. A real user was given an untrue
+   * answer, and the test above was holding the sentence that produced it.
+   */
   it('only the ask RECIPIENT can relay it', async () => {
     routeRelayQueries({ parent: { ...parentRow, to_user_id: 99 } });
+
+    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
+
+    expect(out.sent).toBe(false);
+    const { error } = out as { error: string };
+    // What is true: the ask exists and belongs to somebody else.
+    expect(error).toContain('სხვას მიუვიდა');
+    // What must not be concluded from it, because that is what happened.
+    expect(error).toContain('შეუძლებელია');
+    expect(error).toContain('არ უთხრა');
+    expect(error).not.toContain('Ask not found.');
+    // It carries its own instruction, so the neutral close — „your answer
+    // reached the asker" — must not ride along: nothing was answered here.
+    expect(error).not.toContain('უკვე გადაეცა');
+  });
+
+  it('a genuinely missing ask is still told it is missing', async () => {
+    routeRelayQueries({ parent: null });
 
     const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
 
