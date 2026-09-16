@@ -9,6 +9,7 @@ import {
   clearRunEvidence,
   nameCandidates,
   recordRunEvidence,
+  replaceNameWithPlaceholder,
 } from '../officeholderGate';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -216,5 +217,43 @@ describe('the gate cannot make the reply wait for ever', () => {
 
     spy.mockRestore();
     delete process.env.OFFICEHOLDER_GATE_BUDGET_MS;
+  });
+});
+
+/**
+ * Thread 15676, 16 September — the placeholder wore a Georgian case ending.
+ *
+ * The reply reached the person as „(სახელი ვერ დავადასტურე ოფიციალურ
+ * გვერდზე)ა". The „ა" is the copula that was glued to the name („კალაძეა" =
+ * „is Kaladze"); a plain split/join took the name out from underneath it and
+ * left its grammar sitting on the bracket, so the placeholder reads as though
+ * it were itself somebody's name with an ending on it.
+ */
+describe('the placeholder does not inherit the name’s grammar', () => {
+  const PH = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
+
+  it.each([
+    ['თბილისის მერი კახა კალაძეა.', 'თბილისის მერი (X).'],
+    ['კახა კალაძეს ვკითხე.', '(X) ვკითხე.'],
+    ['კახა კალაძემ თქვა.', '(X) თქვა.'],
+    ['მერია კახა კალაძე.', 'მერია (X).'],
+  ])('%s', (input, shape) => {
+    const out = replaceNameWithPlaceholder(input, 'კახა კალაძე', PH);
+    expect(out).toBe(shape.replace('(X)', PH));
+  });
+
+  it('leaves a Latin name alone apart from the swap', () => {
+    expect(replaceNameWithPlaceholder('John Smith is the mayor.', 'John Smith', PH)).toBe(
+      `${PH} is the mayor.`,
+    );
+  });
+
+  it('replaces every occurrence, each with its own ending', () => {
+    const out = replaceNameWithPlaceholder('კახა კალაძემ და კახა კალაძეს', 'კახა კალაძე', PH);
+    expect(out).toBe(`${PH} და ${PH}`);
+  });
+
+  it('a name with regex characters in it is not a pattern', () => {
+    expect(replaceNameWithPlaceholder('A.B Smith spoke.', 'A.B Smith', PH)).toBe(`${PH} spoke.`);
   });
 });

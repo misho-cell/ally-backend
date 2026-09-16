@@ -250,6 +250,29 @@ async function inUsersPhonebook(userId: string | undefined, name: string): Promi
     return false;
   }
 }
+/**
+ * Georgian glues its grammar onto the end of a name, and a plain string swap
+ * leaves that glue behind.
+ *
+ * Ticket 20, thread 15676 on 16 September: the reply read
+ * „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)ა" — the „ა" is the copula that
+ * was attached to the name („კალაძეა" = „is Kaladze"), and split/join took the
+ * name out from underneath it. The sentence then reads as though the
+ * placeholder itself were somebody's name with an ending on it.
+ *
+ * So the ending goes with the name. Any Georgian letters running straight on
+ * from the match with no space are that name's grammar, not the next word.
+ */
+const GEORGIAN_LETTER = '[\\u10A0-\\u10FF]';
+
+export function replaceNameWithPlaceholder(
+  text: string,
+  name: string,
+  placeholder: string,
+): string {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
+}
 
 export async function applyOfficeholderGate(
   reply: string,
@@ -285,7 +308,7 @@ export async function applyOfficeholderGate(
       }
       if (inPhonebook) continue;
       refused.push(name);
-      out = out.split(name).join(RUN_STRINGS[language].nameNotVerified);
+      out = replaceNameWithPlaceholder(out, name, RUN_STRINGS[language].nameNotVerified);
     }
   }
   return { reply: out, refused };
