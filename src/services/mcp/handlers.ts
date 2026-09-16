@@ -942,12 +942,33 @@ export async function mcpGetMyTasks(
 
 type ConsentState = 'plan_approved' | 'plan_awaiting_yes' | 'legacy_grant' | 'none';
 
-function consentStateFor(
+/**
+ * Ticket 20 row 134 — this told every member that every plan was approved.
+ *
+ * The test was `t.plan !== null && t.plan_approved_at !== null`, and
+ * getMyTasks did not SELECT either column. They arrived as undefined, and
+ * `undefined !== null` is TRUE — so the first branch matched on every goal in
+ * the connector's list. The seat caught it on 3697-3703, where the admin read
+ * plan_approved_at null, stage plan_proposed and permission false; it was
+ * every goal, on every account, on that path.
+ *
+ * Two fixes and the second is the one that lasts. The columns are selected
+ * now. And the checks below are written so ABSENT data can never produce a
+ * yes: a consent state is only claimed from a value that is actually there,
+ * and anything missing falls through to the least permissive answer.
+ *
+ * „I do not know" must never come out as „approved" — the same rule row 147
+ * needed an hour ago, where a closed goal with no stored reason read as
+ * solved.
+ */
+export function consentStateFor(
   t: Pick<Task, 'permission_granted' | 'plan' | 'plan_proposed' | 'plan_approved_at'>,
 ): ConsentState {
-  if (t.plan !== null && t.plan_approved_at !== null) return 'plan_approved';
-  if (t.plan_proposed !== null) return 'plan_awaiting_yes';
-  return t.permission_granted ? 'legacy_grant' : 'none';
+  // Truthiness, not `!== null`: undefined is missing data, and missing data is
+  // not a yes.
+  if (t.plan && t.plan_approved_at) return 'plan_approved';
+  if (t.plan_proposed) return 'plan_awaiting_yes';
+  return t.permission_granted === true ? 'legacy_grant' : 'none';
 }
 
 export async function mcpUpdateTask(

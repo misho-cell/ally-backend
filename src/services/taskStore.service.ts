@@ -437,7 +437,12 @@ export async function getMyTasksPage(
 
 export async function getMyTasks(userId: string, status?: TaskStatus): Promise<Task[]> {
   const result = await query<Task>(
+    // Ticket 20 row 134: the plan columns are SELECTED, because the connector
+    // derives „has the owner said yes" from them. They were missing, so they
+    // arrived as undefined, and `t.plan_approved_at !== null` is TRUE for
+    // undefined — every goal read back as plan_approved.
     `SELECT id, title, description, task_type, status, permission_granted,
+            plan, plan_proposed, plan_approved_at, plan_version,
             created_at, last_activity_at
      FROM tasks
      WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)
