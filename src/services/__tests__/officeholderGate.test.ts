@@ -154,3 +154,67 @@ describe('applyOfficeholderGate — the user’s own phonebook (Ticket 14 B7)', 
     expect(out.refused).toEqual(['ლაშა ხუციშვილი']);
   });
 });
+
+/**
+ * This gate is the last thing between the model and the person waiting, and it
+ * used to look every name up one at a time, with a five-second timeout each and
+ * no cap on how many names a reply can hold. Six officeholders in one answer is
+ * thirty seconds added to a reply that is already late.
+ *
+ * Found on 16 September by going looking for the shape that cost
+ * get_pending_updates 74,871 ms: N queries in series, each honouring its own
+ * budget, nothing honouring the answer's.
+ */
+describe('the gate cannot make the reply wait for ever', () => {
+  const OFFICE = (name: string): string => `${name} არის შემოსავლების სამსახურის უფროსი.`;
+
+  beforeEach(() => {
+    mockQuery.mockClear();
+    mockQuery.mockResolvedValue({ rows: [{ found: false }], rowCount: 1 } as never);
+  });
+
+  it('asks about a repeated name ONCE, however many sentences carry it', async () => {
+    const reply = [OFFICE('ლევან კაკავა'), OFFICE('ლევან კაკავა'), OFFICE('ლევან კაკავა')].join(
+      ' ',
+    );
+
+    const out = await applyOfficeholderGate(reply, undefined, 'ka', '501');
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    // And every occurrence is still rewritten — the dedupe is in the lookups,
+    // not in the replacement.
+    expect(out.reply).not.toContain('ლევან კაკავა');
+  });
+
+  it('gives up on the lookups when the budget is spent, and refuses the name', async () => {
+    jest.resetModules();
+    process.env.OFFICEHOLDER_GATE_BUDGET_MS = '10';
+    const slow = (await import('../../db/postgres/client')).query as jest.MockedFunction<
+      typeof query
+    >;
+    slow.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ rows: [{ found: true }], rowCount: 1 } as never), 25),
+        ),
+    );
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const fresh = await import('../officeholderGate');
+
+    const reply = ['ნინო ბერიძე', 'გიორგი ლომაია', 'დათო ქავთარაძე', 'ეკა წერეთელი']
+      .map(OFFICE)
+      .join(' ');
+    const out = await fresh.applyOfficeholderGate(reply, undefined, 'ka', '501');
+
+    // Not one query per name: the clock stopped it part-way.
+    expect(slow.mock.calls.length).toBeLessThan(4);
+    // And the names it could not check were REFUSED, not waved through. That
+    // direction is the whole point — the gate exists to stop the product
+    // naming an officeholder it cannot show evidence for.
+    expect(out.refused.length).toBeGreaterThan(0);
+    expect(String(spy.mock.calls.at(-1)?.[0])).toContain('budget spent');
+
+    spy.mockRestore();
+    delete process.env.OFFICEHOLDER_GATE_BUDGET_MS;
+  });
+});

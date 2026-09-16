@@ -8,6 +8,26 @@ import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { query } from '../db/postgres/client';
 
 const PHONEBOOK_LOOKUP_TIMEOUT_MS = 5_000;
+/**
+ * The whole gate's wall clock, not one lookup's.
+ *
+ * This runs on the FINAL reply, the last thing between the model and the
+ * person waiting for it, and it looked names up ONE AT A TIME with a
+ * five-second timeout each and no cap on how many names a reply can contain.
+ * Six officeholders in one answer is thirty seconds added to a reply that is
+ * already late — every lookup inside its budget, the answer far outside any.
+ *
+ * Found on 16 September by looking for this exact shape after it cost
+ * get_pending_updates 74,871 ms. It is the third place with it, and the worst
+ * placed: those lookups hit "UserAlias" and "UserTags", the 5.7 GB pair whose
+ * reads are currently going to disk.
+ *
+ * Running out of budget is SAFE here and that is why a budget is allowed to be
+ * the answer: a name that cannot be checked is treated as unverified and
+ * replaced, which is exactly what a failed lookup already does. The gate fails
+ * towards refusing to name somebody, never towards naming them.
+ */
+const GATE_BUDGET_MS = Number(process.env.OFFICEHOLDER_GATE_BUDGET_MS ?? 4_000);
 
 /**
  * Ticket 12 Task 46 (D151, the founder 9 Sep): an official's name only from a
@@ -241,11 +261,29 @@ export async function applyOfficeholderGate(
   const refused: string[] = [];
   const sentences = reply.split(SENTENCE_SPLIT_RE);
   let out = reply;
+  const startedAt = Date.now();
+  // One answer per distinct name, however many sentences carry it. The
+  // replacement below already rewrites every occurrence, so the repeat lookups
+  // were buying nothing and costing a database round trip each.
+  const known = new Map<string, boolean>();
   for (const sentence of sentences) {
     if (!namesOffice(sentence) || FORMER_RE.test(sentence)) continue;
     for (const name of nameCandidates(sentence)) {
       if (nameInEvidence(name, evidence)) continue;
-      if (await inUsersPhonebook(userId, name)) continue;
+      let inPhonebook = known.get(name);
+      if (inPhonebook === undefined) {
+        if (Date.now() - startedAt > GATE_BUDGET_MS) {
+          // Out of time. Unchecked means unverified — the same answer a failed
+          // lookup gives, and the direction this gate exists to fail in.
+          // eslint-disable-next-line no-console
+          console.warn(`[officeholder-gate] budget spent; "${name}" treated as unverified`);
+          inPhonebook = false;
+        } else {
+          inPhonebook = await inUsersPhonebook(userId, name);
+        }
+        known.set(name, inPhonebook);
+      }
+      if (inPhonebook) continue;
       refused.push(name);
       out = out.split(name).join(RUN_STRINGS[language].nameNotVerified);
     }
