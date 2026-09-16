@@ -159,3 +159,53 @@ describe('Ticket 19 G7, second pass — did it work, and did anything come back'
     expect(outcomeOf({ sent: true })).toMatchObject({ count: null, empty: false });
   });
 });
+
+/**
+ * Ticket 20 row 125 — the table knew there was an error and not what it said.
+ *
+ * 16 September, the tester's PR1 run: four of five propose_task_plan calls
+ * failed on the first attempt (≈146 ms) and succeeded on the second (≈740 ms).
+ * They asked what failed. This table — built for exactly that question — held
+ * `ok = false` and `result_keys = 'error,proposed'`, and nothing more. The
+ * argument the validator rejected was past args_summary's 300-character cut
+ * too, so the answer was not recoverable from the record at all.
+ *
+ * The fix is one column. The lesson is the one this file already opens with:
+ * a record that says something happened, without saying what, gets read as an
+ * answer anyway.
+ */
+describe('row 125 — the reason, not just the fact', () => {
+  it('keeps the error text of a failed call', () => {
+    const out = outcomeOf({
+      proposed: false,
+      error: "person Eka: route must name one of the plan's routes",
+    });
+    expect(out.ok).toBe(false);
+    expect(out.error).toBe("person Eka: route must name one of the plan's routes");
+  });
+
+  it('is null for a call that worked, so the column reads as the reason', () => {
+    expect(outcomeOf({ proposed: true, version: 2, summary: 'x' }).error).toBeNull();
+    expect(outcomeOf('a plain string result').error).toBeNull();
+    expect(outcomeOf(null).error).toBeNull();
+  });
+
+  it('redacts a phone inside an error, like every other text here (D149)', () => {
+    const out = outcomeOf({ sent: false, error: 'No such contact: +995599123456' });
+    expect(out.error).toBe('No such contact: …3456');
+    expect(out.error).not.toContain('995599');
+  });
+
+  it('truncates a runaway error rather than letting one call fill the table', () => {
+    const out = outcomeOf({ ok: false, error: 'x'.repeat(500) });
+    expect(out.error).toHaveLength(301);
+    expect(out.error?.endsWith('…')).toBe(true);
+  });
+
+  it('keeps only a string error — a shape we do not have is not guessed at', () => {
+    expect(outcomeOf({ ok: false, error: { code: 17 } }).error).toBeNull();
+    expect(outcomeOf({ ok: false, error: '   ' }).error).toBeNull();
+    // Still a failure, though: `ok` reads the key's presence, not its type.
+    expect(outcomeOf({ ok: false, error: { code: 17 } }).ok).toBe(false);
+  });
+});

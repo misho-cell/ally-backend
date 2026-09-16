@@ -1,0 +1,12 @@
+-- Ticket 20 row 125: the one thing this table was built for and did not record.
+--
+-- 16 September, the tester's PR1 run: four of five propose_task_plan calls
+-- failed on the first attempt and succeeded on the second. They asked what
+-- failed. The log had `ok = false` and `result_keys = 'error,proposed'` — it
+-- knew there WAS an error and not a single word of what it said. args_summary
+-- truncates at 300 characters, so the argument the validator rejected was cut
+-- off too, and the question was unanswerable from the record.
+--
+-- A table whose whole purpose is „why did this call not work" has to keep the
+-- reason. Redacted and truncated like every other text column here.
+ALTER TABLE tool_call_log ADD COLUMN IF NOT EXISTS error_text TEXT;

@@ -21,6 +21,35 @@ export const CLIFFHANGER_NUDGE =
   'თუ საქმე დაუსრულებელია და წინსვლა შეგიძლია — განაგრძე ახლავე: გამოიძახე საჭირო ხელსაწყო. ' +
   'თუ საქმე დასრულდა — ჩამოაყალიბე საბოლოო პასუხი; რაც ვერ მოიძებნა, პირდაპირ თქვი.)';
 
+/**
+ * Ticket 20 row 126 — a task_step run that ends leaving the goal planless.
+ *
+ * The tester's PR1 run, 16 September. Four of five fresh goals proposed their
+ * plan in the run that saved them (row 101). The fifth, goal 3598, did not:
+ * ensureGoalForRequest had opened it BEFORE the run started, so create_task
+ * was never called and row 101's instruction — which lives in create_task's
+ * RESULT — never reached it. That run searched for 107 seconds and answered
+ * with no plan; the delayed engine turn then proposed it four seconds later,
+ * in a second message.
+ *
+ * The task-engine section of the prompt ALREADY says „გეგმა ჯერ არ არის.
+ * პირველი ნაბიჯი: propose_task_plan-ით შესთავაზე". It said so during that
+ * run. This is the lesson G6 and row 117 both wrote down — a sentence in a
+ * prompt is not a wall — so the answer is not a better sentence. The run is
+ * checked against the goal's actual state and asked once more, with the tools
+ * still in its hand.
+ *
+ * The delayed engine turn stays exactly where it is. It already refuses to
+ * fire when a plan exists, so a nudge that works leaves it nothing to do
+ * rather than racing it — the same arrangement row 101 chose.
+ */
+export const MISSING_PLAN_NUDGE =
+  '(სისტემური შენიშვნა: ამ მიზანს გეგმა ჯერ არ აქვს, შენი პასუხი კი უკვე დაიწერა. ' +
+  'ახლავე გამოიძახე propose_task_plan — რა ჩაითვლება მოგვარებულად, რა გზებით მიდიხარ, ' +
+  'ვის ეკითხები (ტელეფონის id ძიების შედეგიდან), ვის არასდროს — და ბოლოს present_choices-ით ' +
+  'ორი ღილაკი: „დამტკიცებულია" და „შევცვალოთ". პასუხი აღარ გაიმეორო: მხოლოდ გეგმა და ღილაკები. ' +
+  'თუ მფლობელმა თქვა, რომ არავის არ მივწეროთ — people_to_involve ცარიელი რჩება.)';
+
 // The final message claiming NOTHING was found while a tool round returned
 // results (battery case 8: steps named 23 people, the final said none exist).
 // Only a short final can be a blanket not-found claim — a long answer that

@@ -53,6 +53,8 @@ export interface ToolCallRow {
   readonly result_empty: boolean | null;
   readonly ok: boolean | null;
   readonly result_keys: string | null;
+  /** Ticket 20 row 125: what the failure said, not merely that there was one. */
+  readonly error_text: string | null;
   readonly result_chars: number | null;
   readonly duration_ms: number | null;
   readonly created_at: string;
@@ -111,6 +113,42 @@ export interface ToolOutcome {
   readonly count: number | null;
   /** The top-level key names of the result — schema, never content. */
   readonly keys: string | null;
+  /**
+   * What the failure SAID, where it said anything.
+   *
+   * Ticket 20 row 125. The tester asked why four of five propose_task_plan
+   * calls failed on the first try, and this table — the one built to answer
+   * exactly that — could only say that they had. `ok` and `result_keys`
+   * record that an error existed; nothing recorded its text, and
+   * args_summary's 300-character cut had already taken the rejected argument
+   * with it.
+   *
+   * Null for a call that succeeded, so the column reads as "the reason" and
+   * not as "a field that is usually empty".
+   */
+  readonly error: string | null;
+}
+
+/**
+ * How much of an error message is kept. Our errors are one sentence written
+ * for the model to act on („route must name one of the plan's routes"), so
+ * this is generous for a real one and a ceiling on anything that is not.
+ */
+const MAX_ERROR_CHARS = 300;
+
+/**
+ * The error text out of a tool result, redacted like everything else here.
+ *
+ * Only a STRING error is kept. Tools in this codebase answer
+ * `{ ok: false, error: '…' }`; a non-string under that key is a shape we do
+ * not have, and guessing at how to render it would put unreviewed content in
+ * a debugging table.
+ */
+function errorTextOf(record: Record<string, unknown>): string | null {
+  const raw = record['error'];
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  const text = redactPhones(raw.trim());
+  return text.length > MAX_ERROR_CHARS ? `${text.slice(0, MAX_ERROR_CHARS)}…` : text;
 }
 
 /**
@@ -127,7 +165,7 @@ export function outcomeOf(result: unknown): ToolOutcome {
   const count = resultCountOf(result);
   if (result === null || typeof result !== 'object') {
     const text = typeof result === 'string' ? result : '';
-    return { ok: true, empty: text.trim() === '', count, keys: null };
+    return { ok: true, empty: text.trim() === '', count, keys: null, error: null };
   }
   const record = result as Record<string, unknown>;
   const failed = 'error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false);
@@ -137,7 +175,13 @@ export function outcomeOf(result: unknown): ToolOutcome {
     record['found'] === false ||
     (Array.isArray(firstList) && firstList.length === 0) ||
     Object.keys(record).length === 0;
-  return { ok: !failed, empty, count, keys: Object.keys(record).sort().join(',') || null };
+  return {
+    ok: !failed,
+    empty,
+    count,
+    keys: Object.keys(record).sort().join(',') || null,
+    error: errorTextOf(record),
+  };
 }
 
 export interface ToolCallRecord {
@@ -164,8 +208,8 @@ export async function logToolCall(record: ToolCallRecord): Promise<void> {
     await query(
       `INSERT INTO tool_call_log
          (thread_id, run_id, user_id, tool, args_summary,
-          result_count, result_empty, result_chars, duration_ms, ok, result_keys)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          result_count, result_empty, result_chars, duration_ms, ok, result_keys, error_text)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         record.threadId,
         record.runId,
@@ -178,6 +222,7 @@ export async function logToolCall(record: ToolCallRecord): Promise<void> {
         record.durationMs,
         outcome.ok,
         outcome.keys,
+        outcome.error,
       ],
       QUERY_TIMEOUT_MS,
     );
@@ -196,7 +241,7 @@ export async function getToolCallsForThread(
 ): Promise<ToolCallRow[]> {
   const result = await query<ToolCallRow>(
     `SELECT id, run_id, tool, args_summary, ok, result_count, result_empty,
-            result_keys, result_chars, duration_ms, created_at
+            result_keys, result_chars, duration_ms, error_text, created_at
        FROM tool_call_log
       WHERE thread_id = $1
       ORDER BY id
