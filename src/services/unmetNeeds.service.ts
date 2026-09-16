@@ -170,7 +170,33 @@ function plausibleMobile(phone: string): boolean {
  * deliberately: a perfectly repeatable list of nobody, or a slightly variable
  * list of real people.
  */
-async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> {
+/**
+ * Ticket 20 row 57, the half that was left — the country filter.
+ *
+ * Two thirds of the 3 September candidates were not Georgian numbers, and a
+ * Georgian product's demand report was recommending people who cannot answer
+ * a Georgian need. The founder's answer was exact: MARK foreign numbers,
+ * never delete them (D216). So this is a filter the reader turns on, never a
+ * rule the data obeys — `foreign` stays on every candidate and the unfiltered
+ * read is unchanged.
+ *
+ * It filters in the STATEMENT rather than after it, and that is the whole
+ * value. Each topic returns at most ten candidates; filtering afterwards
+ * gives ten rows of which seven are foreign and three are usable, while
+ * filtering inside gives ten usable ones. „Apply the filter" and „hide some
+ * of the answer" are different features and only the first is worth having.
+ */
+export type CandidateCountry = 'all' | 'ge';
+
+export function isCandidateCountry(raw: unknown): raw is CandidateCountry {
+  return raw === 'all' || raw === 'ge';
+}
+
+async function candidatesForTopic(
+  topic: string,
+  country: CandidateCountry,
+): Promise<UnmetNeedCandidate[]> {
+  const georgianOnly = country === 'ge';
   const words = significantWords(topic);
   const found = new Map<string, UnmetNeedCandidate>();
   for (const word of words) {
@@ -185,8 +211,11 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
                regexp_split_to_array(normalize_search_token(t.tag), '[^a-z0-9]+'))
              AND t.tag ~ '[a-zა-ჿ]'
              AND NOT EXISTS (SELECT 1 FROM "UserPhone" up WHERE up.phone = t.phone)
+             -- Row 57: inside the statement, so the ten that come back are ten
+             -- usable ones rather than ten of which seven are dropped after.
+             AND (NOT $3::boolean OR t.phone LIKE '+995%')
            LIMIT $2`,
-          [word, CANDIDATE_LIMIT_PER_TOPIC],
+          [word, CANDIDATE_LIMIT_PER_TOPIC, georgianOnly],
           CANDIDATE_QUERY_TIMEOUT_MS,
         ),
         query<{ phone: string; alias: string }>(
@@ -197,8 +226,9 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
                regexp_split_to_array(normalize_search_token(a.alias), '[^a-z0-9]+'))
              AND a.alias ~ '[a-zა-ჿ]'
              AND NOT EXISTS (SELECT 1 FROM "UserPhone" up WHERE up.phone = a.phone)
+             AND (NOT $3::boolean OR a.phone LIKE '+995%')
            LIMIT $2`,
-          [word, CANDIDATE_LIMIT_PER_TOPIC],
+          [word, CANDIDATE_LIMIT_PER_TOPIC, georgianOnly],
           CANDIDATE_QUERY_TIMEOUT_MS,
         ),
       ]);
@@ -250,7 +280,10 @@ async function candidatesForTopic(topic: string): Promise<UnmetNeedCandidate[]> 
  * phone-number lookups (a number search is not an occupation need), and
  * excludes the review/test accounts' searches (Task 4 item 3).
  */
-export async function findUnmetNeeds(sinceDays: number): Promise<UnmetNeed[]> {
+export async function findUnmetNeeds(
+  sinceDays: number,
+  country: CandidateCountry = 'all',
+): Promise<UnmetNeed[]> {
   const testIds = await testAccountUserIds();
   const failedSearches = await query<{
     query: string;
@@ -291,7 +324,9 @@ export async function findUnmetNeeds(sinceDays: number): Promise<UnmetNeed[]> {
   const results: UnmetNeed[] = [];
   for (let i = 0; i < failedSearches.rows.length; i += TOPIC_BATCH_SIZE) {
     const batch = failedSearches.rows.slice(i, i + TOPIC_BATCH_SIZE);
-    const candidates = await Promise.all(batch.map((row) => candidatesForTopic(row.query)));
+    const candidates = await Promise.all(
+      batch.map((row) => candidatesForTopic(row.query, country)),
+    );
     batch.forEach((row, index) => {
       const netai = Number(row.netai_count ?? 0);
       const oldAlly = Number(row.old_ally_count ?? 0);

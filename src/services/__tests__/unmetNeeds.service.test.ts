@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { findUnmetNeeds } from '../unmetNeeds.service';
+import { findUnmetNeeds, isCandidateCountry } from '../unmetNeeds.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -283,5 +283,73 @@ describe('findUnmetNeeds — topics run in batches (ticket 9 task 28.5)', () => 
 
     // Serially this would never exceed the two queries of a single topic.
     expect(peak).toBeGreaterThan(2);
+  });
+});
+
+/**
+ * Ticket 20 row 57, the half that was left — the country filter.
+ *
+ * Two thirds of the 3 September candidates were not Georgian numbers, and a
+ * Georgian product's demand report was recommending people who cannot answer
+ * a Georgian need. The founder's answer: MARK foreign numbers, never delete
+ * them (D216). So this is a filter the reader turns on, never a rule the data
+ * obeys.
+ */
+describe('row 57 — the country filter', () => {
+  it('accepts the two values it has, and nothing else', () => {
+    expect(isCandidateCountry('ge')).toBe(true);
+    expect(isCandidateCountry('all')).toBe(true);
+    // A filter that silently does nothing is worse than no filter, so the
+    // route refuses these rather than reading them as "all".
+    expect(isCandidateCountry('GE')).toBe(false);
+    expect(isCandidateCountry('georgia')).toBe(false);
+    expect(isCandidateCountry(undefined)).toBe(false);
+    expect(isCandidateCountry('')).toBe(false);
+  });
+
+  function candidateParams(): unknown[][] {
+    return mockQuery.mock.calls
+      .filter(([sql]) => String(sql).includes('FROM "UserTags"'))
+      .map(([, params]) => params as unknown[]);
+  }
+
+  it('is off by default — the unfiltered read is unchanged', async () => {
+    routeQueries({
+      topics: [{ query: 'სტომატოლოგი', netai_count: '2', old_ally_count: null, city: null }],
+    });
+
+    await findUnmetNeeds(30);
+
+    expect(candidateParams()[0]?.[2]).toBe(false);
+  });
+
+  it('filters inside the statement, not after it', async () => {
+    // The point of the whole thing. Each topic returns at most ten
+    // candidates, so filtering afterwards gives ten rows of which seven are
+    // dropped; filtering inside gives ten usable ones.
+    routeQueries({
+      topics: [{ query: 'სტომატოლოგი', netai_count: '2', old_ally_count: null, city: null }],
+    });
+
+    await findUnmetNeeds(30, 'ge');
+
+    const params = candidateParams()[0];
+    expect(params?.[2]).toBe(true);
+    const sql = String(
+      mockQuery.mock.calls.find(([s]) => String(s).includes('FROM "UserTags"'))?.[0],
+    );
+    expect(sql).toContain('$3::boolean');
+    expect(sql).toContain("'+995%'");
+  });
+
+  it('still marks what it returns, so the flag never disappears', async () => {
+    routeQueries({
+      topics: [{ query: 'ექიმი', netai_count: '1', old_ally_count: null, city: null }],
+      tags: [{ phone: '+995500000001', tag: 'ექიმი' }],
+    });
+
+    const out = await findUnmetNeeds(30, 'ge');
+
+    expect(out[0]?.candidates[0]).toMatchObject({ foreign: false });
   });
 });

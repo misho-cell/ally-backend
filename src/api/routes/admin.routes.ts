@@ -132,7 +132,11 @@ import {
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
-import { demandExcludedUserIds, findUnmetNeeds } from '../../services/unmetNeeds.service';
+import {
+  demandExcludedUserIds,
+  findUnmetNeeds,
+  isCandidateCountry,
+} from '../../services/unmetNeeds.service';
 import {
   previewForeignSyncLinks,
   removeForeignSyncLinks,
@@ -2533,8 +2537,19 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
   try {
     const rawDays = Number(req.query.days);
     const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30;
+    // Ticket 20 row 57, the half that was left: ?country=ge drops non-Georgian
+    // candidates from the report. Opt-in and never the default — D216 is
+    // „mark foreign numbers, never delete", so the unfiltered read is
+    // unchanged and every candidate still carries its own `foreign` flag.
+    // An unrecognised value is refused rather than quietly read as "all":
+    // a filter that silently does nothing is worse than no filter.
+    const rawCountry = req.query.country ?? 'all';
+    if (!isCandidateCountry(rawCountry)) {
+      res.status(400).json({ success: false, error: 'country: ge ან all' });
+      return;
+    }
     const [result, excludedUserIds] = await Promise.all([
-      findUnmetNeeds(days),
+      findUnmetNeeds(days, rawCountry),
       demandExcludedUserIds(),
     ]);
     // Ticket 7 Task 4 item 4: the T5 merge must be visible — per-topic
@@ -2559,7 +2574,11 @@ adminRouter.get('/unmet-needs', async (req: Request, res: Response) => {
         topics: result,
         source_totals: sourceTotals,
         excluded_user_ids: excludedUserIds,
+        // How many foreign candidates are IN THIS LIST. With country=ge that
+        // is zero by construction, and `country` below is what says why —
+        // the number is not a claim that none exist.
         foreign_candidates: foreignCandidates,
+        country: rawCountry,
       },
     });
   } catch (error) {
