@@ -145,6 +145,7 @@ import { logSearchActivity } from './abuseDetection.service';
 import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
+import { writeFinalAnswer } from './finalAnswer.service';
 import {
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
@@ -4773,7 +4774,46 @@ async function runToolLoop(
       });
     }
 
-    finalText = scrubText(extractText(response.content));
+    // Ticket 20 row 129: the reply the user reads, written by OpenAI when the
+    // flag is set. Everything above — every search, every guard, every
+    // decision — still ran on Anthropic; only this last paragraph moves.
+    //
+    // `messages` ends at the last tool_result, so it carries everything the
+    // run found. null means off, unconfigured, or failed, and all three mean
+    // the same thing here: keep the answer Claude just wrote.
+    //
+    // THE COST THIS PAYS, stated because it is easy to miss: Claude has
+    // ALREADY generated a final by this point and it is discarded, so an
+    // enabled hybrid pays for two finals. That is the same bargain the fast
+    // tier makes two branches up, and the same answer applies — set
+    // CHAT_TOOL_TURN_MODEL to Haiku and the discarded one costs a twelfth of
+    // the kept one. Enabling this flag alone is the expensive way to run it.
+    // The reset is lazy, on the first delta, and that placement is the whole
+    // of its correctness. resetTurnStream tells the client to CLEAR what it
+    // has buffered; doing it before the call would wipe Claude's answer off
+    // the screen on every run where this flag is off or the call then fails.
+    let openAiStarted = false;
+    const rewritten = await writeFinalAnswer(messages, systemPrompt, (delta) => {
+      if (!openAiStarted) {
+        openAiStarted = true;
+        resetTurnStream();
+      }
+      stream(delta);
+    });
+    if (rewritten === null) {
+      finalText = scrubText(extractText(response.content));
+    } else {
+      finalText = scrubText(rewritten.text);
+      await recordClaudeUsage({
+        userId,
+        kind: 'chat',
+        provider: 'openai',
+        model: rewritten.model,
+        usage: rewritten.usage,
+        runId,
+        threadId,
+      }).catch(() => {});
+    }
   } catch (err) {
     // A model call died mid-run (timeout, network, provider incident). The run
     // already gathered material — salvage a written answer from it instead of

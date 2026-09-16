@@ -56,19 +56,33 @@ export interface ClaudeUsageEvent {
   usage: ClaudeUsage;
   runId?: string;
   threadId?: number;
+  /**
+   * Ticket 20 row 129. Who billed this call. Defaults to Anthropic, which is
+   * every caller that existed before the hybrid, so none of them changed.
+   *
+   * It selects the price keys as well as the stored column: a model's rates
+   * live under `<provider>.<model>.*`, and a provider added without its rows
+   * bills at zero. That is not theoretical — getPrice returns 0 for a missing
+   * key and debitRun skips a zero-cost run, so the gap is silent in the books
+   * AND in the user's wallet.
+   */
+  provider?: string;
 }
 
+const DEFAULT_PROVIDER = 'anthropic';
+
 /**
- * Record one Anthropic API call. Cost = exact billed token counts from the
+ * Record one model API call. Cost = exact billed token counts from the
  * response × current per-MTok rates. Callers invoke fire-and-forget — the
  * ledger must never break or slow the user-facing path.
  */
 export async function recordClaudeUsage(event: ClaudeUsageEvent): Promise<void> {
+  const provider = event.provider ?? DEFAULT_PROVIDER;
   const [inRate, outRate, cacheWriteRate, cacheReadRate] = await Promise.all([
-    getPrice(`anthropic.${event.model}.input_mtok`),
-    getPrice(`anthropic.${event.model}.output_mtok`),
-    getPrice(`anthropic.${event.model}.cache_write_mtok`),
-    getPrice(`anthropic.${event.model}.cache_read_mtok`),
+    getPrice(`${provider}.${event.model}.input_mtok`),
+    getPrice(`${provider}.${event.model}.output_mtok`),
+    getPrice(`${provider}.${event.model}.cache_write_mtok`),
+    getPrice(`${provider}.${event.model}.cache_read_mtok`),
   ]);
 
   const input = event.usage.input_tokens ?? 0;
@@ -85,7 +99,7 @@ export async function recordClaudeUsage(event: ClaudeUsageEvent): Promise<void> 
     `INSERT INTO usage_events
        (user_id, kind, provider, model, input_tokens, output_tokens,
         cache_creation_tokens, cache_read_tokens, cost_usd, run_id, thread_id)
-     VALUES ($1, $2, 'anthropic', $3, $4, $5, $6, $7, $8, $9, $10)`,
+     VALUES ($1, $2, $11, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       event.userId,
       event.kind,
@@ -97,6 +111,7 @@ export async function recordClaudeUsage(event: ClaudeUsageEvent): Promise<void> 
       cost,
       event.runId ?? null,
       event.threadId ?? null,
+      provider,
     ],
   );
 }

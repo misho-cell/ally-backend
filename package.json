@@ -23,6 +23,7 @@
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
     "neo4j-driver": "^6.0.1",
+    "openai": "^7.15.0",
     "pg": "^8.21.0",
     "stripe": "^22.6.1",
     "swagger-ui-express": "^5.0.1",

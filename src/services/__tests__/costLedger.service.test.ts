@@ -20,6 +20,13 @@ const PRICES: Record<string, number> = {
   'anthropic.claude-sonnet-4-6.output_mtok': 15,
   'anthropic.claude-sonnet-4-6.cache_write_mtok': 3.75,
   'anthropic.claude-sonnet-4-6.cache_read_mtok': 0.3,
+  // Row 129: the same model name under a second provider, priced differently,
+  // so a test that read the wrong key would get the wrong number rather than
+  // the right one by luck.
+  'openai.gpt-5.6-terra.input_mtok': 2,
+  'openai.gpt-5.6-terra.output_mtok': 12,
+  'openai.gpt-5.6-terra.cache_read_mtok': 0.2,
+  'openai.gpt-5.6-terra.cache_write_mtok': 0,
   'tavily.search': 0.008,
 };
 
@@ -97,6 +104,9 @@ describe('recordClaudeUsage', () => {
       0.195,
       'run-1',
       9,
+      // Ticket 20 row 129: the provider is stored, and defaults to the one
+      // every caller before the hybrid used.
+      'anthropic',
     ]);
   });
 
@@ -143,5 +153,75 @@ describe('resolveUserIdByPhone', () => {
     routeQueries();
 
     expect(await resolveUserIdByPhone('+995599000001')).toBe('42');
+  });
+});
+
+/**
+ * Ticket 20 row 129 — a second provider in the same ledger.
+ *
+ * The failure this guards against is silent and expensive in one direction
+ * only. getPrice returns 0 for a key it cannot find, logging a warning nobody
+ * reads, and debitRun then skips any run costing zero. So a provider whose
+ * price keys are not found does not raise an alarm — it bills the company
+ * nothing in its own books and takes nothing from the user's wallet, for as
+ * long as it runs.
+ */
+describe('row 129 — OpenAI priced under its own keys', () => {
+  it('reads the rates under the provider it was given, not under anthropic', async () => {
+    const { insertCalls } = routeQueries();
+
+    await recordClaudeUsage({
+      userId: '7',
+      kind: 'chat',
+      provider: 'openai',
+      model: 'gpt-5.6-terra',
+      usage: {
+        input_tokens: 2_000,
+        output_tokens: 700,
+        cache_read_input_tokens: 30_000,
+        cache_creation_input_tokens: 0,
+      },
+    });
+
+    const params = insertCalls()[0];
+    // 2k×$2/M + 700×$12/M + 30k×$0.20/M = 0.004 + 0.0084 + 0.006 = 0.0184
+    expect(params[7]).toBe(0.0184);
+    expect(params[10]).toBe('openai');
+    // Not zero — which is what a missing price key would have produced, and
+    // is the whole point of this test.
+    expect(params[7]).toBeGreaterThan(0);
+  });
+
+  it('asked for the openai keys and never the anthropic ones', async () => {
+    routeQueries();
+
+    await recordClaudeUsage({
+      userId: '7',
+      kind: 'chat',
+      provider: 'openai',
+      model: 'gpt-5.6-terra',
+      usage: { input_tokens: 10, output_tokens: 10 },
+    });
+
+    const keys = mockQuery.mock.calls
+      .filter(([sql]) => (sql as string).includes('FROM provider_prices'))
+      .map(([, params]) => (params as string[])[0]);
+
+    expect(keys).toContain('openai.gpt-5.6-terra.input_mtok');
+    expect(keys).toContain('openai.gpt-5.6-terra.output_mtok');
+    expect(keys.some((k) => k.startsWith('anthropic.'))).toBe(false);
+  });
+
+  it('every caller that does not name a provider is still Anthropic', async () => {
+    const { insertCalls } = routeQueries();
+
+    await recordClaudeUsage({
+      userId: '7',
+      kind: 'chat',
+      model: 'claude-sonnet-4-6',
+      usage: { input_tokens: 1_000, output_tokens: 0 },
+    });
+
+    expect(insertCalls()[0][10]).toBe('anthropic');
   });
 });
