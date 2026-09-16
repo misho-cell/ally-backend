@@ -53,6 +53,13 @@ export interface ThreadMessage {
   /** Tappable options saved with the message (present_choices) — render as buttons. */
   choices: string[] | null;
   /**
+   * Ticket 20 row 132 — which model wrote this text.
+   *
+   * Null for every row written before the column existed and for every message
+   * that is not a model's answer: „nobody recorded it", not „Claude wrote it".
+   */
+  answered_by: string | null;
+  /**
    * Ticket 17 Task 39: the ready-to-send invitation, when this turn produced
    * one. Stored with the row so it survives a reload — the SSE event that
    * first carried it is gone by then, and the share button would otherwise
@@ -496,7 +503,12 @@ export async function getThreadMessages(
   const result = await query<ThreadMessage>(
     `SELECT page.*, s.mode AS prompt_mode, s.block_versions AS prompt_blocks
      FROM (
-       SELECT id, role, content, kind, run_id, created_at, choices, share_text
+       -- Ticket 20 row 132, second pass: answered_by rides with the message.
+       -- The seat reads replies only through this endpoint, so a column they
+       -- cannot see is a column that does not exist for the people whose
+       -- question it was written to answer.
+       SELECT id, role, content, kind, run_id, created_at, choices, share_text,
+              answered_by
        FROM conversations
        WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
        ORDER BY created_at DESC, id::text DESC

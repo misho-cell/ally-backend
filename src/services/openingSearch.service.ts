@@ -80,6 +80,38 @@ function withBudget<T>(work: Promise<T>, label: string): Promise<T | null> {
 }
 
 /**
+ * Ticket 20 row 126, third pass — the titles and links a web search returned.
+ *
+ * The seat's ask: „could web_search:opening store the titles and links it
+ * returned? Then we can see whether the five were worth showing." They are
+ * judging whether the model was RIGHT to ignore the opening results, and the
+ * table could say five came back in 4,004 ms and nothing about what they were.
+ * „Ignored good results" and „ignored junk" looked identical, and only one of
+ * them is a fault.
+ *
+ * Shapes are read defensively rather than assumed: this reads whatever the
+ * search tool happens to return today, and a shape it does not recognise
+ * produces no sample rather than a wrong one.
+ */
+function webTitles(result: unknown): string {
+  if (result === null || typeof result !== 'object') return '';
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows)) return '';
+  return rows
+    .slice(0, 5)
+    .map((row) => {
+      if (typeof row === 'string') return row;
+      if (row === null || typeof row !== 'object') return '';
+      const r = row as { title?: unknown; url?: unknown };
+      const title = typeof r.title === 'string' ? r.title : '';
+      const url = typeof r.url === 'string' ? r.url : '';
+      return [title, url].filter(Boolean).join(' — ');
+    })
+    .filter(Boolean)
+    .join(' | ');
+}
+
+/**
  * Run both opening searches for a freshly opened goal.
  *
  * Never throws and never returns a rejected promise: a first reply must not
@@ -110,7 +142,11 @@ export async function runOpeningSearches(
    * Fire-and-forget: logToolCall never throws and never blocks, and a first
    * reply must not wait on a debugging record.
    */
-  const logged = async (tool: string, work: Promise<unknown>): Promise<string> => {
+  const logged = async (
+    tool: string,
+    work: Promise<unknown>,
+    publicResult = false,
+  ): Promise<string> => {
     const startedAt = Date.now();
     const result = await work;
     void logToolCall({
@@ -121,6 +157,10 @@ export async function runOpeningSearches(
       input: { query },
       result,
       durationMs: Date.now() - startedAt,
+      // Ticket 20 row 126, third pass. Only for the WEB, whose results are
+      // public pages. The second circle's results are the owner's own network
+      // and must not leave a sample of real people in a debugging table.
+      ...(publicResult && { resultSample: webTitles(result) }),
     });
     return JSON.stringify(result);
   };
@@ -135,7 +175,7 @@ export async function runOpeningSearches(
       priceKey: 'tavily.search',
       runId,
     }).catch(() => {});
-    return logged('web_search', webSearch(query));
+    return logged('web_search', webSearch(query), true);
   })();
 
   const [web, secondDegree] = await Promise.all([

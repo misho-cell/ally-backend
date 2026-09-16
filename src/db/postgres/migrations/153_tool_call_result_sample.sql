@@ -1,0 +1,16 @@
+-- Ticket 20 row 126, third pass: what a search actually FOUND, not just how
+-- much of it there was.
+--
+-- The seat's ask, 16 September: "could web_search:opening store the titles and
+-- links it returned? Then we can see whether the five were worth showing."
+--
+-- They are judging whether the model was right to ignore the opening web
+-- results, and the table can say the search ran, returned 5 rows and took
+-- 4,004 ms — and nothing about whether those five were five car workshops or
+-- five unrelated pages. Without that, "the model ignored good results" and
+-- "the model ignored junk" look identical, and only one of them is a fault.
+--
+-- Deliberately a SAMPLE and not the result. It is written only where the
+-- content is public web material — titles and links — never for a search over
+-- somebody's contacts. Redacted and clipped like every other text here.
+ALTER TABLE tool_call_log ADD COLUMN IF NOT EXISTS result_sample TEXT;

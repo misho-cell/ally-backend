@@ -203,3 +203,61 @@ describe('row 126 second pass — what the pre-run found is answerable', () => {
     expect(tools).not.toContain('search_second_degree:opening');
   });
 });
+
+/**
+ * Ticket 20 row 126, third pass — what the web search FOUND, not just how much.
+ *
+ * The seat's ask: they are judging whether the model was RIGHT to ignore the
+ * opening web results on goal 3862, and the table could say five came back in
+ * 4,004 ms and nothing about what they were. „Ignored good results" and
+ * „ignored junk" looked identical, and only one of them is a fault.
+ */
+describe('row 126 third pass — the web sample, and only the web', () => {
+  it('stores the titles and links the web search returned', async () => {
+    mockWeb.mockResolvedValue({
+      results: [
+        { title: 'Prius სერვისი თბილისში', url: 'https://example.ge/prius' },
+        { title: 'ჰიბრიდების ხელოსანი', url: 'https://example.ge/hybrid' },
+      ],
+    } as never);
+
+    await runOpeningSearches('501', 'Prius-ის ხელოსანი', 'run-9', 15973);
+
+    const web = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'web_search:opening',
+    )[0];
+    expect(web.resultSample).toContain('Prius სერვისი თბილისში');
+    expect(web.resultSample).toContain('https://example.ge/prius');
+  });
+
+  /**
+   * The line that matters more than the feature. Second-circle results are the
+   * owner's own network — real people — and must not leave a sample of
+   * themselves in a debugging table.
+   */
+  it('stores NO sample for the second circle, whatever it found', async () => {
+    mockSecond.mockResolvedValue({
+      found: true,
+      count: 2,
+      results: [{ name: 'Giorgi Turashvili' }, { name: 'Nika' }],
+    } as never);
+
+    await runOpeningSearches('501', 'რამე', 'run-9', 15973);
+
+    const second = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'search_second_degree:opening',
+    )[0];
+    expect(second.resultSample).toBeUndefined();
+  });
+
+  it('an unrecognised shape produces no sample rather than a wrong one', async () => {
+    mockWeb.mockResolvedValue({ guidance: 'something else entirely' } as never);
+
+    await runOpeningSearches('501', 'რამე', 'run-9', 15973);
+
+    const web = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'web_search:opening',
+    )[0];
+    expect(web.resultSample).toBe('');
+  });
+});

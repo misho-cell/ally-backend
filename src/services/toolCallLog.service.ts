@@ -55,6 +55,8 @@ export interface ToolCallRow {
   readonly result_keys: string | null;
   /** Ticket 20 row 125: what the failure said, not merely that there was one. */
   readonly error_text: string | null;
+  /** Ticket 20 row 126: a short note of WHAT came back, where it is public. */
+  readonly result_sample: string | null;
   readonly result_chars: number | null;
   readonly duration_ms: number | null;
   readonly created_at: string;
@@ -136,6 +138,13 @@ export interface ToolOutcome {
  */
 const MAX_ERROR_CHARS = 300;
 
+/** Enough to tell five good results from five bad ones, and no more. */
+const MAX_SAMPLE_CHARS = 600;
+
+function clipSample(text: string): string {
+  return text.length > MAX_SAMPLE_CHARS ? `${text.slice(0, MAX_SAMPLE_CHARS)}…` : text;
+}
+
 /**
  * The error text out of a tool result, redacted like everything else here.
  *
@@ -192,6 +201,20 @@ export interface ToolCallRecord {
   readonly input: Record<string, unknown>;
   readonly result: unknown;
   readonly durationMs: number;
+  /**
+   * Ticket 20 row 126, third pass — a short, readable note of what came back.
+   *
+   * The seat is judging whether the model was right to ignore the opening web
+   * results, and the table could say the search ran, returned 5 and took 4,004
+   * ms — and nothing about whether those five were car workshops or junk.
+   * „Ignored good results" and „ignored junk" looked identical, and only one
+   * of them is a fault.
+   *
+   * Passed ONLY by callers whose results are public web material. Never
+   * derived from the result automatically: a search over somebody's contacts
+   * must not leave a sample of them in a debugging table.
+   */
+  readonly resultSample?: string;
 }
 
 /**
@@ -208,8 +231,9 @@ export async function logToolCall(record: ToolCallRecord): Promise<void> {
     await query(
       `INSERT INTO tool_call_log
          (thread_id, run_id, user_id, tool, args_summary,
-          result_count, result_empty, result_chars, duration_ms, ok, result_keys, error_text)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          result_count, result_empty, result_chars, duration_ms, ok, result_keys, error_text,
+          result_sample)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         record.threadId,
         record.runId,
@@ -223,6 +247,7 @@ export async function logToolCall(record: ToolCallRecord): Promise<void> {
         outcome.ok,
         outcome.keys,
         outcome.error,
+        record.resultSample === undefined ? null : clipSample(redactPhones(record.resultSample)),
       ],
       QUERY_TIMEOUT_MS,
     );
@@ -241,7 +266,7 @@ export async function getToolCallsForThread(
 ): Promise<ToolCallRow[]> {
   const result = await query<ToolCallRow>(
     `SELECT id, run_id, tool, args_summary, ok, result_count, result_empty,
-            result_keys, result_chars, duration_ms, error_text, created_at
+            result_keys, result_chars, duration_ms, error_text, result_sample, created_at
        FROM tool_call_log
       WHERE thread_id = $1
       ORDER BY id
