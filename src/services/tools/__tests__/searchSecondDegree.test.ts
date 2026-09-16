@@ -337,3 +337,86 @@ describe('second-degree title and employer (ticket 9 task 25)', () => {
     expect(sql.match(/cf\.is_public OR cf\.submitted_by_user_id = \$5/g)).toHaveLength(2);
   });
 });
+
+/**
+ * Ticket 20 row 110 — the friends-of-friends search treated a phrase as one tag.
+ *
+ * buildSearchTerms puts the WHOLE query in as a single term and never splits on
+ * whitespace, so search_second_degree("marketing agency") asked for a tag whose
+ * word-start match is that literal phrase. Measured on the live base:
+ *
+ *   "marketing agency"  as a phrase    0 people
+ *   "marketing"         as a word  2,892 people
+ *   "agency"            as a word    694 people
+ *
+ * Every multi-word second-degree search in the tester's reports — "eco
+ * marketing", "green startup marketing", "marketing agency", "ლეპტოპი შეკეთება"
+ * — was asking for something nobody writes in a phonebook, and correctly
+ * finding nobody.
+ *
+ * The splitter already existed and search_by_tag already used it. One of the
+ * two searches learned about phrases and the other never did.
+ */
+describe('Ticket 20 row 110: a multi-word query is words, not a phrase', () => {
+  function mainSql(): string {
+    const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
+    return (call as [string, unknown[]])[0];
+  }
+  function mainParams(): unknown[] {
+    const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
+    return (call as [string, unknown[]])[1];
+  }
+
+  it('sends a pattern per WORD, not one for the whole phrase', async () => {
+    await searchSecondDegree('501', 'marketing agency');
+
+    const params = mainParams();
+    const patterns = params.slice(2).filter((p): p is string => typeof p === 'string');
+    // Each word contributes its own word-start pattern; no parameter is the
+    // two words glued together.
+    expect(patterns.some((p) => p.includes('marketing'))).toBe(true);
+    expect(patterns.some((p) => p.includes('agency'))).toBe(true);
+    expect(patterns.some((p) => p.includes('marketing agency'))).toBe(false);
+  });
+
+  it('counts how many DISTINCT words each person matched', async () => {
+    await searchSecondDegree('501', 'marketing agency');
+
+    const sql = mainSql();
+    // One bool_or per word, summed — the shape wordMatch.ts uses for the tag
+    // search, so the two searches rank the same way.
+    expect(sql).toContain('bool_or(');
+    expect(sql).toMatch(/bool_or\([^)]*\)::int \+ bool_or\(/);
+    expect(sql).toContain('AS word_hits');
+  });
+
+  it('ranks the people carrying BOTH words above those carrying one', async () => {
+    await searchSecondDegree('501', 'marketing agency');
+
+    const sql = mainSql();
+    // Before bridge_rank and before warmth: matching the query beats being
+    // well-connected. Without this the commoner word would swamp the rarer one,
+    // which is worse than today's zero.
+    expect(sql).toMatch(/ORDER BY r\.word_hits DESC, r\.bridge_rank DESC/);
+  });
+
+  it('a single word still behaves as one group — nothing changes for it', async () => {
+    await searchSecondDegree('501', 'marketing');
+
+    const sql = mainSql();
+    // One group means one bool_or and no addition.
+    expect(sql).toContain('bool_or(');
+    expect(sql).not.toMatch(/bool_or\([^)]*\)::int \+ bool_or\(/);
+  });
+
+  it('the matched label never leaves the CTE', async () => {
+    await searchSecondDegree('501', 'marketing agency');
+
+    const sql = mainSql();
+    // It rides as far as word_hits and no further: the outer select groups by
+    // phone and joins names. A phonebook label reaching a reply is the thing
+    // this containment exists to prevent.
+    expect(sql).toContain('AS label');
+    expect(sql).not.toMatch(/SELECT[^;]*r\.label/);
+  });
+});

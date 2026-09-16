@@ -3,7 +3,7 @@ import { query } from '../../db/postgres/client';
 const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
-import { buildSearchTerms, toWordStartPattern } from './transliterate';
+import { buildRawWordGroups, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
@@ -247,8 +247,19 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     // Step 2: search friends' contacts in PostgreSQL — filter first, join last
-    const terms = buildSearchTerms(tagQuery);
-    const likeTerms = terms.map((t) => '%' + t + '%');
+    // Ticket 20 row 110. buildSearchTerms puts the WHOLE query in as one term
+    // and never splits it, so search_second_degree("marketing agency") asked
+    // for a tag whose word-start match is the literal phrase. Measured on the
+    // base: "marketing agency" as a phrase is on 0 people, "marketing" on 2,892
+    // and "agency" on 694. Every multi-word second-degree search in the
+    // tester's reports was asking for something nobody writes in a phonebook,
+    // and correctly finding nobody.
+    //
+    // buildRawWordGroups is the splitter this needed, and it already existed:
+    // search_by_tag has used it since the "Dachi Axel" finding. One of the two
+    // searches learned about phrases and the other never did.
+    const groups = buildRawWordGroups(tagQuery);
+    const likeTerms = groups.flat().map((t) => '%' + t + '%');
 
     // Weak-tie signal: asking for a PATH to a contact you already hold directly
     // means that edge is weak. Record it (fire-and-forget) so this user is
@@ -264,9 +275,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     //    half of Georgian surnames — every trigram-index path exploded there
     //    (gate or recheck, it only moved between deploys);
     //  - mid-word substring hits (Margita for "gita") were wrong AND heavy.
-    // Cross-script coverage still comes from buildSearchTerms' per-script
-    // variants; ღ-drift tolerance is deliberately NOT offered here (the direct
-    // tag search keeps it, clearly labeled approximate).
+    // Cross-script coverage comes from buildRawWordGroups' per-WORD variant
+    // groups now, not from buildSearchTerms' variants of the whole phrase
+    // (Ticket 20 row 110) — each word still carries its own transliteration and
+    // spelling forms, so nothing is lost by splitting. ღ-drift tolerance is
+    // deliberately NOT offered here (the direct tag search keeps it, clearly
+    // labeled approximate).
     // There used to be a `|| ''` on each LOWER(...) here, making every filter
     // non-indexable on purpose so the planner had exactly one plan: probe each
     // friend's rows via the contactId btrees and filter in memory, at a cost
@@ -289,11 +303,31 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // both and pick, per query, which is what it is for. The gita finding
     // stands and is handled where it belongs: `\m` word-start on the raw text,
     // no normalize fold, so „gita" cannot match Margita whichever plan runs.
-    // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones
-    const n = terms.length;
-    const regexTerms = terms.map(toWordStartPattern);
-    const tagConds = terms.map((_, i) => `LOWER(ut.tag) ~ $${i + 3}`).join(' OR ');
-    const aliasConds = terms.map((_, i) => `LOWER(ua_m.alias) ~ $${i + 3}`).join(' OR ');
+    // $3..$(2+n) = word-start regexes, $(3+n) = blocked phones.
+    //
+    // The patterns are now the flattened per-word groups rather than variants
+    // of one phrase. The OR below finds anyone matching ANY word; word_hits in
+    // `ranked` counts how many DISTINCT words each person matched, and the
+    // ordering puts the people carrying all of them first. Without that a
+    // two-word search would hand back everyone matching the commoner word, in
+    // an order that ignores the rarer one — which is worse than today's zero.
+    const groupRegex = groups.map((g) => g.map(toWordStartPattern));
+    const regexTerms = groupRegex.flat();
+    const n = regexTerms.length;
+    const orOver = (col: string): string =>
+      regexTerms.map((_, i) => `LOWER(${col}) ~ $${i + 3}`).join(' OR ');
+    const tagConds = orOver('ut.tag');
+    const aliasConds = orOver('ua_m.alias');
+    // bool_or per GROUP, summed: one point for each query word this person
+    // matched anywhere, exactly the shape wordMatch.ts uses for the tag search.
+    let cursor = 3;
+    const wordHits = groupRegex
+      .map((group) => {
+        const clause = group.map((_, i) => `label ~ $${cursor + i}`).join(' OR ');
+        cursor += group.length;
+        return `bool_or(${clause})::int`;
+      })
+      .join(' + ');
     const blockParamIdx = 3 + n;
     // userId again, as its own parameter: $1 is inferred as int (contactId
     // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
@@ -329,32 +363,37 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          WHERE up.phone = ANY($2)
        ),
        tag_hits AS (
-         SELECT t.phone, t."contactId"
+         SELECT t.phone, t."contactId", t.label
          FROM friend_users fu
          JOIN LATERAL (
-           SELECT ut.phone, ut."contactId"
+           SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
            FROM "UserTags" ut
            WHERE ut."contactId" = fu."userId"
              AND (${tagConds})
          ) t ON TRUE
        ),
        alias_hits AS (
-         SELECT a.phone, a."contactId"
+         SELECT a.phone, a."contactId", a.label
          FROM friend_users fu
          JOIN LATERAL (
-           SELECT ua_m.phone, ua_m."contactId"
+           SELECT ua_m.phone, ua_m."contactId", LOWER(ua_m.alias) AS label
            FROM "UserAlias" ua_m
            WHERE ua_m."contactId" = fu."userId"
              AND (${aliasConds})
          ) a ON TRUE
        ),
+       -- The label rides along ONLY as far as word_hits below. It never leaves
+       -- this CTE: the outer select aggregates phones and joins names, so the
+       -- text somebody wrote in their phonebook reaches the ranking and never
+       -- the reply — the same containment wordMatch.ts relies on.
        matches AS (
-         SELECT phone, "contactId" FROM tag_hits
+         SELECT phone, "contactId", label FROM tag_hits
          UNION
-         SELECT phone, "contactId" FROM alias_hits
+         SELECT phone, "contactId", label FROM alias_hits
        ),
        ranked AS (
          SELECT m.phone,
+                (${wordHits})                                             AS word_hits,
                 (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) AS bridge_rank,
                 MAX(crs.strength_score)                                   AS warmth
          FROM matches m
@@ -366,7 +405,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          WHERE ua_own.phone IS NULL
            AND m.phone != ALL($${blockParamIdx})
          GROUP BY m.phone
-         ORDER BY (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
+         ORDER BY (${wordHits}) DESC,
+                  (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
                   MAX(crs.strength_score) DESC NULLS LAST,
                   m.phone
          LIMIT ${SECOND_DEGREE_RESULT_LIMIT}
@@ -453,8 +493,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                   cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fj ON TRUE
-       GROUP BY r.phone, r.bridge_rank, r.warmth
-       ORDER BY r.bridge_rank DESC, r.warmth DESC NULLS LAST,
+       GROUP BY r.phone, r.word_hits, r.bridge_rank, r.warmth
+       ORDER BY r.word_hits DESC, r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [
