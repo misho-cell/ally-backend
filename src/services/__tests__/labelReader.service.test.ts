@@ -308,6 +308,40 @@ describe('companyWordShare asks in a shape the index can answer', () => {
     spy.mockRestore();
   });
 
+  /**
+   * Found six hours after the fix above shipped, while chasing a different
+   * 75-second tool call. „Twenty words at a few tens of milliseconds is a
+   * second in total" is the happy path. Each word carries a 20-second timeout
+   * and nothing bounded how many words arrive, so the unhappy path is twenty
+   * of those in a row — every one honouring its budget, the caller waiting
+   * minutes. buildTargetList feeds tier one of the curiosity queue, which runs
+   * when a conversation opens.
+   *
+   * A per-query timeout bounds a query. It does not bound an answer.
+   */
+  it('stops asking when the loop has spent its budget, and says which words it dropped', async () => {
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    jest.resetModules();
+    process.env.COMPANY_WORD_BUDGET_MS = '30';
+    const slowQuery = (await import('../../db/postgres/client')).query as jest.MockedFunction<
+      typeof query
+    >;
+    slowQuery.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(rows([]) as never), 20)),
+    );
+
+    const { companyWordShare } = await import('../labelReader.service');
+    await companyWordShare(['one', 'two', 'three', 'four', 'five', 'six']);
+
+    // Not all six: the budget stops the loop part-way.
+    expect(slowQuery.mock.calls.length).toBeLessThan(6);
+    expect(slowQuery.mock.calls.length).toBeGreaterThan(0);
+    // And it is never silent about what it did not ask.
+    expect(String(spy.mock.calls.at(-1)?.[0])).toContain('company-word budget spent');
+    spy.mockRestore();
+    delete process.env.COMPANY_WORD_BUDGET_MS;
+  });
+
   it('asks nothing when there is nothing to ask about', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
     const { companyWordShare } = await import('../labelReader.service');

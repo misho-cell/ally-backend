@@ -334,6 +334,13 @@ const COMPANY_WORD_MIN_ALIASES = 3;
 /** Above this share of aliases carrying somebody ELSE's surname or a title, the word is a company. */
 const COMPANY_WORD_SHARE = 0.2;
 const COMPANY_WORD_TIMEOUT_MS = 20_000;
+/**
+ * The whole loop's wall clock, not one word's.
+ *
+ * A per-query timeout bounds a query; it does not bound an answer. This is the
+ * only number that bounds the answer.
+ */
+const COMPANY_WORD_BUDGET_MS = Number(process.env.COMPANY_WORD_BUDGET_MS ?? 5_000);
 
 function isSurnameShaped(token: string): boolean {
   if (GEORGIAN_FIRST_NAMES.has(token)) return false;
@@ -381,6 +388,21 @@ function isSurnameShaped(token: string): boolean {
  * read. Twenty words at a few tens of milliseconds is a second in total,
  * against the ~56s the batched form was spending to answer nothing.
  *
+ * AND THE LOOP HAS A CLOCK, added the same day and for a reason found six
+ * hours later. „A second in total" is the happy path. Each word carries a
+ * 20-second timeout and nothing bounded how many words there were, so the
+ * unhappy path is twenty of those in a row — every one of them honouring its
+ * budget, and the caller waiting minutes. That is exactly the shape that made
+ * get_pending_updates take 74,871 ms out of parts that were all inside their
+ * limits, and this loop sits on the same path: buildTargetList feeds tier one
+ * of the curiosity queue, which runs when a conversation opens.
+ *
+ * Stopping early is safe BY CONSTRUCTION and that is why a budget is the right
+ * answer here rather than a bigger machine: a word with no answer is simply
+ * absent from the map, and isCompanyWordShare reads absent as „not a company",
+ * the cautious direction. The words that were not asked are named in the log,
+ * because a silent partial answer is the thing this whole week has been about.
+ *
  * The words come from labelTokens, which yields letters and digits only, so
  * no LIKE wildcard can arrive inside one. If that ever stops being true, the
  * pattern must be escaped before it goes in.
@@ -393,7 +415,16 @@ export async function companyWordShare(words: string[]): Promise<Map<string, num
   // words. The substring read is fast; the whole-word test is done here. Read
   // in chunks so one slow word cannot sink the whole batch.
   const rows: { word: string; alias: string }[] = [];
-  for (const word of words) {
+  const startedAt = Date.now();
+  for (const [index, word] of words.entries()) {
+    if (Date.now() - startedAt > COMPANY_WORD_BUDGET_MS) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[label-reader] company-word budget spent after ${index} of ${words.length} words; ` +
+          `the rest are treated as not-a-company: ${words.slice(index).join(', ')}`,
+      );
+      break;
+    }
     try {
       const result = await query<{ alias: string }>(
         `SELECT ua.alias FROM "UserAlias" ua
