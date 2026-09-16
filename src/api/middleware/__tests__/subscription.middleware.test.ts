@@ -137,10 +137,27 @@ describe('the gate with one door held open', () => {
     current_period_ends_at: null,
     subscription_status_changed_at: null,
   };
+  /**
+   * Relative to the REAL clock, not to the frozen NOW above.
+   *
+   * hasActiveSubscription takes the clock as a parameter, so the tests further
+   * up pass NOW and are deterministic by construction. The MIDDLEWARE has no
+   * such parameter — it reads Date.now() itself — so a fixture built on the
+   * frozen NOW has an expiry date baked into it. This one had 2026-09-06 plus
+   * ten days, and at 12:00 UTC on 16 September 2026 the real clock walked past
+   * it and the suite went red for everybody, with nothing changed.
+   *
+   * "Tests must be deterministic — no time dependencies" is in CLAUDE.md, and
+   * a date that is in the future only until a particular afternoon is exactly
+   * the dependency it means.
+   */
+  function realDaysFromNow(days: number): string {
+    return new Date(Date.now() + days * 86_400_000).toISOString();
+  }
   const paying = {
     ...lapsed,
     subscription_status: 'active',
-    current_period_ends_at: daysFromNow(10),
+    current_period_ends_at: realDaysFromNow(10),
   };
 
   beforeEach(() => jest.clearAllMocks());

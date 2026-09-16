@@ -3513,6 +3513,30 @@ async function executeToolCall(
         created: true,
         task_id: id,
         autonomy,
+        // Ticket 20 row 101: propose the plan IN THIS RUN.
+        //
+        // A goal opened from an ordinary conversation used to get its plan from
+        // a separate engine turn four seconds later, because the run that saved
+        // it was in quick_answer mode and that prompt says nothing about plans.
+        // So the person got two answers: this run's, and the plan run's. On 16
+        // September that happened on six of nine fresh goals (3532, 3533, 3534,
+        // 3535, 3536, 3540) — the results and the plan shown twice.
+        //
+        // The tool has always been available in every mode; only the
+        // instruction was missing, and it belongs HERE rather than in the
+        // prompt for the same reason the pending-items note does: a rule the
+        // model reads in the same breath as the data it applies to cannot drift
+        // out of step with the code that enforces it.
+        //
+        // The delayed engine turn stays as the fallback and already checks
+        // `plan_proposed IS NULL` before it fires, so doing it here simply
+        // means there is nothing left for it to do.
+        next:
+          'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
+          'with exactly „დამტკიცებულია" and „შევცვალოთ". Do not end your turn with the goal ' +
+          'saved and no plan on screen: that costs the user a second answer a few seconds later, ' +
+          'saying the same things twice. Write nobody and start nothing until the plan is ' +
+          'approved.',
         ...(movedTo !== undefined && {
           thread_id: movedTo,
           note:
