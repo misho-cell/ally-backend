@@ -280,3 +280,86 @@ describe('Ticket 19 [0], third part: the approval records who made it', () => {
     expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][3]).toBe('admin');
   });
 });
+
+/**
+ * Ticket 20 row 101a — matching a person to their route, forgivingly.
+ *
+ * Tornike's choice of 16 September, option (a); option (b), routes by number,
+ * follows as the real fix.
+ *
+ * The rule required people_to_involve[].route to repeat a route name EXACTLY.
+ * error_text caught the cost the same hour it was added: four of four refused
+ * propose_task_plan calls said „person <name>: route must name one of the
+ * plan's routes", and the model's retry each time was to SHORTEN its own route
+ * names until they matched — two whole runs per goal, spent copying a
+ * sixty-character Georgian string.
+ *
+ * The TIE is not relaxed. A person still has to belong to a real route,
+ * because the ask path enforces it. Only the comparison is.
+ */
+describe('row 101a — the route match forgives spelling, not membership', () => {
+  const twoRoutes = {
+    solved_when: 'ნაპოვნია ხელოსანი',
+    routes: [
+      { name: 'Eka Malazonia — ორ მასაჟისტს იცნობს', status: 'waiting' },
+      { name: 'მეორე წრის სრული ძიება', status: 'waiting' },
+    ],
+    never_contact: [],
+  };
+
+  function withRoute(route: string, routes = twoRoutes.routes): ReturnType<typeof parsePlan> {
+    return parsePlan({
+      ...twoRoutes,
+      routes,
+      people_to_involve: [{ name: 'Eka', phone: '+995599111222', route }],
+    });
+  }
+
+  it('an exact name still matches, which is the case that always worked', () => {
+    const out = withRoute('Eka Malazonia — ორ მასაჟისტს იცნობს');
+    expect(out.ok).toBe(true);
+  });
+
+  it.each([
+    ['  Eka Malazonia — ორ მასაჟისტს იცნობს  ', 'surrounding whitespace'],
+    ['Eka Malazonia —  ორ   მასაჟისტს იცნობს', 'repeated inner whitespace'],
+    ['eka malazonia — ორ მასაჟისტს იცნობს', 'a different case'],
+  ])('matches through %s (%s)', (route) => {
+    const out = withRoute(route);
+    expect(out.ok).toBe(true);
+  });
+
+  it('stores the ROUTE’s own spelling, never the person’s', () => {
+    const out = withRoute('eka malazonia — ორ მასაჟისტს იცნობს');
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    // Otherwise the plan disagrees with itself about what its routes are called.
+    expect(out.value.people_to_involve[0].route).toBe('Eka Malazonia — ორ მასაჟისტს იცნობს');
+    expect(out.value.routes.map((r) => r.name)).toContain(out.value.people_to_involve[0].route);
+  });
+
+  it('a plan with ONE route needs no naming — there is nothing to be ambiguous between', () => {
+    const out = withRoute('whatever the model felt like calling it', [
+      { name: 'ქსელში კითხვა', status: 'waiting' },
+    ]);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.people_to_involve[0].route).toBe('ქსელში კითხვა');
+  });
+
+  /** The half that must NOT relax: a person still belongs to a real route. */
+  it('a name matching no route on a multi-route plan is still refused', () => {
+    const out = withRoute('a third road nobody listed');
+    expect(out.ok).toBe(false);
+  });
+
+  it('the refusal now NAMES the routes, so the model need not guess at them', () => {
+    const out = withRoute('a third road nobody listed');
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    // Guessing is what cost a whole extra run each time: the model rewrote its
+    // own plan until the strings lined up.
+    expect(out.error).toContain('Eka Malazonia — ორ მასაჟისტს იცნობს');
+    expect(out.error).toContain('მეორე წრის სრული ძიება');
+  });
+});

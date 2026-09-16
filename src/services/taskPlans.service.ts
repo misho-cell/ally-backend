@@ -89,7 +89,35 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
     }
     routes.push({ name: name.value, status: status as RouteStatus });
   }
-  const routeNames = new Set(routes.map((r) => r.name));
+  /**
+   * Ticket 20 row 101a — matching a person to their route, forgivingly.
+   *
+   * Tornike's choice of 16 September, option (a), with (b) — routes by number
+   * — to follow as the real fix.
+   *
+   * The rule required people_to_involve[].route to repeat one of the route
+   * names EXACTLY, character for character. error_text caught what that cost
+   * the moment it was added: four of four refused propose_task_plan calls that
+   * afternoon said „person <name>: route must name one of the plan's routes",
+   * and the model's retry each time was to SHORTEN its own route names until
+   * they matched. Two whole extra runs per goal, for a copy of a
+   * sixty-character Georgian string.
+   *
+   * The tie itself stays — a person must belong to a real route, because the
+   * ask path enforces it. Only the comparison relaxes: case and surrounding or
+   * repeated whitespace stop counting, and a plan with exactly ONE route needs
+   * no naming at all, because there is nothing to be ambiguous between.
+   */
+  const routeKey = (name: string): string => name.trim().replace(/\s+/g, ' ').toLowerCase();
+  const routesByKey = new Map(routes.map((r) => [routeKey(r.name), r.name]));
+  const onlyRoute = routes.length === 1 ? routes[0].name : null;
+
+  function resolveRoute(said: string): string | null {
+    const matched = routesByKey.get(routeKey(said));
+    if (matched !== undefined) return matched;
+    // A single-route plan: whatever they called it, there is only one road.
+    return onlyRoute;
+  }
 
   const peopleRaw = Array.isArray(input.people_to_involve) ? input.people_to_involve : [];
   if (peopleRaw.length > MAX_PEOPLE) return { ok: false, error: `at most ${MAX_PEOPLE} people` };
@@ -105,10 +133,20 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
         error: `person ${name.value}: phone id from a search result is required`,
       };
     }
-    const route = typeof item.route === 'string' ? item.route.trim() : '';
-    if (!routeNames.has(route)) {
-      return { ok: false, error: `person ${name.value}: route must name one of the plan's routes` };
+    const said = typeof item.route === 'string' ? item.route : '';
+    const route = resolveRoute(said);
+    if (route === null) {
+      return {
+        ok: false,
+        // The names are IN the error now. The model was rewriting its plan to
+        // guess at them, which is what made one refusal cost a whole run.
+        error:
+          `person ${name.value}: route must name one of the plan's routes — ` +
+          routes.map((r) => `"${r.name}"`).join(', '),
+      };
     }
+    // Stored as the route's OWN spelling, never the person's, so the plan
+    // stays internally consistent whatever case the model used.
     people.push({ name: name.value, phone, route });
   }
 
