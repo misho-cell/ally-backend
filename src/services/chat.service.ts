@@ -145,6 +145,7 @@ import { logSearchActivity } from './abuseDetection.service';
 import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
+import { runOpeningSearches, buildOpeningSearchSection } from './openingSearch.service';
 import { writeFinalAnswer } from './finalAnswer.service';
 import {
   isCliffhangerReply,
@@ -5533,7 +5534,17 @@ export async function processChat(
         })
       : null;
 
-  const [agentPrompt, tools, history] = await Promise.all([
+  // Ticket 20 row 126: a named problem starts the web and the second circle at
+  // once. Run HERE, beside the prompt build rather than after the answer, and
+  // in the same Promise.all so the two searches overlap everything else this
+  // block is already waiting on — see openingSearch.service for why this is
+  // not the end-of-run nudge the seat asked for.
+  //
+  // Only on a goal just opened from a stated need. A follow-up turn, an engine
+  // wake and an ordinary chat all skip it: the rule is about the moment a
+  // problem is NAMED, and re-searching on every turn would be a new cost with
+  // no new question behind it.
+  const [agentPrompt, tools, history, openingSearches] = await Promise.all([
     buildAgentSystemPrompt(
       userId,
       thread.type,
@@ -5544,6 +5555,7 @@ export async function processChat(
     ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
+    autoGoalId === null ? Promise.resolve(null) : runOpeningSearches(userId, userMessage, runId),
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
@@ -5560,7 +5572,13 @@ export async function processChat(
   });
   // Pin the reply language to the user's latest message (engine-level, appended
   // last so it wins over the Georgian strategy prompt).
-  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
+  const systemPrompt =
+    agentPrompt.prompt +
+    // Row 126: what the server already found, before the model's first turn.
+    // Empty string on every run that did not open a goal, so the cached prompt
+    // prefix for ordinary turns is byte-identical to what it was.
+    (openingSearches === null ? '' : buildOpeningSearchSection(openingSearches)) +
+    buildReplyLanguageDirective(userMessage);
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
