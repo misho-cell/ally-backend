@@ -176,14 +176,52 @@ const REDACTED_BARE_RE = /\s*\*{0,2}\[hidden\]\*{0,2}/g;
 // value the user cannot see. A pair with content is never touched.
 const EMPTY_QUOTES_RE = /\s*(?:["„“]\s*["”]|'\s*'|«\s*»|\(\s*\))/g;
 
+/**
+ * Ticket 20 row 116: the label the number left behind.
+ *
+ * Removing the number is right; „ნომერი:." is not. Thread 15610 on 16 September
+ * showed „ნომერი:." twice, and goal 3466 showed „☎ /" — a label, its colon, and
+ * the space where a phone used to be, pulled tight by the tidy-up two lines
+ * below. The assistant reads as broken when it is in fact being careful.
+ *
+ * Exactly the shape of the empty-quotes rule above it, which was written for
+ * the same reason on 3 September: the placeholder goes, and whatever was
+ * holding its place has to go with it. A label with real content after it is
+ * never touched, which the tests state as plainly as the removals.
+ */
+const CONTACT_LABEL =
+  '(?:ნომერი|ნომრები|ტელეფონი|ტელეფონები|ტელ|მობილური|phone|phones|telephone|tel|mob|☎|📞)';
+
+/** The label alone on its line, with nothing left to the end of it. */
+const EMPTY_CONTACT_LABEL_RE = new RegExp(
+  `(^|\\n)([^\\S\\n]*(?:[-•*]\\s*)?)${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—]?[^\\S\\n]*(?:[/,;|][^\\S\\n]*)*[.!?]?(?=[^\\S\\n]*(?:\\n|$))`,
+  'giu',
+);
+
+/** The same label inside a sentence: „…, ნომერი: ." or „ოთახი 12 ☎ / ". */
+const EMPTY_CONTACT_LABEL_INLINE_RE = new RegExp(
+  `[,;(]?[^\\S\\n]*${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—/][^\\S\\n]*(?:[/,;|][^\\S\\n]*)*(?=[.!?,;)\\n]|$)`,
+  'giu',
+);
+
 export function stripRedactionArtifactsForDisplay(text: string): string {
-  return text
-    .replace(REDACTED_WRAPPED_RE, '')
-    .replace(REDACTED_QUOTED_RE, '')
-    .replace(REDACTED_BARE_RE, '')
-    .replace(EMPTY_QUOTES_RE, '')
-    .replace(/ {2,}/g, ' ')
-    .replace(/ ([,.:;!?])/g, '$1');
+  return (
+    text
+      .replace(REDACTED_WRAPPED_RE, '')
+      .replace(REDACTED_QUOTED_RE, '')
+      .replace(REDACTED_BARE_RE, '')
+      .replace(EMPTY_QUOTES_RE, '')
+      // After the placeholder is gone, and before the spacing tidy-up that would
+      // otherwise glue „ნომერი:" to the full stop after it.
+      // Replaced with NOTHING, not with the captured newline: the line existed
+      // only to carry the number, so it goes with it rather than leaving a blank
+      // line where a phone used to be.
+      .replace(EMPTY_CONTACT_LABEL_RE, '')
+      .replace(EMPTY_CONTACT_LABEL_INLINE_RE, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/ {2,}/g, ' ')
+      .replace(/ ([,.:;!?])/g, '$1')
+  );
 }
 
 /**
