@@ -453,16 +453,34 @@ export async function getMyTasks(userId: string, status?: TaskStatus): Promise<T
  * Pause / resume / close / edit a task. Only the owner's task is touched.
  * Returns false when no such task exists for the user (nothing updated).
  */
+/**
+ * Ticket 20 row 147 — HOW a goal was closed, because the row could not say.
+ *
+ * finish_task and update_task(status='closed') both land here and wrote the
+ * same row, so the stage expression tried to recover the difference by testing
+ * whether the free-text note contained the English substring "stop". Every
+ * closed goal was therefore SOLVED, including four of Tornike's closed on his
+ * own word tonight with the note "closed on Tornike's request".
+ *
+ * 'finished' is the model calling finish_task — the result delivered or the
+ * routes honestly exhausted. It is the best signal available and it is still
+ * WEAKER than the seat's done-when, which asks for the owner to call it
+ * resolved: nothing today puts that question to the owner at all.
+ */
+export type ClosedAs = 'finished' | 'stopped';
+
 export async function updateTask(
   userId: string,
   taskId: number,
   status: TaskStatus,
   note?: string,
+  closedAs?: ClosedAs,
 ): Promise<boolean> {
   const result = await query<{ thread_id: number | null }>(
     `UPDATE tasks
      SET status = $3,
          closed_reason = CASE WHEN $3 = 'closed' THEN $4 ELSE closed_reason END,
+         closed_as = CASE WHEN $3 = 'closed' THEN $5::text ELSE closed_as END,
          pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
          pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
          -- A closed goal has no next wake (Ticket 11 Task 7 (e): goal 1420 read
@@ -472,7 +490,7 @@ export async function updateTask(
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2
      RETURNING thread_id`,
-    [taskId, userId, status, note ?? null],
+    [taskId, userId, status, note ?? null, closedAs ?? null],
     QUERY_TIMEOUT_MS,
   );
   const updated = (result.rowCount ?? 0) > 0;

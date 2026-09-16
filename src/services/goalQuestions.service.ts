@@ -299,8 +299,17 @@ const ADMIN_GOALS_LIMIT = 50;
  * running. Shared by the list and the detail so the two can never disagree.
  */
 export const GOAL_STAGE_SQL = `CASE
-              WHEN t.status = 'closed' AND COALESCE(t.closed_reason, '') ILIKE '%stop%' THEN 'stopped'
-              WHEN t.status = 'closed' THEN 'solved'
+              -- Ticket 20 row 147. This used to read the free-text note for
+              -- the English substring "stop", so every closed goal was
+              -- 'solved' — including four of Tornike's closed on his own word
+              -- with a note that happened not to contain it. The note is
+              -- usually Georgian and could never have matched.
+              --
+              -- How a goal was closed is now STORED rather than guessed at.
+              -- NULL is every row closed before the column existed: we do not
+              -- know, so it reads 'stopped' rather than claiming a win.
+              WHEN t.status = 'closed' AND t.closed_as = 'finished' THEN 'solved'
+              WHEN t.status = 'closed' THEN 'stopped'
               WHEN t.status = 'paused' THEN 'paused'
               WHEN t.plan IS NULL AND t.plan_proposed IS NOT NULL THEN 'plan_proposed'
               -- Task 25 (c): the wallet is on and the owner's balance is gone —

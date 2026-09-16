@@ -288,9 +288,14 @@ describe('adminListGoals — the stage column', () => {
     await adminListGoals('501');
 
     const [sql] = mockQuery.mock.calls[0] as [string];
+    // Ticket 20 row 147 swapped the first two, and the swap is the fix. It
+    // used to be „stopped if the note contains the English word stop, else
+    // SOLVED" — so every closed goal was a win. Now „solved" is the specific
+    // case, requiring the stored closed_as, and „stopped" is what everything
+    // else closed falls through to.
     const order = [
-      "THEN 'stopped'",
       "THEN 'solved'",
+      "THEN 'stopped'",
       "THEN 'paused'",
       "THEN 'plan_proposed'",
       "THEN 'waiting_topup'",

@@ -3859,7 +3859,8 @@ async function executeToolCall(
     case 'finish_task': {
       const taskId = Number(input['task_id']);
       const summary = String(input['summary'] ?? 'done').slice(0, 500);
-      const closed = await updateTask(userId, taskId, 'closed', summary);
+      // Row 147: finish_task is the one route that means the work is DONE.
+      const closed = await updateTask(userId, taskId, 'closed', summary, 'finished');
       if (closed) await cancelAsksForTask(taskId);
       return { closed };
     }
@@ -3878,6 +3879,9 @@ async function executeToolCall(
         taskIdToUpdate,
         status,
         input['note'] as string | undefined,
+        // Row 147: closing through update_task is the owner stopping a goal,
+        // never the work being finished. finish_task is the other route.
+        status === 'closed' ? 'stopped' : undefined,
       );
       // Closing by ANY route cancels what is in flight (round 1: an
       // update_task-closed goal left its ask 'sent' on the recipient's phone).

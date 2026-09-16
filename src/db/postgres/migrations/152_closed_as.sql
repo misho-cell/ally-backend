@@ -1,0 +1,24 @@
+-- Ticket 20 row 147: closing a goal recorded it as SOLVED.
+--
+-- The stage expression read:
+--
+--   WHEN t.status = 'closed' AND closed_reason ILIKE '%stop%' THEN 'stopped'
+--   WHEN t.status = 'closed'                                  THEN 'solved'
+--
+-- So EVERY closed goal was solved unless its free-text note happened to
+-- contain the English substring "stop". Tonight, four of Tornike's goals were
+-- closed on his own word with the note "closed on Tornike's request" and all
+-- four now read solved. Nothing was solved. The outcome engine that learns
+-- from results (row 43) would have counted them as wins.
+--
+-- It is also the substring-as-a-word family again — row 131's, in SQL, against
+-- a note that is usually Georgian and so can never match an English word.
+--
+-- The real problem underneath: finish_task and update_task(status='closed')
+-- both call updateTask and write the same row, so the database genuinely could
+-- not tell "the work is done" from "the owner said stop". Guessing from the
+-- note was an attempt to recover information that was never stored.
+--
+-- This stores it. NULL for every existing row, which is honest: we do not know
+-- how those were closed and must not claim to.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS closed_as TEXT;
