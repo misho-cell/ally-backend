@@ -370,10 +370,17 @@ describe('createAsk', () => {
 
     expect(out.sent).toBe(false);
     expect((out as { reason?: string }).reason).toBe('person_daily_relay_limit_reached');
-    expect((out as { error: string }).error).toContain('ხვალ');
     // Nothing reached their phone, and the refusal never says they refused.
     expect(mockSaveMessage).not.toHaveBeenCalled();
     expect((out as { error: string }).error).not.toContain('უარი');
+
+    // This used to assert the refusal said „ხვალ" — tomorrow. True about the
+    // LIMIT, and row 127 is what a model does with it: on goal 3533 it became
+    // „Lika's answer will come tomorrow" to an owner nothing had been sent for.
+    // The word is gone and the rule that replaced it is asserted instead.
+    expect((out as { error: string }).error).not.toContain('ხვალ ისევ შესაძლებელი');
+    expect((out as { error: string }).error).toContain('არასოდეს დაჰპირდე პასუხს');
+    expect((out as { error: string }).error).toContain('მფლობელის ლიმიტი არ არის');
   });
 
   it('enforces the daily anti-runaway ceiling', async () => {
@@ -1095,8 +1102,32 @@ describe('the receiving-side brake', () => {
 
     expect(out.sent).toBe(false);
     expect((out as { reason: string }).reason).toBe('recipient_daily_limit_reached');
-    expect((out as { error: string }).error).toContain('ეს ადამიანის გადაწყვეტილება არ არის');
+    expect((out as { error: string }).error).toContain('ამ ადამიანის გადაწყვეტილება არ არის');
     expect(mockCreateThread).not.toHaveBeenCalled();
+
+    // Row 127, all three halves. The owner on goal 3533 read „the daily limit
+    // ran out" beside her own 1,433 credits and took it for her quota; goal
+    // 3539 hit this same brake twice and simply stopped.
+    const { error } = out as { error: string };
+    expect(error).toContain('მფლობელის ლიმიტი არ არის');
+    expect(error).toContain('კრედიტებს');
+    expect(error).toContain('ამავე გაშვებაში გააგრძელე');
+    expect(error).toContain('მეორე წრე');
+    expect(error).toContain('არასოდეს დაჰპირდე პასუხს');
+  });
+
+  it('row 127 — the SENDER-side cap says whose it is and does not stop the goal', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, sentToday: 20 });
+
+    const out = await createAsk('42', 3, '+995599111222', 'q');
+
+    expect(out.sent).toBe(false);
+    const { error } = out as { error: string };
+    // The literal sentence the owner saw and read as her own balance.
+    expect(error).not.toContain('დღევანდელი მიწერების ლიმიტი ამოიწურა');
+    expect(error).toContain('მფლობელის ლიმიტი არ არის');
+    expect(error).toContain('ამავე გაშვებაში გააგრძელე');
+    expect(error).toContain('არასოდეს დაჰპირდე პასუხს');
   });
 
   it('a live conversation with this person continues past the brake — it is not a new question', async () => {

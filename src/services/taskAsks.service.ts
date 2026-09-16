@@ -94,6 +94,44 @@ export type CreateAskOutcome =
  * as something it is not — every invented cause ("test mode", "they opted
  * out") began life as a paraphrased error string.
  */
+/**
+ * Ticket 20 row 127 — the two things every "we did not write to them" refusal
+ * has to say, in one place so they cannot drift apart.
+ *
+ * Goal 3533, 16 September: the ask to Lika was refused by the receiving-side
+ * brake at 10:48:19. The owner read „the daily limit ran out" while her own
+ * header showed 1,433 credits, so it looked like HER quota — and the reply
+ * closed with „Lika's answer will come tomorrow" when nothing had been sent to
+ * Lika at all. Goal 3539: the same brake twice, and the goal simply stopped.
+ *
+ * Both are my texts. „ხვალ ისევ შესაძლებელი იქნება" is a true sentence about
+ * the LIMIT that a model will read as a promise about an ANSWER, and inviting
+ * that reading is the defect. A human assistant says whose limit it is in one
+ * line and carries straight on with everyone else.
+ */
+const NOT_THE_OWNERS_LIMIT =
+  ' ეს მფლობელის ლიმიტი არ არის და მის ბალანსს, კრედიტებს ან ტოკენებს არ უკავშირდება — ' +
+  'არასოდეს თქვა „შენი დღიური ლიმიტი ამოიწურა".';
+
+/**
+ * Never promise an answer from somebody who was never written to. This is the
+ * sentence the „tomorrow" phrasing kept producing, and it is worth its own
+ * constant because it applies to every refusal, including the ones where the
+ * goal genuinely has nowhere else to go.
+ */
+const PROMISE_NO_ANSWER =
+  ' არასოდეს დაჰპირდე პასუხს იმ ადამიანისგან, ვისაც შეტყობინება არ გაგზავნია.';
+
+/**
+ * A blocked route is not a blocked goal (Lika's file on 3533 and 3539, where
+ * it was). Continue in the same run and without asking — asking turns one
+ * blocked person into a stopped goal, which is what happened twice.
+ */
+const CONTINUE_BY_OTHER_ROUTES =
+  ' მიზანი არ ჩერდება: ახლავე, ამავე გაშვებაში გააგრძელე სხვა გზებით — ქსელის სხვა ' +
+  'შესაფერისი ადამიანები, მეორე წრე, ვები — და ნებართვა ამისთვის არ ჰკითხო. ვისაც ვერ ' +
+  'მიწერე, ის ხვალინდელ გეგმაში ჩაწერე და ეს თქვი.';
+
 const RELAY_REFUSALS: Readonly<
   Record<GrowthAskRefusalReason, { reason: AskRefusalReason; error: (toName: string) => string }>
 > = {
@@ -129,8 +167,10 @@ const RELAY_REFUSALS: Readonly<
     error: (toName: string) =>
       `${toName}-სთან ამ მიზანზე დღეს უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} შეტყობინება ` +
       'გაიგზავნა — ეს დღიური ზღვარია ერთ ადამიანზე, რომ საუბარი დატვირთვად არ იქცეს. ' +
-      'ხვალ ისევ შესაძლებელი იქნება. მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც ' +
-      '„ტექნიკური შეფერხება", და არ თქვა, თითქოს ამ ადამიანმა რამე უარყო.',
+      'მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც „ტექნიკური შეფერხება", და არ ' +
+      'თქვა, თითქოს ამ ადამიანმა რამე უარყო.' +
+      NOT_THE_OWNERS_LIMIT +
+      PROMISE_NO_ANSWER,
   },
 };
 
@@ -402,8 +442,11 @@ export async function createAsk(
       reason: 'recipient_daily_limit_reached',
       error:
         `${toName}-ს დღეს უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა მიუვიდა სხვებისგან — ` +
-        'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ხვალ ისევ შესაძლებელი იქნება; ' +
-        'მფლობელს ეს პირდაპირ უთხარი და სხვა ადამიანი შესთავაზე. ეს ადამიანის გადაწყვეტილება არ არის.',
+        'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ერთი ხაზით უთხარი მფლობელს, ' +
+        'ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
+        NOT_THE_OWNERS_LIMIT +
+        CONTINUE_BY_OTHER_ROUTES +
+        PROMISE_NO_ANSWER,
     };
   }
 
@@ -471,7 +514,12 @@ export async function createAsk(
     return {
       sent: false,
       reason: 'daily_cap_reached',
-      error: 'დღევანდელი მიწერების ლიმიტი ამოიწურა — ხვალ გავაგრძელებ.',
+      error:
+        'ამ ანგარიშიდან დღეს გაგზავნილმა კითხვებმა ზღვარს მიაღწია — ეს გაგზავნის ' +
+        'სიხშირის დაცვაა, არა მფლობელის ბალანსი.' +
+        NOT_THE_OWNERS_LIMIT +
+        CONTINUE_BY_OTHER_ROUTES +
+        PROMISE_NO_ANSWER,
     };
   }
 
