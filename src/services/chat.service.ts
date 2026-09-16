@@ -732,18 +732,84 @@ const SET_TASK_WAKE_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * Ticket 20 row 147, second half — the three words that close a goal, and who
+ * is allowed to say them.
+ *
+ * Tornike's vision of 7 September: a goal closes only on the OWNER's
+ * „resolved" or „stop". Tonight four of his own goals read „solved" because
+ * finish_task closed them on the model's judgement and the row could not tell
+ * the two apart.
+ */
+const SOLVED_LABEL = 'გადაწყდა';
+const NOT_YET_LABEL = 'ჯერ არა';
+const STOP_LABEL = 'შევაჩეროთ';
+
+/**
+ * Did the OWNER say this goal is solved?
+ *
+ * The same shape as approvalBelongsToThePlan, and for the same reason: ticket
+ * 19 G2 proved a `confirmed` flag cannot tell „they said yes to THIS" from
+ * „they said yes to something". The model sets the flag; only the thread can
+ * say what the owner was answering.
+ *
+ * Deliberately narrow. „ჯერ არა" and „შევაჩეროთ" are the other two buttons on
+ * the same card, and neither is a yes — a rule that accepted anything typed
+ * under a finish card would repeat G2's first pass exactly.
+ */
+export function ownerSaysSolved(
+  lastOwnerMessage: string | null,
+  newestOfferedChoices: readonly string[] | null,
+): boolean {
+  const said = (lastOwnerMessage ?? '').trim();
+  if (said === '') return false;
+  if (TAKES_IT_BACK.test(said)) return false;
+  // The button itself, whatever else the sentence carries.
+  if (wordsOf(said).includes(SOLVED_LABEL.toLowerCase())) return true;
+  // A bare yes counts only while a finish card is the newest thing on screen —
+  // the same condition a plan's bare yes has to meet.
+  const finishCardOnScreen = (newestOfferedChoices ?? []).some(
+    (label) => label.trim() === SOLVED_LABEL,
+  );
+  return finishCardOnScreen && PLAN_YES.test(said);
+}
+
 const FINISH_TASK_TOOL: AnthropicTool = {
   name: 'finish_task',
+  /**
+   * Ticket 20 row 147, second half — Tornike's vision of 7 September, which
+   * the seat pointed me back to: a goal closes only on the OWNER's „resolved"
+   * or „stop". Never on the assistant's own judgement.
+   *
+   * This used to close the goal outright. That is how four of his own goals
+   * came to read „solved" tonight, and it is why the first half of this row
+   * could only stop the word being wrong rather than make it right.
+   */
   description:
-    'Close the task when the finish criterion is met — a real result delivered, or every avenue ' +
-    'honestly exhausted. Pass a short outcome summary. Cancels any unanswered asks politely.',
+    'Believe the goal is done? ASK the owner — do not close it. Without confirmed: true this ' +
+    'records nothing and the goal stays open; show the owner what was achieved and offer three ' +
+    'buttons: „' +
+    SOLVED_LABEL +
+    '" / „' +
+    NOT_YET_LABEL +
+    '" / „' +
+    STOP_LABEL +
+    '". Call again with confirmed: true only after they tap „' +
+    SOLVED_LABEL +
+    '" or say so in their own words. Their „' +
+    STOP_LABEL +
+    '" is update_task(status closed) instead. Cancels any unanswered asks politely.',
   input_schema: {
     type: 'object',
     properties: {
       task_id: { type: 'number', description: 'The task id from the system context.' },
       summary: { type: 'string', description: 'One-line outcome.' },
+      confirmed: {
+        type: 'boolean',
+        description: 'true only after the OWNER said the goal is solved. Never your own view.',
+      },
     },
-    required: ['task_id', 'summary'],
+    required: ['task_id', 'summary', 'confirmed'],
   },
 };
 
@@ -3902,7 +3968,55 @@ async function executeToolCall(
     case 'finish_task': {
       const taskId = Number(input['task_id']);
       const summary = String(input['summary'] ?? 'done').slice(0, 500);
-      // Row 147: finish_task is the one route that means the work is DONE.
+      /**
+       * Ticket 20 row 147, second half — Tornike's vision of 7 September: a
+       * goal closes only on the OWNER's „resolved" or „stop", never on the
+       * assistant's judgement. This used to close outright, which is how four
+       * of his own goals read „solved" tonight.
+       */
+      if (input['confirmed'] !== true) {
+        return {
+          closed: false,
+          asked: true,
+          error:
+            'Not closed, and the goal stays open — that is correct, not a failure. Show the ' +
+            `owner what was achieved and offer three buttons: „${SOLVED_LABEL}" / ` +
+            `„${NOT_YET_LABEL}" / „${STOP_LABEL}". Call this again with confirmed: true only ` +
+            `after they choose „${SOLVED_LABEL}". „${STOP_LABEL}" is update_task(closed) ` +
+            `instead, and „${NOT_YET_LABEL}" means carry on working.`,
+        };
+      }
+      /**
+       * And the yes has to be the owner's, about THIS. Ticket 19 G2 proved a
+       * `confirmed` flag cannot tell „they said yes to this" from „they said
+       * yes to something" — the model sets the flag, so the server reads the
+       * thread instead. Same guard as approve_task_plan.
+       */
+      if (threadId !== undefined) {
+        const screen = await planConsentOnScreen(threadId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[finish-consent] could not read the thread:', (err as Error).message);
+          return null;
+        });
+        if (
+          screen !== null &&
+          !ownerSaysSolved(screen.lastOwnerMessage, screen.newestOfferedChoices)
+        ) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[finish-consent] run ${runId ?? '-'} thread ${threadId}: close refused — the owner has not called it solved`,
+          );
+          return {
+            closed: false,
+            asked: true,
+            error:
+              'Not closed: the owner has not said this is solved. Their last message was about ' +
+              `something else. Show what was achieved and offer „${SOLVED_LABEL}" / ` +
+              `„${NOT_YET_LABEL}" / „${STOP_LABEL}", and call this only after they answer THAT.`,
+          };
+        }
+      }
+      // Row 147, first half: this is the one route that means the work is DONE.
       const closed = await updateTask(userId, taskId, 'closed', summary, 'finished');
       if (closed) await cancelAsksForTask(taskId);
       return { closed };

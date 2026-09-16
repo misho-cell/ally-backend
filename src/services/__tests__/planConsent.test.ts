@@ -14,7 +14,7 @@
  * whether the user had said yes — and he had, to a draft. A flag cannot tell
  * those apart because it is the same flag either way.
  */
-import { approvalBelongsToThePlan } from '../chat.service';
+import { approvalBelongsToThePlan, ownerSaysSolved } from '../chat.service';
 
 const PLAN_BUTTONS = ['დამტკიცებულია', 'შევცვალოთ'];
 const DRAFT_BUTTONS = ['კი, გააგზავნე', 'შევცვალოთ'];
@@ -355,5 +355,65 @@ describe('row 131 second half — „Go. No." is not a yes', () => {
 
   it('an inflected მაგრამ still takes it back — a refusal may over-reach, safely', () => {
     expect(approvalBelongsToThePlan('მიდი, მაგრამაც ჯერ არა', PLAN_CARD)).toBe(false);
+  });
+});
+
+/**
+ * Ticket 20 row 147, second half — who is allowed to say a goal is solved.
+ *
+ * Tornike's vision of 7 September, which the seat pointed me back to: a goal
+ * closes only on the OWNER's „resolved" or „stop". finish_task used to close
+ * outright on the model's own judgement, which is how four of his goals came
+ * to read „solved" tonight when nothing had been solved.
+ *
+ * The guard is deliberately the same shape as the plan's, because ticket 19 G2
+ * already proved the alternative: a `confirmed` flag the model sets itself
+ * cannot tell „they said yes to THIS" from „they said yes to something".
+ */
+describe('row 147 — only the owner calls a goal solved', () => {
+  const FINISH_CARD = ['გადაწყდა', 'ჯერ არა', 'შევაჩეროთ'];
+
+  it('the solved button closes it — that is what a tap sends', () => {
+    expect(ownerSaysSolved('გადაწყდა', FINISH_CARD)).toBe(true);
+  });
+
+  it('a bare yes under the finish card counts, as it does for a plan', () => {
+    expect(ownerSaysSolved('კი', FINISH_CARD)).toBe(true);
+    expect(ownerSaysSolved('დიახ', FINISH_CARD)).toBe(true);
+  });
+
+  /** The other two buttons on the SAME card. Neither is a yes. */
+  it.each([
+    ['ჯერ არა', 'not yet — the goal carries on'],
+    ['შევაჩეროთ', 'stop — that is update_task, and it is not solved'],
+  ])('„%s" does not close it (%s)', (said) => {
+    expect(ownerSaysSolved(said, FINISH_CARD)).toBe(false);
+  });
+
+  it('a yes with no finish card on screen closes nothing', () => {
+    // The same rule the plan needed: a yes belongs to what was on the screen.
+    expect(ownerSaysSolved('კი', ['დამტკიცებულია', 'შევცვალოთ'])).toBe(false);
+    expect(ownerSaysSolved('კი', null)).toBe(false);
+  });
+
+  it('an answer to some other question is not an approval of the finish', () => {
+    // G2's original case, in its new home: a one-word answer typed under a
+    // card is an answer, not a yes.
+    expect(ownerSaysSolved('სააგენტო', FINISH_CARD)).toBe(false);
+    expect(ownerSaysSolved('ხვალ დილით', FINISH_CARD)).toBe(false);
+  });
+
+  it('a solved that takes itself back does not close it', () => {
+    expect(ownerSaysSolved('გადაწყდა, მაგრამ ჯერ ნინიას დაელოდე', FINISH_CARD)).toBe(false);
+  });
+
+  it('silence closes nothing', () => {
+    expect(ownerSaysSolved(null, FINISH_CARD)).toBe(false);
+    expect(ownerSaysSolved('   ', FINISH_CARD)).toBe(false);
+  });
+
+  /** Row 131's lesson, carried into the new rule rather than relearned. */
+  it('a word that merely CONTAINS the button is not the button', () => {
+    expect(ownerSaysSolved('გადაწყდარა რამე', FINISH_CARD)).toBe(false);
   });
 });
