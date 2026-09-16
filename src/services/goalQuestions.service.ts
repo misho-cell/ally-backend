@@ -64,6 +64,33 @@ async function flagGoal(
     return { flagged: false, error: 'No such open goal of yours.' };
   }
 
+  /**
+   * Ticket 20 row 107 — a goal never WAITS on its owner without a question.
+   *
+   * Ticket 19 G9 dropped the unanswerable CARD and deliberately kept the
+   * badge, on the reasoning that the goal really was blocked. Measured
+   * tonight, that leaves 12 of the 29 goals currently waiting on an owner with
+   * no question recorded at all: 41% of them say „answer me" and have nothing
+   * to answer.
+   *
+   * The reasoning was wrong, and Tornike's own D117 says why: a question to
+   * the owner never stops the work. If the model asked for a decision and did
+   * not register what it wanted decided, the honest state is RUNNING, not
+   * „waiting on you" — the goal keeps going by its other routes and nobody is
+   * asked to answer a question nobody can state.
+   *
+   * A question stored on an EARLIER run still counts. The fallback then has
+   * something real behind it and the flag is true.
+   */
+  const alreadyHasQuestion = task.pending_question !== null && task.pending_question.trim() !== '';
+  if (question === null && !alreadyHasQuestion) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[goal-question] goal ${taskId}: asked for a decision without naming one — left running, not flagged`,
+    );
+    return { flagged: false, error: 'No question was registered, so the goal is not blocked.' };
+  }
+
   // A fallback flag must not overwrite a question the model DID register on an
   // earlier run — that text is attributable, this one is not.
   await query(

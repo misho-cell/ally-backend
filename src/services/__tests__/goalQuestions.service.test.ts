@@ -156,32 +156,56 @@ describe('goalQuestionFlaggedSince', () => {
 });
 
 describe('flagGoalNeedsOwner — the engine fallback never invents the question', () => {
-  it('flags the goal without writing question text', async () => {
-    // Live, 1 Sep: goal 1420 (dog trainer) woke, reported on three goals at
-    // once and closed on the Batumi-photographer question — which the old
-    // fallback scraped and filed as 1420's own. A question shown against the
-    // wrong goal is worse than none: only ask_owner_decision may write text.
+  /**
+   * Ticket 20 row 107 — this test used to assert the badge, and the badge was
+   * the bug.
+   *
+   * Ticket 19 G9 dropped the unanswerable CARD and deliberately kept the
+   * badge, on the reasoning that the goal really was blocked. Measured on the
+   * live rows tonight: 12 of the 29 goals waiting on an owner had NO question
+   * recorded. 41% of them said „answer me" with nothing to answer.
+   *
+   * Tornike's D117 says why the reasoning was wrong — a question to the owner
+   * never stops the work. With no question, the honest state is RUNNING.
+   *
+   * The 1 September case the old comment described is untouched: only
+   * ask_owner_decision may ever write question text, and the fallback still
+   * invents none. It now declines to claim the goal is blocked instead.
+   */
+  it('does not flag a goal at all when no question was ever registered', async () => {
     mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), pending_question: null } as never);
 
     const out = await flagGoalNeedsOwner('501', 1420);
 
+    expect(out.flagged).toBe(false);
+    // Nothing written, nothing queued, and — the change — no badge.
+    expect(
+      mockQuery.mock.calls.some(([sql]) => (sql as string).includes('pending_question_at = NOW()')),
+    ).toBe(false);
+    expect(mockQueue).not.toHaveBeenCalled();
+    expect(mockSetStatus).not.toHaveBeenCalled();
+  });
+
+  it('a question registered on an EARLIER run is a real question, so it flags', async () => {
+    // The fallback is not useless: when the goal already holds a question the
+    // model named on a previous run, there IS something to answer.
+    mockGetTask.mockResolvedValue(OPEN_TASK);
+
+    const out = await flagGoalNeedsOwner('501', 1519);
+
     expect(out.flagged).toBe(true);
+    expect(mockSetStatus).toHaveBeenCalledWith('501', 9406, 'needs_you', { isTask: true });
+    // And still no question text is invented by the fallback.
     expect(
       mockQuery.mock.calls.some(([sql]) => (sql as string).includes('pending_question = $3')),
     ).toBe(false);
-    const stamp = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('pending_question_at = NOW()'),
-    );
-    expect(stamp?.[1]).toEqual([1420, '501']);
-    // Ticket 19 G9: and NO card is queued for it. Since Task 98 this item
-    // becomes a message with „ვუპასუხებ ახლა" / „მოგვიანებით" under it, and
-    // with no question behind them those buttons answer nothing — thread
-    // 15379, 17:17:25, offered them for a question whose own instruction
-    // admitted it was never registered.
-    expect(mockQueue).not.toHaveBeenCalled();
-    // The badge still goes up: the goal IS waiting, and everything that asks
-    // still reads it as waiting. Only the unanswerable card is gone.
-    expect(mockSetStatus).toHaveBeenCalledWith('501', 9406, 'needs_you', { isTask: true });
+  });
+
+  it('blank is not a question either — whitespace does not block a goal', () => {
+    return (async () => {
+      mockGetTask.mockResolvedValue({ ...(OPEN_TASK as object), pending_question: '   ' } as never);
+      expect((await flagGoalNeedsOwner('501', 1420)).flagged).toBe(false);
+    })();
   });
 
   it('still carries a question the model registered on an earlier run', async () => {
