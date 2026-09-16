@@ -192,15 +192,62 @@ const EMPTY_QUOTES_RE = /\s*(?:["„“]\s*["”]|'\s*'|«\s*»|\(\s*\))/g;
 const CONTACT_LABEL =
   '(?:ნომერი|ნომრები|ტელეფონი|ტელეფონები|ტელ|მობილური|phone|phones|telephone|tel|mob|☎|📞)';
 
+/**
+ * Row 116, THIRD shape, and a bug of my own found while fixing it.
+ *
+ * The labels above are matched as plain substrings, so „tel" matched inside
+ * „hotel" and „mob" inside anything containing it. Measured before the fix:
+ *
+ *   „Grand hotel: [hidden]"  came out  „Grand ho"
+ *   „The mob: [hidden]"      came out  „The"
+ *
+ * That is worse than the artifact the rule was written to remove — it destroys
+ * words the user wrote. It shipped with row 116 and it is mine.
+ *
+ * \b cannot express this: Georgian letters are not word characters in
+ * JavaScript, so „\btel" would happily match inside „hotel" anyway in the
+ * mixed-script text this product actually produces. A Unicode lookbehind can,
+ * and every one of these regexes already carries the `u` flag.
+ *
+ * The line-anchored rule below does not need it — it is anchored at a line
+ * start and cannot slide into the middle of a word — but it costs nothing
+ * there and means the two rules cannot drift apart.
+ */
+const NOT_INSIDE_A_WORD = '(?<![\\p{L}\\p{N}_])';
+
+/**
+ * Labels that are ABBREVIATIONS, where a full stop belongs to the LABEL and
+ * not to the sentence. This is the tester's third shape, thread 15646:
+ *
+ *   „floristi.ge, მისამართი N5, თბილისი, ტელ. [hidden]"
+ *      came out  „floristi.ge, მისამართი N5, თბილისი, ტელ."
+ *
+ * „ტელ" was in the list all along; what the inline rule required after it was
+ * a separator — a colon, a dash, a slash — and an abbreviating full stop is
+ * none of those. Worse, with a sentence-ending stop after the number it came
+ * out „ტელ..".
+ *
+ * Only abbreviations get this, which is the whole point of the split. A full
+ * stop after a word written out in full IS the sentence: „მან დაკარგა
+ * ტელეფონი." must survive untouched, and it is asserted that it does.
+ */
+const CONTACT_ABBREVIATION = '(?:ტელ|tel|mob)';
+
 /** The label alone on its line, with nothing left to the end of it. */
 const EMPTY_CONTACT_LABEL_RE = new RegExp(
-  `(^|\\n)([^\\S\\n]*(?:[-•*]\\s*)?)${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—]?[^\\S\\n]*(?:[/,;|][^\\S\\n]*)*[.!?]?(?=[^\\S\\n]*(?:\\n|$))`,
+  `(^|\\n)([^\\S\\n]*(?:[-•*]\\s*)?)${NOT_INSIDE_A_WORD}${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—]?[^\\S\\n]*(?:[/,;|][^\\S\\n]*)*[.!?]?(?=[^\\S\\n]*(?:\\n|$))`,
   'giu',
 );
 
 /** The same label inside a sentence: „…, ნომერი: ." or „ოთახი 12 ☎ / ". */
 const EMPTY_CONTACT_LABEL_INLINE_RE = new RegExp(
-  `[,;(]?[^\\S\\n]*${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—/][^\\S\\n]*(?:[/,;|][^\\S\\n]*)*(?=[.!?,;)\\n]|$)`,
+  `[,;(]?[^\\S\\n]*${NOT_INSIDE_A_WORD}` +
+    // Either a label with a real separator after it, or an abbreviation whose
+    // own full stop stands in for one — and that stop may still be followed by
+    // a separator („ტელ.:"), which is why this one is optional and the first
+    // is not.
+    `(?:${CONTACT_LABEL}[^\\S\\n]*[:：\\-–—/]|${CONTACT_ABBREVIATION}\\.[^\\S\\n]*[:：\\-–—/]?)` +
+    `[^\\S\\n]*(?:[/,;|][^\\S\\n]*)*(?=[.!?,;)\\n]|$)`,
   'giu',
 );
 

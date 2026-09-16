@@ -115,3 +115,68 @@ describe('punctuation left touching itself where a number was', () => {
     expect(stripRedactionArtifactsForDisplay(input)).toBe(input);
   });
 });
+
+/**
+ * Ticket 20 row 116, THIRD shape, and a bug of my own found underneath it.
+ *
+ * The tester's report: „floristi.ge, მისამართი N5, თბილისი, ტელ." — the number
+ * gone and „ტელ." left standing. „ტელ" was in the label list from the first
+ * fix; what the inline rule demanded after it was a separator, and an
+ * abbreviating full stop is not one. With a sentence-ending stop after the
+ * number it came out worse still: „ტელ..".
+ *
+ * So a full stop now counts as the separator, but ONLY for abbreviations. For
+ * a word written out in full the stop IS the sentence, and „მან დაკარგა
+ * ტელეფონი." has to survive — that is the reason for the split and not a
+ * detail of it.
+ *
+ * AND THE BUG UNDER IT, which is mine and shipped with row 116. The labels
+ * were matched as bare substrings, so measured on the live code before this
+ * change:
+ *
+ *   „Grand hotel: [hidden]"  →  „Grand ho"
+ *   „The mob: [hidden]"      →  „The"
+ *
+ * The rule existed to stop the product looking careless and was quietly eating
+ * words the user wrote, which is far worse than the artefact it removes. \b
+ * cannot fix it — Georgian letters are not word characters in JavaScript, so
+ * „\btel" still matches inside „hotel" in mixed-script text. A Unicode
+ * lookbehind can.
+ */
+describe('row 116 third shape — an abbreviated label, and not the inside of a word', () => {
+  it.each([
+    ['floristi.ge, მისამართი N5, თბილისი, ტელ. [hidden]', 'floristi.ge, მისამართი N5, თბილისი'],
+    // The stop after the number is the sentence's; the one after „ტელ" is the
+    // abbreviation's. Both were being left behind, side by side, as „ტელ..".
+    ['floristi.ge, მისამართი N5, თბილისი, ტელ. [hidden].', 'floristi.ge, მისამართი N5, თბილისი.'],
+    ['floristi.ge, თბილისი, ტელ.: [hidden]', 'floristi.ge, თბილისი'],
+    ['მაღაზია, ტელ. [hidden], მისამართი N5', 'მაღაზია, მისამართი N5'],
+    ['Shop, tel. [hidden].', 'Shop.'],
+    ['ყვავილების მაღაზია\nტელ. [hidden]\nმისამართი N5', 'ყვავილების მაღაზია\nმისამართი N5'],
+  ])('%s', (input, expected) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(expected);
+  });
+
+  /** The words that were being eaten. Each of these is a real regression. */
+  it.each([
+    ['Grand hotel: [hidden]', 'Grand hotel:'],
+    ['დავჯავშნე hotel: [hidden]', 'დავჯავშნე hotel:'],
+  ])('„%s" keeps the word it was matching inside of', (input, expected) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(expected);
+  });
+
+  /**
+   * The line the abbreviation rule must not cross: a label written out in
+   * full, ending a sentence, with no number anywhere near it.
+   */
+  it.each([
+    'მან დაკარგა ტელეფონი.',
+    'დამირეკე ტელეფონით.',
+    'ეს არის ჩემი ნომერი.',
+    'ის ცხოვრობს ტელავში.',
+    'მაღაზია, ტელ. 555123456',
+    'დარეკე აქ, ნომერი: 555 12 34 56',
+  ])('leaves „%s" alone', (input) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(input);
+  });
+});
