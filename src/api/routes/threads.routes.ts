@@ -28,6 +28,7 @@ import {
   runPayerFor,
 } from '../../services/taskAsks.service';
 import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
+import { NOTHING_TO_STOP, stopGoal } from '../../services/goalStop.service';
 import { planInForce } from '../../services/taskPlans.service';
 import {
   clearGoalQuestionForThread,
@@ -151,6 +152,72 @@ function statusAfterRun(
 }
 
 threadsRouter.use(authenticateJwt, requireUserRole);
+
+// Mounted HERE, above the subscription gate, and the position is the point.
+// tasks.routes carries the same route with the comment „no subscription gate on
+// purpose: stopping a running task must always work" — and the first draft of
+// this one sat at the bottom of the file, behind the gate, which would have
+// left a lapsed account unable to stop a goal that is still writing to people
+// on its behalf. It keeps its own rate limit, the same 30/min tasks.routes uses.
+
+/**
+ * Stop the goal running on THIS thread — Ticket 20 row 113.
+ *
+ * The chat view has no goal id. The frontend checked: their thread object
+ * carries id, type, title, last_message, updated_at, status, status_line,
+ * is_task and request_ref, and nothing else, so the header button had been
+ * posting the thread id to `/tasks/:id/stop`, which is keyed on the GOAL id.
+ * It 404'd, the 404 was shown to nobody, and the owner walked away believing a
+ * running goal had stopped while it kept working and kept waking.
+ *
+ * So: a route keyed on what the screen actually holds. The alternative — making
+ * `/tasks/:id/stop` accept either kind of id — was refused on both sides
+ * independently, and for the same reason: a thread id and a task id can collide
+ * inside one account, and a stop route that guesses could stop the wrong goal.
+ * A visible failure beats a silent wrong action.
+ *
+ * The three answers are distinguishable on purpose, because the frontend shows
+ * a banner and needs to know which case it is in:
+ *
+ *   200 { stopped: true,  goal_id }                 it was running; it is closed now
+ *   200 { stopped: false, reason: 'no_open_goal' }  nothing was running to stop
+ *   404                                             no such thread, or not theirs
+ */
+threadsRouter.post(
+  '/:id/stop',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      // Ownership is checked on the THREAD before anything is read from the
+      // goal: the goal lookup is keyed on the thread, so without this a thread
+      // id belonging to somebody else would reach their goal.
+      const thread = await getThread(threadId, userId);
+      if (!thread) {
+        res.status(404).json({ success: false, error: 'თრედი ვერ მოიძებნა' });
+        return;
+      }
+      const task = await getOpenTaskByThread(threadId);
+      if (!task) {
+        res.status(200).json({ success: true, data: NOTHING_TO_STOP });
+        return;
+      }
+      res.status(200).json({ success: true, data: await stopGoal(userId, task) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/stop]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 // A lapsed account may still open and answer a thread in which somebody is
 // asking THEM (Ticket 10 Task 25 (b), D123) — everything else meets the paywall.
 threadsRouter.use(requireSubscriptionUnlessAnswering);

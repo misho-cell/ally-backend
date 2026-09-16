@@ -6,9 +6,8 @@ import {
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
-import { getTaskById, updateTask } from '../../services/taskStore.service';
-import { cancelAsksForTask } from '../../services/taskAsks.service';
-import { setThreadStatus } from '../../services/threadStatus.service';
+import { getTaskById } from '../../services/taskStore.service';
+import { GoalStopped, stopGoal } from '../../services/goalStop.service';
 import { query } from '../../db/postgres/client';
 import { ApiResponse } from '../../types';
 
@@ -62,7 +61,7 @@ tasksRouter.get(
 tasksRouter.post(
   '/:id/stop',
   param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
-  async (req: Request, res: Response<ApiResponse<{ stopped: boolean }>>): Promise<void> => {
+  async (req: Request, res: Response<ApiResponse<GoalStopped>>): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -82,14 +81,7 @@ tasksRouter.post(
         res.status(404).json({ success: false, error: 'დავალება ვერ მოიძებნა' });
         return;
       }
-      if (task.status !== 'closed') {
-        await updateTask(userId, taskId, 'closed', 'stopped_by_user');
-      }
-      await cancelAsksForTask(taskId);
-      if (task.thread_id !== null) {
-        void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
-      }
-      res.status(200).json({ success: true, data: { stopped: true } });
+      res.status(200).json({ success: true, data: await stopGoal(userId, task) });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /tasks/:id/stop]', error);
