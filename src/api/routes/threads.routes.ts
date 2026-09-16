@@ -27,7 +27,8 @@ import {
   cancelAsksForTask,
   runPayerFor,
 } from '../../services/taskAsks.service';
-import { getOpenTaskByThread } from '../../services/taskStore.service';
+import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
+import { planInForce } from '../../services/taskPlans.service';
 import {
   clearGoalQuestionForThread,
   goalQuestionFlaggedSince,
@@ -87,6 +88,20 @@ function buildPushPreview(reply: string): string {
  * Lika, unanswered — was filed as finished and sank to the bottom of the list
  * (ticket 4 item 0C.5).
  */
+/**
+ * Is this goal waiting for the owner to approve a plan?
+ *
+ * The same test createAsk uses to refuse with consent_pending: a plan has been
+ * proposed and no plan is in force. Read from the GOAL rather than inferred
+ * from the conversation, because the conversation is exactly what was wrong.
+ */
+export function awaitingPlanApproval(
+  task: Pick<Task, 'plan' | 'plan_version' | 'plan_approved_at' | 'plan_proposed'> | null,
+): boolean {
+  if (task === null) return false;
+  return task.plan_proposed !== null && planInForce(task) === null;
+}
+
 function statusAfterRun(
   result: ChatResult,
   pendingAsk: boolean,
@@ -95,11 +110,30 @@ function statusAfterRun(
     workItem: boolean;
     /** The model registered a blocking question during THIS run. */
     flagged: boolean;
+    /** The goal on this thread has a plan proposed and not yet approved. */
+    awaitingPlanApproval: boolean;
   },
 ): ThreadStatus {
   // An explicit ask_owner_decision outranks everything: the model itself said
   // the work is blocked on the owner (ticket 8 task 2b).
   if (opts.flagged) return 'needs_you';
+  // A proposed plan nobody has approved is BY DEFINITION waiting on the owner,
+  // whatever the last reply looked like (goal 3466 / thread 15577, reported
+  // 16 September).
+  //
+  // Everything below this line reads the REPLY. That is the right question for
+  // a plain conversation and the wrong one for a goal: the tester typed a
+  // detail under the plan card, the model answered it in a sentence, no
+  // question mark, no buttons — and the run fell through to `done`. The app
+  // then showed „დასრულდა", filed the goal under finished, and hid both the
+  // approve buttons and „გაჩერება". The goal stayed open behind the screen at
+  // stage plan_proposed, blocker plan_approval, with no way left to approve it,
+  // change it or stop it.
+  //
+  // The same shape as the G2 fix an hour earlier, and worth naming because it
+  // keeps recurring: the code asked what the SERVER had just said instead of
+  // what the WORK was waiting for.
+  if (opts.awaitingPlanApproval) return 'needs_you';
   if (result.requestCreated === true) return 'waiting';
   // Third-party dependency outranks the reply's own shape: while an ask or an
   // introduction sits unanswered on someone else's phone the user owes
@@ -442,6 +476,7 @@ threadsRouter.post(
           const finalStatus = statusAfterRun(result, pendingAsk, {
             workItem: thread.type !== 'regular' || openTask !== null || becameTask,
             flagged,
+            awaitingPlanApproval: awaitingPlanApproval(openTask),
           });
           // The status caption follows the conversation's language (task 22
           // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
