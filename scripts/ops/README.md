@@ -78,6 +78,37 @@ firings land near rather than exactly on the quarters. Read the real
 > A per-hour limit on one timer is not a per-hour limit on the work.
 > Use more timers.
 
+### And then the rule was broken within the hour
+
+Having written all of the above, the very next thing this session did was reach
+for `create_trigger` to message the frontend — another prompt, for the same
+person, for the same reason.
+
+A rule you follow only while you remember it is not a rule. So it is a ban, not
+a preference:
+
+> **No MCP tool call in a session whose allow list did not load. None.**
+> Not "only when needed". Every one of them is a tap for somebody.
+
+What that leaves, and it is enough:
+
+| who | how | asks? |
+|---|---|---|
+| the tester | `box.sh post` | no — it is Bash |
+| a recurring check | the cron routines, already created | no — they fire from outside |
+| the frontend | **nothing from here** | — |
+
+The frontend is the real gap. `create_trigger` is the only channel to their
+session and it prompts every time. `handoff_messages` already has a
+`claude_frontend` author, so the box is *built* to be that channel — but they
+have never posted to it and never read it, and writing into a room nobody is in
+is not communication. Until they read it, frontend-bound notes go into the box
+addressed to them with a request to the tester to pass them on.
+
+If something can only be done with a tool that prompts, it does not get done:
+it gets reported as not done, with the reason. A dialog is not a substitute for
+saying so.
+
 That split is not squeamishness, it is the day of 15 September 2026:
 
 - **Writing to people is free.** Answering the tester, telling the frontend
