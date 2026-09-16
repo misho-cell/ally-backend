@@ -644,10 +644,25 @@ export async function recordAskAnswer(
   // answer belongs to round two's question. Without the ordering, one reply
   // would have overwritten every round at once.
   const updated = await query<{ id: number; task_id: number; answer: string }>(
+    // Ticket 20 row 115: the same line does not join the answer twice.
+    //
+    // 16 September, ask 1783: Ninia's „კი" arrived five times in six seconds —
+    // five runs, five „გაიგზავნა" replies, and the stored answer became „კი"
+    // five times over, joined by newlines. That is what the asker's goal was
+    // then woken with.
+    //
+    // The append window is right and stays: a person genuinely adding a second
+    // name after their first answer must have it carried. What is wrong is
+    // appending text that is already there word for word. Compared against the
+    // answer's existing LINES rather than with LIKE, so nothing in the text
+    // has to be escaped and a line that merely contains an earlier one still
+    // counts as new.
     `UPDATE task_asks
      SET answer = CASE
            WHEN answer IS NULL THEN $2
-           WHEN wake_delivered_at IS NULL THEN answer || E'\n' || $2
+           WHEN wake_delivered_at IS NULL
+                AND NOT ($2 = ANY(string_to_array(answer, E'\n')))
+             THEN answer || E'\n' || $2
            ELSE answer
          END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,

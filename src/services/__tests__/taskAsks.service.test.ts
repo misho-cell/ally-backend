@@ -1078,3 +1078,53 @@ describe('the receiving-side brake', () => {
     expect(out.sent).toBe(true);
   });
 });
+
+/**
+ * Ticket 20 row 115 — the same answer stored five times.
+ *
+ * Ask 1783, 16 September 08:43:56–08:44:02: Ninia's „კი" arrived five times in
+ * six seconds. Five runs, five „გაიგზავნა" replies, and the stored answer
+ * became „კი" five times over joined by newlines — which is what the asker's
+ * goal was then woken with.
+ *
+ * The append window itself is right and stays: somebody who adds a second name
+ * after their first answer must have it carried. What is wrong is appending
+ * text that is already there word for word.
+ */
+describe('Ticket 20 row 115 — an identical line does not join the answer twice', () => {
+  function sqlOfUpdate(): string {
+    const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('UPDATE task_asks'));
+    return (call as [string, unknown[]])[0];
+  }
+
+  beforeEach(() => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('UPDATE task_asks')) {
+        return Promise.resolve(rows([{ id: 1783, task_id: 3400, answer: 'კი' }]) as never);
+      }
+      return Promise.resolve(rows([{ from_name: 'ნინია' }]) as never);
+    });
+  });
+
+  it('appends only a line the answer does not already hold', async () => {
+    await recordAskAnswer(15478, 'კი');
+
+    const sql = sqlOfUpdate();
+    // The newline in the SQL is a real one (a template literal), so the
+    // assertion is on the shape rather than on the escape.
+    expect(sql).toContain('NOT ($2 = ANY(string_to_array(answer,');
+  });
+
+  it('still appends inside the window — the window is not what was wrong', async () => {
+    await recordAskAnswer(15478, 'ასევე ნინო ბერიძე');
+    expect(sqlOfUpdate()).toContain('wake_delivered_at IS NULL');
+    expect(sqlOfUpdate()).toContain('THEN answer ||');
+  });
+
+  it('compares whole LINES, not a LIKE — nothing in a person’s words needs escaping', async () => {
+    await recordAskAnswer(15478, '50%_of_them');
+    const sql = sqlOfUpdate();
+    expect(sql).not.toContain('LIKE');
+    expect(sql).toContain('string_to_array');
+  });
+});
