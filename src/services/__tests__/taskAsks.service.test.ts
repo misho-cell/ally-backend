@@ -1188,3 +1188,54 @@ describe('Ticket 20 row 115 — an identical line does not join the answer twice
     expect(sql).toContain('string_to_array');
   });
 });
+
+/**
+ * Ticket 20 row 150 — the requester pays the whole chain; a helper pays
+ * nothing (D133).
+ *
+ * runPayerFor covered incoming_ask and nothing else, and the other two helper
+ * threads quietly charged the helper. Read from the live ledger over fourteen
+ * days, the charged account was the thread's own owner on every one of them:
+ *
+ *   incoming_ask      $3.84   the chain origin pays — correct since D123
+ *   campaign_invite   $0.23   the person asked to invite somebody pays
+ *   incoming_request  $0.08   the mediator pays for a stranger's request
+ */
+describe('row 150 — who pays on a thread the helper did not start', () => {
+  it('an introduction request is paid by the REQUESTER, not the mediator', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('introduction_requests'))
+        return Promise.resolve(rows([{ requester_user_id: 777 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    expect(await runPayerFor('42', 9, 'incoming_request')).toBe('777');
+  });
+
+  it('a campaign invite is paid by NOBODY — the platform started it', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    // Null, not the helper and not a guess: invite_campaigns has no owner
+    // column, so there is no requester to bill, and the person in the thread
+    // is the one we approached.
+    expect(await runPayerFor('42', 9, 'campaign_invite')).toBeNull();
+    // And it costs no query to say so.
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('a missing request row bills the user, never nobody', async () => {
+    // The direction that matters: a lookup failure must not be able to make
+    // runs free, which is the way this costs the company without anyone
+    // noticing.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await runPayerFor('42', 9, 'incoming_request')).toBe('42');
+  });
+
+  it('an ordinary thread is still the user, and asks the database nothing', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await runPayerFor('42', 9, 'regular')).toBe('42');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});

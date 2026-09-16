@@ -421,8 +421,12 @@ threadsRouter.post(
       // by the asker's empty wallet either: the answer is what the asker paid
       // their ask for, so the run goes and the asker's balance takes it — the
       // asker's own next run is the one that waits for a top-up.
+      // Row 150: null means nobody pays — a campaign invite, which the
+      // platform started and nobody asked for. There is no wallet to check,
+      // and checking the helper's would be the charge this rule removes.
       const payerId = await runPayerFor(userId, threadId, thread.type);
-      const allowance = await checkRunAllowance(payerId);
+      const allowance =
+        payerId === null ? { allowed: true as const } : await checkRunAllowance(payerId);
       if (!allowance.allowed && payerId === userId) {
         // The renewal named is the window in force (D124): monthly today,
         // weekly once BUDGET_WINDOW=week — the text must not promise the

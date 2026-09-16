@@ -1153,25 +1153,59 @@ async function chainOriginFor(
 }
 
 /**
- * Who pays for a run on this thread (Ticket 10 Task 25 (a), D123): on an
- * incoming-ask thread the chain's ORIGIN — the person who asked — not the
- * helper whose phone the question landed on. Everywhere else the user.
- * Returns the user when the ask row is missing or predates the column, so a
- * lookup failure can never make a run free or charge a stranger.
+ * Who pays for a run on this thread (Ticket 10 Task 25 (a), D123, D133): the
+ * person who ASKED for it. A helper pays nothing.
+ *
+ * Ticket 20 row 150. This covered incoming_ask and nothing else, and the other
+ * two helper threads were quietly charging the helper. Read from the live
+ * ledger over fourteen days, the charged account is the thread's own owner on
+ * every one of them:
+ *
+ *   incoming_ask      $3.84   the chain origin pays — correct since D123
+ *   campaign_invite   $0.23   the person being asked to invite somebody pays
+ *   incoming_request  $0.08   the mediator pays for a stranger's request
+ *
+ * Small money and a plain rule broken, which is the kind that stops being
+ * small the moment anyone uses the product.
+ *
+ * A CAMPAIGN INVITE HAS NO REQUESTER AT ALL. invite_campaigns carries no owner
+ * column: the platform starts those, and the person in the thread is being
+ * asked to invite one of their contacts. So nobody pays, and that is why this
+ * returns null rather than picking somebody. „Nobody asked for this" and „the
+ * lookup failed" must not come out as the same answer.
+ *
+ * On a LOOKUP FAILURE the user pays, unchanged: a missing row must not be able
+ * to make runs free, which is the direction that costs the company silently.
  */
 export async function runPayerFor(
   userId: string,
   threadId: number,
   threadType: string | null | undefined,
-): Promise<string> {
-  if (threadType !== 'incoming_ask') return userId;
-  const result = await query<{ origin_user_id: number | null }>(
-    `SELECT origin_user_id FROM task_asks WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
-    [threadId],
-    ASK_QUERY_TIMEOUT_MS,
-  );
-  const origin = result.rows[0]?.origin_user_id;
-  return origin === null || origin === undefined ? userId : String(origin);
+): Promise<string | null> {
+  if (threadType === 'incoming_ask') {
+    const result = await query<{ origin_user_id: number | null }>(
+      `SELECT origin_user_id FROM task_asks WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
+      [threadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const origin = result.rows[0]?.origin_user_id;
+    return origin === null || origin === undefined ? userId : String(origin);
+  }
+  if (threadType === 'incoming_request') {
+    const result = await query<{ requester_user_id: number | null }>(
+      `SELECT ir.requester_user_id
+         FROM threads t
+         JOIN introduction_requests ir ON ir.id = t.introduction_request_id
+        WHERE t.id = $1 LIMIT 1`,
+      [threadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const requester = result.rows[0]?.requester_user_id;
+    return requester === null || requester === undefined ? userId : String(requester);
+  }
+  // Nobody asked for this conversation, so nobody is charged for it.
+  if (threadType === 'campaign_invite') return null;
+  return userId;
 }
 
 /** The live ask behind an incoming_ask thread — injected into the recipient's prompt. */

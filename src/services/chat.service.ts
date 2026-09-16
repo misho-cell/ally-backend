@@ -5942,8 +5942,13 @@ export async function processChat(
   // (Ticket 10 Task 25 (a), D123). Never fails the reply.
   try {
     const payerId = await runPayerFor(userId, threadId, thread.type);
-    const debited = await debitRun(payerId, runId);
-    if (debited > 0) emitTokensDebited(payerId, threadId, runId, debited);
+    // Row 150: null is „nobody asked for this conversation" — a campaign
+    // invite. Charging the person we approached for the approach is the
+    // charge D133 exists to forbid, so there is no debit and no event.
+    if (payerId !== null) {
+      const debited = await debitRun(payerId, runId);
+      if (debited > 0) emitTokensDebited(payerId, threadId, runId, debited);
+    }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[wallet] debit failed for run', runId, (err as Error).message);
