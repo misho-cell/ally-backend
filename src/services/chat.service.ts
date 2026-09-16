@@ -5266,7 +5266,20 @@ const INTERNAL_TOOL_NAME_RE = new RegExp(`\\b(${INTERNAL_TOOL_NAMES.join('|')})\
 
 // „ask_id 1750", „task_id 3400", „thread_id 15380" — an internal handle with a
 // number after it. A person cannot use one and it is not theirs to read.
-const INTERNAL_ID_RE = /\b(ask_id|task_id|thread_id|run_id|request_id|contact_id)\s*[:=]?\s*\d+/g;
+const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id';
+/**
+ * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
+ *
+ * „ნინიას უკვე ვუგზავნე (ask_id 1750)" used to become „…ვუგზავნე (შიდა ნომერი)"
+ * — an empty parenthesis announcing that something was hidden. The same shape
+ * as row 116's wrapped-placeholder rule and for the same reason: what held the
+ * removed thing's place has to go with it.
+ */
+const INTERNAL_ID_WRAPPED_RE = new RegExp(
+  `\\s*[([]\\s*(?:${INTERNAL_ID_NAMES})\\s*[:=]?\\s*\\d+\\s*[)\\]]`,
+  'g',
+);
+const INTERNAL_ID_RE = new RegExp(`\\s*\\b(?:${INTERNAL_ID_NAMES})\\s*[:=]?\\s*\\d+`, 'g');
 
 /**
  * Ticket 19 [6]. What survives when the checker replaces a reply's text.
@@ -5303,25 +5316,61 @@ function scrubStep(threadId: number, text: string): string {
   return scrubInternalToolNames(scrubText(text), threadId);
 }
 
+/**
+ * Ticket 20 row 106 — the scrub that hid our vocabulary behind our vocabulary.
+ *
+ * The tester's three examples on 16 September were „შიდა ფუნქცია" (goal 3664),
+ * „(შიდა ნომერი …)" (goal 3665) and one more. All three are THIS FUNCTION's
+ * output, not the model's words: it removed „search_by_tag" and wrote
+ * „an internal function" in its place, removed „task_id 3664" and wrote „an
+ * internal id". A person reading either learns only that there is machinery
+ * they are not being shown, which is what the rule existed to avoid.
+ *
+ * An id is never useful to anybody outside the server, so it goes, and its
+ * bracket goes with it. A tool name is standing in for something the assistant
+ * can DO, so it is replaced by a word for that in the language people use —
+ * „this capability" reads as an assistant speaking, „an internal function"
+ * reads as a system apologising for itself.
+ */
+function internalNameReplacement(text: string): string {
+  return /[ა-ჿ]/.test(text) ? 'ეს შესაძლებლობა' : 'this capability';
+}
+
+/** Left behind when an id is cut out of the middle of a sentence. */
+const SCRUB_TIDY: readonly (readonly [RegExp, string])[] = [
+  [/ {2,}/g, ' '],
+  [/ ([,.:;!?])/g, '$1'],
+  [/([,;:]){2,}/g, '$1'],
+];
+
 export function scrubInternalToolNames(text: string, threadId: number): string {
-  // The ids go first and unconditionally: „(ask_id 1750)" carries no tool name
-  // to trip the test below, which is exactly how it reached a screen.
-  const withoutIds = text.replace(INTERNAL_ID_RE, () => {
+  // Wrapped first, then bare: „(ask_id 1750)" must lose its parenthesis too,
+  // and the bare rule alone would leave an empty one behind.
+  let out = text.replace(INTERNAL_ID_WRAPPED_RE, () => {
     // eslint-disable-next-line no-console
     console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
-    return /[ა-ჿ]/.test(text) ? 'შიდა ნომერი' : 'an internal id';
+    return '';
   });
-  text = withoutIds;
-  INTERNAL_TOOL_NAME_RE.lastIndex = 0;
-  if (!INTERNAL_TOOL_NAME_RE.test(text)) return text;
-  const replacement = /[ა-ჿ]/.test(text) ? 'შიდა ფუნქცია' : 'an internal function';
-  INTERNAL_TOOL_NAME_RE.lastIndex = 0;
-  const scrubbed = text.replace(INTERNAL_TOOL_NAME_RE, (name) => {
+  out = out.replace(INTERNAL_ID_RE, () => {
     // eslint-disable-next-line no-console
-    console.warn(`[p12-scrub] thread ${threadId}: internal tool name "${name}" removed from reply`);
-    return replacement;
+    console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
+    return '';
   });
-  return scrubbed;
+  INTERNAL_TOOL_NAME_RE.lastIndex = 0;
+  if (INTERNAL_TOOL_NAME_RE.test(out)) {
+    const replacement = internalNameReplacement(out);
+    INTERNAL_TOOL_NAME_RE.lastIndex = 0;
+    out = out.replace(INTERNAL_TOOL_NAME_RE, (name) => {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[p12-scrub] thread ${threadId}: internal tool name "${name}" removed from reply`,
+      );
+      return replacement;
+    });
+  }
+  if (out === text) return text;
+  for (const [pattern, into] of SCRUB_TIDY) out = out.replace(pattern, into);
+  return out.trim();
 }
 
 /**

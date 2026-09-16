@@ -36,7 +36,12 @@ describe('the three the tester caught', () => {
     );
 
     expect(out).not.toContain('propose_task_plan');
-    expect(out).toContain('შიდა ფუნქცია');
+    // Row 106: it used to say „შიდა ფუნქცია" here, which is the same problem
+    // in a different costume — the user learns only that there is machinery
+    // they are not being shown. The replacement is a word for what the
+    // assistant can DO, in the language people use.
+    expect(out).toContain('ეს შესაძლებლობა');
+    expect(out).not.toContain('შიდა');
   });
 
   it('removes another one', () => {
@@ -70,8 +75,9 @@ describe('what it must not do', () => {
 
   it('answers in the language of the text it is scrubbing', () => {
     const out = quiet(() => scrubInternalToolNames('I will use ask_contact now', THREAD));
-    expect(out).toContain('an internal function');
+    expect(out).toContain('this capability');
     expect(out).not.toContain('ask_contact');
+    expect(out).not.toContain('internal');
   });
 
   it('matches the longest name first, so one inside another survives whole', () => {
@@ -80,5 +86,57 @@ describe('what it must not do', () => {
     const out = quiet(() => scrubInternalToolNames('approve_task_plan-ს ვიძახებ', THREAD));
     expect(out).not.toContain('task_plan');
     expect(out).not.toContain('approve');
+  });
+});
+
+/**
+ * Ticket 20 row 106, 16 September — the scrub was the source.
+ *
+ * The tester reported „შიდა ფუნქცია" on goal 3664 and „(შიდა ნომერი …)" on
+ * goal 3665 as things the assistant said to a user. Neither was the model's
+ * wording. Both were this function's OUTPUT: it removed our vocabulary and
+ * wrote different vocabulary of ours in its place, so a rule meant to stop the
+ * plumbing showing through was the thing showing it.
+ */
+describe('row 106 — the replacement was the leak', () => {
+  it('an id in brackets loses the brackets too', () => {
+    const out = quiet(() => scrubInternalToolNames('ნინიას უკვე ვუგზავნე (ask_id 1750)', THREAD));
+
+    // Not „…ვუგზავნე (შიდა ნომერი)", which is an empty parenthesis announcing
+    // that something was hidden.
+    expect(out).toBe('ნინიას უკვე ვუგზავნე');
+  });
+
+  it('a bare id goes without leaving a gap or a dangling comma', () => {
+    const out = quiet(() => scrubInternalToolNames('მიზანი task_id=3664 მიმდინარეობს', THREAD));
+
+    expect(out).not.toContain('3664');
+    expect(out).not.toContain('შიდა');
+    expect(out).toBe('მიზანი მიმდინარეობს');
+  });
+
+  it('the word „შიდა" never reaches a reply through this function', () => {
+    for (const input of [
+      'ვიყენებ search_by_tag-ს',
+      'გავხსენი thread_id 15676',
+      'ask_id: 1850 გაიგზავნა',
+      '(task_id 3598)',
+    ]) {
+      const out = quiet(() => scrubInternalToolNames(input, THREAD));
+      expect(out).not.toContain('შიდა');
+      expect(out).not.toMatch(/internal/i);
+    }
+  });
+
+  it('leaves text that carries nothing internal exactly as it was', () => {
+    // The tidy-up must not touch ordinary prose — this runs on every step line
+    // the product writes.
+    for (const clean of [
+      'ვიპოვე სამი ფლორისტი ვაკეში, ერთი მათგანი დღესვე თავისუფალია.',
+      'ფასი: 20, 30 ლარი.',
+      'ok — I will ask two people.',
+    ]) {
+      expect(quiet(() => scrubInternalToolNames(clean, THREAD))).toBe(clean);
+    }
   });
 });
