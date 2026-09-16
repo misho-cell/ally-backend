@@ -2129,10 +2129,14 @@ async function saveMessage(
   // and the share button must not fall back to a bare URL (the frontend's own
   // catch on build 71931d1, the same shape as Task 25's vanishing buttons).
   shareText: string | null = null,
+  // Ticket 20 row 132: which model actually wrote this text. Null for every
+  // row that is not a model's answer, and for everything written before the
+  // column existed — „nobody recorded it", not „Claude wrote it".
+  answeredBy: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
   const result = await query<{ id: number }>(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9) RETURNING id',
+    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10) RETURNING id',
     [
       userId,
       threadId,
@@ -2143,6 +2147,7 @@ async function saveMessage(
       runId,
       choices === null ? null : JSON.stringify(choices),
       shareText,
+      answeredBy,
     ],
   );
   await touchThread(threadId);
@@ -4601,6 +4606,8 @@ async function runToolLoop(
   choices?: string[];
   requestCreated: boolean;
   taskResult?: TaskResultCard;
+  /** Ticket 20 row 132 — the model whose words these are. */
+  answeredBy: string;
 }> {
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
@@ -4703,6 +4710,15 @@ async function runToolLoop(
   // the web / really retry the ask" was unanswerable from the logs.
   const toolNamesUsed: string[] = [];
   let finalText = '';
+  /**
+   * Ticket 20 row 132: which model wrote the text the user will read.
+   *
+   * Defaults to the Anthropic model, because that is who writes it unless the
+   * hybrid both runs AND succeeds. A silent fallback is recorded as Claude,
+   * which is the truth — the point of the column is that a change of voice can
+   * be attributed rather than guessed at.
+   */
+  let answeredBy: string = MODEL;
   // Signals live in two places: choices/task results in the assistant's
   // tool_use blocks, disambiguation/request-created in the tool RESULTS. Both
   // scans run on every round INCLUDING the capped last one, so a request sent
@@ -4889,6 +4905,7 @@ async function runToolLoop(
     if (rewritten === null) {
       finalText = scrubText(extractText(response.content));
     } else {
+      answeredBy = rewritten.model;
       finalText = scrubText(rewritten.text);
       await recordClaudeUsage({
         userId,
@@ -5056,7 +5073,7 @@ async function runToolLoop(
       (toolNamesUsed.length > 0 ? ` — tools: ${toolNamesUsed.join(',')}` : ''),
   );
 
-  return { finalText, pending, options, choices, requestCreated, taskResult };
+  return { finalText, pending, options, choices, requestCreated, taskResult, answeredBy };
 }
 
 /**
@@ -5735,15 +5752,8 @@ export async function processChat(
     userMessage.startsWith(RUN_EVENT_PREFIX) ? 'event' : 'message',
   );
 
-  const { finalText, pending, options, choices, requestCreated, taskResult } = await runToolLoop(
-    userId,
-    threadId,
-    runId,
-    messages,
-    systemPrompt,
-    tools,
-    ownerAbsent,
-  );
+  const { finalText, pending, options, choices, requestCreated, taskResult, answeredBy } =
+    await runToolLoop(userId, threadId, runId, messages, systemPrompt, tools, ownerAbsent);
 
   // Tool-interaction turns carry the full content_json for model history but
   // have empty display content (filtered from the thread view); the final reply
@@ -5915,6 +5925,8 @@ export async function processChat(
     runId,
     storedChoices,
     shareText ?? null,
+    // Row 132: the reply the user reads, stamped with who wrote it.
+    answeredBy,
   );
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as

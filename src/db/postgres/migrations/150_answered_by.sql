@@ -1,0 +1,15 @@
+-- Ticket 20 row 132: which model wrote this reply.
+--
+-- The testing seat's request, 16 September, the hour after the final
+-- user-facing answer moved to GPT-5.6 Terra: "please store, on each assistant
+-- message, which model wrote it (Claude, GPT-5.6 Terra, or the Claude
+-- fallback). Then a change of voice is never blamed on a prompt by mistake."
+--
+-- They are right, and it is the question I could not answer for them an hour
+-- ago. usage_events already holds provider and model per run_id, but a run now
+-- calls TWO providers and the join cannot say which of them produced the
+-- sentence somebody is reading. Only the save site knows that.
+--
+-- Null on every row written before this and on every non-assistant row, which
+-- reads correctly: "nobody recorded it", not "Claude wrote it".
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS answered_by TEXT;
