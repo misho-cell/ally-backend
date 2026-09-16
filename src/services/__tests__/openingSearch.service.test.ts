@@ -11,20 +11,35 @@ jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../searchQuery.service', () => ({
+  __esModule: true,
+  distilSearchQuery: jest.fn(),
+}));
+jest.mock('../../db/postgres/client', () => ({
+  __esModule: true,
+  query: jest.fn().mockResolvedValue({ rows: [{ city: 'ბათუმი' }], rowCount: 1 }),
+}));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
+import { distilSearchQuery } from '../searchQuery.service';
+import { query as dbQuery } from '../../db/postgres/client';
 import { runOpeningSearches, buildOpeningSearchSection } from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockSecond = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
+const mockDistil = distilSearchQuery as jest.MockedFunction<typeof distilSearchQuery>;
+const mockDb = dbQuery as jest.MockedFunction<typeof dbQuery>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockWeb.mockResolvedValue({ results: ['a plumber in Batumi'] } as never);
   mockSecond.mockResolvedValue({ found: true, count: 2, results: ['Gega'] } as never);
+  mockDb.mockResolvedValue({ rows: [{ city: 'ბათუმი' }], rowCount: 1 } as never);
+  // The default is the honest one: distilling that changed nothing.
+  mockDistil.mockImplementation(async (text) => ({ query: text }));
 });
 
 /**
@@ -201,6 +216,87 @@ describe('row 126 second pass — what the pre-run found is answerable', () => {
     expect(tools).toContain('web_search:opening');
     // No row claiming the second circle came back empty — it did not come back.
     expect(tools).not.toContain('search_second_degree:opening');
+  });
+});
+
+/**
+ * Ticket 20 row 126, fourth pass — the web is searched for a QUERY, the
+ * owner's own network for the owner's own words.
+ *
+ * Goal 3895 sent „ნოტარიუსი მჭირდება ბინის ნასყიდობის ხელშეკრულებისთვის." to
+ * the web and got five articles about contracts and not one notary. The seat's
+ * ask: could the pre-run turn the goal into the short query a person would
+ * type — the service and the place?
+ */
+describe('row 126 fourth pass — the web gets a query, not a sentence', () => {
+  const GOAL = 'ნოტარიუსი მჭირდება ბინის ნასყიდობის ხელშეკრულებისთვის.';
+
+  beforeEach(() => {
+    mockDistil.mockResolvedValue({ query: 'ნოტარიუსი ბათუმი', fromGoal: GOAL });
+  });
+
+  it('searches the web for the distilled query', async () => {
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    expect(mockWeb).toHaveBeenCalledWith('ნოტარიუსი ბათუმი');
+  });
+
+  it('searches the owner’s own network with the owner’s own words', async () => {
+    // Not an oversight. A web index rewards two words; the second circle
+    // matches tags and facts over people, and there is no measurement saying
+    // a distilled query serves it better — it has timed out on every goal
+    // logged so far.
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    expect(mockSecond).toHaveBeenCalledWith('501', GOAL);
+  });
+
+  it('passes the owner’s city to the distiller', async () => {
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    expect(mockDistil).toHaveBeenCalledWith(
+      GOAL,
+      expect.objectContaining({ userId: '501', runId: 'run-1', city: 'ბათუმი' }),
+    );
+  });
+
+  it('a missing city is passed as null, never as a guess', async () => {
+    mockDb.mockResolvedValue({ rows: [{ city: null }], rowCount: 1 } as never);
+
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    expect(mockDistil.mock.calls[0][1].city).toBeNull();
+  });
+
+  it('a city lookup that fails does not stop the search', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockDb.mockRejectedValue(new Error('statement timeout'));
+
+    const out = await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    expect(mockDistil.mock.calls[0][1].city).toBeNull();
+    expect(out.web).not.toBeNull();
+    consoleSpy.mockRestore();
+  });
+
+  it('logs BOTH what was searched and what the owner said', async () => {
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    const web = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'web_search:opening',
+    )[0];
+    expect(web.input).toEqual({ query: 'ნოტარიუსი ბათუმი', fromGoal: GOAL });
+  });
+
+  it('logs one query when nothing was distilled, not a rewrite that did not happen', async () => {
+    mockDistil.mockResolvedValue({ query: GOAL });
+
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    const web = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'web_search:opening',
+    )[0];
+    expect(web.input).toEqual({ query: GOAL });
   });
 });
 

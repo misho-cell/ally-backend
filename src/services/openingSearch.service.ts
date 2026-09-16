@@ -2,6 +2,8 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
+import { distilSearchQuery } from './searchQuery.service';
+import { query as dbQuery } from '../db/postgres/client';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -38,15 +40,59 @@ import { logToolCall } from './toolCallLog.service';
  * How long the opening searches may hold up the first reply.
  *
  * Both are started together, so this is the slower of the two and not their
- * sum. web_search measures 1.5-3.1s and lands comfortably. The second circle
+ * sum. web_search measures 1.5-5.4s and lands comfortably. The second circle
  * measures anywhere from 2.5s to 21s — row 108, the database maintenance that
  * is still waiting on Misho — so on a bad day it will not make it, and the
- * section below says so rather than implying the circle was empty.
+ * section below says so rather than implying the circle was empty. Measured
+ * 16 September: it has timed out on both of the goals we have logged.
+ *
+ * Since row 126's fourth pass the web branch spends part of this on getting
+ * the query right before it searches — at most 1s for the city and 2.5s for
+ * the distillation, leaving the search no less than 6.5s of the 10. The
+ * budget is unchanged on purpose: a better query is not worth making every
+ * first reply wait longer for.
  */
 const OPENING_SEARCH_BUDGET_MS = 10_000;
 
 /** A goal title is short; a long first message is trimmed to its substance. */
 const MAX_QUERY_CHARS = 200;
+
+/**
+ * One second for a lookup by primary key.
+ *
+ * Deliberately mean rather than safe. This now sits inside the web branch,
+ * ahead of the distillation and the search itself, and all three share the one
+ * 10s budget — so every millisecond spent here is taken from the search. A
+ * key lookup that cannot answer in a second means the database is in the state
+ * row 108 is about, and the right response is to search without the city.
+ */
+const CITY_QUERY_TIMEOUT_MS = 1_000;
+
+/**
+ * Where the owner is, for the opening query — „notary" is a different search
+ * in Batumi than in Tbilisi, and the fourth pass exists because the query was
+ * not specific enough.
+ *
+ * A missing city is normal and is passed through as such. Row 126's fourth
+ * pass adds no place the owner did not give: the distiller is told the city
+ * and told never to invent one, and a null here simply means it has none to
+ * add. Asking the owner for their city is the frontend's item twenty-one.
+ */
+async function cityOf(userId: string): Promise<string | null> {
+  try {
+    const result = await dbQuery<{ city: string | null }>(
+      'SELECT city FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
+      [userId],
+      CITY_QUERY_TIMEOUT_MS,
+    );
+    const city = result.rows[0]?.city;
+    return city === undefined || city === null || city.trim() === '' ? null : city;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[opening-search] could not read the city:', (err as Error).message);
+    return null;
+  }
+}
 
 export interface OpeningSearches {
   readonly web: string | null;
@@ -146,6 +192,7 @@ export async function runOpeningSearches(
     tool: string,
     work: Promise<unknown>,
     publicResult = false,
+    searched: { query: string; fromGoal?: string } = { query },
   ): Promise<string> => {
     const startedAt = Date.now();
     const result = await work;
@@ -154,7 +201,10 @@ export async function runOpeningSearches(
       runId,
       userId,
       tool: `${tool}:opening`,
-      input: { query },
+      // Row 126 fourth pass: BOTH, whenever they differ. „The search found
+      // junk" and „the search was asked the wrong thing" are different faults
+      // and the seat could not tell them apart from one of the two.
+      input: searched.fromGoal === undefined ? { query } : searched,
       result,
       durationMs: Date.now() - startedAt,
       // Ticket 20 row 126, third pass. Only for the WEB, whose results are
@@ -165,9 +215,27 @@ export async function runOpeningSearches(
     return JSON.stringify(result);
   };
 
-  // Charged like any other web search, because it is one. A pre-fetch that
-  // did not reach the ledger would be spend the cost report cannot see.
+  /**
+   * Row 126 fourth pass. The web gets a QUERY; the owner's own network gets
+   * the owner's own words.
+   *
+   * Only the web branch is distilled, and the asymmetry is deliberate. A web
+   * index rewards two words and a city and punishes a sentence — that is the
+   * whole finding. The second circle is not an index: it matches tags, facts
+   * and roles over people the owner already knows, and I have no evidence
+   * about what shape of query serves it, because it has timed out on both of
+   * the goals we have logged. Changing a search I cannot yet measure would be
+   * guessing with somebody's first reply.
+   *
+   * The distillation runs INSIDE the web branch rather than before both, so
+   * the second circle starts at the same moment it does today and loses
+   * nothing to it.
+   */
   const webWork = (async (): Promise<string> => {
+    const city = await cityOf(userId);
+    const searched = await distilSearchQuery(query, { userId, runId, city });
+    // Charged like any other web search, because it is one. A pre-fetch that
+    // did not reach the ledger would be spend the cost report cannot see.
     await recordFixedUsage({
       userId,
       kind: 'web_search',
@@ -175,7 +243,7 @@ export async function runOpeningSearches(
       priceKey: 'tavily.search',
       runId,
     }).catch(() => {});
-    return logged('web_search', webSearch(query), true);
+    return logged('web_search', webSearch(searched.query), true, searched);
   })();
 
   const [web, secondDegree] = await Promise.all([
