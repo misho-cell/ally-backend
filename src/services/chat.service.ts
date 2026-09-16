@@ -2923,12 +2923,39 @@ const PLAN_YES =
  * A yes that turns on its own heel: „approved, BUT not Ninia yet", „yes if…".
  * The plan it is about is not the plan on the screen, so it is not a yes to it.
  *
- * A bare „არ" / „ნუ" is in here too, matched as a whole word. „Gega-ს არ
- * მისწერო." is a correction, and a correction that happens to name an action
- * must never read as permission to take it.
+ * Ticket 20 row 131, second half. The comment here used to say a bare „არ" and
+ * „ნუ" were „matched as a whole word", and they were not: the rule treated
+ * only WHITESPACE as a boundary and looked for „არა" with a literal comma
+ * after it. Georgian punctuation is neither. Measured on the deployed code,
+ * five refusals approved a plan —
+ *
+ *   „მიდი. არა."        Go. No.        → approved
+ *   „მიდი, არა!"        Go, no!        → approved
+ *   „გაგზავნე? არა"     Send? No       → approved
+ *   „მიდი (არა)"                        → approved
+ *   „დაიწყე — არა"                      → approved
+ *
+ * These are worse than row 131's first half: each is a direct answer to the
+ * assistant in which the owner said NO.
+ *
+ * Boundaries are non-letters now, so a full stop, a bracket and a dash all
+ * count. The short words need one at BOTH ends — „არ" is inside every Georgian
+ * word beginning with it. The longer ones need one only at the start, so an
+ * inflected tail („მაგრამაც") still catches: this rule REFUSES, and for a
+ * refusal, catching too much is the safe direction.
  */
-const TAKES_IT_BACK =
-  /(მაგრამ|ოღონდ|თუმცა|ჯერ არა|არა,|(^|\s)არ(\s|$)|(^|\s)ნუ(\s|$)|\bbut\b|\bexcept\b|\bonly if\b|\bif\b)/iu;
+const NOT_A_LETTER_BEFORE = '(?<![\\p{L}\\p{N}])';
+const NOT_A_LETTER_AFTER = '(?![\\p{L}\\p{N}])';
+/** Short enough to sit inside other words: both ends must be free. */
+const TAKES_IT_BACK_WORDS = ['არა', 'არ', 'ნუ'];
+/** Long enough to be safe as a stem, so inflected endings are caught too. */
+const TAKES_IT_BACK_STEMS = ['მაგრამ', 'ოღონდ', 'თუმცა'];
+const TAKES_IT_BACK = new RegExp(
+  `${NOT_A_LETTER_BEFORE}(?:${TAKES_IT_BACK_WORDS.join('|')})${NOT_A_LETTER_AFTER}` +
+    `|${NOT_A_LETTER_BEFORE}(?:${TAKES_IT_BACK_STEMS.join('|')})` +
+    `|\\bbut\\b|\\bexcept\\b|\\bonly if\\b|\\bif\\b`,
+  'iu',
+);
 
 /**
  * Ticket 20 row 122, the founder's D292: keep BOTH the button and the words.

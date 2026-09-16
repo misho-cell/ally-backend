@@ -313,3 +313,47 @@ describe('row 131 — a description of somebody going is not permission to go', 
     }
   });
 });
+
+/**
+ * Ticket 20 row 131, second half — the negation rule keyed on punctuation.
+ *
+ * Its own comment claimed a bare „არ" and „ნუ" were „matched as a whole word".
+ * They were not: the rule treated only WHITESPACE as a boundary and looked for
+ * „არა" followed by a literal comma. Georgian punctuation is neither, and all
+ * five of these approved a plan on the deployed code.
+ *
+ * These are worse than the first half. Each one is a direct answer to the
+ * assistant in which the owner said NO.
+ */
+describe('row 131 second half — „Go. No." is not a yes', () => {
+  const PLAN_CARD = ['დამტკიცებულია', 'შევცვალოთ'];
+
+  it.each([
+    ['მიდი. არა.', 'a full stop, not a comma'],
+    ['მიდი, არა!', 'an exclamation mark'],
+    ['გაგზავნე? არა', 'the no comes after the question'],
+    ['მიდი (არა)', 'brackets'],
+    ['დაიწყე — არა', 'a dash'],
+    ['მიდი, არ გააკეთო.', 'a bare არ followed by a word'],
+    ['გააგრძელე. ნუ!', 'ნუ against a boundary that is not a space'],
+  ])('„%s" approves nothing (%s)', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+  });
+
+  /**
+   * The other direction, which is the one that costs a real person. This rule
+   * REFUSES, so over-matching sends somebody back to hunt for a button — the
+   * complaint row 122 exists to fix. A word that merely CONTAINS a negation is
+   * not a negation.
+   */
+  it.each([
+    ['მიდი, არაფერი გვჭირდება', 'არაფერი — „nothing", not „no"'],
+    ['გააგრძელე, არაუშავს', 'არაუშავს — „never mind"'],
+  ])('„%s" still approves (%s)', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(true);
+  });
+
+  it('an inflected მაგრამ still takes it back — a refusal may over-reach, safely', () => {
+    expect(approvalBelongsToThePlan('მიდი, მაგრამაც ჯერ არა', PLAN_CARD)).toBe(false);
+  });
+});
