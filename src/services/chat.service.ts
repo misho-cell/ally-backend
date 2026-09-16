@@ -5706,7 +5706,9 @@ export async function processChat(
     ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
-    autoGoalId === null ? Promise.resolve(null) : runOpeningSearches(userId, userMessage, runId),
+    autoGoalId === null
+      ? Promise.resolve(null)
+      : runOpeningSearches(userId, userMessage, runId, threadId),
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.

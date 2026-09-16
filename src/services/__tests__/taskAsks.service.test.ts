@@ -1212,13 +1212,18 @@ describe('row 150 — who pays on a thread the helper did not start', () => {
     expect(await runPayerFor('42', 9, 'incoming_request')).toBe('777');
   });
 
-  it('a campaign invite is paid by NOBODY — the platform started it', async () => {
+  /**
+   * This test asserted that a campaign invite is paid by NOBODY, on my
+   * reasoning that invite_campaigns has no owner column so nobody asked for
+   * the conversation. Tornike overruled it the same hour and his argument is
+   * the better one: in that thread the assistant suggests to its OWN user a
+   * person worth inviting and explains how they grow that user's network. The
+   * value is theirs, so the cost is theirs.
+   */
+  it('a campaign invite is paid by the user — Tornike, 16 September', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    // Null, not the helper and not a guess: invite_campaigns has no owner
-    // column, so there is no requester to bill, and the person in the thread
-    // is the one we approached.
-    expect(await runPayerFor('42', 9, 'campaign_invite')).toBeNull();
+    expect(await runPayerFor('42', 9, 'campaign_invite')).toBe('42');
     // And it costs no query to say so.
     expect(mockQuery).not.toHaveBeenCalled();
   });

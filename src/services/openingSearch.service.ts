@@ -1,6 +1,7 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
+import { logToolCall } from './toolCallLog.service';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -89,9 +90,40 @@ export async function runOpeningSearches(
   userId: string,
   goalText: string,
   runId: string,
+  threadId: number,
 ): Promise<OpeningSearches> {
   const query = goalText.trim().slice(0, MAX_QUERY_CHARS);
   if (query === '') return { web: null, secondDegree: null, missing: [] };
+
+  /**
+   * Ticket 20 row 126, second pass. These two searches are LOGGED like any
+   * other tool call, and the reason is a question I could not answer an hour
+   * after shipping them.
+   *
+   * The seat asked whether the pre-run section reached two live prompts or
+   * whether the model ignored it. The ledger settled it — both runs carry a
+   * Tavily charge and neither called web_search, and only this function does
+   * that — but „it ran" was as far as I could get. WHAT IT FOUND was nowhere,
+   * because a search nobody logs is a search nobody can ask about. The same
+   * gap as row 125, in code I wrote after fixing row 125.
+   *
+   * Fire-and-forget: logToolCall never throws and never blocks, and a first
+   * reply must not wait on a debugging record.
+   */
+  const logged = async (tool: string, work: Promise<unknown>): Promise<string> => {
+    const startedAt = Date.now();
+    const result = await work;
+    void logToolCall({
+      threadId,
+      runId,
+      userId,
+      tool: `${tool}:opening`,
+      input: { query },
+      result,
+      durationMs: Date.now() - startedAt,
+    });
+    return JSON.stringify(result);
+  };
 
   // Charged like any other web search, because it is one. A pre-fetch that
   // did not reach the ledger would be spend the cost report cannot see.
@@ -103,13 +135,13 @@ export async function runOpeningSearches(
       priceKey: 'tavily.search',
       runId,
     }).catch(() => {});
-    return JSON.stringify(await webSearch(query));
+    return logged('web_search', webSearch(query));
   })();
 
   const [web, secondDegree] = await Promise.all([
     withBudget(webWork, 'web_search'),
     withBudget(
-      searchSecondDegree(userId, query).then((r) => JSON.stringify(r)),
+      logged('search_second_degree', searchSecondDegree(userId, query)),
       'search_second_degree',
     ),
   ]);

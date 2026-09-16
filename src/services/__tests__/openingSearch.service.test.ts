@@ -7,10 +7,15 @@ jest.mock('../costLedger.service', () => ({
   __esModule: true,
   recordFixedUsage: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../toolCallLog.service', () => ({
+  __esModule: true,
+  logToolCall: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
+import { logToolCall } from '../toolCallLog.service';
 import { runOpeningSearches, buildOpeningSearchSection } from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
@@ -32,7 +37,7 @@ beforeEach(() => {
  */
 describe('the opening searches run without being asked', () => {
   it('runs BOTH, on the goal text', async () => {
-    const out = await runOpeningSearches('501', 'კარგი ელექტრიკოსი ბათუმში', 'run-1');
+    const out = await runOpeningSearches('501', 'კარგი ელექტრიკოსი ბათუმში', 'run-1', 15907);
 
     expect(mockWeb).toHaveBeenCalledWith('კარგი ელექტრიკოსი ბათუმში');
     expect(mockSecond).toHaveBeenCalledWith('501', 'კარგი ელექტრიკოსი ბათუმში');
@@ -56,7 +61,7 @@ describe('the opening searches run without being asked', () => {
       return { found: false } as never;
     });
 
-    await runOpeningSearches('501', 'რამე', 'run-1');
+    await runOpeningSearches('501', 'რამე', 'run-1', 15907);
 
     // Both were kicked off before either was awaited to completion.
     expect(webStarted).toBeGreaterThan(0);
@@ -64,7 +69,7 @@ describe('the opening searches run without being asked', () => {
   });
 
   it('charges the web search, because it is one', async () => {
-    await runOpeningSearches('501', 'რამე', 'run-7');
+    await runOpeningSearches('501', 'რამე', 'run-7', 15907);
 
     expect(recordFixedUsage).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'web_search', priceKey: 'tavily.search', runId: 'run-7' }),
@@ -72,7 +77,7 @@ describe('the opening searches run without being asked', () => {
   });
 
   it('an empty goal text searches nothing', async () => {
-    const out = await runOpeningSearches('501', '   ', 'run-1');
+    const out = await runOpeningSearches('501', '   ', 'run-1', 15907);
 
     expect(mockWeb).not.toHaveBeenCalled();
     expect(mockSecond).not.toHaveBeenCalled();
@@ -87,7 +92,7 @@ describe('the opening searches run without being asked', () => {
   it('one search failing does not take the other, or the run, with it', async () => {
     mockSecond.mockRejectedValue(new Error('statement timeout'));
 
-    const out = await runOpeningSearches('501', 'რამე', 'run-1');
+    const out = await runOpeningSearches('501', 'რამე', 'run-1', 15907);
 
     expect(out.web).not.toBeNull();
     expect(out.secondDegree).toBeNull();
@@ -98,7 +103,7 @@ describe('the opening searches run without being asked', () => {
     mockWeb.mockRejectedValue(new Error('tavily down'));
     mockSecond.mockRejectedValue(new Error('statement timeout'));
 
-    const out = await runOpeningSearches('501', 'რამე', 'run-1');
+    const out = await runOpeningSearches('501', 'რამე', 'run-1', 15907);
 
     expect(out.missing).toEqual(['web_search', 'search_second_degree']);
   });
@@ -148,5 +153,53 @@ describe('what the model is told about them', () => {
     expect(section.length).toBeLessThan(8_000);
     // And the part after it still arrives.
     expect(section).toContain('ვერ მოასწრო');
+  });
+});
+
+/**
+ * Ticket 20 row 126, second pass — the pre-run is logged like any other call.
+ *
+ * The seat asked whether the pre-run section reached two live prompts or
+ * whether the model ignored it. The ledger settled it — both runs carried a
+ * Tavily charge and neither called web_search, and only this function does
+ * that — but „it ran" was as far as I could get. WHAT IT FOUND was nowhere,
+ * because a search nobody logs is a search nobody can ask about.
+ *
+ * The same gap as row 125, in code written after row 125 was fixed.
+ */
+describe('row 126 second pass — what the pre-run found is answerable', () => {
+  it('logs both searches against the run and thread that caused them', async () => {
+    await runOpeningSearches('501', 'სანტექნიკოსი ბათუმში', 'run-9', 15940);
+
+    const tools = (logToolCall as jest.Mock).mock.calls.map((c) => c[0].tool);
+    expect(tools).toContain('web_search:opening');
+    expect(tools).toContain('search_second_degree:opening');
+
+    const first = (logToolCall as jest.Mock).mock.calls[0][0];
+    expect(first.runId).toBe('run-9');
+    expect(first.threadId).toBe(15940);
+    expect(first.userId).toBe('501');
+    // The query is the thing that makes a row worth reading later.
+    expect(first.input).toEqual({ query: 'სანტექნიკოსი ბათუმში' });
+  });
+
+  it('marks them :opening, so a pre-run is never mistaken for the model searching', async () => {
+    await runOpeningSearches('501', 'რამე', 'run-9', 15940);
+
+    for (const call of (logToolCall as jest.Mock).mock.calls) {
+      expect(String(call[0].tool)).toMatch(/:opening$/);
+    }
+  });
+
+  it('a search that fails is not logged as one that found nothing', async () => {
+    mockSecond.mockRejectedValue(new Error('statement timeout'));
+
+    const out = await runOpeningSearches('501', 'რამე', 'run-9', 15940);
+
+    expect(out.missing).toEqual(['search_second_degree']);
+    const tools = (logToolCall as jest.Mock).mock.calls.map((c) => c[0].tool);
+    expect(tools).toContain('web_search:opening');
+    // No row claiming the second circle came back empty — it did not come back.
+    expect(tools).not.toContain('search_second_degree:opening');
   });
 });

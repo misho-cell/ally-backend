@@ -1203,8 +1203,19 @@ export async function runPayerFor(
     const requester = result.rows[0]?.requester_user_id;
     return requester === null || requester === undefined ? userId : String(requester);
   }
-  // Nobody asked for this conversation, so nobody is charged for it.
-  if (threadType === 'campaign_invite') return null;
+  // A CAMPAIGN INVITE IS THE USER'S COST — Tornike's word, 16 September,
+  // overruling what I built an hour earlier.
+  //
+  // I had made it free on the reasoning that invite_campaigns has no owner
+  // column, so nobody asked for the conversation. He read it the other way and
+  // the argument is better than mine: in that thread the assistant suggests to
+  // its OWN user a person worth inviting and explains how that person grows
+  // that user's network. The value is theirs, so the small cost is theirs. The
+  // invite itself then goes out from them outside Netai (D122).
+  //
+  // The null branch is gone rather than left unreachable: the return type
+  // still allows it, because the two call sites now handle „nobody pays"
+  // correctly and that is worth keeping for whatever needs it next.
   return userId;
 }
 
