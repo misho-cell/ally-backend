@@ -1380,12 +1380,32 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * Ticket 20 row 136 — one text, used by the in-app tool and by the connector.
+ * The same wall described two different ways is two walls to keep in step.
+ */
+export const APPROVE_PLAN_DESCRIPTION =
+  "Record the user's yes to the proposed plan. Call ONLY after the user has said yes IN THIS " +
+  'TURN — their tap on the approve button, or a short go-ahead they typed. If the newest ' +
+  'message is yours and not theirs, there is no yes to record and you must not call this. ' +
+  'Your own summary, your own question and your own certainty are not approvals. Pass ' +
+  'confirmed: true. From then on, an ask to a person the plan names goes without asking again; ' +
+  'a person outside the plan needs a plan change first.';
+
 const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
   name: 'approve_task_plan',
-  description:
-    "Record the user's yes to the proposed plan. Call ONLY after they explicitly approved the " +
-    'summary you showed them — pass confirmed: true. From then on, an ask to a person the plan ' +
-    'names goes without asking again; a person outside the plan needs a plan change first.',
+  /**
+   * Ticket 20 row 136. Goal 3700, run dab5fe, 16 September: approve_task_plan
+   * was called at 14:37:40 with no yes from the user at all. The server
+   * refused it — the wall holds, and that is finished row 1 — but the model
+   * should not be reaching for it in the first place.
+   *
+   * „After they explicitly approved" was already there, and a model that has
+   * just written a persuasive summary can read its own words as the approval.
+   * So the text names WHOSE turn the yes has to be in, and says outright that
+   * its own summary is not one.
+   */
+  description: APPROVE_PLAN_DESCRIPTION,
   input_schema: {
     type: 'object',
     properties: {
@@ -2521,11 +2541,34 @@ export function buildTodaySection(now: Date): string {
     month: '2-digit',
     day: '2-digit',
   }).format(now);
+  /**
+   * Ticket 20 row 119, second pass — the seat's own suggestion, and it is
+   * better than the rule it replaces.
+   *
+   * „ზეგ საღამოს" on goal 3701, created 16 September, was saved as
+   * „17 სექტემბრის საღამოსთვის". It is the 18th. „ხვალ 10:00" on goal 3698
+   * became the 17th, which is right — so the section was read and the counting
+   * was wrong, not the reading.
+   *
+   * Their fix: name tomorrow and the day after by their dates, so the model
+   * COPIES rather than counts. Arithmetic is the part a model is worst at and
+   * the part a server is best at, and this is two lines of it.
+   */
+  const dayAfter = (days: number): string =>
+    new Intl.DateTimeFormat('ka-GE', {
+      timeZone: TBILISI_TZ,
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date(now.getTime() + days * MS_PER_DAY));
+
   return (
     `\n\n## დღეს\n${parts}, ${clock} (თბილისი). ISO: ${iso}.\n` +
-    'როცა მომხმარებელი ამბობს „ხვალ", „ორშაბათს", „მომავალ კვირას" — ამ თარიღიდან ' +
-    'დათვალე და ჩაწერე კონკრეტული თარიღი, არა თავად სიტყვა. თარიღს ნურასდროს ' +
-    'გამოიგონებ: თუ ეს სექცია არ ხედავ, თარიღი არ იცი და ისე თქვი.\n'
+    `ხვალ: ${dayAfter(1)}. ზეგ: ${dayAfter(2)}.\n` +
+    'როცა მომხმარებელი ამბობს „ხვალ" ან „ზეგ" — ზემოთ დაწერილი თარიღი გადმოწერე, ' +
+    'თვითონ ნუ დათვლი. „ორშაბათს", „მომავალ კვირას" და სხვა — ამ თარიღიდან დათვალე ' +
+    'და ჩაწერე კონკრეტული თარიღი, არა თავად სიტყვა. თარიღს ნურასდროს გამოიგონებ: ' +
+    'თუ ეს სექცია არ ხედავ, თარიღი არ იცი და ისე თქვი.\n'
   );
 }
 
@@ -4645,6 +4688,14 @@ function extractText(content: Anthropic.ContentBlock[]): string {
 // a blank screen. Text itself now comes from RUN_STRINGS[language] (task 22
 // g/h) — these two timing constants are what's left here.
 const TBILISI_TZ = 'Asia/Tbilisi';
+/**
+ * Row 119: naming tomorrow and the day after by adding 24 and 48 hours.
+ *
+ * Tbilisi has not observed daylight saving since 2005, so a calendar day there
+ * is 24 hours and this is exact. It would NOT be in a zone that changes clocks
+ * — worth knowing before this is copied anywhere else.
+ */
+const MS_PER_DAY = 24 * 60 * 60 * 1_000;
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
 

@@ -15,6 +15,8 @@
 // save_contact_fact/factFieldType below. A public rich-key taxonomy would need a
 // backend migration (not done); flagged to the prompt team.
 
+import { APPROVE_PLAN_DESCRIPTION } from '../chat.service';
+
 export const MCP_SERVER_NAME = 'Ally';
 export const MCP_SERVER_VERSION = '1.0.0';
 
@@ -379,9 +381,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   },
   approve_task_plan: {
     title: "Record the user's yes to the plan",
-    description:
-      'Records the approval of the proposed plan. Call ONLY after the user explicitly approved ' +
-      'the summary you showed — pass confirmed: true. Nothing is recorded without it.',
+    // Row 136: the same sentence the in-app tool carries. Two descriptions of
+    // one wall are two things to keep in step, and this one was the weaker.
+    description: APPROVE_PLAN_DESCRIPTION,
   },
   grant_task_permission: {
     title: 'Permission to ask around',

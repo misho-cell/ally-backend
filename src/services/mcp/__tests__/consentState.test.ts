@@ -16,6 +16,8 @@
  * about.
  */
 import { consentStateFor } from '../handlers';
+import { APPROVE_PLAN_DESCRIPTION } from '../../chat.service';
+import { TOOL_TEXTS } from '../texts';
 
 const APPROVED = {
   permission_granted: true,
@@ -64,5 +66,39 @@ describe('row 134 — missing data is never a yes', () => {
 
   it('an approval timestamp with no plan is not an approval either', () => {
     expect(consentStateFor({ ...APPROVED, plan: null } as never)).not.toBe('plan_approved');
+  });
+});
+
+/**
+ * Ticket 20 row 136 — the model tried to approve its own plan.
+ *
+ * Goal 3700, run dab5fe, 16 September, 14:37:40: approve_task_plan was called
+ * with no yes from the user at all. The server refused it — the wall holds,
+ * and that is finished row 1 — but a model reaching for it means the text was
+ * not saying enough.
+ *
+ * „After they explicitly approved" was already there. A model that has just
+ * written a persuasive summary can read its own words as the approval, so the
+ * text now names WHOSE turn the yes has to be in and rules out its own.
+ */
+describe('row 136 — the approve tool says whose yes it needs', () => {
+  it('requires the yes to be in THIS turn, not merely somewhere', () => {
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('IN THIS');
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('TURN');
+  });
+
+  it('rules out the assistant’s own words, which is what happened', () => {
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('Your own summary');
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('not approvals');
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('the newest message is yours');
+  });
+
+  it('names both roads to a yes — row 122 kept the typed one', () => {
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('approve button');
+    expect(APPROVE_PLAN_DESCRIPTION).toContain('go-ahead they typed');
+  });
+
+  it('the connector and the app say the SAME thing, not two versions of it', () => {
+    expect(TOOL_TEXTS.approve_task_plan.description).toBe(APPROVE_PLAN_DESCRIPTION);
   });
 });
