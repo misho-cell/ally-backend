@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { Task } from './taskStore.service';
+import { canBeAsked, AskReach } from './taskAsks.service';
 
 /**
  * The plan a goal runs inside (Ticket 10 Task 21; D118, D119).
@@ -35,6 +36,13 @@ export interface PlanPerson {
   phone: string;
   /** Which route this person belongs to (a route name from `routes`). */
   route: string;
+  /**
+   * Ticket 20 row 146 — whether this person can actually be asked, decided
+   * when the plan is PROPOSED rather than a minute after it is approved.
+   * Absent on plans stored before the column existed, which renders as
+   * nothing rather than as a claim either way.
+   */
+  reach?: AskReach;
 }
 
 export interface PlanExclusion {
@@ -183,6 +191,12 @@ export async function proposeTaskPlan(
 ): Promise<PlanOutcome<{ version: number; summary: string }>> {
   const parsed = parsePlan(raw);
   if (!parsed.ok) return parsed;
+  // Ticket 20 row 146: decided HERE, while the plan is being written, so the
+  // owner reads it before saying yes. Concurrent, and a lookup that fails
+  // leaves `reach` undefined — which renders as nothing, never as a claim that
+  // somebody is unreachable.
+  const withReach = await withReachability(parsed.value.people_to_involve);
+  const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   const result = await query<{ plan_version: number }>(
     `UPDATE tasks
      SET plan_proposed = $3::jsonb,
@@ -191,13 +205,36 @@ export async function proposeTaskPlan(
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'
      RETURNING plan_version`,
-    [taskId, userId, JSON.stringify(parsed.value)],
+    [taskId, userId, JSON.stringify(plan)],
     PLAN_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
   if (!row) return { ok: false, error: 'No such open goal of yours.' };
   const version = Number(row.plan_version);
-  return { ok: true, value: { version, summary: renderPlan(parsed.value, version, null) } };
+  return { ok: true, value: { version, summary: renderPlan(plan, version, null) } };
+}
+
+/**
+ * Ticket 20 row 146 — each named person's reachability, looked up together.
+ *
+ * Never throws: a plan must still be proposable when this lookup fails, and an
+ * unknown reach is left UNDEFINED rather than guessed. Undefined renders as
+ * nothing, so a failure costs a warning the owner did not get — it never
+ * invents one about a person.
+ */
+async function withReachability(people: readonly PlanPerson[]): Promise<PlanPerson[]> {
+  return Promise.all(
+    people.map(async (person) => {
+      try {
+        const reach: AskReach = await canBeAsked(person.phone);
+        return { ...person, reach };
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(`[plan-reach] ${person.name}: ${(err as Error).message}`);
+        return person;
+      }
+    }),
+  );
 }
 
 /**
@@ -300,6 +337,22 @@ const ROUTE_STATUS_WORDS: Readonly<Record<RouteStatus, string>> = {
  * until ticket 19 item 3 said so, and a message that reads like a debug dump
  * is a message people approve without reading.
  */
+/**
+ * Ticket 20 row 146. Why a named person cannot be written to, in the owner's
+ * words rather than the server's — and never as that person's own choice: the
+ * opt-out list is deliberately not consulted at plan time, because a refusal
+ * to be contacted is private to the person who made it.
+ */
+const REACH_NOTE: Record<Exclude<AskReach, 'ok'>, string> = {
+  not_member: '(Netai-ზე არ არის — მოწვევა დასჭირდება)',
+  never_opened: '(ანგარიში აქვს, Netai ჯერ არ გაუხსნია — კითხვა უპასუხოდ დარჩებოდა)',
+};
+
+/** Said once, above the list, when the plan can reach NOBODY it names. */
+const NOBODY_REACHABLE =
+  'ყურადღება: ამ გეგმაში დასახელებულ არცერთ ადამიანს ვერ მივწერ. დამტკიცება ' +
+  'თავისთავად ვერაფერს გააგზავნის — ჯერ მოწვევა ან შენით მიწერა დასჭირდება.';
+
 export function renderPlan(plan: TaskPlan, version: number, approvedAt: string | null): string {
   const routes = plan.routes
     .map((r) => `- ${r.name} — ${ROUTE_STATUS_WORDS[r.status] ?? r.status}`)
@@ -311,7 +364,15 @@ export function renderPlan(plan: TaskPlan, version: number, approvedAt: string |
           // The route is dropped when it only repeats the person — the live
           // plan showed „Dato Karada — Dato Karada", which tells the reader
           // nothing and looks like a fault in the product.
-          .map((p) => (sameText(p.route, p.name) ? `- ${p.name}` : `- ${p.name} — ${p.route}`))
+          .map((p) => {
+            const base = sameText(p.route, p.name) ? `- ${p.name}` : `- ${p.name} — ${p.route}`;
+            // Row 146: said BEFORE the yes. Tornike approved a plan naming
+            // three people and learned 47 seconds later that not one of them
+            // could be written to.
+            return p.reach === undefined || p.reach === 'ok'
+              ? base
+              : `${base} ${REACH_NOTE[p.reach]}`;
+          })
           .join('\n');
   const head = approvedAt
     ? `გეგმა v${version} (დამტკიცებულია)`
@@ -322,6 +383,13 @@ export function renderPlan(plan: TaskPlan, version: number, approvedAt: string |
     `გზები:\n${routes}`,
     `ვის ვკითხავ:\n${people}`,
   ];
+  // Row 146: the loudest case gets its own line. A plan naming three people
+  // none of whom can be written to is not a plan, and the owner has to know
+  // that before the yes, not 47 seconds after it.
+  const named = plan.people_to_involve;
+  if (named.length > 0 && named.every((p) => p.reach !== undefined && p.reach !== 'ok')) {
+    lines.splice(1, 0, NOBODY_REACHABLE);
+  }
   // „Nobody" is not a list of nobody: an empty exclusion list means the
   // section has nothing to say, so it is left out rather than printed as an
   // empty bullet.

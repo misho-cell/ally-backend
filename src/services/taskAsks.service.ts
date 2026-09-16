@@ -264,6 +264,39 @@ async function isNetaiUser(userId: number, subscriptionStatus: string | null): P
   return result.rows[0]?.opened === true;
 }
 
+/**
+ * Ticket 20 row 146 — CAN this person be asked, answered BEFORE the plan is
+ * approved rather than a minute after.
+ *
+ * Tornike's own goal 3763, 16 September. The plan named three people; he
+ * approved it at 15:50:28; at 15:51:15 all three ask_contact calls were
+ * refused, every one of them „has an account but has not opened Netai". He was
+ * never told, before he said yes, that not one of the three could be reached.
+ *
+ * The same two gates createAsk applies at send time, asked early: is this
+ * phone a member at all, and has that member ever opened the product. The
+ * opt-out list is deliberately NOT consulted here — a plan is shown to its
+ * owner, and „this person has asked not to be contacted" is a third party's
+ * private decision that must not be surfaced to somebody else (12 Aug). It
+ * still refuses at send time, where it belongs.
+ */
+export type AskReach = 'ok' | 'not_member' | 'never_opened';
+
+export async function canBeAsked(contactPhone: string): Promise<AskReach> {
+  const member = await query<{ userId: number; subscriptionStatus: string | null }>(
+    `SELECT up."userId", u.subscription_status AS "subscriptionStatus"
+     FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
+     WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+       AND u."deletedAt" IS NULL
+     LIMIT 1`,
+    [contactPhone],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const row = member.rows[0];
+  if (!row) return 'not_member';
+  return (await isNetaiUser(row.userId, row.subscriptionStatus)) ? 'ok' : 'never_opened';
+}
+
 /** The task's plan columns, read at send time — a plan may have been approved a second ago. */
 async function planRowFor(
   taskId: number,

@@ -87,7 +87,12 @@ describe('proposing and approving', () => {
     const out = await proposeTaskPlan('501', 1619, RAW);
 
     expect(out.ok).toBe(true);
-    const [sql] = mockQuery.mock.calls[0] as [string];
+    // Row 146 put the reachability lookups first, so the update is no longer
+    // call zero. Found by what it IS rather than by where it sits, which is
+    // what this test always meant.
+    const sql = (mockQuery.mock.calls
+      .map(([q]) => q as string)
+      .find((q) => q.includes('UPDATE tasks')) ?? '') as string;
     expect(sql).toContain('SET plan_proposed = $3::jsonb');
     expect(sql).not.toContain('SET plan =');
     // Ticket 11 Task 8: every proposal is a new version — the row's version
@@ -361,5 +366,103 @@ describe('row 101a — the route match forgives spelling, not membership', () =>
     // own plan until the strings lined up.
     expect(out.error).toContain('Eka Malazonia — ორ მასაჟისტს იცნობს');
     expect(out.error).toContain('მეორე წრის სრული ძიება');
+  });
+});
+
+/**
+ * Ticket 20 row 146 — a plan whose people cannot be asked, said BEFORE the yes.
+ *
+ * Tornike's own goal 3763, 16 September, a volleyball coach for his child. The
+ * plan named three people. He approved it at 15:50:28. At 15:51:15 all three
+ * ask_contact calls were refused, every one of them „has an account but has
+ * not opened Netai". He was never told, before saying yes, that not one of the
+ * three could be reached — and the goal then set its next wake for 18
+ * September and slept.
+ */
+describe('row 146 — the plan says who cannot be reached', () => {
+  const PEOPLE = [
+    { name: 'Gega', phone: '+995599111111', route: 'ქსელში კითხვა' },
+    { name: 'Nino', phone: '+995599222222', route: 'ქსელში კითხვა' },
+  ];
+  const PLAN = {
+    solved_when: 'მწვრთნელი ნაპოვნია',
+    routes: [{ name: 'ქსელში კითხვა', status: 'waiting' }],
+    people_to_involve: PEOPLE,
+    never_contact: [],
+  };
+
+  it('marks a member who has never opened Netai, in the owner’s words', () => {
+    const parsed = parsePlan(PLAN);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const summary = renderPlan(
+      {
+        ...parsed.value,
+        people_to_involve: [
+          { ...parsed.value.people_to_involve[0], reach: 'never_opened' as const },
+          { ...parsed.value.people_to_involve[1], reach: 'ok' as const },
+        ],
+      },
+      1,
+      null,
+    );
+
+    expect(summary).toContain('Netai ჯერ არ გაუხსნია');
+    // And says nothing about the one who can be reached.
+    expect(summary).toMatch(/Nino(?!.*გაუხსნია)/);
+  });
+
+  it('warns ABOVE the list when the plan can reach nobody it names', () => {
+    const parsed = parsePlan(PLAN);
+    if (!parsed.ok) return;
+
+    const summary = renderPlan(
+      {
+        ...parsed.value,
+        people_to_involve: parsed.value.people_to_involve.map((p) => ({
+          ...p,
+          reach: 'never_opened' as const,
+        })),
+      },
+      1,
+      null,
+    );
+
+    expect(summary).toContain('არცერთ ადამიანს ვერ მივწერ');
+    // Above the list, because a warning under it is read after the decision.
+    expect(summary.indexOf('არცერთ ადამიანს')).toBeLessThan(summary.indexOf('ვის ვკითხავ'));
+  });
+
+  it('a plan with one reachable person carries no blanket warning', () => {
+    const parsed = parsePlan(PLAN);
+    if (!parsed.ok) return;
+
+    const summary = renderPlan(
+      {
+        ...parsed.value,
+        people_to_involve: [
+          { ...parsed.value.people_to_involve[0], reach: 'never_opened' as const },
+          { ...parsed.value.people_to_involve[1], reach: 'ok' as const },
+        ],
+      },
+      1,
+      null,
+    );
+
+    expect(summary).not.toContain('არცერთ ადამიანს ვერ მივწერ');
+  });
+
+  it('an unknown reach says nothing at all — a failed lookup invents no claim', () => {
+    const parsed = parsePlan(PLAN);
+    if (!parsed.ok) return;
+
+    // `reach` undefined is every plan stored before the column existed, and
+    // every lookup that failed. Neither is evidence about a person.
+    const summary = renderPlan(parsed.value, 1, null);
+
+    expect(summary).toContain('Gega');
+    expect(summary).not.toContain('ვერ მივწერ');
+    expect(summary).not.toContain('გაუხსნია');
   });
 });
