@@ -112,7 +112,7 @@ describe('handleStripeEvent — writing Stripe truth onto the account', () => {
   });
 
   // Ticket 10 Task 28 (b): the payment history.
-  it('a paid invoice with real money is written into the payment history', async () => {
+  it('a paid invoice with real money is written into the payment history (legacy shape)', async () => {
     mockSubscriptionsRetrieve.mockResolvedValue(
       subscription({ status: 'active', trial_end: null }),
     );
@@ -188,6 +188,92 @@ describe('handleStripeEvent — writing Stripe truth onto the account', () => {
 
     expect(userUpdate()).toBeUndefined();
     expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  /**
+   * Row 13 — the invoice shape the live API actually sends.
+   *
+   * `invoice.subscription` was removed in API 2025-03-31.basil and moved to
+   * `invoice.parent.subscription_details.subscription`. The SDK here is pinned
+   * to 2026-08-26.dahlia, where the old field does not exist — and the test
+   * above feeds the old field, so it passed while a live paid invoice resolved
+   * to nothing and wrote no payment row.
+   *
+   * That is the fourth time this week a test has faithfully held a belief the
+   * world had moved on from. It was found before a real card paid, which is
+   * the only reason it is cheap.
+   */
+  it('reads the subscription off a live invoice, whose shape moved under parent', async () => {
+    mockSubscriptionsRetrieve.mockResolvedValue(
+      subscription({ status: 'active', trial_end: null }),
+    );
+
+    await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: {
+        object: {
+          id: 'in_2',
+          parent: { subscription_details: { subscription: 'sub_1' } },
+          amount_paid: 1999,
+          currency: 'usd',
+          created: 1_800_000_000,
+          status_transitions: { paid_at: 1_800_000_100 },
+        },
+      },
+    } as never);
+
+    const payment = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('INSERT INTO payment_events'),
+    );
+    expect(payment?.[1]?.[2]).toBe('in_2');
+    expect(payment?.[1]?.[4]).toBe('19.99');
+  });
+
+  it('accepts the subscription expanded into an object rather than an id', async () => {
+    mockSubscriptionsRetrieve.mockResolvedValue(
+      subscription({ status: 'active', trial_end: null }),
+    );
+
+    await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: {
+        object: {
+          id: 'in_3',
+          parent: { subscription_details: { subscription: { id: 'sub_1' } } },
+          amount_paid: 1999,
+          currency: 'usd',
+          created: 1_800_000_000,
+        },
+      },
+    } as never);
+
+    expect(mockSubscriptionsRetrieve).toHaveBeenCalledWith('sub_1');
+  });
+
+  it('a paid invoice naming no subscription is reported, not dropped in silence', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const out = await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: { object: { id: 'in_4', amount_paid: 1999, currency: 'usd', created: 1 } },
+    } as never);
+
+    expect(out).toEqual({ handled: false, type: 'invoice.paid' });
+    // Money we could not attribute is money the admin cannot show.
+    expect(consoleSpy.mock.calls.flat().join(' ')).toContain('in_4');
+    consoleSpy.mockRestore();
+  });
+
+  it('a $0 invoice naming no subscription is not worth an error line', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await stripeService.handleStripeEvent({
+      type: 'invoice.paid',
+      data: { object: { id: 'in_5', amount_paid: 0, currency: 'usd', created: 1 } },
+    } as never);
+
+    expect(consoleSpy).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 

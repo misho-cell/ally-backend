@@ -273,6 +273,37 @@ async function recordInvoicePayment(
   });
 }
 
+/**
+ * The subscription an invoice belongs to, read in BOTH shapes Stripe has used.
+ *
+ * Row 13 found this before a real card did. `invoice.subscription` was removed
+ * from the API in 2025-03-31.basil and moved under
+ * `invoice.parent.subscription_details.subscription`; this SDK is pinned to
+ * 2026-08-26.dahlia, where the top-level field does not exist at all. The
+ * handler read only the old field, behind a cast that told the type checker it
+ * was still there, so a live `invoice.paid` resolved to nothing, returned
+ * `handled: false`, and wrote no payment row.
+ *
+ * Which shape actually arrives depends on the API version pinned on the
+ * webhook endpoint in the Stripe Dashboard, which is not readable from here.
+ * So both are read rather than one chosen: the old shape costs one property
+ * access and removes the need to know.
+ *
+ * Either field may be an id or an expanded object, and both are accepted.
+ */
+export function subscriptionIdOnInvoice(invoice: Stripe.Invoice): string | null {
+  const parent = invoice.parent?.subscription_details?.subscription;
+  const legacy = (invoice as Stripe.Invoice & { subscription?: unknown }).subscription;
+  for (const candidate of [parent, legacy]) {
+    if (typeof candidate === 'string' && candidate !== '') return candidate;
+    if (candidate !== null && typeof candidate === 'object') {
+      const id = (candidate as { id?: unknown }).id;
+      if (typeof id === 'string' && id !== '') return id;
+    }
+  }
+  return null;
+}
+
 async function findUserIdByCustomer(customerId: string): Promise<string | null> {
   const result = await query<{ id: number }>(
     'SELECT id FROM "User" WHERE "stripeCustomerId" = $1 AND "deletedAt" IS NULL LIMIT 1',
@@ -313,9 +344,18 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<WebhookOut
     }
     case 'invoice.paid':
     case 'invoice.payment_failed': {
-      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
-      const subscriptionId = invoice.subscription;
-      if (typeof subscriptionId !== 'string') return { handled: false, type: event.type };
+      const invoice = event.data.object;
+      const subscriptionId = subscriptionIdOnInvoice(invoice);
+      if (subscriptionId === null) {
+        // Not silent. An invoice that carried real money and could not be
+        // attributed is money we cannot show on the admin, and the whole
+        // reason this is here is that it went unnoticed once.
+        if (event.type === 'invoice.paid' && invoice.amount_paid > 0) {
+          // eslint-disable-next-line no-console
+          console.error(`[stripe] paid invoice ${invoice.id} names no subscription — not recorded`);
+        }
+        return { handled: false, type: event.type };
+      }
       const subscription = await stripeClient().subscriptions.retrieve(subscriptionId);
       await applySubscription(subscription);
       if (event.type === 'invoice.paid') await recordInvoicePayment(subscription, invoice);
