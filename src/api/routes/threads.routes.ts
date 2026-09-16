@@ -52,6 +52,7 @@ import {
 import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
 import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
+import { claimRun, releaseRun } from '../../services/runDedupe';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -447,6 +448,22 @@ threadsRouter.post(
       // request open: progress and the final answer are streamed over SSE
       // (GET /threads/stream), keyed by runId.
       const runId = randomUUID();
+
+      // Ticket 20 row 115. Ninia's „კი" arrived five times in six seconds and
+      // started five runs. An identical message from the same person on the
+      // same thread is refused only while an identical message's run is STILL
+      // IN FLIGHT — a person repeats themselves after reading a reply, never
+      // before, so this catches the double submit and not the real repeat.
+      //
+      // The duplicate is answered with the run already going rather than an
+      // error: all five requests then watch the same answer arrive over SSE,
+      // which is what the sender believes is happening anyway.
+      const alreadyRunning = claimRun(userId, threadId, message, runId);
+      if (alreadyRunning !== null) {
+        res.status(202).json({ success: true, runId: alreadyRunning, duplicate: true });
+        return;
+      }
+
       res.status(202).json({ success: true, runId });
 
       // Ticket 7 Task 1(c), founder's ruling D48: an incoming_ask thread is a
@@ -608,7 +625,12 @@ threadsRouter.post(
           saveThreadMessage(threadId, Number(userId), 'assistant', userMessage, 'error').catch(
             () => undefined,
           );
-        });
+        })
+        // Row 115: released whichever way the run ended, including the failure
+        // path above. A claim that survived a failed run would refuse the
+        // person's own retry of the message that just failed them — the one
+        // moment repeating yourself is certainly deliberate.
+        .finally(() => releaseRun(userId, threadId, message, runId));
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/message]', error);
