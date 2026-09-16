@@ -81,6 +81,43 @@ export const ROLE_WORDS = [
 // list is the founder's examples and the criteria file's own
 // (khelosani, karobka, avtomatika, airbagi), nothing more.
 export const TRADE_WORDS = [
+  // Ticket 20 row 8, founder's ruling of 16 September. Measured on the live
+  // base: of the 400 commonest whole-word tokens, 34 would have been printed as
+  // somebody's EMPLOYER, and eight of those are trades. They were missing for
+  // the same reason „Elektrikosi" was — the Georgian word is here and the Latin
+  // spelling people actually type is not.
+  //
+  // Carriers, and how many people the substring wrongly catches inside a LARGER
+  // word (containsAny is a substring match, so that number is the entry's cost).
+  // The overflow is almost all Georgian inflection (mdzgolis, bugalteria),
+  // which is a correct catch and not a wrong one.
+  //
+  //   mdzgoli    7,937 driver       +156 (2%)
+  //   bugalteri  6,557 accountant   +542 (8%)
+  //   dacva      5,358 security     +921 (15%)
+  //   makleri    4,878 broker       +119 (2%)
+  //   taqsi      4,151 taxi         +246 (6%)
+  //   maliari    4,054 plasterer     +48 (1%)
+  //   prarabi    2,852 foreman       +45 (2%)
+  //   mkeravi    2,499 tailor        +65 (3%)
+  'მძღოლ',
+  'mdzgoli',
+  'ბუღალტერ',
+  'bugalter',
+  'დაცვ',
+  'dacva',
+  'მაკლერ',
+  'makleri',
+  'ტაქსი',
+  'taqsi',
+  'taksi',
+  'მალიარ',
+  'maliari',
+  'პრორაბ',
+  'prarabi',
+  'prorabi',
+  'მკერავ',
+  'mkeravi',
   'ხელოსან',
   'khelosani',
   'xelosani',
@@ -207,6 +244,15 @@ export const ORGANISATION_WORDS = [
 // the neighbour — the second word is a relationship, not a surname, and the
 // list must not treat it as one (ticket 9 task 23).
 export const RELATIONSHIP_WORDS = [
+  // Ticket 20 row 8, same audit. „ნათლია" and „ბიცოლა" were already here in
+  // Georgian and were still read as an EMPLOYER when typed in Latin.
+  //   natlia   4,642  +313 (6%)
+  //   bicola   3,700  +237 (6%)
+  //   klaseli  3,254  +381 (10%)  — in neither script before
+  'natlia',
+  'bicola',
+  'კლასელ',
+  'klaseli',
   'მეზობელ',
   'mezobel',
   'ძმა',
@@ -239,6 +285,13 @@ export const RELATIONSHIP_WORDS = [
 // lari). Generic words, not a brand list — every one of them is a thing rather
 // than a person, in any building in the country.
 export const THING_WORDS = [
+  // Ticket 20 row 8, same audit: car parts read as a company name.
+  //   dashlilebi  3,386  +40 (1%)
+  //   nawilebi    2,917  +197 (6%)
+  'დაშლილები',
+  'dashlilebi',
+  'ნაწილები',
+  'nawilebi',
   // Ticket 16 Task 87 leftover: business labels in the identity queue
   // („Giorgi Restorani Agaraki", „Posta Niko") — a place of business, not a person.
   'რესტორან',
@@ -286,6 +339,25 @@ export const THING_WORDS = [
 // A city is where somebody is, never who they are — and „ბათუმი ორბი 2" is a
 // building, not a person.
 export const PLACE_WORDS = [
+  // Ticket 20 row 8, same audit. „ქუთაისი" was here twice over — as Georgian
+  // and as `kutaisi` — and still missed `qutaisi`, because ქ is written both
+  // ways. Two Tbilisi districts were in neither script.
+  //   rustavi  4,767  +696 (13%)
+  //   qutaisi  4,144  +466 (10%)
+  //   digomi   3,874  +229 (6%)
+  //   gldani   3,326  +610 (16%)
+  //
+  // NOT added, and this is what measuring bought: „gori" sits inside „grigori",
+  // a first name — 3,440 of its 7,716 carriers, 45%. The same for dzia (51%),
+  // didi (52%), bagi (32%), aveji (24%), lilo (17% on four characters) and gazi
+  // (74%: „magazia" is a shop). A substring dictionary cannot hold a short
+  // word, however common it is.
+  'rustavi',
+  'qutaisi',
+  'დიღომი',
+  'digomi',
+  'გლდანი',
+  'gldani',
   'თბილისი',
   'tbilisi',
   'ბათუმი',

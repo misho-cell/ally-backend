@@ -298,9 +298,13 @@ describe('buildTargetList', () => {
 
   it("founder's target rule (31 Aug): only gate-passable people — held by 2+ subscribers", async () => {
     mockFindUnmetNeeds.mockResolvedValue([
+      // Ticket 20 row 8: the labels carry real SURNAMES now. „ნათია ბუღალტერი"
+      // is a first name plus a trade, which since the founder's ruling of
+      // 16 September is not a full name — and this test is about the
+      // subscriber gate, not about what counts as a name.
       need('ბუღალტერი', [
-        { phone: '+995500000021', label: 'ნათია ბუღალტერი' },
-        { phone: '+995500000022', label: 'გია ბუღალტერი' },
+        { phone: '+995500000021', label: 'ნათია ბერიძე' },
+        { phone: '+995500000022', label: 'გია კვარაცხელია' },
       ]),
     ]);
     routeScoreQueries({
@@ -1424,8 +1428,11 @@ describe('buildTargetList', () => {
         { phone: '+995500000014', reach: '90' },
       ],
       aliases: [
+        // Ticket 20 row 8: the second saver agrees on the SURNAME. „gia gldani"
+        // used to stand in for that and cannot any more — Gldani is a district
+        // of Tbilisi, so the label says where he is, not who he is.
         { phone: '+995500000013', contactId: 1, alias: 'gia melashvili' },
-        { phone: '+995500000013', contactId: 2, alias: 'gia gldani' },
+        { phone: '+995500000013', contactId: 2, alias: 'g. melashvili' },
         { phone: '+995500000014', contactId: 3, alias: 'someone once' },
       ],
       askableCount: 50,
@@ -1573,8 +1580,9 @@ describe('task 23: an organisation, a bare first name and a relationship word ar
     ]);
     routeScoreQueries({
       aliases: [
+        // Ticket 20 row 8, as above: agreement has to be on a name.
         { phone: '+995500000062', contactId: 1, alias: 'Gia Melashvili' },
-        { phone: '+995500000062', contactId: 2, alias: 'Gia Gldani' },
+        { phone: '+995500000062', contactId: 2, alias: 'Gia Melashvili' },
       ],
       askableCount: 50,
     });
@@ -2026,5 +2034,52 @@ describe('Ticket 13 Task 18: a first name plus a COMPANY word is not a full name
     });
 
     expect((await buildTargetList(30)).map((e) => e.label)).toEqual(['Kato Boxua']);
+  });
+});
+
+/**
+ * Ticket 20 row 8 — a label is not a name, and the invite list now knows it.
+ *
+ * The founder ruled on 16 September, after this seat asked: the trade, relation
+ * and place words go into the shared dictionaries the target engine reads, so
+ * labels like „ნათია ბუღალტერი" and „Gia Gldani" stop counting as a person's
+ * full name. An invitation built on one would address the person wrongly.
+ *
+ * Three tests above had fixtures that used a trade or a district AS a surname —
+ * they were about the subscriber gate and about crowd agreement, and the label
+ * was incidental. Their fixtures now carry real surnames. These are the tests
+ * for the rule itself.
+ */
+describe('Ticket 20 row 8: a first name plus a trade, place or relation is not a person', () => {
+  it.each([
+    ['ნათია ბუღალტერი', 'a trade'],
+    ['Gia mdzgoli', 'a trade in Latin'],
+    ['Gia Gldani', 'a district of Tbilisi'],
+    ['Nino rustavi', 'a city'],
+    ['Dato bicola', 'a relation'],
+  ])('„%s" is %s, not a full name — nobody to invite', async (label) => {
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000091', label }])]);
+    routeScoreQueries({
+      aliases: [{ phone: '+995500000091', contactId: 1, alias: label }],
+      askableCount: 50,
+    });
+
+    expect(await buildTargetList(30)).toEqual([]);
+  });
+
+  it('a real full name in the same shape is still a target', async () => {
+    const label = 'Gia Melashvili';
+    mockFindUnmetNeeds.mockResolvedValue([need('x', [{ phone: '+995500000092', label }])]);
+    routeScoreQueries({
+      // Two savers agreeing on the surname, the same shape the confirmation
+      // tests above use — the point here is the NAME, not the count.
+      aliases: [
+        { phone: '+995500000092', contactId: 1, alias: label },
+        { phone: '+995500000092', contactId: 2, alias: label },
+      ],
+      askableCount: 50,
+    });
+
+    expect((await buildTargetList(30)).map((e) => e.phone)).toEqual(['+995500000092']);
   });
 });
