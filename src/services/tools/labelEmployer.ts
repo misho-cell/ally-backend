@@ -133,8 +133,95 @@ const NEVER_A_COMPANY = new Set([
   'undefined',
 ]);
 
+/**
+ * Ticket 19 [8], the audit of 16 September, and why these words are HERE and
+ * not in labelDictionaries.
+ *
+ * I ran the 400 commonest whole-word tokens in the base through the real
+ * pipeline. Thirty-four would be printed as somebody's EMPLOYER. Eight of them
+ * are trades, four are relations, four are places and two are car parts — all
+ * missing for the same reason „Elektrikosi" was: the Georgian word is in the
+ * shared dictionaries and the Latin spelling people actually type is not.
+ *
+ * Putting them in the shared dictionaries is the tidy answer and it is the
+ * wrong one. Those dictionaries are read by the TARGET engine too, and adding
+ * them changed WHO GETS INVITED: „ნათია ბუღალტერი" stopped being a full name
+ * and left the invite list, and so did „Gia Gldani". Both of those reads are
+ * more correct than what they replace — but who the product invites is a
+ * product decision and not a side effect of a display fix. Three target tests
+ * caught it, which is what they are for.
+ *
+ * So the same words, scoped to this file, where they only decide what is shown
+ * in `employer` and `jobPosition`. Moving them into the shared dictionaries is
+ * written up for whoever owns the invite list.
+ *
+ * Each entry is a prefix, matched the way the shared dictionaries are matched,
+ * and carries its measured cost: how many people the substring wrongly catches
+ * inside a LARGER word.
+ */
+const LOCAL_TRADES = [
+  'მძღოლ',
+  'mdzgoli', //     7,937 driver        +156 (2%)
+  'ბუღალტერ',
+  'bugalter', //    6,557 accountant    +542 (8%)
+  'დაცვ',
+  'dacva', //       5,358 security      +921 (15%)
+  'მაკლერ',
+  'makleri', //     4,878 broker        +119 (2%)
+  'ტაქსი',
+  'taqsi', //       4,151 taxi          +246 (6%)
+  'taksi',
+  'მალიარ',
+  'maliari', //     4,054 plasterer      +48 (1%)
+  'პრორაბ',
+  'prarabi', //     2,852 foreman        +45 (2%)
+  'prorabi',
+  'მკერავ',
+  'mkeravi', //     2,499 tailor         +65 (3%)
+];
+
+/**
+ * Not a company: a place, a relation or a thing. Dropped rather than shown.
+ *
+ * NOT here, and this is what measuring bought: „gori" is inside „grigori", a
+ * first name — 3,440 of its 7,716 carriers (45%) are the word stuck inside
+ * another one. The same for dzia (51%), didi (52%), bagi (32%), aveji (24%),
+ * lilo (17% on four characters) and gazi (74% — „magazia" is a shop). A
+ * substring rule cannot hold a short word however common it is, so those seven
+ * stay wrong for now and are named in TASKS.md rather than quietly guessed at.
+ */
+const LOCAL_NOT_A_COMPANY = [
+  // Places. „ქუთაისი" was in the shared list twice, as Georgian and as
+  // `kutaisi`, and still missed `qutaisi` — ქ is written both ways.
+  'rustavi', //     4,767  +696 (13%)
+  'qutaisi', //     4,144  +466 (10%)
+  'დიღომი',
+  'digomi', //      3,874  +229 (6%)
+  'გლდანი',
+  'gldani', //      3,326  +610 (16%)
+  // Relations. The Georgian spellings are already shared; the Latin ones were
+  // nowhere, and „klaseli" was in neither script.
+  'natlia', //      4,642  +313 (6%)
+  'bicola', //      3,700  +237 (6%)
+  'კლასელ',
+  'klaseli', //     3,254  +381 (10%)
+  // Car parts read as a company name.
+  'დაშლილები',
+  'dashlilebi', //  3,386   +40 (1%)
+  'ნაწილები',
+  'nawilebi', //    2,917  +197 (6%)
+];
+
+function matchesLocal(token: string, words: readonly string[]): boolean {
+  return words.some((w) => token.includes(w));
+}
+
 function cannotBeACompany(token: string): boolean {
-  return DIGITS_ONLY.test(token) || NEVER_A_COMPANY.has(token);
+  return (
+    DIGITS_ONLY.test(token) ||
+    NEVER_A_COMPANY.has(token) ||
+    matchesLocal(token, LOCAL_NOT_A_COMPANY)
+  );
 }
 
 /** Does the crowd say this word is a company rather than a person? */
@@ -199,9 +286,13 @@ function candidatesIn(label: string, wantEmployer: boolean, wantTitle: boolean):
   const out: Candidate[] = [];
   labelTokens(label).forEach((token, index) => {
     const kind = classifyToken(token.lower, index === 0);
-    if (wantTitle && (kind === 'trade' || kind === 'profession_with_clients')) {
+    const isTrade =
+      kind === 'trade' ||
+      kind === 'profession_with_clients' ||
+      matchesLocal(token.lower, LOCAL_TRADES);
+    if (wantTitle && isTrade) {
       out.push({ raw: token.raw, lower: token.lower, kind: 'title', needsCount: false });
-    } else if (cannotBeACompany(token.lower)) {
+    } else if (isTrade || cannotBeACompany(token.lower)) {
       // A number or a conjunction never reaches the field, counted or not.
     } else if (wantEmployer && (kind === 'organisation' || certainOrganisation(token.lower))) {
       out.push({

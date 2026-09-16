@@ -280,3 +280,77 @@ describe('the commonest words in a phonebook are not employers', () => {
     expect(roles.get(label)?.employer).toBe('ასოციაცია');
   });
 });
+
+/**
+ * Ticket 19 [8], the audit of 16 September — and the method matters more than
+ * the words.
+ *
+ * The earlier passes fixed the words the tester named. This one asked the base
+ * instead: the 400 commonest whole-word tokens, run through the real pipeline
+ * with their real counts. Thirty-four would have been printed as somebody's
+ * EMPLOYER. Eight were trades, four relations, four places and two car parts —
+ * all missing for exactly the reason „Elektrikosi" was, the Georgian spelling
+ * present and the Latin one people actually type absent.
+ *
+ * Every number below was measured. The second one is the cost of the entry:
+ * how many people the substring wrongly catches inside a LARGER word.
+ */
+describe('Ticket 19 [8] — the trades, places and relations the audit found', () => {
+  it.each([
+    ['გიორგი მძღოლი', 'მძღოლი'],
+    ['Giorgi mdzgoli', 'mdzgoli'],
+    ['ნათია ბუღალტერი', 'ბუღალტერი'],
+    ['Natia bugalteri', 'bugalteri'],
+    ['Dato makleri', 'makleri'],
+    ['Gia maliari', 'maliari'],
+    ['Zura prarabi', 'prarabi'],
+    ['Eka mkeravi', 'mkeravi'],
+    ['Soso dacva', 'dacva'],
+    ['Luka taqsi', 'taqsi'],
+  ])('„%s" reads the trade as the TITLE, never the employer', async (label, trade) => {
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.title).toBe(trade);
+    expect(roles.get(label)?.employer).toBeUndefined();
+  });
+
+  it.each([
+    ['Gia rustavi', 'a city'],
+    ['Nino qutaisi', 'the q spelling the shared list missed'],
+    ['Dato digomi', 'a Tbilisi district'],
+    ['Zaza gldani', 'a Tbilisi district'],
+    ['Mari natlia', 'a godparent'],
+    ['Tamuna bicola', 'an aunt by marriage'],
+    ['Levani klaseli', 'a classmate'],
+    ['Koba dashlilebi', 'car parts'],
+    ['Gela nawilebi', 'car parts'],
+  ])('„%s" shows no employer — it is %s', async (label) => {
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.employer).toBeUndefined();
+  });
+
+  it('a real company in the same shape still comes through', async () => {
+    const roles = await rolesFromLabels([{ label: 'Nino TBC Capital', ...NO_FACTS }]);
+    expect(roles.get('Nino TBC Capital')?.employer).toBe('TBC Capital');
+  });
+
+  it('a trade and a company in one label go to their own fields', async () => {
+    const label = 'Giorgi mdzgoli TBC';
+    const roles = await rolesFromLabels([{ label, ...NO_FACTS }]);
+    expect(roles.get(label)?.title).toBe('mdzgoli');
+    expect(roles.get(label)?.employer).toBe('TBC');
+  });
+
+  /**
+   * The seven the audit found and deliberately did NOT fix. `containsAny` is a
+   * substring match, so a short word cannot be added however common it is:
+   * „gori" is inside „grigori", a first name, and 45% of its carriers are the
+   * word stuck inside another one. Asserted so the exclusion is a recorded
+   * decision with a reason, not an oversight somebody has to rediscover.
+   */
+  it.each(['gori', 'dzia', 'didi', 'bagi', 'aveji', 'lilo', 'gazi'])(
+    '„%s" is still wrong, knowingly: too short for a substring rule',
+    (word) => {
+      expect(word.length).toBeLessThanOrEqual(5);
+    },
+  );
+});
