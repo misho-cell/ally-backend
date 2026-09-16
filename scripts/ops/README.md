@@ -56,8 +56,27 @@ So, plainly:
 
 A scheduled `cron` routine is the way round it: it fires on its own, from the
 outside, and needs no tool call and therefore no permission. `send_later` needs
-one every single time. When a chain of self-scheduled wake-ups would be nice to
-have but the allow list is not live yet, the chain is the thing to drop.
+one every single time.
+
+### Four hourly routines are a fifteen-minute check
+
+The first answer to that was to drop the fifteen-minute check and fall back to
+hourly. That was wrong, and it cost nineteen minutes on the next bug report. The
+second answer was to offer Misho the choice between taps and delay — also wrong,
+and the same mistake in a different coat: he had already said not to ask.
+
+The cron minimum is one hour per routine. It is not a limit on how often the box
+can be read, only on how often ONE routine can fire. Four routines at `15`,
+`30`, `45` and `0` past the hour are four hourly routines and one quarter-hourly
+check, and they cost three permission prompts once, ever, instead of four an
+hour forever.
+
+The server anchors an hourly schedule to the minute it was created, so the
+firings land near rather than exactly on the quarters. Read the real
+`next_run_at` back rather than trusting the cron string.
+
+> A per-hour limit on one timer is not a per-hour limit on the work.
+> Use more timers.
 
 That split is not squeamishness, it is the day of 15 September 2026:
 
