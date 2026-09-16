@@ -2893,8 +2893,59 @@ const PLAN_YES =
 /**
  * A yes that turns on its own heel: „approved, BUT not Ninia yet", „yes if…".
  * The plan it is about is not the plan on the screen, so it is not a yes to it.
+ *
+ * A bare „არ" / „ნუ" is in here too, matched as a whole word. „Gega-ს არ
+ * მისწერო." is a correction, and a correction that happens to name an action
+ * must never read as permission to take it.
  */
-const TAKES_IT_BACK = /(მაგრამ|ოღონდ|თუმცა|ჯერ არა|არა,|\bbut\b|\bexcept\b|\bonly if\b|\bif\b)/iu;
+const TAKES_IT_BACK =
+  /(მაგრამ|ოღონდ|თუმცა|ჯერ არა|არა,|(^|\s)არ(\s|$)|(^|\s)ნუ(\s|$)|\bbut\b|\bexcept\b|\bonly if\b|\bif\b)/iu;
+
+/**
+ * Ticket 20 row 122, the founder's D292: keep BOTH the button and the words.
+ *
+ * Ninia, testing live on 16 September, said yes in words twice and was sent to
+ * find a button each time:
+ *
+ *   goal 3533, 10:36:49  „კარგი მიდი გააკეთე რაც შეგიძლია"  refused 10:36:53
+ *   goal 3540, 11:27:19  „გაგზავნე რექვესთები"              refused 11:27:24
+ *
+ * A human assistant hears „go ahead, send them" as a yes, and the rule I wrote
+ * yesterday heard it as noise. That rule was right about „სააგენტო" — a
+ * one-word ANSWER to a question that sent a real ask — and it was too narrow
+ * about everything else.
+ *
+ * Three conditions together, because any one of them alone is wrong:
+ *   - it says GO. A word from this list, anywhere in the line.
+ *   - it takes nothing back. TAKES_IT_BACK above, which now catches a bare არ.
+ *   - it is SHORT and not a question. A go-ahead is „მიდი, გაგზავნე". A detail,
+ *     a correction or an instruction naming somebody runs longer.
+ */
+const GO_AHEAD = [
+  'მიდი',
+  'გაგზავნე',
+  'გააგზავნე',
+  'დაიწყე',
+  'გააკეთე',
+  'დაამტკიცე',
+  'დამტკიცებულია',
+  'გააგრძელე',
+  'დაასრულე',
+  'go ahead',
+  'send them',
+  'send it',
+  'proceed',
+  'start',
+];
+/** A go-ahead is a sentence, not a paragraph. Beyond this it is carrying content. */
+const GO_AHEAD_MAX_WORDS = 6;
+
+function saysGoAhead(said: string): boolean {
+  const lower = said.toLowerCase();
+  if (!GO_AHEAD.some((w) => lower.includes(w))) return false;
+  if (/\?\s*$/.test(said)) return false;
+  return said.split(/\s+/).filter(Boolean).length <= GO_AHEAD_MAX_WORDS;
+}
 
 /**
  * Does the owner's own message say yes to THIS plan?
@@ -2929,11 +2980,12 @@ export function approvalBelongsToThePlan(
   if (TAKES_IT_BACK.test(said)) return false;
   // The approve button, and any sentence that opens by approving.
   if (canonicalChoiceLabel(said) === APPROVE_LABEL || APPROVE_LIKE_RE.test(said)) return true;
-  // A bare yes only counts when a plan card is the thing being answered.
+  // A bare yes, or a short go-ahead, only counts when a plan card is the thing
+  // being answered.
   const planCardOnScreen = (newestOfferedChoices ?? []).some(
     (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
   );
-  return planCardOnScreen && PLAN_YES.test(said);
+  return planCardOnScreen && (PLAN_YES.test(said) || saysGoAhead(said));
 }
 
 const PLAN_CONSENT_TIMEOUT_MS = 5_000;

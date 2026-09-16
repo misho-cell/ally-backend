@@ -193,3 +193,54 @@ describe('Ticket 19 G2, third pass — every approval anyone has really typed', 
     expect(approvalBelongsToThePlan('ეკრანი 15 დიუიმიანია.', PLAN_CARD)).toBe(false);
   });
 });
+
+/**
+ * Ticket 20 row 122, the founder's D292 — keep BOTH the button and the words.
+ *
+ * Ninia, testing live on 16 September, said yes in words twice and was sent to
+ * find a button each time:
+ *
+ *   goal 3533, 10:36:49  „კარგი მიდი გააკეთე რაც შეგიძლია"  refused 10:36:53
+ *   goal 3540, 11:27:19  „გაგზავნე რექვესთები"              refused 11:27:24
+ *
+ * A human assistant hears "go ahead, send them" as a yes. Yesterday's rule was
+ * right about „სააგენტო" — a one-word ANSWER that sent a real ask — and too
+ * narrow about everything else. This is the widening, with the refusals the
+ * tester named held in place beside it.
+ */
+describe('Ticket 20 row 122 — a typed go-ahead approves', () => {
+  const PLAN_CARD = ['დამტკიცებულია', 'შევცვალოთ'];
+
+  it.each([
+    'კარგი მიდი გააკეთე რაც შეგიძლია',
+    'გაგზავნე რექვესთები',
+    'მიდი, გაგზავნე',
+    'დაიწყე',
+    'კარგი, გააგრძელე',
+    'go ahead',
+  ])('„%s" approves', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(true);
+  });
+
+  /** The three the seat says it will test, and they must all still refuse. */
+  it.each([
+    ['სააგენტო', 'a one-word answer to a question — the 15 Sep case'],
+    ['ეკრანი 15 დიუიმიანია.', 'a detail'],
+    ['Gega-ს არ მისწერო.', 'a correction that names an action'],
+  ])('„%s" still approves nothing (%s)', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+  });
+
+  it.each([
+    ['მიდი, მაგრამ ჯერ ნინიას არ მისწერო', 'it takes itself back'],
+    ['გაგზავნო?', 'it is a question'],
+    ['ნუ გაგზავნი', 'it says the opposite'],
+    ['გააკეთე ისე, რომ გეგას არ მისწერო და ჯერ ნინიას ჰკითხე', 'it carries content'],
+  ])('„%s" does not approve (%s)', (said) => {
+    expect(approvalBelongsToThePlan(said, PLAN_CARD)).toBe(false);
+  });
+
+  it('a go-ahead with NO plan card on screen still approves nothing', () => {
+    expect(approvalBelongsToThePlan('მიდი, გაგზავნე', ['კი, გააგზავნე', 'შევცვალოთ'])).toBe(false);
+  });
+});
