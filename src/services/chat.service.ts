@@ -1273,6 +1273,56 @@ const GRANT_TASK_PERMISSION_TOOL: AnthropicTool = {
     required: ['task_id'],
   },
 };
+/**
+ * Did the owner say, in the goal itself, that nobody is to be written to?
+ *
+ * Ticket 20 row 117. On 16 September three goals whose own text ended „არავის
+ * არ მისწერო, მე თვითონ მივწერ" each came back with a first plan naming two to
+ * four people. A yes would have written to them.
+ *
+ * The prompt team fixed their side and the plans kept naming people, because
+ * the SERVER was asking for names in two places — the goal-saved event and
+ * propose_task_plan's own description. Both now say what „write to nobody"
+ * means, and this is the part that does not depend on their being read: G6
+ * taught the same lesson in August, that a sentence in a prompt is not a wall.
+ *
+ * Phrases only, deliberately, and no cleverness: this decides whether to REFUSE
+ * a plan, so a false positive blocks legitimate work. Each one is a way a
+ * person actually writes it, and a plain „არავის" on its own is not here — it
+ * appears in ordinary sentences („არავის ვიცნობ") that mean nothing of the kind.
+ */
+const WRITE_TO_NOBODY = [
+  'არავის არ მისწერო',
+  'არავის არ მიწერო',
+  'არავის ნუ მისწერ',
+  'არავის არ დაუკავშირდე',
+  'არავის არ დაურეკო',
+  'მე თვითონ მივწერ',
+  'მე თვითონ დავურეკ',
+  'მე თვითონ დავუკავშირდები',
+  'თვითონ მივწერ',
+  'თვითონ დავურეკავ',
+  'write to nobody',
+  'do not write to anyone',
+  "don't write to anyone",
+  'do not contact anyone',
+  "don't contact anyone",
+  'i will contact them myself',
+  'i will write to them myself',
+];
+
+export function goalSaysWriteToNobody(text: string | null | undefined): boolean {
+  if (typeof text !== 'string' || text.trim() === '') return false;
+  const lower = text.toLowerCase();
+  return WRITE_TO_NOBODY.some((phrase) => lower.includes(phrase));
+}
+
+/** The people a proposed plan would have this product write to. */
+export function planNamesPeople(plan: unknown): boolean {
+  if (plan === null || typeof plan !== 'object') return false;
+  const people = (plan as { people_to_involve?: unknown }).people_to_involve;
+  return Array.isArray(people) && people.length > 0;
+}
 
 // Ticket 10 Task 21 (D118, D119): the plan is agreed once, then the assistant
 // works inside it on its own. Two tools: propose (the assistant writes it from
@@ -1285,6 +1335,10 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
     'route each belongs to), and the people the user does NOT want contacted. Call it as soon as ' +
     'the problem is understood — before any ask goes out — and again for any CHANGE (a new person, ' +
     'a new route): the change waits for a yes while everything already approved keeps running. ' +
+    'WHEN THE USER SAID TO WRITE TO NOBODY („არავის არ მისწერო", „I will contact them myself"), ' +
+    'people_to_involve is EMPTY — in the first plan and every later one. Anyone you found goes in ' +
+    'the MESSAGE as a lead for them to approach, never in the plan: the plan is the list this ' +
+    'product may write to, and they have said that list is empty. ' +
     'Show the returned summary to the user verbatim with two choices (approve / change) via ' +
     'present_choices, and call approve_task_plan only on their explicit yes.',
   input_schema: {
@@ -2401,6 +2455,50 @@ interface AgentPromptResult {
    */
   deliverRequestsSeparately: boolean;
 }
+/**
+ * Today's date, in the prompt — Ticket 20 row 119.
+ *
+ * A run received no date and no message timestamps. Not a missing rule: the
+ * whole prompt assembly computes a date nowhere, in any mode. The tester asked
+ * directly on 16 September after goal 3536's assistant kept saying „ხვალ 12:00"
+ * and saved a private note dated 2026-09-11 — it was not ignoring an
+ * instruction, it had nothing to read and guessed from what was in context.
+ *
+ * Tbilisi time, because that is the clock every user of this product is on and
+ * „ხვალ" is their tomorrow, not UTC's. The weekday is there because „ორშაბათს"
+ * is how people say a date out loud, and the model cannot derive it without
+ * knowing today's.
+ *
+ * The clock is a PARAMETER rather than read inside, so the test can state what
+ * the line says on a known day instead of being a time-dependent test that
+ * passes differently at midnight.
+ */
+export function buildTodaySection(now: Date): string {
+  const parts = new Intl.DateTimeFormat('ka-GE', {
+    timeZone: TBILISI_TZ,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(now);
+  const clock = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TBILISI_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
+  const iso = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TBILISI_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  return (
+    `\n\n## დღეს\n${parts}, ${clock} (თბილისი). ISO: ${iso}.\n` +
+    'როცა მომხმარებელი ამბობს „ხვალ", „ორშაბათს", „მომავალ კვირას" — ამ თარიღიდან ' +
+    'დათვალე და ჩაწერე კონკრეტული თარიღი, არა თავად სიტყვა. თარიღს ნურასდროს ' +
+    'გამოიგონებ: თუ ეს სექცია არ ხედავ, თარიღი არ იცი და ისე თქვი.\n'
+  );
+}
 
 async function buildAgentSystemPrompt(
   userId: string,
@@ -2497,6 +2595,7 @@ async function buildAgentSystemPrompt(
     : '';
   const prompt =
     base +
+    buildTodaySection(new Date()) +
     INJECTION_DEFENSE_PROMPT +
     modeBlocks.text +
     (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
@@ -3599,6 +3698,23 @@ async function executeToolCall(
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
     case 'propose_task_plan': {
       const taskId = Number(input['task_id']);
+      // Ticket 20 row 117: the owner's own words outrank the plan. Refused
+      // rather than silently emptied — the model must be told, so its message
+      // to the owner still lists what it found as leads instead of quietly
+      // dropping the work.
+      const planTask = await getTaskById(taskId);
+      if (
+        planNamesPeople(input['plan']) &&
+        (goalSaysWriteToNobody(planTask?.title) || goalSaysWriteToNobody(planTask?.brief))
+      ) {
+        return {
+          proposed: false,
+          error:
+            'ამ მიზანში მფლობელმა თქვა, რომ არავის არ მივწეროთ. people_to_involve უნდა იყოს ' +
+            'ცარიელი. ნაპოვნი ადამიანები ჩამოთვალე შენს შეტყობინებაში, როგორც ლიდები — ' +
+            'გეგმაში არა. მერე ხელახლა გამოიძახე.',
+        };
+      }
       const outcome = await proposeTaskPlan(userId, taskId, input['plan']);
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
@@ -4298,6 +4414,7 @@ function extractText(content: Anthropic.ContentBlock[]): string {
 // has been emitted for RUN_HEARTBEAT_MS, so a 4-minute research run is never
 // a blank screen. Text itself now comes from RUN_STRINGS[language] (task 22
 // g/h) — these two timing constants are what's left here.
+const TBILISI_TZ = 'Asia/Tbilisi';
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
 

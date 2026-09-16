@@ -204,6 +204,15 @@ const EMPTY_CONTACT_LABEL_INLINE_RE = new RegExp(
   'giu',
 );
 
+/**
+ * Punctuation left touching itself once whatever stood between it is gone.
+ *
+ * „,." and „, ," are never written by anybody — they only appear where
+ * something was removed. The LAST mark wins, because it is the one that ends
+ * the sentence: „შეკეთება,." is „შეკეთება.".
+ */
+const ORPHANED_SEPARATORS_RE = /[,;:/|]+\s*([,.;:!?])/g;
+
 export function stripRedactionArtifactsForDisplay(text: string): string {
   return (
     text
@@ -221,6 +230,12 @@ export function stripRedactionArtifactsForDisplay(text: string): string {
       .replace(/\n{3,}/g, '\n\n')
       .replace(/ {2,}/g, ' ')
       .replace(/ ([,.:;!?])/g, '$1')
+      // Ticket 20 row 116, SECOND shape, found by the tester on thread 15646:
+      // „ეკრანის შეკეთება [hidden],." came out „ეკრანის შეკეთება,.". The rule
+      // above takes a LABEL away with its number; this takes the SEPARATOR that
+      // held the number's place when it had no label — a comma and a full stop
+      // that sat either side and closed up when the middle vanished.
+      .replace(ORPHANED_SEPARATORS_RE, '$1')
   );
 }
 

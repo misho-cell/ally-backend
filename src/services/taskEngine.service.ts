@@ -464,12 +464,22 @@ export function startDayOne(taskId: number): void {
  * the thread is free; a goal that meanwhile got a plan or closed is left alone.
  */
 const PLAN_PROPOSAL_DELAY_MS = 4_000;
+// Ticket 20 row 117. „ვის ვკითხავთ სახელებით" was an unconditional
+// instruction, so on the three „არავის არ მისწერო" goals of 16 September
+// (3532, 3535, 3536) every first plan came back naming two to four people —
+// and a yes would have written to them. The prompt team's own rule had to
+// argue with this line and with propose_task_plan's text to win, which is not
+// a fair fight: a model reads a server instruction as a fact about the job.
 const PLAN_PROPOSAL_EVENT =
   'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +
   'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
   'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური — ' +
   'ბოლოს present_choices-ით ორი ღილაკი: „დამტკიცებულია" და „შევცვალოთ". ' +
-  'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება.';
+  'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება. ' +
+  'თუ მფლობელმა თავად თქვა, რომ არავის არ მივწეროთ („არავის არ მისწერო", „მე თვითონ ' +
+  'მივწერ/დავურეკ") — people_to_involve ცარიელი რჩება პირველივე გეგმაში. ნაპოვნი ადამიანები ' +
+  'მხოლოდ შეტყობინებაში ჩამოთვალე, როგორც ლიდები მისთვის. „ვის ვკითხავთ" ამ შემთხვევაში ' +
+  'ნიშნავს „არავის".';
 
 async function planStillMissing(taskId: number): Promise<boolean> {
   const task = await getTaskById(taskId);

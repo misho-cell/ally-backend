@@ -85,3 +85,33 @@ describe('a contact label with nothing left after it', () => {
     expect(stripRedactionArtifactsForDisplay(input)).toBe(input);
   });
 });
+
+/**
+ * Ticket 20 row 116, SECOND shape — the tester's thread 15646, 10:42:13 UTC.
+ *
+ * My first fix took a LABEL away with its number. It did not touch a BARE
+ * number that left a dangling separator: "ეკრანის შეკეთება [hidden],." came out
+ * "ეკრანის შეკეთება,.". The comma and the full stop sat either side of the
+ * placeholder and closed up when the middle vanished.
+ */
+describe('punctuation left touching itself where a number was', () => {
+  it.each([
+    ['ეკრანის შეკეთება [hidden],.', 'ეკრანის შეკეთება.'],
+    ['ლეპტოპის შეკეთება, [hidden].', 'ლეპტოპის შეკეთება.'],
+    ['ავტო შეკეთება [hidden], [hidden].', 'ავტო შეკეთება.'],
+    ['სერვისი [hidden]; [hidden]!', 'სერვისი!'],
+  ])('%s', (input, expected) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(expected);
+  });
+
+  // Ordinary punctuation is prose and must survive untouched — this rule runs
+  // on every reply the product sends.
+  it.each([
+    'ერთი, ორი და სამი.',
+    'ფასი: 20, 30 ლარი.',
+    'მისამართი: რუსთაველი 12, მე-3 სართული.',
+    'კითხვა: რომელი გირჩევნია?',
+  ])('leaves „%s" alone', (input) => {
+    expect(stripRedactionArtifactsForDisplay(input)).toBe(input);
+  });
+});
