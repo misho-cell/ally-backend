@@ -4896,42 +4896,24 @@ async function runToolLoop(
     }
   }
 
-  // Ticket 20 row 126: the run is over and the goal it belongs to still has no
-  // plan. Asked once more, here, rather than in a second engine turn four
-  // seconds later — see MISSING_PLAN_NUDGE for why this is a check and not
-  // another sentence in the prompt.
+  // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the
+  // same afternoon it shipped (28b0d03), on the tester's measurements from
+  // goals 3664 and 3665:
   //
-  // The read is skipped entirely when a plan was proposed this run, which is
-  // every ordinary task_step turn, and getOpenTaskByThread answers null on a
-  // thread that carries no goal — so the condition IS the lookup and there is
-  // nothing to thread down through runToolLoop's arguments to ask it.
-  if (!toolNamesUsed.includes('propose_task_plan')) {
-    try {
-      const planless = await goalWithNoPlan(threadId);
-      // Past the wall clock the fallback turn is the right place for this: it
-      // starts with a fresh budget, and a run that has already overspent must
-      // not overspend further to be tidy.
-      if (planless && Date.now() - startedAt < RUN_WALL_CLOCK_BUDGET_MS) {
-        finalText = await appendProposedPlan(
-          { userId, threadId, runId, messages, systemPrompt, tools, ctx, ownerAbsent },
-          finalText,
-          stream,
-          resetTurnStream,
-          pending,
-          toolNamesUsed,
-        );
-      }
-    } catch (err) {
-      // Best-effort by contract: the answer is written and the delayed engine
-      // turn is still armed behind this. A failure here costs a tidier screen,
-      // never the reply.
-      // eslint-disable-next-line no-console
-      console.error(
-        `[missing-plan] run ${runId} could not propose in-run:`,
-        (err as Error).message,
-      );
-    }
-  }
+  //   - the nudge arrived at 13:26:25 and the reply was written at 13:26:27
+  //     anyway — CUT OFF MID-SENTENCE, ending on a comma. A user-visible
+  //     answer was damaged to tidy a second message.
+  //   - both goals still took two runs, so it did not even do its job.
+  //   - the plan text then appeared twice in the thread.
+  //
+  // Why it did not work is worth keeping: the extra turn DID call
+  // propose_task_plan, and propose_task_plan REFUSED it — the exact-match
+  // route rule that error_text caught 4 of 4 the same hour. The nudge was
+  // never the missing piece. Rebuilding it before that rule is fixed would
+  // just buy the same failure again, more expensively.
+  //
+  // MISSING_PLAN_NUDGE and MODEL_ONLY_NUDGES stay: the text is right and the
+  // set is what stops a nudge rendering as the user's own words.
 
   // Emit any safe remainder held back during streaming (run_complete then
   // reconciles the client's buffer against the authoritative reply anyway).
@@ -4952,90 +4934,18 @@ async function runToolLoop(
 }
 
 /**
- * Ticket 20 row 126. Does this thread carry an open goal that has neither a
- * plan in force nor one already waiting on the owner?
- *
- * The same question planStillMissing asks in the engine, asked of the thread
- * instead of the task id, because that is what a run has in its hand.
- */
-async function goalWithNoPlan(threadId: number): Promise<boolean> {
-  const task = await getOpenTaskByThread(threadId);
-  return task !== null && task.plan === null && task.plan_proposed === null;
-}
-
-/** Everything the extra turn needs, so the call below reads as one thing. */
-interface PlanTurnContext {
-  readonly userId: string;
-  readonly threadId: number;
-  readonly runId: string;
-  readonly messages: Anthropic.MessageParam[];
-  readonly systemPrompt: string;
-  readonly tools: AnthropicTool[];
-  readonly ctx: RunContext;
-  readonly ownerAbsent: boolean;
-}
-
-/**
- * Ticket 20 row 126. One more turn, with the tools still allowed, asking for
- * the plan the run did not propose — then whatever it wrote appended to the
- * answer.
- *
- * ONE round of tools and no more. The plan is built from what this run already
- * found; a run that wants to go searching again at this point has misread the
- * nudge, and the delayed engine turn is the right place for that, not a loop
- * bolted to the end of an answer that is already written.
- */
-async function appendProposedPlan(
-  turn: PlanTurnContext,
-  finalText: string,
-  stream: (text: string) => void,
-  resetTurnStream: (emitNarration?: boolean) => void,
-  pending: PendingMessage[],
-  toolNamesUsed: string[],
-): Promise<string> {
-  const { messages, systemPrompt, tools, ctx } = turn;
-  const answered = {
-    role: 'assistant' as const,
-    content: [{ type: 'text' as const, text: finalText }],
-  };
-  const nudge = { role: 'user' as const, content: MISSING_PLAN_NUDGE };
-  messages.push(answered, nudge);
-  pending.push(answered, nudge);
-  resetTurnStream();
-  let response = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
-
-  if (response.stop_reason === 'tool_use') {
-    for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
-    const results = await processToolBlocks(
-      turn.userId,
-      turn.threadId,
-      turn.runId,
-      response.content,
-      turn.ownerAbsent,
-    );
-    pending.push({ role: 'assistant', content: response.content });
-    pending.push({ role: 'user', content: results });
-    messages.push({ role: 'assistant', content: response.content });
-    messages.push({ role: 'user', content: results });
-    resetTurnStream();
-    response = await callClaude(messages, systemPrompt, tools, ctx, {
-      forceText: true,
-      onText: stream,
-    });
-  }
-
-  const planText = scrubText(extractText(response.content));
-  return planText ? `${finalText}\n\n${planText}` : finalText;
-}
-
-/**
  * System turns written FOR THE MODEL that are pushed into a run's history.
  *
  * A set, not a comparison, because forgetting to add one here has already
  * happened and is not a quiet failure: ticket 5 item B1, the cliffhanger nudge
  * rendered in the DOM as a message the USER had written, and the assistant
- * answered it. Every nudge below must be listed, and a test asserts that each
- * exported nudge is.
+ * answered it. Every nudge must be listed, and modelOnlyNudges.test.ts reads
+ * every _NUDGE export out of replyGuards and asserts each one is.
+ *
+ * MISSING_PLAN_NUDGE is listed although its call site was reverted the day it
+ * shipped (see the note in runToolLoop). The text is still right and the row
+ * is still open; leaving it out now is how it would be missed on the way back
+ * in.
  */
 export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   CLIFFHANGER_NUDGE,
