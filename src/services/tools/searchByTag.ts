@@ -128,6 +128,65 @@ async function runExactSearch(
 }
 
 /**
+ * Ticket 20 row 108 — why the fuzzy pass has never run.
+ *
+ * It timed out six times out of six on 17 September, at 5 443-5 464 ms against
+ * its 5 000 ms budget, logging „pass did not run … (exact results stand)" each
+ * time. So it costs every tag search five seconds and returns nothing. The
+ * seat put it on row 108 and was right to: it is the same cause one floor
+ * down, and on 16 September their own table showed the fuzzy pass is the whole
+ * answer for some words — so it is recall lost today, not only time.
+ *
+ * The cause, measured on 501 against the live base — the cost is in the term
+ * count, and steeply:
+ *
+ *    3 terms     405 ms
+ *    6 terms   2 179 ms
+ *    8 terms   2 924 ms
+ *   12 terms   4 462 ms   <- and the real queries carry twelve or more
+ *
+ * Each term is matched TWICE (the `%` narrowing and the `similarity` rule), and
+ * every word of the query contributes three or four transliteration variants.
+ * „ქორწილის ფოტოგრაფის მომსახურება" is twelve terms before anybody has typed
+ * anything unusual.
+ *
+ * ROUND ROBIN, NOT THE FIRST N, and that is this morning's lesson rather than a
+ * preference. I capped the second-circle query at „the first eight words" and
+ * it kept „გამარჯობა, მაქვს, მაგრამ" — a flat cut here would keep every
+ * spelling of the first word and drop the last word entirely, which in Georgian
+ * is usually the one naming the trade. So the list is walked a variant at a
+ * time across all the words: every word keeps its own spelling before any word
+ * gets its second.
+ *
+ * Six, and the margin is honest rather than comfortable: 6 terms measures
+ * 2.2 s on the read-only endpoint, and production has been running slower than
+ * that endpoint all day. If it still times out the log will say so, and the
+ * next lever is that the exact and fuzzy passes run one after the other when
+ * nothing makes them.
+ */
+const MAX_FUZZY_TERMS = 6;
+
+export function cappedFuzzyTerms(perWord: readonly (readonly string[])[]): string[] {
+  const flat = perWord.flat();
+  if (flat.length <= MAX_FUZZY_TERMS) return [...flat];
+  const kept: string[] = [];
+  const depth = Math.max(...perWord.map((w) => w.length), 0);
+  for (let i = 0; i < depth && kept.length < MAX_FUZZY_TERMS; i++) {
+    for (const word of perWord) {
+      if (kept.length >= MAX_FUZZY_TERMS) break;
+      const term = word[i];
+      if (term !== undefined) kept.push(term);
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[tag-fuzzy] ${flat.length} variants over ${perWord.length} word(s); ` +
+      `searching ${kept.length}: ${kept.join(' ')}`,
+  );
+  return kept;
+}
+
+/**
  * Spelling-tolerant pass over the NORMALIZED tag (normalize_search_token folds
  * gh/kh/zh/ts/q/x drift), so ღ-drift spellings and typos — buralteri / bugalteri
  * / buhalteri — reach each other via trigram similarity. Best-effort: if pg_trgm
@@ -261,11 +320,13 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
 
     // Fuzzy pass runs over the flat union of every word's variants (spelling
     // tolerance, no intersection ranking — it is only a fallback/union).
-    const fuzzyTerms = tagQuery
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .flatMap((word) => buildSearchTerms(word));
+    const fuzzyTerms = cappedFuzzyTerms(
+      tagQuery
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => buildSearchTerms(word)),
+    );
     // Always union the fuzzy pass so a query for one ღ-spelling also surfaces the
     // others (they otherwise return disjoint sets). Fuzzy-only hits are marked
     // approximate; exact hits keep priority and are never re-flagged.
