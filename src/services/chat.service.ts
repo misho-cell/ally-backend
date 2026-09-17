@@ -5547,6 +5547,13 @@ export interface ChatResult {
   shareText?: string;
   /** The run could not produce an answer — reply carries the failure text; route must surface run_error. */
   runFailed?: boolean;
+  /**
+   * Ticket 20 row 113 — the owner stopped this goal while the run was working,
+   * so nothing was stored and nothing should be announced. Distinct from
+   * runFailed on purpose: a failure owes the person an error they can retry,
+   * and a stop owes them silence, because they already have the stop line.
+   */
+  stopped?: boolean;
 }
 
 function extractText(content: Anthropic.ContentBlock[]): string {
@@ -6984,6 +6991,33 @@ export async function processChat(
     console.log(
       `[typed-choice] run ${runId} thread ${threadId}: alternatives in words, no buttons`,
     );
+  }
+  /**
+   * Ticket 20 row 113, sixth pass — the reply is STORED here, not at the route.
+   *
+   * Read on goal 4623 / thread 16734: the header button wrote its stop line at
+   * 14:04:18.9, and at 14:04:21.0 this line saved the run's final answer with
+   * two buttons under it — 2.1 seconds after the owner stopped the goal.
+   *
+   * I put the drop in the route's `.then()`, where the SSE and the push are
+   * sent, and reported row 113 as fixed. The route never stores the reply; this
+   * does. So the button vanished from the screen, the push never arrived, and
+   * the message was in the thread on the next reload anyway. The check belongs
+   * where the writing happens, which is the third time today I have fixed a
+   * path instead of a behaviour.
+   *
+   * It also covers the stage the route could never have caught: the final
+   * answer is written by gpt-5.6-terra AFTER the Claude loop ends, and on 4623
+   * that write alone took 26 seconds. A stop during it has nowhere else to be
+   * noticed.
+   */
+  if (runWasStopped(threadId, runId)) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[chat] run ${runId} thread ${threadId}: reply dropped — the owner stopped the goal`,
+    );
+    clearRunState(runId);
+    return { reply: '', language, requestCreated: false, runFailed: false, stopped: true };
   }
   await saveMessage(
     userId,

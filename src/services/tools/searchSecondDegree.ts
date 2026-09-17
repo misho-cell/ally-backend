@@ -115,23 +115,34 @@ const NEVER_A_TAG = new Set([
 ]);
 
 /**
- * The most patterns one query may run. Measured on 501 against the live base,
- * the whole query — both halves, the ranking, the limit of 30:
+ * The most patterns one query may run — and this number was tuned on the wrong
+ * instrument twice, so the reasoning matters more than the value.
  *
- *    3 patterns    4.9 s
- *    9 patterns   10.2 s
- *   13 patterns   12.3 s
- *   51 patterns   times out at 15 s and returns nobody
+ * My measurements were taken through the read-only endpoint, running the same
+ * query shape over and over. Every one of them was WARM: `Buffers: shared hit
+ * 68,347, read 1`. Production's first second-circle call of a run is cold, and
+ * the tester's three sentences on baea336 say what that costs:
  *
- * Nine, not twelve or thirteen. Thirteen fits the budget on a quiet replica
- * with 2.7 s to spare, and 2.7 seconds is not headroom — it is the difference
- * between a busy afternoon and an owner who gets nothing. Nine leaves five.
+ *   goal 4621   9 patterns (capped from 51)   17.5 s   <- I predicted 10.2
+ *   goal 4622   a 3-word English distillation 15.2 s
+ *   goal 4623   7 patterns (capped from 10)   11.8 s
  *
- * Whole groups are dropped, never half of one: a word searched in Georgian but
- * not in its Latin spelling finds half the people who match it, and reads as a
- * ranking bug for weeks rather than as a truncated query.
+ * and in those same three runs, the model's OWN second-degree calls, with
+ * queries of the same size, a few seconds later: 6.9, 7.4, 8.4, 8.8 s. Same
+ * shape, half the time, because by then the pages are in memory.
+ *
+ * So the pattern count is NOT the dominant cost on the call that matters, and a
+ * ceiling tuned to it cannot buy what I said it would. Worse, at 9 it started
+ * taking things it should not: goal 4623's query was distilled properly to
+ * „ქორწილის ფოტოგრაფი ქუთაისი", ten patterns, and the cap threw away the city.
+ *
+ * Fifteen. High enough that a distilled query — two to four words, which is
+ * what the distiller produces — is never touched, and low enough that Ninia's
+ * 51-pattern sentence still cannot reach the database. That is the whole of
+ * what a backstop should do. The first call being cold is a different problem
+ * and needs a different fix; capping words was never going to solve it.
  */
-const MAX_QUERY_PATTERNS = 9;
+const MAX_QUERY_PATTERNS = 15;
 
 /** Always search for something, even if the first word alone is over budget. */
 export function cappedGroups(groups: string[][], userId: string): string[][] {

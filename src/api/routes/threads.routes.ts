@@ -532,13 +532,16 @@ threadsRouter.post(
            * added its reply with approve / change buttons. A stopped goal asked
            * its owner to approve a plan.
            *
-           * The tool loop gives up at its next turn, but a run can be past its
-           * last tool call and one model call from done — so the delivery point
-           * checks too. Dropped in full and on purpose: not the reply, not the
-           * buttons, not the SSE, not the push, not the title, not the fact
-           * sweep. A stop that leaves a trailing message is the bug.
+           * The reply itself is withheld inside processChat, which is where it
+           * is STORED — the sixth pass of this row, after goal 4623 showed the
+           * message landing in the thread 2.1 s after the stop line while this
+           * check dropped only the SSE and the push. What is left for this
+           * check is everything hanging off a delivered answer: the SSE, the
+           * push, the title generator, the fact sweep. `result.stopped` is the
+           * same verdict reached one layer down, kept explicit so a reader
+           * here does not have to know that.
            */
-          if (runWasStopped(threadId, runId)) {
+          if (result.stopped === true || runWasStopped(threadId, runId)) {
             // eslint-disable-next-line no-console
             console.log(
               `[run] ${runId}: dropped on thread ${threadId} — the owner stopped the goal mid-run`,

@@ -3,11 +3,16 @@ import { cappedGroups } from '../searchSecondDegree';
 /**
  * Ticket 20 row 108 — the ceiling on how much work one query may ask for.
  *
- * Cost is (rows the bridges own) x (patterns), and only the second factor is
- * under anybody's control. Measured on 501 against the live base, whole query:
- * 3 patterns 4.9 s, 9 patterns 10.2 s, 13 patterns 12.3 s, 51 patterns times
- * out at 15 s and returns nobody. Nine is the ceiling: thirteen fits with 2.7 s
- * to spare, and that is not headroom.
+ * The ceiling is a BACKSTOP, not a performance tuning knob, and it took two
+ * wrong values to learn that. My cost curve was measured warm; production's
+ * first second-circle call of a run is cold and costs roughly twice what the
+ * pattern count predicts (goal 4621: 9 patterns, 17.5 s). At 9 the cap also
+ * started taking things it should not — goal 4623's properly distilled
+ * „ქორწილის ფოტოგრაფი ქუთაისი" is ten patterns, and the cap threw away the
+ * city.
+ *
+ * Fifteen: high enough that a distilled query is never touched, low enough that
+ * Ninia's 51-pattern sentence cannot reach the database.
  *
  * The first version of this counted WORDS and kept the first eight. Goal 4522
  * showed both halves of that to be wrong within the hour:
@@ -37,11 +42,20 @@ describe('cappedGroups', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('counts PATTERNS, not words — a fourth Georgian word is already over budget', () => {
-    const four = ['ერთი', 'ორი', 'სამი', 'ოთხი'].map(word);
+  it('never touches a distilled query, which is what the distiller produces', () => {
+    // Goal 4623's distillation was „ქორწილის ფოტოგრაფი ქუთაისი" — ten patterns,
+    // and the first version of this cap threw the city away.
+    const distilled = ['ქორწილის', 'ფოტოგრაფი', 'ქუთაისი'].map(word);
 
-    // Three words are nine patterns and fit exactly; the fourth makes twelve.
-    expect(cappedGroups(four, '501')).toHaveLength(3);
+    expect(cappedGroups(distilled, '501')).toBe(distilled);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('counts PATTERNS, not words', () => {
+    const six = ['ერთი', 'ორი', 'სამი', 'ოთხი', 'ხუთი', 'ექვსი'].map(word);
+
+    // Five words are fifteen patterns and fit exactly; the sixth makes eighteen.
+    expect(cappedGroups(six, '501')).toHaveLength(5);
   });
 
   it('drops the words that can never be anybody’s tag, before it counts', () => {
