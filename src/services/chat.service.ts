@@ -5038,7 +5038,29 @@ async function processToolBlocks(
 // be generous (the 210s run budget is the real bound). The stall watchdog
 // aborts a stream that stops emitting events — the actual hang signal.
 const STREAM_TIMEOUT_MS = 180_000;
-const STREAM_STALL_TIMEOUT_MS = 45_000;
+/**
+ * Ticket 20 row 202, second pass — 45 seconds was killing healthy runs.
+ *
+ * Measured 17 September on goal 4294, a quiet server, no deploy in flight.
+ * FIVE runs died on one goal in five minutes and the log now names the timer
+ * on each, because the run ids shipped this morning:
+ *
+ *   3a5dcc30  stream stalled after 45000ms   (then its salvage stalled too)
+ *   c6fb3995  stream stalled after 45000ms   no tool call at all
+ *   8d407570  stream stalled after 45000ms   no tool call at all
+ *   a4f10635  stream stalled after 45000ms   no tool call at all
+ *
+ * Five of five are THIS window. The first-event wait did not fire once, the
+ * hard ceiling has not fired in eight days, and nothing restarted. My earlier
+ * change raised the wrong one of the two.
+ *
+ * NINETY IS A STOPGAP AND I AM LABELLING IT AS ONE. It stops a healthy stream
+ * being cut off while the instrumentation below finds out why the silence
+ * happens at all; the 180s overall timeout still bounds a genuinely dead
+ * connection, so the worst case is a slower failure rather than a lost answer.
+ * Raising a number is not a diagnosis and this one is not finished.
+ */
+const STREAM_STALL_TIMEOUT_MS = Number(process.env.STREAM_STALL_TIMEOUT_MS ?? 90_000);
 
 /**
  * Ticket 20 row 202 — how long the FIRST event may take, which is not the same
@@ -5190,6 +5212,24 @@ async function callClaude(
   // 3928 died in exactly that gap.
   let stallTimer: NodeJS.Timeout | null = null;
   let started = false;
+  /**
+   * Row 202, second pass — what the abort line could not say.
+   *
+   * „stream stalled after 45000ms" names the timer and nothing else, so five
+   * identical lines on goal 4294 could not tell a dead connection from a
+   * process too busy to read one. These three numbers separate them:
+   *
+   *   events   1 means nothing ever arrived but the opening frame; many means
+   *            the stream was working and then stopped.
+   *   silent   how long since the last event ACTUALLY was. If it is far more
+   *            than the window, the timer itself was late — which only happens
+   *            when the event loop was blocked, and then the stream was never
+   *            the problem.
+   *   alive    how long the whole call had been running.
+   */
+  let events = 0;
+  let lastEventAt = Date.now();
+  const startedAt = Date.now();
   const resetStall = (): void => {
     if (stallTimer) clearTimeout(stallTimer);
     const window = started ? STREAM_STALL_TIMEOUT_MS : STREAM_FIRST_EVENT_TIMEOUT_MS;
@@ -5199,7 +5239,8 @@ async function callClaude(
       // eslint-disable-next-line no-console
       console.error(
         `[chat] run ${ctx.runId} aborted: ${started ? 'stream stalled' : 'no first event'} ` +
-          `after ${window}ms`,
+          `after ${window}ms — events ${events}, silent ${Date.now() - lastEventAt}ms, ` +
+          `alive ${Date.now() - startedAt}ms`,
       );
       stream.abort();
     }, window);
@@ -5207,6 +5248,8 @@ async function callClaude(
   resetStall();
   stream.on('streamEvent', () => {
     started = true;
+    events += 1;
+    lastEventAt = Date.now();
     resetStall();
   });
   if (opts.onText) stream.on('text', opts.onText);

@@ -227,8 +227,18 @@ export async function runOpeningSearches(
     }).catch(() => {});
     // Row 154: the raw result is kept, because the way-in searches need the
     // names and `logged` hands back the serialised string.
-    const raw = await webSearch(searched.query);
-    const serialised = await logged('web_search', Promise.resolve(raw), true, searched);
+    //
+    // THE PROMISE IS HANDED OVER UNAWAITED, and that is not a style choice.
+    // The first version awaited webSearch here and passed Promise.resolve(raw)
+    // to `logged`, which starts its clock inside itself — so it timed an
+    // already-settled promise and wrote duration_ms 0 on every opening web
+    // search. The seat read three goals in a row showing 0 ms and asked
+    // whether the results were cached. They were not; I had broken the
+    // measurement four hours earlier and reported the feature without
+    // re-reading the row it writes.
+    const search = webSearch(searched.query);
+    const serialised = await logged('web_search', search, true, searched);
+    const raw = await search;
     // The way-in lookups run HERE, inside the web branch, after the search
     // they depend on. They cost the owner no extra wait: the second-circle
     // branch times out at the full budget on essentially every goal, so the
