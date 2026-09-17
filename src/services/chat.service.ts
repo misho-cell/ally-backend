@@ -6445,7 +6445,16 @@ export async function processChat(
   if (gate.refused.length > 0) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[officeholder-gate] run ${runId} thread ${threadId}: ${gate.refused.length} unverified name(s) replaced`,
+      // Ticket 20 row 154: the NAMES, not only how many. The seat asked which
+      // name a bracketed note on thread 16106 had replaced, and the answer was
+      // unavailable — the gate returns `refused` and this line was throwing it
+      // away, counting it instead. „2 unverified name(s) replaced" cannot tell
+      // a person from a company, which is the one question row 154 turns on.
+      //
+      // The third time this week: a record that says something happened and
+      // not what. Rows 125, 126 and 202 were the others.
+      `[officeholder-gate] run ${runId} thread ${threadId}: replaced ${gate.refused.length} ` +
+        `unverified name(s) — ${gate.refused.join(' | ')}`,
     );
     cleanedFinal = gate.reply;
   }
