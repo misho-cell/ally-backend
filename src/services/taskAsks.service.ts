@@ -877,7 +877,7 @@ async function deliverCapturedAnswer(
           : buildAnswerWakeEvent(captured.answer, captured.fromName),
         { text: captured.answer, who: captured.fromName },
       );
-      if (delivered) await markAskWakeDelivered(captured.askId);
+      if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);

@@ -27,7 +27,7 @@ jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus:
 // be a load-order cycle) — the mock intercepts that import all the same.
 jest.mock('../taskEngine.service', () => ({
   __esModule: true,
-  wakeTask: jest.fn().mockResolvedValue(true),
+  wakeTask: jest.fn().mockResolvedValue('woken'),
 }));
 jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
@@ -700,7 +700,7 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
 
   it('records the approved text and wakes the asker with EXACTLY that text', async () => {
     routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
-    mockWakeTask.mockResolvedValue(true);
+    mockWakeTask.mockResolvedValue('woken');
 
     const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
 

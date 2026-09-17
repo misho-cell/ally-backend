@@ -179,7 +179,7 @@ export async function answerGoalQuestion(
   try {
     const { wakeTask } = await import('./taskEngine.service');
     const woken = await wakeTask(taskId, event);
-    if (woken) return { delivered: true };
+    if (woken === 'woken') return { delivered: true };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[goal-question] answer wake failed:', (err as Error).message);

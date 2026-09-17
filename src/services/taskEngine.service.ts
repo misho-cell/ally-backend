@@ -82,31 +82,59 @@ export function outreachNoteFor(budget: AskBudgetState | null): string {
 }
 
 /**
+ * Ticket 20 row 157 — why a wake did not happen, because „no" was two different
+ * answers wearing one word.
+ *
+ * `wakeWhenFree` retries a wake that returned false, fifteen times, six seconds
+ * apart. That is right for a thread that is busy and wrong for everything else,
+ * and nothing in a bare `false` could tell them apart. Measured on Ninia's
+ * thread 16402, 17 September:
+ *
+ *   10:37:38, :46, :54, 10:38:03 … 10:39:31   fifteen rows, eight seconds apart
+ *   „დავალებაზე მუშაობა შევაჩერე, ტოკენები ამოიწურა."
+ *
+ * Fifteen attempts, fifteen identical messages on a real person's screen, each
+ * one telling her again that her tokens had run out. An empty balance does not
+ * refill in six seconds; retrying it was never going to work, and every attempt
+ * cost her another line.
+ */
+export type WakeResult =
+  /** The run happened — or died inside it, the event having been delivered. */
+  | 'woken'
+  /** The thread is occupied right now; asking again shortly may well work. */
+  | 'busy'
+  /** Nothing to wake, or nothing a retry could change. Stop asking. */
+  | 'stopped';
+
+/** The status line that says, on the thread itself, that we already said it. */
+const TOKENS_OUT_STATUS = 'ტოკენები ამოიწურა';
+
+/**
  * Advance a task by one engine-initiated run: the event text enters the task's
  * thread as a normal turn (so history carries it), the run works with tools,
  * and the outcome is delivered exactly like a user-triggered run — SSE,
  * statuses, push when the owner is away.
  *
- * Returns whether the event actually entered the thread — false on every
- * guard exit (closed task, busy thread, empty wallet, run crash). Callers
- * that must guarantee delivery (the answer-wake path) use this to decide
- * whether to mark the wake delivered or leave it for the sweep.
+ * Says whether the event entered the thread, and when it did not, whether
+ * asking again could change that. Callers that must guarantee delivery (the
+ * answer-wake path) use it to decide whether to mark the wake delivered or
+ * leave it for the sweep.
  */
 export async function wakeTask(
   taskId: number,
   eventText: string,
   // Answer wakes carry the verbatim answer; the run's reply provably quotes it.
   ensureQuoted?: EnsureQuoted,
-): Promise<boolean> {
-  if (runningTasks.has(taskId)) return false;
+): Promise<WakeResult> {
+  if (runningTasks.has(taskId)) return 'busy';
   runningTasks.add(taskId);
   try {
     const task = await getTaskById(taskId);
-    if (!task || task.status !== 'open' || task.thread_id === null) return false;
+    if (!task || task.status !== 'open' || task.thread_id === null) return 'stopped';
     const ownerId = String(task.user_id);
     const thread = await getThread(task.thread_id, ownerId);
-    if (!thread) return false;
-    if (thread.status === 'working') return false; // a live run owns the thread right now
+    if (!thread) return 'stopped';
+    if (thread.status === 'working') return 'busy'; // a live run owns the thread right now
     // Ticket 19 G1 and G5: and a thread the owner is still TALKING in is not
     // free either, whatever its status says.
     //
@@ -127,22 +155,30 @@ export async function wakeTask(
     // still going, the owner's OWN run does this work. On 15049 it did — run
     // 777a139a proposed the plan at 12:38:58, unprompted by any wake. The wake
     // exists for the thread that has gone quiet.
-    if (await ownerSpokeRecently(thread.id)) return false;
+    if (await ownerSpokeRecently(thread.id)) return 'busy';
 
     // Engine runs spend the owner's tokens like any other run — an exhausted
     // balance pauses the task visibly instead of failing silently.
     const allowance = await checkRunAllowance(ownerId);
     if (!allowance.allowed) {
+      // Row 157, the second half. 'stopped' already keeps `wakeWhenFree` from
+      // asking again, but the line must be said once even when a DIFFERENT
+      // path arrives at an empty balance — a second goal on the same thread,
+      // the hourly sweep, the ticker. The thread's own status line is the
+      // record that it was already said, so no extra read is needed for it.
+      const alreadySaid = thread.status === 'needs_you' && thread.status_line === TOKENS_OUT_STATUS;
       await setThreadStatus(ownerId, thread.id, 'needs_you', {
-        statusLine: 'ტოკენები ამოიწურა',
+        statusLine: TOKENS_OUT_STATUS,
       });
-      await saveThreadMessage(
-        thread.id,
-        Number(ownerId),
-        'assistant',
-        'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
-      ).catch(() => undefined);
-      return false;
+      if (!alreadySaid) {
+        await saveThreadMessage(
+          thread.id,
+          Number(ownerId),
+          'assistant',
+          'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
+        ).catch(() => undefined);
+      }
+      return 'stopped';
     }
 
     const runId = randomUUID();
@@ -173,7 +209,7 @@ export async function wakeTask(
         void markRunFailed(ownerId, thread.id, result.language ?? 'ka');
         // The event itself was persisted into the thread before the run died —
         // it is delivered; the task will see it on its next step.
-        return true;
+        return 'woken';
       }
       emitRunComplete(ownerId, thread.id, runId, {
         reply: result.reply,
@@ -238,7 +274,7 @@ export async function wakeTask(
             : preview || 'დავალებაზე სიახლეა',
         url: `/chat/${thread.id}`,
       }).catch(() => undefined);
-      return true;
+      return 'woken';
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message);
@@ -253,7 +289,12 @@ export async function wakeTask(
         // Row 202: the run that died, so the failure can be joined to it.
         runId,
       ).catch(() => undefined);
-      return false;
+      // 'stopped', not 'busy', and row 157 is the reason: this branch has just
+      // written „მოგვიანებით თავად ვცდი ხელახლა" to the thread. Retrying it
+      // fifteen times would write that line fifteen times, which is the bug
+      // being fixed one branch up. The promise it makes is kept by the minute
+      // ticker, not by hammering a crash six seconds later.
+      return 'stopped';
     }
   } finally {
     runningTasks.delete(taskId);
@@ -294,7 +335,7 @@ async function sweepUnwokenAnswers(): Promise<void> {
         who: ask.from_name,
       },
     );
-    if (woken) {
+    if (woken === 'woken') {
       await markAskWakeDelivered(ask.id);
       delivered += 1;
     }
@@ -416,8 +457,17 @@ function wakeWhenFree(
       .then(async (wanted) => {
         if (!wanted) return;
         const woken = await wakeTask(taskId, eventText);
-        if (woken) {
+        if (woken === 'woken') {
           await onWoken();
+          return;
+        }
+        // Row 157: only a BUSY thread is worth asking again. 'stopped' means
+        // nothing a retry could change — an empty wallet, a closed goal, a run
+        // that crashed and already said so — and retrying it is how fifteen
+        // identical lines reached Ninia's screen in two minutes.
+        if (woken === 'stopped') {
+          // eslint-disable-next-line no-console
+          console.log(`[task-engine] task ${taskId}: wake gave up, nothing a retry would change`);
           return;
         }
         if (attempt < WAKE_RETRY_ATTEMPTS) {
@@ -523,7 +573,7 @@ export async function sweepMethodChanges(): Promise<number> {
         'ეს გეგმის ცვლილებაა და მისი „კი" სჭირდება; დამტკიცებული გზები კი უწყვეტად გრძელდება. ' +
         'ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
     );
-    if (ok) woken++;
+    if (ok === 'woken') woken++;
   }
   return woken;
 }
@@ -556,7 +606,7 @@ export async function sweepUnansweredOwnerQuestions(): Promise<number> {
         '(ახალი არაფერი გაგზავნო გეგმის გარეთ), და მფლობელს ერთი წინადადებით უთხარი რა დაუშვი ' +
         'და რას აკეთებ ამასობაში. ბოლოს — რა მიდის ახლა და როდის დაბრუნდები.',
     );
-    if (woken) taken++;
+    if (woken === 'woken') taken++;
   }
   return taken;
 }
@@ -583,7 +633,7 @@ export async function sweepSilentGoals(): Promise<number> {
         'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
         'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
     );
-    if (ok) woken++;
+    if (ok === 'woken') woken++;
   }
   return woken;
 }
