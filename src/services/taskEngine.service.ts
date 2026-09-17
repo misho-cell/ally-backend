@@ -250,6 +250,8 @@ export async function wakeTask(
         'assistant',
         'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით თავად ვცდი ხელახლა.',
         'error',
+        // Row 202: the run that died, so the failure can be joined to it.
+        runId,
       ).catch(() => undefined);
       return false;
     }

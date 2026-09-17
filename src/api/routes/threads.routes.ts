@@ -639,9 +639,17 @@ threadsRouter.post(
           // battery run showed no visible timeout). Persist the error INTO the
           // thread — kind='error' so the client renders it as a system failure
           // with a retry, never as words the assistant said. Best-effort.
-          saveThreadMessage(threadId, Number(userId), 'assistant', userMessage, 'error').catch(
-            () => undefined,
-          );
+          // Row 202: with its run id, so a failure can be joined to the run
+          // that produced it. Without it the row recording a run's death was
+          // the one row that could not be traced back to the run.
+          saveThreadMessage(
+            threadId,
+            Number(userId),
+            'assistant',
+            userMessage,
+            'error',
+            runId,
+          ).catch(() => undefined);
         })
         // Row 115: released whichever way the run ended, including the failure
         // path above. A claim that survived a failed run would refuse the

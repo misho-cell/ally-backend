@@ -554,6 +554,22 @@ export async function saveThreadMessage(
   // 'error' renders as a system-styled failure with a retry in the client —
   // never as words the assistant said.
   kind: 'message' | 'error' = 'message',
+  /**
+   * Ticket 20 row 202 — which run this belongs to.
+   *
+   * The seat asked for a join: every failure since 13 September against the
+   * timer that fired. It cannot be done, and this parameter is why it could
+   * not. Twenty-two of the twenty-eight failure rows in the last five days
+   * carry no run id, because the two places that write a failure — the route's
+   * catch and the task engine's — both called this function without one. The
+   * row that records a run dying is the one row that cannot be traced back to
+   * the run that died.
+   *
+   * The same shape as row 125 and row 126: a record nobody can ask about. It
+   * is optional so the engine's own sentences, which belong to no run, stay
+   * honest about that rather than borrowing an id.
+   */
+  runId: string | null = null,
 ): Promise<void> {
   // The engine's own sentences (an ask's opening, a campaign invite, a wake
   // note) are assistant text too — the mechanical scrub applies to them as to
@@ -561,9 +577,9 @@ export async function saveThreadMessage(
   // still carried an em dash, all three written here).
   const stored = role === 'assistant' ? scrubMechanicalForStorage(content) : content;
   await query(
-    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind)
-     VALUES ($1, $2, $3, $4, NULL, $5)`,
-    [threadId, userId, role, stored, kind],
+    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id)
+     VALUES ($1, $2, $3, $4, NULL, $5, $6)`,
+    [threadId, userId, role, stored, kind, runId],
   );
   await touchThread(threadId);
 }

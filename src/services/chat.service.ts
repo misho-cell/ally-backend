@@ -5698,10 +5698,23 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   MISSING_PLAN_NUDGE,
 ]);
 
+/**
+ * Ticket 20 row 202 — we never ask the owner to try again.
+ *
+ * The founder's rule, and task_main item Twenty-nine holds the model to it:
+ * the assistant does not hand its own failure back to the person as a chore.
+ * Both halves of the salvage broke it — this note told the model to say „it is
+ * worth trying again", and the fallback below said it outright.
+ *
+ * On goal 4063 the line was also untrue. The „goal saved" event retried by
+ * itself a minute later and answered, so the owner was asked to do something
+ * that was already happening without them.
+ */
 const SALVAGE_NUDGE =
-  '(სისტემური შენიშვნა: ძიება ტექნიკური შეფერხების გამო შეწყდა. ჩამოაყალიბე საბოლოო პასუხი მხოლოდ უკვე მოძიებული ინფორმაციით — ახალი ხელსაწყო აღარ გამოიძახო. თუ ვერაფერი მოიძებნა, გულწრფელად უთხარი მომხმარებელს, რომ ძიება შეფერხდა და თავიდან ცდა ღირს.)';
+  '(სისტემური შენიშვნა: ძიება ტექნიკური შეფერხების გამო შეწყდა. ჩამოაყალიბე საბოლოო პასუხი მხოლოდ უკვე მოძიებული ინფორმაციით — ახალი ხელსაწყო აღარ გამოიძახო. თუ ვერაფერი მოიძებნა, გულწრფელად უთხარი, რომ ძიება შეწყდა და მუშაობას თვითონ განაგრძობ — პასუხს მალე მიიღებს. „თავიდან სცადე" არასდროს დაწერო.)';
 
-const SALVAGE_FALLBACK_REPLY = 'ძიება ტექნიკური შეფერხების გამო შეწყდა — გთხოვ, სცადე თავიდან.';
+const SALVAGE_FALLBACK_REPLY =
+  'ძიება ტექნიკური შეფერხების გამო შეწყდა. მუშაობას განვაგრძობ და პასუხს მალე მოგწერ.';
 
 /**
  * Best-effort wrap-up after a mid-run model failure: close any outstanding
