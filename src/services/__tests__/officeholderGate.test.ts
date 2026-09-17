@@ -305,3 +305,47 @@ describe('row 154 — the gate leaves company names alone', () => {
     expect(nameCandidates('მინისტრი არის ლაშა ხუციშვილი.')).toContain('ლაშა ხუციშვილი');
   });
 });
+
+/**
+ * „ხუთი ადამიანი" is not a person called Adamiani.
+ *
+ * Six replies on 17 September showed „(სახელი ვერ დავადასტურე ოფიციალურ
+ * გვერდზე)" where the owner should have read „five people" or „a personal
+ * invitation" — thread 16732 at 14:00 promised five people and named none of
+ * them, thread 16572 offered to recommend a blank.
+ *
+ * Measured over 300 replies from five days: 217 candidates, of which 164 end
+ * in -შვილი or -ძე and are people. Of the remaining 53, twenty-five were not
+ * people at all and twenty of those twenty-five were two words — ადამიანი (13)
+ * and მოსაწვევი (7). After this list the same 300 replies give 25 ambiguous
+ * candidates, every one of them a real person.
+ */
+describe('a Georgian word that ends like a surname but is not one', () => {
+  it('does not turn the word for „person" into a person', () => {
+    expect(nameCandidates('ქსელში ვიპოვე ხუთი ადამიანი, ვინც დირექტორია.')).not.toContain(
+      'ხუთი ადამიანი',
+    );
+    expect(nameCandidates('შესაფერისი ადამიანი მინისტრთან.')).toEqual([]);
+  });
+
+  it('does not turn „an invitation" into a person', () => {
+    // „მოსაწვევი" ends in -ევი, which is also a surname ending.
+    expect(nameCandidates('პირადი მოსაწვევი გავუგზავნე დირექტორს.')).toEqual([]);
+  });
+
+  it('STILL CATCHES a real person whose surname ends the same way', () => {
+    // The half that matters. -იანი and -ავა are real surname endings, and a
+    // person wrongly skipped is D151 broken: somebody named as a director on
+    // no evidence at all.
+    expect(nameCandidates('დირექტორი არის თინათინ რატიანი.')).toContain('თინათინ რატიანი');
+    expect(nameCandidates('ხელმძღვანელია ნინი ღაჭავა.')).toContain('ნინი ღაჭავა');
+    expect(nameCandidates('უფროსი გიორგი კელბაქიანი.')).toContain('გიორგი კელბაქიანი');
+  });
+
+  it('catches the real person standing next to the common noun', () => {
+    const out = nameCandidates('ხუთი ადამიანი მყავს, მათ შორის დირექტორი ლანა ხუჭუა.');
+
+    expect(out).toContain('ლანა ხუჭუა');
+    expect(out).not.toContain('ხუთი ადამიანი');
+  });
+});

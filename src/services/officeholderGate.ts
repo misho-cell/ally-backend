@@ -193,6 +193,52 @@ const KA_NOT_A_FIRST_NAME = new Set([
   'გენერალური',
   'აღმასრულებელი',
 ]);
+
+/**
+ * Ticket 20 — „ხუთი ადამიანი" is not a person called Adamiani.
+ *
+ * The Latin side has had LATIN_NOT_A_NAME since the start and COMPANY_WORDS
+ * since row 154. The Georgian side has only ever had a list for the FIRST
+ * token, so any ordinary word ending like a surname became one.
+ *
+ * -იანი and -ევი are not only surname endings, they are two of Georgian's most
+ * productive suffixes: -იანი makes „having X" out of any noun, and the result
+ * ends exactly like ახვლედიანი. So does the plain word for a person.
+ *
+ * MEASURED over 300 replies, five days. Of 217 candidates, 164 end in -შვილი
+ * or -ძე and are people. The other 53 carry an ending that is ambiguous, and
+ * they split almost evenly:
+ *
+ *   28  real people (ფატი დავითულიანი ×13, თინათინ რატიანი, ნინი ღაჭავა …)
+ *   25  not people, and 20 of those 25 are two words:
+ *         ადამიანი   13   „სამი ადამიანი", „შესაფერისი ადამიანი", „ხუთი …"
+ *         მოსაწვევი   7   „პირადი მოსაწვევი", „თეონასთვის მოსაწვევი"
+ *
+ * Six replies on 17 September carried the „(სახელი ვერ დავადასტურე …)" line
+ * where the owner should have read „five people" or „a personal invitation".
+ *
+ * The other discriminator considered and NOT taken: require the first token to
+ * be a known Georgian first name. It has perfect precision here — none of the
+ * 25 has one — and it also throws away six of the ten real first tokens
+ * (ფატი, დაჯი, ტიკო, თინა … are not in the 275-name list). That is D151
+ * broken: someone named as a director on no evidence at all. This list takes
+ * the same bargain row 154 wrote down: a word goes in ONLY if no human being
+ * is called it.
+ *
+ * It is a list, so it is incomplete by construction. Every Georgian word that
+ * ends like a surname and is not one has to be found the way these were — in
+ * what the owners actually read.
+ */
+const KA_NOT_A_SURNAME: ReadonlySet<string> = new Set([
+  'ადამიანი',
+  'ადამიანები',
+  'მოსაწვევი',
+  'გამწევი',
+  'დღიანი',
+  'ტეგიანი',
+  'ერთკაციანი',
+]);
+
 const LATIN_NAME_RE = /\b([A-Z][a-z]{1,}(?:-[A-Z][a-z]+)?)\s+([A-Z][a-z]{2,}(?:-[A-Z][a-z]+)?)\b/g;
 const KA_TOKEN_RE = /[ა-ჰ]+/g;
 const MIN_KA_FIRST_NAME = 3;
@@ -231,6 +277,7 @@ function georgianNameCandidates(sentence: string): string[] {
     const first = tokens[i - 1];
     const last = tokens[i];
     if (!KA_SURNAME_RE.test(last)) continue;
+    if (KA_NOT_A_SURNAME.has(last)) continue;
     if (first.length < MIN_KA_FIRST_NAME || KA_NOT_A_FIRST_NAME.has(first)) continue;
     if (OFFICE_RE_KA.test(` ${first}`)) continue;
     out.push(`${first} ${last}`);
