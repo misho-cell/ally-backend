@@ -217,6 +217,7 @@ import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { noteRunStart, runWasStopped } from './stoppedRuns';
 import { stopGoal } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
+import { getGoalOnThread } from './taskStore.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -4554,6 +4555,45 @@ async function executeToolCall(
        * Anything that is NOT a close still goes straight to updateTask: a
        * pause or a resume is not a stop and must not write a stop line.
        */
+      /**
+       * Ticket 20 row 113 — P0, 17 September. A stop acts on THIS CHAT'S goal
+       * and on nothing else.
+       *
+       * Read by the tester on account 501. Goal 4756's chat, thread 16842, the
+       * goal paused. „stop this goal, it was a test" typed in its own chat —
+       * and the model closed goal 3763 instead, the founder's real volleyball
+       * coach search in thread 15874. Typed again: it closed 3433, another real
+       * goal of his with two asks already sent. Goal 4756, whose chat both
+       * lines were typed in, was never touched.
+       *
+       * Row 135 saw this exact shape a day earlier and answered it by NAMING
+       * the goal in the tool result so a wrong target would be visible. That is
+       * an instruction, and an instruction is a request. Two of the founder's
+       * goals are closed tonight because a request was all there was.
+       *
+       * So: inside a chat that has a goal, this tool may only touch THAT goal.
+       * A task_id pointing anywhere else is refused, and the refusal names the
+       * chat's own goal so the model can correct itself rather than guess
+       * again. The connector path has no thread and keeps working by task_id —
+       * there is no „this chat" there to mean anything else.
+       */
+      if (threadId !== undefined) {
+        const chatGoal = await getGoalOnThread(threadId).catch(() => null);
+        if (chatGoal !== null && chatGoal.id !== taskIdToUpdate) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[wrong-goal] run ${runId ?? '-'} thread ${threadId}: refused ${status} on ${taskIdToUpdate} — this chat's goal is ${chatGoal.id}`,
+          );
+          return {
+            updated: false,
+            error:
+              `ეს ჩატი ეკუთვნის მიზანს ${chatGoal.id} („${chatGoal.title}"), ` +
+              `და სხვა მიზანს აქედან ვერ შევცვლი. თუ მფლობელმა ამ ჩატის მიზანი ` +
+              `იგულისხმა — გამოიძახე ${chatGoal.id}-ით. თუ სხვა მიზანი უნდა, ` +
+              `ჯერ ჰკითხე რომელი.`,
+          };
+        }
+      }
       const closing = status === 'closed';
       const toStop = closing ? await getTaskById(taskIdToUpdate) : null;
       if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
@@ -6828,12 +6868,16 @@ export async function processChat(
    * stop, and the stop line is the answer.
    */
   if (!ownerAbsent && looksLikeStopRequest(userMessage)) {
-    const running = await getOpenTaskByThread(threadId).catch((err: unknown) => {
+    // Whatever its STATUS. A paused goal's chat shows no stop button, so the
+    // typed line is the only way back — and asking the open-only question here
+    // is what left thread 16842 with nothing to answer, after which the model
+    // went looking for a goal of its own choosing and closed two real ones.
+    const running = await getGoalOnThread(threadId).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[stop-intent] could not read the thread’s goal:', (err as Error).message);
       return null;
     });
-    if (running !== null) {
+    if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,

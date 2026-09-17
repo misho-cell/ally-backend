@@ -1,4 +1,4 @@
-import { Task, updateTask, getOpenTaskByThread } from './taskStore.service';
+import { Task, updateTask, getGoalOnThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage } from './threads.service';
@@ -123,7 +123,22 @@ export async function stopGoalOnThread(
 ): Promise<GoalStopped | null> {
   const thread = await getThread(threadId, userId);
   if (!thread) return null;
-  const task = await getOpenTaskByThread(threadId);
-  if (!task) return NOTHING_TO_STOP;
+  /**
+   * The thread's goal WHATEVER its status, and the seat asked me to check this
+   * route for the same fault the typed one had (17 September, P0).
+   *
+   * It did not have that fault — it has never acted on another goal, because
+   * it is keyed on the thread and cannot see anything else. What it had is the
+   * other half: `getOpenTaskByThread` answers null for a PAUSED goal, so the
+   * button said „nothing to stop" on a goal that was plainly there. And a
+   * paused goal's chat shows no stop button at all, which is how the owner was
+   * left with only the typed line — the dangerous one.
+   *
+   * A closed goal still answers NOTHING_TO_STOP: there is genuinely nothing
+   * left to stop, and stopGoal would write a second line for a goal that was
+   * already stopped once.
+   */
+  const task = await getGoalOnThread(threadId);
+  if (!task || task.status === 'closed') return NOTHING_TO_STOP;
   return stopGoal(userId, task);
 }

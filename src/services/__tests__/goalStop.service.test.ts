@@ -1,6 +1,6 @@
 jest.mock('../taskStore.service', () => ({
   updateTask: jest.fn(),
-  getOpenTaskByThread: jest.fn(),
+  getGoalOnThread: jest.fn(),
   __esModule: true,
 }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
@@ -12,7 +12,7 @@ jest.mock('../threads.service', () => ({
   __esModule: true,
 }));
 
-import { updateTask, getOpenTaskByThread, Task } from '../taskStore.service';
+import { updateTask, getGoalOnThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, Thread } from '../threads.service';
@@ -23,7 +23,7 @@ const mockUpdate = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockCancel = cancelAsksForTask as jest.MockedFunction<typeof cancelAsksForTask>;
 const mockThread = setThreadStatus as jest.MockedFunction<typeof setThreadStatus>;
 const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
-const mockOpenTask = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
+const mockOpenTask = getGoalOnThread as jest.MockedFunction<typeof getGoalOnThread>;
 const mockSay = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockClear = emitChoicesCleared as jest.MockedFunction<typeof emitChoicesCleared>;
 
@@ -210,5 +210,33 @@ describe('a stop clears the buttons on the live screen', () => {
     await stopGoal('501', task({ thread_id: null }));
 
     expect(mockClear).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Row 113 — the P0 of 17 September, from the button's side.
+ *
+ * The seat asked me to check this route for the fault the typed one had. It
+ * never had it: keyed on the thread, it cannot see another goal. What it HAD is
+ * the other half — it asked for the OPEN goal, so a paused goal answered
+ * „nothing to stop", and a paused goal's chat shows no stop button either. That
+ * is how the owner was left with only the typed line, which was the dangerous
+ * one.
+ */
+describe('a PAUSED goal can still be stopped from its own thread', () => {
+  it('stops it', async () => {
+    mockGetThread.mockResolvedValue({ id: 16842 } as Thread);
+    mockOpenTask.mockResolvedValue(task({ id: 4756, status: 'paused', thread_id: 16842 }));
+
+    expect(await stopGoalOnThread('501', 16842)).toEqual({ stopped: true, goal_id: 4756 });
+    expect(mockUpdate).toHaveBeenCalledWith('501', 4756, 'closed', 'stopped_by_user', 'stopped');
+  });
+
+  it('but a CLOSED one is nothing to stop, and writes no second line', async () => {
+    mockGetThread.mockResolvedValue({ id: 16842 } as Thread);
+    mockOpenTask.mockResolvedValue(task({ id: 4756, status: 'closed', thread_id: 16842 }));
+
+    expect(await stopGoalOnThread('501', 16842)).toEqual(NOTHING_TO_STOP);
+    expect(mockSay).not.toHaveBeenCalled();
   });
 });

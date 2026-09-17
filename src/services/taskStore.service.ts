@@ -166,6 +166,34 @@ export async function findOpenTaskNamedIn(userId: string, message: string): Prom
 }
 
 /** The open task bound to a thread — what makes a run a "task step" run. */
+/**
+ * Ticket 20 row 113 — the goal this chat belongs to, WHATEVER its status.
+ *
+ * `getOpenTaskByThread` answers null for a paused or closed goal, which is
+ * right when the question is „is there work running here" and catastrophic
+ * when the question is „which goal is this chat about". 17 September, the
+ * tester, account 501:
+ *
+ *   goal 4756, thread 16842, PAUSED. „stop this goal, it was a test" typed in
+ *   its own chat. Nothing on the thread answered — so the model chose another
+ *   of the owner's open goals and closed it. Twice. Both were the founder's
+ *   real goals; one had already sent two asks to real people.
+ *
+ * A chat has ONE goal and it does not stop having it when it pauses. This is
+ * the question every „which goal did they mean" has to ask, and asking the
+ * open-only version is how „their goal" became „some goal of theirs".
+ */
+export async function getGoalOnThread(threadId: number): Promise<Task | null> {
+  const result = await query<Task>(
+    `SELECT ${TASK_COLUMNS} FROM tasks
+     WHERE thread_id = $1
+     ORDER BY id DESC LIMIT 1`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function getOpenTaskByThread(threadId: number): Promise<Task | null> {
   const result = await query<Task>(
     `SELECT ${TASK_COLUMNS} FROM tasks
