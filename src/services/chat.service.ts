@@ -3529,14 +3529,76 @@ function takeShareText(runId: string): string | undefined {
 // The numbers a run is explicitly allowed to show are tracked per run and
 // re-wrapped server-side in the final reply, so display never depends on the
 // model reproducing markers.
-const runAllowedNumbers = new Map<string, Set<string>>();
+const runAllowedNumbers = new Map<string, Map<string, string | null>>();
 
-function registerAllowedNumber(runId: string | undefined, phone: string): void {
+function registerAllowedNumber(
+  runId: string | undefined,
+  phone: string,
+  source: string | null = null,
+): void {
   if (!runId) return;
-  const set = runAllowedNumbers.get(runId) ?? new Set<string>();
-  set.add(phone);
-  runAllowedNumbers.set(runId, set);
+  const held = runAllowedNumbers.get(runId) ?? new Map<string, string | null>();
+  // A source is never overwritten with nothing: the same number may be
+  // registered twice, and „we know where this came from" must not be lost to
+  // a later registration that happens not to carry it.
+  if (!held.has(phone) || source !== null) held.set(phone, source);
+  runAllowedNumbers.set(runId, held);
 }
+
+/**
+ * Ticket 20 row 139 — a business's public number, and where it was found.
+ *
+ * Tornike's rule: a business's own public number found on the web is shown,
+ * WITH ITS SOURCE; a private person's number never is.
+ *
+ * WHAT THIS ACTUALLY GUARANTEES, stated plainly because it is less than the
+ * rule asks. The server cannot tell a clinic's number from a private person's
+ * number that happens to be published on the same page. What it CAN establish
+ * is that the number was on a public page this run fetched, and which page. So
+ * the source is not decoration — it is the whole of the guarantee, and it is
+ * attached by the server rather than left to the model to remember.
+ *
+ * It is nonetheless strictly tighter than what shipped before it. The plan
+ * message went out with NO phone scrub at all, so every number in a plan
+ * reached the screen whatever its origin. After this, a number is shown only
+ * if a web search this run ran returned it; everything else is masked on that
+ * surface for the first time.
+ */
+const MAX_WEB_NUMBERS_PER_RUN = 20;
+
+function domainOf(url: unknown): string | null {
+  if (typeof url !== 'string' || url === '') return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+/** Every phone-shaped run of digits in one web result, with its page. */
+export function webNumbersWithSource(result: unknown): Array<{ phone: string; source: string }> {
+  if (result === null || typeof result !== 'object') return [];
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows)) return [];
+  const found: Array<{ phone: string; source: string }> = [];
+  for (const row of rows) {
+    if (row === null || typeof row !== 'object') continue;
+    const r = row as { url?: unknown; title?: unknown; content?: unknown };
+    const source = domainOf(r.url);
+    if (source === null) continue;
+    const text = [r.title, r.content].filter((v) => typeof v === 'string').join(' ');
+    for (const match of text.matchAll(/\+?\d[\d\s\-().]{5,}\d/g)) {
+      const phone = match[0].trim();
+      if (phone.replace(/\D/g, '').length < MIN_SHOWABLE_DIGITS) continue;
+      found.push({ phone, source });
+      if (found.length >= MAX_WEB_NUMBERS_PER_RUN) return found;
+    }
+  }
+  return found;
+}
+
+/** The same floor privacyScrub uses: below it, a run of digits is not a phone. */
+const MIN_SHOWABLE_DIGITS = 9;
 
 // The conversation's language per live run — set at run start from the user's
 // last message; every fixed string (steps, heartbeat, failures, status lines)
@@ -3559,13 +3621,27 @@ function clearRunState(runId: string): void {
   clearRunEvidence(runId);
 }
 
+/** How far after a number we look for its source before adding it ourselves. */
+const SOURCE_NEARBY_CHARS = 60;
+
 export function wrapAllowedNumbers(text: string, runId: string): string {
-  const set = runAllowedNumbers.get(runId);
-  if (!set || set.size === 0) return text;
+  return wrapNumbers(text, runAllowedNumbers.get(runId));
+}
+
+/**
+ * The wrap itself, over an explicit map rather than the run's.
+ *
+ * Separated so the property that matters can be asserted without a live run:
+ * scrubText(wrapNumbers(x)) keeps the numbers a web page published and masks
+ * every other one. That composition IS row 139 — either half alone is either a
+ * leak or a blank.
+ */
+export function wrapNumbers(text: string, held: Map<string, string | null> | undefined): string {
+  if (!held || held.size === 0) return text;
   let out = text;
   let tokenIndex = 0;
   const restores: Array<[string, string]> = [];
-  for (const phone of set) {
+  for (const [phone] of held) {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 6) continue;
     // Any spelling of the number (spaces/dashes/dots between digits, optional +)
@@ -3580,6 +3656,26 @@ export function wrapAllowedNumbers(text: string, runId: string): string {
     restores.push([token, marked]);
   }
   for (const [token, marked] of restores) out = out.split(token).join(marked);
+  // Row 139: the source is attached by the SERVER, after the wrap, and only
+  // where the text does not already name it. Tornike's rule is „shown with its
+  // source", and a model remembering to cite is not the same thing as a
+  // citation — the number is what we let through, so the page it came from is
+  // ours to state.
+  for (const [phone, source] of held) {
+    if (source === null) continue;
+    const marked = `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
+    let at = out.indexOf(marked);
+    while (at !== -1) {
+      const end = at + marked.length;
+      if (out.slice(end, end + SOURCE_NEARBY_CHARS).includes(source)) {
+        at = out.indexOf(marked, end);
+        continue;
+      }
+      const insertion = ` (${source})`;
+      out = out.slice(0, end) + insertion + out.slice(end);
+      at = out.indexOf(marked, end + insertion.length);
+    }
+  }
   return out;
 }
 
@@ -4232,14 +4328,23 @@ async function executeToolCall(
         const proposed = task?.plan_proposed ?? null;
         if (proposed !== null) {
           const stored = proposed as TaskPlan;
-          await saveMessage(
-            userId,
-            threadId,
-            'assistant',
-            renderPlan(stored, outcome.value.version, null),
-            'message',
-            runId ?? null,
-          );
+          // Ticket 20 row 139 — the plan message goes through the same scrub
+          // as everything else, and until now it went through NONE.
+          //
+          // Goal 3699: the plan message showed a Zugdidi clinic's number in
+          // full while the step copy of the same plan masked it. One text, two
+          // surfaces, two answers. The step path scrubs (scrubStep); this path
+          // called saveMessage directly, so whatever a model wrote into a plan
+          // reached the screen unread — a private person's number included.
+          //
+          // Wrap first, then scrub: wrapping marks the numbers a web page
+          // published in this run, and scrubText carries those spans through
+          // untouched while masking every other number. Tornike's rule, in the
+          // order the two functions have to run in.
+          const planText = runId
+            ? scrubText(wrapAllowedNumbers(renderPlan(stored, outcome.value.version, null), runId))
+            : scrubText(renderPlan(stored, outcome.value.version, null));
+          await saveMessage(userId, threadId, 'assistant', planText, 'message', runId ?? null);
           planIsOnScreen = true;
           unreachable = {
             nobodyReachable: nobodyCanBeWrittenTo(stored),
@@ -4665,6 +4770,14 @@ async function runOneToolBlock(
   // an officeholder's name; a search snippet may not (stale, or a former
   // holder) — so everything but web_search becomes the run's evidence.
   if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
+  // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
+  // be shown, with the page it came from. Registered here, at the one place a
+  // web result arrives, so no later surface has to decide what is public.
+  if (block.name === 'web_search') {
+    for (const { phone, source } of webNumbersWithSource(raw)) {
+      registerAllowedNumber(runId, phone, source);
+    }
+  }
   // One choke point, so the next contact-data tool cannot forget it.
   const result = CONTACT_DATA_TOOLS.has(block.name) ? scrubEmailsDeep(raw) : raw;
   const diet = dietToolResult(result);
@@ -5035,7 +5148,7 @@ async function runToolLoop(
       // the answer bubble and then disappearing was read as the assistant
       // changing its mind mid-reply ("რაც მანამდე დაწერა ის ქრება" — Lika,
       // 12 Aug; the same leak the tester logged as 0C.6).
-      const narration = scrubStep(threadId, answer.emittedText().trim());
+      const narration = scrubStep(threadId, answer.emittedText().trim(), runId);
       emitAnswerReset(userId, threadId, runId);
       // Ticket 10 Task 2 (b), Lika: a step is one short line saying what is
       // being done now, never a paragraph. The full narration is still
@@ -5169,7 +5282,7 @@ async function runToolLoop(
       // Persist it (kind='step') so it survives reload.
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubStep(threadId, extractText(response.content));
+      const narration = scrubStep(threadId, extractText(response.content), runId);
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -5217,7 +5330,7 @@ async function runToolLoop(
       for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubStep(threadId, extractText(response.content));
+      const narration = scrubStep(threadId, extractText(response.content), runId);
       if (narration) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -5369,7 +5482,7 @@ async function runToolLoop(
         extraRounds++;
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
         for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
-        const narration = scrubStep(threadId, extractText(continuation.content));
+        const narration = scrubStep(threadId, extractText(continuation.content), runId);
         if (narration) {
           emitStepSummary(userId, threadId, runId, narration);
           await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
@@ -5800,8 +5913,13 @@ export function attachmentsAfterModeration<C, O>(
  * it is then emitted or stored — the two paths cannot drift apart if there is
  * only one of them.
  */
-function scrubStep(threadId: number, text: string): string {
-  return scrubInternalToolNames(scrubText(text), threadId);
+function scrubStep(threadId: number, text: string, runId?: string): string {
+  // Row 139: the same wrap the plan message and the final reply get, so a
+  // public number published on a page this run fetched reads the same way on
+  // all three surfaces. Without it the step copy would be the one place a
+  // business number still disappeared.
+  const wrapped = runId ? wrapAllowedNumbers(text, runId) : text;
+  return scrubInternalToolNames(scrubText(wrapped), threadId);
 }
 
 /**
