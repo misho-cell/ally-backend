@@ -5211,6 +5211,38 @@ function markLastMessageForCache(messages: Anthropic.MessageParam[]): Anthropic.
   return [...messages.slice(0, -1), { role: last.role, content: blocks }];
 }
 
+/**
+ * Ticket 20 row 202, seventh pass — the seat's hypothesis, made checkable.
+ *
+ * Every silence measured so far falls in the same place: after
+ * content_block_start, before the first content_block_delta. „content_block_
+ * start" is as far as the log could say, and the seat read the other half from
+ * their own tool logs: on five goals the longest gap sits immediately before
+ * propose_task_plan (47 s on 4392, 60 s on 4393, 22-57 s on 4423-4425), which
+ * is the largest argument object the model writes, in Georgian.
+ *
+ * If that is right, the pause is the model composing a big tool input while
+ * the API holds the partial JSON back — a different thing entirely from a
+ * network stall, and with different answers (finer-grained tool streaming, or
+ * a smaller plan). If it is wrong, the block types will say something else.
+ *
+ * So the event name now carries the block's type, and a tool_use block carries
+ * the tool's name. Their hypothesis, in our log, either way.
+ */
+interface StreamEventShape {
+  type?: string;
+  content_block?: { type?: string; name?: string };
+}
+
+function describeEvent(event: StreamEventShape): string {
+  const type = event?.type ?? '?';
+  const block = event?.content_block;
+  if (block === undefined) return type;
+  if (block.type === 'tool_use' && block.name !== undefined)
+    return `${type}(tool_use:${block.name})`;
+  return `${type}(${block.type ?? '?'})`;
+}
+
 interface CallOptions {
   // Force a text-only answer while keeping the tools array identical (so the
   // cached prefix still hits) — used for the final wrap-up turn.
@@ -5302,7 +5334,7 @@ async function callClaude(
     }, window);
   };
   resetStall();
-  stream.on('streamEvent', (event: { type?: string }) => {
+  stream.on('streamEvent', (event: StreamEventShape) => {
     started = true;
     events += 1;
     // Row 202 third pass: every gap, not only the last, so a call that
@@ -5311,9 +5343,9 @@ async function callClaude(
     gaps.push(gap);
     if (gap >= Math.max(...gaps, 0)) {
       gapAfter = lastEventType;
-      gapBefore = event?.type ?? '?';
+      gapBefore = describeEvent(event);
     }
-    lastEventType = event?.type ?? '?';
+    lastEventType = describeEvent(event);
     lastEventAt = Date.now();
     resetStall();
   });

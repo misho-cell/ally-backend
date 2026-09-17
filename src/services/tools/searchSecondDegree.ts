@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 
 const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
+
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildRawWordGroups, toWordStartPattern } from './transliterate';
@@ -21,6 +22,40 @@ import {
   isMemberPhone,
   isSubscriberPhone,
 } from './membership';
+
+/**
+ * Ticket 20 row 108 — a ceiling on how much work one query may ask for.
+ *
+ * The cost of this search is (rows the bridges own) x (regexes), and only the
+ * second factor is under anybody's control. Measured on account 501 against
+ * the live base, tag half alone: 6 regexes 3.1 s, 12 regexes 11.4 s. Ninia's
+ * marketing sentence produced 51, in a statement of 9,687 characters, and
+ * timed out at 15 s three times today without returning a single person.
+ *
+ * The real fix is upstream — the opening search now sends the short phrase
+ * rather than the owner's sentence (openingSearch.service.ts). This is the
+ * backstop for everything that is not that path: a model that pastes a
+ * sentence into tag_query, a future caller nobody has written yet. A search
+ * that returns the best eight words' worth of matches beats one that returns
+ * nothing at all, which is what the uncapped version does.
+ *
+ * Eight because the three real query shapes on the board — „ფოტოგრაფი",
+ * „ქორწილის ფოტოგრაფი", „Dachi Axel" — are one to three words, and eight
+ * leaves room for a genuinely long name or a two-language phrase before it
+ * bites. When it bites it says so in the log rather than quietly searching for
+ * less than it was asked.
+ */
+export const MAX_QUERY_WORD_GROUPS = 8;
+
+export function cappedGroups(groups: string[][], userId: string): string[][] {
+  if (groups.length <= MAX_QUERY_WORD_GROUPS) return groups;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[second-degree] user ${userId}: query had ${groups.length} word groups ` +
+      `(${groups.flat().length} patterns); searching the first ${MAX_QUERY_WORD_GROUPS}`,
+  );
+  return groups.slice(0, MAX_QUERY_WORD_GROUPS);
+}
 
 const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
@@ -258,7 +293,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // buildRawWordGroups is the splitter this needed, and it already existed:
     // search_by_tag has used it since the "Dachi Axel" finding. One of the two
     // searches learned about phrases and the other never did.
-    const groups = buildRawWordGroups(tagQuery);
+    const groups = cappedGroups(buildRawWordGroups(tagQuery), userId);
     const likeTerms = groups.flat().map((t) => '%' + t + '%');
 
     // Weak-tie signal: asking for a PATH to a contact you already hold directly

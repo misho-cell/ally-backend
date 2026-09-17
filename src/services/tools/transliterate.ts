@@ -132,8 +132,29 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
  * '%term%') and a word-start refine from these terms. Single-word queries yield
  * one group, degrading to plain single-term behaviour.
  */
+/**
+ * Ticket 20 row 108 — the sentence's punctuation was riding into the regex.
+ *
+ * Splitting „ქორწილის ფოტოგრაფი მჭირდება ქუთაისში." on whitespace alone gives
+ * a last word of „ქუთაისში." including the full stop, and toWordStartPattern
+ * turns that into `\mქუთაისში\.` — which can only match a tag that literally
+ * contains „ქუთაისში." WITH the stop. So it never matched anything, and still
+ * cost a full regex pass over 885,942 rows. Ninia's sentence carried four such
+ * dead terms („გამარჯობა,", „საწარმო,", „მარკეტინგში,", „აწყობაში.").
+ *
+ * Trimmed HERE and not in toWordStartPattern, because that function protects
+ * a term like „c++" on purpose — the punctuation is part of the word there.
+ * What is being removed is the punctuation of the SENTENCE, which is this
+ * splitter's business and nobody else's.
+ */
+const SENTENCE_PUNCTUATION = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}+#]+$/gu;
+
 export function buildRawWordGroups(rawQuery: string): string[][] {
-  const words = rawQuery.trim().split(/\s+/).filter(Boolean);
+  const words = rawQuery
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(SENTENCE_PUNCTUATION, ''))
+    .filter(Boolean);
   return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
 }
 

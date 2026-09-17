@@ -148,3 +148,37 @@ describe('toWordStartPattern', () => {
     expect(toWordStartPattern('c++')).toBe('\\mc\\+\\+');
   });
 });
+
+/**
+ * Ticket 20 row 108 — the sentence's punctuation was becoming part of the regex.
+ *
+ * Splitting on whitespace alone made the last word of
+ * „ქორწილის ფოტოგრაფი მჭირდება ქუთაისში." into „ქუთაისში." with its full stop,
+ * and toWordStartPattern turned that into `\mქუთაისში\.` — a pattern that can
+ * only match a tag containing the stop, so it matched nothing ever, while still
+ * costing a full regex pass over 885,942 rows of the bridges' phonebooks.
+ * Ninia's marketing sentence carried four such dead terms.
+ */
+describe('buildRawWordGroups drops the sentence’s punctuation', () => {
+  it('strips a trailing full stop and comma', () => {
+    const groups = buildRawWordGroups('ქორწილის ფოტოგრაფი მჭირდება ქუთაისში.');
+    expect(groups.flat()).toContain('ქუთაისში');
+    expect(groups.flat().some((t) => t.includes('.'))).toBe(false);
+  });
+
+  it('strips a leading quote or bracket too', () => {
+    expect(buildRawWordGroups('„ფოტოგრაფი" (თბილისი)').flat()).toContain('ფოტოგრაფი');
+  });
+
+  it('KEEPS punctuation that is part of the word', () => {
+    // The trim is the SENTENCE's punctuation. „c++" and „c#" are names of
+    // things people put in a phonebook, and toWordStartPattern protects them
+    // on purpose — trimming here would undo that one layer earlier.
+    expect(buildRawWordGroups('c++').flat()).toContain('c++');
+    expect(buildRawWordGroups('c#').flat()).toContain('c#');
+  });
+
+  it('drops a word that was nothing but punctuation', () => {
+    expect(buildRawWordGroups('ფოტოგრაფი — თბილისი').flat()).not.toContain('');
+  });
+});

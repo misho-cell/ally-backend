@@ -196,26 +196,54 @@ export async function runOpeningSearches(
   };
 
   /**
-   * Row 126 fourth pass. The web gets a QUERY; the owner's own network gets
-   * the owner's own words.
+   * Ticket 20 row 126, fifth pass — the second circle gets the short phrase
+   * too, and this REVERSES what the fourth pass wrote here.
    *
-   * Only the web branch is distilled, and the asymmetry is deliberate. A web
-   * index rewards two words and a city and punishes a sentence — that is the
-   * whole finding. The second circle is not an index: it matches tags, facts
-   * and roles over people the owner already knows, and I have no evidence
-   * about what shape of query serves it, because it has timed out on both of
-   * the goals we have logged. Changing a search I cannot yet measure would be
-   * guessing with somebody's first reply.
+   * The fourth pass distilled only the web branch and said so in this comment:
+   * „I have no evidence about what shape of query serves the second circle,
+   * because it has timed out on both of the goals we have logged. Changing a
+   * search I cannot yet measure would be guessing with somebody's first
+   * reply." That was the right call with no evidence. There is evidence now,
+   * and it says the sentence is the reason it times out.
    *
-   * The distillation runs INSIDE the web branch rather than before both, so
-   * the second circle starts at the same moment it does today and loses
-   * nothing to it.
+   * WHAT THE SENTENCE COSTS. buildRawWordGroups splits on words and gives each
+   * one its transliteration variants, and every variant becomes one more regex
+   * run against every row the bridges own — 885,942 of them on account 501:
+   *
+   *   „ქორწილის ფოტოგრაფი მჭირდება ქუთაისში."          4 groups, 13 regexes
+   *   „ფოტოგრაფი"                                       1 group,   3 regexes
+   *   Ninia's marketing sentence                       17 groups, 51 regexes
+   *   „მარკეტინგი"                                      1 group,   3 regexes
+   *
+   * Seventeen of those groups are words like „გამარჯობა", „მაქვს", „მაგრამ",
+   * „და" and „რომელიც". Nobody is tagged „hello".
+   *
+   * WHAT IT BUYS. Measured on 501 against the live base, same ranking, same
+   * limit of 30:
+   *
+   *   photographer   sentence 12.1 s   short 4.9 s   result sets IDENTICAL
+   *   accountant     sentence 11.4 s   short 5.7 s   27 of 30 the same
+   *   marketing      sentence times out at 15 s and returns NOTHING (three
+   *                  times today: 16 415, 16 441, 16 415 ms, ok=false)
+   *                  short 4.9 s, 30 people
+   *
+   * The accountant's three swapped rows are the argument, not a footnote. The
+   * sentence dropped „Ilias BUGALTERIA", „Nino Komarovis Bugalteri" and „kodi
+   * liberty" and put back three people whose tag merely contains „მცირე"
+   * („small", from „small business"). Every row in both sets scores word_hits
+   * 1, so the extra words never once made a better match — they only broke
+   * ties towards people who match the wrong word. The short query is not a
+   * trade of recall for speed here; it is better on both.
+   *
+   * SO THE DISTILLATION MOVES OUT of the web branch and runs once for both.
+   * The second circle starts one model call later than it does today and
+   * finishes seven to eleven seconds earlier — or at all.
    */
+  const searched = await distilSearchQuery(query, { userId, runId });
   // Row 154: filled by the web branch below, once the search it depends on
   // has returned. Declared here so the caller can read it after both branches.
   let waysIn: Map<string, WayIn> = new Map();
   const webWork = (async (): Promise<string> => {
-    const searched = await distilSearchQuery(query, { userId, runId });
     // Charged like any other web search, because it is one. A pre-fetch that
     // did not reach the ledger would be spend the cost report cannot see.
     await recordFixedUsage({
@@ -240,9 +268,7 @@ export async function runOpeningSearches(
     const serialised = await logged('web_search', search, true, searched);
     const raw = await search;
     // The way-in lookups run HERE, inside the web branch, after the search
-    // they depend on. They cost the owner no extra wait: the second-circle
-    // branch times out at the full budget on essentially every goal, so the
-    // run is already waiting, and this finishes long before it.
+    // they depend on.
     waysIn = await findWaysIn(userId, webResultNames(raw));
     return serialised;
   })();
@@ -250,11 +276,10 @@ export async function runOpeningSearches(
   const [web, secondDegree] = await Promise.all([
     withBudget(webWork, 'web_search'),
     withBudget(
-      logged('search_second_degree', searchSecondDegree(userId, query)),
+      logged('search_second_degree', searchSecondDegree(userId, searched.query), false, searched),
       'search_second_degree',
     ),
   ]);
-
   const missing: string[] = [];
   if (web === null) missing.push('web_search');
   if (secondDegree === null) missing.push('search_second_degree');

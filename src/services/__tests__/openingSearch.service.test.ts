@@ -248,14 +248,45 @@ describe('row 126 fourth pass — the web gets a query, not a sentence', () => {
     expect(mockWeb).toHaveBeenCalledWith('ნოტარიუსი ბათუმი');
   });
 
-  it('searches the owner’s own network with the owner’s own words', async () => {
-    // Not an oversight. A web index rewards two words; the second circle
-    // matches tags and facts over people, and there is no measurement saying
-    // a distilled query serves it better — it has timed out on every goal
-    // logged so far.
+  /**
+   * Row 126 FIFTH pass, and this test previously asserted the opposite.
+   *
+   * It read: „Not an oversight. A web index rewards two words; the second
+   * circle matches tags and facts over people, and there is no measurement
+   * saying a distilled query serves it better." The first half is still true.
+   * The last clause stopped being true when the measurement was taken, on the
+   * live base, on account 501:
+   *
+   *   photographer   sentence 12.1 s   short 4.9 s   result sets IDENTICAL
+   *   accountant     sentence 11.4 s   short 5.7 s   27 of 30 the same, and
+   *                  the three the sentence added match „მცირე" („small"),
+   *                  displacing three people literally named „bugalteria"
+   *   marketing      sentence times out at 15 s and returns NOBODY; short
+   *                  returns 30 people in 4.9 s
+   *
+   * The sentence buys nothing and costs the whole result. The test is changed
+   * because the belief behind it was measured and found false, which is the
+   * only reason a test like this one may ever be turned around.
+   */
+  it('searches the owner’s own network with the SHORT query too', async () => {
     await runOpeningSearches('501', GOAL, 'run-1', 16006);
 
-    expect(mockSecond).toHaveBeenCalledWith('501', GOAL);
+    expect(mockSecond).toHaveBeenCalledWith('501', 'ნოტარიუსი ბათუმი');
+  });
+
+  it('still logs the owner’s own words beside the second circle’s query', async () => {
+    // The whole point of row 126: „the search found junk" and „the search was
+    // asked the wrong thing" must stay tellable apart. Shortening the query
+    // makes that MORE important, not less.
+    await runOpeningSearches('501', GOAL, 'run-1', 16006);
+
+    const call = (logToolCall as jest.Mock).mock.calls.find(
+      (c) => c[0].tool === 'search_second_degree:opening',
+    );
+    expect(call?.[0].input).toEqual({
+      query: 'ნოტარიუსი ბათუმი',
+      fromGoal: GOAL,
+    });
   });
 
   /**
