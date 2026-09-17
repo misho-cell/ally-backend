@@ -192,7 +192,12 @@ import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { isOnboardingUser } from './onboarding.service';
-import { looksLikeGoalRequest, goalTitleFrom, isQuestionNotGoal } from './goalIntent';
+import {
+  looksLikeGoalRequest,
+  goalTitleFrom,
+  isQuestionNotGoal,
+  needsNoOpeningSearch,
+} from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
 
 // A mode is a SITUATION — who is in the conversation and what state the
@@ -7102,7 +7107,14 @@ export async function processChat(
     ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
-    autoGoalId === null
+    // The founder's ruling of 17 September: look at WHAT WAS TYPED before
+    // running anything. A goal existing is no longer enough — the goal box
+    // opens one on whatever is typed into it, and „How many contacts do I have
+    // in my network?" paid a seventeen-second opening tax to search the web
+    // for an answer that was one tool call away. On „ვინ მყავს თბილისში?" the
+    // opening web search read the Georgian question word as a domain, searched
+    // VIN.GE, and told the owner it had found them a contact there.
+    autoGoalId === null || needsNoOpeningSearch(userMessage)
       ? Promise.resolve(null)
       : runOpeningSearches(userId, userMessage, runId, threadId),
   ]);

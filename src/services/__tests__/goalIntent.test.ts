@@ -1,4 +1,9 @@
-import { looksLikeGoalRequest, goalTitleFrom, isQuestionNotGoal } from '../goalIntent';
+import {
+  looksLikeGoalRequest,
+  goalTitleFrom,
+  isQuestionNotGoal,
+  needsNoOpeningSearch,
+} from '../goalIntent';
 
 describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
   it.each([
@@ -126,5 +131,55 @@ describe('isQuestionNotGoal', () => {
       expect(isQuestionNotGoal(need)).toBe(false);
       expect(looksLikeGoalRequest(need)).toBe(true);
     }
+  });
+});
+
+/**
+ * The founder's ruling of 17 September: „look at what the person typed before
+ * running anything. A question skips web_search:opening and
+ * search_second_degree:opening entirely; a real goal keeps both."
+ *
+ * From the battery run of 19:00-19:36 — every string below is one somebody
+ * actually typed that night, not an invented example.
+ */
+describe('what needs no opening search', () => {
+  it('skips a question about the owner’s own contacts', () => {
+    // Goal 4822. The opening web search read „ვინ" — the Georgian for „who" —
+    // as a domain, searched VIN.GE, and reported „on the web I found: VIN.GE,
+    // your contact there: …".
+    expect(needsNoOpeningSearch('ვინ მყავს თბილისში?')).toBe(true);
+    expect(needsNoOpeningSearch('How many contacts do I have in my network?')).toBe(true);
+  });
+
+  it('skips a question about the product', () => {
+    expect(needsNoOpeningSearch('What is Netai and how much does it cost?')).toBe(true);
+    expect(needsNoOpeningSearch('რამდენი ღირს Netai?')).toBe(true);
+  });
+
+  it('skips a question about the owner’s own goals', () => {
+    expect(needsNoOpeningSearch('which goals do I have open right now?')).toBe(true);
+  });
+
+  it('KEEPS both searches on a real need, which is what they were built for', () => {
+    // Row 126: a named problem starts the web and the second circle at once.
+    // Skipping these would cost far more than the tax it saves.
+    expect(needsNoOpeningSearch('ქორწილის ფოტოგრაფი მჭირდება ქუთაისში.')).toBe(false);
+    expect(needsNoOpeningSearch('მჭირდება ინგლისურის მასწავლებელი ბავშვისთვის')).toBe(false);
+    expect(
+      needsNoOpeningSearch(
+        'გამარჯობა, მაქვს კონსერვების საწარმო, მაგრამ მიჭირს მარკეტინგში, ამისთვის მჭირდება კომპანია',
+      ),
+    ).toBe(false);
+  });
+
+  it('keeps them on a goal that merely NAMES the product', () => {
+    // „Netai" alone is not a question about Netai — plenty of real goals are
+    // work ON it, and only the pairing with a price or a „what is this" makes
+    // it a question about the product.
+    expect(needsNoOpeningSearch('მჭირდება მარკეტინგის სპეციალისტი Netai-სთვის')).toBe(false);
+  });
+
+  it('keeps them on a question about a PERSON, which the web can answer', () => {
+    expect(needsNoOpeningSearch('მარო კოშაძე ვინ არის?')).toBe(false);
   });
 });

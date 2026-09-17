@@ -71,6 +71,58 @@ export function isQuestionNotGoal(message: string): boolean {
   return ASK_ABOUT_RE.test(text) || ABOUT_MY_OWN_GOALS_RE.test(text);
 }
 
+/** „who do I have", „how many contacts" — the owner asking about their own base. */
+const ABOUT_MY_OWN_BASE_RE =
+  /(ვინ\s+მყავს|რამდენი\s+(კონტაქტ|ადამიან)|ჩემ[სი]\s+ქსელ|ქსელში\s+რამდენ|how many\s+(contacts|people)|who do i (have|know)|my\s+(network|contacts)\b)/iu;
+
+/**
+ * The product itself, asked about rather than worked on.
+ *
+ * Both halves are required. „Netai" appears in plenty of real goals — someone
+ * looking for a marketer FOR Netai names it in the same sentence as the need —
+ * and only the pairing with a price or a „what is this" makes it a question
+ * about the product rather than work on it.
+ */
+const ABOUT_THE_PRODUCT_RE = /(netai|ნეტაი)/i;
+const PRICE_OR_DEFINITION_RE =
+  /(რამდენი\s+ღირს|რა\s+ღირს|ღირს|ფასი|რა\s+არის|როგორ\s+მუშაობს|what is|how much|cost|price|how does it work)/i;
+
+/**
+ * A question whose whole subject is the owner's own data or the product.
+ *
+ * The founder's ruling of 17 September: „look at what the person typed before
+ * running anything. A question skips web_search:opening and
+ * search_second_degree:opening entirely; a real goal keeps both."
+ *
+ * This is the NEGATIVE half of that and deliberately so. The positive test —
+ * „only search when the message names a need" — would skip the opening
+ * searches on most real goals, because the stem lists in this file are narrow
+ * and the goal-box flag exists precisely to cover what they miss. Row 126
+ * built those searches for a reason; the cost of skipping them on a real goal
+ * is higher than the cost of running them once too often.
+ *
+ * So this names only what can never need them. Measured on the battery run of
+ * 19:00-19:36, these three opened goals and each paid the ~17 s opening tax
+ * for nothing:
+ *
+ *   „ვინ მყავს თბილისში?"                        their own contacts
+ *   „How many contacts do I have in my network?"  their own count
+ *   „What is Netai and how much does it cost?"    the product
+ *
+ * The funniest and worst of it: on the first, the opening web search took the
+ * Georgian question word „ვინ" for a domain, searched VIN.GE, and told the
+ * owner „on the web I found: VIN.GE, your contact there: …".
+ *
+ * These stay QUESTIONS THAT MAY STILL OPEN A GOAL. Whether they should is row
+ * 103 and is not decided; this changes only what runs before the answer.
+ */
+export function needsNoOpeningSearch(message: string): boolean {
+  const text = message.trim();
+  if (ABOUT_MY_OWN_BASE_RE.test(text)) return true;
+  if (ABOUT_MY_OWN_GOALS_RE.test(text)) return true;
+  return ABOUT_THE_PRODUCT_RE.test(text) && PRICE_OR_DEFINITION_RE.test(text);
+}
+
 export function looksLikeGoalRequest(message: string): boolean {
   const text = message.trim();
   if (text.length < MIN_GOAL_MESSAGE_CHARS) return false;
