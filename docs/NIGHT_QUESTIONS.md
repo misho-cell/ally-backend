@@ -31,7 +31,28 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+**Three stop incidents in four hours, all on the founder's live data.** For
+Misho, as a fact rather than a question — nothing is blocked on an answer.
+
+  #3763 item 6  a stop in one goal's chat PAUSED its sibling in another thread
+  #3764         a stop in a paused goal's chat CLOSED two of his real goals,
+                one of which had two asks already sent to real people
+  #3862         three minutes after my second fix, a stop in a chat that never
+                had a goal closed his volleyball goal again
+
+All three are the same resolver: when the chat had no live goal of its own, the
+model went looking for a goal anywhere on the account and reasoned about which
+one was meant. Everything is repaired — the tester reopened both goals through
+the product's own tools and restored their wakes — and nothing was ever sent to
+anybody because of it.
+
+Fixed in three passes tonight (7020502, b5bf2d1, and the wake in f879788), and
+the third is the one that removes the model's choice rather than narrowing it.
+My first two reports on this said „fixed" and were incomplete; the tester found
+both within minutes.
+
+Worth his attention for one reason: the tester is spending his real goals to
+find these. They have held four of six tests until the current build is proved.
 
 ### Closed tonight, not carried to the morning
 
