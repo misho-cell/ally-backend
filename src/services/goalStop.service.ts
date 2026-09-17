@@ -1,6 +1,7 @@
-import { Task, updateTask } from './taskStore.service';
+import { Task, updateTask, getOpenTaskByThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
+import { getThread } from './threads.service';
 
 /**
  * The owner's kill switch, in one place.
@@ -52,3 +53,26 @@ export const NOTHING_TO_STOP: GoalStopped = {
   goal_id: null,
   reason: 'no_open_goal',
 };
+
+/**
+ * Stop whatever goal is running on a THREAD the owner holds.
+ *
+ * `null` means „this is not a thread of theirs" and is the routes' 404; it is
+ * kept distinct from NOTHING_TO_STOP on purpose, because „no such thread" and
+ * „your thread, nothing running on it" are different things to show a person
+ * and were being collapsed into one 404 before row 113.
+ *
+ * Ownership is checked on the thread first. The goal lookup is keyed on the
+ * thread id alone, so checking after would let one account's thread id reach
+ * another account's goal.
+ */
+export async function stopGoalOnThread(
+  userId: string,
+  threadId: number,
+): Promise<GoalStopped | null> {
+  const thread = await getThread(threadId, userId);
+  if (!thread) return null;
+  const task = await getOpenTaskByThread(threadId);
+  if (!task) return NOTHING_TO_STOP;
+  return stopGoal(userId, task);
+}

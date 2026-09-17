@@ -7,7 +7,7 @@ import {
 } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { getTaskById } from '../../services/taskStore.service';
-import { GoalStopped, stopGoal } from '../../services/goalStop.service';
+import { GoalStopped, stopGoal, stopGoalOnThread } from '../../services/goalStop.service';
 import { query } from '../../db/postgres/client';
 import { ApiResponse } from '../../types';
 
@@ -57,6 +57,28 @@ tasksRouter.get(
  * The user's kill switch: closes the task, cancels every unanswered ask
  * (recipients get an honest "no longer needed" line), settles the thread.
  * Idempotent — stopping a closed task succeeds.
+ *
+ * Ticket 20 row 113, second pass — the THREAD id is accepted here too, and the
+ * earlier refusal is not being overturned so much as narrowed to what it was
+ * actually about.
+ *
+ * `/threads/:id/stop` was built for this and works. The header button still
+ * posts `/tasks/<thread id>/stop` and still 404s (the seat read it twice:
+ * /tasks/15824/stop for goal 3703, /tasks/16240/stop for goal 4097), and no
+ * frontend session has read the board in ninety messages, so the button stays
+ * broken for as long as this route insists on being right about it.
+ *
+ * What was refused before — „let the route accept either kind of id" — was
+ * refused because a thread id and a task id can collide inside one account and
+ * a route that GUESSES could stop the wrong goal. That objection survives here
+ * intact: this is not a guess. The goal lookup runs first and wins outright; a
+ * thread is only consulted when the id is NOT a goal of this owner, so a
+ * colliding id behaves exactly as it does today. The fallback can only turn a
+ * 404 into the right goal, never one goal into another.
+ *
+ * Ownership is re-checked on the thread before the goal is read, for the same
+ * reason the thread route does it: the goal lookup is keyed on the thread, so
+ * without it somebody else's thread id would reach their goal.
  */
 tasksRouter.post(
   '/:id/stop',
@@ -75,13 +97,18 @@ tasksRouter.post(
     }
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
-      const taskId = Number(req.params.id);
-      const task = await getTaskById(taskId);
-      if (!task || String(task.user_id) !== userId) {
+      const id = Number(req.params.id);
+      const task = await getTaskById(id);
+      if (task && String(task.user_id) === userId) {
+        res.status(200).json({ success: true, data: await stopGoal(userId, task) });
+        return;
+      }
+      const stoppedByThread = await stopGoalOnThread(userId, id);
+      if (stoppedByThread === null) {
         res.status(404).json({ success: false, error: 'დავალება ვერ მოიძებნა' });
         return;
       }
-      res.status(200).json({ success: true, data: await stopGoal(userId, task) });
+      res.status(200).json({ success: true, data: stoppedByThread });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /tasks/:id/stop]', error);

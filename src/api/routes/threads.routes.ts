@@ -28,7 +28,7 @@ import {
   runPayerFor,
 } from '../../services/taskAsks.service';
 import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
-import { NOTHING_TO_STOP, stopGoal } from '../../services/goalStop.service';
+import { stopGoalOnThread } from '../../services/goalStop.service';
 import { planInForce } from '../../services/taskPlans.service';
 import {
   clearGoalQuestionForThread,
@@ -172,11 +172,12 @@ threadsRouter.use(authenticateJwt, requireUserRole);
  * It 404'd, the 404 was shown to nobody, and the owner walked away believing a
  * running goal had stopped while it kept working and kept waking.
  *
- * So: a route keyed on what the screen actually holds. The alternative — making
- * `/tasks/:id/stop` accept either kind of id — was refused on both sides
- * independently, and for the same reason: a thread id and a task id can collide
- * inside one account, and a stop route that guesses could stop the wrong goal.
- * A visible failure beats a silent wrong action.
+ * So: a route keyed on what the screen actually holds. This is still the right
+ * route to call. Since the second pass of row 113, `/tasks/:id/stop` also
+ * accepts a thread id — but only once the id has failed to be a goal of the
+ * caller, so it cannot guess between the two, and only because the header
+ * button is still posting there and no frontend session is reading the board.
+ * The shared implementation is `stopGoalOnThread`, so the two cannot drift.
  *
  * The three answers are distinguishable on purpose, because the frontend shows
  * a banner and needs to know which case it is in:
@@ -198,20 +199,16 @@ threadsRouter.post(
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const threadId = Number(req.params.id);
-      // Ownership is checked on the THREAD before anything is read from the
-      // goal: the goal lookup is keyed on the thread, so without this a thread
-      // id belonging to somebody else would reach their goal.
-      const thread = await getThread(threadId, userId);
-      if (!thread) {
+      // One implementation, shared with the thread-id fallback on
+      // `/tasks/:id/stop` — two stop paths that drift apart is a worse bug than
+      // the one row 113 fixes: the copy that forgot to cancel the asks would go
+      // on writing to real people after the owner pressed stop.
+      const stopped = await stopGoalOnThread(userId, threadId);
+      if (stopped === null) {
         res.status(404).json({ success: false, error: 'თრედი ვერ მოიძებნა' });
         return;
       }
-      const task = await getOpenTaskByThread(threadId);
-      if (!task) {
-        res.status(200).json({ success: true, data: NOTHING_TO_STOP });
-        return;
-      }
-      res.status(200).json({ success: true, data: await stopGoal(userId, task) });
+      res.status(200).json({ success: true, data: stopped });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/stop]', error);

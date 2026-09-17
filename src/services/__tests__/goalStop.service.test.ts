@@ -1,15 +1,23 @@
-jest.mock('../taskStore.service', () => ({ updateTask: jest.fn(), __esModule: true }));
+jest.mock('../taskStore.service', () => ({
+  updateTask: jest.fn(),
+  getOpenTaskByThread: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
+jest.mock('../threads.service', () => ({ getThread: jest.fn(), __esModule: true }));
 
-import { updateTask, Task } from '../taskStore.service';
+import { updateTask, getOpenTaskByThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
-import { NOTHING_TO_STOP, stopGoal } from '../goalStop.service';
+import { getThread, Thread } from '../threads.service';
+import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread } from '../goalStop.service';
 
 const mockUpdate = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockCancel = cancelAsksForTask as jest.MockedFunction<typeof cancelAsksForTask>;
 const mockThread = setThreadStatus as jest.MockedFunction<typeof setThreadStatus>;
+const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
+const mockOpenTask = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
 
 function task(over: Partial<Task> = {}): Task {
   return { id: 2872, status: 'open', thread_id: 14719, ...over } as Task;
@@ -65,5 +73,41 @@ describe('stopping a goal, from either route', () => {
     expect(NOTHING_TO_STOP.stopped).toBe(false);
     expect(NOTHING_TO_STOP.reason).toBe('no_open_goal');
     expect(NOTHING_TO_STOP.goal_id).toBeNull();
+  });
+});
+
+/**
+ * Row 113 second pass — the thread-keyed path both routes now share.
+ *
+ * The three answers are kept apart deliberately: „not your thread" is a 404,
+ * „your thread, nothing running" is a 200 the screen can explain, and a stop is
+ * a stop. Collapsing the first two into one 404 is how the header button's
+ * failure stayed invisible in the first place.
+ */
+describe('stopGoalOnThread', () => {
+  it('refuses a thread that is not the caller’s, without ever reading a goal', async () => {
+    mockGetThread.mockResolvedValue(null);
+
+    expect(await stopGoalOnThread('501', 16240)).toBeNull();
+    // The point of the order: the goal lookup is keyed on the thread id alone,
+    // so reaching it at all would already have crossed an account boundary.
+    expect(mockOpenTask).not.toHaveBeenCalled();
+  });
+
+  it('answers nothing-to-stop on the owner’s own thread with no open goal', async () => {
+    mockGetThread.mockResolvedValue({ id: 16240 } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+
+    expect(await stopGoalOnThread('501', 16240)).toEqual(NOTHING_TO_STOP);
+    expect(mockCancel).not.toHaveBeenCalled();
+  });
+
+  it('stops the goal the thread holds, asks and all', async () => {
+    mockGetThread.mockResolvedValue({ id: 14719 } as Thread);
+    mockOpenTask.mockResolvedValue(task());
+
+    expect(await stopGoalOnThread('501', 14719)).toEqual({ stopped: true, goal_id: 2872 });
+    expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user');
+    expect(mockCancel).toHaveBeenCalledWith(2872);
   });
 });
