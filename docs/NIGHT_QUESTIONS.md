@@ -130,6 +130,48 @@ officeholder gate no longer reads „ხუთი ადამიანი" as a
 Georgian word no longer exempts an English answer; a split goal's chat says
 why it exists.
 
+### A second question for the morning: the opening second-circle search
+
+**It lands one time in six, and every goal's first reply waits ten seconds for
+the five that do not.** Measured over seven days from `tool_call_log`:
+
+  web_search:opening             82 calls, 82 inside their 10s budget, 0 late
+  search_second_degree:opening   80 calls, 14 inside, 66 LATE
+
+Its median is 16.4 s against a 10 s budget, so the run waits the full ten
+seconds, discards the result, and the database goes on working on it for
+another six with nobody listening — 825 seconds of the heaviest query in the
+system per twelve hours, on the same index row 108 is about. The same tool
+called normally by the model has a median of 7.3 s and does land; the opening
+one is slower because it runs concurrently with the rest of the run's warm-up
+and contends for its own I/O.
+
+**Why this is not mine to decide.** Running both searches the moment a problem
+is named is the founder's own rule (row 126, his words: „never skip them
+because the network already had somebody"). The measurement tells him what it
+costs; it does not overrule him.
+
+Three options, put to him through the tester, with a recommendation:
+
+- **(a) drop the opening second-circle** and let the model's own call do it.
+  Up to 10 s off every goal's first reply, ~14 minutes of database work per
+  12 hours off the contended index, and the second circle still happens —
+  when the model asks, which is when it lands. This is what I would do.
+- (b) keep it and accept the ten seconds, knowing five in six are wasted.
+- (c) fix row 108 first and re-measure. The only option that makes the search
+  fast rather than moving it — and it is the DB operation already waiting on
+  Misho.
+
+(a) and (c) are not exclusive. If row 108 later makes the search land in three
+seconds, putting it back is one line.
+
+**Written down rather than done:** when the budget expires the query runs on,
+because the search's own timeout is 15 s and the budget is 10. Capping it at
+the budget would end six seconds of pointless work per discarded call. The
+timeout is a module constant shared by several queries inside that function,
+and threading a per-call value through them blind at 22:15 is not a change I
+would trust tonight.
+
 ### Closed tonight, not carried to the morning
 
 **The two people on goal 3433** who were told their question was off while the
