@@ -31,23 +31,11 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Two people were told a question was off, for a goal that is running again.**
-Tonight's P0 (a stop resolving to the wrong goal) closed the founder's goal
-3433. The stop did what a stop does: it cancelled both asks and told the two
-recipients so — thread 15512, 18:37:17, „ეს კითხვა აღარ არის აქტუალური". The
-goal was reopened at 18:40:23; the asks are still `cancelled` and the two
-people still have the message.
+_Nothing yet._
 
-What it blocks: nothing technical. The goal runs. It is a question of what
-those two people are owed.
+### Closed tonight, not carried to the morning
 
-Three ways, and it is the founder's or Misho's to choose — writing to them
-again is an outbound message to real people in his name:
-  1. do nothing; the goal finds them again the normal way (what I would do)
-  2. he writes to them himself
-  3. we send one short line saying the question is live again
-
-Not done and not proposed as done: I have changed nothing. I am also not
-un-cancelling the rows quietly — the message has been read, and flipping a
-status back would make the database disagree with what those two people were
-actually told.
+**The two people on goal 3433** who were told their question was off while the
+goal was running again. Put to the founder through the tester; his answer was
+DO NOTHING — the goal is open and can reach them again the normal way when it
+wakes. Nothing was sent and nothing was changed.
