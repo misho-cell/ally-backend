@@ -28,6 +28,7 @@ import {
   buildOpeningSearchSection,
   webResultNames,
   WAY_IN_TOOL_NOTE,
+  buildFromTheWebMessage,
 } from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
@@ -531,5 +532,92 @@ describe('row 154 second half — the note that rides the tool result', () => {
 
   it('says the same thing about contacting a company as the prompt section', () => {
     expect(WAY_IN_TOOL_NOTE).toContain('კომპანიას თვითონ დაუკავშირდი');
+  });
+});
+
+/**
+ * Ticket 20 row 154 — „From the web", written by the server (#3141).
+ *
+ * Three prompt rounds could not get the reply to name each web result with its
+ * way in: on v25 goal 4423 carried the line for two of three, and 4424, 4425
+ * and 4426 named no web firm at all though the search had returned results with
+ * ways_in. The final writer loses the web half, so it stops being something a
+ * model is asked for.
+ */
+describe('buildFromTheWebMessage', () => {
+  it('writes nothing when the web returned nothing', () => {
+    // The seat's own rule: no results, no message. An empty „From the web"
+    // bubble is a worse answer than silence.
+    expect(buildFromTheWebMessage(new Map())).toBeNull();
+  });
+
+  it('names the owner\u2019s own contact when there is one', () => {
+    const message = buildFromTheWebMessage(
+      new Map([['Infinity Solutions', { kind: 'first_circle' as const, who: 'დათო' }]]),
+    );
+
+    expect(message).toContain('Infinity Solutions');
+    expect(message).toContain('დათო');
+  });
+
+  it('says the SECOND CIRCLE is unchecked, never that there is no way in', () => {
+    // Ticket 19 G7, and the sentence this row turns on.
+    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
+
+    expect(message).toContain('მეორე წრე');
+    expect(message).not.toMatch(/გზა არ არსებობს|ვერავინ/);
+  });
+
+  it('keeps „could not check" apart from „checked and found nobody"', () => {
+    const unchecked = String(
+      buildFromTheWebMessage(new Map([['Acme', { kind: 'unchecked' as const }]])),
+    );
+
+    expect(unchecked).toContain('ვერ შევამოწმე');
+    expect(unchecked).not.toContain('მეორე წრე');
+  });
+
+  it('never tells the owner to contact a company himself — the seat\u2019s done-when', () => {
+    const message = String(
+      buildFromTheWebMessage(
+        new Map([
+          ['A', { kind: 'first_circle' as const, who: 'ნინო' }],
+          ['B', { kind: 'none' as const }],
+          ['C', { kind: 'unchecked' as const }],
+        ]),
+      ),
+    );
+
+    expect(message).not.toMatch(/დაურეკ|დაუკავშირ|მიწერე|დაუკავშირდი|ნომერ/);
+  });
+
+  it('carries no phone number and no link', () => {
+    const message = String(
+      buildFromTheWebMessage(new Map([['Acme +995 599 12 34 56', { kind: 'none' as const }]])),
+    );
+
+    // The NAME is whatever the web returned and is not rewritten here; what
+    // this asserts is that nothing in the wording adds a number or a link.
+    expect(message).not.toContain('http');
+  });
+
+  it('shows at most four, and gives the slots to the real ways in', () => {
+    const message = String(
+      buildFromTheWebMessage(
+        new Map([
+          ['none1', { kind: 'none' as const }],
+          ['none2', { kind: 'none' as const }],
+          ['none3', { kind: 'none' as const }],
+          ['none4', { kind: 'none' as const }],
+          ['real', { kind: 'first_circle' as const, who: 'ლიკა' }],
+        ]),
+      ),
+    );
+
+    expect(message.split('\n').filter((l) => l.startsWith('•'))).toHaveLength(4);
+    expect(message).toContain('real');
+    expect(message).toContain('ლიკა');
+    // The one that lost its slot is a „none", never the way in.
+    expect(message).not.toContain('none4');
   });
 });

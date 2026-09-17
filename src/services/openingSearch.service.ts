@@ -493,6 +493,52 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
 }
 
 /**
+ * Ticket 20 row 154 — „From the web", written by the SERVER.
+ *
+ * The seat's ask (#3141), after three prompt rounds could not get the reply to
+ * do it: v24, v25 and v26 all dropped the web half. On v25 goal 4423 named two
+ * of three web results with their way in; 4424, 4425 and 4426 named no web firm
+ * at all, though the search had returned results carrying ways_in. The final
+ * writer simply loses it.
+ *
+ * So it stops being something a model is asked for. The same shape as the plan
+ * card and row 98's updates message: the server writes it, deterministically,
+ * as its own message after the reply.
+ *
+ * WHAT IS DELIBERATELY NOT IN IT. No public phone number, no link, and not one
+ * word suggesting the owner contact a company himself — that last is the seat's
+ * done-when and it is the whole reason row 154 exists: the product is the way
+ * in through somebody you know, and „here is a firm, ring them" is the thing it
+ * is supposed to replace.
+ *
+ * FIRST-CIRCLE NAMES COME FIRST. Four is the cap the seat set, and when more
+ * than four came back the ones with a real way in are the ones worth the four
+ * slots. Said out loud because it is a judgement, not a rule they gave me.
+ */
+const FROM_THE_WEB_MAX = 4;
+
+export function buildFromTheWebMessage(waysIn: ReadonlyMap<string, WayIn>): string | null {
+  if (waysIn.size === 0) return null;
+  const entries = [...waysIn.entries()].sort((a, b) => rankOfWayIn(a[1]) - rankOfWayIn(b[1]));
+  const lines = entries.slice(0, FROM_THE_WEB_MAX).map(([name, wayIn]) => {
+    if (wayIn.kind === 'first_circle') return `• ${name} — შენი კონტაქტი იქ: ${wayIn.who}.`;
+    // Ticket 19 G7, and it is the sentence this whole row turns on: „your own
+    // contacts hold nobody" is not „nobody". The second circle has not been
+    // asked yet, and saying so keeps the door open honestly.
+    if (wayIn.kind === 'none')
+      return `• ${name} — შენს პირად კონტაქტებში კავშირი ვერ ვიპოვე; მეორე წრე ჯერ არ შემიმოწმებია.`;
+    return `• ${name} — კავშირი ვერ შევამოწმე.`;
+  });
+  return `ვებში ეს ვიპოვე:\n${lines.join('\n')}`;
+}
+
+function rankOfWayIn(wayIn: WayIn): number {
+  if (wayIn.kind === 'first_circle') return 0;
+  if (wayIn.kind === 'none') return 1;
+  return 2;
+}
+
+/**
  * Ticket 20 row 154, second half — what the model is told when the verdicts
  * ride back inside its own web_search result.
  *

@@ -155,7 +155,9 @@ import {
   buildOpeningSearchSection,
   findWaysIn,
   webResultNames,
+  buildFromTheWebMessage,
   WAY_IN_TOOL_NOTE,
+  WayIn,
 } from './openingSearch.service';
 import { writeFinalAnswer } from './finalAnswer.service';
 import {
@@ -3690,6 +3692,38 @@ export function choicesWithoutApproval(choices: readonly string[]): string[] | u
  * The text the tool produced rides the run instead, and `run_complete` carries
  * it verbatim. The client reads the field and stops parsing prose.
  */
+/**
+ * Ticket 20 row 154 — the web verdicts this run collected, for the „From the
+ * web" message the server writes after the reply.
+ *
+ * Kept per run rather than passed down because they arrive from TWO places and
+ * neither is near the end of the run: the opening search before the model's
+ * first turn, and the model's own web_search whenever it makes one. On goal
+ * 4623 every web result came from the second of those, so a version that only
+ * carried the opening ones would have written nothing on the goal the seat was
+ * reading.
+ */
+const runWaysIn = new Map<string, Map<string, WayIn>>();
+
+function noteWaysIn(runId: string | undefined, waysIn: ReadonlyMap<string, WayIn>): void {
+  if (!runId || waysIn.size === 0) return;
+  const held = runWaysIn.get(runId) ?? new Map<string, WayIn>();
+  // A later, better verdict wins: the same firm can be looked up twice, and
+  // „unchecked" from a lookup that ran out of time must not sit on top of a
+  // first-circle answer found a minute later.
+  for (const [name, wayIn] of waysIn) {
+    const existing = held.get(name);
+    if (existing === undefined || existing.kind !== 'first_circle') held.set(name, wayIn);
+  }
+  runWaysIn.set(runId, held);
+}
+
+function takeWaysIn(runId: string): ReadonlyMap<string, WayIn> {
+  const held = runWaysIn.get(runId) ?? new Map<string, WayIn>();
+  runWaysIn.delete(runId);
+  return held;
+}
+
 const runShareText = new Map<string, string>();
 
 function noteShareText(runId: string | undefined, value: unknown): void {
@@ -3959,6 +3993,7 @@ async function executeToolCall(
        * each firm rather than in a section it read a minute ago.
        */
       const waysIn = await findWaysIn(userId, webResultNames(found));
+      noteWaysIn(runId, waysIn);
       if (waysIn.size === 0) return found;
       return {
         ...(found as Record<string, unknown>),
@@ -6761,6 +6796,10 @@ export async function processChat(
     // eslint-disable-next-line no-console
     console.warn('[prompt-stamp] failed:', (err as Error).message);
   });
+  // Row 154: the opening search's verdicts join the run's collection, so the
+  // „From the web" message written after the reply carries them alongside
+  // whatever the model's own searches found.
+  if (openingSearches !== null) noteWaysIn(runId, openingSearches.waysIn);
   // Pin the reply language to the user's latest message (engine-level, appended
   // last so it wins over the Georgian strategy prompt).
   const systemPrompt =
@@ -7031,6 +7070,26 @@ export async function processChat(
     // Row 132: the reply the user reads, stamped with who wrote it.
     answeredBy,
   );
+  /**
+   * Ticket 20 row 154 — „From the web", written here because three prompt
+   * rounds could not get the reply to carry it (#3141).
+   *
+   * After the answer and before the waiting items, because it belongs to the
+   * answer: it is what the run found on the web and whether the owner has a
+   * way in to each of them. Only when the web actually returned names — a
+   * goal with no web results gets no message, which is the seat's own rule.
+   */
+  const fromTheWeb = buildFromTheWebMessage(takeWaysIn(runId));
+  if (fromTheWeb !== null) {
+    const webMessageId = await saveMessage(userId, threadId, 'assistant', fromTheWeb);
+    emitMessageAppended(userId, threadId, runId, {
+      messageId: String(webMessageId),
+      kind: 'pending',
+      content: fromTheWeb,
+      choices: [],
+      ref: { kind: 'from_the_web' },
+    });
+  }
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.
