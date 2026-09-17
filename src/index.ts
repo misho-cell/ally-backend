@@ -19,6 +19,7 @@ import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { drain, inFlightCount } from './services/inFlightRuns';
+import { startLoopLagWatch } from './services/loopLag';
 import { checkCriticalIndexes } from './db/postgres/indexSanity';
 import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
@@ -132,6 +133,10 @@ runMigrations()
     startIdentityScanCron();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
+    // Row 202 fourth pass: says nothing until the event loop is actually
+    // blocked, and then says for how long. It is the one measurement that
+    // tells a quiet API from a busy process.
+    startLoopLagWatch();
 
     /**
      * Ticket 20 row 205 — a deploy must not cut a run in half.
