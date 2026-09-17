@@ -3154,20 +3154,72 @@ async function markSearchSent(
  * onto this one, APPROVE_LIKE_RE already carries „ვამტკიც", and every stored
  * „დამტკიცებულია" in an existing thread still reads as approval.
  */
-const APPROVE_LABEL = 'ვამტკიცებ';
-const CHANGE_LABEL = 'შევცვალოთ';
+/**
+ * The seat's #4061 (h), last piece — and the reason it is a refactor rather
+ * than a string swap.
+ *
+ * There was ONE canonical label, and four places compared against it. One of
+ * those decides whether a tap counted as the owner's approval, which is the
+ * switch that lets a run write to real people. Localizing a value that is also
+ * an identity is how two of those places end up agreeing about the language
+ * and the third does not.
+ *
+ * So the two jobs are separated. WHAT IS SHOWN follows the conversation.
+ * WHETHER A LABEL MEANS APPROVE is a predicate over every wording in every
+ * language, and no comparison anywhere depends on which language it is in.
+ *
+ * The asymmetry that sets the safety margin: failing to recognise an approval
+ * costs the owner a second tap, and recognising one that was not given starts
+ * writing to real people. So the word-count ceilings stay exactly as they
+ * were — an approve word at the head of a message of two words or fewer — and
+ * the new wordings are the display labels themselves plus the obvious way each
+ * is typed, nothing looser.
+ */
+const APPROVE_LABEL: Record<RunLanguage, string> = {
+  ka: 'ვამტკიცებ',
+  en: 'I approve',
+  ru: 'Подтверждаю',
+  es: 'Lo apruebo',
+};
+const CHANGE_LABEL: Record<RunLanguage, string> = {
+  ka: 'შევცვალოთ',
+  en: 'Change it',
+  ru: 'Изменить',
+  es: 'Cambiarlo',
+};
 const APPROVE_LIKE_RE =
-  /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|approve)/i;
+  /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|approve|i approve|подтвержда|apruebo|lo apruebo)/i;
 // Read live on 11 September: the model typed „შეცვლა" and the stem list had
 // „შევცვლ" but not „შეცვლ", so it slipped through. Every Georgian stem of
 // „change", with and without the ვ.
 const CHANGE_LIKE_RE =
-  /^(შევცვალ|შეცვალ|შევცვლ|შეცვლ|შემიცვალ|change the plan|change plan|edit the plan)/i;
+  /^(შევცვალ|შეცვალ|შევცვლ|შეცვლ|შემიცვალ|change the plan|change plan|change it|edit the plan|измен|cambiar)/i;
 
-export function canonicalChoiceLabel(label: string): string {
+const MAX_APPROVE_WORDS = 2;
+const MAX_CHANGE_WORDS = 3;
+
+/**
+ * Does this text MEAN approve, in any language the product speaks?
+ *
+ * Language-independent on purpose: it is asked of a stored label written days
+ * ago, of a tap arriving now, and of whatever the model typed, and none of
+ * those three carries a language with it.
+ */
+export function isApproveLabel(text: string): boolean {
+  const trimmed = text.trim();
+  return APPROVE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= MAX_APPROVE_WORDS;
+}
+
+export function isChangeLabel(text: string): boolean {
+  const trimmed = text.trim();
+  return CHANGE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= MAX_CHANGE_WORDS;
+}
+
+/** The label as it should be SHOWN — the only place the language matters. */
+export function canonicalChoiceLabel(label: string, language: RunLanguage = 'ka'): string {
   const trimmed = label.trim();
-  if (APPROVE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= 2) return APPROVE_LABEL;
-  if (CHANGE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= 3) return CHANGE_LABEL;
+  if (isApproveLabel(trimmed)) return APPROVE_LABEL[language];
+  if (isChangeLabel(trimmed)) return CHANGE_LABEL[language];
   return trimmed;
 }
 
@@ -3450,11 +3502,9 @@ export function approvalBelongsToThePlan(
    */
   ownerSaidSinceCard: readonly string[] = [],
 ): boolean {
-  const planCardOnScreen = (newestOfferedChoices ?? []).some(
-    (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
-  );
+  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveLabel);
   const approves = (said: string): boolean => {
-    if (canonicalChoiceLabel(said) === APPROVE_LABEL || APPROVE_LIKE_RE.test(said)) return true;
+    if (isApproveLabel(said) || APPROVE_LIKE_RE.test(said)) return true;
     // A bare yes, or a short go-ahead, only counts when a plan card is the
     // thing being answered. Ticket 19 G2: a tap on a DRAFT's „კი, გააგზავნე"
     // must never read as approving a three-person plan.
@@ -3742,7 +3792,7 @@ export function choicesWithoutApproval(choices: readonly string[]): string[] | u
   // for, would have walked straight through a filter whose whole job is to
   // remove it. The same alias table that decides what a TAP means decides what
   // this drops.
-  const kept = choices.filter((label) => canonicalChoiceLabel(label) !== APPROVE_LABEL);
+  const kept = choices.filter((label) => !isApproveLabel(label));
   // An empty button row is its own small lie — a strip of nothing where the
   // screen promises a choice. If approve was the only thing offered, the reply
   // simply has no buttons.
@@ -5961,7 +6011,7 @@ async function runToolLoop(
         if (Array.isArray(input.items)) {
           choices = input.items
             .filter((i): i is string => typeof i === 'string')
-            .map(canonicalChoiceLabel);
+            .map((item) => canonicalChoiceLabel(item, runLang(runId)));
         }
       }
       if (block.name === 'set_task_result') {
