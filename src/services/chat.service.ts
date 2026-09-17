@@ -3942,8 +3942,14 @@ const MIN_SHOWABLE_DIGITS = 9;
 // reads it so an English thread never carries Georgian chrome (task 22 g/h).
 const runLanguages = new Map<string, RunLanguage>();
 
-function runLang(runId: string): RunLanguage {
-  return runLanguages.get(runId) ?? 'ka';
+/**
+ * Takes `undefined` on purpose: several tool handlers hold a run id that may
+ * not exist (an MCP call has no run), and three of them had grown their own
+ * `runId === undefined ? 'ka' : runLang(runId)`. One unknown answer in one
+ * place is better than the same ternary copied wherever a language is needed.
+ */
+function runLang(runId: string | undefined): RunLanguage {
+  return runId === undefined ? 'ka' : (runLanguages.get(runId) ?? 'ka');
 }
 
 // Every per-run map is dropped together at both run exits, so a crashed or
@@ -4296,7 +4302,7 @@ async function executeToolCall(
         const fresh = await createThread(userId, 'regular', title, undefined, {
           isTask: true,
           status: 'working',
-          statusLine: RUN_STRINGS[runId === undefined ? 'ka' : runLang(runId)].statusLines.working,
+          statusLine: RUN_STRINGS[runLang(runId)].statusLines.working,
         });
         goalThreadId = fresh.id;
         movedTo = fresh.id;
@@ -4823,7 +4829,7 @@ async function executeToolCall(
             'გეგმაში არა. მერე ხელახლა გამოიძახე.',
         };
       }
-      const outcome = await proposeTaskPlan(userId, taskId, input['plan']);
+      const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
       //
@@ -4873,6 +4879,10 @@ async function executeToolCall(
             outcome.value.version,
             null,
             outcome.value.everApproved,
+            // The card the OWNER reads. The copy inside the system prompt
+            // stays Georgian, because the prompt is Georgian and its reader is
+            // the model.
+            runLang(runId),
           );
           const planText = runId
             ? scrubText(wrapAllowedNumbers(rendered, runId))
@@ -4961,7 +4971,12 @@ async function executeToolCall(
           };
         }
       }
-      const outcome = await approveTaskPlan(userId, Number(input['task_id']));
+      const outcome = await approveTaskPlan(
+        userId,
+        Number(input['task_id']),
+        'chat',
+        runLang(runId),
+      );
       // Day one starts behind the reply (Ticket 12 Tasks 2 and 5): the user
       // hears „I am on it" first, the asks go out after. Dynamic import — the
       // engine imports this module, a static import would be a cycle.

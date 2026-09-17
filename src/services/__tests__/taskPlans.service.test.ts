@@ -587,3 +587,46 @@ describe('peopleToInvite', () => {
     ).toEqual(['ლევანი']);
   });
 });
+
+/**
+ * The seat's #4061 (h), the last thing the server wrote in Georgian whatever
+ * the owner typed. The card is the message somebody reads before deciding
+ * whether to let us write to their friends in their name — so if any line of
+ * it is worth reading, all of them are worth reading in their language.
+ */
+describe('the plan card follows the conversation’s language', () => {
+  const plan = (parsePlan(RAW) as { ok: true; value: typeof RAW }).value;
+
+  it('writes every heading in English in an English thread', () => {
+    const text = renderPlan(plan, 1, null, false, 'en');
+
+    expect(text).toContain('Plan v1 (awaiting your approval)');
+    expect(text).toContain('Solved when:');
+    expect(text).toContain('Routes:');
+    expect(text).toContain('Who I will ask:');
+    expect(text).toContain('not started yet');
+    // Not „no Georgian anywhere": this plan's solved-when, its routes and its
+    // people are Georgian because the OWNER and the model wrote them that way,
+    // and translating somebody's own words would be a different and worse bug.
+    // What must be gone is the product's own vocabulary.
+    expect(text).not.toMatch(/დასამტკიცებელი|მოგვარებულია|გზები|ვის ვკითხავ|ჯერ არ დაწყებულა/);
+  });
+
+  it('says approved, not awaiting, once it is', () => {
+    expect(renderPlan(plan, 2, '2026-09-17T21:00:00Z', true, 'en')).toContain('Plan v2 (approved)');
+  });
+
+  it('keeps Georgian for a caller that names no language', () => {
+    expect(renderPlan(plan, 1, null)).toBe(renderPlan(plan, 1, null, false, 'ka'));
+  });
+
+  it('carries the names and the solved-when through untranslated', () => {
+    // Only the product's own words move. What the owner and the model wrote
+    // stays exactly as written.
+    for (const lang of ['ka', 'en', 'ru', 'es'] as const) {
+      const text = renderPlan(plan, 1, null, false, lang);
+      expect(text).toContain(plan.solved_when);
+      for (const p of plan.people_to_involve) expect(text).toContain(p.name);
+    }
+  });
+});

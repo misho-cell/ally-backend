@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
+import { RunLanguage } from './runLanguage';
 
 /**
  * The plan a goal runs inside (Ticket 10 Task 21; D118, D119).
@@ -188,6 +189,8 @@ export async function proposeTaskPlan(
   userId: string,
   taskId: number,
   raw: unknown,
+  /** The conversation's language — the card is read by the owner, not by us. */
+  language: RunLanguage = 'ka',
 ): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
   const parsed = parsePlan(raw);
   if (!parsed.ok) return parsed;
@@ -218,7 +221,11 @@ export async function proposeTaskPlan(
   const everApproved = row.plan_approved_at !== null;
   return {
     ok: true,
-    value: { version, summary: renderPlan(plan, version, null, everApproved), everApproved },
+    value: {
+      version,
+      summary: renderPlan(plan, version, null, everApproved, language),
+      everApproved,
+    },
   };
 }
 
@@ -262,6 +269,7 @@ export async function approveTaskPlan(
   // owner's own session because that is where every existing caller approves
   // from; the admin panel names itself.
   via: ApprovalRoute = 'chat',
+  language: RunLanguage = 'ka',
 ): Promise<PlanOutcome<{ version: number; summary: string }>> {
   const result = await query<{ plan: TaskPlan; plan_version: number; plan_approved_at: string }>(
     `UPDATE tasks
@@ -284,7 +292,7 @@ export async function approveTaskPlan(
     ok: true,
     value: {
       version: row.plan_version,
-      summary: renderPlan(row.plan, row.plan_version, row.plan_approved_at),
+      summary: renderPlan(row.plan, row.plan_version, row.plan_approved_at, undefined, language),
     },
   };
 }
@@ -329,11 +337,11 @@ export function planAllows(plan: StoredPlan | null, phone: string): PlanVerdict 
  * message whose whole job is to be understood well enough to approve, and it
  * was showing the reader a field name.
  */
-const ROUTE_STATUS_WORDS: Readonly<Record<RouteStatus, string>> = {
-  running: 'მიმდინარეობს',
-  waiting: 'ველოდები',
-  done: 'დასრულდა',
-  dropped: 'შევწყვიტე',
+const ROUTE_STATUS_WORDS: Readonly<Record<RunLanguage, Record<RouteStatus, string>>> = {
+  ka: { running: 'მიმდინარეობს', waiting: 'ველოდები', done: 'დასრულდა', dropped: 'შევწყვიტე' },
+  en: { running: 'in progress', waiting: 'waiting', done: 'done', dropped: 'dropped' },
+  ru: { running: 'в работе', waiting: 'жду', done: 'готово', dropped: 'прекратил' },
+  es: { running: 'en curso', waiting: 'esperando', done: 'hecho', dropped: 'abandonado' },
 };
 
 /**
@@ -356,7 +364,20 @@ const ROUTE_STATUS_WORDS: Readonly<Record<RouteStatus, string>> = {
  * HAS begun, and showing „not started" there would be the same fault pointing
  * the other way — a false claim about the world, just a modest one.
  */
-const ROUTE_NOT_STARTED = 'ჯერ არ დაწყებულა';
+/** „Plan", the first word of the card. */
+const PLAN_TITLE: Record<RunLanguage, string> = {
+  ka: 'გეგმა',
+  en: 'Plan',
+  ru: 'План',
+  es: 'Plan',
+};
+
+const ROUTE_NOT_STARTED: Record<RunLanguage, string> = {
+  ka: 'ჯერ არ დაწყებულა',
+  en: 'not started yet',
+  ru: 'ещё не начато',
+  es: 'aún no empezado',
+};
 
 /**
  * The plan as one message the user can read and approve.
@@ -373,15 +394,41 @@ const ROUTE_NOT_STARTED = 'ჯერ არ დაწყებულა';
  * opt-out list is deliberately not consulted at plan time, because a refusal
  * to be contacted is private to the person who made it.
  */
-const REACH_NOTE: Record<Exclude<AskReach, 'ok'>, string> = {
-  not_member: '(Netai-ზე არ არის — მოწვევა დასჭირდება)',
-  never_opened: '(ანგარიში აქვს, Netai ჯერ არ გაუხსნია — კითხვა უპასუხოდ დარჩებოდა)',
+const REACH_NOTE: Record<RunLanguage, Record<Exclude<AskReach, 'ok'>, string>> = {
+  ka: {
+    not_member: '(Netai-ზე არ არის — მოწვევა დასჭირდება)',
+    never_opened: '(ანგარიში აქვს, Netai ჯერ არ გაუხსნია — კითხვა უპასუხოდ დარჩებოდა)',
+  },
+  en: {
+    not_member: '(not on Netai — will need an invitation)',
+    never_opened: '(has an account but has never opened Netai — a question would go unanswered)',
+  },
+  ru: {
+    not_member: '(нет в Netai — понадобится приглашение)',
+    never_opened: '(аккаунт есть, но Netai ни разу не открывал — вопрос остался бы без ответа)',
+  },
+  es: {
+    not_member: '(no está en Netai — hará falta una invitación)',
+    never_opened: '(tiene cuenta pero nunca abrió Netai — la pregunta quedaría sin respuesta)',
+  },
 };
 
 /** Said once, above the list, when the plan can reach NOBODY it names. */
-const NOBODY_REACHABLE =
-  'ყურადღება: ამ გეგმაში დასახელებულ არცერთ ადამიანს ვერ მივწერ. დამტკიცება ' +
-  'თავისთავად ვერაფერს გააგზავნის — ჯერ მოწვევა ან შენით მიწერა დასჭირდება.';
+const NOBODY_REACHABLE: Record<RunLanguage, string> = {
+  ka:
+    'ყურადღება: ამ გეგმაში დასახელებულ არცერთ ადამიანს ვერ მივწერ. დამტკიცება ' +
+    'თავისთავად ვერაფერს გააგზავნის — ჯერ მოწვევა ან შენით მიწერა დასჭირდება.',
+  en:
+    'Note: I cannot write to a single person this plan names. Approving it sends ' +
+    'nothing on its own — an invitation, or a message from you, has to come first.',
+  ru:
+    'Важно: ни одному из названных в плане людей я написать не могу. Подтверждение ' +
+    'само по себе ничего не отправит — сначала нужно приглашение или твоё сообщение.',
+  es:
+    'Aviso: no puedo escribir a ninguna de las personas que nombra este plan. ' +
+    'Aprobarlo no envía nada por sí solo — antes hace falta una invitación o un ' +
+    'mensaje tuyo.',
+};
 
 /**
  * Ticket 20 row 203 — can this plan reach anybody at all?
@@ -420,6 +467,50 @@ export function peopleToWake(plan: TaskPlan): string[] {
   return plan.people_to_involve.filter((p) => p.reach === 'never_opened').map((p) => p.name);
 }
 
+/**
+ * The card's own headings, in the language the conversation is held in — the
+ * seat's #4061 (h), and the last thing the server writes that was Georgian
+ * whatever the owner typed.
+ */
+const PLAN_WORDS: Record<RunLanguage, Record<string, string>> = {
+  ka: {
+    approved: 'დამტკიცებულია',
+    toApprove: 'დასამტკიცებელი',
+    solvedWhen: 'მოგვარებულია, როცა',
+    routes: 'გზები',
+    whoIAsk: 'ვის ვკითხავ',
+    nobodyYet: 'ჯერ არავის',
+    neverAsk: 'ვის არასდროს',
+  },
+  en: {
+    approved: 'approved',
+    toApprove: 'awaiting your approval',
+    solvedWhen: 'Solved when',
+    routes: 'Routes',
+    whoIAsk: 'Who I will ask',
+    nobodyYet: 'nobody yet',
+    neverAsk: 'Never ask',
+  },
+  ru: {
+    approved: 'подтверждён',
+    toApprove: 'ждёт подтверждения',
+    solvedWhen: 'Решено, когда',
+    routes: 'Пути',
+    whoIAsk: 'Кого спрошу',
+    nobodyYet: 'пока никого',
+    neverAsk: 'Кого никогда',
+  },
+  es: {
+    approved: 'aprobado',
+    toApprove: 'pendiente de tu aprobación',
+    solvedWhen: 'Resuelto cuando',
+    routes: 'Vías',
+    whoIAsk: 'A quién preguntaré',
+    nobodyYet: 'a nadie todavía',
+    neverAsk: 'A quién nunca',
+  },
+};
+
 export function renderPlan(
   plan: TaskPlan,
   version: number,
@@ -429,16 +520,18 @@ export function renderPlan(
   // only the proposal path — the one that showed „in progress" before anything
   // could have started — has to say more.
   everApproved: boolean = approvedAt !== null,
+  language: RunLanguage = 'ka',
 ): string {
+  const words = PLAN_WORDS[language];
   const routes = plan.routes
     .map(
       (r) =>
-        `- ${r.name} — ${everApproved ? (ROUTE_STATUS_WORDS[r.status] ?? r.status) : ROUTE_NOT_STARTED}`,
+        `- ${r.name} — ${everApproved ? (ROUTE_STATUS_WORDS[language][r.status] ?? r.status) : ROUTE_NOT_STARTED[language]}`,
     )
     .join('\n');
   const people =
     plan.people_to_involve.length === 0
-      ? 'ჯერ არავის'
+      ? words.nobodyYet
       : plan.people_to_involve
           // The route is dropped when it only repeats the person — the live
           // plan showed „Dato Karada — Dato Karada", which tells the reader
@@ -450,29 +543,29 @@ export function renderPlan(
             // could be written to.
             return p.reach === undefined || p.reach === 'ok'
               ? base
-              : `${base} ${REACH_NOTE[p.reach]}`;
+              : `${base} ${REACH_NOTE[language][p.reach]}`;
           })
           .join('\n');
   const head = approvedAt
-    ? `გეგმა v${version} (დამტკიცებულია)`
-    : `გეგმა v${version} (დასამტკიცებელი)`;
+    ? `${PLAN_TITLE[language]} v${version} (${words.approved})`
+    : `${PLAN_TITLE[language]} v${version} (${words.toApprove})`;
   const lines = [
     head,
-    `მოგვარებულია, როცა: ${plan.solved_when}`,
-    `გზები:\n${routes}`,
-    `ვის ვკითხავ:\n${people}`,
+    `${words.solvedWhen}: ${plan.solved_when}`,
+    `${words.routes}:\n${routes}`,
+    `${words.whoIAsk}:\n${people}`,
   ];
   // Row 146: the loudest case gets its own line. A plan naming three people
   // none of whom can be written to is not a plan, and the owner has to know
   // that before the yes, not 47 seconds after it.
   if (nobodyCanBeWrittenTo(plan)) {
-    lines.splice(1, 0, NOBODY_REACHABLE);
+    lines.splice(1, 0, NOBODY_REACHABLE[language]);
   }
   // „Nobody" is not a list of nobody: an empty exclusion list means the
   // section has nothing to say, so it is left out rather than printed as an
   // empty bullet.
   if (plan.never_contact.length > 0) {
-    lines.push(`ვის არასდროს:\n${plan.never_contact.map((n) => `- ${n.name}`).join('\n')}`);
+    lines.push(`${words.neverAsk}:\n${plan.never_contact.map((n) => `- ${n.name}`).join('\n')}`);
   }
   return lines.join('\n');
 }
