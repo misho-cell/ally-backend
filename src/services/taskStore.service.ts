@@ -517,9 +517,29 @@ export async function updateTask(
          closed_as = CASE WHEN $3 = 'closed' THEN $5::text ELSE closed_as END,
          pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
          pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
-         -- A closed goal has no next wake (Ticket 11 Task 7 (e): goal 1420 read
-         -- closed with a wake still set); paused keeps its date for the resume.
-         next_wake_at = CASE WHEN $3 = 'closed' THEN NULL ELSE next_wake_at END,
+         /*
+          * Ticket 20 row 113, 17 September — a CLOSE USED TO ERASE THE WAKE,
+          * and a goal closed by mistake could not be put back.
+          *
+          * The tester repaired the two goals tonight's P0 closed and found it:
+          * „both came back with next_wake_at empty — so a reopened goal sits
+          * there for ever unless somebody remembers to set the wake again." They
+          * only knew the old times (20:48 and 15:51) because they happened to
+          * have read them an hour before.
+          *
+          * The clearing was defensive and it was defending nothing. Ticket 11
+          * Task 7 (e) was a REPORTING complaint — goal 1420 read „closed" with a
+          * wake still showing — and every reader of this column filters on
+          * status = 'open' already: getDueTasks, the nightly review's worklist,
+          * ensureNextWake. A wake on a closed goal has never woken anything.
+          *
+          * So the date stays, the way it already stays through a pause, and
+          * reopening a goal restores its schedule instead of silently leaving it
+          * asleep. If a closed goal showing a wake reads oddly somewhere, that is
+          * the display's question and it must not be answered by destroying the
+          * only copy of the date.
+          */
+         next_wake_at = next_wake_at,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2

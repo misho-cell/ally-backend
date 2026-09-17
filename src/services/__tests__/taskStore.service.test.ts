@@ -257,3 +257,35 @@ describe('updateTask marks the thread stopped — but only for a stop', () => {
     expect(mockStopped).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Ticket 20 row 113, 17 September — a close used to erase the wake.
+ *
+ * The tester repaired the two goals tonight's P0 closed and found it: „both
+ * came back with next_wake_at empty — so a reopened goal sits there for ever
+ * unless somebody remembers to set the wake again." They only knew the old
+ * times because they had read them an hour earlier.
+ *
+ * The clearing defended nothing. Ticket 11 Task 7 (e) was a REPORTING
+ * complaint, and every reader of the column filters on status = 'open'
+ * already, so a wake on a closed goal has never woken anything.
+ */
+describe('closing a goal keeps its wake', () => {
+  it('does not write NULL over next_wake_at', async () => {
+    mockQuery.mockResolvedValue(result([{ thread_id: 16842 }]) as never);
+
+    await updateTask(USER, 3433, 'closed', 'stopped', 'stopped');
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('next_wake_at = next_wake_at');
+    expect(sql).not.toMatch(/next_wake_at = CASE[^,]*NULL/);
+  });
+
+  it('still clears the question, which a closed goal genuinely has no use for', async () => {
+    mockQuery.mockResolvedValue(result([{ thread_id: 16842 }]) as never);
+
+    await updateTask(USER, 3433, 'closed', 'stopped', 'stopped');
+
+    expect(String(mockQuery.mock.calls[0][0])).toContain('pending_question = CASE');
+  });
+});
