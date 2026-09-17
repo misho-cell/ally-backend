@@ -24,37 +24,134 @@ import {
 } from './membership';
 
 /**
- * Ticket 20 row 108 — a ceiling on how much work one query may ask for.
+ * Ticket 20 row 108, second pass — a ceiling on how much work one query may ask
+ * for, and the first pass of it was wrong in two ways worth writing down.
  *
- * The cost of this search is (rows the bridges own) x (regexes), and only the
- * second factor is under anybody's control. Measured on account 501 against
- * the live base, tag half alone: 6 regexes 3.1 s, 12 regexes 11.4 s. Ninia's
- * marketing sentence produced 51, in a statement of 9,687 characters, and
- * timed out at 15 s three times today without returning a single person.
+ * The cost of this search is (rows the bridges own) x (patterns), and only the
+ * second factor is under anybody's control. Measured on account 501 against the
+ * live base, the whole query, both halves and the ranking:
  *
- * The real fix is upstream — the opening search now sends the short phrase
- * rather than the owner's sentence (openingSearch.service.ts). This is the
- * backstop for everything that is not that path: a model that pastes a
- * sentence into tag_query, a future caller nobody has written yet. A search
- * that returns the best eight words' worth of matches beats one that returns
- * nothing at all, which is what the uncapped version does.
+ *    3 patterns    4.9 s
+ *    9 patterns   10.2 s
+ *   13 patterns   12.3 s
+ *   51 patterns   times out at 15 s and returns nobody
  *
- * Eight because the three real query shapes on the board — „ფოტოგრაფი",
- * „ქორწილის ფოტოგრაფი", „Dachi Axel" — are one to three words, and eight
- * leaves room for a genuinely long name or a two-language phrase before it
- * bites. When it bites it says so in the log rather than quietly searching for
- * less than it was asked.
+ * The first pass counted WORDS and allowed eight of them. Both halves of that
+ * were wrong, and goal 4522 showed it within the hour:
+ *
+ *   13:34:49 [second-degree] user 501: query had 17 word groups (51 patterns);
+ *            searching the first 8
+ *
+ * WORDS ARE THE WRONG UNIT. A Georgian word carries about three transliteration
+ * variants, so eight words is roughly twenty-four patterns — well past the
+ * twelve-ish that fits in the budget. Patterns are what the database runs, so
+ * patterns are what gets counted.
+ *
+ * AND „THE FIRST N" IS THE WRONG N. The eight it kept were „გამარჯობა, მაქვს,
+ * კონსერვების, საწარმო, მაგრამ, მიჭირს, მარკეტინგში, ამისთვის" — the greeting
+ * and the filler. I assumed the front of a sentence carries the meaning; in a
+ * Georgian sentence the need comes last. So the words that can never be
+ * anybody's tag are dropped BEFORE the count, and the ceiling is applied to
+ * what is left.
+ *
+ * None of this is the real fix, and it must not be mistaken for one: the
+ * opening search sends the distiller's short phrase, and the distiller
+ * understands the sentence in a way a word list never will. This is the
+ * backstop for the path where that did not happen — and on 4522 it did not.
  */
-export const MAX_QUERY_WORD_GROUPS = 8;
 
+/**
+ * Words that are never a tag. Not a general stopword list: every entry is a
+ * word that appeared in a real query on the board and cost a full pass over
+ * 885,942 rows to match nobody. Kept short and specific for that reason — a
+ * long list guessed in advance would eventually drop a word somebody really
+ * did write in their phonebook.
+ */
+const NEVER_A_TAG = new Set([
+  // greetings and connectives
+  'გამარჯობა',
+  'მაგრამ',
+  'და',
+  'ან',
+  'რომ',
+  'რომელიც',
+  'ესეც',
+  'ამისთვის',
+  'hello',
+  'hi',
+  'but',
+  'and',
+  'or',
+  'that',
+  'which',
+  'for',
+  'with',
+  'the',
+  'a',
+  'an',
+  // having and needing — the shape of every goal sentence
+  'მაქვს',
+  'მყავს',
+  'არის',
+  'მჭირდება',
+  'გვჭირდება',
+  'დამჭირდა',
+  'მინდა',
+  'ვეძებ',
+  'ვეძებთ',
+  'საჭიროა',
+  'მიჭირს',
+  'დამეხმარება',
+  'დამეხმარე',
+  'i',
+  'we',
+  'need',
+  'want',
+  'looking',
+  'find',
+  'help',
+  'me',
+  'my',
+]);
+
+/**
+ * The most patterns one query may run. Measured on 501 against the live base,
+ * the whole query — both halves, the ranking, the limit of 30:
+ *
+ *    3 patterns    4.9 s
+ *    9 patterns   10.2 s
+ *   13 patterns   12.3 s
+ *   51 patterns   times out at 15 s and returns nobody
+ *
+ * Nine, not twelve or thirteen. Thirteen fits the budget on a quiet replica
+ * with 2.7 s to spare, and 2.7 seconds is not headroom — it is the difference
+ * between a busy afternoon and an owner who gets nothing. Nine leaves five.
+ *
+ * Whole groups are dropped, never half of one: a word searched in Georgian but
+ * not in its Latin spelling finds half the people who match it, and reads as a
+ * ranking bug for weeks rather than as a truncated query.
+ */
+const MAX_QUERY_PATTERNS = 9;
+
+/** Always search for something, even if the first word alone is over budget. */
 export function cappedGroups(groups: string[][], userId: string): string[][] {
-  if (groups.length <= MAX_QUERY_WORD_GROUPS) return groups;
+  const meaningful = groups.filter((g) => !NEVER_A_TAG.has(g[0] ?? ''));
+  const candidates = meaningful.length > 0 ? meaningful : groups;
+  const kept: string[][] = [];
+  let patterns = 0;
+  for (const group of candidates) {
+    if (kept.length > 0 && patterns + group.length > MAX_QUERY_PATTERNS) break;
+    kept.push(group);
+    patterns += group.length;
+  }
+  if (kept.length === groups.length) return groups;
   // eslint-disable-next-line no-console
   console.warn(
     `[second-degree] user ${userId}: query had ${groups.length} word groups ` +
-      `(${groups.flat().length} patterns); searching the first ${MAX_QUERY_WORD_GROUPS}`,
+      `(${groups.flat().length} patterns); searching ${kept.length} (${patterns} patterns): ` +
+      kept.map((g) => g[0]).join(' '),
   );
-  return groups.slice(0, MAX_QUERY_WORD_GROUPS);
+  return kept;
 }
 
 const MAX_FRIEND_PHONES = 3000;

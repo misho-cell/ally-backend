@@ -153,7 +153,7 @@ export async function distilSearchQuery(
 ): Promise<DistilledQuery> {
   const model = queryModel();
   const client = openaiClient();
-  if (model === '' || client === null) return { query: goalText };
+  if (model === '' || client === null) return declined(goalText, 'no model configured');
 
   try {
     const completion = await client.chat.completions.create(
@@ -180,12 +180,36 @@ export async function distilSearchQuery(
       runId: ctx.runId,
     }).catch(() => {});
 
-    const distilled = usableQuery(completion.choices[0]?.message?.content ?? '');
-    if (distilled === null || distilled === goalText) return { query: goalText };
+    const answer = completion.choices[0]?.message?.content ?? '';
+    const distilled = usableQuery(answer);
+    if (distilled === null)
+      return declined(goalText, answer.trim() === '' ? 'empty answer' : 'unusable answer');
+    if (distilled === goalText) return declined(goalText, 'answered with the goal text');
     return { query: distilled, fromGoal: goalText };
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`[search-query] ${model} could not distil:`, (err as Error).message);
-    return { query: goalText };
+    return declined(goalText, `${model} failed: ${(err as Error).message}`);
   }
+}
+
+/**
+ * Ticket 20 row 108, second pass — every way this can decline now SAYS SO.
+ *
+ * Goal 4522, 13:34 UTC, on a build where the second circle takes the distilled
+ * query: both searches were logged with Ninia's whole sentence, and the second
+ * circle timed out at 17.1 s again. The reason was not the build and not the
+ * routing — the distiller returned the goal text, and returned it in silence.
+ *
+ * Of the four ways it could do that, exactly one wrote a line. „No model
+ * configured", „empty answer" and „answered with the goal text" all returned
+ * the sentence with nothing in the log, so from the outside a working
+ * distiller and an absent one are the same picture. That is the substitution
+ * this codebase keeps finding, in a function I wrote to avoid it.
+ *
+ * Not free and worth it: one line per goal at most, and only when the search
+ * is about to be handed something nobody intended.
+ */
+function declined(goalText: string, reason: string): DistilledQuery {
+  // eslint-disable-next-line no-console
+  console.warn(`[search-query] not distilled (${reason}); searching the goal text as typed`);
+  return { query: goalText };
 }
