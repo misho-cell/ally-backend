@@ -106,7 +106,12 @@ export function awaitingPlanApproval(
   return task.plan_proposed !== null && planInForce(task) === null;
 }
 
-function statusAfterRun(
+/**
+ * Exported for its own test. The rules here decide which half of the owner's
+ * list a thread lands in, and „finished" on live work is not a cosmetic
+ * mistake — it is the product telling somebody their open goal is over.
+ */
+export function statusAfterRun(
   result: ChatResult,
   pendingAsk: boolean,
   opts: {
@@ -116,6 +121,8 @@ function statusAfterRun(
     flagged: boolean;
     /** The goal on this thread has a plan proposed and not yet approved. */
     awaitingPlanApproval: boolean;
+    /** The thread carries a goal the owner has NOT closed. */
+    openGoal: boolean;
   },
 ): ThreadStatus {
   // An explicit ask_owner_decision outranks everything: the model itself said
@@ -151,6 +158,25 @@ function statusAfterRun(
   // account, fourteen of the tester's forty visible threads).
   if (!opts.workItem) return 'done';
   if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
+  /**
+   * A goal the owner has not closed is not FINISHED, whatever this run's reply
+   * looked like.
+   *
+   * The battery run of 17 September, the seat's reading of the sidebar: under
+   * „finished" sat the founder's two live goals — 3433, open with two asks and
+   * a wake at 20:40, and 3763, open with a wake the next afternoon. Both had
+   * simply had a turn that asked nothing and was waiting on nobody, which fell
+   * through to done here.
+   *
+   * Nothing was wrong with the goal. The list was telling him his open work
+   * was over, in the one place he looks to find out.
+   *
+   * The same mistake as the two comments above it and worth naming a third
+   * time: this asked what the SERVER had just said instead of what the WORK
+   * was waiting for. „waiting" is the honest word — the goal is running, and
+   * nothing at this moment is owed by the owner.
+   */
+  if (opts.openGoal) return 'waiting';
   return 'done';
 }
 
@@ -631,6 +657,7 @@ threadsRouter.post(
             workItem: thread.type !== 'regular' || openTask !== null || becameTask,
             flagged,
             awaitingPlanApproval: awaitingPlanApproval(openTask),
+            openGoal: openTask !== null,
           });
           // The status caption follows the conversation's language (task 22
           // g/h) — an English thread must not read „შენი პასუხი სჭირდება".

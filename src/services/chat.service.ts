@@ -221,6 +221,7 @@ import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
+import { setThreadStatus } from './threadStatus.service';
 import { stopGoal } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { getGoalOnThread } from './taskStore.service';
@@ -7066,6 +7067,17 @@ export async function processChat(
       // line above is the whole answer, and a model improvising after it is
       // exactly what closed two real goals tonight.
       markThreadStopped(threadId);
+      /**
+       * And settle the thread, because THIS run ends here and the route's own
+       * settling is below the drop.
+       *
+       * Every message sets the thread to „working" on the way in. The goal
+       * branch above settles it through stopGoal; this branch had nothing, so
+       * a stop typed in a goal-less chat left the row reading „ვმუშაობ…" for
+       * ever. That is one of the four threads the seat found sitting under
+       * „ongoing" with no open goal on them.
+       */
+      void setThreadStatus(userId, threadId, 'done', { statusLine: null });
     }
     /**
      * Row 113, ninth pass — the run ENDS here, and the line is its answer.

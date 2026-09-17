@@ -19,7 +19,7 @@
  * proposed plan nobody has approved is waiting on the owner no matter how the
  * last sentence was punctuated.
  */
-import { awaitingPlanApproval } from '../threads.routes';
+import { awaitingPlanApproval, statusAfterRun } from '../threads.routes';
 
 type PlanFields = Parameters<typeof awaitingPlanApproval>[0];
 
@@ -68,5 +68,75 @@ describe('a goal waiting for its plan to be approved', () => {
         task({ plan_proposed: PLAN as never, plan: null, plan_approved_at: null, plan_version: 2 }),
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * The battery run of 17 September — the sidebar had it backwards.
+ *
+ * The seat's reading: under „ongoing" sat four threads with no open goal, one
+ * still labelled working; under „finished" sat the founder's two LIVE goals,
+ * 3433 (open, two asks out, a wake at 20:40) and 3763 (open, a wake the next
+ * afternoon). Nothing was wrong with either goal. Both had simply had a turn
+ * that asked nothing and was waiting on nobody, and that fell through to done.
+ *
+ * Which is the same mistake the two rules above it were written for, a third
+ * time: the status asked what the SERVER had just said instead of what the
+ * WORK was waiting for.
+ */
+describe('a thread whose goal is still open', () => {
+  const quietReply = { reply: 'გავაგრძელებ და შედეგს მოგწერ.' } as Parameters<
+    typeof statusAfterRun
+  >[0];
+
+  it('is never FINISHED, however quiet the last reply was', () => {
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: true,
+        flagged: false,
+        awaitingPlanApproval: false,
+        openGoal: true,
+      }),
+    ).toBe('waiting');
+  });
+
+  it('still says needs_you when the run actually asked something', () => {
+    // The open goal must not swallow a real question to the owner.
+    expect(
+      statusAfterRun(
+        { reply: 'რომელი გირჩევნია?' } as Parameters<typeof statusAfterRun>[0],
+        false,
+        {
+          workItem: true,
+          flagged: false,
+          awaitingPlanApproval: false,
+          openGoal: true,
+        },
+      ),
+    ).toBe('needs_you');
+  });
+
+  it('leaves an ordinary conversation finished, which it is', () => {
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: false,
+        flagged: false,
+        awaitingPlanApproval: false,
+        openGoal: false,
+      }),
+    ).toBe('done');
+  });
+
+  it('files a work item with NO open goal as done, exactly as before', () => {
+    // A closed goal's thread, an answered ask: those are genuinely over, and
+    // this change must not sweep them back into the ongoing half.
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: true,
+        flagged: false,
+        awaitingPlanApproval: false,
+        openGoal: false,
+      }),
+    ).toBe('done');
   });
 });
