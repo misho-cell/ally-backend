@@ -22,13 +22,21 @@ function fakeStream(): {
       return true;
     },
   } as unknown as Response;
-  // Each frame is „id: N\ndata: {…}\n\n" — the id line is what lets a dropped
-  // stream resume, and the payload is the second line.
+  /**
+   * Deliberately naive, and left that way on purpose.
+   *
+   * A frame is „data: {…}\nid: N\n\n". This parser reads the chunk as if the
+   * payload were the first thing in it — which is how somebody writing an SSE
+   * reader by hand does it, and this repo's own harness is the evidence: it
+   * was written that way before the id line existed. The stream is behind a
+   * Bearer header, so the client cannot be a native EventSource and is a
+   * polyfill or a hand-rolled reader nobody here can see. If anyone reorders
+   * those two lines, this test is what says so.
+   */
   const events = (): unknown[] =>
     writes
-      .map((w) => w.split('\n').find((line) => line.startsWith('data: ')))
-      .filter((line): line is string => line !== undefined)
-      .map((line) => JSON.parse(line.slice('data: '.length)) as unknown);
+      .filter((w) => w.startsWith('data: '))
+      .map((w) => JSON.parse(w.slice('data: '.length, w.indexOf('\nid: '))) as unknown);
   return { res, events, frames: (): readonly string[] => [...writes] };
 }
 

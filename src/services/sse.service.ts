@@ -202,8 +202,25 @@ export function subscribeUserEvents(
   const eventName = `user:${userId}`;
   const key = device ?? null;
 
+  /**
+   * `data:` FIRST, `id:` after it, and the order is a compatibility decision
+   * rather than a style one.
+   *
+   * This stream is behind `Authorization: Bearer`, which a browser's native
+   * EventSource cannot send — so the client is a polyfill or a hand-rolled
+   * reader over fetch, and I cannot see which. A hand-rolled one very
+   * plausibly does `chunk.startsWith('data: ')`; the test harness in this
+   * repo did exactly that until this change, which is the best evidence
+   * available of how somebody writes this by hand.
+   *
+   * The SSE grammar takes the fields of an event block in any order and
+   * dispatches at the blank line, so putting data first costs nothing and
+   * leaves a naive parser reading exactly what it read yesterday. The harness
+   * is deliberately left naive for the same reason: if anyone reorders these
+   * two lines, that test is what says so.
+   */
   function write(event: BufferedEvent): void {
-    res.write(`id: ${event.id}\ndata: ${JSON.stringify(event.data)}\n\n`);
+    res.write(`data: ${JSON.stringify(event.data)}\nid: ${event.id}\n\n`);
   }
 
   emitter.on(eventName, write);
