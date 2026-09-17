@@ -227,3 +227,49 @@ describe('renderPendingMessage', () => {
     ).toBeNull();
   });
 });
+
+/**
+ * Ticket 20 row 98, second pass — the COUNT is a message too.
+ *
+ * The items already left as their own messages. The count behind them did
+ * not: the tool description asked the model to „say more are coming", and the
+ * battery found „6 განახლება გელოდება" and „You also have 6 updates waiting"
+ * glued to the end of three unrelated answers — the mayor (15813), the price
+ * (15816), the English price (15820).
+ *
+ * Tornike's word: the answer stays clean, and the note comes as its own short
+ * message with a button to open them.
+ */
+describe('row 98 second pass — "more are still coming"', () => {
+  const item = (count: number) => ({ kind: 'more_pending', task_id: null, payload: { count } });
+
+  it('is its own message with its own button', () => {
+    const out = renderPendingMessage(item(6), 'ka');
+
+    expect(out?.text).toContain('6');
+    expect(out?.choices).toEqual(['ვნახოთ', 'მოგვიანებით']);
+    expect(out?.ref.kind).toBe('more_pending');
+  });
+
+  it('reads correctly for one, which is a different sentence', () => {
+    // „1 განახლება" and „6 განახლება" are different sentences in both
+    // languages, and a template that reads wrong at one looks unfinished.
+    expect(renderPendingMessage(item(1), 'ka')?.text).toBe('კიდევ ერთი განახლება გელოდება.');
+    expect(renderPendingMessage(item(1), 'en')?.text).toBe('One more update is waiting for you.');
+  });
+
+  it('matches the language of the answer above it', () => {
+    expect(renderPendingMessage(item(3), 'en')?.text).toBe('3 more updates are waiting.');
+    expect(renderPendingMessage(item(3), 'en')?.choices).toEqual(['Show them', 'Later']);
+  });
+
+  it('says nothing at all when nothing is waiting', () => {
+    // Silence is what „nothing else is waiting" looks like; a message saying
+    // „0 more updates" is a message nobody needed.
+    expect(renderPendingMessage(item(0), 'ka')).toBeNull();
+    expect(renderPendingMessage(item(-1), 'ka')).toBeNull();
+    expect(
+      renderPendingMessage({ kind: 'more_pending', task_id: null, payload: {} }, 'ka'),
+    ).toBeNull();
+  });
+});

@@ -1757,7 +1757,7 @@ const GET_CURIOSITY_QUEUE_TOOL: AnthropicTool = {
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
   name: 'get_pending_updates',
   description:
-    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation; mention what is due naturally and say more are coming when more_pending > 0. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction in the payload: follow it.' +
+    'Get the results due to be shown today (drip-released) plus how many more are still coming. Call at the start of a conversation. The items AND the count of what is still waiting are shown to the user as their own messages with their own buttons — never write either into your answer. Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction in the payload: follow it.' +
     ' WHEN: for what is due today. include_seen=true only when the user asks for everything waiting or shown before — already_shown is a read, not new news.',
   input_schema: {
     type: 'object',
@@ -4634,7 +4634,27 @@ async function executeToolCall(
       // model reads in the same breath as the data it applies to, and one that
       // cannot drift out of sync with the code that enforces it.
       if (!PENDING_AS_MESSAGES_OFF) notePendingItems(runId, updates);
-      const deliveredSeparately = !PENDING_AS_MESSAGES_OFF && updates.length > 0;
+      /**
+       * Ticket 20 row 98, second pass — the COUNT is a message too.
+       *
+       * The items already leave as their own messages. The count behind them
+       * did not: the tool description asked the model to „say more are coming
+       * when more_pending > 0", and the battery found „6 განახლება გელოდება"
+       * and „You also have 6 updates waiting" glued to the end of three
+       * unrelated answers — the mayor, the price, the English price.
+       *
+       * Tornike's word: the answer stays clean, and the note comes as its own
+       * short message with a button. So the last thing the prompt was still
+       * asking the model to append becomes the same shape as everything else
+       * it no longer appends.
+       */
+      if (!PENDING_AS_MESSAGES_OFF && morePending > 0) {
+        notePendingItems(runId, [
+          { kind: 'more_pending', task_id: null, payload: { count: morePending } },
+        ]);
+      }
+      const deliveredSeparately =
+        !PENDING_AS_MESSAGES_OFF && (updates.length > 0 || morePending > 0);
       return {
         ...(alreadyShown !== null && { already_shown: alreadyShown }),
         ...(deliveredSeparately && {
@@ -4643,7 +4663,11 @@ async function executeToolCall(
             'immediately after your answer. Do NOT mention, summarise or append any of them to ' +
             'your answer, and do not offer buttons for them — answer only what the user asked. ' +
             'They are given to you so you know what the user is about to see, and so you can act ' +
-            'on their reply to one (the instruction on each item says how).',
+            'on their reply to one (the instruction on each item says how). ' +
+            // Row 98 second pass: the count is delivered the same way, so the
+            // one line the model was still asked to append is now ours too.
+            'more_pending is delivered the same way. Never write the number of waiting updates ' +
+            'into your answer.',
         }),
         updates:
           curiosity === null

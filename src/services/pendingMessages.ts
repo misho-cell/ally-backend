@@ -91,6 +91,20 @@ interface PendingTexts {
   introAcceptDirect: (who: string) => string;
   introAcceptMediated: (target: string) => string;
   introDecline: string;
+  /**
+   * Ticket 20 row 98, second pass — "more are still coming".
+   *
+   * The count used to be a sentence the PROMPT asked the model to append, and
+   * the battery caught it glued to the end of three unrelated answers: the
+   * mayor, the price, the English price. Tornike's word: the answer stays
+   * clean and the note comes as its own short message with a button.
+   *
+   * It is a plural because "1 განახლება" and "6 განახლება" are different
+   * sentences in both languages, and a number in a template that reads wrong
+   * at one is a product that looks unfinished at that one.
+   */
+  morePending: (count: number) => string;
+  morePendingOpen: string;
 }
 
 const TEXTS: Record<'ka' | 'en', PendingTexts> = {
@@ -120,6 +134,9 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     introAcceptDirect: (who: string) => `დიახ, გავიცნობ ${geoName(who, 'dat')}`,
     introAcceptMediated: (target: string) => `დიახ, გავაცნობ ${geoName(target, 'dat')}`,
     introDecline: 'არა, ამჯერად არა',
+    morePending: (count: number) =>
+      count === 1 ? 'კიდევ ერთი განახლება გელოდება.' : `კიდევ ${count} განახლება გელოდება.`,
+    morePendingOpen: 'ვნახოთ',
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -147,6 +164,9 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     introAcceptDirect: (who: string) => `Yes, I will meet ${who}`,
     introAcceptMediated: (target: string) => `Yes, I will introduce them to ${target}`,
     introDecline: 'No, not now',
+    morePending: (count: number) =>
+      count === 1 ? 'One more update is waiting for you.' : `${count} more updates are waiting.`,
+    morePendingOpen: 'Show them',
   },
 };
 
@@ -168,6 +188,25 @@ export function renderPendingMessage(
   const who = str(p, 'who');
 
   switch (item.kind) {
+    /**
+     * Row 98, second pass. Not an item from the queue — the COUNT of what is
+     * still behind it, which the prompt used to make the model say at the end
+     * of whatever it was answering.
+     *
+     * A count of zero produces nothing rather than „0 more updates": silence
+     * is what „nothing else is waiting" looks like, and a message saying so is
+     * a message nobody needed.
+     */
+    case 'more_pending': {
+      const count = num(p, 'count') ?? 0;
+      if (count <= 0) return null;
+      return {
+        text: t.morePending(count),
+        choices: [t.morePendingOpen, t.later],
+        ref: { kind: item.kind },
+        instruction,
+      };
+    }
     case 'chorus_ask': {
       if (who === null) return null;
       return {
