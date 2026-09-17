@@ -214,7 +214,7 @@ async function resolveRunMode(
 import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
-import { noteRunStart, runWasStopped } from './stoppedRuns';
+import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
 import { stopGoal } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { getGoalOnThread } from './taskStore.service';
@@ -4579,7 +4579,34 @@ async function executeToolCall(
        */
       if (threadId !== undefined) {
         const chatGoal = await getGoalOnThread(threadId).catch(() => null);
-        if (chatGoal !== null && chatGoal.id !== taskIdToUpdate) {
+        /**
+         * A chat with NO goal may change no goal at all — 18:51, the third
+         * strike.
+         *
+         * My first version of this guard only fired when the chat HAD a goal
+         * and the id differed. Three minutes after I called it live, a stop
+         * typed in thread 16840 — a questions-only chat that never had a goal
+         * — closed the founder's real volleyball goal for the second time
+         * tonight. `getGoalOnThread` answered null, the guard was inert, and
+         * the model was free again.
+         *
+         * „No goal here" is not „no opinion about which goal". It is the
+         * clearest possible answer: nothing in this conversation can be
+         * stopped, changed or closed from it.
+         */
+        if (chatGoal === null) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[wrong-goal] run ${runId ?? '-'} thread ${threadId}: refused ${status} on ${taskIdToUpdate} — this chat has no goal`,
+          );
+          return {
+            updated: false,
+            error:
+              'ამ ჩატს მიზანი არ აქვს, ამიტომ აქედან ვერცერთ მიზანს ვერ შევცვლი. ' +
+              'თუ მფლობელს სხვა მიზანი აქვს მხედველობაში — სთხოვე, იმ მიზნის ჩატში დაწეროს.',
+          };
+        }
+        if (chatGoal.id !== taskIdToUpdate) {
           // eslint-disable-next-line no-console
           console.warn(
             `[wrong-goal] run ${runId ?? '-'} thread ${threadId}: refused ${status} on ${taskIdToUpdate} — this chat's goal is ${chatGoal.id}`,
@@ -6877,12 +6904,38 @@ export async function processChat(
       console.error('[stop-intent] could not read the thread’s goal:', (err as Error).message);
       return null;
     });
+    /**
+     * Three answers, and the SERVER gives all three — 18:51, the third strike.
+     *
+     * Leaving the other two to the model is what did the damage twice tonight.
+     * A stop in a chat with no live goal reached the founder's real goals and
+     * REASONED about it on the way: „this probably means the volleyball coach
+     * search, which looks like a test record. I am closing it." A model must
+     * never be choosing which goal a stop meant.
+     *
+     * So every case ends here, the run's reply is withheld either way, and the
+     * owner gets one true line instead of a guess.
+     */
     if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,
       );
       await stopGoal(userId, running);
+    } else {
+      const line =
+        running === null
+          ? 'ამ საუბარში გასაჩერებელი მიზანი არ არის.'
+          : `„${running.title}" უკვე შეჩერებულია — ახალი არაფერი მიდის.`;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[stop-intent] run ${runId} thread ${threadId}: nothing to stop (${running === null ? 'no goal on this chat' : 'already closed'})`,
+      );
+      await saveMessage(userId, threadId, 'assistant', line).catch(() => undefined);
+      // Marked so THIS run's reply is withheld too: the one line above is the
+      // whole answer, and a model improvising after it is exactly what closed
+      // two real goals tonight.
+      markThreadStopped(threadId);
     }
   }
   const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
