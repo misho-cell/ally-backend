@@ -7123,6 +7123,23 @@ export async function processChat(
      * applies and the only evidence available this early.
      */
     const stopLang = detectRunLanguage(userMessage);
+    /**
+     * The owner's own line is stored HERE, and it has to be.
+     *
+     * The ordinary path persists the user's message further down, after the
+     * prompt is built — and this block returns before reaching it. So the stop
+     * that the seat typed was never written: on reload the thread held the
+     * server's answer with nothing above it, and „there is no goal to stop in
+     * this conversation" sat there with no visible cause. Their #4260 (B),
+     * and it is a regression from the early return I added five hours ago.
+     *
+     * Before the answer, not after, so the two rows order the way they
+     * happened.
+     */
+    await saveMessage(userId, threadId, 'user', userMessage).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[stop-intent] could not store the owner’s line:', (err as Error).message);
+    });
     let said: string;
     if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
