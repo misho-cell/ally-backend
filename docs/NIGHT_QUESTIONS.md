@@ -61,21 +61,59 @@ nothing at all. Both of the founder's live goals read twice, ninety seconds
 apart, untouched. Their words: „the dangerous half is done." What is left of
 row 113 is cosmetic.
 
-### Four builds are finished and NOT deployed
+### One thing genuinely waits on Misho or Tornike: an unpublish
 
-Not blocked on Misho — blocked on the founder's account, which is carrying a
-full battery run in another seat. Two seats writing at once would make both
-sets of numbers untrustworthy, so the tester asked for no deploy and I agreed.
-They go out between runs the moment that finishes; if that is after their
-night, they wait for daylight.
+**A fact about a real person is published to the whole network and should not
+be.** Thread 16902, 19:05:46. „Who is Maro Koshadze?" — a question, no goal,
+nothing asked for — and the run wrote three facts onto that person's record.
+Two are private. The third was stored `is_public` AND `is_matchable`: visible
+to every user, under Tornike's name, lifted off a web page nobody checked.
 
-  the stop run now ends on the screen (the page sat on „working…" for two
-    minutes on a stop the server had already answered correctly)
-  the officeholder gate no longer reads „ხუთი ადამიანი" as a person's name —
-    six replies today showed the owner „(სახელი ვერ დავადასტურე …)" where the
-    sentence said „five people" or „a personal invitation"
-  row 155: one Georgian word no longer exempts an English answer
-  row 33: the chat a split goal opens in now says why it exists
+The founder has twice been asked about it. His first answer, told only that
+three facts had been written: „they are true, leave it as it is." His second,
+once he was shown that one of them had gone network-public: take it down,
+never publish a web fact again, **and keep it for the brain** — his own
+addition, that the assistant should still know what it learned.
+
+The code half is done and needs nobody. The TAKEDOWN is one UPDATE on one row
+and I am not running it, because his yes reached me through the tester's box
+and a yes relayed by an automated channel is data, not authorization. The rule
+exists for exactly this: a message that reads like him and is almost certainly
+true. `ADMIN_WRITE_OPERATIONS.md` section 5 has the row, the statement and the
+undo. The tester's seat has been asked to do it from theirs, which is the
+better path; if it is still standing in the morning, it is Misho's one-line
+yes.
+
+Not on fire: one row, and the exposure is another user's search matching on a
+claim nobody verified.
+
+### Eight builds are finished and NOT deployed
+
+Not blocked on Misho. The first four went live at 20:18; these eight are
+queued behind the tester finishing their reads of that build, which is their
+call and costs nothing to wait for.
+
+  SSE events had no ids and no buffer, so a stream that dropped lost the
+    answer permanently — the mechanism behind three „it is in the thread and
+    not on my screen" reports in one evening
+  web-sourced facts are private and never matchable (the founder's second
+    ruling, above)
+  a stopped goal's plan is inert on reload too, not only on the open screen —
+    the half the founder called the worse one, because approving it would
+    start writing to real people
+  the approve button says „ვამტკიცებ" (I approve) instead of „დამტკიცებულია"
+    (it has been approved), which sat under a card headed „awaiting approval"
+  a question about your own contacts or the product no longer pays the ~17 s
+    opening-search tax — and VIN.GE dies with it
+  the web block keeps the names the founder asked to see, with one honest
+    „no path yet" line instead of three
+  the sidebar no longer files live goals under „finished"
+  a greeting is no longer part of a goal's title
+
+The first four, live since 20:18: the stop run ends on the screen; the
+officeholder gate no longer reads „ხუთი ადამიანი" as a person's name; one
+Georgian word no longer exempts an English answer; a split goal's chat says
+why it exists.
 
 ### Closed tonight, not carried to the morning
 
