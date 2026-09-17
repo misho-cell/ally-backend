@@ -11,6 +11,16 @@ export interface ExactMatchSql {
   readonly matchedCte: string;
   /** `bool_or(…)::int + …` — # of distinct query words matched, per contact. */
   readonly wordHits: string;
+  /**
+   * The same count over ONE piece of text rather than over a contact's many
+   * labels — `CASE WHEN … THEN 1 ELSE 0 END + …`.
+   *
+   * Ticket 20 row 137: used on the REGISTERED name, so a row can say how many
+   * query words the person's OWN name matched, separately from how many were
+   * matched by what other people saved them as. The expression is evaluated
+   * once per group, so it is safe to pass an aggregate like `MAX(u.name)`.
+   */
+  readonly scalarHits: (expr: string) => string;
   /** One flat array shared by the page and count queries — every entry referenced. */
   readonly params: unknown[];
   /** Placeholder index of the blocked-phones array (the last parameter). */
@@ -161,16 +171,31 @@ export function buildExactMatchSql(
        AND ${regexOr('cf.value')}
    )`;
 
+  // The placeholder index each group's patterns start at, computed once and
+  // reused: wordHits and scalarHits must agree on which parameter is which,
+  // and two separate cursors drifting apart would silently count the wrong
+  // words.
+  const groupStarts: number[] = [];
   let cursor = regexStart;
+  for (const group of groupRegex) {
+    groupStarts.push(cursor);
+    cursor += group.length;
+  }
+
+  const clauseFor = (expr: string, groupIndex: number): string =>
+    Array.from(
+      { length: groupRegex[groupIndex]?.length ?? 0 },
+      (_, i) => `${expr} ~ $${(groupStarts[groupIndex] ?? regexStart) + i}`,
+    ).join(' OR ');
+
   const wordHits = groupRegex
-    .map((group) => {
-      const clause = Array.from({ length: group.length }, (_, i) => `label ~ $${cursor + i}`).join(
-        ' OR ',
-      );
-      cursor += group.length;
-      return `bool_or(${clause})::int`;
-    })
+    .map((_, index) => `bool_or(${clauseFor('label', index)})::int`)
     .join(' + ');
+
+  const scalarHits = (expr: string): string =>
+    groupRegex
+      .map((_, index) => `(CASE WHEN ${clauseFor(expr, index)} THEN 1 ELSE 0 END)`)
+      .join(' + ');
 
   // COUNT over the same word_hits the ranking uses: a contact counts only when
   // every query word matched somewhere on it. Single-word queries need 1 hit,
@@ -186,6 +211,7 @@ export function buildExactMatchSql(
   return {
     matchedCte,
     wordHits,
+    scalarHits,
     params: [userId, ...allRegex, userId, [...blockedPhones]],
     blockIdx,
     totalSql,

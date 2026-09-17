@@ -32,6 +32,10 @@ const RESULT_LIMIT = 20;
 interface NameRow {
   phone: string;
   word_hits?: number | string | null;
+  /** Row 137: of those words, how many the person's OWN registered name matched. */
+  name_hits?: number | string | null;
+  /** Their account's own name, where they have one — never a saved label. */
+  registered_name?: string | null;
   name: string | null;
   saved_as: string | null;
   all_tags: string[];
@@ -126,8 +130,14 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // ("LIST. Lika Osepashvili. Ally. Force") were handed to the model as the
     // person's name and it reasoned from them (task 42). The raw label always
     // rides in saved_as. Empty strings count as missing everywhere (task 43).
+    // Ticket 20 row 137: how many query words the person's OWN registered name
+    // matched, counted apart from what other people saved them as. See
+    // `contradicted` below for what it is for.
+    const nameHits = m.scalarHits(`LOWER(COALESCE(MAX(NULLIF(TRIM(u.name), '')), ''))`);
     const aggSelect = `SELECT h.phone,
               MAX(h.word_hits)                     AS word_hits,
+              (${nameHits})                        AS name_hits,
+              MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
               COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
               MAX(ua.alias)                        AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
@@ -248,6 +258,42 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       fetchExclusionsForPhones(userId, phones),
       fetchHumanTierForPhones(userId, phones),
     ]);
+    /**
+     * Ticket 20 row 137 — a label naming somebody else is not that person.
+     *
+     * „Salome Parkosadze" returned Lika Osepashvili ABOVE Salome, with no
+     * approximate flag. Read on the live rows, the cause is not the matching
+     * and not a partial hit: Lika's own number carries the crowd labels
+     * „salome parkosadze - ally", „salome tester", „salome upwork", so she
+     * matches BOTH query words honestly and scores exactly what Salome scores.
+     * Somebody saved Salome's name against Lika's number.
+     *
+     * The signal we were throwing away is the one that settles it. Both are
+     * registered users: the account on Salome's number is named „Salome
+     * Parkosadze", the account on Lika's is named „Lika Ose". A person's OWN
+     * name is stronger evidence of who they are than what other people saved
+     * them as.
+     *
+     * SO THE TEST IS EVIDENCE INSIDE THE RESULT SET, not a rule about names in
+     * general. A row is contradicted only when it has a registered name, that
+     * name matches NOT ONE query word, and some other row in the same results
+     * matches every query word on its own registered name. In plain terms: we
+     * found the person, so the one wearing their label is not them.
+     *
+     * Bounded that way on purpose. Plenty of real people are registered under
+     * a nickname or initials and are findable only by what their friends saved
+     * — demoting them for that would be a worse bug than this one. They are
+     * touched only when the real owner of the name is right there in the same
+     * answer, and then demoting them is simply correct.
+     */
+    const groupCount = rawGroups.length;
+    const nameHitsOf = (row: NameRow): number => Number(row.name_hits ?? 0);
+    const someoneOwnsTheName = rows.some(
+      (row) => (row.registered_name ?? '') !== '' && nameHitsOf(row) >= groupCount,
+    );
+    const contradicted = (row: NameRow): boolean =>
+      someoneOwnsTheName && (row.registered_name ?? '') !== '' && nameHitsOf(row) === 0;
+
     const mapped = rows.map((row) =>
       toRow(
         row,
@@ -256,9 +302,13 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
         relationships,
         exclusions,
         humanTiers,
-        Number(row.word_hits ?? rawGroups.length) < rawGroups.length,
+        Number(row.word_hits ?? groupCount) < groupCount || contradicted(row),
       ),
     );
+    // Row 137, the ordering half. `approximate` is carried onto the mapped row
+    // above, so it is read back here rather than recomputed — one definition
+    // of "not the person asked for", used by both the flag and the order.
+    const isExact = (r: Record<string, unknown>): number => (r.approximate === true ? 0 : 1);
     // Task 27's ranking half: within the page, the record that actually KNOWS
     // something (facts, role, membership) outranks an empty shell — the empty
     // twin used to sit above the real Salome.
@@ -268,7 +318,12 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       (r.city ? 1 : 0) +
       (r.is_member === true ? 1 : 0) +
       (r.relationship ? 1 : 0);
-    mapped.sort((a, b) => richness(b) - richness(a));
+    // Richness is the TIEBREAKER, never the ranking. It used to be the whole
+    // comparison, which threw away the word_hits order the statement had just
+    // computed — so a rich wrong row outranked a sparse right one. That is the
+    // other half of row 137 and it would have put Lika first even if her
+    // labels had matched only one of the two words.
+    mapped.sort((a, b) => isExact(b) - isExact(a) || richness(b) - richness(a));
     // Task 54: two member rows under ONE name must be tellable apart — attach
     // member_since / network_size / activity to every row in a duplicated name
     // group, so neither the user nor the assistant aims at the wrong twin.

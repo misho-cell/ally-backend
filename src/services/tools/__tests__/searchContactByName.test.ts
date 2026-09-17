@@ -404,3 +404,135 @@ describe('two rows under one name', () => {
     expect(String(second?.differentiator)).not.toMatch(/\d{6}/);
   });
 });
+
+/**
+ * Ticket 20 row 137 — a full-name search puts the wrong person first.
+ *
+ * Battery searches 22117 and 22122: „Salome Parkosadze" and „სალომე
+ * ფარქოსაძე" returned Lika Osepashvili first, above Salome herself, with no
+ * approximate flag. „Beso Ortoidze" returned Ketevan Khuntsaria first.
+ *
+ * Read on the live rows, the cause is NOT a partial match. Lika's own number
+ * carries the crowd labels „salome parkosadze - ally", „salome tester",
+ * „salome upwork" — somebody saved Salome's name against Lika's number — so
+ * she matches both query words honestly and scores exactly what Salome
+ * scores. The account on Salome's number is named „Salome Parkosadze"; the
+ * account on Lika's is named „Lika Ose".
+ */
+describe('row 137 — a label naming somebody else is not that person', () => {
+  const salome = {
+    phone: '+995599071603',
+    word_hits: 2,
+    name_hits: 2,
+    registered_name: 'Salome Parkosadze',
+    name: 'Salome Parkosadze',
+    saved_as: 'salome parkosadze',
+    all_tags: ['salome', 'parkosadze'],
+    employer: 'ally',
+    jobPosition: null,
+    city: null,
+  };
+  // Rich record, matches both words, and is not her.
+  const lika = {
+    phone: '+995597444420',
+    word_hits: 2,
+    name_hits: 0,
+    registered_name: 'Lika Ose',
+    name: 'Lika Ose',
+    saved_as: 'lika osepashvili',
+    all_tags: ['salome', 'salome parkosadze - ally', 'lika osepashvili'],
+    employer: 'Ally',
+    jobPosition: 'Engineer',
+    city: 'Tbilisi',
+  };
+
+  it('puts the person whose OWN name matches first', async () => {
+    // The order the statement returns is deliberately the wrong way round, so
+    // this asserts the ranking rather than the SQL.
+    setup({ main: [lika, salome], count: 2 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    expect(out.results[0]?.phone).toBe(salome.phone);
+    expect(out.results[1]?.phone).toBe(lika.phone);
+  });
+
+  it('marks the mislabelled row approximate, though it matched every word', async () => {
+    setup({ main: [lika, salome], count: 2 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    expect(out.results[0]?.approximate).toBeUndefined();
+    expect(out.results[1]?.approximate).toBe(true);
+  });
+
+  /**
+   * The bound that keeps this from being a worse bug than the one it fixes.
+   * Plenty of real people are registered under a nickname or initials and are
+   * findable only by what their friends saved them as.
+   */
+  it('leaves a nickname-registered person alone when nobody owns the name', async () => {
+    const nickname = { ...lika, registered_name: 'G K', name: 'G K', name_hits: 0 };
+    setup({ main: [nickname], count: 1 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    // No row in these results matches the name on its own account, so there is
+    // no evidence that this one is the wrong person — it stays unflagged.
+    expect(out.results[0]?.approximate).toBeUndefined();
+  });
+
+  it('leaves an unregistered contact alone — they have no own name to contradict', async () => {
+    const phonebookOnly = {
+      ...lika,
+      registered_name: null,
+      name: 'Salome Parkosadze',
+      name_hits: 0,
+    };
+    setup({ main: [phonebookOnly, salome], count: 2 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    expect(out.results.find((r) => r.phone === phonebookOnly.phone)?.approximate).toBeUndefined();
+  });
+
+  it('still flags an ordinary partial match', async () => {
+    const partial = { ...lika, word_hits: 1, name_hits: 0, registered_name: null };
+    setup({ main: [partial, salome], count: 2 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    expect(out.results[0]?.phone).toBe(salome.phone);
+    expect(out.results[1]?.approximate).toBe(true);
+  });
+
+  it('richness is the tiebreaker, never the ranking', async () => {
+    // The sort used to be richness ALONE, which threw away the word_hits order
+    // the statement had just computed: a rich partial row outranked a sparse
+    // full one.
+    const sparseExact = {
+      ...salome,
+      employer: null,
+      jobPosition: null,
+      city: null,
+    };
+    const richPartial = { ...lika, word_hits: 1, name_hits: 0, registered_name: null };
+    setup({ main: [richPartial, sparseExact], count: 2 });
+
+    const out = (await searchContactByName('501', 'Salome Parkosadze')) as {
+      results: Record<string, unknown>[];
+    };
+
+    expect(out.results[0]?.phone).toBe(sparseExact.phone);
+  });
+});
