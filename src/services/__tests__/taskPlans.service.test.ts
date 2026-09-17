@@ -4,6 +4,8 @@ import { query } from '../../db/postgres/client';
 import {
   approveTaskPlan,
   parsePlan,
+  nobodyCanBeWrittenTo,
+  peopleToInvite,
   planAllows,
   planInForce,
   proposeTaskPlan,
@@ -464,5 +466,75 @@ describe('row 146 — the plan says who cannot be reached', () => {
     expect(summary).toContain('Gega');
     expect(summary).not.toContain('ვერ მივწერ');
     expect(summary).not.toContain('გაუხსნია');
+  });
+});
+
+/**
+ * Ticket 20 row 203 — the predicate that removes the approve button.
+ */
+describe('nobodyCanBeWrittenTo', () => {
+  const person = (name: string, reach?: 'ok' | 'not_member' | 'never_opened') => ({
+    name,
+    phone: '+995500000001',
+    route: 'ქსელში კითხვა',
+    ...(reach !== undefined && { reach }),
+  });
+  const planWith = (people: ReturnType<typeof person>[]) => ({
+    solved_when: 'x',
+    routes: [{ name: 'ქსელში კითხვა', status: 'running' as const }],
+    people_to_involve: people,
+    never_contact: [],
+  });
+
+  it('is true when not one named person can be written to', () => {
+    expect(
+      nobodyCanBeWrittenTo(
+        planWith([person('ლევანი', 'not_member'), person('ილია', 'never_opened')]),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when even one can', () => {
+    expect(
+      nobodyCanBeWrittenTo(planWith([person('ლევანი', 'not_member'), person('გეგა', 'ok')])),
+    ).toBe(false);
+  });
+
+  it('is false for a plan that names nobody', () => {
+    // "Write to nobody" is a plan working exactly as intended. The owner who
+    // asked for it must not be shown an invitation card about people they
+    // told us to leave alone.
+    expect(nobodyCanBeWrittenTo(planWith([]))).toBe(false);
+  });
+
+  it('treats an unknown reach as reachable, never as a closed door', () => {
+    // The lookup failing is not evidence that a door is shut, and this
+    // predicate removes a button — an unknown must not do that.
+    expect(nobodyCanBeWrittenTo(planWith([person('ლევანი')]))).toBe(false);
+  });
+});
+
+describe('peopleToInvite', () => {
+  const p = (name: string, reach: 'ok' | 'not_member' | 'never_opened') => ({
+    name,
+    phone: '+995500000001',
+    route: 'r',
+    reach,
+  });
+  const planWith = (people: ReturnType<typeof p>[]) => ({
+    solved_when: 'x',
+    routes: [{ name: 'r', status: 'running' as const }],
+    people_to_involve: people,
+    never_contact: [],
+  });
+
+  it('names only the people an invitation would actually help', () => {
+    // never_opened has an account already — inviting them again is advice
+    // that cannot work.
+    expect(
+      peopleToInvite(
+        planWith([p('ლევანი', 'not_member'), p('ილია', 'never_opened'), p('გეგა', 'ok')]),
+      ),
+    ).toEqual(['ლევანი']);
   });
 });

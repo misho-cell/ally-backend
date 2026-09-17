@@ -73,6 +73,8 @@ import {
   planInForce,
   proposeTaskPlan,
   renderPlan,
+  nobodyCanBeWrittenTo,
+  peopleToInvite,
   TaskPlan,
 } from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
@@ -1415,6 +1417,96 @@ export function planNamesPeople(plan: unknown): boolean {
   return Array.isArray(people) && people.length > 0;
 }
 
+/**
+ * Ticket 20 row 101 — the plan is on the screen, so the reply must not be it.
+ *
+ * Tornike's word this morning after five examples: the saved plan is the only
+ * plan text on the screen, and the message above the buttons says only what
+ * was found and asks the one question.
+ *
+ * It is a `next` rather than a line in the tool description because a
+ * description is read once, at the top of a long run, and this has to arrive
+ * in the same breath as the thing it is about — the same reason the pending-
+ * items note is delivered with its data.
+ */
+export const PLAN_ALREADY_ON_SCREEN =
+  'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
+  'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
+  'და დასვი ერთი კითხვა. მერე present_choices — „დამტკიცებულია" და „შევცვალოთ".';
+
+/**
+ * Ticket 20 row 203 — when nobody in the plan can be written to, do not ask
+ * for approval. Offer the step that would actually move this forward.
+ *
+ * Tornike's word this morning, on the question the seat put to him: yes. And
+ * his own addition, in his words — „when someone is not on netai, suggest whom
+ * to invite to make netwokr work".
+ *
+ * Goal 3961 is the shape of the fault. The saved plan said nobody would be
+ * asked; the reply said nobody NEEDS to be written to, because the three
+ * notaries are his own contacts to ring; and then it said „the plan awaits
+ * your approval" and offered approve / change. Approving would have done
+ * nothing at all — the button was asking permission to perform an action the
+ * server had already established it cannot take.
+ *
+ * WHY THIS IS AN INSTRUCTION AND NOT A SERVER GUARD, since row 147 spent a
+ * whole evening establishing that a flag is not a guard. There the model's own
+ * `confirmed` could close somebody's goal, so the server had to read the
+ * thread itself. Here the worst case is a useless button on a plan that writes
+ * to nobody by construction — the approval cannot cause a message to reach a
+ * real person, because there is nobody it can reach. The cost of the model
+ * getting it wrong is a wasted tap, so an instruction is the proportionate
+ * tool. I am not adding a refusal to approve_task_plan: approving a plan that
+ * reaches nobody is harmless, and refusing it would block an owner who wants
+ * the plan on record before they start inviting.
+ */
+function noApprovalNeeded(invitees: readonly string[]): string {
+  const whoToInvite =
+    invitees.length === 0
+      ? ''
+      : ` Netai-ზე არ არიან: ${invitees.join(', ')} — შესთავაზე მფლობელს მათი მოწვევა და ` +
+        'invite_contact-ით მოამზადე ტექსტი, რომ ამ მიზანზე ქსელმა იმუშაოს.';
+  return (
+    'ამ გეგმით ვერავის მივწერ, ამიტომ დამტკიცება არაფერს შეცვლის — „დამტკიცებულია" ღილაკს ' +
+    'ნუ შესთავაზებ. სამაგიეროდ შესთავაზე ნამდვილი შემდეგი ნაბიჯი, present_choices-ით: ' +
+    '„თვითონ დავურეკავ" / „მოწვევა გავაგზავნო" / „სხვაც მოძებნე".' +
+    whoToInvite
+  );
+}
+
+/**
+ * What propose_task_plan hands back, which is the whole of row 101.
+ *
+ * The plan text is returned ONLY when the server did not manage to put it on
+ * the screen — outside a thread, or when the stored plan could not be read
+ * back. Handing it over in both cases is what produced two plans on four
+ * fresh goals in a row: the model is given the text and told not to use it,
+ * and „here is the plan, do not show the plan" is a losing instruction.
+ *
+ * Its own function because it is the one piece of row 101 that is OURS to
+ * guarantee. Whether a model obeys a sentence is a matter of evidence; whether
+ * we hand it the text to repeat is a matter of code.
+ */
+export function planProposedResult(
+  version: number,
+  summary: string,
+  planIsOnScreen: boolean,
+  unreachable: { nobodyReachable: boolean; invitees: readonly string[] } = {
+    nobodyReachable: false,
+    invitees: [],
+  },
+): Record<string, unknown> {
+  const base = planIsOnScreen
+    ? { proposed: true, version, next: PLAN_ALREADY_ON_SCREEN }
+    : { proposed: true, version, summary };
+  // Row 203. Two directives, and the second REPLACES the buttons the first
+  // one names — so it is sent as its own field rather than appended, and a
+  // reader of the result can see which case it is in without parsing prose.
+  return unreachable.nobodyReachable
+    ? { ...base, approval_pointless: true, instead: noApprovalNeeded(unreachable.invitees) }
+    : base;
+}
+
 // Ticket 10 Task 21 (D118, D119): the plan is agreed once, then the assistant
 // works inside it on its own. Two tools: propose (the assistant writes it from
 // the conversation and shows it), approve (the user's yes, recorded).
@@ -1430,8 +1522,15 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
     'people_to_involve is EMPTY — in the first plan and every later one. Anyone you found goes in ' +
     'the MESSAGE as a lead for them to approach, never in the plan: the plan is the list this ' +
     'product may write to, and they have said that list is empty. ' +
-    'Show the returned summary to the user verbatim with two choices (approve / change) via ' +
-    'present_choices, and call approve_task_plan only on their explicit yes.',
+    // Ticket 20 row 101, on Tornike's word after five real examples: the plan
+    // shows ONCE. This sentence used to read „show the returned summary to the
+    // user verbatim", which was right before the server stored the plan itself
+    // and is an instruction to duplicate now that it does.
+    'The server writes the plan to the screen itself, as its own message, the moment this call ' +
+    'succeeds. DO NOT write the plan again in your reply — not in full, not summarised, not in ' +
+    'your own words. Your message says only what you FOUND and asks the one question. Then offer ' +
+    'two choices (approve / change) via present_choices, and call approve_task_plan only on their ' +
+    'explicit yes.',
   input_schema: {
     type: 'object',
     properties: {
@@ -3763,8 +3862,9 @@ async function executeToolCall(
           'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
           'with exactly „დამტკიცებულია" and „შევცვალოთ". Do not end your turn with the goal ' +
           'saved and no plan on screen: that costs the user a second answer a few seconds later, ' +
-          'saying the same things twice. Write nobody and start nothing until the plan is ' +
-          'approved.',
+          'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
+          '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
+          'until the plan is approved.',
         ...(movedTo !== undefined && {
           thread_id: movedTo,
           note:
@@ -4122,23 +4222,41 @@ async function executeToolCall(
       // being approved cannot depend on a model remembering to repeat it, and
       // must not vanish on a refresh — so it is stored the same way Task 98's
       // pending items are: written here, deterministically, before the answer.
+      let planIsOnScreen = false;
+      // Row 203: read off the STORED plan, which is the one carrying the
+      // reachability the server decided — not off the model's own argument,
+      // which has no reach fields at all.
+      let unreachable = { nobodyReachable: false, invitees: [] as string[] };
       if (outcome.ok && threadId !== undefined) {
         const task = await getTaskById(taskId);
         const proposed = task?.plan_proposed ?? null;
         if (proposed !== null) {
+          const stored = proposed as TaskPlan;
           await saveMessage(
             userId,
             threadId,
             'assistant',
-            renderPlan(proposed as TaskPlan, outcome.value.version, null),
+            renderPlan(stored, outcome.value.version, null),
             'message',
             runId ?? null,
           );
+          planIsOnScreen = true;
+          unreachable = {
+            nobodyReachable: nobodyCanBeWrittenTo(stored),
+            invitees: peopleToInvite(stored),
+          };
         }
       }
-      return outcome.ok
-        ? { proposed: true, version: outcome.value.version, summary: outcome.value.summary }
-        : { proposed: false, error: outcome.error };
+      if (!outcome.ok) return { proposed: false, error: outcome.error };
+      // Row 101, on Tornike's word: the saved plan is the only plan text on
+      // the screen. See planProposedResult for why the summary is withheld
+      // rather than sent with an instruction not to use it.
+      return planProposedResult(
+        outcome.value.version,
+        outcome.value.summary,
+        planIsOnScreen,
+        unreachable,
+      );
     }
     case 'approve_task_plan': {
       // Server-side gate, the same shape as send_answer_to_asker: without the

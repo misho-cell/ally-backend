@@ -353,6 +353,28 @@ const NOBODY_REACHABLE =
   'ყურადღება: ამ გეგმაში დასახელებულ არცერთ ადამიანს ვერ მივწერ. დამტკიცება ' +
   'თავისთავად ვერაფერს გააგზავნის — ჯერ მოწვევა ან შენით მიწერა დასჭირდება.';
 
+/**
+ * Ticket 20 row 203 — can this plan reach anybody at all?
+ *
+ * True only when the plan names people and NOT ONE of them can be written to.
+ * An empty plan is false: „write to nobody" is a plan that works exactly as
+ * intended, and the owner who asked for it must not be shown an invitation
+ * card about people they told us to leave alone.
+ *
+ * A person whose reach could not be looked up counts as reachable. The lookup
+ * failing is not evidence that a door is shut, and the whole point of this
+ * predicate is to remove the approve button — an unknown must not do that.
+ */
+export function nobodyCanBeWrittenTo(plan: TaskPlan): boolean {
+  const named = plan.people_to_involve;
+  return named.length > 0 && named.every((p) => p.reach !== undefined && p.reach !== 'ok');
+}
+
+/** The people in this plan who are not on Netai — the ones an invite is for. */
+export function peopleToInvite(plan: TaskPlan): string[] {
+  return plan.people_to_involve.filter((p) => p.reach === 'not_member').map((p) => p.name);
+}
+
 export function renderPlan(plan: TaskPlan, version: number, approvedAt: string | null): string {
   const routes = plan.routes
     .map((r) => `- ${r.name} — ${ROUTE_STATUS_WORDS[r.status] ?? r.status}`)
@@ -386,8 +408,7 @@ export function renderPlan(plan: TaskPlan, version: number, approvedAt: string |
   // Row 146: the loudest case gets its own line. A plan naming three people
   // none of whom can be written to is not a plan, and the owner has to know
   // that before the yes, not 47 seconds after it.
-  const named = plan.people_to_involve;
-  if (named.length > 0 && named.every((p) => p.reach !== undefined && p.reach !== 'ok')) {
+  if (nobodyCanBeWrittenTo(plan)) {
     lines.splice(1, 0, NOBODY_REACHABLE);
   }
   // „Nobody" is not a list of nobody: an empty exclusion list means the
