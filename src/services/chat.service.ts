@@ -7509,7 +7509,7 @@ export async function processChat(
    * way in to each of them. Only when the web actually returned names — a
    * goal with no web results gets no message, which is the seat's own rule.
    */
-  const fromTheWeb = buildFromTheWebMessage(takeWaysIn(runId));
+  const fromTheWeb = buildFromTheWebMessage(takeWaysIn(runId), language);
   if (fromTheWeb !== null) {
     const webMessageId = await saveMessage(userId, threadId, 'assistant', fromTheWeb);
     emitMessageAppended(userId, threadId, runId, {

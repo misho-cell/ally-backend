@@ -692,3 +692,38 @@ describe('webResultNames cuts at a word', () => {
     expect(webResultNames({ results: [{ title: word }] })[0].length).toBe(60);
   });
 });
+
+/**
+ * The seat's #4061 (h) — the block was Georgian in an English thread, like
+ * every other line the server writes for itself.
+ */
+describe('the web block follows the conversation’s language', () => {
+  const found = new Map([
+    ['Infinity Solutions', { kind: 'first_circle' as const, who: 'Dato' }],
+    ['Acme', { kind: 'none' as const }],
+  ]);
+
+  it('writes English in an English thread, heading and both line kinds', () => {
+    const message = String(buildFromTheWebMessage(found, 'en'));
+
+    expect(message).toContain('Found on the web:');
+    expect(message).toContain('your contact there: Dato');
+    expect(message).toContain('No way in yet: Acme');
+    expect(message).not.toMatch(/[ა-ჿ]/);
+  });
+
+  it('keeps Georgian for a caller that cannot say', () => {
+    expect(buildFromTheWebMessage(found)).toBe(buildFromTheWebMessage(found, 'ka'));
+  });
+
+  it('says the same thing in each of the four, with the names untouched', () => {
+    for (const lang of ['ka', 'en', 'ru', 'es'] as const) {
+      const message = String(buildFromTheWebMessage(found, lang));
+      expect(message).toContain('Infinity Solutions');
+      expect(message).toContain('Acme');
+      // Still no link and still no „ring them yourself" — the seat's done-when
+      // does not move because the language did.
+      expect(message).not.toMatch(/https?:|დაურეკ|call them|ring them/i);
+    }
+  });
+});

@@ -4,6 +4,7 @@ import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { distilSearchQuery } from './searchQuery.service';
+import { RunLanguage } from './runLanguage';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -561,20 +562,57 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
  */
 const FROM_THE_WEB_MAX = 4;
 
-export function buildFromTheWebMessage(waysIn: ReadonlyMap<string, WayIn>): string | null {
+/**
+ * The seat's #4061 (h): this block was Georgian in an English thread, like
+ * every other line the server writes for itself.
+ */
+interface WebBlockWords {
+  readonly heading: string;
+  readonly wayIn: (name: string, who: string) => string;
+  readonly pathless: (names: string) => string;
+}
+
+const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
+  ka: {
+    heading: 'ვებში ეს ვიპოვე:',
+    wayIn: (name, who) => `• ${name} — შენი კონტაქტი იქ: ${who}.`,
+    pathless: (names) => `გზა ჯერ ვერ ვნახე: ${names}.`,
+  },
+  en: {
+    heading: 'Found on the web:',
+    wayIn: (name, who) => `• ${name} — your contact there: ${who}.`,
+    pathless: (names) => `No way in yet: ${names}.`,
+  },
+  ru: {
+    heading: 'Нашёл в интернете:',
+    wayIn: (name, who) => `• ${name} — твой контакт там: ${who}.`,
+    pathless: (names) => `Пути пока не нашёл: ${names}.`,
+  },
+  es: {
+    heading: 'Encontré esto en la web:',
+    wayIn: (name, who) => `• ${name} — tu contacto allí: ${who}.`,
+    pathless: (names) => `Todavía no veo una vía: ${names}.`,
+  },
+};
+
+export function buildFromTheWebMessage(
+  waysIn: ReadonlyMap<string, WayIn>,
+  language: RunLanguage = 'ka',
+): string | null {
   const entries = [...waysIn.entries()].slice(0, FROM_THE_WEB_MAX);
   if (entries.length === 0) return null;
+  const words = WEB_BLOCK[language];
   const lines = entries
     .filter(
       (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
         entry[1].kind === 'first_circle',
     )
-    .map(([name, wayIn]) => `• ${name} — შენი კონტაქტი იქ: ${wayIn.who}.`);
+    .map(([name, wayIn]) => words.wayIn(name, wayIn.who));
   const pathless = entries
     .filter(([, wayIn]) => wayIn.kind !== 'first_circle')
     .map(([name]) => name);
-  if (pathless.length > 0) lines.push(`გზა ჯერ ვერ ვნახე: ${pathless.join(', ')}.`);
-  return `ვებში ეს ვიპოვე:\n${lines.join('\n')}`;
+  if (pathless.length > 0) lines.push(words.pathless(pathless.join(', ')));
+  return `${words.heading}\n${lines.join('\n')}`;
 }
 
 /**
