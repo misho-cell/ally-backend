@@ -36,7 +36,14 @@ function reaped(rows: unknown[]): void {
 describe('row 3 — the reaper does not call a delivered answer a failure', () => {
   it('writes no error when the thread answered, and still clears the status', async () => {
     reaped([
-      { id: 15841, user_id: 501, status: 'failed', status_line: 'ვერ დასრულდა', answered: true },
+      {
+        id: 15841,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: true,
+        was_asked: true,
+      },
     ]);
 
     const n = await sweepOrphanedRuns();
@@ -51,7 +58,14 @@ describe('row 3 — the reaper does not call a delivered answer a failure', () =
 
   it('still reports a genuinely dead run, which is what the reaper is for', async () => {
     reaped([
-      { id: 15643, user_id: 501, status: 'failed', status_line: 'ვერ დასრულდა', answered: false },
+      {
+        id: 15643,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: false,
+        was_asked: true,
+      },
     ]);
 
     await sweepOrphanedRuns();
@@ -76,16 +90,80 @@ describe('row 3 — the reaper does not call a delivered answer a failure', () =
 
   it('judges each reaped thread on its own, not on the batch', async () => {
     reaped([
-      { id: 1, user_id: 501, status: 'failed', status_line: 'x', answered: true },
-      { id: 2, user_id: 501, status: 'failed', status_line: 'x', answered: false },
-      { id: 3, user_id: 501, status: 'failed', status_line: 'x', answered: true },
+      { id: 1, user_id: 501, status: 'failed', status_line: 'x', answered: true, was_asked: true },
+      { id: 2, user_id: 501, status: 'failed', status_line: 'x', answered: false, was_asked: true },
+      { id: 3, user_id: 501, status: 'failed', status_line: 'x', answered: true, was_asked: true },
+      // Row 33: a newborn goal thread in the same batch, judged on its own.
+      {
+        id: 4,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'x',
+        answered: false,
+        was_asked: false,
+      },
     ]);
 
     await sweepOrphanedRuns();
 
     expect(saveThreadMessage).toHaveBeenCalledTimes(1);
     expect((saveThreadMessage as jest.Mock).mock.calls[0][0]).toBe(2);
-    // All three still had their stale status cleared.
-    expect(emitThreadUpdated).toHaveBeenCalledTimes(3);
+    // All four still had their stale status cleared.
+    expect(emitThreadUpdated).toHaveBeenCalledTimes(4);
+  });
+});
+
+/**
+ * Ticket 20 row 33 — the split goal's chat that held nothing but an error.
+ *
+ * Thread 16905, 17 September. A second need typed into goal 4852's chat opened
+ * goal 4853 on a thread of its own; the seat clicked it in the sidebar and
+ * landed on „a technical delay occurred, the answer could not be finished".
+ * The plan arrived two minutes later.
+ *
+ * This sweep wrote that, and the thread was created by the row 33 fix itself —
+ * deliberately status 'working', because the plan turn is queued four seconds
+ * out and „done" would have been a lie. A newborn thread is silent for the
+ * same reason a newborn is, and after seventy-five seconds it looked exactly
+ * like a thread whose run had died.
+ */
+describe('row 33 — a thread nobody has asked anything in', () => {
+  it('clears the stale status but claims no failed reply', async () => {
+    reaped([
+      {
+        id: 16905,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: false,
+        was_asked: false,
+      },
+    ]);
+
+    const n = await sweepOrphanedRuns();
+
+    expect(n).toBe(1);
+    // The spinner still has to stop.
+    expect(emitThreadUpdated).toHaveBeenCalled();
+    // „Your reply could not be finished" is a claim about a reply the owner is
+    // owed, and they have not asked for one here.
+    expect(saveThreadMessage).not.toHaveBeenCalled();
+  });
+
+  it('still reports a dead run on a thread the owner DID type in', async () => {
+    reaped([
+      {
+        id: 16904,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: false,
+        was_asked: true,
+      },
+    ]);
+
+    await sweepOrphanedRuns();
+
+    expect(saveThreadMessage).toHaveBeenCalledTimes(1);
   });
 });

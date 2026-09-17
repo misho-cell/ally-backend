@@ -23,8 +23,22 @@ describe('sweepOrphanedRuns', () => {
   it('marks stale working threads failed and persists a system-styled error', async () => {
     mockQuery.mockResolvedValue({
       rows: [
-        { id: 11, user_id: 7, status: 'failed', status_line: 'შეფერხდა — სცადე თავიდან' },
-        { id: 12, user_id: 9, status: 'failed', status_line: 'შეფერხდა — სცადე თავიდან' },
+        // was_asked: the owner typed here, so a reply of theirs is genuinely
+        // owed and „it could not be finished" is a true sentence (row 33).
+        {
+          id: 11,
+          user_id: 7,
+          status: 'failed',
+          status_line: 'შეფერხდა — სცადე თავიდან',
+          was_asked: true,
+        },
+        {
+          id: 12,
+          user_id: 9,
+          status: 'failed',
+          status_line: 'შეფერხდა — სცადე თავიდან',
+          was_asked: true,
+        },
       ],
       rowCount: 2,
     } as never);
@@ -49,7 +63,15 @@ describe('sweepOrphanedRuns', () => {
     // Ticket 9 task 20 (b): the run died and says so in the error row; the
     // badge belongs to the standing question, not to the retry.
     mockQuery.mockResolvedValue({
-      rows: [{ id: 9406, user_id: 501, status: 'needs_you', status_line: 'შენი პასუხი სჭირდება' }],
+      rows: [
+        {
+          id: 9406,
+          user_id: 501,
+          status: 'needs_you',
+          status_line: 'შენი პასუხი სჭირდება',
+          was_asked: true,
+        },
+      ],
       rowCount: 1,
     } as never);
 

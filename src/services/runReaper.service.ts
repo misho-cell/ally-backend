@@ -57,6 +57,29 @@ export async function sweepOrphanedRuns(): Promise<number> {
      * the owner their answer failed, while it is visible above, never is.
      */
     answered: boolean;
+    /**
+     * Ticket 20 row 33 — the split goal's chat that held nothing but an error.
+     *
+     * Thread 16905, 17 September. A second need typed into goal 4852's chat
+     * opened goal 4853 on a thread of its own, and at 19:17:45 the owner
+     * clicked it in the sidebar and landed on „a technical delay occurred, the
+     * answer could not be finished". The plan arrived two minutes later.
+     *
+     * This sweep wrote that error, and the thread was created by my own row 33
+     * fix — deliberately `status: 'working'`, because the plan-proposal turn is
+     * queued four seconds out and „done" would have been a lie. A newborn
+     * thread is silent for the same reason a newborn is: nothing has happened
+     * yet. Seventy-five seconds later it looked exactly like a thread whose run
+     * had died.
+     *
+     * The claim the error makes is about a REPLY — „yours could not be
+     * finished". A thread the owner has never typed a word in is owed no
+     * reply, so there is none to have failed. Same split as `answered` above,
+     * for the same reason: the STATUS is cleared either way, because a thread
+     * stuck on „working" is a spinner that never stops; the SENTENCE is only
+     * written when it is true.
+     */
+    was_asked: boolean;
   }>(
     `WITH orphaned AS (
        SELECT t.id,
@@ -73,7 +96,15 @@ export async function sweepOrphanedRuns(): Promise<number> {
                 WHERE c.thread_id = t.id AND c.role = 'assistant'
                   AND c.kind = 'message' AND c.content <> ''
                   AND c.created_at > NOW() - ($3 || ' seconds')::interval * 2
-              ) AS answered
+              ) AS answered,
+              -- Row 33: has the owner ever typed in this thread at all? An
+              -- engine wake is stored role='user' too, so this asks for a real
+              -- human turn — kind='message', not 'event'.
+              EXISTS (
+                SELECT 1 FROM conversations c
+                WHERE c.thread_id = t.id AND c.role = 'user'
+                  AND c.kind = 'message' AND c.content <> ''
+              ) AS was_asked
        FROM threads t
        WHERE t.status = 'working'
          AND t.updated_at < NOW() - ($3 || ' seconds')::interval
@@ -84,7 +115,7 @@ export async function sweepOrphanedRuns(): Promise<number> {
          updated_at = NOW()
      FROM orphaned o
      WHERE o.id = t.id
-     RETURNING t.id, t.user_id, t.status, t.status_line, o.answered`,
+     RETURNING t.id, t.user_id, t.status, t.status_line, o.answered, o.was_asked`,
     [STATUS_LINES.failed, STATUS_LINES.needs_you, RUN_SILENT_SECONDS],
   );
   for (const thread of result.rows) {
@@ -98,6 +129,13 @@ export async function sweepOrphanedRuns(): Promise<number> {
         // eslint-disable-next-line no-console
         console.warn(
           `[run-reaper] thread ${thread.id} was stale on 'working' but had answered — ` +
+            'status cleared, no error shown',
+        );
+      } else if (!thread.was_asked) {
+        // Row 33: nobody has asked anything here, so no reply of theirs failed.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[run-reaper] thread ${thread.id} was stale on 'working' with no question on it — ` +
             'status cleared, no error shown',
         );
       } else {
