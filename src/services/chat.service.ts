@@ -6441,7 +6441,13 @@ const INTERNAL_TOOL_NAMES = [
   ...new Set([...Object.keys(ALL_TOOL_DEFINITIONS), ...ALWAYS_ON_TOOLS.map((t) => t.name)]),
 ].sort((a, b) => b.length - a.length);
 
-const INTERNAL_TOOL_NAME_RE = new RegExp(`\\b(${INTERNAL_TOOL_NAMES.join('|')})\\b`, 'g');
+// The optional trailing group is the Georgian case ending — see the comment on
+// internalNameReplacement. It is part of the match so that it LEAVES with the
+// name; without it the ending stayed behind on a phrase that cannot carry one.
+const INTERNAL_TOOL_NAME_RE = new RegExp(
+  `\\b(${INTERNAL_TOOL_NAMES.join('|')})\\b(?:-([ა-ჿ]{1,6}))?`,
+  'g',
+);
 
 // „ask_id 1750", „task_id 3400", „thread_id 15380" — an internal handle with a
 // number after it. A person cannot use one and it is not theirs to read.
@@ -6520,6 +6526,30 @@ function internalNameReplacement(text: string): string {
   return /[ა-ჿ]/.test(text) ? 'ეს შესაძლებლობა' : 'this capability';
 }
 
+/**
+ * Ticket 20 row 106, third pass — the scrub left a Georgian case ending behind.
+ *
+ * The tester found this and read it from outside as „the Georgian LABEL of
+ * present_choices reached a reply" (#3599). It is neither the label nor the
+ * model: it is this function's own output. Thread 16542, goal 4394, 12:04:51:
+ *
+ *   the model wrote   „present_choices-ით შემოგთავაზებ როგორ გავაგრძელოთ."
+ *   the owner read    „ეს შესაძლებლობა-ით შემოგთავაზებ როგორ გავაგრძელოთ."
+ *
+ * Georgian attaches its case endings straight onto the word, so a tool name
+ * arrives as `present_choices-ით` and `\b(name)\b` takes only the name. The
+ * ending is left hanging on a phrase that cannot carry it, and the sentence
+ * stops being Georgian. This is the same shape as the first pass of this row —
+ * a scrub that hid our vocabulary behind worse vocabulary — and I fixed the
+ * word then without looking at what came after it.
+ *
+ * „ხერხი" (a means, a way of doing something) is used because it DECLINES like
+ * an ordinary noun: the ending the model already wrote is simply moved onto it.
+ * „ამ ხერხით", „ამ ხერხზე", „ამ ხერხს" are all sentences a person would write.
+ * Anything that reads as a fixed phrase — „ეს შესაძლებლობა" — cannot take an
+ * ending at all, which is exactly how the bug happened.
+ */
+
 /** Left behind when an id is cut out of the middle of a sentence. */
 const SCRUB_TIDY: readonly (readonly [RegExp, string])[] = [
   [/ {2,}/g, ' '],
@@ -6544,12 +6574,15 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
   if (INTERNAL_TOOL_NAME_RE.test(out)) {
     const replacement = internalNameReplacement(out);
     INTERNAL_TOOL_NAME_RE.lastIndex = 0;
-    out = out.replace(INTERNAL_TOOL_NAME_RE, (name) => {
+    const georgian = replacement !== 'this capability';
+    out = out.replace(INTERNAL_TOOL_NAME_RE, (whole: string, name: string, suffix?: string) => {
       // eslint-disable-next-line no-console
       console.warn(
         `[p12-scrub] thread ${threadId}: internal tool name "${name}" removed from reply`,
       );
-      return replacement;
+      // Row 106 third pass: the Georgian case ending is part of the MATCH, so
+      // it leaves with the name and comes back on a word that can carry it.
+      return georgian && suffix ? `ამ ხერხ${suffix}` : replacement;
     });
   }
   if (out === text) return text;

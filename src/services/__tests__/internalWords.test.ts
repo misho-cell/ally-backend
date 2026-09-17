@@ -40,7 +40,14 @@ describe('the three the tester caught', () => {
     // in a different costume — the user learns only that there is machinery
     // they are not being shown. The replacement is a word for what the
     // assistant can DO, in the language people use.
-    expect(out).toContain('ეს შესაძლებლობა');
+    //
+    // THIRD PASS, and this line used to read `toContain('ეს შესაძლებლობა')`.
+    // It was asserting the bug: the „-ზე" belongs to the tool name, and a
+    // fixed phrase cannot carry it, so the sentence came out as
+    // „ეს შესაძლებლობა-ზე გადავდივარ" and the test was satisfied because the
+    // phrase was present. It took the tester finding the same shape in a live
+    // reply (#3599) for anybody to read the whole sentence.
+    expect(out).toBe('პირდაპირ ამ ხერხზე გადავდივარ');
     expect(out).not.toContain('შიდა');
   });
 
@@ -166,5 +173,60 @@ describe('a tool name in a BUTTON is scrubbed like one in the reply', () => {
     for (const label of ['დამტკიცებულია', 'შევცვალოთ', 'თვითონ დავურეკავ', 'Send it']) {
       expect(scrubInternalToolNames(label, THREAD)).toBe(label);
     }
+  });
+});
+
+/**
+ * Ticket 20 row 106, third pass — the scrub left a Georgian case ending behind.
+ *
+ * The tester read it from outside as „the Georgian label of present_choices
+ * reached a reply" (#3599). It is neither the label nor the model: it is this
+ * function's own output. Thread 16542, goal 4394, 12:04:51:
+ *
+ *   the model wrote   „present_choices-ით შემოგთავაზებ როგორ გავაგრძელოთ."
+ *   the owner read    „ეს შესაძლებლობა-ით შემოგთავაზებ როგორ გავაგრძელოთ."
+ *
+ * Georgian attaches its endings straight onto the word, so the name arrives as
+ * `present_choices-ით` and a `\b` match takes only the name.
+ */
+describe('a Georgian case ending leaves with the tool name', () => {
+  it('moves the ending onto a word that can carry it — the real sentence', () => {
+    const out = scrubInternalToolNames(
+      'present_choices-ით შემოგთავაზებ როგორ გავაგრძელოთ.',
+      THREAD,
+    );
+
+    expect(out).toBe('ამ ხერხით შემოგთავაზებ როგორ გავაგრძელოთ.');
+    expect(out).not.toContain('-ით');
+  });
+
+  it('works for the other endings a model actually writes', () => {
+    expect(scrubInternalToolNames('propose_task_plan-ზე გადავდივარ', THREAD)).toBe(
+      'ამ ხერხზე გადავდივარ',
+    );
+    expect(scrubInternalToolNames('ask_contact-ს გამოვიყენებ', THREAD)).toBe(
+      'ამ ხერხს გამოვიყენებ',
+    );
+  });
+
+  it('still says „ეს შესაძლებლობა" when there is no ending to carry', () => {
+    // The row 106 wording the seat accepted, unchanged for the bare case: „ამ
+    // ხერხი" is not a sentence, and a fixed phrase is right where nothing
+    // declines.
+    expect(scrubInternalToolNames('გამოვიყენებ present_choices', THREAD)).toBe(
+      'გამოვიყენებ ეს შესაძლებლობა',
+    );
+  });
+
+  it('does not invent an ending in an English reply', () => {
+    expect(scrubInternalToolNames('I will use present_choices here', THREAD)).toBe(
+      'I will use this capability here',
+    );
+  });
+
+  it('leaves a hyphenated Georgian word that is NOT a tool name alone', () => {
+    expect(scrubInternalToolNames('ნუნუკა-ბუღალტერი დამირეკა', THREAD)).toBe(
+      'ნუნუკა-ბუღალტერი დამირეკა',
+    );
   });
 });
