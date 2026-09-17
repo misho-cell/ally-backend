@@ -47,12 +47,35 @@ function queryModel(): string {
 }
 
 /**
- * Small on purpose. This holds up the opening web search, which holds up the
- * first reply — the web search itself measures 4.0-5.4s inside a 10s budget,
- * so this is what is left before the budget starts costing us results rather
- * than saving them.
+ * Small on purpose, and 2.5 s turned out to be too small for the one sentence
+ * that needed it most.
+ *
+ * The original reasoning: this holds up the opening web search, which holds up
+ * the first reply, and the web search itself measures 4.0-5.4 s inside a 10 s
+ * budget. Sound at the time.
+ *
+ * What it missed is that the longest input is the one most likely to run over —
+ * and the longest input is exactly the one whose search is ruined by not being
+ * distilled. Goal 4621, 17 September:
+ *
+ *   13:58:27 [search-query] not distilled (gpt-5.6-terra failed: Request timed
+ *            out.); searching the goal text as typed
+ *
+ * Ninia's sentence, three times today, while the two short goals of the same
+ * minute distilled fine. So the budget was not protecting the first reply from
+ * a slow distiller; it was declining precisely when distilling mattered.
+ *
+ * Five seconds. Against a first reply that measured 92-176 s on those same
+ * three goals, two and a half more is not a cost anybody can perceive.
+ *
+ * WHAT THIS DOES NOT BUY, said here so nobody reads it as the row 108 fix:
+ * distilling barely moves the second circle. Goal 4622 was distilled to three
+ * words and its opening search still took 15.2 s, against 17.5 s for 4621's
+ * capped sentence. The cold first call dominates both. This fixes the WEB
+ * search being handed a sentence with a greeting in it, which is row 126's
+ * problem and worth fixing on its own.
  */
-const DISTIL_BUDGET_MS = 2_500;
+const DISTIL_BUDGET_MS = 5_000;
 
 /** A query, not a sentence. Anything longer is the model ignoring the brief. */
 const MAX_QUERY_CHARS = 120;
