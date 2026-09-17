@@ -39,6 +39,80 @@ emitter.setMaxListeners(0);
 const KEEPALIVE_INTERVAL_MS = 30_000;
 
 /**
+ * Every event carries an id, and a short tail of them is kept so a stream that
+ * drops can pick up where it left off.
+ *
+ * WHY. Three reports in one evening of the same shape: the answer is in the
+ * thread, the open page does not have it, a reload shows it at once. Thread
+ * 16907 on 17 September is the clean one — run df94d79b finished at 19:29:14,
+ * was never dropped, and the route reached emitRunComplete; the page still
+ * read „working" a minute and a half later.
+ *
+ * This is why it can happen at all: an event was written to whatever sockets
+ * happened to be open at that instant and then forgotten. No ids, no buffer,
+ * nothing to ask for. A phone that slept through the reply, a tunnel that
+ * blinked, a proxy that recycled the connection — each loses the answer
+ * permanently, and the person is left looking at a spinner over a thread that
+ * has their answer in it.
+ *
+ * The fix is the one the protocol already specifies. Each event is written
+ * with an `id:` line; a browser's EventSource remembers the last id it saw and
+ * sends it back as `Last-Event-ID` when it reconnects by itself, with no
+ * frontend change at all. On connect we replay what it missed.
+ *
+ * Replay cannot duplicate: Last-Event-ID is the last id the client RECEIVED,
+ * and only ids strictly after it are sent. A fresh page load has no id and
+ * gets nothing, which is right — it loads the thread from the database.
+ */
+interface BufferedEvent {
+  readonly id: number;
+  readonly data: unknown;
+  readonly at: number;
+}
+let sequence = 0;
+const recentByUser = new Map<string, BufferedEvent[]>();
+
+/**
+ * Deliberately small. This buffer exists to cover a reconnect measured in
+ * seconds, not to be a mailbox: anything older than the window is in the
+ * database, which is where a client that has been away that long should read
+ * it from.
+ */
+const REPLAY_BUFFER_PER_USER = 60;
+const REPLAY_TTL_MS = 5 * 60_000;
+
+function publish(userId: string, data: Record<string, unknown>): void {
+  sequence += 1;
+  const event: BufferedEvent = { id: sequence, data, at: Date.now() };
+  const held = recentByUser.get(userId) ?? [];
+  held.push(event);
+  const cutoff = Date.now() - REPLAY_TTL_MS;
+  const kept = held.filter((e) => e.at >= cutoff).slice(-REPLAY_BUFFER_PER_USER);
+  recentByUser.set(userId, kept);
+  emitter.emit(`user:${userId}`, event);
+}
+
+/** What a reconnecting stream missed, oldest first. */
+function eventsSince(userId: string, lastEventId: number): readonly BufferedEvent[] {
+  const cutoff = Date.now() - REPLAY_TTL_MS;
+  return (recentByUser.get(userId) ?? []).filter((e) => e.id > lastEventId && e.at >= cutoff);
+}
+
+/**
+ * Drop a user's tail once nothing of theirs is connected and it has aged out.
+ * Called from the keepalive rather than a timer of its own: a map that only
+ * ever grows is the kind of leak that shows up as a restart three weeks later.
+ */
+function pruneIdleBuffers(): void {
+  const cutoff = Date.now() - REPLAY_TTL_MS;
+  for (const [userId, held] of recentByUser) {
+    const kept = held.filter((e) => e.at >= cutoff);
+    if (kept.length === 0) recentByUser.delete(userId);
+    else recentByUser.set(userId, kept);
+  }
+}
+
+/**
  * Ticket 17 row 6: which of a person's DEVICES is watching right now.
  *
  * The bug this exists for. Presence was one boolean per person, and the push
@@ -111,6 +185,8 @@ export function subscribeUserEvents(
   userId: string,
   res: Response,
   device?: string | null,
+  /** The browser's own `Last-Event-ID` header, when it is reconnecting. */
+  lastEventId?: string | null,
 ): () => void {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -120,17 +196,40 @@ export function subscribeUserEvents(
 
   const keepalive = setInterval(() => {
     res.write(': ping\n\n');
+    pruneIdleBuffers();
   }, KEEPALIVE_INTERVAL_MS);
 
   const eventName = `user:${userId}`;
   const key = device ?? null;
 
-  function onEvent(data: unknown): void {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  function write(event: BufferedEvent): void {
+    res.write(`id: ${event.id}\ndata: ${JSON.stringify(event.data)}\n\n`);
   }
 
-  emitter.on(eventName, onEvent);
+  emitter.on(eventName, write);
   openConnection(userId, key);
+
+  /**
+   * Whatever this stream missed while it was away, before anything new.
+   *
+   * After the listener is attached, never before: a gap between the replay and
+   * the subscription is the same hole this exists to close, one event wide.
+   * An event arriving in between is written twice — harmless, because a client
+   * skips an id it has already seen, and the alternative is losing it.
+   *
+   * A header that is not a number is treated as no header. Nothing about it
+   * reaches a query or a file; it only chooses where in our own buffer to
+   * start, and the buffer holds only what we put there.
+   */
+  const resumeFrom = Number.parseInt(lastEventId ?? '', 10);
+  if (Number.isFinite(resumeFrom) && resumeFrom > 0) {
+    const missed = eventsSince(userId, resumeFrom);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[sse] user ${userId} resumed at ${resumeFrom}: ${missed.length} event(s) replayed`,
+    );
+    for (const event of missed) write(event);
+  }
 
   let closed = false;
   return (): void => {
@@ -139,13 +238,13 @@ export function subscribeUserEvents(
     if (closed) return;
     closed = true;
     clearInterval(keepalive);
-    emitter.off(eventName, onEvent);
+    emitter.off(eventName, write);
     closeConnection(userId, key);
   };
 }
 
 export function emitThreadCreated(userId: string, thread: unknown): void {
-  emitter.emit(`user:${userId}`, { event: 'thread_created', thread });
+  publish(userId, { event: 'thread_created', thread });
 }
 
 export interface ThreadUpdatePayload {
@@ -179,11 +278,11 @@ export interface ThreadUpdatePayload {
  * server guessing at the client's state.
  */
 export function emitChoicesCleared(userId: string, threadId: number): void {
-  emitter.emit(`user:${userId}`, { event: 'choices_cleared', threadId });
+  publish(userId, { event: 'choices_cleared', threadId });
 }
 
 export function emitThreadUpdated(userId: string, thread: ThreadUpdatePayload): void {
-  emitter.emit(`user:${userId}`, {
+  publish(userId, {
     event: 'thread_updated',
     thread: {
       ...thread,
@@ -218,7 +317,7 @@ export function emitToolProgress(
   runId: string,
   message: string,
 ): void {
-  emitter.emit(`user:${userId}`, {
+  publish(userId, {
     event: 'tool_progress',
     threadId,
     runId,
@@ -233,7 +332,7 @@ export function emitStepSummary(
   runId: string,
   text: string,
 ): void {
-  emitter.emit(`user:${userId}`, {
+  publish(userId, {
     event: 'step_summary',
     threadId,
     runId,
@@ -253,7 +352,7 @@ export function emitAnswerDelta(
   runId: string,
   delta: string,
 ): void {
-  emitter.emit(`user:${userId}`, {
+  publish(userId, {
     event: 'answer_delta',
     threadId,
     runId,
@@ -268,7 +367,7 @@ export function emitAnswerDelta(
  * garbling into the visible message mid-run.
  */
 export function emitAnswerReset(userId: string, threadId: number, runId: string): void {
-  emitter.emit(`user:${userId}`, { event: 'answer_reset', threadId, runId });
+  publish(userId, { event: 'answer_reset', threadId, runId });
 }
 
 interface RunCompletePayload {
@@ -308,7 +407,7 @@ export function emitRunComplete(
       share_text: displayText(payload.share_text),
     }),
   };
-  emitter.emit(`user:${userId}`, { event: 'run_complete', threadId, runId, ...safe });
+  publish(userId, { event: 'run_complete', threadId, runId, ...safe });
 }
 
 export interface AppendedMessagePayload {
@@ -331,7 +430,7 @@ export function emitMessageAppended(
   runId: string,
   payload: AppendedMessagePayload,
 ): void {
-  emitter.emit(`user:${userId}`, {
+  publish(userId, {
     event: 'message_appended',
     threadId,
     runId,
@@ -351,7 +450,7 @@ export function emitTokensDebited(
   runId: string,
   tokens: number,
 ): void {
-  emitter.emit(`user:${userId}`, { event: 'tokens_debited', threadId, runId, tokens });
+  publish(userId, { event: 'tokens_debited', threadId, runId, tokens });
 }
 
 /** A run failed before producing an answer. */
@@ -361,5 +460,5 @@ export function emitRunError(
   runId: string,
   message: string,
 ): void {
-  emitter.emit(`user:${userId}`, { event: 'run_error', threadId, runId, message });
+  publish(userId, { event: 'run_error', threadId, runId, message });
 }

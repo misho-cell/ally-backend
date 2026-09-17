@@ -310,6 +310,13 @@ threadsRouter.get('/stream', (req: Request, res: Response): void => {
       req.get('x-device-id'),
       req.get('user-agent'),
     ),
+    // A browser's EventSource sends this by itself when it reconnects, so the
+    // replay needs nothing from the frontend. The query parameter is there for
+    // a client that reconnects by opening a NEW EventSource, which starts with
+    // no memory of the old one — three „the answer is in the thread and not on
+    // my screen" reports in one evening are what this is for.
+    req.get('last-event-id') ??
+      (typeof req.query.last_event_id === 'string' ? req.query.last_event_id : null),
   );
   req.on('close', cleanup);
 });

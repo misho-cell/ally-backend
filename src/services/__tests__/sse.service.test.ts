@@ -8,7 +8,11 @@ import {
 
 // Capture everything written to a subscribed SSE stream. subscribeUserEvents
 // only calls setHeader / flushHeaders / write, so a minimal stub suffices.
-function fakeStream(): { res: Response; events: () => unknown[] } {
+function fakeStream(): {
+  res: Response;
+  events: () => unknown[];
+  frames: () => readonly string[];
+} {
   const writes: string[] = [];
   const res = {
     setHeader: () => undefined,
@@ -18,11 +22,14 @@ function fakeStream(): { res: Response; events: () => unknown[] } {
       return true;
     },
   } as unknown as Response;
+  // Each frame is „id: N\ndata: {…}\n\n" — the id line is what lets a dropped
+  // stream resume, and the payload is the second line.
   const events = (): unknown[] =>
     writes
-      .filter((w) => w.startsWith('data: '))
-      .map((w) => JSON.parse(w.slice('data: '.length)) as unknown);
-  return { res, events };
+      .map((w) => w.split('\n').find((line) => line.startsWith('data: ')))
+      .filter((line): line is string => line !== undefined)
+      .map((line) => JSON.parse(line.slice('data: '.length)) as unknown);
+  return { res, events, frames: (): readonly string[] => [...writes] };
 }
 
 const USER_ID = 'user-sse-test';
@@ -132,5 +139,90 @@ describe('sse.service phone scrubbing', () => {
     };
     expect(step.text).toBe('joined 2024-03-01, 42 contacts');
     unsubscribe();
+  });
+});
+
+/**
+ * A stream that drops must be able to pick up where it left off.
+ *
+ * Three reports in one evening of one shape: the answer is in the thread, the
+ * open page does not have it, a reload shows it at once. Thread 16907 on 17
+ * September is the clean case — the run finished at 19:29:14, was never
+ * dropped, and the route reached emitRunComplete; the page still read
+ * „working" ninety seconds later.
+ *
+ * Every event was written to whatever sockets happened to be open at that
+ * instant and then forgotten. A phone that slept, a tunnel that blinked, a
+ * proxy that recycled the connection — each lost the answer for good.
+ */
+describe('a reconnecting stream is given what it missed', () => {
+  const RESUMING_USER = 'user-sse-resume';
+
+  it('numbers every frame, because the id is what a client resumes from', () => {
+    const { res, frames } = fakeStream();
+    const stop = subscribeUserEvents(RESUMING_USER, res);
+
+    emitStepSummary(RESUMING_USER, 1, 'run1', 'first');
+    emitStepSummary(RESUMING_USER, 1, 'run1', 'second');
+
+    const ids = frames()
+      .map((f) => /^id: (\d+)$/m.exec(f)?.[1])
+      .filter((id): id is string => id !== undefined)
+      .map(Number);
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).toBeGreaterThan(ids[0]);
+    stop();
+  });
+
+  it('replays only what came AFTER the last id the client saw', () => {
+    const { res: first, frames: firstFrames } = fakeStream();
+    const stop = subscribeUserEvents(RESUMING_USER, first);
+    emitStepSummary(RESUMING_USER, 1, 'run1', 'seen by the first stream');
+    const lastSeen = /^id: (\d+)$/m.exec(firstFrames()[0])?.[1] ?? '0';
+    stop();
+
+    // The gap: two events with nobody listening. Today they are gone for good.
+    emitStepSummary(RESUMING_USER, 1, 'run1', 'missed one');
+    emitRunComplete(RESUMING_USER, 1, 'run1', { reply: 'the answer they never saw' });
+
+    const { res: second, events } = fakeStream();
+    const stopSecond = subscribeUserEvents(RESUMING_USER, second, null, lastSeen);
+
+    const replayed = events() as { event: string; text?: string; reply?: string }[];
+    expect(replayed.map((e) => e.event)).toEqual(['step_summary', 'run_complete']);
+    expect(replayed[1].reply).toBe('the answer they never saw');
+    // Not the one it already had.
+    expect(replayed.some((e) => e.text === 'seen by the first stream')).toBe(false);
+    stopSecond();
+  });
+
+  it('gives a fresh page nothing — it loads the thread from the database', () => {
+    emitStepSummary('user-sse-fresh', 1, 'run1', 'before anyone connected');
+
+    const { res, events } = fakeStream();
+    const stop = subscribeUserEvents('user-sse-fresh', res);
+
+    expect(events()).toEqual([]);
+    stop();
+  });
+
+  it('treats a header that is not a number as no header', () => {
+    emitStepSummary('user-sse-junk', 1, 'run1', 'earlier');
+
+    const { res, events } = fakeStream();
+    const stop = subscribeUserEvents('user-sse-junk', res, null, 'not-a-number');
+
+    expect(events()).toEqual([]);
+    stop();
+  });
+
+  it('keeps one user’s tail out of another’s', () => {
+    emitStepSummary('user-sse-a', 1, 'run1', 'belongs to A');
+
+    const { res, events } = fakeStream();
+    const stop = subscribeUserEvents('user-sse-b', res, null, '1');
+
+    expect(events()).toEqual([]);
+    stop();
   });
 });
