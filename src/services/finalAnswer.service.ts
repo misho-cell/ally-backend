@@ -39,6 +39,9 @@ export function finalAnswerModel(): string {
 }
 
 const MAX_TOKENS = 8192;
+
+/** Row 202 third pass: the same threshold the Anthropic side uses. */
+const SLOW_CALL_LOG_MS = 10_000;
 const REQUEST_TIMEOUT_MS = 90_000;
 /**
  * How much of one flattened tool result is carried into the history. Results
@@ -255,7 +258,21 @@ export async function writeFinalAnswer(
 
     let text = '';
     let usage: OpenAI.CompletionUsage | undefined;
+    /**
+     * Ticket 20 row 202, third pass — where the silence sits.
+     *
+     * The seat asked which call holds the gap on goal 4357: the Claude turn
+     * after the searches, or this one. Both are now measured the same way, so
+     * the answer is a log line rather than an inference from who wrote what.
+     */
+    const startedAt = Date.now();
+    let lastChunkAt = startedAt;
+    let longestGap = 0;
+    let chunks = 0;
     for await (const chunk of stream) {
+      chunks += 1;
+      longestGap = Math.max(longestGap, Date.now() - lastChunkAt);
+      lastChunkAt = Date.now();
       // The usage-only chunk arrives last and carries no choices.
       if (chunk.usage) usage = chunk.usage;
       const delta = chunk.choices[0]?.delta?.content;
@@ -263,6 +280,14 @@ export async function writeFinalAnswer(
         text += delta;
         onText?.(delta);
       }
+    }
+    longestGap = Math.max(longestGap, Date.now() - lastChunkAt);
+    if (longestGap >= SLOW_CALL_LOG_MS) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[final-answer] ${model}: chunks ${chunks}, longest silence ${longestGap}ms, ` +
+          `alive ${Date.now() - startedAt}ms`,
+      );
     }
 
     // Row 155. An empty answer is a failure, not an answer — and so is one

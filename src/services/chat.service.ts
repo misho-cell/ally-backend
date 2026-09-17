@@ -5092,6 +5092,16 @@ const STREAM_TIMEOUT_MS = 180_000;
 const STREAM_STALL_TIMEOUT_MS = Number(process.env.STREAM_STALL_TIMEOUT_MS ?? 90_000);
 
 /**
+ * Ticket 20 row 202, third pass — when a call that SUCCEEDED is worth a line.
+ *
+ * Goal 4357 answered in two minutes with 88 seconds of silence in the middle,
+ * two seconds under the abort window. Nothing was logged, because only aborts
+ * were. Ten seconds of silence inside one model call is already abnormal and
+ * rare enough that the line stays readable; below it the log would drown.
+ */
+const SLOW_CALL_LOG_MS = 10_000;
+
+/**
  * Ticket 20 row 202 — how long the FIRST event may take, which is not the same
  * question as how long a silence mid-stream may last.
  *
@@ -5259,6 +5269,8 @@ async function callClaude(
   let events = 0;
   let lastEventAt = Date.now();
   const startedAt = Date.now();
+  /** Row 202 third pass: every gap between events, for the slow-call line. */
+  const gaps: number[] = [];
   const resetStall = (): void => {
     if (stallTimer) clearTimeout(stallTimer);
     const window = started ? STREAM_STALL_TIMEOUT_MS : STREAM_FIRST_EVENT_TIMEOUT_MS;
@@ -5278,6 +5290,9 @@ async function callClaude(
   stream.on('streamEvent', () => {
     started = true;
     events += 1;
+    // Row 202 third pass: every gap, not only the last, so a call that
+    // finished can still say where its longest silence was.
+    gaps.push(Date.now() - lastEventAt);
     lastEventAt = Date.now();
     resetStall();
   });
@@ -5288,6 +5303,32 @@ async function callClaude(
     response = await stream.finalMessage();
   } finally {
     if (stallTimer) clearTimeout(stallTimer);
+  }
+
+  /**
+   * Ticket 20 row 202, third pass — the same three numbers on a call that did
+   * NOT abort.
+   *
+   * The seat's ask, and it is the right one. Goal 4357 answered in two minutes
+   * with 88 seconds of silence in the middle — two seconds under the window.
+   * So the stopgap turned a lost answer into a slow one and left the actual
+   * question untouched: WHERE do those 88 seconds sit? Nothing said, because
+   * only an abort was ever logged, and a call that finishes told us nothing at
+   * all.
+   *
+   * „Speed is Tornike's first complaint about the product" — so the number to
+   * shorten is the silence, not the window that tolerates it.
+   *
+   * Logged only when the longest gap is worth reading, because one line per
+   * model call on every run is noise that hides the lines that matter.
+   */
+  const longestGap = Math.max(...gaps, Date.now() - lastEventAt);
+  if (longestGap >= SLOW_CALL_LOG_MS) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[chat] run ${ctx.runId} ${model}: events ${events}, longest silence ${longestGap}ms, ` +
+        `alive ${Date.now() - startedAt}ms`,
+    );
   }
 
   // Awaited (a pooled INSERT is ~ms next to a multi-second model call) so the
