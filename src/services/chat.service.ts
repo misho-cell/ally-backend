@@ -3184,10 +3184,33 @@ export function answerChunkHandler(opts: {
   readonly onText: () => void;
   readonly onSignal: () => void;
   readonly onVisible: (chunk: string) => void;
+  /**
+   * Ticket 20 row 113, 19:08 — WITHHOLDING THE STORED REPLY DOES NOT STOP THE
+   * OWNER READING IT.
+   *
+   * The tester, thread 16840, on the build where the server answers a stop
+   * itself: at 19:07:59 the server wrote „there is no goal to stop in this
+   * conversation" — correct — and at 19:08:09 the model went on to say „now
+   * you have only one open goal left, the eco-startup marketing partner
+   * search. I am closing it."
+   *
+   * It closed nothing: the write was refused and 3433 is still open with its
+   * wake. But the owner was TOLD his goal was being closed. My withholding runs
+   * where the reply is STORED, and the answer streams to the screen token by
+   * token long before that — so the whole sentence had already been read by the
+   * time anything dropped it.
+   *
+   * Stored and shown are two different acts and I had only covered one. The
+   * same edge explains the other rough one they found: on test 3 the server
+   * stopped the goal and the model then asked „which goal do you mean?" twelve
+   * seconds later. One of us should speak, and it is the one that did the work.
+   */
+  readonly stopped?: () => boolean;
 }): (chunk: string) => void {
   return (chunk: string): void => {
     opts.onText();
     if (opts.suppressed) return;
+    if (opts.stopped?.() === true) return;
     opts.onSignal();
     opts.onVisible(chunk);
   };
@@ -5759,6 +5782,9 @@ async function runToolLoop(
     createSafeTextStreamer(
       answerChunkHandler({
         suppressed,
+        // Row 113: the owner stopped this goal — nothing more of this run's
+        // words reaches their screen, not just nothing reaches the database.
+        stopped: () => runWasStopped(threadId, runId),
         onText: () => {
           turnEmitted = true;
         },
@@ -6532,9 +6558,21 @@ const INTERNAL_TOOL_NAME_RE = new RegExp(
   'g',
 );
 
-// „ask_id 1750", „task_id 3400", „thread_id 15380" — an internal handle with a
-// number after it. A person cannot use one and it is not theirs to read.
-const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id';
+/**
+ * „ask_id 1750", „task_id 3400", „thread_id 15380" — an internal handle with a
+ * number after it. A person cannot use one and it is not theirs to read.
+ *
+ * A BARE „id" is in the list from 17 September, and it is last on purpose. The
+ * tester found „…open only id 4819…" in a reply (thread 16898, 19:02:02): the
+ * model had dropped the prefix and written the number as „id", which every
+ * pattern here was too specific to see. Last in the alternation because the
+ * engine takes the first branch that matches and „task_id" must not be read as
+ * „task_" plus „id".
+ *
+ * A number is still required after it, so „the id you gave me" survives and
+ * „id 4819" does not.
+ */
+const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id|id';
 /**
  * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
  *

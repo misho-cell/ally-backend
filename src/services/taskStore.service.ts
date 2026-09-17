@@ -552,6 +552,25 @@ export async function updateTask(
   // flagged-badge cases was a CLOSED goal still shown as "needs you"
   // (ticket 8 task 2b). Every close route lands here, so the badge follows.
   const threadId = result.rows[0]?.thread_id;
+  /**
+   * Ticket 20 row 113, test 5 — a PAUSED goal's chat read „working".
+   *
+   * The tester opened one fresh: the header said the goal was working and
+   * offered the stop button. Pausing a goal changed the row and left the
+   * thread exactly as it was, because only a CLOSE ever touched the thread's
+   * status. So the screen said the opposite of the truth in one direction, and
+   * on a page held open across the pause it offered no button at all — out of
+   * step both ways.
+   *
+   * „waiting" rather than „done": a paused goal is not finished, it is
+   * stopped-for-now and the owner is the one who resumes it.
+   */
+  if (updated && status === 'paused' && threadId != null) {
+    void setThreadStatus(userId, threadId, 'waiting', {
+      isTask: true,
+      statusLine: 'პაუზაზეა',
+    });
+  }
   if (updated && status === 'closed' && threadId != null) {
     /**
      * Ticket 20 row 113, fifth pass — the TYPED stop must abort the run too.

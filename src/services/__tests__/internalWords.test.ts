@@ -230,3 +230,37 @@ describe('a Georgian case ending leaves with the tool name', () => {
     );
   });
 });
+
+/**
+ * Ticket 20 row 106 — a BARE „id" reached the screen.
+ *
+ * The tester, thread 16898, 19:02:02: „…open only id 4819…". The model had
+ * dropped the prefix and written the number as „id", which every pattern here
+ * was too specific to see.
+ */
+describe('a bare id is an internal id too', () => {
+  it('removes „id 4819" from a Georgian sentence', () => {
+    const out = quiet(() => scrubInternalToolNames('ღიაა მხოლოდ id 4819 ამ ანგარიშზე', THREAD));
+
+    expect(out).not.toContain('4819');
+    expect(out).toBe('ღიაა მხოლოდ ამ ანგარიშზე');
+  });
+
+  it('still takes the longer names whole — „task_id" is not „task_" plus „id"', () => {
+    for (const input of ['მიზანი task_id 3664', '(ask_id 1750)', 'thread_id 15380']) {
+      const out = quiet(() => scrubInternalToolNames(input, THREAD));
+      expect(out).not.toMatch(/\d/);
+      expect(out).not.toContain('_id');
+    }
+  });
+
+  it('leaves „id" alone when no number follows it', () => {
+    const plain = 'რა id უნდა გამოვიყენო?';
+    expect(scrubInternalToolNames(plain, THREAD)).toBe(plain);
+  });
+
+  it('does not eat an ordinary number that is not an id', () => {
+    const plain = 'შეხვედრა 15:00-ზე, 3 ადამიანი.';
+    expect(scrubInternalToolNames(plain, THREAD)).toBe(plain);
+  });
+});
