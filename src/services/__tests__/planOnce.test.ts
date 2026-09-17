@@ -68,12 +68,16 @@ describe('what propose_task_plan hands back', () => {
  */
 describe('row 203 — the card when nobody can be written to', () => {
   const SUMMARY = 'გეგმა v1 (დასამტკიცებელი)';
-  const unreachable = (invitees: string[]) => ({ nobodyReachable: true, invitees });
+  const unreachable = (invitees: string[], toWake: string[] = []) => ({
+    nobodyReachable: true,
+    invitees,
+    toWake,
+  });
 
   it('says the approve button must not be offered, and what to offer instead', () => {
     const out = planProposedResult(1, SUMMARY, true, unreachable([]));
 
-    expect(out.approval_pointless).toBe(true);
+    expect(out.nothing_to_send_today).toBe(true);
     const instead = String(out.instead);
     expect(instead).toContain('„დამტკიცებულია" ღილაკს');
     // All three of Tornike's next steps, by name.
@@ -105,8 +109,70 @@ describe('row 203 — the card when nobody can be written to', () => {
   it('leaves an ordinary plan exactly as it was', () => {
     const out = planProposedResult(1, SUMMARY, true);
 
-    expect(out.approval_pointless).toBeUndefined();
+    expect(out.nothing_to_send_today).toBeUndefined();
     expect(out.instead).toBeUndefined();
     expect(out).toEqual({ proposed: true, version: 1, next: PLAN_ALREADY_ON_SCREEN });
+  });
+});
+
+/**
+ * Ticket 20 row 203, second pass — Tornike's rule behind his answer, and the
+ * list I had wrongly left empty.
+ *
+ * His words: „a goal that cannot be achieved today is still a goal. Today the
+ * network may have 50 users, in three weeks 200; Netai keeps working on the
+ * goal the whole time, and when a newcomer who can solve it arrives, she sees
+ * it and acts."
+ */
+describe('row 203 second pass — today, not the goal', () => {
+  const SUMMARY = 'გეგმა v1 (დასამტკიცებელი)';
+
+  it('says nothing can be SENT today, and that the goal stays open', () => {
+    // The old field was called approval_pointless, which reads as a verdict on
+    // the goal. Nothing can be sent today; the goal is not over.
+    const out = planProposedResult(1, SUMMARY, true, {
+      nobodyReachable: true,
+      invitees: [],
+      toWake: [],
+    });
+
+    expect(out.nothing_to_send_today).toBe(true);
+    const instead = String(out.instead);
+    expect(instead).toContain('დღეს');
+    expect(instead).toContain('მიზანი ღია რჩება');
+  });
+
+  it('names the people to WAKE, which is not the people to invite', () => {
+    // D61: an account that has never been opened is how this network grows.
+    // „No invitation applies" is not „nothing applies", and I had been
+    // substituting the second for the first.
+    const instead = String(
+      planProposedResult(1, SUMMARY, true, {
+        nobodyReachable: true,
+        invitees: ['ლევან ლაშქარავა'],
+        toWake: ['ილია ბაბუხადია'],
+      }).instead,
+    );
+
+    expect(instead).toContain('ლევან ლაშქარავა');
+    expect(instead).toContain('invite_contact');
+    expect(instead).toContain('ილია ბაბუხადია');
+    expect(instead).toContain('Netai ჯერ არ გაუხსნიათ');
+  });
+
+  it('keeps the two lists apart rather than merging them', () => {
+    // Offering to invite somebody who already has an account is advice that
+    // cannot work, and asking somebody with no account to "open Netai" is the
+    // same mistake the other way round.
+    const onlyWake = String(
+      planProposedResult(1, SUMMARY, true, {
+        nobodyReachable: true,
+        invitees: [],
+        toWake: ['ილია'],
+      }).instead,
+    );
+
+    expect(onlyWake).not.toContain('invite_contact');
+    expect(onlyWake).toContain('ილია');
   });
 });

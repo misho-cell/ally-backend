@@ -53,6 +53,7 @@ import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
 import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
+import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -447,6 +448,19 @@ threadsRouter.post(
       // take minutes for large multi-step tasks, so we never hold the HTTP
       // request open: progress and the final answer are streamed over SSE
       // (GET /threads/stream), keyed by runId.
+      // Ticket 20 row 205: the server is going away, so a run started now
+      // would be killed before it answered. The owner is told that, in those
+      // terms, instead of „please try again" — which blames them for our
+      // deploy and invites them to lose a second run to the same restart.
+      if (isDraining()) {
+        res.status(503).json({
+          success: false,
+          error: 'სერვერი ახლა ახლდება — რამდენიმე წამში თავიდან სცადე.',
+          reason: 'restarting',
+        });
+        return;
+      }
+
       const runId = randomUUID();
 
       // Ticket 20 row 115. Ninia's „კი" arrived five times in six seconds and
@@ -495,6 +509,9 @@ threadsRouter.post(
       // by this ceiling, surface a visible, retryable error instead of silence.
       // (The orphaned run may still finish; the race has already settled, so its
       // late result is ignored and never double-emitted.)
+      // Row 205: counted for the drain, so a shutdown knows what it is about
+      // to cut off and can say so.
+      beginRun(runId);
       const hardTimeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
       );
@@ -630,7 +647,10 @@ threadsRouter.post(
         // path above. A claim that survived a failed run would refuse the
         // person's own retry of the message that just failed them — the one
         // moment repeating yourself is certainly deliberate.
-        .finally(() => releaseRun(userId, threadId, message, runId));
+        .finally(() => {
+          releaseRun(userId, threadId, message, runId);
+          endRun(runId);
+        });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/message]', error);

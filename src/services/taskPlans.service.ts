@@ -405,6 +405,21 @@ export function peopleToInvite(plan: TaskPlan): string[] {
   return plan.people_to_involve.filter((p) => p.reach === 'not_member').map((p) => p.name);
 }
 
+/**
+ * Ticket 20 row 203, second pass — the people to WAKE, which is not the same
+ * list as the people to invite.
+ *
+ * I left these out, and the seat was right to catch it. Somebody who HAS an
+ * account and has never opened Netai cannot be invited again — so I concluded
+ * there was nothing to offer about them. D61 says the opposite, and it is the
+ * whole growth story: waking a dormant old-Ally account is how this network
+ * fills. „No invitation applies" and „nothing applies" are different facts,
+ * and I substituted the second for the first.
+ */
+export function peopleToWake(plan: TaskPlan): string[] {
+  return plan.people_to_involve.filter((p) => p.reach === 'never_opened').map((p) => p.name);
+}
+
 export function renderPlan(
   plan: TaskPlan,
   version: number,

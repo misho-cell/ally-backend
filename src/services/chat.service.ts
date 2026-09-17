@@ -75,6 +75,7 @@ import {
   renderPlan,
   nobodyCanBeWrittenTo,
   peopleToInvite,
+  peopleToWake,
   TaskPlan,
 } from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
@@ -1461,17 +1462,29 @@ export const PLAN_ALREADY_ON_SCREEN =
  * reaches nobody is harmless, and refusing it would block an owner who wants
  * the plan on record before they start inviting.
  */
-function noApprovalNeeded(invitees: readonly string[]): string {
-  const whoToInvite =
+function noApprovalNeeded(invitees: readonly string[], toWake: readonly string[]): string {
+  const invite =
     invitees.length === 0
       ? ''
       : ` Netai-ზე არ არიან: ${invitees.join(', ')} — შესთავაზე მფლობელს მათი მოწვევა და ` +
-        'invite_contact-ით მოამზადე ტექსტი, რომ ამ მიზანზე ქსელმა იმუშაოს.';
+        'invite_contact-ით მოამზადე ტექსტი.';
+  // Row 203 second pass, D61: an account that has never been opened is not a
+  // dead end, it is the growth story. „No invitation applies" is not „nothing
+  // applies", and I had been substituting the second for the first.
+  const wake =
+    toWake.length === 0
+      ? ''
+      : ` ანგარიში აქვთ, Netai ჯერ არ გაუხსნიათ: ${toWake.join(', ')} — მოამზადე მოკლე ` +
+        'შეტყობინება, რომლითაც მფლობელი სთხოვს Netai-ს გახსნას; გახსნისთანავე მათთან მიწერა ' +
+        'შესაძლებელი გახდება.';
   return (
-    'ამ გეგმით ვერავის მივწერ, ამიტომ დამტკიცება არაფერს შეცვლის — „დამტკიცებულია" ღილაკს ' +
-    'ნუ შესთავაზებ. სამაგიეროდ შესთავაზე ნამდვილი შემდეგი ნაბიჯი, present_choices-ით: ' +
+    'დღეს ამ გეგმით ვერავის მივწერ, ამიტომ ახლა დამტკიცება ვერაფერს შეცვლის — ' +
+    '„დამტკიცებულია" ღილაკს ნუ შესთავაზებ. ეს მიზნის დასასრული არ არის: მიზანი ღია რჩება, ' +
+    'ქსელი იზრდება, და როგორც კი გამოჩნდება ადამიანი, ვისაც ამის გადაჭრა შეუძლია, ' +
+    'მასთან მივალთ. ახლა შესთავაზე ნამდვილი შემდეგი ნაბიჯი, present_choices-ით: ' +
     '„თვითონ დავურეკავ" / „მოწვევა გავაგზავნო" / „სხვაც მოძებნე".' +
-    whoToInvite
+    invite +
+    wake
   );
 }
 
@@ -1492,10 +1505,11 @@ export function planProposedResult(
   version: number,
   summary: string,
   planIsOnScreen: boolean,
-  unreachable: { nobodyReachable: boolean; invitees: readonly string[] } = {
-    nobodyReachable: false,
-    invitees: [],
-  },
+  unreachable: {
+    nobodyReachable: boolean;
+    invitees: readonly string[];
+    toWake?: readonly string[];
+  } = { nobodyReachable: false, invitees: [] },
 ): Record<string, unknown> {
   const base = planIsOnScreen
     ? { proposed: true, version, next: PLAN_ALREADY_ON_SCREEN }
@@ -1504,7 +1518,16 @@ export function planProposedResult(
   // one names — so it is sent as its own field rather than appended, and a
   // reader of the result can see which case it is in without parsing prose.
   return unreachable.nobodyReachable
-    ? { ...base, approval_pointless: true, instead: noApprovalNeeded(unreachable.invitees) }
+    ? {
+        ...base,
+        // Row 203 second pass, Tornike's rule: this says nothing about the GOAL.
+        // „A goal that cannot be achieved today is still a goal" — the network
+        // grows, the nightly re-check looks for people who fit, and it acts
+        // when one arrives. The old name said the approval was pointless; the
+        // new one says only that nothing can be SENT today.
+        nothing_to_send_today: true,
+        instead: noApprovalNeeded(unreachable.invitees, unreachable.toWake ?? []),
+      }
     : base;
 }
 
@@ -4335,7 +4358,11 @@ async function executeToolCall(
       // Row 203: read off the STORED plan, which is the one carrying the
       // reachability the server decided — not off the model's own argument,
       // which has no reach fields at all.
-      let unreachable = { nobodyReachable: false, invitees: [] as string[] };
+      let unreachable = {
+        nobodyReachable: false,
+        invitees: [] as string[],
+        toWake: [] as string[],
+      };
       if (outcome.ok && threadId !== undefined) {
         const task = await getTaskById(taskId);
         const proposed = task?.plan_proposed ?? null;
@@ -4386,6 +4413,7 @@ async function executeToolCall(
           unreachable = {
             nobodyReachable: nobodyCanBeWrittenTo(stored),
             invitees: peopleToInvite(stored),
+            toWake: peopleToWake(stored),
           };
         }
       }
