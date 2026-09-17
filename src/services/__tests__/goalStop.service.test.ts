@@ -9,13 +9,14 @@ jest.mock('../sse.service', () => ({ emitChoicesCleared: jest.fn(), __esModule: 
 jest.mock('../threads.service', () => ({
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),
+  clearStoredChoices: jest.fn(),
   __esModule: true,
 }));
 
 import { updateTask, getGoalOnThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
-import { getThread, saveThreadMessage, Thread } from '../threads.service';
+import { getThread, saveThreadMessage, clearStoredChoices, Thread } from '../threads.service';
 import { emitChoicesCleared } from '../sse.service';
 import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread, stoppedLine } from '../goalStop.service';
 
@@ -26,6 +27,7 @@ const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
 const mockOpenTask = getGoalOnThread as jest.MockedFunction<typeof getGoalOnThread>;
 const mockSay = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockClear = emitChoicesCleared as jest.MockedFunction<typeof emitChoicesCleared>;
+const mockClearStored = clearStoredChoices as jest.MockedFunction<typeof clearStoredChoices>;
 
 function task(over: Partial<Task> = {}): Task {
   return {
@@ -41,6 +43,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockCancel.mockResolvedValue(0);
   mockSay.mockResolvedValue(undefined as never);
+  mockClearStored.mockResolvedValue(0);
 });
 
 /**
@@ -245,5 +248,48 @@ describe('a PAUSED goal can still be stopped from its own thread', () => {
 
     expect(await stopGoalOnThread('501', 16842)).toEqual(NOTHING_TO_STOP);
     expect(mockSay).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The founder's ruling of 17 September, the half he called the worse one: „the
+ * card must go inert the moment its goal is stopped; today a stopped goal's
+ * plan can still be approved, and approving it would start writing to real
+ * people."
+ *
+ * The live event was never enough. The labels are stored on the message row,
+ * so a reload renders them again and a second device never saw the event at
+ * all — thread 16906 showed the approve button alive on a plan whose goal had
+ * already been stopped.
+ */
+describe('a stop takes the buttons off the stored rows, not only the screen', () => {
+  it('clears them on the thread it stopped', async () => {
+    await stopGoal('501', task());
+
+    expect(mockClearStored).toHaveBeenCalledWith(14719);
+  });
+
+  it('clears them on the SECOND press too, when no line is written', async () => {
+    // The press that matters most: the first event may have been missed, and
+    // the stored labels are what a reload renders.
+    await stopGoal('501', task({ status: 'closed' }));
+
+    expect(mockSay).not.toHaveBeenCalled();
+    expect(mockClearStored).toHaveBeenCalledWith(14719);
+  });
+
+  it('has nothing to clear when the goal has no thread', async () => {
+    await stopGoal('501', task({ thread_id: null }));
+
+    expect(mockClearStored).not.toHaveBeenCalled();
+  });
+
+  it('still stops the goal when the buttons cannot be cleared', async () => {
+    // A goal that stopped and failed to tidy its buttons is better than a stop
+    // that fails.
+    mockClearStored.mockRejectedValue(new Error('db down'));
+
+    expect(await stopGoal('501', task())).toMatchObject({ stopped: true, goal_id: 2872 });
+    expect(mockUpdate).toHaveBeenCalled();
   });
 });

@@ -531,6 +531,37 @@ export async function getThreadMessages(
 }
 
 /**
+ * Take the buttons off every message in a thread, permanently.
+ *
+ * Ticket 20 row 113 / the founder's 17 September ruling, the half he called
+ * the worse one: „the card must go inert the moment its goal is stopped;
+ * today a stopped goal's plan can still be approved, and approving it would
+ * start writing to real people."
+ *
+ * emitChoicesCleared already takes them off the LIVE screen. It is not
+ * enough, and thread 16906 is why: the labels are stored on the message row,
+ * so a reload renders them again, and the SSE event that cleared the first
+ * screen never reached a second device at all. The buttons come back looking
+ * exactly as they did before the owner stopped the goal.
+ *
+ * Returns how many rows still had buttons on them, because „I cleared the
+ * screen" and „there was nothing to clear" are different facts and this
+ * codebase has now confused that pair four times in a week.
+ *
+ * The text is left alone. The plan is still in the conversation and still
+ * readable — what is removed is the ability to act on it, which is what the
+ * owner asked for when they stopped the goal.
+ */
+export async function clearStoredChoices(threadId: number): Promise<number> {
+  const result = await query(
+    `UPDATE conversations SET choices = NULL
+     WHERE thread_id = $1 AND choices IS NOT NULL`,
+    [threadId],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
  * The longest narration step a run persisted — the material for a partial
  * answer when the run itself never finished (hard timeout). Steps are stored
  * already scrubbed.

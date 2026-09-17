@@ -1,7 +1,7 @@
 import { Task, updateTask, getGoalOnThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
-import { getThread, saveThreadMessage } from './threads.service';
+import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { emitChoicesCleared } from './sse.service';
 
@@ -102,6 +102,23 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
     // stop line and only went on reload (thread 16798). A tap on it would have
     // approved a plan for a goal that was already closed.
     emitChoicesCleared(userId, task.thread_id);
+    /**
+     * And off the STORED rows, which is the half the event cannot reach.
+     *
+     * The founder's ruling of 17 September, the part he called the worse of
+     * the two: a stopped goal's plan must not remain approvable, because
+     * approving it starts writing to real people. Thread 16906 showed the
+     * button alive on a plan whose goal was already stopped — the event
+     * cleared one screen, the labels live on the message row, and a reload or
+     * a second device brings them straight back.
+     *
+     * Best-effort like everything else here: a goal that stopped and failed to
+     * tidy its buttons is better than a stop that fails.
+     */
+    void clearStoredChoices(task.thread_id).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[stop] could not clear buttons on thread ${task.thread_id}:`, err);
+    });
     void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
   }
   return said === undefined
