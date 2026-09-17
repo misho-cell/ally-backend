@@ -60,6 +60,13 @@ export function resetLagWatch(): void {
  */
 export function startLoopLagWatch(): void {
   if (timer !== null) return;
+  // One line at boot, and it is not decoration. This probe's whole value is in
+  // its SILENCE: „no lag lines all afternoon" is the evidence that our process
+  // was never the blockage. Silence proves nothing if the probe might simply
+  // never have started, so it says once that it is watching, and the absence
+  // of every later line means what it claims to mean.
+  // eslint-disable-next-line no-console
+  console.log(`[loop-lag] watching: reports lateness over ${REPORT_OVER_MS}ms, ${TICK_MS}ms tick`);
   let expectedAt = Date.now() + TICK_MS;
   timer = setInterval(() => {
     const late = Date.now() - expectedAt;

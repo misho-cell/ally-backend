@@ -183,7 +183,7 @@ import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { isOnboardingUser } from './onboarding.service';
-import { looksLikeGoalRequest, goalTitleFrom } from './goalIntent';
+import { looksLikeGoalRequest, goalTitleFrom, isQuestionNotGoal } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
 
 // A mode is a SITUATION — who is in the conversation and what state the
@@ -205,6 +205,7 @@ async function resolveRunMode(
 }
 import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
+import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -5344,10 +5345,18 @@ async function callClaude(
    */
   const longestGap = Math.max(...gaps, Date.now() - lastEventAt);
   if (longestGap >= SLOW_CALL_LOG_MS) {
+    // Row 202 sixth pass: what was SENT, on the same line as what came back,
+    // so the two can be correlated over a day instead of argued about.
+    const usage = response.usage;
+    const cached = usage.cache_read_input_tokens ?? 0;
+    const fresh = usage.input_tokens + (usage.cache_creation_input_tokens ?? 0);
     // eslint-disable-next-line no-console
     console.warn(
       `[chat] run ${ctx.runId} ${model}: events ${events}, longest silence ${longestGap}ms ` +
-        `(after ${gapAfter}, before ${gapBefore}), alive ${Date.now() - startedAt}ms`,
+        `(after ${gapAfter}, before ${gapBefore}), alive ${Date.now() - startedAt}ms, ` +
+        `in ${fresh}+${cached} cached, out ${usage.output_tokens}, ` +
+        `turns ${messages.length}, tool results ${toolResultsInLastTurn(messages)} last / ` +
+        `${countToolResults(messages)} total`,
     );
   }
 
@@ -6493,6 +6502,15 @@ async function ensureGoalForRequest(
   intent: RunIntent | undefined,
 ): Promise<number | null> {
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX)) return null;
+  // Row 103: the app flag may turn a statement into a goal; it may not turn a
+  // question into one. Named in the log rather than dropped silently — a goal
+  // that quietly does not appear is the mirror image of the bug being fixed.
+  if (isQuestionNotGoal(userMessage)) {
+    if (intent?.asGoal === true)
+      // eslint-disable-next-line no-console
+      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is a question`);
+    return null;
+  }
   if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
   try {
     if ((await getOpenTaskByThread(threadId)) !== null) return null;
