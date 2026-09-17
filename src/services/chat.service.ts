@@ -3635,6 +3635,49 @@ function takeCreatedGoals(runId: string): number[] {
 }
 
 /**
+ * Ticket 20 row 203, third pass — the approve button is REMOVED, not discouraged.
+ *
+ * The second pass told the model, in the tool's own result, not to offer
+ * „დამტკიცებულია" on a plan that reaches nobody, and I wrote at the time that
+ * „an instruction is the proportionate tool". Goal 4358 says otherwise: the
+ * plan named nobody and the approve button was there anyway, on the event-run
+ * path. An instruction is a request; this is a button that, once tapped,
+ * starts a plan that cannot send anything to anybody.
+ *
+ * So the instruction stays — it is still the thing that gets the model to
+ * offer the RIGHT next step — and the button is taken out here regardless of
+ * whether the model listened. Whether a model obeys a sentence is evidence;
+ * what reaches the screen is code.
+ *
+ * Only the approve button goes. „შევცვალოთ" stays, because changing a plan
+ * that reaches nobody is exactly what the owner should be able to do next.
+ */
+const runNothingToSend = new Set<string>();
+
+function noteNothingToSendToday(runId: string | undefined): void {
+  if (runId) runNothingToSend.add(runId);
+}
+
+/** Read and forget, so a run's flag can never leak into the next one. */
+function takeNothingToSendToday(runId: string): boolean {
+  const flagged = runNothingToSend.has(runId);
+  runNothingToSend.delete(runId);
+  return flagged;
+}
+
+/**
+ * The buttons a run may actually show. Exported for its own test: this is the
+ * guarantee, and the instruction above it is only the polite version.
+ */
+export function choicesWithoutApproval(choices: readonly string[]): string[] | undefined {
+  const kept = choices.filter((label) => label !== APPROVE_LABEL);
+  // An empty button row is its own small lie — a strip of nothing where the
+  // screen promises a choice. If approve was the only thing offered, the reply
+  // simply has no buttons.
+  return kept.length > 0 ? kept : undefined;
+}
+
+/**
  * Ticket 17 Task 39, the frontend's own catch (12 Sep, build c5baaa8).
  *
  * `get_invite_link` returns the ready-to-send message, but the tool result
@@ -4595,6 +4638,10 @@ async function executeToolCall(
         }
       }
       if (!outcome.ok) return { proposed: false, error: outcome.error };
+      // Row 203 third pass: remembered for THIS run, so the approve button can
+      // be removed from whatever the model goes on to offer. The instruction
+      // in the result asks; this makes it true.
+      if (unreachable.nobodyReachable) noteNothingToSendToday(runId);
       // Row 101, on Tornike's word: the saved plan is the only plan text on
       // the screen. See planProposedResult for why the summary is withheld
       // rather than sent with an instruction not to use it.
@@ -6831,7 +6878,14 @@ export async function processChat(
   // does not: a tool recorded that outcome, it is not the blocked prose, and
   // dropping it would hide something that actually happened.
   const { choices: safeChoices, options: safeOptions } = attachmentsAfterModeration(replySafe, {
-    choices,
+    // Row 203 third pass. If this run proposed a plan that can reach nobody,
+    // the approve button does not go on the screen — whatever the model
+    // offered. Goal 4358 had it there on the event-run path after the tool
+    // result had asked for it not to be, and an instruction the model can
+    // ignore is not a guarantee. „შევცვალოთ" stays: changing a plan that
+    // reaches nobody is precisely the next thing the owner should be able to
+    // do.
+    choices: takeNothingToSendToday(runId) && choices ? choicesWithoutApproval(choices) : choices,
     options,
   });
   // Ticket 19 [18]: the requests waiting on this person go out as their own

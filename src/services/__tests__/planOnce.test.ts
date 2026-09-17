@@ -1,4 +1,10 @@
-import { INVITE_SHARE_NOTE, PLAN_ALREADY_ON_SCREEN, planProposedResult } from '../chat.service';
+import {
+  choicesWithoutApproval,
+  INVITE_SHARE_NOTE,
+  PLAN_ALREADY_ON_SCREEN,
+  planProposedResult,
+  WAKE_SHARE_NOTE,
+} from '../chat.service';
 
 /**
  * Ticket 20 row 101 — the plan shows once.
@@ -217,3 +223,58 @@ describe('row 153 — the invitation rides the run, not the prose', () => {
 function note_hasOnlyExpectedScripts(text: string): boolean {
   return !/[A-Za-zÀ-ɏЀ-ӿ]/.test(text);
 }
+
+/**
+ * Ticket 20 row 203, third pass — the approve button is removed, not discouraged.
+ *
+ * The second pass put the instruction in the tool's result and I wrote that „an
+ * instruction is the proportionate tool". Goal 4358 disagreed: the plan named
+ * nobody and the approve button was on the screen anyway, on the event-run
+ * path. A button that starts a plan which can reach nobody is not a wasted tap
+ * to be discouraged; it is a promise to be withheld.
+ */
+describe('row 203 — the buttons a run may actually show', () => {
+  it('removes the approve button and keeps the change button', () => {
+    expect(choicesWithoutApproval(['დამტკიცებულია', 'შევცვალოთ'])).toEqual(['შევცვალოთ']);
+  });
+
+  it('leaves an ordinary set of buttons untouched', () => {
+    const choices = ['თვითონ დავურეკავ', 'მოწვევა გავაგზავნო', 'სხვაც მოძებნე'];
+
+    expect(choicesWithoutApproval(choices)).toEqual(choices);
+  });
+
+  it('shows NO buttons rather than an empty row', () => {
+    // A strip of nothing where the screen promises a choice is its own small
+    // lie, and the client renders whatever array it is given.
+    expect(choicesWithoutApproval(['დამტკიცებულია'])).toBeUndefined();
+    expect(choicesWithoutApproval([])).toBeUndefined();
+  });
+
+  it('the instruction the model gets still names the real next step', () => {
+    // The code guarantee replaces nothing: the instruction is what gets the
+    // model to offer something USEFUL instead of an approval.
+    const result = planProposedResult(1, 'summary', true, {
+      nobodyReachable: true,
+      invitees: ['დათო'],
+      toWake: ['ნინო'],
+    });
+
+    expect(result.nothing_to_send_today).toBe(true);
+    expect(String(result.instead)).toContain('დათო');
+    expect(String(result.instead)).toContain('ნინო');
+    // Row 203 second pass, Tornike's rule: this says nothing about the GOAL.
+    expect(String(result.instead)).toContain('მიზანი ღია რჩება');
+  });
+});
+
+/**
+ * Ticket 20 row 153, second pass — the same button, a different true sentence.
+ */
+describe('row 153 — a wake is not an invitation', () => {
+  it('the wake note says they already have an account and needs no code', () => {
+    expect(WAKE_SHARE_NOTE).toContain('ძველი ანგარიში');
+    expect(WAKE_SHARE_NOTE).toContain('ნუ ჩასვამ');
+    expect(note_hasOnlyExpectedScripts(WAKE_SHARE_NOTE.replace(/Netai|Ally/g, ''))).toBe(true);
+  });
+});
