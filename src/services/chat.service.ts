@@ -1052,11 +1052,16 @@ const REMOVE_CONTACT_FROM_NETWORK_TOOL: AnthropicTool = {
 const INVITE_CONTACT_TOOL: AnthropicTool = {
   name: 'invite_contact',
   description:
-    'A personal invite for ONE contact who is NOT on Netai yet: returns ready-to-send text in ' +
-    "the user's language carrying THEIR referral code (never a bare link, never anyone's " +
-    'number), and records it so the same person is not offered twice (already_invited comes ' +
-    'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
-    'contact. The USER sends the text themselves — Netai never messages non-members.',
+    'Ready-to-send text for ONE contact who is not USING Netai, in the user’s language, ' +
+    'recorded so the same person is not offered twice (already_invited comes back with the ' +
+    'date). `kind` says which of two messages came back, and they are different facts about ' +
+    'the person: "invite" — no account anywhere, the text carries THEIR referral code; ' +
+    '"wake" — an old Ally account that has never opened Netai, so there is no code and the ' +
+    'text asks them to sign in with the same number (D61: waking these is how the network ' +
+    'grows, they are targets and not members). Only somebody who has actually USED Netai is ' +
+    'refused, and they can be asked directly in the app instead. Never a bare link, never ' +
+    "anyone's number. WHEN: the user asks whom to invite or wants to reach a named contact " +
+    'who is not on Netai. The USER sends the text themselves — Netai never messages them.',
   input_schema: {
     type: 'object',
     properties: {
@@ -1449,6 +1454,21 @@ export function planNamesPeople(plan: unknown): boolean {
 export const INVITE_SHARE_NOTE =
   'მოსაწვევის ტექსტი მფლობელს გაზიარების ღილაკით მიეწოდება — შენს პასუხში ' +
   'ნუ ჩასვამ ვერც ტექსტს, ვერც ბმულს, ვერც კოდს. მხოლოდ უთხარი, ვის ეხება და ' +
+  'რომ ერთი შეხებით გაიგზავნება.';
+
+/**
+ * Ticket 20 row 153, second pass — the same button, a different true sentence.
+ *
+ * „An invitation is ready for Giorgi" is false about somebody who has had an
+ * account since March 2024. What is true is that the account exists and has
+ * never been opened, and that is also the more useful thing to tell the owner:
+ * it says why this person is worth a message at all (D61).
+ */
+export const WAKE_SHARE_NOTE =
+  'ამ ადამიანს Ally-ს ძველი ანგარიში აქვს და Netai ჯერ არ გაუხსნია — მოსაწვევი ' +
+  'კოდი არ სჭირდება. მზადაა მოკლე შეტყობინება, რომ ანგარიში უკვე მუშაობს და ' +
+  'მხოლოდ შესვლაა საჭირო; მფლობელს გაზიარების ღილაკით მიეწოდება. შენს პასუხში ' +
+  'ნუ ჩასვამ ტექსტს ან ბმულს — უთხარი, ვის ეხება, რომ ანგარიში უკვე აქვს, და ' +
   'რომ ერთი შეხებით გაიგზავნება.';
 
 export const PLAN_ALREADY_ON_SCREEN =
@@ -4266,7 +4286,12 @@ async function executeToolCall(
             // the tool RESULT rather than the description because a rule that
             // arrives with the data it applies to cannot drift out of step
             // with the code that enforces it.
-            share_note: INVITE_SHARE_NOTE,
+            //
+            // Second pass: WHICH note depends on who the person is. „An
+            // invitation is ready" is false about somebody who has had an
+            // account since March 2024 — the tool now says which of the two
+            // this is, and the note follows it.
+            share_note: invite.kind === 'wake' ? WAKE_SHARE_NOTE : INVITE_SHARE_NOTE,
           };
     }
     case 'get_invite_link': {
