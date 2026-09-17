@@ -5271,6 +5271,20 @@ async function callClaude(
   const startedAt = Date.now();
   /** Row 202 third pass: every gap between events, for the slow-call line. */
   const gaps: number[] = [];
+  /**
+   * Row 202, fifth pass — WHERE in the response the pause falls.
+   *
+   * „159 events, then 43 seconds" says how much silence there was and nothing
+   * about what the model was doing when it went quiet. The event type on
+   * either side of the longest gap says that: a pause before the first content
+   * block is the model starting, a pause in the middle of a tool_use input is
+   * it composing a large argument, and a pause after content_block_stop is it
+   * deciding what comes next. Those are three different stories and only one
+   * of them is ours to fix.
+   */
+  let lastEventType = 'start';
+  let gapAfter = 'start';
+  let gapBefore = 'start';
   const resetStall = (): void => {
     if (stallTimer) clearTimeout(stallTimer);
     const window = started ? STREAM_STALL_TIMEOUT_MS : STREAM_FIRST_EVENT_TIMEOUT_MS;
@@ -5287,12 +5301,18 @@ async function callClaude(
     }, window);
   };
   resetStall();
-  stream.on('streamEvent', () => {
+  stream.on('streamEvent', (event: { type?: string }) => {
     started = true;
     events += 1;
     // Row 202 third pass: every gap, not only the last, so a call that
     // finished can still say where its longest silence was.
-    gaps.push(Date.now() - lastEventAt);
+    const gap = Date.now() - lastEventAt;
+    gaps.push(gap);
+    if (gap >= Math.max(...gaps, 0)) {
+      gapAfter = lastEventType;
+      gapBefore = event?.type ?? '?';
+    }
+    lastEventType = event?.type ?? '?';
     lastEventAt = Date.now();
     resetStall();
   });
@@ -5326,8 +5346,8 @@ async function callClaude(
   if (longestGap >= SLOW_CALL_LOG_MS) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[chat] run ${ctx.runId} ${model}: events ${events}, longest silence ${longestGap}ms, ` +
-        `alive ${Date.now() - startedAt}ms`,
+      `[chat] run ${ctx.runId} ${model}: events ${events}, longest silence ${longestGap}ms ` +
+        `(after ${gapAfter}, before ${gapBefore}), alive ${Date.now() - startedAt}ms`,
     );
   }
 
