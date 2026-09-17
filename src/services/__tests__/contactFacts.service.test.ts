@@ -471,3 +471,92 @@ describe('isNearDuplicateFact — the same statement written differently', () =>
     ).toBe(false);
   });
 });
+
+/**
+ * A fact the assistant did not hear from the owner may be USED, never SHOWN.
+ *
+ * 17 September, thread 16902. „Who is Maro Koshadze?" — a question, no goal,
+ * nothing asked for. The run searched the name, read the profile, searched the
+ * web twice, and wrote three facts onto a real person's record. Two stayed
+ * private. The third, a headline lifted off a web page, was stored PUBLIC and
+ * matchable: an unverified claim about a real person, published to the network
+ * under the owner's name, without the owner being told.
+ *
+ * The rule was already written in the source — „what the assistant took from a
+ * web page or inferred (confidence 'mentioned') never [goes public]" — and was
+ * enforced on one branch only. The other asks the moderator, whose prompt
+ * opens „A user saved this about one of their contacts". That is not true of a
+ * web-sourced line and the model cannot know it; asked whether a job title is
+ * professional or personal, it answers professional.
+ *
+ * Measured before clamping: of 48 facts ever written with confidence
+ * 'mentioned', exactly one was public — that one.
+ */
+describe('a web-sourced fact is never shown to strangers', () => {
+  it('downgrades a PUBLIC verdict to matchable when the assistant only read it somewhere', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(true);
+
+    const result = await submitContactFact(
+      USER,
+      RAW_PHONE,
+      'headline',
+      'Product Manager at Phubber; Visiting Lecturer at Caucasus University',
+      'chat',
+      'mentioned',
+    );
+
+    // Not shown…
+    expect(result.is_public).toBe(false);
+    const [, params] = insertCall();
+    expect((params as unknown[])[4]).toBe(false);
+    // …but still usable silently, which is the whole point of the third state:
+    // the run learned something real and the network may act on it.
+    expect((params as unknown[])[5]).toBe(true);
+  });
+
+  it('leaves a private verdict private — the clamp only ever lowers', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockVisibility('private');
+
+    await submitContactFact(USER, RAW_PHONE, 'note', 'დიდი ვალი აქვს', 'chat', 'mentioned');
+
+    const [, params] = insertCall();
+    expect((params as unknown[])[4]).toBe(false);
+    expect((params as unknown[])[5]).toBe(false);
+  });
+
+  it('does NOT touch what the owner actually said', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(true);
+
+    const result = await submitContactFact(
+      USER,
+      RAW_PHONE,
+      'note',
+      'Fintech product manager',
+      'chat',
+      'stated',
+    );
+
+    expect(result.is_public).toBe(true);
+  });
+
+  it('does NOT touch a row whose confidence was never recorded', async () => {
+    // null means „not recorded", most of it predates the column, and reading
+    // it as a web guess would rewrite the meaning of 774 existing rows.
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockModeration(true);
+
+    const result = await submitContactFact(
+      USER,
+      RAW_PHONE,
+      'note',
+      'Runs a logistics company',
+      'chat',
+      null,
+    );
+
+    expect(result.is_public).toBe(true);
+  });
+});

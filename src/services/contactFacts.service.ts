@@ -427,6 +427,44 @@ export function isGuessValue(value: string): boolean {
   return GUESS_MARKERS.some((m) => lower.includes(m));
 }
 
+/**
+ * A fact the assistant did not hear from the owner may be USED, never SHOWN.
+ *
+ * The rule is already written two functions down: „what the assistant took
+ * from a web page or inferred (confidence 'mentioned') never [goes public]".
+ * It was enforced on one branch only. The other branch asks
+ * moderateFactVisibility, whose prompt opens „A user saved this about one of
+ * their contacts" — which is not true of a web-sourced line, and the model has
+ * no way to know it. Asked whether a job title is professional or personal, it
+ * answers professional, and publishes it.
+ *
+ * 17 September, thread 16902. „Who is Maro Koshadze?" — a question, no goal,
+ * nothing asked for. The run searched the name, read the profile, searched the
+ * web twice, and then wrote three facts onto a real person's record. Two
+ * stayed private. The third, a headline taken off a web page, was stored
+ * PUBLIC and matchable: an unverified claim about a real person, published to
+ * the network under the owner's name, without the owner being told.
+ *
+ * MEASURED before clamping: of 48 facts ever written with confidence
+ * 'mentioned', exactly one is public — that one. So the rule has held 47 times
+ * by luck of what the moderator happened to say, and this makes it hold by
+ * construction. A null confidence is left alone: it means „not recorded", most
+ * of it predates the column, and treating it as a web guess would rewrite the
+ * meaning of 774 rows.
+ *
+ * Whether such a question should write a fact AT ALL is the founder's, and the
+ * seat has put it to him. This is the narrower thing that is true either way:
+ * whatever may be written, what the assistant read on a web page is not the
+ * owner's word and must not be shown to strangers as if it were.
+ */
+function clampToProvenance(
+  visibility: FactVisibility,
+  confidence: FactConfidence | null,
+): FactVisibility {
+  if (confidence !== 'mentioned') return visibility;
+  return visibility === 'public' ? 'matchable' : visibility;
+}
+
 export class FactRefusedError extends Error {}
 
 export async function submitContactFact(
@@ -465,7 +503,7 @@ export async function submitContactFact(
     const visibility =
       isCuratorWorkFact(userId, targetField, source) && confidence === 'stated'
         ? 'public'
-        : await moderateFactVisibility(targetField, value);
+        : clampToProvenance(await moderateFactVisibility(targetField, value), confidence);
     await insertFreeFormFact(
       userId,
       neo4jContactId,
