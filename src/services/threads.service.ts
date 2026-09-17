@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
+import { languageOfConversation, RunLanguage } from './runLanguage';
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
@@ -529,6 +530,35 @@ export async function getThreadMessages(
         : stripAllowedSpans(row.content),
   }));
 }
+
+/**
+ * The language a thread is held in, from the owner's own words.
+ *
+ * The seat's #4061 (h): the server's fixed strings were Georgian in an English
+ * thread. A RUN knows its language; a BUTTON has no run, so the route has to
+ * ask. Same rule languageOfConversation applies — the newest message that
+ * carries a script decides, and a short Latin „ok" does not move a Georgian
+ * conversation.
+ *
+ * Only the owner's own messages are read. The assistant's are evidence of what
+ * the assistant did, and when it got the language wrong they are evidence of
+ * the bug rather than of the conversation.
+ */
+export async function threadLanguage(threadId: number): Promise<RunLanguage> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+     WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [threadId, LANGUAGE_SAMPLE_MESSAGES],
+  );
+  const [latest, ...earlier] = result.rows.map((r) => r.content);
+  if (latest === undefined) return 'ka';
+  return languageOfConversation(latest, earlier);
+}
+
+/** Enough to see past a „ok" or two without reading a whole conversation. */
+const LANGUAGE_SAMPLE_MESSAGES = 8;
 
 /**
  * Take the buttons off every message in a thread, permanently.

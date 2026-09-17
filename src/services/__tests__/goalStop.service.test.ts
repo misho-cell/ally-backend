@@ -18,7 +18,14 @@ import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices, Thread } from '../threads.service';
 import { emitChoicesCleared } from '../sse.service';
-import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread, stoppedLine } from '../goalStop.service';
+import {
+  NOTHING_TO_STOP,
+  NOTHING_TO_STOP_LINE,
+  alreadyStoppedLine,
+  stopGoal,
+  stopGoalOnThread,
+  stoppedLine,
+} from '../goalStop.service';
 
 const mockUpdate = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockCancel = cancelAsksForTask as jest.MockedFunction<typeof cancelAsksForTask>;
@@ -291,5 +298,47 @@ describe('a stop takes the buttons off the stored rows, not only the screen', ()
 
     expect(await stopGoal('501', task())).toMatchObject({ stopped: true, goal_id: 2872 });
     expect(mockUpdate).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The seat's #4061 (h): „everything the SERVER writes — stop confirmations,
+ * plan cards, web blocks, button labels — is Georgian in an English thread."
+ *
+ * The model's own replies hold their language in both directions. The fixed
+ * strings never did, because nothing handed them one.
+ */
+describe('the stop line follows the conversation’s language', () => {
+  it('writes English in an English thread, asks and all', () => {
+    expect(stoppedLine('a wedding photographer', 0, 'en')).toBe(
+      'Stopped: a wedding photographer. Nothing further will be sent.',
+    );
+    expect(stoppedLine('X', 1, 'en')).toContain('the one question already sent');
+    expect(stoppedLine('X', 3, 'en')).toContain('the 3 questions already sent');
+  });
+
+  it('still counts the people who were told, in every language', () => {
+    for (const lang of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(stoppedLine('X', 2, lang)).toMatch(/2/);
+      expect(stoppedLine('X', 0, lang)).not.toMatch(/\b2\b/);
+    }
+  });
+
+  it('defaults to Georgian when the caller cannot say', () => {
+    // A wrong-language line is a blemish; a missing stop line is row 113.
+    expect(stoppedLine('X', 0)).toBe(stoppedLine('X', 0, 'ka'));
+  });
+
+  it('carries the language into the thread and its caption', async () => {
+    await stopGoal('501', task(), 'en');
+
+    expect(String(mockSay.mock.calls[0][3])).toContain('Stopped:');
+    expect(mockThread).toHaveBeenCalledWith('501', 14719, 'done', { statusLine: 'Stopped' });
+  });
+
+  it('answers „nothing to stop" in the owner’s language too', () => {
+    expect(NOTHING_TO_STOP_LINE.en).toBe('There is no goal to stop in this conversation.');
+    expect(alreadyStoppedLine('My goal', 'en')).toContain('is already stopped');
+    expect(alreadyStoppedLine('ჩემი მიზანი', 'ka')).toContain('უკვე შეჩერებულია');
   });
 });

@@ -8,6 +8,7 @@ import {
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { getTaskById } from '../../services/taskStore.service';
 import { GoalStopped, stopGoal, stopGoalOnThread } from '../../services/goalStop.service';
+import { threadLanguage } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { ApiResponse } from '../../types';
 
@@ -100,10 +101,11 @@ tasksRouter.post(
       const id = Number(req.params.id);
       const task = await getTaskById(id);
       if (task && String(task.user_id) === userId) {
-        res.status(200).json({ success: true, data: await stopGoal(userId, task) });
+        const lang = task.thread_id === null ? 'ka' : await threadLanguage(task.thread_id);
+        res.status(200).json({ success: true, data: await stopGoal(userId, task, lang) });
         return;
       }
-      const stoppedByThread = await stopGoalOnThread(userId, id);
+      const stoppedByThread = await stopGoalOnThread(userId, id, await threadLanguage(id));
       if (stoppedByThread === null) {
         res.status(404).json({ success: false, error: 'დავალება ვერ მოიძებნა' });
         return;

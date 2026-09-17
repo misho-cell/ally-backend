@@ -222,7 +222,12 @@ import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
 import { setThreadStatus } from './threadStatus.service';
-import { stopGoal } from './goalStop.service';
+import {
+  stopGoal,
+  stoppedLine,
+  NOTHING_TO_STOP_LINE,
+  alreadyStoppedLine,
+} from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { getGoalOnThread } from './taskStore.service';
 import { query } from '../db/postgres/client';
@@ -7045,19 +7050,27 @@ export async function processChat(
      * So every case ends here, the run's reply is withheld either way, and the
      * owner gets one true line instead of a guess.
      */
+    /**
+     * The seat's #4061 (h): the server's own lines were Georgian in an English
+     * thread. The run's language is not settled until the history loads, forty
+     * lines below, and the stop answers before any of that — so this reads the
+     * owner's own sentence, which is the same rule languageOfConversation
+     * applies and the only evidence available this early.
+     */
+    const stopLang = detectRunLanguage(userMessage);
     let said: string;
     if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,
       );
-      const outcome = await stopGoal(userId, running);
-      said = outcome.said ?? `შევაჩერე: ${running.title}`;
+      const outcome = await stopGoal(userId, running, stopLang);
+      said = outcome.said ?? stoppedLine(running.title, 0, stopLang);
     } else {
       said =
         running === null
-          ? 'ამ საუბარში გასაჩერებელი მიზანი არ არის.'
-          : `„${running.title}" უკვე შეჩერებულია — ახალი არაფერი მიდის.`;
+          ? NOTHING_TO_STOP_LINE[stopLang]
+          : alreadyStoppedLine(running.title, stopLang);
       // eslint-disable-next-line no-console
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: nothing to stop (${running === null ? 'no goal on this chat' : 'already closed'})`,
@@ -7099,7 +7112,7 @@ export async function processChat(
      * drops the push, the title generator and the fact sweep — see the route,
      * which now delivers `stoppedLine` and nothing else.
      */
-    return { reply: said, stopped: true, stoppedLine: said, language: detectRunLanguage(said) };
+    return { reply: said, stopped: true, stoppedLine: said, language: stopLang };
   }
   const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
   // Row 155: provisional, and refined the moment the thread's history is in

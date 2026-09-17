@@ -38,7 +38,7 @@ import {
 import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
-import { ThreadStatus, deleteThread } from '../../services/threads.service';
+import { ThreadStatus, deleteThread, threadLanguage } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
 import { budgetWindow } from '../../services/budgetWindow';
@@ -230,7 +230,9 @@ threadsRouter.post(
       // `/tasks/:id/stop` — two stop paths that drift apart is a worse bug than
       // the one row 113 fixes: the copy that forgot to cancel the asks would go
       // on writing to real people after the owner pressed stop.
-      const stopped = await stopGoalOnThread(userId, threadId);
+      // The seat's #4061 (h): a button has no run to read a language from, so
+      // the thread's own words answer for it.
+      const stopped = await stopGoalOnThread(userId, threadId, await threadLanguage(threadId));
       if (stopped === null) {
         res.status(404).json({ success: false, error: 'თრედი ვერ მოიძებნა' });
         return;

@@ -4,6 +4,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { emitChoicesCleared } from './sse.service';
+import { RunLanguage } from './runLanguage';
 
 /**
  * The owner's kill switch, in one place.
@@ -57,15 +58,73 @@ export interface GoalStopped {
  * out in their name than to someone who has none, and those three people have
  * just been told the question is off.
  */
-export function stoppedLine(title: string, cancelledAsks: number): string {
-  const head = `შევაჩერე: ${title}`;
-  if (cancelledAsks <= 0) return `${head}. ახალი არაფერი გაიგზავნება.`;
-  const asks =
-    cancelledAsks === 1
-      ? 'ერთი გაგზავნილი კითხვა გავაუქმე და იმ ადამიანს ვაცნობე'
-      : `${cancelledAsks} გაგზავნილი კითხვა გავაუქმე და იმ ადამიანებს ვაცნობე`;
-  return `${head}. ${asks}. ახალი არაფერი გაიგზავნება.`;
+/**
+ * Row 155's other half, the seat's #4061 (h): „everything the SERVER writes —
+ * stop confirmations, plan cards, web blocks, button labels — is Georgian in
+ * an English thread."
+ *
+ * The model's own replies hold their language in both directions; the fixed
+ * strings never did, because nothing handed them one. The run knows its
+ * language (RUN_STRINGS has followed it since Ticket 6 task 22) and this
+ * simply joins that, rather than inventing a second mechanism.
+ *
+ * Georgian stays the default for a caller that cannot say — a wrong-language
+ * line is a blemish, and a missing stop line is row 113.
+ */
+const STOPPED: Record<RunLanguage, (title: string, asks: number) => string> = {
+  ka: (title, asks) => {
+    const head = `შევაჩერე: ${title}`;
+    if (asks <= 0) return `${head}. ახალი არაფერი გაიგზავნება.`;
+    const said =
+      asks === 1
+        ? 'ერთი გაგზავნილი კითხვა გავაუქმე და იმ ადამიანს ვაცნობე'
+        : `${asks} გაგზავნილი კითხვა გავაუქმე და იმ ადამიანებს ვაცნობე`;
+    return `${head}. ${said}. ახალი არაფერი გაიგზავნება.`;
+  },
+  en: (title, asks) => {
+    const head = `Stopped: ${title}`;
+    if (asks <= 0) return `${head}. Nothing further will be sent.`;
+    const said =
+      asks === 1
+        ? 'I cancelled the one question already sent and told that person'
+        : `I cancelled the ${asks} questions already sent and told those people`;
+    return `${head}. ${said}. Nothing further will be sent.`;
+  },
+  ru: (title, asks) => {
+    const head = `Остановил: ${title}`;
+    if (asks <= 0) return `${head}. Больше ничего не отправится.`;
+    const said =
+      asks === 1
+        ? 'Отменил один уже отправленный вопрос и сообщил тому человеку'
+        : `Отменил ${asks} уже отправленных вопроса и сообщил тем людям`;
+    return `${head}. ${said}. Больше ничего не отправится.`;
+  },
+  es: (title, asks) => {
+    const head = `Detenido: ${title}`;
+    if (asks <= 0) return `${head}. No se enviará nada más.`;
+    const said =
+      asks === 1
+        ? 'Cancelé la pregunta que ya estaba enviada y avisé a esa persona'
+        : `Cancelé las ${asks} preguntas ya enviadas y avisé a esas personas`;
+    return `${head}. ${said}. No se enviará nada más.`;
+  },
+};
+
+export function stoppedLine(
+  title: string,
+  cancelledAsks: number,
+  language: RunLanguage = 'ka',
+): string {
+  return STOPPED[language](title, cancelledAsks);
 }
+
+/** The caption a stopped thread carries in the list. */
+const STOPPED_STATUS: Record<RunLanguage, string> = {
+  ka: 'შეჩერებულია',
+  en: 'Stopped',
+  ru: 'Остановлено',
+  es: 'Detenido',
+};
 
 /**
  * Close the goal, cancel every unanswered ask (the recipients get an honest
@@ -75,7 +134,11 @@ export function stoppedLine(title: string, cancelledAsks: number): string {
  * twice on purpose, and two identical „I stopped it" lines would be row 157
  * again in miniature.
  */
-export async function stopGoal(userId: string, task: Task): Promise<GoalStopped> {
+export async function stopGoal(
+  userId: string,
+  task: Task,
+  language: RunLanguage = 'ka',
+): Promise<GoalStopped> {
   const wasOpen = task.status !== 'closed';
   // Row 113 fourth pass, and FIRST in this function on purpose: a run that is
   // working right now must learn it has been stopped before anything else
@@ -93,7 +156,7 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
   let said: string | undefined;
   if (task.thread_id !== null) {
     if (wasOpen) {
-      said = stoppedLine(task.title, cancelledAsks);
+      said = stoppedLine(task.title, cancelledAsks, language);
       await saveThreadMessage(task.thread_id, Number(userId), 'assistant', said).catch(
         () => undefined,
       );
@@ -119,7 +182,9 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
       // eslint-disable-next-line no-console
       console.error(`[stop] could not clear buttons on thread ${task.thread_id}:`, err);
     });
-    void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
+    void setThreadStatus(userId, task.thread_id, 'done', {
+      statusLine: STOPPED_STATUS[language],
+    });
   }
   return said === undefined
     ? { stopped: true, goal_id: task.id }
@@ -148,6 +213,7 @@ export const NOTHING_TO_STOP: GoalStopped = {
 export async function stopGoalOnThread(
   userId: string,
   threadId: number,
+  language: RunLanguage = 'ka',
 ): Promise<GoalStopped | null> {
   const thread = await getThread(threadId, userId);
   if (!thread) return null;
@@ -168,5 +234,34 @@ export async function stopGoalOnThread(
    */
   const task = await getGoalOnThread(threadId);
   if (!task || task.status === 'closed') return NOTHING_TO_STOP;
-  return stopGoal(userId, task);
+  return stopGoal(userId, task, language);
+}
+
+/**
+ * „There is no goal to stop in this conversation" — the server's own answer
+ * when the chat carries none, in the language the owner typed in.
+ *
+ * Row 113's ninth pass made this the run's whole reply, so it is the only
+ * sentence the owner gets. A correct answer in the wrong alphabet is a poor
+ * way to end an exchange that began with them asking for something to stop.
+ */
+export const NOTHING_TO_STOP_LINE: Record<RunLanguage, string> = {
+  ka: 'ამ საუბარში გასაჩერებელი მიზანი არ არის.',
+  en: 'There is no goal to stop in this conversation.',
+  ru: 'В этом разговоре нет цели, которую можно остановить.',
+  es: 'En esta conversación no hay ninguna meta que detener.',
+};
+
+/** „<title> is already stopped" — the second press, or a goal closed elsewhere. */
+export function alreadyStoppedLine(title: string, language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return `"${title}" is already stopped. Nothing further is going out.`;
+    case 'ru':
+      return `«${title}» уже остановлена. Больше ничего не отправляется.`;
+    case 'es':
+      return `«${title}» ya está detenida. No se está enviando nada más.`;
+    default:
+      return `„${title}" უკვე შეჩერებულია — ახალი არაფერი მიდის.`;
+  }
 }
