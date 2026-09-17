@@ -532,36 +532,48 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
  * in through somebody you know, and „here is a firm, ring them" is the thing it
  * is supposed to replace.
  *
- * ONLY THE NAMES WITH A REAL WAY IN, and the seat overruled me on this within
- * the hour — rightly.
+ * WHO GETS A LINE — and this has now been decided twice, in opposite
+ * directions, by two different people. Both were right about the thing they
+ * were looking at.
  *
- * I gave the four slots to the best verdicts but let „nobody in your contacts"
- * and „could not check" fill what was left. Their read of the first live run
- * (#3632): every line on both goals ended with „I could not check the way in".
- * Their words: a message that says that three times teaches the owner to
- * ignore the message. That is the whole value of the thing gone, to save a
- * blank space.
+ * First I gave the four slots to the best verdicts and let „nobody in your
+ * contacts" and „could not check" fill what was left. The seat's read of the
+ * first live run (#3632): every line on both goals ended with „I could not
+ * check the way in", and their words were that a message saying that three
+ * times teaches the owner to ignore the message. I cut it to first-circle
+ * only, and to nothing at all when there were none.
  *
- * So the message carries first-circle results and nothing else, and when there
- * are none it is not written at all. It appears only when it has something to
- * say, which is what makes it worth reading when it does.
+ * The founder overruled that on 17 September, having seen the result: a web
+ * result with no way in STAYS, as long as the reply says plainly that no path
+ * is visible yet. He wants to see the names and chase them himself. The
+ * suppression is only for when there is genuinely nothing to show, not for
+ * when the only shortcoming is the missing path.
  *
- * The other two verdicts are NOT lost — they still reach the model in the
- * prompt section and in the tool result, where „your own contacts hold nobody"
- * is genuinely different from „nobody" (G7). What changed is that they stopped
- * being shown to the OWNER as if they were findings.
+ * Both hold at once if the pathless names share ONE line instead of each
+ * getting their own „could not check". The names are all there, which is what
+ * he asked for; the sentence that taught people to skim is written once.
+ *
+ * „გზა ჯერ ვერ ვნახე" is deliberately true of BOTH pathless kinds. It says we
+ * have not found a way, and does not claim we looked — so „could not check"
+ * is never rendered as „nobody", which is G7 and still holds. The difference
+ * between the two still reaches the MODEL in the prompt section and the tool
+ * result, where it changes what it may say.
  */
 const FROM_THE_WEB_MAX = 4;
 
 export function buildFromTheWebMessage(waysIn: ReadonlyMap<string, WayIn>): string | null {
-  const found = [...waysIn.entries()].filter(
-    (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
-      entry[1].kind === 'first_circle',
-  );
-  if (found.length === 0) return null;
-  const lines = found
-    .slice(0, FROM_THE_WEB_MAX)
+  const entries = [...waysIn.entries()].slice(0, FROM_THE_WEB_MAX);
+  if (entries.length === 0) return null;
+  const lines = entries
+    .filter(
+      (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
+        entry[1].kind === 'first_circle',
+    )
     .map(([name, wayIn]) => `• ${name} — შენი კონტაქტი იქ: ${wayIn.who}.`);
+  const pathless = entries
+    .filter(([, wayIn]) => wayIn.kind !== 'first_circle')
+    .map(([name]) => name);
+  if (pathless.length > 0) lines.push(`გზა ჯერ ვერ ვნახე: ${pathless.join(', ')}.`);
   return `ვებში ეს ვიპოვე:\n${lines.join('\n')}`;
 }
 

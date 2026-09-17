@@ -561,24 +561,47 @@ describe('buildFromTheWebMessage', () => {
   });
 
   /**
-   * The seat overruled my first version within the hour, and they were right.
-   * I let „nobody in your contacts" and „could not check" fill the spare slots;
-   * their read of the first live run (#3632) was that every line on both goals
-   * ended with „I could not check the way in", and that a message saying that
-   * three times teaches the owner to ignore the message.
+   * Decided twice, in opposite directions, by two different people, and both
+   * were right about what they were looking at.
+   *
+   * The seat, on the first live run (#3632): every line on both goals ended
+   * with „I could not check the way in", and a message that says that three
+   * times teaches the owner to ignore the message. I cut it to first-circle
+   * only.
+   *
+   * The founder, 17 September, having seen the result: the names STAY. He
+   * wants to see them and chase them himself, as long as the message says
+   * plainly that no path is visible yet.
+   *
+   * Both hold if the pathless names share ONE line. Every name is there; the
+   * sentence that taught people to skim is written once.
    */
-  it('writes NOTHING when no result has a real way in', () => {
-    expect(
+  it('keeps the names when none of them has a way in, under one honest line', () => {
+    const message = String(
       buildFromTheWebMessage(
         new Map([
           ['Acme', { kind: 'none' as const }],
           ['Beta', { kind: 'unchecked' as const }],
         ]),
       ),
-    ).toBeNull();
+    );
+
+    expect(message).toContain('Acme');
+    expect(message).toContain('Beta');
+    // One line for both, not one each.
+    expect(message.split('\n').filter((l) => l.includes('გზა ჯერ ვერ'))).toHaveLength(1);
   });
 
-  it('leaves the verdicts it cannot use out of the message entirely', () => {
+  it('never renders „could not check" as „nobody" (G7)', () => {
+    const message = String(
+      buildFromTheWebMessage(new Map([['Beta', { kind: 'unchecked' as const }]])),
+    );
+
+    // „I have not found a way yet" claims nothing about whether we looked.
+    expect(message).not.toMatch(/არავინ|ვერავინ/);
+  });
+
+  it('separates the ones with a way in from the ones without', () => {
     const message = String(
       buildFromTheWebMessage(
         new Map([
@@ -589,10 +612,20 @@ describe('buildFromTheWebMessage', () => {
       ),
     );
 
-    expect(message).toContain('Infinity Solutions');
-    expect(message).not.toContain('Acme');
-    expect(message).not.toContain('Beta');
-    expect(message.split('\n').filter((l) => l.startsWith('•'))).toHaveLength(1);
+    // The one with a person gets its own bullet, naming them…
+    const bullets = message.split('\n').filter((l) => l.startsWith('•'));
+    expect(bullets).toHaveLength(1);
+    expect(bullets[0]).toContain('Infinity Solutions');
+    expect(bullets[0]).toContain('დათო');
+    // …and the other two are named together, with no way-in claim.
+    expect(message).toContain('Acme');
+    expect(message).toContain('Beta');
+  });
+
+  it('still writes nothing when the web returned no names at all', () => {
+    // The founder's own boundary: the suppression is for genuinely nothing to
+    // show, not for a missing path.
+    expect(buildFromTheWebMessage(new Map())).toBeNull();
   });
 
   it('never tells the owner to contact a company himself — the seat\u2019s done-when', () => {
