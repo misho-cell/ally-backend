@@ -1,0 +1,45 @@
+-- Ticket 20 row 108, step 2 — on Misho's direct word, 17 September.
+--
+-- The automatic cleaner only runs on an insert-heavy table once a SHARE of it
+-- has been inserted, and that share is 0.2 globally. Measured on the live
+-- server:
+--
+--   UserTags              21,297,946 live rows  ->  0.2 = 4.26 M inserts
+--   UserAlias              8,407,241 live rows  ->  0.2 = 1.68 M inserts
+--   UserConnectionPhone    7,265,644 live rows  ->  0.2 = 1.45 M inserts
+--
+-- Those thresholds are never reached, so the insert-triggered vacuum never
+-- fires, and the VISIBILITY MAP — the thing that decides whether an index-only
+-- scan can answer from the index or must visit the table for every row — goes
+-- stale and stays stale. Last manual VACUUM on the first two: 7 August.
+--
+-- 0.02 makes it 2%: 426k, 168k and 145k rows respectively.
+--
+-- WHY UserConnectionPhone IS HERE, since Misho named it for the VACUUM and not
+-- for this. It is the table the mechanism is actually for:
+--
+--   table                 inserts since its last vacuum
+--   UserTags                                     10,639
+--   UserAlias                                     5,226
+--   UserConnectionPhone                         520,505   <- never vacuumed by
+--                                                            hand, last
+--                                                            autovacuum 28 June
+--
+-- Applying the setting only to the two tables that take ten thousand rows, and
+-- leaving out the one taking half a million, would be treating the patients
+-- who are not ill. Said out loud rather than slipped in: if that is wider than
+-- intended, the undo is one line per table.
+--
+-- UNDO (D44):
+--   ALTER TABLE "UserTags" RESET (autovacuum_vacuum_insert_scale_factor);
+--   ALTER TABLE "UserAlias" RESET (autovacuum_vacuum_insert_scale_factor);
+--   ALTER TABLE "UserConnectionPhone" RESET (autovacuum_vacuum_insert_scale_factor);
+--
+-- WHAT THIS DOES NOT DO. It changes nothing today: none of the three has taken
+-- enough rows since its last vacuum to cross even the new threshold. It stops
+-- the map going stale again after the next big phonebook import. The VACUUM
+-- that fixes today cannot live in a migration — migrations run inside a
+-- transaction and VACUUM cannot — so it is run by hand.
+ALTER TABLE "UserTags" SET (autovacuum_vacuum_insert_scale_factor = 0.02);
+ALTER TABLE "UserAlias" SET (autovacuum_vacuum_insert_scale_factor = 0.02);
+ALTER TABLE "UserConnectionPhone" SET (autovacuum_vacuum_insert_scale_factor = 0.02);

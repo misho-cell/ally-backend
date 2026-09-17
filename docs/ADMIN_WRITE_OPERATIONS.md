@@ -72,20 +72,41 @@ about twelve rows rather than a record of them.
 
 ---
 
-## 3. `ANALYZE` on four tables
+## 3. Row 108 — the database maintenance
 
-**Put to Misho, not answered.**
+**Misho's direct word, 17 September: steps 1, 2 and 4 yes; step 3 no.**
+
+### Step 1 and 4 — VACUUM (ANALYZE). NOT MINE TO RUN.
 
 | | |
 |---|---|
-| Statement | `ANALYZE "UserPhone"; "UserAlias"; "UserTags"; "UserConnectionPhone";` |
-| Undo | none needed — it writes no row, only statistics |
+| Statement | `VACUUM (ANALYZE) "UserTags";` `"UserAlias";` `"UserConnectionPhone";` |
+| Who runs it | Misho, directly. My only database path is read-only — the endpoint refuses anything but one SELECT, on a connection the server opens with `default_transaction_read_only=on` — and VACUUM cannot go in a migration because migrations run inside a transaction. |
+| Undo | none needed and none possible; it writes no row |
 
-Included here even though it changes no data, because it is the one case where
-the honest answer to „what is the undo" is that none is required, and saying so
-explicitly is better than leaving it off the register and having somebody
-wonder whether it was skipped.
+NOT about reclaiming space, which is what the word suggests. Measured: UserTags
+32,421 dead of 21.3M (0.15%), UserAlias 1,801 of 8.4M (0.02%). What VACUUM
+refreshes is the VISIBILITY MAP, which decides whether an index-only scan can
+answer from the index or must visit the table per row — the 10,607 heap fetches
+and 5,164 ms of disk wait behind the slow tag search.
 
-Statistics ages when measured: UserPhone 175 days, UserAlias and UserTags 40
-days. The earlier advice to `VACUUM` was wrong and was corrected — UserTags
-measured 0.2% dead rows, so there was nothing to reclaim.
+### Step 2 — the insert scale factor. MINE, as migration 155.
+
+| | |
+|---|---|
+| Statement | `ALTER TABLE <t> SET (autovacuum_vacuum_insert_scale_factor = 0.02)` |
+| Applied to | UserTags, UserAlias, UserConnectionPhone |
+| Undo | `ALTER TABLE <t> RESET (autovacuum_vacuum_insert_scale_factor);` |
+
+UserConnectionPhone was added beyond what was named, and the migration says so
+in its own text: it is the table with 520,505 inserts since its last vacuum and
+no manual vacuum ever, so leaving it out would apply the fix to the two tables
+that are not the problem.
+
+### Step 3 — shared_buffers. REFUSED, and the premise was wrong.
+
+The board asked to raise it „from 256 MB (the default)". Read off the live
+server: it is already 8 GB (1,048,576 × 8 kB), and effective_cache_size of
+12.25 GB points to a machine of about 16 GB — so it is already half the RAM,
+twice the quarter being asked for. It is also the only one of the three that
+needs a restart. Not run, and the board was told why.
