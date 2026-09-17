@@ -54,6 +54,29 @@ both within minutes.
 Worth his attention for one reason: the tester is spending his real goals to
 find these. They have held four of six tests until the current build is proved.
 
+### The P0 is closed — the tester's own read, 19:53
+
+Thread 16840 on fb3b596: a stop typed in a chat that never had a goal did
+nothing at all. Both of the founder's live goals read twice, ninety seconds
+apart, untouched. Their words: „the dangerous half is done." What is left of
+row 113 is cosmetic.
+
+### Four builds are finished and NOT deployed
+
+Not blocked on Misho — blocked on the founder's account, which is carrying a
+full battery run in another seat. Two seats writing at once would make both
+sets of numbers untrustworthy, so the tester asked for no deploy and I agreed.
+They go out between runs the moment that finishes; if that is after their
+night, they wait for daylight.
+
+  the stop run now ends on the screen (the page sat on „working…" for two
+    minutes on a stop the server had already answered correctly)
+  the officeholder gate no longer reads „ხუთი ადამიანი" as a person's name —
+    six replies today showed the owner „(სახელი ვერ დავადასტურე …)" where the
+    sentence said „five people" or „a personal invitation"
+  row 155: one Georgian word no longer exempts an English answer
+  row 33: the chat a split goal opens in now says why it exists
+
 ### Closed tonight, not carried to the morning
 
 **The two people on goal 3433** who were told their question was off while the
