@@ -266,3 +266,79 @@ describe('referral attribution with the gate off (earnings chain)', () => {
     expect(result).toEqual({ eligible: true, mode: 'social', inviterUserId: 77 });
   });
 });
+
+/**
+ * 17 September, Misho: „the test accounts do not work, and I need five to give
+ * the tester."
+ *
+ * The OTP bypass (REVIEW_PHONE + REVIEW_OTP) was right and was never the wall.
+ * THIS was: `invite_only` is enabled on the live base, so a review number
+ * nobody has invited — no cohort code, no social proof — fell through to
+ * `referral_required` and the account was never created. The OTP check sits
+ * further down the registration path and never ran.
+ */
+describe('a review or QA number is the company inviting itself', () => {
+  const REVIEW = '+995555000001';
+  const before = { phone: process.env.REVIEW_PHONE, otp: process.env.REVIEW_OTP };
+
+  afterEach(() => {
+    if (before.phone === undefined) delete process.env.REVIEW_PHONE;
+    else process.env.REVIEW_PHONE = before.phone;
+    if (before.otp === undefined) delete process.env.REVIEW_OTP;
+    else process.env.REVIEW_OTP = before.otp;
+  });
+
+  /** The live shape: door shut, nobody invited them, nobody holds their number. */
+  function shutDoor(): void {
+    mockQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        routeGate(sql, {
+          flagEnabled: true,
+          registered: false,
+          totalOwners: 0,
+          subscribedOwners: 0,
+          referrerId: null,
+        }) as never,
+      ),
+    );
+  }
+
+  it('is refused today when the list is unset — the bug Misho hit', async () => {
+    delete process.env.REVIEW_PHONE;
+    delete process.env.REVIEW_OTP;
+    shutDoor();
+
+    const out = await checkRegistrationEligibility(REVIEW);
+
+    expect(out.eligible).toBe(false);
+    expect((out as { reason: string }).reason).toBe('referral_required');
+  });
+
+  it('passes the shut door once it is on the list', async () => {
+    process.env.REVIEW_PHONE = REVIEW;
+    process.env.REVIEW_OTP = '123456';
+    shutDoor();
+
+    expect((await checkRegistrationEligibility(REVIEW)).eligible).toBe(true);
+  });
+
+  it('opens nothing for anybody else', async () => {
+    process.env.REVIEW_PHONE = REVIEW;
+    process.env.REVIEW_OTP = '123456';
+    shutDoor();
+
+    const out = await checkRegistrationEligibility('+995599111222');
+
+    expect(out.eligible).toBe(false);
+  });
+
+  it('needs BOTH variables — a list with no code opens nothing', async () => {
+    // Half-configured must be shut, not half-open: those numbers would skip
+    // the gate and still be unable to log in.
+    process.env.REVIEW_PHONE = REVIEW;
+    delete process.env.REVIEW_OTP;
+    shutDoor();
+
+    expect((await checkRegistrationEligibility(REVIEW)).eligible).toBe(false);
+  });
+});

@@ -7,6 +7,7 @@ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
+import { isReviewPhone } from './reviewAccess';
 import {
   findCohortByCode,
   grantCohortTrial,
@@ -105,28 +106,10 @@ function parsePhone(e164: string): { phoneCode: string; phoneNumber: string } {
 }
 
 // --- Store/marketplace review login ------------------------------------------
-// Reviewers (Paddle, app stores) and the QA test accounts must log into the
-// live app but cannot receive a Georgian SMS. When BOTH env vars are set,
-// every number on the comma-separated REVIEW_PHONE list verifies with the
-// fixed code and no message is ever sent to it. Active only while the vars
-// exist — unset them the moment the review/testing window is over.
-function reviewLoginDigits(): ReadonlySet<string> {
-  const phones = process.env.REVIEW_PHONE;
-  if (!phones || !process.env.REVIEW_OTP) return new Set();
-  return new Set(
-    phones
-      .split(',')
-      .map((p) => phoneDigits(normalizePhone(p.trim())))
-      .filter(Boolean),
-  );
-}
-
-function isReviewPhone(phone: string): boolean {
-  // Normalize before comparing so the local "5XX…" spelling the login screen
-  // itself suggests matches the env value's full form.
-  return reviewLoginDigits().has(phoneDigits(normalizePhone(phone)));
-}
-
+// The list itself lives in reviewAccess.ts, because the INVITE GATE has to read
+// the same one: a review number that cannot get past the gate cannot register,
+// whatever the OTP does. That was the whole of „the test accounts do not work"
+// on 17 September.
 function isReviewLogin(phone: string, code: string): boolean {
   return isReviewPhone(phone) && code === process.env.REVIEW_OTP;
 }

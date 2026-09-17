@@ -110,3 +110,48 @@ server: it is already 8 GB (1,048,576 × 8 kB), and effective_cache_size of
 12.25 GB points to a machine of about 16 GB — so it is already half the RAM,
 twice the quarter being asked for. It is also the only one of the three that
 needs a restart. Not run, and the board was told why.
+
+---
+
+## 4. The five test accounts — REVIEW_PHONE and REVIEW_OTP
+
+**Asked by Misho, 17 September: „the test accounts do not work, and I need
+five to give the tester."** The numbers themselves are not chosen here; they
+are his, and this records what setting them does.
+
+| | |
+|---|---|
+| Route | none — two Railway environment variables, set with `scripts/ops/env.sh` |
+| Method | `printf %s "<value>" \| ./scripts/ops/env.sh set REVIEW_PHONE` (and `REVIEW_OTP`) |
+| Body | `REVIEW_PHONE`: the numbers, comma separated, E.164. `REVIEW_OTP`: one fixed code |
+| Undo | set either variable to an empty-looking value, or delete it in the Railway dashboard. The list is OFF unless BOTH are set, so removing one is enough |
+
+**What being on that list grants.** Four things, and they are worth reading
+together because no single file made them visible before:
+
+- no SMS is ever sent to the number
+- it verifies with the fixed `REVIEW_OTP` instead of a real code
+- it passes the INVITE GATE as „the company invited itself" (added 17 Sep)
+- it gets a 365-day `pro` subscription the moment it registers
+
+**Why the fourth door had to be added, and it is the reason the accounts did
+not work.** The OTP bypass has existed since ticket 11 and was never the wall.
+`invite_only` is enabled on the live base, so a number nobody has invited —
+no cohort code, no social proof — is refused at `checkRegistrationEligibility`
+with `referral_required`, and the OTP check further down never runs. The bypass
+opened the second door and left the first locked.
+
+**The risk, stated plainly.** Anyone who knows the fixed code can log in as any
+number on that list. So the numbers must be ones nobody else can receive SMS
+on — either Misho's own, or numbers from a range that can never be assigned to
+a real person. A stranger's number on this list is that stranger's account
+handed to whoever holds the code.
+
+**Setting a variable restarts the service.** `env.sh` says so in its own
+header. It is a deploy, and it follows the same rule as any other: between
+runs, never across one.
+
+**No state to clean up.** The grant lives entirely in the two variables; unset
+them and every one of the four doors closes. The ACCOUNTS remain, as closed
+accounts nobody can log into — which is why numbers that can never receive an
+SMS are the safer choice, and also why they are permanent once made.

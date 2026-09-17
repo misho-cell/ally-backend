@@ -3,6 +3,7 @@ import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
 import { findUserByReferralCode } from './referralCode.service';
 import { findCohortByCode, launchCohortFor } from './inviteCohorts.service';
+import { isReviewPhone } from './reviewAccess';
 
 const INVITE_ONLY_FLAG = 'invite_only';
 // subscription_status values that count as an active paying/trialing subscriber.
@@ -174,6 +175,29 @@ export async function checkRegistrationEligibility(
   const launch = launchCohortFor(attribution);
   if (launch) {
     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
+  }
+
+  /**
+   * A review or QA number is the company inviting itself.
+   *
+   * 17 September, Misho: „the test accounts do not work". The OTP bypass was
+   * right and was never the wall — this was. `invite_only` is enabled on the
+   * live base, so a number nobody has invited, with no cohort code and no
+   * social proof, falls all the way through to `referral_required` and the
+   * account is never created. The OTP check further down the registration
+   * path never even runs.
+   *
+   * Asked BEFORE the invite-only flag rather than inside it, so the answer is
+   * the same whether the door is open or shut — a test account that works only
+   * while the gate happens to be off is a test account that will break on the
+   * day it matters.
+   *
+   * Nothing is opened for anybody else: `reviewLoginDigits` returns an empty
+   * set unless BOTH env vars are set, so with them unset this branch cannot
+   * fire at all.
+   */
+  if (isReviewPhone(phone)) {
+    return { eligible: true, mode: 'open', inviterUserId: attribution };
   }
 
   if (!(await isInviteOnlyEnabled())) {
