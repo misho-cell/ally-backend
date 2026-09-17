@@ -1,4 +1,4 @@
-import { PLAN_ALREADY_ON_SCREEN, planProposedResult } from '../chat.service';
+import { INVITE_SHARE_NOTE, PLAN_ALREADY_ON_SCREEN, planProposedResult } from '../chat.service';
 
 /**
  * Ticket 20 row 101 — the plan shows once.
@@ -176,3 +176,44 @@ describe('row 203 second pass — today, not the goal', () => {
     expect(onlyWake).toContain('ილია');
   });
 });
+
+/**
+ * Ticket 20 row 153 — an invitation in a goal chat is one tap, not a link to
+ * copy.
+ *
+ * Lika, from Ninia's account, 17 September: a first-circle person who is not
+ * on Netai came back as „here is a link, send it". Her own words for what
+ * would be right — a button she presses and it is sent easily. The founder's
+ * rule stands either way: Netai never messages a non-member, the user sends
+ * it, with one tap.
+ *
+ * On goal 3995 invite_contact ran at 07:20:06 and returned invite_text; the
+ * reply at 07:20:49 pasted the text and the code into the message; share_text
+ * on that message was null, so no share button could show.
+ *
+ * The machinery shipped with row 39. get_invite_link was wired to it and
+ * invite_contact — the one a goal chat actually uses — was not.
+ */
+describe('row 153 — the invitation rides the run, not the prose', () => {
+  it('the tool result tells the model not to paste the text, the link or the code', () => {
+    // Asserted on the note itself: whether a model obeys is evidence, but
+    // whether we ask is code. All three were pasted on 3995.
+    const note = INVITE_SHARE_NOTE;
+
+    expect(note).toContain('გაზიარების ღილაკით');
+    expect(note).toContain('ნუ ჩასვამ');
+    expect(note).toContain('ბმულს');
+    expect(note).toContain('კოდს');
+  });
+
+  it('is written in Georgian only — no stray Latin in the Georgian', () => {
+    // Row 155 is about exactly this kind of character reaching a screen, and
+    // I put a corrupted word in this very string while writing it.
+    expect(note_hasOnlyExpectedScripts(INVITE_SHARE_NOTE)).toBe(true);
+  });
+});
+
+/** Georgian, spaces and ordinary punctuation — nothing else. */
+function note_hasOnlyExpectedScripts(text: string): boolean {
+  return !/[A-Za-zÀ-ɏЀ-ӿ]/.test(text);
+}

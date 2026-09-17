@@ -1431,6 +1431,18 @@ export function planNamesPeople(plan: unknown): boolean {
  * in the same breath as the thing it is about — the same reason the pending-
  * items note is delivered with its data.
  */
+/**
+ * Ticket 20 row 153 — what the model is told once the invitation is on its way
+ * to a share button.
+ *
+ * Exported so a test can read it: whether a model obeys an instruction is
+ * evidence, but whether we ask is code.
+ */
+export const INVITE_SHARE_NOTE =
+  'მოსაწვევის ტექსტი მფლობელს გაზიარების ღილაკით მიეწოდება — შენს პასუხში ' +
+  'ნუ ჩასვამ ვერც ტექსტს, ვერც ბმულს, ვერც კოდს. მხოლოდ უთხარი, ვის ეხება და ' +
+  'რომ ერთი შეხებით გაიგზავნება.';
+
 export const PLAN_ALREADY_ON_SCREEN =
   'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
   'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
@@ -4194,7 +4206,37 @@ async function executeToolCall(
     case 'invite_contact': {
       const langRaw = String(input['language'] ?? 'ka');
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
-      return inviteContact(userId, String(input['phone'] ?? ''), lang);
+      const invite = await inviteContact(userId, String(input['phone'] ?? ''), lang);
+      /**
+       * Ticket 20 row 153 — an invitation in a goal chat is one tap, not a
+       * link to copy.
+       *
+       * Lika, from Ninia's account: a first-circle person who is not on Netai
+       * came back as „here is a link, send it". Her own words for what would
+       * be right — a button she presses and it is sent.
+       *
+       * The machinery for that shipped with row 39 and this tool was never
+       * wired to it. get_invite_link calls noteShareText; invite_contact,
+       * which is the one a goal chat actually uses, did not — so on goal 3995
+       * the tool returned invite_text at 07:20:06, the reply pasted the text
+       * and the code into the message at 07:20:49, and share_text on that
+       * message was null. No share button could show, because nothing had told
+       * the client there was anything to share.
+       *
+       * One line. The text the tool produced now rides the run to
+       * run_complete, exactly as the quick-answer flow's already does.
+       */
+      noteShareText(runId, invite.invite_text);
+      return invite.invite_text === undefined
+        ? invite
+        : {
+            ...invite,
+            // Row 153's other half: the reply must stop pasting it. Said in
+            // the tool RESULT rather than the description because a rule that
+            // arrives with the data it applies to cannot drift out of step
+            // with the code that enforces it.
+            share_note: INVITE_SHARE_NOTE,
+          };
     }
     case 'get_invite_link': {
       const invite = await getInviteLink(userId);
