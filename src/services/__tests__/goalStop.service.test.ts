@@ -62,7 +62,13 @@ describe('stopping a goal, from either route', () => {
     expect(mockThread).toHaveBeenCalledWith('501', 14719, 'done', {
       statusLine: 'შეჩერებულია',
     });
-    expect(out).toEqual({ stopped: true, goal_id: 2872 });
+    // `said` is the line the owner must be SHOWN, not only stored: thread
+    // 16840 held a correct stop line the open page never rendered.
+    expect(out).toEqual({
+      stopped: true,
+      goal_id: 2872,
+      said: stoppedLine('კარგი ვეტერინარი თბილისში', 0),
+    });
   });
 
   it('CANCELS THE ASKS even when the goal was already closed', async () => {
@@ -74,7 +80,8 @@ describe('stopping a goal, from either route', () => {
     expect(mockCancel).toHaveBeenCalledWith(2872);
   });
 
-  it('is idempotent — stopping a closed goal still reports stopped', async () => {
+  it('is idempotent — stopping a closed goal still reports stopped, and says nothing', async () => {
+    // No `said`: there is no second line to write and so none to show.
     expect(await stopGoal('501', task({ status: 'closed' }))).toEqual({
       stopped: true,
       goal_id: 2872,
@@ -124,7 +131,7 @@ describe('stopGoalOnThread', () => {
     mockGetThread.mockResolvedValue({ id: 14719 } as Thread);
     mockOpenTask.mockResolvedValue(task());
 
-    expect(await stopGoalOnThread('501', 14719)).toEqual({ stopped: true, goal_id: 2872 });
+    expect(await stopGoalOnThread('501', 14719)).toMatchObject({ stopped: true, goal_id: 2872 });
     expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user', 'stopped');
     expect(mockCancel).toHaveBeenCalledWith(2872);
   });
@@ -228,7 +235,7 @@ describe('a PAUSED goal can still be stopped from its own thread', () => {
     mockGetThread.mockResolvedValue({ id: 16842 } as Thread);
     mockOpenTask.mockResolvedValue(task({ id: 4756, status: 'paused', thread_id: 16842 }));
 
-    expect(await stopGoalOnThread('501', 16842)).toEqual({ stopped: true, goal_id: 4756 });
+    expect(await stopGoalOnThread('501', 16842)).toMatchObject({ stopped: true, goal_id: 4756 });
     expect(mockUpdate).toHaveBeenCalledWith('501', 4756, 'closed', 'stopped_by_user', 'stopped');
   });
 

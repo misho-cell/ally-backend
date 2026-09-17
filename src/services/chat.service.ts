@@ -5743,6 +5743,17 @@ export interface ChatResult {
    * and a stop owes them silence, because they already have the stop line.
    */
   stopped?: boolean;
+  /**
+   * The server's own stop line, when the stop was read from the owner's
+   * message and answered before the run did anything.
+   *
+   * Separate from `reply` on purpose. A run stopped MID-WAY also returns
+   * `stopped`, and its reply is the model's, written before the owner pressed
+   * enter and not safe to show. This field is only ever the line the server
+   * wrote itself, so the route can deliver it without having to know which of
+   * the two kinds of stop it is looking at.
+   */
+  stoppedLine?: string;
 }
 
 function extractText(content: Anthropic.ContentBlock[]): string {
@@ -7002,14 +7013,16 @@ export async function processChat(
      * So every case ends here, the run's reply is withheld either way, and the
      * owner gets one true line instead of a guess.
      */
+    let said: string;
     if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,
       );
-      await stopGoal(userId, running);
+      const outcome = await stopGoal(userId, running);
+      said = outcome.said ?? `შევაჩერე: ${running.title}`;
     } else {
-      const line =
+      said =
         running === null
           ? 'ამ საუბარში გასაჩერებელი მიზანი არ არის.'
           : `„${running.title}" უკვე შეჩერებულია — ახალი არაფერი მიდის.`;
@@ -7017,12 +7030,33 @@ export async function processChat(
       console.log(
         `[stop-intent] run ${runId} thread ${threadId}: nothing to stop (${running === null ? 'no goal on this chat' : 'already closed'})`,
       );
-      await saveMessage(userId, threadId, 'assistant', line).catch(() => undefined);
-      // Marked so THIS run's reply is withheld too: the one line above is the
-      // whole answer, and a model improvising after it is exactly what closed
-      // two real goals tonight.
+      await saveMessage(userId, threadId, 'assistant', said).catch(() => undefined);
+      // Marked so a run already working on this thread is withheld too: the one
+      // line above is the whole answer, and a model improvising after it is
+      // exactly what closed two real goals tonight.
       markThreadStopped(threadId);
     }
+    /**
+     * Row 113, ninth pass — the run ENDS here, and the line is its answer.
+     *
+     * Thread 16840, 19:49:39: the seat typed a stop in a chat that never had a
+     * goal. Everything stored was right — the server's line at 19:49:44, no
+     * second sentence, no tool call, neither of the founder's goals touched —
+     * and the open page sat on „working…" for more than two minutes. A reload
+     * showed the line at once.
+     *
+     * Two faults in that, and they are the same fault. This run went on to do
+     * a full model turn after the server had already answered, and its reply
+     * was then thrown away by the mark, which is a model call bought to be
+     * discarded. And a discarded run emits no run_complete, so the client was
+     * never told the run had ended and kept its spinner.
+     *
+     * Returning here fixes both: no model call, and the line travels as the
+     * run's own reply, which is what it is. `stopped` stays true so the route
+     * drops the push, the title generator and the fact sweep — see the route,
+     * which now delivers `stoppedLine` and nothing else.
+     */
+    return { reply: said, stopped: true, stoppedLine: said, language: detectRunLanguage(said) };
   }
   const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
   // Row 155: provisional, and refined the moment the thread's history is in

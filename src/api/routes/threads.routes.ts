@@ -546,6 +546,25 @@ threadsRouter.post(
             console.log(
               `[run] ${runId}: dropped on thread ${threadId} — the owner stopped the goal mid-run`,
             );
+            /**
+             * Row 113, ninth pass — a dropped run still has to END on the
+             * screen.
+             *
+             * Thread 16840, 19:49: the stop was read by the server, answered
+             * correctly, and stored. The open page kept its „working…" spinner
+             * for over two minutes, because run_complete is the only thing
+             * that ends a run for the client and this return skipped it. The
+             * line appeared the moment the page was reloaded.
+             *
+             * Only the server's own line is delivered. A run stopped mid-way
+             * carries the MODEL's reply in `result.reply`, written before the
+             * owner pressed enter, and that is the text this whole row exists
+             * to withhold — so the spinner keeps running in that case, which
+             * is the lesser of the two wrongs and is not what was reported.
+             */
+            if (result.stoppedLine !== undefined) {
+              emitRunComplete(userId, threadId, runId, { reply: result.stoppedLine });
+            }
             return;
           }
           // Waiting covers BOTH kinds of third-party dependency: an unanswered

@@ -31,6 +31,16 @@ export interface GoalStopped {
   readonly goal_id: number | null;
   /** Present only when there was nothing to stop. */
   readonly reason?: 'no_open_goal';
+  /**
+   * The line written into the thread, when one was — absent on a second press
+   * and on a goal with no thread.
+   *
+   * Returned rather than kept private because the caller has to be able to SHOW
+   * it. Thread 16840, 19:49: the stop was right, the row was right, and the
+   * open page sat on „working…" for over two minutes with the line invisible
+   * until a reload. A stop nobody can see is the row this whole file exists for.
+   */
+  readonly said?: string;
 }
 
 /**
@@ -80,14 +90,13 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
     await updateTask(userId, task.id, 'closed', 'stopped_by_user', 'stopped');
   }
   const cancelledAsks = await cancelAsksForTask(task.id);
+  let said: string | undefined;
   if (task.thread_id !== null) {
     if (wasOpen) {
-      await saveThreadMessage(
-        task.thread_id,
-        Number(userId),
-        'assistant',
-        stoppedLine(task.title, cancelledAsks),
-      ).catch(() => undefined);
+      said = stoppedLine(task.title, cancelledAsks);
+      await saveThreadMessage(task.thread_id, Number(userId), 'assistant', said).catch(
+        () => undefined,
+      );
     }
     // Row 113: the plan's approve button stayed on the live screen after the
     // stop line and only went on reload (thread 16798). A tap on it would have
@@ -95,7 +104,9 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
     emitChoicesCleared(userId, task.thread_id);
     void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
   }
-  return { stopped: true, goal_id: task.id };
+  return said === undefined
+    ? { stopped: true, goal_id: task.id }
+    : { stopped: true, goal_id: task.id, said };
 }
 
 /** What the routes answer when the thread carries no goal that could be running. */
