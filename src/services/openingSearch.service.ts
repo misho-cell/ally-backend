@@ -1,4 +1,5 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
+import { searchByTag } from './tools/searchByTag';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -76,6 +77,8 @@ export interface OpeningSearches {
   readonly secondDegree: string | null;
   /** Names what did not arrive, so the prompt can be honest about it. */
   readonly missing: readonly string[];
+  /** Row 154: for each name the web returned, the owner's own way in. */
+  readonly waysIn: ReadonlyMap<string, WayIn>;
 }
 
 /**
@@ -148,7 +151,7 @@ export async function runOpeningSearches(
   threadId: number,
 ): Promise<OpeningSearches> {
   const query = goalText.trim().slice(0, MAX_QUERY_CHARS);
-  if (query === '') return { web: null, secondDegree: null, missing: [] };
+  if (query === '') return { web: null, secondDegree: null, missing: [], waysIn: new Map() };
 
   /**
    * Ticket 20 row 126, second pass. These two searches are LOGGED like any
@@ -208,6 +211,9 @@ export async function runOpeningSearches(
    * the second circle starts at the same moment it does today and loses
    * nothing to it.
    */
+  // Row 154: filled by the web branch below, once the search it depends on
+  // has returned. Declared here so the caller can read it after both branches.
+  let waysIn: Map<string, WayIn> = new Map();
   const webWork = (async (): Promise<string> => {
     const searched = await distilSearchQuery(query, { userId, runId });
     // Charged like any other web search, because it is one. A pre-fetch that
@@ -219,7 +225,16 @@ export async function runOpeningSearches(
       priceKey: 'tavily.search',
       runId,
     }).catch(() => {});
-    return logged('web_search', webSearch(searched.query), true, searched);
+    // Row 154: the raw result is kept, because the way-in searches need the
+    // names and `logged` hands back the serialised string.
+    const raw = await webSearch(searched.query);
+    const serialised = await logged('web_search', Promise.resolve(raw), true, searched);
+    // The way-in lookups run HERE, inside the web branch, after the search
+    // they depend on. They cost the owner no extra wait: the second-circle
+    // branch times out at the full budget on essentially every goal, so the
+    // run is already waiting, and this finishes long before it.
+    waysIn = await findWaysIn(userId, webResultNames(raw));
+    return serialised;
   })();
 
   const [web, secondDegree] = await Promise.all([
@@ -233,7 +248,7 @@ export async function runOpeningSearches(
   const missing: string[] = [];
   if (web === null) missing.push('web_search');
   if (secondDegree === null) missing.push('search_second_degree');
-  return { web, secondDegree, missing };
+  return { web, secondDegree, missing, waysIn };
 }
 
 /** Results are handed to the model, never to a screen, so the labels are plain. */
@@ -251,7 +266,13 @@ function clip(text: string): string {
  * both tools again has cost the owner ten more seconds for the same rows.
  */
 export function buildOpeningSearchSection(found: OpeningSearches): string {
-  if (found.web === null && found.secondDegree === null && found.missing.length === 0) return '';
+  if (
+    found.web === null &&
+    found.secondDegree === null &&
+    found.missing.length === 0 &&
+    found.waysIn.size === 0
+  )
+    return '';
   const parts = [
     '\n\n## საწყისი ძიება — უკვე შესრულებულია',
     'ეს ორი ძიება სერვერმა ავტომატურად გაუშვა, სანამ შენ დაიწყებდი. შედეგები ქვემოთაა — ' +
@@ -270,5 +291,168 @@ export function buildOpeningSearchSection(found: OpeningSearches): string {
         'თუ საქმეს სჭირდება, თვითონ გამოიძახე; „ვერაფერი მოიძებნა" არ თქვა.',
     );
   }
-  return parts.join('\n');
+  // Row 154: after the results, because it is about them.
+  const wayIn = buildWayInSection(found.waysIn);
+  return parts.join('\n') + wayIn;
+}
+
+/**
+ * Ticket 20 row 154 — every company the web finds comes with its way in.
+ *
+ * Tornike's top of Pr1, from Lika's test on Ninia's account: the web found four
+ * marketing agencies and the reply told her to contact them herself. Her own
+ * words for what it should have done: look INSIDE those companies for somebody
+ * she has a link to, and carry the contact forward.
+ *
+ * The seat then ran three rounds of prompt work at it (task_main v21, v22,
+ * v23) and measured the result: the model searches a NAMED PERSON the web
+ * returned, and does not reliably search a FIRM. 1 of 2 on the last round, 0
+ * of 3 before it. Their conclusion, and I agree with it: the opening searches
+ * are already the server's, so the way in should be the server's too.
+ *
+ * WHAT IS SEARCHED, AND WHAT IS NOT — the honest half.
+ *
+ * The FIRST circle is searched per company: searchByTag runs over the owner's
+ * own contacts, driven from their own phonebook, and measures about a second.
+ *
+ * The SECOND circle is NOT, and row 108 is why. One second-circle call
+ * measures 15-17 seconds — it has timed out on four of the last five goals
+ * against a ten-second budget — so one call per company is not a slow feature,
+ * it is an impossible one. When the database work lands this is the first
+ * thing that should use it.
+ *
+ * SO A COMPANY WITH NO FIRST-CIRCLE CONTACT IS REPORTED AS „no way in found in
+ * your own contacts", never as „no way in". The difference is the whole of
+ * ticket 19 G7 and I am not repeating it here.
+ *
+ * IT COSTS THE OWNER NO EXTRA WAIT. The second-circle branch times out at ten
+ * seconds on essentially every goal, so the run already waits that long; this
+ * work happens inside the same window, in the branch that finishes early.
+ */
+
+/** How many of the web's results get a way-in search. */
+const MAX_WAY_IN_CHECKS = 3;
+
+/** The way-in searches share this, after the web search has returned. */
+const WAY_IN_BUDGET_MS = 3_000;
+
+/** A title is „Name — tagline"; the name is what a network is searched for. */
+const TITLE_SEPARATORS = /\s+[—–|:·]\s+|\s+-\s+/;
+const MAX_NAME_CHARS = 60;
+
+/**
+ * The organisation or person each web result is about.
+ *
+ * A title is usually „Infinity Solutions — ბრენდინგი და მარკეტინგი", so the
+ * part before the first separator is the name and the rest is a tagline that
+ * would only blur a search. A title with no separator is taken whole.
+ *
+ * Deliberately not clever. A wrong name here costs one useless search over the
+ * owner's own contacts, which returns nothing and is reported as nothing —
+ * whereas a name dropped for being unrecognised costs the owner the way in
+ * this row exists to find.
+ */
+export function webResultNames(result: unknown): string[] {
+  if (result === null || typeof result !== 'object') return [];
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows)) return [];
+  const names: string[] = [];
+  for (const row of rows) {
+    if (row === null || typeof row !== 'object') continue;
+    const title = (row as { title?: unknown }).title;
+    if (typeof title !== 'string') continue;
+    const name = (title.split(TITLE_SEPARATORS)[0] ?? '').trim().slice(0, MAX_NAME_CHARS);
+    if (name === '' || names.includes(name)) continue;
+    names.push(name);
+    if (names.length >= MAX_WAY_IN_CHECKS) break;
+  }
+  return names;
+}
+
+export type WayIn =
+  /** Somebody in the owner's own contacts is tied to this name. */
+  | { readonly kind: 'first_circle'; readonly who: string }
+  /** Searched, and the owner's own contacts hold nobody. */
+  | { readonly kind: 'none' }
+  /** Not searched — a timeout or a failure. Never rendered as „nobody". */
+  | { readonly kind: 'unchecked' };
+
+function firstPersonNamed(result: unknown): string | null {
+  if (result === null || typeof result !== 'object') return null;
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const first = rows[0];
+  if (first === null || typeof first !== 'object') return null;
+  const name = (first as { name?: unknown }).name;
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
+}
+
+/**
+ * For each name the web returned, who in the owner's own contacts is tied to
+ * it. Never throws: a way-in lookup that fails leaves `unchecked`, and the
+ * section says so in words rather than implying an empty network.
+ */
+export async function findWaysIn(
+  userId: string,
+  names: readonly string[],
+): Promise<Map<string, WayIn>> {
+  const out = new Map<string, WayIn>();
+  if (names.length === 0) return out;
+  const deadline = Date.now() + WAY_IN_BUDGET_MS;
+  await Promise.all(
+    names.map(async (name) => {
+      try {
+        const left = deadline - Date.now();
+        if (left <= 0) {
+          out.set(name, { kind: 'unchecked' });
+          return;
+        }
+        const result = await Promise.race([
+          searchByTag(userId, name),
+          new Promise<null>((resolve) => {
+            const t = setTimeout(() => resolve(null), left);
+            t.unref?.();
+          }),
+        ]);
+        if (result === null) {
+          out.set(name, { kind: 'unchecked' });
+          return;
+        }
+        const who = firstPersonNamed(result);
+        out.set(name, who === null ? { kind: 'none' } : { kind: 'first_circle', who });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[opening-search] way-in lookup failed for "${name}":`,
+          (err as Error).message,
+        );
+        out.set(name, { kind: 'unchecked' });
+      }
+    }),
+  );
+  return out;
+}
+
+/** The way-in verdicts as prompt lines. Empty when nothing was checked. */
+export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
+  if (waysIn.size === 0) return '';
+  const lines: string[] = [];
+  for (const [name, wayIn] of waysIn) {
+    if (wayIn.kind === 'first_circle') {
+      lines.push(`- ${name}: შენს კონტაქტებში — ${wayIn.who}. მასზე გაიარე.`);
+    } else if (wayIn.kind === 'none') {
+      // Ticket 19 G7: „your own contacts hold nobody" is not „nobody".
+      lines.push(
+        `- ${name}: შენს პირად კონტაქტებში კავშირი ვერ ვიპოვე (მეორე წრე ჯერ არ შემიმოწმებია).`,
+      );
+    } else {
+      lines.push(`- ${name}: კავშირი ვერ შევამოწმე — ძიებამ ვერ მოასწრო.`);
+    }
+  }
+  return (
+    '\n\n## ვებში ნაპოვნების გზა\nსერვერმა თითოეულ ნაპოვნ სახელზე მოძებნა მფლობელის ' +
+    'საკუთარი კონტაქტები. არ უთხრა მფლობელს, რომ კომპანიას თვითონ დაუკავშირდეს, ' +
+    'სანამ ქვემოთ დაწერილს არ გაითვალისწინებ.\n' +
+    lines.join('\n')
+  );
 }

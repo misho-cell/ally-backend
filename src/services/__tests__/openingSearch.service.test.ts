@@ -15,17 +15,24 @@ jest.mock('../searchQuery.service', () => ({
   __esModule: true,
   distilSearchQuery: jest.fn(),
 }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTag: jest.fn() }));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import { distilSearchQuery } from '../searchQuery.service';
-import { runOpeningSearches, buildOpeningSearchSection } from '../openingSearch.service';
+import { searchByTag } from '../tools/searchByTag';
+import {
+  runOpeningSearches,
+  buildOpeningSearchSection,
+  webResultNames,
+} from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockSecond = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
 const mockDistil = distilSearchQuery as jest.MockedFunction<typeof distilSearchQuery>;
+const mockTag = searchByTag as jest.MockedFunction<typeof searchByTag>;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -33,6 +40,7 @@ beforeEach(() => {
   mockSecond.mockResolvedValue({ found: true, count: 2, results: ['Gega'] } as never);
   // The default is the honest one: distilling that changed nothing.
   mockDistil.mockImplementation(async (text) => ({ query: text }));
+  mockTag.mockResolvedValue({ found: false } as never);
 });
 
 /**
@@ -89,7 +97,7 @@ describe('the opening searches run without being asked', () => {
 
     expect(mockWeb).not.toHaveBeenCalled();
     expect(mockSecond).not.toHaveBeenCalled();
-    expect(out).toEqual({ web: null, secondDegree: null, missing: [] });
+    expect(out).toEqual({ web: null, secondDegree: null, missing: [], waysIn: new Map() });
   });
 
   /**
@@ -123,6 +131,7 @@ describe('what the model is told about them', () => {
       web: '{"results":["floristi.ge"]}',
       secondDegree: '{"found":true}',
       missing: [],
+      waysIn: new Map(),
     });
 
     expect(section).toContain('უკვე შესრულებულია');
@@ -140,6 +149,7 @@ describe('what the model is told about them', () => {
       web: '{"results":[]}',
       secondDegree: null,
       missing: ['search_second_degree'],
+      waysIn: new Map(),
     });
 
     expect(section).toContain('ვერ მოასწრო: search_second_degree');
@@ -148,7 +158,9 @@ describe('what the model is told about them', () => {
   });
 
   it('is empty when nothing ran — an ordinary turn keeps its prompt byte-identical', () => {
-    expect(buildOpeningSearchSection({ web: null, secondDegree: null, missing: [] })).toBe('');
+    expect(
+      buildOpeningSearchSection({ web: null, secondDegree: null, missing: [], waysIn: new Map() }),
+    ).toBe('');
   });
 
   it('clips a runaway result rather than burying the rest of the prompt', () => {
@@ -156,6 +168,7 @@ describe('what the model is told about them', () => {
       web: 'x'.repeat(20_000),
       secondDegree: null,
       missing: ['search_second_degree'],
+      waysIn: new Map(),
     });
 
     expect(section.length).toBeLessThan(8_000);
@@ -332,5 +345,131 @@ describe('row 126 third pass — the web sample, and only the web', () => {
       (c) => c[0].tool === 'web_search:opening',
     )[0];
     expect(web.resultSample).toBe('');
+  });
+});
+
+/**
+ * Ticket 20 row 154 — every company the web finds comes with its way in.
+ *
+ * Tornike's top of Pr1, from Lika's test: the web found four marketing
+ * agencies and the reply told her to contact them herself. Her own words for
+ * what it should have done: look INSIDE those companies for somebody she has a
+ * link to.
+ *
+ * The seat then ran three rounds of prompt work at it and measured the result
+ * — the model searches a named PERSON the web returned and does not reliably
+ * search a FIRM: 1 of 2 on the last round, 0 of 3 before it. The opening
+ * searches are already the server's, so the way in is too.
+ */
+describe('row 154 — the way in, beside each web result', () => {
+  const agencies = {
+    results: [
+      { title: 'Infinity Solutions — ბრენდინგი და მარკეტინგი', url: 'https://inf.ge' },
+      { title: 'Performa | მარკეტინგული სტრატეგია', url: 'https://performa.ge' },
+    ],
+  };
+
+  describe('webResultNames', () => {
+    it('takes the name and drops the tagline after it', () => {
+      expect(webResultNames(agencies)).toEqual(['Infinity Solutions', 'Performa']);
+    });
+
+    it('keeps a title that has no separator whole', () => {
+      expect(webResultNames({ results: [{ title: 'McCann Tbilisi' }] })).toEqual([
+        'McCann Tbilisi',
+      ]);
+    });
+
+    it('never asks the same name twice', () => {
+      expect(
+        webResultNames({ results: [{ title: 'Performa — a' }, { title: 'Performa — b' }] }),
+      ).toEqual(['Performa']);
+    });
+
+    it('is bounded, so one busy search page cannot become ten lookups', () => {
+      const many = { results: Array.from({ length: 9 }, (_, i) => ({ title: `Firm ${i}` })) };
+      expect(webResultNames(many).length).toBeLessThanOrEqual(3);
+    });
+
+    it('answers nothing for a shape it does not recognise', () => {
+      expect(webResultNames(null)).toEqual([]);
+      expect(webResultNames({ results: 'nope' })).toEqual([]);
+      expect(webResultNames({ results: [{ url: 'https://x.ge' }] })).toEqual([]);
+    });
+  });
+
+  it('searches the owner’s own contacts for each name the web returned', async () => {
+    mockWeb.mockResolvedValue(agencies as never);
+
+    await runOpeningSearches('501', 'მარკეტინგული სააგენტო', 'run-1', 16106);
+
+    expect(mockTag).toHaveBeenCalledWith('501', 'Infinity Solutions');
+    expect(mockTag).toHaveBeenCalledWith('501', 'Performa');
+  });
+
+  it('names the contact when the owner has one', async () => {
+    mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
+    mockTag.mockResolvedValue({ found: true, results: [{ name: 'გეგა ბერიძე' }] } as never);
+
+    const out = await runOpeningSearches('501', 'რამე', 'run-1', 16106);
+    const section = buildOpeningSearchSection(out);
+
+    expect(section).toContain('გეგა ბერიძე');
+    expect(section).toContain('Performa');
+  });
+
+  /**
+   * Ticket 19 G7, in the place it matters most for this row: the second circle
+   * is NOT searched per company — one call measures 15-17 s against a ten
+   * second budget — so „nobody in your own contacts" must never be written as
+   * „no way in".
+   */
+  it('says the OWN CONTACTS hold nobody, never that there is no way in', async () => {
+    mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
+    mockTag.mockResolvedValue({ found: false } as never);
+
+    const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
+
+    expect(section).toContain('პირად კონტაქტებში');
+    expect(section).toContain('მეორე წრე ჯერ არ შემიმოწმებია');
+  });
+
+  it('a lookup that fails reads as unchecked, not as empty', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
+    mockTag.mockRejectedValue(new Error('statement timeout'));
+
+    const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
+
+    expect(section).toContain('ვერ შევამოწმე');
+    expect(section).not.toContain('ვერ ვიპოვე');
+    consoleSpy.mockRestore();
+  });
+
+  it('tells the model not to send the owner to a company unread', async () => {
+    mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
+
+    const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
+
+    expect(section).toContain('არ უთხრა მფლობელს, რომ კომპანიას თვითონ დაუკავშირდეს');
+  });
+
+  it('adds nothing when the web returned no names at all', async () => {
+    mockWeb.mockResolvedValue({ results: [] } as never);
+
+    const out = await runOpeningSearches('501', 'რამე', 'run-1', 1);
+
+    expect(out.waysIn.size).toBe(0);
+    expect(buildOpeningSearchSection(out)).not.toContain('ვებში ნაპოვნების გზა');
+  });
+
+  it('a failing web search costs no way-in lookups', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockWeb.mockRejectedValue(new Error('tavily down'));
+
+    await runOpeningSearches('501', 'რამე', 'run-1', 1);
+
+    expect(mockTag).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });
