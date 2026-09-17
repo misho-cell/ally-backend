@@ -13,6 +13,59 @@ export function detectRunLanguage(text: string): RunLanguage {
   return 'en';
 }
 
+/**
+ * Ticket 20 row 155 — „Ok" turned a Georgian conversation English.
+ *
+ * Thread 16539, Lika's meeting request, read end to end:
+ *
+ *   11:41:19  the ask, in Georgian, 174 characters
+ *   12:06:46  the owner replies „Ok"
+ *   12:07:13  gpt-5.6-terra: „I would send: “Yes, tomorrow, 18 September at
+ *             13:00 online works for me.” Send it, and should I handle similar
+ *             meeting requests this way in future?"  — 148 characters, not one
+ *             Georgian letter
+ *   12:09:06  the owner writes „გაუგზავნე"
+ *   12:09:40  and the next reply is Georgian again
+ *
+ * The script guard in finalAnswer.service is not what failed: it refuses a
+ * Latin-only reply in a Georgian thread and would have refused this one. It
+ * was never asked, because the run's language is detected from the LATEST
+ * message alone and „Ok" is two Latin characters. The conversation flipped to
+ * English on an acknowledgement and flipped back on the next real word.
+ *
+ * THE RULE: a message decides the language when it CARRIES one. Georgian,
+ * Cyrillic or Spanish letters are a positive signal at any length. Plain Latin
+ * is only a signal once there is enough of it to be a sentence rather than a
+ * „yes" — below that the conversation keeps the language it was already in.
+ *
+ * Right in both directions, which is why it is a fallback and not a Georgian
+ * special case: „Ok" in an English thread finds English behind it and „Ok" in
+ * a Georgian thread finds Georgian.
+ */
+const SIGNAL = /[ა-ჿ]|[а-яё]|[áéíóúñ¿¡]/i;
+
+/**
+ * Enough Latin to be a sentence. „Send it and remember this" is 25; „ok",
+ * „yes", „sure", „send it" are all far below. Deliberately generous: mistaking
+ * a short English line for the thread's Georgian costs a Georgian reply in an
+ * English thread, which the owner can read either way — while the reverse cost
+ * is what happened on 16539.
+ */
+const MIN_LATIN_CHARS_TO_SWITCH = 25;
+
+export function languageOfConversation(
+  latest: string,
+  /** The thread's earlier messages, newest first. */
+  earlier: readonly string[] = [],
+): RunLanguage {
+  const trimmed = latest.trim();
+  if (SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) {
+    return detectRunLanguage(trimmed);
+  }
+  const spoken = earlier.find((text) => SIGNAL.test(text));
+  return detectRunLanguage(spoken ?? trimmed);
+}
+
 interface RunStrings {
   opening: string;
   heartbeat: string;

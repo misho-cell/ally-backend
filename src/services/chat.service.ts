@@ -17,7 +17,13 @@ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
 import { getInviteLink } from './referralLink.service';
 import { getNextQuestion, recordAnswer } from './partH.service';
-import { detectRunLanguage, toolStepCaption, RUN_STRINGS, RunLanguage } from './runLanguage';
+import {
+  detectRunLanguage,
+  languageOfConversation,
+  toolStepCaption,
+  RUN_STRINGS,
+  RunLanguage,
+} from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
@@ -6739,7 +6745,10 @@ export async function processChat(
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
   const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
-  const language = detectRunLanguage(userMessage);
+  // Row 155: provisional, and refined the moment the thread's history is in
+  // hand — see the recompute below. Set now because a run that fails before
+  // then still needs a language for its error line.
+  let language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
   // name; tool results join it as they arrive, web-search snippets excepted.
@@ -6796,6 +6805,35 @@ export async function processChat(
     // eslint-disable-next-line no-console
     console.warn('[prompt-stamp] failed:', (err as Error).message);
   });
+  /**
+   * Ticket 20 row 155 — the language is the CONVERSATION's, not the last
+   * message's.
+   *
+   * Thread 16539: a Georgian ask, the owner answers „Ok", and the reply comes
+   * back in English — 148 characters without one Georgian letter. The script
+   * guard would have refused it and was never asked, because two Latin
+   * characters had made the run English. The next message, „გაუგზავნე", put it
+   * back.
+   *
+   * Recomputed here rather than above because this is the first point at which
+   * the thread's own words are in hand, and one more query on the send path is
+   * exactly what the „three seconds to send a message" work took out.
+   */
+  const spokenBefore = history
+    .slice()
+    .reverse()
+    .map((m) => (typeof m.content === 'string' ? m.content : ''))
+    .filter(Boolean);
+  const conversationLanguage = languageOfConversation(userMessage, spokenBefore);
+  if (conversationLanguage !== language) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[run-language] run ${runId}: „${userMessage.trim().slice(0, 20)}" reads as ` +
+        `${language}, the conversation is ${conversationLanguage} — using the conversation's`,
+    );
+    language = conversationLanguage;
+    runLanguages.set(runId, language);
+  }
   // Row 154: the opening search's verdicts join the run's collection, so the
   // „From the web" message written after the reply carries them alongside
   // whatever the model's own searches found.
