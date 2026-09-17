@@ -1491,7 +1491,7 @@ export const WAKE_SHARE_NOTE =
 export const PLAN_ALREADY_ON_SCREEN =
   'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
   'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
-  'და დასვი ერთი კითხვა. მერე present_choices — „დამტკიცებულია" და „შევცვალოთ".';
+  'და დასვი ერთი კითხვა. მერე present_choices — „ვამტკიცებ" და „შევცვალოთ".';
 
 /**
  * Ticket 20 row 203 — when nobody in the plan can be written to, do not ask
@@ -1536,7 +1536,7 @@ function noApprovalNeeded(invitees: readonly string[], toWake: readonly string[]
         'შესაძლებელი გახდება.';
   return (
     'დღეს ამ გეგმით ვერავის მივწერ, ამიტომ ახლა დამტკიცება ვერაფერს შეცვლის — ' +
-    '„დამტკიცებულია" ღილაკს ნუ შესთავაზებ. ეს მიზნის დასასრული არ არის: მიზანი ღია რჩება, ' +
+    '„ვამტკიცებ" ღილაკს ნუ შესთავაზებ. ეს მიზნის დასასრული არ არის: მიზანი ღია რჩება, ' +
     'ქსელი იზრდება, და როგორც კი გამოჩნდება ადამიანი, ვისაც ამის გადაჭრა შეუძლია, ' +
     'მასთან მივალთ. ახლა შესთავაზე ნამდვილი შემდეგი ნაბიჯი, present_choices-ით: ' +
     '„თვითონ დავურეკავ" / „მოწვევა გავაგზავნო" / „სხვაც მოძებნე".' +
@@ -3131,7 +3131,24 @@ async function markSearchSent(
 // Ticket 16 Task 96: the plan's two buttons are typed by the model and came
 // out misspelt („დამადასტურებრი" / „შევცვალო"). The two words the goal prompt
 // names are the only two the screen shows for approving or changing a plan.
-const APPROVE_LABEL = 'დამტკიცებულია';
+/**
+ * The founder's ruling of 17 September: „the approve button must read as an
+ * action to be done, not as a state already reached."
+ *
+ * „დამტკიცებულია" is a past participle — „it has been approved" — sitting
+ * under a card whose own heading says „დასამტკიცებელი", awaiting approval. The
+ * card and its button contradicted each other, and a person who reads the
+ * button as a status has no reason to press it.
+ *
+ * „ვამტკიცებ" is the owner's own act, in the present: „I approve." That is
+ * also what the tap becomes — the label is sent as their message — so the word
+ * on the button and the word in the conversation are the same true sentence.
+ *
+ * Old labels keep working. canonicalChoiceLabel maps every approve-like stem
+ * onto this one, APPROVE_LIKE_RE already carries „ვამტკიც", and every stored
+ * „დამტკიცებულია" in an existing thread still reads as approval.
+ */
+const APPROVE_LABEL = 'ვამტკიცებ';
 const CHANGE_LABEL = 'შევცვალოთ';
 const APPROVE_LIKE_RE =
   /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|approve)/i;
@@ -3336,6 +3353,9 @@ const GO_AHEAD = [
   'გააკეთე',
   'დაამტკიცე',
   'დამტკიცებულია',
+  // Both spellings: the button says „ვამტკიცებ" since 17 September, and every
+  // thread written before that carries the old one.
+  'ვამტკიცებ',
   'გააგრძელე',
   'დაასრულე',
   'go ahead',
@@ -3710,7 +3730,13 @@ function takeNothingToSendToday(runId: string): boolean {
  * guarantee, and the instruction above it is only the polite version.
  */
 export function choicesWithoutApproval(choices: readonly string[]): string[] | undefined {
-  const kept = choices.filter((label) => label !== APPROVE_LABEL);
+  // Canonicalised, not compared as written. This was an exact match against one
+  // string, and the button's wording changed on 17 September — so a model
+  // typing the old „დამტკიცებულია", or any of the misspellings Task 96 exists
+  // for, would have walked straight through a filter whose whole job is to
+  // remove it. The same alias table that decides what a TAP means decides what
+  // this drops.
+  const kept = choices.filter((label) => canonicalChoiceLabel(label) !== APPROVE_LABEL);
   // An empty button row is its own small lie — a strip of nothing where the
   // screen promises a choice. If approve was the only thing offered, the reply
   // simply has no buttons.
@@ -4276,7 +4302,7 @@ async function executeToolCall(
         // means there is nothing left for it to do.
         next:
           'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
-          'with exactly „დამტკიცებულია" and „შევცვალოთ". Do not end your turn with the goal ' +
+          'with exactly „ვამტკიცებ" and „შევცვალოთ". Do not end your turn with the goal ' +
           'saved and no plan on screen: that costs the user a second answer a few seconds later, ' +
           'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
           '— your own message must not repeat it, in any form. Write nobody and start nothing ' +

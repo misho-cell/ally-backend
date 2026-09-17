@@ -85,7 +85,7 @@ describe('row 203 — the card when nobody can be written to', () => {
 
     expect(out.nothing_to_send_today).toBe(true);
     const instead = String(out.instead);
-    expect(instead).toContain('„დამტკიცებულია" ღილაკს');
+    expect(instead).toContain('„ვამტკიცებ" ღილაკს');
     // All three of Tornike's next steps, by name.
     expect(instead).toContain('თვითონ დავურეკავ');
     expect(instead).toContain('მოწვევა გავაგზავნო');
@@ -235,7 +235,11 @@ function note_hasOnlyExpectedScripts(text: string): boolean {
  */
 describe('row 203 — the buttons a run may actually show', () => {
   it('removes the approve button and keeps the change button', () => {
+    expect(choicesWithoutApproval(['ვამტკიცებ', 'შევცვალოთ'])).toEqual(['შევცვალოთ']);
+    // And by what the label MEANS, not how it is spelt: the button's wording
+    // changed on 17 September and a model still types the old one.
     expect(choicesWithoutApproval(['დამტკიცებულია', 'შევცვალოთ'])).toEqual(['შევცვალოთ']);
+    expect(choicesWithoutApproval(['დამადასტურებრი', 'შევცვალოთ'])).toEqual(['შევცვალოთ']);
   });
 
   it('leaves an ordinary set of buttons untouched', () => {
@@ -247,6 +251,7 @@ describe('row 203 — the buttons a run may actually show', () => {
   it('shows NO buttons rather than an empty row', () => {
     // A strip of nothing where the screen promises a choice is its own small
     // lie, and the client renders whatever array it is given.
+    expect(choicesWithoutApproval(['ვამტკიცებ'])).toBeUndefined();
     expect(choicesWithoutApproval(['დამტკიცებულია'])).toBeUndefined();
     expect(choicesWithoutApproval([])).toBeUndefined();
   });
