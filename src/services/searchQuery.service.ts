@@ -80,8 +80,31 @@ const DISTIL_BUDGET_MS = 5_000;
 /** A query, not a sentence. Anything longer is the model ignoring the brief. */
 const MAX_QUERY_CHARS = 120;
 
-/** Enough for six words in Georgian, where a word can run long. */
-const MAX_OUTPUT_TOKENS = 64;
+/**
+ * Ticket 20 row 126 — 64 was enough for the ANSWER and not for the thinking.
+ *
+ * Ninia's sentence would not distil, three builds running, and the reason
+ * changed under me. At a 2.5 s budget the log said „Request timed out". I
+ * raised it to 5 s, the call started completing, and the log then said what
+ * was actually wrong:
+ *
+ *   17:31:09 [search-query] not distilled (empty answer); searching the goal
+ *            text as typed
+ *
+ * gpt-5.6-terra is a reasoning model, and `max_completion_tokens` bounds the
+ * reasoning AND the reply together. A three-word sentence needs little
+ * thinking and leaves room to answer in; Ninia's 160-character sentence with
+ * its greeting, its cannery and its two requests spends the whole 64 on
+ * reasoning and returns an empty string. The harder the input, the more
+ * certainly it fails — which is exactly backwards, and is why only the long
+ * one ever broke.
+ *
+ * 512, and it costs nothing to be generous: the answer is still bounded at
+ * MAX_QUERY_CHARS, so a model that decides to write an essay is rejected by
+ * usableQuery as it always was. What the number has to cover is the thinking,
+ * and 64 never did.
+ */
+const MAX_OUTPUT_TOKENS = 512;
 
 /**
  * The brief, rewritten after the first live test.

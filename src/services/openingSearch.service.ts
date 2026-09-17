@@ -376,6 +376,27 @@ const TITLE_SEPARATORS = /\s+[—–|:·]\s+|\s+-\s+/;
 const MAX_NAME_CHARS = 60;
 
 /**
+ * Ticket 20 row 154 — the cut landed mid-word.
+ *
+ * The seat's read of the first live „From the web" (#3632): „Canned Food Market
+ * to Reach USD 100.92 Billion by 2027; Incr". A hard slice at 60 characters,
+ * ending inside „Increasing".
+ *
+ * It matters twice over. On the screen it reads as something broken, and these
+ * same strings are what findWaysIn SEARCHES the owner's contacts for — half a
+ * word finds half the people, or nobody, and the verdict that comes back is
+ * wrong rather than merely ugly.
+ */
+function cutAtAWord(name: string): string {
+  if (name.length <= MAX_NAME_CHARS) return name;
+  const cut = name.slice(0, MAX_NAME_CHARS);
+  const lastSpace = cut.lastIndexOf(' ');
+  // A single word longer than the cap has no boundary to fall back to; keeping
+  // it whole-but-long beats handing the search a fragment.
+  return (lastSpace > MAX_NAME_CHARS / 2 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
+/**
  * The organisation or person each web result is about.
  *
  * A title is usually „Infinity Solutions — ბრენდინგი და მარკეტინგი", so the
@@ -396,7 +417,7 @@ export function webResultNames(result: unknown): string[] {
     if (row === null || typeof row !== 'object') continue;
     const title = (row as { title?: unknown }).title;
     if (typeof title !== 'string') continue;
-    const name = (title.split(TITLE_SEPARATORS)[0] ?? '').trim().slice(0, MAX_NAME_CHARS);
+    const name = cutAtAWord((title.split(TITLE_SEPARATORS)[0] ?? '').trim());
     if (name === '' || names.includes(name)) continue;
     names.push(name);
     if (names.length >= MAX_WAY_IN_CHECKS) break;
@@ -511,31 +532,37 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
  * in through somebody you know, and „here is a firm, ring them" is the thing it
  * is supposed to replace.
  *
- * FIRST-CIRCLE NAMES COME FIRST. Four is the cap the seat set, and when more
- * than four came back the ones with a real way in are the ones worth the four
- * slots. Said out loud because it is a judgement, not a rule they gave me.
+ * ONLY THE NAMES WITH A REAL WAY IN, and the seat overruled me on this within
+ * the hour — rightly.
+ *
+ * I gave the four slots to the best verdicts but let „nobody in your contacts"
+ * and „could not check" fill what was left. Their read of the first live run
+ * (#3632): every line on both goals ended with „I could not check the way in".
+ * Their words: a message that says that three times teaches the owner to
+ * ignore the message. That is the whole value of the thing gone, to save a
+ * blank space.
+ *
+ * So the message carries first-circle results and nothing else, and when there
+ * are none it is not written at all. It appears only when it has something to
+ * say, which is what makes it worth reading when it does.
+ *
+ * The other two verdicts are NOT lost — they still reach the model in the
+ * prompt section and in the tool result, where „your own contacts hold nobody"
+ * is genuinely different from „nobody" (G7). What changed is that they stopped
+ * being shown to the OWNER as if they were findings.
  */
 const FROM_THE_WEB_MAX = 4;
 
 export function buildFromTheWebMessage(waysIn: ReadonlyMap<string, WayIn>): string | null {
-  if (waysIn.size === 0) return null;
-  const entries = [...waysIn.entries()].sort((a, b) => rankOfWayIn(a[1]) - rankOfWayIn(b[1]));
-  const lines = entries.slice(0, FROM_THE_WEB_MAX).map(([name, wayIn]) => {
-    if (wayIn.kind === 'first_circle') return `• ${name} — შენი კონტაქტი იქ: ${wayIn.who}.`;
-    // Ticket 19 G7, and it is the sentence this whole row turns on: „your own
-    // contacts hold nobody" is not „nobody". The second circle has not been
-    // asked yet, and saying so keeps the door open honestly.
-    if (wayIn.kind === 'none')
-      return `• ${name} — შენს პირად კონტაქტებში კავშირი ვერ ვიპოვე; მეორე წრე ჯერ არ შემიმოწმებია.`;
-    return `• ${name} — კავშირი ვერ შევამოწმე.`;
-  });
+  const found = [...waysIn.entries()].filter(
+    (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
+      entry[1].kind === 'first_circle',
+  );
+  if (found.length === 0) return null;
+  const lines = found
+    .slice(0, FROM_THE_WEB_MAX)
+    .map(([name, wayIn]) => `• ${name} — შენი კონტაქტი იქ: ${wayIn.who}.`);
   return `ვებში ეს ვიპოვე:\n${lines.join('\n')}`;
-}
-
-function rankOfWayIn(wayIn: WayIn): number {
-  if (wayIn.kind === 'first_circle') return 0;
-  if (wayIn.kind === 'none') return 1;
-  return 2;
 }
 
 /**

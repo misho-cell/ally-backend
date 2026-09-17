@@ -560,64 +560,102 @@ describe('buildFromTheWebMessage', () => {
     expect(message).toContain('დათო');
   });
 
-  it('says the SECOND CIRCLE is unchecked, never that there is no way in', () => {
-    // Ticket 19 G7, and the sentence this row turns on.
-    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
-
-    expect(message).toContain('მეორე წრე');
-    expect(message).not.toMatch(/გზა არ არსებობს|ვერავინ/);
+  /**
+   * The seat overruled my first version within the hour, and they were right.
+   * I let „nobody in your contacts" and „could not check" fill the spare slots;
+   * their read of the first live run (#3632) was that every line on both goals
+   * ended with „I could not check the way in", and that a message saying that
+   * three times teaches the owner to ignore the message.
+   */
+  it('writes NOTHING when no result has a real way in', () => {
+    expect(
+      buildFromTheWebMessage(
+        new Map([
+          ['Acme', { kind: 'none' as const }],
+          ['Beta', { kind: 'unchecked' as const }],
+        ]),
+      ),
+    ).toBeNull();
   });
 
-  it('keeps „could not check" apart from „checked and found nobody"', () => {
-    const unchecked = String(
-      buildFromTheWebMessage(new Map([['Acme', { kind: 'unchecked' as const }]])),
+  it('leaves the verdicts it cannot use out of the message entirely', () => {
+    const message = String(
+      buildFromTheWebMessage(
+        new Map([
+          ['Acme', { kind: 'none' as const }],
+          ['Infinity Solutions', { kind: 'first_circle' as const, who: 'დათო' }],
+          ['Beta', { kind: 'unchecked' as const }],
+        ]),
+      ),
     );
 
-    expect(unchecked).toContain('ვერ შევამოწმე');
-    expect(unchecked).not.toContain('მეორე წრე');
+    expect(message).toContain('Infinity Solutions');
+    expect(message).not.toContain('Acme');
+    expect(message).not.toContain('Beta');
+    expect(message.split('\n').filter((l) => l.startsWith('•'))).toHaveLength(1);
   });
 
   it('never tells the owner to contact a company himself — the seat\u2019s done-when', () => {
     const message = String(
-      buildFromTheWebMessage(
-        new Map([
-          ['A', { kind: 'first_circle' as const, who: 'ნინო' }],
-          ['B', { kind: 'none' as const }],
-          ['C', { kind: 'unchecked' as const }],
-        ]),
-      ),
+      buildFromTheWebMessage(new Map([['A', { kind: 'first_circle' as const, who: 'ნინო' }]])),
     );
 
     expect(message).not.toMatch(/დაურეკ|დაუკავშირ|მიწერე|დაუკავშირდი|ნომერ/);
   });
 
-  it('carries no phone number and no link', () => {
+  it('carries no link', () => {
     const message = String(
-      buildFromTheWebMessage(new Map([['Acme +995 599 12 34 56', { kind: 'none' as const }]])),
+      buildFromTheWebMessage(new Map([['Acme', { kind: 'first_circle' as const, who: 'ნინო' }]])),
     );
 
-    // The NAME is whatever the web returned and is not rewritten here; what
-    // this asserts is that nothing in the wording adds a number or a link.
     expect(message).not.toContain('http');
   });
 
-  it('shows at most four, and gives the slots to the real ways in', () => {
-    const message = String(
-      buildFromTheWebMessage(
-        new Map([
-          ['none1', { kind: 'none' as const }],
-          ['none2', { kind: 'none' as const }],
-          ['none3', { kind: 'none' as const }],
-          ['none4', { kind: 'none' as const }],
-          ['real', { kind: 'first_circle' as const, who: 'ლიკა' }],
-        ]),
-      ),
+  it('shows at most four ways in', () => {
+    const many = new Map(
+      ['a', 'b', 'c', 'd', 'e'].map((n) => [n, { kind: 'first_circle' as const, who: 'ლიკა' }]),
     );
 
-    expect(message.split('\n').filter((l) => l.startsWith('•'))).toHaveLength(4);
-    expect(message).toContain('real');
-    expect(message).toContain('ლიკა');
-    // The one that lost its slot is a „none", never the way in.
-    expect(message).not.toContain('none4');
+    expect(
+      String(buildFromTheWebMessage(many))
+        .split('\n')
+        .filter((l) => l.startsWith('•')),
+    ).toHaveLength(4);
+  });
+});
+
+/**
+ * Ticket 20 row 154 — the cut landed mid-word.
+ *
+ * The seat's read of the first live „From the web" (#3632): „Canned Food Market
+ * to Reach USD 100.92 Billion by 2027; Incr", stopped inside „Increasing".
+ *
+ * It matters twice: on the screen it reads as something broken, and these same
+ * strings are what findWaysIn searches the owner's contacts for — half a word
+ * finds half the people, or nobody, and the verdict that comes back is wrong
+ * rather than merely ugly.
+ */
+describe('webResultNames cuts at a word', () => {
+  const long =
+    'Canned Food Market to Reach USD 100.92 Billion by 2027; Increasing demand worldwide';
+
+  it('does not end a name inside a word', () => {
+    const [name] = webResultNames({ results: [{ title: long }] });
+
+    expect(name.endsWith('Incr')).toBe(false);
+    expect(long.startsWith(name)).toBe(true);
+    expect(name.length).toBeLessThanOrEqual(60);
+  });
+
+  it('leaves a short title exactly as it was', () => {
+    expect(webResultNames({ results: [{ title: 'Infinity Solutions' }] })).toEqual([
+      'Infinity Solutions',
+    ]);
+  });
+
+  it('keeps one very long word whole rather than handing the search a fragment', () => {
+    const word = 'a'.repeat(80);
+
+    expect(webResultNames({ results: [{ title: word }] })[0].length).toBe(60);
   });
 });
