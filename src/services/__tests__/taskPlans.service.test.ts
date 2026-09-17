@@ -203,7 +203,11 @@ describe('Ticket 19 [3]: the plan reads like a sentence, not a dump', () => {
   };
 
   it('says the state in words a person uses, not the field value', () => {
-    const text = renderPlan(PLAN, 1, null);
+    // Rendered as an APPROVED plan now. Ticket 20 row 140 changed what an
+    // unapproved one may claim — see below — and this assertion is about the
+    // vocabulary, not about the claim, so it moves to a plan where the
+    // statuses are allowed to speak.
+    const text = renderPlan(PLAN, 1, '2026-09-17T07:00:00Z');
 
     // „[waiting]" is an internal value, in English, inside a Georgian message
     // that exists to be understood well enough to approve.
@@ -211,6 +215,51 @@ describe('Ticket 19 [3]: the plan reads like a sentence, not a dump', () => {
     expect(text).not.toContain('[running]');
     expect(text).toContain('ველოდები');
     expect(text).toContain('მიმდინარეობს');
+  });
+
+  /**
+   * Ticket 20 row 140 — „in progress" on a route nothing has started.
+   *
+   * Goal 3703's plan read „ვები, რუსთავის ელექტრიკოსები, მიმდინარეობს" with no
+   * web_search in the run. Goal 3928's v1 marked all three routes in progress
+   * while nothing was approved and nobody had been written to. On an
+   * unapproved plan that is false by construction: the product's own rule is
+   * that nothing starts until the owner says yes.
+   */
+  describe('row 140 — an unapproved plan claims no progress', () => {
+    it('reads „not started" whatever the model wrote', () => {
+      const text = renderPlan(PLAN, 1, null);
+
+      expect(text).toContain('ჯერ არ დაწყებულა');
+      expect(text).not.toContain('მიმდინარეობს');
+      expect(text).not.toContain('ველოდები');
+    });
+
+    it('lets the statuses speak once the plan is approved', () => {
+      const text = renderPlan(PLAN, 1, '2026-09-17T07:00:00Z');
+
+      expect(text).toContain('მიმდინარეობს');
+      expect(text).not.toContain('ჯერ არ დაწყებულა');
+    });
+
+    it('lets a v2 speak, because work on that goal really has begun', () => {
+      // The exception, and the reason this takes a flag rather than reading
+      // approvedAt: a revision proposed after v1 was approved is itself
+      // unapproved, but the goal has been running. „Not started" there would
+      // be the same fault pointing the other way.
+      const text = renderPlan(PLAN, 2, null, true);
+
+      expect(text).toContain('მიმდინარეობს');
+      expect(text).not.toContain('ჯერ არ დაწყებულა');
+    });
+
+    it('does not rewrite what the model stored', () => {
+      // The intent stays recorded; only the claim is withheld, so it becomes
+      // visible the moment there is something it could honestly describe.
+      const before = JSON.stringify(PLAN);
+      renderPlan(PLAN, 1, null);
+      expect(JSON.stringify(PLAN)).toBe(before);
+    });
   });
 
   it('never prints a person twice', () => {

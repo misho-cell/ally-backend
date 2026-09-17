@@ -188,7 +188,7 @@ export async function proposeTaskPlan(
   userId: string,
   taskId: number,
   raw: unknown,
-): Promise<PlanOutcome<{ version: number; summary: string }>> {
+): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
   const parsed = parsePlan(raw);
   if (!parsed.ok) return parsed;
   // Ticket 20 row 146: decided HERE, while the plan is being written, so the
@@ -197,21 +197,29 @@ export async function proposeTaskPlan(
   // somebody is unreachable.
   const withReach = await withReachability(parsed.value.people_to_involve);
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
-  const result = await query<{ plan_version: number }>(
+  // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
+  // an approved plan decides whether a route may claim to be under way. The
+  // UPDATE does not touch that column, so what comes back is the previous
+  // approval — exactly the question being asked.
+  const result = await query<{ plan_version: number; plan_approved_at: Date | null }>(
     `UPDATE tasks
      SET plan_proposed = $3::jsonb,
          plan_version = plan_version + 1,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'
-     RETURNING plan_version`,
+     RETURNING plan_version, plan_approved_at`,
     [taskId, userId, JSON.stringify(plan)],
     PLAN_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
   if (!row) return { ok: false, error: 'No such open goal of yours.' };
   const version = Number(row.plan_version);
-  return { ok: true, value: { version, summary: renderPlan(plan, version, null) } };
+  const everApproved = row.plan_approved_at !== null;
+  return {
+    ok: true,
+    value: { version, summary: renderPlan(plan, version, null, everApproved), everApproved },
+  };
 }
 
 /**
@@ -329,6 +337,28 @@ const ROUTE_STATUS_WORDS: Readonly<Record<RouteStatus, string>> = {
 };
 
 /**
+ * Ticket 20 row 140 — „in progress" on a route nothing has started.
+ *
+ * Goal 3703's plan read „ვები, რუსთავის ელექტრიკოსები, მიმდინარეობს" with no
+ * web_search anywhere in the run. Goal 3928's plan v1 marked all three routes
+ * in progress while nothing had been approved and nobody had been written to.
+ * That is invented progress, and on an UNAPPROVED plan it is invented by
+ * construction: the product's own rule is that nothing starts until the owner
+ * says yes, so there is no state of the world in which those words are true.
+ *
+ * So the status is not trusted, it is DERIVED. Until this goal has had an
+ * approved plan, every route reads „not started yet" whatever the model wrote.
+ * Nothing is rewritten in storage — the model's intent stays recorded, and it
+ * becomes visible the moment there is something it could honestly describe.
+ *
+ * The exception is why this takes a flag rather than reading approvedAt. A v2
+ * proposed after v1 was approved is itself unapproved, but work on that goal
+ * HAS begun, and showing „not started" there would be the same fault pointing
+ * the other way — a false claim about the world, just a modest one.
+ */
+const ROUTE_NOT_STARTED = 'ჯერ არ დაწყებულა';
+
+/**
  * The plan as one message the user can read and approve.
  *
  * Every line here is read by somebody deciding whether to let us write to
@@ -375,9 +405,21 @@ export function peopleToInvite(plan: TaskPlan): string[] {
   return plan.people_to_involve.filter((p) => p.reach === 'not_member').map((p) => p.name);
 }
 
-export function renderPlan(plan: TaskPlan, version: number, approvedAt: string | null): string {
+export function renderPlan(
+  plan: TaskPlan,
+  version: number,
+  approvedAt: string | null,
+  // Row 140: has this GOAL ever had an approved plan? Defaults from this
+  // version's own approval, so every existing caller keeps its behaviour and
+  // only the proposal path — the one that showed „in progress" before anything
+  // could have started — has to say more.
+  everApproved: boolean = approvedAt !== null,
+): string {
   const routes = plan.routes
-    .map((r) => `- ${r.name} — ${ROUTE_STATUS_WORDS[r.status] ?? r.status}`)
+    .map(
+      (r) =>
+        `- ${r.name} — ${everApproved ? (ROUTE_STATUS_WORDS[r.status] ?? r.status) : ROUTE_NOT_STARTED}`,
+    )
     .join('\n');
   const people =
     plan.people_to_involve.length === 0

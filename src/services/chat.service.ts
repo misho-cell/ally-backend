@@ -1539,7 +1539,13 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
         type: 'object',
         description:
           '{ solved_when: string, routes: [{name, status: running|waiting|done|dropped}], ' +
-          'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }',
+          'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }. ' +
+          // Row 140: said here as well as enforced in the renderer, because a
+          // model that believes its routes are running will also SAY so in the
+          // prose, and the prose is not something the server rewrites.
+          'A route is "running" only once something has actually run for it in this goal. On a ' +
+          'plan the owner has not approved yet, nothing has started — the server shows every ' +
+          'route as not started there, and your own message must not claim otherwise either.',
       },
     },
     required: ['task_id', 'plan'],
@@ -4341,10 +4347,34 @@ async function executeToolCall(
           // published in this run, and scrubText carries those spans through
           // untouched while masking every other number. Tornike's rule, in the
           // order the two functions have to run in.
+          // Row 140: the same everApproved the summary was rendered with, so
+          // the stored message and the tool's own summary cannot disagree
+          // about whether anything has started.
+          const rendered = renderPlan(
+            stored,
+            outcome.value.version,
+            null,
+            outcome.value.everApproved,
+          );
           const planText = runId
-            ? scrubText(wrapAllowedNumbers(renderPlan(stored, outcome.value.version, null), runId))
-            : scrubText(renderPlan(stored, outcome.value.version, null));
-          await saveMessage(userId, threadId, 'assistant', planText, 'message', runId ?? null);
+            ? scrubText(wrapAllowedNumbers(rendered, runId))
+            : scrubText(rendered);
+          // Ticket 20 row 140, the third instance: thread 15812 said the plan
+          // was shown in the new thread while that thread was empty.
+          //
+          // A goal opened in a conversation that already had one is MOVED to
+          // its own thread, and the run carries on in the old one. The plan
+          // was then saved to the run's thread — so the reply truthfully said
+          // where the goal now lives, and the plan went somewhere else. The
+          // plan belongs to the GOAL's thread, which the task row knows.
+          await saveMessage(
+            userId,
+            task?.thread_id ?? threadId,
+            'assistant',
+            planText,
+            'message',
+            runId ?? null,
+          );
           planIsOnScreen = true;
           unreachable = {
             nobodyReachable: nobodyCanBeWrittenTo(stored),
