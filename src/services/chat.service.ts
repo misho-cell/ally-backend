@@ -166,6 +166,7 @@ import {
   WayIn,
 } from './openingSearch.service';
 import { writeFinalAnswer, unusableReason } from './finalAnswer.service';
+import { splitOpeningLine } from './goalSplit';
 import {
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
@@ -4220,6 +4221,29 @@ async function executeToolCall(
           status: fresh.status,
           status_line: fresh.status_line,
         });
+        /**
+         * Ticket 20 row 33, the half that was left — the new chat says why it
+         * exists.
+         *
+         * The empty-thread fault is fixed, so the plan now arrives here four
+         * seconds later. It arrives alone: the sentence that asked for this,
+         * and the answer that followed it, stay in the chat the owner typed
+         * in. So the owner opens a conversation they did not start, reading a
+         * plan with two buttons and no first line — and one of those buttons
+         * writes to real people in their name.
+         *
+         * Written by the server rather than asked of the model. The tool
+         * result already carries `moved_to` and tells the model to say where
+         * the goal went; whether it does is evidence, and this is code. It
+         * also has to be here rather than in the plan turn: that turn knows
+         * the goal, not the conversation it was split out of.
+         */
+        await saveMessage(
+          userId,
+          fresh.id,
+          'assistant',
+          splitOpeningLine(occupied.title, runId === undefined ? 'ka' : runLang(runId)),
+        );
       }
       const { id } = await createTask(userId, title, description, taskType, goalThreadId, autonomy);
       noteCreatedGoal(runId, id);
