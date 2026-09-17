@@ -5,6 +5,7 @@ jest.mock('../taskStore.service', () => ({
 }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
+jest.mock('../sse.service', () => ({ emitChoicesCleared: jest.fn(), __esModule: true }));
 jest.mock('../threads.service', () => ({
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),
@@ -15,6 +16,7 @@ import { updateTask, getOpenTaskByThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, Thread } from '../threads.service';
+import { emitChoicesCleared } from '../sse.service';
 import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread, stoppedLine } from '../goalStop.service';
 
 const mockUpdate = updateTask as jest.MockedFunction<typeof updateTask>;
@@ -23,6 +25,7 @@ const mockThread = setThreadStatus as jest.MockedFunction<typeof setThreadStatus
 const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
 const mockOpenTask = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
 const mockSay = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
+const mockClear = emitChoicesCleared as jest.MockedFunction<typeof emitChoicesCleared>;
 
 function task(over: Partial<Task> = {}): Task {
   return {
@@ -177,5 +180,35 @@ describe('the stop line reaches the thread', () => {
     await stopGoal('501', task({ thread_id: null }));
 
     expect(mockSay).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Row 113 — the buttons a stopped goal left on the screen.
+ *
+ * Read on thread 16798: the stop line was written and the plan's two buttons
+ * stayed under it until the page was reloaded. A tap would have approved a plan
+ * for a goal that was already closed.
+ */
+describe('a stop clears the buttons on the live screen', () => {
+  it('tells the client to drop them', async () => {
+    await stopGoal('501', task());
+
+    expect(mockClear).toHaveBeenCalledWith('501', 14719);
+  });
+
+  it('clears them on the SECOND press too, when nothing else is written', async () => {
+    // The second press writes no line — but if the first press's event was
+    // missed, this is the owner's only other chance to be rid of them.
+    await stopGoal('501', task({ status: 'closed' }));
+
+    expect(mockSay).not.toHaveBeenCalled();
+    expect(mockClear).toHaveBeenCalledWith('501', 14719);
+  });
+
+  it('has no screen to clear when the goal has no thread', async () => {
+    await stopGoal('501', task({ thread_id: null }));
+
+    expect(mockClear).not.toHaveBeenCalled();
   });
 });

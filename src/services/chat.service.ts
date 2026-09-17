@@ -215,6 +215,7 @@ import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { noteRunStart, runWasStopped } from './stoppedRuns';
+import { stopGoal } from './goalStop.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -4550,18 +4551,35 @@ async function executeToolCall(
       const status = input['status'] as string;
       if (!isTaskStatus(status)) return { updated: false, error: 'Invalid status.' };
       const taskIdToUpdate = Number(input['task_id']);
-      const ok = await updateTask(
-        userId,
-        taskIdToUpdate,
-        status,
-        input['note'] as string | undefined,
-        // Row 147: closing through update_task is the owner stopping a goal,
-        // never the work being finished. finish_task is the other route.
-        status === 'closed' ? 'stopped' : undefined,
-      );
-      // Closing by ANY route cancels what is in flight (round 1: an
-      // update_task-closed goal left its ask 'sent' on the recipient's phone).
-      if (ok && status === 'closed') await cancelAsksForTask(taskIdToUpdate);
+      /**
+       * Ticket 20 row 113, seventh pass — the TYPED stop goes through the same
+       * door as the button, because it is the same act.
+       *
+       * Read by the tester on goal 4628 / thread 16738: the owner typed „stop
+       * this goal, it was a test", the goal closed correctly, no new goal
+       * appeared — and the thread said nothing. The owner's own line was the
+       * last message and the header read finished. The BUTTON writes
+       * „შევაჩერე: <title>"; the typed line wrote nothing, because it closed
+       * the row here and the message lives in stopGoal.
+       *
+       * So this stops calling updateTask and calls stopGoal, which is the one
+       * place that closes the row, cancels the asks, writes the line and marks
+       * the run. Two stop paths that drift apart is the bug this row keeps
+       * producing — six passes, three of them mine, every one a path I had not
+       * checked. There is one path now.
+       *
+       * Anything that is NOT a close still goes straight to updateTask: a
+       * pause or a resume is not a stop and must not write a stop line.
+       */
+      const closing = status === 'closed';
+      const toStop = closing ? await getTaskById(taskIdToUpdate) : null;
+      if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
+        return { updated: false };
+      }
+      const ok =
+        closing && toStop !== null
+          ? (await stopGoal(userId, toStop)).stopped
+          : await updateTask(userId, taskIdToUpdate, status, input['note'] as string | undefined);
       if (!ok) return { updated: false };
       /**
        * Ticket 20 row 135 — the result NAMES what it changed.

@@ -164,6 +164,24 @@ export interface ThreadUpdatePayload {
  * connected device patches its chat list from this instead of deriving state
  * locally. Fields are partial: only what changed is sent.
  */
+/**
+ * Ticket 20 row 113 — the buttons a stopped goal left on the screen.
+ *
+ * Read by the tester on thread 16798: the stop line was written and the plan's
+ * „დამტკიცებულია" / „შევცვალოთ" stayed under it until they reloaded the page.
+ * The stored row was correct — the buttons live on the message above, which
+ * nothing touched — so the screen was showing a live approve button for a goal
+ * that had just been stopped, and a tap would have approved a plan for a
+ * closed goal.
+ *
+ * The event carries no payload beyond the thread: the client's job is to clear
+ * the choices it is currently showing, and anything more specific would be the
+ * server guessing at the client's state.
+ */
+export function emitChoicesCleared(userId: string, threadId: number): void {
+  emitter.emit(`user:${userId}`, { event: 'choices_cleared', threadId });
+}
+
 export function emitThreadUpdated(userId: string, thread: ThreadUpdatePayload): void {
   emitter.emit(`user:${userId}`, {
     event: 'thread_updated',

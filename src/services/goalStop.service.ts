@@ -3,6 +3,7 @@ import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
+import { emitChoicesCleared } from './sse.service';
 
 /**
  * The owner's kill switch, in one place.
@@ -88,6 +89,10 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
         stoppedLine(task.title, cancelledAsks),
       ).catch(() => undefined);
     }
+    // Row 113: the plan's approve button stayed on the live screen after the
+    // stop line and only went on reload (thread 16798). A tap on it would have
+    // approved a plan for a goal that was already closed.
+    emitChoicesCleared(userId, task.thread_id);
     void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
   }
   return { stopped: true, goal_id: task.id };
