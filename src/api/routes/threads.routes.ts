@@ -29,6 +29,7 @@ import {
 } from '../../services/taskAsks.service';
 import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
 import { stopGoalOnThread } from '../../services/goalStop.service';
+import { runWasStopped } from '../../services/stoppedRuns';
 import { planInForce } from '../../services/taskPlans.service';
 import {
   clearGoalQuestionForThread,
@@ -522,6 +523,28 @@ threadsRouter.post(
         hardTimeout,
       ])
         .then(async (result) => {
+          /**
+           * Ticket 20 row 113, fourth pass — the owner stopped this goal while
+           * this run was working, so none of what it produced may land.
+           *
+           * Read on c7f8de1, goal 4489 / thread 16635: the stop line was
+           * written at 13:16:16, and at 13:16:40 the run that was already going
+           * added its reply with approve / change buttons. A stopped goal asked
+           * its owner to approve a plan.
+           *
+           * The tool loop gives up at its next turn, but a run can be past its
+           * last tool call and one model call from done — so the delivery point
+           * checks too. Dropped in full and on purpose: not the reply, not the
+           * buttons, not the SSE, not the push, not the title, not the fact
+           * sweep. A stop that leaves a trailing message is the bug.
+           */
+          if (runWasStopped(threadId, runId)) {
+            // eslint-disable-next-line no-console
+            console.log(
+              `[run] ${runId}: dropped on thread ${threadId} — the owner stopped the goal mid-run`,
+            );
+            return;
+          }
           // Waiting covers BOTH kinds of third-party dependency: an unanswered
           // ask AND an unanswered introduction request (ticket 5 item B2).
           //

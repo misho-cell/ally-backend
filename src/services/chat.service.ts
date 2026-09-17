@@ -206,6 +206,7 @@ async function resolveRunMode(
 import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
+import { noteRunStart, runWasStopped } from './stoppedRuns';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -5661,7 +5662,12 @@ async function runToolLoop(
     while (
       response.stop_reason === 'tool_use' &&
       iterations < MAX_TOOL_ITERATIONS &&
-      Date.now() - startedAt < RUN_SOFT_BUDGET_MS
+      Date.now() - startedAt < RUN_SOFT_BUDGET_MS &&
+      // Row 113 fourth pass. The owner pressed stop; the tools this turn wants
+      // are work on a goal that no longer exists. Checked between turns rather
+      // than mid-call, because the call in flight is already paid for and the
+      // thing worth saving is the minute after it.
+      !runWasStopped(threadId, runId)
     ) {
       iterations++;
       toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
@@ -6576,6 +6582,12 @@ export async function processChat(
   ensureQuoted?: EnsureQuoted,
   intent?: RunIntent,
 ): Promise<ChatResult> {
+  // Row 113 fourth pass: registered before anything else, so a stop pressed
+  // one second from now can tell this run apart from the one the owner starts
+  // afterwards. Every path into a run comes through here — the route, an
+  // engine wake, an answer wake — which is why it is registered here and not
+  // in the route that happens to be the one we read the bug on.
+  noteRunStart(runId);
   const thread = await getThread(threadId, userId);
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);

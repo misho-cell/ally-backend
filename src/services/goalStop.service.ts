@@ -2,6 +2,7 @@ import { Task, updateTask, getOpenTaskByThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage } from './threads.service';
+import { markThreadStopped } from './stoppedRuns';
 
 /**
  * The owner's kill switch, in one place.
@@ -65,6 +66,11 @@ export function stoppedLine(title: string, cancelledAsks: number): string {
  */
 export async function stopGoal(userId: string, task: Task): Promise<GoalStopped> {
   const wasOpen = task.status !== 'closed';
+  // Row 113 fourth pass, and FIRST in this function on purpose: a run that is
+  // working right now must learn it has been stopped before anything else
+  // takes a turn. Closing the row took four awaits to reach the thread, and in
+  // that window the run had already written its next line.
+  if (task.thread_id !== null) markThreadStopped(task.thread_id);
   if (wasOpen) {
     await updateTask(userId, task.id, 'closed', 'stopped_by_user');
   }
