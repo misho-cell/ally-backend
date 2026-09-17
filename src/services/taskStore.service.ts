@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { setThreadStatus } from './threadStatus.service';
+import { markThreadStopped } from './stoppedRuns';
 import { goalNamedIn } from './goalMention';
 import type { TaskPlan } from './taskPlans.service';
 
@@ -504,6 +505,28 @@ export async function updateTask(
   // (ticket 8 task 2b). Every close route lands here, so the badge follows.
   const threadId = result.rows[0]?.thread_id;
   if (updated && status === 'closed' && threadId != null) {
+    /**
+     * Ticket 20 row 113, fifth pass — the TYPED stop must abort the run too.
+     *
+     * b6cc2b6 made the button stop the work. The typed line does not go
+     * through that route at all: the model closes the goal itself, from inside
+     * the run, and the run then carried on. Read by the tester on goal 4555 /
+     * thread 16699:
+     *
+     *   13:48:49  the owner typed stop; 4555 closed at 13:48:55
+     *   13:50:02  the same run called create_task and opened goal 4588
+     *   13:50:23  and posted 4588's plan
+     *
+     * So a stop produced a NEW goal, on the same thread, with the same title —
+     * the one outcome worse than not stopping. The header button finally
+     * closed 4588 at 13:52:11, and only because it takes the other route.
+     *
+     * Every close in this codebase lands in this function, which makes it the
+     * one place the two paths cannot drift apart. Only a STOP marks the
+     * thread: `finished` is a run delivering its result, and marking that
+     * would throw away the answer the owner was waiting for.
+     */
+    if (closedAs === 'stopped') markThreadStopped(threadId);
     void setThreadStatus(userId, threadId, 'done', { isTask: true });
   }
   // Ticket 13 Task 42 (7): a goal closed before any question went out was

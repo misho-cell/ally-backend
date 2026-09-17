@@ -1,6 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../stoppedRuns', () => ({ __esModule: true, markThreadStopped: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
+import { markThreadStopped } from '../stoppedRuns';
 import {
   createTask,
   getMyTasks,
@@ -13,6 +15,7 @@ import {
 } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockStopped = markThreadStopped as jest.MockedFunction<typeof markThreadStopped>;
 
 function result(rows: unknown[], rowCount = rows.length): { rows: unknown[]; rowCount: number } {
   return { rows, rowCount };
@@ -203,5 +206,54 @@ describe('never parked, and the method changes after three silent days', () => {
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('SET method_change_woken_at = NOW()');
     expect(params).toEqual([1519]);
+  });
+});
+
+/**
+ * Ticket 20 row 113, fifth pass — the TYPED stop must abort the run too.
+ *
+ * b6cc2b6 made the BUTTON stop the work. The typed line takes another route
+ * entirely: the model closes the goal itself, from inside the run, and the run
+ * carried on. Read on goal 4555 / thread 16699:
+ *
+ *   13:48:49  the owner typed stop; 4555 closed at 13:48:55
+ *   13:50:02  the same run called create_task and opened goal 4588
+ *   13:50:23  and posted 4588's plan
+ *
+ * Every close in this codebase lands in updateTask, which makes it the one
+ * place the two stop paths cannot drift apart.
+ */
+describe('updateTask marks the thread stopped — but only for a stop', () => {
+  it('marks it when the goal was STOPPED', async () => {
+    mockQuery.mockResolvedValue(result([{ thread_id: 16699 }]) as never);
+
+    await updateTask(USER, 4555, 'closed', 'the owner said stop', 'stopped');
+
+    expect(mockStopped).toHaveBeenCalledWith(16699);
+  });
+
+  it('does NOT mark it when the goal FINISHED', async () => {
+    // A finished goal is a run delivering its result. Marking that would throw
+    // away the answer the owner has been waiting ninety seconds for.
+    mockQuery.mockResolvedValue(result([{ thread_id: 16699 }]) as never);
+
+    await updateTask(USER, 4555, 'closed', 'result delivered', 'finished');
+
+    expect(mockStopped).not.toHaveBeenCalled();
+  });
+
+  it('does not mark it on a pause or any other status', async () => {
+    mockQuery.mockResolvedValue(result([{ thread_id: 16699 }]) as never);
+
+    await updateTask(USER, 4555, 'paused');
+
+    expect(mockStopped).not.toHaveBeenCalled();
+  });
+
+  it('marks nothing when no row was updated — somebody else\u2019s goal', async () => {
+    mockQuery.mockResolvedValue(result([], 0) as never);
+
+    expect(await updateTask(USER, 4555, 'closed', 'stop', 'stopped')).toBe(false);
+    expect(mockStopped).not.toHaveBeenCalled();
   });
 });

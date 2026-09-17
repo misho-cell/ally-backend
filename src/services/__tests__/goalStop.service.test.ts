@@ -54,7 +54,7 @@ describe('stopping a goal, from either route', () => {
   it('closes the goal, cancels the asks, and settles the thread', async () => {
     const out = await stopGoal('501', task());
 
-    expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user');
+    expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user', 'stopped');
     expect(mockCancel).toHaveBeenCalledWith(2872);
     expect(mockThread).toHaveBeenCalledWith('501', 14719, 'done', {
       statusLine: 'შეჩერებულია',
@@ -122,7 +122,7 @@ describe('stopGoalOnThread', () => {
     mockOpenTask.mockResolvedValue(task());
 
     expect(await stopGoalOnThread('501', 14719)).toEqual({ stopped: true, goal_id: 2872 });
-    expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user');
+    expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user', 'stopped');
     expect(mockCancel).toHaveBeenCalledWith(2872);
   });
 });

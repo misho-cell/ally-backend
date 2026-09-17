@@ -72,7 +72,11 @@ export async function stopGoal(userId: string, task: Task): Promise<GoalStopped>
   // that window the run had already written its next line.
   if (task.thread_id !== null) markThreadStopped(task.thread_id);
   if (wasOpen) {
-    await updateTask(userId, task.id, 'closed', 'stopped_by_user');
+    // 'stopped', not the default null: row 147 put this column in so a closed
+    // row could say HOW it closed, and the button — the most explicit stop
+    // there is — was the one path still leaving it empty. Goal 4588's row read
+    // closed_as null while 4555's, stopped by a typed line, read 'stopped'.
+    await updateTask(userId, task.id, 'closed', 'stopped_by_user', 'stopped');
   }
   const cancelledAsks = await cancelAsksForTask(task.id);
   if (task.thread_id !== null) {

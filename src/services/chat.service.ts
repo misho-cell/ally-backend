@@ -4099,6 +4099,27 @@ async function executeToolCall(
       // acknowledges the call so the loop continues to the final answer.
       return { saved: true };
     case 'create_task': {
+      /**
+       * Ticket 20 row 113, fifth pass — a stopped run opens nothing.
+       *
+       * Goal 4555 / thread 16699: the owner typed a stop at 13:48:49, the goal
+       * closed at 13:48:55, and the same run called this tool at 13:50:02 and
+       * opened goal 4588 — same thread, same title — then posted its plan. A
+       * stop that produces a new goal is worse than a stop that does nothing,
+       * because now there is something running that the owner never asked for
+       * and does not know about.
+       *
+       * The loop gives up at its next turn, so this is the tool's own guard
+       * against the turn already in flight. Belt and braces on purpose: of
+       * everything a stopped run could still do, creating work is the one that
+       * outlives the run.
+       */
+      if (threadId !== undefined && runId !== undefined && runWasStopped(threadId, runId)) {
+        return {
+          created: false,
+          error: 'მფლობელმა ეს მუშაობა შეაჩერა — ახალი მიზანი არ იხსნება. დაასრულე პასუხი.',
+        };
+      }
       const taskType = input['task_type'] === 'reach' ? 'reach' : 'solve';
       const title = ((input['title'] as string) ?? '').trim();
       if (!title) return { created: false, error: 'Pass a non-empty title.' };
