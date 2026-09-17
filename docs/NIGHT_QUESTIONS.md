@@ -87,11 +87,21 @@ yes.
 Not on fire: one row, and the exposure is another user's search matching on a
 claim nobody verified.
 
-### Eight builds are finished and NOT deployed
+### Fourteen builds are finished and go out at 21:30 UTC
 
-Not blocked on Misho. The first four went live at 20:18; these eight are
-queued behind the tester finishing their reads of that build, which is their
-call and costs nothing to wait for.
+Not blocked on Misho. The first four went live at 20:18. I had promised the
+tester I would hold ONE of these — the SSE change — until they chose a moment;
+the queue then grew to fourteen, and holding all fourteen on one unanswered
+question about one of them is the worse trade. So I told them plainly that I
+was changing my own terms, gave them until 21:30 UTC to say no, and will ship
+if nothing comes. It cannot be split: the SSE commit is second of fourteen.
+
+Reviewed before shipping rather than after, and the review found one thing:
+the stream sits behind a Bearer header, so the client cannot be a native
+EventSource and must be a polyfill or a hand-rolled reader nobody here can
+see. A hand-rolled one plausibly reads the first line of each frame — this
+repo's own test harness did — so the new `id:` line now goes AFTER the data
+line, where a naive parser never meets it.
 
   SSE events had no ids and no buffer, so a stream that dropped lost the
     answer permanently — the mechanism behind three „it is in the thread and
@@ -109,6 +119,9 @@ call and costs nothing to wait for.
     „no path yet" line instead of three
   the sidebar no longer files live goals under „finished"
   a greeting is no longer part of a goal's title
+  the run reaper stopped killing newborn goal threads — it was writing „your
+    reply could not be finished" into a chat nobody had asked anything in
+  the stop lines and the web block follow the conversation's language
 
 The first four, live since 20:18: the stop run ends on the screen; the
 officeholder gate no longer reads „ხუთი ადამიანი" as a person's name; one
