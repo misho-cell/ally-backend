@@ -100,6 +100,43 @@ export interface ThreadListOptions {
   readonly beforeId?: number;
 }
 
+/** A thread that carries a goal the user has not closed. */
+const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'open')`;
+
+/**
+ * A thread whose goal is open is never shown as finished, whatever its own
+ * row says.
+ *
+ * The seat's read of 3fdcfe9: goal 3763 — the founder's real volleyball goal,
+ * status open, stage running, next wake 18 September — sat under „finished"
+ * in his sidebar, and its chat header said the same. The goal was fine. The
+ * SCREEN was reading the THREAD's state, and the thread's state is written at
+ * the end of a run.
+ *
+ * I fixed the writer earlier tonight: a run that ends on a thread with an open
+ * goal now stores „waiting" instead of „done". That is forward-only. It does
+ * nothing for 3763, whose last run ended before the fix and which will not run
+ * again until its wake — so the founder would have gone on reading „finished"
+ * on live work for another day.
+ *
+ * So the READER refuses it too. Correcting the stored rows would be a write
+ * across live data and somebody's decision to authorise; deriving the answer
+ * at read time needs nobody, fixes every existing thread at once, and the two
+ * agree from here on.
+ *
+ * The caption is dropped rather than translated: `done` carries none anyway,
+ * and a stale „შეფერხდა — სცადე თავიდან" under a running goal would be the
+ * same lie in smaller type. The client's own word for the group is what shows.
+ */
+const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+       WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
+       ELSE t.status
+     END`;
+const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
+       WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
+       ELSE t.status_line
+     END`;
+
 // The list's columns, shared by the page query and the open-goals query so the
 // two can never drift into returning differently-shaped rows.
 const THREAD_LIST_COLUMNS = `t.id,
@@ -108,8 +145,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        t.title,
        t.introduction_request_id,
        t.is_task,
-       t.status,
-       t.status_line,
+       ${STATUS_HONEST_ABOUT_OPEN_GOALS} AS status,
+       ${STATUS_LINE_HONEST_ABOUT_OPEN_GOALS} AS status_line,
        t.created_at,
        t.updated_at,
        ir.request_ref,
@@ -125,9 +162,6 @@ const THREAD_LIST_JOINS = `FROM threads t
        ORDER BY created_at DESC
        LIMIT 1
      ) lm ON true`;
-
-/** A thread that carries a goal the user has not closed. */
-const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'open')`;
 
 // How many open goals page one lifts above the conversations. Not a limit on
 // how many a user may have: anything past this is reachable through ordinary
@@ -259,10 +293,14 @@ export async function createThread(
 
 export async function getThread(threadId: number, userId: string): Promise<Thread | null> {
   const result = await query<Thread>(
-    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
-            created_at, updated_at
-     FROM threads
-     WHERE id = $1 AND user_id = $2
+    // The same honesty as the list: the chat header read „finished" on the
+    // founder's running goal because it read this row and not the goal.
+    `SELECT t.id, t.user_id, t.type, t.title, t.introduction_request_id, t.is_task,
+            ${STATUS_HONEST_ABOUT_OPEN_GOALS} AS status,
+            ${STATUS_LINE_HONEST_ABOUT_OPEN_GOALS} AS status_line,
+            t.created_at, t.updated_at
+     FROM threads t
+     WHERE t.id = $1 AND t.user_id = $2
      LIMIT 1`,
     [threadId, userId],
   );

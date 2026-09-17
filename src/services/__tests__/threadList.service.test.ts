@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { getThreadsForUser } from '../threads.service';
+import { getThreadsForUser, getThread } from '../threads.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -83,8 +83,23 @@ describe('the sidebar puts open goals first (ticket 9 task 20 c)', () => {
     await getThreadsForUser('501', { limit: 30 });
 
     const [pageSql, pageParams] = mockQuery.mock.calls[1] as [string, unknown[]];
-    // By id, never by the predicate — the 51st goal is in neither list.
-    expect(pageSql).not.toContain("k.status = 'open'");
+    /**
+     * By id, never by the predicate — the 51st goal is in neither list.
+     *
+     * Asserted on the WHERE CLAUSE specifically, and that precision is not
+     * pedantry. The open-goal test also appears in the SELECT now, inside the
+     * CASE that stops a live goal reading „finished", where it filters nothing
+     * — and a substring check over the whole statement could no longer tell
+     * the two apart. What must never come back is the FILTER.
+     */
+    // Anchored on „WHERE t.user_id", not on the first „WHERE" in the text:
+    // the CASE above it carries an EXISTS with a WHERE of its own, and slicing
+    // from that one reads the SELECT list and calls it the filter.
+    const whereClause = pageSql.slice(
+      pageSql.indexOf('WHERE t.user_id'),
+      pageSql.indexOf('ORDER BY'),
+    );
+    expect(whereClause).not.toContain("k.status = 'open'");
     expect(pageParams[4]).toEqual(capped);
     expect((pageParams[4] as number[]).includes(9050)).toBe(false);
   });
@@ -115,5 +130,55 @@ describe('the sidebar puts open goals first (ticket 9 task 20 c)', () => {
     await getThreadsForUser('501', { limit: 5000 });
 
     expect((mockQuery.mock.calls[1][1] as unknown[])[3]).toBe(200);
+  });
+});
+
+/**
+ * A thread whose goal is open must never be SHOWN as finished.
+ *
+ * The seat's read of 3fdcfe9: goal 3763 — the founder's real volleyball goal,
+ * status open, stage running, next wake 18 September — sat under „finished" in
+ * his sidebar, and its chat header said the same. The goal was fine; the
+ * screen was reading the thread's own row, which is written at the end of a
+ * run.
+ *
+ * The writer was fixed the same night, and that is forward-only: 3763's last
+ * run ended before the fix and it will not run again until its wake. So both
+ * READERS derive it instead, which needs no write across live data and fixes
+ * every existing thread at once.
+ *
+ * These assertions are about the SQL because that is where the rule lives.
+ * Two readers that drift apart is the shape of this exact bug — one screen
+ * corrected and the other not — and it is what the test is for.
+ */
+describe('neither reader shows a live goal as finished', () => {
+  const REFUSES_FINISHED = /CASE\s+WHEN t\.status IN \('done', 'failed'\)/;
+
+  it('the sidebar derives the status rather than trusting the row', async () => {
+    firstPage([], [CONVERSATION], []);
+
+    await getThreadsForUser('501');
+
+    const pageSql = String(mockQuery.mock.calls[1][0]);
+    expect(pageSql).toMatch(REFUSES_FINISHED);
+    // And the caption goes with it: „შეფერხდა — სცადე თავიდან" under a
+    // running goal would be the same lie in smaller type.
+    expect(pageSql).toMatch(/THEN NULL\s+ELSE t\.status_line/);
+  });
+
+  it('the promoted-goals query uses the very same rule', async () => {
+    firstPage([8614], [CONVERSATION], [GOAL_THREAD]);
+
+    await getThreadsForUser('501');
+
+    expect(String(mockQuery.mock.calls[2][0])).toMatch(REFUSES_FINISHED);
+  });
+
+  it('the chat header does too — it is the other screen that was wrong', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 15874 }]) as never);
+
+    await getThread(15874, '501');
+
+    expect(String(mockQuery.mock.calls[0][0])).toMatch(REFUSES_FINISHED);
   });
 });
