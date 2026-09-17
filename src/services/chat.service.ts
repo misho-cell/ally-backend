@@ -5396,6 +5396,7 @@ async function runOneToolBlock(
     input,
     result: raw,
     durationMs: Date.now() - startedAt,
+    ...(matchShapeOf(raw) !== null && { resultSample: matchShapeOf(raw) as string }),
   });
   // Ticket 12 Task 46 (D151): a fetched page or the user's own data may carry
   // an officeholder's name; a search snippet may not (stale, or a former
@@ -6714,6 +6715,37 @@ const INTERNAL_TOOL_NAMES = [
 // The optional trailing group is the Georgian case ending — see the comment on
 // internalNameReplacement. It is part of the match so that it LEAVES with the
 // name; without it the ending stayed behind on a phrase that cannot carry one.
+/**
+ * How many of a search's rows were exact and how many were approximate — and
+ * NOT which people they were.
+ *
+ * The seat, #4262 on row 137: „the full-name search puts the exact person
+ * first — that half holds. The other half is invisible to us because
+ * result_sample is empty; put a few result rows in it and we can prove the
+ * approximate flag too."
+ *
+ * The rows are the owner's own contacts, and result_sample's rule is that it
+ * carries public web material only — a search over somebody's phonebook must
+ * not leave a sample of their friends in a debugging table. That rule is
+ * right and it stays.
+ *
+ * So this gives them the SHAPE instead of the people: „20 rows, 3 approximate"
+ * answers exactly the question they asked, and names nobody. If the flag ever
+ * stops being set, the line reads „20 rows, 0 approximate" and says so.
+ */
+export function matchShapeOf(result: unknown): string | null {
+  if (result === null || typeof result !== 'object') return null;
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const approximate = rows.filter(
+    (row) =>
+      row !== null &&
+      typeof row === 'object' &&
+      (row as { approximate?: unknown }).approximate === true,
+  ).length;
+  return `${rows.length} rows, ${approximate} approximate`;
+}
+
 const INTERNAL_TOOL_NAME_RE = new RegExp(
   `\\b(${INTERNAL_TOOL_NAMES.join('|')})\\b(?:-([ა-ჿ]{1,6}))?`,
   'g',
