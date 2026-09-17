@@ -129,6 +129,7 @@ import {
   ALLOW_CLOSE,
 } from './privacyScrub';
 import { georgianSpellingNote } from './ownerNameGeorgian';
+import { relativeDayNote } from './relativeDay';
 import { createSafeTextStreamer, SafeTextStreamer } from './answerStream';
 import { setUserDistress, clearUserDistress } from './aiNotification.service';
 import { markContactDeceased } from './deceased.service';
@@ -2547,12 +2548,18 @@ function goalStateLine(t: Task): string {
  * 13041). Each line also carries the goal's standing, so a goals question
  * that names no goal can be answered from the goals' state, not the list.
  */
-function buildTasksSection(tasks: Task[]): string {
+function buildTasksSection(tasks: Task[], now: Date = new Date()): string {
   if (tasks.length === 0) return '';
   const lines = tasks
     .map((t) => {
       const perm = t.permission_granted ? '' : ' (ნებართვა ჯერ არ არის)';
-      return `- [${t.status}] ${t.title}${perm} — ${goalStateLine(t)} (task_id ${t.id})`;
+      // Ticket 20 row 141: goal 2971 read „შეხვედრა (ხვალ, 19:00)" a week
+      // after that meeting. The word was typed on 13 September and replayed
+      // as if written today. The title stays exactly as the owner wrote it —
+      // their words are theirs — and the date it actually meant is stated
+      // beside it, with whether it has passed.
+      const when = t.created_at ? relativeDayNote(t.title, new Date(t.created_at), now) : '';
+      return `- [${t.status}] ${t.title}${when}${perm} — ${goalStateLine(t)} (task_id ${t.id})`;
     })
     .join('\n');
   return `\n\n## მიმდინარე მიზნები\nშენახული მიზნები (task_id ინსტრუმენტების პარამეტრია, არა ტექსტის ნაწილი):\n${lines}`;
