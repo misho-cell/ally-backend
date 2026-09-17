@@ -257,3 +257,51 @@ describe('the placeholder does not inherit the name’s grammar', () => {
     expect(replaceNameWithPlaceholder('A.B Smith spoke.', 'A.B Smith', PH)).toBe(`${PH} spoke.`);
   });
 });
+
+/**
+ * Ticket 20 row 154 — a company is not an officeholder.
+ *
+ * Tornike's choice of 17 September, option (a). On thread 16106 the 07:32
+ * reply listed four marketing agencies and one came out as the scripted note,
+ * followed by the words the earlier reply had used for Infinity Solutions. The
+ * Latin rule is „two capitalised words in a row", which „Infinity Solutions"
+ * satisfies as neatly as a person's name — and web snippets are deliberately
+ * not evidence, so a company the web found could never verify itself.
+ */
+describe('row 154 — the gate leaves company names alone', () => {
+  const sentence = (s: string): string => s;
+
+  it('does not treat „Infinity Solutions" as a person holding an office', () => {
+    expect(
+      nameCandidates(sentence('The director of Infinity Solutions handles branding.')),
+    ).not.toContain('Infinity Solutions');
+  });
+
+  it('covers the company word in either half', () => {
+    expect(nameCandidates('The CEO of Media Group runs it.')).not.toContain('Media Group');
+    expect(nameCandidates('The head of Digital Partners spoke.')).not.toContain('Digital Partners');
+  });
+
+  /**
+   * The half that must not break. D151 is unchanged for PEOPLE: a company
+   * wrongly kept shows an organisation's name the run did not verify, which is
+   * mild; a person wrongly skipped is somebody named as a minister on no
+   * evidence at all.
+   */
+  it('still catches a real person in the same sentence', () => {
+    const out = nameCandidates('The director of Infinity Solutions is Giorgi Kapanadze.');
+
+    expect(out).toContain('Giorgi Kapanadze');
+    expect(out).not.toContain('Infinity Solutions');
+  });
+
+  it('leaves an ordinary two-word person name exactly as it was', () => {
+    expect(nameCandidates('The minister is Lasha Khutsishvili today.')).toContain(
+      'Lasha Khutsishvili',
+    );
+  });
+
+  it('a Georgian surname is untouched by the company list', () => {
+    expect(nameCandidates('მინისტრი არის ლაშა ხუციშვილი.')).toContain('ლაშა ხუციშვილი');
+  });
+});

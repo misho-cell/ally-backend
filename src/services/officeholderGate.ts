@@ -124,6 +124,61 @@ const LATIN_NOT_A_NAME = new Set([
   'old',
 ]);
 
+/**
+ * Ticket 20 row 154 — a company is not an officeholder.
+ *
+ * Tornike's choice of 17 September, option (a), after the seat found the gate
+ * removing a company name the run's own web search had just returned. On
+ * thread 16106 the 07:32 reply listed four agencies and one of them came out
+ * as „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)", followed by the words the
+ * earlier reply had used for Infinity Solutions.
+ *
+ * The Latin rule is „two capitalised words in a row", which „Infinity
+ * Solutions" satisfies as neatly as „Giorgi Kapanadze" does. And web snippets
+ * are deliberately not evidence (D151's own reasoning), so a company the web
+ * found could never verify itself — the gate and the opening search were
+ * working against each other, one finding the agency and the other deleting it.
+ *
+ * Option (b) was to let a web result count as evidence. It was not chosen, and
+ * this is the narrower fix: D151 is unchanged for PEOPLE, and the gate simply
+ * stops claiming that a company is a person holding an office.
+ *
+ * THE LIST HOLDS ONLY WORDS THAT CANNOT BE PART OF A PERSON'S NAME, and the
+ * asymmetry is why. A company wrongly kept shows an organisation's name the
+ * run did not verify — mild, and it came from a search the owner asked for. A
+ * PERSON wrongly skipped is D151 broken: somebody named as a minister on no
+ * evidence at all. So a word goes in here only if no human being is called it.
+ */
+const COMPANY_WORDS: ReadonlySet<string> = new Set([
+  'solutions',
+  'partners',
+  'studio',
+  'studios',
+  'consulting',
+  'technologies',
+  'systems',
+  'digital',
+  'media',
+  'marketing',
+  'labs',
+  'works',
+  'industries',
+  'enterprises',
+  'ventures',
+  'capital',
+  'logistics',
+  'motors',
+  'clinic',
+  'hospital',
+  'agencies',
+  'services',
+  'corporation',
+  'corp',
+  'inc',
+  'plc',
+  'gmbh',
+]);
+
 // Georgian surname endings — a token pair „X Yშვილი" is a person.
 const KA_SURNAME_RE = /(შვილი|ძე|იანი|ავა|უა|აია|ოვი|ევი|სკი)$/;
 const KA_NOT_A_FIRST_NAME = new Set([
@@ -159,6 +214,10 @@ function latinNameCandidates(sentence: string): string[] {
     const [, first, last] = m;
     if (LATIN_NOT_A_NAME.has(first.toLowerCase()) || LATIN_NOT_A_NAME.has(last.toLowerCase()))
       continue;
+    // Row 154: either half naming a company settles it — „Infinity Solutions"
+    // and „Media Group Georgia" are organisations, whatever sentence they
+    // appear in.
+    if (COMPANY_WORDS.has(first.toLowerCase()) || COMPANY_WORDS.has(last.toLowerCase())) continue;
     if (OFFICE_RE_EN.test(first) || OFFICE_RE_EN.test(last)) continue;
     out.push(`${first} ${last}`);
   }
