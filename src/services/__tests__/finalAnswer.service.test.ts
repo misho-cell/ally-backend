@@ -9,7 +9,7 @@
  * a plumbing one.
  */
 import type Anthropic from '@anthropic-ai/sdk';
-import { toOpenAiMessages, toLedgerUsage } from '../finalAnswer.service';
+import { toOpenAiMessages, toLedgerUsage, unusableReason } from '../finalAnswer.service';
 
 const SYSTEM = 'შენ ხარ ასისტენტი.';
 
@@ -176,5 +176,72 @@ describe('OpenAI token counts in the ledger’s four terms', () => {
     } as never);
 
     expect(usage.input_tokens).toBe(0);
+  });
+});
+
+/**
+ * Ticket 20 row 155 — nothing the model writes reaches a thread unless it is a
+ * reply.
+ *
+ * On Ninia's account, while a tester was working in it, two messages were
+ * stored as ordinary replies with the plan buttons under them: 1,177
+ * characters of the model's own English reasoning on goal 4100, and a broken
+ * tool call with CJK and Cyrillic spam on goal 4126 — after which that goal's
+ * first pass simply ended and the owner got no answer.
+ *
+ * Measured by answered_by since 10 September: gpt-5.6-terra 2 of 71, Sonnet 5
+ * 0 of 19, and 0 tool syntax in the 2,380 before the hybrid. This path, at
+ * about one reply in thirty-five.
+ */
+describe('row 155 — an answer that is not a reply is refused', () => {
+  it('refuses the tool protocol the run flattened into its own history', () => {
+    // The cause: toOpenAiMessages renders tool calls as „[tool x] {…}" lines,
+    // and a model handed that shape sometimes continues it. tool_choice: none
+    // stops it CALLING a tool; it does not stop it writing what one looks like.
+    expect(
+      unusableReason('[tool search_by_tag] to=functions {"tag_query": "ყვავილები"}', 'ka'),
+    ).toBe('tool syntax');
+    expect(unusableReason('{"tag_query": "ყვავილები"} და კიდევ რაღაც ტექსტი აქ', 'ka')).toBe(
+      'tool syntax',
+    );
+  });
+
+  it('refuses characters from a script no conversation here uses', () => {
+    expect(unusableReason('ყვავილების მაღაზია 花火大会 ვაკეში', 'ka')).toBe('CJK characters');
+    expect(unusableReason('ყვავილების магазин ვაკეში', 'ka')).toBe('Cyrillic in a Georgian thread');
+  });
+
+  it('refuses a Georgian thread’s reply that carries no Georgian at all', () => {
+    // Goal 4100's shape. Deliberately a test about the ALPHABET rather than
+    // the words: judging „is this reasoning rather than an answer" would mean
+    // reading it, and this does not have to.
+    const reasoning =
+      'We need respond next user? No current user only result event. Need likely wait no reply. ' +
+      'But must answer event? The plan is proposed already so maybe nothing.';
+
+    expect(unusableReason(reasoning, 'ka')).toBe('no Georgian in a Georgian thread');
+  });
+
+  it('leaves an ordinary Georgian answer alone', () => {
+    expect(
+      unusableReason('ვიპოვე ორი ყვავილების მაღაზია ვაკეში. რომელს დავუკავშირდე?', 'ka'),
+    ).toBeNull();
+  });
+
+  it('leaves an English answer alone in an English thread', () => {
+    expect(
+      unusableReason('I found two flower shops in Vake. Which one should I contact for you?', 'en'),
+    ).toBeNull();
+  });
+
+  it('does not judge a short Latin line — a name or a link is not reasoning', () => {
+    // Refusing costs an answer, so below the length where the test can mean
+    // anything it does not fire.
+    expect(unusableReason('Infinity Solutions', 'ka')).toBeNull();
+    expect(unusableReason('https://netai.guru/chat/16243', 'ka')).toBeNull();
+  });
+
+  it('still refuses an empty answer, and says which rule that was', () => {
+    expect(unusableReason('   ', 'ka')).toBe('empty');
   });
 });

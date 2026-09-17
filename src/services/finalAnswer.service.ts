@@ -136,6 +136,79 @@ export function toLedgerUsage(usage: OpenAI.CompletionUsage | undefined): Claude
   };
 }
 
+/**
+ * Ticket 20 row 155 — nothing the model writes reaches a thread unless it is a
+ * reply.
+ *
+ * 17 September, on Ninia's account while a tester was working in it, two
+ * messages were stored as ordinary replies with the plan buttons under them:
+ *
+ *   goal 4100  „We need respond next user? No current user only result event.
+ *              Need likely wait no reply. But must answer event?" — 1,177
+ *              characters of the model's own reasoning, in English, in a
+ *              Georgian thread.
+ *   goal 4126  „[tool …] … to=functions. …" with 32 CJK characters and 8
+ *              Cyrillic ones, then a raw {"tag_query": …} twice. The goal's
+ *              first pass ended there and the owner got no answer at all.
+ *
+ * MEASURED BEFORE FIXING, by answered_by, over every stored assistant message
+ * since 10 September:
+ *
+ *   gpt-5.6-terra    71 messages,  2 carrying these signs   (~3%)
+ *   claude-sonnet-5  19 messages,  0
+ *   (before the hybrid)         2,380 messages,  0 tool syntax
+ *
+ * So it is this path and only this path, at about one reply in thirty-five.
+ * The cause is visible in toOpenAiMessages: the run's history is flattened
+ * into lines like „[tool web_search] {…}" and „[result] …", and a model handed
+ * that shape sometimes CONTINUES it instead of answering. tool_choice: none
+ * stops it calling a tool; it does not stop it writing what one looks like. I
+ * built that flattening and wrote „safe because the final call cannot call
+ * anything", which was true and beside the point.
+ *
+ * REFUSING IS CHEAP AND MISSING IS NOT, so this errs towards refusing: every
+ * rejection falls back to the Claude answer the run had already written, which
+ * is a good answer by construction. A false refusal costs one wasted OpenAI
+ * call. A false acceptance puts „to=functions" on a real person's screen.
+ */
+
+/** A reply that is entirely tool protocol, however it was produced. */
+const TOOL_SYNTAX = [/to=functions/i, /\[tool\s/i, /\{"[a-z_]{2,}"\s*:/];
+
+/** Scripts no conversation in this product is held in. */
+const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
+const CYRILLIC = /[\u0400-\u04ff]/;
+const GEORGIAN = /[\u10a0-\u10ff\u1c90-\u1cbf]/;
+
+/**
+ * Below this a Latin-only line is plausibly a name, a link or a single word,
+ * and refusing it would cost an answer for nothing.
+ */
+const MIN_CHARS_TO_JUDGE_SCRIPT = 80;
+
+/**
+ * Why this text must not be stored, or null when it may be.
+ *
+ * Returns the REASON rather than a boolean so the log can say which rule
+ * fired — the alternative is another record that says something happened and
+ * not what, which this codebase has now found four times in a week.
+ */
+export function unusableReason(text: string, language: string): string | null {
+  const trimmed = text.trim();
+  if (trimmed === '') return 'empty';
+  if (TOOL_SYNTAX.some((re) => re.test(trimmed))) return 'tool syntax';
+  if (CJK.test(trimmed)) return 'CJK characters';
+  if (language === 'ka' && CYRILLIC.test(trimmed)) return 'Cyrillic in a Georgian thread';
+  // A Georgian thread whose reply carries not one Georgian letter is not a
+  // reply in that conversation, whatever it says. Deliberately a test about
+  // the ALPHABET rather than about the words: judging „is this reasoning
+  // rather than an answer" would need to read it, and this does not.
+  if (language === 'ka' && trimmed.length >= MIN_CHARS_TO_JUDGE_SCRIPT && !GEORGIAN.test(trimmed)) {
+    return 'no Georgian in a Georgian thread';
+  }
+  return null;
+}
+
 export interface FinalAnswer {
   readonly text: string;
   readonly usage: ClaudeUsage;
@@ -154,6 +227,8 @@ export async function writeFinalAnswer(
   messages: readonly Anthropic.MessageParam[],
   systemPrompt: string,
   onText?: (text: string) => void,
+  /** Row 155: the conversation's language, for the script checks. */
+  language = 'ka',
 ): Promise<FinalAnswer | null> {
   const model = finalAnswerModel();
   if (model === '') return null;
@@ -190,11 +265,16 @@ export async function writeFinalAnswer(
       }
     }
 
-    // An empty answer is a failure, not an answer. Falling back costs one extra
-    // call; shipping the blank costs the user their reply.
-    if (text.trim() === '') {
+    // Row 155. An empty answer is a failure, not an answer — and so is one
+    // made of tool protocol or written in the wrong alphabet. Falling back
+    // costs one extra call; shipping either costs the user their reply and
+    // puts „to=functions" on their screen.
+    const unusable = unusableReason(text, language);
+    if (unusable !== null) {
       // eslint-disable-next-line no-console
-      console.warn(`[final-answer] ${model} returned nothing — using Claude`);
+      console.warn(
+        `[final-answer] ${model} answer refused (${unusable}), ${text.length} chars — using Claude`,
+      );
       return null;
     }
     return { text, usage: toLedgerUsage(usage), model };

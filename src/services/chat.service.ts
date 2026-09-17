@@ -5498,14 +5498,24 @@ async function runToolLoop(
     // has buffered; doing it before the call would wipe Claude's answer off
     // the screen on every run where this flag is off or the call then fails.
     let openAiStarted = false;
-    const rewritten = await writeFinalAnswer(messages, systemPrompt, (delta) => {
-      if (!openAiStarted) {
-        openAiStarted = true;
-        resetTurnStream();
-      }
-      stream(delta);
-    });
+    const rewritten = await writeFinalAnswer(
+      messages,
+      systemPrompt,
+      (delta) => {
+        if (!openAiStarted) {
+          openAiStarted = true;
+          resetTurnStream();
+        }
+        stream(delta);
+      },
+      runLang(runId),
+    );
     if (rewritten === null) {
+      // Row 155: the deltas were already on the screen before the answer could
+      // be judged, so a refusal has to CLEAR them. Without this the person
+      // keeps looking at „to=functions" while the real answer arrives in the
+      // run_complete event underneath it.
+      if (openAiStarted) resetTurnStream();
       finalText = scrubText(extractText(response.content));
     } else {
       answeredBy = rewritten.model;
