@@ -216,6 +216,7 @@ import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { noteRunStart, runWasStopped } from './stoppedRuns';
 import { stopGoal } from './goalStop.service';
+import { looksLikeStopRequest } from './stopIntent';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -6795,6 +6796,36 @@ export async function processChat(
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
+  /**
+   * Ticket 20 row 113, eighth pass — the owner's stop takes effect NOW, not
+   * when the model gets round to it.
+   *
+   * The seat's reading of goal 4724: the stop was typed one second into the
+   * gpt write stage, and the model's update_task did not run until eleven
+   * seconds later — five seconds after the reply had already been stored.
+   * Every guard I built works from the moment the thread is marked; the mark
+   * was the late part.
+   *
+   * Read here, before anything else this run does, and only when the thread
+   * actually has an open goal to stop. stopGoal then closes it, cancels the
+   * asks, writes „შევაჩერე: <title>" and marks the thread — which withholds
+   * THIS run's own reply, and that is intended: the owner asked for it to
+   * stop, and the stop line is the answer.
+   */
+  if (!ownerAbsent && looksLikeStopRequest(userMessage)) {
+    const running = await getOpenTaskByThread(threadId).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[stop-intent] could not read the thread’s goal:', (err as Error).message);
+      return null;
+    });
+    if (running !== null) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,
+      );
+      await stopGoal(userId, running);
+    }
+  }
   const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
   // Row 155: provisional, and refined the moment the thread's history is in
   // hand — see the recompute below. Set now because a run that fails before
