@@ -245,3 +245,86 @@ describe('row 155 — an answer that is not a reply is refused', () => {
     expect(unusableReason('   ', 'ka')).toBe('empty');
   });
 });
+
+/**
+ * Row 155, the share rule — and the same mistake this file's own header
+ * describes me making all week: the rule above covers „not ONE Georgian
+ * letter", and one Georgian word defeats it.
+ *
+ * The threshold was not chosen, it was measured. Every stored assistant reply
+ * in a Georgian thread over 30 days — a thread counts as Georgian when the
+ * OWNER's own letters are mostly Georgian — gives ten replies under 45%:
+ *
+ *   0.000, 0.000  long English answers            already refused
+ *   0.026         783 Latin letters, 21 Georgian  was NOT refused
+ *   0.057         the model's own deliberation    was NOT refused
+ *   0.247         an English plan body            was NOT refused
+ *   0.285         a Georgian answer listing degrees and universities
+ *   0.356, 0.378  „ვებში ეს ვიპოვე: • <English web title> — …"
+ *   0.414, 0.414  a Georgian plan line and a ranked list, names in Latin
+ *
+ * The bottom four are replies not written in the conversation at all; the top
+ * five are Georgian replies whose Latin bulk is DATA. The fixtures below are
+ * built to the same shares (real names replaced), so the margin on either side
+ * of 0.20 is what the tests actually hold.
+ */
+describe('row 155 — a reply that is barely Georgian in a Georgian thread', () => {
+  it('refuses a long English answer with one Georgian word dropped in', () => {
+    // The 0.026 row. The alphabet rule above passes it on that one word.
+    const answer =
+      'Your direct contacts with a connection there: the strongest by far is the one who spent ' +
+      'fifteen years inside the organisation as director of corporate sales, so she knows it from ' +
+      'the inside. She has since left and now runs her own consultancy (ქსელი).';
+
+    expect(unusableReason(answer, 'ka')).toBe('barely Georgian in a Georgian thread (2%)');
+  });
+
+  it('refuses the model’s own deliberation when it ends in Georgian', () => {
+    // The 0.057 row, read off a real thread. The owner saw this.
+    const leak =
+      'We need respond next user? No current user only result event. Need likely wait no reply. ' +
+      'But must answer event? It presented true after assistant response. Nothing to do. ' +
+      'However current turn must final perhaps empty impossible. ენა ქართულია.';
+
+    expect(unusableReason(leak, 'ka')).toBe('barely Georgian in a Georgian thread (6%)');
+  });
+
+  it('LEAVES ALONE a Georgian answer whose Latin bulk is degrees and universities', () => {
+    // The 0.285 row, and the closest legitimate reply to the threshold. If this
+    // ever starts failing the threshold has been raised onto real answers.
+    const credentials =
+      'ეს კარგი სურათია. ყველაზე ძლიერები საზღვარგარეთის განათლებით:\n' +
+      '1. BBA, Odisee Brussels; Advanced Management Programme, INSEAD\n' +
+      '2. MBA, Grenoble Ecole de Management; Harvard Public Leadership; Draper University\n' +
+      '3. MSc International Business, Rotterdam School of Management\n' +
+      '4. LLM, Central European University; Chartered Financial Analyst\n' +
+      'დანარჩენები ადგილობრივი განათლებით.';
+
+    expect(unusableReason(credentials, 'ka')).toBeNull();
+  });
+
+  it('LEAVES ALONE the web-results line, whose titles are English by nature', () => {
+    // The 0.356 and 0.378 rows. Our own Georgian frame around foreign titles.
+    const fromTheWeb =
+      'ვებში ეს ვიპოვე:\n' +
+      '• Canned Foods Marketing Strategies for 2026 — კავშირი ვერ შევამოწმე.\n' +
+      '• 10 Best Food Marketing Agencies for CPG Brands — კავშირი ვერ შევამოწმე.\n' +
+      '• The Top Food and Beverage Marketing Agencies — კავშირი ვერ შევამოწმე.';
+
+    expect(unusableReason(fromTheWeb, 'ka')).toBeNull();
+  });
+
+  it('does not weigh the share of a short line — two names are not a language', () => {
+    // Under the letter floor the share means nothing: a plan line naming three
+    // companies can be more Latin than Georgian and still be a Georgian reply.
+    expect(unusableReason('კი — Element Construction, Maqro Construction.', 'ka')).toBeNull();
+  });
+
+  it('does not touch a thread held in another language', () => {
+    const leak =
+      'We need respond next user? No current user only result event. Need likely wait no reply. ' +
+      'But must answer event? It presented true after assistant response. Nothing to do.';
+
+    expect(unusableReason(leak, 'en')).toBeNull();
+  });
+});

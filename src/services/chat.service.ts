@@ -165,7 +165,7 @@ import {
   WAY_IN_TOOL_NOTE,
   WayIn,
 } from './openingSearch.service';
-import { writeFinalAnswer } from './finalAnswer.service';
+import { writeFinalAnswer, unusableReason } from './finalAnswer.service';
 import {
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
@@ -6236,6 +6236,30 @@ async function runToolLoop(
   answer.flush();
 
   clearInterval(heartbeat);
+
+  /**
+   * Row 155 — the reply that is about to be stored, judged by the same rule,
+   * whoever wrote it.
+   *
+   * Measured on 17 September: of the five replies in 30 days that are barely
+   * Georgian in a Georgian thread, ONE came from the OpenAI branch, where
+   * writeFinalAnswer refuses it and falls back. The other four were Claude's
+   * own finals, which no script check has ever seen — and a promoted buried
+   * narration is a fifth way in, because it is spliced in AFTER that guard.
+   *
+   * This only records. Refusing here would be refusing the fallback itself,
+   * and the owner would get nothing at all, which is worse than an answer in
+   * the wrong alphabet. What it buys is a number instead of an impression the
+   * next time someone asks how often this happens.
+   */
+  const wrongLanguage = unusableReason(finalText, runLang(runId));
+  if (wrongLanguage !== null) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[chat] run ${runId} STORING an unusable final (${wrongLanguage}), ` +
+        `${finalText.length} chars, written by ${answeredBy ?? 'claude'}`,
+    );
+  }
 
   // Per-run telemetry: tool-call count, model round-trips, and elapsed time, so
   // the tool-budget rule can be watched and runaway tool loops spotted.

@@ -189,6 +189,54 @@ const GEORGIAN = /[\u10a0-\u10ff\u1c90-\u1cbf]/;
  */
 const MIN_CHARS_TO_JUDGE_SCRIPT = 80;
 
+const GEORGIAN_LETTERS = /[Ⴀ-ჿᲐ-Ჿ]/g;
+const LATIN_LETTERS = /[A-Za-z]/g;
+
+/**
+ * Row 155 again, and the same mistake I have made all week: the rule below
+ * covers „not ONE Georgian letter", which one Georgian word defeats.
+ *
+ * MEASURED, over every stored assistant message in a Georgian thread in the
+ * last 30 days — a thread counts as Georgian when the OWNER's own letters are
+ * mostly Georgian. Ten replies fall below 45% Georgian, and they separate
+ * cleanly:
+ *
+ *   0.000  a 1,278-letter English answer          fault, caught already
+ *   0.000  a 227-letter English answer            fault, caught already
+ *   0.026  a 783-letter English answer, 21 Georgian letters in it   MISSED
+ *   0.057  „We need respond next user? No current user only result event.
+ *           Need likely wait no reply. But must answer event?"      MISSED
+ *          — the model's own deliberation, on the owner's screen
+ *   0.247  a plan whose body is English in a Georgian thread        MISSED
+ *   0.285  a Georgian answer listing degrees and universities
+ *          („BBA, Odisee", „MBA, Grenoble; Harvard Public Leadership")
+ *   0.356  „ვებში ეს ვიპოვე: • Canned Foods Marketing Strategies…"
+ *   0.378  the same, more web titles
+ *   0.414  a Georgian plan line naming two construction companies
+ *   0.414  a ranked list of contacts, names in Latin
+ *
+ * Everything from 0.285 up is a Georgian reply whose Latin bulk is DATA —
+ * names, companies, universities, the titles of web results — and refusing any
+ * of them would cost a good answer. Everything at or below 0.057 is a reply
+ * that is not in the conversation's language at all.
+ *
+ * So the threshold is 0.20: below the legitimate 0.285 by a real margin, above
+ * the whole missed class. It deliberately does NOT catch the 0.247 plan; a
+ * threshold placed between 0.247 and 0.285 would be fitted to two rows.
+ */
+const MIN_GEORGIAN_SHARE = 0.2;
+
+/** Below this the share is noise — a two-line reply can be all names. */
+const MIN_LETTERS_TO_WEIGH_SHARE = 80;
+
+function georgianShare(text: string): number | null {
+  const georgian = text.match(GEORGIAN_LETTERS)?.length ?? 0;
+  const latin = text.match(LATIN_LETTERS)?.length ?? 0;
+  const letters = georgian + latin;
+  if (letters < MIN_LETTERS_TO_WEIGH_SHARE) return null;
+  return georgian / letters;
+}
+
 /**
  * Why this text must not be stored, or null when it may be.
  *
@@ -208,6 +256,15 @@ export function unusableReason(text: string, language: string): string | null {
   // rather than an answer" would need to read it, and this does not.
   if (language === 'ka' && trimmed.length >= MIN_CHARS_TO_JUDGE_SCRIPT && !GEORGIAN.test(trimmed)) {
     return 'no Georgian in a Georgian thread';
+  }
+  // Kept ALONGSIDE the rule above rather than replacing it: that one counts
+  // characters and catches a short line of pure protocol, this one counts
+  // letters and catches a long answer with a Georgian word dropped in.
+  if (language === 'ka') {
+    const share = georgianShare(trimmed);
+    if (share !== null && share < MIN_GEORGIAN_SHARE) {
+      return `barely Georgian in a Georgian thread (${Math.round(share * 100)}%)`;
+    }
   }
   return null;
 }
