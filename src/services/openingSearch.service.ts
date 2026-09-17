@@ -466,3 +466,19 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
     lines.join('\n')
   );
 }
+
+/**
+ * Ticket 20 row 154, second half — what the model is told when the verdicts
+ * ride back inside its own web_search result.
+ *
+ * The prompt section says the same thing for the opening search. This says it
+ * where the model is deciding what to write about each firm, which is the
+ * moment that matters: on 4293 three firms were named with their public
+ * number and nothing else, because nothing had told it there was a way in to
+ * look for.
+ */
+export const WAY_IN_TOOL_NOTE =
+  'ways_in — თითოეულ ნაპოვნ სახელზე სერვერმა უკვე მოძებნა მფლობელის საკუთარი კონტაქტები. ' +
+  'first_circle = მიდი ამ ადამიანზე. none = მის პირად კონტაქტებში კავშირი არაა (მეორე წრე ' +
+  'ჯერ არ შემოწმებულა — „გზა არ არსებობს" არ თქვა). unchecked = ვერ შევამოწმე. ' +
+  'კომპანიას თვითონ დაუკავშირდი მხოლოდ მაშინ შესთავაზე, თუ ეს სტრიქონი გაითვალისწინე.';

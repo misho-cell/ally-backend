@@ -27,6 +27,7 @@ import {
   runOpeningSearches,
   buildOpeningSearchSection,
   webResultNames,
+  WAY_IN_TOOL_NOTE,
 } from '../openingSearch.service';
 
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
@@ -471,5 +472,33 @@ describe('row 154 — the way in, beside each web result', () => {
 
     expect(mockTag).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+});
+
+/**
+ * Ticket 20 row 154, second half — the way in travels with the MODEL'S OWN web
+ * search too.
+ *
+ * The first half only covered the search the server runs before the model's
+ * first turn. On goal 4293 the four firms the owner was shown came from the
+ * model's own web_search at 10:48:53, so no way-in line could reach them and
+ * three were named with their public number and nothing else.
+ */
+describe('row 154 second half — the note that rides the tool result', () => {
+  it('tells the model what each verdict means, in the three words it will see', () => {
+    expect(WAY_IN_TOOL_NOTE).toContain('first_circle');
+    expect(WAY_IN_TOOL_NOTE).toContain('none');
+    expect(WAY_IN_TOOL_NOTE).toContain('unchecked');
+  });
+
+  it('keeps „no way in" off the table for a none, exactly as the section does', () => {
+    // Ticket 19 G7. The second circle is not searched per company, so „nobody
+    // in your own contacts" must never be read as „nobody".
+    expect(WAY_IN_TOOL_NOTE).toContain('მეორე წრე');
+    expect(WAY_IN_TOOL_NOTE).toContain('„გზა არ არსებობს" არ თქვა');
+  });
+
+  it('says the same thing about contacting a company as the prompt section', () => {
+    expect(WAY_IN_TOOL_NOTE).toContain('კომპანიას თვითონ დაუკავშირდი');
   });
 });

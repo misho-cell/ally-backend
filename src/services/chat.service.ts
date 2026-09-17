@@ -150,7 +150,13 @@ import { logSearchActivity } from './abuseDetection.service';
 import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
-import { runOpeningSearches, buildOpeningSearchSection } from './openingSearch.service';
+import {
+  runOpeningSearches,
+  buildOpeningSearchSection,
+  findWaysIn,
+  webResultNames,
+  WAY_IN_TOOL_NOTE,
+} from './openingSearch.service';
 import { writeFinalAnswer } from './finalAnswer.service';
 import {
   isCliffhangerReply,
@@ -3863,7 +3869,7 @@ async function executeToolCall(
       return searchContactsByCountry(userId, input['country'] as string);
     case 'get_contact_count':
       return getContactCount(userId);
-    case 'web_search':
+    case 'web_search': {
       await recordFixedUsage({
         userId,
         kind: 'web_search',
@@ -3871,7 +3877,30 @@ async function executeToolCall(
         priceKey: 'tavily.search',
         runId,
       }).catch(() => {});
-      return webSearch(input['query'] as string);
+      const found = await webSearch(input['query'] as string);
+      /**
+       * Ticket 20 row 154, second half — the way in travels with the MODEL'S
+       * OWN web search too, not only the opening one.
+       *
+       * The first half only covered the search the server runs before the
+       * model's first turn. The seat read three goals and found the gap on
+       * two of them: on 4293 the four firms the owner was shown came from the
+       * model's own web_search at 10:48:53, so no way-in line could reach
+       * them and three were named with their public number and nothing else.
+       *
+       * Same lookup, same three names, same three-second budget, same two
+       * wordings — and the verdicts ride back INSIDE this tool's result, so
+       * the model has them at the moment it is deciding what to say about
+       * each firm rather than in a section it read a minute ago.
+       */
+      const waysIn = await findWaysIn(userId, webResultNames(found));
+      if (waysIn.size === 0) return found;
+      return {
+        ...(found as Record<string, unknown>),
+        ways_in: Object.fromEntries(waysIn),
+        ways_in_note: WAY_IN_TOOL_NOTE,
+      };
+    }
     case 'fetch_page':
       await recordFixedUsage({
         userId,
