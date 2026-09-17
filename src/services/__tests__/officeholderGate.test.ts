@@ -349,3 +349,42 @@ describe('a Georgian word that ends like a surname but is not one', () => {
     expect(out).not.toContain('ხუთი ადამიანი');
   });
 });
+
+/**
+ * An institution is not an officeholder either.
+ *
+ * 17 September, thread 17032, word for word inside the owner's reply:
+ *
+ *   Paliskunnat ((name not verified on an official page)' Association,
+ *   paliskunnat.fi)
+ *
+ * The gate cut the organisation's name out of the middle of itself and left
+ * the possessive apostrophe behind. Row 154 added the company words for
+ * exactly this shape; these are the words an institution is called.
+ */
+describe('an institution is not a person holding an office', () => {
+  it('leaves the reindeer herders’ association alone', () => {
+    expect(
+      nameCandidates('The director of Paliskunnat Association confirmed the permit.'),
+    ).not.toContain('Paliskunnat Association');
+  });
+
+  it('covers the other words an institution is called', () => {
+    for (const org of [
+      'Nordic Federation',
+      'Lapland Institute',
+      'Sami Foundation',
+      'Reindeer Cooperative',
+      'Helsinki Chamber',
+    ]) {
+      expect(nameCandidates(`The head of ${org} answered.`)).not.toContain(org);
+    }
+  });
+
+  it('STILL catches the person named beside it', () => {
+    const out = nameCandidates('The director of Paliskunnat Association is Matti Virtanen.');
+
+    expect(out).toContain('Matti Virtanen');
+    expect(out).not.toContain('Paliskunnat Association');
+  });
+});

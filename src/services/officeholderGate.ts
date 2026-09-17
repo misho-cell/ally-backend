@@ -122,6 +122,29 @@ const LATIN_NOT_A_NAME = new Set([
   'acting',
   'new',
   'old',
+  /**
+   * 17 September, thread 17032, inside the owner's own reply, word for word:
+   *
+   *   Paliskunnat ((name not verified on an official page)' Association,
+   *   paliskunnat.fi)
+   *
+   * The Latin rule is „two capitalised words in a row", and „Paliskunnat
+   * Association" satisfies it as neatly as a person's name does — so the gate
+   * cut the organisation's own name out of the middle of itself and left the
+   * possessive apostrophe behind. Row 154 added the company words for exactly
+   * this; these are the ones an institution is called rather than a firm, and
+   * the same test applies: a word goes in only if no human being is called it.
+   */
+  'association',
+  'federation',
+  'union',
+  'institute',
+  'foundation',
+  'society',
+  'chamber',
+  'authority',
+  'cooperative',
+  'guild',
 ]);
 
 /**
