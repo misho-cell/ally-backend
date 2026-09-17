@@ -492,8 +492,8 @@ describe('isNearDuplicateFact — the same statement written differently', () =>
  * Measured before clamping: of 48 facts ever written with confidence
  * 'mentioned', exactly one was public — that one.
  */
-describe('a web-sourced fact is never shown to strangers', () => {
-  it('downgrades a PUBLIC verdict to matchable when the assistant only read it somewhere', async () => {
+describe('a web-sourced fact stays on the owner’s own copy', () => {
+  it('is neither public nor matchable, whatever the moderator would have said', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
     mockModeration(true);
 
@@ -506,24 +506,46 @@ describe('a web-sourced fact is never shown to strangers', () => {
       'mentioned',
     );
 
-    // Not shown…
     expect(result.is_public).toBe(false);
     const [, params] = insertCall();
-    expect((params as unknown[])[4]).toBe(false);
-    // …but still usable silently, which is the whole point of the third state:
-    // the run learned something real and the network may act on it.
-    expect((params as unknown[])[5]).toBe(true);
-  });
-
-  it('leaves a private verdict private — the clamp only ever lowers', async () => {
-    mockQuery.mockResolvedValue(rows([]) as never);
-    mockVisibility('private');
-
-    await submitContactFact(USER, RAW_PHONE, 'note', 'დიდი ვალი აქვს', 'chat', 'mentioned');
-
-    const [, params] = insertCall();
+    // is_public, then is_matchable. Matchable is what lets ANOTHER person's
+    // search hit this row, which is publication by a quieter name.
     expect((params as unknown[])[4]).toBe(false);
     expect((params as unknown[])[5]).toBe(false);
+    // …and the row is still written: „save it as info for Netai brain, so that
+    // it knows it." The owner's own assistant reads it.
+    expect((params as unknown[])[3]).toContain('Phubber');
+  });
+
+  it('never SHOWS the moderator a web line — it cannot judge what it is not told', async () => {
+    // Its prompt opens „A user saved this about one of their contacts", which
+    // is untrue here. The call also costs a model round trip to be told
+    // something already decided.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'note', 'Runs a logistics firm', 'chat', 'mentioned');
+
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('keeps it out of the crowd path too — a web page is not a second person', async () => {
+    // A core fact with one other person's matching value would have published
+    // both. Two independent people is what makes a core fact public, and a
+    // page the assistant read is not the second one.
+    mockQuery.mockResolvedValue(rows([{ id: 9, value: 'Amadeo' }]) as never);
+
+    const result = await submitContactFact(
+      USER,
+      RAW_PHONE,
+      'employer',
+      'Amadeo',
+      'chat',
+      'mentioned',
+    );
+
+    expect(result).toEqual({ is_public: false, canonical_value: null });
+    // Never even asked whether the values match.
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('does NOT touch what the owner actually said', async () => {

@@ -428,7 +428,8 @@ export function isGuessValue(value: string): boolean {
 }
 
 /**
- * A fact the assistant did not hear from the owner may be USED, never SHOWN.
+ * A fact the assistant did not hear from the owner stays on the owner's own
+ * copy: learn it, use it for them, never publish it in their name.
  *
  * The rule is already written two functions down: „what the assistant took
  * from a web page or inferred (confidence 'mentioned') never [goes public]".
@@ -452,17 +453,25 @@ export function isGuessValue(value: string): boolean {
  * of it predates the column, and treating it as a web guess would rewrite the
  * meaning of 774 rows.
  *
- * Whether such a question should write a fact AT ALL is the founder's, and the
- * seat has put it to him. This is the narrower thing that is true either way:
- * whatever may be written, what the assistant read on a web page is not the
- * owner's word and must not be shown to strangers as if it were.
+ * THE FOUNDER'S RULING, 17 September, and he changed it once he was shown that
+ * one of the three had gone network-public. His first answer, on being told
+ * only that three facts had been written: „they are true, leave it as it is."
+ * His second, on being told the third was is_public and is_matchable: a fact
+ * the assistant took from a web page never goes public, the rule must hold on
+ * EVERY branch that writes a fact, and the moderator must not be shown a web
+ * line at all, because it cannot judge what it is not told.
+ *
+ * And his own addition, which nobody had asked him: „but save it as info for
+ * Netai brain, so that it knows it." So the fact is KEPT, and kept usable —
+ * the owner's assistant reads every fact of theirs whatever its visibility
+ * (getVisibleFacts returns own rows unfiltered). What „private" removes is the
+ * cross-account half: is_matchable is what lets ANOTHER person's search hit
+ * this row, which is publication by a quieter name.
+ *
+ * One line: learn it, use it for them, never publish it in their name.
  */
-function clampToProvenance(
-  visibility: FactVisibility,
-  confidence: FactConfidence | null,
-): FactVisibility {
-  if (confidence !== 'mentioned') return visibility;
-  return visibility === 'public' ? 'matchable' : visibility;
+export function isAssistantsOwnReading(confidence: FactConfidence | null): boolean {
+  return confidence === 'mentioned';
 }
 
 export class FactRefusedError extends Error {}
@@ -500,10 +509,21 @@ export async function submitContactFact(
     // about named third parties.
     // A curator's own words go public; what the assistant took from a web
     // page or inferred (confidence 'mentioned') never does (Ticket 11 Task 5 c).
-    const visibility =
-      isCuratorWorkFact(userId, targetField, source) && confidence === 'stated'
+    /**
+     * A web line is never shown the moderator at all.
+     *
+     * Its prompt opens „A user saved this about one of their contacts", which
+     * is untrue here, and it cannot judge what it is not told — asked whether
+     * a job title is professional or personal it answers professional, and
+     * publishes it. The founder's second ruling closes the question the
+     * moderator was being asked to answer, so the call itself goes: it costs a
+     * model round trip to be told something we have already decided.
+     */
+    const visibility: FactVisibility = isAssistantsOwnReading(confidence)
+      ? 'private'
+      : isCuratorWorkFact(userId, targetField, source) && confidence === 'stated'
         ? 'public'
-        : clampToProvenance(await moderateFactVisibility(targetField, value), confidence);
+        : await moderateFactVisibility(targetField, value);
     await insertFreeFormFact(
       userId,
       neo4jContactId,
@@ -517,6 +537,24 @@ export async function submitContactFact(
   }
 
   await upsertFact(userId, neo4jContactId, fieldType, value, source, confidence);
+
+  /**
+   * And the crowd path is not open to it either — „every branch that writes a
+   * fact", which is the founder's own wording.
+   *
+   * Two independent people saying the same thing is what makes a core fact
+   * public. A web page the assistant read is not a second person: matching one
+   * human's value would have been enough to canonicalize both, so a single
+   * human plus a web guess could publish a value under two names. It also must
+   * not lend its agreement to anybody else's row.
+   *
+   * The fact is kept and is not weakened for the owner: their own assistant
+   * reads every fact of theirs whatever its visibility. It is simply not
+   * anybody else's.
+   */
+  if (isAssistantsOwnReading(confidence)) {
+    return { is_public: false, canonical_value: null };
+  }
 
   // A trusted curator needs no second source (the founder's ruling, 1 Sep) —
   // for what they WRITE. A sweep guess made from their conversation is not
