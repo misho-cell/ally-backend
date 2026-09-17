@@ -417,3 +417,64 @@ describe('row 147 — only the owner calls a goal solved', () => {
     expect(ownerSaysSolved('გადაწყდარა რამე', FINISH_CARD)).toBe(false);
   });
 });
+
+/**
+ * Ticket 20 row 156 — an approval is not undone by agreeing with it.
+ *
+ * Goal 4100, Ninia's account, 17 September: at 09:58:38 the owner pressed the
+ * approve button; at 09:58:46 she typed a short „ok" (a Latin k with two
+ * Georgian letters); at 09:59:10, 09:59:16 and 09:59:16 approve_task_plan was
+ * refused — „the user's last yes was about something else". She was then shown
+ * plan v2 and asked to approve all over again.
+ *
+ * The guard read her LAST line. The last line was the „ok".
+ */
+describe('row 156 — a yes already given is not erased by the next sentence', () => {
+  const PLAN_CARD = ['დამტკიცებულია', 'შევცვალოთ'];
+
+  it('the reported sequence: the button, then „ok" eight seconds later', () => {
+    expect(approvalBelongsToThePlan('ოკ', PLAN_CARD, ['დამტკიცებულია', 'ოკ'])).toBe(true);
+  });
+
+  it('a mixed-script ok is still agreement', () => {
+    // Her actual line was a Latin k followed by two Georgian letters.
+    expect(approvalBelongsToThePlan('okეი', PLAN_CARD, ['დამტკიცებულია', 'okეი'])).toBe(true);
+  });
+
+  it('a line after the yes that takes it back still refuses', () => {
+    expect(
+      approvalBelongsToThePlan('არა, მოიცადე', PLAN_CARD, ['დამტკიცებულია', 'არა, მოიცადე']),
+    ).toBe(false);
+  });
+
+  it('a line after the yes that asks for a change still refuses', () => {
+    expect(
+      approvalBelongsToThePlan('მაგრამ ლევანს ნუ მისწერ', PLAN_CARD, [
+        'დამტკიცებულია',
+        'მაგრამ ლევანს ნუ მისწერ',
+      ]),
+    ).toBe(false);
+  });
+
+  it('never invents an approval out of lines that hold none', () => {
+    expect(approvalBelongsToThePlan('ოკ', PLAN_CARD, ['რას ნიშნავს ეს?', 'ოკ'])).toBe(false);
+  });
+
+  /**
+   * Ticket 19 G2 is untouched, and this is the assertion that says so. A tap
+   * on a DRAFT's „კი, გააგზავნე" must never read as approving a plan: the
+   * window starts at the newest card, so a yes typed under the draft is
+   * measured against the draft's buttons, not the plan's.
+   */
+  it('a yes under a draft card does not approve a plan', () => {
+    const DRAFT_CARD = ['კი, გააგზავნე', 'არა'];
+
+    expect(approvalBelongsToThePlan('კი', DRAFT_CARD, ['კი'])).toBe(false);
+  });
+
+  it('falls back to the last message when there is no card window', () => {
+    // The old behaviour, unchanged, for every caller that passes nothing.
+    expect(approvalBelongsToThePlan('დამტკიცებულია', PLAN_CARD)).toBe(true);
+    expect(approvalBelongsToThePlan('ოკ', PLAN_CARD)).toBe(false);
+  });
+});

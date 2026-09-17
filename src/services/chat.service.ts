@@ -3337,18 +3337,57 @@ function saysGoAhead(said: string): boolean {
 export function approvalBelongsToThePlan(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
+  /**
+   * Ticket 20 row 156 — every line the owner has said since the card, oldest
+   * first. Optional so the existing callers and their tests are unchanged; the
+   * last message alone is the old behaviour and the bug.
+   */
+  ownerSaidSinceCard: readonly string[] = [],
 ): boolean {
-  const said = lastOwnerMessage?.trim() ?? '';
-  if (said === '') return false;
-  if (TAKES_IT_BACK.test(said)) return false;
-  // The approve button, and any sentence that opens by approving.
-  if (canonicalChoiceLabel(said) === APPROVE_LABEL || APPROVE_LIKE_RE.test(said)) return true;
-  // A bare yes, or a short go-ahead, only counts when a plan card is the thing
-  // being answered.
   const planCardOnScreen = (newestOfferedChoices ?? []).some(
     (label) => canonicalChoiceLabel(label) === APPROVE_LABEL,
   );
-  return planCardOnScreen && (PLAN_YES.test(said) || saysGoAhead(said));
+  const approves = (said: string): boolean => {
+    if (canonicalChoiceLabel(said) === APPROVE_LABEL || APPROVE_LIKE_RE.test(said)) return true;
+    // A bare yes, or a short go-ahead, only counts when a plan card is the
+    // thing being answered. Ticket 19 G2: a tap on a DRAFT's „კი, გააგზავნე"
+    // must never read as approving a three-person plan.
+    return planCardOnScreen && (PLAN_YES.test(said) || saysGoAhead(said));
+  };
+
+  /**
+   * Row 156 — an approval is not undone by agreeing with it.
+   *
+   * Goal 4100, Ninia's account: at 09:58:38 the owner pressed the approve
+   * button, at 09:58:46 she typed a short „ok", and at 09:59:10 the approval
+   * was refused — three times. The guard read her LAST line, which was the
+   * „ok", and „ok" is not the approve label, so it saw no approval at all.
+   * She was then shown plan v2 and asked to approve again.
+   *
+   * The seat's rule, and it is the right one: when her lines since the card
+   * contain the approve choice and nothing after it asks for a change or says
+   * no, the approval stands. A mixed-script „ok" is still agreement; a line
+   * that asks for a change is not.
+   *
+   * G2 is untouched by this. The window starts at the newest card, so a yes
+   * typed under a DRAFT card is measured against the draft, and the bare-yes
+   * path still requires a plan card to be the thing on screen. What changes is
+   * only that a yes already given is no longer erased by the next sentence.
+   */
+  const lines = ownerSaidSinceCard.map((line) => line.trim()).filter((line) => line !== '');
+  if (lines.length > 0) {
+    const at = lines.findIndex(approves);
+    if (at !== -1) {
+      // Everything said AFTER the approval decides whether it still stands.
+      return !lines.slice(at + 1).some((line) => TAKES_IT_BACK.test(line));
+    }
+    return false;
+  }
+
+  const said = lastOwnerMessage?.trim() ?? '';
+  if (said === '') return false;
+  if (TAKES_IT_BACK.test(said)) return false;
+  return approves(said);
 }
 
 const PLAN_CONSENT_TIMEOUT_MS = 5_000;
@@ -3360,18 +3399,36 @@ const PLAN_CONSENT_TIMEOUT_MS = 5_000;
  * before a tool runs, so there is nothing to thread through and nothing that
  * can drift out of step with what the person saw.
  */
-async function planConsentOnScreen(
-  threadId: number,
-): Promise<{ lastOwnerMessage: string | null; newestOfferedChoices: string[] | null }> {
-  const result = await query<{ last_owner: string | null; newest_choices: unknown }>(
-    `SELECT
+async function planConsentOnScreen(threadId: number): Promise<{
+  lastOwnerMessage: string | null;
+  newestOfferedChoices: string[] | null;
+  /** Row 156: every line the owner has said since the card, oldest first. */
+  ownerSaidSinceCard: string[];
+}> {
+  const result = await query<{
+    last_owner: string | null;
+    newest_choices: unknown;
+    since_card: unknown;
+  }>(
+    `WITH card AS (
+       SELECT created_at, choices FROM conversations
+        WHERE thread_id = $1 AND role = 'assistant' AND choices IS NOT NULL
+        ORDER BY created_at DESC LIMIT 1
+     )
+     SELECT
        (SELECT c.content FROM conversations c
          WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message'
            AND c.content <> '' AND c.content NOT LIKE $2
          ORDER BY c.created_at DESC LIMIT 1) AS last_owner,
-       (SELECT c.choices FROM conversations c
-         WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.choices IS NOT NULL
-         ORDER BY c.created_at DESC LIMIT 1) AS newest_choices`,
+       (SELECT choices FROM card) AS newest_choices,
+       -- Ticket 20 row 156: everything the owner has said SINCE the card went
+       -- up, oldest first. The last message alone was the whole bug.
+       (SELECT COALESCE(json_agg(c.content ORDER BY c.created_at), '[]'::json)
+          FROM conversations c
+         WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message'
+           AND c.content <> '' AND c.content NOT LIKE $2
+           AND c.created_at >= (SELECT created_at FROM card)
+           AND c.created_at >= NOW() - INTERVAL '1 day') AS since_card`,
     [threadId, `${RUN_EVENT_PREFIX}%`],
     PLAN_CONSENT_TIMEOUT_MS,
   );
@@ -3379,7 +3436,14 @@ async function planConsentOnScreen(
   const choices = Array.isArray(row?.newest_choices)
     ? (row.newest_choices as unknown[]).filter((c): c is string => typeof c === 'string')
     : null;
-  return { lastOwnerMessage: row?.last_owner ?? null, newestOfferedChoices: choices };
+  const sinceCard = Array.isArray(row?.since_card)
+    ? (row.since_card as unknown[]).filter((c): c is string => typeof c === 'string')
+    : [];
+  return {
+    lastOwnerMessage: row?.last_owner ?? null,
+    newestOfferedChoices: choices,
+    ownerSaidSinceCard: sinceCard,
+  };
 }
 
 // Ticket 16 Task 98: what a run pulled out of the pending list. The items are
@@ -4467,7 +4531,13 @@ async function executeToolCall(
         });
         if (
           screen !== null &&
-          !approvalBelongsToThePlan(screen.lastOwnerMessage, screen.newestOfferedChoices)
+          !approvalBelongsToThePlan(
+            screen.lastOwnerMessage,
+            screen.newestOfferedChoices,
+            // Row 156: everything said since the card, so a short „ok" after
+            // the button does not erase the button.
+            screen.ownerSaidSinceCard,
+          )
         ) {
           // eslint-disable-next-line no-console
           console.warn(
