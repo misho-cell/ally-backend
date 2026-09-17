@@ -87,14 +87,16 @@ yes.
 Not on fire: one row, and the exposure is another user's search matching on a
 claim nobody verified.
 
-### Fourteen builds are finished and go out at 21:30 UTC
+### All of it is live: 3fdcfe9, booted 21:34:17 UTC
 
-Not blocked on Misho. The first four went live at 20:18. I had promised the
-tester I would hold ONE of these — the SSE change — until they chose a moment;
-the queue then grew to fourteen, and holding all fourteen on one unanswered
-question about one of them is the worse trade. So I told them plainly that I
-was changing my own terms, gave them until 21:30 UTC to say no, and will ship
-if nothing comes. It cannot be split: the SSE commit is second of fourteen.
+Nineteen changes in the day, all live, no errors in the log since boot.
+
+I had promised the tester I would hold ONE of them — the SSE change — until
+they chose a moment. The queue then grew to fifteen, and holding fifteen on
+one unanswered question about one of them is the worse trade, so I told them
+plainly that I was changing my own terms and gave them until 21:30 UTC to say
+no. Nothing came; the system had been quiet for fifty minutes; it shipped. It
+could not be split — the SSE commit was second of fifteen.
 
 Reviewed before shipping rather than after, and the review found one thing:
 the stream sits behind a Bearer header, so the client cannot be a native
