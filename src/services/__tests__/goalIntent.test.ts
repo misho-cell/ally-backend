@@ -183,3 +183,36 @@ describe('what needs no opening search', () => {
     expect(needsNoOpeningSearch('მარო კოშაძე ვინ არის?')).toBe(false);
   });
 });
+
+/**
+ * The seat, 17 September: „a goal opened from the goal box still gets the raw
+ * sentence as its title (goal 4885, 83 characters with the greeting), because
+ * the SERVER writes that title before the model runs. Our prompt cannot reach
+ * it." It is also what the stop line quotes back.
+ */
+describe('a greeting is not part of the goal', () => {
+  it('drops it from the front of goal 4885’s own first message', () => {
+    const title = goalTitleFrom(
+      'გამარჯობა, მაქვს კონსერვების საწარმო, მაგრამ მიჭირს მარკეტინგში, ' +
+        'ამისთვის მჭირდება კომპანია რომელიც დამეხმარება ქემფეინებში',
+    );
+
+    expect(title.startsWith('გამარჯობა')).toBe(false);
+    expect(title).toContain('კონსერვების საწარმო');
+  });
+
+  it('drops it in the other languages people write in', () => {
+    expect(goalTitleFrom('Hello, I need a wedding photographer in Kutaisi')).toBe(
+      'I need a wedding photographer in Kutaisi',
+    );
+    expect(goalTitleFrom('Привет, нужен фотограф')).toBe('нужен фотограф');
+  });
+
+  it('leaves a greeting that is the WHOLE message, rather than an empty title', () => {
+    expect(goalTitleFrom('გამარჯობა')).toBe('გამარჯობა');
+  });
+
+  it('does not touch the word in the middle of a sentence', () => {
+    expect(goalTitleFrom('I need someone to say hi to the mayor')).toContain('hi');
+  });
+});

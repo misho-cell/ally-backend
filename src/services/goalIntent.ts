@@ -134,9 +134,36 @@ export function looksLikeGoalRequest(message: string): boolean {
 const TITLE_NOISE_RE =
   /(\.?\s*(ეს\s+)?მიზნად\s+შეინახე\.?|\.?\s*ეს\s+მიზანია\.?|\.?\s*(მნიშვნელოვანი:|important:)[^.]*\.?|\.?\s*არავის\s+არ\s+მისწერო[^.]*\.?|\.?\s*set (this|it) as a goal\.?)/gi;
 
+/**
+ * A greeting is not part of the goal.
+ *
+ * The seat, 17 September: „a goal opened from the goal box still gets the raw
+ * sentence as its title (goal 4885, 83 characters with the greeting), because
+ * the SERVER writes that title before the model runs. Our prompt cannot reach
+ * it." That title is what the stop line quotes back, and what the sidebar
+ * shows.
+ *
+ * Only at the START, and only when something follows it: „გამარჯობა" alone is
+ * not a goal and would leave an empty title, and a „hi" in the middle of a
+ * sentence is a word.
+ *
+ * The trailing boundary is a Unicode lookahead, not `\b`, and I wrote `\b`
+ * first — ten lines below the comment in this same file that explains why it
+ * cannot work. `\b` is ASCII: between „გამარჯობა" and the comma after it there
+ * is no word boundary at all, so the Georgian and Russian greetings matched
+ * nothing while the English ones matched fine. Georgian inflects at the END of
+ * a word, which is exactly where this is asked to look.
+ */
+const LEADING_GREETING_RE =
+  /^\s*(გამარჯობა|სალამი|hello|hi|hey|здравствуй(те)?|привет|hola|buenas)(?![\p{L}\p{N}])[\s,!.—-]*(?=\S)/iu;
+
 /** The goal's title from the message: the first sentence, without the instructions, capped. */
 export function goalTitleFrom(message: string): string {
-  const cleaned = message.replace(TITLE_NOISE_RE, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = message
+    .replace(TITLE_NOISE_RE, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(LEADING_GREETING_RE, '');
   const firstSentence = cleaned.split(/(?<=[.!?…])\s+/)[0] ?? cleaned;
   const base = (firstSentence.trim() || cleaned || message.trim()).replace(/[.!…]+$/, '');
   if (base.length <= MAX_TITLE_CHARS) return base;
