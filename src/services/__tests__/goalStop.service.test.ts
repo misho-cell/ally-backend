@@ -5,25 +5,40 @@ jest.mock('../taskStore.service', () => ({
 }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
-jest.mock('../threads.service', () => ({ getThread: jest.fn(), __esModule: true }));
+jest.mock('../threads.service', () => ({
+  getThread: jest.fn(),
+  saveThreadMessage: jest.fn(),
+  __esModule: true,
+}));
 
 import { updateTask, getOpenTaskByThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
-import { getThread, Thread } from '../threads.service';
-import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread } from '../goalStop.service';
+import { getThread, saveThreadMessage, Thread } from '../threads.service';
+import { NOTHING_TO_STOP, stopGoal, stopGoalOnThread, stoppedLine } from '../goalStop.service';
 
 const mockUpdate = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockCancel = cancelAsksForTask as jest.MockedFunction<typeof cancelAsksForTask>;
 const mockThread = setThreadStatus as jest.MockedFunction<typeof setThreadStatus>;
 const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
 const mockOpenTask = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
+const mockSay = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 
 function task(over: Partial<Task> = {}): Task {
-  return { id: 2872, status: 'open', thread_id: 14719, ...over } as Task;
+  return {
+    id: 2872,
+    status: 'open',
+    thread_id: 14719,
+    title: 'კარგი ვეტერინარი თბილისში',
+    ...over,
+  } as Task;
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockCancel.mockResolvedValue(0);
+  mockSay.mockResolvedValue(undefined as never);
+});
 
 /**
  * Ticket 20 row 113. The header button posted the THREAD id to a route keyed on
@@ -109,5 +124,58 @@ describe('stopGoalOnThread', () => {
     expect(await stopGoalOnThread('501', 14719)).toEqual({ stopped: true, goal_id: 2872 });
     expect(mockUpdate).toHaveBeenCalledWith('501', 2872, 'closed', 'stopped_by_user');
     expect(mockCancel).toHaveBeenCalledWith(2872);
+  });
+});
+
+/**
+ * Row 113 third pass — the button's stop says what it stopped.
+ *
+ * The tester's read of 41df5de on goal 4456 / thread 16602: stage stopped,
+ * status closed, the button gone from the header, and not one line in the
+ * thread. A stop nobody can see in the conversation is indistinguishable from a
+ * button that did nothing.
+ */
+describe('stoppedLine', () => {
+  it('names the goal', () => {
+    expect(stoppedLine('კარგი ვეტერინარი თბილისში', 0)).toContain('კარგი ვეტერინარი თბილისში');
+  });
+
+  it('says nothing about asks when there were none', () => {
+    expect(stoppedLine('X', 0)).not.toMatch(/კითხვა/);
+  });
+
+  it('counts the people who were told, because the owner cannot see them', () => {
+    expect(stoppedLine('X', 1)).toContain('ერთი გაგზავნილი კითხვა');
+    expect(stoppedLine('X', 3)).toContain('3 გაგზავნილი კითხვა');
+  });
+});
+
+describe('the stop line reaches the thread', () => {
+  it('is written once, naming the goal and the asks it cancelled', async () => {
+    mockCancel.mockResolvedValue(2);
+
+    await stopGoal('501', task());
+
+    expect(mockSay).toHaveBeenCalledTimes(1);
+    const [threadId, userId, role, text] = mockSay.mock.calls[0];
+    expect(threadId).toBe(14719);
+    expect(userId).toBe(501);
+    expect(role).toBe('assistant');
+    expect(String(text)).toContain('კარგი ვეტერინარი თბილისში');
+    expect(String(text)).toContain('2 გაგზავნილი კითხვა');
+  });
+
+  it('says NOTHING the second time the button is pressed', async () => {
+    // The tester presses it twice on purpose. Two identical „I stopped it"
+    // lines would be row 157 in miniature.
+    await stopGoal('501', task({ status: 'closed' }));
+
+    expect(mockSay).not.toHaveBeenCalled();
+  });
+
+  it('has nowhere to write it when the goal has no thread', async () => {
+    await stopGoal('501', task({ thread_id: null }));
+
+    expect(mockSay).not.toHaveBeenCalled();
   });
 });

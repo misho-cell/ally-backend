@@ -1138,7 +1138,13 @@ export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[
 }
 
 /** Stop everything in flight when a task closes; tell the recipients honestly. */
-export async function cancelAsksForTask(taskId: number): Promise<void> {
+/**
+ * Returns HOW MANY people were told, which is not decoration: the owner's stop
+ * line (row 113) names it, and „I stopped the goal" reads very differently to
+ * someone who has three questions out on their behalf than to someone who has
+ * none.
+ */
+export async function cancelAsksForTask(taskId: number): Promise<number> {
   const cancelled = await query<{ ask_thread_id: number | null; to_user_id: number }>(
     `UPDATE task_asks SET status = 'cancelled'
      WHERE task_id = $1 AND status = 'sent'
@@ -1155,6 +1161,7 @@ export async function cancelAsksForTask(taskId: number): Promise<void> {
       'ეს კითხვა აღარ არის აქტუალური — პასუხი აღარ არის საჭირო. მადლობა!',
     ).catch(() => undefined);
   }
+  return cancelled.rowCount ?? cancelled.rows.length;
 }
 
 export interface IncomingAsk {

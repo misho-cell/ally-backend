@@ -1,7 +1,7 @@
 import { Task, updateTask, getOpenTaskByThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { setThreadStatus } from './threadStatus.service';
-import { getThread } from './threads.service';
+import { getThread, saveThreadMessage } from './threads.service';
 
 /**
  * The owner's kill switch, in one place.
@@ -32,16 +32,52 @@ export interface GoalStopped {
 }
 
 /**
+ * The line the thread gets when the BUTTON stops a goal.
+ *
+ * Row 113, third pass. The tester's read of 41df5de: goal 4456 on thread 16602
+ * went to stage stopped, status closed, the button left the header — and the
+ * thread said nothing at all. A goal that stops in silence is indistinguishable
+ * from a goal that stopped for some other reason, or from a button that did
+ * nothing; the typed stop names what it stopped, and the button now does too.
+ *
+ * The count of cancelled asks is in it because it is the part the owner cannot
+ * see: „I stopped it" reads very differently to someone who has three questions
+ * out in their name than to someone who has none, and those three people have
+ * just been told the question is off.
+ */
+export function stoppedLine(title: string, cancelledAsks: number): string {
+  const head = `შევაჩერე: ${title}`;
+  if (cancelledAsks <= 0) return `${head}. ახალი არაფერი გაიგზავნება.`;
+  const asks =
+    cancelledAsks === 1
+      ? 'ერთი გაგზავნილი კითხვა გავაუქმე და იმ ადამიანს ვაცნობე'
+      : `${cancelledAsks} გაგზავნილი კითხვა გავაუქმე და იმ ადამიანებს ვაცნობე`;
+  return `${head}. ${asks}. ახალი არაფერი გაიგზავნება.`;
+}
+
+/**
  * Close the goal, cancel every unanswered ask (the recipients get an honest
- * „no longer needed" line) and settle the thread. Idempotent: stopping a goal
- * that is already closed succeeds and changes nothing.
+ * „no longer needed" line), say so in the thread and settle it. Idempotent:
+ * stopping a goal that is already closed succeeds, and — the part that has to
+ * be deliberate — says nothing a second time. The tester presses the button
+ * twice on purpose, and two identical „I stopped it" lines would be row 157
+ * again in miniature.
  */
 export async function stopGoal(userId: string, task: Task): Promise<GoalStopped> {
-  if (task.status !== 'closed') {
+  const wasOpen = task.status !== 'closed';
+  if (wasOpen) {
     await updateTask(userId, task.id, 'closed', 'stopped_by_user');
   }
-  await cancelAsksForTask(task.id);
+  const cancelledAsks = await cancelAsksForTask(task.id);
   if (task.thread_id !== null) {
+    if (wasOpen) {
+      await saveThreadMessage(
+        task.thread_id,
+        Number(userId),
+        'assistant',
+        stoppedLine(task.title, cancelledAsks),
+      ).catch(() => undefined);
+    }
     void setThreadStatus(userId, task.thread_id, 'done', { statusLine: 'შეჩერებულია' });
   }
   return { stopped: true, goal_id: task.id };
