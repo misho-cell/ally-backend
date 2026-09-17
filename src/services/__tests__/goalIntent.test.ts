@@ -1,4 +1,4 @@
-import { looksLikeGoalRequest, goalTitleFrom } from '../goalIntent';
+import { looksLikeGoalRequest, goalTitleFrom, isQuestionNotGoal } from '../goalIntent';
 
 describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
   it.each([
@@ -68,5 +68,63 @@ describe('Ticket 19 [20] and [11]: what the box sends, and what the rule says', 
     // The same need with the verb after „მინდა" is caught, which is what makes
     // this a gap in the pattern rather than a decision about intent.
     expect(looksLikeGoalRequest('მინდა შევხვდე X-ს სამუშაო საკითხზე')).toBe(true);
+  });
+});
+
+/**
+ * Ticket 20 row 103 — the app flag is not a licence to turn a question into a
+ * goal.
+ *
+ * „რომელი მიზნები მაქვს ღია" opened goal 4258 on Ninia's account and the run
+ * then counted it among the 24 open goals it had just been asked about. The
+ * live log names the path, so nothing here is inferred:
+ *
+ *   10:36:03 [goal-intent] thread 16402: goal 4258 opened from the message (app flag)
+ *
+ * `looksLikeGoalRequest` already answered false. The flag skipped it — and with
+ * it every check in this file.
+ */
+describe('isQuestionNotGoal', () => {
+  it('holds a question about the owner’s own goals, in either language', () => {
+    expect(isQuestionNotGoal('რომელი მიზნები მაქვს ღია')).toBe(true);
+    expect(isQuestionNotGoal('რამდენი მიზანი მაქვს?')).toBe(true);
+    expect(isQuestionNotGoal('ჩემი მიზნები მაჩვენე')).toBe(true);
+    expect(isQuestionNotGoal('which goals do I have open?')).toBe(true);
+    expect(isQuestionNotGoal('how many open goals do I have')).toBe(true);
+    expect(isQuestionNotGoal('list my goals')).toBe(true);
+  });
+
+  /**
+   * The fix inside the fix. `\b` is ASCII-only, so there is no word boundary
+   * between „არის" and the space after it, and every Georgian alternative in
+   * ASK_ABOUT_RE has failed to match since Task 90 whenever a word followed —
+   * while the English ones matched. These four are the ones that were broken.
+   */
+  it('recognises the Georgian question forms that the ASCII boundary was dropping', () => {
+    expect(isQuestionNotGoal('ვინ არის განათლების მინისტრი?')).toBe(true);
+    expect(isQuestionNotGoal('ვინ არიან ჩვენი ინვესტორები')).toBe(true);
+    expect(isQuestionNotGoal('რას აკეთებს ნინია ახლა')).toBe(true);
+    expect(isQuestionNotGoal('სად მუშაობს ლიკა')).toBe(true);
+  });
+
+  it('does not fire on a word that merely STARTS with a question word', () => {
+    // „არისტოკრატს" begins with „არის". A prefix match here would silently
+    // refuse a real goal, which is the same failure with the sign flipped.
+    expect(isQuestionNotGoal('ვინ არისტოკრატს იცნობს — მჭირდება კონტაქტი')).toBe(false);
+  });
+
+  it('leaves every plainly stated need alone', () => {
+    for (const need of [
+      'მჭირდება კარგი ვეტერინარი თბილისში',
+      'ვეძებ ბუღალტერს მცირე ბიზნესისთვის',
+      'მინდა გავიცნო ინვესტორი',
+      'I need a wedding photographer',
+      'find me a notary in Batumi',
+      // Names „მიზნები" without asking about the owner's own: still a goal.
+      'მინდა ვიპოვო ტრენერი რომელიც მიზნებს დამისახავს',
+    ]) {
+      expect(isQuestionNotGoal(need)).toBe(false);
+      expect(looksLikeGoalRequest(need)).toBe(true);
+    }
   });
 });

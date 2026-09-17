@@ -23,13 +23,58 @@ const NEED_RE_EN =
 const NEED_RE_ES = /\b(necesito|busco|estoy buscando|quiero conocer|ayúdame a encontrar)\b/i;
 
 // Questions about what is known: never a goal by themselves.
+//
+// The trailing boundary is a Unicode lookahead and not `\b`, and that is a FIX,
+// not a style: `\b` is ASCII-only, so between „არის" and the space after it
+// there is no word boundary at all — every Georgian alternative in this list
+// has silently failed to match since Task 90 whenever a word followed it.
+// „ვინ არის განათლების მინისტრი?" was not being recognised as a question;
+// „who is the minister of education?" was. Found while reading row 103, on the
+// same rake this codebase has stepped on before (Georgian inflects at the END
+// of a word, which is exactly where `\b` is asked to look).
 const ASK_ABOUT_RE =
-  /^\s*(რა\s+ვიცი|ვინ\s+არის|ვინ\s+არიან|რას\s+აკეთებს|სად\s+მუშაობს|იცნობ|ერთმანეთს\s+იცნობენ|what do (i|you) know|who is|who are|tell me about|რა\s+იცი)\b/i;
+  /^\s*(რა\s+ვიცი|ვინ\s+არის|ვინ\s+არიან|რას\s+აკეთებს|სად\s+მუშაობს|იცნობ|ერთმანეთს\s+იცნობენ|what do (i|you) know|who is|who are|tell me about|რა\s+იცი)(?![\p{L}\p{N}])/iu;
+
+/**
+ * Ticket 20 row 103 — a question about the owner's OWN goals or account.
+ *
+ * „რომელი მიზნები მაქვს ღია" („which goals do I have open") became goal 4258 on
+ * Ninia's account, and the same run then counted it among the 24 open goals it
+ * was asked about. Read from the live log, so this is not a guess about which
+ * path did it:
+ *
+ *   10:36:03 [goal-intent] thread 16402: goal 4258 opened from the message (app flag)
+ *
+ * `looksLikeGoalRequest` gets this right on its own and answers false. The flag
+ * is what opened it — and the flag skipped every check, including the question
+ * check that has been in this file since Task 90.
+ *
+ * Kept separate from ASK_ABOUT_RE because it is a stronger statement. A „who is
+ * X" typed into the new-goal box is at least arguably a goal; a question about
+ * the owner's own open goals can never be one, whatever box it was typed in —
+ * answering it IS the whole of it, and opening a goal to answer it changes the
+ * number being asked about.
+ */
+const ABOUT_MY_OWN_GOALS_RE =
+  /(მიზნ(ები|ებს|ები\s*მაქვს)?[^.?!]{0,20}(მაქვს|მიმდინარე|ღიაა?|დარჩა|მჭირდება\s+სია)|რამდენი\s+მიზან|ჩემი\s+მიზნებ|მიზნების\s+სია|(which|what|how many)\s+(open\s+)?(goals|tasks)\b|my\s+(open\s+)?(goals|tasks)\b|list\s+my\s+goals)/i;
+
+/**
+ * A message that only ASKS something, whichever box it was typed into.
+ *
+ * The app flag („+ ახალი მიზანი") may turn a plain statement into a goal; it may
+ * not turn a question into one. That is the whole of row 103's fix, and it is
+ * deliberately the narrower half: the flag still wins on anything that is not
+ * recognisably a question.
+ */
+export function isQuestionNotGoal(message: string): boolean {
+  const text = message.trim();
+  return ASK_ABOUT_RE.test(text) || ABOUT_MY_OWN_GOALS_RE.test(text);
+}
 
 export function looksLikeGoalRequest(message: string): boolean {
   const text = message.trim();
   if (text.length < MIN_GOAL_MESSAGE_CHARS) return false;
-  if (ASK_ABOUT_RE.test(text)) return false;
+  if (isQuestionNotGoal(text)) return false;
   return NEED_RE_KA.test(text) || NEED_RE_EN.test(text) || NEED_RE_ES.test(text);
 }
 
