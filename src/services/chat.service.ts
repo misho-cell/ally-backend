@@ -7055,7 +7055,22 @@ export async function processChat(
   // before the reply is stored, in the text and in every button label; a
   // reply that offers alternatives in words with no buttons is counted.
   const storedReply = scrubMechanicalForStorage(reply);
-  const storedChoices = safeChoices ? safeChoices.map(scrubButtonLabel) : null;
+  /**
+   * Ticket 20 row 106, second pass — a button label is text on the screen too.
+   *
+   * scrubInternalToolNames runs over the reply and over the step lines. It has
+   * never run over the BUTTONS, so a tool name the model typed into a choice
+   * reached the owner untouched — and invisibly to anyone searching the stored
+   * replies, because a label lives in its own column.
+   *
+   * Found while looking for the seat's „present_choices reached a reply"
+   * (#3113), which I could NOT reproduce in any user-visible row. So this is a
+   * gap I found rather than the one they saw, and it is the only place left
+   * where a tool name can reach a screen without appearing in that search.
+   */
+  const storedChoices = safeChoices
+    ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
+    : null;
   // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
   for (const label of storedChoices ?? []) {
     if (labelCramsTwoThings(label)) {

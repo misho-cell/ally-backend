@@ -140,3 +140,31 @@ describe('row 106 — the replacement was the leak', () => {
     }
   });
 });
+
+/**
+ * Ticket 20 row 106, second pass — a button label is text on the screen too.
+ *
+ * The scrub has always run over the reply and the step lines and never over
+ * the BUTTONS, so a tool name the model typed into a choice reached the owner
+ * untouched — and invisibly to anyone searching the stored replies, because a
+ * label lives in its own column.
+ *
+ * Found while looking for the seat's „present_choices reached a reply"
+ * (#3113), which could NOT be reproduced in any user-visible row: the newest
+ * tool name in a stored message is 15 September, before the G8 fix. So this is
+ * a gap found on the way rather than the one they saw.
+ */
+describe('a tool name in a BUTTON is scrubbed like one in the reply', () => {
+  it('replaces it with the same words the reply gets', () => {
+    expect(scrubInternalToolNames('propose_task_plan', THREAD)).toBe('this capability');
+    expect(scrubInternalToolNames('გამოიყენე propose_task_plan', THREAD)).toContain(
+      'ეს შესაძლებლობა',
+    );
+  });
+
+  it('leaves an ordinary button alone, letter for letter', () => {
+    for (const label of ['დამტკიცებულია', 'შევცვალოთ', 'თვითონ დავურეკავ', 'Send it']) {
+      expect(scrubInternalToolNames(label, THREAD)).toBe(label);
+    }
+  });
+});
