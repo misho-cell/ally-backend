@@ -3954,7 +3954,22 @@ async function executeToolCall(
       let goalThreadId = threadId;
       let movedTo: number | undefined;
       if (occupied !== null && threadId !== undefined) {
-        const fresh = await createThread(userId, 'regular', title);
+        // Ticket 20 row 33: created AS a goal thread that is working, not as
+        // an ordinary one that is finished.
+        //
+        // createThread's defaults are is_task false and status „done", and
+        // nothing overrode them — so 15814 was stored as a finished ordinary
+        // conversation while emitThreadCreated below announced it as a task.
+        // The two disagreed, and the STORED one is what survives a reload,
+        // which is why the tester found an empty chat reading „done".
+        //
+        // „working" is the honest word: the plan-proposal turn is queued four
+        // seconds out and will write the first answer there.
+        const fresh = await createThread(userId, 'regular', title, undefined, {
+          isTask: true,
+          status: 'working',
+          statusLine: RUN_STRINGS[runId === undefined ? 'ka' : runLang(runId)].statusLines.working,
+        });
         goalThreadId = fresh.id;
         movedTo = fresh.id;
         emitThreadCreated(userId, {
@@ -6453,7 +6468,27 @@ export async function processChat(
   // only one of them used to scrub; see toDisplayText for why that mattered.
   const shareTextRaw = replySafe ? takeShareText(runId) : undefined;
   const shareText = shareTextRaw === undefined ? undefined : toDisplayText(shareTextRaw);
-  const freshGoals = agentPrompt.runMode === 'task_step' ? [] : takeCreatedGoals(runId);
+  /**
+   * Ticket 20 row 33 — a goal split out of an old chat opened empty and read
+   * „done".
+   *
+   * 15812: a second need typed into the catering thread did open goal 3702, so
+   * the split itself worked — and its thread 15814 then sat with zero messages
+   * at status done, while the reply promised the plan was shown there.
+   *
+   * This line is why. `task_step ? []` dropped every goal created during an
+   * engine turn — and a split can only ever happen in a thread that ALREADY
+   * has a goal, which is precisely a task_step run. So the exclusion was not
+   * incidentally catching the split case, it was catching nothing else: the
+   * one kind of goal it silenced was the one with an empty thread waiting for
+   * a first turn.
+   *
+   * Nothing else changes. takeCreatedGoals holds only goals the model opened
+   * with create_task in this run — never the goal an engine turn is already
+   * working — and startPlanProposal checks that the plan is still missing
+   * before it wakes anything.
+   */
+  const freshGoals = takeCreatedGoals(runId);
   // A goal opened from the message ran as a goal run; if that run still left
   // it without a plan, the proposal turn follows (it checks before waking).
   if (autoGoalId !== null) freshGoals.push(autoGoalId);
