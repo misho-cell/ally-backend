@@ -155,3 +155,31 @@ runs, never across one.
 them and every one of the four doors closes. The ACCOUNTS remain, as closed
 accounts nobody can log into — which is why numbers that can never receive an
 SMS are the safer choice, and also why they are permanent once made.
+
+### Done, 17 September 15:48-15:55 UTC — on Misho's direct word
+
+Five accounts exist and were proved end to end against the live server:
+request-otp (no SMS sent) -> verify-otp with the fixed code -> register -> a
+token, and a plain login on an existing one. All five read `active` / `pro`
+until 17 September 2027.
+
+| account | name | phone (last four) |
+|---|---|---|
+| 171870 | Netai Test 1 | 0101 |
+| 171871 | Netai Test 2 | 0102 |
+| 171872 | Netai Test 3 | 0103 |
+| 171873 | Netai Test 4 | 0104 |
+| 171874 | Netai Test 5 | 0105 |
+
+The numbers are in the North American range reserved for fiction (555-0100 to
+555-0199), which a carrier can never assign to a real person. That was chosen
+over Georgian numbers deliberately: a stranger's number on this list is that
+stranger's account handed to whoever holds the code, and no Georgian range can
+be shown to be unassignable.
+
+The code is in `~/.netai-ops/.review_otp`, mode 600, and in no file in this
+repository.
+
+The accounts CANNOT be recovered if the variables are unset: nobody can receive
+an SMS on a fictional number. That is the intended trade — they are unbreakable
+into and permanently disposable, not accounts anybody should come to depend on.
