@@ -470,9 +470,18 @@ export async function getMyTasks(userId: string, status?: TaskStatus): Promise<T
     // derives „has the owner said yes" from them. They were missing, so they
     // arrived as undefined, and `t.plan_approved_at !== null` is TRUE for
     // undefined — every goal read back as plan_approved.
+    // Row 141, second half: when the owner asks what is open, the one goal
+    // STOPPED WAITING FOR HIM is the one that matters, and this could not say
+    // so. Goal 3433 sat at stage waiting_on_user with a pending_question for
+    // nearly a day; the assistant listed it as an ordinary open goal because
+    // neither the question nor the wake date was in front of it.
+    //
+    // `next_wake_at` comes with it: „I come back to this tomorrow at 09:07" is
+    // the difference between a goal that is running and a goal that is stalled,
+    // and the owner cannot tell them apart from a title.
     `SELECT id, title, description, task_type, status, permission_granted,
             plan, plan_proposed, plan_approved_at, plan_version,
-            created_at, last_activity_at
+            created_at, last_activity_at, next_wake_at, pending_question
      FROM tasks
      WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)
      ORDER BY last_activity_at DESC
