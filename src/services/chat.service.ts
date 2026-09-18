@@ -7921,9 +7921,48 @@ export async function processChat(
    * the thread's own words are in hand, and one more query on the send path is
    * exactly what the „three seconds to send a message" work took out.
    */
+  /**
+   * THE OWNER'S OWN MESSAGES, and only theirs — which is what „spoken" meant
+   * all along and not what this read.
+   *
+   * 18 September, thread 17726, from the run-language log:
+   *
+   *   „I approve" reads as en, the conversation is ka — using the conversation's
+   *
+   * An English goal, English from its first word, and the server declared the
+   * conversation Georgian on the owner's approval.
+   *
+   * „I approve" is nine characters, under the 25 that let a short Latin line
+   * move a conversation, so languageOfConversation went looking behind it for
+   * the newest message carrying a script. This list held the ASSISTANT's
+   * messages too, and the assistant's English reply an hour earlier had quoted
+   * two Georgian SHOP NAMES — correctly, because that is how their owners
+   * wrote them. One Georgian character inside a quoted name was enough. The
+   * conversation became Georgian, and everything the run wrote after it did
+   * too.
+   *
+   * The seat spent the afternoon on a hypothesis that invite_contact's
+   * `language: ka` was bleeding into the reply. It is not — that argument never
+   * touches the run language. But their correlation was real and pointed
+   * straight here: a run that writes to people is a run that FOUND people, and
+   * finding people means quoting Georgian names. The runs that stayed clean
+   * were the runs that found nobody to quote.
+   *
+   * It is also the same mistake they caught in their own counting method this
+   * morning — a raw script test cannot tell the model WRITING Georgian from the
+   * model QUOTING it — and it was sitting in my code while I agreed with them
+   * about theirs.
+   *
+   * threads.service's threadLanguage already had the rule, in these words: „the
+   * assistant's are evidence of what the assistant did, and when it got the
+   * language wrong they are evidence of the bug rather than of the
+   * conversation." Two functions answering one question, and only one of them
+   * knew.
+   */
   const spokenBefore = history
     .slice()
     .reverse()
+    .filter((m) => m.role === 'user')
     .map((m) => (typeof m.content === 'string' ? m.content : ''))
     .filter(Boolean);
   /**

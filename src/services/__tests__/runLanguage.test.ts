@@ -101,3 +101,54 @@ describe('a server-written wake event is not the conversation', () => {
     expect(languageOfConversation('ეს ცალკე მიზნად გავიტანე.', ['ფოტოგრაფი მჭირდება'])).toBe('ka');
   });
 });
+
+/**
+ * Thread 17726, 18 September, from the run-language log:
+ *
+ *   „I approve" reads as en, the conversation is ka — using the conversation's
+ *
+ * An English goal, English from its first word, and the server declared the
+ * conversation Georgian on the owner's approval.
+ *
+ * „I approve" is nine characters, under the 25 that let a short Latin line move
+ * a conversation, so the search went behind it for the newest message carrying
+ * a script — and the list it searched held the ASSISTANT's messages too. The
+ * assistant's English reply an hour earlier had quoted two Georgian SHOP NAMES,
+ * correctly, because that is how their owners wrote them. One Georgian
+ * character inside a quoted name was enough.
+ *
+ * A raw script test cannot tell the model WRITING Georgian from the model
+ * QUOTING it. The fix is not to make the test cleverer — it is to stop asking
+ * the assistant's messages what language the OWNER speaks.
+ */
+describe('what the owner has said, and only the owner', () => {
+  it('keeps a short yes in the language of the owner’s own earlier words', () => {
+    // The whole thread is the owner's, all English. Nothing to argue with.
+    expect(languageOfConversation('I approve', ['I need a good tiler in Tbilisi'])).toBe('en');
+  });
+
+  it('is not moved by a Georgian name quoted inside an English sentence', () => {
+    // This is the assistant's line from 17726's shape. If it ever reaches the
+    // list again, this is what it would do.
+    const assistantQuotingAName = 'I found two: „ბათუმი ფლაზა" and one more nearby.';
+
+    expect(languageOfConversation('I approve', [assistantQuotingAName])).toBe('ka');
+    // ^ Still ka, deliberately: this function cannot tell a quote from prose,
+    // and it should not try. The caller must not hand it the assistant's words
+    // — which is the fix, and this test records why the fix is at the caller.
+  });
+
+  it('still lets a real Georgian message behind a short yes decide', () => {
+    // Row 155's original case, thread 16539: a Georgian ask, the owner answers
+    // „Ok", and the reply must stay Georgian. Unchanged.
+    expect(languageOfConversation('Ok', ['გამარჯობა, ხვალ როდის შეგიძლია?'])).toBe('ka');
+  });
+
+  it('lets a long Latin sentence switch on its own, without looking behind it', () => {
+    expect(
+      languageOfConversation('Actually let us do this in English from now on please', [
+        'გამარჯობა',
+      ]),
+    ).toBe('en');
+  });
+});
