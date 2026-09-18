@@ -18,10 +18,44 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 }
 
 const ROSTER = [
-  { phone: '+995599000001', group: 'Axel', user_id: 501, name: 'Tornike Abuladze', on_netai: true },
-  { phone: '+995599000002', group: 'Axel', user_id: 618, name: 'Jaba Kikvidze', on_netai: false },
-  { phone: '+995599000003', group: 'Axel', user_id: 160584, name: 'Lika Ose', on_netai: true },
-  { phone: '+995599000004', group: 'Axel', user_id: null, name: null, on_netai: null },
+  {
+    phone: '+995599000001',
+    group: 'Axel',
+    user_id: 501,
+    name: 'Tornike Abuladze',
+    on_netai: true,
+    account_name: 'Tornike Abuladze',
+    all_aliases: ['Tornike Abuladze'],
+  },
+  {
+    phone: '+995599000002',
+    group: 'Axel',
+    user_id: 618,
+    name: 'Jaba Kikvidze',
+    on_netai: false,
+    account_name: null,
+    all_aliases: ['Jaba Kikvidze'],
+  },
+  {
+    phone: '+995599000003',
+    group: 'Axel',
+    user_id: 160584,
+    name: 'Lika Ose',
+    on_netai: true,
+    account_name: 'Lika Ose',
+    // Row 10: the same person, saved by different people under names that do
+    // not share a single word. This is the real shape of the Axel roster.
+    all_aliases: ['Lika Ose', 'ლიკა ოსეფაშვილი', 'Lika Osepashvili. Axel'],
+  },
+  {
+    phone: '+995599000004',
+    group: 'Axel',
+    user_id: null,
+    name: null,
+    on_netai: null,
+    account_name: null,
+    all_aliases: null,
+  },
 ];
 
 beforeEach(() => {
@@ -63,11 +97,55 @@ describe('the roster', () => {
     expect(sql).toContain('LOWER(TRIM(a.alias)) <> ALL($4::text[])');
   });
 
-  it('filters by every word of a name', () => {
-    const members = ROSTER.map((r) => ({ ...r, on_netai: r.on_netai === true }));
+  it('filters by every word of a name', async () => {
+    const members = await rosterMembers('axel');
     expect(filterRoster(members, 'lika').map((m) => m.user_id)).toEqual([160584]);
     expect(filterRoster(members, 'lika abuladze')).toEqual([]);
     expect(filterRoster(members, '')).toHaveLength(4);
+  });
+
+  /**
+   * Ticket 20 row 10 — a member the roster cannot NAME cannot be reached, and
+   * reaching a fellow member is the only reason this roster exists.
+   *
+   * The seat's audit of the founder's own 108 Axel members, 18 September.
+   * Eight of them are in the roster under something nobody would type:
+   *
+   *   Guka Khimshiashvili    saved as „Guka Khimsho"
+   *   Kakhaber Tchipashvili  saved as „Kakha Chipashvili"
+   *   Nikoloz Shekiladze     Georgian script only
+   *   Elene Tskhadadze       „Elene Tsxadadze. Axel"
+   *
+   * The display name is whichever label won a contest between them. Until now
+   * it was also the only thing a search could match, so the other names — the
+   * ones somebody would actually search for — were invisible.
+   */
+  it('finds a member under a name that did NOT win the display', async () => {
+    const members = await rosterMembers('axel');
+
+    // Displayed as „Lika Ose", searched for as her full name in Georgian.
+    expect(filterRoster(members, 'ოსეფაშვილი').map((m) => m.user_id)).toEqual([160584]);
+    // And by the transliterated surname nobody displays.
+    expect(filterRoster(members, 'osepashvili').map((m) => m.user_id)).toEqual([160584]);
+    // The display name still works, obviously.
+    expect(filterRoster(members, 'lika ose').map((m) => m.user_id)).toEqual([160584]);
+  });
+
+  it('requires every word to be in ONE name, not spread across several', async () => {
+    const members = await rosterMembers('axel');
+
+    // „Ose" is in one of her names and „Abuladze" in somebody else's. Matching
+    // across the whole set would introduce people by combining two labels that
+    // were never one person's name.
+    expect(filterRoster(members, 'ose abuladze')).toEqual([]);
+    // Within one label it still matches on both words.
+    expect(filterRoster(members, 'lika osepashvili').map((m) => m.user_id)).toEqual([160584]);
+  });
+
+  it('does not fall over on a member with no name at all', async () => {
+    const members = await rosterMembers('axel');
+    expect(() => filterRoster(members, 'anything')).not.toThrow();
+    expect(filterRoster(members, 'anything')).toEqual([]);
   });
 });
 

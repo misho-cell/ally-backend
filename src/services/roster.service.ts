@@ -39,6 +39,27 @@ export interface RosterMember {
   on_netai: boolean;
   /** What the roster fact calls the group, as written. */
   group: string;
+  /**
+   * Ticket 20 row 10 — every name this person is known by, for MATCHING.
+   *
+   * `name` is the one that won the display contest below, and until now it was
+   * also the only thing a search could match on. The seat's audit of the Axel
+   * roster, 18 September, is what that costs:
+   *
+   *   Guka Khimshiashvili   saved as „Guka Khimsho"
+   *   Kakhaber Tchipashvili saved as „Kakha Chipashvili"
+   *   Nikoloz Shekiladze    saved in Georgian script only
+   *   Elene Tskhadadze      saved as „Elene Tsxadadze. Axel"
+   *
+   * Eight of the founder's own members are in the roster under something no
+   * one would type. A member the roster cannot NAME cannot be reached, and
+   * reaching a fellow member is the only reason this roster exists.
+   *
+   * So the display stays exactly as it was and the MATCH widens: the account's
+   * own name and every label anyone saved this number under. One person, all
+   * their names, one row.
+   */
+  readonly match_names: readonly string[];
 }
 
 function groupPattern(group: string): string {
@@ -55,6 +76,8 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
     user_id: number | null;
     name: string | null;
     on_netai: boolean | null;
+    account_name: string | null;
+    all_aliases: string[] | null;
   }>(
     `SELECT DISTINCT ON (f.neo4j_contact_id)
             f.neo4j_contact_id AS phone,
@@ -70,6 +93,11 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
                    ELSE NULLIF(TRIM(u.name), '') END,
               top_alias.alias
             ) AS name,
+            -- Row 10: kept apart from the display name above because BOTH are
+            -- things this person is called, and the search must see the one
+            -- that lost.
+            NULLIF(TRIM(u.name), '') AS account_name,
+            top_alias.all_aliases AS all_aliases,
             (u.id IS NOT NULL AND (
                EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
                OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
@@ -79,16 +107,23 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
        ON regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(f.neo4j_contact_id, '\\D', '', 'g')
      LEFT JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL
      LEFT JOIN LATERAL (
-       SELECT a.alias
-       FROM "UserAlias" a
-       WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
-         AND LOWER(TRIM(a.alias)) <> ALL($4::text[])
-       GROUP BY a.alias
        -- Ticket 16 Task 88 leftover: a two-to-four-word label (a name and a
-       -- surname) beats a bare first name, then the most common wins.
-       ORDER BY (array_length(regexp_split_to_array(TRIM(a.alias), '\\s+'), 1) BETWEEN 2 AND 4) DESC,
-                COUNT(*) DESC, LENGTH(a.alias) DESC
-       LIMIT 1
+       -- surname) beats a bare first name, then the most common wins. That
+       -- ordering is unchanged; row 10 only adds the losers alongside it, so
+       -- a member can be FOUND by a name that did not win the display.
+       SELECT (ARRAY_AGG(labels.alias ORDER BY labels.shaped DESC, labels.uses DESC,
+                         LENGTH(labels.alias) DESC))[1] AS alias,
+              ARRAY_AGG(DISTINCT labels.alias) AS all_aliases
+       FROM (
+         SELECT a.alias,
+                COUNT(*) AS uses,
+                (array_length(regexp_split_to_array(TRIM(a.alias), '\\s+'), 1) BETWEEN 2 AND 4)
+                  AS shaped
+         FROM "UserAlias" a
+         WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
+           AND LOWER(TRIM(a.alias)) <> ALL($4::text[])
+         GROUP BY a.alias
+       ) labels
      ) top_alias ON TRUE
      WHERE f.field_type = 'member_of' AND f.is_public AND f.retracted_at IS NULL
        AND LOWER(COALESCE(f.canonical_value, f.value)) LIKE $1
@@ -103,6 +138,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
     phone: r.phone,
     on_netai: r.on_netai === true,
     group: r.group,
+    match_names: matchNames(r.name, r.account_name, r.all_aliases),
   }));
 }
 
@@ -131,6 +167,33 @@ export async function sharedRoster(
 }
 
 /** Roster rows whose name carries every word of the query (empty query = all). */
+/**
+ * Every name this person answers to, lowercased and deduplicated.
+ *
+ * Row 10. The display name, the account's own name, and every label anyone
+ * saved the number under — because the audit found members present under one
+ * of those and invisible to a search for another.
+ */
+function matchNames(
+  display: string | null,
+  accountName: string | null,
+  aliases: readonly string[] | null,
+): readonly string[] {
+  const all = [display, accountName, ...(aliases ?? [])]
+    .map((n) => (n ?? '').trim().toLowerCase())
+    .filter(Boolean);
+  return [...new Set(all)];
+}
+
+/**
+ * Row 10 — a member is found by ANY of their names, not only the one that won
+ * the display.
+ *
+ * The words must all appear in ONE of the names rather than across several: a
+ * search for „Kakha Chipashvili" should not match somebody called Kakha whose
+ * neighbour once saved a different Chipashvili. Matching per name keeps that
+ * honest while still finding the person under whichever label they were saved.
+ */
 export function filterRoster(members: readonly RosterMember[], nameQuery: string): RosterMember[] {
   const words = nameQuery
     .toLowerCase()
@@ -138,8 +201,11 @@ export function filterRoster(members: readonly RosterMember[], nameQuery: string
     .filter((w) => w.length >= 2);
   if (words.length === 0) return [...members];
   return members.filter((m) => {
-    const hay = (m.name ?? '').toLowerCase();
-    return words.every((w) => hay.includes(w));
+    // Defensive on the length: a row built without match_names is still a
+    // member, and a search that throws is worse than one that matches only the
+    // display name.
+    const names = m.match_names?.length ? m.match_names : [(m.name ?? '').toLowerCase()];
+    return names.some((hay) => words.every((w) => hay.includes(w)));
   });
 }
 
