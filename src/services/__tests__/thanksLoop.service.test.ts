@@ -1,4 +1,8 @@
-jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
+  query: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../pendingUpdates.service', () => ({ __esModule: true, queueResult: jest.fn() }));
 
 import { query } from '../../db/postgres/client';

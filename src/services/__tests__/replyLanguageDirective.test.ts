@@ -1,4 +1,9 @@
-jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
+jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
+  __esModule: true,
+  query: jest.fn(),
+  default: {},
+}));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
 import { buildReplyLanguageDirective } from '../chat.service';

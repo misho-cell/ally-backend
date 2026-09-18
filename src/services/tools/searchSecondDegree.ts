@@ -1,4 +1,4 @@
-import { query } from '../../db/postgres/client';
+import { query, poolPressure } from '../../db/postgres/client';
 
 const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 
@@ -378,6 +378,19 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
    */
   inFlightSearches += 1;
   const inflightAtStart = inFlightSearches;
+  // See poolPressure. A wait for a connection is inside the awaited call, so
+  // every timer we have counts it as query time — the seat asked whether their
+  // six-queries-one-queue reading was the pool, and this is the only field
+  // that can answer it.
+  // Defensive on purpose: this is a diagnostic, and a diagnostic that can break
+  // the thing it measures is worse than not having it.
+  const poolAtStart = ((): { total: number; idle: number; waiting: number } => {
+    try {
+      return poolPressure();
+    } catch {
+      return { total: -1, idle: -1, waiting: -1 };
+    }
+  })();
   try {
     let userKey: string;
     try {
@@ -829,7 +842,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (rows.length === 0) {
       console.log(
         `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
-          `patterns ${n} phones ${friendPhones.length} rows 0 inflight ${inflightAtStart}`,
+          `patterns ${n} phones ${friendPhones.length} rows 0 inflight ${inflightAtStart} ` +
+          `pool ${poolAtStart.total}/${poolAtStart.idle}idle/${poolAtStart.waiting}waiting`,
       );
       return { found: false, reason: 'no_matches' };
     }
@@ -910,7 +924,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     console.log(
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
         `decorate: ${concurrentLine(sideMarks)} | ` +
-        `patterns ${n} phones ${friendPhones.length} rows ${rows.length} inflight ${inflightAtStart}`,
+        `patterns ${n} phones ${friendPhones.length} rows ${rows.length} inflight ${inflightAtStart} ` +
+        `pool ${poolAtStart.total}/${poolAtStart.idle}idle/${poolAtStart.waiting}waiting`,
     );
 
     const shaped = rows.map((row) => {

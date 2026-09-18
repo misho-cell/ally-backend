@@ -172,4 +172,27 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
   }
 }
 
+/**
+ * What the pool is doing right now — total, idle, and WAITING.
+ *
+ * The seat, 18 September, reading six searches issued inside two seconds that
+ * all finished within a five-second band with wildly different row counts:
+ * „they are not six queries each taking twelve seconds of work, they are six
+ * queries sharing one queue." They were right to ask whether it is this pool,
+ * and right that they could not tell from outside: a wait for a CONNECTION is
+ * inside the awaited call, so it is counted as query time by every timer we
+ * have.
+ *
+ * `waitingCount` is the answer and it costs nothing to read. Above zero means
+ * a caller is queueing for one of the ten connections; zero across a slow run
+ * means the queue is somewhere else — the disk, which reads 424,541 blocks for
+ * one second-degree search at about a millisecond each.
+ *
+ * Reported rather than reasoned about, because three of my four theories on
+ * that row were wrong today and every one of them died to a measurement.
+ */
+export function poolPressure(): { total: number; idle: number; waiting: number } {
+  return { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount };
+}
+
 export default pool;

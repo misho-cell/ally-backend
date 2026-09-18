@@ -1,4 +1,5 @@
 jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
   __esModule: true,
   query: jest.fn().mockResolvedValue({ rows: [{ found: false }], rowCount: 1 }),
 }));

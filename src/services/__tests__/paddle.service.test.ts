@@ -14,7 +14,11 @@ jest.mock('../../config/paddle', () => ({
   __esModule: true,
   default: { webhooks: { unmarshal: (...args: unknown[]) => unmarshal(...args) } },
 }));
-jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
+  __esModule: true,
+  query: jest.fn(),
+}));
 jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),

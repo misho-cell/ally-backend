@@ -1,4 +1,8 @@
-jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
+  query: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../referralLink.service', () => ({ __esModule: true, getReferralFunnel: jest.fn() }));
 
 import { query } from '../../db/postgres/client';

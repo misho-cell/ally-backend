@@ -1,4 +1,5 @@
 jest.mock('../../db/postgres/client', () => ({
+  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
   query: jest.fn(),
   __esModule: true,
 }));
