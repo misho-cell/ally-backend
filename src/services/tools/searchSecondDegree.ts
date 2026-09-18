@@ -316,8 +316,18 @@ export async function fetchSignalStrength(
  * So the call now says how it spent itself. One line per search, no names, no
  * query text — the durations and the sizes that explain them.
  */
+function joinMarks(marks: readonly (readonly [string, number])[], sep: string): string {
+  return marks.map(([name, ms]) => `${name} ${ms}`).join(sep);
+}
+
+/** Phases that run one after another, so they add up to the total. */
 function phaseLine(marks: readonly (readonly [string, number])[], total: number): string {
-  return marks.map(([name, ms]) => `${name} ${ms}`).join(' + ') + ` = ${total} ms`;
+  return `${joinMarks(marks, ' + ')} = ${total} ms`;
+}
+
+/** Phases that run at the same time, so the slowest is the cost, not the sum. */
+function concurrentLine(marks: readonly (readonly [string, number])[]): string {
+  return joinMarks(marks, ' / ');
 }
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
@@ -788,43 +798,79 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
     // later precisely because only the DIRECT tools carried exclusions.
+    //
+    // Row 108, fourth cut. The first three real timing lines put `decorate` at
+    // 1,887 / 1,846 / 1,957 ms — three calls of wildly different shapes (14
+    // patterns and 422 bridges; 3 and 1,917; 2 and 1,917) and the same two
+    // seconds every time. That flatness is the „cost every call pays" the seat
+    // predicted from the outside, and my own guess for it — the Neo4j fetch —
+    // was wrong: `graph` came back at 453-1,075 ms.
+    //
+    // These five run CONCURRENTLY, so the phase costs the slowest of them, not
+    // their sum. Timing them individually is the only way to name which, and a
+    // second guess is not worth what the first one cost.
+    const sideMarks: [string, number][] = [];
+    const timed = async <T>(name: string, work: Promise<T>): Promise<T> => {
+      const from = Date.now();
+      try {
+        return await work;
+      } finally {
+        sideMarks.push([name, Date.now() - from]);
+      }
+    };
     const [exclusions, signalStrength, relationshipTouched, accountStates, labelRoles] =
       await Promise.all([
-        fetchExclusionsForPhones(
-          userId,
-          rows.map((r) => r.phone),
+        timed(
+          'excl',
+          fetchExclusionsForPhones(
+            userId,
+            rows.map((r) => r.phone),
+          ),
         ),
-        fetchSignalStrength(
-          rows.map((r) => r.phone),
-          regexTerms,
+        timed(
+          'signal',
+          fetchSignalStrength(
+            rows.map((r) => r.phone),
+            regexTerms,
+          ),
         ),
         // D34: an edge the SEARCHER recorded touching a result lifts its
         // warmth. Membership only — the relation text never enters a response.
-        relationshipTouchedPhones(
-          userId,
-          rows.map((r) => r.phone),
+        timed(
+          'touched',
+          relationshipTouchedPhones(
+            userId,
+            rows.map((r) => r.phone),
+          ),
         ),
         // Rule 13: whether each target has ever actually used Netai, not merely
         // whether an account row resolved.
-        fetchAccountStates([
-          ...rows.map((r) => r.phone),
-          ...rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
-        ]),
+        timed(
+          'states',
+          fetchAccountStates([
+            ...rows.map((r) => r.phone),
+            ...rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
+          ]),
+        ),
         // Ticket 17 Task 8 (D202): where no fact answered, the company or trade
         // word of the row's OWN label stands in — „მერი ჩაჩანიძე TBC Capital"
         // works at TBC Capital. Only those words; the rest of the label stays
         // where it was. See labelEmployer.ts for what is dropped and why.
-        rolesFromLabels(
-          rows.map((r) => ({
-            label: r.name,
-            hasEmployer: r.employer !== null,
-            hasTitle: r.jobPosition !== null,
-          })),
+        timed(
+          'labels',
+          rolesFromLabels(
+            rows.map((r) => ({
+              label: r.name,
+              hasEmployer: r.employer !== null,
+              hasTitle: r.jobPosition !== null,
+            })),
+          ),
         ),
       ]);
     mark('decorate');
     console.log(
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
+        `decorate: ${concurrentLine(sideMarks)} | ` +
         `patterns ${n} bridges ${friendPhones.length} rows ${rows.length}`,
     );
 
