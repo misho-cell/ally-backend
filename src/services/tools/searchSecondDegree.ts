@@ -525,25 +525,51 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          FROM "UserPhone" up
          WHERE up.phone = ANY($2)
        ),
+       -- Row 108. ONE scan over every bridge's rows, not one scan PER bridge.
+       --
+       -- These two were LATERAL joins: for each of the owner's bridges — 305
+       -- of them on account 501 — a separate index scan of that bridge's tags
+       -- with every pattern applied. Measured on the live base, same account,
+       -- same patterns, EXPLAIN ANALYZE:
+       --
+       --   3 patterns   LATERAL 802.7 ms   this shape 802.3 ms   identical
+       --   9 patterns   LATERAL TIMED OUT  this shape 4,114 ms
+       --   9 patterns, this shape, tags AND aliases together:  3,078 ms
+       --
+       -- The 9-pattern LATERAL was re-run three times and timed out every
+       -- time, so it is the shape and not the weather. Nine patterns is an
+       -- ordinary distilled query. The two forms converge when there are few
+       -- patterns and diverge badly as the count grows, which is exactly the
+       -- range real searches live in — and it is why the second-degree search
+       -- at the opening of a goal had never once returned on a Georgian need.
+       --
+       -- SAME ROWS, and that was checked rather than assumed: both forms run
+       -- over the same patterns give 23,711 rows, with zero rows present in
+       -- one and absent from the other, compared as sets in both directions.
+       --
+       -- Duplicate bridges are harmless either way. A bridge with two phones
+       -- appears twice in friend_users, so the LATERAL emitted its matches
+       -- twice; matches below is a UNION and collapsed them, and the bridge
+       -- count in ranked is COUNT(DISTINCT), so neither form can inflate it.
+       --
+       -- Two other candidates were measured and rejected before this one: a
+       -- LIKE pre-filter (2,400x faster on a rare term, 7x SLOWER on a common
+       -- one) and collapsing the patterns into a single alternation (4x faster
+       -- at three patterns, timed out at nine). Both were fast in the case
+       -- tried first and worse in the case that matters. This one is neutral
+       -- in the small case and decisive in the large one.
+       bridges AS (SELECT ARRAY(SELECT DISTINCT "userId" FROM friend_users) AS ids),
        tag_hits AS (
-         SELECT t.phone, t."contactId", t.label
-         FROM friend_users fu
-         JOIN LATERAL (
-           SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
-           FROM "UserTags" ut
-           WHERE ut."contactId" = fu."userId"
-             AND (${tagConds})
-         ) t ON TRUE
+         SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
+         FROM "UserTags" ut, bridges b
+         WHERE ut."contactId" = ANY(b.ids)
+           AND (${tagConds})
        ),
        alias_hits AS (
-         SELECT a.phone, a."contactId", a.label
-         FROM friend_users fu
-         JOIN LATERAL (
-           SELECT ua_m.phone, ua_m."contactId", LOWER(ua_m.alias) AS label
-           FROM "UserAlias" ua_m
-           WHERE ua_m."contactId" = fu."userId"
-             AND (${aliasConds})
-         ) a ON TRUE
+         SELECT ua_m.phone, ua_m."contactId", LOWER(ua_m.alias) AS label
+         FROM "UserAlias" ua_m, bridges b
+         WHERE ua_m."contactId" = ANY(b.ids)
+           AND (${aliasConds})
        ),
        -- The label rides along ONLY as far as word_hits below. It never leaves
        -- this CTE: the outer select aggregates phones and joins names, so the
