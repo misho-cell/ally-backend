@@ -7745,26 +7745,28 @@ export async function processChat(
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, stopped: true };
   }
-  await saveMessage(
-    userId,
-    threadId,
-    'assistant',
-    storedReply,
-    'message',
-    runId,
-    storedChoices,
-    shareText ?? null,
-    // Row 132: the reply the user reads, stamped with who wrote it.
-    answeredBy,
-  );
   /**
    * Ticket 20 row 154 — „From the web", written here because three prompt
    * rounds could not get the reply to carry it (#3141).
    *
-   * After the answer and before the waiting items, because it belongs to the
-   * answer: it is what the run found on the web and whether the owner has a
-   * way in to each of them. Only when the web actually returned names — a
-   * goal with no web results gets no message, which is the seat's own rule.
+   * BEFORE the answer, and that ordering is a P0 fix rather than a preference.
+   *
+   * 18 September, thread 17326: the founder's first real goal since the
+   * credits came back could not be approved by any route. Plan v1 arrived
+   * bare, the answer arrived carrying ["I approve","Change it"] — and this
+   * block posted in the SAME SECOND, after it. No buttons rendered at all,
+   * live or after a reload, so there was nothing to press; and the typed yes
+   * that had to stand in for the press was then refused. He was shown plan v2
+   * and asked to approve again, with still nothing to approve it with.
+   *
+   * The choices are stored on the answer row and they were there the whole
+   * time — but this message came after, and the last message in the thread is
+   * where the buttons are looked for. A block of web results should never be
+   * the last thing in a thread whose answer is asking a question.
+   *
+   * So it goes above the answer, where it also reads better: it is what the
+   * run found, and the answer is what the run concluded. The waiting items
+   * still come last, and they carry their own buttons by design.
    */
   const fromTheWeb = buildFromTheWebMessage(takeWaysIn(runId), language);
   if (fromTheWeb !== null) {
@@ -7777,6 +7779,18 @@ export async function processChat(
       ref: { kind: 'from_the_web' },
     });
   }
+  await saveMessage(
+    userId,
+    threadId,
+    'assistant',
+    storedReply,
+    'message',
+    runId,
+    storedChoices,
+    shareText ?? null,
+    // Row 132: the reply the user reads, stamped with who wrote it.
+    answeredBy,
+  );
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.
