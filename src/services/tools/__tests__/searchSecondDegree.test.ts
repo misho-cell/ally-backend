@@ -57,24 +57,58 @@ describe('searchSecondDegree tag matching', () => {
     // the same 416 rows. It did not make the plan predictable, it removed the
     // planner's choice. What actually guards against the gita finding is the
     // `\m` word-start on raw text, asserted below, and that is unchanged.
-    expect(sql).toContain(`LOWER(ut.tag) ~ $3`);
-    expect(sql).toContain(`LOWER(ua_m.alias) ~ $3`);
+    //
+    // The FILTER is now one alternation parameter rather than one condition per
+    // word (row 108, second measurement: 7,850 ms -> 4,590 ms on the whole
+    // query, same rows both ways). The per-word patterns are still sent — they
+    // are what word_hits counts with — so a one-word query sends its pattern
+    // twice, which is why $3 and $4 are equal below.
+    expect(sql).toContain(`LOWER(ut.tag) ~ $4`);
+    expect(sql).toContain(`LOWER(ua_m.alias) ~ $4`);
+    expect(sql).toContain(`bool_or(label ~ $3)`);
     expect(sql).not.toContain(`|| '') ~`);
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
-    // $3 = word-start regex, $4 = blocked phones, $5 = userId again as TEXT
-    // (the contact_facts role lookup — $1 is inferred int by the joins),
-    // $6/$7 = where the title and the employer may come from, in preference
-    // order (ticket 9 task 25: 'role' was never read and holds 96 public rows).
+    // $3 = word-start regex (word_hits), $4 = the same words as ONE alternation
+    // (the filter), $5 = blocked phones, $6 = userId again as TEXT (the
+    // contact_facts role lookup — $1 is inferred int by the joins), $7/$8 =
+    // where the title and the employer may come from, in preference order
+    // (ticket 9 task 25: 'role' was never read and holds 96 public rows).
     expect(params).toEqual([
       '42',
       [FRIEND_PHONE],
+      '\\mburalteri',
       '\\mburalteri',
       [],
       '42',
       ['role', 'occupation'],
       ['employer', 'affiliation'],
     ]);
+  });
+
+  it('collapses several words into ONE filter regex, and still counts them apart', async () => {
+    // Row 108. Nine conditions over 605,086 tag rows is nine regex passes per
+    // row; one alternation is a single pass testing the same alternatives.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'buralteri marketing');
+
+    const mainCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
+    const [sql, params] = mainCall as [string, unknown[]];
+    const words = (params as string[]).slice(2, -5);
+    const filter = (params as string[]).at(-5) as string;
+
+    // Every word reaches the filter, joined by a bar and nothing else.
+    expect(filter).toBe(words.join('|'));
+    expect(words.length).toBeGreaterThan(1);
+    // One condition per column, not one per word.
+    expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
+    // And the words are still counted separately, which is what the ranking
+    // needs: a person carrying both query words must outrank one carrying one.
+    // Two groups, written twice — once in the select list and once in the
+    // ORDER BY that feeds the LIMIT — so four.
+    expect(sql.match(/bool_or\(/g)).toHaveLength(4);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
@@ -310,31 +344,31 @@ describe('second-degree title and employer (ticket 9 task 25)', () => {
   it("reads the title from 'role' first, then 'occupation', and prefers in that order", async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    // Same single-term query the parameter-index test uses: one term means
-    // $6 and $7 are the two field lists.
+    // Same single-term query the parameter-index test uses: one term plus the
+    // one alternation filter means $7 and $8 are the two field lists.
     await searchSecondDegree('42', 'buralteri');
 
     const sql = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('tag_hits'),
     )?.[0] as string;
-    expect(sql).toContain(`AND cf.field_type = ANY($6::text[])`);
-    expect(sql).toContain(`ORDER BY array_position($6::text[], cf.field_type)`);
     expect(sql).toContain(`AND cf.field_type = ANY($7::text[])`);
     expect(sql).toContain(`ORDER BY array_position($7::text[], cf.field_type)`);
+    expect(sql).toContain(`AND cf.field_type = ANY($8::text[])`);
+    expect(sql).toContain(`ORDER BY array_position($8::text[], cf.field_type)`);
   });
 
   it('never reads a fact that is neither public nor the searcher own', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    // Same single-term query the parameter-index test uses: one term means
-    // $6 and $7 are the two field lists.
+    // Same single-term query the parameter-index test uses: one term plus the
+    // one alternation filter means the TEXT userId is $6.
     await searchSecondDegree('42', 'buralteri');
 
     const sql = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('tag_hits'),
     )?.[0] as string;
     // Both lookups carry the same privacy scope.
-    expect(sql.match(/cf\.is_public OR cf\.submitted_by_user_id = \$5/g)).toHaveLength(2);
+    expect(sql.match(/cf\.is_public OR cf\.submitted_by_user_id = \$6/g)).toHaveLength(2);
   });
 });
 

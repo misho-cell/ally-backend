@@ -477,12 +477,52 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const groupRegex = groups.map((g) => g.map(toWordStartPattern));
     const regexTerms = groupRegex.flat();
     const n = regexTerms.length;
-    const orOver = (col: string): string =>
-      regexTerms.map((_, i) => `LOWER(${col}) ~ $${i + 3}`).join(' OR ');
-    const tagConds = orOver('ut.tag');
-    const aliasConds = orOver('ua_m.alias');
+    // Row 108, second measurement. The FILTER is one alternation; the per-word
+    // patterns stay, but only where they are cheap.
+    //
+    // The scan that finds the rows runs the filter once per row over every tag
+    // and alias the owner's bridges hold — 605,086 tag rows and 134,628 alias
+    // rows on account 501. Nine separate `LOWER(tag) ~ $k` conditions are nine
+    // regex passes over each of those rows; `LOWER(tag) ~ '\ma|\mb|…'` is one
+    // pass that tests the same nine alternatives. Same rows, a fraction of the
+    // work. Measured on the live base, same account, same nine patterns
+    // („მცირე ბიზნესის ბუღალტერი"), whole query, EXPLAIN ANALYZE, warm, each
+    // form run four times alternating:
+    //
+    //   separate ORs    7,817 / 7,822 / 7,853 / 7,872 ms
+    //   one alternation 4,588 / 4,597 ms
+    //
+    // and on the scans alone: tags 4,756 → 2,535 ms, aliases 3,140 → 1,762 ms.
+    // Smaller queries too, so there is no regime where this loses:
+    // 2 patterns („marketing") 385 → 78 ms; 5 patterns 2,805 → 1,969 ms.
+    //
+    // SAME ROWS, checked as sets in both directions rather than assumed: tags
+    // 451 = 451, aliases 477 = 477, zero rows unique to either side.
+    //
+    // This contradicts a measurement written in this file on 18 September —
+    // „a single alternation was 4x faster at three patterns and timed out at
+    // nine". That was measured on the LATERAL-per-bridge shape, which this
+    // query no longer uses. Under the one-scan shape the alternation wins
+    // everywhere. The earlier note was right about the query it tested and
+    // wrong about the query we run.
+    //
+    // Joining with `|` is safe: toWordStartPattern escapes every regex
+    // metacharacter, `|` among them, so no term can reach across the bar, and
+    // alternation binds loosest so `\ma|\mb` is exactly „\ma OR \mb".
+    //
+    // A one-term query sends the same pattern twice — once for the filter and
+    // once for word_hits. That is deliberate: a branch that drops the extra
+    // parameter for n=1 would make the parameter list depend on the query, and
+    // a parameter list that shifts under you is how the `integer = text` P0
+    // below happened. One redundant string is the cheaper mistake.
+    const filterIdx = 3 + n;
+    const filterPattern = regexTerms.join('|');
+    const tagConds = `LOWER(ut.tag) ~ $${filterIdx}`;
+    const aliasConds = `LOWER(ua_m.alias) ~ $${filterIdx}`;
     // bool_or per GROUP, summed: one point for each query word this person
     // matched anywhere, exactly the shape wordMatch.ts uses for the tag search.
+    // These stay per-word — word_hits must know WHICH word matched, and it runs
+    // over the few hundred rows that survived the filter, not over the base.
     let cursor = 3;
     const wordHits = groupRegex
       .map((group) => {
@@ -491,7 +531,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         return `bool_or(${clause})::int`;
       })
       .join(' + ');
-    const blockParamIdx = 3 + n;
+    const blockParamIdx = filterIdx + 1;
     // userId again, as its own parameter: $1 is inferred as int (contactId
     // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
     // parameter cannot carry both types.
@@ -558,6 +598,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- at three patterns, timed out at nine). Both were fast in the case
        -- tried first and worse in the case that matters. This one is neutral
        -- in the small case and decisive in the large one.
+       --
+       -- The alternation verdict above was RETRACTED the same day: it was
+       -- measured on the LATERAL shape this comment replaced, and under the
+       -- one-scan shape it wins in every regime. It is now what the single
+       -- filter parameter carries — see the measurement above the query.
        bridges AS (SELECT ARRAY(SELECT DISTINCT "userId" FROM friend_users) AS ids),
        tag_hits AS (
          SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
@@ -690,6 +735,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         userId,
         friendPhones,
         ...regexTerms,
+        filterPattern,
         blockedPhones,
         userId,
         TITLE_FACT_FIELDS,
