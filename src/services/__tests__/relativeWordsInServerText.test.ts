@@ -42,16 +42,33 @@ describe('the refusals a run reads back hours later', () => {
     expect(REFUSALS).toContain('ზღვარს მიაღწია');
   });
 
-  it('tell the model to copy the date rather than re-relativise it', () => {
-    // A model handed „2026-09-18" will happily write „today" back. The
-    // instruction is what stops the fix being undone one layer up.
-    //
-    // The source is read with its string concatenation and line wrapping
-    // flattened, because the sentence is split across lines in one of the
-    // three and a test that cannot see that is a test about formatting.
+  it('name the WINDOW, not a day — because the caps are rolling 24 hours', () => {
+    /**
+     * The seat corrected their own rule eighty minutes after I shipped it.
+     * They could not trigger a fresh refusal because the ask went through, so
+     * they counted the asks instead:
+     *
+     *   17 Sep 14:23:29  ask 2049 to 13927
+     *   17 Sep 14:23:50  ask 2052 to 13927
+     *   18 Sep 14:15:15  REFUSED — „already received two new questions TODAY"
+     *   18 Sep 15:39:16  ask 2377, SENT
+     *
+     * She had received nothing today. „Today" was not stale, it was false when
+     * written — and a DATE would be false too: „18 September" is untrue and
+     * „17 September" is true and useless. The SQL says NOW() - INTERVAL '24
+     * hours' in all three caps, so the window is what the sentence must name.
+     */
     const flat = REFUSALS.replace(/'\s*\+\s*\n\s*'/g, '').replace(/\s+/g, ' ');
-    const timesTold = flat.split('„დღეს" ხვალ აღარ იქნება სიმართლე').length - 1;
 
-    expect(timesTold).toBe(3);
+    expect(flat.split('ბოლო 24 საათში').length - 1).toBeGreaterThanOrEqual(6);
+    // And each one tells the model to write the same anchor rather than
+    // re-render it as „today", which is how the fix gets undone one layer up.
+    expect(flat.split('„დღეს" არ დაწერო').length - 1).toBe(3);
+  });
+
+  it('claims no calendar day anywhere, since no cap is one', () => {
+    const flat = REFUSALS.replace(/'\s*\+\s*\n\s*'/g, '').replace(/\s+/g, ' ');
+
+    expect(flat).not.toMatch(/\$\{today\(\)\}/);
   });
 });

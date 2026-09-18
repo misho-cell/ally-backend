@@ -101,3 +101,22 @@ describe('sanitizeTitle — the 25 Aug markdown-separator malformation', () => {
     expect(sanitizeTitle('კარგო-ტიპის სატვირთო მანქანა')).toBe('კარგო-ტიპის სატვირთო მანქანა');
   });
 });
+
+/**
+ * Row 143's own proving run, the one blemish left in it. „3 movers Vake 25
+ * September 9:00" came back as „…25 September 9" — the colon was stripped,
+ * „9:00" split into two words, and the six-word cap cut after the 9. The hour
+ * then reads for a moment as if it belonged to the date.
+ */
+describe('a time in a title', () => {
+  it('keeps its colon, so the hour does not read as part of the date', () => {
+    expect(sanitizeTitle('3 movers Vake 25 September 9:00')).toBe(
+      '3 movers Vake 25 September 9:00',
+    );
+  });
+
+  it('still strips the generator’s own label, which is also a colon', () => {
+    // Stripped before this runs, so allowing the character cannot bring it back.
+    expect(sanitizeTitle('სათაური: იურისტის მოძებნა')).toBe('იურისტის მოძებნა');
+  });
+});

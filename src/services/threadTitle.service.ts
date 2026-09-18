@@ -50,7 +50,17 @@ const TITLE_LABEL_PREFIX = /^\s*(?:საუბრის\s+)?(?:სათაუ�
 // Anything outside Georgian/Latin letters, digits and basic punctuation —
 // kills emoji; Cyrillic is checked separately so it can be REJECTED, because a
 // Russian word inside a Georgian title means the model drifted, not decorated.
-const TITLE_DISALLOWED_CHARS = /[^\p{Script=Georgian}\p{Script=Latin}0-9 ,.'&()-]/gu;
+/**
+ * The colon is here because of row 143's own test run. „3 movers Vake 25
+ * September 9:00" came back as „…25 September 9": the colon was replaced with a
+ * space, „9:00" split into two words, and the six-word cap cut after the 9. The
+ * hour then reads for a moment as if it belonged to the date.
+ *
+ * A colon between digits is part of a time, not decoration. The generator's own
+ * „სათაური:" label prefix is stripped before this runs, so allowing it here
+ * cannot bring that back.
+ */
+const TITLE_DISALLOWED_CHARS = /[^\p{Script=Georgian}\p{Script=Latin}0-9 ,.:'&()-]/gu;
 const CYRILLIC = /\p{Script=Cyrillic}/u;
 // The generator must never name the underlying vendor/model: "AI ასისტენტი
 // Claude" reached a user as a visible title (ticket 6 B3, thread 9103). The

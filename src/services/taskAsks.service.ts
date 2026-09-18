@@ -110,7 +110,40 @@ export type CreateAskOutcome =
  * line and carries straight on with everyone else.
  */
 /**
- * Row 208, and the seat found both the fault and the cheaper fix.
+ * Row 208, second pass — and the seat corrected their own rule eighty minutes
+ * after I shipped it on their advice, which is why this says „24 hours" and
+ * not a date.
+ *
+ * Their test: they tried to trigger a fresh refusal and could not, because the
+ * ask WENT THROUGH. So they counted the asks on the server instead of trusting
+ * any wording:
+ *
+ *   17 Sep 14:23:29  ask 2049 to 13927
+ *   17 Sep 14:23:50  ask 2052 to 13927
+ *   18 Sep 14:15:15  REFUSED — „has already received two new questions TODAY"
+ *   18 Sep 15:39:16  ask 2377 to 13927, SENT
+ *
+ * She had received NOTHING today. Both were twenty-four hours earlier. The
+ * refusal said „today" about yesterday's messages — while correctly refusing.
+ *
+ * And the two times bracket the window to within eight minutes: 24 hours after
+ * 2052 is 18 Sep 14:23:50; the refusal fired at 14:15 (inside, refused) and the
+ * send succeeded at 15:39 (outside, allowed). EVERY ONE OF THESE CAPS IS A
+ * ROLLING TWENTY-FOUR HOURS — the SQL says `NOW() - INTERVAL '24 hours'` in all
+ * three — and never a calendar day.
+ *
+ * So „today" was not merely stale. It was false when written. A DATE would be
+ * false too: „on 18 September" is simply untrue, and „on 17 September" is true
+ * and useless. The only sentence that is both true when written and still true
+ * an hour later is the one about the WINDOW.
+ *
+ * The rule survives its own instance: durable server text must contain nothing
+ * that can go false. „Today" failed it twice — once by ageing, and once by
+ * never having been true.
+ */
+
+/**
+ * Row 208, first pass — the fault, and why anything relative is a bug here.
  *
  * A cap refusal said „X has ALREADY RECEIVED … today". True at 14:15:15. By
  * 14:46, in the same thread, the assistant narrated it back to the owner as
@@ -138,10 +171,6 @@ export type CreateAskOutcome =
  * own relative words („I'll come back in six hours") persist the same way and
  * are out of reach here.
  */
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 const NOT_THE_OWNERS_LIMIT =
   ' ეს მფლობელის ლიმიტი არ არის და მის ბალანსს, კრედიტებს ან ტოკენებს არ უკავშირდება — ' +
   'არასოდეს თქვა „შენი დღიური ლიმიტი ამოიწურა".';
@@ -198,9 +227,10 @@ const RELAY_REFUSALS: Readonly<
   person_daily_relay_limit_reached: {
     reason: 'person_daily_relay_limit_reached',
     error: (toName: string) =>
-      `${toName}-სთან ამ მიზანზე ${today()}-ს უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} ` +
-      'შეტყობინება გაიგზავნა — ეს დღიური ზღვარია ერთ ადამიანზე, რომ საუბარი დატვირთვად ' +
-      'არ იქცეს. თარიღი ისე დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება სიმართლე. ' +
+      `${toName}-სთან ამ მიზანზე ბოლო 24 საათში უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} ` +
+      'შეტყობინება გაიგზავნა — ეს ზღვარი ერთ ადამიანზე მოძრავ 24 საათზეა, არა კალენდარულ ' +
+      'დღეზე. ასევე დაწერე: „ბოლო 24 საათში". „დღეს" არ დაწერო — არც მაშინ იქნება ' +
+      'სიმართლე, როცა წერ, არც მოგვიანებით. ' +
       'მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც „ტექნიკური შეფერხება", და არ ' +
       'თქვა, თითქოს ამ ადამიანმა რამე უარყო.' +
       NOT_THE_OWNERS_LIMIT +
@@ -508,9 +538,10 @@ export async function createAsk(
       sent: false,
       reason: 'recipient_daily_limit_reached',
       error:
-        `${toName}-ს ${today()}-ს უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა ` +
-        'მიუვიდა სხვებისგან — თარიღი ისე დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება ' +
-        'სიმართლე. ' +
+        `${toName}-ს ბოლო 24 საათში უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა ` +
+        'მიუვიდა სხვებისგან — ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +
+        'დაწერე: „ბოლო 24 საათში". „დღეს" არ დაწერო — არც მაშინ იქნება სიმართლე, როცა ' +
+        'წერ, არც მოგვიანებით. ' +
         'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ერთი ხაზით უთხარი მფლობელს, ' +
         'ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
         NOT_THE_OWNERS_LIMIT +
@@ -621,8 +652,9 @@ export async function createAsk(
       sent: false,
       reason: 'daily_cap_reached',
       error:
-        `ამ ანგარიშიდან ${today()}-ს გაგზავნილმა კითხვებმა ზღვარს მიაღწია — თარიღი ისე ` +
-        'დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება სიმართლე. ეს გაგზავნის ' +
+        'ამ ანგარიშიდან ბოლო 24 საათში გაგზავნილმა კითხვებმა ზღვარს მიაღწია — ეს ზღვარი ' +
+        'მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე დაწერე: „ბოლო 24 საათში". „დღეს" ' +
+        'არ დაწერო — არც მაშინ იქნება სიმართლე, როცა წერ, არც მოგვიანებით. ეს გაგზავნის ' +
         'სიხშირის დაცვაა, არა მფლობელის ბალანსი.' +
         NOT_THE_OWNERS_LIMIT +
         CONTINUE_BY_OTHER_ROUTES +
