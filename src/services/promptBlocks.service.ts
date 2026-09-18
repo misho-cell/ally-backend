@@ -15,6 +15,42 @@ const BLOCK_NAME_RE = /^[a-z0-9_]{2,40}$/;
 // with an undocumented cap while the page's counter said "of 30,000"
 // (ticket 8 task 10 / Q-38). One constant, one truth.
 export const MAX_BLOCK_CONTENT_CHARS = 30_000;
+
+/**
+ * Ticket 20 row 215 — the cap says no and does not say what to do instead.
+ *
+ * 18 September. The seat had a rule the founder had approved that evening,
+ * went to add it to `task_main`, and got back:
+ *
+ *   400  content too long (max 30000 chars per block)
+ *   task_main  29,964 / 30,000     36 characters of headroom
+ *
+ * True, and it cost them the evening. They concluded that NOTHING could ever
+ * be added to the goal prompt again — „not this rule, not the next one, not
+ * anything either of us thinks of tomorrow" — and went looking for a POST to
+ * create a second block with. There is no POST, so they wrote to me instead.
+ *
+ * A MODE MAY HOLD SEVERAL BLOCKS, and it always could. `quick_answer` has held
+ * two since qa_rules_20_22 was added beside qa_main. PUT to a name that does
+ * not exist yet creates it — upsertPromptBlock says so in its own doc and
+ * five blocks in this database were made that way. And task_step had 10,036
+ * characters of room under the mode budget the whole time; the rule was 851.
+ *
+ * So the wall was real and the way round it was one PUT away, and nothing in
+ * the refusal said so. The mode-budget error a hundred lines down has named
+ * its own way out since the day it was written. This one now does too.
+ *
+ * The cost of not saying it was not the thirty-six characters. It was a
+ * founder-approved rule sitting unshipped and a colleague believing the goal
+ * prompt was closed for good.
+ */
+export const BLOCK_TOO_LONG_MESSAGE =
+  `content too long (max ${MAX_BLOCK_CONTENT_CHARS} chars per block). ` +
+  'A MODE MAY HOLD SEVERAL BLOCKS: rather than shortening this one, PUT a new ' +
+  'name with the same `modes` and a higher `sort_order` — that creates it. ' +
+  'quick_answer already works this way (qa_main + qa_rules_20_22). What bounds ' +
+  'the total is the per-mode budget, and GET /admin/prompt-blocks reports how ' +
+  'much of it each mode has left in mode_totals.';
 // Ceiling for the SUM of enabled block content bound to one mode (on top of
 // the base prompt) — the prompt team asked for a hard stop at save time so a
 // mode can never quietly regrow into the monolith the split was escaping.

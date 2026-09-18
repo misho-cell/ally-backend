@@ -70,6 +70,7 @@ import {
   RunStamp,
   RUN_MODES,
   MAX_BLOCK_CONTENT_CHARS,
+  BLOCK_TOO_LONG_MESSAGE,
 } from '../../services/promptBlocks.service';
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
@@ -294,7 +295,9 @@ adminRouter.put(
     .optional()
     .isString()
     .isLength({ max: MAX_BLOCK_CONTENT_CHARS })
-    .withMessage(`content too long (max ${MAX_BLOCK_CONTENT_CHARS} chars per block)`),
+    // Row 215: the refusal names the way round it. One string, so the route
+    // and the service cannot drift into saying two different things.
+    .withMessage(BLOCK_TOO_LONG_MESSAGE),
   body('modes').optional().isArray().withMessage('modes must be an array'),
   body('modes.*').optional().isString(),
   body('sort_order').optional().isInt({ min: 0, max: 100_000 }),
