@@ -5,7 +5,9 @@ import {
   approvalBelongsToThePlan,
   canonicalChoiceLabel,
   choicesWithoutApproval,
+  isApproveChoice,
   isApproveLabel,
+  isChangeChoice,
   unrecognisedApproveHalf,
 } from '../chat.service';
 
@@ -99,5 +101,76 @@ describe('a plan card whose approve half was not recognised', () => {
     expect(unrecognisedApproveHalf(['შევცვალოთ'])).toBeNull();
     expect(unrecognisedApproveHalf(['a', 'შევცვალოთ', 'c'])).toBeNull();
     expect(unrecognisedApproveHalf([])).toBeNull();
+  });
+});
+
+/**
+ * The Spanish run the seat reported as flawless — thread 17559, 12:01:47, zero
+ * Georgian characters anywhere in it:
+ *
+ *   choices = ["Apruebo el plan", "Quiero cambiar algo"]
+ *
+ * Both unrecognised, for two different reasons. „Apruebo el plan" carries the
+ * right stem and is three words, over the two-word cap; „Quiero cambiar algo"
+ * carries its stem in second place and the pattern is anchored to the start.
+ * So that plan had the same dead approve button as 17528 — flawless on
+ * language, broken on function, by a mechanism the stem fix did not touch.
+ *
+ * The strictness is right where it came from: isApproveLabel also judges what
+ * the OWNER typed, and there the anchor and the cap are what stop „I approve of
+ * the first one but not Ninia" from approving a plan. A button is a different
+ * thing — text the MODEL wrote onto a control, and a model writes a phrase.
+ */
+describe('a button the model wrote, as opposed to a sentence the owner typed', () => {
+  it('reads the Spanish pair that came back unrecognised', () => {
+    expect(isApproveChoice('Apruebo el plan')).toBe(true);
+    expect(isChangeChoice('Quiero cambiar algo')).toBe(true);
+  });
+
+  it('canonicalises them, which is what makes the tap work later', () => {
+    // The stored label becomes the canonical one, the button shows it, and the
+    // tap sends it — so the STRICT matcher, unchanged, accepts the tap.
+    expect(canonicalChoiceLabel('Apruebo el plan', 'es')).toBe('Lo apruebo');
+    expect(canonicalChoiceLabel('Quiero cambiar algo', 'es')).toBe('Cambiarlo');
+    expect(isApproveLabel(canonicalChoiceLabel('Apruebo el plan', 'es'))).toBe(true);
+  });
+
+  it('makes that plan approvable, which it was not', () => {
+    expect(approvalBelongsToThePlan('Lo apruebo', ['Lo apruebo', 'Cambiarlo'])).toBe(true);
+    // And the card is now visible to the bare-yes path too.
+    expect(approvalBelongsToThePlan('sí', ['Lo apruebo', 'Cambiarlo'])).toBe(true);
+  });
+
+  it('refuses a button that opens with a negation', () => {
+    // A model could plausibly offer „I do not agree". Unanchoring the stem
+    // without this guard would read it as approval.
+    for (const no of ['არ ვეთანხმები', 'No apruebo el plan', 'Not approved', 'не подтверждаю']) {
+      expect(isApproveChoice(no)).toBe(false);
+    }
+  });
+
+  it('leaves row 203 buttons alone, which carry no stem at all', () => {
+    // Read from the live rows on 17558 and 17560.
+    for (const label of [
+      'თვითონ დავურეკავ',
+      'სხვაც მოძებნე',
+      'ხიდებს მოწვევა გავუგზავნო Netai-ზე',
+      'თვითონ დავურეკავ ერთ-ერთს',
+    ]) {
+      expect(isApproveChoice(label)).toBe(false);
+      expect(isChangeChoice(label)).toBe(false);
+      expect(canonicalChoiceLabel(label, 'ka')).toBe(label);
+    }
+  });
+
+  it('will not swallow a whole sentence that merely mentions approving', () => {
+    // The permissiveness is bounded: a button is short. A sentence is not a
+    // button, and this predicate must never be used on one.
+    expect(isApproveChoice('I approve of the first one but not of Ninia at all')).toBe(false);
+  });
+
+  it('keeps the strict rule strict, because the owner types sentences', () => {
+    expect(isApproveLabel('Apruebo el plan')).toBe(false);
+    expect(isApproveLabel('Lo apruebo')).toBe(true);
   });
 });

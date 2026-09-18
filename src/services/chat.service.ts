@@ -3355,11 +3355,66 @@ export function isChangeLabel(text: string): boolean {
   return CHANGE_LIKE_RE.test(trimmed) && trimmed.split(/\s+/).length <= MAX_CHANGE_WORDS;
 }
 
+/**
+ * A BUTTON the model offered, as opposed to a sentence the owner typed.
+ *
+ * Found in the Spanish run the seat reported as flawless — thread 17559,
+ * 12:01:47, zero Georgian characters anywhere in it:
+ *
+ *   choices = ["Apruebo el plan", "Quiero cambiar algo"]
+ *
+ * Neither is recognised. „Apruebo el plan" carries the right stem and is three
+ * words, over MAX_APPROVE_WORDS; „Quiero cambiar algo" carries the right stem
+ * in second place, and the pattern is anchored to the start. So that plan had
+ * the same dead approve button as thread 17528 did — flawless on language,
+ * broken on function, and by a different mechanism than the missing stem I
+ * fixed an hour ago.
+ *
+ * The strictness is right where it came from. `isApproveLabel` also judges what
+ * the OWNER typed, and there the anchor and the two-word cap are what stop „I
+ * approve of the first one but not Ninia" from approving a plan. A button is a
+ * different thing: we are reading text the MODEL wrote to put on a control, and
+ * a model writes a phrase, not a token.
+ *
+ * So the two uses are separated. This one allows a short phrase with the stem
+ * in its first two words, and refuses anything that opens with a negation —
+ * „არ ვეთანხმები" is a button a model could plausibly write, and unanchoring
+ * without this guard would read it as approval.
+ *
+ * Canonicalising here is also what keeps the strict side working: the stored
+ * label becomes „Lo apruebo", the button shows „Lo apruebo", and the tap sends
+ * „Lo apruebo", which the strict matcher has always accepted. One recognition,
+ * at the point the label is born.
+ */
+const MAX_CHOICE_WORDS = 6;
+const NEGATED_CHOICE_RE = /^(არ|ნუ|no|not|don'?t|never|не|ни)(\s|$)/iu;
+
+function choiceCarriesStem(label: string, stem: RegExp): boolean {
+  const trimmed = label.trim();
+  if (trimmed === '' || NEGATED_CHOICE_RE.test(trimmed)) return false;
+  const words = trimmed.split(/\s+/);
+  if (words.length > MAX_CHOICE_WORDS) return false;
+  // From each of the first two words to the END of the label, not the word on
+  // its own: several of the stems are themselves phrases („change it", „lo
+  // apruebo", „de acuerdo") and testing a single word can never match those.
+  return words.slice(0, 2).some((_, i) => stem.test(words.slice(i).join(' ')));
+}
+
+/** Is this OFFERED BUTTON the approve one? Permissive; see the note above. */
+export function isApproveChoice(label: string): boolean {
+  return choiceCarriesStem(label, APPROVE_LIKE_RE);
+}
+
+/** Is this OFFERED BUTTON the change one? */
+export function isChangeChoice(label: string): boolean {
+  return choiceCarriesStem(label, CHANGE_LIKE_RE);
+}
+
 /** The label as it should be SHOWN — the only place the language matters. */
 export function canonicalChoiceLabel(label: string, language: RunLanguage = 'ka'): string {
   const trimmed = label.trim();
-  if (isApproveLabel(trimmed)) return APPROVE_LABEL[language];
-  if (isChangeLabel(trimmed)) return CHANGE_LABEL[language];
+  if (isApproveChoice(trimmed)) return APPROVE_LABEL[language];
+  if (isChangeChoice(trimmed)) return CHANGE_LABEL[language];
   return trimmed;
 }
 
@@ -3379,10 +3434,10 @@ export function canonicalChoiceLabel(label: string, language: RunLanguage = 'ka'
  */
 export function unrecognisedApproveHalf(choices: readonly string[]): string | null {
   if (choices.length !== 2) return null;
-  const change = choices.filter(isChangeLabel);
+  const change = choices.filter(isChangeChoice);
   if (change.length !== 1) return null;
-  const other = choices.find((c) => !isChangeLabel(c));
-  if (other === undefined || isApproveLabel(other)) return null;
+  const other = choices.find((c) => !isChangeChoice(c));
+  if (other === undefined || isApproveChoice(other)) return null;
   return other;
 }
 
@@ -3505,8 +3560,22 @@ export function answerChunkHandler(opts: {
  * interrupted less, and one word that means yes is still a yes — „სააგენტო"
  * simply never was one.
  */
+/**
+ * A bare yes, in each of the four languages the product actually speaks.
+ *
+ * The Spanish and Russian halves were missing, and they were missing quietly:
+ * the whole list was Georgian and English, so a Spanish owner typing „sí" under
+ * a plan card was not approving it and nothing said why. Found while testing
+ * the Spanish plan card of thread 17559 — that run had no Georgian in it
+ * anywhere and still no way to say yes to its own plan.
+ *
+ * „si" without the accent is „if" in Spanish, and it is here anyway: the whole
+ * message must be that one word and nothing else, and nobody sends „if" as an
+ * entire message under a plan card. Latin „da" is deliberately NOT here —
+ * Cyrillic „да" is unambiguous, the Latin spelling is not.
+ */
 const PLAN_YES =
-  /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|approve[d]?)[\s.!,]*$/iu;
+  /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|approve[d]?|sí|si|vale|claro|да|давай)[\s.!,]*$/iu;
 
 /**
  * A yes that turns on its own heel: „approved, BUT not Ninia yet", „yes if…".
@@ -3665,7 +3734,7 @@ export function approvalBelongsToThePlan(
    */
   ownerSaidSinceCard: readonly string[] = [],
 ): boolean {
-  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveLabel);
+  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveChoice);
   const approves = (said: string): boolean => {
     if (isApproveLabel(said) || APPROVE_LIKE_RE.test(said)) return true;
     // A bare yes, or a short go-ahead, only counts when a plan card is the
@@ -3955,7 +4024,7 @@ export function choicesWithoutApproval(choices: readonly string[]): string[] | u
   // for, would have walked straight through a filter whose whole job is to
   // remove it. The same alias table that decides what a TAP means decides what
   // this drops.
-  const kept = choices.filter((label) => !isApproveLabel(label));
+  const kept = choices.filter((label) => !isApproveChoice(label));
   // An empty button row is its own small lie — a strip of nothing where the
   // screen promises a choice. If approve was the only thing offered, the reply
   // simply has no buttons.
