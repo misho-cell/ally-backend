@@ -109,6 +109,39 @@ export type CreateAskOutcome =
  * that reading is the defect. A human assistant says whose limit it is in one
  * line and carries straight on with everyone else.
  */
+/**
+ * Row 208, and the seat found both the fault and the cheaper fix.
+ *
+ * A cap refusal said „X has ALREADY RECEIVED … today". True at 14:15:15. By
+ * 14:46, in the same thread, the assistant narrated it back to the owner as
+ * „…could not receive another question YESTERDAY", and built its next sentence
+ * out of the contrast — a story about two days that all happened inside half
+ * an hour.
+ *
+ * The model was not careless. The conversation it re-reads carries no times at
+ * all, so „today" in an older message is a word with no anchor, and „yesterday"
+ * is a reasonable reading of it.
+ *
+ * Their rule, which is better than the fix I proposed: THE SERVER MUST NEVER
+ * WRITE A RELATIVE TIME WORD INTO TEXT THAT PERSISTS IN A THREAD. „Today" was
+ * true when written and false an hour later, and nothing had to change for it
+ * to become false except time passing. A DATE is true at any distance, forever.
+ * No alignment, no tokens, no stamps in anybody's words.
+ *
+ * I had proposed timestamping the history to the minute. They pointed out that
+ * the whole question the model got wrong was „today or not today" — a day
+ * boundary — and that a positional list of times is a silent counting task
+ * that, when it slips, produces a confidently wrong minute instead of a vague
+ * wrong day. They were right and that proposal is withdrawn.
+ *
+ * What this does NOT cover, said by them before I could find it: the MODEL's
+ * own relative words („I'll come back in six hours") persist the same way and
+ * are out of reach here.
+ */
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const NOT_THE_OWNERS_LIMIT =
   ' ეს მფლობელის ლიმიტი არ არის და მის ბალანსს, კრედიტებს ან ტოკენებს არ უკავშირდება — ' +
   'არასოდეს თქვა „შენი დღიური ლიმიტი ამოიწურა".';
@@ -165,8 +198,9 @@ const RELAY_REFUSALS: Readonly<
   person_daily_relay_limit_reached: {
     reason: 'person_daily_relay_limit_reached',
     error: (toName: string) =>
-      `${toName}-სთან ამ მიზანზე დღეს უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} შეტყობინება ` +
-      'გაიგზავნა — ეს დღიური ზღვარია ერთ ადამიანზე, რომ საუბარი დატვირთვად არ იქცეს. ' +
+      `${toName}-სთან ამ მიზანზე ${today()}-ს უკვე ${RELAY_MESSAGES_PER_PERSON_PER_DAY} ` +
+      'შეტყობინება გაიგზავნა — ეს დღიური ზღვარია ერთ ადამიანზე, რომ საუბარი დატვირთვად ' +
+      'არ იქცეს. თარიღი ისე დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება სიმართლე. ' +
       'მომხმარებელს ეს პირდაპირ უთხარი — არც ბოდიში, არც „ტექნიკური შეფერხება", და არ ' +
       'თქვა, თითქოს ამ ადამიანმა რამე უარყო.' +
       NOT_THE_OWNERS_LIMIT +
@@ -474,7 +508,9 @@ export async function createAsk(
       sent: false,
       reason: 'recipient_daily_limit_reached',
       error:
-        `${toName}-ს დღეს უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა მიუვიდა სხვებისგან — ` +
+        `${toName}-ს ${today()}-ს უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა ` +
+        'მიუვიდა სხვებისგან — თარიღი ისე დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება ' +
+        'სიმართლე. ' +
         'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ერთი ხაზით უთხარი მფლობელს, ' +
         'ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
         NOT_THE_OWNERS_LIMIT +
@@ -585,7 +621,8 @@ export async function createAsk(
       sent: false,
       reason: 'daily_cap_reached',
       error:
-        'ამ ანგარიშიდან დღეს გაგზავნილმა კითხვებმა ზღვარს მიაღწია — ეს გაგზავნის ' +
+        `ამ ანგარიშიდან ${today()}-ს გაგზავნილმა კითხვებმა ზღვარს მიაღწია — თარიღი ისე ` +
+        'დაწერე, როგორც აქ წერია: „დღეს" ხვალ აღარ იქნება სიმართლე. ეს გაგზავნის ' +
         'სიხშირის დაცვაა, არა მფლობელის ბალანსი.' +
         NOT_THE_OWNERS_LIMIT +
         CONTINUE_BY_OTHER_ROUTES +
