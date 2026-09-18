@@ -128,12 +128,43 @@ const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AN
  * and a stale „შეფერხდა — სცადე თავიდან" under a running goal would be the
  * same lie in smaller type. The client's own word for the group is what shows.
  */
+/**
+ * And the mirror, which is the bigger half — the seat's #4424.
+ *
+ * Read off his own sidebar at 00:43 against the admin, side by side. Under
+ * „ongoing", five rows: 3433 open and correct, and then 5051, 4822 and 4819 —
+ * all CLOSED, all stopped by their owner — plus 16840, which never had a goal
+ * at all. The header above the list said „working on your 2 goals", which was
+ * right. The list under it showed five.
+ *
+ * What the wrong rows have in common is the „could not be done" state. Their
+ * goals are closed, several of them stopped deliberately, and the thread kept
+ * a failure from a run that is now irrelevant and went on advertising itself
+ * as live work.
+ *
+ * So: a thread whose goal is CLOSED is finished, whatever its last run did.
+ * If the owner stopped it, the thread has nothing left to say.
+ *
+ * TWO CASES DELIBERATELY LEFT ALONE. A thread that is 'working' is working —
+ * a run in flight on a thread whose old goal is closed is still a run, and
+ * calling it finished would put the spinner back in the state row 113 spent a
+ * day on. And a FAILED thread with NO GOAL EVER (16840 is theirs) stays where
+ * it is: that is a genuine run failure the owner may want to retry, and
+ * hiding it would hide real breakage. How long a failure should stay visible
+ * is a product question, not something to invent at five in the morning — it
+ * is written to the morning list instead.
+ */
+const HAS_A_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id)`;
+const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
+
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
+       WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
        ELSE t.status
      END`;
 const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
+       WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
        ELSE t.status_line
      END`;
 

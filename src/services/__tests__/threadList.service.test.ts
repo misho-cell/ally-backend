@@ -182,3 +182,56 @@ describe('neither reader shows a live goal as finished', () => {
     expect(String(mockQuery.mock.calls[0][0])).toMatch(REFUSES_FINISHED);
   });
 });
+
+/**
+ * The mirror, and it is the bigger half — the seat's #4424.
+ *
+ * His sidebar at 00:43 against the admin, side by side. Under „ongoing", five
+ * rows: 3433 open and correct, then 5051, 4822 and 4819 all CLOSED and stopped
+ * by their owner, plus 16840 which never had a goal at all. The header above
+ * the list said „working on your 2 goals", which was right. The list showed
+ * five.
+ */
+describe('a thread whose goal is closed is finished', () => {
+  const READS_FINISHED = /WHEN t\.status IN \('waiting', 'needs_you', 'failed'\)/;
+
+  it('is derived in the sidebar', async () => {
+    firstPage([], [CONVERSATION], []);
+
+    await getThreadsForUser('501');
+
+    expect(String(mockQuery.mock.calls[1][0])).toMatch(READS_FINISHED);
+  });
+
+  it('is derived in the chat header too', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 16897 }]) as never);
+
+    await getThread(16897, '501');
+
+    expect(String(mockQuery.mock.calls[0][0])).toMatch(READS_FINISHED);
+  });
+
+  it('leaves a RUNNING thread alone, whatever its old goal did', async () => {
+    // A run in flight is a run. Calling it finished would put the spinner back
+    // in the state row 113 spent a day on, so 'working' is not in the list.
+    firstPage([], [CONVERSATION], []);
+
+    await getThreadsForUser('501');
+
+    const sql = String(mockQuery.mock.calls[1][0]);
+    const mirror = sql.slice(sql.indexOf("WHEN t.status IN ('waiting'"));
+    expect(mirror.slice(0, mirror.indexOf('THEN'))).not.toContain("'working'");
+  });
+
+  it('requires a goal to have existed — a failure with none is still a failure', async () => {
+    // 16840 is theirs: no goal ever, and a genuine run failure the owner may
+    // want to retry. Hiding it would hide real breakage.
+    firstPage([], [CONVERSATION], []);
+
+    await getThreadsForUser('501');
+
+    expect(String(mockQuery.mock.calls[1][0])).toContain(
+      'EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id)',
+    );
+  });
+});
