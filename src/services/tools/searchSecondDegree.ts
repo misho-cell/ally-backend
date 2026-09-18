@@ -168,6 +168,43 @@ export function cappedGroups(groups: string[][], userId: string): string[][] {
 /** How many second-degree searches are inside the function right now. */
 let inFlightSearches = 0;
 
+/**
+ * Ticket 20 row 108 — the pool at the start of the search AND at its end.
+ *
+ * The start reading, shipped in 83b3f03, answered the seat's question and then
+ * asked a louder one. Six searches on 18 September at 18:03:18-23:
+ *
+ *   inflight 1  waiting 0  total 4  key  161 ms   sql 2114   3713 ms
+ *   inflight 2  waiting 1  total 4  key  159 ms   sql 1260
+ *   inflight 3  waiting 2  total 4  key  154 ms   sql 2027
+ *   inflight 4  waiting 3  total 4  key  160 ms   sql 1090
+ *   inflight 5  waiting 4  total 4  key 1213 ms   sql 3058   6366 ms
+ *   inflight 6  waiting 5  total 4  key 1226 ms   sql 5516   8798 ms
+ *
+ * `waiting` is exactly `inflight - 1` on all six, and `key` — a single small
+ * lookup, 160 ms all day — costs a second and a quarter on the two with the
+ * most waiters. Meanwhile `total` never leaves 4 although the pool's max is
+ * ten, and `graph`, which goes to Neo4j and not through this pool at all,
+ * sits flat at ~1,200 ms the whole time and says the machine is not generally
+ * saturated.
+ *
+ * A pool that is QUEUEING while it is four short of its own maximum is the
+ * thing to explain, and I do not have the reading that explains it: whether
+ * `total` climbs toward ten during the burst and falls back between bursts is
+ * the difference between „the pool is too small" and „the pool keeps throwing
+ * its connections away". So the line carries both ends now. One more burst
+ * answers it, and it costs nothing to ask.
+ */
+function poolLine(
+  start: { total: number; idle: number; waiting: number },
+  end: { total: number; idle: number; waiting: number },
+): string {
+  return (
+    `${start.total}/${start.idle}idle/${start.waiting}waiting` +
+    ` → ${end.total}/${end.idle}idle/${end.waiting}waiting`
+  );
+}
+
 const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
 // rank by that and cap at a real limit, so the right connection isn't lost in an
@@ -384,13 +421,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
   // that can answer it.
   // Defensive on purpose: this is a diagnostic, and a diagnostic that can break
   // the thing it measures is worse than not having it.
-  const poolAtStart = ((): { total: number; idle: number; waiting: number } => {
+  const readPool = (): { total: number; idle: number; waiting: number } => {
     try {
       return poolPressure();
     } catch {
       return { total: -1, idle: -1, waiting: -1 };
     }
-  })();
+  };
+  const poolAtStart = readPool();
   try {
     let userKey: string;
     try {
@@ -843,7 +881,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       console.log(
         `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
           `patterns ${n} phones ${friendPhones.length} rows 0 inflight ${inflightAtStart} ` +
-          `pool ${poolAtStart.total}/${poolAtStart.idle}idle/${poolAtStart.waiting}waiting`,
+          `pool ${poolLine(poolAtStart, readPool())}`,
       );
       return { found: false, reason: 'no_matches' };
     }
@@ -925,7 +963,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
         `decorate: ${concurrentLine(sideMarks)} | ` +
         `patterns ${n} phones ${friendPhones.length} rows ${rows.length} inflight ${inflightAtStart} ` +
-        `pool ${poolAtStart.total}/${poolAtStart.idle}idle/${poolAtStart.waiting}waiting`,
+        `pool ${poolLine(poolAtStart, readPool())}`,
     );
 
     const shaped = rows.map((row) => {

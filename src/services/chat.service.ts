@@ -2655,24 +2655,46 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
  * effort by design: if this write fails too, the 402 still goes out, because a
  * person who cannot start a run must still be told why.
  *
- * Row 209 gave it a second caller and took „Refused" out of the name. A
- * message queued behind the run ahead of it on the same conversation is not
- * refused at all — it is going to run — but it has the same problem for the
- * same reason: it would not exist on the owner's screen until its run reached
- * the write further down. One rule covers both. The owner's own words are
- * stored when they ARRIVE, and what happens to the run afterwards is a
- * separate question.
+ * Row 209 gave it a second caller and took „Refused" out of the name. Row 212
+ * gave it every caller, and the reason is the seat's, found within an hour of
+ * row 209 shipping.
+ *
+ * Storing only the QUEUED message on arrival, and leaving the first one to be
+ * written when its run reached the ordinary write, put the two in the wrong
+ * ORDER — because that ordinary write happens after the prompt is built, three
+ * seconds later, while the second message was stamped the moment it landed:
+ *
+ *   18021  second 17:49:07.043, first 17:49:07.198   inverted by 155 ms
+ *   18052  second 17:51:06.041, first 17:51:06.932   inverted by 891 ms
+ *   18085  second 17:53:04.298, first 17:53:04.678   inverted by 380 ms
+ *
+ * Both members of each pair land inside one second although they were typed
+ * three apart, which is the tell. On 18052 the thread reads „Now double the
+ * number you just gave me" ABOVE „Give me one number between 10 and 99", and
+ * everything that re-reads it later, the model included, sees the questions
+ * backwards.
+ *
+ * So the rule is not „queued messages are stored early". It is that the
+ * owner's words are stored WHEN THEY ARRIVE, always, and what happens to the
+ * run afterwards — refused, queued, or straight through — is a separate
+ * question asked later.
+ *
+ * SAYS WHETHER IT WORKED, because the caller then tells the run not to store
+ * it again. Best-effort must not mean silently-lost: a failed write here has
+ * to leave the ordinary write in place as the fallback.
  */
 export async function keepUserMessage(
   userId: string,
   threadId: number,
   message: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await saveMessage(userId, threadId, 'user', message);
+    return true;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('keepUserMessage failed:', (err as Error).message);
+    return false;
   }
 }
 

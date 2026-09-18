@@ -54,7 +54,7 @@ import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
 import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
-import { enterThread, leaveThread, threadHolder } from '../../services/threadRunQueue';
+import { enterThread, leaveThread } from '../../services/threadRunQueue';
 import { looksLikeStopRequest } from '../../services/stopIntent';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { ApiResponse } from '../../types';
@@ -647,21 +647,37 @@ threadsRouter.post(
        * anything else. Making it wait would be the one case where this rule
        * does harm.
        */
+      /**
+       * Ticket 20 row 212 — the owner's words are stored WHEN THEY ARRIVE.
+       *
+       * The seat caught this within an hour of row 209 shipping, and it is row
+       * 209's own fix one layer short. Storing only the QUEUED message early
+       * and leaving the first one to the ordinary write inside processChat —
+       * which happens after the prompt is built, about three seconds later —
+       * put the two in the wrong ORDER:
+       *
+       *   18021  second 17:49:07.043, first 17:49:07.198   inverted by 155 ms
+       *   18052  second 17:51:06.041, first 17:51:06.932   inverted by 891 ms
+       *   18085  second 17:53:04.298, first 17:53:04.678   inverted by 380 ms
+       *
+       * Both members of each pair land inside one second although they were
+       * typed three apart, which is the tell. On 18052 the thread ends up
+       * reading „Now double the number you just gave me" ABOVE „Give me one
+       * number between 10 and 99" — and everything that re-reads the thread
+       * afterwards, the model included, sees the questions backwards. The
+       * screen looks right only while the run is live, because the client
+       * draws its own copy until the server's order arrives.
+       *
+       * So every message is written here, at the moment it is accepted, and
+       * the run is told not to write it again. There is no longer a fast path
+       * and a slow path to get out of step.
+       *
+       * The flag follows the WRITE, not the intention: if this one fails, the
+       * ordinary write inside the run is still the fallback, and a lost
+       * message would be a worse bug than a late one.
+       */
+      const storedOnArrival = await keepUserMessage(userId, threadId, message);
       const stopCannotWait = looksLikeStopRequest(message);
-      const waitingBehind = !stopCannotWait && threadHolder(threadId) !== undefined;
-      if (waitingBehind) {
-        /**
-         * Stored NOW, because the wait is long enough to be a fault of its own.
-         *
-         * The ordinary path writes the owner's line inside processChat, after
-         * the prompt is built. A queued message would be missing from the
-         * owner's own screen for as long as it waits — a reload would show the
-         * thread without the thing they just typed, which is the fault that
-         * lost Lika's goal twice in five minutes and is not one to reintroduce
-         * for the sake of a smaller diff.
-         */
-        await keepUserMessage(userId, threadId, message);
-      }
       if (!stopCannotWait) {
         /**
          * The wait is logged with its length because I do not know what it
@@ -722,9 +738,10 @@ threadsRouter.post(
           ? Promise.reject(new Error('RUN_DRAINED'))
           : processChat(userId, threadId, message, runId, undefined, {
               asGoal: as_goal === true,
-              // Row 209: written above while it waited, so processChat must not
-              // write it a second time.
-              ...(waitingBehind && { alreadyStored: true }),
+              // Row 212: written above the moment it arrived, so the run must
+              // not write it a second time — unless that write failed, in
+              // which case the ordinary one inside the run is the fallback.
+              ...(storedOnArrival && { alreadyStored: true }),
               ...(typeof in_reply_to_message_id === 'string' && {
                 inReplyToMessageId: in_reply_to_message_id,
               }),
