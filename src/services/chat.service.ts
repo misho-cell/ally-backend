@@ -6445,26 +6445,57 @@ async function runToolLoop(
   // three 3-4 minute runs rendered in total silence (ticket 6 item 14). This
   // step line reaches the client within the first second of every run.
   emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].opening);
+  /**
+   * The reaper killed a run for being ALIVE. 18 September, thread 17724.
+   *
+   * The seat's read: an English goal, nine tool calls, every one ok:true, no
+   * error_text anywhere, 36.9 s of tool time — and then an error line on the
+   * owner's screen and nothing else in the thread.
+   *
+   *   13:39:35  the owner's message
+   *   13:40:05  the last tool returns, successfully
+   *   13:41:23  „a technical delay occurred"
+   *
+   * 13:40:05 plus the reaper's 75-second silence is 13:41:20, and the sweep
+   * runs every 20 s. The reaper did this, and the run it reaped had not failed.
+   *
+   * WHY THE RUN LOOKED DEAD WHILE IT WAS TALKING. `touchThread` was inside the
+   * `lastSignalAt` branch, and `lastSignalAt` is reset by anything visibly
+   * reaching the client. So a run STREAMING its final answer resets the timer
+   * on every delta, the branch never fires, and nothing touches the database —
+   * for as long as it keeps streaming. The livelier the run, the deader it
+   * looks. Row 114 wrote the beat down so the reaper would have a sign of life
+   * to read, and then put it behind the one condition that a healthy run
+   * prevents.
+   *
+   * So the touch is now its own clock. It does not care WHY the run is alive —
+   * a delta, a step, or a quiet model call that the heartbeat itself covers.
+   * The visible heartbeat line keeps its old condition, because a person
+   * watching deltas arrive does not need to be told we are still working.
+   */
+  let lastTouchAt = Date.now();
   const heartbeat = setInterval(() => {
     // Self-terminating past the wall clock so an abandoned run can't tick forever.
     if (Date.now() - startedAt > RUN_WALL_CLOCK_BUDGET_MS) {
       clearInterval(heartbeat);
       return;
     }
-    if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
-      lastSignalAt = Date.now();
-      emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].heartbeat);
-      // Ticket 20 row 114: the same beat, written down. emitStepSummary is SSE
-      // only, so until now nothing a live run did reached the DATABASE between
-      // its steps — and the reaper, having no sign of life to read, could only
-      // go by how long the thread had been working, which must sit above the
-      // longest legitimate run. One UPDATE every 25 seconds turns „how old is
-      // this run" into „when did it last breathe", which is the question worth
-      // asking. Fire-and-forget: a run must never fail over its own heartbeat.
+    if (Date.now() - lastTouchAt >= RUN_HEARTBEAT_MS) {
+      lastTouchAt = Date.now();
+      // Ticket 20 row 114: the beat, written down. emitStepSummary is SSE only,
+      // so nothing a live run did reached the DATABASE between its steps — and
+      // the reaper, having no sign of life to read, could only go by how long
+      // the thread had been working. One UPDATE every 25 seconds turns „how old
+      // is this run" into „when did it last breathe", which is the question
+      // worth asking. Fire-and-forget: a run must never fail over its heartbeat.
       void touchThread(threadId).catch((err: unknown) =>
         // eslint-disable-next-line no-console
         console.warn(`[heartbeat] could not touch thread ${threadId}:`, (err as Error).message),
       );
+    }
+    if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
+      lastSignalAt = Date.now();
+      emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].heartbeat);
     }
   }, RUN_HEARTBEAT_POLL_MS);
   // Initial call: nothing gathered yet, so a failure here propagates and the

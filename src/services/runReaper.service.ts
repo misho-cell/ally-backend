@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
-import { saveThreadMessage, STATUS_LINES, ThreadStatus } from './threads.service';
+import { saveThreadMessage, STATUS_LINES, ThreadStatus, threadLanguage } from './threads.service';
+import { RUN_STRINGS } from './runLanguage';
 import { emitThreadUpdated } from './sse.service';
 
 // A thread still 'working' with NO SIGN OF LIFE means the process that owned
@@ -29,7 +30,23 @@ const SWEEP_INTERVAL_MS = 20_000;
 const RUN_SILENT_SECONDS = Math.ceil(RUN_SILENT_MS / 1_000);
 const BOOT_SWEEP_DELAY_MS = 10_000;
 
-const ORPHAN_MESSAGE = 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.';
+/**
+ * The line a reaped run leaves on the owner's screen, in the language of the
+ * conversation it died in.
+ *
+ * Found 18 September on thread 17724: an English goal, killed by this sweep,
+ * and the only thing left on the owner's screen was 57 Georgian characters
+ * with no Latin at all. It is the one message a person reads carefully,
+ * because it is the one telling them something went wrong, and it was the last
+ * fixed string in the product still Georgian in every language.
+ *
+ * The owner's own messages decide, as everywhere else. A thread whose language
+ * cannot be read falls back to Georgian, which is what this always was.
+ */
+async function orphanMessageFor(threadId: number): Promise<string> {
+  const language = await threadLanguage(threadId).catch(() => 'ka' as const);
+  return RUN_STRINGS[language].runDied;
+}
 
 export async function sweepOrphanedRuns(): Promise<number> {
   // A reaped thread whose OPEN goal is waiting for the owner's answer keeps
@@ -139,7 +156,8 @@ export async function sweepOrphanedRuns(): Promise<number> {
             'status cleared, no error shown',
         );
       } else {
-        await saveThreadMessage(thread.id, thread.user_id, 'assistant', ORPHAN_MESSAGE, 'error');
+        const message = await orphanMessageFor(thread.id);
+        await saveThreadMessage(thread.id, thread.user_id, 'assistant', message, 'error');
       }
       emitThreadUpdated(String(thread.user_id), {
         id: thread.id,

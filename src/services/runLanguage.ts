@@ -71,6 +71,16 @@ interface RunStrings {
   heartbeat: string;
   choicesOnly: string;
   emptyFinalFailure: string;
+  /**
+   * The line a person reads when their run died — and the one message they are
+   * most likely to read carefully, because it is the one saying something went
+   * wrong. It was Georgian in every language until 18 September, found on an
+   * English thread whose run the reaper killed: 57 Georgian characters, zero
+   * Latin, in a conversation with no Georgian anywhere else in it.
+   */
+  runDied: string;
+  /** The same, when it died of the clock rather than a fault. */
+  tookTooLong: string;
   moderationBlocked: string;
   /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
   nameNotVerified: string;
@@ -96,6 +106,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...',
     choicesOnly: 'აირჩიე ერთ-ერთი:',
     emptyFinalFailure: 'პასუხი ვერ ჩამოყალიბდა — სცადე თავიდან, ან სხვანაირად დასვი კითხვა.',
+    runDied: 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.',
+    tookTooLong: 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.',
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
     nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
@@ -112,6 +124,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Still working — deep search takes a moment...',
     choicesOnly: 'Pick one:',
     emptyFinalFailure: 'The reply did not come together — try again, or rephrase the question.',
+    runDied: 'Something went wrong on our side and the answer did not finish. Please try again.',
+    tookTooLong: 'The answer took too long to put together. Please try again.',
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
     nameNotVerified: '(name not verified on an official page)',
@@ -128,6 +142,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Всё ещё работаю — глубокий поиск занимает время...',
     choicesOnly: 'Выбери один вариант:',
     emptyFinalFailure: 'Ответ не сложился — попробуй ещё раз или переформулируй вопрос.',
+    runDied:
+      'На нашей стороне произошёл сбой, и ответ не завершился. Пожалуйста, попробуй ещё раз.',
+    tookTooLong: 'Ответ готовился слишком долго. Пожалуйста, попробуй ещё раз.',
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
     nameNotVerified: '(имя не подтверждено на официальной странице)',
@@ -144,6 +161,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Sigo trabajando — la búsqueda profunda toma un momento...',
     choicesOnly: 'Elige una opción:',
     emptyFinalFailure: 'La respuesta no salió — inténtalo de nuevo o reformula la pregunta.',
+    runDied:
+      'Algo falló de nuestro lado y la respuesta no se completó. Inténtalo de nuevo, por favor.',
+    tookTooLong: 'La respuesta tardó demasiado en prepararse. Inténtalo de nuevo, por favor.',
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
     nameNotVerified: '(nombre no verificado en una página oficial)',

@@ -755,9 +755,17 @@ threadsRouter.post(
             }
           }
 
+          // The failure line follows the conversation, like every other fixed
+          // string. Found 18 September: a run died on an English thread and
+          // the only thing left on the owner's screen was Georgian — the one
+          // message a person reads carefully, because it is the one saying
+          // something went wrong. The owner's own words decide the language;
+          // `message` is theirs, which is why it is read here and not the
+          // reply that never came.
+          const failLang = detectRunLanguage(message);
           const userMessage = timedOut
-            ? 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.'
-            : 'ტექნიკური შეფერხება მოხდა ჩვენს მხარეს. გთხოვ, სცადე თავიდან.';
+            ? RUN_STRINGS[failLang].tookTooLong
+            : RUN_STRINGS[failLang].runDied;
           emitRunError(userId, threadId, runId, userMessage);
           void markRunFailed(userId, threadId, detectRunLanguage(message));
           // The SSE event alone is not enough: if the stream dropped mid-run, the

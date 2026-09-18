@@ -2,12 +2,17 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 jest.mock('../threads.service', () => ({
   __esModule: true,
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
+  // The failure line follows the conversation now (18 September, thread 17724:
+  // an English thread's run died and left 57 Georgian characters behind). The
+  // default here is Georgian so every assertion below still reads the language
+  // it was written for.
+  threadLanguage: jest.fn().mockResolvedValue('ka'),
   STATUS_LINES: { failed: 'ვერ დასრულდა', needs_you: 'შენ გელოდება' },
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadUpdated: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
-import { saveThreadMessage } from '../threads.service';
+import { saveThreadMessage, threadLanguage } from '../threads.service';
 import { emitThreadUpdated } from '../sse.service';
 import { sweepOrphanedRuns } from '../runReaper.service';
 
@@ -165,5 +170,54 @@ describe('row 33 — a thread nobody has asked anything in', () => {
     await sweepOrphanedRuns();
 
     expect(saveThreadMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * 18 September, thread 17724 — a run the reaper killed left the only message
+ * on an English owner's screen in Georgian: 57 Georgian characters, no Latin.
+ * It is the one message a person reads carefully, because it is the one saying
+ * something went wrong.
+ */
+describe('the line a reaped run leaves behind', () => {
+  it('is written in the language of the conversation', async () => {
+    (threadLanguage as jest.Mock).mockResolvedValue('en');
+    reaped([
+      {
+        id: 17724,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'x',
+        answered: false,
+        was_asked: true,
+      },
+    ]);
+
+    await sweepOrphanedRuns();
+
+    const [, , , text] = (saveThreadMessage as jest.Mock).mock.calls[0];
+    expect(String(text)).not.toMatch(/[\u10A0-\u10FF]/);
+    expect(String(text)).toMatch(/try again/i);
+  });
+
+  it('falls back to Georgian when the language cannot be read', async () => {
+    // A thread whose language cannot be worked out still gets a failure line —
+    // losing the message would be worse than getting its language wrong.
+    (threadLanguage as jest.Mock).mockRejectedValue(new Error('down'));
+    reaped([
+      {
+        id: 17724,
+        user_id: 501,
+        status: 'failed',
+        status_line: 'x',
+        answered: false,
+        was_asked: true,
+      },
+    ]);
+
+    await sweepOrphanedRuns();
+
+    const [, , , text] = (saveThreadMessage as jest.Mock).mock.calls[0];
+    expect(String(text)).toContain('ტექნიკური შეფერხება');
   });
 });
