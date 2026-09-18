@@ -2652,8 +2652,16 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
  * Her message is stored first now, and the refusal only refuses the RUN. Best
  * effort by design: if this write fails too, the 402 still goes out, because a
  * person who cannot start a run must still be told why.
+ *
+ * Row 209 gave it a second caller and took „Refused" out of the name. A
+ * message queued behind the run ahead of it on the same conversation is not
+ * refused at all — it is going to run — but it has the same problem for the
+ * same reason: it would not exist on the owner's screen until its run reached
+ * the write further down. One rule covers both. The owner's own words are
+ * stored when they ARRIVE, and what happens to the run afterwards is a
+ * separate question.
  */
-export async function keepRefusedUserMessage(
+export async function keepUserMessage(
   userId: string,
   threadId: number,
   message: string,
@@ -2662,7 +2670,7 @@ export async function keepRefusedUserMessage(
     await saveMessage(userId, threadId, 'user', message);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('keepRefusedUserMessage failed:', (err as Error).message);
+    console.error('keepUserMessage failed:', (err as Error).message);
   }
 }
 
@@ -7782,6 +7790,17 @@ export interface RunIntent {
   asGoal?: boolean;
   /** The pending message whose button the user tapped, when they tapped one. */
   inReplyToMessageId?: string;
+  /**
+   * The owner's line is ALREADY in the thread — do not store it again.
+   *
+   * Row 209's queue. A message that has to wait for the run before it is
+   * stored the ordinary way, at the bottom of this function, would be missing
+   * from the owner's own screen for as long as the wait — the exact shape of
+   * the fault that lost Lika's goal. So the route writes it at the moment it
+   * is accepted and says so here. History then carries it, which is also why
+   * it must not be appended to the prompt a second time.
+   */
+  alreadyStored?: boolean;
 }
 
 async function ensureGoalForRequest(
@@ -7913,11 +7932,18 @@ export async function processChat(
      *
      * Before the answer, not after, so the two rows order the way they
      * happened.
+     *
+     * Row 209: unless the route already stored it. A typed stop skips the
+     * thread queue precisely so it never waits, so the two should not be able
+     * to meet — but „they cannot meet" is a claim about two files, and the
+     * cost of it being wrong is the owner's stop appearing twice.
      */
-    await saveMessage(userId, threadId, 'user', userMessage).catch((err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.error('[stop-intent] could not store the owner’s line:', (err as Error).message);
-    });
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[stop-intent] could not store the owner’s line:', (err as Error).message);
+      });
+    }
     let said: string;
     if (running !== null && running.status !== 'closed') {
       // eslint-disable-next-line no-console
@@ -8164,6 +8190,23 @@ export async function processChat(
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
   const replyContext = await pendingReplyContext(threadId, intent?.inReplyToMessageId);
+  /**
+   * Row 209's queue — the row is already written, the PROMPT still needs it.
+   *
+   * A queued message is stored the moment it is accepted so the owner sees
+   * their own line while it waits. By the time this run starts, the run ahead
+   * of it has stored its answer, so history reads:
+   *
+   *   user  the earlier message + this one   (merged, they are adjacent)
+   *   assistant  the answer to the earlier one
+   *
+   * — which ends on the assistant, and a turn has to end on the owner. So the
+   * message is still appended, and the model sees it twice: once as part of
+   * what the owner said before that answer, and once as the thing still live.
+   * That reads correctly, which is why it is left alone rather than dug out of
+   * the history by row id.
+   */
+  const storedAhead = intent?.alreadyStored === true;
   const messages: Anthropic.MessageParam[] = [
     ...history,
     ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
@@ -8174,13 +8217,15 @@ export async function processChat(
   // loop — appear in chronological order and survive a mid-run crash. An engine
   // event is persisted as kind 'event': the model sees it, the user does not.
   if (replyContext !== null) await saveMessage(userId, threadId, 'user', replyContext, 'event');
-  await saveMessage(
-    userId,
-    threadId,
-    'user',
-    userMessage,
-    userMessage.startsWith(RUN_EVENT_PREFIX) ? 'event' : 'message',
-  );
+  if (!storedAhead) {
+    await saveMessage(
+      userId,
+      threadId,
+      'user',
+      userMessage,
+      userMessage.startsWith(RUN_EVENT_PREFIX) ? 'event' : 'message',
+    );
+  }
 
   const { finalText, pending, options, choices, requestCreated, taskResult, answeredBy } =
     await runToolLoop(

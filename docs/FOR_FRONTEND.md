@@ -93,6 +93,34 @@ chrome no longer has to guess.
 
 ---
 
+## One question back, added 18 September
+
+**Does the app give up on a run after a fixed time?**
+
+The server's ceiling on a single run is 110 seconds — after that it stops
+waiting, writes a retryable error into the thread and sends `run_error` over
+SSE. That number was chosen so the app never sits on a spinner for ever.
+
+From today a second message sent while the first is still working no longer
+starts its own run beside it; it waits for the first and then runs. That is
+deliberate — two runs on one conversation approved the same plan twice and sent
+two real people the same question twice — but it means the time between a
+person pressing send and getting anything back can now be as much as twice the
+ceiling, because the ceiling starts when the run starts, not when they typed.
+
+So: if the client has its own timer, what is it? If it is under about four
+minutes, a second message typed during a long first run may show a spinner the
+app never clears. If the client has no timer of its own and simply waits for
+`run_complete` or `run_error`, there is nothing to do and I will stop worrying
+about it.
+
+The server logs every queued run with how long it waited (`[thread-queue] …
+waited N ms`), so the real distribution will be readable tomorrow either way —
+but the answer to the question above decides whether that is a measurement or
+an incident.
+
+---
+
 Questions, or a case where one of these reads differently from your side: the
 backend session is reachable through Misho, and any of these reads can be re-run
 on request.

@@ -35,9 +35,14 @@ import { emitRunComplete, emitRunError } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
 import { scrubText } from './privacyScrub';
+import { enterThread, leaveThread, threadHolder } from './threadRunQueue';
 import { sweepUnansweredIntroOutcomes } from './partH.service';
 import { sendWeeklySummaries } from './weeklySummary.service';
-import { RUN_HARD_TIMEOUT_MS } from '../config/runBudgets';
+import {
+  RUN_HARD_TIMEOUT_MS,
+  THREAD_QUEUE_BUDGET_MS,
+  THREAD_QUEUE_POLL_MS,
+} from '../config/runBudgets';
 
 const TICK_INTERVAL_MS = 60_000;
 const REMINDER_INTERVAL_MS = 60 * 60_000;
@@ -139,6 +144,16 @@ export async function wakeTask(
 ): Promise<WakeResult> {
   if (runningTasks.has(taskId)) return 'busy';
   runningTasks.add(taskId);
+  /**
+   * Row 209 — what this wake is holding, so the `finally` can give it back.
+   *
+   * The guard below has always been one-directional: a wake waits for the
+   * owner, and nothing stopped the owner starting a run ON TOP of a wake
+   * already in flight (thread 15049, two clarifying questions a second apart).
+   * The owner's route now waits for whoever holds the conversation — so a wake
+   * that does not hold it is invisible to that wait, and 15049 stays open.
+   */
+  let holding: { threadId: number; runId: string } | null = null;
   try {
     const task = await getTaskById(taskId);
     if (!task || task.status !== 'open' || task.thread_id === null) return 'stopped';
@@ -146,6 +161,16 @@ export async function wakeTask(
     const thread = await getThread(task.thread_id, ownerId);
     if (!thread) return 'stopped';
     if (thread.status === 'working') return 'busy'; // a live run owns the thread right now
+    // Row 209: the same question asked of the lock rather than of a status
+    // column written with `void`. Refused rather than queued, deliberately —
+    // the retry loop above already knows how to come back, and a wake that
+    // sat in a queue for two minutes would arrive into a conversation that
+    // has moved on. Taken here, immediately after the check, so nothing can
+    // slip between the two.
+    if (threadHolder(thread.id) !== undefined) return 'busy';
+    const wakeRunId = randomUUID();
+    await enterThread(thread.id, wakeRunId, THREAD_QUEUE_BUDGET_MS, THREAD_QUEUE_POLL_MS);
+    holding = { threadId: thread.id, runId: wakeRunId };
     // Ticket 19 G1 and G5: and a thread the owner is still TALKING in is not
     // free either, whatever its status says.
     //
@@ -192,7 +217,9 @@ export async function wakeTask(
       return 'stopped';
     }
 
-    const runId = randomUUID();
+    // Row 209: the id the thread lock was taken with, so the log and the lock
+    // name the same run.
+    const runId = wakeRunId;
     void setThreadStatus(ownerId, thread.id, 'working');
     // A wake that proposes something the tool will refuse wastes the run and
     // hands the owner a promise nobody can keep (ticket 9 task 17: four goals
@@ -326,6 +353,9 @@ export async function wakeTask(
     }
   } finally {
     runningTasks.delete(taskId);
+    // Row 209: and let the conversation go, whichever way this ended. A wake
+    // that returned 'stopped' on an empty wallet still took the lock.
+    if (holding !== null) leaveThread(holding.threadId, holding.runId);
   }
 }
 

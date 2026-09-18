@@ -23,6 +23,17 @@ jest.mock('../threads.service', () => ({
   __esModule: true,
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),
+  threadLanguage: jest.fn().mockResolvedValue('ka'),
+}));
+jest.mock('../askBudget.service', () => ({
+  __esModule: true,
+  describeAskBudget: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('../runFailure.service', () => ({ __esModule: true, markRunFailed: jest.fn() }));
+jest.mock('../sse.service', () => ({
+  __esModule: true,
+  emitRunComplete: jest.fn(),
+  emitRunError: jest.fn(),
 }));
 jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus: jest.fn() }));
 jest.mock('../tokenWallet.service', () => ({ __esModule: true, checkRunAllowance: jest.fn() }));
@@ -31,7 +42,9 @@ import { query } from '../../db/postgres/client';
 import { getTaskById, Task } from '../taskStore.service';
 import { getThread, saveThreadMessage, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
+import { processChat } from '../chat.service';
 import { wakeTask } from '../taskEngine.service';
+import { clearThreadQueue, enterThread, leaveThread, threadHolder } from '../threadRunQueue';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
@@ -56,7 +69,10 @@ beforeEach(() => {
   // ownerSpokeRecently reads through the pool directly.
   mockQuery.mockResolvedValue({ rows: [{ recent: false }], rowCount: 1 } as never);
   mockSave.mockResolvedValue(undefined as never);
+  clearThreadQueue();
 });
+
+afterEach(() => clearThreadQueue());
 
 describe('wakeTask says WHY it did not wake', () => {
   it('stops for good on an empty wallet, and says the line once', async () => {
@@ -105,5 +121,51 @@ describe('wakeTask says WHY it did not wake', () => {
 
     expect(await wakeTask(4258, 'ნაბიჯი')).toBe('busy');
     expect(mockSave).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ticket 20 row 209. The status check above reads a column written with `void`
+ * — it is a report, and a late one. The lock is the fact, and the wake has to
+ * respect it from both sides: refuse while somebody else holds the
+ * conversation, and HOLD it itself so the owner's next message waits rather
+ * than landing on top, which is thread 15049.
+ */
+describe('a wake and the conversation lock', () => {
+  it('is busy while another run holds the conversation, whatever the status column says', async () => {
+    mockThread.mockResolvedValue(thread({ status: 'waiting' }));
+    await enterThread(16402, 'someone-elses-run', 60_000, 5);
+
+    expect(await wakeTask(4258, 'ნაბიჯი')).toBe('busy');
+    // Busy, and it did not take the lock away from the run that has it.
+    expect(threadHolder(16402)).toBe('someone-elses-run');
+    expect(mockAllowance).not.toHaveBeenCalled();
+  });
+
+  it('gives the conversation back even when it stops on an empty wallet', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: false } as never);
+
+    expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
+    // A wake that took the lock and kept it would stall every message the
+    // owner typed for the next two minutes, for a run that never happened.
+    expect(threadHolder(16402)).toBeUndefined();
+  });
+
+  it('holds the conversation while it runs, so the owner queues instead of colliding', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: true } as never);
+    let heldDuringRun: string | undefined;
+    (processChat as jest.Mock).mockImplementation(() => {
+      heldDuringRun = threadHolder(16402);
+      return Promise.reject(new Error('stop the run here — the lock is what is under test'));
+    });
+
+    await wakeTask(4258, 'ნაბიჯი');
+
+    expect(heldDuringRun).toBeDefined();
+    expect(threadHolder(16402)).toBeUndefined();
+    // And the lock was the wake's own, not a leftover.
+    leaveThread(16402, heldDuringRun as string);
   });
 });

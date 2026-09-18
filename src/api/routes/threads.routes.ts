@@ -19,7 +19,7 @@ import {
   getLongestRunStep,
   DEFAULT_NEW_THREAD_TITLE,
 } from '../../services/threads.service';
-import { processChat, ChatResult, keepRefusedUserMessage } from '../../services/chat.service';
+import { processChat, ChatResult, keepUserMessage } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
 import {
@@ -54,6 +54,8 @@ import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
 import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
+import { enterThread, leaveThread, threadHolder } from '../../services/threadRunQueue';
+import { looksLikeStopRequest } from '../../services/stopIntent';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { ApiResponse } from '../../types';
 
@@ -61,7 +63,11 @@ const threadsRouter = Router();
 
 // Ceiling on a single background run — from the shared budget family, so
 // raising the wall clock via env raises this with it (see config/runBudgets).
-import { RUN_HARD_TIMEOUT_MS } from '../../config/runBudgets';
+import {
+  RUN_HARD_TIMEOUT_MS,
+  THREAD_QUEUE_BUDGET_MS,
+  THREAD_QUEUE_POLL_MS,
+} from '../../config/runBudgets';
 
 // A timed-out run's longest persisted step must be at least this long to be
 // worth flushing as a partial answer (anything shorter is spinner narration).
@@ -544,7 +550,7 @@ threadsRouter.post(
          * reads as a completed goal. Refusing the run is correct; the other two
          * were never part of refusing it.
          */
-        await keepRefusedUserMessage(userId, threadId, message);
+        await keepUserMessage(userId, threadId, message);
         void setThreadStatus(userId, threadId, 'needs_you', {
           statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.needs_topup,
         });
@@ -618,6 +624,73 @@ threadsRouter.post(
       // pending for them is being engaged right now; the model re-flags with
       // ask_owner_decision if it is still blocked after this exchange.
       void clearGoalQuestionForThread(userId, threadId).catch(() => undefined);
+
+      /**
+       * Ticket 20 row 209 — one conversation answers one run at a time.
+       *
+       * Row 115 collapses an IDENTICAL message repeated while its own run is
+       * going: one intention, several deliveries. This is the other case —
+       * two DIFFERENT things the owner said seconds apart, both of which
+       * deserve an answer, which until now started two runs side by side that
+       * could not see each other. Goal 5580 („ვამტკიცებ" then „ok", 3.2 s)
+       * approved one plan twice and asked two real people twice. Thread 16765
+       * („გიორგი ხატიაშვილის" then „მოწვევა მინდა", 6.2 s) split one sentence
+       * across two runs, neither of which held the request.
+       *
+       * The engine has had this rule since Ticket 19 G1/G5 and says in its own
+       * comment that it is one-directional: a wake waits for the owner, and
+       * nothing ever stopped the owner starting a run on top of a wake. This
+       * is the other direction, and it holds owner against owner too.
+       *
+       * A TYPED STOP DOES NOT WAIT. It exists to interrupt the run it would
+       * otherwise be queued behind, and processChat answers it before doing
+       * anything else. Making it wait would be the one case where this rule
+       * does harm.
+       */
+      const stopCannotWait = looksLikeStopRequest(message);
+      const waitingBehind = !stopCannotWait && threadHolder(threadId) !== undefined;
+      if (waitingBehind) {
+        /**
+         * Stored NOW, because the wait is long enough to be a fault of its own.
+         *
+         * The ordinary path writes the owner's line inside processChat, after
+         * the prompt is built. A queued message would be missing from the
+         * owner's own screen for as long as it waits — a reload would show the
+         * thread without the thing they just typed, which is the fault that
+         * lost Lika's goal twice in five minutes and is not one to reintroduce
+         * for the sake of a smaller diff.
+         */
+        await keepUserMessage(userId, threadId, message);
+      }
+      if (!stopCannotWait) {
+        /**
+         * The wait is logged with its length because I do not know what it
+         * costs yet.
+         *
+         * What is bounded: the run's own ceiling starts when the run does, so
+         * a queued message's total time from typing to answer can reach twice
+         * that. Whether the app tolerates a spinner that long is a question
+         * about the client, and guessing at it in here would be the wrong way
+         * to find out — so the number is written down on every queued run and
+         * read back tomorrow.
+         */
+        const waitedFrom = Date.now();
+        const entry = await enterThread(
+          threadId,
+          runId,
+          THREAD_QUEUE_BUDGET_MS,
+          THREAD_QUEUE_POLL_MS,
+        );
+        if (entry !== 'free') {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[thread-queue] run ${runId} thread ${threadId}: ${entry} after ${
+              Date.now() - waitedFrom
+            } ms`,
+          );
+        }
+      }
+
       const runStartedAt = new Date();
 
       // Hard outer timeout: the run's own budget (~90s) normally forces a final
@@ -634,12 +707,28 @@ threadsRouter.post(
         setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
       );
       Promise.race([
-        processChat(userId, threadId, message, runId, undefined, {
-          asGoal: as_goal === true,
-          ...(typeof in_reply_to_message_id === 'string' && {
-            inReplyToMessageId: in_reply_to_message_id,
-          }),
-        }),
+        /**
+         * Row 209 — the drain check above was made before the wait.
+         *
+         * `isDraining` is read on the way in, and a queued message can sit
+         * behind a run for longer than the whole drain budget, so by the time
+         * it is this one's turn the container may already be leaving. Row 205
+         * exists to stop a run being born into that. Rejecting here rather
+         * than returning early keeps one failure path: the catch below writes
+         * the owner a retryable line in their own language, and the `finally`
+         * still hands the conversation to whoever is next.
+         */
+        isDraining()
+          ? Promise.reject(new Error('RUN_DRAINED'))
+          : processChat(userId, threadId, message, runId, undefined, {
+              asGoal: as_goal === true,
+              // Row 209: written above while it waited, so processChat must not
+              // write it a second time.
+              ...(waitingBehind && { alreadyStored: true }),
+              ...(typeof in_reply_to_message_id === 'string' && {
+                inReplyToMessageId: in_reply_to_message_id,
+              }),
+            }),
         hardTimeout,
       ])
         .then(async (result) => {
@@ -829,6 +918,12 @@ threadsRouter.post(
         .finally(() => {
           releaseRun(userId, threadId, message, runId);
           endRun(runId);
+          // Row 209: and hand the conversation to whoever has been waiting for
+          // it. Here, with the other two, because every way a run can end
+          // passes through this block — the failure path included. A run that
+          // died still has to let go, or the next thing the owner types waits
+          // out the whole budget for a run that is not there.
+          leaveThread(threadId, runId);
         });
     } catch (error) {
       // eslint-disable-next-line no-console

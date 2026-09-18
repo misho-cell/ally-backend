@@ -34,6 +34,21 @@ export const MAX_TOOL_ITERATIONS = intEnv('MAX_TOOL_ITERATIONS', 20);
 export const RUN_HARD_TIMEOUT_MS = intEnv('RUN_HARD_TIMEOUT_MS', RUN_WALL_CLOCK_BUDGET_MS + 20_000);
 
 /**
+ * Ticket 20 row 209 — how long a message waits for the run ahead of it on the
+ * same conversation before deciding that run is dead and taking the thread.
+ *
+ * Above the route's own ceiling, and following it, because that ceiling is
+ * what bounds the run being waited for: a holder still there afterwards did
+ * not merely take its time, it failed to release, and the margin is for the
+ * `finally` that does the releasing. This is never reached in ordinary use —
+ * it is the difference between a stalled conversation and a leaked lock.
+ */
+export const THREAD_QUEUE_BUDGET_MS = RUN_HARD_TIMEOUT_MS + 15_000;
+
+/** How often a waiting message asks whether the run ahead of it is still alive. */
+export const THREAD_QUEUE_POLL_MS = intEnv('THREAD_QUEUE_POLL_MS', 1_000);
+
+/**
  * When the anti-stall nudge fires and the model decides to CONTINUE working
  * (it may call tools again), how many extra tool rounds it gets before a
  * final answer is forced.
