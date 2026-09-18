@@ -3300,8 +3300,35 @@ const CHANGE_LABEL: Record<RunLanguage, string> = {
   ru: 'Изменить',
   es: 'Cambiarlo',
 };
+/**
+ * Every stem in here is one the model has actually written on a live plan card.
+ * The list grows by evidence, and the 18 September entry cost a dead button.
+ *
+ * READ FROM THE BASE, thread 17528, an all-English conversation:
+ *
+ *   choices = ["ვეთანხმები", "Change it"]
+ *
+ * The change half canonicalised correctly to English. The approve half did not,
+ * because the whole list was the „amtkits / dadastur" family and „ვეთანხმები"
+ * is „I agree" — a different root the list had never met. It was passed through
+ * unchanged, which is what canonicalChoiceLabel does with anything it does not
+ * recognise.
+ *
+ * AND THE COSMETIC HALF IS THE SMALL HALF. approvalBelongsToThePlan decides
+ * that a plan card is on screen by asking whether any offered choice IS an
+ * approve label. With „ვეთანხმები" unrecognised that answer was false, and
+ * three things followed from it: pressing the button sent a word the server did
+ * not read as approval; a typed „კი" did not count either, because the bare-yes
+ * fallback is gated on the card being on screen; and choicesWithoutApproval
+ * could not strip a button it could not see. The owner had an approve button
+ * that could not approve — the same outcome as this morning's hydration P0,
+ * reached from the server side instead.
+ *
+ * Negation is safe without special handling: the pattern is anchored, so
+ * „არ ვეთანხმები" — „I do not agree" — cannot match it.
+ */
 const APPROVE_LIKE_RE =
-  /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|approve|i approve|подтвержда|apruebo|lo apruebo)/i;
+  /^(დამტკიც|დავამტკიც|ვამტკიც|დამადასტურ|დავადასტურ|ვადასტურ|დადასტურ|ვეთანხმ|დავეთანხმ|ვთანხმდებ|თანახმა|approve|i approve|agree|i agree|agreed|соглас|подтвержда|de acuerdo|apruebo|lo apruebo)/i;
 // Read live on 11 September: the model typed „შეცვლა" and the stem list had
 // „შევცვლ" but not „შეცვლ", so it slipped through. Every Georgian stem of
 // „change", with and without the ვ.
@@ -3334,6 +3361,29 @@ export function canonicalChoiceLabel(label: string, language: RunLanguage = 'ka'
   if (isApproveLabel(trimmed)) return APPROVE_LABEL[language];
   if (isChangeLabel(trimmed)) return CHANGE_LABEL[language];
   return trimmed;
+}
+
+/**
+ * A plan card whose approve half was not recognised, said out loud.
+ *
+ * The stem list will be short of a word again — it has been twice now, „შეცვლა"
+ * on 11 September and „ვეთანხმები" on the 18th — and both times the way we
+ * found out was a button that did nothing. The list cannot be completed by
+ * guessing, so the next gap should announce itself instead.
+ *
+ * The test is deliberately narrow: a PAIR of choices where one is a recognised
+ * change label and the other is recognised as nothing. That is the shape of a
+ * plan card with a missed approve word, and it is not the shape of an ordinary
+ * two-option question („call them myself" / „send an invitation"), which has no
+ * change label in it either.
+ */
+export function unrecognisedApproveHalf(choices: readonly string[]): string | null {
+  if (choices.length !== 2) return null;
+  const change = choices.filter(isChangeLabel);
+  if (change.length !== 1) return null;
+  const other = choices.find((c) => !isChangeLabel(c));
+  if (other === undefined || isApproveLabel(other)) return null;
+  return other;
 }
 
 /**
@@ -6273,6 +6323,15 @@ async function runToolLoop(
           choices = input.items
             .filter((i): i is string => typeof i === 'string')
             .map((item) => canonicalChoiceLabel(item, runLang(runId)));
+          const missed = unrecognisedApproveHalf(choices);
+          if (missed !== null) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[choices] plan card with an unrecognised approve half: ${JSON.stringify(missed)} ` +
+                `(run ${runId ?? 'none'}) — the button will not approve and a bare yes will not ` +
+                `either. Add the stem to APPROVE_LIKE_RE.`,
+            );
+          }
         }
       }
       if (block.name === 'set_task_result') {
