@@ -303,7 +303,32 @@ export async function fetchSignalStrength(
   }
 }
 
+/**
+ * Row 108, third cut: where the time goes INSIDE one call.
+ *
+ * The seat measures this tool at the boundary — one wall-clock number per call
+ * — and on 36d5f14 that number said the tail had collapsed (0 of 9 past 15 s,
+ * against 10 of 45 before) while the median had barely moved: 8,154 -> 7,593 ms.
+ * Their reading, and I agree with it, is that the row holds two costs and the
+ * alternation only touched one. A boundary number cannot tell them apart, and
+ * neither can my bench: the bench times the SQL, and the SQL is not the call.
+ *
+ * So the call now says how it spent itself. One line per search, no names, no
+ * query text — the durations and the sizes that explain them.
+ */
+function phaseLine(marks: readonly (readonly [string, number])[], total: number): string {
+  return marks.map(([name, ms]) => `${name} ${ms}`).join(' + ') + ` = ${total} ms`;
+}
+
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
+  const began = Date.now();
+  const marks: [string, number][] = [];
+  let at = began;
+  const mark = (name: string): void => {
+    const now = Date.now();
+    marks.push([name, now - at]);
+    at = now;
+  };
   try {
     let userKey: string;
     try {
@@ -311,6 +336,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     } catch {
       return { found: false, reason: 'user_phone_not_found' };
     }
+    mark('key');
 
     // Step 1: get direct contact keys from Neo4j (capped to avoid large payloads).
     // Use indexed lookup: try composite key first, then fall back to individual phones
@@ -374,6 +400,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       };
     }
 
+    mark('graph');
+
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     const blockedPhones = await getExcludedPhones(userId);
@@ -386,6 +414,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const friendPhones = [...new Set(friendKeys.flatMap((k) => k.split('-')))].filter(
       (p) => !isExcluded(p),
     );
+
+    mark('blocked');
 
     if (friendPhones.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
@@ -744,8 +774,16 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
 
+    mark('sql');
+
     const rows = result.rows.filter((r) => !isExcluded(r.phone));
-    if (rows.length === 0) return { found: false, reason: 'no_matches' };
+    if (rows.length === 0) {
+      console.log(
+        `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
+          `patterns ${n} bridges ${friendPhones.length} rows 0`,
+      );
+      return { found: false, reason: 'no_matches' };
+    }
 
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
@@ -784,6 +822,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           })),
         ),
       ]);
+    mark('decorate');
+    console.log(
+      `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
+        `patterns ${n} bridges ${friendPhones.length} rows ${rows.length}`,
+    );
 
     const shaped = rows.map((row) => {
       const fromLabel = (row.name !== null ? labelRoles.get(row.name) : undefined) ?? {};

@@ -1457,6 +1457,41 @@ export function planNamesPeople(plan: unknown): boolean {
 }
 
 /**
+ * Ticket 19 [4], enforced on the second door.
+ *
+ * The rule is one thread, one open goal, and its reason is written in
+ * create_task: „the buttons under a plan carry no goal on their face, so a
+ * person reading the thread cannot tell which goal they are approving — and one
+ * of those buttons writes to real people in their name." create_task was
+ * guarded. propose_task_plan takes a task_id and nobody checked whose thread it
+ * belonged to, so the rule held for goals the model CREATES and not for goals
+ * it REUSES — and reuse is the path it took on thread 17491, 18 September.
+ *
+ * Null thread_id passes: a goal opened by the engine or from an ask has no home
+ * chat to be away from. An undefined run thread passes for the same reason —
+ * a background run is not drawing a card for anybody.
+ */
+export function planCardIsForAnotherThread(
+  goalThreadId: number | null,
+  goalTitle: string | null,
+  runThreadId: number | undefined,
+): Record<string, unknown> | null {
+  if (goalThreadId === null || runThreadId === undefined) return null;
+  if (goalThreadId === runThreadId) return null;
+  return {
+    proposed: false,
+    error:
+      'This goal lives in another conversation, so its plan and its approve button must not ' +
+      'be drawn here — the owner would be approving a plan without the goal in front of them, ' +
+      'and approving sends messages in their name. Do NOT call this again for this task_id in ' +
+      'this thread. Tell the owner, in their language, that they already have this goal open ' +
+      'in another chat, name the goal, and list what you found here as leads.',
+    goal_lives_on_thread_id: goalThreadId,
+    goal_title: goalTitle,
+  };
+}
+
+/**
  * Ticket 20 row 101 — the plan is on the screen, so the reply must not be it.
  *
  * Tornike's word this morning after five examples: the saved plan is the only
@@ -4817,6 +4852,29 @@ async function executeToolCall(
             'გეგმაში არა. მერე ხელახლა გამოიძახე.',
         };
       }
+      // Ticket 19 [4], the door nobody guarded. That rule — one thread, one
+      // open goal, because „the buttons under a plan carry no goal on their
+      // face" — was enforced on create_task, which opens a second goal on its
+      // OWN thread. It was never enforced here, and this is the path the model
+      // actually took on 18 September.
+      //
+      // Thread 17491 held goal 5446 (electrician). A second need was typed in.
+      // The run called get_my_tasks, recognised the owner already had goal 5248
+      // (accountant, thread 17326) and proposed a plan for IT — which on the
+      // goal side is right, it avoided a duplicate — then put an approve button
+      // under it, in the electrician conversation. Approving there would have
+      // approved a plan belonging to another chat, and approval is what sends
+      // asks in the owner's name. Nothing went out; task_asks was empty.
+      //
+      // Reuse is the correct instinct and is not what is refused. What is
+      // refused is DRAWING THE CARD somewhere the goal does not live. The model
+      // is told where it lives so it can say so plainly.
+      const elsewhere = planCardIsForAnotherThread(
+        planTask?.thread_id ?? null,
+        planTask?.title ?? null,
+        threadId,
+      );
+      if (elsewhere !== null) return elsewhere;
       const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
