@@ -201,12 +201,16 @@ roles lifted off a web page nobody checked, and it is stored `is_public = true`
 and `is_matchable = true`: published to every user in the network, under
 account 501, as something he asserted about a real person.
 
-|        |                                                                                                                                                                                   |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route  | none yet — a single UPDATE against `contact_facts`, or an admin route if one is preferred                                                                                         |
-| Method | `UPDATE contact_facts SET is_public = false, is_matchable = false, canonical_value = NULL, updated_at = NOW() WHERE id = <the one row>`                                           |
-| Body   | the row is identified by `submitted_by_user_id = '501' AND field_type = 'headline' AND created_at = '2026-09-17T19:05:46.941Z'` — one row, and the timestamp is what makes it one |
-| Undo   | `UPDATE … SET is_public = true, is_matchable = true` on the same id. The value itself is never touched, so nothing is lost either way                                             |
+|        |                                                                                                                                                                                                                                                                                                                |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route  | `POST /admin/facts/5283/keep-private` — written for this. The existing `/unpublish` also sets `retracted_at`, and every read filters on it, including the one that shows the OWNER his own facts; retracting would have taken the fact away from his own assistant, which is the opposite of what he asked for |
+| Method | POST, admin bearer                                                                                                                                                                                                                                                                                             |
+| Body   | `{"reason":"..."}` — required, it IS the audit record                                                                                                                                                                                                                                                          |
+| Undo   | `UPDATE contact_facts SET is_public = true, is_matchable = true WHERE id = 5283`. The response carries both prior values, and the value itself is never touched                                                                                                                                                |
+
+**The row is fact 5283** — `headline`, `is_public` true, `is_matchable` true,
+confidence `mentioned`, written 19:05:46.941. Its two siblings, 5281 employer
+and 5282 occupation, were already private and are not touched.
 
 **What it deliberately does NOT do.** It does not delete the fact and it does
 not retract it. The founder's own addition, which nobody put to him: „but save
@@ -215,9 +219,11 @@ by HIS assistant for HIS searches — `getVisibleFacts` returns the owner's own
 rows whatever their visibility — and stops being reachable by anybody else's,
 which is what `is_matchable` controls.
 
-**Who should do it.** The tester's seat offered, and that is the better path:
-they hold the founder's authority directly and they are in the room with him.
-If it is still standing in the morning, it goes to Misho with this entry.
+**DONE, 18 September, on Misho's direct word.** He was shown this entry and
+answered „გააკეთე". That is the authorization the relayed yes was not: his own
+word, to me, in his own conversation. The tester's seat had offered to do it
+from theirs and then lost the app session, so it was still standing when he
+woke.
 
 **Urgency, honestly.** One row, public since 19:05. The exposure is that
 another user's search could match on it and surface a claim about a real
