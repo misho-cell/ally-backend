@@ -63,3 +63,41 @@ describe('languageOfConversation', () => {
     expect(languageOfConversation('ok', ['Necesito un abogado, ¿puedes ayudarme?'])).toBe('es');
   });
 });
+
+/**
+ * An engine event must never decide the run's language — thread 17393,
+ * 18 September.
+ *
+ * The owner typed his need in ENGLISH, the split gave it its own conversation,
+ * and the opening line landed there in English at 09:09:48. The plan turn then
+ * woke it with „[მოვლენა] მიზანი ახლახან შეინახა…" — the server's own
+ * scaffolding, Georgian by design because it is addressed to the model — and
+ * from 09:12:54 the plan card, the answer and the web block were all Georgian.
+ * The owner had not written a word of it.
+ *
+ * These test the RULE rather than the wiring: a message carrying a script
+ * signal wins as the latest, which is right for the owner's words and wrong
+ * for ours.
+ */
+describe('a server-written wake event is not the conversation', () => {
+  const WAKE = '[მოვლენა] მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს.';
+
+  it('would hijack the language if it were treated as the latest message', () => {
+    // The bug, stated as a test so nobody reintroduces it by "simplifying"
+    // the caller: the event alone reads as Georgian, whatever came before.
+    expect(languageOfConversation(WAKE, ['I need a dentist in Tbilisi for my child'])).toBe('ka');
+  });
+
+  it('reads the thread instead, once the event is set aside', () => {
+    // What the caller now passes on an engine run: the newest REAL message.
+    expect(
+      languageOfConversation('I opened this as a goal of its own.', [
+        'I need a dentist in Tbilisi for my child',
+      ]),
+    ).toBe('en');
+  });
+
+  it('leaves a Georgian thread Georgian, which is the common case', () => {
+    expect(languageOfConversation('ეს ცალკე მიზნად გავიტანე.', ['ფოტოგრაფი მჭირდება'])).toBe('ka');
+  });
+});

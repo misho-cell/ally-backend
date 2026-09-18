@@ -7452,11 +7452,38 @@ export async function processChat(
     .reverse()
     .map((m) => (typeof m.content === 'string' ? m.content : ''))
     .filter(Boolean);
-  const conversationLanguage = languageOfConversation(userMessage, spokenBefore);
+  /**
+   * An ENGINE EVENT never decides the language, and a split goal is why.
+   *
+   * 18 September, thread 17393. The owner typed his need in ENGLISH, the split
+   * gave it its own conversation, and my opening line landed there correctly
+   * in English at 09:09:48. Then the plan turn woke it at 09:11:22 with
+   * „[მოვლენა] მიზანი ახლახან შეინახა…" — the server's own scaffolding,
+   * Georgian by design because it is addressed to the model — and from 09:12:54
+   * the plan card, the answer and the web block were all Georgian. The owner
+   * had not written a word of it.
+   *
+   * The event carries a Georgian script signal, so it wins on its own as the
+   * „latest message" and the history is never consulted. But it is not the
+   * owner speaking: it is us, talking to the model, in the prompt's language.
+   *
+   * So on an engine run the newest REAL message decides instead. On a child
+   * thread that is the opening line, which the split wrote in the parent's
+   * language on purpose; on an ordinary goal thread it is the last reply,
+   * which is already in the owner's. Nothing in the owner's own runs changes.
+   *
+   * The seat found this and could not tell whose side the carrier was on. It
+   * is mine.
+   */
+  const decidesLanguage = ownerAbsent ? (spokenBefore[0] ?? userMessage) : userMessage;
+  const conversationLanguage = languageOfConversation(
+    decidesLanguage,
+    ownerAbsent ? spokenBefore.slice(1) : spokenBefore,
+  );
   if (conversationLanguage !== language) {
     // eslint-disable-next-line no-console
     console.log(
-      `[run-language] run ${runId}: „${userMessage.trim().slice(0, 20)}" reads as ` +
+      `[run-language] run ${runId}: „${decidesLanguage.trim().slice(0, 20)}" reads as ` +
         `${language}, the conversation is ${conversationLanguage} — using the conversation's`,
     );
     language = conversationLanguage;
