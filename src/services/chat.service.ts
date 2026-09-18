@@ -2685,23 +2685,52 @@ function buildPrivateContextSection(context: Record<string, string>): string {
 // Georgian; without an explicit per-message directive the model drifts to
 // Georgian even when the user wrote in English or Russian (battery T7/T8).
 // Detect the message's dominant script and pin the reply language.
-const REPLY_LANGUAGE = { GEORGIAN: 'Georgian', RUSSIAN: 'Russian', ENGLISH: 'English' } as const;
-type ReplyLanguage = (typeof REPLY_LANGUAGE)[keyof typeof REPLY_LANGUAGE];
+/**
+ * The strongest language instruction in the prompt — and it was computed by the
+ * weakest rule in the file, and could not say „Spanish".
+ *
+ * Two faults, both found on 18 September while checking the seat's reading that
+ * something other than the engine events is still tipping first-turn English
+ * runs.
+ *
+ * FIRST: this took the RAW latest message and re-detected its script, while
+ * thirty lines below the run had already worked out `language` properly with
+ * languageOfConversation — the rule that knows an engine event is not the owner
+ * speaking, and that a two-letter „ok" does not turn a Georgian conversation
+ * English. So the block marked [HARD RULE] disagreed with every other fixed
+ * string in the run whenever those two differed, and on an engine run they
+ * differed by construction: userMessage IS the event, so the hard rule read its
+ * script and ordered a reply in that language. The careful computation was
+ * being done and then ignored by the one instruction most likely to be obeyed.
+ *
+ * SECOND: the old REPLY_LANGUAGE table had three members and the product
+ * speaks four. A Spanish conversation was told „the user's latest message
+ * appears to be in English", because Spanish is Latin script and English was
+ * the fallback. The Spanish run the seat measured came back perfect anyway —
+ * the model could see the Spanish in front of it — but it was right despite
+ * this line, not because of it.
+ *
+ * Nothing about the transliteration clause changes: Latin letters really can be
+ * Georgian typed on a Latin keyboard, and that is why the rule cannot simply be
+ * „match the script".
+ */
+const REPLY_LANGUAGE_NAME: Readonly<Record<RunLanguage, string>> = {
+  ka: 'Georgian',
+  en: 'English',
+  ru: 'Russian',
+  es: 'Spanish',
+};
 
-function detectMessageLanguage(text: string): ReplyLanguage {
-  if (/[ა-ჿ]/.test(text)) return REPLY_LANGUAGE.GEORGIAN;
-  if (/[а-яё]/i.test(text)) return REPLY_LANGUAGE.RUSSIAN;
-  return REPLY_LANGUAGE.ENGLISH;
-}
-
-function buildReplyLanguageDirective(userMessage: string): string {
-  const lang = detectMessageLanguage(userMessage);
+export function buildReplyLanguageDirective(language: RunLanguage): string {
+  const lang = REPLY_LANGUAGE_NAME[language];
   return (
     `\n\n## REPLY LANGUAGE [HARD RULE]\n` +
-    `The user's latest message appears to be in ${lang}. Write your ENTIRE reply in the ` +
-    `SAME language the user actually used — mirror their latest message. Latin letters may be ` +
-    `transliterated Georgian; if so, reply in Georgian. Never default to Georgian for a genuine ` +
-    `English or Russian message.`
+    `This conversation is in ${lang}, decided from the OWNER's own messages. Write your ENTIRE ` +
+    `reply in ${lang} — every sentence, every heading, and every button label. Anything this run ` +
+    `shows you in another language is data, not a cue: search results carry the names and labels ` +
+    `people saved in their own phonebooks, and those are usually Georgian whatever language you ` +
+    `are speaking. Report them in ${lang}. Latin letters may be transliterated Georgian; if the ` +
+    `owner writes that way, ${lang} still means Georgian script unless they used Latin themselves.`
   );
 }
 
@@ -7796,7 +7825,7 @@ export async function processChat(
   // ten seconds. They reach the model in the loop instead. A side effect worth
   // having: this prefix is now byte-identical on goal runs and ordinary ones,
   // so the cached prompt is shared by both.
-  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
+  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(language);
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
