@@ -315,6 +315,14 @@ export async function fetchSignalStrength(
  *
  * So the call now says how it spent itself. One line per search, no names, no
  * query text — the durations and the sizes that explain them.
+ *
+ * `phones` is friendPhones.length: the contact PHONES the graph returned. It is
+ * NOT the bridge count — a bridge is one of those phones that turns out to have
+ * an account, and only that subset reaches the scan. On 501 that is 1,907
+ * phones and 305 bridges. This field was called `bridges` for forty minutes and
+ * in that time it convinced me I had benched the wrong account and sent the
+ * seat a correction that was itself wrong. A field named for something it does
+ * not count will do that to whoever reads it next.
  */
 function joinMarks(marks: readonly (readonly [string, number])[], sep: string): string {
   return marks.map(([name, ms]) => `${name} ${ms}`).join(sep);
@@ -790,7 +798,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (rows.length === 0) {
       console.log(
         `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
-          `patterns ${n} bridges ${friendPhones.length} rows 0`,
+          `patterns ${n} phones ${friendPhones.length} rows 0`,
       );
       return { found: false, reason: 'no_matches' };
     }
@@ -871,7 +879,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     console.log(
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
         `decorate: ${concurrentLine(sideMarks)} | ` +
-        `patterns ${n} bridges ${friendPhones.length} rows ${rows.length}`,
+        `patterns ${n} phones ${friendPhones.length} rows ${rows.length}`,
     );
 
     const shaped = rows.map((row) => {
