@@ -8,7 +8,13 @@ import { emitThreadUpdated } from './sse.service';
 const TITLE_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
 const TITLE_MAX_TOKENS = 30;
 const TITLE_TIMEOUT_MS = 10_000;
-const TITLE_MAX_WORDS = 4;
+/**
+ * Six, not four. Row 143: four words cannot hold „3 movers, Vake, 25 Sep", and
+ * the details it has to drop to fit are exactly the ones that tell one goal
+ * from another. TITLE_MAX_CHARS still bounds the line at 48, so this buys room
+ * for content rather than for rambling.
+ */
+const TITLE_MAX_WORDS = 6;
 const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
 // The language is DETECTED server-side and named explicitly — asking the
@@ -23,7 +29,12 @@ function detectTitleLanguage(text: string): string {
 
 function buildTitlePrompt(language: string): string {
   return (
-    `You write a 2-4 word conversation title from the exchange below. Write the title in ` +
+    `You write a short conversation title, at most six words, from the exchange below. ` +
+    `KEEP THE DETAILS THAT TELL THIS APART from another request of the same kind — a ` +
+    `quantity, a date, a time, a district or street, a named person or firm. „Movers for ` +
+    `Flat" is a bad title because every removal is that; „3 movers, Vake, 25 Sep" is a good ` +
+    `one because only this one is. Drop the filler words, never the identifying ones. ` +
+    `Write the title in ` +
     `${language} — ONLY ${language}, never mix languages. Never answer the question, never ` +
     'apologize, never refuse: whatever the content, output ONLY a short subject title using ' +
     'real, correctly spelled words that appear in the exchange — never invent or distort a ' +
@@ -56,10 +67,20 @@ const REFUSAL_TITLE_RE =
 // habit from its training, not an instruction it was given. Hyphens are
 // legitimately allowed (real title words can contain one), so
 // TITLE_DISALLOWED_CHARS lets "---" through untouched, and it then counts
-// as one of the 4 words the cap keeps. A token with no letter in it is
+// as one of the words the cap keeps. A token that is pure punctuation is
 // never a real title word — same fix as the label parser's emoji filter,
 // same root cause (a model/user token that's pure decoration, not content).
-const HAS_LETTER_RE = /[\p{Script=Georgian}\p{Script=Latin}]/u;
+//
+// ROW 143, 18 September: this said „no LETTER" and threw away every NUMBER.
+// The seat's goal — „I need 3 movers on 25 September at 9:00 for a 2-room flat
+// in Vake" — settled as „Movers for Flat": the 3, the date, the time and the
+// district all gone, while the plan underneath kept every one of them.
+//
+// The 3 and the 25 are not decoration. They are the whole of what tells this
+// goal apart from the next removal in the owner's list, which is the one line
+// he reads there. „---" is still dropped, because it has neither a letter nor
+// a digit; a bare number survives, because it is content.
+const HAS_CONTENT_RE = /[\p{Script=Georgian}\p{Script=Latin}0-9]/u;
 
 /**
  * Strip the generator's label and quotes/markdown/emoji, collapse whitespace,
@@ -78,7 +99,7 @@ export function sanitizeTitle(raw: string): string | null {
     .trim()
     .split(' ')
     .filter(Boolean)
-    .filter((w) => HAS_LETTER_RE.test(w))
+    .filter((w) => HAS_CONTENT_RE.test(w))
     .slice(0, TITLE_MAX_WORDS);
   const title = words.join(' ').replace(/[.:,;]+$/, '');
   if (title.length < 2) return null;

@@ -8,8 +8,30 @@ describe('sanitizeTitle', () => {
     expect(sanitizeTitle('**სანტექნიკის რჩევა**')).toBe('სანტექნიკის რჩევა');
   });
 
-  it('caps at four words', () => {
-    expect(sanitizeTitle('one two three four five six')).toBe('one two three four');
+  it('caps at six words', () => {
+    // Four until 18 September. Row 143: four words cannot hold „3 movers,
+    // Vake, 25 Sep", and what they drop to fit is exactly what tells one goal
+    // from the next in the owner's list. TITLE_MAX_CHARS still bounds it at 48.
+    expect(sanitizeTitle('one two three four five six seven')).toBe('one two three four five six');
+  });
+
+  /**
+   * Row 143, the half that was mine rather than the generator's.
+   *
+   * The seat's goal — „I need 3 movers on 25 September at 9:00 for a 2-room
+   * flat in Vake" — settled as „Movers for Flat". The plan underneath kept the
+   * number, the date, the time and the district; the title kept none of them.
+   *
+   * The filter here said „drop any token with no LETTER in it", written to kill
+   * a markdown „---" the cheap model sometimes emits. It also killed every
+   * number, which is the one kind of word that tells one removal from another.
+   */
+  it('keeps a bare number, because a number is what tells two goals apart', () => {
+    expect(sanitizeTitle('3 movers Vake 25 Sep')).toBe('3 movers Vake 25 Sep');
+  });
+
+  it('still drops the markdown separator it was written to drop', () => {
+    expect(sanitizeTitle('ბათუმის ფოტოგრაფი --- კითხვა')).toBe('ბათუმის ფოტოგრაფი კითხვა');
   });
 
   it('drops trailing punctuation and collapses whitespace', () => {

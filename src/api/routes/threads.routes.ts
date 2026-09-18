@@ -70,6 +70,44 @@ const MIN_PARTIAL_FLUSH_CHARS = 80;
 // The provisional (pre-generator) title keeps only the message's first words.
 const PROVISIONAL_TITLE_WORDS = 6;
 
+/**
+ * Row 143, first stage. „I need 3 movers on 25 September at 9:00…" became
+ * „I need 3 movers on 25" — the cut landed between a number and its month, and
+ * the owner read a 25 that means nothing.
+ *
+ * A first-words cut cannot be made clever and should not be: this line exists
+ * so the chat list is never blank, and the real title arrives from the
+ * generator seconds later. What it CAN do is not end on a word that is plainly
+ * waiting for the next one — a dangling preposition, or a bare number with
+ * nothing to attach to.
+ */
+const DANGLING_TAIL = new Set([
+  'on',
+  'at',
+  'for',
+  'in',
+  'of',
+  'to',
+  'with',
+  'from',
+  'by',
+  'the',
+  'a',
+  'an',
+  'and',
+]);
+
+export function provisionalTitle(message: string): string {
+  const words = message.split(/\s+/).filter(Boolean).slice(0, PROVISIONAL_TITLE_WORDS);
+  while (words.length > 1) {
+    const last = words[words.length - 1] ?? '';
+    const dangling = DANGLING_TAIL.has(last.toLowerCase()) || /^[0-9]+$/.test(last);
+    if (!dangling) break;
+    words.pop();
+  }
+  return words.join(' ');
+}
+
 // Short, phone-safe preview for the push body. Scrub first (the reply is already
 // scrubbed for SSE, but this path is independent), collapse whitespace, truncate.
 const PUSH_PREVIEW_MAX_CHARS = 120;
@@ -467,8 +505,7 @@ threadsRouter.post(
         thread.type === 'regular' &&
         (thread.title === null || thread.title === DEFAULT_NEW_THREAD_TITLE);
       if (needsTitle) {
-        const provisional = message.split(/\s+/).slice(0, PROVISIONAL_TITLE_WORDS).join(' ');
-        await updateThreadTitle(threadId, provisional.slice(0, MAX_TITLE_CHARS));
+        await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
       }
 
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
