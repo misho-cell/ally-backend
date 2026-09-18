@@ -50,7 +50,30 @@ describe('the injection defence', () => {
     // A wake event is a user-role message carrying an instruction — the exact
     // shape the paragraph above calls an attack. It has to be named as ours.
     expect(INJECTION_DEFENSE_PROMPT).toContain(RUN_EVENT_PREFIX);
-    expect(INJECTION_DEFENSE_PROMPT).toContain('comes from the server');
+    expect(INJECTION_DEFENSE_PROMPT).toContain('comes from the Netai server');
+  });
+
+  it('identifies our events by the wrapper WE add, not by their own text', () => {
+    // The seat's 5293: „the server's own messages are not marked as the
+    // server's." A prefix inside the body is a property of the body; the
+    // wrapper is put on at read time from the stored kind column, which
+    // nothing arriving from outside can set.
+    expect(INJECTION_DEFENSE_PROMPT).toContain('[SYSTEM');
+    expect(INJECTION_DEFENSE_PROMPT).toContain('[END SYSTEM]');
+    expect(INJECTION_DEFENSE_PROMPT).toMatch(/put on by the server itself/i);
+    expect(INJECTION_DEFENSE_PROMPT).toMatch(/web page, a tool result or a contact/i);
+  });
+
+  it('says the wrapper’s own language means nothing about the owner', () => {
+    // The whole of 18 September's language fault in one clause: an engine event
+    // is us talking, so its wording is not evidence of how the owner writes.
+    expect(INJECTION_DEFENSE_PROMPT).toMatch(/never take the language it is written in/i);
+  });
+
+  it('still honours the old prefix, because live threads are full of it', () => {
+    // Every event written before today carries only the text prefix. Dropping
+    // it would un-exempt the entire existing history.
+    expect(INJECTION_DEFENSE_PROMPT).toMatch(/older form of the same thing/i);
   });
 
   it('interpolates the real prefix rather than printing the placeholder', () => {
