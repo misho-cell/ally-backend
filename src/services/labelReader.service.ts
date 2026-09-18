@@ -302,9 +302,62 @@ export interface OrgWordStat {
  */
 const PLAIN_WORD = /^[\p{L}\p{N}]+$/u;
 
+/**
+ * Row 108, fifth cut — this query is the flat cost every second-degree search
+ * pays, and it is asking the same questions over and over.
+ *
+ * Measured, not guessed. The per-lookup timings shipped in 69e43e2 put
+ * `decorate` at 1.2-3.1 s on every call, and inside it `labels` was the slowest
+ * of the five lookups in EVERY line — and within a few milliseconds of the
+ * whole phase each time:
+ *
+ *   decorate: touched 164 / states 229 / excl 450 / signal 641 / labels 1629
+ *   decorate: touched 149 / states 198 / excl 441 / signal 620 / labels 1203
+ *   decorate: touched 151 / excl 443 / signal 600 / states 1288 / labels 2437
+ *
+ * `labels` is rolesFromLabels, and rolesFromLabels is this query. On the live
+ * base it costs 586 ms for 20 words and 1,020 ms for 40 (the ceiling the
+ * caller asks), because each word joins the 8.4M-row UserAlias on a
+ * leading-wildcard LIKE plus a regex — 43,353 rows out of a nested loop for
+ * forty words.
+ *
+ * WHAT IT ANSWERS DOES NOT CHANGE BETWEEN TWO SEARCHES A MINUTE APART. These
+ * are corpus statistics — how many people in the whole base carry this word in
+ * a label, and how many of them lead with it. They move when somebody edits a
+ * phonebook, not when somebody runs a search. Every second-degree call asks
+ * about the trade and company words in its own thirty results, and on one base
+ * those words repeat constantly.
+ *
+ * So they are cached per word, ABSENCE INCLUDED. A word the join finds nothing
+ * for costs the same scan as one it finds plenty for, and „too few aliases to
+ * say" is just as durable an answer as a count — caching only the hits would
+ * leave exactly the expensive half uncached.
+ */
+const ORG_WORD_CACHE_TTL_MS = Number(process.env.ORG_WORD_CACHE_TTL_MINUTES ?? 360) * 60_000;
+/** Bounded so a long-lived process cannot grow a dictionary of the whole base. */
+const ORG_WORD_CACHE_MAX = 5_000;
+const orgWordCache = new Map<string, { stat: OrgWordStat | null; at: number }>();
+
+/** Exported for the tests, which must not depend on another test's warm cache. */
+export function clearOrgWordCache(): void {
+  orgWordCache.clear();
+}
+
 export async function orgWordStats(words: string[]): Promise<Map<string, OrgWordStat>> {
-  const asked = words.filter((word) => PLAIN_WORD.test(word));
-  if (asked.length === 0) return new Map();
+  const asked = [...new Set(words.filter((word) => PLAIN_WORD.test(word)))];
+  const out = new Map<string, OrgWordStat>();
+  const now = Date.now();
+  const missing: string[] = [];
+  for (const word of asked) {
+    const hit = orgWordCache.get(word);
+    if (hit !== undefined && now - hit.at < ORG_WORD_CACHE_TTL_MS) {
+      if (hit.stat !== null) out.set(word, hit.stat);
+    } else {
+      missing.push(word);
+    }
+  }
+  if (missing.length === 0) return out;
+
   const result = await query<{ word: string; carriers: string; leads: string }>(
     `SELECT w.word,
             COUNT(DISTINCT ua.phone) AS carriers,
@@ -316,15 +369,27 @@ export async function orgWordStats(words: string[]): Promise<Map<string, OrgWord
        ON lower(ua.alias) LIKE '%' || w.word || '%'
       AND lower(ua.alias) ~ ('(^|[^[:alnum:]])' || w.word || '([^[:alnum:]]|$)')
      GROUP BY w.word`,
-    [asked],
+    [missing],
     LABEL_QUERY_TIMEOUT_MS,
   );
-  return new Map(
-    result.rows.map((row) => {
-      const carriers = Number(row.carriers);
-      return [row.word, { carriers, leadShare: carriers > 0 ? Number(row.leads) / carriers : 0 }];
-    }),
-  );
+  // Written only AFTER the query returns. A throw leaves the cache untouched,
+  // so a failed call is retried next time rather than remembered as „nothing".
+  if (orgWordCache.size + missing.length > ORG_WORD_CACHE_MAX) orgWordCache.clear();
+  const found = new Set<string>();
+  for (const row of result.rows) {
+    const carriers = Number(row.carriers);
+    const stat: OrgWordStat = {
+      carriers,
+      leadShare: carriers > 0 ? Number(row.leads) / carriers : 0,
+    };
+    out.set(row.word, stat);
+    orgWordCache.set(row.word, { stat, at: now });
+    found.add(row.word);
+  }
+  for (const word of missing) {
+    if (!found.has(word)) orgWordCache.set(word, { stat: null, at: now });
+  }
+  return out;
 }
 
 /** Aliases sampled per word when asking whether the word is a company. */

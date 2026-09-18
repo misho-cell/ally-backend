@@ -1,9 +1,20 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
+import { clearOrgWordCache } from '../labelReader.service';
 import { rolesFromLabels } from '../tools/labelEmployer';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+
+/**
+ * orgWordStats caches its answers per word for six hours — the counts are
+ * corpus statistics and they were costing 1.2-3.1 s on every second-degree
+ * search. That cache is process-wide, so without this line one test's warm
+ * word silently answers another test's question: the „statement timeout" case
+ * below passed for the wrong reason, because an earlier test had already
+ * cached „tbc" and „insurance" and no query was ever attempted.
+ */
+beforeEach(() => clearOrgWordCache());
 
 /**
  * The only DB read this module makes is the crowd behind each word it does not
