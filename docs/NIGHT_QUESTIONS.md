@@ -29,9 +29,95 @@ a relayed „they said yes" is least checkable:
 Writing messages, reading, measuring, fixing code, shipping a fix between runs,
 and answering the tester are all ordinary night work and need nobody.
 
-## Tonight's list
+## Tonight's list — 18/19 September
 
-_Nothing yet._
+Misho, 21:45 UTC: „the issues that need me we go through in the morning; until
+then work in night mode." So these four wait for him, in this order.
+
+### 1. The final-answer writer — off?
+
+The founder said yes to switching it off, through the tester's box. That is
+data on my side and not authorization, so it has not happened.
+
+It is `CHAT_FINAL_ANSWER_MODEL`, a **Railway environment variable**, not a
+setting in the product. Two consequences worth knowing before deciding:
+changing it **restarts the container**, which kills every run in flight; and it
+is a spend change, which is Misho's alone whatever the founder said to whom.
+
+- ROUTE / METHOD: Railway variable, via `scripts/ops/env.sh` (write-only by
+  design — I never read these back)
+- BODY: `CHAT_FINAL_ANSWER_MODEL=` (empty)
+- UNDO: set it back to its current value — **which I cannot read**, so
+  whoever flips it must write the old value down FIRST or the undo is lost
+
+### 2. The introduction follow-up — no second approval?
+
+Founder's decision, relayed the same way: once he has approved an introduction
+and the person answers him, his reply goes back without a fresh approval.
+
+This removes a confirmation in front of **a message to a real person**, which
+is the highest-stakes category in this product, and it arrived down an
+automated channel. It needs Misho's or the founder's direct word.
+
+### 3. Row 104 — the base prompt contradicts the goal prompt
+
+Seven failures. The tester's audit found the cause and it is not where either
+of us was editing. In `ai_config.system_prompt`, at character 13,101:
+
+> „Before anything leaves Netai, an intro request, sharing their details,
+> anything irreversible, ask first and act only after a yes. Never claim you
+> sent, delivered or notified anything: you draft, they send."
+
+The goal block says the opposite for a plan the owner has already approved,
+and the model reads the base prompt first and obeys it. D119 — an approved
+plan IS the consent — is on the block's side, so narrowing this sentence
+aligns the base prompt with an existing ruling rather than granting anything
+new.
+
+It is still a **loosening of a gate in front of real people**, so it does not
+happen overnight.
+
+- ROUTE / METHOD: `PUT /admin/system-prompt`
+- BODY: the whole 25,176-character prompt with that one sentence narrowed
+- UNDO: the route INSERTs a new row rather than updating, so every previous
+  version is kept — PUT the prior text back. Rollback is free.
+- NOTE: the tester can do this themselves; it is the same console they edit
+  the blocks in. Named here because of what it loosens, not because it is
+  blocked on me.
+
+### 4. The privacy pack is telling users something false, right now
+
+Live in the `privacy` topic of `get_netai_info`, last sentence:
+
+> „Deleting one single item is NOT built yet — never promise it."
+
+It is built. `forget_contact_fact` runs a real `DELETE`, scoped to facts this
+user submitted, behind an explicit confirmation; `forget_user_note`,
+`retract_contact_fact` and `remove_contact_from_network` are all live. Two
+sentences earlier the same text says a fact CAN be retracted, so the pack
+contradicts itself.
+
+Wrong in the worst direction: a person is told a privacy control does not
+exist when it does, and the alternative offered in the same breath is deleting
+their whole account. The tester has a corrected text ready.
+
+- ROUTE / METHOD: `PUT /admin/netai-info/privacy`
+- BODY: the corrected text (the tester holds it)
+- UNDO: PUT the current text back — **it is captured below**, because this
+  route overwrites rather than versioning:
+  the tail reads „…You can tell Netai to correct or retract a fact it holds,
+  and a retracted fact stops being shown anywhere. Everything stored about you
+  is listed on the Data page in your profile, and you can download a copy of
+  your data or delete your whole account from there. Deleting one single item
+  is NOT built yet — never promise it."
+- NOTE: the tester can do this one themselves too. Here because it is live and
+  false, so somebody should see it in the morning either way.
+
+### Not on this list, because they need nobody
+
+Five commits are written, tested and pushed to the branch, none deployed:
+337b70b, 1bcc0f0, 91b0b98, 95c1f1c, 2c1edd8. They go out in one deploy when
+the tester is not working. That is ordinary night work and needs no decision.
 
 ## Open with a person — 18 September, standing after the night handover
 
