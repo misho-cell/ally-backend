@@ -242,6 +242,53 @@ function join(words: readonly string[]): string | undefined {
  * One `orgSizes` read for every word of every label together. The per-word
  * shape timed the target route out once already and must not come back.
  */
+/**
+ * Row 108, sixth cut — a decoration may not cost more than the search.
+ *
+ * This is the second thing I have tried on this cost and the first one did not
+ * work, so the numbers matter more than the reasoning. Caching the word counts
+ * (3ba0dd3) was supposed to make `labels` collapse after the first search. It
+ * did not. Live, on the build that has the cache:
+ *
+ *   rows 30  labels 2904 / 2071 / 4615 / 2000 / 4114 / 1786 ms
+ *   rows  2  labels  505 ms
+ *   rows  5  labels  595 ms
+ *
+ * The cost tracks the number of RESULTS, not repeated words — thirty results
+ * are thirty different people with thirty different labels, and the words in
+ * them mostly do not recur between searches. I predicted on the board that this
+ * would halve and it did not move; the cache was the wrong instrument.
+ *
+ * What is true regardless of which words arrive: this is a DECORATION. It fills
+ * employer and title from the row's own label where no fact answered. Paying
+ * two to four and a half seconds of a seven-second search for it is a bad
+ * trade at any hit rate, and the module already knows how to do without it —
+ * the catch below drops every word that needed the crowd and keeps the ones the
+ * dictionaries answer.
+ *
+ * So the wait is bounded and the degrade is the one that already existed. The
+ * query is NOT cancelled when the budget runs out: it finishes in the
+ * background and writes its answers into the word cache, so the next search
+ * gets for nothing what this one could not wait for. That is what makes the
+ * cache worth keeping after it failed on its own.
+ */
+const ORG_WORD_BUDGET_MS = Number(process.env.ORG_WORD_BUDGET_MS ?? 700);
+
+function withinBudget<T>(work: Promise<T>): Promise<T> {
+  // The loser keeps running on purpose (it fills the cache), so its eventual
+  // rejection must not surface as an unhandled one.
+  work.catch(() => undefined);
+  return Promise.race([
+    work,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`org word counts over ${ORG_WORD_BUDGET_MS} ms budget`)),
+        ORG_WORD_BUDGET_MS,
+      ).unref?.(),
+    ),
+  ]);
+}
+
 export async function rolesFromLabels(
   rows: readonly LabelRoleInput[],
 ): Promise<Map<string, LabelRoles>> {
@@ -269,10 +316,11 @@ export async function rolesFromLabels(
   let sizes = new Map<string, OrgWordStat>();
   if (unknown.length > 0) {
     try {
-      sizes = await orgWordStats(unknown);
+      sizes = await withinBudget(orgWordStats(unknown));
     } catch (err) {
       // No count, no guess. The dictionary words still answer; every word that
       // needed the crowd is dropped, and the row keeps the empty field it had.
+      // eslint-disable-next-line no-console
       console.error('rolesFromLabels org sizes failed:', (err as Error).message);
     }
   }

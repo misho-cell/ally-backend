@@ -177,6 +177,52 @@ describe('when the count cannot be read', () => {
   });
 });
 
+/**
+ * Row 108, sixth cut — this decoration was costing more than the search.
+ *
+ * Live, on the build that already had the word cache: `labels` was 2,904 /
+ * 2,071 / 4,615 / 2,000 / 4,114 / 1,786 ms on searches returning 30 rows, and
+ * 505 / 595 ms on searches returning 2 and 5. The cost follows the number of
+ * RESULTS, not repeated words, so caching did not touch it.
+ *
+ * The wait is bounded now and the degrade is the one above, which already
+ * existed: dictionary words still answer, crowd-counted words are dropped.
+ */
+describe('when the count takes longer than the search can afford', () => {
+  const NEVER = new Promise(() => undefined);
+
+  it('gives up waiting and still answers from the dictionary', async () => {
+    process.env.ORG_WORD_BUDGET_MS = '20';
+    jest.resetModules();
+    const { rolesFromLabels: fresh } = (await import('../tools/labelEmployer')) as {
+      rolesFromLabels: typeof rolesFromLabels;
+    };
+    mockQuery.mockReturnValue(NEVER as never);
+
+    const roles = await fresh([{ label: 'ნინო ახალგაზრდული ასოციაცია', ...NO_FACTS }]);
+
+    expect(roles.get('ნინო ახალგაზრდული ასოციაცია')?.employer).toContain('ასოციაცია');
+    delete process.env.ORG_WORD_BUDGET_MS;
+    jest.resetModules();
+  });
+
+  it('returns rather than hanging, which is the whole point', async () => {
+    process.env.ORG_WORD_BUDGET_MS = '20';
+    jest.resetModules();
+    const { rolesFromLabels: fresh } = (await import('../tools/labelEmployer')) as {
+      rolesFromLabels: typeof rolesFromLabels;
+    };
+    mockQuery.mockReturnValue(NEVER as never);
+
+    const began = Date.now();
+    await fresh([{ label: 'Luka TBC Insurance', ...NO_FACTS }]);
+
+    expect(Date.now() - began).toBeLessThan(1000);
+    delete process.env.ORG_WORD_BUDGET_MS;
+    jest.resetModules();
+  });
+});
+
 describe('nothing to read', () => {
   it('asks the database nothing when no row needs it', async () => {
     expect((await rolesFromLabels([])).size).toBe(0);
