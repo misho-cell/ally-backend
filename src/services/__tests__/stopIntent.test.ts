@@ -26,9 +26,62 @@ describe('looksLikeStopRequest', () => {
     }
   });
 
-  it('reads a stop that names the goal, however long the sentence', () => {
+  // Row 215 took „however long the sentence" out of this name: a stop that
+  // names its goal is still an instruction, and instructions are short. Both
+  // of these are well inside the bound (43 and 38 characters).
+  it('reads a stop that names the goal', () => {
     expect(looksLikeStopRequest('შეაჩერე ეს დავალება, აღარ მჭირდება, მადლობა')).toBe(true);
     expect(looksLikeStopRequest('stop this goal, it was only a test run')).toBe(true);
+  });
+
+  /**
+   * Ticket 20 row 215 — „no goal" is not naming a goal, and „stop using
+   * Netai" is not stopping one.
+   *
+   * The seat, 18 September, threads 18316 and 18317, the same sentence twice:
+   *
+   *   „Two quick things, no goal: what can you not do for me, and what
+   *    happens to my contacts if I stop using Netai."
+   *   → „There is no goal to stop in this conversation."  593 ms, no tools
+   *
+   * Both halves fired and neither meant what the rule thought. Their control
+   * run — the same sentence without „no goal" — did NOT trigger it, which is
+   * what proved the phrase was the cause rather than the wording around it.
+   */
+  it('does not read a long sentence that merely mentions a goal and a stop', () => {
+    const asked =
+      'Two quick things, no goal: what can you not do for me, and what happens ' +
+      'to my contacts if I stop using Netai.';
+    expect(looksLikeStopRequest(asked)).toBe(false);
+    // Their control: no „goal" in it at all, and it must stay false.
+    expect(
+      looksLikeStopRequest(
+        'Two quick things: what can you not do for me, and what happens to my ' +
+          'contacts if I stop using Netai.',
+      ),
+    ).toBe(false);
+  });
+
+  it('does not read a NEGATED goal as a goal named, even when it is short', () => {
+    // „no goal needed, just stop" is somebody saying there is no goal here.
+    expect(looksLikeStopRequest('no goal, but can you stop guessing my city')).toBe(false);
+    expect(looksLikeStopRequest('not a goal — stop suggesting people I know')).toBe(false);
+    expect(looksLikeStopRequest('აქ მიზანი არ არის, გააჩერე ვარაუდები ჩემს ქალაქზე')).toBe(false);
+  });
+
+  /**
+   * The bound is a trade and this is the side of it that loses. A genuine
+   * stop written at length now goes to the model instead of being answered
+   * from code — which is what happened for months before this fast path
+   * existed. A miss costs seconds; a false positive closes a goal somebody
+   * wanted and throws away the answer they were waiting for.
+   */
+  it('hands a LONG genuine stop back to the model rather than guessing', () => {
+    const long =
+      'please stop the goal about finding movers, I have already found someone ' +
+      'myself and do not need it any more';
+    expect(long.length).toBeGreaterThan(60);
+    expect(looksLikeStopRequest(long)).toBe(false);
   });
 
   /**

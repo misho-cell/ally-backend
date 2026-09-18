@@ -46,8 +46,71 @@ const NAMES_THE_GOAL = /(მიზან|დავალებ|goal|task)/iu;
  */
 const BARE_STOP_MAX_CHARS = 15;
 
+/**
+ * Ticket 20 row 215 — „no goal" is not naming a goal, and „stop using Netai"
+ * is not stopping one.
+ *
+ * The seat, 18 September, threads 18316 and 18317, twice:
+ *
+ *   „Two quick things, no goal: what can you not do for me, and what happens
+ *    to my contacts if I stop using Netai."
+ *   → „There is no goal to stop in this conversation."   593 ms, no tool calls
+ *
+ * Both halves of the rule fired and neither meant what it thought. The stop
+ * verb is in „stop USING NETAI" — leaving the product, not ending a goal. The
+ * goal word is in „NO goal" — the owner saying there is no goal, which is the
+ * opposite of naming one. Their control run removing „no goal" proved the
+ * mechanism exactly: the line fell straight through to the model.
+ *
+ * This is the failure the comment above already names — „stop SOMETHING ELSE"
+ * — and the bare branch got a length bound for precisely that reason. The
+ * named-goal branch never got one, so ANY long sentence carrying both words
+ * was read as a command and answered from code before the model saw it.
+ *
+ * TWO BOUNDS, AND WHY EACH ONE.
+ *
+ * A typed stop is an instruction, and instructions are short. The real ones:
+ *
+ *   „გააჩერე"                                     7
+ *   „გააჩერე ეს მიზანი, ტესტი იყო."              29
+ *   „Stop this goal please, it was only a test"   41
+ *   the false positive                           110
+ *
+ * Sixty separates them with room on both sides. A genuine stop written longer
+ * than that goes to the model instead, which is what happened for months
+ * before this fast path existed — a miss costs seconds, and a false positive
+ * closes a goal somebody wanted and throws away the answer.
+ *
+ * And a NEGATED goal word is not a goal named, at any length. „no goal",
+ * „მიზანი არ", „არა მიზანი" — a person writing „no goal needed, just tell
+ * me…" is asking a question, and answering it with „there is no goal to stop"
+ * is a non-answer with no sign that anything was misunderstood.
+ */
+const NAMED_STOP_MAX_CHARS = 60;
+
+/**
+ * „no goal", „not a task", „არ არის მიზანი" — the word present and denied.
+ *
+ * Georgian negates AFTER the noun in both senses, so position alone cannot
+ * tell them apart — the existing test caught my first attempt within the
+ * minute:
+ *
+ *   „მიზანი არ არის"                    there IS no goal        -> negated
+ *   „დავალება, აღარ მჭირდება"           the task, not NEEDED    -> a real stop
+ *
+ * What separates them is the copula. „არის" denies that the thing exists;
+ * every other verb denies something about a thing that does. So the trailing
+ * form requires „არ/აღარ არის" and nothing looser, and the leading English
+ * forms („no goal", „not a task") need no such care.
+ */
+const GOAL_NEGATED =
+  /(\bno\s+(?:goal|task)\b|\bnot\s+a\s+(?:goal|task)\b|(?:არა?|აღარ)\s+(?:არის\s+)?(?:მიზან|დავალებ)|(?:მიზან|დავალებ)\S*\s+(?:არ|აღარ)\s+არის)/iu;
+
 export function looksLikeStopRequest(message: string): boolean {
   const text = message.trim();
   if (!STOP_VERB.test(text)) return false;
-  return NAMES_THE_GOAL.test(text) || text.length <= BARE_STOP_MAX_CHARS;
+  if (text.length <= BARE_STOP_MAX_CHARS) return true;
+  if (text.length > NAMED_STOP_MAX_CHARS) return false;
+  if (GOAL_NEGATED.test(text)) return false;
+  return NAMES_THE_GOAL.test(text);
 }
