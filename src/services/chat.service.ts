@@ -4124,6 +4124,47 @@ function noteNothingToSendToday(runId: string | undefined): void {
   if (runId) runNothingToSend.add(runId);
 }
 
+/**
+ * The run that just approved a plan must not also write to the plan's people —
+ * day one is already queued to do exactly that, behind the reply.
+ *
+ * The seat read the doubles off task_asks: the same person sent the same
+ * question twice, twenty to forty seconds apart, off one approval, on two
+ * consecutive days. The tool log says why, and it is worse than one run
+ * repeating itself. Goal 5580, 18 September:
+ *
+ *   12:52:08.012  approve_task_plan   run 64e7045a
+ *   12:52:09.517  approve_task_plan   run a602665f   <- a SECOND run, 1.5 s later
+ *   12:52:39.101  ask_contact …0044   run a602665f
+ *   12:52:41.501  ask_contact …0942   run a602665f
+ *   12:53:19.611  ask_contact …0044   run c4d9e937   <- day one, the same two
+ *   12:53:21.616  ask_contact …0942   run c4d9e937
+ *
+ * approve_task_plan's own result already says it in words: „do NOT call
+ * ask_contact in this turn — day one starts by itself right behind your reply".
+ * The model called it anyway, which is the oldest lesson in this file: a
+ * sentence in a tool result is a request, and a request is not a wall.
+ *
+ * So it is a wall now. This does not touch the OTHER half — one approval
+ * starting two runs at all — which is still open and is the seat's first
+ * question. What it does is make that half stop reaching real people: whether
+ * one run approves or three do, none of them writes to anybody, because day
+ * one is the only path that sends and it is guarded against running twice.
+ */
+const runApprovedAPlan = new Set<string>();
+
+function noteApprovedAPlan(runId: string | undefined): void {
+  if (runId) runApprovedAPlan.add(runId);
+}
+
+/** Read and forget, so the flag cannot leak into the next run on this thread. */
+function takeApprovedAPlan(runId: string | undefined): boolean {
+  if (runId === undefined) return false;
+  const flagged = runApprovedAPlan.has(runId);
+  runApprovedAPlan.delete(runId);
+  return flagged;
+}
+
 /** Read and forget, so a run's flag can never leak into the next one. */
 function takeNothingToSendToday(runId: string): boolean {
   const flagged = runNothingToSend.has(runId);
@@ -4720,6 +4761,21 @@ async function executeToolCall(
       const task = Number.isFinite(taskId) ? await getTaskById(taskId) : null;
       if (!task || String(task.user_id) !== userId || task.status !== 'open') {
         return { sent: false, error: 'Task not found or not open.' };
+      }
+      // See noteApprovedAPlan: this run approved the plan, and day one is
+      // already queued behind the reply to write to the people in it. Sending
+      // here is how the same person got the same question twice, forty seconds
+      // apart, on two consecutive days.
+      if (runApprovedAPlan.has(runId ?? '')) {
+        return {
+          sent: false,
+          error:
+            'Nothing sent, and nothing is needed from you: you approved the plan in this same ' +
+            'turn, and day one is already starting behind your reply — it writes to the first ' +
+            '3-5 people the plan names, by itself. Calling this here sends each of them the same ' +
+            'question twice. Tell the owner in one or two sentences that you are on it and when ' +
+            'you will be back, and call nothing else.',
+        };
       }
       const askOutcome = await createAsk(
         userId,
@@ -5342,6 +5398,11 @@ async function executeToolCall(
       // hears „I am on it" first, the asks go out after. Dynamic import — the
       // engine imports this module, a static import would be a cycle.
       if (outcome.ok) {
+        // Day one is the ONLY path that writes to the plan's people from here.
+        // The tool result below asks the model not to send in this turn; this
+        // is the same sentence as a guard, because the result was ignored on
+        // 17 and 18 September and real people were messaged twice.
+        noteApprovedAPlan(runId);
         void import('./taskEngine.service').then(({ startDayOne }) =>
           startDayOne(Number(input['task_id'])),
         );
@@ -8067,6 +8128,9 @@ export async function processChat(
     choices: takeNothingToSendToday(runId) && choices ? choicesWithoutApproval(choices) : choices,
     options,
   });
+  // The run is over: forget that it approved a plan, so the flag can never
+  // reach the next run on this thread. Read-and-forget, like its sibling above.
+  takeApprovedAPlan(runId);
   // Ticket 19 [18]: the requests waiting on this person go out as their own
   // messages too, on the same rails. Noted here rather than at prompt-build
   // time so they land LAST — after whatever the run itself surfaced. Another
