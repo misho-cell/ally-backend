@@ -118,6 +118,14 @@ function routeAskQueries(opts: {
   };
   /** A live ask already runs between this goal and this person — a follow-up. */
   liveThread?: number;
+  /**
+   * The status of that live ask. Defaults to 'answered', because every test
+   * using liveThread was written about a real follow-up — Lika asking Tornike
+   * when he was free, HIM ANSWERING, and „12:00" needing somewhere to go.
+   * 'sent' is the case the seat found on 18 September: a second message to
+   * somebody who has not replied, which is not a new round.
+   */
+  liveStatus?: 'sent' | 'answered';
   sentToday?: number;
   receivedToday?: number;
 }): void {
@@ -137,6 +145,18 @@ function routeAskQueries(opts: {
         rows(
           opts.plan
             ? [{ plan: opts.plan, plan_version: 1, plan_approved_at: '2026-09-07T20:00:00Z' }]
+            : [],
+        ) as never,
+      );
+    // Two separate lookups read the same row: this one decides the thread and
+    // whether it is a new round, and `liveWithThisPerson` below exempts a live
+    // conversation from the receiving-side brake. They are matched apart
+    // because only the first one needs the status.
+    if (sql.includes('SELECT ask_thread_id, status FROM task_asks'))
+      return Promise.resolve(
+        rows(
+          opts.liveThread
+            ? [{ ask_thread_id: opts.liveThread, status: opts.liveStatus ?? 'answered' }]
             : [],
         ) as never,
       );
@@ -1242,5 +1262,78 @@ describe('row 150 — who pays on a thread the helper did not start', () => {
 
     expect(await runPayerFor('42', 9, 'regular')).toBe('42');
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * One approval, two asks, forty-one seconds apart, the second marked
+ * is_follow_up TRUE — read off task_asks by the seat, 18 September:
+ *
+ *   ask 2245  12:52:40  is_follow_up false
+ *   ask 2246  12:53:21  is_follow_up true
+ *
+ * and the same shape the day before at three times the width: three people
+ * each sent the same question twice, twenty seconds apart, off one approval.
+ *
+ * Nobody had read the first message. What each of them received, in their own
+ * language, in their own chat window, was „X's assistant WROTE AGAIN" above the
+ * identical question. The lookup accepted status 'sent' as readily as
+ * 'answered', so an unanswered question counted as a conversation.
+ */
+describe('a second message to somebody who has not replied', () => {
+  it('is NOT a new round, however live the thread is', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413, liveStatus: 'sent' });
+
+    await createAsk('42', 3, '+995599111222', 'one more thing');
+
+    const insert = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO task_asks'),
+    ) as [string, unknown[]];
+    expect(insert[1][7]).toBe(false); // is_follow_up
+  });
+
+  it('still lands in the same thread, which was always right', async () => {
+    // Two threads for one exchange put the answer and the question that
+    // followed it in different rooms (ticket 9 task 12). That stays fixed.
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413, liveStatus: 'sent' });
+
+    await createAsk('42', 3, '+995599111222', 'one more thing');
+
+    expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(mockSaveMessage.mock.calls[0][0]).toBe(9413);
+  });
+
+  it('does not tell them somebody wrote AGAIN, because nobody is ignoring anything', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413, liveStatus: 'sent' });
+
+    await createAsk('42', 3, '+995599111222', 'one more thing');
+
+    const opening = String(mockSaveMessage.mock.calls[0][3]);
+    expect(opening).not.toContain('კიდევ დაწერა');
+    expect(opening).toContain('დაამატა');
+  });
+
+  it('says „wrote again" only when they really did reply', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'answered',
+    });
+
+    await createAsk('42', 3, '+995599111222', '12:00');
+
+    expect(String(mockSaveMessage.mock.calls[0][3])).toContain('კიდევ დაწერა');
+  });
+
+  it('spends their patience, not a fresh outreach slot', async () => {
+    // The budget follows the THREAD, not the answer: a second message to
+    // somebody who has not replied still spends their patience, and must not
+    // spend a new outreach slot on a person already approached.
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413, liveStatus: 'sent' });
+
+    await createAsk('42', 3, '+995599111222', 'one more thing');
+
+    expect(mockFollowUpBudget).toHaveBeenCalled();
+    expect(mockCheckBudget).not.toHaveBeenCalled();
   });
 });

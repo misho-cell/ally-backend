@@ -514,21 +514,58 @@ export async function createAsk(
   // a different budget, and no new thread row in their list. The old rule
   // ("one task never asks the same person twice") is what stopped Lika from
   // sending Tornike the hour they had just agreed on.
-  const live = await query<{ ask_thread_id: number | null }>(
-    `SELECT ask_thread_id FROM task_asks
+  const live = await query<{ ask_thread_id: number | null; status: string }>(
+    `SELECT ask_thread_id, status FROM task_asks
      WHERE task_id = $1 AND to_user_id = $2 AND status IN ('sent', 'answered')
      ORDER BY id DESC LIMIT 1`,
     [taskId, toUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
   const liveThreadId = live.rows[0]?.ask_thread_id ?? null;
-  const isFollowUp = liveThreadId !== null;
+  /**
+   * „They answered, so this is a new round" — and nobody checked that they had.
+   *
+   * The seat, 18 September, read off task_asks. One approval, two asks, same
+   * person, same thread, forty-one seconds apart, the second marked
+   * is_follow_up TRUE:
+   *
+   *   ask 2245  12:52:40  is_follow_up false
+   *   ask 2246  12:53:21  is_follow_up true
+   *
+   * and the same shape the day before at three times the width: three people
+   * each sent the same question twice, twenty seconds apart, off one approval.
+   *
+   * Nobody on earth had read the first message. What they received, in their
+   * own language, in their own chat window, was „X's assistant WROTE AGAIN"
+   * followed by the identical question. The comment on the badge reset below
+   * says it out loud — „their last reply closed the previous round" — and that
+   * was never tested, because the lookup accepted status 'sent' as readily as
+   * 'answered'. A question nobody has replied to is not a conversation; it is
+   * an unanswered question.
+   *
+   * So the two things that were one are now two:
+   *
+   *   WHICH THREAD  — unchanged, from 'sent' or 'answered'. The same room is
+   *                   right either way: two threads for one exchange put the
+   *                   answer and the question that followed it in different
+   *                   rooms (ticket 9 task 12), and that stays fixed.
+   *   IS IT A NEW   — only if they actually answered. This governs the „wrote
+   *   ROUND         again" wording, the skipped introduction, and the badge.
+   *
+   * The BUDGET deliberately follows the thread rather than the answer: a
+   * second message to somebody who has not replied still spends their
+   * patience, and it must not spend a fresh outreach slot on a person who has
+   * already been approached. Patience is what is being spent, so patience is
+   * what it is charged to.
+   */
+  const isFollowUp = live.rows[0]?.status === 'answered';
+  const sameThread = liveThreadId !== null;
 
   // Budgets: server-side, same relay exemption as the permission gate above.
   // Outreach spends the monthly growth budget; a follow-up spends the
   // recipient's patience instead, capped per person per goal per day.
   if (parentAskId === undefined) {
-    const budget = isFollowUp
+    const budget = sameThread
       ? await checkFollowUpBudget(fromUserId, toUserId, taskId)
       : await checkAskBudget(fromUserId, threadId);
     if (!budget.allowed) {
@@ -574,7 +611,7 @@ export async function createAsk(
   // Two members of one network who never saved each other's number (Ticket
   // 10 Task 23, D121): the recipient's opening line says so (D57) — that is
   // what makes a stranger's question a colleague's rather than spam.
-  const roster = isFollowUp
+  const roster = sameThread
     ? null
     : await sharedRoster(fromUserId, String(toUserId)).catch(() => null);
   const senderLine = roster
@@ -582,15 +619,30 @@ export async function createAsk(
     : `${geoName(senderName, 'gen')} ასისტენტი`;
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3).
-  const opening = isFollowUp
-    ? `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:\n\n"${safeQuestion}"\n\n` +
-      'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.'
-    : `${senderLine} გეკითხება:\n\n"${safeQuestion}"\n\n` +
-      'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
+  /**
+   * Three openings, because there are three situations and there were two.
+   *
+   * „კიდევ დაწერა" — „wrote AGAIN" — is a true sentence only about somebody who
+   * has already replied. Said to a person who has not, forty-one seconds after
+   * the first message, above the identical question, it reads as being chased
+   * by a machine. That is what the seat found on two consecutive days.
+   *
+   * The third case is not a chase and not a first contact: the owner's side had
+   * more to say before an answer came. „დაამატა" — added — is what actually
+   * happened, and it does not accuse the reader of ignoring anything.
+   */
+  const followUpLine = `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:`;
+  const addedLine = `${geoName(senderName, 'gen')} ასისტენტმა დაამატა:`;
+  const firstLine = `${senderLine} გეკითხება:`;
+  const lead = isFollowUp ? followUpLine : sameThread ? addedLine : firstLine;
+  const opening =
+    `${lead}\n\n"${safeQuestion}"\n\n` + 'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
   await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
-  // The badge on a continued conversation goes back to waiting-on-them: their
-  // last reply closed the previous round, and this is a new one.
-  if (isFollowUp) {
+  // The badge on a continued conversation goes back to waiting-on-them —
+  // something has just been asked of them, whether or not they answered the
+  // last one. The old comment here said „their last reply closed the previous
+  // round", which was the assumption nobody checked.
+  if (sameThread) {
     await setThreadStatus(String(toUserId), askThreadId, 'needs_you', {
       statusLine: 'პასუხს ელოდება',
       isTask: true,
@@ -626,7 +678,7 @@ export async function createAsk(
   );
   // Ticket 13 Task 42 (7): the same goal now asks a DIFFERENT person than it
   // asked before — the requester rerouted. Recorded once per goal.
-  if (!isFollowUp) void recordReroutedIfSecondRoute(fromUserId, taskId, toUserId);
+  if (!sameThread) void recordReroutedIfSecondRoute(fromUserId, taskId, toUserId);
 
   // Ticket 10 Task 22 (D120): the recipient may already have said how this
   // kind of question is to be answered. A first question that one of their
