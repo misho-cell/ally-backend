@@ -79,8 +79,16 @@ async function runOnPool<T extends QueryResultRow>(
   timeoutMs: number,
 ): Promise<QueryResult<T>> {
   const startedAt = Date.now();
+  const borrow: Borrow = {};
   try {
-    return await runOnPoolUntimed<T>(sourcePool, defaultTimeoutMs, queryText, params, timeoutMs);
+    return await runOnPoolUntimed<T>(
+      sourcePool,
+      defaultTimeoutMs,
+      queryText,
+      params,
+      timeoutMs,
+      borrow,
+    );
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(
@@ -93,9 +101,64 @@ async function runOnPool<T extends QueryResultRow>(
     const elapsed = Date.now() - startedAt;
     if (elapsed >= SLOW_QUERY_LOG_MS) {
       // eslint-disable-next-line no-console
-      console.warn(`[db slow] ${elapsed}ms :: ${sqlForLog(queryText)}`);
+      console.warn(
+        `[db slow] ${elapsed}ms${waitWord(borrow)} ${poolWord(sourcePool)} :: ${sqlForLog(queryText)}`,
+      );
     }
   }
+}
+
+/**
+ * Ticket 20 row 108 — separating „the database was slow" from „there was no
+ * connection to ask it with".
+ *
+ * On 18 September, 18:19:49-18:20:00, sixty-two queries crossed the slow
+ * threshold in eleven seconds. The heavy second-degree scan is one of them at
+ * 5,699 ms. The other sixty-one are these:
+ *
+ *   SELECT contact_phone, tier FROM human_relationship_tiers …   3,700 ms
+ *   SELECT contact_phone, excluded_for, reason, revision …       3,653 ms
+ *   SELECT phone, person_id FROM person_identities …             3,211 ms
+ *
+ * Small lookups on small tables, which cost 150 to 700 ms in the phase log all
+ * day. Dozens of them finished on the SAME MILLISECOND — .225, .224, .262 —
+ * which is not what slow queries look like. It is what a queue looks like when
+ * it drains.
+ *
+ * The `waiting` field says the same from the pool's side, and both of them
+ * stop one question short: a request can wait because every connection is BUSY
+ * (the pool is too small) or because its connection is still being ESTABLISHED
+ * (the pool keeps throwing them away — `idleTimeoutMillis` defaults to ten
+ * seconds and is not set here). Those have different one-line fixes and the
+ * numbers so far cannot tell them apart, which is why I have not touched the
+ * config.
+ *
+ * So the slow line now carries the pool's own state, and — on the custom-
+ * timeout path, which is the one that BORROWS a client — how long the borrow
+ * took. A borrow of three seconds is the queue; a fast borrow under a slow
+ * query is the database. One busy minute answers it.
+ *
+ * The hot path is left exactly as it was. It is a single round trip through
+ * pool.query for a reason, and a diagnostic is not worth restructuring it.
+ */
+function poolWord(sourcePool: Pool): string {
+  return `pool ${sourcePool.totalCount}/${sourcePool.idleCount}idle/${sourcePool.waitingCount}waiting`;
+}
+
+/**
+ * How long this one call waited for a connection, when it borrowed one.
+ *
+ * Passed down rather than stashed in a module-level map. My first version
+ * keyed it by the query TEXT, which is wrong the moment two copies of the same
+ * query are in flight — and a burst of identical searches is precisely the
+ * case this exists to measure. A per-call holder cannot cross-talk.
+ */
+interface Borrow {
+  ms?: number;
+}
+
+function waitWord(borrow: Borrow): string {
+  return borrow.ms === undefined ? '' : ` (${borrow.ms}ms waiting for a connection)`;
 }
 
 async function runOnPoolUntimed<T extends QueryResultRow>(
@@ -104,6 +167,7 @@ async function runOnPoolUntimed<T extends QueryResultRow>(
   queryText: string,
   params: unknown[] | undefined,
   timeoutMs: number,
+  borrow: Borrow,
 ): Promise<QueryResult<T>> {
   // The hot path: the pool's connections already carry the default
   // statement_timeout (see the Pool options), so a default-timeout query is a
@@ -114,7 +178,9 @@ async function runOnPoolUntimed<T extends QueryResultRow>(
   // Custom timeout: borrow a client, widen the timeout for this query only,
   // and ALWAYS restore the default before releasing — a pooled connection must
   // never hand a long timeout to its next borrower.
+  const borrowStartedAt = Date.now();
   const client = await sourcePool.connect();
+  borrow.ms = Date.now() - borrowStartedAt;
   try {
     await client.query(`SET statement_timeout = ${Math.floor(timeoutMs)}`);
     // Must await before the finally — releasing with the query still in
