@@ -398,7 +398,32 @@ threadsRouter.get(
         ...(before && { beforeCreatedAt: before }),
         ...(beforeId && { beforeId }),
       });
-      res.status(200).json({ success: true, data: messages });
+      /**
+       * The language the CLIENT should draw its own chrome in, from the owner's
+       * words rather than from whatever is on the screen.
+       *
+       * The seat, 18 September, thread 17528: the steps toggle read „ნაბიჯები
+       * (14)" at 11:24 and „Steps (14)" at 11:26 — same open page, no reload,
+       * the caption flipping the moment a second English message landed. That
+       * caption is not in this repository; neither „ნაბიჯები" nor „Steps"
+       * appears anywhere in it. It is the client's own string, and the client
+       * has never been told what language the conversation is in, so it can
+       * only be reading the text in front of it. In run 1 the text in front of
+       * it was the model's Georgian answer on an all-English thread, which is
+       * how an English conversation came to be captioned in Georgian and then
+       * change its mind.
+       *
+       * So the server says it. Same rule every server-side fixed string
+       * already follows: the owner's own messages decide, the assistant's are
+       * evidence of what the assistant did and not of the conversation.
+       *
+       * Additive on purpose — `data` is the same array it has always been, so
+       * a client that ignores this is unaffected. And best-effort: a thread's
+       * messages must never fail to load because its language could not be
+       * worked out.
+       */
+      const language = await threadLanguage(threadId).catch(() => null);
+      res.status(200).json({ success: true, data: messages, ...(language && { language }) });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/messages]', error);
