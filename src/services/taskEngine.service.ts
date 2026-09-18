@@ -24,7 +24,9 @@ import {
   hasPendingAskForThread,
   EnsureQuoted,
 } from './taskAsks.service';
-import { getThread, saveThreadMessage } from './threads.service';
+import { getThread, saveThreadMessage, threadLanguage } from './threads.service';
+import { RunLanguage } from './runLanguage';
+import { DAY_ONE_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
@@ -120,9 +122,18 @@ const TOKENS_OUT_STATUS = 'ტოკენები ამოიწურა';
  * answer-wake path) use it to decide whether to mark the wake delivered or
  * leave it for the sweep.
  */
+/**
+ * An event's text, either fixed or chosen by the conversation's language.
+ *
+ * A wake knows the task, not the thread, until it is inside wakeTask — so the
+ * language cannot be resolved by the caller. The ones that vary are passed as
+ * the table and read once the thread is in hand.
+ */
+export type EventText = string | Readonly<Record<RunLanguage, string>>;
+
 export async function wakeTask(
   taskId: number,
-  eventText: string,
+  eventText: EventText,
   // Answer wakes carry the verbatim answer; the run's reply provably quotes it.
   ensureQuoted?: EnsureQuoted,
 ): Promise<WakeResult> {
@@ -187,6 +198,23 @@ export async function wakeTask(
     // hands the owner a promise nobody can keep (ticket 9 task 17: four goals
     // woke every night offering asks while the account's budget was zero). The
     // event carries the state of the budget, so the plan is made knowing it.
+    /**
+     * The event in the conversation's language — resolved HERE because this is
+     * the first point that knows the thread.
+     *
+     * The seat's three-thread read: an English conversation stayed English
+     * until one of these arrived in Georgian, and switched on the very next
+     * message. The events are stored with role „user", so to the model this is
+     * the owner writing five hundred Georgian characters, and answering in the
+     * owner's language is exactly what it was told to do.
+     *
+     * The owner's own messages decide, never the assistant's — same rule, same
+     * function, as every other fixed string. A thread whose language cannot be
+     * read falls back to Georgian, which is what the text always was.
+     */
+    const language = await threadLanguage(thread.id).catch(() => 'ka' as RunLanguage);
+    const eventBody = typeof eventText === 'string' ? eventText : eventText[language];
+
     const budgetNote = outreachNoteFor(
       await describeAskBudget(ownerId).catch((err: unknown) => {
         // eslint-disable-next-line no-console
@@ -201,7 +229,7 @@ export async function wakeTask(
     const runStartedAt = new Date();
     try {
       const result = await Promise.race([
-        processChat(ownerId, thread.id, `[მოვლენა] ${eventText}${budgetNote}`, runId, ensureQuoted),
+        processChat(ownerId, thread.id, `[მოვლენა] ${eventBody}${budgetNote}`, runId, ensureQuoted),
         hardTimeout,
       ]);
       if (result.runFailed === true) {
@@ -393,13 +421,6 @@ const DAY_ONE_DELAY_MS = 3_000;
 const WAKE_RETRY_DELAY_MS = 6_000;
 const WAKE_RETRY_ATTEMPTS = 15;
 
-const DAY_ONE_EVENT =
-  'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
-  'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
-  'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
-  'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
-  'შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.';
-
 /**
  * Has the owner said something themselves in the last few seconds?
  *
@@ -446,7 +467,7 @@ export async function ownerSpokeRecently(
  */
 function wakeWhenFree(
   taskId: number,
-  eventText: string,
+  eventText: EventText,
   stillWanted: () => Promise<boolean>,
   onWoken: () => Promise<void>,
   delayMs: number,
@@ -522,16 +543,6 @@ const PLAN_PROPOSAL_DELAY_MS = 4_000;
 // and a yes would have written to them. The prompt team's own rule had to
 // argue with this line and with propose_task_plan's text to win, which is not
 // a fair fight: a model reads a server instruction as a fact about the job.
-const PLAN_PROPOSAL_EVENT =
-  'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +
-  'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
-  'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური — ' +
-  'ბოლოს present_choices-ით ორი ღილაკი: „დამტკიცებულია" და „შევცვალოთ". ' +
-  'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება. ' +
-  'თუ მფლობელმა თავად თქვა, რომ არავის არ მივწეროთ („არავის არ მისწერო", „მე თვითონ ' +
-  'მივწერ/დავურეკ") — people_to_involve ცარიელი რჩება პირველივე გეგმაში. ნაპოვნი ადამიანები ' +
-  'მხოლოდ შეტყობინებაში ჩამოთვალე, როგორც ლიდები მისთვის. „ვის ვკითხავთ" ამ შემთხვევაში ' +
-  'ნიშნავს „არავის".';
 
 async function planStillMissing(taskId: number): Promise<boolean> {
   const task = await getTaskById(taskId);
