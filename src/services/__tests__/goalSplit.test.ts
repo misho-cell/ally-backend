@@ -1,4 +1,8 @@
+jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
+jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
+
 import { splitOpeningLine } from '../goalSplit';
+import { createTaskFollowUp } from '../chat.service';
 
 /**
  * Ticket 20 row 33. The tester's read of 15812: a second need typed into the
@@ -33,5 +37,56 @@ describe('the first line of a goal split out of another chat', () => {
     // A title is required by create_task, but the line must not become
     // „already working on „"" if one ever arrives blank.
     expect(splitOpeningLine('', 'ka').length).toBeGreaterThan(40);
+  });
+});
+
+/**
+ * The split ran the same search twice — the seat's #4325, and the run ids
+ * leave no room for doubt.
+ *
+ * For ONE typed need: thread 17064's parent ran eight tool calls and answered
+ * at 31 seconds; thread 17065's child ran seven of its own and answered the
+ * same thing at 3 minutes 11. Zero shared run ids, in both of that night's
+ * splits. About fifteen tool calls, two network sweeps and two model runs for
+ * one question, and the owner reads the answer twice — the second time three
+ * minutes late.
+ *
+ * The cause was two instructions in one tool result. Row 101 tells the run to
+ * propose the plan HERE, which is right when the goal stayed on this thread;
+ * on a split it told the parent to do the child's work while the child's own
+ * turn was already queued to do it properly.
+ */
+describe('what create_task tells the run to do next', () => {
+  it('asks for the plan in THIS run when the goal stayed on this thread', () => {
+    const followUp = createTaskFollowUp(undefined) as { next: string; thread_id?: number };
+
+    expect(followUp.next).toContain('propose_task_plan');
+    expect(followUp.thread_id).toBeUndefined();
+  });
+
+  it('tells the parent to STOP when the goal moved to its own thread', () => {
+    const followUp = createTaskFollowUp(17065) as { next: string; thread_id: number };
+
+    expect(followUp.thread_id).toBe(17065);
+    expect(followUp.next).toContain('STOP WORKING ON THIS NEED');
+    // The one that matters: the parent must not be told to plan it too.
+    expect(followUp.next).not.toContain('propose_task_plan');
+  });
+
+  it('never sends both instructions at once, whichever branch runs', () => {
+    // They contradict each other, and for two nights the split sent both.
+    for (const movedTo of [undefined, 17065]) {
+      const next = String((createTaskFollowUp(movedTo) as { next: string }).next);
+      const plansHere = next.includes('propose_task_plan');
+      const stopsHere = next.includes('STOP WORKING');
+      expect(plansHere && stopsHere).toBe(false);
+      expect(plansHere || stopsHere).toBe(true);
+    }
+  });
+
+  it('still says where the goal went, which is the half that was working', () => {
+    const followUp = createTaskFollowUp(17065) as { note: string };
+
+    expect(followUp.note).toContain('its own');
   });
 });

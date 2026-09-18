@@ -4363,20 +4363,7 @@ async function executeToolCall(
         // The delayed engine turn stays as the fallback and already checks
         // `plan_proposed IS NULL` before it fires, so doing it here simply
         // means there is nothing left for it to do.
-        next:
-          'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
-          'with exactly „ვამტკიცებ" and „შევცვალოთ". Do not end your turn with the goal ' +
-          'saved and no plan on screen: that costs the user a second answer a few seconds later, ' +
-          'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
-          '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
-          'until the plan is approved.',
-        ...(movedTo !== undefined && {
-          thread_id: movedTo,
-          note:
-            'This conversation already had an open goal, so the new one was opened in its own ' +
-            'conversation. Tell the user plainly that it is a separate goal and where it is — ' +
-            'two goals in one thread leave the buttons ambiguous about which goal they act on.',
-        }),
+        ...createTaskFollowUp(movedTo),
       };
     }
     case 'ask_contact': {
@@ -5951,6 +5938,58 @@ function startOpeningSearches(
 
 /** Exported for its own test — the delivery contract is what can go wrong quietly. */
 export const __startOpeningSearchesForTest = startOpeningSearches;
+
+/**
+ * What the create_task result tells the model to do NEXT, which depends
+ * entirely on whether the goal stayed on this thread.
+ *
+ * Row 101 put the plan instruction in the tool result so a goal opened
+ * mid-conversation gets its plan in the same run instead of a second answer
+ * four seconds later. That is right — when the goal is HERE. On a SPLIT it
+ * told the parent run to do the new goal's work in the parent's own thread,
+ * while the child's plan turn was already queued to do it in the child's.
+ * Both did it.
+ *
+ * The seat measured it (#4325) and the run ids leave no room: for ONE typed
+ * need, thread 17064's parent ran eight tool calls and answered at 31 seconds,
+ * and thread 17065's child ran seven of its own and answered the same thing at
+ * 3 minutes 11. Zero shared run ids, in both of that night's splits. About
+ * fifteen tool calls, two network sweeps and two model runs for one question —
+ * and the owner reads the answer twice, the second time three minutes late.
+ *
+ * So on a split the parent is told one thing: say where it went. The child's
+ * own turn does the plan, in the thread the plan belongs to. It is also the
+ * cheapest item on the whole D315 ledger — the founder chose to pay for one
+ * opening sweep per goal, and a split was quietly running two.
+ *
+ * Exported for its own test: the two branches must not drift back together.
+ */
+export function createTaskFollowUp(movedTo: number | undefined): Record<string, unknown> {
+  if (movedTo === undefined) {
+    return {
+      next:
+        'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
+        'with exactly „ვამტკიცებ" and „შევცვალოთ". Do not end your turn with the goal saved ' +
+        'and no plan on screen: that costs the user a second answer a few seconds later, ' +
+        'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
+        '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
+        'until the plan is approved.',
+    };
+  }
+  return {
+    thread_id: movedTo,
+    next:
+      'STOP WORKING ON THIS NEED. It has moved to its own conversation and that conversation ' +
+      'is already writing its own plan. In THIS thread, say only that it is now a separate ' +
+      'goal and where it is, then finish your turn. Do not search for it, do not plan it and ' +
+      'do not answer it here — everything you do for it in this thread is done a second time ' +
+      'over there, and the owner reads the same answer twice.',
+    note:
+      'This conversation already had an open goal, so the new one was opened in its own ' +
+      'conversation. Two goals in one thread leave the buttons ambiguous about which goal ' +
+      'they act on.',
+  };
+}
 
 async function runToolLoop(
   userId: string,
