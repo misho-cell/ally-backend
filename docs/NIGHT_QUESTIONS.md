@@ -83,7 +83,40 @@ happen overnight.
   version is kept — PUT the prior text back. Rollback is free.
 - NOTE: the tester can do this themselves; it is the same console they edit
   the blocks in. Named here because of what it loosens, not because it is
-  blocked on me.
+  blocked on me. They have said they will not touch it on their own judgement
+  either, and will show the founder a before and after first.
+
+**Which half is actually doing the damage.** The tester pointed at „ask first".
+I think the second sentence is worse. „Ask first" is a GATE, and a model can
+reason about whether a gate applies. „You draft, they send" is an IDENTITY: it
+says what the assistant IS, with no condition attached, and there is no case
+in which it permits sending. That is why six rewrites of the goal block bounced
+off it. It is also false about the product — ask_contact sends,
+send_answer_to_asker sends, invite_contact sends.
+
+**The wording I proposed**, for the founder's eyes rather than to be pasted:
+
+> Before anything leaves Netai — an introduction request, sharing someone's
+> details, anything irreversible — ask first and act only after a yes.
+>
+> The one thing that needs no second yes is a question going to a person an
+> APPROVED PLAN already names. That plan was the yes (D119); asking again is
+> asking twice, and the owner has to say the same thing twice to get one
+> message sent.
+>
+> Never say something has been sent, delivered or seen unless a tool has told
+> you it happened. Saying it because you are about to do it is the same
+> mistake as saying it because you wish you had.
+
+Deliberately narrow: the exception covers `ask_contact` and nothing else. It
+does NOT cover invitations and it does NOT cover introductions, because no
+ruling says an approved plan is consent for those. If the founder wants them
+included, that is one more clause and his to add.
+
+Open inside it, and worth his eye: whether „anything irreversible" still earns
+its place once the other three are listed. It is the clause most likely to
+catch something nobody has thought of — the argument for keeping it — and the
+vaguest, which is the argument for it being what overreaches next.
 
 ### 4. The privacy pack is telling users something false, right now
 
