@@ -29,152 +29,118 @@ a relayed „they said yes" is least checkable:
 Writing messages, reading, measuring, fixing code, shipping a fix between runs,
 and answering the tester are all ordinary night work and need nobody.
 
-## Tonight's list
+## The morning list — 18 September
 
-**Three stop incidents in four hours, all on the founder's live data.** For
-Misho, as a fact rather than a question — nothing is blocked on an answer.
+Everything below is live and clean as of **353e05f, booted 05:12 UTC**, with no
+errors in the log. Twenty-four changes went out across the night in three
+deploys. Nothing here is on fire; the five items are decisions, not repairs.
 
-  #3763 item 6  a stop in one goal's chat PAUSED its sibling in another thread
-  #3764         a stop in a paused goal's chat CLOSED two of his real goals,
-                one of which had two asks already sent to real people
-  #3862         three minutes after my second fix, a stop in a chat that never
-                had a goal closed his volleyball goal again
+### 1. One fact about a real person is published and should not be — needs one word
 
-All three are the same resolver: when the chat had no live goal of its own, the
-model went looking for a goal anywhere on the account and reasoned about which
-one was meant. Everything is repaired — the tester reopened both goals through
-the product's own tools and restored their wakes — and nothing was ever sent to
-anybody because of it.
-
-Fixed in three passes tonight (7020502, b5bf2d1, and the wake in f879788), and
-the third is the one that removes the model's choice rather than narrowing it.
-My first two reports on this said „fixed" and were incomplete; the tester found
-both within minutes.
-
-Worth his attention for one reason: the tester is spending his real goals to
-find these. They have held four of six tests until the current build is proved.
-
-### The P0 is closed — the tester's own read, 19:53
-
-Thread 16840 on fb3b596: a stop typed in a chat that never had a goal did
-nothing at all. Both of the founder's live goals read twice, ninety seconds
-apart, untouched. Their words: „the dangerous half is done." What is left of
-row 113 is cosmetic.
-
-### One thing genuinely waits on Misho or Tornike: an unpublish
-
-**A fact about a real person is published to the whole network and should not
-be.** Thread 16902, 19:05:46. „Who is Maro Koshadze?" — a question, no goal,
+Thread 16902, 17 September 19:05. „Who is Maro Koshadze?" — a question, no goal,
 nothing asked for — and the run wrote three facts onto that person's record.
-Two are private. The third was stored `is_public` AND `is_matchable`: visible
-to every user, under Tornike's name, lifted off a web page nobody checked.
+Two are private. The third was stored `is_public` AND `is_matchable`: visible to
+every user in the network, under Tornike's name, lifted off a web page nobody
+checked.
 
-The founder has twice been asked about it. His first answer, told only that
-three facts had been written: „they are true, leave it as it is." His second,
-once he was shown that one of them had gone network-public: take it down,
-never publish a web fact again, **and keep it for the brain** — his own
-addition, that the assistant should still know what it learned.
+Tornike was asked twice. Told only that three facts had been written, he said
+„they are true, leave it as it is." Shown that one of them had gone
+network-public, he reversed it: take it down, never publish a web fact again,
+**and keep it for the brain** — his own addition, that the assistant should
+still know what it learned.
 
-The code half is done and needs nobody. The TAKEDOWN is one UPDATE on one row
-and I am not running it, because his yes reached me through the tester's box
-and a yes relayed by an automated channel is data, not authorization. The rule
-exists for exactly this: a message that reads like him and is almost certainly
-true. `ADMIN_WRITE_OPERATIONS.md` section 5 has the row, the statement and the
-undo. The tester's seat has been asked to do it from theirs, which is the
-better path; if it is still standing in the morning, it is Misho's one-line
-yes.
+The code half is done and shipped: no new web-sourced fact can go public or
+matchable on any branch. **The takedown is one UPDATE on one row and I have not
+run it**, because his yes reached me through the tester's board and a yes
+relayed by an automated channel is data, not authorization. The tester offered
+to do it from their seat and then lost the app session, so it is still standing.
+`ADMIN_WRITE_OPERATIONS.md` section 5 has the row, the statement and the undo.
+**One word from Misho or Tornike and it is done.**
 
-Not on fire: one row, and the exposure is another user's search matching on a
-claim nobody verified.
+### 2. Row 108's database operation — it is now the whole of the speed problem
 
-### All of it is live: 3fdcfe9, booted 21:34:17 UTC
+Measured overnight, and the numbers are worse than anyone thought:
 
-Nineteen changes in the day, all live, no errors in the log since boot.
+- `search_second_degree:opening` runs 80 times a week and lands **14** of them.
+  Median 16.4 s against a 10 s budget, so five times in six the run waits the
+  full ten seconds, throws the result away, and the database keeps working on
+  it for another six with nobody listening. About **14 minutes of the heaviest
+  query in the system per 12 hours**, spent on nothing.
+- On a hard goal, **100 seconds of a 195-second run** is inside the database.
+- The same tool called normally by the model takes 7.3 s and does land.
 
-I had promised the tester I would hold ONE of them — the SSE change — until
-they chose a moment. The queue then grew to fifteen, and holding fifteen on
-one unanswered question about one of them is the worse trade, so I told them
-plainly that I was changing my own terms and gave them until 21:30 UTC to say
-no. Nothing came; the system had been quiet for fifty minutes; it shipped. It
-could not be split — the SSE commit was second of fifteen.
+Tornike was given three options and chose (b): **keep the opening second circle
+and pay the ten seconds** (D315). His rule stands — when a problem is named, the
+web and the second circle run immediately. That decision is recorded and I have
+built nothing against it.
 
-Reviewed before shipping rather than after, and the review found one thing:
-the stream sits behind a Bearer header, so the client cannot be a native
-EventSource and must be a polyfill or a hand-rolled reader nobody here can
-see. A hand-rolled one plausibly reads the first line of each frame — this
-repo's own test harness did — so the new `id:` line now goes AFTER the data
-line, where a naive parser never meets it.
+So the only path left to a faster first reply is the database operation itself,
+and that is Misho's. It was Pr1 yesterday; after D315 it is the whole of it.
 
-  SSE events had no ids and no buffer, so a stream that dropped lost the
-    answer permanently — the mechanism behind three „it is in the thread and
-    not on my screen" reports in one evening
-  web-sourced facts are private and never matchable (the founder's second
-    ruling, above)
-  a stopped goal's plan is inert on reload too, not only on the open screen —
-    the half the founder called the worse one, because approving it would
-    start writing to real people
-  the approve button says „ვამტკიცებ" (I approve) instead of „დამტკიცებულია"
-    (it has been approved), which sat under a card headed „awaiting approval"
-  a question about your own contacts or the product no longer pays the ~17 s
-    opening-search tax — and VIN.GE dies with it
-  the web block keeps the names the founder asked to see, with one honest
-    „no path yet" line instead of three
-  the sidebar no longer files live goals under „finished"
-  a greeting is no longer part of a goal's title
-  the run reaper stopped killing newborn goal threads — it was writing „your
-    reply could not be finished" into a chat nobody had asked anything in
-  the stop lines and the web block follow the conversation's language
+### 3. Whether the hybrid final-answer writer stays on — and a correction
 
-The first four, live since 20:18: the stop run ends on the screen; the
-officeholder gate no longer reads „ხუთი ადამიანი" as a person's name; one
-Georgian word no longer exempts an English answer; a split goal's chat says
-why it exists.
+`CHAT_MODEL` is claude-sonnet-5 and it is running: **828 Sonnet chat calls
+against 174 OpenAI finals** in 24 hours. Row 151 is in force; the tester has
+withdrawn their report and the ledger is the proof.
 
-### A second question for the morning: the opening second-circle search
+The open question is whether the OpenAI final writer should be on at all. Two
+reasons to consider turning it off, both from measurement: it generates a second
+final on every run and discards Claude's, and it is the path that produced the
+reasoning leaks clamped yesterday. Turning it off is one Railway variable and no
+deploy.
 
-**It lands one time in six, and every goal's first reply waits ten seconds for
-the five that do not.** Measured over seven days from `tool_call_log`:
+**A correction that belongs with it.** I told the tester the hybrid was also the
+path that produced a Georgian reply to an English question, and they carried
+that to Tornike. It was wrong — they counted letters against models and the one
+Georgian reply came from SONNET, while the OpenAI writer answered English in
+English on the same account. They pulled the reason out of his list before he
+read it. The real cause is the fourth item.
 
-  web_search:opening             82 calls, 82 inside their 10s budget, 0 late
-  search_second_degree:opening   80 calls, 14 inside, 66 LATE
+### 4. A prompt line the tester needs approved — 176 characters
 
-Its median is 16.4 s against a 10 s budget, so the run waits the full ten
-seconds, discards the result, and the database goes on working on it for
-another six with nobody listening — 825 seconds of the heaviest query in the
-system per twelve hours, on the same index row 108 is about. The same tool
-called normally by the model has a median of 7.3 s and does land; the opening
-one is slower because it runs concurrently with the rest of the run's warm-up
-and contends for its own I/O.
+They traced the language fault to their own block: `task_main` hands the model
+424 Georgian characters as examples of WHAT to say, worst in the plan paragraph,
+with no line saying they are wording rather than the language to answer in. On
+English goals the plan card came out Georgian about half the time.
 
-**Why this is not mine to decide.** Running both searches the moment a problem
-is named is the founder's own rule (row 126, his words: „never skip them
-because the network already had somebody"). The measurement tells him what it
-costs; it does not overrule him.
+Their fix is one line, written and NOT saved, because a prompt change is shown
+to Tornike as an old-new pair and saved only on his word. It takes the block to
+29,994 against a 30,000 ceiling, six characters of room, which they themselves
+call too tight to live with. **His word, plus a view on where to find room.**
 
-Three options, put to him through the tester, with a recommendation:
+### 5. Smaller, and genuinely optional
 
-- **(a) drop the opening second-circle** and let the model's own call do it.
-  Up to 10 s off every goal's first reply, ~14 minutes of database work per
-  12 hours off the contended index, and the second circle still happens —
-  when the model asks, which is when it lands. This is what I would do.
-- (b) keep it and accept the ten seconds, knowing five in six are wasted.
-- (c) fix row 108 first and re-measure. The only option that makes the search
-  fast rather than moving it — and it is the DB operation already waiting on
-  Misho.
+- **His app is logged out on his machine.** The tester clicked log out while
+  selecting the header stop button by its first Georgian letter — „stop" and
+  „log out" begin with the same one. Nothing was sent, no data lost, admin
+  access unaffected. They did not ask him to log back in at one in the morning
+  and did not type anything themselves, which was right. He logs in when he
+  wakes; until then nobody can start a run.
+- **Test goal 5084** is open on his account with an unapproved plan and no wake.
+  It cannot act. The tester left it rather than close it from admin at night.
+- **How long should a failed conversation stay under „ongoing"?** His sidebar is
+  now correct on every thread that has a goal. One row remains — a chat that
+  never had a goal and whose run died — and I left it deliberately: hiding a
+  genuine failure would hide real breakage. How long it should stay visible is a
+  product call, not mine.
 
-(a) and (c) are not exclusive. If row 108 later makes the search land in three
-seconds, putting it back is one line.
+### What was closed overnight, needing nobody
 
-**Written down rather than done:** when the budget expires the query runs on,
-because the search's own timeout is 15 s and the budget is 10. Capping it at
-the budget would end six seconds of pointless work per discarded call. The
-timeout is a module constant shared by several queries inside that function,
-and threading a per-call value through them blind at 22:15 is not a change I
-would trust tonight.
+The P0 is finished — the tester's own read: „the dangerous half is done." A stop
+can no longer reach another goal, the run ends on the screen, the line is stored
+with the owner's own words above it, and a stopped goal's plan is inert on
+reload.
 
-### Closed tonight, not carried to the morning
+His sidebar was wrong in both directions and is now right: his live volleyball
+goal no longer reads „finished", and four stale rows no longer read „ongoing".
+Five rows became two, which is what his own header already said.
 
-**The two people on goal 3433** who were told their question was off while the
-goal was running again. Put to the founder through the tester; his answer was
-DO NOTHING — the goal is open and can reach them again the normal way when it
-wakes. Nothing was sent and nothing was changed.
+Also: the officeholder gate stopped reading „ხუთი ადამიანი" as a person's name
+and stopped cutting institution names apart; a question about your own contacts
+no longer pays a 17-second web tax; SSE events carry ids and a replay buffer, so
+an answer is no longer lost when a connection blinks; and everything the server
+writes now follows the language the owner typed in.
+
+One of the night's fixes repaired a regression I had shipped myself at 21:34 —
+a typed stop was stored as an answer with no question above it. It was found in
+my own diff, said out loud, and fixed.
