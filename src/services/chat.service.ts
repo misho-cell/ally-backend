@@ -164,6 +164,7 @@ import {
   buildFromTheWebMessage,
   WAY_IN_TOOL_NOTE,
   WayIn,
+  OpeningSearches,
 } from './openingSearch.service';
 import { writeFinalAnswer, unusableReason } from './finalAnswer.service';
 import { splitOpeningLine } from './goalSplit';
@@ -5884,6 +5885,73 @@ const MS_PER_DAY = 24 * 60 * 60 * 1_000;
 const RUN_HEARTBEAT_MS = 25_000;
 const RUN_HEARTBEAT_POLL_MS = 5_000;
 
+/**
+ * The opening searches, started at once and NOT waited for.
+ *
+ * Tornike's D315 of 18 September: keep the opening second circle, and pay its
+ * cost, because the rule matters more to him than the time — when a problem is
+ * named, the web and the second circle run immediately and are never skipped.
+ * That rule says the search must RUN. It does not say the owner must sit and
+ * watch it.
+ *
+ * MEASURED over 14 days, 87 calls of search_second_degree:opening: 19 land
+ * inside the 10-second budget, 26 inside 15, and 45 of them never finish at
+ * all — they die at 16.0 to 17.3 seconds on the query's own statement timeout.
+ * Median 16.3 s. So the old shape made every goal's first reply wait ten
+ * seconds to keep roughly one result in five.
+ *
+ * Now the run starts them and carries on. When they land they are handed to
+ * the model as a text block alongside the next round of tool results, which is
+ * the same information one turn later — and a goal run has many turns, because
+ * searching is what it does.
+ *
+ * WHAT THIS COSTS, stated rather than buried: a goal that answers in ONE turn,
+ * calling no tools at all, never receives them. It used to get them in the
+ * system prompt. That case is rare on a goal — the opening search exists to
+ * feed a run that is about to search — but it is a real loss and not a
+ * rounding error.
+ *
+ * Misho's word, 18 September, on the numbers above. It is not a reversal of
+ * D315 and it is one line to put back.
+ */
+interface LateOpeningSearch {
+  /** The prompt section, once the search has landed — once, and never twice. */
+  takeIfReady(): string | null;
+}
+
+function startOpeningSearches(
+  userId: string,
+  goalText: string,
+  runId: string,
+  threadId: number,
+): LateOpeningSearch {
+  let landed: OpeningSearches | null = null;
+  let delivered = false;
+  void runOpeningSearches(userId, goalText, runId, threadId)
+    .then((found) => {
+      landed = found;
+      // Row 154: the verdicts still join the run's collection for the „From
+      // the web" message, whenever they arrive. If the run finishes first the
+      // message simply does not carry them, which is what it already does when
+      // the search times out.
+      noteWaysIn(runId, found.waysIn);
+    })
+    .catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[opening-search] failed after the run moved on:', (err as Error).message);
+    });
+  return {
+    takeIfReady(): string | null {
+      if (landed === null || delivered) return null;
+      delivered = true;
+      return buildOpeningSearchSection(landed);
+    },
+  };
+}
+
+/** Exported for its own test — the delivery contract is what can go wrong quietly. */
+export const __startOpeningSearchesForTest = startOpeningSearches;
+
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -5892,6 +5960,8 @@ async function runToolLoop(
   systemPrompt: string,
   tools: AnthropicTool[],
   ownerAbsent = false,
+  /** The opening searches, if they were started; delivered when they land. */
+  lateSearch: LateOpeningSearch | null = null,
 ): Promise<{
   finalText: string;
   pending: PendingMessage[];
@@ -6105,11 +6175,26 @@ async function runToolLoop(
       );
       scanToolResults(toolResults);
 
+      /**
+       * The opening searches, if they have landed since the last round.
+       *
+       * Carried as a text block INSIDE the tool-result turn rather than as a
+       * user message of its own: a tool_use turn must be answered by the turn
+       * that holds its tool_results, and slipping a second user message in
+       * beside that is asking the API to merge two things that mean different
+       * things. One turn, two kinds of block, no ambiguity.
+       */
+      const lateFindings = lateSearch?.takeIfReady() ?? null;
+      const userTurn: Anthropic.ContentBlockParam[] =
+        lateFindings === null
+          ? toolResults
+          : [...toolResults, { type: 'text', text: lateFindings }];
+
       pending.push({ role: 'assistant', content: response.content });
-      pending.push({ role: 'user', content: toolResults });
+      pending.push({ role: 'user', content: userTurn });
 
       messages.push({ role: 'assistant', content: response.content });
-      messages.push({ role: 'user', content: toolResults });
+      messages.push({ role: 'user', content: userTurn });
 
       // This turn ended in tool calls — its streamed text was narration, and
       // it was already emitted as a step above; don't emit it twice.
@@ -7261,7 +7346,30 @@ export async function processChat(
   // wake and an ordinary chat all skip it: the rule is about the moment a
   // problem is NAMED, and re-searching on every turn would be a new cost with
   // no new question behind it.
-  const [agentPrompt, tools, history, openingSearches] = await Promise.all([
+  /**
+   * Started here and deliberately NOT in the Promise.all below.
+   *
+   * Everything in that array is something the first turn cannot begin without.
+   * The opening searches were in it, and that is what made every goal's first
+   * reply wait up to ten seconds for a result that arrives in time roughly one
+   * time in five. They now run alongside the whole loop and are handed to the
+   * model when they land — see startOpeningSearches for the measurement and
+   * for what the change costs.
+   *
+   * The founder's ruling of 17 September still decides WHETHER they run: look
+   * at what was typed. A goal existing is not enough, because the goal box
+   * opens one on whatever is typed into it — „How many contacts do I have in
+   * my network?" paid a seventeen-second opening tax to search the web for an
+   * answer that was one tool call away, and on „ვინ მყავს თბილისში?" the
+   * opening web search read the Georgian question word as a domain, searched
+   * VIN.GE, and told the owner it had found them a contact there.
+   */
+  const lateSearch =
+    autoGoalId === null || needsNoOpeningSearch(userMessage)
+      ? null
+      : startOpeningSearches(userId, userMessage, runId, threadId);
+
+  const [agentPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(
       userId,
       thread.type,
@@ -7272,16 +7380,6 @@ export async function processChat(
     ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
-    // The founder's ruling of 17 September: look at WHAT WAS TYPED before
-    // running anything. A goal existing is no longer enough — the goal box
-    // opens one on whatever is typed into it, and „How many contacts do I have
-    // in my network?" paid a seventeen-second opening tax to search the web
-    // for an answer that was one tool call away. On „ვინ მყავს თბილისში?" the
-    // opening web search read the Georgian question word as a domain, searched
-    // VIN.GE, and told the owner it had found them a contact there.
-    autoGoalId === null || needsNoOpeningSearch(userMessage)
-      ? Promise.resolve(null)
-      : runOpeningSearches(userId, userMessage, runId, threadId),
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
@@ -7325,19 +7423,16 @@ export async function processChat(
     language = conversationLanguage;
     runLanguages.set(runId, language);
   }
-  // Row 154: the opening search's verdicts join the run's collection, so the
-  // „From the web" message written after the reply carries them alongside
-  // whatever the model's own searches found.
-  if (openingSearches !== null) noteWaysIn(runId, openingSearches.waysIn);
+  // Row 154's verdicts now join the run's collection inside
+  // startOpeningSearches, whenever the search lands, rather than here.
   // Pin the reply language to the user's latest message (engine-level, appended
   // last so it wins over the Georgian strategy prompt).
-  const systemPrompt =
-    agentPrompt.prompt +
-    // Row 126: what the server already found, before the model's first turn.
-    // Empty string on every run that did not open a goal, so the cached prompt
-    // prefix for ordinary turns is byte-identical to what it was.
-    (openingSearches === null ? '' : buildOpeningSearchSection(openingSearches)) +
-    buildReplyLanguageDirective(userMessage);
+  // The opening searches are no longer spliced in here: the prompt is built
+  // once, before they can possibly have finished, and waiting for them was the
+  // ten seconds. They reach the model in the loop instead. A side effect worth
+  // having: this prefix is now byte-identical on goal runs and ordinary ones,
+  // so the cached prompt is shared by both.
+  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(userMessage);
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
@@ -7361,7 +7456,16 @@ export async function processChat(
   );
 
   const { finalText, pending, options, choices, requestCreated, taskResult, answeredBy } =
-    await runToolLoop(userId, threadId, runId, messages, systemPrompt, tools, ownerAbsent);
+    await runToolLoop(
+      userId,
+      threadId,
+      runId,
+      messages,
+      systemPrompt,
+      tools,
+      ownerAbsent,
+      lateSearch,
+    );
 
   // Tool-interaction turns carry the full content_json for model history but
   // have empty display content (filtered from the thread view); the final reply

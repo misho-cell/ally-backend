@@ -33,27 +33,37 @@ import { RunLanguage } from './runLanguage';
  * after a run has spoken is expensive and fragile.
  *
  * So the searches are not REQUESTED at the end. They are RUN, by the server,
- * before the model's first turn, and their results are handed to it in the
- * prompt. Nothing can skip them because nothing is being asked.
+ * the moment a problem is named. Nothing can skip them because nothing is
+ * being asked.
+ *
+ * Since 18 September the run no longer WAITS for them: they are started and
+ * their results reach the model when they land, beside the next round of tool
+ * results. Tornike's rule is that they run, and they do.
  */
 
 /**
- * How long the opening searches may hold up the first reply.
+ * How long the opening searches are allowed to run — not how long anything
+ * waits for them.
  *
- * Both are started together, so this is the slower of the two and not their
- * sum. web_search measures 1.5-5.4s and lands comfortably. The second circle
- * measures anywhere from 2.5s to 21s — row 108, the database maintenance that
- * is still waiting on Misho — so on a bad day it will not make it, and the
- * section below says so rather than implying the circle was empty. Measured
- * 16 September: it has timed out on both of the goals we have logged.
+ * Since 18 September nothing does. The run starts them and carries on, and
+ * they are handed to the model when they land (see startOpeningSearches in
+ * chat.service for Misho's word and the numbers). So a budget that cuts them
+ * off early no longer saves the owner a second — it only throws away a result
+ * that was about to arrive.
  *
- * Since row 126's fourth pass the web branch spends part of this on getting
- * the query right before it searches — at most 2.5s for the distillation,
- * leaving the search no less than 7.5s of the 10. The budget is unchanged on
- * purpose: a better query is not worth making every first reply wait longer
- * for. Measured on goal 3928, the distilled search took 1.2s in total.
+ * 18 seconds because that is where there stops being anything to wait for.
+ * Measured over 14 days: every second-degree opening search that succeeds does
+ * so by 18.8 s, and the 45 that fail all die at 16.0 to 17.3 s on the query's
+ * own statement timeout. Past that there is nothing left to catch, and those
+ * failures are row 108 rather than a budget.
+ *
+ * Both halves share it and are started together, so it is the slower of the
+ * two and not their sum. web_search measures 1.5-5.4 s and has never come
+ * close to it; the web branch also spends up to 2.5 s of it distilling the
+ * query before searching, which used to be a real trade against the first
+ * reply and now costs nobody anything.
  */
-const OPENING_SEARCH_BUDGET_MS = 10_000;
+const OPENING_SEARCH_BUDGET_MS = 18_000;
 
 /** A goal title is short; a long first message is trimmed to its substance. */
 const MAX_QUERY_CHARS = 200;
