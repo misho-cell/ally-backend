@@ -165,6 +165,9 @@ export function cappedGroups(groups: string[][], userId: string): string[][] {
   return kept;
 }
 
+/** How many second-degree searches are inside the function right now. */
+let inFlightSearches = 0;
+
 const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
 // rank by that and cap at a real limit, so the right connection isn't lost in an
@@ -347,6 +350,34 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     marks.push([name, now - at]);
     at = now;
   };
+  /**
+   * Row 108, seventh cut — the one remaining question, asked properly.
+   *
+   * `sql` varies wildly at a FIXED pattern count. From the live lines:
+   *
+   *   1 pattern     945 / 1,019 / 2,187 / 2,882 ms
+   *   2 patterns  1,040 / 1,518 / 1,868 / 4,502 / 5,030 / 9,113 / 10,675 ms
+   *   3 patterns  5,248 / 11,105 ms
+   *
+   * Two patterns spans one second to ten, so pattern count does not predict it
+   * — I said it did this morning off three points and withdrew that. A query
+   * matching ZERO rows took 11.1 s, so it is not the work done on what is
+   * found either. What is left is the scan, and the two things that change
+   * under a scan are the cache and the competition.
+   *
+   * Competition is the one I can count, so I am counting it rather than
+   * arguing about it. This is how many second-degree searches are inside this
+   * function at the moment this one starts: the opening search and the model's
+   * own calls fire close together, and three landing in the same second is
+   * visible in the log already.
+   *
+   * If the slow calls carry a high number and the fast ones do not, that is
+   * the answer. If they carry the same number, concurrency is ruled out and
+   * the cache is what is left — which I cannot see from inside the process and
+   * would have to ask for differently.
+   */
+  inFlightSearches += 1;
+  const inflightAtStart = inFlightSearches;
   try {
     let userKey: string;
     try {
@@ -798,7 +829,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     if (rows.length === 0) {
       console.log(
         `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
-          `patterns ${n} phones ${friendPhones.length} rows 0`,
+          `patterns ${n} phones ${friendPhones.length} rows 0 inflight ${inflightAtStart}`,
       );
       return { found: false, reason: 'no_matches' };
     }
@@ -879,7 +910,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     console.log(
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
         `decorate: ${concurrentLine(sideMarks)} | ` +
-        `patterns ${n} phones ${friendPhones.length} rows ${rows.length}`,
+        `patterns ${n} phones ${friendPhones.length} rows ${rows.length} inflight ${inflightAtStart}`,
     );
 
     const shaped = rows.map((row) => {
@@ -943,5 +974,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
   } catch (err) {
     console.error('searchSecondDegree error:', (err as Error).message);
     return { found: false, error: (err as Error).message };
+  } finally {
+    // Every exit, including the early not-found returns and a throw. A counter
+    // that leaks on one path stops being a measurement within an hour.
+    inFlightSearches -= 1;
   }
 }
