@@ -3810,6 +3810,78 @@ const MAX_IDENTITY_DECISIONS = 500;
 // the curator's id before that bypass was closed.
 //   Undo: UPDATE contact_facts SET retracted_at = NULL, is_public = <prior>
 //         WHERE id = <id>;  (the response carries the prior value)
+// Ticket 20 — take one fact out of everybody ELSE's reach and leave it on the
+// owner's own copy.
+//   POST /admin/facts/:id/keep-private   body: { reason }
+//   Undo: UPDATE contact_facts SET is_public = <prior>, is_matchable = <prior>
+//         WHERE id = <id>;  (the response carries both prior values)
+//
+// WHY THIS EXISTS BESIDE /unpublish, which looks like it already does the job.
+// /unpublish sets retracted_at, and every read filters on that — including
+// getVisibleFacts's own-rows query, which is how the OWNER's assistant sees
+// their own facts. Retracting therefore takes the fact away from them too.
+//
+// Tornike's ruling of 17 September is narrower than that, and the narrower part
+// is his own addition, unprompted: a fact the assistant read on a web page
+// „never goes public" AND „save it as info for Netai brain, so that it knows
+// it." Not public, not matchable across the network, still there and still
+// usable by the owner's own assistant for the owner's own searches.
+//
+// `is_matchable` is the half that is easy to miss: it is what lets ANOTHER
+// person's search hit the row (searchByInsight and wordMatch both filter
+// submitted_by_user_id <> the searcher), so leaving it true would be
+// publication by a quieter name.
+adminRouter.post('/facts/:id/keep-private', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'fact id აუცილებელია' });
+      return;
+    }
+    const reason = String((req.body as { reason?: unknown })?.reason ?? '').trim();
+    if (!reason) {
+      res.status(400).json({ success: false, error: 'reason აუცილებელია — ეს აუდიტის ჩანაწერია' });
+      return;
+    }
+    const before = await query<{
+      id: number;
+      field_type: string;
+      is_public: boolean;
+      is_matchable: boolean;
+      source: string | null;
+      confidence: string | null;
+      submitted_by_user_id: string;
+    }>(
+      `SELECT id, field_type, is_public, is_matchable, source, confidence, submitted_by_user_id
+       FROM contact_facts WHERE id = $1 LIMIT 1`,
+      [id],
+    );
+    const row = before.rows[0];
+    if (!row) {
+      res.status(404).json({ success: false, error: 'ასეთი ფაქტი არ არსებობს' });
+      return;
+    }
+    // retracted_at is deliberately NOT set: the fact stays readable by its own
+    // owner. canonical_value goes because it only has meaning for a published
+    // value — it is the crowd's agreed wording, and there is no crowd now.
+    await query(
+      `UPDATE contact_facts
+       SET is_public = false, is_matchable = false, canonical_value = NULL, updated_at = NOW()
+       WHERE id = $1`,
+      [id],
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin] fact ${id} kept private by ${(req as AuthenticatedRequest).user?.userId}: ${reason}`,
+    );
+    res.status(200).json({ success: true, data: { kept_private: row, reason } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin fact keep-private]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.post('/facts/:id/unpublish', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
