@@ -79,6 +79,65 @@ export async function getPendingRequestById(
   return result.rows[0] ?? null;
 }
 
+/**
+ * Ticket 20 row 211 — what the conversation IS, whether or not it still needs
+ * an answer.
+ *
+ * `getPendingRequestById` above has `status = 'pending'` in it and says so:
+ * „returns null once answered". That is right for the question „is there
+ * something here for the owner to decide", and it is the whole of the fault
+ * the seat found, because it is also the only thing that ever told a run what
+ * the thread was about.
+ *
+ * Lika's thread 17723, 18 September. Title „Salome Parkosadze → ნინია
+ * აბრამიშვილი", carrying request 1090, which names both of them.
+ *
+ *   13:41:02  she accepts — and with that the request leaves her prompt
+ *   13:45:55  „კი. სალომე გააცანი"
+ *   13:46:07  „რომელი სალომეს გულისხმობ?" with FOUR buttons
+ *   13:47:28  and then the direction reversed: it told her she would be
+ *             introducing Ninia TO Salome
+ *
+ * Nothing was hallucinated. By 13:45 the run genuinely did not know which
+ * Salome, or who was asking whom, because the one record that said so had been
+ * filtered out four minutes earlier for being answered. It searched her
+ * contacts, found three Salomes, and asked — which is the correct move for a
+ * run that has been told nothing.
+ *
+ * So this read has no status filter. It is context, never a pending item: the
+ * caller renders it as a statement of fact and the buttons still come from the
+ * pending read, so an answered request cannot be offered for answering twice.
+ */
+export interface ThreadRequest {
+  id: number;
+  requester_name: string | null;
+  target_name: string;
+  message: string | null;
+  status: string;
+  responded_at: string | null;
+  mediator_response: string | null;
+  /** No mediator stored: the target themself answers (task 18). */
+  direct: boolean;
+}
+
+export async function getRequestOnThread(
+  responderUserId: string,
+  requestId: number,
+): Promise<ThreadRequest | null> {
+  const result = await query<ThreadRequest>(
+    `SELECT ir.id, ir.target_name, ir.message, ir.status, ir.responded_at,
+            ir.mediator_response,
+            u.name AS requester_name,
+            (ir.mediator_user_id IS NULL) AS direct
+     FROM introduction_requests ir
+     LEFT JOIN "User" u ON u.id = ir.requester_user_id
+     WHERE ir.id = $1 AND ${RESPONDER_COND(2)}
+     LIMIT 1`,
+    [requestId, responderUserId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function getRecentResponsesForRequester(
   requesterUserId: string,
 ): Promise<RespondedRequest[]> {

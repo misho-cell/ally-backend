@@ -32,6 +32,8 @@ import { respondToIntroduction } from './tools/respondToIntroduction';
 import {
   getPendingRequestsForMediator,
   getPendingRequestById,
+  getRequestOnThread,
+  ThreadRequest,
   getRecentResponsesForRequester,
   getIntroStatusForRequester,
   PendingRequest,
@@ -2996,6 +2998,62 @@ function buildIncomingAskSection(ask: IncomingAsk): string {
   );
 }
 
+/**
+ * Ticket 20 row 211 — a request thread says what it is about, after it has
+ * been answered as well as before.
+ *
+ * The seat's run, Lika's thread 17723. She accepted request 1090 at 13:41:02,
+ * and with that the request left her prompt, because the only read that ever
+ * carried it filters on `status = 'pending'`. Four minutes later:
+ *
+ *   13:45:55  „კი. სალომე გააცანი"
+ *   13:46:07  „რომელი სალომეს გულისხმობ?" with FOUR buttons — on a thread
+ *             titled „Salome Parkosadze → ნინია აბრამიშვილი"
+ *   13:47:28  and the direction reversed: she was told she would be
+ *             introducing Ninia TO Salome
+ *
+ * The run was not careless. It had been told nothing, so it searched her
+ * contacts for „სალომე", found three, and asked — which is the right move for
+ * a run with no context. The context existed; it had been filtered out for
+ * being answered.
+ *
+ * THIS IS NOT THE PENDING SECTION AND MUST NOT BECOME IT. The buttons come
+ * from the pending read, which still refuses an answered request. What this
+ * says is: here is the request this whole conversation is, here is who is
+ * asking whom, and here is what the owner has already decided — so a decision
+ * already made is never asked for a second time.
+ */
+export function buildRequestThreadSection(req: ThreadRequest): string {
+  const asker = req.requester_name?.trim() || 'Netai-ს მომხმარებელი';
+  const why = req.message?.trim() ? `\n- მიზეზი, რომელიც მან დაწერა: „${req.message.trim()}"` : '';
+  const answered =
+    req.status === 'pending'
+      ? '- მფლობელს ჯერ არ უპასუხია. სწორედ ეს არის ამ საუბრის კითხვა.'
+      : req.status === 'accepted'
+        ? `- მფლობელმა უკვე დათანხმდა${req.responded_at ? ` (${req.responded_at})` : ''}. ` +
+          'ამ თხოვნაზე მისგან სხვა აღარაფერია საჭირო — ხელახლა ნუ ჰკითხავ და ნუ დაიწყებ ' +
+          'თავიდან იმავე გაცნობას.'
+        : `- მფლობელმა უარი თქვა${req.responded_at ? ` (${req.responded_at})` : ''}. ` +
+          'ამ თხოვნაზე მისი სახელით მეტი არაფერი კეთდება.';
+  const response = req.mediator_response?.trim()
+    ? `\n- მისი პასუხის ტექსტი: „${req.mediator_response.trim()}"`
+    : '';
+  return (
+    `\n\n## ამ საუბრის თხოვნა\n` +
+    `${asker} სთხოვს მფლობელს, გააცნოს ${req.target_name}.\n` +
+    `- ვინ თხოვს: ${asker}. ვისზე: ${req.target_name}. ` +
+    `${req.direct ? 'თხოვნა პირდაპირ მფლობელს ეხება.' : 'მფლობელი შუამავალია.'}` +
+    why +
+    response +
+    `\n${answered}\n` +
+    '- ეს საუბარი ამ თხოვნაზეა. როცა მფლობელი ზემოთ დასახელებულ სახელს ახსენებს, ან ' +
+    'ამბობს „მას"/„ის" — სწორედ ეს ორი ადამიანი იგულისხმება. ნუ ეძებ მათ თავიდან ' +
+    'კონტაქტებში და ნუ ჰკითხავ „რომელი…?", როცა სახელი ზემოთ წერია.\n' +
+    '- მიმართულება ზემოთ წერია და არ იცვლება: თხოვნა მთხოვნელისგან მოდის და ეხება იმ ' +
+    'ადამიანს, ვისზეც წერია. არასოდეს შეატრიალო.'
+  );
+}
+
 // Engine-owned section for a task-bound thread: the task's state and the
 // mechanics of the engine tools. Tone/strategy live in the task_step prompt
 // block (the prompt team's); mechanics live here (the engine's).
@@ -3168,6 +3226,7 @@ async function buildAgentSystemPrompt(
     profile,
     privateContext,
     pendingRequests,
+    threadRequest,
     recentResponses,
     tasks,
     userNotes,
@@ -3203,6 +3262,13 @@ async function buildAgentSystemPrompt(
     // code-enforced, not prompt-enforced.
     loadMemory ? getPrivateContext(userId) : Promise.resolve({} as Record<string, string>),
     resolvePendingRequests(userId, threadType, introRequestId),
+    // Row 211: the request this thread IS, whatever its status. Separate from
+    // the read above on purpose — that one answers „is there a decision to
+    // make", this one answers „what are we talking about", and conflating them
+    // is what left an answered request invisible on its own thread.
+    threadType === 'incoming_request' && introRequestId != null
+      ? getRequestOnThread(userId, introRequestId)
+      : Promise.resolve(null),
     // The OUTGOING-request thread is exactly where "did she reply?" gets
     // asked — starving it of response data forced the model to guess (task
     // 17). Only the incoming side (another user's request) stays lean.
@@ -3259,6 +3325,9 @@ async function buildAgentSystemPrompt(
     // Per-situation — changes when the work does.
     (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
     (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+    // Row 211: beside the ask section and for the same reason — what this
+    // conversation IS, said by the server rather than inferred from the text.
+    (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
     (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
     buildTasksSection(tasks) +
     buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
