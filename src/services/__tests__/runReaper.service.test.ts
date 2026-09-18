@@ -9,11 +9,15 @@ jest.mock('../threads.service', () => ({
   threadLanguage: jest.fn().mockResolvedValue('ka'),
   STATUS_LINES: { failed: 'ვერ დასრულდა', needs_you: 'შენ გელოდება' },
 }));
-jest.mock('../sse.service', () => ({ __esModule: true, emitThreadUpdated: jest.fn() }));
+jest.mock('../sse.service', () => ({
+  __esModule: true,
+  emitThreadUpdated: jest.fn(),
+  emitRunError: jest.fn(),
+}));
 
 import { query } from '../../db/postgres/client';
 import { saveThreadMessage, threadLanguage } from '../threads.service';
-import { emitThreadUpdated } from '../sse.service';
+import { emitRunError, emitThreadUpdated } from '../sse.service';
 import { sweepOrphanedRuns } from '../runReaper.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -219,5 +223,117 @@ describe('the line a reaped run leaves behind', () => {
 
     const [, , , text] = (saveThreadMessage as jest.Mock).mock.calls[0];
     expect(String(text)).toContain('ტექნიკური შეფერხება');
+  });
+});
+
+/**
+ * Ticket 20 row 214 — a dead run has to END on the screen, not only in the row.
+ *
+ * The seat watched thread 18086 for four minutes. The run died at 18:01:08 and
+ * the error was written into the thread — correct, stored, in the right
+ * language. The open page showed the step list frozen on „Searching saved
+ * info…": no spinner, no error, no retry. A reload produced all three at once.
+ *
+ * This is row 113's ninth pass in a second place, and its note in the route
+ * says the whole of it: „run_complete is the only thing that ends a run for
+ * the client". The sweep told every device the THREAD's new status, which
+ * repaints the chat list, and never told the open conversation that the run it
+ * was watching had ended.
+ *
+ * (The run itself died because of a deploy of mine that landed nine seconds
+ * after it started. That is row 205's problem, not this one. This row is about
+ * what the person is shown afterwards, and it would read the same however the
+ * run died.)
+ */
+describe('row 214 — the screen is told the run is over', () => {
+  const REAPED = {
+    id: 18086,
+    user_id: 501,
+    status: 'failed',
+    status_line: 'ვერ დასრულდა',
+    answered: false,
+    was_asked: true,
+  };
+
+  /** The sweep's UPDATE, then the lookup of the run that died. */
+  function withStamp(runId: string | null): void {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('run_prompt_stamps')) {
+        return Promise.resolve({
+          rows: runId === null ? [] : [{ run_id: runId }],
+          rowCount: runId === null ? 0 : 1,
+        } as never);
+      }
+      return Promise.resolve({ rows: [REAPED], rowCount: 1 } as never);
+    });
+  }
+
+  it('ends the run on the open page, naming the run that died', async () => {
+    withStamp('b157b21e-3a62-4632-bd56-f55bc9f70261');
+
+    await sweepOrphanedRuns();
+
+    expect(emitRunError).toHaveBeenCalledWith(
+      '501',
+      18086,
+      'b157b21e-3a62-4632-bd56-f55bc9f70261',
+      expect.stringContaining('ვერ'),
+    );
+    // And the chat list is still repainted — this is in addition to that, not
+    // instead of it.
+    expect(emitThreadUpdated).toHaveBeenCalled();
+  });
+
+  it('puts the run id on the error row too, so the failure can be traced', async () => {
+    withStamp('b157b21e-3a62-4632-bd56-f55bc9f70261');
+
+    await sweepOrphanedRuns();
+
+    // Row 202: the row recording a run's death was the one row that could not
+    // be joined back to the run.
+    expect(saveThreadMessage).toHaveBeenCalledWith(
+      18086,
+      501,
+      'assistant',
+      expect.any(String),
+      'error',
+      'b157b21e-3a62-4632-bd56-f55bc9f70261',
+    );
+  });
+
+  it('still writes the error when no run can be named, and says so', async () => {
+    // A run that died before it was ever stamped. The person still gets the
+    // message and the badge still clears; what they do not get is the spinner
+    // stopping without a reload, and that is worth a line in the log rather
+    // than a silence.
+    withStamp(null);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await sweepOrphanedRuns();
+
+    expect(saveThreadMessage).toHaveBeenCalled();
+    expect(emitRunError).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('no run stamp'));
+    warn.mockRestore();
+  });
+
+  it('says nothing about a run on a thread it decided not to write an error for', async () => {
+    // A thread that had already answered gets its status cleared and no error
+    // — and must not get a run_error either, which would end a run on screen
+    // that finished properly.
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('run_prompt_stamps')) {
+        return Promise.resolve({ rows: [{ run_id: 'x' }], rowCount: 1 } as never);
+      }
+      return Promise.resolve({
+        rows: [{ ...REAPED, answered: true }],
+        rowCount: 1,
+      } as never);
+    });
+
+    await sweepOrphanedRuns();
+
+    expect(emitRunError).not.toHaveBeenCalled();
+    expect(emitThreadUpdated).toHaveBeenCalled();
   });
 });

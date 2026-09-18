@@ -55,8 +55,13 @@ describe('sweepOrphanedRuns', () => {
     expect(sql).toContain(`CASE WHEN o.awaits_owner THEN 'needs_you' ELSE 'failed' END`);
     // kind='error' → the client renders a retryable system failure, not
     // assistant speech.
-    expect(mockSave).toHaveBeenCalledWith(11, 7, 'assistant', expect.any(String), 'error');
-    expect(mockSave).toHaveBeenCalledWith(12, 9, 'assistant', expect.any(String), 'error');
+    // Row 214 added a sixth argument: the id of the run that died, so the
+    // error row can be joined back to it and the open page can be told which
+    // run ended. Null here because this mock answers every query with the same
+    // reaped rows, so the run-stamp lookup finds nothing — which is itself the
+    // case that must still write the error.
+    expect(mockSave).toHaveBeenCalledWith(11, 7, 'assistant', expect.any(String), 'error', null);
+    expect(mockSave).toHaveBeenCalledWith(12, 9, 'assistant', expect.any(String), 'error', null);
     expect(mockEmit).toHaveBeenCalledWith(
       '7',
       expect.objectContaining({ id: 11, status: 'failed' }),

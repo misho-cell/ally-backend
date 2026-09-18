@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { saveThreadMessage, STATUS_LINES, ThreadStatus, threadLanguage } from './threads.service';
 import { RUN_STRINGS } from './runLanguage';
-import { emitThreadUpdated } from './sse.service';
+import { emitRunError, emitThreadUpdated } from './sse.service';
 
 // A thread still 'working' with NO SIGN OF LIFE means the process that owned
 // the run died (deploy restart, crash) taking its timers with it — the "thread
@@ -46,6 +46,42 @@ const BOOT_SWEEP_DELAY_MS = 10_000;
 async function orphanMessageFor(threadId: number): Promise<string> {
   const language = await threadLanguage(threadId).catch(() => 'ka' as const);
   return RUN_STRINGS[language].runDied;
+}
+
+/**
+ * Ticket 20 row 214 — a dead run has to END on the screen, not only in the row.
+ *
+ * The seat watched thread 18086 for four minutes. The run died; the error was
+ * written into the thread at 18:01:08, correct and in the right language; and
+ * the open page showed the step list frozen on „Searching saved info…", with
+ * no spinner, no error and no retry. A reload produced all three at once.
+ *
+ * This is row 113's ninth pass, in a second place. Its own note in the route
+ * says it: „run_complete is the only thing that ends a run for the client".
+ * The sweep below told every device the THREAD's new status, which repaints
+ * the chat list, and never told the open conversation that the run it is
+ * watching is over.
+ *
+ * To say that, the run needs a name, and the run that died took its id down
+ * with it — thread 18086 holds two rows and neither carries one. The prompt
+ * stamp does: it is written at the start of every run, 155 ms after the
+ * owner's message on that very thread, and a thread stuck on „working" is
+ * stuck on its newest run by construction.
+ *
+ * Null when a run died before it was ever stamped. That is a real case and it
+ * is reported rather than papered over: the badge still clears, and the person
+ * still has to reload, and I would rather read that in a log than believe this
+ * always works.
+ */
+async function lastRunOnThread(threadId: number): Promise<string | null> {
+  const result = await query<{ run_id: string }>(
+    `SELECT run_id FROM run_prompt_stamps
+      WHERE thread_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [threadId],
+  );
+  return result.rows[0]?.run_id ?? null;
 }
 
 export async function sweepOrphanedRuns(): Promise<number> {
@@ -157,7 +193,19 @@ export async function sweepOrphanedRuns(): Promise<number> {
         );
       } else {
         const message = await orphanMessageFor(thread.id);
-        await saveThreadMessage(thread.id, thread.user_id, 'assistant', message, 'error');
+        // Row 214: the id the run died with, so the error row can be joined to
+        // it (row 202) and the open page can be told which run ended.
+        const runId = await lastRunOnThread(thread.id).catch(() => null);
+        await saveThreadMessage(thread.id, thread.user_id, 'assistant', message, 'error', runId);
+        if (runId === null) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[run-reaper] thread ${thread.id}: no run stamp to name — the error is in the ` +
+              'thread but the open page will keep its spinner until it is reloaded',
+          );
+        } else {
+          emitRunError(String(thread.user_id), thread.id, runId, message);
+        }
       }
       emitThreadUpdated(String(thread.user_id), {
         id: thread.id,
