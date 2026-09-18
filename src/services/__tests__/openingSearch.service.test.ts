@@ -427,7 +427,11 @@ describe('row 154 — the way in, beside each web result', () => {
     it('answers nothing for a shape it does not recognise', () => {
       expect(webResultNames(null)).toEqual([]);
       expect(webResultNames({ results: 'nope' })).toEqual([]);
-      expect(webResultNames({ results: [{ url: 'https://x.ge' }] })).toEqual([]);
+      // A row with a URL and no title is malformed, and since 18 September the
+      // host is the fallback for a title that names nothing. It names something
+      // real, which is more than the empty answer did.
+      expect(webResultNames({ results: [{ url: 'https://x.ge' }] })).toEqual(['x.ge']);
+      expect(webResultNames({ results: [{}] })).toEqual([]);
     });
   });
 
@@ -672,11 +676,22 @@ describe('webResultNames cuts at a word', () => {
   const long =
     'Canned Food Market to Reach USD 100.92 Billion by 2027; Increasing demand worldwide';
 
-  it('does not end a name inside a word', () => {
-    const [name] = webResultNames({ results: [{ title: long }] });
+  it('does not offer that headline as a name at all any more', () => {
+    // 18 September: a title of thirteen words is a sentence, and a sentence has
+    // no company name in it. The cut-at-a-word rule below still governs a name
+    // that is genuinely long; this one is not a name.
+    expect(
+      webResultNames({ results: [{ title: long, url: 'https://news.example.com/x' }] }),
+    ).toEqual(['news.example.com']);
+  });
 
-    expect(name.endsWith('Incr')).toBe(false);
-    expect(long.startsWith(name)).toBe(true);
+  it('does not end a name inside a word', () => {
+    const sixWords = 'Tbilisi Premium Landscape And Garden Architecture'.padEnd(0);
+    const longName = `${sixWords} ${'x'.repeat(40)}`.split(' ').slice(0, 6).join(' ');
+    const [name] = webResultNames({ results: [{ title: longName }] });
+
+    expect(name).toBeDefined();
+    expect(longName.startsWith(name)).toBe(true);
     expect(name.length).toBeLessThanOrEqual(60);
   });
 
@@ -725,5 +740,80 @@ describe('the web block follows the conversation’s language', () => {
       // does not move because the language did.
       expect(message).not.toMatch(/https?:|დაურეკ|call them|ring them/i);
     }
+  });
+});
+
+/**
+ * A page title is not a company name, and the card was printing it as one.
+ *
+ * The seat's two cards, 18 September, word for word as the owner saw them:
+ *
+ *   „No way in yet: About, GARDENING AND LANDSCAPE ARCHITECTURE, Tbilisi Zoo…"
+ *   „No way in yet: 312 MOVERS, Three Guys And A Truck Chicago, Looking for
+ *    trusted office movers in Chicago, IL…, Moving Company in Tbilisi."
+ *
+ * „About" is Ruderal's About page — and Ruderal is the one genuinely good
+ * result in that run, described correctly at length in the prose underneath.
+ * It appeared in the card under the name „About".
+ *
+ * These strings are also what findWaysIn searches the owner's contacts for, so
+ * a bad name spends a way-in check asking whether anybody is called About.
+ */
+describe('the name taken out of a web result', () => {
+  const names = (rows: { title: string; url?: string }[]): string[] =>
+    webResultNames({ results: rows });
+
+  it('takes the real name from behind a page word', () => {
+    expect(names([{ title: 'About : Ruderal', url: 'https://ruderal.com/about' }])).toEqual([
+      'Ruderal',
+    ]);
+  });
+
+  it('falls back to the host when the title is a sentence', () => {
+    expect(
+      names([
+        {
+          title: 'Looking for trusted office movers in Chicago, IL for a small job',
+          url: 'https://www.reddit.com/r/chicago/comments/x',
+        },
+      ]),
+    ).toEqual(['reddit.com']);
+  });
+
+  it('leaves an ordinary company name exactly as it was', () => {
+    // The fix must not touch the case that already worked.
+    expect(names([{ title: '312 MOVERS — Chicago', url: 'https://312movers.com' }])).toEqual([
+      '312 MOVERS',
+    ]);
+    expect(
+      names([{ title: 'Electrician in Tbilisi — NeoFix', url: 'https://neofix.ge/en' }]),
+    ).toEqual(['Electrician in Tbilisi']);
+  });
+
+  it('drops www but keeps the host otherwise, because it names something real', () => {
+    expect(names([{ title: 'Home', url: 'https://www.ruderal.com/' }])).toEqual(['ruderal.com']);
+  });
+
+  it('survives a result with no url to fall back to', () => {
+    expect(names([{ title: 'About' }])).toEqual([]);
+  });
+
+  it('still does not repeat a name it already has', () => {
+    expect(
+      names([
+        { title: 'About : Ruderal', url: 'https://ruderal.com/about' },
+        { title: 'Contact : Ruderal', url: 'https://ruderal.com/contact' },
+      ]),
+    ).toEqual(['Ruderal']);
+  });
+
+  it('is knowingly still wrong about a directory heading, which is on the row', () => {
+    // Four words, not a page word, not a sentence — it survives both rules.
+    // Recorded rather than pretended away: deciding that a heading or a zoo is
+    // not in the trade needs judgement this cannot do, and guessing would drop
+    // real firms with plain names.
+    expect(
+      names([{ title: 'GARDENING AND LANDSCAPE ARCHITECTURE', url: 'https://yell.ge/x' }]),
+    ).toEqual(['GARDENING AND LANDSCAPE ARCHITECTURE']);
   });
 });

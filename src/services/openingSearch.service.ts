@@ -419,6 +419,79 @@ function cutAtAWord(name: string): string {
  * whereas a name dropped for being unrecognised costs the owner the way in
  * this row exists to find.
  */
+/**
+ * A page title is not a company name, and the card was printing it as one.
+ *
+ * The seat's two cards, 18 September, word for word as the owner saw them:
+ *
+ *   „No way in yet: About, GARDENING AND LANDSCAPE ARCHITECTURE, Tbilisi Zoo…"
+ *   „No way in yet: 312 MOVERS, Three Guys And A Truck Chicago, Looking for
+ *    trusted office movers in Chicago, IL…, Moving Company in Tbilisi."
+ *
+ * „About" is Ruderal's About page — and Ruderal is the one genuinely good
+ * result in that whole run, described correctly and at length in the prose
+ * underneath. It appears in the card under the name „About".
+ *
+ * Two shapes are handled here and both come from the evidence rather than from
+ * imagination. A title whose first segment is a PAGE word („About : Ruderal")
+ * has the real name in the next segment. A title that is a SENTENCE („Looking
+ * for trusted office movers in Chicago, IL…") has no name in it at all, and its
+ * host — ruderal.com, whatever it is — is a better name than a sentence.
+ *
+ * This is not only display. These same strings are what findWaysIn searches the
+ * owner's contacts for, so „About" spends one of the way-in checks asking
+ * whether anybody the owner knows is called About.
+ *
+ * WHAT THIS DOES NOT FIX, said plainly: „GARDENING AND LANDSCAPE ARCHITECTURE"
+ * is four words, not a page word, and not a sentence — so it survives both
+ * rules and is still wrong. Deciding that a directory heading or a zoo is not
+ * in the trade needs judgement this cannot do, and guessing at it would drop
+ * real firms with plain names. It stays on the row.
+ */
+const PAGE_WORDS = new Set([
+  'about',
+  'about us',
+  'home',
+  'homepage',
+  'contact',
+  'contacts',
+  'contact us',
+  'services',
+  'our services',
+  'products',
+  'blog',
+  'news',
+  'faq',
+  'welcome',
+]);
+/** A name is short. Beyond this it is a sentence, and a sentence has no name in it. */
+const MAX_NAME_WORDS = 6;
+
+function hostOf(url: unknown): string {
+  if (typeof url !== 'string') return '';
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '');
+  } catch {
+    return '';
+  }
+}
+
+function nameFromResult(row: Record<string, unknown>): string {
+  const title = typeof row.title === 'string' ? row.title : '';
+  const segments = title
+    .split(TITLE_SEPARATORS)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const segment of segments) {
+    if (PAGE_WORDS.has(segment.toLowerCase())) continue;
+    if (segment.split(/\s+/).length > MAX_NAME_WORDS) continue;
+    return cutAtAWord(segment);
+  }
+  // Every segment was a page word or a sentence: the host is what is left, and
+  // it is the one part of a web result that always names something real.
+  return hostOf(row.url);
+}
+
 export function webResultNames(result: unknown): string[] {
   if (result === null || typeof result !== 'object') return [];
   const rows = (result as { results?: unknown }).results;
@@ -426,9 +499,7 @@ export function webResultNames(result: unknown): string[] {
   const names: string[] = [];
   for (const row of rows) {
     if (row === null || typeof row !== 'object') continue;
-    const title = (row as { title?: unknown }).title;
-    if (typeof title !== 'string') continue;
-    const name = cutAtAWord((title.split(TITLE_SEPARATORS)[0] ?? '').trim());
+    const name = nameFromResult(row as Record<string, unknown>);
     if (name === '' || names.includes(name)) continue;
     names.push(name);
     if (names.length >= MAX_WAY_IN_CHECKS) break;
