@@ -1758,6 +1758,60 @@ export function planProposedResult(
     : base;
 }
 
+/**
+ * Ticket 20 row 209 — what an approval tells the model, and whether day one is
+ * still coming.
+ *
+ * Its own function because the sentence and the wall have to agree. The wall
+ * (see noteApprovedAPlan) stops this run writing to the plan's people on the
+ * grounds that day one is about to; the sentence tells the model the same
+ * thing in words. If one of them holds and the other does not, the model is
+ * either blocked for a reason it was not given, or told to wait for something
+ * that is not coming.
+ *
+ * THE WINDOW. A plan already in force was approved by an earlier call, which
+ * started day one then. Inside the engine's own wake window that wake is still
+ * on its way and „do not write to them, day one will" is true. Outside it, the
+ * wake has run or has given up in the log, and the same sentence would be the
+ * kind of statement row 208 took out of the ask refusals: true when the code
+ * was written, false by the time it is read. So outside the window the result
+ * says what is durably true — the date the plan came into force — and the wall
+ * is not applied, because blocking a real ask with a false reason is worse
+ * than the duplicate it was built to stop.
+ */
+export function approvalResult(
+  approval: { alreadyInForce: boolean; approvedAt: string },
+  now: Date,
+  dayOneWindowMs: number,
+): { dayOneStillComing: boolean; note: string } {
+  const sinceApproval = now.getTime() - new Date(approval.approvedAt).getTime();
+  const dayOneStillComing =
+    !approval.alreadyInForce || (Number.isFinite(sinceApproval) && sinceApproval < dayOneWindowMs);
+  if (!dayOneStillComing) {
+    return {
+      dayOneStillComing,
+      note:
+        `This plan has been in force since ${approval.approvedAt} and your call changed ` +
+        'nothing. Day one has already run, so do NOT repeat it — read the goal with ' +
+        'get_my_tasks and tell the user where it actually stands.',
+    };
+  }
+  return {
+    dayOneStillComing,
+    // Answers-10 / Ticket 14 [1] (D119, D159): the plan IS the consent.
+    note:
+      (approval.alreadyInForce
+        ? 'This plan was ALREADY approved moments ago — your call changed nothing and nothing ' +
+          'is wrong. '
+        : '') +
+      'The plan is approved and that is the consent: do NOT show drafts, do NOT ask ' +
+      '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
+      'starts by itself right behind your reply and writes to the first 3–5 people the plan ' +
+      'names. Tell the user in one or two sentences that you are on it and when you will be ' +
+      'back. Nothing else.',
+  };
+}
+
 // Ticket 10 Task 21 (D118, D119): the plan is agreed once, then the assistant
 // works inside it on its own. Two tools: propose (the assistant writes it from
 // the conversation and shows it), approve (the user's yes, recorded).
@@ -5480,33 +5534,37 @@ async function executeToolCall(
         'chat',
         runLang(runId),
       );
-      // Day one starts behind the reply (Ticket 12 Tasks 2 and 5): the user
-      // hears „I am on it" first, the asks go out after. Dynamic import — the
-      // engine imports this module, a static import would be a cycle.
-      if (outcome.ok) {
-        // Day one is the ONLY path that writes to the plan's people from here.
-        // The tool result below asks the model not to send in this turn; this
-        // is the same sentence as a guard, because the result was ignored on
-        // 17 and 18 September and real people were messaged twice.
-        noteApprovedAPlan(runId);
-        void import('./taskEngine.service').then(({ startDayOne }) =>
-          startDayOne(Number(input['task_id'])),
-        );
+      if (!outcome.ok) return { approved: false, error: outcome.error };
+      // Dynamic import — the engine imports this module, so a static one would
+      // be a cycle. One import, both things taken from it.
+      const engine = await import('./taskEngine.service');
+      const said = approvalResult(outcome.value, new Date(), engine.DAY_ONE_WINDOW_MS);
+      if (!outcome.value.alreadyInForce) {
+        // Behind the reply (Ticket 12 Tasks 2 and 5): the user hears „I am on
+        // it" first, the asks go out after. ONCE per approval: a plan already
+        // in force had its day one started by the approval that put it there.
+        engine.startDayOne(Number(input['task_id']));
       }
-      return outcome.ok
-        ? {
-            approved: true,
-            version: outcome.value.version,
-            summary: outcome.value.summary,
-            // Answers-10 / Ticket 14 [1] (D119, D159): the plan IS the consent.
-            note:
-              'The plan is approved and that is the consent: do NOT show drafts, do NOT ask ' +
-              '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
-              'starts by itself right behind your reply and writes to the first 3–5 people the ' +
-              'plan names. Tell the user in one or two sentences that you are on it and when you ' +
-              'will be back. Nothing else.',
-          }
-        : { approved: false, error: outcome.error };
+      /**
+       * Row 209 — the run that merely FINDS the plan approved is walled too.
+       *
+       * Day one is the only path that writes to the plan's people from here,
+       * and the guard holding that line keys off this run having approved.
+       * Goal 5580 is why: the second run's approval failed, so it was never
+       * marked, so ask_contact let it through and two people were written to
+       * twice while day one wrote to them again. Whether this run performed
+       * the approval or found it already done, those people are day one's.
+       *
+       * Only while day one is actually still coming — see approvalResult.
+       */
+      if (said.dayOneStillComing) noteApprovedAPlan(runId);
+      return {
+        approved: true,
+        version: outcome.value.version,
+        summary: outcome.value.summary,
+        already_approved: outcome.value.alreadyInForce,
+        note: said.note,
+      };
     }
     case 'save_user_note': {
       const kind = input['kind'] as string;

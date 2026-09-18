@@ -262,6 +262,53 @@ async function withReachability(people: readonly PlanPerson[]): Promise<PlanPers
  */
 export type ApprovalRoute = 'chat' | 'admin';
 
+/**
+ * What an approval did, as opposed to what it found.
+ *
+ * `alreadyInForce` is the whole point of this shape. The UPDATE below is
+ * idempotent by construction — it needs `plan_proposed IS NOT NULL`, which the
+ * first approval clears — so a second approval of the same plan changed
+ * nothing and used to come back as the flat error „No proposed plan is waiting
+ * on this goal." That sentence is true about the PROPOSAL and false about the
+ * world: the plan is approved, and the caller is now told so.
+ *
+ * `approvedAt` comes with it because the one decision that hangs off this —
+ * whether day one still has to be started — is a question about WHEN, and the
+ * caller cannot answer it from a boolean.
+ */
+export interface PlanApproval {
+  readonly version: number;
+  readonly summary: string;
+  /** The plan was approved before this call; this call changed nothing. */
+  readonly alreadyInForce: boolean;
+  readonly approvedAt: string;
+}
+
+/**
+ * Ticket 20 row 209 — a plan approved twice is approved, not broken.
+ *
+ * Read off the tool log on goal 5580, 18 September. The owner typed
+ * „ვამტკიცებ" and then „ok" three seconds later, which started a SECOND run,
+ * and the two runs raced:
+ *
+ *   12:52:08.012  approve_task_plan  run 64e7045a  ok            <- day one queued
+ *   12:52:09.517  approve_task_plan  run a602665f  „no proposed plan"
+ *   12:52:39.101  ask_contact …0044  run a602665f
+ *   12:52:41.501  ask_contact …0942  run a602665f
+ *   12:53:19.611  ask_contact …0044  run c4d9e937  <- day one, the same two
+ *   12:53:21.616  ask_contact …0942  run c4d9e937
+ *
+ * The second run was told its approval had failed. Everything it did next
+ * follows from that: the owner had plainly said yes, the tool said no plan was
+ * waiting, so it did day one's work by hand — and day one then did it again.
+ * Task 4627 on 17 September is the same sequence with five people instead of
+ * two.
+ *
+ * The guard added for that incident keys off a SUCCESSFUL approval in the same
+ * run, so it could not bite here: the run whose approval failed was never
+ * marked. Reporting the truth is what makes it bite, which is the smaller and
+ * more honest fix than widening the guard.
+ */
 export async function approveTaskPlan(
   userId: string,
   taskId: number,
@@ -270,7 +317,7 @@ export async function approveTaskPlan(
   // from; the admin panel names itself.
   via: ApprovalRoute = 'chat',
   language: RunLanguage = 'ka',
-): Promise<PlanOutcome<{ version: number; summary: string }>> {
+): Promise<PlanOutcome<PlanApproval>> {
   const result = await query<{ plan: TaskPlan; plan_version: number; plan_approved_at: string }>(
     `UPDATE tasks
      SET plan = plan_proposed,
@@ -287,12 +334,48 @@ export async function approveTaskPlan(
     PLAN_QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
-  if (!row) return { ok: false, error: 'No proposed plan is waiting on this goal.' };
+  if (row) {
+    return {
+      ok: true,
+      value: {
+        version: row.plan_version,
+        summary: renderPlan(row.plan, row.plan_version, row.plan_approved_at, undefined, language),
+        alreadyInForce: false,
+        approvedAt: row.plan_approved_at,
+      },
+    };
+  }
+  // Nothing was updated, and that is two different worlds: no plan was ever
+  // proposed here, or one was and is already approved. Only the second is a
+  // success, so the row decides rather than the absence of one.
+  const standing = await query<{
+    plan: TaskPlan;
+    plan_version: number;
+    plan_approved_at: string;
+  }>(
+    `SELECT plan, plan_version, plan_approved_at
+       FROM tasks
+      WHERE id = $1 AND user_id = $2 AND status = 'open'
+        AND plan IS NOT NULL AND plan_approved_at IS NOT NULL
+      LIMIT 1`,
+    [taskId, userId],
+    PLAN_QUERY_TIMEOUT_MS,
+  );
+  const inForce = standing.rows[0];
+  if (!inForce) return { ok: false, error: 'No proposed plan is waiting on this goal.' };
   return {
     ok: true,
     value: {
-      version: row.plan_version,
-      summary: renderPlan(row.plan, row.plan_version, row.plan_approved_at, undefined, language),
+      version: inForce.plan_version,
+      summary: renderPlan(
+        inForce.plan,
+        inForce.plan_version,
+        inForce.plan_approved_at,
+        undefined,
+        language,
+      ),
+      alreadyInForce: true,
+      approvedAt: inForce.plan_approved_at,
     },
   };
 }

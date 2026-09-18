@@ -1065,12 +1065,19 @@ export async function mcpApproveTaskPlan(
     };
   }
   const outcome = await approveTaskPlan(userId, taskId);
-  // Day one starts behind the answer (Ticket 12 Tasks 2 and 5).
-  if (outcome.ok) {
+  // Day one starts behind the answer (Ticket 12 Tasks 2 and 5) — and ONCE.
+  // Row 209: approving a plan that is already in force changes nothing, so a
+  // second day one here would only write to the same people a second time.
+  if (outcome.ok && !outcome.value.alreadyInForce) {
     void import('../taskEngine.service').then(({ startDayOne }) => startDayOne(taskId));
   }
   return outcome.ok
-    ? { approved: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
+    ? {
+        approved: true,
+        version: outcome.value.version,
+        summary: scrubText(outcome.value.summary),
+        already_approved: outcome.value.alreadyInForce,
+      }
     : { approved: false, error: outcome.error };
 }
 

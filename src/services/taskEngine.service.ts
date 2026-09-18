@@ -422,6 +422,21 @@ const WAKE_RETRY_DELAY_MS = 6_000;
 const WAKE_RETRY_ATTEMPTS = 15;
 
 /**
+ * How long after an approval day one may still be coming.
+ *
+ * Ticket 20 row 209. A second run that approves the same plan must be told
+ * „day one is already on its way" rather than start it again — but that
+ * sentence has to be TRUE when written, which is the same rule that took the
+ * word „today" out of the ask refusals. So it is derived from the schedule
+ * above instead of guessed: the delay before the first attempt, plus every
+ * retry the wake is allowed, plus one whole run for the wake that finally gets
+ * in. After that, day one has either happened or given up in the log, and a
+ * caller is told the plain truth that the plan has been in force for a while.
+ */
+export const DAY_ONE_WINDOW_MS =
+  DAY_ONE_DELAY_MS + WAKE_RETRY_ATTEMPTS * WAKE_RETRY_DELAY_MS + RUN_HARD_TIMEOUT_MS;
+
+/**
  * Has the owner said something themselves in the last few seconds?
  *
  * `kind = 'message'` on purpose: an engine EVENT is stored as a user row too,

@@ -133,6 +133,76 @@ describe('proposing and approving', () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
     const out = await approveTaskPlan('501', 1619);
     expect(out).toEqual({ ok: false, error: 'No proposed plan is waiting on this goal.' });
+    // Both reads ran: the UPDATE found nothing, and the row was then asked
+    // whether a plan is standing. Neither found one, so this really is the
+    // „nothing to approve" case and not the „already approved" one.
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * Ticket 20 row 209 — a second yes on the same plan.
+ *
+ * Goal 5580, 18 September: the owner typed „ვამტკიცებ" and then „ok" three
+ * seconds later, which started a second run, and the two raced. The first
+ * approval won; the second was told „No proposed plan is waiting on this
+ * goal." The run that got that sentence had an owner who had plainly said yes
+ * and a tool saying no plan existed, so it did day one's work by hand — and
+ * day one then wrote to the same two people again, forty seconds later.
+ *
+ * The UPDATE is idempotent by construction and always was. What was not true
+ * was what it SAID about having changed nothing.
+ */
+describe('approving a plan that is already in force', () => {
+  const APPROVED = {
+    rows: [{ plan: RAW, plan_version: 3, plan_approved_at: '2026-09-18T12:52:08.012Z' }],
+    rowCount: 1,
+  };
+
+  it('is a success, not an error, and says it changed nothing', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never) // the UPDATE
+      .mockResolvedValueOnce(APPROVED as never); // the plan standing
+
+    const out = await approveTaskPlan('501', 5580);
+
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.value.alreadyInForce).toBe(true);
+      expect(out.value.version).toBe(3);
+      expect(out.value.approvedAt).toBe('2026-09-18T12:52:08.012Z');
+      // The summary is the real plan's, so a caller can show it rather than
+      // having to explain an error it cannot see behind.
+      expect(out.value.summary).toContain('მოგვარებულია, როცა:');
+    }
+  });
+
+  it('reads only an OPEN goal’s standing plan, never a closed one', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      .mockResolvedValueOnce(APPROVED as never);
+
+    await approveTaskPlan('501', 5580);
+
+    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(sql).toContain("status = 'open'");
+    expect(sql).toContain('plan_approved_at IS NOT NULL');
+    // Parameterised, and scoped to the owner — a goal id alone must never be
+    // enough to read somebody else's plan.
+    expect(params).toEqual([5580, '501']);
+    expect(sql).toContain('$1');
+    expect(sql).toContain('$2');
+  });
+
+  it('marks a FRESH approval as the one that changed something', async () => {
+    mockQuery.mockResolvedValueOnce(APPROVED as never);
+
+    const out = await approveTaskPlan('501', 5580);
+
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.value.alreadyInForce).toBe(false);
+    // One query. The second read exists only for the branch that needs it.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 });
 
