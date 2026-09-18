@@ -19,7 +19,7 @@ import {
   getLongestRunStep,
   DEFAULT_NEW_THREAD_TITLE,
 } from '../../services/threads.service';
-import { processChat, ChatResult } from '../../services/chat.service';
+import { processChat, ChatResult, keepRefusedUserMessage } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
 import {
@@ -463,6 +463,29 @@ threadsRouter.post(
       const allowance =
         payerId === null ? { allowed: true as const } : await checkRunAllowance(payerId);
       if (!allowance.allowed && payerId === userId) {
+        /**
+         * P0, 18 September — the refusal must not take the owner's words with
+         * it, and must not call an unstarted goal finished.
+         *
+         * Lika typed a goal on an exhausted balance twice in five minutes on
+         * account 165699. Both times she got a chat with a real title and a
+         * top-up card; both times a reload showed the chat EMPTY and marked
+         * finished. The seat read the admin against it: no goal created that
+         * day, no messages on the thread. The title above was written from her
+         * sentence and the sentence itself was never stored, because this
+         * return sits between the title and every other write.
+         *
+         * Two separate faults, so two separate lines. Her message is kept — it
+         * is hers, and there is no draft anywhere else to recover it from. And
+         * the thread is told to say `needs_you` with a top-up line, because a
+         * thread created with the default „done" and no goal to contradict it
+         * reads as a completed goal. Refusing the run is correct; the other two
+         * were never part of refusing it.
+         */
+        await keepRefusedUserMessage(userId, threadId, message);
+        void setThreadStatus(userId, threadId, 'needs_you', {
+          statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.needs_topup,
+        });
         // The renewal named is the window in force (D124): monthly today,
         // weekly once BUDGET_WINDOW=week — the text must not promise the
         // wrong day.

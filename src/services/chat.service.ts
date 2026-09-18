@@ -2489,6 +2489,40 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
   return rows;
 }
 
+/**
+ * P0, 18 September: at zero tokens the owner's typed goal was thrown away, and
+ * the product then told them it was finished.
+ *
+ * Lika, on Ninia's account 165699, typed a goal on an exhausted balance twice
+ * inside five minutes. Both times she got a chat with a real title and a
+ * top-up card; both times a reload showed an EMPTY chat marked finished. The
+ * seat checked the admin against it: zero goals created on the account that
+ * day, no messages on the thread. The title existed, the chat existed, her
+ * sentence did not.
+ *
+ * The order in the route is what did it. The provisional title is written from
+ * her words, THEN the wallet is checked, and a 402 returns before anything
+ * reaches the conversation table — so the one part of the exchange that was
+ * hers to keep is the only part not stored. The run is right to be refused; the
+ * writing never should have been.
+ *
+ * Her message is stored first now, and the refusal only refuses the RUN. Best
+ * effort by design: if this write fails too, the 402 still goes out, because a
+ * person who cannot start a run must still be told why.
+ */
+export async function keepRefusedUserMessage(
+  userId: string,
+  threadId: number,
+  message: string,
+): Promise<void> {
+  try {
+    await saveMessage(userId, threadId, 'user', message);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('keepRefusedUserMessage failed:', (err as Error).message);
+  }
+}
+
 async function saveMessage(
   userId: string,
   threadId: number,

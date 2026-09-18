@@ -74,7 +74,20 @@ interface RunStrings {
   moderationBlocked: string;
   /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
   nameNotVerified: string;
-  statusLines: { working: string; waiting: string; needs_you: string; failed: string };
+  /**
+   * `needs_topup` is the P0 of 18 September: a run refused for an empty wallet
+   * used to leave the thread reading „finished", because the thread was created
+   * with the default done status and no goal ever contradicted it. A goal that
+   * never started is not a completed goal, so the thread says what is actually
+   * true and what the owner can do about it.
+   */
+  statusLines: {
+    working: string;
+    waiting: string;
+    needs_you: string;
+    needs_topup: string;
+    failed: string;
+  };
 }
 
 export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
@@ -90,6 +103,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'ვმუშაობ…',
       waiting: 'ველოდები პასუხს',
       needs_you: 'შენი პასუხი სჭირდება',
+      needs_topup: 'ტოკენები ამოიწურა — შეავსე და გავაგრძელებ',
       failed: 'შეფერხდა — სცადე თავიდან',
     },
   },
@@ -105,6 +119,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Working…',
       waiting: 'Waiting for a reply',
       needs_you: 'Needs your answer',
+      needs_topup: 'Out of tokens — top up and I will carry on',
       failed: 'Hit a snag — try again',
     },
   },
@@ -120,6 +135,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Работаю…',
       waiting: 'Жду ответа',
       needs_you: 'Нужен твой ответ',
+      needs_topup: 'Токены закончились — пополни, и я продолжу',
       failed: 'Сбой — попробуй ещё раз',
     },
   },
@@ -135,6 +151,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Trabajando…',
       waiting: 'Esperando respuesta',
       needs_you: 'Necesita tu respuesta',
+      needs_topup: 'Sin tokens — recarga y sigo',
       failed: 'Algo falló — inténtalo de nuevo',
     },
   },
