@@ -38,6 +38,51 @@ const pool = new Pool({
   options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
 });
 
+/**
+ * Ticket 20 row 108 — the long queries get their own connections, so they
+ * cannot starve the short ones.
+ *
+ * MEASURED, 18 September 18:46, thirteen second-degree searches on a container
+ * that had been up half an hour and had already served a 22-search sweep. The
+ * pool at the END of every one of the thirteen, without exception:
+ *
+ *   total 10 / 0 idle / 3 to 24 waiting
+ *
+ * Ten is this pool's max. Zero idle. Up to twenty-four requests queued. That
+ * is not a pool that keeps discarding its connections — it grew to its ceiling
+ * and stopped there, which kills the idleTimeoutMillis theory I was holding an
+ * hour earlier, and it is not a slow database either: Neo4j, which does not go
+ * through here, sat flat at 1,180 to 1,235 ms across the whole burst.
+ *
+ * WHAT WAS ACTUALLY QUEUED is the point. In the sweep before it, sixty-one of
+ * the sixty-two slow queries were small lookups — human_relationship_tiers,
+ * contact_exclusions, person_identities — at 3.1 to 3.7 seconds each, against
+ * the 150 to 700 ms the phase log measures for them all day. Dozens finished
+ * on the same millisecond. They are not slow. They were behind a handful of
+ * fifteen-second searches holding nine of the ten connections.
+ *
+ * So the split is by how long a query is ALLOWED to take, which is the only
+ * thing we know about it before it runs. A query with a custom timeout has
+ * asked for room the default cannot give it, and it is the one that holds a
+ * client for its whole duration; everything else keeps the short pool to
+ * itself and no longer waits behind it.
+ *
+ * DELIBERATELY NOT A BIGGER `max`. The searches themselves read gigabytes, so
+ * letting thirty of them run at once moves the queue into the disk and makes
+ * it somebody else's problem. Heavy work stays bounded at ten, exactly as it
+ * is today; what changes is that a 50 ms lookup no longer stands behind it.
+ * If the searches need more room after this, that is a separate decision with
+ * its own measurement.
+ *
+ * The same argument, and nearly the same words, as the background pool below.
+ */
+const longQueryPool = new Pool({
+  ...BASE_POOL_CONFIG,
+  max: 10,
+  connectionTimeoutMillis: 10_000,
+  options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
+});
+
 // Background jobs (enrichment, backfills) draw from their OWN tiny pool so a
 // heavy job can mathematically never starve a user-facing query of a
 // connection. The 30 Jul search outage was exactly this: the enrichment
@@ -203,7 +248,13 @@ export async function query<T extends QueryResultRow>(
   params?: unknown[],
   timeoutMs: number = DEFAULT_QUERY_TIMEOUT_MS,
 ): Promise<QueryResult<T>> {
-  return runOnPool<T>(pool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
+  // Row 108: a query that asked for its own timeout has asked for room, and it
+  // is the one that borrows a client for its whole duration. It draws from
+  // longQueryPool so the short queries — which are most of them, and which are
+  // not slow — keep `pool` to themselves. See longQueryPool for the reading
+  // this comes from.
+  const sourcePool = timeoutMs === DEFAULT_QUERY_TIMEOUT_MS ? pool : longQueryPool;
+  return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
 }
 
 /** Same contract as query(), but on the isolated background pool — use for jobs, never for request handling. */
@@ -258,7 +309,14 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
  * that row were wrong today and every one of them died to a measurement.
  */
 export function poolPressure(): { total: number; idle: number; waiting: number } {
-  return { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount };
+  // Row 108: the LONG pool, because that is the one a search borrows from and
+  // the one whose queue the second-degree line exists to report. Reading the
+  // short pool here would answer a question nobody asked.
+  return {
+    total: longQueryPool.totalCount,
+    idle: longQueryPool.idleCount,
+    waiting: longQueryPool.waitingCount,
+  };
 }
 
 export default pool;
