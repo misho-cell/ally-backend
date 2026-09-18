@@ -1530,10 +1530,49 @@ export const WAKE_SHARE_NOTE =
   'ნუ ჩასვამ ტექსტს ან ბმულს — უთხარი, ვის ეხება, რომ ანგარიში უკვე აქვს, და ' +
   'რომ ერთი შეხებით გაიგზავნება.';
 
-export const PLAN_ALREADY_ON_SCREEN =
-  'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
-  'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
-  'და დასვი ერთი კითხვა. მერე present_choices — „ვამტკიცებ" და „შევცვალოთ".';
+/**
+ * Ticket 6 task 22's rule, applied to the side of the product it was never
+ * applied to: what the SERVER says to the MODEL.
+ *
+ * runLanguage.ts opens with the reason the rule exists — „Every English thread
+ * used to carry Georgian chrome." That was fixed for the strings the OWNER
+ * reads. The strings the model reads stayed Georgian in every language, and
+ * this one is the worst placed of them: it is handed back from
+ * propose_task_plan, so the model receives 184 Georgian characters immediately
+ * before writing the message that sits above the plan card.
+ *
+ * That is exactly the message the seat measured coming back wrong on
+ * 18 September — thread 17458, an English question, „plan card 144 Georgian to
+ * 100 Latin" — while two other goals minutes apart came back clean. An
+ * instruction in Georgian is also an example of Georgian, and the model has no
+ * way to tell which of the two we meant.
+ *
+ * Not a claim that this is the whole fault. It is one measurable part of it
+ * that belongs to this file rather than to the prompt block, and it costs
+ * nothing to stop doing.
+ */
+export function planAlreadyOnScreenNote(language: RunLanguage): string {
+  const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
+  const text: Record<RunLanguage, string> = {
+    ka:
+      'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
+      'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
+      'და დასვი ერთი კითხვა. მერე present_choices — ',
+    en:
+      'The plan is already on screen — the server wrote it as its own message, in full. Do not ' +
+      'write it again in your reply: not in full, not shortened, not in other words. Write only ' +
+      'what you found, and ask one question. Then present_choices — ',
+    ru:
+      'План уже на экране — сервер записал его отдельным сообщением, полностью. Не пиши его ' +
+      'снова в своём ответе: ни полностью, ни сокращённо, ни другими словами. Напиши только то, ' +
+      'что нашёл, и задай один вопрос. Затем present_choices — ',
+    es:
+      'El plan ya está en pantalla — el servidor lo escribió como su propio mensaje, completo. ' +
+      'No lo escribas de nuevo en tu respuesta: ni completo, ni resumido, ni con otras palabras. ' +
+      'Escribe solo lo que encontraste y haz una pregunta. Luego present_choices — ',
+  };
+  return text[language] + buttons + '.';
+}
 
 /**
  * Ticket 20 row 203 — when nobody in the plan can be written to, do not ask
@@ -1604,6 +1643,10 @@ export function planProposedResult(
   version: number,
   summary: string,
   planIsOnScreen: boolean,
+  // Required, and deliberately not defaulted to 'ka'. A default here is how the
+  // Georgian got into English threads in the first place: every caller that
+  // forgot would silently be right for one language and wrong for three.
+  language: RunLanguage,
   unreachable: {
     nobodyReachable: boolean;
     invitees: readonly string[];
@@ -1611,7 +1654,7 @@ export function planProposedResult(
   } = { nobodyReachable: false, invitees: [] },
 ): Record<string, unknown> {
   const base = planIsOnScreen
-    ? { proposed: true, version, next: PLAN_ALREADY_ON_SCREEN }
+    ? { proposed: true, version, next: planAlreadyOnScreenNote(language) }
     : { proposed: true, version, summary };
   // Row 203. Two directives, and the second REPLACES the buttons the first
   // one names — so it is sent as its own field rather than appended, and a
@@ -4969,6 +5012,7 @@ async function executeToolCall(
         outcome.value.version,
         outcome.value.summary,
         planIsOnScreen,
+        runLang(runId),
         unreachable,
       );
     }

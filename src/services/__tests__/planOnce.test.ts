@@ -1,7 +1,7 @@
 import {
   choicesWithoutApproval,
   INVITE_SHARE_NOTE,
-  PLAN_ALREADY_ON_SCREEN,
+  planAlreadyOnScreenNote,
   planProposedResult,
   WAKE_SHARE_NOTE,
 } from '../chat.service';
@@ -25,9 +25,9 @@ describe('what propose_task_plan hands back', () => {
     // The whole of row 101 that is OURS to guarantee. Handing the model the
     // text and telling it not to use it is a losing instruction; not handing
     // it over is code.
-    const out = planProposedResult(1, SUMMARY, true);
+    const out = planProposedResult(1, SUMMARY, true, 'ka');
 
-    expect(out).toEqual({ proposed: true, version: 1, next: PLAN_ALREADY_ON_SCREEN });
+    expect(out).toEqual({ proposed: true, version: 1, next: planAlreadyOnScreenNote('ka') });
     expect(JSON.stringify(out)).not.toContain('მოგვარებულია, როცა');
   });
 
@@ -35,7 +35,7 @@ describe('what propose_task_plan hands back', () => {
     // Outside a thread, or when the stored plan cannot be read back. Silence
     // here would mean the user is asked to approve a plan they were never
     // shown — far worse than showing it twice.
-    expect(planProposedResult(1, SUMMARY, false)).toEqual({
+    expect(planProposedResult(1, SUMMARY, false, 'ka')).toEqual({
       proposed: true,
       version: 1,
       summary: SUMMARY,
@@ -46,17 +46,61 @@ describe('what propose_task_plan hands back', () => {
     // „Do not repeat the plan" on its own leaves the model to guess what the
     // message above the buttons is for, and a guess there is a blank reply or
     // the plan again.
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('ხელახლა');
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('რაც იპოვე');
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('present_choices');
+    expect(planAlreadyOnScreenNote('ka')).toContain('ხელახლა');
+    expect(planAlreadyOnScreenNote('ka')).toContain('რაც იპოვე');
+    expect(planAlreadyOnScreenNote('ka')).toContain('present_choices');
   });
 
   it('closes the three ways round it, by name', () => {
     // Measured: „in its own words" is what actually happened on 3961, so
     // forbidding a verbatim repeat alone would have changed nothing.
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('სრულად');
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('შემოკლებულად');
-    expect(PLAN_ALREADY_ON_SCREEN).toContain('სხვა სიტყვებით');
+    expect(planAlreadyOnScreenNote('ka')).toContain('სრულად');
+    expect(planAlreadyOnScreenNote('ka')).toContain('შემოკლებულად');
+    expect(planAlreadyOnScreenNote('ka')).toContain('სხვა სიტყვებით');
+  });
+});
+
+/**
+ * The same note, in the language of the conversation.
+ *
+ * runLanguage.ts exists because „every English thread used to carry Georgian
+ * chrome". That was fixed for the strings the OWNER reads and never for the
+ * strings the MODEL reads — and this note is the worst placed of those: it
+ * comes back from propose_task_plan, so the model is handed 184 Georgian
+ * characters immediately before writing the message above the plan card.
+ *
+ * The seat measured that message on 18 September: thread 17458, an English
+ * question, plan card 144 Georgian letters to 100 Latin, while two other goals
+ * minutes apart came back clean. One instruction is also one example, and
+ * nothing in it says which of the two we meant.
+ */
+describe('the note follows the conversation, like every other fixed string', () => {
+  it('carries no Georgian at all in an English run', () => {
+    expect(planAlreadyOnScreenNote('en')).not.toMatch(/[Ⴀ-ჿ]/);
+  });
+
+  it.each(['en', 'ru', 'es'] as const)('carries no Georgian in a %s run', (language) => {
+    expect(planAlreadyOnScreenNote(language)).not.toMatch(/[Ⴀ-ჿ]/);
+  });
+
+  it('still says all three things in every language', () => {
+    // A translation that drops „not in other words" would be the row 101 fault
+    // again, in three more languages.
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const note = planAlreadyOnScreenNote(language);
+      expect(note).toContain('present_choices');
+      expect(note.length).toBeGreaterThan(150);
+    }
+  });
+
+  it('names the buttons in the words the owner will actually see', () => {
+    // The old note hardcoded „ვამტკიცებ" and „შევცვალოთ", so an English run was
+    // told to offer buttons that the English run does not have.
+    expect(planAlreadyOnScreenNote('en')).toContain('I approve');
+    expect(planAlreadyOnScreenNote('en')).toContain('Change it');
+    expect(planAlreadyOnScreenNote('ka')).toContain('ვამტკიცებ');
+    expect(planAlreadyOnScreenNote('ru')).toContain('Подтверждаю');
+    expect(planAlreadyOnScreenNote('es')).toContain('Lo apruebo');
   });
 });
 
@@ -81,7 +125,7 @@ describe('row 203 — the card when nobody can be written to', () => {
   });
 
   it('says the approve button must not be offered, and what to offer instead', () => {
-    const out = planProposedResult(1, SUMMARY, true, unreachable([]));
+    const out = planProposedResult(1, SUMMARY, true, 'ka', unreachable([]));
 
     expect(out.nothing_to_send_today).toBe(true);
     const instead = String(out.instead);
@@ -94,7 +138,7 @@ describe('row 203 — the card when nobody can be written to', () => {
 
   it('names whom to invite, which is the half Tornike added himself', () => {
     const instead = String(
-      planProposedResult(1, SUMMARY, true, unreachable(['ლევან ლაშქარავა', 'ილია ბაბუხადია']))
+      planProposedResult(1, SUMMARY, true, 'ka', unreachable(['ლევან ლაშქარავა', 'ილია ბაბუხადია']))
         .instead,
     );
 
@@ -107,17 +151,17 @@ describe('row 203 — the card when nobody can be written to', () => {
     // Everyone unreachable for a reason an invitation does not fix — they have
     // an account and have never opened it. Offering to invite them again would
     // be advice that cannot work.
-    const instead = String(planProposedResult(1, SUMMARY, true, unreachable([])).instead);
+    const instead = String(planProposedResult(1, SUMMARY, true, 'ka', unreachable([])).instead);
 
     expect(instead).not.toContain('invite_contact');
   });
 
   it('leaves an ordinary plan exactly as it was', () => {
-    const out = planProposedResult(1, SUMMARY, true);
+    const out = planProposedResult(1, SUMMARY, true, 'ka');
 
     expect(out.nothing_to_send_today).toBeUndefined();
     expect(out.instead).toBeUndefined();
-    expect(out).toEqual({ proposed: true, version: 1, next: PLAN_ALREADY_ON_SCREEN });
+    expect(out).toEqual({ proposed: true, version: 1, next: planAlreadyOnScreenNote('ka') });
   });
 });
 
@@ -136,7 +180,7 @@ describe('row 203 second pass — today, not the goal', () => {
   it('says nothing can be SENT today, and that the goal stays open', () => {
     // The old field was called approval_pointless, which reads as a verdict on
     // the goal. Nothing can be sent today; the goal is not over.
-    const out = planProposedResult(1, SUMMARY, true, {
+    const out = planProposedResult(1, SUMMARY, true, 'ka', {
       nobodyReachable: true,
       invitees: [],
       toWake: [],
@@ -153,7 +197,7 @@ describe('row 203 second pass — today, not the goal', () => {
     // „No invitation applies" is not „nothing applies", and I had been
     // substituting the second for the first.
     const instead = String(
-      planProposedResult(1, SUMMARY, true, {
+      planProposedResult(1, SUMMARY, true, 'ka', {
         nobodyReachable: true,
         invitees: ['ლევან ლაშქარავა'],
         toWake: ['ილია ბაბუხადია'],
@@ -171,7 +215,7 @@ describe('row 203 second pass — today, not the goal', () => {
     // cannot work, and asking somebody with no account to "open Netai" is the
     // same mistake the other way round.
     const onlyWake = String(
-      planProposedResult(1, SUMMARY, true, {
+      planProposedResult(1, SUMMARY, true, 'ka', {
         nobodyReachable: true,
         invitees: [],
         toWake: ['ილია'],
@@ -259,7 +303,7 @@ describe('row 203 — the buttons a run may actually show', () => {
   it('the instruction the model gets still names the real next step', () => {
     // The code guarantee replaces nothing: the instruction is what gets the
     // model to offer something USEFUL instead of an approval.
-    const result = planProposedResult(1, 'summary', true, {
+    const result = planProposedResult(1, 'summary', true, 'ka', {
       nobodyReachable: true,
       invitees: ['დათო'],
       toWake: ['ნინო'],
