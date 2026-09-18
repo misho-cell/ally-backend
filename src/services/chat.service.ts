@@ -4697,6 +4697,21 @@ async function executeToolCall(
         input['mode'] as 'set' | 'append',
       );
     case 'request_introduction': {
+      /**
+       * Row 210 — the goal this was asked for, recorded with the request.
+       *
+       * Salome's introduction was agreed at 13:41 and her own goal thread said
+       * nothing until she asked at 14:06. Her push went and the request's own
+       * thread was written to; the GOAL — the thread she was living in — had
+       * no way of hearing, because nothing tied the two together. An answered
+       * ask wakes its goal. This is where an introduction gets the same
+       * thread to pull on, and it has to be taken here because this is the
+       * last place that knows which conversation the request came out of.
+       *
+       * Absent is a real answer: an introduction asked for in a chat with no
+       * goal has no goal to wake, and that is not a failure.
+       */
+      const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
       const introOutcome = await requestIntroduction(
         userId,
         input['mediator_name'] as string,
@@ -4707,6 +4722,7 @@ async function executeToolCall(
         input['target_phone'] as string | undefined,
         input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
         input['accept_dormant'] === true,
+        goalForIntro === null ? {} : { requesterTaskId: goalForIntro.id },
       );
       if ((introOutcome as { success?: unknown }).success === true) {
         await markSearchSent(runId, userId, [input['mediator_phone'], input['target_phone']]);
@@ -7520,6 +7536,16 @@ const INTERNAL_TOOL_NAME_RE = new RegExp(
  * „id 4819" does not.
  */
 const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id|id';
+
+/**
+ * A reply that is nothing but a bracketed note about what the software is
+ * doing — see where it is used, in processChat, for the two live cases.
+ *
+ * The whole string, and one bracket only. `[a] and [b]` is prose with brackets
+ * in it and is none of this rule's business; markdown emphasis around the
+ * outside is allowed because the model wrapped one of these in asterisks.
+ */
+export const STAGE_DIRECTION_ONLY_RE = /^[*_`~\s]*\[[^[\]]{1,200}\][*_`~\s]*$/;
 /**
  * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
  *
@@ -8261,6 +8287,39 @@ export async function processChat(
   // run here killed the choices with it — 3 of 3 in the tester's probe
   // (ticket 6 response §3.1, threads 9146/9149/9150).
   let effectiveFinal = finalText;
+  /**
+   * Ticket 20 row 106's family — a stage direction is not something said to a
+   * person.
+   *
+   * Two on 18 September, both shown with buttons under them:
+   *
+   *   17723 13:46:12  *[ველოდები არჩევანს]*
+   *   17227 07:17:46  [ეს შესაძლებლობა UI-ში აისახება]
+   *
+   * The first is the worse one. The model's actual question — „რომელი სალომეს
+   * გულისხმობ?" — went out five seconds earlier as a STEP, which is narration
+   * and not the message; what landed in the thread above the four buttons was
+   * a note to itself about waiting. The second announces our UI to the person
+   * using it.
+   *
+   * This is the same case the line below already handles and did not
+   * recognise: a run whose answer IS the buttons, whose text says nothing.
+   * Empty was covered because empty is obvious. A sentence in brackets
+   * describing what the software is about to do is the same silence with
+   * something in its place, so it is emptied and the ordinary „pick one" line
+   * stands where it did.
+   *
+   * Only ever the WHOLE reply. A bracket inside a real sentence is the model
+   * writing, and nothing here may touch that.
+   */
+  if (STAGE_DIRECTION_ONLY_RE.test(effectiveFinal)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[chat] run ${runId} thread ${threadId}: the final reply was a stage direction ` +
+        `(${effectiveFinal.trim().length} chars) — dropped`,
+    );
+    effectiveFinal = '';
+  }
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }

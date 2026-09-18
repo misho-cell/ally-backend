@@ -82,6 +82,18 @@ async function findMediatorPhoneByPhone(
 
 export type IntroAskType = 'intro' | 'share_contact';
 
+/**
+ * Ticket 20 row 210 — what this request was raised FOR.
+ *
+ * An options bag rather than a tenth positional parameter: nine is already
+ * more than a reader can hold, and the next thing to be threaded through here
+ * now has somewhere to go that does not depend on counting commas.
+ */
+export interface IntroRequestContext {
+  /** The requester's open goal, when the conversation had one. */
+  requesterTaskId?: number;
+}
+
 export async function requestIntroduction(
   requesterUserId: string,
   mediatorName: string,
@@ -92,6 +104,7 @@ export async function requestIntroduction(
   targetPhone?: string,
   askType: IntroAskType = 'intro',
   acceptDormant = false,
+  context: IntroRequestContext = {},
 ): Promise<object> {
   try {
     return await requestIntroductionInner(
@@ -104,6 +117,7 @@ export async function requestIntroduction(
       targetPhone,
       askType,
       acceptDormant,
+      context,
     );
   } catch (err) {
     // A thrown tool kills the whole model call ("model call failed mid-run —
@@ -125,6 +139,7 @@ async function requestIntroductionInner(
   targetPhone?: string,
   askType: IntroAskType = 'intro',
   acceptDormant = false,
+  context: IntroRequestContext = {},
 ): Promise<object> {
   const phoneResult = mediatorPhone
     ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
@@ -242,9 +257,11 @@ async function requestIntroductionInner(
 
   const [insertResult, requesterName] = await Promise.all([
     query<{ id: number; request_ref: string }>(
+      // Row 210: `requester_task_id` is the goal this was raised for, so the
+      // answer can be walked back to it instead of waiting to be asked about.
       `INSERT INTO introduction_requests
-         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, request_ref`,
       isDirect
         ? [
@@ -255,6 +272,7 @@ async function requestIntroductionInner(
             mediatorUserId,
             resolvedPhone,
             'direct',
+            context.requesterTaskId ?? null,
           ]
         : [
             requesterUserId,
@@ -264,6 +282,7 @@ async function requestIntroductionInner(
             safeTargetUserId,
             targetPhone ?? null,
             askType,
+            context.requesterTaskId ?? null,
           ],
     ),
     getRequesterName(requesterUserId),

@@ -69,6 +69,72 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
 };
 
 /**
+ * Ticket 20 row 210 — the answer to an introduction, walked back to the goal
+ * it was asked for.
+ *
+ * The seat's run of 18 September. Salome asked at 13:35 to be introduced to
+ * Ninia; Lika agreed at 13:41; Salome's goal said nothing until she typed
+ * „arapheria akhali?" at 14:06:46 and was told at 14:07:09. Twenty-six minutes
+ * with the answer sitting in the system, and it only moved because she poked
+ * it. Their sentence, which is the one worth keeping: „good news does not walk
+ * to the person waiting for it, and that generalises."
+ *
+ * A FUNCTION rather than a table, because this event has to name a person and
+ * say which way the answer went. Everything else about it follows the same
+ * rule as its two neighbours: the conversation's language, clause for clause.
+ *
+ * NO NUMBER EVER TRAVELS IN HERE (D149). Where a contact was handed over, the
+ * requester's request thread already carries it; this event says only that
+ * there is one, and the run reads it from the thread rather than from us.
+ */
+export function introOutcomeEvent(
+  targetName: string,
+  accepted: boolean,
+): Readonly<Record<RunLanguage, string>> {
+  return accepted
+    ? {
+        ka:
+          `${targetName}-თან გაცნობაზე თანხმობა მოვიდა. უთხარი მფლობელს ერთი წინადადებით, რომ ` +
+          'პასუხი დადებითია, და გადადგი შემდეგი ნაბიჯი ამ მიზნისთვის: თუ კონტაქტი უკვე ' +
+          'გადმოცემულია, შეახსენე რომ ახლა თავად შეუძლია მისწეროს; თუ არა — უთხარი ვისგან ' +
+          'აიღოს. მერე შეამოწმე, მიზანი ამით მოგვარდა თუ კიდევ რჩება გასაკეთებელი.',
+        en:
+          `The introduction to ${targetName} has been agreed. Tell the owner in one sentence that ` +
+          'the answer is yes, and take the next step for this goal: if the contact has already ' +
+          'been handed over, remind them they can write themselves now; if not, say whom to get ' +
+          'it from. Then check whether this solves the goal or whether something is still open.',
+        ru:
+          `На знакомство с ${targetName} получено согласие. Скажи владельцу одним предложением, ` +
+          'что ответ положительный, и сделай следующий шаг по этой цели: если контакт уже ' +
+          'передан — напомни, что теперь он может написать сам; если нет — скажи, у кого его ' +
+          'взять. Затем проверь, закрывает ли это цель или осталось что-то ещё.',
+        es:
+          `La presentación a ${targetName} ha sido aceptada. Dile al propietario en una frase que ` +
+          'la respuesta es sí, y da el siguiente paso para esta meta: si el contacto ya fue ' +
+          'entregado, recuérdale que ya puede escribir él mismo; si no, dile a quién pedírselo. ' +
+          'Luego comprueba si esto resuelve la meta o si queda algo abierto.',
+      }
+    : {
+        ka:
+          `${targetName}-თან გაცნობაზე უარი მოვიდა. უთხარი მფლობელს მშვიდად, ერთი წინადადებით, ` +
+          'და ნუ გაიმეორებ იმავე თხოვნას. ეს გზა დაიხურა — გეგმის სხვა გზით განაგრძე ან ' +
+          'შესთავაზე ახალი შუამავალი.',
+        en:
+          `The introduction to ${targetName} was declined. Tell the owner plainly, in one ` +
+          'sentence, and do not repeat the same request. That route is closed — carry on down ' +
+          'another of the plan’s routes, or offer a different go-between.',
+        ru:
+          `На знакомство с ${targetName} получен отказ. Скажи владельцу спокойно, одним ` +
+          'предложением, и не повторяй ту же просьбу. Этот путь закрыт — продолжай другим путём ' +
+          'плана или предложи другого посредника.',
+        es:
+          `La presentación a ${targetName} fue rechazada. Díselo al propietario con calma, en una ` +
+          'frase, y no repitas la misma petición. Esa vía está cerrada — sigue por otra vía del ' +
+          'plan u ofrece otro intermediario.',
+      };
+}
+
+/**
  * Same reason as DAY_ONE_EVENT above — and this is the 514-character one the
  * seat caught switching thread 17563 into Georgian.
  *

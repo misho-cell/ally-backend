@@ -21,6 +21,9 @@ jest.mock('../debrief.service', () => ({
   __esModule: true,
   armIntroDebrief: jest.fn().mockResolvedValue(undefined),
 }));
+// Row 210: reached through a dynamic import, because the engine pulls in the
+// chat service, which pulls in this one.
+jest.mock('../taskEngine.service', () => ({ __esModule: true, startIntroOutcome: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
 import { armIntroDebrief } from '../debrief.service';
@@ -28,6 +31,7 @@ import { sendPushNotification } from '../notification.service';
 import { recordProductEvent } from '../productEvents.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
+import { startIntroOutcome } from '../taskEngine.service';
 import { resolveIntroductionRequest } from '../introduction.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -49,7 +53,13 @@ const REQUEST_ROW = {
   target_phone: null,
   message: null,
   status: 'pending',
+  requester_task_id: null,
 };
+
+const mockWakeGoal = startIntroOutcome as jest.MockedFunction<typeof startIntroOutcome>;
+
+/** The dynamic import in wakeRequestersGoal resolves a tick after the return. */
+const settled = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCount: number } {
   return { rows: data, rowCount };
@@ -334,5 +344,85 @@ describe('accept outcome (tasks 16/18)', () => {
     expect(requesterMsg?.[3]).toContain('დათანხმდა გაცნობას');
     expect(requesterMsg?.[3]).not.toContain('+995');
     expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ticket 20 row 210 — the answer walks to the goal.
+ *
+ * Salome's introduction was agreed at 13:41:02 and her own goal thread said
+ * nothing until she typed „arapheria akhali?" at 14:06:46. Her push went
+ * (twice) and the request's own thread was written to a second later. What was
+ * never told is the GOAL, the thread she was living in.
+ */
+describe('row 210 — the requester’s goal hears the answer', () => {
+  it('wakes the goal the introduction was raised for, on an ACCEPT', async () => {
+    setup({ request: { ...REQUEST_ROW, requester_task_id: 4830 } });
+
+    await resolveIntroductionRequest('7', { requestRef: REQUEST_ROW.request_ref }, 'accept', {
+      source: 'button',
+    });
+    await settled();
+
+    expect(mockWakeGoal).toHaveBeenCalledTimes(1);
+    const [taskId, event] = mockWakeGoal.mock.calls[0];
+    expect(taskId).toBe(4830);
+    // The text is the outcome event, in every language, naming the person.
+    expect((event as Record<string, string>).ka).toContain('გიორგი');
+  });
+
+  it('wakes it on a DECLINE too — a closed route is news the goal needs', async () => {
+    setup({ request: { ...REQUEST_ROW, requester_task_id: 4830 } });
+
+    await resolveIntroductionRequest('7', { requestRef: REQUEST_ROW.request_ref }, 'decline', {
+      source: 'chat',
+    });
+    await settled();
+
+    expect(mockWakeGoal).toHaveBeenCalledTimes(1);
+    expect((mockWakeGoal.mock.calls[0][1] as Record<string, string>).ka).toMatch(/უარი/);
+  });
+
+  it('wakes nothing when the request was not raised for a goal', async () => {
+    // An introduction asked for in an ordinary chat has no goal, and an absent
+    // link must read as „no goal" rather than as something to guess at.
+    setup({ request: REQUEST_ROW });
+
+    await resolveIntroductionRequest('7', { requestRef: REQUEST_ROW.request_ref }, 'accept', {
+      source: 'button',
+    });
+    await settled();
+
+    expect(mockWakeGoal).not.toHaveBeenCalled();
+  });
+
+  it('does not wake on a SNOOZE — nothing has been answered', async () => {
+    setup({ request: { ...REQUEST_ROW, requester_task_id: 4830 } });
+
+    await resolveIntroductionRequest('7', { requestRef: REQUEST_ROW.request_ref }, 'snooze', {
+      source: 'button',
+      snoozeDays: 3,
+    });
+    await settled();
+
+    expect(mockWakeGoal).not.toHaveBeenCalled();
+  });
+
+  it('still accepts the introduction when the wake cannot be scheduled', async () => {
+    setup({ request: { ...REQUEST_ROW, requester_task_id: 4830 } });
+    mockWakeGoal.mockImplementationOnce(() => {
+      throw new Error('engine unavailable');
+    });
+
+    const out = await resolveIntroductionRequest(
+      '7',
+      { requestRef: REQUEST_ROW.request_ref },
+      'accept',
+      { source: 'button' },
+    );
+    await settled();
+
+    // The answer itself is recorded and visible whatever happens to the wake.
+    expect(out.ok).toBe(true);
   });
 });

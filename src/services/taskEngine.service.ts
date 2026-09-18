@@ -595,6 +595,27 @@ async function planStillMissing(taskId: number): Promise<boolean> {
   return task.plan === null && task.plan_proposed === null;
 }
 
+/**
+ * Ticket 20 row 210 — the introduction's answer reaches the goal it was asked
+ * for, without the owner having to ask.
+ *
+ * The same shape as day one and the plan proposal: wake when the conversation
+ * is free, leave a goal that has meanwhile closed alone. The delay is longer
+ * than theirs because the resolve is still writing the two request threads as
+ * this is called, and the run should read a settled world.
+ */
+const INTRO_OUTCOME_DELAY_MS = 6_000;
+
+export function startIntroOutcome(taskId: number, eventText: EventText): void {
+  wakeWhenFree(
+    taskId,
+    eventText,
+    () => goalOpen(taskId),
+    () => Promise.resolve(),
+    INTRO_OUTCOME_DELAY_MS,
+  );
+}
+
 export function startPlanProposal(taskId: number): void {
   wakeWhenFree(
     taskId,

@@ -185,6 +185,8 @@ interface RequestRow {
   target_phone: string | null;
   message: string | null;
   status: string;
+  /** Row 210: the requester's goal this was raised for, when there was one. */
+  requester_task_id: number | null;
 }
 
 async function loadRequestForMediator(
@@ -194,7 +196,8 @@ async function loadRequestForMediator(
   const byRef = target.requestRef !== undefined;
   const result = await query<RequestRow>(
     `SELECT ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
-            ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status
+            ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,
+            ir.requester_task_id
      FROM introduction_requests ir
      WHERE ${RESPONDER_COND(1)} AND ${byRef ? 'ir.request_ref = $2' : 'ir.id = $2'}
      LIMIT 1`,
@@ -370,6 +373,41 @@ async function syncRequestThreads(
   }
 }
 
+/**
+ * Ticket 20 row 210 — the answer walks to the goal instead of waiting to be
+ * asked about.
+ *
+ * The seat's run: Salome's introduction was agreed at 13:41:02 and her own
+ * goal thread said nothing until she typed „anything new?" at 14:06:46.
+ * Nothing had failed. Her push went, twice, and the request's own thread was
+ * written to a second later — but the GOAL, the thread she was living in and
+ * the thing that actually does the work, had no way of hearing, because until
+ * today nothing tied a request to the goal it came out of.
+ *
+ * An ANSWERED ASK has woken its goal for weeks. An answered introduction is
+ * the same event wearing a different table, and it had nothing to wake.
+ *
+ * Best-effort on purpose, and after the threads are synced: the answer itself
+ * is recorded and visible whatever happens here, and an introduction must
+ * never fail to be accepted because a wake could not be scheduled.
+ */
+async function wakeRequestersGoal(req: RequestRow, accepted: boolean): Promise<void> {
+  if (req.requester_task_id === null) return;
+  try {
+    const [{ startIntroOutcome }, { introOutcomeEvent }] = await Promise.all([
+      import('./taskEngine.service'),
+      import('./taskEngine.events'),
+    ]);
+    startIntroOutcome(req.requester_task_id, introOutcomeEvent(req.target_name, accepted));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[intro] could not wake goal ${req.requester_task_id} for request ${req.id}:`,
+      (err as Error).message,
+    );
+  }
+}
+
 async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void> {
   const body = accepted
     ? `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
@@ -500,5 +538,6 @@ export async function resolveIntroductionRequest(
     });
   }
   await syncRequestThreads(req, action, opts.response, outcome);
+  await wakeRequestersGoal(req, action === 'accept');
   return { ok: true, status: newStatus };
 }
