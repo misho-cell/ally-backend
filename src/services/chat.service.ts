@@ -4151,6 +4151,92 @@ function noteNothingToSendToday(runId: string | undefined): void {
  * one run approves or three do, none of them writes to anybody, because day
  * one is the only path that sends and it is guarded against running twice.
  */
+/**
+ * What this run has already searched for and found nothing — told back to it,
+ * so it stops spelling one concept ten ways.
+ *
+ * Measured on thread 17726, a single goal, 28 search calls. Ten of them came
+ * back EMPTY and cost 42,295 ms between them, and they are all the same idea:
+ *
+ *   tiler · მეპლიტკე · პლიტკა · santehnikosi · მოპირკეთება · tiler bathroom
+ *   მეპლიტკე სააბაზანო · სააბაზანოს მოპირკეთება · …
+ *
+ * Forty-two seconds of a hundred-and-thirty-second goal spent asking the same
+ * question in different spellings. The model is not being careless: an empty
+ * result says „no_matches" and nothing else, so each attempt arrives with no
+ * memory of the nine before it. Given that, trying another spelling is the
+ * only sensible move it has.
+ *
+ * So the empty result carries the run's own history now. Not an instruction to
+ * stop — a fact about what it has already spent. What it does with that is its
+ * own, and if it tries an eleventh spelling at least it does so knowing.
+ *
+ * Per run, read-and-forget at the end, like its two siblings above.
+ */
+const runEmptySearches = new Map<string, string[]>();
+
+/** The searches that came back empty in this run, in the order they were tried. */
+function noteEmptySearch(runId: string | undefined, tool: string, query: string): string[] {
+  if (runId === undefined || query.trim() === '') return [];
+  const seen = runEmptySearches.get(runId) ?? [];
+  const entry = `${tool}: ${query.trim().slice(0, 60)}`;
+  if (!seen.includes(entry)) seen.push(entry);
+  runEmptySearches.set(runId, seen);
+  return seen;
+}
+
+function forgetEmptySearches(runId: string | undefined): void {
+  if (runId !== undefined) runEmptySearches.delete(runId);
+}
+
+/** The tools whose whole job is to find people, and whose empties are the waste. */
+const SEARCH_TOOLS = new Set([
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contact_by_name',
+  'search_roster',
+]);
+
+/** Whatever this tool calls the thing it was asked to look for. */
+function searchTermOf(input: Record<string, unknown>): string {
+  for (const key of ['tag_query', 'search_query', 'name_query', 'query']) {
+    const value = input[key];
+    if (typeof value === 'string' && value.trim() !== '') return value;
+  }
+  return '';
+}
+
+/** Did this search find anybody? Empty and „not found" are the same answer. */
+function foundNobody(raw: unknown): boolean {
+  if (raw === null || typeof raw !== 'object') return false;
+  const r = raw as { found?: unknown; results?: unknown; count?: unknown };
+  if (r.found === false) return true;
+  return Array.isArray(r.results) && r.results.length === 0;
+}
+
+export function withEmptySearchHistory(
+  tool: string,
+  input: Record<string, unknown>,
+  runId: string | undefined,
+  raw: unknown,
+): unknown {
+  if (!SEARCH_TOOLS.has(tool) || !foundNobody(raw)) return raw;
+  const term = searchTermOf(input);
+  const alreadyTried = noteEmptySearch(runId, tool, term);
+  if (alreadyTried.length < 2) return raw;
+  return {
+    ...(raw as Record<string, unknown>),
+    already_searched_and_empty: alreadyTried,
+    note:
+      `This run has now searched ${alreadyTried.length} times and found nobody. The list above ` +
+      'is every one, in order. If they are spellings of the same idea, the base does not hold it ' +
+      'under any of them and another spelling will cost the owner several more seconds for the ' +
+      'same answer — try a DIFFERENT idea, a different tool, or tell the owner plainly that their ' +
+      'own network has nobody for this and work from the web instead.',
+  };
+}
+
 const runApprovedAPlan = new Set<string>();
 
 function noteApprovedAPlan(runId: string | undefined): void {
@@ -5804,7 +5890,11 @@ async function runOneToolBlock(
       }),
     };
   }
-  const raw = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+  const rawResult = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+  // See runEmptySearches. An empty search result is handed back the list of
+  // what this run has already asked for and not found, because without it each
+  // attempt arrives with no memory of the last one.
+  const raw = withEmptySearchHistory(block.name, input, runId, rawResult);
   // Ticket 19 G7: the step caption is written BEFORE the call and says what the
   // run INTENDS. On 15346 three of them contradicted each other inside eight
   // minutes and nobody could tell which was true, because what actually
@@ -8170,6 +8260,9 @@ export async function processChat(
   // The run is over: forget that it approved a plan, so the flag can never
   // reach the next run on this thread. Read-and-forget, like its sibling above.
   takeApprovedAPlan(runId);
+  // And the run's search history goes with it — a list that outlived its run
+  // would tell the next one it had already looked for things it never saw.
+  forgetEmptySearches(runId);
   // Ticket 19 [18]: the requests waiting on this person go out as their own
   // messages too, on the same rails. Noted here rather than at prompt-build
   // time so they land LAST — after whatever the run itself surfaced. Another
