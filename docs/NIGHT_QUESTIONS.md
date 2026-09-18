@@ -83,6 +83,35 @@ measuring an outage, not the product.
   did not fix it.
 - **His app session** is back; he logged in at 09:52 Tbilisi.
 
+### Row 108 — a measured candidate, 18 September, not yet built
+
+**The change is one shape.** The second-degree search scans each bridge
+separately today — a LATERAL join, 305 of them on account 501. The alternative
+is one scan with `"contactId" = ANY(<all the bridges>)`.
+
+    3 patterns   LATERAL 802.7 ms   one scan 802.3 ms    identical
+    9 patterns   LATERAL TIMED OUT  one scan 4,114 ms
+    9 patterns, ONE SCAN, BOTH tags AND aliases:  3,078 ms
+
+The 9-pattern LATERAL was re-run three times — timed out every time, so it is
+structural rather than load. Nine patterns is an ordinary distilled query.
+
+**Equivalence proven, not assumed.** Same patterns, compared as sets both ways:
+23,711 rows each, zero rows unique to either side.
+
+**Why this one and not the other two.** LIKE-first was 2,400x faster on a rare
+term and 7x SLOWER on a common one. A single alternation was 4x faster at three
+patterns and timed out at nine. Both were fast in the case tested first and
+worse in the case that matters. This one is neutral in the small case and
+decisive in the large one — no regime where it loses.
+
+**Not a claim that row 108 is solved.** 3,078 ms is still the largest single
+cost in a goal run. It turns a timeout into a slow search that returns.
+
+**Left to do:** the two CTEs feed the ranking and the bridge count, so the
+rewrite must carry `"contactId"` through exactly as the LATERAL does. Checked
+that it can; the equivalence test above already selects both columns.
+
 ### The real shape of row 108, found this morning and worth keeping
 
 A query whose words actually MATCH this base is slow; one that matches nothing
