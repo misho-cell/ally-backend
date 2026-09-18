@@ -56,6 +56,7 @@ import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread } from '../../services/threadRunQueue';
 import { looksLikeStopRequest } from '../../services/stopIntent';
+import { isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { ApiResponse } from '../../types';
 
@@ -906,9 +907,32 @@ threadsRouter.post(
           // `message` is theirs, which is why it is read here and not the
           // reply that never came.
           const failLang = detectRunLanguage(message);
-          const userMessage = timedOut
-            ? RUN_STRINGS[failLang].tookTooLong
-            : RUN_STRINGS[failLang].runDied;
+          /**
+           * Row 217 — „please try again" must not be said into a wall.
+           *
+           * 18 September, 20:29 to past 21:12: the model provider's credit
+           * balance ran out and EVERY run in the product died on its first
+           * call, three to four seconds, no tool calls. Six of the seat's in a
+           * row, „what is 2 plus 2" among them. All six told the owner to try
+           * again, and not one retry could ever have worked.
+           *
+           * So a refusal by the provider gets its own line. It says the
+           * service is unavailable and that it is not the owner's doing, and
+           * it does not say why: our billing is not theirs to carry.
+           */
+          const refused = isProviderRefusal(error);
+          if (refused) {
+            // eslint-disable-next-line no-console
+            console.error(
+              `[provider] run ${runId} thread ${threadId}: the model provider refused the ` +
+                'request — the owner is told the service is unavailable, not to retry',
+            );
+          }
+          const userMessage = refused
+            ? RUN_STRINGS[failLang].serviceUnavailable
+            : timedOut
+              ? RUN_STRINGS[failLang].tookTooLong
+              : RUN_STRINGS[failLang].runDied;
           emitRunError(userId, threadId, runId, userMessage);
           void markRunFailed(userId, threadId, detectRunLanguage(message));
           // The SSE event alone is not enough: if the stream dropped mid-run, the

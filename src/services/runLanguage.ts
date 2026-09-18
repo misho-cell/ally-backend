@@ -81,6 +81,13 @@ interface RunStrings {
   runDied: string;
   /** The same, when it died of the clock rather than a fault. */
   tookTooLong: string;
+  /**
+   * Row 217 — the provider refused us, and no amount of trying again will
+   * change that. Says so without saying WHY: our billing is not the owner's
+   * to carry, and „your answer failed because we ran out of credit" tells
+   * somebody something about us they did not ask for.
+   */
+  serviceUnavailable: string;
   moderationBlocked: string;
   /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
   nameNotVerified: string;
@@ -107,6 +114,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     choicesOnly: 'აირჩიე ერთ-ერთი:',
     emptyFinalFailure: 'პასუხი ვერ ჩამოყალიბდა — სცადე თავიდან, ან სხვანაირად დასვი კითხვა.',
     runDied: 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.',
+    serviceUnavailable:
+      'სერვისი დროებით მიუწვდომელია — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. ხელახლა ცდა ახლა არ დაგეხმარება; როგორც კი აღდგება, დაუყოვნებლივ გავაგრძელებ.',
     tookTooLong: 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.',
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
@@ -125,6 +134,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     choicesOnly: 'Pick one:',
     emptyFinalFailure: 'The reply did not come together — try again, or rephrase the question.',
     runDied: 'Something went wrong on our side and the answer did not finish. Please try again.',
+    serviceUnavailable:
+      'The service is temporarily unavailable — that is on us, not on you. Trying again now will not help; I will carry on the moment it is back.',
     tookTooLong: 'The answer took too long to put together. Please try again.',
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
@@ -145,6 +156,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     runDied:
       'На нашей стороне произошёл сбой, и ответ не завершился. Пожалуйста, попробуй ещё раз.',
     tookTooLong: 'Ответ готовился слишком долго. Пожалуйста, попробуй ещё раз.',
+    serviceUnavailable:
+      'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно; как только он вернётся, я сразу продолжу.',
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
     nameNotVerified: '(имя не подтверждено на официальной странице)',
@@ -164,6 +177,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     runDied:
       'Algo falló de nuestro lado y la respuesta no se completó. Inténtalo de nuevo, por favor.',
     tookTooLong: 'La respuesta tardó demasiado en prepararse. Inténtalo de nuevo, por favor.',
+    serviceUnavailable:
+      'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar no ayudará; en cuanto vuelva, sigo de inmediato.',
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
     nameNotVerified: '(nombre no verificado en una página oficial)',
