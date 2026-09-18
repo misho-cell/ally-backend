@@ -248,12 +248,23 @@ export async function query<T extends QueryResultRow>(
   params?: unknown[],
   timeoutMs: number = DEFAULT_QUERY_TIMEOUT_MS,
 ): Promise<QueryResult<T>> {
-  // Row 108: a query that asked for its own timeout has asked for room, and it
-  // is the one that borrows a client for its whole duration. It draws from
-  // longQueryPool so the short queries — which are most of them, and which are
-  // not slow — keep `pool` to themselves. See longQueryPool for the reading
-  // this comes from.
-  const sourcePool = timeoutMs === DEFAULT_QUERY_TIMEOUT_MS ? pool : longQueryPool;
+  /**
+   * Row 108, second pass — LONGER than the default, not merely DIFFERENT.
+   *
+   * My first version sent every custom timeout to the long pool, and I wrote a
+   * test saying a short one going there was fine. The next burst said it was
+   * not. `touched` and `states`, which take the default, fell from 544-5,395
+   * and 696-5,701 ms to 144-152 and 195-257 — every one. `excl` went on
+   * climbing to 3,408 ms, and `excl` is a 5,000 ms lookup on a small table,
+   * which my rule had just filed as a long query and parked behind fourteen
+   * fifteen-second searches.
+   *
+   * A timeout BELOW the default is a query saying „I should be quick" — the
+   * exact opposite of what the long pool is for. Every custom timeout in this
+   * codebase reads that way: 3s and 5s on small lookups, 10s to 15s on the
+   * searches and the analytics.
+   */
+  const sourcePool = timeoutMs > DEFAULT_QUERY_TIMEOUT_MS ? longQueryPool : pool;
   return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
 }
 

@@ -21,9 +21,11 @@
  * searches holding nine of the ten connections.
  *
  * So the split is by how long a query is ALLOWED to take, which is the only
- * thing knowable about it before it runs. These tests hold that routing,
- * because it is invisible at the call site: every caller still writes
- * `query(sql, params, timeout)` and cannot see which pool answered.
+ * thing knowable about it before it runs — and, after the correction below,
+ * by whether that is LONGER than the default rather than merely different.
+ * These tests hold that routing, because it is invisible at the call site:
+ * every caller still writes `query(sql, params, timeout)` and cannot see
+ * which pool answered.
  */
 interface FakePool {
   readonly label: string;
@@ -109,14 +111,36 @@ describe('which pool answers a query', () => {
     expect(longPool.connect).not.toHaveBeenCalled();
   });
 
-  it('sends a SHORTER custom timeout to the long pool too, and that is fine', async () => {
-    // The split is „asked for its own timeout", not „asked for a big one" —
-    // there is no way to know a query is quick before running it, and a short
-    // custom timeout still borrows a client for its whole duration.
-    await query('SELECT 1', [], 2_000);
+  /**
+   * The assertion this file got WRONG on its first pass, and the burst that
+   * corrected it.
+   *
+   * I wrote „a shorter custom timeout goes to the long pool too, and that is
+   * fine" and shipped it. On the next fourteen-search burst, `touched` and
+   * `states` — which take the default — fell from 544-5,395 and 696-5,701 ms
+   * to 144-152 and 195-257, every single one. `excl` went on climbing to
+   * 3,408 ms. `excl` is a 5,000 ms lookup on a small table, and my rule had
+   * filed it as a long query and parked it behind fourteen fifteen-second
+   * searches.
+   *
+   * A timeout below the default is a query asking to be quick. It belongs
+   * with the quick ones.
+   */
+  it('keeps a SHORTER custom timeout on the short pool — it is not a long query', async () => {
+    await query('SELECT contact_phone, excluded_for FROM contact_exclusions', [1], 5_000);
 
-    expect(longPool.connect).toHaveBeenCalledTimes(1);
-    expect(shortPool.query).not.toHaveBeenCalled();
+    // It still borrows a client, because the timeout rides on the connection.
+    expect(shortPool.connect).toHaveBeenCalledTimes(1);
+    expect(longPool.connect).not.toHaveBeenCalled();
+  });
+
+  it('sends the real long ones — 10s, 12s, 15s — to the long pool', async () => {
+    await query('WITH mine AS MATERIALIZED (SELECT phone FROM "UserTags")', [1], 15_000);
+    await query('SELECT ... FROM "UserTags" WHERE tag ILIKE $1', [1], 12_000);
+    await query('SELECT ... FROM "UserConnection"', [1], 10_000);
+
+    expect(longPool.connect).toHaveBeenCalledTimes(3);
+    expect(shortPool.connect).not.toHaveBeenCalled();
   });
 
   it('leaves background jobs on their own pool, as they were', async () => {
