@@ -165,3 +165,53 @@ describe('one pass, every channel', () => {
     );
   });
 });
+
+/**
+ * Row 158 — the tool had never once worked.
+ *
+ * Every call in thirty days, three of three, died with „canceling statement
+ * due to statement timeout" at 16.3 to 16.6 seconds. On the seat's hard goal
+ * of 17 September two of them burned 33 seconds of a 195-second run and
+ * returned nothing, and the model carried on without them.
+ *
+ * The regex join ran over every label of every contact and only then met the
+ * country. Measured on 501: 134,628 label rows against about 65 channel
+ * patterns, roughly 8.7 million regex evaluations, to find ONE contact for
+ * Germany and none at all for Finland. Joining the country first is the same
+ * result by construction and took 418 ms on production.
+ *
+ * Asserted on the SQL because that is where the rule lives, and because the
+ * failure it prevents is invisible in any result: the old shape returns the
+ * right rows too, when it is given twenty seconds it does not have.
+ */
+describe('row 158 — the country filter runs before the channel patterns', () => {
+  it('restricts the labels to the country inside channel_hits', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await getCountryChannels('501', 'Germany');
+
+    const sql = String(
+      mockQuery.mock.calls.map((c) => String(c[0])).find((q) => q.includes('channel_hits')),
+    );
+    const insideChannelHits = sql.slice(
+      sql.indexOf('channel_hits AS ('),
+      sql.indexOf('SELECT h.key'),
+    );
+    // The join that makes it cheap, in the CTE that does the regex work.
+    expect(insideChannelHits).toContain('JOIN country_hits co ON co.phone = l.phone');
+    expect(insideChannelHits).toContain('~ c.rx');
+  });
+
+  it('does not filter by country only AFTER the patterns have run', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await getCountryChannels('501', 'Germany');
+
+    const sql = String(
+      mockQuery.mock.calls.map((c) => String(c[0])).find((q) => q.includes('channel_hits')),
+    );
+    // The old shape joined it on the OUTER select, one step too late. If that
+    // line comes back, so does a tool that has never worked.
+    expect(sql.slice(sql.indexOf('SELECT h.key'))).not.toContain('JOIN country_hits');
+  });
+});

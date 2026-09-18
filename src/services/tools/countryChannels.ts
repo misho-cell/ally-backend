@@ -203,14 +203,35 @@ async function sweepAllChannels(
      ),
      country_hits AS (SELECT DISTINCT phone FROM labels WHERE ${countryChain}),
      chan AS (SELECT * FROM UNNEST($${keysIdx}::text[], $${regexesIdx}::text[]) AS t(key, rx)),
+     /**
+      * THE COUNTRY FILTER COMES FIRST, and that one line is the whole of row
+      * 158.
+      *
+      * This tool had never once worked. Every call in thirty days — three of
+      * three — died with „canceling statement due to statement timeout" at
+      * 16.3 to 16.6 seconds. On the seat's hard goal of 17 September, two of
+      * them burned 33 seconds of a 195-second run and returned nothing, and
+      * the model carried on without them.
+      *
+      * The regex join ran over EVERY label of EVERY contact and only then met
+      * the country. Measured on 501: 134,628 label rows against about 65
+      * channel patterns is roughly 8.7 million regex evaluations — to find one
+      * contact for Germany, and none at all for Finland.
+      *
+      * Joining country_hits before the patterns is the same result by
+      * construction (it was an inner join on the same predicate, one step
+      * later) and it hands the regexes one contact's labels instead of the
+      * network's. Measured on production before changing anything: 418 ms,
+      * against 16,500 ms and a certain failure.
+      */
      channel_hits AS (
        SELECT DISTINCT c.key, l.phone
        FROM labels l
+       JOIN country_hits co ON co.phone = l.phone
        JOIN chan c ON (LOWER(l.label) || '') ~ c.rx
      )
      SELECT h.key, h.phone, MAX(ua.alias) AS name
      FROM channel_hits h
-     JOIN country_hits co ON co.phone = h.phone
      LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
      WHERE h.phone != ALL($${blockIdx})
      GROUP BY h.key, h.phone`,
