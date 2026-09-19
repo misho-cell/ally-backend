@@ -105,3 +105,52 @@ describe('what the owner is told when the provider refuses', () => {
     }
   });
 });
+
+/**
+ * Row 217, second half — the BADGE must not contradict the message under it.
+ *
+ * During the outage the thread carried „Hit a snag — try again" over a message
+ * saying, correctly, that trying again would not help. Two sentences on one
+ * screen telling a person opposite things, and the one in the smaller type was
+ * the wrong one.
+ */
+describe('the badge on a thread whose provider refused it', () => {
+  const tryAgain: Record<RunLanguage, RegExp> = {
+    ka: /სცადე თავიდან/,
+    en: /try again/i,
+    ru: /попробуй ещё раз/i,
+    es: /inténtalo de nuevo/i,
+  };
+
+  it('exists in all four languages and says nothing about trying again', () => {
+    for (const language of LANGUAGES) {
+      const badge = RUN_STRINGS[language].statusLines.unavailable;
+      expect(badge.length).toBeGreaterThan(10);
+      expect(badge).not.toMatch(tryAgain[language]);
+    }
+  });
+
+  it('is a DIFFERENT badge from the ordinary failure, which still says it', () => {
+    for (const language of LANGUAGES) {
+      const { unavailable, failed } = RUN_STRINGS[language].statusLines;
+      expect(unavailable).not.toBe(failed);
+      // The line it stands beside is unchanged: a run that simply broke is
+      // still worth retrying, and that is most of them.
+      expect(failed).toMatch(tryAgain[language]);
+    }
+  });
+
+  it('never mentions money either — the badge is read by the same person', () => {
+    for (const language of LANGUAGES) {
+      expect(RUN_STRINGS[language].statusLines.unavailable).not.toMatch(
+        /credit|balance|billing|ბალანს|баланс|saldo/i,
+      );
+    }
+  });
+
+  it('carries no Georgian outside the Georgian one', () => {
+    for (const language of ['en', 'ru', 'es'] as const) {
+      expect(RUN_STRINGS[language].statusLines.unavailable).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+});

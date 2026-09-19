@@ -104,6 +104,14 @@ interface RunStrings {
     needs_you: string;
     needs_topup: string;
     failed: string;
+    /**
+     * Row 217, second half — the badge above the message must not contradict
+     * it. `failed` says „try again", which is right for a run that broke and
+     * wrong for a provider that has refused us: during the outage of
+     * 18 September the message said „trying again will not help" with a badge
+     * over it saying to try again.
+     */
+    unavailable: string;
   };
 }
 
@@ -126,6 +134,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       needs_you: 'შენი პასუხი სჭირდება',
       needs_topup: 'ტოკენები ამოიწურა — შეავსე და გავაგრძელებ',
       failed: 'შეფერხდა — სცადე თავიდან',
+      unavailable: 'სერვისი დროებით მიუწვდომელია',
     },
   },
   en: {
@@ -146,6 +155,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       needs_you: 'Needs your answer',
       needs_topup: 'Out of tokens — top up and I will carry on',
       failed: 'Hit a snag — try again',
+      unavailable: 'Service temporarily unavailable',
     },
   },
   ru: {
@@ -167,6 +177,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       needs_you: 'Нужен твой ответ',
       needs_topup: 'Токены закончились — пополни, и я продолжу',
       failed: 'Сбой — попробуй ещё раз',
+      unavailable: 'Сервис временно недоступен',
     },
   },
   es: {
@@ -188,6 +199,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       needs_you: 'Necesita tu respuesta',
       needs_topup: 'Sin tokens — recarga y sigo',
       failed: 'Algo falló — inténtalo de nuevo',
+      unavailable: 'Servicio no disponible ahora',
     },
   },
 };

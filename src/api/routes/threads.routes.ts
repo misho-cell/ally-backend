@@ -934,7 +934,8 @@ threadsRouter.post(
               ? RUN_STRINGS[failLang].tookTooLong
               : RUN_STRINGS[failLang].runDied;
           emitRunError(userId, threadId, runId, userMessage);
-          void markRunFailed(userId, threadId, detectRunLanguage(message));
+          // Row 217: the badge follows the same verdict as the message.
+          void markRunFailed(userId, threadId, failLang, { serviceUnavailable: refused });
           // The SSE event alone is not enough: if the stream dropped mid-run, the
           // user stares at frozen narration forever (three real stalls in one
           // battery run showed no visible timeout). Persist the error INTO the

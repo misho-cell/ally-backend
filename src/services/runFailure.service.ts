@@ -24,10 +24,35 @@ import { setThreadStatus } from './threadStatus.service';
  * run is a reason to try again; it is not a reason to hide a standing question
  * from the person it is addressed to.
  */
+/**
+ * Ticket 20 row 217, second half — the badge must not contradict the message
+ * under it.
+ *
+ * During the outage of 18 September the thread carried „Interrupted — try
+ * again" over a message that said, correctly, that trying again would not
+ * help. Two sentences on one screen telling a person opposite things, and the
+ * one in the smaller type was the wrong one.
+ *
+ * `serviceUnavailable` is passed by whoever already knows the provider
+ * refused us, rather than worked out again here: the caller has the error
+ * object and this function does not, and a second guess at the same question
+ * is how two answers drift apart.
+ *
+ * It does NOT touch the needs_you branch. A standing question to the owner
+ * outranks any failure badge and always has (ticket 8 task 2 b) — an outage
+ * is a reason to say so in the thread, never a reason to hide a question from
+ * the person it is addressed to.
+ */
+export interface RunFailureKind {
+  /** The model provider refused us — see isProviderRefusal. */
+  serviceUnavailable?: boolean;
+}
+
 export async function markRunFailed(
   userId: string,
   threadId: number,
   lang: RunLanguage = 'ka',
+  kind: RunFailureKind = {},
 ): Promise<void> {
   const awaitsOwner = await threadAwaitsOwner(threadId).catch((err: unknown) => {
     // A read that fails must not decide the badge silently: say so, then fall
@@ -41,7 +66,9 @@ export async function markRunFailed(
   });
   if (!awaitsOwner) {
     await setThreadStatus(userId, threadId, 'failed', {
-      statusLine: RUN_STRINGS[lang].statusLines.failed,
+      statusLine: kind.serviceUnavailable
+        ? RUN_STRINGS[lang].statusLines.unavailable
+        : RUN_STRINGS[lang].statusLines.failed,
     });
     return;
   }
