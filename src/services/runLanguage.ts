@@ -318,3 +318,35 @@ export function toolStepCaption(tool: string, lang: RunLanguage): string | null 
   if (lang === 'ka') return null;
   return TOOL_STEPS_BY_LANG[lang][tool] ?? GENERIC_STEP[lang];
 }
+
+/**
+ * The same pause, when the wake it is refusing was carrying NEWS.
+ *
+ * Goal 6205, 19 September, the seat's 290. The owner asked for an
+ * introduction. Test 2 agreed, Test 3 was reached, Test 3 accepted and offered
+ * his week — and the entire chain worked. The wake that would have told him so
+ * arrived at 19:10:21, found the wallet empty, and was answered with
+ * `goalPausedNoTokens`. So the only thing the product has ever said to him
+ * about work that succeeded is that he owes money.
+ *
+ * NOTHING IS LOST — `sweepUnwokenAnswers` marks an ask delivered only on
+ * 'woken', so the answer is re-offered every sweep and arrives in full once
+ * there is an allowance. But „held" and „nothing happened" are different
+ * facts, and the person is entitled to the first one.
+ *
+ * The name and no more. Writing the answer itself here would mean composing
+ * the owner's update without a run, which is the thing this branch exists
+ * because it cannot do — and a name is what turns an invoice back into news.
+ */
+export function answerHeldNoTokens(language: RunLanguage, who: string): string {
+  switch (language) {
+    case 'en':
+      return `${who} has answered. I cannot write up their reply until the tokens are topped up — nothing is lost, it is waiting.`;
+    case 'ru':
+      return `${who} ответил. Я не могу подготовить ответ, пока не пополнены токены — ничего не потеряно, он ждёт.`;
+    case 'es':
+      return `${who} ha respondido. No puedo redactar su respuesta hasta que recargues los tokens: no se ha perdido nada, está esperando.`;
+    default:
+      return `${who}-მა გიპასუხა. პასუხის ჩამოყალიბებას ტოკენების შევსება სჭირდება — არაფერი დაკარგულა, გელოდება.`;
+  }
+}

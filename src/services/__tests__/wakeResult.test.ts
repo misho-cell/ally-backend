@@ -24,6 +24,7 @@ jest.mock('../threads.service', () => ({
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),
   threadLanguage: jest.fn().mockResolvedValue('ka'),
+  lastAssistantMessageIs: jest.fn().mockResolvedValue(false),
 }));
 jest.mock('../askBudget.service', () => ({
   __esModule: true,
@@ -40,7 +41,7 @@ jest.mock('../tokenWallet.service', () => ({ __esModule: true, checkRunAllowance
 
 import { query } from '../../db/postgres/client';
 import { getTaskById, Task } from '../taskStore.service';
-import { getThread, saveThreadMessage, Thread } from '../threads.service';
+import { getThread, lastAssistantMessageIs, saveThreadMessage, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
 import { processChat } from '../chat.service';
 import { wakeTask } from '../taskEngine.service';
@@ -51,6 +52,7 @@ const mockTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockThread = getThread as jest.MockedFunction<typeof getThread>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockAllowance = checkRunAllowance as jest.MockedFunction<typeof checkRunAllowance>;
+const mockLastSaid = lastAssistantMessageIs as jest.MockedFunction<typeof lastAssistantMessageIs>;
 
 const TOKENS_OUT = 'ტოკენები ამოიწურა';
 
@@ -69,6 +71,7 @@ beforeEach(() => {
   // ownerSpokeRecently reads through the pool directly.
   mockQuery.mockResolvedValue({ rows: [{ recent: false }], rowCount: 1 } as never);
   mockSave.mockResolvedValue(undefined as never);
+  mockLastSaid.mockResolvedValue(false);
   clearThreadQueue();
 });
 
@@ -84,14 +87,56 @@ describe('wakeTask says WHY it did not wake', () => {
     expect(String(mockSave.mock.calls[0][3])).toContain(TOKENS_OUT);
   });
 
-  it('does NOT say it again when the thread already carries that status line', async () => {
+  /**
+   * The repeat test now asks the question it was always trying to ask.
+   *
+   * It used to check the thread's STATUS LINE, which records the subject and
+   * not the sentence — so a generic „paused, top up" written first would have
+   * swallowed the news that came after it, which is the seat's 290 exactly: an
+   * introduction succeeded and the owner was told only that he owed money. The
+   * gate compares the line itself now, so a different line always gets
+   * through and the identical one never does.
+   */
+  it('does NOT say the same line twice', async () => {
     // The second goal on the same thread, the hourly sweep, the minute ticker:
     // 'stopped' holds the retry loop, and this holds everyone else.
     mockThread.mockResolvedValue(thread({ status: 'needs_you', status_line: TOKENS_OUT }));
     mockAllowance.mockResolvedValue({ allowed: false } as never);
+    mockLastSaid.mockResolvedValue(true);
 
     expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
     expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The seat's 290. Goal 6205: the owner asked for an introduction, two people
+   * helped, the target accepted and offered his week — and the wake carrying
+   * that news hit an empty wallet and was answered with „work is paused, top
+   * up". The only thing the product ever told him about work that succeeded
+   * was that he owed money.
+   */
+  it('names who answered when the refused wake was carrying news', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: false } as never);
+
+    expect(await wakeTask(4258, 'ნაბიჯი', { text: 'დიახ, შემიძლია', who: 'Netai Test 3' })).toBe(
+      'stopped',
+    );
+    const said = String(mockSave.mock.calls[0][3]);
+    expect(said).toContain('Netai Test 3');
+    // And it says the news is HELD, not that nothing happened: the sweep
+    // re-offers an answer until a wake takes it, so it really is waiting.
+    expect(said).toContain('არაფერი დაკარგულა');
+  });
+
+  it('still says the plain line when the wake carried no news', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: false } as never);
+
+    // An ordinary 24-hour wake: there is no answer to hold, so there is
+    // nothing to name and the message must not imply there is.
+    expect(await wakeTask(4258, 'ნაბიჯი', { text: '', who: null })).toBe('stopped');
+    expect(String(mockSave.mock.calls[0][3])).toContain('დავალებაზე მუშაობა შევაჩერე');
   });
 
   it('still calls a live run on the thread BUSY — that one is worth retrying', async () => {

@@ -676,6 +676,31 @@ export async function getLongestRunStep(threadId: number, runId: string): Promis
   return result.rows[0]?.content ?? null;
 }
 
+/**
+ * Whether the last thing the assistant said in this thread is exactly this.
+ *
+ * For the lines a non-run path writes — the token-wall notice and its
+ * news-carrying variant — where the question „have they already been told
+ * this" cannot be answered by a status badge: a badge records the SUBJECT,
+ * so a generic pause written first would swallow the news that came after it,
+ * while the answer sweep retries every tick and would repeat whichever line
+ * came first. Comparing the text answers the question actually being asked.
+ *
+ * Deliberately the LAST message and not „anywhere in the thread": a person
+ * told once, then told six other things, then told again, has not been
+ * repeated at — they have been reminded.
+ */
+export async function lastAssistantMessageIs(threadId: number, text: string): Promise<boolean> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+     WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND content <> ''
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [threadId],
+  );
+  return result.rows[0]?.content === text;
+}
+
 export async function saveThreadMessage(
   threadId: number,
   userId: number,

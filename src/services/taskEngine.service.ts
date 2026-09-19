@@ -24,8 +24,13 @@ import {
   hasPendingAskForThread,
   EnsureQuoted,
 } from './taskAsks.service';
-import { getThread, saveThreadMessage, threadLanguage } from './threads.service';
-import { RunLanguage, RUN_STRINGS } from './runLanguage';
+import {
+  getThread,
+  lastAssistantMessageIs,
+  saveThreadMessage,
+  threadLanguage,
+} from './threads.service';
+import { RunLanguage, RUN_STRINGS, answerHeldNoTokens } from './runLanguage';
 import { DAY_ONE_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
@@ -112,18 +117,6 @@ export type WakeResult =
   | 'busy'
   /** Nothing to wake, or nothing a retry could change. Stop asking. */
   | 'stopped';
-
-/**
- * The status lines that say, on the thread itself, that we already said it.
- *
- * Every language's, plus the Georgian-only line this used to be — threads
- * parked before the four-language change carry that exact string, and reading
- * only the new set would say the line a second time on each of them.
- */
-const TOKENS_OUT_STATUS_LINES: readonly string[] = [
-  'ტოკენები ამოიწურა',
-  ...Object.values(RUN_STRINGS).map((s) => s.statusLines.needs_topup),
-];
 
 /**
  * Advance a task by one engine-initiated run: the event text enters the task's
@@ -217,20 +210,45 @@ export async function wakeTask(
       // conversation, and it wrote it at the worst moment there is — the
       // moment the owner is told their work has stopped and asked for money.
       const language = await threadLanguage(thread.id).catch(() => 'ka' as RunLanguage);
-      const alreadySaid =
-        thread.status === 'needs_you' &&
-        thread.status_line !== null &&
-        TOKENS_OUT_STATUS_LINES.includes(thread.status_line);
       await setThreadStatus(ownerId, thread.id, 'needs_you', {
         statusLine: RUN_STRINGS[language].statusLines.needs_topup,
       });
-      if (!alreadySaid) {
-        await saveThreadMessage(
-          thread.id,
-          Number(ownerId),
-          'assistant',
-          RUN_STRINGS[language].goalPausedNoTokens,
-        ).catch(() => undefined);
+      /**
+       * WHEN THE REFUSED WAKE WAS CARRYING NEWS, SAY WHOSE.
+       *
+       * Goal 6205: the owner asked for an introduction, two people helped, the
+       * target accepted and offered his week — and the wake that would have
+       * told him arrived at 19:10:21, found an empty wallet, and was answered
+       * with „work is paused, top up". The only thing the product has ever
+       * said to him about work that succeeded is that he owes money. Neither
+       * row 157 nor row 210 would have caught it: each is correct alone, and
+       * this is what they do to each other.
+       *
+       * Nothing is lost — `sweepUnwokenAnswers` marks an ask delivered only on
+       * 'woken', so the answer is re-offered every sweep and arrives whole
+       * once there is an allowance. „Held" and „nothing happened" are
+       * different facts and the person is owed the first.
+       */
+      const who = ensureQuoted?.who?.trim();
+      const line =
+        who === undefined || who === ''
+          ? RUN_STRINGS[language].goalPausedNoTokens
+          : answerHeldNoTokens(language, who);
+      /**
+       * Not said twice, and the test of that is the LINE rather than the
+       * status badge.
+       *
+       * The badge could only ever answer „has this thread been told about the
+       * wallet", so a generic pause said first would have swallowed the news
+       * that came after it — and the sweep retries every tick, which would
+       * otherwise repeat whichever line came first. Comparing the exact line
+       * against the thread's last assistant message answers the question that
+       * is actually being asked: has this person already been told THIS.
+       */
+      if (!(await lastAssistantMessageIs(thread.id, line))) {
+        await saveThreadMessage(thread.id, Number(ownerId), 'assistant', line).catch(
+          () => undefined,
+        );
       }
       return 'stopped';
     }

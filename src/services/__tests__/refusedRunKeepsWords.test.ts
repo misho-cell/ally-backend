@@ -1,4 +1,4 @@
-import { RUN_STRINGS, detectRunLanguage, RunLanguage } from '../runLanguage';
+import { RUN_STRINGS, detectRunLanguage, RunLanguage, answerHeldNoTokens } from '../runLanguage';
 
 /**
  * P0, 18 September — at zero tokens the owner's typed goal was thrown away, and
@@ -112,5 +112,58 @@ describe('the line a goal writes when its own wake finds the wallet empty', () =
         RUN_STRINGS[language].statusLines.needs_topup,
       );
     }
+  });
+});
+
+/**
+ * The seat's 290, and it is the hardest sentence of the day: a user asked for
+ * an introduction, it WORKED — two people helped, the target accepted and
+ * offered his week — and the only thing the product has ever told him about it
+ * is that he owes money.
+ *
+ * Goal 6205. The answer arrived at 19:10:21, the wake that would have reported
+ * it found an empty wallet, and the wallet line took the turn. Neither row 157
+ * nor row 210 would have caught it: each is right on its own, and this is what
+ * they do to each other.
+ *
+ * Nothing is lost — sweepUnwokenAnswers marks an ask delivered only on 'woken',
+ * so the answer is re-offered every sweep. But „held" and „nothing happened"
+ * are different facts and the person is owed the first one.
+ */
+describe('the pause line, when the wake it refused was carrying news', () => {
+  it('names who answered, in every language', () => {
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(answerHeldNoTokens(language, 'Netai Test 3')).toContain('Netai Test 3');
+    }
+  });
+
+  it('says the news is held rather than that the work stopped', () => {
+    // The whole point: „paused, top up" is what the owner got, and it reads as
+    // „nothing happened". This must not.
+    const held: Record<RunLanguage, RegExp> = {
+      ka: /არაფერი დაკარგულა/,
+      en: /nothing is lost/i,
+      ru: /ничего не потеряно/i,
+      es: /no se ha perdido nada/i,
+    };
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const line = answerHeldNoTokens(language, 'Nino');
+      expect(line).toMatch(held[language]);
+      expect(line).not.toBe(RUN_STRINGS[language].goalPausedNoTokens);
+    }
+  });
+
+  it('carries no Georgian in the non-Georgian lines', () => {
+    for (const language of ['en', 'ru', 'es'] as const) {
+      expect(answerHeldNoTokens(language, 'Nino')).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+
+  it('does not quote the answer itself — that needs a run this branch cannot make', () => {
+    // A name turns an invoice back into news. The answer's wording is the
+    // model's job and there is no model in this path; composing it here would
+    // be the server writing the owner's update by hand.
+    const line = answerHeldNoTokens('en', 'Nino');
+    expect(line.length).toBeLessThan(200);
   });
 });
