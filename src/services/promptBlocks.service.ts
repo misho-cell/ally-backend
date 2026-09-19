@@ -379,12 +379,20 @@ export async function stampRunMode(
   mode: RunMode,
   blockNames: readonly string[],
   blockVersions: readonly string[] = [],
+  /**
+   * Which `ai_config` row the run was given. The edit route INSERTs a new row
+   * per change and the loader takes the highest id, so the id IS the base
+   * prompt's version — and without it a stamp could say which BLOCK a run
+   * loaded and not which 25,176 characters sat underneath it.
+   */
+  basePromptId: number | null = null,
 ): Promise<void> {
   await query(
-    `INSERT INTO run_prompt_stamps (run_id, user_id, thread_id, mode, block_names, block_versions)
-     VALUES ($1, $2::int, $3, $4, $5, $6)
+    `INSERT INTO run_prompt_stamps
+       (run_id, user_id, thread_id, mode, block_names, block_versions, base_prompt_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7)
      ON CONFLICT (run_id) DO NOTHING`,
-    [runId, userId, threadId, mode, [...blockNames], [...blockVersions]],
+    [runId, userId, threadId, mode, [...blockNames], [...blockVersions], basePromptId],
     BLOCK_QUERY_TIMEOUT_MS,
   );
   await query(
@@ -401,12 +409,15 @@ export interface RunStamp {
   mode: string;
   block_names: string[];
   block_versions: string[];
+  /** The `ai_config` row this run was given; null for stamps before mig 157. */
+  base_prompt_id: number | null;
   created_at: string;
 }
 
 export async function listRunStamps(threadId?: number): Promise<RunStamp[]> {
   const result = await query<RunStamp>(
-    `SELECT run_id, user_id, thread_id, mode, block_names, block_versions, created_at
+    `SELECT run_id, user_id, thread_id, mode, block_names, block_versions,
+            base_prompt_id, created_at
      FROM run_prompt_stamps
      WHERE ($1::int IS NULL OR thread_id = $1)
      ORDER BY created_at DESC

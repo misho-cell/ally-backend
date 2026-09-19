@@ -1,0 +1,17 @@
+-- Ticket 20 row 104 — a run's stamp says which BLOCK it loaded and not which
+-- base prompt sat underneath it.
+--
+-- The blocks have been stamped since ticket 9 task 34, as `name@updated_at`.
+-- The base prompt — the 25,176 characters every run loads before any block —
+-- has never been recorded, so "did this run see the new wording" was
+-- answerable for a block and not for the thing the block is appended to.
+--
+-- Asked for by the tester's seat on 19 September, waiting on a base-prompt
+-- change the founder had approved: "stamp which run first loaded it. We would
+-- rather re-measure against the build boundary than against a wall clock."
+--
+-- `ai_config` needs no new versioning: its edit route INSERTs a fresh row per
+-- change and every reader takes `ORDER BY id DESC LIMIT 1`, so the id already
+-- is the version. Nullable, because every row written before this migration
+-- genuinely does not know, and a backfilled guess would be worse than a null.
+ALTER TABLE run_prompt_stamps ADD COLUMN IF NOT EXISTS base_prompt_id INTEGER;

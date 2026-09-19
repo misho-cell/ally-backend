@@ -3131,6 +3131,26 @@ interface AgentPromptResult {
   /** `name@ISO` per block — the exact revision that ran (ticket 9 task 34). */
   blockVersions: string[];
   /**
+   * Ticket 20 row 104 — which BASE prompt this run was given.
+   *
+   * The blocks have been stamped since task 34, and the base prompt — the
+   * 25,176 characters every run loads before any of them — has not. So „did
+   * this run see the new wording" was answerable for a block and not for the
+   * thing the block sits underneath.
+   *
+   * The seat asked for it, on the 19th, while waiting for a base-prompt change
+   * the founder had approved: „stamp which run first loaded it. We would
+   * rather re-measure against the build boundary than against a wall clock,
+   * and after last week neither of us should be inferring „it is live now"
+   * from a timestamp." They are right, and the week they mean includes two of
+   * my own wrong readings taken off a clock.
+   *
+   * `ai_config` needs no new versioning for this: the edit route INSERTs a
+   * fresh row and the loader takes the highest id, so the id already IS the
+   * version. Null only if the table is empty, which is a broken install.
+   */
+  basePromptId: number | null;
+  /**
    * Ticket 19 [18]: whether waiting introduction requests go to the user as
    * their OWN messages after the answer. False inside the request's own thread
    * (the thread IS the request) and false while the kill switch is off — in
@@ -3253,8 +3273,11 @@ async function buildAgentSystemPrompt(
     tasks,
     userNotes,
   ] = await Promise.all([
-    query<{ system_prompt: string }>(
-      'SELECT system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
+    // The id comes back with the text because it IS the base prompt's version:
+    // this route INSERTs a new row per edit and the newest one wins, so the id
+    // names the exact wording a run was given (see basePromptId below).
+    query<{ id: number; system_prompt: string }>(
+      'SELECT id, system_prompt FROM ai_config ORDER BY id DESC LIMIT 1',
     ),
     // Mode-bound prompt blocks (DB-edited, deploy-free): every enabled block
     // bound to this mode — and, for trial blocks, to this account — in the
@@ -3307,6 +3330,7 @@ async function buildAgentSystemPrompt(
   const deliverRequestsSeparately = !PENDING_AS_MESSAGES_OFF && threadType !== 'incoming_request';
 
   const base = configResult.rows[0]?.system_prompt ?? '';
+  const basePromptId = configResult.rows[0]?.id ?? null;
   const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
   const nameSection = registeredName
     ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).` +
@@ -3362,6 +3386,7 @@ async function buildAgentSystemPrompt(
     runMode,
     blockNames: modeBlocks.names,
     blockVersions: modeBlocks.versions,
+    basePromptId,
     deliverRequestsSeparately,
   };
 }
@@ -8194,6 +8219,7 @@ export async function processChat(
     agentPrompt.runMode,
     agentPrompt.blockNames,
     agentPrompt.blockVersions,
+    agentPrompt.basePromptId,
   ).catch((err: unknown) => {
     // eslint-disable-next-line no-console
     console.warn('[prompt-stamp] failed:', (err as Error).message);

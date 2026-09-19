@@ -337,3 +337,55 @@ describe('which VERSION of a block answered (ticket 9 task 34)', () => {
     expect(params[5]).toEqual(['task_main@2026-09-02T13:04:11.000Z']);
   });
 });
+
+/**
+ * Ticket 20 row 104 — the stamp said which BLOCK a run loaded and not which
+ * base prompt sat underneath it.
+ *
+ * Blocks have carried `name@updated_at` since ticket 9 task 34. The base
+ * prompt — the 25,176 characters every run loads before any block — carried
+ * nothing, so „did this run see the new wording" was answerable for a block
+ * and not for the thing the block is appended to.
+ *
+ * Asked for by the seat on 19 September while a base-prompt change the founder
+ * had approved sat unpasted: „stamp which run first loaded it. We would rather
+ * re-measure against the build boundary than against a wall clock, and after
+ * last week neither of us should be inferring „it is live now" from a
+ * timestamp." The week they mean includes two wrong readings of my own taken
+ * off a clock.
+ *
+ * `ai_config` needed no new versioning: its edit route INSERTs a row per
+ * change and every reader takes the highest id, so the id already is the
+ * version.
+ */
+describe('the stamp records which base prompt the run was given', () => {
+  it('writes the ai_config row id alongside the blocks', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await stampRunMode('run-2', '501', 12345, 'task_step', ['task_main'], [], 2047);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('base_prompt_id');
+    expect(params[6]).toBe(2047);
+  });
+
+  it('stamps null rather than a guess when the id is unknown', async () => {
+    // Only reachable with an empty ai_config, which is a broken install — but
+    // a wrong id here would be worse than an honest gap, because the whole
+    // point of the column is to be trusted when a measurement disagrees with
+    // a clock.
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await stampRunMode('run-3', '501', null, 'quick_answer', [], [], null);
+
+    expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][6]).toBeNull();
+  });
+
+  it('defaults to null for a caller that has not been updated', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await stampRunMode('run-4', '501', null, 'quick_answer', []);
+
+    expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][6]).toBeNull();
+  });
+});
