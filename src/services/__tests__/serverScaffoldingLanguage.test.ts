@@ -1,4 +1,5 @@
-import { isServerScaffolding, RUN_EVENT_PREFIX } from '../chat.service';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { languageOfConversation } from '../runLanguage';
 
 /**
@@ -25,21 +26,53 @@ import { languageOfConversation } from '../runLanguage';
  * message in hand says nothing.
  */
 const SYSTEM_NOTE = '(სისტემური შენიშვნა: მოკლედ აცნობე მომხმარებელს სად ხარ.)';
-const WAKE_EVENT = `${RUN_EVENT_PREFIX} The plan has just been approved — this is day one.`;
 
-describe('what counts as the server talking to itself', () => {
-  it('knows a wake event and a system note', () => {
-    expect(isServerScaffolding(WAKE_EVENT)).toBe(true);
-    expect(isServerScaffolding(SYSTEM_NOTE)).toBe(true);
-    // Leading whitespace must not smuggle one past.
-    expect(isServerScaffolding(`\n  ${SYSTEM_NOTE}`)).toBe(true);
+const CHAT_SERVICE = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+/**
+ * THE FIX THAT DID NOT HOLD, AND WHY THE SECOND ONE IS A DIFFERENT SHAPE.
+ *
+ * The first attempt filtered the server's own sentences out of the history
+ * list by their opening words. It shipped at 20:35 and the seat reproduced the
+ * flip at 21:29 on the fixed build. The rule was right and the SOURCE was
+ * unusable: `loadHistory` wraps an engine turn in server-turn markers, so its
+ * text no longer begins with anything identifying, and `mergeAdjacentSameRole`
+ * folds adjacent user rows into one block array, so a note and a real message
+ * stop being separable at all. Both transformations are correct for the model.
+ * They just make that list the wrong place to ask this question.
+ *
+ * So the vote reads the database instead — `kind = 'message'`, which excludes
+ * an engine turn by what the row IS rather than by how its text starts.
+ */
+describe('where the language vote gets the owner’s words', () => {
+  /**
+   * The STATEMENT, not the region — the comment above it quotes the old
+   * mechanism by name, and a region-wide assertion would forbid explaining
+   * what was wrong.
+   */
+  const VOTE = CHAT_SERVICE.slice(
+    CHAT_SERVICE.indexOf('const spokenBefore'),
+    CHAT_SERVICE.indexOf(';', CHAT_SERVICE.indexOf('const spokenBefore')) + 1,
+  );
+
+  it('reads the owner’s stored messages, not the model’s history', () => {
+    expect(VOTE).toContain('ownerMessages(threadId)');
+    expect(VOTE).not.toContain('history');
   });
 
-  it('leaves the owner’s own words alone, including Georgian ones', () => {
-    expect(isServerScaffolding('I approve')).toBe(false);
-    expect(isServerScaffolding('მჭირდება სანტექნიკოსი')).toBe(false);
-    // A person writing about an event is not an event.
-    expect(isServerScaffolding('what happened with that event?')).toBe(false);
+  it('does not try to identify the server’s sentences by their opening words', () => {
+    // The whole class: after framing and merging there is nothing left to
+    // prefix-test, so the vote must not contain one. Scoped to the vote rather
+    // than to the file, because this test's own comments name the thing.
+    expect(VOTE).not.toContain('startsWith');
+    expect(VOTE).not.toContain('PREFIX');
+  });
+
+  it('fails towards the owner’s words rather than towards none', () => {
+    // A failed read must not silently make every short message decide for
+    // itself — but it also must not take the thread down. Empty list, and the
+    // message in hand decides, which is the pre-existing behaviour.
+    expect(VOTE).toContain('.catch(() => [] as string[])');
   });
 });
 
@@ -58,19 +91,15 @@ describe('the fallback that decides an ambiguous message’s language', () => {
     expect(languageOfConversation('I approve', [SYSTEM_NOTE, ...englishHistory])).toBe('ka');
   });
 
-  it('stays English once the scaffolding is filtered out', () => {
-    const owned = [SYSTEM_NOTE, WAKE_EVENT, ...englishHistory].filter(
-      (text) => !isServerScaffolding(text),
-    );
-    expect(languageOfConversation('I approve', owned)).toBe('en');
+  it('stays English when the list holds only the owner’s own messages', () => {
+    // Which is what ownerMessages returns: the note and the wake event are
+    // `kind = 'event'` rows and never appear in it.
+    expect(languageOfConversation('I approve', englishHistory)).toBe('en');
   });
 
   it('still lets the owner’s OWN Georgian decide, which row 155 is about', () => {
-    // The filter must not make a Georgian thread answer in English: „Ok" in a
+    // The fix must not make a Georgian thread answer in English: „Ok" in a
     // Georgian conversation has to find Georgian behind it.
-    const georgian = [SYSTEM_NOTE, 'მჭირდება სანტექნიკოსი თბილისში'].filter(
-      (text) => !isServerScaffolding(text),
-    );
-    expect(languageOfConversation('Ok', georgian)).toBe('ka');
+    expect(languageOfConversation('Ok', ['მჭირდება სანტექნიკოსი თბილისში'])).toBe('ka');
   });
 });

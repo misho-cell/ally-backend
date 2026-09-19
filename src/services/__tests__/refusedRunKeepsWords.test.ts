@@ -1,4 +1,5 @@
 import { RUN_STRINGS, detectRunLanguage, RunLanguage, answerHeldNoTokens } from '../runLanguage';
+import { scrubMechanicalForStorage } from '../privacyScrub';
 
 /**
  * P0, 18 September — at zero tokens the owner's typed goal was thrown away, and
@@ -165,5 +166,52 @@ describe('the pause line, when the wake it refused was carrying news', () => {
     // be the server writing the owner's update by hand.
     const line = answerHeldNoTokens('en', 'Nino');
     expect(line.length).toBeLessThan(200);
+  });
+});
+
+/**
+ * Eighteen copies of one sentence, one every five minutes, on the screen of
+ * somebody who could not pay. The seat counted them by DOM position.
+ *
+ * The sentence is right and the guard against repeating it existed. What the
+ * guard compared was the text handed to it; what the database holds is that
+ * text after `scrubMechanicalForStorage`, which `saveThreadMessage` applies to
+ * every assistant message. This line contains an em dash and the scrub rewrites
+ * it to a comma — so the two strings could never be equal, and a check that can
+ * never pass is not a check.
+ *
+ * It is the same species the seat named an hour earlier about a different bug:
+ * a guard that only runs when it is not needed. This one never ran at all.
+ *
+ * The wake floor is what made it visible, and that is worth saying plainly: a
+ * goal that could not proceed now wakes reliably, so a line written on every
+ * wake gets written reliably too. The fix removed a silence and exposed a
+ * repetition that was always latent.
+ */
+describe('the held-answer line survives the storage scrub it is compared against', () => {
+  it('is changed by the scrub, which is the whole reason the guard failed', () => {
+    const line = answerHeldNoTokens('en', 'Netai Test 3');
+    const stored = scrubMechanicalForStorage(line);
+    // If this ever stops being true the bug is gone for a different reason,
+    // and this test should be read again rather than deleted.
+    expect(stored).not.toBe(line);
+    expect(line).toContain('—');
+    expect(stored).not.toContain('—');
+  });
+
+  it('matches the exact text the seat found thirteen times in one thread', () => {
+    // Copied from `conversations` on thread 18745, not retyped from the source.
+    expect(scrubMechanicalForStorage(answerHeldNoTokens('en', 'Netai Test 3'))).toBe(
+      'Netai Test 3 has answered. I cannot write up their reply until the tokens are topped up, nothing is lost, it is waiting.',
+    );
+  });
+
+  it('is scrub-stable, so one pass is all the comparison needs', () => {
+    // The guard scrubs once and compares. If the scrub were not idempotent the
+    // stored value would drift from it on every write.
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const once = scrubMechanicalForStorage(answerHeldNoTokens(language, 'Nino'));
+      expect(scrubMechanicalForStorage(once)).toBe(once);
+    }
   });
 });

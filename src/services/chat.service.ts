@@ -46,6 +46,7 @@ import {
   getThread,
   getOrCreateDefaultThread,
   getThreadContext,
+  ownerMessages,
   touchThread,
   createThread,
 } from './threads.service';
@@ -249,21 +250,6 @@ const HISTORY_LIMIT = 50;
 // tags and quoting instructions was rendered to the founder as a message.
 export const RUN_EVENT_PREFIX = '[მოვლენა]';
 
-/** How a system note addressed to the model opens. */
-const SYSTEM_NOTE_PREFIX = '(სისტემური შენიშვნა:';
-
-/**
- * Text the SERVER wrote into a thread's history for the model to read.
- *
- * Stored with role „user" because that is the only role a run's history has
- * for incoming text - so to everything downstream it looks like the owner
- * speaking, and it is not. It is us, in the prompt's language, whatever the
- * owner's is.
- */
-export function isServerScaffolding(text: string): boolean {
-  const trimmed = text.trimStart();
-  return trimmed.startsWith(RUN_EVENT_PREFIX) || trimmed.startsWith(SYSTEM_NOTE_PREFIX);
-}
 // 8k output: 2048 cut long Georgian answers mid-word at ~3.2k chars (thread
 // 7693 — the model itself apologised for "cutting off half" next turn).
 // Cost is bounded by actual usage, not by this ceiling.
@@ -8421,41 +8407,33 @@ export async function processChat(
    * conversation." Two functions answering one question, and only one of them
    * knew.
    */
-  const spokenBefore = history
-    .slice()
-    .reverse()
-    .filter((m) => m.role === 'user')
-    .map((m) => (typeof m.content === 'string' ? m.content : ''))
-    .filter(Boolean)
-    /**
-     * THE SAME RULE AS THE ONE TWENTY LINES BELOW, WHICH THIS LIST DID NOT GET.
-     *
-     * The seat's 297, goal 6370, and the two approvals in the same thread are
-     * the experiment:
-     *
-     *   19:42:44  „I approve"   ->  19:43:03  the reply, in English
-     *   19:43:42  a Georgian system note enters the thread, role „user"
-     *   19:46:19  „I approve"   ->  19:46:29  the reply, in GEORGIAN
-     *
-     * Identical word, identical path, four minutes apart, and the only thing
-     * that changed between them is that the server had written one of its own
-     * Georgian lines into the history in between.
-     *
-     * „I approve" is nine Latin characters, which is below the threshold that
-     * moves a conversation - by design, since row 155, so that „Ok" cannot
-     * flip a Georgian thread. So it falls back to the newest earlier message
-     * carrying a script, and that message was ours.
-     *
-     * `decidesLanguage` below already refuses to let an engine event speak for
-     * the owner. The FALLBACK LIST never got the same treatment, so the rule
-     * held for the message in hand and not for the history behind it - which
-     * is the only place it can matter, because the fallback is consulted
-     * exactly when the message in hand says nothing.
-     *
-     * Both prefixes, because they are two different kinds of us talking: the
-     * wake event, and the system notes a run pushes into its own history.
-     */
-    .filter((text) => !isServerScaffolding(text));
+  /**
+   * THE OWNER'S OWN MESSAGES, READ FROM THE DATABASE RATHER THAN RECONSTRUCTED
+   * FROM THE MODEL'S HISTORY.
+   *
+   * This list used to be built by filtering `history` for role „user". Two
+   * things happen to that history before it gets here, both of them correct
+   * for the model and both fatal to this question:
+   *
+   *   `frameServerTurn` WRAPS an engine turn in server-turn markers, so its
+   *   text no longer begins with the marker that identifies it — a prefix test
+   *   cannot see it any more.
+   *
+   *   `mergeAdjacentSameRole` folds adjacent user rows into one block array, so
+   *   an engine note and a real message become a single value with no boundary
+   *   between them, and a per-message filter has nothing to filter.
+   *
+   * I shipped that prefix filter at 20:35 and the seat reproduced the flip at
+   * 21:29 on the fixed build. The filter was right about the RULE and wrong
+   * about the SOURCE: there is no way to identify the server's own sentences
+   * inside a list that has already been framed and merged.
+   *
+   * `ownerMessages` excludes an engine turn by `kind = 'message'` — by what the
+   * row IS, not by how its text happens to start — and returns one string per
+   * row. It is the same query `threadLanguage` has always used, which is the
+   * function this code was quietly re-implementing.
+   */
+  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
   /**
    * An ENGINE EVENT never decides the language, and a split goal is why.
    *

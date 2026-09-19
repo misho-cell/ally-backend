@@ -614,6 +614,29 @@ export async function getThreadMessages(
  * the bug rather than of the conversation.
  */
 export async function threadLanguage(threadId: number): Promise<RunLanguage> {
+  const [latest, ...earlier] = await ownerMessages(threadId);
+  if (latest === undefined) return 'ka';
+  return languageOfConversation(latest, earlier);
+}
+
+/**
+ * The owner's OWN messages in this thread, newest first — and the only
+ * trustworthy source for the question „what language is this conversation in".
+ *
+ * Exported because chat.service was reconstructing this list from the model's
+ * history and getting it wrong, in two ways that a prefix test cannot survive:
+ * `loadHistory` WRAPS an engine turn in server-turn markers, so the text no
+ * longer begins with the marker that identifies it, and `mergeAdjacentSameRole`
+ * folds two adjacent user rows into one block array, so an engine note and a
+ * real message become a single value with no boundary between them.
+ *
+ * Neither transformation is wrong — the model's history needs both. They just
+ * make that list the wrong place to ask this question, and the right place has
+ * existed in this file all along: `kind = 'message'` excludes an engine turn by
+ * what it IS rather than by how its text happens to start, and rows come back
+ * one per row.
+ */
+export async function ownerMessages(threadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
      WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
@@ -621,9 +644,7 @@ export async function threadLanguage(threadId: number): Promise<RunLanguage> {
      LIMIT $2`,
     [threadId, LANGUAGE_SAMPLE_MESSAGES],
   );
-  const [latest, ...earlier] = result.rows.map((r) => r.content);
-  if (latest === undefined) return 'ka';
-  return languageOfConversation(latest, earlier);
+  return result.rows.map((r) => r.content);
 }
 
 /**
@@ -716,6 +737,21 @@ export async function getLongestRunStep(threadId: number, runId: string): Promis
  * Deliberately the LAST message and not „anywhere in the thread": a person
  * told once, then told six other things, then told again, has not been
  * repeated at — they have been reminded.
+ *
+ * AND IT COMPARES WHAT WOULD BE STORED, NOT WHAT WAS PASSED IN. The first
+ * version of this did not, and the seat counted the result: eighteen copies of
+ * one sentence on one person's screen, one every five minutes, on an account
+ * that could not pay.
+ *
+ * `saveThreadMessage` runs `scrubMechanicalForStorage` over every assistant
+ * message on the way in — it is two lines below this one — so the text handed
+ * to this function and the text in the database are never the same string when
+ * the scrub touches anything. The line in question contained an em dash, which
+ * the scrub rewrites to a comma. The guard was therefore comparing two values
+ * that could not be equal, and a check that can never pass is not a check.
+ *
+ * The same transformation, in the same file, applied by the reader and the
+ * writer — so they cannot drift again without both changing.
  */
 export async function lastAssistantMessageIs(threadId: number, text: string): Promise<boolean> {
   const result = await query<{ content: string }>(
@@ -725,7 +761,7 @@ export async function lastAssistantMessageIs(threadId: number, text: string): Pr
      LIMIT 1`,
     [threadId],
   );
-  return result.rows[0]?.content === text;
+  return result.rows[0]?.content === scrubMechanicalForStorage(text);
 }
 
 export async function saveThreadMessage(
