@@ -305,6 +305,35 @@ export async function wakeTask(
       }),
     );
 
+    /**
+     * A FLOOR UNDER THE RUN, ARMED BEFORE IT RATHER THAN AFTER IT.
+     *
+     * The seat's narrow question on 19 September was the right one: what is
+     * supposed to happen when the send step fails after a plan is approved?
+     * The answer was nothing. Goal 6337's day-one wake was killed mid-run by a
+     * deploy, and every path that would have rescued it runs AFTER the wake —
+     * the ticker's `ensureNextWake`, `startDayOne`'s own `onDone`. A run that
+     * dies never reaches its own safety net. So the goal sat with
+     * `next_wake_at: null`, zero asks, a stage of `running`, and a message on
+     * the owner's screen saying two people had been asked.
+     *
+     * AND THE NIGHTLY SWEEP WOULD NOT HAVE SAVED IT EITHER, which I told the
+     * seat it would and was wrong about. `getStaleOpenTasks` wants twenty
+     * hours of quiet as well as a null wake, and that goal had been touched
+     * minutes before — so the first sweep that could see it is not tonight's
+     * but tomorrow's, thirty-one hours later, and any activity in the thread
+     * pushes it out again.
+     *
+     * `ensureNextWake` only fills a NULL, so this cannot shorten a wake the
+     * model chose, and a `set_task_wake` inside the run overwrites it. The
+     * ticker's call after the run becomes a no-op, which is the correct shape:
+     * the floor belongs before the thing that can die, not after it.
+     */
+    await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] could not arm the pre-run wake floor:', (err as Error).message),
+    );
+
     const hardTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
     );

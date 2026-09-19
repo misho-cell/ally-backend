@@ -18,7 +18,12 @@
  */
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 jest.mock('../chat.service', () => ({ __esModule: true, processChat: jest.fn() }));
-jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
+jest.mock('../taskStore.service', () => ({
+  __esModule: true,
+  getTaskById: jest.fn(),
+  // The wake floor, armed before the run since goal 6337 - see wakeTask.
+  ensureNextWake: jest.fn().mockResolvedValue(true),
+}));
 jest.mock('../threads.service', () => ({
   __esModule: true,
   getThread: jest.fn(),
@@ -40,7 +45,7 @@ jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus:
 jest.mock('../tokenWallet.service', () => ({ __esModule: true, checkRunAllowance: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
-import { getTaskById, Task } from '../taskStore.service';
+import { getTaskById, ensureNextWake, Task } from '../taskStore.service';
 import { getThread, lastAssistantMessageIs, saveThreadMessage, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
 import { processChat } from '../chat.service';
@@ -53,6 +58,7 @@ const mockThread = getThread as jest.MockedFunction<typeof getThread>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockAllowance = checkRunAllowance as jest.MockedFunction<typeof checkRunAllowance>;
 const mockLastSaid = lastAssistantMessageIs as jest.MockedFunction<typeof lastAssistantMessageIs>;
+const mockEnsureWake = ensureNextWake as jest.MockedFunction<typeof ensureNextWake>;
 
 const TOKENS_OUT = 'ტოკენები ამოიწურა';
 
@@ -127,6 +133,24 @@ describe('wakeTask says WHY it did not wake', () => {
     // And it says the news is HELD, not that nothing happened: the sweep
     // re-offers an answer until a wake takes it, so it really is waiting.
     expect(said).toContain('არაფერი დაკარგულა');
+  });
+
+  /**
+   * Goal 6337: a day-one wake killed mid-run by a deploy left the goal with
+   * next_wake_at NULL, zero asks, and a screen saying two people had been
+   * asked. Every rescue path runs AFTER the wake - the ticker's
+   * ensureNextWake, startDayOne's own onDone - so a run that dies never
+   * reaches its own safety net, and getStaleOpenTasks wants twenty hours of
+   * quiet as well, which a goal touched minutes ago does not have.
+   */
+  it('arms the next wake BEFORE the run, so a run that dies leaves a retry', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: true, balance: 100 } as never);
+    (processChat as jest.Mock).mockRejectedValue(new Error('killed mid-run'));
+
+    await wakeTask(4258, 'ნაბიჯი').catch(() => undefined);
+
+    expect(mockEnsureWake).toHaveBeenCalledWith(4258, 24);
   });
 
   it('still says the plain line when the wake carried no news', async () => {
