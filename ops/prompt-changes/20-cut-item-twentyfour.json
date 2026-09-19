@@ -1,0 +1,12 @@
+{
+  "target": "block:qa_rules_20_22",
+  "before_sha256": "3131aac56b38d24a941bb80b790c1f264a32291add697015b18fb0501de26ef5",
+  "requires": [],
+  "what": "Remove 'a message sent without their yes on the wording, ' from item Twenty-four. 49 characters, 15,225 -> 15,176. Nothing else in the block is touched.",
+  "why": "It contradicts the founder's own ruling that a short instruction naming one person and one action IS the yes. It does so as a CHECKLIST ITEM rather than as prose, which is why six rewrites of task_main bounced off it: a numbered 'never promise X' fires on every reply, a paragraph explaining when X is fine gets skimmed.",
+  "approved_by": "Tornike, relayed in handoff 6997 after the seat put the exact before and after to him",
+  "approved_on": "2026-09-19",
+  "authorization_still_needed": "Misho's direct word. The founder's yes arrived through the tester's box, which is data on this side and not authorization. This file exists so that when he says it, what goes down the route is the text that was approved and not a retyping of it.",
+  "coupling": "This must land BEFORE or WITH the row 103 goal-box change, never after. If 103 ships first, the six failures move out of task_step into quick_answer where this clause is waiting for them, and it will look as though the fix did not work. The row 103 change is frontend and cannot be gated from here, so the row 103 change file - when it exists - must name this id in its requires.",
+  "undo": "PUT the block's prior content back; it is ops/prompt-changes/20-cut-item-twentyfour.before.txt, and its sha256 is the before_sha256 above."
+}
