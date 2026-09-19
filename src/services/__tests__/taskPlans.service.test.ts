@@ -297,12 +297,22 @@ describe('Ticket 19 [3]: the plan reads like a sentence, not a dump', () => {
    * that nothing starts until the owner says yes.
    */
   describe('row 140 — an unapproved plan claims no progress', () => {
-    it('reads „not started" whatever the model wrote', () => {
+    /**
+     * The assertion changed from „it says not started yet" to „it says nothing
+     * about progress at all", because the card is a stored message that is
+     * never re-rendered: „not started yet" was true when written and false two
+     * minutes later, over two asks already delivered. The property row 140
+     * exists for — no claim of progress on an unapproved plan — is unchanged
+     * and is asserted here directly, on the route line itself rather than on
+     * the whole card, so a status word cannot reappear beside a route name.
+     */
+    it('claims nothing at all about a route, whatever the model wrote', () => {
       const text = renderPlan(PLAN, 1, null);
 
-      expect(text).toContain('ჯერ არ დაწყებულა');
       expect(text).not.toContain('მიმდინარეობს');
       expect(text).not.toContain('ველოდები');
+      expect(text).not.toContain('ჯერ არ დაწყებულა');
+      for (const route of PLAN.routes) expect(text).toContain(`- ${route.name}\n`);
     });
 
     it('lets the statuses speak once the plan is approved', () => {
@@ -674,7 +684,11 @@ describe('the plan card follows the conversation’s language', () => {
     expect(text).toContain('Solved when:');
     expect(text).toContain('Routes:');
     expect(text).toContain('Who I will ask:');
-    expect(text).toContain('not started yet');
+    // An unapproved card carries no route status word in ANY language now, so
+    // there is no English one left to check for here — it is asserted absent
+    // instead. The English coverage of the status vocabulary lives on the
+    // approved card, in the sibling test below.
+    expect(text).not.toContain('not started yet');
     // Not „no Georgian anywhere": this plan's solved-when, its routes and its
     // people are Georgian because the OWNER and the model wrote them that way,
     // and translating somebody's own words would be a different and worse bug.

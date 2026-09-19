@@ -224,13 +224,89 @@ describe('a reconnecting stream is given what it missed', () => {
     stop();
   });
 
+  /**
+   * The assertion moved from „nothing at all" to „nothing of A's", because an
+   * id of 1 now means something it did not mean before: it is below this
+   * process's epoch, so it was issued by an earlier process and B is told its
+   * stream cannot be resumed from memory. That reset frame carries no event of
+   * A's and no event of anyone's — it is a fact about B's own socket — so the
+   * property this test exists for is unchanged and is now asserted directly
+   * rather than as a side effect of the reply being empty.
+   */
   it('keeps one user’s tail out of another’s', () => {
     emitStepSummary('user-sse-a', 1, 'run1', 'belongs to A');
 
     const { res, events } = fakeStream();
     const stop = subscribeUserEvents('user-sse-b', res, null, '1');
 
-    expect(events()).toEqual([]);
+    expect(events().filter((e) => (e as { event: string }).event !== 'stream_reset')).toEqual([]);
     stop();
+  });
+});
+
+/**
+ * Ticket 20, after the tester's clean repeat of 19 September did NOT reproduce
+ * their own report from an hour earlier: same build, same account, same
+ * approve-then-wait, one page dead for three minutes and one live throughout.
+ *
+ * An intermittent that a reload cures, on a socket that is open, is the exact
+ * shape of an id the client believes it has already seen. The counter used to
+ * start at 0 in every process, so it did — for as long as it took a fresh
+ * counter to climb past the old high-water mark. Whether that is what bit them
+ * is a frontend question nobody here can answer; that the server offered it is
+ * not, and it is the server's to close either way.
+ */
+describe('an event id survives a restart', () => {
+  it('is anchored to the clock, so a new process cannot re-issue an old id', () => {
+    const { res, frames } = fakeStream();
+    const stop = subscribeUserEvents('user-sse-epoch', res);
+
+    emitStepSummary('user-sse-epoch', 1, 'run1', 'one');
+    const id = Number(/^id: (\d+)$/m.exec(frames()[0])?.[1]);
+
+    // Epoch milliseconds, not a count. A counter that started at 0 in this
+    // process would be a handful; one that started at 0 in a process an hour
+    // old would be in the hundreds. Both fail here, which is the point: every
+    // id this process issues is above every id any earlier process could have,
+    // so the collision that makes a client drop live events cannot occur.
+    //
+    // A WINDOW rather than „not ahead of the clock", and the first draft of
+    // this test is why: run alone it passed, and in the full suite the id came
+    // back seven milliseconds into the future. That is the documented
+    // overshoot — `Math.max(sequence + 1, now)` runs ahead by however many
+    // events are issued inside one millisecond, and a test file firing a
+    // couple of dozen in a row is the one place here that does it. Production
+    // issues single figures per MINUTE. The overshoot is bounded by the event
+    // count, so a minute of slack cannot be reached by anything but a fault.
+    expect(Math.abs(id - Date.now())).toBeLessThan(60_000);
+    stop();
+  });
+
+  it('tells a stream resuming from a dead process to refetch, instead of nothing', () => {
+    const { res, events } = fakeStream();
+    // 54 is a real id from the logs of 19 September — a container forty
+    // minutes old. Small ids are what the old counter produced.
+    const stop = subscribeUserEvents('user-sse-restarted', res, null, '54');
+
+    expect(events()).toEqual([{ event: 'stream_reset', reason: 'server_restarted' }]);
+    stop();
+  });
+
+  it('says nothing of the kind to a stream resuming inside this process', () => {
+    const { res: first, frames: firstFrames } = fakeStream();
+    const stop = subscribeUserEvents('user-sse-samerun', first);
+    emitStepSummary('user-sse-samerun', 1, 'run1', 'seen');
+    const lastSeen = /^id: (\d+)$/m.exec(firstFrames()[0])?.[1] ?? '0';
+    stop();
+
+    emitRunComplete('user-sse-samerun', 1, 'run1', { reply: 'missed while away' });
+
+    const { res: second, events } = fakeStream();
+    const stopSecond = subscribeUserEvents('user-sse-samerun', second, null, lastSeen);
+
+    // An ordinary reconnect: the buffer can serve it, so it is served and not
+    // sent away to refetch.
+    expect((events() as { event: string }[]).map((e) => e.event)).toEqual(['run_complete']);
+    stopSecond();
   });
 });

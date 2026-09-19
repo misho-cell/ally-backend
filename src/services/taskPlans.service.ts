@@ -438,7 +438,7 @@ const ROUTE_STATUS_WORDS: Readonly<Record<RunLanguage, Record<RouteStatus, strin
  * says yes, so there is no state of the world in which those words are true.
  *
  * So the status is not trusted, it is DERIVED. Until this goal has had an
- * approved plan, every route reads „not started yet" whatever the model wrote.
+ * approved plan, a route is printed with NO status at all.
  * Nothing is rewritten in storage — the model's intent stays recorded, and it
  * becomes visible the moment there is something it could honestly describe.
  *
@@ -446,6 +446,28 @@ const ROUTE_STATUS_WORDS: Readonly<Record<RunLanguage, Record<RouteStatus, strin
  * proposed after v1 was approved is itself unapproved, but work on that goal
  * HAS begun, and showing „not started" there would be the same fault pointing
  * the other way — a false claim about the world, just a modest one.
+ *
+ * WHY THE SILENCE RATHER THAN „NOT STARTED YET", which is what row 140 first
+ * printed here. The tester read it on three goals in three route types on 19
+ * September, every time AFTER approval and after two asks had been delivered
+ * in the owner's name. Both readings were correct. This card is a MESSAGE: it
+ * is rendered once, stored, and never rewritten, so every word in it is frozen
+ * at the instant it was written. „Not started yet" was true at 18:10:26 and
+ * false at 18:12:06, and nothing re-rendered it in between.
+ *
+ * A status word inside an immutable message is therefore false by
+ * construction as soon as the status changes — row 140's own fault pointing
+ * the other way, at the worse end: a label wrong about a mechanism is a bug,
+ * and a label wrong about two messages already sent in somebody's name is a
+ * lie to the person who authorised them. The card already says „awaiting your
+ * approval" at the top, so the per-route repetition added nothing when it was
+ * true and everything when it stopped being.
+ *
+ * STILL STALE, AND NOT FIXABLE HERE: that header. „Plan v1 (awaiting your
+ * approval)" also outlives its own truth, and the only honest repair is to
+ * re-render the stored card when the plan is approved — which needs an event
+ * the client does not have and a message it does not replace. Written down
+ * rather than quietly left out.
  */
 /** „Plan", the first word of the card. */
 const PLAN_TITLE: Record<RunLanguage, string> = {
@@ -453,13 +475,6 @@ const PLAN_TITLE: Record<RunLanguage, string> = {
   en: 'Plan',
   ru: 'План',
   es: 'Plan',
-};
-
-const ROUTE_NOT_STARTED: Record<RunLanguage, string> = {
-  ka: 'ჯერ არ დაწყებულა',
-  en: 'not started yet',
-  ru: 'ещё не начато',
-  es: 'aún no empezado',
 };
 
 /**
@@ -607,9 +622,10 @@ export function renderPlan(
 ): string {
   const words = PLAN_WORDS[language];
   const routes = plan.routes
-    .map(
-      (r) =>
-        `- ${r.name} — ${everApproved ? (ROUTE_STATUS_WORDS[language][r.status] ?? r.status) : ROUTE_NOT_STARTED[language]}`,
+    .map((r) =>
+      everApproved
+        ? `- ${r.name} — ${ROUTE_STATUS_WORDS[language][r.status] ?? r.status}`
+        : `- ${r.name}`,
     )
     .join('\n');
   const people =

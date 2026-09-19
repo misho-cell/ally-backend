@@ -69,8 +69,50 @@ interface BufferedEvent {
   readonly data: unknown;
   readonly at: number;
 }
-let sequence = 0;
+
+/**
+ * Event ids are anchored to the clock, and that is a correctness property
+ * rather than a convenience.
+ *
+ * WHAT WAS WRONG. The counter started at 0 in every process, so ids restarted
+ * at 1 on every deploy and every crash. Two things follow, and the second is
+ * the bad one:
+ *
+ *   1. The buffer a reconnect reads from dies with the process, so the one
+ *      reconnect that is GUARANTEED to happen — the one a deploy causes — is
+ *      the one replay can never serve. That is a limit, not a bug.
+ *   2. The next process then issues ids the client has ALREADY SEEN. This
+ *      module's own argument for why replay cannot duplicate is that „a client
+ *      skips an id it has already seen". If a client does that, then after a
+ *      restart every new event carries a stale-looking id and is dropped
+ *      silently, until the fresh counter climbs back past the old high-water
+ *      mark — minutes or hours later. The page sits on a live socket receiving
+ *      events and rendering none of them, and a reload fixes it, because a
+ *      reload starts with no id at all.
+ *
+ * That was not hypothetical arithmetic: the log line „[sse] user 171870
+ * resumed at 54" is a real id from a container forty minutes old. Ids were
+ * small, they restarted, and they collided across boots.
+ *
+ * Anchoring the counter to `Date.now()` at load makes an id monotonic across
+ * restarts as long as the clock is, and it makes the id SAY which process
+ * issued it — which is what `subscribeUserEvents` uses to tell a reconnect
+ * within this process from one across a restart. The `Math.max` keeps ids
+ * strictly increasing when several are issued inside one millisecond, at the
+ * cost of running that many milliseconds ahead of the clock. At this service's
+ * rate — single figures per minute — the overshoot is nothing; the test suite,
+ * which fires a couple of dozen in a row, reaches seven milliseconds of it and
+ * says so in the test. A restart is safe while the overshoot is smaller than
+ * the time the process was down, which at these rates it always is.
+ */
+const PROCESS_EPOCH_ID = Date.now();
+let sequence = PROCESS_EPOCH_ID;
 const recentByUser = new Map<string, BufferedEvent[]>();
+
+function nextId(): number {
+  sequence = Math.max(sequence + 1, Date.now());
+  return sequence;
+}
 
 /**
  * Deliberately small. This buffer exists to cover a reconnect measured in
@@ -82,8 +124,7 @@ const REPLAY_BUFFER_PER_USER = 60;
 const REPLAY_TTL_MS = 5 * 60_000;
 
 function publish(userId: string, data: Record<string, unknown>): void {
-  sequence += 1;
-  const event: BufferedEvent = { id: sequence, data, at: Date.now() };
+  const event: BufferedEvent = { id: nextId(), data, at: Date.now() };
   const held = recentByUser.get(userId) ?? [];
   held.push(event);
   const cutoff = Date.now() - REPLAY_TTL_MS;
@@ -240,10 +281,30 @@ export function subscribeUserEvents(
    */
   const resumeFrom = Number.parseInt(lastEventId ?? '', 10);
   if (Number.isFinite(resumeFrom) && resumeFrom > 0) {
+    /**
+     * An id below this process's epoch was issued by a PREVIOUS process, and
+     * nothing in this one's memory can catch that client up: the buffer it
+     * would have been served from went with the old container. Saying so is
+     * the only honest answer, and it is a better one than silence — silence
+     * here is a page that waits forever for events it already missed.
+     *
+     * The frame carries a live id, so the client's resume point moves into
+     * this process's range and the next reconnect is an ordinary one. It is
+     * written to this stream alone rather than published: it is a fact about
+     * one socket, not an event in the user's timeline, and every other device
+     * has its own answer to the same question.
+     */
+    const acrossRestart = resumeFrom < PROCESS_EPOCH_ID;
+    if (acrossRestart) {
+      res.write(
+        `data: ${JSON.stringify({ event: 'stream_reset', reason: 'server_restarted' })}\nid: ${nextId()}\n\n`,
+      );
+    }
     const missed = eventsSince(userId, resumeFrom);
     // eslint-disable-next-line no-console
     console.log(
-      `[sse] user ${userId} resumed at ${resumeFrom}: ${missed.length} event(s) replayed`,
+      `[sse] user ${userId} resumed at ${resumeFrom}: ${missed.length} event(s) replayed` +
+        (acrossRestart ? ' — ACROSS A RESTART, told to refetch' : ''),
     );
     for (const event of missed) write(event);
   }
