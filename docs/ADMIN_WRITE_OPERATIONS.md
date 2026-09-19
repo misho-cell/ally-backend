@@ -906,3 +906,70 @@ Not the SQL — **whether spending roughly $9 to $18 of real model calls on
 fictional accounts is worth it tonight.** The alternative is that testing stops
 until the monthly window resets. I have no view on the budget and will not
 guess at one.
+
+---
+
+## 14. A ZERO-BALANCE TEST ACCOUNT — REGISTERED, NOT RUN
+
+**Waiting on Misho's word. Nothing below has been executed.**
+
+### Why it is being asked for
+
+The seat's swallow bug — at zero balance the FIRST typed message after the wall
+is stored and every one after it silently disappears — is reproducible on
+demand, and `[msg-in]` (live since 20:02) settles in one run whether those
+requests reach the server at all.
+
+**There is nowhere to run it.** Test 1 was the zero account and now holds 951
+after the top-up. And the fixture we reserved for exactly this does not work:
+
+> **A first login automatically grants 250.** Seen on three accounts tonight.
+> 171941 was held back as the empty-wallet fixture and it stops being empty the
+> moment anybody signs into it.
+
+So the product currently has **no observable zero state at all** — observing it
+requires signing in, and signing in funds it. That is worth knowing beyond this
+one test: row 157's whole surface can only be seen by arranging it deliberately.
+
+### ROUTE / METHOD / BODY
+
+No admin route mints or removes tokens, and I am not adding one. A negative
+transaction, run by Misho, on an account the seat is already signed into:
+
+```sql
+INSERT INTO token_transactions (user_id, amount, reason, external_id)
+SELECT '171939', -COALESCE(SUM(amount), 0), 'topup', 'seat-zero-2026-09-19-t9'
+  FROM token_transactions WHERE user_id = '171939'
+HAVING COALESCE(SUM(amount), 0) > 0
+ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO NOTHING;
+```
+
+**171939 (Netai Test 9)** — chosen because it has one contact, has never been
+an asker in any test tonight, and is not the target or bridge of any live
+chain. It zeroes whatever the balance happens to be rather than assuming 250,
+and the `HAVING` means it writes nothing on an account that is already flat.
+
+`reason` is `topup` because that is the vocabulary the wallet already reads; the
+`external_id` is what makes it idempotent.
+
+### WHAT MUST NOT BE TOUCHED
+
+- **171870 (Test 1) keeps its 951.** It is the only funded asker the seat has
+  and the chain tests run through it.
+- **171941 stays as it is.** It is no longer a useful fixture but it is also the
+  only account that has never been signed into, and that is worth something
+  until we know what.
+
+### UNDO
+
+```sql
+DELETE FROM token_transactions WHERE external_id = 'seat-zero-2026-09-19-t9';
+```
+
+Complete: the balance is `SUM(amount)`, so removing the row restores it exactly.
+
+### The question that is Misho's
+
+Not the SQL — **whether taking an allowance away from a fictional account is a
+thing I may do at all.** It costs nothing and it is fully reversible, and it is
+still a live write on a real row, which is the whole reason this file exists.
