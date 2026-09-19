@@ -454,6 +454,50 @@ interface AcceptOutcome {
  * Degrades honestly when the target cannot be resolved: the requester is told
  * to get the contact from the mediator directly.
  */
+/**
+ * WHAT THE PERSON BEING INTRODUCED IS TOLD ABOUT THEIR OWN NUMBER.
+ *
+ * This line said, to every registered target, in every case:
+ *
+ *     „შენი ნომერი ამ შეტყობინებით არავის გადაცემია."
+ *     (your number has not been given to anyone with this message)
+ *
+ * It is literally true about that message and false about the event. In the
+ * same operation, `requesterExtra` below writes this person's number — out of
+ * the mediator's own phonebook — into the requester's thread. Twenty-two
+ * introductions have been accepted on this system. Somebody reading „my number
+ * has not gone anywhere" at the exact moment it went somewhere is being
+ * misled by a sentence that was engineered to be defensible.
+ *
+ * THE BEHAVIOUR STAYS. That was Misho's decision, made knowing what it costs:
+ * handing the contact over is what Task 16 built, because thirteen accepted
+ * introductions had previously produced no way for anybody to talk to anybody.
+ * Only the sentence changes, and it changes to the truth.
+ *
+ * WHAT IT DELIBERATELY DOES NOT OFFER is a way to take the number back, because
+ * there is none. `stop_contacting_me` stops future questions through Netai and
+ * that is real, so it is offered in those words; nothing stops a phone number
+ * that is already in somebody's hands, and saying otherwise would be the same
+ * class of comfort as the sentence being replaced.
+ */
+function numberDisclosureLine(
+  numberWasGiven: boolean,
+  mediatorName: string,
+  requesterName: string,
+): string {
+  if (!numberWasGiven) {
+    return (
+      'შენი ნომერი არავის გადაცემია — ' +
+      `${geoName(requesterName, 'dat')} შენი კონტაქტი ${geoName(mediatorName, 'dat')} უნდა სთხოვოს.`
+    );
+  }
+  return (
+    `შენი ნომერი ${geoName(mediatorName, 'erg')} თავისი წიგნაკიდან ${geoName(requesterName, 'dat')} ` +
+    'გადასცა — გაცნობაზე თანხმობა სწორედ ამას ნიშნავს. თუ არ გინდა, რომ Netai-ს გავლით კითხვები ' +
+    'მოგდიოდეს, მითხარი და შევაჩერებ.'
+  );
+}
+
 async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Promise<AcceptOutcome> {
   // The target's phone: the stored one, or the single match in the MEDIATOR's
   // own phonebook (it is their contact to give).
@@ -496,7 +540,7 @@ async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Prom
         `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
           (req.message?.trim() ? ` — მიზეზი: „${scrubText(req.message.trim())}"` : '.') +
           `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
-          'შენი ნომერი ამ შეტყობინებით არავის გადაცემია.',
+          numberDisclosureLine(targetPhone !== null, mediatorName, requester),
       );
       await sendPushNotification(String(targetUserId), {
         title: 'Netai — გაცნობა',
