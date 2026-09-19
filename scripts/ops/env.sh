@@ -17,6 +17,13 @@
 # Setting a variable triggers a Railway redeploy. That is the point of using
 # it, but it means this is not a quiet operation: the service restarts.
 #
+# REMOVING ONE DOES NOT. Measured 19 September: `unset` returned clean, no new
+# deployment appeared in three minutes, and the running container kept the old
+# environment — so the variable was gone from the console and still in force in
+# the process. Whoever unsets something must then cause a restart themselves
+# (any push to main will do it) and confirm the new deployment is SUCCESS
+# before believing the change is live. `unset` says so on its own last line.
+#
 # WHY `unset` EXISTS, added 19 September. `set` refuses an empty value on
 # purpose — an empty string arriving from an unquoted expansion is a mistake,
 # not an instruction, and blanking a variable by accident is how a service
@@ -108,7 +115,8 @@ print(json.dumps({
 PY
 )"
     send "$BODY" unset "$NAME"
-    echo "env.sh: unset $NAME — Railway will redeploy"
+    echo "env.sh: unset $NAME — Railway does NOT redeploy on a removal."
+    echo "env.sh: the running container keeps the old value until it restarts."
     ;;
   *)
     die "usage: printf %s \"\$VALUE\" | env.sh set <NAME>   |   env.sh unset <NAME>"

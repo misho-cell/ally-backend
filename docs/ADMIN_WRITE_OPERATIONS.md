@@ -307,7 +307,23 @@ discarded — `chat.service.ts` says so in its own comment — so an enabled
 hybrid pays for two finals and turning it off removes one of them. The saving
 is the $5.63 and nothing moves to the Anthropic side.
 
-### Each variable restarts the container
+### A set restarts the container. A REMOVAL DOES NOT.
 
-Two restarts. Run only when no thread is `working`. Checked before running:
-zero working, last activity 05:09:12, quiet for twenty minutes.
+`set SEARCH_QUERY_MODEL` triggered a rebuild at 05:30:06 and it went SUCCESS.
+`unset CHAT_FINAL_ANSWER_MODEL` returned clean at 05:35 and produced **no
+deployment at all** — three minutes of polling, nothing. The variable was gone
+from the Railway console and still live in the running process, which is the
+worst of the two states to be in without knowing it: the change looks done and
+is not.
+
+I had already written „Railway will redeploy" on that path, in this file and in
+the script's own output, and the first wait loop I wrote was wrong in a way
+that would have confirmed it — it watched the newest deployment for SUCCESS,
+the 05:30 one was already SUCCESS, so it returned immediately and looked like a
+successful wait. Both are corrected; `unset` now prints the opposite.
+
+Forced with a push of `632b86c` to main, which carries only this file and the
+script. Live at 05:39:37, clean boot, listening on 4000.
+
+Run only when no thread is `working`. Checked before each command: zero
+working, last activity 05:09:12.
