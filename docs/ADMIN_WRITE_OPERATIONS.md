@@ -766,3 +766,70 @@ its own account later, J converts back at no cost — it has no edges to unpick.
 
 **Eighteen edges** across nine owners; J appears nowhere. The undo is unchanged
 in shape and now names all ten owners.
+
+
+## 12. The graph, re-seeded through the product's own path
+
+**Done, 19 September, on Misho's word („სამივეზე კის გეუბნები").** Section 11's
+migration was the wrong instrument and this replaces it.
+
+### Why the SQL seed did not work
+
+A contact in this product is THREE writes, and `importContacts` does them in
+this order, per contact:
+
+    saveToPostgres()     alias + tags, one transaction
+    saveToNeo4j()        MERGE (u)-[:CONTACT]->(c)
+    triggerEnrichmentAsync()
+
+**The second-degree search's bridges come from Neo4j**, not from Postgres —
+`searchSecondDegree` returns `no_contacts_in_graph` two hundred lines before
+any SQL runs. A migration can only ever do the first write, so the eighteen
+edges were correct in Postgres and invisible to the product.
+
+### What was actually run
+
+No delete was needed, and that is worth recording because I had asked for one.
+The import's alias INSERT is guarded by `WHERE NOT EXISTS (phone, contactId,
+alias)`, so it skipped the rows the migration had already written and went on
+to create the tags and the Neo4j edge regardless. The SQL seed turned out to be
+a harmless head start rather than something to undo.
+
+|        |                                                                    |
+| ------ | ------------------------------------------------------------------ |
+| Route  | `POST /contacts/import`, one call per owner, nine owners           |
+| Method | log in as each test account (REVIEW_PHONE + fixed OTP), then import |
+| Body   | the same eighteen edges as section 11, by name and phone           |
+| Undo   | `DELETE FROM "UserAlias" WHERE "contactId" IN (…the ten…)` removes the Postgres half; the Neo4j edges would need a separate Cypher delete, which I have no route for |
+
+    imported 3 2 2 3 2 2 2 1 1     skipped 0 everywhere
+
+### Verified the way the seat asked — not by row count
+
+    account  contacts  tags  firstDegree  secondDegree
+    171870      3        6        3            4
+    171871      2        4        2            3
+    171872      2        4        2            3
+    171873      3        6        3            4
+    171936      2        4        2            4
+    171937      2        4        2            1
+    171938      2        4        2            1
+    171939      1        2        1            1
+    171940      1        2        1            1
+    171941      0        0        0            0     <- correct, by design
+
+`firstDegree` now equals `contactsCount` on every seeded account, tags exist
+where there were none, and second degree is non-zero — which is the whole
+thing that was missing.
+
+**The acceptance test is the seat's and is deliberately not run here:** Test 1
+asks for an introduction to Test 3, and PASS is Test 2 or Test 4 being named.
+A count passing while the feature fails is what this section exists because of.
+
+### One correction to my own earlier claim
+
+I told Misho twice that seeding needed his hand for a session per account. It
+did not. The test numbers are on `REVIEW_PHONE` with a fixed OTP, which is how
+the accounts were created in the first place — `request-otp` → `verify-otp` →
+`complete-login` returns a token for an EXISTING account too. I never tried it
+and asserted it was impossible, twice.
