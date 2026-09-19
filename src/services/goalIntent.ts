@@ -171,3 +171,88 @@ export function goalTitleFrom(message: string): string {
   const lastSpace = cut.lastIndexOf(' ');
   return (lastSpace > MAX_TITLE_CHARS / 2 ? cut.slice(0, lastSpace) : cut).trim() + '…';
 }
+
+/**
+ * Ticket 20 row 103/104 — an instruction naming one person is not a goal, and
+ * the app flag must not turn it into one.
+ *
+ * LIKA, 18 September, thread 17623. She typed the whole thing at 12:57:
+ *
+ *   12:57:52  „ask Tornike Abuladze if he knows a good philosopher"
+ *   13:00:27  „ask him"
+ *   13:01:09  „I approve"
+ *
+ * She said it once and then had to say it twice more. The mechanism: the
+ * message became a GOAL, a new goal has its plan proposed for approval, and
+ * the plan's whole content was her own sentence. She was asked to approve
+ * what she had just written.
+ *
+ * The founder's ruling: when the owner types a short instruction naming one
+ * person and one action, those words ARE the yes. It goes, with no draft
+ * first and one line afterwards saying who it went to. A goal with a plan in
+ * front of it is the opposite of that.
+ *
+ * WHY THIS GUARD AND NOT A WIDER RULE. `looksLikeGoalRequest` already says
+ * false for all six of these, so on the server's own need-rule they never
+ * became goals. Only the app flag did — and the flag is the plus button,
+ * measured 19 September by typing one identical sentence down both paths:
+ * into the box it made no goal, after pressing plus it made goal 6043. So
+ * this is the same shape as the question guard directly above: the flag may
+ * turn a statement into a goal, it may not turn a question into one, and now
+ * it may not turn an instruction-to-a-named-person into one either.
+ *
+ * THREE SIGNALS, EACH USELESS ALONE, MEASURED AGAINST 56 REAL GOALS:
+ *
+ *   names someone in the owner's own phonebook   6 of 6 caught, 34 wrong (15%)
+ *   + a contact verb is present                  6 of 6 caught,  1 wrong (86%)
+ *   + that verb is not negated                   6 of 6 caught,  0 wrong
+ *
+ * The 34 are almost all one saved contact: owner 501 has an alias
+ * „xatuna sologashvili tbilisi", so every „I need a X in Tbilisi" names
+ * somebody in his own phonebook. The single survivor was the seat's own
+ * safety phrasing — „Search only, write to nobody" — matching on „write to"
+ * inside a negation, which is row 215's shape exactly.
+ *
+ * THE LIMITS, next to the numbers rather than under them. Six instructions is
+ * a small positive class and all six come from two owners and two verbs. The
+ * negation list was written after seeing the one case it has to catch, which
+ * is the weakest kind of rule there is. This is evidence that the SHAPE is
+ * right, not that the wording is finished.
+ *
+ * SO IT FAILS TOWARDS MAKING THE GOAL. Every uncertain path returns false: no
+ * verb, a negated verb, a long message, an unreadable phonebook. A goal that
+ * quietly does not appear is the mirror image of the bug being fixed, and it
+ * is the harder one to notice.
+ */
+
+/** „ask", „tell", „write to" — and the Georgian, which inflects at the end. */
+const CONTACT_VERB_RE =
+  /(ჰკითხე|კითხე|მისწერ|მიწერ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b)/iu;
+
+/**
+ * „write to nobody", „არავის არ მისწერო" — the verb is present and the
+ * sentence says the opposite. Row 215's shape, and the seat's own safety
+ * phrasing is what found it.
+ */
+const NEGATED_CONTACT_RE =
+  /(write to (nobody|no one)|(do not|don't|never)\s+(write|message|contact|ask))|(არავის\s+(არ\s+)?(მისწერ|მიწერ|დაუკავშირდ)|ნუ\s+(მისწერ|დაუკავშირდ))/iu;
+
+/**
+ * An instruction is short. Row 104's are 30 to 80 characters; a paragraph that
+ * happens to contain „ask" is a goal that mentions asking, not an instruction.
+ */
+const MAX_INSTRUCTION_CHARS = 160;
+
+/**
+ * Does the message carry an un-negated instruction to contact somebody?
+ *
+ * The CHEAP half of the test, and it runs first on purpose: the phonebook
+ * lookup is a query, and this keeps it off every message that cannot possibly
+ * need it.
+ */
+export function looksLikeContactInstruction(message: string): boolean {
+  const text = message.trim();
+  if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
+  if (!CONTACT_VERB_RE.test(text)) return false;
+  return !NEGATED_CONTACT_RE.test(text);
+}

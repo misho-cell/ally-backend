@@ -114,6 +114,7 @@ import {
   listSeenUpdates,
   queueResult,
 } from './pendingUpdates.service';
+import { messageNamesOwnContact } from './tools/nameMatch';
 import { flagGoalQuestion, answerGoalQuestion, GOAL_QUESTION_KIND } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
@@ -199,6 +200,7 @@ import {
   looksLikeGoalRequest,
   goalTitleFrom,
   isQuestionNotGoal,
+  looksLikeContactInstruction,
   needsNoOpeningSearch,
 } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
@@ -8023,6 +8025,23 @@ async function ensureGoalForRequest(
       // eslint-disable-next-line no-console
       console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is a question`);
     return null;
+  }
+  // Row 103/104: the flag may turn a statement into a goal; it may not turn an
+  // INSTRUCTION TO A NAMED PERSON into one. Lika typed „ask Tornike Abuladze
+  // if he knows a good philosopher", it became a goal, and a new goal has its
+  // plan proposed — so she was asked to approve her own sentence, twice.
+  //
+  // The cheap half runs first and keeps the phonebook query off every message
+  // that cannot need it. Only the flag path is guarded, because
+  // looksLikeGoalRequest already says false for all six of these.
+  if (intent?.asGoal === true && looksLikeContactInstruction(userMessage)) {
+    if (await messageNamesOwnContact(userId, userMessage)) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[goal-intent] thread ${threadId}: app flag ignored, the message instructs a named contact`,
+      );
+      return null;
+    }
   }
   if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
   try {
