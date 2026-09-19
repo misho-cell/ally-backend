@@ -690,3 +690,57 @@ only thing protecting her is that three people have been told not to press
 resume. That protection expires the moment somebody who has not read this
 exchange opens the goal — and the dashboard will show them `next_wake_at:
 null`, which reads as safe.
+
+
+## 11. Seeding the test graph — chain one
+
+**Not applied.** The file is `ops/pending-migrations/158_seed_test_graph.sql`.
+Anything under `src/db/postgres/migrations` runs at the next boot, so it is
+deliberately NOT there: **moving it into that directory is the act that needs
+Misho's word**, and until then it is text to read.
+
+### Why a migration and not the tool that was asked for
+
+The seat asked for a seeding tool in `prompt.sh`'s shape — an allowlist, a
+change file, `check`, `apply`, `undo`. That shape needs a write route to
+`UserAlias` and none exists; building one adds a live contacts-write
+capability for a job that runs once.
+
+A migration keeps the part that actually matters — the exact rows are in git
+and a person reads them before they exist — without the capability. If
+re-seeding between test runs turns out to be needed, that is when the route
+earns itself, with evidence rather than in advance. The seat has already said
+they will come back with evidence rather than a preference on that.
+
+### The graph, and the rule it comes from
+
+**The missing edges are the test.** Seed everybody with everybody and no
+introduction is ever necessary, which deletes rows 210, 211, 125 and 205 in one
+stroke.
+
+    A  171870  asker          holds  B, D, E      NOT C   <- the experiment
+    B  171871  first bridge   holds  A, C
+    C  171872  target         holds  B, D         NOT A
+    D  171873  second bridge  holds  A, C, E
+    E  171936  stranger       holds  A, D
+
+A has two routes to C, through B and through D — the only thing in the set
+that can exercise „one approval, exactly one message".
+
+**E is 171936, not 171874.** Test 5 is condemned and is not in the ten.
+
+|        |                                                                  |
+| ------ | ---------------------------------------------------------------- |
+| Route  | none — a migration, applied at boot once moved                   |
+| Method | `git mv ops/pending-migrations/158_… src/db/postgres/migrations/` then deploy |
+| Body   | 12 INSERTs into `"UserAlias"`, every phone DERIVED from `"UserPhone"` by account id |
+| Undo   | `DELETE FROM "UserAlias" WHERE "contactId" IN (171870,171871,171872,171873,171936)` — exact and total, all ten had zero alias rows before |
+
+Twelve edges, not the eleven section 7 estimated; recounted from the table.
+
+### What is deliberately NOT in it
+
+The other five accounts — 171937 to 171941. The seat wants a second chain and
+an untouched control pair out of them, and **how their ten are allocated is
+their test design, not mine.** Chain one is specified; the rest waits for them
+to say what it should be.
