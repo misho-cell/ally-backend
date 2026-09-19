@@ -92,6 +92,15 @@ interface RunStrings {
   /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
   nameNotVerified: string;
   /**
+   * Row 157, the engine's half: the line written INTO the thread when a goal's
+   * own wake finds the wallet empty. It lived in taskEngine as one hardcoded
+   * Georgian sentence, which is the seat's #4061 (h) again — an English
+   * conversation would have been told, in Georgian, that its goal had stopped.
+   * The status line beside it already had four languages here; the sentence
+   * under it did not, and the two were different wordings of the same fact.
+   */
+  goalPausedNoTokens: string;
+  /**
    * `needs_topup` is the P0 of 18 September: a run refused for an empty wallet
    * used to leave the thread reading „finished", because the thread was created
    * with the default done status and no goal ever contradicted it. A goal that
@@ -128,6 +137,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
     nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
+    goalPausedNoTokens:
+      'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
     statusLines: {
       working: 'ვმუშაობ…',
       waiting: 'ველოდები პასუხს',
@@ -149,6 +160,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
     nameNotVerified: '(name not verified on an official page)',
+    goalPausedNoTokens:
+      'I have paused work on this goal — the tokens have run out. I will carry on once it is topped up.',
     statusLines: {
       working: 'Working…',
       waiting: 'Waiting for a reply',
@@ -171,6 +184,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
     nameNotVerified: '(имя не подтверждено на официальной странице)',
+    goalPausedNoTokens:
+      'Я приостановил работу над этой целью — токены закончились. Продолжу после пополнения.',
     statusLines: {
       working: 'Работаю…',
       waiting: 'Жду ответа',
@@ -193,6 +208,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
     nameNotVerified: '(nombre no verificado en una página oficial)',
+    goalPausedNoTokens:
+      'He pausado el trabajo en este objetivo: se acabaron los tokens. Continuaré tras la recarga.',
     statusLines: {
       working: 'Trabajando…',
       waiting: 'Esperando respuesta',

@@ -67,3 +67,50 @@ describe('a run refused for an empty wallet', () => {
     }
   });
 });
+
+/**
+ * Row 157, the engine's half, 19 September.
+ *
+ * The seat's Test 1 spent its own allowance mid-session and two goals stopped
+ * for money. The status line above the thread had four languages; the sentence
+ * the engine writes INTO the thread had one, hardcoded in taskEngine — so the
+ * English conversation those goals lived in was going to be told in Georgian
+ * that its work had stopped and that it should pay.
+ *
+ * The worst possible sentence to get wrong: it is the moment the product stops
+ * doing what it promised and asks for money, and somebody who cannot read it
+ * is left with a goal that simply went quiet.
+ */
+describe('the line a goal writes when its own wake finds the wallet empty', () => {
+  it('exists in every language and says both halves: stopped, and will resume', () => {
+    const resumes: Record<RunLanguage, RegExp> = {
+      ka: /გავაგრძელებ/,
+      en: /carry on/i,
+      ru: /продолжу/i,
+      es: /continuaré/i,
+    };
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const line = RUN_STRINGS[language].goalPausedNoTokens;
+      // Not „it is non-empty": both facts have to be in it. „Tokens ran out"
+      // on its own reads as an ending, which is the thing this is not.
+      expect(line.length).toBeGreaterThan(30);
+      expect(line).toMatch(resumes[language]);
+    }
+  });
+
+  it('carries no Georgian in the non-Georgian lines', () => {
+    for (const language of ['en', 'ru', 'es'] as const) {
+      expect(RUN_STRINGS[language].goalPausedNoTokens).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+
+  it('is not the status line — the badge and the message are different jobs', () => {
+    // The badge is chrome above the thread; this is a message inside it, and
+    // the two were different wordings of the same fact even in Georgian.
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(RUN_STRINGS[language].goalPausedNoTokens).not.toBe(
+        RUN_STRINGS[language].statusLines.needs_topup,
+      );
+    }
+  });
+});

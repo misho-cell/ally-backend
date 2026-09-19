@@ -25,7 +25,7 @@ import {
   EnsureQuoted,
 } from './taskAsks.service';
 import { getThread, saveThreadMessage, threadLanguage } from './threads.service';
-import { RunLanguage } from './runLanguage';
+import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { DAY_ONE_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
@@ -113,8 +113,17 @@ export type WakeResult =
   /** Nothing to wake, or nothing a retry could change. Stop asking. */
   | 'stopped';
 
-/** The status line that says, on the thread itself, that we already said it. */
-const TOKENS_OUT_STATUS = 'ტოკენები ამოიწურა';
+/**
+ * The status lines that say, on the thread itself, that we already said it.
+ *
+ * Every language's, plus the Georgian-only line this used to be — threads
+ * parked before the four-language change carry that exact string, and reading
+ * only the new set would say the line a second time on each of them.
+ */
+const TOKENS_OUT_STATUS_LINES: readonly string[] = [
+  'ტოკენები ამოიწურა',
+  ...Object.values(RUN_STRINGS).map((s) => s.statusLines.needs_topup),
+];
 
 /**
  * Advance a task by one engine-initiated run: the event text enters the task's
@@ -202,16 +211,25 @@ export async function wakeTask(
       // path arrives at an empty balance — a second goal on the same thread,
       // the hourly sweep, the ticker. The thread's own status line is the
       // record that it was already said, so no extra read is needed for it.
-      const alreadySaid = thread.status === 'needs_you' && thread.status_line === TOKENS_OUT_STATUS;
+      //
+      // In the thread's own language, which it was not: this was the one place
+      // that still wrote a fixed Georgian sentence into an English
+      // conversation, and it wrote it at the worst moment there is — the
+      // moment the owner is told their work has stopped and asked for money.
+      const language = await threadLanguage(thread.id).catch(() => 'ka' as RunLanguage);
+      const alreadySaid =
+        thread.status === 'needs_you' &&
+        thread.status_line !== null &&
+        TOKENS_OUT_STATUS_LINES.includes(thread.status_line);
       await setThreadStatus(ownerId, thread.id, 'needs_you', {
-        statusLine: TOKENS_OUT_STATUS,
+        statusLine: RUN_STRINGS[language].statusLines.needs_topup,
       });
       if (!alreadySaid) {
         await saveThreadMessage(
           thread.id,
           Number(ownerId),
           'assistant',
-          'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
+          RUN_STRINGS[language].goalPausedNoTokens,
         ).catch(() => undefined);
       }
       return 'stopped';
