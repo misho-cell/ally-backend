@@ -160,14 +160,18 @@ describe('toWordStartPattern', () => {
  * Ninia's marketing sentence carried four such dead terms.
  */
 describe('buildRawWordGroups drops the sentence’s punctuation', () => {
+  // These two read „ქუთაის" and „ფოტოგრაფ" rather than „ქუთაისში" and
+  // „ფოტოგრაფი" because the stem now stands in for the inflected word — see
+  // the case-ending block below. The claim being made here is unchanged: the
+  // punctuation is gone and the Georgian word survived it.
   it('strips a trailing full stop and comma', () => {
     const groups = buildRawWordGroups('ქორწილის ფოტოგრაფი მჭირდება ქუთაისში.');
-    expect(groups.flat()).toContain('ქუთაისში');
+    expect(groups.flat()).toContain('ქუთაის');
     expect(groups.flat().some((t) => t.includes('.'))).toBe(false);
   });
 
   it('strips a leading quote or bracket too', () => {
-    expect(buildRawWordGroups('„ფოტოგრაფი" (თბილისი)').flat()).toContain('ფოტოგრაფი');
+    expect(buildRawWordGroups('„ფოტოგრაფი" (თბილისი)').flat()).toContain('ფოტოგრაფ');
   });
 
   it('KEEPS punctuation that is part of the word', () => {
@@ -180,5 +184,96 @@ describe('buildRawWordGroups drops the sentence’s punctuation', () => {
 
   it('drops a word that was nothing but punctuation', () => {
     expect(buildRawWordGroups('ფოტოგრაფი — თბილისი').flat()).not.toContain('');
+  });
+});
+
+/**
+ * Ticket 20 row 10 / row 104 — one Georgian case ending threw away the half of
+ * the name that said WHICH person.
+ *
+ * MEASURED on Lika's own phonebook, 19 September. She has `Tiko Ratiani`
+ * saved. She typed „თიკო რატიანს მისწერე":
+ *
+ *   „თიკო"     → tiko     → matches Tiko Ratiani
+ *   „რატიანს"  → ratians  → matched nothing at all
+ *
+ * She was found by her first name and the surname was discarded by a single
+ * letter, so the result came back having matched one query word of two —
+ * which is what marks a row `approximate`.
+ *
+ * WHAT THIS CORRECTS, because I reported the opposite the night before. I told
+ * the seat and Misho that Georgian→Latin transliteration was "the missing
+ * piece" and that „თორნიკე აბულაძეს" resolved to nobody in Lika's phonebook.
+ * Both were wrong. Transliteration has been in this file all along; run
+ * against the product's own matcher rather than by comparing raw strings, the
+ * term `tornike` matches six of her labels. I had compared the strings myself
+ * instead of asking the code, which is the same mistake — one route to a fact
+ * being closed, read as the fact not existing — that I had spent the evening
+ * pointing out in someone else.
+ *
+ * The real gap was never the script. It was the ending.
+ */
+describe('a Georgian case ending no longer hides the surname', () => {
+  it('reaches Tiko Ratiani from „რატიანს" — the live case', () => {
+    const groups = buildRawWordGroups('თიკო რატიანს');
+    const surname = groups[1];
+    expect(surname).toContain('ratian');
+    // `\mratian` is a prefix pattern, so it reaches Ratiani, Ratianis and the
+    // Georgian spelling. Confirmed against her row: one alias, „Tiko Ratiani".
+    expect(toWordStartPattern('ratian')).toBe('\\mratian');
+  });
+
+  it('reaches Abuladze from „აბულაძეს"', () => {
+    expect(buildRawWordGroups('თორნიკე აბულაძეს')[1]).toContain('abuladze');
+  });
+
+  it('leaves a name that carries no ending exactly as it was', () => {
+    // „თორნიკე" ends in ე, which is not a case ending, and must not be trimmed.
+    expect(buildRawWordGroups('თორნიკე')[0]).toContain('tornike');
+  });
+
+  it('never touches a Latin query', () => {
+    expect(buildRawWordGroups('tornike abuladze')[1]).toEqual(['abuladze']);
+  });
+});
+
+/**
+ * The cost side of the same change, and the reason it is written as a
+ * substitution rather than an addition.
+ *
+ * Row 108 is about how much regex this search drags over 885,942 rows. A stem
+ * is a PREFIX of the word it came from and toWordStartPattern anchors the
+ * start only, so `\mkortsil` matches everything `\mkortsilis` matched. Where
+ * that holds the longer term is redundant, and keeping both would pay twice to
+ * fix one row at another's expense.
+ */
+describe('the stem replaces the inflected term instead of joining it', () => {
+  it('keeps a Georgian sentence at the same number of terms', () => {
+    // Ninia's sentence: four words, three variants each before this change.
+    const groups = buildRawWordGroups('ქორწილის ფოტოგრაფი მჭირდება ქუთაისში');
+    expect(groups.flat()).toHaveLength(13);
+    expect(groups.flat()).not.toContain('ქორწილის');
+    expect(groups.flat()).toContain('ქორწილ');
+  });
+
+  it('KEEPS both when the stem is short enough to be anchored at both ends', () => {
+    // `bank` is four characters, so toWordStartPattern makes it `\mbank\M` —
+    // an exact token, which is NOT a superset of `\mbanki`. Dropping the
+    // longer one there would lose matches rather than fold them.
+    const terms = buildRawWordGroups('ბანკი').flat();
+    expect(terms).toContain('bank');
+    expect(terms).toContain('banki');
+  });
+
+  it('every dropped term is still reachable through the stem that replaced it', () => {
+    for (const word of ['ქუთაისში', 'ინჟინერი', 'ოსეფაშვილს', 'რატიანს']) {
+      const terms = buildRawWordGroups(word).flat();
+      const latin = terms.filter((t) => !/[ა-ჿ]/.test(t));
+      // Whatever survived, a longer inflected Latin form of it is not also
+      // present — the shorter prefix does that work now.
+      for (const term of latin) {
+        expect(latin.some((other) => other !== term && other.startsWith(term))).toBe(false);
+      }
+    }
   });
 });

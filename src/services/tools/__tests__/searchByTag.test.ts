@@ -108,11 +108,18 @@ describe('searchByTag', () => {
     await searchByTag('42', 'ინჟინერი');
 
     // ჟ → "zh" canonical, drift "zh" → "j".
+    //
+    // The three read „ინჟინერ" rather than „ინჟინერი" since 19 September: the
+    // Georgian case ending is trimmed and the stem STANDS IN for the inflected
+    // word rather than joining it. `\minzhiner` matches everything
+    // `\minzhineri` matched — it is the same pattern one letter shorter — so
+    // this search reaches the same rows and the plural „ინჟინრები" as well,
+    // at the same three regexes it cost before.
     expect(mockQuery.mock.calls[0][1]).toEqual([
       '42',
-      '\\mინჟინერი',
-      '\\minzhineri',
-      '\\minjineri',
+      '\\mინჟინერ',
+      '\\minzhiner',
+      '\\minjiner',
       '42',
       [],
     ]);

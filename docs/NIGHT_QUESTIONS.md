@@ -304,57 +304,89 @@ item Twenty-four's „a message sent without their yes on the wording" is waitin
 for them. The 50-character cut has to land BEFORE or WITH the 103 change, or
 the failures move rather than go.
 
-### 7. Transliteration — one missing piece now blocking two rows
+### 7. WITHDRAWN AND REPLACED — transliteration was never the missing piece
 
-Measured 04:30, and it is the strongest thing to come out of the night.
+**This item said the opposite until 07:30 on 19 September, and what it said was
+wrong. It is left here rather than deleted because the founder and Misho were
+both shown the wrong version.**
 
-The tester's discriminator for row 104 became: **does the sentence name a
-person in the OWNER's own phonebook?** It is better than anything I proposed —
-it survives typos, because people misspell verbs far more often than they
-misspell the name of someone they are writing to.
+What it claimed: that a Georgian↔Latin map did not exist, that
+„თორნიკე აბულაძეს" resolved to nobody in Lika's phonebook because her fifteen
+`tornike` labels are Latin and she typed Georgian, and that building that map
+was one job closing two rows.
 
-**Tested both ways against the fifty goals.**
+**What is actually true.** `src/services/tools/transliterate.ts` has held a
+full Georgian→Latin map since long before this ticket, with sound drift
+(kh↔x, ts↔c, q↔k, f↔p) and first-name forms on top of it. Run through the
+product's own matcher:
 
-Does it misfire on real goals? No. Of fifty, exactly ONE contains a name from
-its owner's phonebook, and that one is the introduction request, which belongs
-at 2a anyway. Their worry — a contact saved under an ordinary word turning „I
-need a plumber" into an instruction — did not appear once.
+    „თორნიკე აბულაძეს"
+      → ["თორნიკე","tornike","torniqe","tornik","torniq","torniko","torniqo"]
+        ["აბულაძეს","abuladzes"]
 
-Does it catch the instructions? **No, and that is the finding.**
-„თორნიკე აბულაძეს ჰკითხე" resolves to nobody in Lika's phonebook. She has him
-fifteen times over — `tornike`, `tornike abuladze (ally)`, `tornike premium`,
-`tornike zaziashvili` — **all fifteen in Latin, while she typed Georgian.**
+and against her real rows:
 
-The script split across four real phonebooks:
+    SELECT phone, tag FROM "UserTags"
+    WHERE "contactId" = '160584' AND tag ~* '\mtornike'   →  six rows
 
-    owner 501     1,948 Latin      2 Georgian    99.9% Latin
-    owner 160584    379 Latin     38 Georgian    91%
-    owner 116793    111 Latin     38 Georgian    75%
-    owner 165699     46 Latin    248 Georgian    16%
+So the sentence finds him. **I had compared the strings by hand instead of
+asking the code** — one route to a fact being closed, read as the fact not
+existing, which is precisely the error I had spent the previous evening
+pointing out in someone else.
 
-Phonebooks are overwhelmingly Latin; people type Georgian. And it fails
-ASYMMETRICALLY — it would work on the one account whose phonebook is Georgian
-and silently not work on the founder's.
+The four script-split rows (1,948/2, 379/38, 111/38, 46/248) re-measure
+correctly, but they are `UserAlias` only. The search also reads `UserTags`,
+where a Georgian name has already been broken into Latin automatically:
 
-**So the same missing piece blocks two rows:**
+    alias „აკაკი ჩხაიძე"   →   tags  akaki | chkhaidze
 
-- **row 10** — a roster member whose only label is Georgian script cannot be
-  found by their own name (reported last night, left open for the same reason)
-- **row 104 / 2b** — an instruction cannot be recognised because the
-  recipient's name is in the other alphabet
+### 7a. THE REAL GAP, AND IT IS FIXED — a case ending, not a script
 
-One thing to build, two rows closed. The case is far stronger than row 10 made
-alone, and it is worth a row of its own rather than being carried as a
-dependency.
+Lika has **`Tiko Ratiani`** saved. She typed „თიკო რატიან**ს** მისწერე".
 
-Not started. It is a Georgian↔Latin mapping that will be wrong at the edges in
-ways only a Georgian speaker can judge, and writing it unreviewed overnight is
-how a bad map becomes permanent.
+    „თიკო"     → tiko     → matches Tiko Ratiani
+    „რატიანს"  → ratians  → matched nothing at all
 
-**One thing that is NOT a blocker**, written down before someone assumes it is:
-„tornike" matching fifteen of Lika's labels does not break 2b. That rule only
-needs to know the sentence names A PERSON TO CONTACT, not which one. Ambiguity
-matters for acting, not for classifying.
+She was found by her first name, and the surname — the half that says WHICH
+Tiko — was discarded by one letter. The row comes back having matched one
+query word of two, which is what marks it `approximate`.
+
+Nothing new was built. `georgianStem` has trimmed exactly these endings since
+1 September, with its own tests; it had simply never been wired into the NAME
+path, only into `searchByInsight`. „რატიანს" reduces to „რატიან" → `ratian`,
+and `toWordStartPattern` makes that a prefix, so it reaches `Ratiani`,
+`Ratianis` and the Georgian spelling too. Confirmed against her row.
+
+**It costs nothing.** A stem is a prefix of the word it came from, so the
+longer inflected term is redundant and is dropped rather than kept alongside.
+Ninia's sentence is 13 terms before and 13 after — which matters, because row
+108 is about how much regex this search drags over 885,942 rows.
+
+Needs nobody. Tested, verified, shipped.
+
+### 7b. WHAT IS STILL MISSING, measured rather than assumed
+
+A **Latin query still generates no Georgian spelling**, so a contact saved only
+in Georgian with no Latin tag row cannot be reached by typing their name in
+Latin. Misho's instruction of this morning — „search in both scripts" — is met
+in one direction and not the other.
+
+How big it is, counted rather than guessed:
+
+    owner     Georgian aliases    of those, with NO Latin tag row
+    501              2                        1
+    116793          38                       26
+    160584          38                        5
+    165699         248                       15
+
+**And the honest recommendation is not to build the reverse map.** Latin→Georgian
+is ambiguous at exactly the letters that matter — t is თ or ტ, k is კ or ქ,
+ts is ც or წ, ch is ჩ or ჭ — so a generated Georgian form is a guess, and one
+wrong letter fails the whole prefix. The reliable fix for the same symptom is
+that **every alias should have its Latin tag row**, which those Georgian
+aliases mostly do and 47 of them across four accounts do not. Backfilling them
+is a live-data write, so it is D44 and it is Misho's, and it should be measured
+across all accounts before it is proposed.
 
 ### Both prompt pastes are blocked on a person — NEITHER of us can do them
 

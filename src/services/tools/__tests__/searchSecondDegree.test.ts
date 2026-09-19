@@ -134,7 +134,12 @@ describe('searchSecondDegree tag matching', () => {
     const params = mainCall?.[1] as unknown[];
     // buildSearchTerms transliterates the Georgian query to its Latin form(s);
     // each variant arrives as its own word-start regex.
-    expect(params.some((p) => typeof p === 'string' && p.includes('bughalteri'))).toBe(true);
+    //
+    // `bughalter` and not `bughalteri` since 19 September: the Georgian case
+    // ending is trimmed and the stem stands in for the inflected word. As a
+    // word-START pattern the shorter one reaches every accountant the longer
+    // one did, plus the ones saved as „ბუღალტერს" or „ბუღალტრები".
+    expect(params.some((p) => typeof p === 'string' && p.includes('bughalter'))).toBe(true);
   });
 
   it('records a weak-tie signal before searching (path asked to an own contact)', async () => {

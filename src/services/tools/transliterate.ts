@@ -1,3 +1,4 @@
+import { georgianStem } from './georgianStem';
 import { nameFormVariants } from './nameForms';
 
 const GEO_TO_LATIN: readonly [string, string][] = [
@@ -164,10 +165,69 @@ export function buildRawWordGroups(rawQuery: string): string[][] {
 // the regex list.
 const MAX_GROUP_TERMS = 24;
 
+/**
+ * Ticket 20 row 10 / row 104 — a Georgian case ending threw away the half of
+ * the name that identified the person.
+ *
+ * MEASURED, 19 September, on Lika's own phonebook. She has `Tiko Ratiani`
+ * saved, and she typed „თიკო რატიანს მისწერე":
+ *
+ *   „თიკო"     → tiko     → matches Tiko Ratiani
+ *   „რატიანს"  → ratians  → matches nothing at all
+ *
+ * She is found, by her first name, and the surname — the half that tells one
+ * Tiko from another — is discarded by a single letter. The result comes back
+ * having matched one query word of two, which is what marks it `approximate`.
+ *
+ * Nothing new is built here. georgianStem has trimmed exactly these endings
+ * since 1 September and is tested on its own; it was simply never wired into
+ * the NAME path, only into searchByInsight. „რატიანს" reduces to „რატიან",
+ * which transliterates to `ratian`, and toWordStartPattern makes that a
+ * prefix — so it reaches `Ratiani`, `Ratianis`, and the Georgian spelling too.
+ *
+ * RECALL ONLY GROWS, AND THE TERM COUNT DOES NOT. A stem term is a PREFIX of
+ * the word term it came from, and toWordStartPattern anchors the start only —
+ * so `\mratian` matches everything `\mratians` matched and more. Where that
+ * holds the longer term is redundant and is dropped, which keeps a Georgian
+ * sentence at the same number of terms it costs today. That matters: row 108
+ * is about how much regex this search drags over 885,942 rows, and paying for
+ * it twice to fix a name would be robbing one row to pay another.
+ *
+ * The exception is a stem of four characters or fewer, which
+ * toWordStartPattern anchors at BOTH ends — `\mbank\M` is an exact token and
+ * not a superset of `\mbanki`. Those do not supersede anything and both are
+ * kept.
+ *
+ * WHAT IT DOES NOT FIX, so nobody reads it as more than it is: a Latin query
+ * still generates no Georgian spelling, so a contact saved ONLY in Georgian
+ * with no Latin tag row is still unreachable by a Latin query. That is a
+ * different gap with a different fix — the tag row should exist — and it is
+ * measured in the night list rather than guessed at here.
+ */
+/**
+ * Is `term` already covered by one of `stemTerms` — i.e. would dropping it
+ * change nothing a caller can observe?
+ *
+ * Only a stem LONGER than the exact-token threshold supersedes, because at or
+ * below it toWordStartPattern anchors both ends and the short form stops being
+ * a superset. Compared against the threshold that function uses, so the two
+ * cannot drift apart.
+ */
+function supersededBy(term: string, stemTerms: readonly string[]): boolean {
+  return stemTerms.some(
+    (stem) => stem.length > EXACT_TOKEN_MAX_CHARS && term !== stem && term.startsWith(stem),
+  );
+}
+
 function wordVariantGroup(word: string): string[] {
   const lower = word.toLowerCase();
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
-  const group = new Set<string>(buildSearchTerms(word));
+  const stem = georgianStem(lower);
+  const stemTerms = stem === lower ? [] : buildSearchTerms(stem);
+  const group = new Set<string>(stemTerms);
+  for (const term of buildSearchTerms(word)) {
+    if (!supersededBy(term, stemTerms)) group.add(term);
+  }
   for (const form of nameFormVariants(latin)) {
     if (form === latin) continue;
     for (const term of buildSearchTerms(form)) group.add(term);
