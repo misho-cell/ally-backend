@@ -386,6 +386,26 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
   return { token, isNewUser: false };
 }
 
+/**
+ * How long an admin session lasts. Raised from 8h to 12h on 19 September, on
+ * Misho's ask.
+ *
+ * WHAT IT BUYS: a working day is longer than eight hours here, and an admin
+ * re-authenticating mid-afternoon is a person interrupted in the middle of
+ * something — today that meant the tester's seat being signed out of a test
+ * account and the whole acceptance run waiting on somebody to type a code.
+ *
+ * WHAT IT COSTS, because it is a security parameter and the cost should be
+ * written next to the number: a stolen admin token is usable for twelve hours
+ * instead of eight. There is no refresh and no revocation list — the only way
+ * to invalidate an issued token before it expires is to rotate the JWT secret,
+ * which signs out every user as well. So the TTL IS the blast radius, and 12h
+ * is the point where „long enough for a day" meets „short enough to sleep on".
+ * It is a constant rather than an env var on purpose: this number should be
+ * read in a diff, not changed quietly in a dashboard.
+ */
+const ADMIN_TOKEN_TTL = '12h';
+
 export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
   const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(
     'SELECT id, password, "hasAccessToAlly" FROM "User" WHERE email = $1 AND "deletedAt" IS NULL',
@@ -408,7 +428,7 @@ export async function adminLogin(email: string, password: string): Promise<{ tok
   }
 
   const token = jwt.sign({ userId: String(user.id), role: 'admin' }, jwtSecret, {
-    expiresIn: '8h',
+    expiresIn: ADMIN_TOKEN_TTL,
   });
   return { token };
 }
