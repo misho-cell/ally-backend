@@ -66,9 +66,41 @@ const ABOUT_MY_OWN_GOALS_RE =
  * deliberately the narrower half: the flag still wins on anything that is not
  * recognisably a question.
  */
+/**
+ * Ticket 20 row 103 — „რა შეგიძლია?", and it is on the founder's own list.
+ *
+ * Row 103's done-when names three sentences that must stay questions when
+ * typed into the box: „რომელი მიზნები მაქვს ღია?", „რა შეგიძლია?" and „ვინ
+ * არის ახლა თბილისის მერი?". Two of the three were caught. This one was not,
+ * and it is the one the row was reproduced on — goal #3070 on 15 September
+ * came from „რა შეგიძლია?".
+ *
+ * Found 19 September when the seat re-ran the flag path and asked which
+ * predicate had run. It had not: the sentence never reached the clause,
+ * because nothing classified it as a question.
+ *
+ * „What can you do" is the whole shape. A goal opened to answer it is a goal
+ * about the assistant's own abilities, which nothing can work on and nobody
+ * asked for.
+ */
+/**
+ * NO TRAILING BOUNDARY ON THE GEORGIAN BRANCHES, and I wrote one first — in a
+ * file whose own comment forty lines up explains why it cannot work. „რა
+ * შეგიძლია" ends in „ა"; a lookahead for „not a letter" after the stem
+ * „შეგიძლი" fails on the very inflection the stem exists to survive. Georgian
+ * inflects at the END of a word, which is exactly where a boundary looks.
+ * The English branches keep theirs, where it does work.
+ */
+const ABOUT_YOUR_ABILITIES_RE =
+  /^\s*(რა\s+შეგიძლი|რის\s+გაკეთება\s+შეგიძლი|როგორ\s+მეხმარები|(what can you do|what are you able|what do you do)(?![\p{L}\p{N}]))/iu;
+
 export function isQuestionNotGoal(message: string): boolean {
   const text = message.trim();
-  return ASK_ABOUT_RE.test(text) || ABOUT_MY_OWN_GOALS_RE.test(text);
+  return (
+    ASK_ABOUT_RE.test(text) ||
+    ABOUT_MY_OWN_GOALS_RE.test(text) ||
+    ABOUT_YOUR_ABILITIES_RE.test(text)
+  );
 }
 
 /** „who do I have", „how many contacts" — the owner asking about their own base. */
