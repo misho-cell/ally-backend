@@ -304,6 +304,58 @@ item Twenty-four's „a message sent without their yes on the wording" is waitin
 for them. The 50-character cut has to land BEFORE or WITH the 103 change, or
 the failures move rather than go.
 
+### 7. Transliteration — one missing piece now blocking two rows
+
+Measured 04:30, and it is the strongest thing to come out of the night.
+
+The tester's discriminator for row 104 became: **does the sentence name a
+person in the OWNER's own phonebook?** It is better than anything I proposed —
+it survives typos, because people misspell verbs far more often than they
+misspell the name of someone they are writing to.
+
+**Tested both ways against the fifty goals.**
+
+Does it misfire on real goals? No. Of fifty, exactly ONE contains a name from
+its owner's phonebook, and that one is the introduction request, which belongs
+at 2a anyway. Their worry — a contact saved under an ordinary word turning „I
+need a plumber" into an instruction — did not appear once.
+
+Does it catch the instructions? **No, and that is the finding.**
+„თორნიკე აბულაძეს ჰკითხე" resolves to nobody in Lika's phonebook. She has him
+fifteen times over — `tornike`, `tornike abuladze (ally)`, `tornike premium`,
+`tornike zaziashvili` — **all fifteen in Latin, while she typed Georgian.**
+
+The script split across four real phonebooks:
+
+    owner 501     1,948 Latin      2 Georgian    99.9% Latin
+    owner 160584    379 Latin     38 Georgian    91%
+    owner 116793    111 Latin     38 Georgian    75%
+    owner 165699     46 Latin    248 Georgian    16%
+
+Phonebooks are overwhelmingly Latin; people type Georgian. And it fails
+ASYMMETRICALLY — it would work on the one account whose phonebook is Georgian
+and silently not work on the founder's.
+
+**So the same missing piece blocks two rows:**
+
+- **row 10** — a roster member whose only label is Georgian script cannot be
+  found by their own name (reported last night, left open for the same reason)
+- **row 104 / 2b** — an instruction cannot be recognised because the
+  recipient's name is in the other alphabet
+
+One thing to build, two rows closed. The case is far stronger than row 10 made
+alone, and it is worth a row of its own rather than being carried as a
+dependency.
+
+Not started. It is a Georgian↔Latin mapping that will be wrong at the edges in
+ways only a Georgian speaker can judge, and writing it unreviewed overnight is
+how a bad map becomes permanent.
+
+**One thing that is NOT a blocker**, written down before someone assumes it is:
+„tornike" matching fifteen of Lika's labels does not break 2b. That rule only
+needs to know the sentence names A PERSON TO CONTACT, not which one. Ambiguity
+matters for acting, not for classifying.
+
 ### Both prompt pastes are blocked on a person — NEITHER of us can do them
 
 Correcting what I wrote earlier in this file: I said the tester could paste the
