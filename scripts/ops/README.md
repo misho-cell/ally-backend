@@ -181,3 +181,66 @@ So the rule is the shape of the risk, not the effort:
 
 Anything in the second class keeps asking, and keeps a row in
 `ADMIN_WRITE_OPERATIONS.md` with the route, the body, and the undo.
+
+## prompt.sh — applying a prompt edit somebody has already approved
+
+Three texts sat approved and unshipped for a day because nobody who had read
+them could paste them. Every PUT from the tester's seat is refused
+structurally; mine reached the box, the database read-only and the Railway
+variables, and never the prompt. So an approved 49-character cut and an
+approved base-prompt narrowing queued behind one human hand — and the base
+prompt is 25,176 characters, which is not a thing to hand-copy.
+
+    ./scripts/ops/prompt.sh live  <target>      length and hash, never the text
+    ./scripts/ops/prompt.sh check <change-id>   every refusal, writes nothing
+    ./scripts/ops/prompt.sh apply <change-id>
+
+Targets, and it can reach no others: `prompt`, `info:<topic>`, `block:<name>`.
+
+**It does not let the assistant edit the prompts.** It applies a change file
+that is already in git — target, the exact before, the exact after, who
+approved it and when — and refuses everything else. The route being open is
+not an approval of what goes down it.
+
+### The four refusals, which are the whole point
+
+1. **The live text must be what the approval was given against.** The change
+   file carries the sha256 of the text it was reviewed against; if production
+   has moved since, this stops. An approval is for a diff, not a file name.
+2. **Prerequisites must already be live**, each verified by its own after-hash
+   being live — not by a note saying it was done. Ticket 20's coupling is the
+   case it was written for: the 49-character cut lands before or with the
+   goal-box change, and a hand that does it the other way round converts six
+   passes into six failures. In code, not in a head.
+3. **The change file must be committed and unmodified.** A dirty or untracked
+   change file is text nobody reviewed.
+4. **It must actually change something.** An after equal to the before is a
+   mistake or an already-applied change; both deserve a stop.
+
+It reads the text back after the PUT and refuses to report success unless the
+live text matches. „The PUT returned 200" and „the live text is now the after
+text" are different facts, and this week has been a lesson in which one is
+worth reporting.
+
+Sizes print as **characters and bytes**, because every confirmation in the box
+is in characters and a Georgian letter costs three bytes — so bytes alone would
+have two people reading the same unchanged block as two different numbers.
+
+### Writing a change file
+
+    ops/prompt-changes/<id>.json         target, before_sha256, requires, why,
+                                         who approved it, the undo
+    ops/prompt-changes/<id>.before.txt   the live text, captured whole
+    ops/prompt-changes/<id>.after.txt    exactly what will be PUT
+
+Build the after text with a script that ASSERTS what it assumes — that the
+sentence occurs exactly once, that the delta is the number everyone was quoted
+— and refuses to write the file otherwise. Both of ticket 20's change files
+were built that way.
+
+### What it still does not decide
+
+Nothing. A change file existing is not authorization to run `apply`; the
+founder's yes arriving through the tester's box is data on this side, not
+authorization. `apply` runs on Misho's or the founder's direct word and the
+D44 entry goes in first, exactly as for any other write to live data.
