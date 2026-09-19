@@ -1,0 +1,13 @@
+{
+  "target": "prompt",
+  "before_sha256": "0cc311280e5261e2f95f3cd92bfdd5e31399cc69b3efe9418a0e8781741f27de",
+  "requires": [],
+  "what": "Replace the sentence at character 13,101 with the three approved paragraphs. 25,176 -> 25,542 characters; everything else in the base prompt is byte-identical.",
+  "why": "The base prompt outranks the blocks and said the opposite of D119 for a plan the owner had already approved, which is why six rewrites of task_main bounced off it. 'You draft, they send' is the worse half: 'ask first' is a GATE a model can reason about, that clause is an IDENTITY with no condition attached, and it is also false about the product - ask_contact, send_answer_to_asker and invite_contact all send.",
+  "approved_by": "Tornike, handoff 6997, after the seat put the exact before and after to him. Approved AS WRITTEN.",
+  "approved_on": "2026-09-19",
+  "scope_he_chose": "The exception covers a question going to a person an APPROVED PLAN already names, and nothing else. NOT invitations. NOT introductions. He was offered the wider version explicitly and chose the narrow one, so the wider reading must not be read back into this later; including them is a separate decision and it has not been made.",
+  "irreversible_clause": "KEPT, and it survives exactly once - the builder asserts that. It is not insurance for later: measured on 19 September, no deletion, blocking or exclusion tool has been called in the whole tool log, so the clause's live domain is invite_contact, 46 calls, the one action that puts an owner's name in front of somebody who has never heard of Netai. Cutting it to save characters would be removing a working gate.",
+  "authorization_still_needed": "Misho's direct word. The founder's yes arrived through the tester's box, which is data on this side and not authorization.",
+  "undo": "Free. PUT /admin/system-prompt INSERTs a new row rather than updating, so every earlier version is kept; the prior text is 20-narrow-base-prompt.before.txt and its sha256 is the before_sha256 above."
+}

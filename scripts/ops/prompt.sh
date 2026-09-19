@@ -158,7 +158,7 @@ print(" ".join(json.load(open(sys.argv[1])).get("requires", [])))' "$spec")"
       die "$id REFUSED: it requires '$req' to be live first, and it is not.
      This ordering is a safety property, not a preference — see the change file."
     fi
-    echo "  requires $req  LIVE"
+    echo "  requires $req  LIVE" >&2
   done
 
   local live live_sha live_size after_sha after_size
@@ -168,10 +168,12 @@ print(" ".join(json.load(open(sys.argv[1])).get("requires", [])))' "$spec")"
   after_sha="$(sha < "$after")"
   after_size="$(size < "$after")"
 
-  echo "  target    $target"
-  echo "  live      $live_size  ${live_sha:0:12}"
-  echo "  after     $after_size  ${after_sha:0:12}"
-  echo "  approved  ${before_sha:0:12}"
+  {
+    echo "  target    $target"
+    echo "  live      $live_size  ${live_sha:0:12}"
+    echo "  after     $after_size  ${after_sha:0:12}"
+    echo "  approved  ${before_sha:0:12}"
+  } >&2
 
   # (1) the live text must be the text the approval was given against.
   if [ "$live_sha" != "$before_sha" ]; then
@@ -185,7 +187,7 @@ print(" ".join(json.load(open(sys.argv[1])).get("requires", [])))' "$spec")"
   # (4) it must change something.
   [ "$after_sha" != "$before_sha" ] || die "$id: the after text is identical to the before"
 
-  echo "  OK — every refusal passed"
+  echo "  OK — every refusal passed" >&2
   printf '%s' "$target"
 }
 
