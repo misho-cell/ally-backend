@@ -248,10 +248,48 @@ first, re-measure the fifty, and only then have the frontend stop sending the
 flag. In that order the change costs nothing; in the other order it loses real
 goals silently, which is the worst way to lose them.
 
-    1. the 50-character cut in item Twenty-four      ready, needs a hand
-    2. teach the rule the missing shapes             mine, needs daylight
-    3. re-measure the fifty                          mine, free
-    4. then the frontend drops the flag              theirs
+    1.  the 50-character cut in item Twenty-four     ready, needs a hand
+    2a. explicit „create a new goal" check           safe, narrow, and it has
+                                                     to run FIRST — see below
+    2b. the naming test                              the risky one
+    3.  re-measure the fifty                         mine, free
+    4.  then the frontend drops the flag             theirs
+
+**Why 2 is two steps, and the trap inside it.** My first version of step 2 was
+„teach the rule the wanting-to-find shapes". The tester killed it, correctly: a
+matcher widened on WANTING takes „ask X whether he knows a good financier" as
+happily as „find me someone two steps from that company", and row 104 comes
+back through the door opened to close it — with the founder's ruling behind it
+and the fix already declared done.
+
+Their discriminator instead: **does the sentence name the person to be
+CONTACTED?** Names a recipient → an instruction, never a goal. Describes a
+quality → a goal.
+
+**Tested against the fifty at 03:20. The direction holds and there are two
+exceptions, only one of which they predicted:**
+
+- predicted: „ლიკა ოსეფაშვილის გაცნობა მინდა" names a person, but as the one
+  to be MET rather than asked.
+- NOT predicted: two of the six lost goals say „შექმენი ახალი მიზანი … და
+  ჰკითხე თორნიკე აბულაძეს" — they state goal intent in words AND name someone
+  to ask. The naming test alone sends them to „instruction" and loses them.
+
+So 2a is not merely safe, it is **load-bearing**: it must run before 2b or 2b
+eats it.
+
+**And the naming test is harder to build than it looks.** I wrote it as a
+matcher — contact verb plus Georgian dative, or „ask <Name>" — and it
+misclassified four of the ten cases that matter. Two false positives on datives
+that are places or things; one miss from my own case-sensitivity; and one that
+no pattern can fix: „კიატხე" is a typo for „ჰკითხე" and real people type it.
+Doing this properly means knowing a token is a PERSON, and the honest source
+for that is the owner's own phonebook — a larger change than a regex.
+
+**One more thing the fifty showed.** The 36 the rule already recognises are
+almost all one shape: „მჭირდება X" / „I need X". It is a narrow rule that
+happens to cover the commonest way people ask. There is a lot of room between
+„I need a plumber" and the six, and most of it has never been tested.
 
 Step 1 stays first whatever else happens — see the coupling note below.
 
