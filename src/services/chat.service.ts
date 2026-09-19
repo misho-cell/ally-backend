@@ -36,6 +36,8 @@ import {
   ThreadRequest,
   getRecentResponsesForRequester,
   getIntroStatusForRequester,
+  getIntroStatusForMediator,
+  getPassedOnAsks,
   PendingRequest,
   RespondedRequest,
 } from './introduction.service';
@@ -453,11 +455,14 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
 const GET_INTRO_STATUS_TOOL: AnthropicTool = {
   name: 'get_intro_status',
   description:
-    'The live status of every introduction the user has requested: pending ones and the last ' +
-    "week's answers (accepted/declined, who answered, their words, timestamps). WHEN: the user " +
-    'asks whether someone replied, what happened to an introduction, or what they are waiting ' +
-    'on. Answer FROM this result — never from thread text or memory: statuses change between ' +
-    'turns.',
+    'Every introduction this user is part of, on all three sides: ones they REQUESTED (pending ' +
+    "and the last week's answers), ones they were ASKED to make as the go-between, and " +
+    'questions they PASSED ON to somebody else — which is what agreeing to introduce someone ' +
+    'looks like in the record. WHEN: the user asks whether someone replied, what happened to an ' +
+    'introduction, or what they agreed to and when. Answer FROM this result — never from thread ' +
+    'text or memory: statuses change between turns. An empty list means nothing was FOUND, ' +
+    'which is not the same as nothing having happened — say what you searched, never that it ' +
+    'did not happen.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
@@ -4910,8 +4915,39 @@ async function executeToolCall(
         input['accepted'] as boolean,
         input['response'] as string | undefined,
       );
-    case 'get_intro_status':
-      return { introductions: await getIntroStatusForRequester(userId) };
+    case 'get_intro_status': {
+      /**
+       * All three sides, because the seat's 293 asked about the one this tool
+       * could not see. `getIntroStatusForRequester` is named after its own
+       * limit: Test 2 was the MEDIATOR, had agreed forty minutes earlier, and
+       * was told they were asking about something that did not appear to have
+       * happened. The model called the right tool once and the tool was blind.
+       */
+      const [requested, asMediator, passedOn] = await Promise.all([
+        getIntroStatusForRequester(userId),
+        getIntroStatusForMediator(userId),
+        getPassedOnAsks(userId),
+      ]);
+      const found = requested.length + asMediator.length + passedOn.length;
+      return {
+        introductions: requested,
+        asked_of_me: asMediator,
+        passed_on: passedOn,
+        /**
+         * Said on the EMPTY result and only there, because that is the one a
+         * model turns into a denial. „Empty ≠ empty" is a rule this product
+         * already applies to contacts; a person's own past actions deserve it
+         * at least as much.
+         */
+        ...(found === 0 && {
+          note:
+            'Nothing found in the introductions this user requested, was asked to make, or ' +
+            'passed on. That is a search that came back empty — it is NOT evidence that ' +
+            'nothing happened. Say what was checked and that it turned up nothing; do not ' +
+            'tell the user the event did not occur.',
+        }),
+      };
+    }
     case 'get_thread_context':
       return getThreadContext(userId);
     case 'save_contact_fact':

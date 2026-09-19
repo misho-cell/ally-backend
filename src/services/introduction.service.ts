@@ -196,6 +196,90 @@ export async function getIntroStatusForRequester(
 }
 
 /**
+ * Ticket 20, the seat's 293 — „something that doesn't appear to have happened".
+ *
+ * Test 2 asked „When did I agree to introduce Netai Test 1 to Netai Test 3?
+ * Give me the date and time." Forty minutes earlier, in that same account,
+ * they had typed „Yes, happy to introduce them. Netai Test 3 is a good friend
+ * of mine", and the relay that went out at 18:51:07 exists because of it. The
+ * answer they got was that there is no such agreement in their history and
+ * they were asking about something that did not appear to have happened.
+ *
+ * THE MODEL DID THE RIGHT THING. It called `get_intro_status`, once, and the
+ * result was empty. The fault is entirely in what that tool can see: it is
+ * `getIntroStatusForRequester`, and its own name is the bug report. The person
+ * asking was the MEDIATOR. Nothing in the tool reads the mediator's side, and
+ * nothing in it reads the shape this particular agreement took at all — an ask
+ * answered and passed on lives in `task_asks`, not in `introduction_requests`.
+ *
+ * So two readers, for the two ways a person ends up having agreed to introduce
+ * somebody. Neither replaces the requester's list; a person can be all three.
+ */
+export interface MediatorIntroRow {
+  requester_name: string | null;
+  target_name: string;
+  status: string;
+  response: string | null;
+  asked_at: string;
+  responded_at: string | null;
+}
+
+/** Introductions this person was ASKED to make, whatever they answered. */
+export async function getIntroStatusForMediator(
+  mediatorUserId: string,
+): Promise<MediatorIntroRow[]> {
+  const result = await query<MediatorIntroRow>(
+    `SELECT r.name AS requester_name,
+            ir.target_name,
+            ir.status,
+            ir.mediator_response AS response,
+            ir.created_at AS asked_at,
+            ir.responded_at
+     FROM introduction_requests ir
+     LEFT JOIN "User" r ON r.id = ir.requester_user_id
+     WHERE ir.mediator_user_id = $1
+     ORDER BY COALESCE(ir.responded_at, ir.created_at) DESC
+     LIMIT 20`,
+    [mediatorUserId],
+  );
+  return result.rows;
+}
+
+export interface PassedOnRow {
+  /** Who originally asked this person for help. */
+  asker_name: string | null;
+  /** Who they passed it on to — the person they agreed to bring in. */
+  passed_to_name: string | null;
+  question: string;
+  passed_on_at: string;
+  answered_at: string | null;
+}
+
+/**
+ * Questions this person passed on to somebody else — the act of agreeing, as
+ * the product actually records it. A relay is a child ask whose sender is this
+ * person; the parent is the ask they were answering.
+ */
+export async function getPassedOnAsks(userId: string): Promise<PassedOnRow[]> {
+  const result = await query<PassedOnRow>(
+    `SELECT au.name AS asker_name,
+            tu.name AS passed_to_name,
+            c.question,
+            c.created_at AS passed_on_at,
+            c.answered_at
+     FROM task_asks c
+     JOIN task_asks p ON p.id = c.parent_ask_id
+     LEFT JOIN "User" au ON au.id = p.from_user_id
+     LEFT JOIN "User" tu ON tu.id = c.to_user_id
+     WHERE c.from_user_id = $1::int
+     ORDER BY c.created_at DESC
+     LIMIT 20`,
+    [userId],
+  );
+  return result.rows;
+}
+
+/**
  * Is this thread's introduction request still unanswered? An outgoing-request
  * thread waiting on the mediator is WAITING, not needs_you — the asker owes
  * nothing (ticket 5 item B2: thread 8556 read needs_you while the recipient
