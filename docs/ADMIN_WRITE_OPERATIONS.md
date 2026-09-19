@@ -421,3 +421,71 @@ throwaway handset is the way, and it is the founder's to decide either way.
 - somebody doing it by hand in a database console.
 
 Nothing is written until Misho says which, and says yes.
+
+### 7a. Before any seeding — one of the five numbers was already taken
+
+**Found 19 September while checking the seat's report that the five are not
+marked as staff. It is the more serious of the two findings and neither of us
+was looking for it.**
+
+The five test accounts hold numbers in the +1 202 555 range, chosen because it
+is reserved for fiction. **In this database it is not unused.**
+
+    rows in "UserAlias" on +1202555…    26
+    all created                         22 August 2026, one day
+    owners                              804 (10), 13926 (7), 18213 (7),
+                                        5432 (1), 84246 (1)
+
+That shape — one day, five owners, numbers scattered through the 01xx block —
+reads as a seeded or imported test set from August rather than organic
+phonebook data. Whatever it was, it is there.
+
+**And one of them collides exactly.** Owner 5432 has a contact saved as
+„Vigaca" on the number ending **0105**, created **22 August** — nearly a month
+BEFORE `Netai Test 5` (171874) was created on that same number on 17 September.
+
+So Test 5 is not a clean fictional account. It is a member account sitting on a
+number a real owner already had in their phonebook, which means that owner's
+assistant can see that contact as a Netai member, and anything ever sent from
+or to Test 5 touches a real person's phonebook entry.
+
+    0101  0102  0103  0104    clean
+    0105                      TAKEN since 22 August
+
+**Nothing should be seeded until this is decided.** The cheap fix is to move
+Test 5 to a number checked for collisions first — and the general rule this
+earns is that a „reserved" range is only reserved until somebody checks, so the
+check runs before the accounts are created, not after.
+
+### 7b. The five are not marked staff, and the fix cannot be applied blind
+
+The seat is right: all five read `staff: false`, and row 50 says staff and test
+accounts never appear in any list. `staff` is not a database column — it is
+`STAFF_USER_IDS`, an environment variable, plus the review phones and the
+curators (`src/services/staff.ts`). And it is a real filter rather than a
+label: `targetScoring.service.ts` passes `account?.staff === true` into
+`exclusionFor`, so an unmarked account is eligible where a marked one is
+excluded.
+
+|        |                                                                    |
+| ------ | ------------------------------------------------------------------ |
+| Route  | Railway variable, `scripts/ops/env.sh set STAFF_USER_IDS`          |
+| Method | Append the five ids to the EXISTING value                          |
+| Body   | the current value + `,171870,171871,171872,171873,171874`          |
+| Undo   | set it back to the current value                                   |
+
+**I cannot do this blind and will not.** `env.sh` cannot read, by design, and
+this variable is a LIST: writing five ids over it would silently remove
+whoever is in it now — the module's own doc says it exists because an ex-staff
+member ranked first on a target list, so it is very unlikely to be empty.
+Unlike `CHAT_FINAL_ANSWER_MODEL`, there is no ledger to recover it from.
+
+So whoever flips this reads the current value first and appends to it. That is
+the same failure I got wrong this morning in the other direction, and the
+lesson generalises: **a write-only capability is safe for a scalar and unsafe
+for a list.**
+
+**Urgency, honestly.** Nobody has logged in to the five, so they have no
+contacts and no activity to rank on. The one that can surface today is Test 5,
+through the 0105 collision, on owner 5432's account. That is one row and it is
+not on fire; it should be fixed before anyone logs in, not tonight.
