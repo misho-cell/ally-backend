@@ -214,14 +214,51 @@ No to all four instructions, yes to a real stated need. The rule that would
 have stopped Lika being asked to approve her own sentence was there the whole
 time and the flag walked past it.
 
-**The question that decides whose one line it is, and it is for the frontend.**
-`asGoal` is documented as the user pressing „+ ახალი მიზანი" — a button that
-says new goal, and honouring that is correct. The tester's reading is that an
-ordinary new conversation ALSO arrives with the flag set. If so, the app sends
-one flag for two different human acts and the server cannot tell them apart —
-and changing the server would break the button to fix the box.
+**Answered at 01:47 from the shipped frontend bundle, read-only.** There is no
+„+ new goal" button whose meaning could be broken: the flag is set by a
+one-shot ref that EVERY in-app route to the empty chat screen turns on. It
+means „a new conversation was opened", not „this is a goal". (Two limits the
+tester noted: a page reload mounts a fresh ref, and the ref is cleared only
+when a message is sent.) My objection is gone — but so is the idea that the
+fix is free.
 
-Nobody here can answer that. Ask the frontend before anyone edits either side.
+**MEASURED at 02:30: what removing the flag would cost.** Every goal of the
+last ten days, joined to THE MESSAGE THAT CREATED IT (nearest user message at
+or before the goal, within 30 s — not the thread's first message, which is a
+different thing and flatters the result). Fifty matched.
+
+    recognised by looksLikeGoalRequest   36
+    NOT recognised                       14
+
+The fourteen are three populations:
+
+- **five are row 104's bug** — „Ask Lika to send me the screenshots", „თიკო
+  რატიანს მისწერე თუ იცნობს…", „ჰკითხე". Removing the flag FIXES these.
+- **three are not goals at all** — „give me an invite link", and „კი" (yes)
+  TWICE. A bare „yes" created a goal. Removing the flag fixes these too.
+- **six are real goals that would be LOST** — including two that literally
+  begin „შექმენი ახალი მიზანი" (create a new goal), and three of the
+  „მინდა / შეგიძლია … მიპოვო" shape.
+
+So it is eight fixed against six lost. **Not a clear win, and it should not be
+sold as one.** But the six are four or five recognisable patterns, so:
+
+**The order that makes it free.** Teach `looksLikeGoalRequest` those patterns
+first, re-measure the fifty, and only then have the frontend stop sending the
+flag. In that order the change costs nothing; in the other order it loses real
+goals silently, which is the worst way to lose them.
+
+    1. the 50-character cut in item Twenty-four      ready, needs a hand
+    2. teach the rule the missing shapes             mine, needs daylight
+    3. re-measure the fifty                          mine, free
+    4. then the frontend drops the flag              theirs
+
+Step 1 stays first whatever else happens — see the coupling note below.
+
+**A correction to my own wording.** I wrote earlier that the discriminator
+„already works". On the four sentences the tester gave me it does. On fifty
+real goals it is right 36 times and wrong about six. „Already works" was too
+strong and should not be quoted to the founder that way.
 
 **The two fixes are coupled — do not ship one alone.** If row 103 stops making
 these goals, the six move out of `task_step` and into `quick_answer`, where
