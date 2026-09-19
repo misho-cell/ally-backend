@@ -93,6 +93,32 @@ open moved to the section below with who holds it.
 6. **Row 103 / the `as_goal` flag.** Frontend's to drop, after step 1 lands and
    after `looksLikeGoalRequest` learns the explicit „create a new goal" shape.
    Measured cost of dropping it today: 8 fixed, 6 lost.
+
+   **NEW, 19 September 11:45 — the flag does not fire on every conversation,
+   and the night's reading of the bundle said it did.** The seat typed a plain
+   question into the live app at 11:27; thread 18448 was created at 11:27:22
+   and the run stamped at 11:27:28, six seconds old and genuinely new, and it
+   produced NO goal, in `quick_answer` mode. If the flag had reached the server
+   there, `ensureGoalForRequest` creates a goal when `intent.asGoal` is true
+   regardless of the sentence, so one should have appeared.
+
+   Measured rather than left at one case — regular threads of the last three
+   days:
+
+       new threads                    249
+       made a goal within 90 seconds  172   69%
+       did not                         77   31%
+
+   **What it does NOT settle, which is the part that decides the fix.** A
+   thread with no goal may mean the flag was absent, or the run failed, or the
+   path differs; a thread WITH one may be `looksLikeGoalRequest` doing its job
+   rather than the flag. Separating them needs each of the 172 creating
+   messages run through the rule — the seat's re-measurement, not mine to
+   pre-empt.
+
+   It matters before the fix is designed rather than after: the change that is
+   right for „fires on everything" is not the change that is right for „fires
+   on a button nobody presses", and 69% is neither.
 7. **The missing Latin tag rows (7b).** 47 Georgian-only aliases across four
    accounts cannot be reached by a Latin query. A live-data write, so D44 and
    Misho's, and it needs a count across all accounts before it is proposed.
