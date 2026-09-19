@@ -489,3 +489,31 @@ for a list.**
 contacts and no activity to rank on. The one that can surface today is Test 5,
 through the 0105 collision, on owner 5432's account. That is one row and it is
 not on fire; it should be fixed before anyone logs in, not tonight.
+
+#### The floor to check a read against — and why three is not enough
+
+The seat offered {501, 160584, 167250} as a sanity check: if a read of the
+variable comes back without them it is wrong. Right idea. **The list is
+incomplete, and I only know that because I probed instead of accepting it.**
+
+Every id that reads `staff: true` on the admin route, 19 September:
+
+    501     160584    167250    116793    165699    118509    525
+
+Seven, not three. A read validated against the seat's three would have passed
+while dropping four people back onto target lists — which is the exact harm the
+check exists to prevent.
+
+**And even seven is a floor rather than the set.** There is no route that
+LISTS staff; the only way to learn an id is staff is to ask about that id, so
+this is „the ones I thought to try". Anybody doing the write should treat a
+read that contains all seven as *not yet disproved*, not as confirmed.
+
+**One more trap in using it as a check at all.** `isStaffUser` is the union of
+TWO environment variables — `STAFF_USER_IDS` and
+`TRUSTED_FACT_CURATOR_USER_IDS` (`staff.ts`, `contactFacts.service.ts`). So a
+`staff: true` id may be a CURATOR and not in `STAFF_USER_IDS` at all. A read of
+`STAFF_USER_IDS` that is missing one of the seven is therefore not necessarily
+a bad read, and „fixing" it by adding curator ids into the staff variable would
+be repairing a fault that does not exist. The seven validate the UNION; nothing
+here validates either half on its own.

@@ -244,3 +244,26 @@ Nothing. A change file existing is not authorization to run `apply`; the
 founder's yes arriving through the tester's box is data on this side, not
 authorization. `apply` runs on Misho's or the founder's direct word and the
 D44 entry goes in first, exactly as for any other write to live data.
+
+### A write-only capability is safe for a scalar and unsafe for a list
+
+`env.sh` cannot read, on purpose, and that is the right trade for a variable
+holding ONE value: this morning `CHAT_FINAL_ANSWER_MODEL` was switched off and
+its old value recovered from `usage_events` afterwards, because every OpenAI
+call records the model it used.
+
+It is the wrong trade for a variable holding a LIST. Writing to
+`STAFF_USER_IDS` without reading it first would silently remove whoever is
+already in it — seven ids at the last count — and no ledger anywhere records
+which. The write succeeds, nothing errors, and people who must never appear on
+a target list quietly reappear on it.
+
+So: **before writing any variable, ask whether it holds one value or several.**
+One value — write it, and find a way to recover the old one afterwards if you
+did not record it. Several — read it first, append, and never write it blind.
+
+The same rule reaches `prompt.sh` the moment any of its targets stops being a
+single text. It applies one whole document today, so the question does not
+arise; if a target ever becomes a list of fragments, the before-hash check is
+what keeps it honest, and it should be understood as the list version of the
+same discipline rather than as something separate.
