@@ -84,8 +84,12 @@ export type AskRefusalReason =
   | 'person_daily_relay_limit_reached';
 
 export type CreateAskOutcome =
-  /** `answered_automatically`: the recipient's standing rule answered it (Task 22). */
-  | { sent: true; ask_id: number; to_name: string; answered_automatically?: true }
+  /**
+   * `answered_automatically`: the recipient's standing rule answered it (Task 22).
+   * `note`: a relay that worked, on an ask whose own answer is still owed —
+   * see createRelayAsk. Only that path sets it.
+   */
+  | { sent: true; ask_id: number; to_name: string; answered_automatically?: true; note?: string }
   | { sent: false; error: string; reason?: AskRefusalReason };
 
 /**
@@ -1394,26 +1398,47 @@ export async function getAskByThread(askThreadId: number): Promise<IncomingAsk |
   return result.rows[0] ?? null;
 }
 
-// THE fix for ticket 4 items 0A/0AA: a relay failure is NOT an answer failure.
-// The recipient's own reply is captured and delivered the instant they send it,
-// on a completely separate path; relay_ask is only the EXTRA hop that forwards
-// the question to a third person. On 11 Aug the recipient was told "ამის
-// გადაცემა ვერ მოხერხდა" four times while the asker had her answer every time —
-// she was being shown the result of the contact lookup, not of the delivery.
-// Every relay outcome now carries that distinction in the text itself.
-const RELAY_ALREADY_DELIVERED =
-  ' მნიშვნელოვანი: მომხმარებლის პასუხი კითხვის ავტორს უკვე გადაეცა — ეს ცალკე, ავტომატური გზაა და ' +
-  'ყოველთვის მუშაობს. აქ საქმე მხოლოდ დამატებით გადაგზავნას ეხება. არასოდეს თქვა, რომ პასუხი ვერ ' +
-  'გადაიცა ან დაიკარგა — ეს ტყუილი იქნებოდა.';
+/**
+ * THE fix for ticket 4 items 0A/0AA was: a relay failure is NOT an answer
+ * failure. On 11 Aug the recipient was told „ამის გადაცემა ვერ მოხერხდა" four
+ * times while the asker had her answer every time — she was being shown the
+ * result of the contact lookup, not of the delivery. That distinction is right
+ * and it stays.
+ *
+ * THE SENTENCE THAT CARRIED IT WAS TRUE THEN AND IS NOT TRUE NOW, and it cost
+ * an introduction on 19 September. It said the recipient's own reply „is
+ * already with the asker — a separate, automatic path that always works".
+ * There WAS such a path: the recipient's first raw message was auto-captured
+ * as the answer. D48 removed it. `sendApprovedAskAnswer`'s own comment says so
+ * in this file — „this is now the ONLY path an answer takes to the asker".
+ *
+ * So the server was telling the model, in a tool result, that the one thing it
+ * still had to do was already done. Goal 6205: Test 2 said „yes, happy to
+ * introduce them", `relay_ask` reached Test 3 at 18:51:07, and ask 2609 is
+ * still `status = 'sent'` with `answered_at` NULL. No answer, no wake, and the
+ * owner who paid for the chain was never told his introduction had been
+ * accepted. A tool result is read as a rule — this file says that about
+ * `send_answer_to_asker` twenty lines away.
+ *
+ * What replaces it says the same USEFUL thing (the relay and the answer are
+ * two different things, and a relay's outcome says nothing about the answer)
+ * without the false half, and names the call that is still owed.
+ */
+const RELAY_IS_NOT_THE_ANSWER =
+  ' მნიშვნელოვანი: გადაგზავნა და მომხმარებლის საკუთარი პასუხი ორი სხვადასხვა რამაა, და ' +
+  'გადაგზავნის შედეგი პასუხზე არაფერს ამბობს. პასუხი კითხვის ავტორთან მხოლოდ მაშინ მიდის, ' +
+  'როცა შენ send_answer_to_asker-ს გამოიძახებ დამტკიცებული ტექსტით — ავტომატურად არაფერი ' +
+  'გადადის. თუ ეს ჯერ არ გაგიკეთებია, ახლა გააკეთე. და არასოდეს უთხრა მომხმარებელს, რომ მისი ' +
+  'პასუხი დაიკარგა — არაფერი დაკარგულა.';
 // Appended to every FAILED relay outcome: the model on the recipient's side of
 // an ask must close neutrally — a refusal must never surface as "system error"
 // and must never end with "contact them directly" (ticket 3 §1, code-enforced
 // because two prompt rewrites failed to hold it).
 const RELAY_NEUTRAL_CLOSE =
-  ' დამატებითი გადაგზავნა ვერ მოხერხდა — მომხმარებელს ეს ერთი მშვიდი წინადადებით უთხარი და ' +
-  'აუცილებლად დაამატე, რომ მისი პასუხი კითხვის ავტორმა მიიღო. „სისტემური შეცდომა" არ ახსენო და ' +
+  ' დამატებითი გადაგზავნა ვერ მოხერხდა — მომხმარებელს ეს ერთი მშვიდი წინადადებით უთხარი. ' +
+  '„სისტემური შეცდომა" არ ახსენო და ' +
   'არასოდეს ურჩიო კითხვის ავტორთან ან სხვასთან პირდაპირ დაკავშირება.' +
-  RELAY_ALREADY_DELIVERED;
+  RELAY_IS_NOT_THE_ANSWER;
 
 // A dictated number is used as-is; anything shorter is treated as a name.
 const RELAY_PHONE_MIN_DIGITS = 9;
@@ -1426,22 +1451,26 @@ const RELAY_NAME_MATCH_LIMIT = 3;
 // made the refusal read as a malfunction). They must NOT get the neutral-close
 // suffix, which is for real send failures only.
 const RELAY_EMPTY_NAME_ERROR =
-  'კონტაქტის სახელი ცარიელია — გადაგზავნა არ მომხდარა და არც იყო საჭირო.' + RELAY_ALREADY_DELIVERED;
+  'კონტაქტის სახელი ცარიელია — გადაგზავნა არ მომხდარა და არც იყო საჭირო.' + RELAY_IS_NOT_THE_ANSWER;
 // Ticket 4 item 0C.1b: naming a person IS the answer — a recommendation, not a
-// relay request. The name already reached the asker as plain text through the
-// automatic capture, so a failed lookup must end in a thank-you, never in an
-// apology and never in "spell it for me": no recipient will work out which
-// script their own phonebook uses.
+// relay request. A failed lookup must end in a thank-you, never in an apology
+// and never in "spell it for me": no recipient will work out which script
+// their own phonebook uses.
+//
+// This said the name „already reached the asker through the automatic
+// capture", which is the same removed path as above — D48 took it away, so the
+// name reaches the asker only inside the answer the model still has to send.
 const RELAY_NOT_FOUND_ERROR =
-  'ეს სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა, ამიტომ მისთვის ცალკე კითხვა არ გაგზავნილა — ' +
-  'და არც არის საჭირო: სახელი კითხვის ავტორს უკვე მივიდა, როგორც რეკომენდაცია. მადლობა უთხარი და ' +
-  'დაასრულე. ორთოგრაფია არ ჰკითხო, ვარაუდები ნუ ჩამოთვლი და ბოდიში არ მოიხადო.' +
-  RELAY_ALREADY_DELIVERED;
+  'ეს სახელი მომხმარებლის კონტაქტებში ვერ მოიძებნა, ამიტომ მისთვის ცალკე კითხვა არ გაგზავნილა. ' +
+  'ეს არ არის პრობლემა: სახელი თავად რეკომენდაციაა და კითხვის ავტორს ისედაც მიუვა შენს ' +
+  'გასაგზავნ პასუხში. მადლობა უთხარი და დაასრულე. ორთოგრაფია არ ჰკითხო, ვარაუდები ნუ ჩამოთვლი ' +
+  'და ბოდიში არ მოიხადო.' +
+  RELAY_IS_NOT_THE_ANSWER;
 const RELAY_AMBIGUOUS_ERROR =
   'ამ სახელს რამდენიმე კონტაქტი ემთხვევა, ამიტომ ცალკე კითხვა არავის გაგზავნია. თუ მომხმარებელმა ' +
   'გადაგზავნა ნამდვილად ითხოვა, ჰკითხე სრული სახელი და გვარი; თუ უბრალოდ ადამიანს ასახელებდა — ' +
   'მადლობა უთხარი და დაასრულე. კანდიდატები ნუ ჩამოთვლი.' +
-  RELAY_ALREADY_DELIVERED;
+  RELAY_IS_NOT_THE_ANSWER;
 /**
  * Ticket 20, the tester's row 125 — the sentence that made an assistant tell a
  * real user something untrue.
@@ -1518,8 +1547,40 @@ export async function createRelayAsk(
   question?: string,
 ): Promise<CreateAskOutcome> {
   const outcome = await relayAskInner(relayerUserId, parentAskId, contact, question);
-  if (outcome.sent || RELAY_RESOLUTION_ERRORS.has(outcome.error)) return outcome;
+  /**
+   * The SUCCESS case carries the reminder too, and it is the case that lost
+   * goal 6205's introduction.
+   *
+   * Every one of the four warnings below it was on a FAILURE path, so the run
+   * that relayed successfully was told nothing at all — it forwarded the
+   * question, considered the job done, and left the parent ask unanswered and
+   * the owner uninformed. A relay that works is exactly when it is easiest to
+   * believe the exchange is finished, and it is the moment the bridge's „yes"
+   * is worth the most to the person waiting for it.
+   *
+   * Only while the parent is genuinely still unanswered: a model that has
+   * already sent the answer must not be told to send it again.
+   */
+  if (outcome.sent) {
+    const unanswered = await parentStillUnanswered(parentAskId);
+    return unanswered ? { ...outcome, note: RELAY_IS_NOT_THE_ANSWER.trim() } : outcome;
+  }
+  if (RELAY_RESOLUTION_ERRORS.has(outcome.error)) return outcome;
   return { sent: false, error: outcome.error + RELAY_NEUTRAL_CLOSE };
+}
+
+/** Whether the ask a relay came out of is still waiting for its own answer. */
+async function parentStillUnanswered(parentAskId: number): Promise<boolean> {
+  const result = await query<{ answered_at: string | null }>(
+    `SELECT answered_at FROM task_asks WHERE id = $1 LIMIT 1`,
+    [parentAskId],
+    ASK_QUERY_TIMEOUT_MS,
+  ).catch(() => null);
+  const row = result?.rows[0];
+  // A read that fails says the reminder, rather than swallowing it: being told
+  // twice to send an answer costs a sentence, and not being told costs the
+  // introduction.
+  return row === undefined || row.answered_at === null;
 }
 
 async function relayAskInner(

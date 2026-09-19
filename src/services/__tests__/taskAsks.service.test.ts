@@ -561,7 +561,13 @@ describe('createRelayAsk', () => {
 
     const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
 
-    expect(out).toEqual({ sent: true, ask_id: 12, to_name: 'სალომე' });
+    // Row 210: a successful relay now carries the reminder that the bridge's
+    // OWN answer has still not been sent. It is asserted as a field rather
+    // than folded into the equality so that the reminder's wording can change
+    // without this test, which is about resolution, having an opinion on it.
+    expect(out.sent).toBe(true);
+    expect(out).toMatchObject({ sent: true, ask_id: 12, to_name: 'სალომე' });
+    expect((out as { note?: string }).note).toContain('send_answer_to_asker');
   });
 
   /**
@@ -613,7 +619,13 @@ describe('createRelayAsk', () => {
     const error = (out as { error: string }).error;
     expect(error).toContain('რამდენიმე კონტაქტი ემთხვევა');
     expect(error).toContain('კანდიდატები ნუ ჩამოთვლი');
-    expect(error).toContain('უკვე გადაეცა');
+    // Row 210. This asserted „უკვე გადაეცა" — that the answer had already
+    // reached the asker. D48 removed the path that made that true, and the
+    // sentence went on being told to the model until an introduction was lost
+    // to it. What must survive is the 11 August protection (a relay failure is
+    // not a lost answer), and that is what is asserted now.
+    expect(error).not.toContain('უკვე გადაეცა');
+    expect(error).toContain('არაფერი დაკარგულა');
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
@@ -625,10 +637,13 @@ describe('createRelayAsk', () => {
     expect(out.sent).toBe(false);
     const error = (out as { error: string }).error;
     expect(error).toContain('ვერ მოიძებნა');
-    // The answer itself already reached the asker — the recipient must never
-    // be told it failed, and must never be asked to spell her own phonebook
-    // (ticket 4 items 0A/0AA/0C.1b).
-    expect(error).toContain('უკვე მივიდა');
+    // The recipient must never be told their answer failed, and must never be
+    // asked to spell her own phonebook (ticket 4 items 0A/0AA/0C.1b). What
+    // this asserted — that the name „already reached the asker" — was the
+    // removed auto-capture path talking; the name reaches him inside the
+    // answer the model still owes, which is what the text says now.
+    expect(error).not.toContain('უკვე მივიდა');
+    expect(error).toContain('შენს გასაგზავნ პასუხში');
     expect(error).toContain('ორთოგრაფია არ ჰკითხო');
     // Resolution errors carry their own instructions — the neutral-close
     // suffix ("ამის გადაცემა ვერ მოხერხდა") must NOT ride on them: it made a
@@ -645,8 +660,11 @@ describe('createRelayAsk', () => {
     expect((out as { error: string }).error).toContain('ჯაჭვი');
     expect((out as { error: string }).error).toContain('სისტემური შეცდომა');
     expect((out as { error: string }).error).toContain('არასოდეს ურჩიო');
-    // Even a genuine relay failure must state that the ANSWER got through.
-    expect((out as { error: string }).error).toContain('უკვე გადაეცა');
+    // Even a genuine relay failure must leave the answer's fate unconfused —
+    // but it may no longer claim the answer „got through", because since D48
+    // nothing gets through until send_answer_to_asker is called.
+    expect((out as { error: string }).error).not.toContain('უკვე გადაეცა');
+    expect((out as { error: string }).error).toContain('send_answer_to_asker');
   });
 
   /**

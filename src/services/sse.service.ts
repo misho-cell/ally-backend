@@ -307,6 +307,31 @@ export function subscribeUserEvents(
         (acrossRestart ? ' — ACROSS A RESTART, told to refetch' : ''),
     );
     for (const event of missed) write(event);
+  } else {
+    /**
+     * A CONNECT THAT CARRIES NO ID IS LOGGED TOO, and it is the more
+     * interesting of the two.
+     *
+     * The line above has always existed and the silent case never did, so the
+     * log could show a resume and could not show its absence. That is the
+     * whole question behind the seat's intermittent: the client is
+     * `fetch-event-source`, which sends `last-event-id` when IT reconnects —
+     * but an app that remounts the stream builds fresh headers and sends none,
+     * and the comment above („a fresh page load … loads the thread from the
+     * database") is true of a page LOAD and false of a remount, which reloads
+     * nothing. Everything published while that socket was down is then gone
+     * with no trace, on a connection that looks perfectly healthy.
+     *
+     * One line per connect, so the next occurrence can be read off the server
+     * instead of asked for.
+     */
+    // eslint-disable-next-line no-console
+    console.log(
+      `[sse] user ${userId} connected with NO last-event-id` +
+        (lastEventId === null || lastEventId === undefined
+          ? ''
+          : ` (header present but unusable: ${JSON.stringify(lastEventId).slice(0, 40)})`),
+    );
   }
 
   let closed = false;
