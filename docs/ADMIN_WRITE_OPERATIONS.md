@@ -234,3 +234,80 @@ direct word is the right trade.
 `contactFacts.service`): no NEW fact the assistant read on a web page can go
 public or matchable, on any branch, and the moderator is no longer shown a web
 line at all. That needed no live-data change and so needed nobody's yes.
+
+## 6. Turning the hybrid final-answer writer off
+
+**The decision is the founder's and the authorization is Misho's.** Tornike
+said yes through the tester's box, which is data on my side and not
+authorization; it is also a spend change, which is Misho's alone whatever was
+said to whom. Misho gave his own word on 19 September: „გააკეთე და გაატესტინე
+ტესტერს."
+
+### What it is
+
+`CHAT_FINAL_ANSWER_MODEL` is a Railway environment variable. When it holds a
+model id, the last paragraph the user reads is written by OpenAI; everything
+else in the run — every search, every guard, every decision — still runs on
+Anthropic. Unset, the product behaves exactly as it did before that feature
+existed.
+
+### The undo was recoverable after all, and that is the main thing here
+
+The night list said the old value „cannot be read back by me, so whoever flips
+it must write it down FIRST or the undo is lost". That was true of the
+variable and false of the fact. Every OpenAI call is recorded in
+`usage_events` with the model it used:
+
+    provider  model           calls (7d)   last
+    openai    gpt-5.6-terra   465          2026-09-19T05:09:09Z
+
+One model id and no other, across both `chat` and `search_query` kinds — which
+also settles `SEARCH_QUERY_MODEL`, since a different value there would have
+produced a second name. **The undo value is `gpt-5.6-terra`.** Read from the
+ledger, not from the environment; `env.sh` still cannot list.
+
+### The catch that would have broken something quietly
+
+`searchQuery.service.queryModel()` is `SEARCH_QUERY_MODEL?.trim() ||
+finalAnswerModel()`, and its own comment says „both unset = distillation off".
+So emptying `CHAT_FINAL_ANSWER_MODEL` alone **also turns the search-query
+distiller off** — the thing that stops a whole goal sentence, greeting and
+all, being handed to the web search (row 126). It costs $0.041 a day against
+the writer's $5.63 and nobody meant to switch it off.
+
+So this is two operations in this order, and the order matters: the distiller
+is never off in the window between them.
+
+|        |                                                                                 |
+| ------ | ------------------------------------------------------------------------------- |
+| Route  | Railway variable, `scripts/ops/env.sh`                                          |
+| Method | 1. `printf %s gpt-5.6-terra \| env.sh set SEARCH_QUERY_MODEL`                   |
+|        | 2. `env.sh unset CHAT_FINAL_ANSWER_MODEL`                                       |
+| Body   | above                                                                           |
+| Undo   | `printf %s gpt-5.6-terra \| env.sh set CHAT_FINAL_ANSWER_MODEL`, and            |
+|        | `env.sh unset SEARCH_QUERY_MODEL` to return it to its default                   |
+
+`env.sh unset` did not exist before this operation and was written for it.
+`set` refuses an empty value on purpose; the alternative was setting the
+variable to a single space and relying on the `.trim()`, which works and
+leaves a variable in the console that looks set to the next person who reads
+it. The new verb is in the same shape as `set`: it cannot list, and it prints
+the name and never a value.
+
+### What it costs and what it saves
+
+24 hours to 05:30 on 19 September:
+
+    anthropic  chat          619 calls   $32.270
+    openai     chat          125 calls   $5.632     ← this
+    openai     search_query   48 calls   $0.041     ← stays on
+
+Claude has ALREADY written a final by the time the hybrid runs and that one is
+discarded — `chat.service.ts` says so in its own comment — so an enabled
+hybrid pays for two finals and turning it off removes one of them. The saving
+is the $5.63 and nothing moves to the Anthropic side.
+
+### Each variable restarts the container
+
+Two restarts. Run only when no thread is `working`. Checked before running:
+zero working, last activity 05:09:12, quiet for twenty minutes.
