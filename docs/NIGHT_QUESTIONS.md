@@ -203,34 +203,38 @@ so the question no longer arises for the final answer.
   did not fix it.
 - **His app session** is back; he logged in at 09:52 Tbilisi.
 
-### Row 108 — a measured candidate, 18 September, not yet built
+### Row 108 — the one-scan rewrite. BUILT AND LIVE, and this entry said otherwise
 
-**The change is one shape.** The second-degree search scans each bridge
-separately today — a LATERAL join, 305 of them on account 501. The alternative
-is one scan with `"contactId" = ANY(<all the bridges>)`.
+**Corrected 19 September.** This section was headed „a measured candidate …
+not yet built" and left standing after the thing it describes had already
+shipped. It went out as `435746f` on 18 September at 09:14 and is in every
+build since, including the live one. Anybody reading the file as it stood
+would have gone and written it a second time.
+
+**The change.** The second-degree search used to scan each bridge separately —
+a LATERAL join, 305 of them on account 501. It is now one scan with
+`"contactId" = ANY(<all the bridges>)`, in `searchSecondDegree.ts`, and the
+code carries the measurement in its own comment:
 
     3 patterns   LATERAL 802.7 ms   one scan 802.3 ms    identical
     9 patterns   LATERAL TIMED OUT  one scan 4,114 ms
     9 patterns, ONE SCAN, BOTH tags AND aliases:  3,078 ms
 
-The 9-pattern LATERAL was re-run three times — timed out every time, so it is
-structural rather than load. Nine patterns is an ordinary distilled query.
+The 9-pattern LATERAL was re-run three times and timed out every time, so it
+was structural rather than load. Nine patterns is an ordinary distilled query.
 
-**Equivalence proven, not assumed.** Same patterns, compared as sets both ways:
-23,711 rows each, zero rows unique to either side.
+**Equivalence was proven, not assumed:** same patterns, compared as sets both
+ways, 23,711 rows each, zero rows unique to either side.
 
-**Why this one and not the other two.** LIKE-first was 2,400x faster on a rare
-term and 7x SLOWER on a common one. A single alternation was 4x faster at three
-patterns and timed out at nine. Both were fast in the case tested first and
-worse in the case that matters. This one is neutral in the small case and
+**Why this candidate and not the other two.** LIKE-first was 2,400x faster on a
+rare term and 7x SLOWER on a common one. A single alternation was 4x faster at
+three patterns and timed out at nine. Both were fast in the case tested first
+and worse in the case that matters. This one is neutral in the small case and
 decisive in the large one — no regime where it loses.
 
-**Not a claim that row 108 is solved.** 3,078 ms is still the largest single
-cost in a goal run. It turns a timeout into a slow search that returns.
-
-**Left to do:** the two CTEs feed the ranking and the bridge count, so the
-rewrite must carry `"contactId"` through exactly as the LATERAL does. Checked
-that it can; the equivalence test above already selects both columns.
+**Row 108 is still not closed.** 3,078 ms is the largest single cost in a goal
+run. This turned a timeout into a slow search that returns, which is not the
+same as fast.
 
 ### The real shape of row 108, found this morning and worth keeping
 
