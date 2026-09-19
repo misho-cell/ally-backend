@@ -327,3 +327,97 @@ script. Live at 05:39:37, clean boot, listening on 4000.
 
 Run only when no thread is `working`. Checked before each command: zero
 working, last activity 05:09:12.
+
+## 7. Seeding the five test accounts with each other
+
+**Not done. Waiting on Misho.** The seat put the shape to me and said it is my
+hand and my call; the hand may be mine, the call is not. This entry exists so
+that his yes costs him one reading.
+
+### Why they are useless as they stand
+
+    171870  Netai Test 1   aliases 0   created 17 Sep 15:49   never logged in
+    171871  Netai Test 2   aliases 0   created 17 Sep 15:49   never logged in
+    171872  Netai Test 3   aliases 0   created 17 Sep 15:49   never logged in
+    171873  Netai Test 4   aliases 0   created 17 Sep 15:49   never logged in
+    171874  Netai Test 5   aliases 0   created 17 Sep 15:49   never logged in
+
+They were made for the introduction chain — one asks, one bridges, one answers
+— and every step of that is contact-mediated. With an empty phonebook none of
+them can see any of the others. Foreseeable when they were created, by me, and
+not foreseen.
+
+### The ordering question, answered from the code rather than guessed
+
+The seat asked whether a first login even completes on an account with no
+contacts, because if it stops at the contacts-permission step the seeding has
+to land first.
+
+**It does not stop.** `is_onboarding` is a STATE, not a gate, and there is an
+explicit skip path (`markOnboardingSkipped`) — the product deliberately
+supports „logged in, no contacts".
+
+**But seeding still has to come first, for a better reason.**
+`chat.service.ts:221`:
+
+    return (await isOnboardingUser(userId)) ? 'onboarding' : 'quick_answer';
+
+and `isOnboardingUser` is true for an account under seven days old with no
+rows in `UserAlias`. All five are 17 September and all five have zero aliases,
+so **every run on them today loads the ONBOARDING prompt**, not the mode the
+chain rows are about. A chain test run before seeding would measure the wrong
+prompt and look like a product fault.
+
+Second-order, worth knowing before anyone plans around it: the window closes on
+**24 September**, after which they drop out of onboarding mode by age alone.
+That is a change in behaviour with nobody touching anything.
+
+### The shape — the seat's, and the rule in it is the part I would have got wrong
+
+A full mesh destroys the test. If everyone holds everyone, no introduction is
+ever necessary and rows 210, 211, 125 and 205 become untestable in one stroke.
+**The missing edges are the test.**
+
+    A  171870  asker          holds  B, D, E      NOT C   <- the experiment
+    B  171871  first bridge   holds  A, C
+    C  171872  target         holds  B, D         NOT A
+    D  171873  second bridge  holds  A, C, E
+    E  171874  stranger       holds  A, D
+
+A has two routes to C, through B and through D, which is what row 205 needs —
+one approval must produce exactly one outgoing message — and nothing else in
+the set provides it.
+
+|        |                                                                      |
+| ------ | -------------------------------------------------------------------- |
+| Route  | No admin route exists for this. See „what it would take" below        |
+| Method | INSERT into `"UserAlias"` only — 11 rows, one per edge                |
+| Body   | The pairs above; every phone DERIVED from `"UserPhone"` by account id |
+| Undo   | `DELETE FROM "UserAlias" WHERE "contactId" IN (…the five…)` — they had zero rows before, so the undo is exact and total |
+
+**No phone number is written into this file or into the seed.** The five
+already hold reserved fiction numbers (the +1 202 555 01xx range) and the seed
+reads each one out of `UserPhone` by account id rather than repeating it. That
+keeps D149 and is better engineering: a self-deriving seed cannot attach the
+wrong number to the wrong account.
+
+**No real person appears anywhere in it.** The seat's proposal to put two staff
+numbers on A is NOT included here. Five people share one login code for these
+accounts, so anyone holding that code could message those two — the same shape
+as the phonebook-upload workaround the seat correctly refused, at smaller
+scale. If a notification has to be watched arriving on real hardware, a
+throwaway handset is the way, and it is the founder's to decide either way.
+
+### What it would take, because I cannot run it today
+
+`ro.sh` is read-only by construction and there is no admin route that writes
+`UserAlias`. So this needs one of:
+
+- **a migration** — deterministic, in git, reviewable before it runs, applied
+  once at boot. My preference: it is the only option where the exact rows are
+  read by a person before they exist.
+- a new ops script, which is a second write capability on top of `prompt.sh`
+  and should not be created for a one-off.
+- somebody doing it by hand in a database console.
+
+Nothing is written until Misho says which, and says yes.
