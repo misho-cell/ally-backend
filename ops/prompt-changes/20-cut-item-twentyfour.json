@@ -1,6 +1,6 @@
 {
   "target": "block:qa_rules_20_22",
-  "before_sha256": "0131aac56b38d24a941bb80b790c1f264a32291add697015b18fb0501de26ef5",
+  "before_sha256": "3131aac56b38d24a941bb80b790c1f264a32291add697015b18fb0501de26ef5",
   "requires": [],
   "what": "Remove 'a message sent without their yes on the wording, ' from item Twenty-four. 49 characters, 15,225 -> 15,176. Nothing else in the block is touched.",
   "why": "It contradicts the founder's own ruling that a short instruction naming one person and one action IS the yes. It does so as a CHECKLIST ITEM rather than as prose, which is why six rewrites of task_main bounced off it: a numbered 'never promise X' fires on every reply, a paragraph explaining when X is fine gets skimmed.",
