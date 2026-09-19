@@ -585,3 +585,61 @@ wall clock.
 That the change does what it is for. Nothing has run since the applies, so no
 run has yet been served the new base prompt. Applied, verified, unproven — in
 that order, and the first stamp carrying 2080 is the evidence.
+
+## 9. Ten test accounts — and the second list variable nobody had noticed
+
+**Misho, 19 September: Test 5 „პირველი" (retire and replace), and „ოკ იყოს 10".
+Both his own word. Nothing below is done.**
+
+### How the five were made, which decides how the next six are made
+
+Section 4 records it: not through an admin route — through the ORDINARY
+registration flow, which those numbers can complete because they are on
+`REVIEW_PHONE` with the fixed `REVIEW_OTP`. That bypass is the only reason an
+account can exist on a number that receives no SMS.
+
+**So a new test account cannot be created until its number is on
+`REVIEW_PHONE`. And `REVIEW_PHONE` is a LIST.** Same trap as `STAFF_USER_IDS`,
+found the same way, an hour apart: `env.sh` cannot read it, so appending blind
+would silently drop whatever is in it — and what is in it is the set of numbers
+that can log in without an SMS. Dropping one there locks somebody out rather
+than exposing them, which is a different failure and not a smaller one.
+
+**Two list variables, one sitting.** Whoever appends `STAFF_USER_IDS` should
+append `REVIEW_PHONE` at the same time, because each one restarts the service.
+
+### The six new numbers, collision-checked before they exist
+
+    +1 202 555 0106  0107  0108  0109  0110  0111
+
+Checked against `UserAlias`, `UserTags` and `UserPhone` — zero rows on any of
+the six, under digit normalisation and not only as a string match. That is the
+check that was not run in September and is the reason Test 5 collided.
+
+**And the range really is in use, measured both ways so the number is not
+argued about later.** Rows whose normalised digits begin `1202555`: **26 rows
+on 19 distinct numbers**. A looser `%202555%` substring match returns 96, but
+that includes numbers merely containing those digits and is not the figure.
+
+These are numbers a carrier can never assign to a person, so they are written
+here in full rather than masked: D149 protects real people's numbers, and
+masking a fiction number would only make the instruction unusable.
+
+|        |                                                                        |
+| ------ | ---------------------------------------------------------------------- |
+| Route  | none — `scripts/ops/env.sh set REVIEW_PHONE`, then the public register flow |
+| Method | append the six to the EXISTING value; then request-otp → verify-otp → register, once per number |
+| Body   | current value + `,+12025550106,…,+12025550111`                          |
+| Undo   | set `REVIEW_PHONE` back to its current value. The ACCOUNTS remain — they always do, which is why the numbers must be unassignable |
+
+### Order
+
+1. Misho appends `REVIEW_PHONE` and `STAFF_USER_IDS` in one sitting
+2. I create six accounts through the registration flow, and verify each
+3. Test 5 (171874) is retired — it keeps existing, as every account does; what
+   changes is that it is never used and is marked
+4. the ten are marked staff, and I verify id by id rather than checking a list
+5. the contact graph is seeded, by migration, from a change file he approves
+
+Steps 2 to 5 are all his word already; step 1 is the one that has to happen
+first and is the one neither the seat nor I can do.
