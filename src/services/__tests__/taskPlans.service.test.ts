@@ -103,7 +103,16 @@ describe('proposing and approving', () => {
     if (out.ok) {
       expect(out.value.version).toBe(2);
       expect(out.value.summary).toContain('გეგმა v2 (დასამტკიცებელი)');
-      expect(out.value.summary).toContain('ლიკა ოსეფაშვილი — ქსელში კითხვა');
+      /**
+       * Row 206: the route is no longer reprinted beside a name when the plan
+       * has only one route, because that is what made a card say the same
+       * passage three times. 35 of 51 cards on one account repeated a block of
+       * 40+ characters; 20 of them three to five times; and the count was
+       * exactly `1 + people`. This plan has one route, so the person is listed
+       * by name alone and the route appears once, in the routes list above.
+       */
+      expect(out.value.summary).toContain('- ლიკა ოსეფაშვილი');
+      expect(out.value.summary).not.toContain('ლიკა ოსეფაშვილი — ქსელში კითხვა');
     }
   });
 
@@ -712,5 +721,71 @@ describe('the plan card follows the conversation’s language', () => {
       expect(text).toContain(plan.solved_when);
       for (const p of plan.people_to_involve) expect(text).toContain(p.name);
     }
+  });
+});
+
+/**
+ * Row 206, measured and then PREDICTED by the seat, which is what turned it
+ * from an observation into a rule.
+ *
+ * One account, 51 plan cards: 35 repeat a passage of 40 characters or more,
+ * and 20 repeat it three, four or five times. On the cards that have one, the
+ * repeated block is 15% to 44% of the card.
+ *
+ * The cause was the template printing the route once in the routes list and
+ * then again beside every person, so the same text appeared `1 + people`
+ * times. They predicted it before confirming it: the same goal's v1 named two
+ * people and repeated a 72-character passage three times; v2, forty-three
+ * minutes later, named one person and repeated a 70-character passage twice.
+ * Both came out exactly as the rule says.
+ */
+describe('row 206 — a plan card says a thing once', () => {
+  const oneRoute = {
+    solved_when: 'x',
+    routes: [{ name: 'ask the network about a wedding photographer', status: 'running' as const }],
+    people_to_involve: [
+      {
+        name: 'ლიკა',
+        phone: '+995599112233',
+        route: 'ask the network about a wedding photographer',
+      },
+      {
+        name: 'გია',
+        phone: '+995599444555',
+        route: 'ask the network about a wedding photographer',
+      },
+    ],
+    never_contact: [],
+  };
+
+  it('names the route exactly once, whatever the number of people', () => {
+    const text = renderPlan(oneRoute, 1, null);
+    const count = text.split('ask the network about a wedding photographer').length - 1;
+    // Two people used to give three. The whole of row 206's distribution is
+    // this number being anything but one.
+    expect(count).toBe(1);
+    // And both people are still named — the repetition went, the content did not.
+    expect(text).toContain('- ლიკა');
+    expect(text).toContain('- გია');
+  });
+
+  it('still tells people apart when they really are on different routes', () => {
+    // The case the suffix was for, and not the case that caused the repeats:
+    // with two routes among the named people, a bare list of names would not
+    // say who is being asked as part of what.
+    const twoRoutes = {
+      ...oneRoute,
+      routes: [
+        { name: 'ask the network', status: 'running' as const },
+        { name: 'search the web', status: 'running' as const },
+      ],
+      people_to_involve: [
+        { name: 'ლიკა', phone: '+995599112233', route: 'ask the network' },
+        { name: 'გია', phone: '+995599444555', route: 'search the web' },
+      ],
+    };
+    const text = renderPlan(twoRoutes, 1, null);
+    expect(text).toContain('- ლიკა — ask the network');
+    expect(text).toContain('- გია — search the web');
   });
 });

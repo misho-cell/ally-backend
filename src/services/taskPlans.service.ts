@@ -628,6 +628,32 @@ export function renderPlan(
         : `- ${r.name}`,
     )
     .join('\n');
+  /**
+   * Row 206, measured by the seat and then PREDICTED by them, which is what
+   * makes it a rule rather than an observation.
+   *
+   * One account, 51 plan cards: 35 of them repeat a passage of 40 characters
+   * or more, and 20 repeat it three, four or five times. On the cards that
+   * have one, the repeated block is 15% to 44% of the whole card.
+   *
+   * The cause was here. The route was printed once in the routes list and then
+   * AGAIN beside every person under „who I will ask", so the same sentence
+   * appeared `1 + people` times. Two people under one route gives you three.
+   *
+   * They predicted it before it was confirmed: the same goal's plan v1 named
+   * two people and repeated a 72-character passage three times; v2, forty-three
+   * minutes later, named one person and repeated a 70-character passage twice.
+   * Two people predicts three, one predicts two, and both came out.
+   *
+   * So the route is named where it belongs and nowhere else. It still appears
+   * beside a person when the plan has SEVERAL routes and the reader would
+   * otherwise not know which one a name belongs to — that is the case the
+   * suffix was for, and it is not the case that produced the repetition.
+   */
+  const distinctRoutes = new Set(
+    plan.people_to_involve.map((p) => p.route.trim().toLowerCase()).filter((r) => r !== ''),
+  );
+  const routeTellsThemApart = distinctRoutes.size > 1;
   const people =
     plan.people_to_involve.length === 0
       ? words.nobodyYet
@@ -636,7 +662,10 @@ export function renderPlan(
           // plan showed „Dato Karada — Dato Karada", which tells the reader
           // nothing and looks like a fault in the product.
           .map((p) => {
-            const base = sameText(p.route, p.name) ? `- ${p.name}` : `- ${p.name} — ${p.route}`;
+            const base =
+              routeTellsThemApart && !sameText(p.route, p.name)
+                ? `- ${p.name} — ${p.route}`
+                : `- ${p.name}`;
             // Row 146: said BEFORE the yes. Tornike approved a plan naming
             // three people and learned 47 seconds later that not one of them
             // could be written to.
