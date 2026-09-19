@@ -33,6 +33,44 @@ light because the tester mentioned it in their next message.
 
 `mark` stays for the case where something was genuinely read another way.
 
+## Before a deploy: is anybody working?
+
+A deploy kills every run in flight — there is no drain that can save a
+ninety-second run from a container going away (row 205). So the check before
+pushing to `main` is whether anybody is mid-run, and the honest version of that
+query is:
+
+```sql
+SELECT
+  (SELECT count(*) FROM threads WHERE status = 'working')                       AS working_threads,
+  (SELECT count(*) FROM tool_call_log  WHERE created_at > NOW() - INTERVAL '110 seconds') AS app_calls,
+  (SELECT count(*) FROM usage_events   WHERE created_at > NOW() - INTERVAL '110 seconds') AS any_calls,
+  (SELECT max(created_at) FROM usage_events) AS last_activity
+```
+
+**`usage_events` is the line that matters, and it was missing until 19
+September.** The check used to read `tool_call_log` alone, and `tool_call_log`
+CANNOT SEE THE CONNECTOR: an MCP tool call goes through `runTool`, which writes
+the usage ledger and nothing else, because `tool_call_log.thread_id` is NOT
+NULL and MCP has no thread.
+
+On the night of 18 September that cost me a true sentence. I told the tester
+nothing had run since 22:20 and deployed on it. Thirteen second-degree searches
+had gone out through the connector at 23:04:44 — invisible in `tool_call_log`,
+plainly there in `usage_events`:
+
+    22:20  6 chat
+    23:04  14 mcp_tool     <- the burst I could not see
+
+Nothing was harmed, because the deploy came later still. The reading was wrong
+anyway, and a check that is wrong when it is quiet is a check that will be
+wrong when it is not.
+
+**Still not covered, and worth knowing:** a run that has started but not yet
+reached its first tool call appears in none of these except `working_threads`,
+which is written with `void` and can lag. Two minutes of silence across all
+three is the practical bar, not zero.
+
 ## Secrets
 
 Outside the repo, in `$NETAI_OPS_DIR` (default `~/.netai-ops`, mode 700):
