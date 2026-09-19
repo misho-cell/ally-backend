@@ -97,6 +97,54 @@ open moved to the section below with who holds it.
    accounts cannot be reached by a Latin query. A live-data write, so D44 and
    Misho's, and it needs a count across all accounts before it is proposed.
 
+### Row 104's discriminator — measured properly this time, and it resolves
+
+**Measurement only. Nothing is built and nothing is proposed; the founder
+decides whether any of it becomes a rule.**
+
+Re-run against 56 real goals of the last ten days, each joined to the message
+that created it, using the product's own matcher instead of my eye — which is
+what made the first pass wrong twice.
+
+**The phonebook test ALONE is far worse than either of us thought.**
+
+    caught     6 of 6 instructions
+    wrong     34 goals called instructions
+    precision 15%
+
+Almost all of the 34 are one saved contact: owner 501 has an alias
+`xatuna sologashvili tbilisi`, so **every** „I need a X in Tbilisi" matches a
+name in his own phonebook. The seat's original worry — a contact saved under
+an ordinary word turning a plain goal into an instruction — is real, and it is
+worse than they feared. I reported on the 19th at 04:30 that it did not happen
+once in fifty. That was the hand-comparison again, and it was wrong.
+
+**With a contact verb required as well:**
+
+    caught     6 of 6
+    wrong      1
+    precision 86%
+
+**And the one remaining false positive is the seat's own safety phrasing.**
+„I need a good bookshop in Tbilisi that sells English books. Search only,
+write to nobody." — matched on „write to", inside a negation. The same shape
+as row 215, where „no goal" was read as naming a goal.
+
+**With a negation guard on the verb:**
+
+    caught     6 of 6
+    wrong      0
+
+Three signals, each useless alone, exact together: the sentence names someone
+in the owner's own phonebook, it carries a contact verb, and that verb is not
+negated. 56 messages, three owners, no exceptions left over.
+
+Two honest limits. Six instructions is a small positive class, and all six come
+from two owners and two verbs („ჰკითხე", „მისწერე") — so this is evidence the
+shape is right, not that the regex is finished. And the negation list was
+written after seeing the one case it has to catch, which is the weakest kind of
+rule; it needs cases nobody has seen yet before it is trusted.
+
 ### Not on this list, because they need nobody
 
 Everything code-side is deployed. Live build **7f38e39**, `npm run verify`
