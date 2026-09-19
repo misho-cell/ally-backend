@@ -1,4 +1,9 @@
-import { askOpeningParts, buildAskOpening, unknownSenderName } from '../askOpening';
+import {
+  askCancelledNote,
+  askOpeningParts,
+  buildAskOpening,
+  unknownSenderName,
+} from '../askOpening';
 import { RunLanguage } from '../runLanguage';
 
 /**
@@ -73,6 +78,30 @@ describe('the incoming-ask opening follows the RECIPIENT’s language', () => {
     expect(unknownSenderName('ka')).toMatch(/[Ⴀ-ჿ]/);
     for (const language of LANGUAGES.filter((l) => l !== 'ka')) {
       expect(unknownSenderName(language)).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+});
+
+/**
+ * The seat's fourth locale sighting, and the second that is the server's: the
+ * note that lets a stranger off arrived in Georgian on an account whose
+ * interface is English end to end. Being let off in a script you cannot read
+ * is worse than not being told.
+ */
+describe('the note a recipient gets when the question is withdrawn', () => {
+  it('exists in every language and says both halves: over, and thank you', () => {
+    for (const language of LANGUAGES) {
+      const note = askCancelledNote(language);
+      expect(note.length).toBeGreaterThan(20);
+      // „No longer needed" on its own reads as a brush-off. The thanks is the
+      // point: somebody was asked for a favour and did nothing wrong.
+      expect(note).toMatch(/მადლობა|Thank you|Спасибо|Gracias/);
+    }
+  });
+
+  it('carries no Georgian in the non-Georgian notes', () => {
+    for (const language of LANGUAGES.filter((l) => l !== 'ka')) {
+      expect(askCancelledNote(language)).not.toMatch(/[Ⴀ-ჿ]/);
     }
   });
 });

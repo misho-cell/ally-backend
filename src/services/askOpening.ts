@@ -128,3 +128,26 @@ export function unknownSenderName(language: RunLanguage): string {
       return 'Netai-ს მომხმარებელი';
   }
 }
+
+/**
+ * „That question is no longer needed" — what a recipient is told when the
+ * owner stops the goal their question came from.
+ *
+ * The seat's fourth locale sighting of the evening, and the second that is the
+ * server's rather than the client's: Test 3's interface is English end to end
+ * and this note arrived in Georgian. It is also the message that closes a
+ * stranger's loop — somebody was asked for a favour and is being let off, and
+ * being let off in an unreadable script is worse than not being told.
+ */
+export function askCancelledNote(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'This question is no longer needed — no reply necessary. Thank you!';
+    case 'ru':
+      return 'Этот вопрос больше не актуален — отвечать не нужно. Спасибо!';
+    case 'es':
+      return 'Esta pregunta ya no hace falta: no necesitas responder. ¡Gracias!';
+    default:
+      return 'ეს კითხვა აღარ არის აქტუალური — პასუხი აღარ არის საჭირო. მადლობა!';
+  }
+}

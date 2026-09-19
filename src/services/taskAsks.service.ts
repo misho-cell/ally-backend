@@ -9,7 +9,7 @@ import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
 import { geoName } from './georgianCase';
-import { buildAskOpening, unknownSenderName } from './askOpening';
+import { askCancelledNote, buildAskOpening, unknownSenderName } from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
@@ -1282,11 +1282,15 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
   );
   for (const row of cancelled.rows) {
     if (row.ask_thread_id === null) continue;
+    // In the RECIPIENT's language: this is the message that closes a
+    // stranger's loop - they were asked for a favour and are being let off,
+    // and being let off in a script they cannot read is worse than silence.
+    const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
     await saveThreadMessage(
       row.ask_thread_id,
       row.to_user_id,
       'assistant',
-      'ეს კითხვა აღარ არის აქტუალური — პასუხი აღარ არის საჭირო. მადლობა!',
+      askCancelledNote(language),
     ).catch(() => undefined);
   }
   return cancelled.rowCount ?? cancelled.rows.length;
