@@ -626,6 +626,33 @@ export async function threadLanguage(threadId: number): Promise<RunLanguage> {
   return languageOfConversation(latest, earlier);
 }
 
+/**
+ * The language a PERSON writes in, across everything they have ever said here.
+ *
+ * `threadLanguage` cannot answer for an incoming ask: that thread is created
+ * empty, in the same breath as the message being written into it, so there is
+ * nothing in it to read. The recipient's own words elsewhere are the only
+ * evidence there is — and it must be the RECIPIENT's, not the sender's. Who is
+ * asking has no bearing on which language the person reading it can read.
+ *
+ * Georgian for somebody who has never written anything, which is the product's
+ * home language and what every one of these messages was until now. That case
+ * is a genuinely new member and nothing here can do better; what it must not
+ * do is guess from the sender.
+ */
+export async function userLanguage(userId: string): Promise<RunLanguage> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+     WHERE user_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, LANGUAGE_SAMPLE_MESSAGES],
+  );
+  const [latest, ...earlier] = result.rows.map((r) => r.content);
+  if (latest === undefined) return 'ka';
+  return languageOfConversation(latest, earlier);
+}
+
 /** Enough to see past a „ok" or two without reading a whole conversation. */
 const LANGUAGE_SAMPLE_MESSAGES = 8;
 

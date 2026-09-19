@@ -3,11 +3,13 @@ import { getTaskById } from './taskStore.service';
 import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
-import { createThread, saveThreadMessage } from './threads.service';
+import { createThread, saveThreadMessage, userLanguage } from './threads.service';
+import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
 import { geoName } from './georgianCase';
+import { buildAskOpening, unknownSenderName } from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
@@ -251,6 +253,9 @@ async function openAskThread(
   toUserId: number,
   senderName: string,
   safeQuestion: string,
+  // The RECIPIENT's language: the caption above this thread is the first thing
+  // they see of it, and it was Georgian on every account in every country.
+  language: RunLanguage,
 ): Promise<number> {
   const thread = await createThread(
     String(toUserId),
@@ -260,7 +265,10 @@ async function openAskThread(
     {
       isTask: true,
       status: 'needs_you',
-      statusLine: 'პასუხს ელოდება',
+      // The product's standard line for this status, rather than a second
+      // Georgian wording of it — „პასუხს ელოდება" and „შენი პასუხი სჭირდება"
+      // were two phrasings of one state, and only one of them had translations.
+      statusLine: RUN_STRINGS[language].statusLines.needs_you,
     },
   );
   emitThreadCreated(String(toUserId), {
@@ -673,43 +681,38 @@ export async function createAsk(
   );
   // Trimmed: a trailing space in the stored name rendered as "**Name **" on
   // the recipient's phone (ticket 3 §6.3).
-  const senderName = fromName.rows[0]?.name?.trim() || 'Netai-ს მომხმარებელი';
+  /**
+   * The RECIPIENT's language, read from their own words anywhere — this thread
+   * may not exist yet, and when it does it is empty. Who is asking has no
+   * bearing on what the reader can read. Georgian on a failure and for a
+   * member who has never written anything, which is what this always was.
+   */
+  const language = await userLanguage(String(toUserId)).catch(() => 'ka' as RunLanguage);
+  const senderName = fromName.rows[0]?.name?.trim() || unknownSenderName(language);
 
   // The question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
   // A follow-up lands in the conversation it belongs to; only a first ask
   // opens a thread. Two threads for one exchange would put the answer and the
   // question that followed it in different rooms (ticket 9 task 12).
-  const askThreadId = liveThreadId ?? (await openAskThread(toUserId, senderName, safeQuestion));
+  const askThreadId =
+    liveThreadId ?? (await openAskThread(toUserId, senderName, safeQuestion, language));
   // Two members of one network who never saved each other's number (Ticket
   // 10 Task 23, D121): the recipient's opening line says so (D57) — that is
   // what makes a stranger's question a colleague's rather than spam.
   const roster = sameThread
     ? null
     : await sharedRoster(fromUserId, String(toUserId)).catch(() => null);
-  const senderLine = roster
-    ? `${geoName(senderName, 'gen')} (${roster}-ის წევრი, როგორც შენ) ასისტენტი`
-    : `${geoName(senderName, 'gen')} ასისტენტი`;
-  // Plain text, no markdown: the recipient-side renderer shows the asterisks
-  // verbatim (ticket 3 §6.3).
-  /**
-   * Three openings, because there are three situations and there were two.
-   *
-   * „კიდევ დაწერა" — „wrote AGAIN" — is a true sentence only about somebody who
-   * has already replied. Said to a person who has not, forty-one seconds after
-   * the first message, above the identical question, it reads as being chased
-   * by a machine. That is what the seat found on two consecutive days.
-   *
-   * The third case is not a chase and not a first contact: the owner's side had
-   * more to say before an answer came. „დაამატა" — added — is what actually
-   * happened, and it does not accuse the reader of ignoring anything.
-   */
-  const followUpLine = `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:`;
-  const addedLine = `${geoName(senderName, 'gen')} ასისტენტმა დაამატა:`;
-  const firstLine = `${senderLine} გეკითხება:`;
-  const lead = isFollowUp ? followUpLine : sameThread ? addedLine : firstLine;
-  const opening =
-    `${lead}\n\n"${safeQuestion}"\n\n` + 'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.';
+  // The three openings, the roster clause and the „reply here" tail all live in
+  // askOpening.ts now — one per language, because the Georgian one inflects the
+  // sender's name and no other language has anything to inflect.
+  const opening = buildAskOpening(
+    language,
+    senderName,
+    roster,
+    safeQuestion,
+    isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+  );
   await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
@@ -717,7 +720,7 @@ export async function createAsk(
   // round", which was the assumption nobody checked.
   if (sameThread) {
     await setThreadStatus(String(toUserId), askThreadId, 'needs_you', {
-      statusLine: 'პასუხს ელოდება',
+      statusLine: RUN_STRINGS[language].statusLines.needs_you,
       isTask: true,
     });
   }

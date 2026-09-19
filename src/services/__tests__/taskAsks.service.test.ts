@@ -14,6 +14,10 @@ jest.mock('../threads.service', () => ({
     status_line: 'პასუხს ელოდება',
   }),
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
+  // The recipient's own language, read from their messages anywhere — the ask
+  // thread is empty at the moment this text is written. Georgian here keeps
+  // every existing assertion in this file about the Georgian opening true.
+  userLanguage: jest.fn().mockResolvedValue('ka'),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
 jest.mock('../askOptOut.service', () => ({
@@ -223,7 +227,12 @@ describe('createAsk', () => {
       {
         isTask: true,
         status: 'needs_you',
-        statusLine: 'პასუხს ელოდება',
+        // Row 289/290: the recipient's caption is the product's standard line
+        // for this status now, not a second Georgian wording of it. „პასუხს
+        // ელოდება" and „შენი პასუხი სჭირდება" were two phrasings of one state
+        // and only one of them had translations, so the untranslated one had
+        // to go. Georgian here because this test's recipient writes Georgian.
+        statusLine: 'შენი პასუხი სჭირდება',
       },
     );
     // Plain text on the recipient's phone — no markdown asterisks (§6.3).
@@ -368,7 +377,8 @@ describe('createAsk', () => {
     await createAsk('42', 3, '+995599111222', '12:00');
 
     expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 9413, 'needs_you', {
-      statusLine: 'პასუხს ელოდება',
+      // Same change as above — the standard line for `needs_you`.
+      statusLine: 'შენი პასუხი სჭირდება',
       isTask: true,
     });
   });
