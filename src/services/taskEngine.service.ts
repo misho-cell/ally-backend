@@ -39,6 +39,7 @@ import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.se
 import { emitRunComplete, emitRunError } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
+import { isDraining } from './inFlightRuns';
 import { scrubText } from './privacyScrub';
 import { enterThread, leaveThread, threadHolder } from './threadRunQueue';
 import { sweepUnansweredIntroOutcomes } from './partH.service';
@@ -145,6 +146,24 @@ export async function wakeTask(
   ensureQuoted?: EnsureQuoted,
 ): Promise<WakeResult> {
   if (runningTasks.has(taskId)) return 'busy';
+  /**
+   * The server is going away, so a run begun now is a run that will be killed.
+   *
+   * `isDraining`'s own comment says „read before starting anything" and the
+   * user-facing route has read it since row 205 — this path never did, which
+   * is how an engine run gets to start inside a shutdown and vanish with it.
+   * 'busy' rather than 'stopped', deliberately: a retry is exactly the right
+   * thing here, and `sweepUnwokenAnswers` only marks an answer delivered on
+   * 'woken', so nothing is consumed by refusing.
+   *
+   * IT WOULD NOT HAVE SAVED GOAL 6337 AND I AM NOT GOING TO IMPLY IT WOULD.
+   * That day-one wake started at 19:24:56 and SIGTERM arrived at 19:24:58 —
+   * two seconds before this flag could be true. The deploy that killed it was
+   * mine, pushed while the seat was mid-session, and no guard in this file is
+   * the answer to that. This closes the twenty-second drain window; the rest
+   * is a question about when I am allowed to deploy.
+   */
+  if (isDraining()) return 'busy';
   runningTasks.add(taskId);
   /**
    * Row 209 — what this wake is holding, so the `finally` can give it back.

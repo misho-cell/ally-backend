@@ -498,6 +498,32 @@ threadsRouter.post(
         in_reply_to_message_id?: unknown;
       };
 
+      /**
+       * ONE LINE PER ARRIVING MESSAGE, and it exists to answer one question.
+       *
+       * The seat, 19 September: on an account at zero balance the FIRST typed
+       * message after the wall is stored and every one after it disappears —
+       * box cleared, no error, nothing in the thread after a reload. Three
+       * probes, reproducible on demand.
+       *
+       * Nothing in this handler can do that. `keepUserMessage` runs before the
+       * 402 and there is no earlier return but a missing thread. So either the
+       * request never arrives, or it arrives and something between the socket
+       * and here drops it — and stored state cannot tell those apart, because
+       * a refused run writes nothing an engine sweep does not also write.
+       * Their own network panel could not settle it either: it showed no
+       * request for the probe that demonstrably WAS stored, so that instrument
+       * is not measuring.
+       *
+       * Length and never content: a message can hold anything, and this is a
+       * line about arrival, not about what somebody typed.
+       */
+      // eslint-disable-next-line no-console
+      console.log(
+        `[msg-in] user ${userId} thread ${threadId}: ${message.length} chars` +
+          (as_goal === true ? ' (as_goal)' : ''),
+      );
+
       const thread = await getThread(threadId, userId);
       if (thread === null) {
         res.status(404).json({ success: false, error: 'Thread not found' });
