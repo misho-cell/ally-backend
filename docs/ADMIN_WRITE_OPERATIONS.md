@@ -738,9 +738,31 @@ that can exercise „one approval, exactly one message".
 
 Twelve edges, not the eleven section 7 estimated; recounted from the table.
 
-### What is deliberately NOT in it
+### The other five, from the seat, 15:40
 
-The other five accounts — 171937 to 171941. The seat wants a second chain and
-an untouched control pair out of them, and **how their ten are allocated is
-their test design, not mine.** Chain one is specified; the rest waits for them
-to say what it should be.
+    F  171937  second asker    holds  G, I      NOT H   <- the experiment again
+    G  171938  second bridge   holds  F, H
+    H  171939  second target   holds  G         NOT F
+    I  171940  the receiver    holds  F
+    J  171941  wallet account  HOLDS NOBODY, AND NOBODY HOLDS IT
+
+**F, G, H are a complete second chain**, to the same rule, so a retry does not
+have to reset chain one first.
+
+**I is spent on purpose.** The daily-cap row needs somebody asked until they
+are over the limit; the „later" pair needs somebody who leaves a postponed
+request lying around. Both dirty whoever they touch, so they touch a dedicated
+account and neither chain.
+
+**J is empty on purpose.** The token-out row is about the owner's own typed
+text surviving when the allowance runs out — it needs no network, so an empty
+phonebook is the cleanest read. **J having no alias rows after the migration is
+the correct outcome, not a failure**, and the file says so in as many words so
+nobody later reads it as one.
+
+They dropped their own request for an untouched control pair to pay for I and
+J, and said so rather than quietly asking for it back. If the wallet row gets
+its own account later, J converts back at no cost — it has no edges to unpick.
+
+**Eighteen edges** across nine owners; J appears nowhere. The undo is unchanged
+in shape and now names all ten owners.
