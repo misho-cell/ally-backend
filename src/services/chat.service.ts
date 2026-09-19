@@ -7251,8 +7251,14 @@ async function runToolLoop(
     bestNarration.length > 0 &&
     (finalText.length === 0 ||
       (bestNarration.length >= MIN_BURIED_ANSWER_CHARS && bestNarration.length > finalText.length));
+  /**
+   * Whether this run's final is a CONCATENATION rather than what the model
+   * last wrote. Read by the cliffhanger check below — see the note there.
+   */
+  let promoted = false;
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
+    promoted = true;
     if (bestStepId !== null) await deleteMessage(bestStepId);
   } else if (
     // Contradiction guard (battery case 8): a search returned real results,
@@ -7265,15 +7271,43 @@ async function runToolLoop(
     claimsNothingFound(finalText)
   ) {
     finalText = `${bestNarration}\n\n${finalText}`;
+    promoted = true;
     if (bestStepId !== null) await deleteMessage(bestStepId);
   }
 
-  // If, even after promotion, the final is a short "now let me check…"
-  // cliffhanger, nudge the model to report progress AND — the long-work
-  // change — actually let it carry on: tools stay allowed, up to
-  // CLIFFHANGER_EXTRA_ROUNDS extra rounds inside the wall clock. Only then
-  // is a text-only final forced.
-  if (isCliffhangerReply(finalText)) {
+  // If the final is a short "now let me check…" cliffhanger, nudge the model to
+  // report progress AND — the long-work change — actually let it carry on:
+  // tools stay allowed, up to CLIFFHANGER_EXTRA_ROUNDS extra rounds inside the
+  // wall clock. Only then is a text-only final forced.
+  /**
+   * NOT ON A FINAL THIS FUNCTION BUILT. Row 206, and the arithmetic is the
+   * argument.
+   *
+   * Goal 6238: a 275-character narration was promoted in front of a
+   * 119-character answer, giving a 396-character final. The cliffhanger guard
+   * fires at 400 or below on a tail like „I'll check back within a day" — four
+   * characters under — so it nudged, the model wrote a third paragraph, and
+   * the owner read the same state three times in one message. Two mechanisms
+   * built to rescue a LOST answer had concatenated three statements of one.
+   *
+   * The guard exists for a SHORT final that is only an announcement: „let me
+   * look and I'll come back". A promoted final is by construction not that —
+   * this function has just put substantial narration in front of it because
+   * the run produced substantial narration. Measuring the concatenation
+   * against a threshold written for the model's own last sentence is measuring
+   * the wrong string.
+   *
+   * WHAT THIS DELIBERATELY IS NOT is the change I went looking for. I measured
+   * 500 real finals from the last week: the guard fires four times, and all
+   * four are promises to check again at a named time, not cliffhangers. The
+   * obvious fix — exempt a tail that names a later time — spares all four.
+   * That is exactly why it is not here: in a sample with no true positives,
+   * „the exemption is precise" and „the guard has nothing left to catch" look
+   * identical, and shipping it would be indistinguishable from deleting a
+   * guard that was built from five real cases. This cut is narrower and rests
+   * on what the code did rather than on a week with nothing in it.
+   */
+  if (!promoted && isCliffhangerReply(finalText)) {
     try {
       const cliffhangerTurn = {
         role: 'assistant' as const,
