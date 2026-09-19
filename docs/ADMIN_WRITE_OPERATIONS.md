@@ -517,3 +517,39 @@ TWO environment variables — `STAFF_USER_IDS` and
 a bad read, and „fixing" it by adding curator ids into the staff variable would
 be repairing a fault that does not exist. The seven validate the UNION; nothing
 here validates either half on its own.
+
+## 8. The two approved prompt texts — authorized and applied
+
+**Misho's direct word, 19 September: „გაუშვი" on both, in his own
+conversation.** The founder had approved the texts themselves the day the seat
+put the exact before and after to him (handoff 6997); that yes arrived through
+the box and was data on this side, which is why both sat ready and unapplied
+for four hours.
+
+Both go through `scripts/ops/prompt.sh`, whose four refusals and the change
+files are documented in `scripts/ops/README.md`. The route, method, body and
+undo for each live in the change file itself, committed before either was run:
+
+    ops/prompt-changes/20-cut-item-twentyfour.{json,before.txt,after.txt}
+    ops/prompt-changes/20-narrow-base-prompt.{json,before.txt,after.txt}
+
+### Order, and it is not a preference
+
+The cut lands FIRST. If the row 103 goal-box change ever ships before it, the
+six failures move out of `task_step` into `quick_answer` where that clause is
+waiting for them, and the fix looks as though it did not work. The narrowing
+has no such coupling and follows.
+
+|        | 1. the 49-character cut                  | 2. the base-prompt narrowing        |
+| ------ | ---------------------------------------- | ----------------------------------- |
+| Route  | `PUT /admin/prompt-blocks/qa_rules_20_22`| `PUT /admin/system-prompt`          |
+| Method | `prompt.sh apply 20-cut-item-twentyfour` | `prompt.sh apply 20-narrow-base-prompt` |
+| Body   | 15,176 chars, `ff1e80d9…`                | 25,542 chars, `32851709…`           |
+| Undo   | PUT the captured before-text back, `3131aac5…` | free — the route INSERTs, so every prior version is kept; before-text `0cc31128…` |
+
+Ran with zero threads working. Neither is a container restart; both take
+effect on the next run that loads them.
+
+### Outcome
+
+_Filled in immediately below, from the read-back rather than from the PUT._
