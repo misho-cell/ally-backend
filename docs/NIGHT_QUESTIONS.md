@@ -146,6 +146,56 @@ their whole account. The tester has a corrected text ready.
 - NOTE: the tester can do this one themselves too. Here because it is live and
   false, so somebody should see it in the morning either way.
 
+### 5. Row 104 — the founder has ruled, and the count says the fix is in two places
+
+**The ruling, relayed through the box tonight:** when the owner types a short
+instruction naming one person and one action, those words ARE the yes. It goes,
+with no draft first and one line afterwards saying who it went to. Relayed, so
+it waits for his own word — but it is what everything below is measured
+against.
+
+**The count, finished at 01:00 from `run_prompt_stamps`.** Eight instances:
+
+    quick_answer   2   Salome 17689, the founder's own 17854
+    task_step      6   all of Lika's — with task_main ALREADY LOADED
+
+So the seven rounds of work in `task_main` were in the room for six of the
+eight, and the model failed anyway. **Moving those rules into `quick_answer`
+would fix two of eight**, at 7,000 characters on every quick_answer run for
+ever. The tester was going to ask for the budget raise to allow it; the count
+killed the ask and they have withdrawn it. Nothing to decide here.
+
+What the six look like, thread 17623:
+
+    12:57:52  „ask Tornike Abuladze if he knows a good philosopher"
+    13:00:27  „ask him"
+    13:01:09  „I approve"
+
+She said it in full at 12:57 and then had to say it twice more. The mechanism:
+the sentence was read as a stated need, so the server made it a GOAL — the
+goal's title IS her instruction — and a new goal has its plan proposed for
+approval. She was asked to approve a plan whose whole content was her own
+sentence.
+
+**Two doors, two fixes:**
+
+- the two: `qa_rules_20_22` item Twenty-four contains „a message sent without
+  their yes on the wording", which now contradicts the ruling directly and is
+  a checklist item — the kind that fires while prose is ignored. Cutting that
+  clause and its comma is **minus 50 characters** and needs no budget.
+- the six: a proposed plan whose only route and only person are the ones the
+  owner just typed adds nothing to approve — it IS the instruction. Not built.
+  It loosens a gate in front of real people and arrived by relay at one in the
+  morning.
+
+### Both prompt pastes are blocked on a person — NEITHER of us can do them
+
+Correcting what I wrote earlier in this file: I said the tester could paste the
+privacy text and the base-prompt change themselves. **They have since told me
+every PUT is refused on their side.** So all of it — the false privacy
+sentence, the 50-character checklist cut, and any base-prompt edit — needs
+Misho or the founder to paste. Three small edits, each with an undo.
+
 ### Not on this list, because they need nobody
 
 Five commits are written, tested and pushed to the branch, none deployed:
