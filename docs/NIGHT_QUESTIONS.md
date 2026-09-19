@@ -188,6 +188,47 @@ sentence.
   It loosens a gate in front of real people and arrived by relay at one in the
   morning.
 
+### 6. Row 103 — the app flag overrides a rule that already gets this right
+
+The six of row 104 are this row, not a prompt fault. Found by the tester,
+confirmed in code at 01:40.
+
+`chat.service.ts` 7940, inside `ensureGoalForRequest`:
+
+    if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
+
+A goal is created if EITHER the app says so OR the server's own need-rule says
+so. So the flag alone is enough for anything that is not a question.
+
+**The server's own rule gets every one of these right**, run against the real
+sentences:
+
+    looksLikeGoalRequest
+    false   „თორნიკე აბულაძეს ჰკითხე თუ იცნობს კარგ ფილოსოფოსს"
+    false   „…კარგ ფინანსისტს დიდი კორპორაციისთვის"
+    false   „ask Lika for the screenshots"
+    false   „tell X I can do Thursday"
+    TRUE    „მჭირდება კარგი სტომატოლოგი თბილისში"
+
+No to all four instructions, yes to a real stated need. The rule that would
+have stopped Lika being asked to approve her own sentence was there the whole
+time and the flag walked past it.
+
+**The question that decides whose one line it is, and it is for the frontend.**
+`asGoal` is documented as the user pressing „+ ახალი მიზანი" — a button that
+says new goal, and honouring that is correct. The tester's reading is that an
+ordinary new conversation ALSO arrives with the flag set. If so, the app sends
+one flag for two different human acts and the server cannot tell them apart —
+and changing the server would break the button to fix the box.
+
+Nobody here can answer that. Ask the frontend before anyone edits either side.
+
+**The two fixes are coupled — do not ship one alone.** If row 103 stops making
+these goals, the six move out of `task_step` and into `quick_answer`, where
+item Twenty-four's „a message sent without their yes on the wording" is waiting
+for them. The 50-character cut has to land BEFORE or WITH the 103 change, or
+the failures move rather than go.
+
 ### Both prompt pastes are blocked on a person — NEITHER of us can do them
 
 Correcting what I wrote earlier in this file: I said the tester could paste the
