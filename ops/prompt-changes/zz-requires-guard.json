@@ -1,0 +1,11 @@
+{
+  "target": "block:qa_rules_20_22",
+  "before_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "requires": ["20-cut-item-twentyfour"],
+  "what": "NOT A REAL CHANGE. A permanent, inert fixture that exercises refusal 2 - a prerequisite that is not live - on a real read of real production text.",
+  "why": "Refusal 2 was the one guard with no case to run against, and the seat pointed out that its FIRST exercise would otherwise be the row 103 change file: the single place where the coupling can still go wrong, because the frontend half cannot be gated. Testing a branch for the first time on the one change that matters most is how a guard turns out to have been broken all along.",
+  "inert_twice_over": "It can never apply. Its before_sha256 is all zeros, which no text hashes to, so refusal 1 stops it even in the impossible case where refusal 2 passes. Run it with `check`, which writes nothing, and expect a REFUSAL - a pass here is the bug.",
+  "approved_by": "nobody, and it needs nobody: check writes nothing",
+  "approved_on": "2026-09-19",
+  "undo": "none needed; it cannot write"
+}

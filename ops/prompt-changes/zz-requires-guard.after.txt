@@ -1,0 +1,2 @@
+This file exists so that a change file exists. It is never PUT anywhere: the
+change it belongs to is refused twice over before any request is made.
