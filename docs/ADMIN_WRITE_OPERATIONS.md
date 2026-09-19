@@ -552,4 +552,36 @@ effect on the next run that loads them.
 
 ### Outcome
 
-_Filled in immediately below, from the read-back rather than from the PUT._
+**Both live, 19 September, and verified from the database rather than from the
+script that wrote them.**
+
+    1. block:qa_rules_20_22    15,225 -> 15,176 chars   ff1e80d9a567
+         the clause is gone:  content LIKE '%a message sent without their
+         yes on the wording%'  ->  false
+
+    2. ai_config               25,176 -> 25,542 chars   328517097030
+         new row id 2080; 2047 still present, so the undo is free
+         'you draft, they send'      -> false   (gone)
+         'APPROVED PLAN already names' -> true  (in)
+         'irreversible' occurrences  -> 1       (survived exactly once)
+
+**The read-back path is exercised for the first time and it held.** Until this
+morning it was the one guard that could not be tested without a PUT; both
+applies reported success only after re-reading the live text and matching it
+against the after-hash.
+
+### The boundary, which is now a query rather than a clock
+
+    base_prompt_id   2047  ->  2080
+
+Any run stamped 2080 saw the narrowed wording; any run stamped 2047 did not.
+`block_versions` moves the same way for `qa_rules_20_22`. That is what
+migration 157 was built for this morning, and it is why the seat asked for it —
+so the fifty can be re-measured against the build boundary instead of against a
+wall clock.
+
+### What is NOT proven
+
+That the change does what it is for. Nothing has run since the applies, so no
+run has yet been served the new base prompt. Applied, verified, unproven — in
+that order, and the first stamp carrying 2080 is the evidence.
