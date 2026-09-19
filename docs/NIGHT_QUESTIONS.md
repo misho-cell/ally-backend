@@ -29,399 +29,102 @@ a relayed „they said yes" is least checkable:
 Writing messages, reading, measuring, fixing code, shipping a fix between runs,
 and answering the tester are all ordinary night work and need nobody.
 
-## Tonight's list — 18/19 September
-
-Misho, 21:45 UTC: „the issues that need me we go through in the morning; until
-then work in night mode." So these four wait for him, in this order.
-
-### 1. The final-answer writer — off?
-
-The founder said yes to switching it off, through the tester's box. That is
-data on my side and not authorization, so it has not happened.
-
-It is `CHAT_FINAL_ANSWER_MODEL`, a **Railway environment variable**, not a
-setting in the product. Two consequences worth knowing before deciding:
-changing it **restarts the container**, which kills every run in flight; and it
-is a spend change, which is Misho's alone whatever the founder said to whom.
-
-- ROUTE / METHOD: Railway variable, via `scripts/ops/env.sh` (write-only by
-  design — I never read these back)
-- BODY: `CHAT_FINAL_ANSWER_MODEL=` (empty)
-- UNDO: set it back to its current value — **which I cannot read**, so
-  whoever flips it must write the old value down FIRST or the undo is lost
-
-### 2. The introduction follow-up — no second approval?
-
-Founder's decision, relayed the same way: once he has approved an introduction
-and the person answers him, his reply goes back without a fresh approval.
-
-This removes a confirmation in front of **a message to a real person**, which
-is the highest-stakes category in this product, and it arrived down an
-automated channel. It needs Misho's or the founder's direct word.
-
-### 3. Row 104 — the base prompt contradicts the goal prompt
-
-Seven failures. The tester's audit found the cause and it is not where either
-of us was editing. In `ai_config.system_prompt`, at character 13,101:
-
-> „Before anything leaves Netai, an intro request, sharing their details,
-> anything irreversible, ask first and act only after a yes. Never claim you
-> sent, delivered or notified anything: you draft, they send."
-
-The goal block says the opposite for a plan the owner has already approved,
-and the model reads the base prompt first and obeys it. D119 — an approved
-plan IS the consent — is on the block's side, so narrowing this sentence
-aligns the base prompt with an existing ruling rather than granting anything
-new.
-
-It is still a **loosening of a gate in front of real people**, so it does not
-happen overnight.
-
-- ROUTE / METHOD: `PUT /admin/system-prompt`
-- BODY: the whole 25,176-character prompt with that one sentence narrowed
-- UNDO: the route INSERTs a new row rather than updating, so every previous
-  version is kept — PUT the prior text back. Rollback is free.
-- NOTE: the tester can do this themselves; it is the same console they edit
-  the blocks in. Named here because of what it loosens, not because it is
-  blocked on me. They have said they will not touch it on their own judgement
-  either, and will show the founder a before and after first.
-
-**Which half is actually doing the damage.** The tester pointed at „ask first".
-I think the second sentence is worse. „Ask first" is a GATE, and a model can
-reason about whether a gate applies. „You draft, they send" is an IDENTITY: it
-says what the assistant IS, with no condition attached, and there is no case
-in which it permits sending. That is why six rewrites of the goal block bounced
-off it. It is also false about the product — ask_contact sends,
-send_answer_to_asker sends, invite_contact sends.
-
-**The wording I proposed**, for the founder's eyes rather than to be pasted:
-
-> Before anything leaves Netai — an introduction request, sharing someone's
-> details, anything irreversible — ask first and act only after a yes.
->
-> The one thing that needs no second yes is a question going to a person an
-> APPROVED PLAN already names. That plan was the yes (D119); asking again is
-> asking twice, and the owner has to say the same thing twice to get one
-> message sent.
->
-> Never say something has been sent, delivered or seen unless a tool has told
-> you it happened. Saying it because you are about to do it is the same
-> mistake as saying it because you wish you had.
-
-Deliberately narrow: the exception covers `ask_contact` and nothing else. It
-does NOT cover invitations and it does NOT cover introductions, because no
-ruling says an approved plan is consent for those. If the founder wants them
-included, that is one more clause and his to add.
-
-Open inside it, and worth his eye: whether „anything irreversible" still earns
-its place once the other three are listed. It is the clause most likely to
-catch something nobody has thought of — the argument for keeping it — and the
-vaguest, which is the argument for it being what overreaches next.
-
-### 4. The privacy pack is telling users something false, right now
-
-Live in the `privacy` topic of `get_netai_info`, last sentence:
-
-> „Deleting one single item is NOT built yet — never promise it."
-
-It is built. `forget_contact_fact` runs a real `DELETE`, scoped to facts this
-user submitted, behind an explicit confirmation; `forget_user_note`,
-`retract_contact_fact` and `remove_contact_from_network` are all live. Two
-sentences earlier the same text says a fact CAN be retracted, so the pack
-contradicts itself.
-
-Wrong in the worst direction: a person is told a privacy control does not
-exist when it does, and the alternative offered in the same breath is deleting
-their whole account. The tester has a corrected text ready.
-
-- ROUTE / METHOD: `PUT /admin/netai-info/privacy`
-- BODY: the corrected text (the tester holds it)
-- UNDO: PUT the current text back — **it is captured below**, because this
-  route overwrites rather than versioning:
-  the tail reads „…You can tell Netai to correct or retract a fact it holds,
-  and a retracted fact stops being shown anywhere. Everything stored about you
-  is listed on the Data page in your profile, and you can download a copy of
-  your data or delete your whole account from there. Deleting one single item
-  is NOT built yet — never promise it."
-- NOTE: the tester can do this one themselves too. Here because it is live and
-  false, so somebody should see it in the morning either way.
-
-### 5. Row 104 — the founder has ruled, and the count says the fix is in two places
-
-**The ruling, relayed through the box tonight:** when the owner types a short
-instruction naming one person and one action, those words ARE the yes. It goes,
-with no draft first and one line afterwards saying who it went to. Relayed, so
-it waits for his own word — but it is what everything below is measured
-against.
-
-**The count, finished at 01:00 from `run_prompt_stamps`.** Eight instances:
-
-    quick_answer   2   Salome 17689, the founder's own 17854
-    task_step      6   all of Lika's — with task_main ALREADY LOADED
-
-So the seven rounds of work in `task_main` were in the room for six of the
-eight, and the model failed anyway. **Moving those rules into `quick_answer`
-would fix two of eight**, at 7,000 characters on every quick_answer run for
-ever. The tester was going to ask for the budget raise to allow it; the count
-killed the ask and they have withdrawn it. Nothing to decide here.
-
-What the six look like, thread 17623:
-
-    12:57:52  „ask Tornike Abuladze if he knows a good philosopher"
-    13:00:27  „ask him"
-    13:01:09  „I approve"
-
-She said it in full at 12:57 and then had to say it twice more. The mechanism:
-the sentence was read as a stated need, so the server made it a GOAL — the
-goal's title IS her instruction — and a new goal has its plan proposed for
-approval. She was asked to approve a plan whose whole content was her own
-sentence.
-
-**Two doors, two fixes:**
-
-- the two: `qa_rules_20_22` item Twenty-four contains „a message sent without
-  their yes on the wording", which now contradicts the ruling directly and is
-  a checklist item — the kind that fires while prose is ignored. Cutting that
-  clause and its comma is **minus 50 characters** and needs no budget.
-- the six: a proposed plan whose only route and only person are the ones the
-  owner just typed adds nothing to approve — it IS the instruction. Not built.
-  It loosens a gate in front of real people and arrived by relay at one in the
-  morning.
-
-### 6. Row 103 — the app flag overrides a rule that already gets this right
-
-The six of row 104 are this row, not a prompt fault. Found by the tester,
-confirmed in code at 01:40.
-
-`chat.service.ts` 7940, inside `ensureGoalForRequest`:
-
-    if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
-
-A goal is created if EITHER the app says so OR the server's own need-rule says
-so. So the flag alone is enough for anything that is not a question.
-
-**The server's own rule gets every one of these right**, run against the real
-sentences:
-
-    looksLikeGoalRequest
-    false   „თორნიკე აბულაძეს ჰკითხე თუ იცნობს კარგ ფილოსოფოსს"
-    false   „…კარგ ფინანსისტს დიდი კორპორაციისთვის"
-    false   „ask Lika for the screenshots"
-    false   „tell X I can do Thursday"
-    TRUE    „მჭირდება კარგი სტომატოლოგი თბილისში"
-
-No to all four instructions, yes to a real stated need. The rule that would
-have stopped Lika being asked to approve her own sentence was there the whole
-time and the flag walked past it.
-
-**Answered at 01:47 from the shipped frontend bundle, read-only.** There is no
-„+ new goal" button whose meaning could be broken: the flag is set by a
-one-shot ref that EVERY in-app route to the empty chat screen turns on. It
-means „a new conversation was opened", not „this is a goal". (Two limits the
-tester noted: a page reload mounts a fresh ref, and the ref is cleared only
-when a message is sent.) My objection is gone — but so is the idea that the
-fix is free.
-
-**MEASURED at 02:30: what removing the flag would cost.** Every goal of the
-last ten days, joined to THE MESSAGE THAT CREATED IT (nearest user message at
-or before the goal, within 30 s — not the thread's first message, which is a
-different thing and flatters the result). Fifty matched.
-
-    recognised by looksLikeGoalRequest   36
-    NOT recognised                       14
-
-The fourteen are three populations:
-
-- **five are row 104's bug** — „Ask Lika to send me the screenshots", „თიკო
-  რატიანს მისწერე თუ იცნობს…", „ჰკითხე". Removing the flag FIXES these.
-- **three are not goals at all** — „give me an invite link", and „კი" (yes)
-  TWICE. A bare „yes" created a goal. Removing the flag fixes these too.
-- **six are real goals that would be LOST** — including two that literally
-  begin „შექმენი ახალი მიზანი" (create a new goal), and three of the
-  „მინდა / შეგიძლია … მიპოვო" shape.
-
-So it is eight fixed against six lost. **Not a clear win, and it should not be
-sold as one.** But the six are four or five recognisable patterns, so:
-
-**The order that makes it free.** Teach `looksLikeGoalRequest` those patterns
-first, re-measure the fifty, and only then have the frontend stop sending the
-flag. In that order the change costs nothing; in the other order it loses real
-goals silently, which is the worst way to lose them.
-
-    1.  the 50-character cut in item Twenty-four     ready, needs a hand
-    2a. explicit „create a new goal" check           safe, narrow, and it has
-                                                     to run FIRST — see below
-    2b. the naming test                              the risky one
-    3.  re-measure the fifty                         mine, free
-    4.  then the frontend drops the flag             theirs
-
-**Why 2 is two steps, and the trap inside it.** My first version of step 2 was
-„teach the rule the wanting-to-find shapes". The tester killed it, correctly: a
-matcher widened on WANTING takes „ask X whether he knows a good financier" as
-happily as „find me someone two steps from that company", and row 104 comes
-back through the door opened to close it — with the founder's ruling behind it
-and the fix already declared done.
-
-Their discriminator instead: **does the sentence name the person to be
-CONTACTED?** Names a recipient → an instruction, never a goal. Describes a
-quality → a goal.
-
-**Tested against the fifty at 03:20. The direction holds and there are two
-exceptions, only one of which they predicted:**
-
-- predicted: „ლიკა ოსეფაშვილის გაცნობა მინდა" names a person, but as the one
-  to be MET rather than asked.
-- NOT predicted: two of the six lost goals say „შექმენი ახალი მიზანი … და
-  ჰკითხე თორნიკე აბულაძეს" — they state goal intent in words AND name someone
-  to ask. The naming test alone sends them to „instruction" and loses them.
-
-So 2a is not merely safe, it is **load-bearing**: it must run before 2b or 2b
-eats it.
-
-**And the naming test is harder to build than it looks.** I wrote it as a
-matcher — contact verb plus Georgian dative, or „ask <Name>" — and it
-misclassified four of the ten cases that matter. Two false positives on datives
-that are places or things; one miss from my own case-sensitivity; and one that
-no pattern can fix: „კიატხე" is a typo for „ჰკითხე" and real people type it.
-Doing this properly means knowing a token is a PERSON, and the honest source
-for that is the owner's own phonebook — a larger change than a regex.
-
-**One more thing the fifty showed.** The 36 the rule already recognises are
-almost all one shape: „მჭირდება X" / „I need X". It is a narrow rule that
-happens to cover the commonest way people ask. There is a lot of room between
-„I need a plumber" and the six, and most of it has never been tested.
-
-Step 1 stays first whatever else happens — see the coupling note below.
-
-**A correction to my own wording.** I wrote earlier that the discriminator
-„already works". On the four sentences the tester gave me it does. On fifty
-real goals it is right 36 times and wrong about six. „Already works" was too
-strong and should not be quoted to the founder that way.
-
-**The two fixes are coupled — do not ship one alone.** If row 103 stops making
-these goals, the six move out of `task_step` and into `quick_answer`, where
-item Twenty-four's „a message sent without their yes on the wording" is waiting
-for them. The 50-character cut has to land BEFORE or WITH the 103 change, or
-the failures move rather than go.
-
-### 7. WITHDRAWN AND REPLACED — transliteration was never the missing piece
-
-**This item said the opposite until 07:30 on 19 September, and what it said was
-wrong. It is left here rather than deleted because the founder and Misho were
-both shown the wrong version.**
-
-What it claimed: that a Georgian↔Latin map did not exist, that
-„თორნიკე აბულაძეს" resolved to nobody in Lika's phonebook because her fifteen
-`tornike` labels are Latin and she typed Georgian, and that building that map
-was one job closing two rows.
-
-**What is actually true.** `src/services/tools/transliterate.ts` has held a
-full Georgian→Latin map since long before this ticket, with sound drift
-(kh↔x, ts↔c, q↔k, f↔p) and first-name forms on top of it. Run through the
-product's own matcher:
-
-    „თორნიკე აბულაძეს"
-      → ["თორნიკე","tornike","torniqe","tornik","torniq","torniko","torniqo"]
-        ["აბულაძეს","abuladzes"]
-
-and against her real rows:
-
-    SELECT phone, tag FROM "UserTags"
-    WHERE "contactId" = '160584' AND tag ~* '\mtornike'   →  six rows
-
-So the sentence finds him. **I had compared the strings by hand instead of
-asking the code** — one route to a fact being closed, read as the fact not
-existing, which is precisely the error I had spent the previous evening
-pointing out in someone else.
-
-The four script-split rows (1,948/2, 379/38, 111/38, 46/248) re-measure
-correctly, but they are `UserAlias` only. The search also reads `UserTags`,
-where a Georgian name has already been broken into Latin automatically:
-
-    alias „აკაკი ჩხაიძე"   →   tags  akaki | chkhaidze
-
-### 7a. THE REAL GAP, AND IT IS FIXED — a case ending, not a script
-
-Lika has **`Tiko Ratiani`** saved. She typed „თიკო რატიან**ს** მისწერე".
-
-    „თიკო"     → tiko     → matches Tiko Ratiani
-    „რატიანს"  → ratians  → matched nothing at all
-
-She was found by her first name, and the surname — the half that says WHICH
-Tiko — was discarded by one letter. The row comes back having matched one
-query word of two, which is what marks it `approximate`.
-
-Nothing new was built. `georgianStem` has trimmed exactly these endings since
-1 September, with its own tests; it had simply never been wired into the NAME
-path, only into `searchByInsight`. „რატიანს" reduces to „რატიან" → `ratian`,
-and `toWordStartPattern` makes that a prefix, so it reaches `Ratiani`,
-`Ratianis` and the Georgian spelling too. Confirmed against her row.
-
-**It costs nothing.** A stem is a prefix of the word it came from, so the
-longer inflected term is redundant and is dropped rather than kept alongside.
-Ninia's sentence is 13 terms before and 13 after — which matters, because row
-108 is about how much regex this search drags over 885,942 rows.
-
-Needs nobody. Tested, verified, shipped.
-
-### 7b. WHAT IS STILL MISSING, measured rather than assumed
-
-A **Latin query still generates no Georgian spelling**, so a contact saved only
-in Georgian with no Latin tag row cannot be reached by typing their name in
-Latin. Misho's instruction of this morning — „search in both scripts" — is met
-in one direction and not the other.
-
-How big it is, counted rather than guessed:
-
-    owner     Georgian aliases    of those, with NO Latin tag row
-    501              2                        1
-    116793          38                       26
-    160584          38                        5
-    165699         248                       15
-
-**And the honest recommendation is not to build the reverse map.** Latin→Georgian
-is ambiguous at exactly the letters that matter — t is თ or ტ, k is კ or ქ,
-ts is ც or წ, ch is ჩ or ჭ — so a generated Georgian form is a guess, and one
-wrong letter fails the whole prefix. The reliable fix for the same symptom is
-that **every alias should have its Latin tag row**, which those Georgian
-aliases mostly do and 47 of them across four accounts do not. Backfilling them
-is a live-data write, so it is D44 and it is Misho's, and it should be measured
-across all accounts before it is proposed.
-
-### Both prompt pastes are blocked on a person — NEITHER of us can do them
-
-Correcting what I wrote earlier in this file: I said the tester could paste the
-privacy text and the base-prompt change themselves. **They have since told me
-every PUT is refused on their side.** So all of it — the false privacy
-sentence, the 50-character checklist cut, and any base-prompt edit — needs
-Misho or the founder to paste. Three small edits, each with an undo.
+## Tonight's list
+
+_Nothing yet._
+
+The 18/19 September list was worked through with Misho item by item between
+05:00 and 07:30 on the 19th, in his own conversation, and is cleared from here
+so the next night starts on a clean page. Nothing was deleted to make it look
+finished: what was DONE moved to `ADMIN_WRITE_OPERATIONS.md`, what is still
+open moved to the section below with who holds it.
+
+## Handed over, 19 September — what came off the list and what did not
+
+### Settled overnight and recorded elsewhere
+
+- **The hybrid final-answer writer is off.** Misho's own direct word. Two
+  variables, not one — `SEARCH_QUERY_MODEL` pinned to `gpt-5.6-terra` first so
+  the search-query distiller could not be switched off by the same change.
+  Route, method, body, undo and the measured saving are in
+  `ADMIN_WRITE_OPERATIONS.md` section 6. **Not yet proven off**: nothing had
+  run when it went live, so the first real run is the evidence, and the seat
+  has been asked for it.
+- **The undo value was never lost.** The list said it could not be read back.
+  It could: `usage_events` records the model of every OpenAI call, one name
+  across seven days. Corrected in place in section 6.
+- **Row 10 / the case ending.** Shipped in `7f38e39`, live 07:12:09. Item 7
+  above carries both the fix and the withdrawal of the wrong finding it
+  replaced.
+- **OpenAI's credits are back** — a successful call at 05:09:09 on the 19th,
+  after the 429s of the 18th. It is no longer a reason to distrust a reading.
+
+### Still open, ordered by what each one blocks
+
+1. **The 49-character cut in `qa_rules_20_22`, item Twenty-four.** Needs the
+   founder; sent to him through the seat's box (6899) with the exact before
+   and after. Neither the seat nor I can PUT. **Blocks row 103**: if 103 ships
+   first the six failures move from `task_step` into `quick_answer`, where that
+   clause is waiting for them, and the fix will look as though it did not work.
+2. **The base-prompt narrowing at character 13,101.** Founder's, same message,
+   with the three questions that are genuinely his: which half does the damage,
+   how wide the exception goes (as written it covers `ask_contact` and nothing
+   else), and whether „anything irreversible" stays. Undo is free — the route
+   versions. **Blocks** every remaining row 104 case that a goal block cannot
+   reach.
+3. **The false privacy sentence.** Misho has the corrected text; he has asked
+   Lika about the screen name („the Data page in your profile") and will answer
+   when she replies. Live and false in the meantime, which is the argument for
+   not letting it sit.
+4. **A narrow write capability for the three admin text routes.** Misho's
+   decision, put to him on the 19th: today nobody can paste a 25,176-character
+   prompt without hand-copying it, which is itself a way to break a prompt.
+   **Blocks 1, 2 and 3 from being done by me at all.**
+5. **The introduction follow-up — and it is bigger than the relayed ruling.**
+   Misho's own design replaces „no second approval" with „ask the mediator once,
+   up front, which way the answer should travel". Reading the code to build it
+   turned up the thing that matters more: on accept, `deliverAcceptOutcome`
+   takes the target's number out of the MEDIATOR's phonebook and hands it to
+   the requester, and the mediator is never asked about that separately. The
+   permissive default is the one nobody chose. Waiting on Misho for two things:
+   whether „through me" means only withholding the number (half a day) or a
+   real relay (days, and it writes to real people), and the Georgian wording of
+   the question.
+6. **Row 103 / the `as_goal` flag.** Frontend's to drop, after step 1 lands and
+   after `looksLikeGoalRequest` learns the explicit „create a new goal" shape.
+   Measured cost of dropping it today: 8 fixed, 6 lost.
+7. **The missing Latin tag rows (7b).** 47 Georgian-only aliases across four
+   accounts cannot be reached by a Latin query. A live-data write, so D44 and
+   Misho's, and it needs a count across all accounts before it is proposed.
 
 ### Not on this list, because they need nobody
 
-Five commits are written, tested and pushed to the branch, none deployed:
-337b70b, 1bcc0f0, 91b0b98, 95c1f1c, 2c1edd8. They go out in one deploy when
-the tester is not working. That is ordinary night work and needs no decision.
+Everything code-side is deployed. Live build **7f38e39**, `npm run verify`
+clean at 2,840 tests, nothing held back on the branch.
 
-## Open with a person — 18 September, standing after the night handover
+## Older standing items — 18 September, kept for their evidence
 
 The night list itself is cleared; these are what survived it and who holds
 each one. Live build at the time of writing: **d086e9e**, plus the row 158
 fix, all clean.
 
-### Misho — money, and it is stopping two things right now
+### Misho — money. RESOLVED 19 September, kept for the reading it spoils
 
-**The OpenAI account has no credits.** From the live log, three times inside
-the runs of 06:49-07:01:
+**The OpenAI account had no credits.** From the live log, three times inside
+the runs of 06:49-07:01 on the 18th:
 
     [search-query] not distilled (gpt-5.6-terra failed: 429 You have no
     credits remaining...)
 
-Last successful call in the usage ledger: the 02:00 hour today. What it breaks
-while it lasts: the search-query distiller, so the opening second circle is
-handed the whole goal sentence and times out; and the hybrid final-answer
-writer, so every reply falls back to Claude. The fallback is by design and
-harmless — but any reading of „which model wrote this" taken today is
-measuring an outage, not the product.
+What it broke while it lasted: the search-query distiller, so the opening
+second circle was handed the whole goal sentence and timed out; and the hybrid
+final-answer writer, so every reply fell back to Claude.
+
+**Back as of 05:09:09 on the 19th** — a successful `gpt-5.6-terra` call in
+`usage_events`. Left here because of what it means for anything measured on the
+18th: a reading of „which model wrote this" taken that day was measuring an
+outage, not the product. The hybrid has since been switched off deliberately,
+so the question no longer arises for the final answer.
 
 ### Tornike — two decisions, neither urgent
 
