@@ -267,3 +267,34 @@ single text. It applies one whole document today, so the question does not
 arise; if a target ever becomes a list of fragments, the before-hash check is
 what keeps it honest, and it should be understood as the list version of the
 same discipline rather than as something separate.
+
+### A partial set is not a floor
+
+The seat's rule, and it is stronger than the one above it. It came out of them
+proposing a safety check and then finding it would have certified the exact
+harm it was invented to prevent.
+
+The case: before appending to `STAFF_USER_IDS`, check the read against three
+ids known to be in it — if they are missing, the read is wrong. Three sounded
+like a floor. The set turned out to hold at least seven, so **a read that had
+silently lost four people would have passed the check**, because every wrong
+read still contains the subset.
+
+    Checking a read against a remembered subset cannot detect the failure
+    that matters. It manufactures confidence and detects nothing.
+
+    The only safe check on a list is the FULL set and its COUNT. If you
+    cannot enumerate it, you cannot validate it — you can only refuse to
+    write it blind.
+
+And the second half, which is how both of us got there: we were both reading
+the admin's `staff` field, which is COMPUTED from `STAFF_USER_IDS` plus the
+review phones plus the curators. A shadow of the variable, quoted as the
+variable. A derived field can tell you an id IS in the union; it cannot tell
+you which list it is in, and it can never tell you what else is.
+
+**What is safe to check, and it is worth doing.** Not the set — the specific
+ids you care about, by name, before and after. „Did 171870 start reading
+`staff: true`, and did all seven that read true before still read true
+afterwards" is enumerable, falsifiable, and catches the silent drop. „Is the
+list right" is not a question anybody here can answer.
