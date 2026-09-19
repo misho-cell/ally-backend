@@ -833,3 +833,76 @@ did not. The test numbers are on `REVIEW_PHONE` with a fixed OTP, which is how
 the accounts were created in the first place — `request-otp` → `verify-otp` →
 `complete-login` returns a token for an EXISTING account too. I never tried it
 and asserted it was impossible, twice.
+
+---
+
+## 13. Topping up the test accounts' token allowance — REGISTERED, NOT RUN
+
+**Waiting on Misho's word. Nothing below has been executed.**
+
+### Why it is being asked for
+
+Test 1 (171870) spent its own allowance across 19 September's testing and
+stopped at **balance -1** at about 18:16 UTC. That was not staged: the seat had
+171941 reserved as the zero-wallet account and never needed it. Two live goals
+(6205, 6238) can no longer run, and the seat's remaining paths are blocked.
+
+**The -1 is not a fault.** `checkRunAllowance` allows a run whenever the balance
+is above zero and the cost is only known after it: *"A run in flight may take
+the balance slightly negative — that is deliberate grace; the next run gets
+blocked."* One token over is that grace, working.
+
+### What it costs, in real money, because tokens here are not play money
+
+Today on Test 1: **97 provider calls, $2.2484**, for 251 tokens. So a token is
+about **$0.009** and a full day of this seat's testing is about **$2.25**.
+
+    1000 tokens  ~= $9    ~= four days at today's rate
+    2000 tokens  ~= $18   ~= eight days
+
+### ROUTE / METHOD / BODY
+
+**There is no admin route for this.** No endpoint on `adminRouter` grants
+tokens, and I am not adding one to solve a test-account problem — a route that
+mints balance is a permanent capability, and this is a one-off. So it is SQL,
+run by Misho in DataGrip exactly as goal 5314's `next_wake_at` was:
+
+```sql
+INSERT INTO token_transactions (user_id, amount, reason, external_id)
+VALUES ('171870', 1000, 'topup', 'seat-topup-2026-09-19-t1')
+ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO NOTHING;
+```
+
+Test 2 (171871) needs the same line if the seat is to drive it — rows 210/211
+and 125 are on that account — with `'171871'` and
+`'seat-topup-2026-09-19-t2'`. **Its balance is 0, not negative: it has never
+had a grant, because a helper answering an ask is never charged.**
+
+`external_id` is the idempotency key the wallet already enforces, so running
+the statement twice credits once.
+
+### WHAT MUST NOT BE TOUCHED
+
+- **171941 (Test 11) stays at zero.** It is the reserved zero-wallet account
+  and a top-up would destroy the only fixture we have for that state.
+- **The `token_wallet` app flag stays on.** Turning it off would unblock the
+  seat in one line and would also remove the wall for every real user.
+- **No real account.** Only 171870 and, if wanted, 171871.
+
+### UNDO
+
+```sql
+DELETE FROM token_transactions
+ WHERE external_id IN ('seat-topup-2026-09-19-t1', 'seat-topup-2026-09-19-t2');
+```
+
+Complete: the balance is `SUM(amount)`, so removing the rows removes the grant.
+Anything the accounts spend in between stays spent, which is the point of doing
+it as its own row rather than editing a number.
+
+### The question that is actually Misho's
+
+Not the SQL — **whether spending roughly $9 to $18 of real model calls on
+fictional accounts is worth it tonight.** The alternative is that testing stops
+until the monthly window resets. I have no view on the budget and will not
+guess at one.
