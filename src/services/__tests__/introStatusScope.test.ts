@@ -46,7 +46,31 @@ describe('what get_intro_status can see', () => {
     expect(passed).toContain('c.from_user_id = $1::int');
   });
 
-  it('asks all three in one call, so a caller cannot see one side by accident', () => {
+  /**
+   * The seat found the fourth by being signed in as it: three readers shipped
+   * at 20:35 and the first question put to the new build came from Test 3, who
+   * is the TARGET — the person a stranger's assistant wrote to, who agreed to
+   * meet somebody they do not know, and who then could not ask their own
+   * assistant what they had agreed to. Ask 2674, relayed at 18:51:07, answered
+   * „Yes, happy to meet", invisible to its owner.
+   */
+  it('reads the TARGET side — the person somebody wanted to meet', () => {
+    const target = INTRO_SERVICE.slice(
+      INTRO_SERVICE.indexOf('export async function getIntroStatusForTarget'),
+      INTRO_SERVICE.indexOf('export async function getIntroStatusForTarget') + 2400,
+    );
+    // Both shapes, because an introduction reaches a target either as a named
+    // introduction_requests row or as a relayed ask.
+    expect(target).toContain('ir.target_user_id = $1::int');
+    expect(target).toContain('c.to_user_id = $1::int AND c.parent_ask_id IS NOT NULL');
+    // Who wanted the meeting is the chain's origin, not the bridge who
+    // forwarded it — getting those two the wrong way round would name the
+    // wrong person to somebody deciding whether to meet a stranger.
+    expect(target).toContain('o.id = c.origin_user_id');
+    expect(target).toContain('b.id = c.from_user_id');
+  });
+
+  it('asks all four in one call, so a caller cannot see one side by accident', () => {
     const dispatch = CHAT_SERVICE.slice(
       CHAT_SERVICE.indexOf("case 'get_intro_status'"),
       CHAT_SERVICE.indexOf("case 'get_thread_context'"),
@@ -54,6 +78,7 @@ describe('what get_intro_status can see', () => {
     expect(dispatch).toContain('getIntroStatusForRequester');
     expect(dispatch).toContain('getIntroStatusForMediator');
     expect(dispatch).toContain('getPassedOnAsks');
+    expect(dispatch).toContain('getIntroStatusForTarget');
   });
 });
 

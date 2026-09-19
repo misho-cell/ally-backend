@@ -37,6 +37,7 @@ import {
   getRecentResponsesForRequester,
   getIntroStatusForRequester,
   getIntroStatusForMediator,
+  getIntroStatusForTarget,
   getPassedOnAsks,
   PendingRequest,
   RespondedRequest,
@@ -471,11 +472,12 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
 const GET_INTRO_STATUS_TOOL: AnthropicTool = {
   name: 'get_intro_status',
   description:
-    'Every introduction this user is part of, on all three sides: ones they REQUESTED (pending ' +
-    "and the last week's answers), ones they were ASKED to make as the go-between, and " +
-    'questions they PASSED ON to somebody else — which is what agreeing to introduce someone ' +
-    'looks like in the record. WHEN: the user asks whether someone replied, what happened to an ' +
-    'introduction, or what they agreed to and when. Answer FROM this result — never from thread ' +
+    'Every introduction this user is part of, on all four sides: ones they REQUESTED (pending ' +
+    "and the last week's answers), ones they were ASKED to make as the go-between, questions " +
+    'they PASSED ON to somebody else — which is what agreeing to introduce someone looks like ' +
+    'in the record — and ones where THEY were the person somebody wanted to meet. WHEN: the ' +
+    'user asks whether someone replied, what happened to an introduction, or what they agreed ' +
+    'to and when. Answer FROM this result — never from thread ' +
     'text or memory: statuses change between turns. An empty list means nothing was FOUND, ' +
     'which is not the same as nothing having happened — say what you searched, never that it ' +
     'did not happen.',
@@ -4939,16 +4941,26 @@ async function executeToolCall(
        * was told they were asking about something that did not appear to have
        * happened. The model called the right tool once and the tool was blind.
        */
-      const [requested, asMediator, passedOn] = await Promise.all([
+      const [requested, asMediator, passedOn, aboutMe] = await Promise.all([
         getIntroStatusForRequester(userId),
         getIntroStatusForMediator(userId),
         getPassedOnAsks(userId),
+        /**
+         * The fourth side, found by the seat asking from it. Three readers
+         * shipped at 20:35 and the first question put to them came from the
+         * TARGET — the person a stranger's assistant wrote to, who agreed to
+         * meet somebody they do not know, and who could not then ask their own
+         * assistant what they had agreed to. Of the four they have the least
+         * context and the most reason to check.
+         */
+        getIntroStatusForTarget(userId),
       ]);
-      const found = requested.length + asMediator.length + passedOn.length;
+      const found = requested.length + asMediator.length + passedOn.length + aboutMe.length;
       return {
         introductions: requested,
         asked_of_me: asMediator,
         passed_on: passedOn,
+        about_me: aboutMe,
         /**
          * Said on the EMPTY result and only there, because that is the one a
          * model turns into a denial. „Empty ≠ empty" is a rule this product
@@ -4957,8 +4969,8 @@ async function executeToolCall(
          */
         ...(found === 0 && {
           note:
-            'Nothing found in the introductions this user requested, was asked to make, or ' +
-            'passed on. That is a search that came back empty — it is NOT evidence that ' +
+            'Nothing found in the introductions this user requested, was asked to make, ' +
+            'passed on, or was themselves the subject of. That is a search that came back empty — it is NOT evidence that ' +
             'nothing happened. Say what was checked and that it turned up nothing; do not ' +
             'tell the user the event did not occur.',
         }),

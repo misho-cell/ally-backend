@@ -279,6 +279,71 @@ export async function getPassedOnAsks(userId: string): Promise<PassedOnRow[]> {
   return result.rows;
 }
 
+export interface TargetIntroRow {
+  /** Who wanted to meet this person. */
+  requester_name: string | null;
+  /** Who vouched — null when they were asked directly. */
+  bridge_name: string | null;
+  /** The words this person actually received. */
+  what_was_asked: string | null;
+  asked_at: string;
+  /** When this person answered, if they did. */
+  answered_at: string | null;
+  status: string;
+}
+
+/**
+ * The FOURTH side, and the seat found it by being signed in as it.
+ *
+ * Three readers went live at 20:35 — requested, asked of me, passed on — and
+ * the first question asked of the new build came from Test 3, who is none of
+ * those. Test 3 is the TARGET: the person a stranger's assistant wrote to, who
+ * agreed to meet somebody they do not know, and who then could not ask their
+ * own assistant what they had agreed to. The row is right there — ask 2674,
+ * relayed at 18:51:07, answered „Yes, happy to meet" — and it was invisible to
+ * its owner.
+ *
+ * Of the four, the target has the least context and the most reason to check.
+ * The requester knows they asked. The mediator knows they helped. The target
+ * got a message out of nowhere.
+ *
+ * Two sources again, for the same reason as the other two readers: an
+ * introduction reaches a target either as an `introduction_requests` row
+ * naming them, or as a RELAYED ask — a child ask addressed to them, whose
+ * parent is the question their bridge was answering. `origin_user_id` is who
+ * paid for the chain and therefore who wanted the meeting; `from_user_id` on
+ * the child is the bridge who vouched.
+ */
+export async function getIntroStatusForTarget(userId: string): Promise<TargetIntroRow[]> {
+  const result = await query<TargetIntroRow>(
+    `SELECT r.name AS requester_name,
+            m.name AS bridge_name,
+            ir.message AS what_was_asked,
+            ir.created_at AS asked_at,
+            ir.responded_at AS answered_at,
+            ir.status
+       FROM introduction_requests ir
+       LEFT JOIN "User" r ON r.id = ir.requester_user_id
+       LEFT JOIN "User" m ON m.id = ir.mediator_user_id
+      WHERE ir.target_user_id = $1::int
+     UNION ALL
+     SELECT o.name AS requester_name,
+            b.name AS bridge_name,
+            c.question AS what_was_asked,
+            c.created_at AS asked_at,
+            c.answered_at,
+            c.status
+       FROM task_asks c
+       LEFT JOIN "User" o ON o.id = c.origin_user_id
+       LEFT JOIN "User" b ON b.id = c.from_user_id
+      WHERE c.to_user_id = $1::int AND c.parent_ask_id IS NOT NULL
+     ORDER BY asked_at DESC
+     LIMIT 20`,
+    [userId],
+  );
+  return result.rows;
+}
+
 /**
  * Is this thread's introduction request still unanswered? An outgoing-request
  * thread waiting on the mediator is WAITING, not needs_you — the asker owes
