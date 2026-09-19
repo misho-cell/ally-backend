@@ -114,7 +114,7 @@ import {
   listSeenUpdates,
   queueResult,
 } from './pendingUpdates.service';
-import { flagGoalQuestion, answerGoalQuestion } from './goalQuestions.service';
+import { flagGoalQuestion, answerGoalQuestion, GOAL_QUESTION_KIND } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import {
@@ -4145,6 +4145,62 @@ function notePendingItems(runId: string | undefined, items: readonly PendingItem
   runPendingItems.set(runId, [...(runPendingItems.get(runId) ?? []), ...items]);
 }
 
+/**
+ * Ticket 20 — a message cannot be the answer to a question it predates.
+ *
+ * 19 September, 12:03. The owner typed „tell Tornike Abuladze I can do
+ * Thursday" into a brand-new conversation. That run pulled a waiting question
+ * belonging to an unrelated goal, and then — in the SAME run — called
+ * `answer_goal_question` with „Lika actually says she can do Thursday
+ * (24 September)". A name nobody typed, a date nobody proposed. The goal woke,
+ * rewrote its brief, armed a chase for the next day, and sent a real question
+ * to a real person. No plan, no card, no yes.
+ *
+ * The model was not disobeying. The instruction it is handed with every such
+ * question says „get a real answer, then call answer_goal_question with what
+ * they said", and nothing in it, the tool or the server required that they had
+ * said anything. It followed its instructions into a situation they did not
+ * anticipate, which is why the fix is an inequality and not a better paragraph.
+ *
+ * THE FACT THAT SETTLES IT NEEDS NO JUDGEMENT. The owner's message is what
+ * STARTED this run, so it was typed before the run pulled the question. The
+ * question did not exist when they wrote. It is not that they answered badly
+ * or left a button unpressed — there was nothing yet to answer.
+ *
+ * So: if THIS run is the one that surfaced the question, no message in it can
+ * be its answer. The ordinary case is untouched, because there the owner sees
+ * the card in one turn and replies in the next — a different run.
+ *
+ * Deliberately NOT a rule about content, attribution or which controls were
+ * pressed. Those are worth having and they are separate; this one is two
+ * timestamps and a model cannot talk its way around it.
+ */
+/**
+ * What the model is told when the guard refuses, and it is written to be
+ * ACTED ON rather than reported. „Refused" alone invites a retry with the same
+ * argument; this says what is missing and what to do instead, in the order the
+ * model needs them.
+ */
+export const ANSWERED_BEFORE_ASKED =
+  'That question was only just surfaced, in this same reply — the owner has not ' +
+  'seen it yet, so nothing they have written can be an answer to it. Ask them the ' +
+  'question, and call this again only after they have answered it in a later ' +
+  'message. Whatever they wrote this turn is about something else; treat it as a ' +
+  'new request and answer it on its own terms.';
+
+export function itemsSurfacedGoalQuestion(
+  items: readonly PendingItemInput[],
+  taskId: number,
+): boolean {
+  if (!Number.isFinite(taskId)) return false;
+  return items.some((item) => item.kind === GOAL_QUESTION_KIND && item.task_id === taskId);
+}
+
+function runNotedGoalQuestion(runId: string | undefined, taskId: number): boolean {
+  if (!runId) return false;
+  return itemsSurfacedGoalQuestion(runPendingItems.get(runId) ?? [], taskId);
+}
+
 function takePendingItems(runId: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
   runPendingItems.delete(runId);
@@ -5803,7 +5859,13 @@ async function executeToolCall(
     }
     case 'answer_goal_question': {
       const answer = String(input['answer'] ?? '');
-      return answerGoalQuestion(userId, Number(input['task_id']), answer);
+      const questionTaskId = Number(input['task_id']);
+      // See runNotedGoalQuestion: this run is the one that surfaced the
+      // question, so the owner's message predates it and cannot be its answer.
+      if (runNotedGoalQuestion(runId, questionTaskId)) {
+        return { delivered: false, error: ANSWERED_BEFORE_ASKED };
+      }
+      return answerGoalQuestion(userId, questionTaskId, answer);
     }
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.

@@ -643,3 +643,50 @@ masking a fiction number would only make the instruction unusable.
 
 Steps 2 to 5 are all his word already; step 1 is the one that has to happen
 first and is the one neither the seat nor I can do.
+
+## 10. Goal 5314 — clearing the wake that a resume would fire
+
+**Not done. Needs Misho.** The goal is paused and the pause holds; this is
+about what happens the moment anybody un-pauses it.
+
+### What happened, in one paragraph
+
+19 September 12:03, on the founder's account. The seat typed „tell Tornike
+Abuladze I can do Thursday" into a brand-new conversation. That run surfaced a
+waiting question belonging to goal 5314 — an unrelated meeting — and then, in
+the same run, called `answer_goal_question` with „Lika actually says she can
+do Thursday (24 September)". A person nobody typed, a date nobody proposed.
+The goal woke, rewrote its brief, armed a chase for the next day, and **sent a
+real question to a real person** (ask 2443, 12:05:43, status `sent`). No plan,
+no card, no yes.
+
+### Why the row still needs a write
+
+Pausing does NOT clear the wake. `goalDashboard.service.ts` renames the column
+on a paused goal — `next_wake_at` reads null and the same value appears as
+`wake_held_at` — but the column keeps its value, and the code says so
+deliberately: „`updateTask` leaves it on a pause so a resumed goal picks its
+schedule back up."
+
+    tasks.id 5314   status paused   next_wake_at 2026-09-20T12:05:41.057Z
+
+`getDueTasks` is `status = 'open' AND next_wake_at <= NOW()`. By tomorrow
+lunchtime that time is past, so **resuming this goal sends the message again
+within one tick — sixty seconds.** Not a risk; the behaviour.
+
+|        |                                                                      |
+| ------ | -------------------------------------------------------------------- |
+| Route  | none — direct SQL, and I have no write path, so this needs a hand or a migration |
+| Method | `UPDATE tasks SET next_wake_at = NULL WHERE id = 5314`               |
+| Body   | above — one row, one column                                          |
+| Undo   | `UPDATE tasks SET next_wake_at = '2026-09-20T12:05:41.057Z' WHERE id = 5314` |
+
+**What it does not touch.** Not the brief, not the ask, not the status. The
+false brief text stays exactly as written because it is evidence, and ask 2443
+stays `sent` because it was.
+
+**Why it is worth doing rather than relying on the warning.** Right now the
+only thing protecting her is that three people have been told not to press
+resume. That protection expires the moment somebody who has not read this
+exchange opens the goal — and the dashboard will show them `next_wake_at:
+null`, which reads as safe.
