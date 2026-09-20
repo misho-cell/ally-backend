@@ -182,6 +182,47 @@ describe('what needs no opening search', () => {
   it('keeps them on a question about a PERSON, which the web can answer', () => {
     expect(needsNoOpeningSearch('მარო კოშაძე ვინ არის?')).toBe(false);
   });
+
+  /**
+   * THE TEN THIS GUARD SILENTLY COST, read out of `conversations` on
+   * 20 September — every string below is one somebody really typed in the
+   * 62 hours after it shipped, and every one was denied the opening search.
+   *
+   * They are all the same shape: a need, and then the polite half-sentence
+   * that says where to look. „Ask my network" and „ვინ მყავს ქსელში" are the
+   * clause `ABOUT_MY_OWN_BASE_RE` exists to catch — and here they are asking
+   * FOR the second-circle search, not instead of it.
+   */
+  it('keeps them when the owner names their network as the place to look', () => {
+    expect(needsNoOpeningSearch('მჭირდება კარგი ფოტოგრაფი თბილისში, ვინ მყავს ქსელში')).toBe(false);
+    expect(
+      needsNoOpeningSearch('Find me a good dentist in Tbilisi who speaks English. Ask my network.'),
+    ).toBe(false);
+    expect(needsNoOpeningSearch('I need a plumber in Tbilisi. Please ask my contacts.')).toBe(
+      false,
+    );
+    expect(
+      needsNoOpeningSearch(
+        'I want to get introduced to Netai Test 3. Who in my contacts can introduce me?',
+      ),
+    ).toBe(false);
+    expect(
+      needsNoOpeningSearch(
+        'I need a good photographer in Tbilisi. Who do I have in my network, and who could introduce me?',
+      ),
+    ).toBe(false);
+  });
+
+  /**
+   * And the three the guard was built for are untouched, because none of them
+   * states a need. If this ever goes red the fix above has widened into the
+   * bug it replaced, and the ~17-second tax on „ვინ მყავს თბილისში?" is back.
+   */
+  it('still skips the three it was built for, which carry no need', () => {
+    expect(needsNoOpeningSearch('ვინ მყავს თბილისში?')).toBe(true);
+    expect(needsNoOpeningSearch('How many contacts do I have in my network?')).toBe(true);
+    expect(needsNoOpeningSearch('What is Netai and how much does it cost?')).toBe(true);
+  });
 });
 
 /**

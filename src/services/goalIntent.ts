@@ -148,8 +148,48 @@ const PRICE_OR_DEFINITION_RE =
  * These stay QUESTIONS THAT MAY STILL OPEN A GOAL. Whether they should is row
  * 103 and is not decided; this changes only what runs before the answer.
  */
+/**
+ * A stated need, by the stems alone — without the length floor and the question
+ * check that `looksLikeGoalRequest` adds on top for a different question.
+ */
+function statesANeed(text: string): boolean {
+  return NEED_RE_KA.test(text) || NEED_RE_EN.test(text) || NEED_RE_ES.test(text);
+}
+
+/**
+ * A STATED NEED OVERRULES ALL THREE, and leaving that out cost ten real goals.
+ *
+ * The comment above says this „names only what can never need them". It did
+ * not. `ABOUT_MY_OWN_BASE_RE` matches „my network", „my contacts", „ვინ მყავს"
+ * — and a person asking for help politely says exactly that:
+ *
+ *   „მჭირდება კარგი ფოტოგრაფი თბილისში, ვინ მყავს ქსელში"   Lika, 20 Sep 11:03
+ *   „Find me a good dentist in Tbilisi who speaks English. Ask my network."
+ *   „I need a plumber in Tbilisi. Please ask my contacts."
+ *   „I want to get introduced to Netai Test 3. Who in my contacts can …"
+ *
+ * TEN SENTENCES in the 62 hours after this guard shipped on 17 September, every
+ * one a genuine „find me somebody", every one denied the opening second-circle
+ * search — the search that was the answer to the very clause that disqualified
+ * it. One is on the founder's own account and one is Lika's, today.
+ *
+ * Nobody could have seen it: the guard is silent, the goal still opens, the run
+ * still answers, and the only trace is a `:opening` row that is not there. It
+ * showed up as a hole in a table of counts per day, not as a complaint.
+ *
+ * The three cases this guard was built for carry no need stem — „ვინ მყავს
+ * თბილისში?", „How many contacts do I have in my network?", „What is Netai and
+ * how much does it cost?" — so all three are still skipped, which the tests
+ * below hold. Only sentences that ASK FOR SOMEBODY get their search back.
+ *
+ * And the direction of the remaining error is the one this file already chose:
+ * „I need to know how many contacts I have" now pays the opening tax for
+ * nothing. Running them once too often is the cheap mistake. Skipping them on
+ * a real goal is the expensive one, and it is the one that happened.
+ */
 export function needsNoOpeningSearch(message: string): boolean {
   const text = message.trim();
+  if (statesANeed(text)) return false;
   if (ABOUT_MY_OWN_BASE_RE.test(text)) return true;
   if (ABOUT_MY_OWN_GOALS_RE.test(text)) return true;
   return ABOUT_THE_PRODUCT_RE.test(text) && PRICE_OR_DEFINITION_RE.test(text);
@@ -159,7 +199,7 @@ export function looksLikeGoalRequest(message: string): boolean {
   const text = message.trim();
   if (text.length < MIN_GOAL_MESSAGE_CHARS) return false;
   if (isQuestionNotGoal(text)) return false;
-  return NEED_RE_KA.test(text) || NEED_RE_EN.test(text) || NEED_RE_ES.test(text);
+  return statesANeed(text);
 }
 
 // Instructions to the assistant that are not part of the goal itself.
