@@ -1079,8 +1079,49 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const merged = await collapseMergedPhones(shaped);
     return { found: true, count: merged.rows.length, results: merged.rows };
   } catch (err) {
-    console.error('searchSecondDegree error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    /**
+     * A SEARCH THAT COULD NOT FINISH IS NOT AN EMPTY NETWORK, and until today
+     * this line said it was.
+     *
+     * `{ found: false }` is what this tool returns when nobody matched. It was
+     * also what it returned when the query timed out — and measured over seven
+     * days on `tool_call_log`, that is not rare:
+     *
+     *   search_second_degree:opening   152 calls, **51 FAILED**, every one
+     *                                  „canceling statement due to statement
+     *                                  timeout" at about 16.4 seconds
+     *
+     * A THIRD of the searches that run when a goal opens. The model read
+     * „found: false", told the person their second circle had nobody for this,
+     * and nothing anywhere said the search had not actually run. That is the
+     * substitution this codebase keeps having to undo — „we could not look"
+     * wearing the clothes of „there is nothing there" — and it is the same one
+     * `runStatus` has a paragraph about and the `neo4j_unavailable` branch
+     * above already gets right.
+     *
+     * So this now answers like that branch: a named reason, a note the model
+     * cannot round down to emptiness, and NO RAW DATABASE STRING. „canceling
+     * statement due to statement timeout" told the model nothing it could act
+     * on and told the person less than that.
+     *
+     * The timeout itself is a separate question and the pre-filter shipped an
+     * hour ago is the attempt at it. This is what the product says while that
+     * is being proved — and what it should say even after, because a timeout
+     * can always happen.
+     */
+    const message = (err as Error).message;
+    const timedOut = /statement timeout|query_canceled|ETIMEDOUT/i.test(message);
+    console.error('searchSecondDegree error:', message);
+    return {
+      found: false,
+      reason: timedOut ? 'search_timed_out' : 'search_failed',
+      note:
+        'The second-degree search DID NOT FINISH — this is a technical failure on our side, ' +
+        'not an empty network, and it says nothing about whether anybody is there. Do NOT tell ' +
+        'the user nobody was found and do NOT count this as a route that came back empty. Say ' +
+        'plainly that this one search did not complete, carry on with everything else you have, ' +
+        'and offer to try it again.',
+    };
   } finally {
     // Every exit, including the early not-found returns and a throw. A counter
     // that leaks on one path stops being a measurement within an hour.

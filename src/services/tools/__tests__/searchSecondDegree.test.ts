@@ -555,3 +555,61 @@ describe('the pre-filter in front of the regex', () => {
     expect(prefilter.some((p) => p.includes('\\%'))).toBe(true);
   });
 });
+
+/**
+ * A SEARCH THAT COULD NOT FINISH IS NOT AN EMPTY NETWORK.
+ *
+ * Measured on tool_call_log, seven days to 20 September:
+ *
+ *   search_second_degree:opening   152 calls, 51 FAILED, every one
+ *                                  „canceling statement due to statement
+ *                                  timeout" at about 16.4 seconds
+ *
+ * A third of the searches that run when a goal opens. Until today all fifty-one
+ * returned `{ found: false }` with the raw Postgres string attached — the same
+ * shape as „nobody matched" — so the model told the person their second circle
+ * had nobody, and nothing said the search had not run.
+ */
+describe('a search that did not finish', () => {
+  it('says it TIMED OUT rather than reporting an empty network', async () => {
+    mockQuery.mockRejectedValue(new Error('canceling statement due to statement timeout'));
+
+    const out = (await searchSecondDegree('42', 'photographer')) as Record<string, unknown>;
+
+    expect(out.found).toBe(false);
+    expect(out.reason).toBe('search_timed_out');
+    expect(String(out.note)).toContain('DID NOT FINISH');
+    expect(String(out.note)).toContain('not an empty network');
+  });
+
+  it('forbids the two conclusions the model was drawing from it', async () => {
+    mockQuery.mockRejectedValue(new Error('canceling statement due to statement timeout'));
+
+    const out = (await searchSecondDegree('42', 'photographer')) as Record<string, unknown>;
+
+    // „nobody was found" is the false sentence; „a route that came back empty"
+    // is the false BOOKKEEPING — a plan route must not be marked exhausted by
+    // a search that never ran.
+    expect(String(out.note)).toContain('Do NOT tell the user nobody was found');
+    expect(String(out.note)).toContain('came back empty');
+  });
+
+  it('never hands the raw database string on', async () => {
+    mockQuery.mockRejectedValue(new Error('canceling statement due to statement timeout'));
+
+    const out = (await searchSecondDegree('42', 'photographer')) as Record<string, unknown>;
+
+    expect(JSON.stringify(out)).not.toContain('canceling statement');
+    expect(out.error).toBeUndefined();
+  });
+
+  it('a fault that is NOT a timeout is still not an empty network', async () => {
+    mockQuery.mockRejectedValue(new Error('connection terminated unexpectedly'));
+
+    const out = (await searchSecondDegree('42', 'photographer')) as Record<string, unknown>;
+
+    expect(out.reason).toBe('search_failed');
+    expect(String(out.note)).toContain('DID NOT FINISH');
+    expect(JSON.stringify(out)).not.toContain('connection terminated');
+  });
+});
