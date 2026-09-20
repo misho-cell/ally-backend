@@ -593,6 +593,37 @@ export async function ownerSpokeRecently(
  * then every WAKE_RETRY_DELAY_MS until wakeTask enters the thread or the
  * attempts run out. `stillWanted` is re-read before every attempt so a goal
  * that closed, or already got what the wake would bring, is left alone.
+ *
+ * THE FLOOR IS WRITTEN BEFORE THE TIMER, and goal 6337 is why.
+ *
+ * Test 1, 19 September. The plan was approved at 19:24:36, permission granted
+ * four seconds later, and `startDayOne` queued the turn that writes to the
+ * plan's people. Fifteen hours later: zero asks, and `next_wake_at` NULL —
+ * which means not „late" but NEVER. Nothing in the product would have touched
+ * that goal again.
+ *
+ * Everything above this line is a `setTimeout` and nothing else. The database
+ * learns that a wake is owed only inside `onWoken`, which runs on exactly one
+ * of the four ways out:
+ *
+ *   woken       -> onWoken runs, the floor is written
+ *   not wanted  -> returns
+ *   'stopped'   -> returns
+ *   out of retries -> returns
+ *
+ * and a fifth that reaches no branch at all: THE PROCESS DIES. A deploy
+ * between the approval and the wake takes the timer with it, and nothing on
+ * disk says anything was ever owed.
+ *
+ * I have written before — in the founder's own document — that this class was
+ * fixed, because the guard was moved ahead of the step that can die. It was
+ * moved ahead of the step inside `wakeTask`. This path never reached that
+ * guard, because it never reached `wakeTask`.
+ *
+ * So the floor is written here, first, before anything that can be lost. It
+ * only fills a NULL (`ensureNextWake`), so it can never shorten a wake a run
+ * chooses for itself; all it promises is that an open goal is picked up within
+ * a day instead of never.
  */
 function wakeWhenFree(
   taskId: number,
@@ -602,6 +633,15 @@ function wakeWhenFree(
   delayMs: number,
   attempt = 1,
 ): void {
+  if (attempt === 1) {
+    void ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(
+        `[task-engine] task ${taskId}: could not write the wake floor before the timer:`,
+        (err as Error).message,
+      ),
+    );
+  }
   setTimeout(() => {
     void stillWanted()
       .then(async (wanted) => {

@@ -49,7 +49,7 @@ import { getTaskById, ensureNextWake, Task } from '../taskStore.service';
 import { getThread, lastAssistantMessageIs, saveThreadMessage, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
 import { processChat } from '../chat.service';
-import { wakeTask } from '../taskEngine.service';
+import { startDayOne, startPlanProposal, wakeTask } from '../taskEngine.service';
 import { clearThreadQueue, enterThread, leaveThread, threadHolder } from '../threadRunQueue';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -236,5 +236,42 @@ describe('a wake and the conversation lock', () => {
     expect(threadHolder(16402)).toBeUndefined();
     // And the lock was the wake's own, not a leftover.
     leaveThread(16402, heldDuringRun as string);
+  });
+});
+
+/**
+ * Goal 6337 — approved, permitted, and then nothing, for fifteen hours.
+ *
+ * Test 1, 19 September. `plan_approved_at` 19:24:36, `permission_granted`
+ * true, `asks_sent` 0, and `next_wake_at` NULL — which does not mean late, it
+ * means never. Nothing in the product would have touched that goal again.
+ *
+ * `startDayOne` is a `setTimeout` and nothing else. The database learnt that a
+ * wake was owed only from `onWoken`, which runs on exactly one of four ways
+ * out — and not at all on the fifth, THE PROCESS DYING. A deploy between the
+ * approval and the wake takes the timer with it and leaves no record.
+ *
+ * So the floor is written first, before anything that can be lost. It only
+ * fills a NULL, so it can never shorten a wake a run chooses for itself.
+ */
+describe('goal 6337 — an in-process wake leaves a record before it can be lost', () => {
+  it('day one writes the floor immediately, not when the wake lands', async () => {
+    startDayOne(6337);
+
+    // Not after the delay, not after the thread frees up: now, synchronously
+    // enough that a deploy one second later cannot beat it.
+    expect(mockEnsureWake).toHaveBeenCalledWith(6337, 24);
+  });
+
+  it('the plan proposal wake too — a goal with no plan and no wake is just as dead', () => {
+    startPlanProposal(6338);
+
+    expect(mockEnsureWake).toHaveBeenCalledWith(6338, 24);
+  });
+
+  it('a failure to write the floor does not stop the wake being queued', () => {
+    mockEnsureWake.mockRejectedValue(new Error('db down'));
+
+    expect(() => startDayOne(6339)).not.toThrow();
   });
 });

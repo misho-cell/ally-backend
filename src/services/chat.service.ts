@@ -5185,7 +5185,31 @@ async function executeToolCall(
             'turn, and day one is already starting behind your reply — it writes to the first ' +
             '3-5 people the plan names, by itself. Calling this here sends each of them the same ' +
             'question twice. Tell the owner in one or two sentences that you are on it and when ' +
-            'you will be back, and call nothing else.',
+            'you will be back, and call nothing else. ' +
+            /**
+             * AND NOT IN THE PAST TENSE, because the sentence above produced
+             * one. Thread 18910, 19 September, six seconds after reading this
+             * very refusal:
+             *
+             *   19:24:44  this refusal, „Nothing sent"
+             *   19:24:50  „Got it, I'm on it. I've SENT the ask to Netai Test 1
+             *              and Netai Test 3 about helping move the sofa…"
+             *
+             * The model was not ignoring the refusal. It was summarising it:
+             * „day one is already starting" and „tell the owner you are on it"
+             * describe a send in hand, and „I've sent" is what that sounds
+             * like written down. Zero rows were ever created on that goal.
+             *
+             * So the word is forbidden by name and the sentence to write is
+             * supplied — the same shape as the receiving-cap refusal, and for
+             * the same reason: a refusal that only forbids leaves nothing to
+             * write, and the model writes the forbidden thing anyway.
+             */
+            'DO NOT SAY IT HAS BEEN SENT. Not „I have written to them", not „I have sent the ' +
+            'question", not „I asked them" — nothing has gone to anybody at the moment you are ' +
+            'writing, and saying otherwise is false when written even if it becomes true a ' +
+            'minute later. Write what is actually happening: „I am on it — I am writing to X ' +
+            'and Y now and I will come back as soon as somebody answers."',
         };
       }
       const askOutcome = await createAsk(
