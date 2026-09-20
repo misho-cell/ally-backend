@@ -1591,9 +1591,32 @@ export function planCardIsForAnotherThread(
   goalThreadId: number | null,
   goalTitle: string | null,
   runThreadId: number | undefined,
+  /**
+   * The goal THIS thread owns, when it has one and it still has no plan.
+   *
+   * Goal 6073, a real account, 19 September, and it is why this parameter
+   * exists. The run proposed a plan for a goal living on another thread, was
+   * correctly refused here, told the owner „you already have this open
+   * elsewhere" — and its OWN goal, the one this conversation is for, was left
+   * without a plan. Twenty hours later it was still open, still planless, and
+   * `next_wake_at` was null.
+   *
+   * The refusal was right and it was also the whole of what the run was told.
+   * Row 208's lesson, third time today: a refusal that only forbids leaves
+   * nothing to write, so the model does the forbidden thing or nothing at all.
+   * Here there is a concrete instead, and the server is the only one that
+   * knows it.
+   */
+  ownGoal?: { id: number; title: string | null; hasPlan: boolean } | null,
 ): Record<string, unknown> | null {
   if (goalThreadId === null || runThreadId === undefined) return null;
   if (goalThreadId === runThreadId) return null;
+  const instead =
+    ownGoal && !ownGoal.hasPlan
+      ? ` AND THIS CONVERSATION HAS ITS OWN GOAL WITH NO PLAN: task_id ${ownGoal.id}` +
+        `${ownGoal.title ? ` („${ownGoal.title}")` : ''}. That is the one to propose for — ` +
+        'call propose_task_plan again with THAT task_id, in this same turn.'
+      : '';
   return {
     proposed: false,
     error:
@@ -1601,9 +1624,11 @@ export function planCardIsForAnotherThread(
       'be drawn here — the owner would be approving a plan without the goal in front of them, ' +
       'and approving sends messages in their name. Do NOT call this again for this task_id in ' +
       'this thread. Tell the owner, in their language, that they already have this goal open ' +
-      'in another chat, name the goal, and list what you found here as leads.',
+      'in another chat, name the goal, and list what you found here as leads.' +
+      instead,
     goal_lives_on_thread_id: goalThreadId,
     goal_title: goalTitle,
+    ...(instead ? { propose_for_task_id: ownGoal?.id } : {}),
   };
 }
 
@@ -5699,10 +5724,21 @@ async function executeToolCall(
       // Reuse is the correct instinct and is not what is refused. What is
       // refused is DRAWING THE CARD somewhere the goal does not live. The model
       // is told where it lives so it can say so plainly.
+      // The goal this conversation owns, read only when the guard is about to
+      // refuse — a correct call never pays for it.
+      const ownGoal =
+        threadId !== undefined && planTask?.thread_id != null && planTask.thread_id !== threadId
+          ? await getOpenTaskByThread(threadId).catch(() => null)
+          : null;
       const elsewhere = planCardIsForAnotherThread(
         planTask?.thread_id ?? null,
         planTask?.title ?? null,
         threadId,
+        ownGoal && {
+          id: ownGoal.id,
+          title: ownGoal.title,
+          hasPlan: ownGoal.plan !== null || ownGoal.plan_proposed !== null,
+        },
       );
       if (elsewhere !== null) return elsewhere;
       const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));

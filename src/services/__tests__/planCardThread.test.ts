@@ -53,3 +53,58 @@ describe('a plan card drawn in a chat the goal does not live in', () => {
     expect(planCardIsForAnotherThread(childThread, 'catering', childThread)).toBeNull();
   });
 });
+
+/**
+ * Goal 6073, a real account, 19 September — the refusal was right and it was
+ * also the whole of what the run was told.
+ *
+ * The run proposed a plan for a goal living on another thread, was correctly
+ * refused here, and told the owner „you already have this open elsewhere". Its
+ * OWN goal, the one this conversation exists for, was left without a plan.
+ * Twenty hours later it was still open, still planless, `next_wake_at` null.
+ *
+ * Row 208's lesson for the third time today: a refusal that only forbids
+ * leaves nothing to write, so the model does the forbidden thing or nothing at
+ * all. Here there IS a concrete instead, and the server is the only one that
+ * knows it.
+ */
+describe('and what the run should do instead', () => {
+  const OWN = { id: 6073, title: 'ნინიას უკვე მივწერე', hasPlan: false };
+
+  it('names this thread’s own planless goal, by id', () => {
+    const out = planCardIsForAnotherThread(999, 'somebody else’s goal', 18582, OWN);
+    expect(out).not.toBeNull();
+    expect(String(out?.error)).toContain('task_id 6073');
+    expect(String(out?.error)).toContain('ნინიას უკვე მივწერე');
+    // Machine-readable too, so the model need not parse the prose.
+    expect(out?.propose_for_task_id).toBe(6073);
+  });
+
+  it('says to do it in the SAME turn — a planless goal must not wait for a wake', () => {
+    const out = planCardIsForAnotherThread(999, 'x', 18582, OWN);
+    expect(String(out?.error)).toContain('in this same turn');
+  });
+
+  it('stays silent when this thread’s goal already HAS a plan', () => {
+    const out = planCardIsForAnotherThread(999, 'x', 18582, { ...OWN, hasPlan: true });
+    expect(String(out?.error)).not.toContain('task_id 6073');
+    expect(out?.propose_for_task_id).toBeUndefined();
+  });
+
+  it('stays silent when this thread has no goal of its own at all', () => {
+    const out = planCardIsForAnotherThread(999, 'x', 18582, null);
+    expect(out?.propose_for_task_id).toBeUndefined();
+  });
+
+  it('keeps every word of the refusal it already made', () => {
+    const out = planCardIsForAnotherThread(999, 'x', 18582, OWN);
+    expect(String(out?.error)).toContain('lives in another conversation');
+    expect(String(out?.error)).toContain('Do NOT call this again for this task_id');
+  });
+
+  it('still lets a correct call through, which the parameter must not change', () => {
+    expect(planCardIsForAnotherThread(18582, 'x', 18582, OWN)).toBeNull();
+    expect(planCardIsForAnotherThread(null, 'x', 18582, OWN)).toBeNull();
+    expect(planCardIsForAnotherThread(999, 'x', undefined, OWN)).toBeNull();
+  });
+});
