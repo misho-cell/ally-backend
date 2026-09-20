@@ -12,6 +12,7 @@ import {
   STARTUP_WORDS,
   THING_WORDS,
   TRADE_WORDS,
+  NOT_A_WORD,
 } from './labelDictionaries';
 import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
 import { georgianToLatin, hasGeorgian } from './tools/transliterate';
@@ -122,6 +123,12 @@ export type TokenKind =
   | 'relation'
   | 'place'
   | 'role'
+  /**
+   * Junk that reached the label store — not a word anybody typed. Both
+   * consumers already ignore every kind but `organisation` and `name`, so this
+   * needs nothing from them: naming it is the whole of it. See NOT_A_WORD.
+   */
+  | 'not_a_word'
   | 'organisation';
 
 export interface LabelSignals {
@@ -276,6 +283,10 @@ export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
   // Ticket 18 [8]: a Georgian-script token is asked about in both spellings, so
   // „ოთარი" is recognised as the name the list holds as „otari".
   const forms = spellings(token);
+  // Junk, before anything else — it is not a name, a trade or a company, and
+  // the fall-through at the bottom of this function would call it the last of
+  // those. 42,694 people carry „Undefined" for exactly that reason.
+  if (forms.some((t) => NOT_A_WORD.has(t))) return 'not_a_word';
   // A name we KNOW is a name, before anything else.
   if (forms.some((t) => GEORGIAN_FIRST_NAMES.has(t))) return 'name';
   if (firstInLabel && forms.some((t) => AMBIGUOUS_FIRST_NAMES.has(t))) return 'name';

@@ -637,3 +637,43 @@ export const SHORT_THING_WORDS = [
   'aveji', // 3,969
   'ავეჯ', // 2,483
 ];
+
+/**
+ * Tokens that are not words anybody typed — junk that reached the label store
+ * and must not be read as anything.
+ *
+ * `undefined` is on **59,111 alias rows, held by 42,694 people**, and every
+ * one of them was written in **August 2026 by 809 different savers**. The
+ * whole alias is the single word „Undefined": not a name with junk in it, the
+ * word by itself. It is a client writing the JavaScript value where a contact
+ * had no display name.
+ *
+ * WHAT IT WAS DOING. `classifyToken` gives up on a token no dictionary claims
+ * and calls it an ORGANISATION. So 42,694 people were carrying a company word
+ * called „Undefined" — over `BIG_ORG_SIZE` by three orders of magnitude, so
+ * every one of them scored `in_big_organisation`, and `triggerFor` answers
+ * `big_company_word` to that. When the research runner is switched on, that
+ * points the register at a company named Undefined for 42,694 people.
+ *
+ * It costs nothing TODAY, and that is why this could be fixed without asking:
+ * `RESEARCH_RUNNER` is off and `planned` is zero, so nothing is sent and no
+ * live behaviour changes. It stops being free the moment the runner is turned
+ * on, which is a decision waiting on Tornike — so this belongs in front of it,
+ * not behind it.
+ *
+ * WHY A SET OF ITS OWN, rather than one more line in NEVER_A_COMPANY. That
+ * list already carried `undefined`, privately, in `labelEmployer` — so the
+ * employer FIELD was protected and the target ENGINE was not, which is the
+ * exact split the 16 September ruling was meant to end. One list, read by
+ * `classifyToken`, reaches both.
+ *
+ * AND IT IS NOT A CLEANUP. The 59,111 rows are still there; removing them
+ * touches real people's saved data and is Misho's word, not mine. This only
+ * stops them being believed.
+ *
+ * Nothing goes in here that has not been counted. „null", „nan" and „none"
+ * are the obvious neighbours and none of them was in the 300 most-carried
+ * tokens, so none of them is here: a list guessed in advance eventually eats
+ * a word somebody really wrote.
+ */
+export const NOT_A_WORD: ReadonlySet<string> = new Set(['undefined']);

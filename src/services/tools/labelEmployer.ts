@@ -1,5 +1,5 @@
 import { classifyToken, labelTokens, orgWordStats, OrgWordStat } from '../labelReader.service';
-import { COMPANY_MARKERS, ORGANISATION_WORDS } from '../labelDictionaries';
+import { COMPANY_MARKERS, NOT_A_WORD, ORGANISATION_WORDS } from '../labelDictionaries';
 
 /**
  * Ticket 17 Task 8 (D202, the founder, 12 Sep): the label's own word may stand
@@ -129,8 +129,6 @@ const NEVER_A_COMPANY = new Set([
   'უნდა',
   'unda',
   'new',
-  // Not a word at all: 42,694 labels carry it because something wrote it there.
-  'undefined',
 ]);
 
 /**
@@ -147,8 +145,18 @@ const NEVER_A_COMPANY = new Set([
  * labelDictionaries now, read by classifyToken for both consumers, and the
  * private copies are gone rather than left here to drift against them.
  */
+/**
+ * `NOT_A_WORD` is read here too, and the private copy of `undefined` that used
+ * to sit in NEVER_A_COMPANY is gone.
+ *
+ * It was in this file and nowhere else, so the employer FIELD was protected
+ * from „Undefined" and the target ENGINE was not — `classifyToken` went on
+ * calling it an organisation for all 42,694 people who carry it. That is the
+ * exact split the 16 September ruling ended for the other words, reappearing
+ * for this one. One list now, read from both sides.
+ */
 function cannotBeACompany(token: string): boolean {
-  return DIGITS_ONLY.test(token) || NEVER_A_COMPANY.has(token);
+  return DIGITS_ONLY.test(token) || NEVER_A_COMPANY.has(token) || NOT_A_WORD.has(token);
 }
 
 /** Does the crowd say this word is a company rather than a person? */

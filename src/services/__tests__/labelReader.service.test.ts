@@ -480,3 +480,40 @@ describe('companyWordShare asks in a shape the index can answer', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * „Undefined" is on 59,111 alias rows, held by 42,694 people, every one written
+ * in August 2026 by one of 809 savers. The whole alias is that single word — a
+ * client writing the JavaScript value where a contact had no display name.
+ *
+ * `classifyToken` gives up on a token no dictionary claims and calls it an
+ * ORGANISATION, so all 42,694 carried a company word named „Undefined", scored
+ * `in_big_organisation`, and would have had the register pointed at that
+ * company the moment the research runner was switched on.
+ *
+ * The employer FIELD was already safe: `labelEmployer` carried its own private
+ * copy of the word. The target ENGINE was not — which is the split the
+ * 16 September ruling was supposed to have ended. One list now.
+ */
+describe('junk that reached the label store is not a company', () => {
+  it('names „undefined" as junk instead of guessing an organisation', () => {
+    expect(classifyToken('undefined', false)).toBe('not_a_word');
+    expect(classifyToken('undefined', true)).toBe('not_a_word');
+  });
+
+  it('still gives up towards organisation on a word it genuinely does not know', () => {
+    // The fall-through has to survive: this fix names ONE measured token, it
+    // does not change what happens to a real company nobody has heard of.
+    expect(classifyToken('datamind', false)).toBe('organisation');
+  });
+
+  /**
+   * Nothing goes on that list that has not been counted. „null" and „nan" are
+   * the obvious neighbours and neither was among the 300 most-carried tokens,
+   * so neither is there — a list guessed in advance eventually eats a word
+   * somebody really wrote.
+   */
+  it('claims nothing about the neighbours nobody measured', () => {
+    expect(classifyToken('null', false)).not.toBe('not_a_word');
+  });
+});
