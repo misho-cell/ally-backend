@@ -1,4 +1,4 @@
-import { scrubText } from '../privacyScrub';
+import { informalGeorgianForDisplay, scrubText } from '../privacyScrub';
 
 describe('scrubText — real phones are masked', () => {
   it.each([
@@ -227,5 +227,50 @@ describe('a digit run welded into a word is an identifier, not a phone', () => {
   it('leaves dates and year ranges alone, as it always did', () => {
     expect(scrubText('2015-2017')).toBe('2015-2017');
     expect(scrubText('2026-09-20')).toBe('2026-09-20');
+  });
+});
+
+/**
+ * Georgian formal address, unmade at the display boundary.
+ *
+ * Misho's rule is in the prompt TWICE and still fails. The seat's 356–358
+ * found five formal messages in three threads on the founder's account —
+ * including one informal and three formal inside thread 15874, which is the
+ * failure the rule names happening within a single conversation.
+ *
+ * My own wider read, 5,192 assistant rows over ten days: 1,987 carry Georgian
+ * and seventeen carry a `თქვენ` form. All seventeen were read, not counted —
+ * every one addresses the owner and NOT ONE is a quotation, which is the only
+ * thing that makes a blind replacement safe.
+ */
+describe('formal address is unmade for display, and only where it is safe', () => {
+  it.each([
+    ['ველოდები თქვენს პასუხს', 'ველოდები შენს პასუხს'],
+    ['თქვენს კონტაქტებში', 'შენს კონტაქტებში'],
+    ['თქვენი ახლო მეგობარი', 'შენი ახლო მეგობარი'],
+    ['თქვენს შვილს შეეფერება', 'შენს შვილს შეეფერება'],
+    ['ეს თქვენთვის მოვამზადე', 'ეს შენთვის მოვამზადე'],
+  ])('%s becomes %s', (before, after) => {
+    expect(informalGeorgianForDisplay(before)).toBe(after);
+  });
+
+  /**
+   * THE THREE IT MUST NOT TOUCH. „თქვენ თავად გყავთ", „თქვენ თვითონ
+   * დაურეკავთ" and „თქვენ თხოვეთ" carry verb agreement; swapping the pronoun
+   * alone yields „შენ თავად გყავთ", which is broken Georgian. A regex cannot
+   * conjugate, so it leaves them formal and visible — a partial fix that says
+   * so beats a confident one that mangles the grammar.
+   */
+  it.each([
+    'თქვენ თავად გყავთ პირდაპირი კონტაქტები',
+    'თქვენ თვითონ დაურეკავთ',
+    'რადგან თქვენ თხოვეთ არავისთვის მიწერა',
+  ])('leaves the verb-agreement case alone: %s', (text) => {
+    expect(informalGeorgianForDisplay(text)).toBe(text);
+  });
+
+  it('touches nothing in a message with no formal address', () => {
+    const plain = 'ველოდები შენს პასუხს, ხვალ შევამოწმებ.';
+    expect(informalGeorgianForDisplay(plain)).toBe(plain);
   });
 });

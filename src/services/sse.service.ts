@@ -4,6 +4,7 @@ import {
   scrubDeep,
   scrubText,
   stripAllowedSpans,
+  informalGeorgianForDisplay,
   stripEmDashesForDisplay,
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
@@ -11,8 +12,8 @@ import {
 // Scrub then reveal explicitly-allowed spans (the own-number passthrough) at
 // this final display boundary; the "[hidden]" placeholder itself never renders.
 function displayText(text: string): string {
-  return stripEmDashesForDisplay(
-    stripRedactionArtifactsForDisplay(stripAllowedSpans(scrubText(text))),
+  return informalGeorgianForDisplay(
+    stripEmDashesForDisplay(stripRedactionArtifactsForDisplay(stripAllowedSpans(scrubText(text)))),
   );
 }
 

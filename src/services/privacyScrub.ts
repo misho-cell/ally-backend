@@ -83,6 +83,46 @@ export function scrubText(text: string): string {
 }
 
 /**
+ * Georgian formal address, unmade at the display boundary.
+ *
+ * Misho's rule, in the prompt TWICE („you speak with შენ in every message"),
+ * and it still fails. The seat's 356–358 measured five formal messages in
+ * three threads on the founder's account, including inside one conversation —
+ * an informal message and three formal ones in thread 15874, which is the
+ * failure the rule names happening within a single thread.
+ *
+ * MY OWN WIDER READ, 5,192 assistant rows over ten days, every account:
+ * 1,987 carry Georgian and SEVENTEEN carry a `თქვენ` form. Every one of the
+ * seventeen addresses the owner directly. NOT ONE is a quotation — I read all
+ * seventeen rather than trust the count, because a replacement that rewrites
+ * somebody else's quoted words would be worse than the fault it fixes.
+ *
+ * ONLY THE POSSESSIVES, and that is the whole care in this function.
+ * Fourteen of the seventeen are `თქვენს` / `თქვენი` / `თქვენთვის`, which map
+ * to `შენს` / `შენი` / `შენთვის` with no other word touched.
+ *
+ * The other three carry VERB AGREEMENT — „თქვენ თავად გყავთ", „თქვენ თვითონ
+ * დაურეკავთ", „თქვენ თხოვეთ" — and swapping the pronoun alone would produce
+ * „შენ თავად გყავთ", which is broken Georgian. A regex cannot conjugate, so
+ * it does not try. Those three stay formal and stay visible, which is the
+ * honest outcome: a partial fix that says so beats a confident one that
+ * mangles the grammar.
+ *
+ * Display-only, like the em-dash rule below it and for the same reason — the
+ * prompt has been asked twice and the render layer is where a rule cannot be
+ * argued with. Stored text is untouched.
+ */
+const FORMAL_POSSESSIVES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/თქვენთვის/g, 'შენთვის'],
+  [/თქვენს/g, 'შენს'],
+  [/თქვენი/g, 'შენი'],
+];
+
+export function informalGeorgianForDisplay(text: string): string {
+  return FORMAL_POSSESSIVES.reduce((out, [from, to]) => out.replace(from, to), text);
+}
+
+/**
  * Brand rule: assistant prose must not carry em dashes. Applied ONLY at
  * display boundaries (SSE, thread reads) — stored text stays untouched, and
  * three prompt-side attempts failed, so this is the render-layer fix.

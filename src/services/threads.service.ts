@@ -15,6 +15,7 @@ import {
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
+  informalGeorgianForDisplay,
   stripEmDashesForDisplay,
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
@@ -331,7 +332,9 @@ function cleanPreview(row: ThreadRow): ThreadRow {
   if (row.last_message === null || row.last_message === undefined) return row;
   return {
     ...row,
-    last_message: stripEmDashesForDisplay(scrubMechanicalForStorage(row.last_message)),
+    last_message: informalGeorgianForDisplay(
+      stripEmDashesForDisplay(scrubMechanicalForStorage(row.last_message)),
+    ),
   };
 }
 
@@ -666,7 +669,11 @@ export async function getThreadMessages(
     ...row,
     content:
       row.role === 'assistant'
-        ? stripEmDashesForDisplay(stripRedactionArtifactsForDisplay(stripAllowedSpans(row.content)))
+        ? informalGeorgianForDisplay(
+            stripEmDashesForDisplay(
+              stripRedactionArtifactsForDisplay(stripAllowedSpans(row.content)),
+            ),
+          )
         : stripAllowedSpans(row.content),
   }));
 }
