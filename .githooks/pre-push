@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # Blocks a push whose working tree does not typecheck, lint clean and pass the
-# full test suite.
+# full test suite — and, for a push to `main`, one that would land on top of
+# somebody's live run.
 #
 # Enabled per clone (hooks are not cloned) with:
 #   npm run hooks:install
@@ -19,6 +20,16 @@ fail() {
   exit 1
 }
 
+# Git feeds the refs being pushed on stdin: "<local ref> <local sha> <remote
+# ref> <remote sha>". Read it FIRST — it is consumed once — and only then run
+# anything, so the deploy check below knows whether this push deploys.
+DEPLOYS=no
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main) DEPLOYS=yes ;;
+  esac
+done
+
 echo "pre-push: typecheck"
 npx tsc --noEmit || fail "typecheck"
 
@@ -27,5 +38,22 @@ npm run lint || fail "lint"
 
 echo "pre-push: tests"
 npx jest --silent --ci || fail "tests"
+
+# A push to `main` IS a deploy: Railway builds it and replaces the container,
+# and every run inside that container dies with it. On 20 September four of the
+# seven owner-facing run failures in three days sat inside one of my deploy
+# windows — one of them 20 seconds after somebody asked for a carpenter.
+#
+# `inFlightRuns.ts` has carried the rule since 17 September and called it „mine
+# to hold to". Holding to it is what failed, so it is asked here instead, where
+# forgetting is not an option.
+#
+# CANNOT CHECK IS NOT SAFE. Without `~/.netai-ops` this refuses rather than
+# waving the push through: deploying blind onto live conversations is the exact
+# thing the gate exists to stop. `--no-verify` is the deliberate way past.
+if [ "$DEPLOYS" = yes ]; then
+  echo "pre-push: main — is anybody mid-run?"
+  ./scripts/ops/quiet.sh || fail "a run is in flight (or the check could not run)"
+fi
 
 echo "pre-push: green"
