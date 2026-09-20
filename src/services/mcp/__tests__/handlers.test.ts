@@ -739,6 +739,46 @@ describe('mcpCheckInbox', () => {
   });
 });
 
+/**
+ * The seat's 354, 20 September: the connector's only way to answer an
+ * introduction had `request_ref`, `accept` and `response` — and no channel.
+ *
+ * Both surfaces call the SAME `respondToIntroduction`, which refuses an accept
+ * that names no channel. So the connector was not defaulting to `direct` and
+ * handing a number over on one word — the seat's worry, and the worse of the
+ * two — but it could never SUCCEED either: the refusal told the mediator to
+ * choose, and there was nothing to choose in. A refusal naming a way forward
+ * that does not exist is the exact shape row 215 forbids.
+ *
+ * The guard held. The door behind it was bricked up.
+ */
+describe("mcpRespondToRequest carries the mediator's channel", () => {
+  it('passes a chosen channel through to the resolver', async () => {
+    mockRespondIntro.mockResolvedValue({ success: true });
+    await mcpRespondToRequest(USER, {
+      request_ref: 'req_12',
+      accept: true,
+      channel: 'via_mediator',
+    });
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, true, undefined, 'via_mediator');
+  });
+
+  it('still hands an accept with no channel to the resolver, which refuses it', async () => {
+    // Deliberately NOT refused here: one resolver decides, and a second copy of
+    // the rule in the connector is the drift this codebase keeps undoing.
+    mockRespondIntro.mockResolvedValue({ success: false, needs_channel: true });
+    const result = await mcpRespondToRequest(USER, { request_ref: 'req_12', accept: true });
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, true, undefined, undefined);
+    expect(result.needs_channel).toBe(true);
+  });
+
+  it('a decline needs no channel — there is nothing to arrange', async () => {
+    mockRespondIntro.mockResolvedValue({ success: true });
+    await mcpRespondToRequest(USER, { request_ref: 'req_12', accept: false });
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, undefined, undefined);
+  });
+});
+
 describe('mcpRespondToRequest', () => {
   it('rejects invented request_refs', async () => {
     expect(
@@ -757,7 +797,7 @@ describe('mcpRespondToRequest', () => {
       accept: false,
       response: 'ახლა ვერ',
     });
-    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, 'ახლა ვერ');
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, 'ახლა ვერ', undefined);
     expect(result.success).toBe(true);
   });
 });

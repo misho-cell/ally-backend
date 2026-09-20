@@ -162,7 +162,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Accepts or declines a waiting introduction request, by its request_ref from ' +
       'check_my_inbox. Confirm with the user first and act only on their explicit yes/no — ' +
       "this notifies the other side and can't be undone. Pass on only what the user can " +
-      'honestly stand behind; keep a decline private and neutral.',
+      'honestly stand behind; keep a decline private and neutral. AN ACCEPT MUST SAY HOW: ' +
+      'ask whether to put the two in touch directly or to keep going through the user, and ' +
+      'pass their answer as `channel`. An accept with no `channel` is refused, because ' +
+      "defaulting would hand over somebody's number without asking. A decline needs none.",
   },
   get_intro_status: {
     title: 'Check introduction status',
@@ -679,6 +682,24 @@ export const PARAM_TEXTS = {
   requestRef: 'The stable id of a waiting request, taken from check_my_inbox. Never invent it.',
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',
+  /**
+   * 20 September, the seat's 354. The app path has had this since item 5; the
+   * connector never got it, and the two surfaces call the SAME resolver. So a
+   * mediator answering here was refused („choose direct or via_mediator") with
+   * no parameter to answer in — an accept that could not succeed at all, and a
+   * refusal naming a way forward that did not exist, which is the opposite of
+   * what row 215 asks of a refusal.
+   *
+   * The seat's worry was the other way round — that it might DEFAULT to direct
+   * and hand a number over on one word. It does not: `respondToIntroduction`
+   * refuses a channel-less accept whoever calls it. The guard held; the door
+   * was simply bricked up behind it.
+   */
+  introChannel:
+    "REQUIRED when accept is true, and it is the mediator's choice rather than yours. " +
+    "'direct' — the two are put in touch and the requester gets the contact. " +
+    "'via_mediator' — nothing is handed over and the user stays the go-between. " +
+    'Ask them which; never choose for them.',
   factFieldType:
     'The key for what you are saving. Reuse a consistent key so search matches later — do not ' +
     'invent synonyms. CORE (single-value, can become public if others confirm): occupation, ' +

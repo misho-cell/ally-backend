@@ -493,14 +493,25 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
 
 export async function mcpRespondToRequest(
   userId: string,
-  args: { request_ref: string; accept: boolean; response?: string },
+  args: {
+    request_ref: string;
+    accept: boolean;
+    response?: string;
+    channel?: 'direct' | 'via_mediator';
+  },
 ): Promise<McpToolPayload> {
   const ref = args.request_ref ?? '';
   const requestId = Number(ref.slice(REQUEST_REF_PREFIX.length));
   if (!ref.startsWith(REQUEST_REF_PREFIX) || !Number.isInteger(requestId) || requestId <= 0) {
     return { success: false, error: 'Unknown request_ref — take it from check_my_inbox.' };
   }
-  const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
+  const raw = await respondToIntroduction(
+    userId,
+    requestId,
+    args.accept,
+    args.response,
+    args.channel,
+  );
   return scrubDeep(raw) as McpToolPayload;
 }
 

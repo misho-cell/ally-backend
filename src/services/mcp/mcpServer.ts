@@ -221,6 +221,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
         request_ref: z.string().describe(PARAM_TEXTS.requestRef),
         accept: z.boolean().describe(PARAM_TEXTS.accept),
         response: z.string().optional().describe(PARAM_TEXTS.responseNote),
+        channel: z.enum(['direct', 'via_mediator']).optional().describe(PARAM_TEXTS.introChannel),
       },
       annotations: DESTRUCTIVE,
     },
