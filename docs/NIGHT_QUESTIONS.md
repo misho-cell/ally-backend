@@ -31,31 +31,14 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-### 1. A zero-balance test account, so the swallow bug can be observed at all
+_Nothing yet._
 
-**What.** Set one test account's token balance to zero — the statement, the
-account and the undo are in `ADMIN_WRITE_OPERATIONS.md` §14, written and NOT
-run.
-
-**Why we cannot.** It is an admin write on live rows, which is Misho's word
-whatever the hour, and the hour is exactly when a relayed yes is least
-checkable. It costs nothing and reverses completely, and that is not the point.
-
-**Why it is worth his morning.** The seat has made the swallow bug reproducible
-on demand — at zero balance the FIRST message after the wall is stored and
-every one after it disappears with no error — and the `[msg-in]` log line that
-settles whether those requests reach the server at all has been live since
-20:02. One run answers it.
-
-**And the fixture problem underneath it, which is its own small finding.** We
-reserved 171941 as the empty-wallet account and it cannot serve: **a first
-login automatically grants 250**, seen on three accounts tonight. So the
-product currently has no observable zero state — looking at it requires signing
-in, and signing in funds it. Row 157's whole surface can only be reached by
-arranging it deliberately.
-
-**What is blocked:** the swallow test, and nothing else. It was the last open
-item on my own list rather than a gate on anything.
+The 19/20 September list held one item — a zero-balance test account so the
+swallow bug could be observed at all. It was put to Misho twice in conversation
+overnight and is **still unanswered**; it is not dropped, it lives in
+`ADMIN_WRITE_OPERATIONS.md` §14 with its statement and its undo, which is where
+an undecided D44 item belongs. Cleared from here so the next night starts on a
+clean page.
 
 The 18/19 September list was worked through with Misho item by item between
 05:00 and 07:30 on the 19th, in his own conversation, and is cleared from here
