@@ -19,6 +19,7 @@ jest.mock('../sse.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
+import { assertPlaceholdersMatchParams } from '../../db/postgres/placeholders';
 import { saveThreadMessage, threadLanguage, updateThreadStatus } from '../threads.service';
 import { emitRunError, emitThreadUpdated } from '../sse.service';
 import { sweepOrphanedRuns } from '../runReaper.service';
@@ -391,5 +392,28 @@ describe('row 332 — the caption a reaped run leaves behind', () => {
 
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain('status_line = NULL');
+  });
+
+  /**
+   * FOUR HOURS OF THIS SWEEP THROWING, AND EVERY TEST ABOVE STAYED GREEN.
+   *
+   * `54af32f`, 20 September 10:13 — I removed two Georgian captions from the
+   * statement, which took out the `$1` and `$2` they were bound to, and left
+   * the interval reading `$3` over a one-element array. Postgres numbers by the
+   * highest reference, so it wanted three parameters, got one, and answered
+   * „could not determine data type of parameter $1" every twenty seconds until
+   * 14:20, inside a `catch` that logs and carries on.
+   *
+   * The tests here mock `query`, so the SQL text is the one part of this
+   * statement they never execute. This is the part they were missing: the
+   * placeholders, held against the arguments actually passed.
+   */
+  it('asks for no parameter it was not given', async () => {
+    reaped([]);
+
+    await sweepOrphanedRuns();
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(() => assertPlaceholdersMatchParams(sql, params)).not.toThrow();
   });
 });

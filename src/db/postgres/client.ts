@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import { Pool, PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
 
+import { assertPlaceholdersMatchParams } from './placeholders';
+
 dotenv.config();
 
 const SSL_CONFIG =
@@ -126,6 +128,12 @@ async function runOnPool<T extends QueryResultRow>(
   const startedAt = Date.now();
   const borrow: Borrow = {};
   try {
+    // Before the round trip, and INSIDE this try so it is reported through the
+    // same `[db failed]` line as everything else that goes wrong with a query.
+    // See placeholders.ts: the reaper threw every twenty seconds for four hours
+    // on a `$3` with one parameter behind it, and the database's own account of
+    // that names the wrong parameter and no query at all.
+    assertPlaceholdersMatchParams(queryText, params);
     return await runOnPoolUntimed<T>(
       sourcePool,
       defaultTimeoutMs,

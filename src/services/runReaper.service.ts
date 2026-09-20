@@ -84,6 +84,34 @@ async function lastRunOnThread(threadId: number): Promise<string | null> {
   return result.rows[0]?.run_id ?? null;
 }
 
+/**
+ * THIS SWEEP THREW ON EVERY RUN FOR FOUR HOURS, and the cause is one digit.
+ *
+ * `54af32f`, 20 September 10:13 — my own commit, removing two Georgian status
+ * captions from this statement. It took out the `$1` and `$2` those captions
+ * were bound to and left the interval reading `$3`, with a one-element array
+ * underneath it. Postgres numbers by the highest reference, so it wanted three
+ * parameters, got one, and answered:
+ *
+ *   could not determine data type of parameter $1     (SQLSTATE 42P18)
+ *
+ * every twenty seconds from 10:13 until 14:20, in a `catch` that logs and
+ * carries on. Nothing else in the product noticed, because a reaper that finds
+ * nothing and a reaper that cannot run look identical from outside — which is
+ * the substitution this codebase keeps having to undo, now in the code that
+ * exists to catch a run nobody is watching.
+ *
+ * WHAT IT COST: a thread whose process died stays on „working" forever. The
+ * spinner never stops, no error is written, and the owner is told nothing at
+ * all. It is the exact failure row 114 was built to end, live again for four
+ * hours on the day I also found that the shutdown drain has never run.
+ *
+ * The tests here passed throughout: they mock `query` and assert on the rows
+ * it returns, so the placeholders in the text are the one thing they could not
+ * see. `assertPlaceholdersMatchParams` in the db client now checks that before
+ * anything reaches Postgres, for every query in the product, and a test below
+ * holds this statement to it.
+ */
 export async function sweepOrphanedRuns(): Promise<number> {
   // A reaped thread whose OPEN goal is waiting for the owner's answer keeps
   // the `needs_you` badge (ticket 9 task 20 b): the dead run is told in the
@@ -148,7 +176,7 @@ export async function sweepOrphanedRuns(): Promise<number> {
                 SELECT 1 FROM conversations c
                 WHERE c.thread_id = t.id AND c.role = 'assistant'
                   AND c.kind = 'message' AND c.content <> ''
-                  AND c.created_at > NOW() - ($3 || ' seconds')::interval * 2
+                  AND c.created_at > NOW() - ($1 || ' seconds')::interval * 2
               ) AS answered,
               -- Row 33: has the owner ever typed in this thread at all? An
               -- engine wake is stored role='user' too, so this asks for a real
@@ -160,7 +188,7 @@ export async function sweepOrphanedRuns(): Promise<number> {
               ) AS was_asked
        FROM threads t
        WHERE t.status = 'working'
-         AND t.updated_at < NOW() - ($3 || ' seconds')::interval
+         AND t.updated_at < NOW() - ($1 || ' seconds')::interval
      )
      UPDATE threads t
      SET status = CASE WHEN o.awaits_owner THEN 'needs_you' ELSE 'failed' END,
