@@ -37,6 +37,25 @@ import { join } from 'path';
  * Read as text: these strings are consumed by a model and there is no return
  * value to assert on. Joined back up first, because prettier decides where
  * they wrap and a phrase that fits one line today straddles `' +` tomorrow.
+ *
+ * WHETHER THIS ACTUALLY WORKED IS NOT ESTABLISHED, and the commit that shipped
+ * it claimed more than the evidence carries. One introduction was created
+ * after it — request 1123, 20 September 13:01, the first in fourteen days —
+ * and it differs from all four failures in TWO ways at once:
+ *
+ *   18746/18747  19 Sep   171870 -> Netai Test 3   not a contact   incoming_ask
+ *   19505        20 Sep   171871 -> Netai Test 4   not a contact   incoming_ask
+ *   1123         20 Sep   171870 -> Netai Test 4   A CONTACT       introduction_request
+ *
+ * Every failure had a target the requester did not already hold; the one
+ * success had one. So „the descriptions did it" and „the model always routed
+ * this correctly for a known contact" fit the data equally well, and the
+ * seat's hypothesis was the better-tested of the two.
+ *
+ * THE EXPERIMENT THAT SEPARATES THEM is one sentence: from 171870, ask for an
+ * introduction to Netai Test 3 — not in their phonebook — through any
+ * mediator. That is the exact shape that failed twice on the 19th. Until it
+ * runs, these assertions hold that the words are PRESENT, and nothing more.
  */
 const SOURCE = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 const joined = (from: string, to: string): string => {
