@@ -1,4 +1,7 @@
 import { IntroChannel, resolveIntroductionRequest } from '../introduction.service';
+import { introChannelRequired } from '../introOpening';
+import { RunLanguage } from '../runLanguage';
+import { userLanguage } from '../threads.service';
 
 /**
  * Chat-tool adapter over the shared resolver: the model answers a request the
@@ -21,14 +24,6 @@ import { IntroChannel, resolveIntroductionRequest } from '../introduction.servic
  *
  * A DECLINE needs no channel. There is nothing to arrange.
  */
-const CHANNEL_REQUIRED =
-  'ჯერ ჰკითხე მომხმარებელს, როგორ სურს გაცნობა, და მერე დამიძახე ისევ `channel`-ით. ' +
-  'ორი ვარიანტია და არჩევანი მისია: `direct` — ორივე პირდაპირ დაუკავშირდება ერთმანეთს ' +
-  'და მეორე მხარეს კონტაქტი გადაეცემა; `via_mediator` — კონტაქტი არავის გადაეცემა და ' +
-  'კავშირი მის გავლით გაგრძელდება. present_choices-ით აჩვენე სამი ღილაკი: ' +
-  '„პირდაპირ დააკავშირე" / „ჩემი გავლით" / „არა, ამჯერად". ' +
-  'თანხმობა ჯერ არ ჩაწერილა — არაფერი დაკარგულა, უბრალოდ ჰკითხე და დამიძახე.';
-
 export async function respondToIntroduction(
   mediatorUserId: string,
   requestId: number,
@@ -37,7 +32,11 @@ export async function respondToIntroduction(
   channel?: IntroChannel,
 ): Promise<object> {
   if (accepted && channel === undefined) {
-    return { success: false, needs_channel: true, error: CHANNEL_REQUIRED };
+    // The MEDIATOR's language: this refusal names the three button labels the
+    // model must put on their screen, and they are the ones choosing whether
+    // somebody's phone number is handed over. See introChannelRequired.
+    const language = await userLanguage(mediatorUserId).catch(() => 'ka' as RunLanguage);
+    return { success: false, needs_channel: true, error: introChannelRequired(language) };
   }
   const outcome = await resolveIntroductionRequest(
     mediatorUserId,

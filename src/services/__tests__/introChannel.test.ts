@@ -22,6 +22,8 @@ import { join } from 'path';
  * one, and it is the one that withholds.
  */
 const SERVICE = readFileSync(join(__dirname, '..', 'introduction.service.ts'), 'utf8');
+import { introChannelRequired } from '../introOpening';
+
 const TOOL = readFileSync(join(__dirname, '..', 'tools', 'respondToIntroduction.ts'), 'utf8');
 const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
@@ -35,10 +37,7 @@ describe('an accept has to say how', () => {
 
   it('names both options and the buttons, so one retry fixes it', () => {
     // Row 215: a refusal names the way forward rather than being a wall.
-    const refusal = TOOL.slice(
-      TOOL.indexOf('const CHANNEL_REQUIRED'),
-      TOOL.indexOf('export async'),
-    );
+    const refusal = introChannelRequired('ka');
     expect(refusal).toContain('direct');
     expect(refusal).toContain('via_mediator');
     expect(refusal).toContain('პირდაპირ დააკავშირე');
@@ -46,6 +45,35 @@ describe('an accept has to say how', () => {
     expect(refusal).toContain('არა, ამჯერად');
     // And says nothing was lost, because nothing was: the yes is not recorded.
     expect(refusal).toContain('არაფერი დაკარგულა');
+  });
+
+  /**
+   * AND THE BUTTONS ARE IN THE MEDIATOR'S LANGUAGE, caught on a pre-flight
+   * read minutes before the seat was due to answer the first introduction in
+   * fourteen days — as an ENGLISH-speaking mediator.
+   *
+   * The refusal is model-facing, which is fine on its own. What is not fine is
+   * that it names the exact BUTTON LABELS the model puts on the person's
+   * screen. Three Georgian buttons, asking somebody whether to give away a
+   * third person's phone number.
+   *
+   * This product has been bitten by a Georgian button in an English thread
+   * before and it was not cosmetic then either — an unrecognised approve label
+   * made `approvalBelongsToThePlan` false and an owner's yes had nowhere to
+   * land. Here the stakes are a phone number.
+   */
+  it.each(['en', 'ru', 'es'] as const)('offers %s buttons to an %s mediator', (language) => {
+    const refusal = introChannelRequired(language);
+    expect(refusal).not.toMatch(/[Ⴀ-ჿ]/);
+    // The two channel VALUES are code and stay as they are in every language.
+    expect(refusal).toContain('direct');
+    expect(refusal).toContain('via_mediator');
+    // Three buttons, still, and the third is the decline.
+    expect(refusal).toContain('present_choices');
+  });
+
+  it('the tool asks the mediator which language, not the requester', () => {
+    expect(TOOL).toContain('userLanguage(mediatorUserId)');
   });
 
   it('does not ask a decline for a channel — there is nothing to arrange', () => {

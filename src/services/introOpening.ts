@@ -343,3 +343,68 @@ export function introAnsweredLine(language: RunLanguage): string {
       return 'პასუხი მოვიდა';
   }
 }
+
+/**
+ * The three buttons a mediator is offered when they accept without saying HOW,
+ * and the refusal that asks for them.
+ *
+ * Caught on a pre-flight read at 13:05 on 20 September, minutes before the
+ * seat was due to answer the first introduction in fourteen days — as an
+ * English-speaking mediator.
+ *
+ * The refusal is model-facing, which by itself is fine: a model reads Georgian.
+ * What is NOT fine is that it names the exact BUTTON LABELS the model must put
+ * on the person's screen — „პირდაპირ დააკავშირე" / „ჩემი გავლით" /
+ * „არა, ამჯერად" — so a mediator who writes English would have been handed
+ * three Georgian buttons and asked to choose whether to give away somebody's
+ * phone number.
+ *
+ * This product has been bitten by a Georgian button in an English thread
+ * before, and it was not cosmetic then either: an unrecognised approve label
+ * made `approvalBelongsToThePlan` false and the owner's yes had nowhere to
+ * land (see approveWording.test.ts). Here the stakes are a phone number.
+ *
+ * The whole refusal is localised rather than only the labels, so the prose and
+ * the buttons cannot drift apart — which is how the plan card ended up telling
+ * the model to offer a word the product had stopped using.
+ */
+export function introChannelRequired(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return (
+        'Ask the user HOW they want the introduction made, then call me again with `channel`. ' +
+        'There are two and the choice is theirs: `direct` — the two of them contact each other ' +
+        'and the other side is given the contact; `via_mediator` — the contact is given to ' +
+        'nobody and it keeps going through them. Offer three buttons with present_choices: ' +
+        '"Connect us directly" / "Keep it through me" / "No, not this time". ' +
+        'Nothing has been recorded yet — nothing is lost, just ask and call me again.'
+      );
+    case 'ru':
+      return (
+        'Спроси пользователя, КАК он хочет познакомить, и вызови меня снова с `channel`. ' +
+        'Вариантов два, и выбор его: `direct` — они свяжутся напрямую и другой стороне ' +
+        'передаётся контакт; `via_mediator` — контакт никому не передаётся и связь идёт через ' +
+        'него. Покажи три кнопки через present_choices: «Свяжите напрямую» / «Через меня» / ' +
+        '«Нет, не сейчас». Согласие ещё не записано — ничего не потеряно, просто спроси и ' +
+        'вызови снова.'
+      );
+    case 'es':
+      return (
+        'Pregunta al usuario CÓMO quiere hacer la presentación y vuelve a llamarme con ' +
+        '`channel`. Hay dos y la decisión es suya: `direct` — se ponen en contacto directamente ' +
+        'y a la otra parte se le da el contacto; `via_mediator` — el contacto no se da a nadie ' +
+        'y todo sigue pasando por él. Muestra tres botones con present_choices: ' +
+        '"Conectadnos directamente" / "Que pase por mí" / "No, esta vez no". ' +
+        'Nada se ha registrado todavía — no se pierde nada, pregunta y vuelve a llamarme.'
+      );
+    default:
+      return (
+        'ჯერ ჰკითხე მომხმარებელს, როგორ სურს გაცნობა, და მერე დამიძახე ისევ `channel`-ით. ' +
+        'ორი ვარიანტია და არჩევანი მისია: `direct` — ორივე პირდაპირ დაუკავშირდება ერთმანეთს ' +
+        'და მეორე მხარეს კონტაქტი გადაეცემა; `via_mediator` — კონტაქტი არავის გადაეცემა და ' +
+        'კავშირი მის გავლით გაგრძელდება. present_choices-ით აჩვენე სამი ღილაკი: ' +
+        '„პირდაპირ დააკავშირე" / „ჩემი გავლით" / „არა, ამჯერად". ' +
+        'თანხმობა ჯერ არ ჩაწერილა — არაფერი დაკარგულა, უბრალოდ ჰკითხე და დამიძახე.'
+      );
+  }
+}
