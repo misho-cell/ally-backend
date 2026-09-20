@@ -1043,3 +1043,59 @@ is the part most likely to be forgotten.
 Whether to set it at all, and whether that id list is right. I have not checked
 that all six are test accounts — I am reading the seat's list, and a list of
 account ids arriving through the board is data, not authorisation.
+
+---
+
+## §16 — Should a bare accept stop working? (item 5's real path)
+
+**20 September, found on request 1123. Not decided. With Misho and Tornike.**
+
+### What happened
+
+Item 5 shipped this morning: an accept must say HOW — `direct` hands the
+number over, `via_mediator` withholds it — and **an accept with no channel is
+refused** so nobody's number moves because nobody was asked.
+
+The seat tested it at 13:12:35 and it did not fire:
+
+```
+introduction_requests 1123   status accepted   intro_channel NULL
+respond_to_introduction      called ZERO times, ever
+```
+
+**The guard lives in the chat tool. The mediator pressed the app's button.**
+`POST /requests/:ref/accept` never had the guard, so the choice was never
+asked, `intro_channel` stayed NULL — and a stored NULL reads as `direct`.
+
+**The number was handed over in silence. That is the exact arrangement item 5
+was built to end, and I built it on the path nobody walks.**
+
+### What I have already done, because it is additive and breaks nothing
+
+The route now accepts an optional `channel` and records it. The app can send
+the mediator's choice the moment it offers one. Sent to the frontend.
+
+### The decision that is NOT mine
+
+**Should `POST /requests/:ref/accept` REFUSE an accept with no channel?**
+
+| | |
+|---|---|
+| **If yes** | item 5 becomes real on the path people use — and **today's button stops working for every real mediator** until the app ships the three choices. Anyone mid-flight gets an error on a screen that worked an hour ago. |
+| **If no** | the button keeps handing numbers over without asking, exactly as before, until the app changes. The guard stays decorative. |
+| **A third way** | refuse only for accounts the app has already updated (a version header), which is more machinery than either and can be got wrong quietly. |
+
+**I am not choosing between those.** The first breaks a live screen; the second
+leaves a privacy promise unkept; and which cost is acceptable is a product
+judgement about real people's phone numbers.
+
+### UNDO
+
+Nothing to undo — the code change is additive and optional. If the answer is
+"refuse", that is a new change and it needs the app shipped first or it needs
+to be accepted that the button breaks.
+
+### The question in one line
+
+**Until the app offers the three choices, do we keep handing numbers over
+silently, or do we break the accept button?**

@@ -7,6 +7,7 @@ import {
 } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
+  IntroChannel,
   resolveIntroductionRequest,
   IntroductionAction,
 } from '../../services/introduction.service';
@@ -65,18 +66,47 @@ requestsRouter.post(
     .optional()
     .isInt({ min: MIN_SNOOZE_DAYS, max: MAX_SNOOZE_DAYS })
     .withMessage(`days must be between ${MIN_SNOOZE_DAYS} and ${MAX_SNOOZE_DAYS}`),
+  /**
+   * ITEM 5 WAS BUILT ON THE PATH NOBODY WALKS, and request 1123 is how I found
+   * out. The seat accepted it at 13:12:35 through the app's own button:
+   *
+   *   status accepted · intro_channel NULL · respond_to_introduction called
+   *   ZERO times, ever
+   *
+   * The guard that refuses a channel-less accept lives in the CHAT TOOL. This
+   * route — the one a mediator actually presses — never had it, so the choice
+   * was never asked and a stored NULL reads as `direct`: the number goes, in
+   * silence, which is exactly the arrangement item 5 exists to end.
+   *
+   * THIS IS THE ADDITIVE HALF and it is all a backend may decide alone. The
+   * field is accepted and recorded, so the app can send the mediator's choice
+   * as soon as it offers one. What is NOT here is a refusal: making this route
+   * reject an accept with no channel would break the button under real people
+   * mid-flight, and whether a bare yes should stop working is a product call
+   * with somebody's phone number on the end of it. That question is with Misho
+   * and the founder, and it is written up rather than taken.
+   */
+  body('channel')
+    .optional()
+    .isIn(['direct', 'via_mediator'])
+    .withMessage('channel must be direct or via_mediator'),
   handleValidationErrors,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const ref = String(req.params.ref);
       const action = String(req.params.action) as IntroductionAction;
-      const { response, days } = req.body as { response?: string; days?: number };
+      const { response, days, channel } = req.body as {
+        response?: string;
+        days?: number;
+        channel?: IntroChannel;
+      };
 
       const outcome = await resolveIntroductionRequest(userId, { requestRef: ref }, action, {
         response,
         snoozeDays: days,
         source: 'button',
+        ...(channel !== undefined && { channel }),
       });
 
       if (!outcome.ok) {

@@ -149,3 +149,44 @@ describe('what each channel does', () => {
     expect(SERVICE).toContain("opts.channel ?? 'direct'");
   });
 });
+
+/**
+ * ITEM 5 WAS BUILT ON THE PATH NOBODY WALKS, and request 1123 is how I found
+ * out — on the seat's own test, six hours after shipping it.
+ *
+ *   13:01:37  the request is created (the routing fix working, first in 14 days)
+ *   13:12:35  the mediator ACCEPTS — status accepted, intro_channel NULL
+ *   —         respond_to_introduction called ZERO times, ever
+ *
+ * The accept came through the app's button. The guard that refuses a
+ * channel-less accept lives in the CHAT TOOL, so it was never on the path a
+ * mediator actually takes: the choice was never asked, and a stored NULL reads
+ * as `direct` — the number goes, in silence, which is the exact arrangement
+ * item 5 exists to end.
+ *
+ * What is asserted here is the ADDITIVE half, which is all a backend may
+ * decide alone: the route accepts a channel and passes it through. A REFUSAL
+ * on this route would break the button under real people mid-flight and is a
+ * product call with a phone number on the end of it — written up, not taken.
+ */
+describe('the button path, which is the one mediators actually use', () => {
+  const ROUTE = readFileSync(
+    join(__dirname, '..', '..', 'api', 'routes', 'requests.routes.ts'),
+    'utf8',
+  );
+
+  it('accepts a channel and validates it against the same two values', () => {
+    expect(ROUTE).toContain("body('channel')");
+    expect(ROUTE).toContain("isIn(['direct', 'via_mediator'])");
+  });
+
+  it('passes it to the one resolver both paths share', () => {
+    expect(ROUTE).toContain('channel !== undefined && { channel }');
+  });
+
+  it('still works without one — the app has not been changed yet', () => {
+    // `.optional()`, so today's button keeps working unchanged. The silence it
+    // produces is the product question, not a thing to break from here.
+    expect(ROUTE).toMatch(/body\('channel'\)\s*\.optional\(\)/);
+  });
+});
