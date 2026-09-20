@@ -622,6 +622,42 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
      * The second half stays the model's job — it knows the Georgian for
      * photographer — and the tool's description now says so instead of asking
      * for „a short natural-language description" with no word about script.
+     *
+     * THE OTHER DIRECTION IS NOT BUILT, AND HERE IS THE SIZE OF WHAT THAT
+     * COSTS, because „I did not build it" deserves a number rather than a
+     * shrug. The seat's 374 measured it: `iuristi` reaches nothing while
+     * „იურისტი" reaches six; `arqiteqtori` nothing while „არქიტექტორი"
+     * reaches four. A Latin-spelled query does not reach a Georgian-script
+     * fact.
+     *
+     * Every core fact in the base, 20 September:
+     *
+     *   occupation  161 rows    46 Georgian script   115 Latin only
+     *   industry    110          5                   105
+     *   employer    105          1                   104
+     *   city         75          6                    69
+     *   TOTAL       451         58 (13%)             393 (87%)
+     *
+     * So the direction ABOVE, which is built, reaches 87% of what is stored.
+     * The direction below reaches the remaining 58 rows, 46 of them
+     * occupations.
+     *
+     * WHY IT IS NOT BUILT. `GEO_TO_LATIN` is MANY-TO-ONE — „თ" and „ტ" both
+     * give „t", „ქ" and „კ" both give „k", „ც" and „წ" both „ts", „ჩ" and
+     * „ჭ" both „ch". Reversing it is combinatorial: every ambiguous letter
+     * doubles the candidate spellings, and each candidate is another LIKE
+     * pattern in a query whose cost I measured today and which is already the
+     * slowest thing this product does.
+     *
+     * Fifty-eight rows against a combinatorial expansion of the hot path is
+     * not a trade I would make tonight, and the seat did not ask me to —
+     * „we are not asking you to fix it tonight… it is one half of one row".
+     *
+     * AND THE EXISTING INSTRUCTION ALREADY COVERS IT when it is followed: the
+     * tool's own description says to run both languages. The 13% is reachable
+     * the moment the model asks in Georgian too. If that turns out not to
+     * happen in practice, the honest next step is to measure how often it is
+     * followed — not to build the reverse map first.
      */
     const groups = words.map((word) => {
       const variants = new Set<string>([word, ...buildSearchTerms(word)]);
