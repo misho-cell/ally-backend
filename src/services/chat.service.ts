@@ -403,6 +403,13 @@ interface AnthropicTool {
 const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'request_introduction',
   description:
+    'THE TOOL FOR "I WANT TO MEET X" AND "ASK Y TO INTRODUCE ME TO X". If the user wants to be ' +
+    'PUT IN TOUCH WITH somebody — introduced, connected, given a way to reach them — this is the ' +
+    'tool, and ask_contact is the wrong one. The discriminator is what the user wants at the ' +
+    'end: a RELATIONSHIP with the third person is an introduction; an ANSWER, a recommendation ' +
+    'or a piece of information is a question, and that is ask_contact. "Ask Gio whether he knows ' +
+    'a plumber" is a question. "Ask Gio to introduce me to Nino" is an introduction, even though ' +
+    'both sentences begin with "ask". ' +
     "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list." +
     ' WHEN: to ask a single mediator, only after they confirm. DIRECT case: when the person the ' +
     'user wants to meet is already their own contact AND a member, pass that person as BOTH ' +
@@ -812,6 +819,12 @@ const CREATE_TASK_TOOL: AnthropicTool = {
 const ASK_CONTACT_TOOL: AnthropicTool = {
   name: 'ask_contact',
   description:
+    'NOT FOR AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN TOUCH with them — ' +
+    'including "ask Y to introduce me to X" — that is request_introduction, not this. Sending it ' +
+    'here files the whole thing as an ordinary question: no introduction is created, the ' +
+    'mediator is never offered the accept/decline choice, and nobody is ever connected. The ' +
+    'discriminator is what the user wants at the end — an ANSWER is a question, a RELATIONSHIP ' +
+    'is an introduction. ' +
     "Send a question to one of the user's MEMBER contacts on an open task's behalf (pass the " +
     'phone id from a search result). The recipient gets it as a thread + push and answers in ' +
     'plain text; the answer wakes this task automatically. You MAY write to the same person ' +
