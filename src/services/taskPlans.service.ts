@@ -74,10 +74,37 @@ function cleanText(raw: unknown, field: string): PlanOutcome<string> {
 }
 
 /**
+ * A value that should be an object, arriving as the JSON TEXT of that object.
+ *
+ * Measured over fourteen days: 7 of 314 propose_task_plan calls were refused
+ * on nothing but this. Four sent the whole plan as a string; the others sent
+ * an array of real route objects with ONE element double-encoded beside them:
+ *
+ *   "routes":[{"name":"Ask direct contacts…","status":"waiting"},
+ *             "{\"name\": \"Web search for movers…\", \"status\": \"waiting\"}"]
+ *
+ * Each cost a whole run on a live goal. Nothing is loosened by decoding it:
+ * the result goes through exactly the same checks as an object that arrived
+ * as one, and anything that is not parseable JSON is handed on untouched to
+ * fail where it would have failed before.
+ */
+function decodeIfJsonText(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw;
+  const text = raw.trim();
+  if (!text.startsWith('{')) return raw;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return raw;
+  }
+}
+
+/**
  * Read a plan out of whatever the model passed. Strict on the shape and
  * forgiving on nothing: a plan the ask path will enforce has to be exact.
  */
-export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
+export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
+  const raw = decodeIfJsonText(rawInput);
   if (raw === null || typeof raw !== 'object')
     return { ok: false, error: 'plan must be an object' };
   const input = raw as Record<string, unknown>;
@@ -89,7 +116,7 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
   if (routesRaw.length > MAX_ROUTES) return { ok: false, error: `at most ${MAX_ROUTES} routes` };
   const routes: PlanRoute[] = [];
   for (const r of routesRaw) {
-    const item = (r ?? {}) as Record<string, unknown>;
+    const item = (decodeIfJsonText(r) ?? {}) as Record<string, unknown>;
     const name = cleanText(item.name, 'route.name');
     if (!name.ok) return name;
     const status = typeof item.status === 'string' ? item.status : 'running';
@@ -121,18 +148,37 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
   const routesByKey = new Map(routes.map((r) => [routeKey(r.name), r.name]));
   const onlyRoute = routes.length === 1 ? routes[0].name : null;
 
+  /**
+   * Ticket 20 row 101a, second cut. The relaxation above took case and
+   * whitespace out of the comparison and the refusals went on: 21 of the 95
+   * refused propose_task_plan calls of the last fourteen days are still this
+   * one, and „the model SHORTENS its own route names until they match" —
+   * written in the comment above from the first measurement — says what the
+   * near-miss IS. One of the two strings sits inside the other.
+   *
+   * So a containment match is allowed, and ONLY when it is unambiguous: if two
+   * routes both contain what was said, naming either one would be a guess
+   * about which person belongs where, and the ask path enforces that answer.
+   * Two candidates is a refusal, exactly as none is.
+   */
   function resolveRoute(said: string): string | null {
     const matched = routesByKey.get(routeKey(said));
     if (matched !== undefined) return matched;
     // A single-route plan: whatever they called it, there is only one road.
-    return onlyRoute;
+    if (onlyRoute !== null) return onlyRoute;
+    const key = routeKey(said);
+    if (key === '') return null;
+    const near = [...routesByKey].filter(
+      ([routeName]) => routeName.includes(key) || key.includes(routeName),
+    );
+    return near.length === 1 ? near[0][1] : null;
   }
 
   const peopleRaw = Array.isArray(input.people_to_involve) ? input.people_to_involve : [];
   if (peopleRaw.length > MAX_PEOPLE) return { ok: false, error: `at most ${MAX_PEOPLE} people` };
   const people: PlanPerson[] = [];
   for (const p of peopleRaw) {
-    const item = (p ?? {}) as Record<string, unknown>;
+    const item = (decodeIfJsonText(p) ?? {}) as Record<string, unknown>;
     const name = cleanText(item.name, 'person.name');
     if (!name.ok) return name;
     const phone = typeof item.phone === 'string' ? item.phone.trim() : '';
@@ -149,8 +195,15 @@ export function parsePlan(raw: unknown): PlanOutcome<TaskPlan> {
         ok: false,
         // The names are IN the error now. The model was rewriting its plan to
         // guess at them, which is what made one refusal cost a whole run.
+        //
+        // AND SO IS WHAT IT ACTUALLY WROTE. Without that the refusal asks the
+        // model to diff its own call against a list without telling it which
+        // value was rejected — and it left the same blind spot in the log:
+        // args_summary stops at 300 characters, so reading twenty-one of these
+        // refusals back showed the routes offered and never once the route
+        // said.
         error:
-          `person ${name.value}: route must name one of the plan's routes — ` +
+          `person ${name.value}: route "${said}" is not one of the plan's routes — ` +
           routes.map((r) => `"${r.name}"`).join(', '),
       };
     }

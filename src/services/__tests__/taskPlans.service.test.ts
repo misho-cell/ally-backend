@@ -507,6 +507,125 @@ describe('row 101a — the route match forgives spelling, not membership', () =>
     expect(out.error).toContain('Eka Malazonia — ორ მასაჟისტს იცნობს');
     expect(out.error).toContain('მეორე წრის სრული ძიება');
   });
+
+  /**
+   * Second cut, 20 September. Case and whitespace were not the whole of it:
+   * 21 of the 95 propose_task_plan refusals of the last fourteen days are
+   * still this one. The comment above already said what the near-miss is —
+   * the model shortens its own route name — so containment is allowed, and
+   * only where it can point at exactly one road.
+   */
+  it('a SHORTENED route name matches the route it is the start of', () => {
+    const out = withRoute('Eka Malazonia');
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.people_to_involve[0].route).toBe('Eka Malazonia — ორ მასაჟისტს იცნობს');
+  });
+
+  it('a LONGER name containing the route matches it too', () => {
+    const out = withRoute('via მეორე წრის სრული ძიება, second pass');
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.people_to_involve[0].route).toBe('მეორე წრის სრული ძიება');
+  });
+
+  it('but an ambiguous shortening is refused — choosing would be a guess', () => {
+    const out = withRoute('ძიება', [
+      { name: 'ძიება ტეგებით', status: 'waiting' },
+      { name: 'ძიება ვებში', status: 'waiting' },
+    ]);
+    expect(out.ok).toBe(false);
+  });
+
+  it('and an empty route on a multi-route plan is refused, not matched to all', () => {
+    const out = withRoute('');
+    expect(out.ok).toBe(false);
+  });
+
+  /**
+   * The refusal says WHAT WAS REJECTED. Without it the model is asked to diff
+   * its own call against a list, and the log inherits the same blind spot:
+   * args_summary stops at 300 characters, so reading twenty-one of these back
+   * showed the routes offered and never once the route said.
+   */
+  it('the refusal quotes the route that was rejected', () => {
+    const out = withRoute('a third road nobody listed');
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toContain('"a third road nobody listed"');
+  });
+});
+
+/**
+ * 20 September. Seven of 314 propose_task_plan calls over fourteen days were
+ * refused for nothing but a JSON object arriving as the TEXT of that object —
+ * four sending the whole plan that way, the rest sending an array of real
+ * route objects with one double-encoded element sitting among them. Each cost
+ * a whole run on a live goal.
+ */
+describe('a plan that arrived as its own JSON text', () => {
+  const PLAN = {
+    solved_when: 'ნაპოვნია ხელოსანი',
+    routes: [{ name: 'ქსელში კითხვა', status: 'waiting' }],
+    people_to_involve: [],
+    never_contact: [],
+  };
+
+  it('the whole plan, double-encoded, is read', () => {
+    const out = parsePlan(JSON.stringify(PLAN));
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.routes[0].name).toBe('ქსელში კითხვა');
+  });
+
+  it('ONE route double-encoded beside real objects — the live shape', () => {
+    const out = parsePlan({
+      ...PLAN,
+      routes: [
+        { name: 'Ask direct contacts who might know a mover', status: 'waiting' },
+        JSON.stringify({ name: 'Web search for movers in Tbilisi', status: 'waiting' }),
+      ],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.routes.map((r) => r.name)).toEqual([
+      'Ask direct contacts who might know a mover',
+      'Web search for movers in Tbilisi',
+    ]);
+  });
+
+  it('a person double-encoded is read, and still validated', () => {
+    const out = parsePlan({
+      ...PLAN,
+      people_to_involve: [
+        JSON.stringify({ name: 'Gega', phone: '+995599111111', route: 'ქსელში კითხვა' }),
+      ],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.people_to_involve[0].name).toBe('Gega');
+  });
+
+  /**
+   * Nothing is loosened by decoding: the decoded value goes through exactly
+   * the checks an object that arrived as one goes through.
+   */
+  it('a decoded person with no phone is refused exactly as an object would be', () => {
+    const out = parsePlan({
+      ...PLAN,
+      people_to_involve: [JSON.stringify({ name: 'Gega', route: 'ქსელში კითხვა' })],
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toContain('phone id');
+  });
+
+  it('a string that is not JSON is still refused, and says the same thing', () => {
+    const out = parsePlan('I will ask around and get back to you');
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toBe('plan must be an object');
+  });
 });
 
 /**
