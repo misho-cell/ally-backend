@@ -57,6 +57,53 @@ const MIN_ORG_SAVERS_FOR_SHARE = 2;
  * The size of the company as the phonebooks see it. At or below the small
  * bound, one person carrying the word IS that company; above the big one, the
  * word places him in a crowd and says nothing about his seat.
+ *
+ * THESE THREE SIT ON AN INFLATED FLOOR, and as of 20 September that is
+ * measured rather than suspected. `orgSizes` counts with LIKE '%word%', a
+ * SUBSTRING, so its number is always at or above the number of people who
+ * really carry the word. TASKS.md held this row shut from 15 September with
+ * one sentence: „the full measurement could not be run with ro-sql — the most
+ * frequent tokens hit a statement timeout. Until that number exists I do not
+ * touch the engine."
+ *
+ * The number exists now. What was timing out was asking for every token in ONE
+ * statement over 8.4 million alias rows; one token costs about 0.25 s in a
+ * batch of five, because both counts ride the same trigram index. The wall was
+ * the shape of the query. `scripts/ops/orgsize.sh` is the measurement.
+ *
+ * TWO SAMPLES, because they answer different halves:
+ *
+ *   the 300 most-carried tokens   median inflation 1.11x, and NOT ONE of them
+ *                                 crosses a tier — every frequent word is far
+ *                                 above 50 on either count.
+ *   rare tokens (two runs,        cross 3:  2% / 1%
+ *   220 and 120)                  cross 15: 4% / 5%
+ *                                 cross 50: 7% / 10%
+ *
+ * So the population that moves is small, and every example examined moves in
+ * the direction of the truth:
+ *
+ *   dzgoli        8,108 -> 8      „mdzgoli", „dzgolia" — a driver, not a firm
+ *   amila         3,220 -> 25
+ *   parikmax      1,236 -> 47     the truncated „parikmaxeri"
+ *   berdzen         993 -> 23
+ *   შვილო           791 -> 15     inside every -შვილი surname there is
+ *   ირგა            196 -> 2
+ *
+ * `dzgoli` is the whole argument in one line: the engine is told 8,108 people
+ * carry that word and therefore that its holder is lost in a crowd. Eight do.
+ *
+ * WHICH WAY IT WOULD MOVE, since a substring count can only be too high:
+ * fixing it makes `runsIt` MORE likely (words fall under 3 and 15) and
+ * `in_big_organisation` LESS likely (words fall under 50). Nothing moves up.
+ *
+ * STILL NOT CHANGED HERE, and now for a different reason than before. It is no
+ * longer „we have no number" — it is that this decides who reaches a target
+ * list, which is Tornike's call and not a correctness fix I can make on my own
+ * (TASKS.md, „სიის სიმძლავრე"). The sampling limit belongs with it: this
+ * samples the words in the BASE, not the words the engine asks about, which
+ * are only those that passed the saver-agreement gate. Right order of
+ * magnitude, not a census.
  */
 const SMALL_ORG_SIZE = 15;
 const TINY_ORG_SIZE = 3;
