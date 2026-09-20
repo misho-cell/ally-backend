@@ -7,7 +7,10 @@ jest.mock('../threads.service', () => ({
   // default here is Georgian so every assertion below still reads the language
   // it was written for.
   threadLanguage: jest.fn().mockResolvedValue('ka'),
-  STATUS_LINES: { failed: 'ვერ დასრულდა', needs_you: 'შენ გელოდება' },
+  // The seat's 332. The sweep reaps every stale run in ONE statement, so it
+  // cannot write the caption there — the caption belongs to each owner's own
+  // language. The statement writes NULL and the loop fills it in per thread.
+  updateThreadStatus: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../sse.service', () => ({
   __esModule: true,
@@ -16,7 +19,7 @@ jest.mock('../sse.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { saveThreadMessage, threadLanguage } from '../threads.service';
+import { saveThreadMessage, threadLanguage, updateThreadStatus } from '../threads.service';
 import { emitRunError, emitThreadUpdated } from '../sse.service';
 import { sweepOrphanedRuns } from '../runReaper.service';
 
@@ -335,5 +338,58 @@ describe('row 214 — the screen is told the run is over', () => {
 
     expect(emitRunError).not.toHaveBeenCalled();
     expect(emitThreadUpdated).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The seat's 332 — thirteen threads on an account that has never written a
+ * Georgian character, and six of them captioned „ველოდები პასუხს" or
+ * „შენი პასუხი სჭირდება".
+ *
+ * The sweep reaps every stale run in ONE statement, which is right — it is the
+ * part that must not race. A caption cannot be written there, because it
+ * belongs to each owner's own language and the statement has no owner. So the
+ * statement writes NULL and the loop fills it in per thread, before anybody is
+ * told anything.
+ *
+ * NULL rather than a Georgian placeholder: for the milliseconds in between, a
+ * missing caption is honest and a wrong one is not.
+ */
+describe('row 332 — the caption a reaped run leaves behind', () => {
+  it('is written in the conversation’s language, not in Georgian', async () => {
+    (threadLanguage as jest.Mock).mockResolvedValue('en');
+    reaped([{ id: 17724, user_id: 501, status: 'failed', answered: false, was_asked: true }]);
+
+    await sweepOrphanedRuns();
+
+    const [, , line] = (updateThreadStatus as jest.Mock).mock.calls[0];
+    expect(String(line)).not.toMatch(/[Ⴀ-ჿ]/);
+    // And the screen is told the same string that was stored.
+    expect((emitThreadUpdated as jest.Mock).mock.calls[0][1].status_line).toBe(line);
+  });
+
+  it('follows each thread separately inside one sweep', async () => {
+    // Both threads answered, so nothing writes an error and the caption is the
+    // only thing asking each one what language it is in.
+    (threadLanguage as jest.Mock).mockResolvedValueOnce('en').mockResolvedValueOnce('ka');
+    reaped([
+      { id: 1, user_id: 501, status: 'failed', answered: true, was_asked: true },
+      { id: 2, user_id: 502, status: 'needs_you', answered: true, was_asked: true },
+    ]);
+
+    await sweepOrphanedRuns();
+
+    const lines = (updateThreadStatus as jest.Mock).mock.calls.map((c) => String(c[2]));
+    expect(lines[0]).not.toMatch(/[Ⴀ-ჿ]/);
+    expect(lines[1]).toMatch(/[Ⴀ-ჿ]/);
+  });
+
+  it('the statement itself writes no caption — it has no owner to write one for', async () => {
+    reaped([]);
+
+    await sweepOrphanedRuns();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain('status_line = NULL');
   });
 });

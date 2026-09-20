@@ -15,8 +15,23 @@ import {
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
-// Default status_line per status (Georgian, shown under the thread title in the
-// chat list). `done` carries no line — an idle thread needs no caption.
+/**
+ * The Georgian caption per status, shown under the thread title in the chat
+ * list. `done` carries no line — an idle thread needs no caption.
+ *
+ * NO LONGER THE DEFAULT. It was, and the seat measured what that cost on
+ * Test 1 — thirteen threads, not one Georgian character in anything the owner
+ * ever wrote, six of them captioned „ველოდები პასუხს" (their 332). Every
+ * caller of `setThreadStatus` that named no line took this constant, which has
+ * no language input at all. `defaultStatusLine` in threadStatus.service asks
+ * the owner instead.
+ *
+ * What is left here is the two INTRODUCTION threads below, and deliberately:
+ * their title and their opening message are hard-coded Georgian too, so a
+ * translated caption above an untranslated message would read worse than what
+ * is there now. Localising that flow is its own piece of work and it is not
+ * pretended to here.
+ */
 export const STATUS_LINES: Readonly<Record<ThreadStatus, string | null>> = {
   working: 'ვმუშაობ…',
   waiting: 'ველოდები პასუხს',
@@ -690,8 +705,36 @@ export async function getThreadMessages(
  */
 export async function threadLanguage(threadId: number): Promise<RunLanguage> {
   const [latest, ...earlier] = await ownerMessages(threadId);
-  if (latest === undefined) return 'ka';
-  return languageOfConversation(latest, earlier);
+  if (latest !== undefined) return languageOfConversation(latest, earlier);
+  /**
+   * AN EMPTY THREAD IS NOT A GEORGIAN THREAD. The seat measured it on Test 1,
+   * 20 September, reading one object at one moment:
+   *
+   *   six threads with NO messages     language: "ka"     title: "New conversation"
+   *   five threads WITH messages       language: "en"
+   *
+   * and that account has never written a Georgian character anywhere. Two
+   * parts of the server falling back to two different defaults, in the same
+   * response — the title had already been taught to ask the owner and this
+   * had not.
+   *
+   * `return 'ka'` was right when it was written, because there was nothing
+   * else to ask. There is now: `userLanguage` reads what this person writes
+   * EVERYWHERE, so an empty thread on an eight-thread English account answers
+   * English. Georgian survives as the last resort, for an account that has
+   * genuinely never said anything.
+   *
+   * It is not a display detail. `threadLanguage` is what the reaper and the
+   * task engine write their messages in, and a thread is emptiest exactly when
+   * the engine is first writing into it.
+   */
+  const owner = await query<{ user_id: string }>(
+    `SELECT user_id::text AS user_id FROM threads WHERE id = $1 LIMIT 1`,
+    [threadId],
+  );
+  const ownerId = owner.rows[0]?.user_id;
+  if (ownerId === undefined) return 'ka';
+  return userLanguage(ownerId);
 }
 
 /**

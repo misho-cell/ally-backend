@@ -181,7 +181,10 @@ describe('the reaper asks about silence, not about age', () => {
     // Not minutes, and not the run's age: the old rule is gone rather than
     // left as an unreachable OR branch beside the new one.
     expect(sql).not.toContain("minutes')::interval");
-    expect(params[2]).toBe(75);
+    // The only parameter the statement takes since the seat's 332: the two
+    // status captions left it, because one statement reaps every owner's
+    // threads and a caption belongs to one owner's language.
+    expect(params).toEqual([75]);
   });
 
   it('takes no age argument at all — one rule, not two', () => {

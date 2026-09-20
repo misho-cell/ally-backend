@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { saveThreadMessage, STATUS_LINES, ThreadStatus, threadLanguage } from './threads.service';
+import { saveThreadMessage, threadLanguage, updateThreadStatus } from './threads.service';
 import { RUN_STRINGS } from './runLanguage';
 import { emitRunError, emitThreadUpdated } from './sse.service';
 
@@ -92,8 +92,8 @@ export async function sweepOrphanedRuns(): Promise<number> {
   const result = await query<{
     id: number;
     user_id: number;
-    status: ThreadStatus;
-    status_line: string | null;
+    /** The sweep sets one of exactly two, which is what lets the caption below be typed. */
+    status: 'needs_you' | 'failed';
     /**
      * Ticket 20 row 3 — a reply DID land on this thread just before it went
      * quiet, so „your reply could not be completed" would be false.
@@ -164,12 +164,18 @@ export async function sweepOrphanedRuns(): Promise<number> {
      )
      UPDATE threads t
      SET status = CASE WHEN o.awaits_owner THEN 'needs_you' ELSE 'failed' END,
-         status_line = CASE WHEN o.awaits_owner THEN $2 ELSE $1 END,
+         -- The CAPTION is not written here, and cannot be: one statement
+         -- reaps every stale run at once, and the caption belongs to each
+         -- owner's own language. It is filled in per thread below, before
+         -- anybody is told anything. NULL rather than a Georgian placeholder,
+         -- because for the few milliseconds in between a missing caption is
+         -- honest and a wrong one is not (the seat's 332).
+         status_line = NULL,
          updated_at = NOW()
      FROM orphaned o
      WHERE o.id = t.id
-     RETURNING t.id, t.user_id, t.status, t.status_line, o.answered, o.was_asked`,
-    [STATUS_LINES.failed, STATUS_LINES.needs_you, RUN_SILENT_SECONDS],
+     RETURNING t.id, t.user_id, t.status, o.answered, o.was_asked`,
+    [RUN_SILENT_SECONDS],
   );
   for (const thread of result.rows) {
     // Persist the failure INTO the thread (kind='error' → system-styled with a
@@ -207,10 +213,15 @@ export async function sweepOrphanedRuns(): Promise<number> {
           emitRunError(String(thread.user_id), thread.id, runId, message);
         }
       }
+      // The caption, in this conversation's own language, written now that
+      // there is one thread to write it for. Same source as the message above.
+      const language = await threadLanguage(thread.id).catch(() => 'ka' as const);
+      const statusLine = RUN_STRINGS[language].statusLines[thread.status];
+      await updateThreadStatus(thread.id, thread.status, statusLine).catch(() => undefined);
       emitThreadUpdated(String(thread.user_id), {
         id: thread.id,
         status: thread.status,
-        status_line: thread.status_line,
+        status_line: statusLine,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
