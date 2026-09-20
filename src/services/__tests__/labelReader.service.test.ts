@@ -516,4 +516,35 @@ describe('junk that reached the label store is not a company', () => {
   it('claims nothing about the neighbours nobody measured', () => {
     expect(classifyToken('null', false)).not.toBe('not_a_word');
   });
+
+  /**
+   * The four that were protected on one side of the wall and not the other.
+   *
+   * They sat in `labelEmployer`'s private list since 16 September, so the
+   * employer FIELD never showed them — and `classifyToken` went on calling
+   * them ORGANISATIONS for the target engine the whole time. 35,889 people
+   * carry one of them.
+   */
+  it('stops calling the employer list’s words companies', () => {
+    for (const word of ['axali', 'klienti', 'chemi', 'ჩემი']) {
+      expect(classifyToken(word, false)).toBe('not_a_word');
+      expect(classifyToken(word, true)).toBe('not_a_word');
+    }
+  });
+
+  /**
+   * ORDER, and this is the test I needed and did not have.
+   *
+   * I read that list FIRST and seven tests went red in a minute: it carries
+   * „დედა", „ბებია", „სახლი", „მანქანა", which this function already gets
+   * right. „Never print this as an EMPLOYER" is not „this identifies nobody" —
+   * a mother identifies a relation. The list replaces the two GUESSES at the
+   * bottom of classifyToken; it never overrules a dictionary.
+   */
+  it('never takes a word a dictionary already owns', () => {
+    expect(classifyToken('დედა', false)).toBe('relation');
+    expect(classifyToken('bebia', false)).toBe('relation');
+    expect(classifyToken('სახლი', false)).toBe('place');
+    expect(classifyToken('manqana', false)).toBe('place');
+  });
 });

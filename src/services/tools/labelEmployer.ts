@@ -1,5 +1,10 @@
 import { classifyToken, labelTokens, orgWordStats, OrgWordStat } from '../labelReader.service';
-import { COMPANY_MARKERS, NOT_A_WORD, ORGANISATION_WORDS } from '../labelDictionaries';
+import {
+  COMPANY_MARKERS,
+  IDENTIFIES_NOBODY,
+  NOT_A_WORD,
+  ORGANISATION_WORDS,
+} from '../labelDictionaries';
 
 /**
  * Ticket 17 Task 8 (D202, the founder, 12 Sep): the label's own word may stand
@@ -70,66 +75,6 @@ const MAX_LEAD_SHARE = 0.5;
  * reach, and every one of them was measured.
  */
 const DIGITS_ONLY = /^\d+$/u;
-const NEVER_A_COMPANY = new Set([
-  // Conjunctions and negations: the label's grammar, not its content.
-  'and',
-  'or',
-  'the',
-  'not',
-  'no',
-  'none',
-  'other',
-  'და',
-  'ან',
-  'არა',
-  'სხვა',
-  // Ticket 19 [8], found after the first fix and worse than what was
-  // reported. Of the 400 commonest tokens in the whole base, 71 classify as
-  // „organisation" — and ten of those cleared the two gates above. They are
-  // not companies and never were:
-  //
-  //   დედა / deda    23,734 carriers, lead share .47 — MOTHER
-  //   მამა / mama    16,536                    .72 — father
-  //   კლიენტი         9,471                    .19 — client
-  //   სახლი           7,295                    .16 — house
-  //   მანქანა         5,146                    .25 — car
-  //   უნდა            5,920                    .05 — „wants"
-  //
-  // „დედა" would have been printed as somebody's EMPLOYER. It is the
-  // commonest word a person writes in a phonebook and it is in none of the
-  // dictionaries — see the note in TASKS.md, which is where the rest of this
-  // belongs: the dictionaries also miss the trades (მძღოლი, ბუღალტერი,
-  // მაკლერი) and the towns (რუსთავი, გორი, ქუთაისი), and those are shared
-  // with the target engine, so they are measured before they are moved.
-  //
-  // Exact match, both scripts, the spellings people actually type. A prefix
-  // rule would read „ახალგაზრდული ასოციაცია" as „new" and drop half a real
-  // company's name.
-  'დედა',
-  'deda',
-  'მამა',
-  'mama',
-  'ბებო',
-  'bebo',
-  'ბებია',
-  'bebia',
-  'ჩემი',
-  'chemi',
-  'კლიენტი',
-  'klienti',
-  'სახლი',
-  'saxli',
-  'sakhli',
-  'მანქანა',
-  'manqana',
-  'mankana',
-  'ახალი',
-  'axali',
-  'akhali',
-  'უნდა',
-  'unda',
-  'new',
-]);
 
 /**
  * Ticket 19 [8] found these words; Ticket 20 row 8 moved them.
@@ -156,7 +101,7 @@ const NEVER_A_COMPANY = new Set([
  * for this one. One list now, read from both sides.
  */
 function cannotBeACompany(token: string): boolean {
-  return DIGITS_ONLY.test(token) || NEVER_A_COMPANY.has(token) || NOT_A_WORD.has(token);
+  return DIGITS_ONLY.test(token) || IDENTIFIES_NOBODY.has(token) || NOT_A_WORD.has(token);
 }
 
 /** Does the crowd say this word is a company rather than a person? */

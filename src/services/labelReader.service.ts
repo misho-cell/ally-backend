@@ -13,6 +13,7 @@ import {
   THING_WORDS,
   TRADE_WORDS,
   NOT_A_WORD,
+  IDENTIFIES_NOBODY,
 } from './labelDictionaries';
 import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
 import { georgianToLatin, hasGeorgian } from './tools/transliterate';
@@ -283,10 +284,6 @@ export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
   // Ticket 18 [8]: a Georgian-script token is asked about in both spellings, so
   // „ოთარი" is recognised as the name the list holds as „otari".
   const forms = spellings(token);
-  // Junk, before anything else — it is not a name, a trade or a company, and
-  // the fall-through at the bottom of this function would call it the last of
-  // those. 42,694 people carry „Undefined" for exactly that reason.
-  if (forms.some((t) => NOT_A_WORD.has(t))) return 'not_a_word';
   // A name we KNOW is a name, before anything else.
   if (forms.some((t) => GEORGIAN_FIRST_NAMES.has(t))) return 'name';
   if (firstInLabel && forms.some((t) => AMBIGUOUS_FIRST_NAMES.has(t))) return 'name';
@@ -311,6 +308,26 @@ export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
   if (matchesAnchored(token, SHORT_RELATION_WORDS)) return 'relation';
   if (matchesAnchored(token, SHORT_PLACE_WORDS) || matchesAnchored(token, SHORT_THING_WORDS))
     return 'place';
+  /**
+   * LAST BEFORE THE GUESSES, and the position is the whole of it.
+   *
+   * I put this check FIRST and the suite went red in seven places within the
+   * minute: `IDENTIFIES_NOBODY` carries „დედა", „ბებია", „სახლი", „მანქანა" —
+   * words this function already classifies CORRECTLY as a relation, a place, a
+   * thing. That list means „never print this as somebody's EMPLOYER", which is
+   * not the same claim as „this word identifies nobody". A mother identifies a
+   * relation. Read first, the list stole every word the dictionaries own.
+   *
+   * So it is read here: after every dictionary has had its say, before the two
+   * guesses at the bottom. It does not overrule knowledge; it replaces a GUESS.
+   * `isNameToken` is a surname-shape guess and `organisation` is the
+   * give-up — and „klienti" is neither a surname nor a company.
+   *
+   * The four this was written for, protected in the employer field since
+   * 16 September and called organisations by this function ever since:
+   * axali 9,784 · klienti 9,470 · chemi 8,724 · ჩემი 7,911.
+   */
+  if (forms.some((t) => NOT_A_WORD.has(t) || IDENTIFIES_NOBODY.has(t))) return 'not_a_word';
   // Only now the ending: a word no dictionary claims, shaped like a surname.
   if (isNameToken(token, firstInLabel)) return 'name';
   return 'organisation';

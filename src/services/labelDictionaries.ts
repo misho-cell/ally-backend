@@ -677,3 +677,87 @@ export const SHORT_THING_WORDS = [
  * a word somebody really wrote.
  */
 export const NOT_A_WORD: ReadonlySet<string> = new Set(['undefined']);
+
+/**
+ * Words that identify nobody — the label's grammar and its filler.
+ *
+ * MOVED HERE FROM `labelEmployer` ON 20 SEPTEMBER, and the move is the fix.
+ * The list lived privately in that file, so the employer FIELD was protected
+ * and the target ENGINE was not: `classifyToken` went on calling four of them
+ * organisations, for 35,889 people between them.
+ *
+ *   axali      9,784   „new"
+ *   klienti    9,470   „client"
+ *   chemi      8,724   „my"
+ *   ჩემი       7,911   the same word, the other script
+ *
+ * That is the exact split the founder's 16 September ruling was meant to end.
+ * Its own words, quoted in the file this came from: „the words are in
+ * labelDictionaries now, read by classifyToken for both consumers, and the
+ * private copies are gone rather than left here to drift against them." These
+ * were left. `undefined` was left too, and was found the same afternoon.
+ *
+ * So the list stops being copied and becomes one list, in the place both sides
+ * already read. Nothing was added to it in the move — the words below are the
+ * ones that were already there, measured when they were written.
+ */
+export const IDENTIFIES_NOBODY: ReadonlySet<string> = new Set([
+  // Conjunctions and negations: the label's grammar, not its content.
+  'and',
+  'or',
+  'the',
+  'not',
+  'no',
+  'none',
+  'other',
+  'და',
+  'ან',
+  'არა',
+  'სხვა',
+  // Ticket 19 [8], found after the first fix and worse than what was
+  // reported. Of the 400 commonest tokens in the whole base, 71 classify as
+  // „organisation" — and ten of those cleared the two gates above. They are
+  // not companies and never were:
+  //
+  //   დედა / deda    23,734 carriers, lead share .47 — MOTHER
+  //   მამა / mama    16,536                    .72 — father
+  //   კლიენტი         9,471                    .19 — client
+  //   სახლი           7,295                    .16 — house
+  //   მანქანა         5,146                    .25 — car
+  //   უნდა            5,920                    .05 — „wants"
+  //
+  // „დედა" would have been printed as somebody's EMPLOYER. It is the
+  // commonest word a person writes in a phonebook and it is in none of the
+  // dictionaries — see the note in TASKS.md, which is where the rest of this
+  // belongs: the dictionaries also miss the trades (მძღოლი, ბუღალტერი,
+  // მაკლერი) and the towns (რუსთავი, გორი, ქუთაისი), and those are shared
+  // with the target engine, so they are measured before they are moved.
+  //
+  // Exact match, both scripts, the spellings people actually type. A prefix
+  // rule would read „ახალგაზრდული ასოციაცია" as „new" and drop half a real
+  // company's name.
+  'დედა',
+  'deda',
+  'მამა',
+  'mama',
+  'ბებო',
+  'bebo',
+  'ბებია',
+  'bebia',
+  'ჩემი',
+  'chemi',
+  'კლიენტი',
+  'klienti',
+  'სახლი',
+  'saxli',
+  'sakhli',
+  'მანქანა',
+  'manqana',
+  'mankana',
+  'ახალი',
+  'axali',
+  'akhali',
+  'უნდა',
+  'unda',
+  'new',
+]);
