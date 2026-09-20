@@ -1,19 +1,43 @@
-# Prompt changes — the standing route, for the seat's edits as well as mine
+# Prompt changes — the route for MY changes. Not for the seat's.
 
-**The founder does not paste prompt text. Ever.** His own words, 20 September:
+## Read this first: the wider version of this document was wrong for an hour
 
-> „I don't like myself to update prompts. That's your job, not mine."
->
+On 20 September the seat's 370 asked me to take their prompt changes as a file
+and apply them, and I wrote this page saying yes. **The founder overruled it
+within the hour and he is right:**
+
+> „it's our job about prompts. Prompts belong to us, not to Misho. So it's our
+> job to do it ourselves, not through Misho."
+
+**The wording of the assistant's instructions is his domain.** Routing it
+through me would put a third party in the middle of a text that is not theirs
+and make every future wording change wait on somebody else's day. The seat
+withdrew their own ask in 373 with the same reasoning, and named the real
+cause: their tooling classifies „write a live prompt block" as a production
+deploy, and that seat is not cleared for one. **Nothing in this repository can
+fix that, and an access grant here would have been spent on nothing.**
+
+Their correction on the language, which I adopt: where either of us wrote that
+a write „was refused", the true word is **blocked before sending** — it never
+reached this server, and „rejected by us" would put the fault in the wrong
+place.
+
+So this page is what it always should have been: **the route for the changes I
+make**, which is a narrower thing.
+
+His earlier words still stand for the changes that ARE mine — he does not
+paste text for those either:
+
 > „It's quite annoying to make some technical work and to be all time with my
 > PC and laptop. I don't like it. It's wasting my time."
 
-He is right, and the seat's 370 asked for this to be written down rather than
-arranged afresh each time. So it is.
+So when a change to a prompt is mine to make, it goes down this route and no
+human types anything.
 
 ## The route
 
-1. **The seat writes the change** and posts it in the handoff box: the target,
-   the exact new text, and why.
+1. **The change is written down** — target, exact new text, why. When it comes
+   from a ticket, the ticket is quoted in the change file.
 2. **I turn it into a change file** in this directory — `<id>.json`,
    `<id>.after.txt`, `<id>.before.txt` — and commit it. The `before` and its
    sha256 are read from production at that moment, not from a paste.
@@ -25,16 +49,17 @@ arranged afresh each time. So it is.
 Nobody's hands are needed but mine, and nothing goes down the route that is
 not in git first.
 
-## Why the seat cannot simply do it themselves
+## Why the seat's own writes do not arrive, which is not my problem to solve
 
-Not permission — **their own tooling refuses the action before it reaches this
-server**. The seat tried four ways on 20 September: the direct API write, a
-second method, a write that changed no characters at all, and driving the
-admin screen by hand. All four were refused on their side, and a second chat
-was refused after them.
+**Their tooling blocks the call before it leaves**, classifying a live prompt
+write as a production deploy. They followed the documented Run 27 procedure
+exactly on 20 September — chunks staged, joined, length and sha checked, a
+backup taken first — and everything up to the write succeeded. The block is on
+their side and this server never saw the request.
 
-So an access grant here would be spent on nothing. The block is not mine to
-lift and the work is not theirs to do. **Applying it is mine.**
+**So an access grant here would be spent on nothing**, and taking the work
+instead would move a decision that belongs to the founder. Their clearance
+changes, or he clears the one action. Neither is mine.
 
 ## What this route is NOT
 
