@@ -3,6 +3,32 @@ builder = "NIXPACKS"
 buildCommand = "npm install --include=dev && npm run build"
 
 [deploy]
-startCommand = "npm run start"
+# NODE DIRECTLY, NOT THROUGH npm — the drain has never once run, and this is
+# why.
+#
+# Row 205 shipped a SIGTERM handler on 17 September so that a deploy would stop
+# cutting runs in half. It logs `[shutdown] SIGTERM: draining, N run(s) in
+# flight` the instant the signal arrives. Searched across every deployment on
+# 20 September: THAT LINE HAS NEVER APPEARED. What every deployment ends with
+# instead is
+#
+#   npm error signal SIGTERM
+#
+# and that is the proof, not a hunch: npm reports `signal SIGTERM` when its
+# child was KILLED BY the signal. A handled SIGTERM ends in `process.exit(0)`
+# and a normal exit code. So the signal was never getting to our handler —
+# `npm run start` puts npm and a shell between the platform and node, and what
+# the platform terminates is npm.
+#
+# `npm run start` is literally `node dist/index.js`, so this removes two
+# processes and changes nothing else.
+#
+# HOW TO TELL IT WORKED, because otherwise this is another untested claim: the
+# NEXT deploy after this one must leave a `[shutdown]` line in the tail of the
+# container it replaces. If it does not, the signal is still not arriving and
+# the reasoning above is wrong. The gap between that line and the container's
+# last breath is also the first real measurement of how long the platform
+# actually grants us, which DRAIN_BUDGET_MS (20 s) is currently guessing at.
+startCommand = "node dist/index.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3

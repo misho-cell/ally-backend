@@ -17,12 +17,32 @@ ask() { curl -sS -X POST "$GQL" -H "Project-Access-Token: $TOKEN" \
 
 case "${1:-deployments}" in
   deployments)
+    # SUMMARISED, and that is not cosmetic. `meta` carries the whole commit
+    # message and the entire Nixpacks manifest for EVERY deployment, so asking
+    # for five of them returns tens of thousands of characters of build
+    # configuration to answer „which build is live". Read once on 20 September
+    # at the cost of most of a context window. What anybody actually wants is
+    # four columns. `raw` prints the original when the manifest is the question.
     ask "$(python3 - "$PROJECT" "$ENVIRONMENT" "$SERVICE" "${2:-5}" <<'PY'
 import json,sys
 p,e,s,n=sys.argv[1:5]
 print(json.dumps({"query":"query { deployments(first: %s, input: { projectId: \"%s\", environmentId: \"%s\", serviceId: \"%s\" }) { edges { node { id status createdAt meta } } } }" % (n,p,e,s)}))
 PY
-)" ;;
+)" | { [ "${3:-}" = raw ] && cat || python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+edges = d.get("data", {}).get("deployments", {}).get("edges")
+if edges is None:
+    print(json.dumps(d)[:400]); raise SystemExit(1)
+print("%-38s %-9s %-21s %-9s %s" % ("deployment id", "status", "created", "commit", "subject"))
+for e in edges:
+    n = e["node"]
+    meta = n.get("meta") or {}
+    subject = (meta.get("commitMessage") or "").split("\n")[0][:58]
+    print("%-38s %-9s %-21s %-9s %s" % (
+        n["id"], n["status"], n["createdAt"][:19],
+        (meta.get("commitHash") or "")[:7], subject))
+'; } ;;
   logs)
     # logs <deploymentId> [limit] [filter] [startDate] [endDate]
     # The filter and the dates are Railway's own log-query arguments; without

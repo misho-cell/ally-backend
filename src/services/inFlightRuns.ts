@@ -24,6 +24,33 @@
  * people are working. That is mine to hold to, and it does not belong in a
  * module — but the count below is what makes it checkable rather than a
  * promise.
+ *
+ * ---------------------------------------------------------------------------
+ * 20 SEPTEMBER: NONE OF THE ABOVE HAS EVER RUN, AND I DID NOT HOLD TO THE RULE.
+ *
+ * `shutdown` in `index.ts` logs „[shutdown] SIGTERM: draining, N run(s) in
+ * flight" the moment the signal lands. Searched across every deployment:
+ * THE LINE HAS NEVER APPEARED. What each container ends with instead is
+ * „npm error signal SIGTERM" — and npm says `signal` only when its child was
+ * KILLED BY the signal, where a handled one ends in `process.exit(0)`. The
+ * start command went through npm and a shell, so what the platform terminated
+ * was npm. `railway.toml` now starts node directly, and the check that says
+ * whether that was right is written there.
+ *
+ * So this module has been dead code for three days. Everything it describes
+ * was still happening: owner 171870 typed „I need a good carpenter in Tbilisi"
+ * at 10:01:48 today, the second-degree search came back at 10:01:55, and my
+ * deploy stopped the container at 10:02:08. They were told to try again.
+ *
+ * FOUR of the seven owner-facing run failures since 18 September that are not
+ * the credit-balance outage sit inside a deploy window. My deploys are the
+ * largest identified cause of a person seeing an error in this product.
+ *
+ * And the operational half is now `scripts/ops/quiet.sh`, which answers „may I
+ * deploy" from `threads.status` and the last tool call and exits non-zero for
+ * no. The sentence above says the rule „does not belong in a module". It does
+ * not. It belongs in a command, because a rule I have to remember is one I
+ * have already broken.
  */
 
 /** How long a shutdown waits for work already under way. */
