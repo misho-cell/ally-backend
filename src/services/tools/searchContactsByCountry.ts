@@ -373,7 +373,7 @@ async function searchReachContacts(
   prefix: string,
   country: string,
   blockedPhones: string[],
-): Promise<Array<{ name: string | null; reach_fact: string }>> {
+): Promise<Array<{ name: string | null; reach_fact: string }> | null> {
   const terms = countryNameTerms(prefix, country).slice(0, 10);
   if (terms.length === 0) return [];
   // One placeholder per pattern (never ANY(array) — planner + gap-free binds).
@@ -398,8 +398,23 @@ async function searchReachContacts(
     );
     return result.rows.map((r) => ({ name: r.name ?? null, reach_fact: r.reach_fact }));
   } catch (err) {
+    /**
+     * A LEG THAT FAILED IS NOT A LEG THAT FOUND NOBODY, and this returned the
+     * same empty array for both.
+     *
+     * The other six search tools said it the same way and were fixed an hour
+     * ago (see searchDidNotFinish). This one is shaped differently — it is one
+     * of three legs feeding a composite answer, so it cannot carry a reason of
+     * its own. It returns null instead, and the caller names the leg as
+     * incomplete rather than reporting it empty.
+     *
+     * THE TRAFFIC IS LOW AND THAT IS NOT A REASON TO LEAVE IT. Seven calls in
+     * seven days, zero failures — while its sibling `get_country_channels`
+     * failed three times out of six on statement timeouts. „We will never see
+     * it" is the reasoning that let the introduction path die for two weeks.
+     */
     console.error('searchContactsByCountry reach query failed:', (err as Error).message);
-    return [];
+    return null;
   }
 }
 
@@ -411,7 +426,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
   // Blocked contacts are invisible on every read path — this tool included.
   const blockedPhones = await getExcludedPhones(userId);
 
-  const [directResult, reachContacts] = await Promise.all([
+  const [directResult, reachResult] = await Promise.all([
     query<{ name: string | null }>(
       `SELECT DISTINCT ON (ua.phone) ua.alias AS name
        FROM "UserAlias" ua
@@ -424,6 +439,21 @@ export async function searchContactsByCountry(userId: string, country: string): 
     ),
     searchReachContacts(userId, prefix, country, blockedPhones),
   ]);
+  // null means that leg did not run. Every return below reports the list AND
+  // whether it is complete, so „nobody reachable there" and „we could not look"
+  // stop being the same answer.
+  const reachContacts = reachResult ?? [];
+  const reachIncomplete = reachResult === null;
+  const incomplete = (): Record<string, unknown> =>
+    reachIncomplete
+      ? {
+          partial: true,
+          note:
+            'The „who could reach them" part of this search DID NOT RUN — a technical failure on ' +
+            'our side. Do NOT tell the user nobody can reach anyone there; say that one part of ' +
+            'this search did not complete and offer to try again.',
+        }
+      : {};
 
   let userKey: string;
   try {
@@ -435,6 +465,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
       direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
       reach_contacts: reachContacts,
       second_degree_contacts: [],
+      ...incomplete(),
     };
   }
 
@@ -474,6 +505,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
       direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
       reach_contacts: reachContacts,
       second_degree_contacts: [],
+      ...incomplete(),
     };
   } finally {
     await session.close();
@@ -550,6 +582,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
     // "has ties to X", not as being in X.
     reach_contacts: reachContacts,
     second_degree_contacts: secondDegree,
+    ...incomplete(),
     total,
   };
 }
