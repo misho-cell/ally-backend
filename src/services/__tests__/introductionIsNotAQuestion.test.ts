@@ -88,3 +88,57 @@ describe('an introduction is not a question, and both tools say so', () => {
     expect(ASK_CONTACT).toContain('Never promise to pass something on before you have actually');
   });
 });
+
+/**
+ * And the counter, because a description is not a wall and nothing in this
+ * product could have told me introductions had stopped. Two weeks, zero,
+ * unnoticed — that is the real failure, and it is the one a second sentence
+ * does not fix.
+ *
+ * It COUNTS and does not reroute. Deciding from a text pattern that somebody
+ * meant an introduction is the kind of inference that goes wrong quietly, and
+ * by the time this runs the message has already gone.
+ */
+const COUNTER = joined('const INTRODUCTION_SHAPED', 'case ');
+
+describe('the counter that will say whether the sentences worked', () => {
+  it('recognises the four wordings the seat actually saw, in four languages', () => {
+    const pattern = /\/(.*)\/i;/.exec(COUNTER);
+    expect(pattern).not.toBeNull();
+    const re = new RegExp(pattern![1], 'i');
+    for (const said of [
+      'Would you introduce me to Netai Test 4?',
+      'Could you introduce me to Netai Test 3, we both work in logistics',
+      'შეგიძლია გამაცნო ნინო?',
+      'გააცნობ ჩემს მეგობარს?',
+      'можешь познакомить меня с Ниной?',
+      '¿Puedes presentarme a Nino?',
+    ]) {
+      expect(re.test(said)).toBe(true);
+    }
+  });
+
+  it('leaves an ordinary question alone, which is the cost of getting it wrong', () => {
+    const pattern = /\/(.*)\/i;/.exec(COUNTER);
+    const re = new RegExp(pattern![1], 'i');
+    for (const said of [
+      'Do you know a good plumber in Tbilisi?',
+      'იცნობ სანდო ბუღალტერს?',
+      'Кто у тебя есть из электриков?',
+      'Can you recommend a photographer for a wedding?',
+    ]) {
+      expect(re.test(said)).toBe(false);
+    }
+  });
+
+  it('never blocks and never reroutes — it writes one line and returns', () => {
+    expect(COUNTER).toContain('console.log');
+    expect(COUNTER).toContain('[intro-as-ask]');
+    // No return value, so nothing downstream can branch on it by accident.
+    expect(COUNTER).toContain('): void {');
+  });
+
+  it('carries the wording, because the next decision needs to read it', () => {
+    expect(COUNTER).toContain('question.slice(0, 160)');
+  });
+});

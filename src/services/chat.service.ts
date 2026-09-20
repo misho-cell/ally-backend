@@ -4533,6 +4533,47 @@ function searchTermOf(input: Record<string, unknown>): string {
   return '';
 }
 
+/**
+ * An introduction that went out as an ordinary question — counted, never
+ * blocked.
+ *
+ * The seat's 339: four requests worded „Would you introduce me to X?" all
+ * filed as `incoming_ask` with a null `introduction_request_id`, and
+ * `introduction_requests` down from three-to-seven a week to nothing since
+ * the first week of September. The cause is which TOOL the model picks, and
+ * the first fix is the two descriptions that now name the boundary.
+ *
+ * A DESCRIPTION IS NOT A WALL — row 117 and G6 both wrote that down — so the
+ * next question is whether the sentences did anything, and nothing in this
+ * product could have told me introductions had stopped. That is the real
+ * failure: two weeks, zero, unnoticed.
+ *
+ * So this counts rather than guesses. It does NOT reroute and it does NOT
+ * refuse: deciding from a text pattern that somebody meant an introduction is
+ * exactly the kind of inference that goes wrong quietly, and the message has
+ * already gone by the time this runs. It writes one line I can grep in a week,
+ * with the wording that reached it, and THEN the choice between „the
+ * descriptions worked" and „a server check is needed" is measured.
+ *
+ * Four languages, because the base is written in all four.
+ */
+const INTRODUCTION_SHAPED =
+  /introduce|introduction|put (?:me|us) in touch|connect me\b|გააცნო|გაცნობ|გამაცნო|დამაკავშირ|познаком|свести (?:меня|нас)|presenta(?:r|me)|ponerme en contacto/i;
+
+function noteIntroductionSentAsAQuestion(
+  runId: string | undefined,
+  threadId: number | undefined,
+  taskId: number,
+  question: string,
+): void {
+  if (!INTRODUCTION_SHAPED.test(question)) return;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[intro-as-ask] run ${runId ?? '-'} thread ${threadId ?? '-'} task ${taskId}: ` +
+      `an introduction-shaped question went out through ask_contact — "${question.slice(0, 160)}"`,
+  );
+}
+
 /** Did this search find anybody? Empty and „not found" are the same answer. */
 function foundNobody(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false;
@@ -5275,16 +5316,18 @@ async function executeToolCall(
             'and Y now and I will come back as soon as somebody answers."',
         };
       }
+      const question = String(input['question'] ?? '');
       const askOutcome = await createAsk(
         userId,
         taskId,
         String(input['phone'] ?? ''),
-        String(input['question'] ?? ''),
+        question,
         undefined,
         threadId,
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
         await markSearchSent(runId, userId, [input['phone']]);
+        noteIntroductionSentAsAQuestion(runId, threadId, taskId, question);
       }
       return askOutcome;
     }
