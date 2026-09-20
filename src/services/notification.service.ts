@@ -292,6 +292,28 @@ export async function sendPushNotification(
       }
 
       try {
+        /**
+         * „sent" MEANS THE PUSH SERVICE ACCEPTED IT. IT DOES NOT MEAN ANYBODY
+         * SAW IT, and reading it as though it did cost a day.
+         *
+         * Row 111, 20 September: Lika reported that a question from her
+         * network never reaches her phone while „your answer is ready" does,
+         * on the same phone in the same session. This table answers half of
+         * that and looks like it answers all of it — the ask of 11:11:24 shows
+         *
+         *   11:11:26  sent  web.push.apple.com/QNoN074  iPhone OS 18_7
+         *
+         * so the server built it, addressed the right device, and Apple took
+         * it. What happens after that is the service worker's, and nothing
+         * here can see it. A row saying „sent" next to a phone that never rang
+         * is not a contradiction; it is this column meaning less than its
+         * name.
+         *
+         * The two payloads are identical in shape — {title, body, url}, no
+         * tag, no icon — and both bodies were 56 to 83 characters, so neither
+         * a missing field nor an empty body explains it. Checked rather than
+         * assumed, because „it must be the payload" was the obvious guess.
+         */
         await webpush.sendNotification(subscription, JSON.stringify(payload));
         deliveredToAnyone = true;
         // eslint-disable-next-line no-console
