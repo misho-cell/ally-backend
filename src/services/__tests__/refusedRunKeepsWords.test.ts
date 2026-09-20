@@ -1,4 +1,10 @@
-import { RUN_STRINGS, detectRunLanguage, RunLanguage, answerHeldNoTokens } from '../runLanguage';
+import {
+  RUN_STRINGS,
+  detectRunLanguage,
+  RunLanguage,
+  answerHeldNoTokens,
+  messageHeldNoTokens,
+} from '../runLanguage';
 import { scrubMechanicalForStorage } from '../privacyScrub';
 
 /**
@@ -212,6 +218,54 @@ describe('the held-answer line survives the storage scrub it is compared against
     for (const language of ['ka', 'en', 'ru', 'es'] as const) {
       const once = scrubMechanicalForStorage(answerHeldNoTokens(language, 'Nino'));
       expect(scrubMechanicalForStorage(once)).toBe(once);
+    }
+  });
+});
+
+/**
+ * Row 217 — the completion of Lika's P0, and the part nobody built.
+ *
+ * Her fix stopped the refusal throwing her sentence away: `keepUserMessage`
+ * stores it and it renders. Nothing was ever built to come back for it.
+ *
+ * Goal 6271, thread 18811. „go ahead", eight characters, stored 18:18:01 on a
+ * negative balance. Topped up at 21:04. Six hours later the owner asked „are
+ * you still there?" and was told „I'm just waiting on your go-ahead" — with
+ * the go-ahead in that same conversation, on the screen of the person being
+ * told it had not arrived.
+ *
+ * The badge above it said „top up and I will carry on". It did not carry on
+ * and it could not, so the badge was a promise. This line is the truth beside
+ * it: the words are kept, and they have to be sent again.
+ */
+describe('what the owner is told about the message the wall refused', () => {
+  it('exists in every language and says both halves: kept, and send it again', () => {
+    const again: Record<RunLanguage, RegExp> = {
+      ka: /ხელახლა/,
+      en: /send it again/i,
+      ru: /отправь ещё раз/i,
+      es: /env[íi]alo otra vez/i,
+    };
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const line = messageHeldNoTokens(language);
+      // „I kept it" on its own leaves somebody waiting for something that is
+      // never coming. The instruction is the whole point.
+      expect(line).toMatch(again[language]);
+      expect(line.length).toBeGreaterThan(40);
+    }
+  });
+
+  it('does not promise to carry on by itself, which is what the badge does', () => {
+    // The badge says „top up and I will carry on" — true of the GOAL, false of
+    // this message. The two must not say the same thing.
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(messageHeldNoTokens(language)).not.toBe(RUN_STRINGS[language].statusLines.needs_topup);
+    }
+  });
+
+  it('carries no Georgian in the non-Georgian lines', () => {
+    for (const language of ['en', 'ru', 'es'] as const) {
+      expect(messageHeldNoTokens(language)).not.toMatch(/[Ⴀ-ჿ]/);
     }
   });
 });

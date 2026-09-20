@@ -395,3 +395,41 @@ export const NEW_THREAD_TITLE: Readonly<Record<RunLanguage, string>> = {
 export function isPlaceholderThreadTitle(title: string | null): boolean {
   return title !== null && Object.values(NEW_THREAD_TITLE).includes(title);
 }
+
+/**
+ * What the owner is told when the wallet refuses the run that their words
+ * were about — said in the thread, under the words themselves.
+ *
+ * Ticket 20 row 217, and it is the completion of Lika's P0 of 18 September.
+ * That fix stopped the refusal throwing her sentence away; `keepUserMessage`
+ * stores it and it renders. What nobody built is anything that ever comes back
+ * for it.
+ *
+ * Goal 6271, thread 18811. „go ahead", eight characters, stored 18:18:01 while
+ * the balance was negative. The top-up landed at 21:04. Six hours later the
+ * owner asked „are you still there?" and was told „I'm just waiting on your
+ * go-ahead" — with the go-ahead sitting in that same conversation, visible on
+ * the screen of the person being told it had not arrived.
+ *
+ * The thread's badge said „top up and I will carry on". It did not carry on,
+ * and it could not: nothing re-reads a kept message once there is money. So
+ * the badge was a promise and this line is the truth beside it — the words are
+ * kept, and they have to be sent again.
+ *
+ * WHAT THIS DELIBERATELY IS NOT is a fix for the underlying gap. Re-running
+ * somebody's message hours later, unasked, could send real messages to real
+ * people on a decision they have had all night to change their mind about.
+ * That is a product decision and not one to take inside a 402 handler.
+ */
+export function messageHeldNoTokens(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'I have kept what you wrote, but I cannot act on it until the tokens are topped up. Once they are, send it again and I will pick it up.';
+    case 'ru':
+      return 'Я сохранил то, что ты написал, но не могу это выполнить, пока не пополнены токены. После пополнения отправь ещё раз, и я продолжу.';
+    case 'es':
+      return 'He guardado lo que escribiste, pero no puedo actuar hasta que recargues los tokens. Cuando lo hagas, envíalo otra vez y sigo.';
+    default:
+      return 'შენი ნაწერი შევინახე, მაგრამ ტოკენების შევსებამდე ვერ შევასრულებ. შევსების შემდეგ ხელახლა გამომიგზავნე და გავაგრძელებ.';
+  }
+}

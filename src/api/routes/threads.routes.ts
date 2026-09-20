@@ -55,6 +55,7 @@ import {
   RUN_STRINGS,
   detectRunLanguage,
   isPlaceholderThreadTitle,
+  messageHeldNoTokens,
 } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread } from '../../services/threadRunQueue';
@@ -584,9 +585,27 @@ threadsRouter.post(
          * were never part of refusing it.
          */
         await keepUserMessage(userId, threadId, message);
+        const refusedIn = detectRunLanguage(message);
         void setThreadStatus(userId, threadId, 'needs_you', {
-          statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.needs_topup,
+          statusLine: RUN_STRINGS[refusedIn].statusLines.needs_topup,
         });
+        /**
+         * Row 217 — the kept words need a sentence beside them.
+         *
+         * Lika's P0 stopped the refusal throwing her message away. Nothing was
+         * ever built to come back for it, and the badge above it says „top up
+         * and I will carry on" — which it does not do for the message itself.
+         *
+         * Goal 6271: „go ahead", stored 18:18:01 on an empty balance, topped
+         * up at 21:04, and six hours later the owner was told the product was
+         * still waiting for a go-ahead that was on his own screen.
+         */
+        void saveThreadMessage(
+          threadId,
+          Number(userId),
+          'assistant',
+          messageHeldNoTokens(refusedIn),
+        ).catch(() => undefined);
         // The renewal named is the window in force (D124): monthly today,
         // weekly once BUDGET_WINDOW=week — the text must not promise the
         // wrong day.
