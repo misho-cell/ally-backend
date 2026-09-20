@@ -1099,3 +1099,41 @@ to be accepted that the button breaks.
 
 **Until the app offers the three choices, do we keep handing numbers over
 silently, or do we break the accept button?**
+
+---
+
+### UPDATE, 20 September 13:43 — the app shipped, and the price changed
+
+The frontend shipped the three choices (`ca6ef95`) within the hour, and did
+something better than asked: **they removed plain `accept` from their type
+union entirely.** It is now `accept_direct | accept_mediator | deny | later`,
+so a channel-less accept **cannot compile** on their side — and that
+immediately caught a SECOND button, inside the thread, with the same fault,
+which a row-by-row fix would have missed.
+
+Their words: *„if you decide the server should refuse, it does not break my
+client."*
+
+**So the first column of the table above has largely evaporated.** What remains
+is not a judgement, it is a fact I do not yet have: does anything ELSE still
+send a channel-less accept — a cached session, an old build, a surface nobody
+remembered?
+
+**That is now counted rather than argued.** Every channel-less accept logs
+
+```
+[intro-accept-no-channel] request N accepted via <source> with no channel
+```
+
+with the source named. Read it with:
+
+```
+./scripts/ops/logs.sh logs <deployment> 500 "intro-accept-no-channel"
+```
+
+**If it is silent for a week, refusing costs nothing and this section answers
+itself.** If it is not silent, the thing that logged it is the thing to fix
+first — and we will know its name instead of guessing at it.
+
+**The decision is still Misho's and the founder's.** What changed is that it no
+longer has to be made blind.

@@ -867,6 +867,32 @@ export async function resolveIntroductionRequest(
       'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
       [req.mediator_user_id],
     );
+    /**
+     * §16's measurement, and it is what turns that decision from stuck into
+     * decidable.
+     *
+     * An accept with no channel is read as `direct` — the number goes. I
+     * priced refusing it as „breaks the accept button for every real
+     * mediator", and on 20 September at 13:43 the frontend removed plain
+     * `accept` from its type union entirely: a channel-less accept can no
+     * longer be COMPILED on their side, let alone sent. So the cost I wrote
+     * into §16 has largely evaporated and the remaining question is empirical
+     * — does anything still send one? An old cached client, a stale session,
+     * a surface nobody remembered.
+     *
+     * So each one is counted, with the source, from now on. If this line is
+     * silent for a week, refusing costs nothing and §16 answers itself. If it
+     * is not silent, the thing that logged it is the thing that has to change
+     * first, and we will know its name instead of guessing.
+     */
+    if (opts.channel === undefined) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[intro-accept-no-channel] request ${req.id} accepted via ${opts.source} with no ` +
+          'channel — read as `direct`, so the number was handed over without the mediator ' +
+          'being asked. See ADMIN_WRITE_OPERATIONS.md §16.',
+      );
+    }
     outcome = await deliverAcceptOutcome(
       req,
       mediatorName.rows[0]?.name?.trim() || 'შუამავალმა',
