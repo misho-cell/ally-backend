@@ -74,7 +74,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'can\'t answer ("who knows about construction permits", "who could invest", "who fits ' +
       'this profile"), or after search_contacts came up thin. Returns matching people with why ' +
       'they matched, plus a total count. This is usually the right tool for any "who do I know ' +
-      'who…" question that isn\'t a plain trade or company name.',
+      'who…" question that isn\'t a plain trade or company name. ASK IT IN BOTH LANGUAGES: ' +
+      'the search folds Georgian and Latin spellings of the SAME word together, but it cannot ' +
+      'translate — "photographer" will not reach a contact recorded as "ფოტოგრაფი". On a ' +
+      'Georgian network, run the Georgian word too and merge the results yourself; measured ' +
+      'live, five trades returned eight people in English and thirteen in Georgian with NOT ONE ' +
+      'person in both.',
   },
   search_second_degree: {
     title: 'Search friends of friends',

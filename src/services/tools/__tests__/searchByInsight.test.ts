@@ -677,3 +677,74 @@ describe('the negation guard reads WHO is being negated', () => {
     expect(isNegatedQuery('I need a lawyer who understands trademarks')).toBe(false);
   });
 });
+
+/**
+ * The seat's 362, measured on the founder's own network — same tool, same
+ * account, same minute, one word each:
+ *
+ *   lawyer / იურისტი          3 English   6 Georgian   0 in both
+ *   architect / არქიტექტორი   3           4            0
+ *   photographer / ფოტოგრაფი  0           1            0
+ *   doctor / ექიმი            2           0            0
+ *   designer / დიზაინერი      0           2            0
+ *
+ * Eight people in English, thirteen in Georgian, NOT ONE person in both.
+ * Which language he typed in decided which half of his own network he could
+ * reach.
+ *
+ * The cause was one line: `search_by_tag` has run every word through
+ * `buildSearchTerms` for weeks; this path had only `georgianStem`, which stems
+ * Georgian and never leaves it.
+ */
+describe('a concept search asks in both scripts', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue(rows([]) as never);
+  });
+
+  /** Every `%pattern%` this search sent to Postgres, across all three sources. */
+  function patternsSent(): string[] {
+    return mockQuery.mock.calls
+      .flatMap((call) => (call[1] ?? []) as unknown[])
+      .filter((p): p is string => typeof p === 'string' && p.startsWith('%') && p.endsWith('%'));
+  }
+
+  it('sends a Latin spelling of a Georgian word', async () => {
+    await searchByInsight('501', 'ფოტოგრაფი');
+    const sent = patternsSent().join(' ');
+    // The Georgian original is still asked for...
+    expect(sent).toContain('ფოტოგრაფ');
+    // ...and so is a Latin transliteration of the same word.
+    expect(sent).toMatch(/%[a-z]*[fp]otograp/);
+  });
+
+  it('keeps asking the word the user actually typed', async () => {
+    await searchByInsight('501', 'architect');
+    expect(patternsSent().join(' ')).toContain('%architect%');
+  });
+
+  /**
+   * TRANSLITERATION IS NOT TRANSLATION, and this test exists so nobody reads
+   * the fix as bigger than it is. „photography" reaching „ფოტოგრაფი" would need
+   * a dictionary, not a character map. That half stays the model's job and the
+   * tool's description now says so.
+   */
+  it('does not pretend to translate', async () => {
+    await searchByInsight('501', 'photographer');
+    expect(patternsSent().join(' ')).not.toContain('ფოტოგრაფ');
+  });
+
+  /**
+   * One word with five spellings must not outrank a contact who genuinely
+   * matched two different words, so the ranking counts GROUPS.
+   */
+  it('ranks by words matched, not by spellings matched', async () => {
+    await searchByInsight('501', 'ფოტოგრაფი თბილისი');
+    const ranking = mockQuery.mock.calls
+      .map((c) => String(c[0]))
+      .find((sql) => sql.includes('bool_or') && sql.includes('sql_hits'));
+    expect(ranking).toBeDefined();
+    // Two query words → exactly two bool_or terms, however many spellings each has.
+    expect((ranking?.match(/bool_or/g) ?? []).length / 2).toBe(2);
+  });
+});

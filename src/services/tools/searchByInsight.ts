@@ -2,6 +2,7 @@ import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
+import { buildSearchTerms } from './transliterate';
 import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
 import {
   fetchAccountStates,
@@ -322,12 +323,24 @@ function likeOrClause(expr: string, count: number, startIdx: number): string {
  * e.g. "Chairman @ GITA" for "GITA chairman") could be dropped before the
  * post-hoc ranking ever saw it.
  */
-function wordHitsClause(expr: string, count: number, startIdx: number): string {
+function wordHitsClause(expr: string, groupSizes: readonly number[], startIdx: number): string {
   // A value that says the opposite is not a hit (task 14.1).
-  return Array.from(
-    { length: count },
-    (_, i) => `bool_or(NOT ${NEGATED_VALUE_SQL} AND ${expr} LIKE $${startIdx + i})::int`,
-  ).join(' + ');
+  //
+  // ONE `bool_or` PER QUERY WORD, not per pattern. A word now arrives as a
+  // GROUP of spellings (see queryGroups), and „ფოტოგრაფი" matching a fact
+  // written `fotografi` is the same word matched once, not two words matched.
+  // Counting patterns would let a single word with many spellings outrank a
+  // contact who genuinely matched two. Same shape searchSecondDegree uses.
+  let cursor = startIdx;
+  return groupSizes
+    .map((size) => {
+      const any = Array.from({ length: size }, (_, i) => `${expr} LIKE $${cursor + i}`).join(
+        ' OR ',
+      );
+      cursor += size;
+      return `bool_or(NOT ${NEGATED_VALUE_SQL} AND (${any}))::int`;
+    })
+    .join(' + ');
 }
 
 /**
@@ -335,7 +348,11 @@ function wordHitsClause(expr: string, count: number, startIdx: number): string {
  * so the LIKE runs over just this user's handful of facts — fast, and the path
  * that must always succeed for the save→search memory loop.
  */
-async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[]> {
+async function searchOwnFacts(
+  userId: string,
+  likes: string[],
+  groupSizes: readonly number[],
+): Promise<FactRow[]> {
   const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
   const orClause = likeOrClause(matchExpr, likes.length, 3);
   const result = await query<FactRow>(
@@ -353,7 +370,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
             ) AS name,
             ${OWN_FACT_MATCH_AGG} AS matched,
             ${OWN_FACT_NEGATED_AGG} AS negated,
-            (${wordHitsClause(matchExpr, likes.length, 3)}) AS sql_hits
+            (${wordHitsClause(matchExpr, groupSizes, 3)}) AS sql_hits
      FROM contact_facts cf
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $2
      LEFT JOIN "UserPhone" up ON up.phone = cf.neo4j_contact_id
@@ -362,7 +379,7 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
        AND cf.retracted_at IS NULL
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
-     ORDER BY (${wordHitsClause(matchExpr, likes.length, 3)}) DESC, MAX(cf.created_at) DESC
+     ORDER BY (${wordHitsClause(matchExpr, groupSizes, 3)}) DESC, MAX(cf.created_at) DESC
      LIMIT $${likes.length + 3}`,
     [userId, userId, ...likes, RESULT_LIMIT],
     SEARCH_TIMEOUT_MS,
@@ -375,7 +392,11 @@ async function searchOwnFacts(userId: string, likes: string[]): Promise<FactRow[
  * Joining "UserAlias" on "contactId" first narrows the scan to this user's own
  * contacts before the LIKE, and keeps $1 bound to a single column type.
  */
-async function searchPublicFacts(userId: string, likes: string[]): Promise<FactRow[]> {
+async function searchPublicFacts(
+  userId: string,
+  likes: string[],
+  groupSizes: readonly number[],
+): Promise<FactRow[]> {
   const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
   const orClause = likeOrClause(matchExpr, likes.length, 2);
   const result = await query<FactRow>(
@@ -383,14 +404,14 @@ async function searchPublicFacts(userId: string, likes: string[]): Promise<FactR
             MAX(ua.alias) AS name,
             ${FACT_MATCH_AGG} AS matched,
             ${FACT_NEGATED_AGG} AS negated,
-            (${wordHitsClause(matchExpr, likes.length, 2)}) AS sql_hits
+            (${wordHitsClause(matchExpr, groupSizes, 2)}) AS sql_hits
      FROM contact_facts cf
      JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
      WHERE cf.is_public = true
        AND cf.retracted_at IS NULL
        AND (${orClause})
      GROUP BY cf.neo4j_contact_id
-     ORDER BY (${wordHitsClause(matchExpr, likes.length, 2)}) DESC, MAX(cf.created_at) DESC
+     ORDER BY (${wordHitsClause(matchExpr, groupSizes, 2)}) DESC, MAX(cf.created_at) DESC
      LIMIT $${likes.length + 2}`,
     [userId, ...likes, RESULT_LIMIT],
     SEARCH_TIMEOUT_MS,
@@ -567,11 +588,51 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
     }
     const words = queryWords(searchQuery);
     if (words.length === 0) return { found: false, query: searchQuery };
-    const likes = words.map((w) => `%${w}%`);
+    /**
+     * EACH WORD IS ASKED IN BOTH SCRIPTS, which this path never did.
+     *
+     * The seat's 362 measured it on the founder's own network — same tool,
+     * same account, same minute, one word each:
+     *
+     *   lawyer / იურისტი         3 English   6 Georgian   0 in both
+     *   architect / არქიტექტორი  3           4            0
+     *   photographer / ფოტოგრაფი 0           1            0
+     *   doctor / ექიმი           2           0            0
+     *   designer / დიზაინერი     0           2            0
+     *
+     * Eight people reachable in English, thirteen in Georgian, and NOT ONE
+     * person in both, in all five pairs. The two halves of a man's own network
+     * did not intersect: which language he happened to type in decided which
+     * half of his contacts he could reach.
+     *
+     * The cause was one line. `search_by_tag` has run every word through
+     * `buildSearchTerms` for weeks — Georgian to Latin, plus the gh/kh/ts
+     * drift and the case endings. This path had only `georgianStem`, which
+     * stems Georgian and never leaves it.
+     *
+     * WHAT THIS FIXES AND WHAT IT DOES NOT, because the difference is the
+     * whole of my own 314 and I will not blur it here:
+     *
+     *   FIXED     „ფოტოგრაფი" now reaches a fact written `fotografi` or
+     *             `potograpi`. Same word, other alphabet.
+     *   NOT FIXED „photography" still does not reach „ფოტოგრაფი". That is
+     *             TRANSLATION, not transliteration, and no character map
+     *             performs it.
+     *
+     * The second half stays the model's job — it knows the Georgian for
+     * photographer — and the tool's description now says so instead of asking
+     * for „a short natural-language description" with no word about script.
+     */
+    const groups = words.map((word) => {
+      const variants = new Set<string>([word, ...buildSearchTerms(word)]);
+      return [...variants].filter((v) => v.length >= MIN_WORD_LEN);
+    });
+    const groupSizes = groups.map((g) => g.length);
+    const likes = groups.flat().map((w) => `%${w}%`);
 
     const [ownSettled, publicSettled, insightSettled, excluded] = await Promise.all([
-      Promise.allSettled([searchOwnFacts(userId, likes)]).then((r) => r[0]),
-      Promise.allSettled([searchPublicFacts(userId, likes)]).then((r) => r[0]),
+      Promise.allSettled([searchOwnFacts(userId, likes, groupSizes)]).then((r) => r[0]),
+      Promise.allSettled([searchPublicFacts(userId, likes, groupSizes)]).then((r) => r[0]),
       Promise.allSettled([searchInsights(userId, likes)]).then((r) => r[0]),
       // Blocked/deceased, plus everyone this user has said is NOT this
       // (ticket 9 task 14): a correction the founder made in July must stop
