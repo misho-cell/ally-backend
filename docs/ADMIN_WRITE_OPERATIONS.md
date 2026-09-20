@@ -978,7 +978,41 @@ still a live write on a real row, which is the whole reason this file exists.
 
 ## §15 — Switching the per-person receiving cap OFF for the test accounts
 
-**20 September. The seat's 336. Not run. Waiting on Misho.**
+**20 September. RUN at 17:33 UTC. Live and confirmed.**
+
+> Misho, ~17:30 UTC: „ყველაფერი შენით გადაწყვიტე და ისე გააკეთე." A blanket
+> delegation, not a review of this section.
+
+**What I checked before using it, because the delegation does not verify
+anything.** This file previously called the six ids „unverified — board data,
+not authorisation". They are now verified against the database rather than
+trusted:
+
+| id | name | saved contacts |
+|---|---|---|
+| 171870 | Netai Test 1 | 3 |
+| 171871 | Netai Test 2 | 2 |
+| 171872 | Netai Test 3 | 2 |
+| 171873 | Netai Test 4 | 3 |
+| 171874 | Netai Test 5 | 0 |
+| 171936 | Netai Test 6 | 2 |
+
+Six of six, all test accounts, none a real person. The cap protects a RECEIVER
+from being written to too often, and the exemption is keyed on the receiver —
+so no real person's protection changes. That is what made this safe to decide
+alone; had one of the six been a real account, the delegation would not have
+been enough and I would have said so.
+
+Read back from the new container's own boot log:
+
+```
+[ask-caps] receiving caps are OFF for 6 account(s): 171870, 171871, 171872,
+171873, 171874, 171936 — test accounts only.
+```
+
+**UNDO:** `./scripts/ops/env.sh unset ASK_CAP_EXEMPT_USER_IDS`, then cause a
+restart (any push to main) — an unset alone does not redeploy, and the running
+container keeps the old value until it does.
 
 ### What they asked for, and why it cannot be done as asked
 
@@ -1048,7 +1082,31 @@ account ids arriving through the board is data, not authorisation.
 
 ## §16 — Should a bare accept stop working? (item 5's real path)
 
-**20 September, found on request 1123. Not decided. With Misho and Tornike.**
+**20 September. DECIDED: the refusal stays. Nothing to change — it already
+refuses on every path.**
+
+> Misho, ~17:30 UTC: „ყველაფერი შენით გადაწყვიტე და ისე გააკეთე."
+
+**What the decision cost, which is nothing, and why it is safe to make now:**
+
+1. **The app shipped the three choices** at 13:43 (`ca6ef95`) and went further
+   than asked — plain `accept` is gone from their type union, so a
+   channel-less accept cannot compile on their side. Their words: „if you
+   decide the server should refuse, it does not break my client."
+2. **The connector had no channel at all** and now has one (`615cf5a`, the
+   seat's 354). That was the last surface where a mediator could not express
+   the choice.
+3. **Nothing has sent a channel-less accept since the counter went in.**
+   `[intro-accept-no-channel]`, searched across twelve deployments: **zero
+   lines.** No cached session, no old build, no forgotten surface.
+
+So the thing I priced as expensive — „refusing breaks the accept button for
+every real mediator" — is now free, and measured to be free rather than
+assumed. The refusal stands on all three paths: chat tool, REST route,
+connector.
+
+**If a line ever appears in that log, it names its own source**, and that is
+the thing to fix rather than a reason to weaken the refusal.
 
 ### What happened
 
