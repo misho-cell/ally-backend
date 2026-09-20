@@ -8,6 +8,7 @@ import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
+import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
   answeredByYourRule,
@@ -551,6 +552,10 @@ export async function createAsk(
   );
   if (
     liveWithThisPerson.rows.length === 0 &&
+    // The seat's 336: named test accounts only, empty in production. See
+    // askCapExemptions — the cap protects the RECEIVER, so the exemption is
+    // keyed on them, and a test account asking a real person is capped as ever.
+    !receivingCapsAreOff(toUserId) &&
     Number(receivedToday.rows[0]?.count ?? 0) >= MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY
   ) {
     return {

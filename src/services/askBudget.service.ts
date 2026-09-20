@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { BudgetWindow, budgetWindow } from './budgetWindow';
+import { receivingCapsAreOff } from './askCapExemptions';
 
 const BUDGET_QUERY_TIMEOUT_MS = 5_000;
 
@@ -286,7 +287,11 @@ export async function checkFollowUpBudget(
     [fromUserId, toUserId, taskId],
     BUDGET_QUERY_TIMEOUT_MS,
   );
-  if (Number(sentToday.rows[0]?.count ?? 0) >= RELAY_MESSAGES_PER_PERSON_PER_DAY) {
+  if (
+    // Same list, same reason, same key: this cap protects the recipient too.
+    !receivingCapsAreOff(toUserId) &&
+    Number(sentToday.rows[0]?.count ?? 0) >= RELAY_MESSAGES_PER_PERSON_PER_DAY
+  ) {
     return { allowed: false, reason: 'person_daily_relay_limit_reached' };
   }
   return { allowed: true };

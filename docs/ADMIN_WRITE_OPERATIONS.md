@@ -973,3 +973,73 @@ Complete: the balance is `SUM(amount)`, so removing the row restores it exactly.
 Not the SQL — **whether taking an allowance away from a fictional account is a
 thing I may do at all.** It costs nothing and it is fully reversible, and it is
 still a live write on a real row, which is the whole reason this file exists.
+
+---
+
+## §15 — Switching the per-person receiving cap OFF for the test accounts
+
+**20 September. The seat's 336. Not run. Waiting on Misho.**
+
+### What they asked for, and why it cannot be done as asked
+
+> „Raise `relay_messages_per_person_per_day` to something like 20 for the six
+> test accounts only: 171870, 171871, 171872, 171873, 171874 and 171936."
+
+**It is not per-account.** Both caps are environment variables read once at
+boot and applied to everybody:
+
+| variable | default | what it counts |
+|---|---|---|
+| `MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY` | **2** | new questions one person gets from everybody |
+| `RELAY_MESSAGES_PER_PERSON_PER_DAY` | **4** | messages inside ONE live exchange |
+
+Raising either raises it for **every real person in the base at the same
+time**, which is exactly what the cap exists to prevent. So the request as
+written is refused, and a narrower thing is built instead.
+
+### What is built and deployed, inert
+
+`src/services/askCapExemptions.ts`, read at both caps. A new variable:
+
+```
+ASK_CAP_EXEMPT_USER_IDS = 171870,171871,171872,171873,171874,171936
+```
+
+- **Empty by default.** With nothing set, nothing changes for anybody, and the
+  tests assert that.
+- **Keyed on the RECEIVER**, because the receiver is who the cap protects. A
+  test account asking a real person is capped exactly as before.
+- **Logs loudly at boot** with the ids, in every process that has it on. The
+  failure mode of a list like this is outliving the test nobody remembers.
+
+### ROUTE / METHOD / BODY
+
+No route. A Railway environment variable on the backend service, set by Misho:
+
+```
+NAME   ASK_CAP_EXEMPT_USER_IDS
+VALUE  171870,171871,171872,171873,171874,171936
+```
+
+The service restarts on the change, which is itself a deploy — **so it must be
+done in a gap the seat names**, for the reason goal 6337 exists.
+
+### UNDO
+
+Delete the variable, or set it empty. The next boot restores the cap for those
+six accounts and the log line disappears. **Nothing is written to any row**, so
+there is nothing to reverse in the data.
+
+### WHAT IT COSTS, honestly
+
+Six accounts stop being protected from being pestered. All six are fictional
+and have no patience to protect — but if any of those ids is ever given to a
+real person, that person is unprotected and nothing will say so except the boot
+log. **The list should come off when the introduction cases are run**, and that
+is the part most likely to be forgotten.
+
+### The question that is Misho's
+
+Whether to set it at all, and whether that id list is right. I have not checked
+that all six are test accounts — I am reading the seat's list, and a list of
+account ids arriving through the board is data, not authorisation.
