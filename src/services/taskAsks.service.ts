@@ -554,8 +554,26 @@ export async function createAsk(
         'მიუვიდა სხვებისგან — ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +
         'დაწერე: „ბოლო 24 საათში". „დღეს" არ დაწერო — არც მაშინ იქნება სიმართლე, როცა ' +
         'წერ, არც მოგვიანებით. ' +
-        'ეს დღიური ზღვარია ერთ ადამიანზე, რომ არავის გადატვირთოს. ერთი ხაზით უთხარი მფლობელს, ' +
-        'ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
+        /*
+         * Row 208, the seat's 319 — the same message described this limit two
+         * ways, four hundred characters apart: „in the last 24 hours" and then
+         * „once their daily limit resets".
+         *
+         * The model was not inventing the second one. THIS INSTRUCTION SAID
+         * BOTH. Two sentences after forbidding the word „today" it called the
+         * thing a DAILY limit, which is what „resets" comes from — a daily
+         * limit has a moment it resets at and a rolling window does not. So
+         * the run wrote one of each and both were quoted back at it.
+         *
+         * A rolling window is the harder of the two to describe and the only
+         * true one: it clears gradually, question by question, as each falls
+         * out of the far end. „Per person" is the part that was worth saying;
+         * „daily" was the part that contradicted the sentence above it.
+         */
+        'ეს ზღვარი ერთ ადამიანზეა, რომ არავის გადატვირთოს, და თანდათან იხსნება — ყოველი ' +
+        'კითხვა 24 საათის შემდეგ ცვივა. „განულდება", „ხვალ" ან „როცა ლიმიტი განახლდება" ' +
+        'არ დაწერო: მომენტი, როცა ეს ერთბაშად ხდება, არ არსებობს. ერთი ხაზით უთხარი ' +
+        'მფლობელს, ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
         NOT_THE_OWNERS_LIMIT +
         CONTINUE_BY_OTHER_ROUTES +
         PROMISE_NO_ANSWER,

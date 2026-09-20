@@ -38,7 +38,14 @@ describe('the refusals a run reads back hours later', () => {
 
   it('still say the thing they were written to say', () => {
     // The point was never to remove the sentence, only to date it.
-    expect(REFUSALS).toContain('დღიური ზღვარია ერთ ადამიანზე');
+    //
+    // „დღიური" left it, and not for tidiness: row 208 / the seat's 319 caught
+    // one message describing this limit both ways four hundred characters
+    // apart — „in the last 24 hours" and „once their daily limit resets" —
+    // and this instruction is where both came from. A daily limit has an
+    // instant it resets at; a rolling window has none. The substance the
+    // sentence carries is „per person", and that is what is asserted now.
+    expect(REFUSALS).toContain('ერთ ადამიანზეა');
     expect(REFUSALS).toContain('ზღვარს მიაღწია');
   });
 
