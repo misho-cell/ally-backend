@@ -70,15 +70,18 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
     // $3 = word-start regex (word_hits), $4 = the same words as ONE alternation
-    // (the filter), $5 = blocked phones, $6 = userId again as TEXT (the
-    // contact_facts role lookup — $1 is inferred int by the joins), $7/$8 =
-    // where the title and the employer may come from, in preference order
-    // (ticket 9 task 25: 'role' was never read and holds 96 public rows).
+    // (the filter), $5 = the TRIGRAM PRE-FILTER, one `%word%` per word (row
+    // 108's fifth cut — the regex still decides, this only lets the GIN index
+    // skip rows that cannot match), $6 = blocked phones, $7 = userId again as
+    // TEXT (the contact_facts role lookup — $1 is inferred int by the joins),
+    // $8/$9 = where the title and the employer may come from, in preference
+    // order (ticket 9 task 25: 'role' was never read and holds 96 public rows).
     expect(params).toEqual([
       '42',
       [FRIEND_PHONE],
       '\\mburalteri',
       '\\mburalteri',
+      '%buralteri%',
       [],
       '42',
       ['role', 'occupation'],
@@ -95,15 +98,28 @@ describe('searchSecondDegree tag matching', () => {
 
     const mainCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
     const [sql, params] = mainCall as [string, unknown[]];
-    const words = (params as string[]).slice(2, -5);
-    const filter = (params as string[]).at(-5) as string;
+    // Sliced by SHAPE rather than by a magic offset, because the parameter
+    // list grew by one-per-word when the pre-filter arrived and every fixed
+    // offset in this file broke at once. The regexes are the `\\m…` ones and
+    // the pre-filter patterns are the `%…%` ones; the alternation is the one
+    // string carrying a bar.
+    const all = params as string[];
+    const words = all.filter(
+      (v) => typeof v === 'string' && v.startsWith('\\m') && !v.includes('|'),
+    );
+    const filter = all.find((v) => typeof v === 'string' && v.includes('|')) as string;
+    const prefilter = all.filter((v) => typeof v === 'string' && /^%.*%$/.test(v));
 
     // Every word reaches the filter, joined by a bar and nothing else.
     expect(filter).toBe(words.join('|'));
     expect(words.length).toBeGreaterThan(1);
-    // One condition per column, not one per word.
+    // One REGEX condition per column, not one per word.
     expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);
     expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
+    // And one pre-filter pattern per word, in front of it. They are a strict
+    // superset of the regex, so they can only remove rows it would reject too.
+    expect(prefilter).toEqual(['%buralteri%', '%marketing%', '%marqeting%']);
+    expect(sql).toContain('LIKE $');
     // And the words are still counted separately, which is what the ranking
     // needs: a person carrying both query words must outrank one carrying one.
     // Two groups, written twice — once in the select list and once in the
@@ -349,31 +365,38 @@ describe('second-degree title and employer (ticket 9 task 25)', () => {
   it("reads the title from 'role' first, then 'occupation', and prefers in that order", async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    // Same single-term query the parameter-index test uses: one term plus the
-    // one alternation filter means $7 and $8 are the two field lists.
     await searchSecondDegree('42', 'buralteri');
 
-    const sql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('tag_hits'),
-    )?.[0] as string;
-    expect(sql).toContain(`AND cf.field_type = ANY($7::text[])`);
-    expect(sql).toContain(`ORDER BY array_position($7::text[], cf.field_type)`);
-    expect(sql).toContain(`AND cf.field_type = ANY($8::text[])`);
-    expect(sql).toContain(`ORDER BY array_position($8::text[], cf.field_type)`);
+    const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
+    const [sql, params] = call as [string, unknown[]];
+    // The INDEX is derived rather than written down. Every fixed offset in
+    // this file broke at once when the pre-filter added one parameter per
+    // word, and a test that has to be renumbered on every parameter change is
+    // a test that will one day be renumbered wrongly.
+    const titleIdx = params.findIndex((v) => Array.isArray(v) && v[0] === 'role') + 1;
+    const employerIdx = params.findIndex((v) => Array.isArray(v) && v[0] === 'employer') + 1;
+    expect(titleIdx).toBeGreaterThan(0);
+    expect(employerIdx).toBe(titleIdx + 1);
+    expect(sql).toContain(`AND cf.field_type = ANY($${titleIdx}::text[])`);
+    expect(sql).toContain(`ORDER BY array_position($${titleIdx}::text[], cf.field_type)`);
+    expect(sql).toContain(`AND cf.field_type = ANY($${employerIdx}::text[])`);
+    expect(sql).toContain(`ORDER BY array_position($${employerIdx}::text[], cf.field_type)`);
   });
 
   it('never reads a fact that is neither public nor the searcher own', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    // Same single-term query the parameter-index test uses: one term plus the
-    // one alternation filter means the TEXT userId is $6.
     await searchSecondDegree('42', 'buralteri');
 
-    const sql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('tag_hits'),
-    )?.[0] as string;
+    const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits'));
+    const [sql, params] = call as [string, unknown[]];
+    // Derived, for the same reason as above: it is the userId sent a SECOND
+    // time as text, immediately before the two field lists.
+    const textUserIdx = params.findIndex((v) => Array.isArray(v) && v[0] === 'role');
     // Both lookups carry the same privacy scope.
-    expect(sql.match(/cf\.is_public OR cf\.submitted_by_user_id = \$6/g)).toHaveLength(2);
+    expect(
+      sql.match(new RegExp(`cf\\.is_public OR cf\\.submitted_by_user_id = \\$${textUserIdx}`, 'g')),
+    ).toHaveLength(2);
   });
 });
 
@@ -457,5 +480,78 @@ describe('Ticket 20 row 110: a multi-word query is words, not a phrase', () => {
     // this containment exists to prevent.
     expect(sql).toContain('AS label');
     expect(sql).not.toMatch(/SELECT[^;]*r\.label/);
+  });
+});
+
+/**
+ * Row 108, fifth cut — the trigram pre-filter in front of the regex.
+ *
+ * Measured on the live base, account 501, 306 bridges, 605,086 tag rows and
+ * 280,856 alias rows, alternating the ORDER each round so the winner is not
+ * whichever ran second:
+ *
+ *   COLD, first read of the day    12,517 ms  ->   999 ms   169 rows both
+ *   rare      5 patterns            3,000 ms  ->   660 ms   169 rows both
+ *   common    4 patterns (xelosan)  2,285 ms  -> 1,916 ms  1112 rows both
+ *   very common 2 patterns (deda)   1,710 ms  -> 1,600 ms   776 rows both
+ *   nine patterns (accountant)      5,028 ms  -> 3,828 ms  1000 rows both
+ *
+ * This candidate was rejected on 18 September — „7x SLOWER on a common one" —
+ * on the LATERAL shape the query no longer uses, the same provenance as the
+ * alternation verdict that was already retracted. It does not reproduce.
+ */
+describe('the pre-filter in front of the regex', () => {
+  it('sends one %word% per word, and still lets the regex decide', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'buralteri marketing');
+
+    const [sql, params] = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('tag_hits'),
+    ) as [string, unknown[]];
+    const prefilter = (params as string[]).filter((v) => typeof v === 'string' && /^%.*%$/.test(v));
+    expect(prefilter).toEqual(['%buralteri%', '%marketing%', '%marqeting%']);
+    // The regex is still there and still one per column: the LIKE narrows the
+    // rows the index has to read, it does not decide what matches.
+    expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
+    expect(sql).toMatch(/LIKE \$\d+ OR LOWER\(ut\.tag\) LIKE \$\d+/);
+  });
+
+  /**
+   * A term under three characters cannot use a trigram index, and ONE
+   * unindexable branch costs the whole OR chain its index while still looking
+   * like a pre-filter. Every pattern becomes `%` — true of everything, so the
+   * filter is inert and the regex decides exactly as before.
+   *
+   * The parameter list keeps its length either way. A list that changes shape
+   * under you is how the `integer = text` P0 happened, and that lesson is
+   * written above the filter in the source.
+   */
+  it('goes inert — but stays the same length — when a word is too short to index', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', 'hr');
+
+    const params = (
+      mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits')) as [string, unknown[]]
+    )[1] as string[];
+    // `%` alone, not `%hr%` — the pattern that matches everything.
+    const prefilter = params.filter((v) => typeof v === 'string' && v.startsWith('%'));
+    expect(prefilter.length).toBeGreaterThan(0);
+    expect(prefilter.every((p) => p === '%')).toBe(true);
+  });
+
+  it('escapes a wildcard in the term, so a % typed by a user matches a literal %', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await searchSecondDegree('42', '100%cotton');
+
+    const params = (
+      mockQuery.mock.calls.find((c) => (c[0] as string).includes('tag_hits')) as [string, unknown[]]
+    )[1] as string[];
+    const prefilter = params.filter((v) => typeof v === 'string' && v.startsWith('%'));
+    // The inner % is escaped; the surrounding ones are ours.
+    expect(prefilter.some((p) => p.includes('\\%'))).toBe(true);
   });
 });

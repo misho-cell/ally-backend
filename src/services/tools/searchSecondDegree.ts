@@ -647,8 +647,60 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // below happened. One redundant string is the cheaper mistake.
     const filterIdx = 3 + n;
     const filterPattern = regexTerms.join('|');
-    const tagConds = `LOWER(ut.tag) ~ $${filterIdx}`;
-    const aliasConds = `LOWER(ua_m.alias) ~ $${filterIdx}`;
+    /**
+     * Row 108, FIFTH cut — a trigram pre-filter in front of the regex.
+     *
+     * The regex still decides. This only lets Postgres use the GIN trigram
+     * index (`idx_user_tags_trgm`, `idx_user_alias_trgm`) to skip rows that
+     * cannot possibly match, instead of running the alternation over every tag
+     * the owner's bridges hold — 605,086 of them on account 501, plus 280,856
+     * aliases.
+     *
+     * CORRECTNESS IS BY CONSTRUCTION, not by hope. `\mword` matches only tags
+     * containing `word`, so `%word%` is a strict superset of it: the pre-filter
+     * can never remove a row the regex would have kept. Every case below was
+     * checked for identical row counts as well as for time.
+     *
+     * THIS CANDIDATE WAS REJECTED ON 18 SEPTEMBER — „2,400x faster on a rare
+     * term, 7x SLOWER on a common one" — and that verdict has the same
+     * provenance as the alternation verdict retracted two comments above: both
+     * were measured on the LATERAL-per-bridge shape this query no longer uses,
+     * and only the alternation was ever re-checked. So this is the re-check.
+     *
+     * Measured on the live base, account 501, 306 bridges, alternating the
+     * ORDER each round so the winner is not simply whichever ran second:
+     *
+     *   COLD, first read of the day    12,517 ms  ->  999 ms   169 rows both
+     *   rare      5 patterns            3,000 ms  ->  660 ms   169 rows both
+     *   common    4 patterns (xelosan)  2,285 ms -> 1,916 ms  1112 rows both
+     *   very common 2 patterns (deda)   1,710 ms -> 1,600 ms   776 rows both
+     *   nine patterns (accountant)      5,028 ms -> 3,828 ms  1000 rows both
+     *
+     * It never loses. The „7x slower on a common term" does not reproduce
+     * under this shape — the common cases are a wash and the rare ones are
+     * four to twelve times better. THE COLD NUMBER IS THE ONE THAT MATTERS:
+     * 86% of this query's time is disk reads, so a real user's first search of
+     * the day is the 15-second p90 the phase log has been showing.
+     *
+     * A TERM UNDER THREE CHARACTERS CANNOT USE A TRIGRAM INDEX, and one
+     * unindexable branch in the OR chain costs the whole chain its index while
+     * still looking like a pre-filter. When any term is that short every
+     * pattern becomes `%`, which is true of everything: the filter goes inert,
+     * the regex decides exactly as it does today, and the parameter list keeps
+     * the same length. That last part is deliberate — the comment above says
+     * why a list that shifts under you is the dangerous kind.
+     */
+    const likeIdx = filterIdx + 1;
+    const TRIGRAM_MIN_CHARS = 3;
+    const words = groups.flat();
+    const prefilterIsUseful = words.every((w) => w.length >= TRIGRAM_MIN_CHARS);
+    const prefilterTerms = words.map((w) =>
+      prefilterIsUseful ? `%${w.replace(/[\\%_]/g, '\\$&')}%` : '%',
+    );
+    const likeAny = (column: string): string =>
+      '(' + prefilterTerms.map((_, i) => `${column} LIKE $${likeIdx + i}`).join(' OR ') + ')';
+    const tagConds = `${likeAny('LOWER(ut.tag)')} AND LOWER(ut.tag) ~ $${filterIdx}`;
+    const aliasConds = `${likeAny('LOWER(ua_m.alias)')} AND LOWER(ua_m.alias) ~ $${filterIdx}`;
     // bool_or per GROUP, summed: one point for each query word this person
     // matched anywhere, exactly the shape wordMatch.ts uses for the tag search.
     // These stay per-word — word_hits must know WHICH word matched, and it runs
@@ -661,7 +713,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         return `bool_or(${clause})::int`;
       })
       .join(' + ');
-    const blockParamIdx = filterIdx + 1;
+    // After the LIKE patterns, one per term — see the pre-filter note above.
+    const blockParamIdx = likeIdx + prefilterTerms.length;
     // userId again, as its own parameter: $1 is inferred as int (contactId
     // joins) while contact_facts.submitted_by_user_id is TEXT in prod — one
     // parameter cannot carry both types.
@@ -866,6 +919,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         friendPhones,
         ...regexTerms,
         filterPattern,
+        ...prefilterTerms,
         blockedPhones,
         userId,
         TITLE_FACT_FIELDS,
