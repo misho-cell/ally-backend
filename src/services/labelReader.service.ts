@@ -1,10 +1,14 @@
 import { query } from '../db/postgres/client';
 import {
+  ANCHORED_SUFFIX_MAX,
   OWNERSHIP_WORDS,
   PLACE_WORDS,
   PROFESSION_WITH_CLIENTS,
   RELATIONSHIP_WORDS,
   ROLE_WORDS,
+  SHORT_PLACE_WORDS,
+  SHORT_RELATION_WORDS,
+  SHORT_THING_WORDS,
   STARTUP_WORDS,
   THING_WORDS,
   TRADE_WORDS,
@@ -135,6 +139,29 @@ function containsAny(haystack: string, words: readonly string[]): boolean {
 }
 
 /**
+ * The same question for a word too short to be asked as a substring: is this
+ * token THE word, or the word wearing a case ending?
+ *
+ * Georgian inflects by suffix, so „goris" and „goridan" are the town and have
+ * to come through. „igori" and „grigori" are not the town at all, and an
+ * anchor at the front is what tells them apart — 175 men called Igor being the
+ * measured cost of not having one.
+ *
+ * AND THE ENDING IS CHECKED AGAINST THE SURNAME LIST. Three letters is exactly
+ * „dze": without this second guard „dididze", 117 people, would stop being a
+ * family name and become the adjective „big".
+ */
+function matchesAnchored(token: string, words: readonly string[]): boolean {
+  const lower = token.toLowerCase();
+  return words.some((w) => {
+    if (!lower.startsWith(w)) return false;
+    const ending = lower.slice(w.length);
+    if (ending.length > ANCHORED_SUFFIX_MAX) return false;
+    return !ALL_SURNAME_ENDINGS.includes(ending);
+  });
+}
+
+/**
  * L1: is this token the person's NAME?
  *
  * Three ways, in order of certainty: the founder's first-name list, a
@@ -158,6 +185,12 @@ const GEORGIAN_SURNAME_ENDINGS = ['შვილი', 'ძე', 'ია', 'ავ
  * removes a real signal.
  */
 const LATIN_SURNAME_ENDINGS = ['shvili', 'svili', 'dze', 'ava', 'iani'];
+
+/** Both lists, for `matchesAnchored`'s second guard. */
+const ALL_SURNAME_ENDINGS: readonly string[] = [
+  ...GEORGIAN_SURNAME_ENDINGS,
+  ...LATIN_SURNAME_ENDINGS,
+];
 
 /**
  * The same token, and its Latin spelling when it was written in Georgian.
@@ -212,6 +245,14 @@ export function classifyToken(token: string, firstInLabel: boolean): TokenKind {
   // not a company either, and `fit` already reads it — so it is set aside
   // rather than counted as the company word.
   if (containsAny(token, ROLE_WORDS) || containsAny(token, OWNERSHIP_WORDS)) return 'role';
+  // The commonest words in the whole phonebook, and the last ones to arrive.
+  // They are too short to be read as substrings — see the note above
+  // SHORT_RELATION_WORDS — so they are asked of the WHOLE token instead, and
+  // they are asked here, ahead of the surname ending, for the same reason the
+  // dictionaries above are: „ბებია" is a grandmother and it ends in „ია".
+  if (matchesAnchored(token, SHORT_RELATION_WORDS)) return 'relation';
+  if (matchesAnchored(token, SHORT_PLACE_WORDS) || matchesAnchored(token, SHORT_THING_WORDS))
+    return 'place';
   // Only now the ending: a word no dictionary claims, shaped like a surname.
   if (isNameToken(token, firstInLabel)) return 'name';
   return 'organisation';

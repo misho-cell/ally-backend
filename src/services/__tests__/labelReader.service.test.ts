@@ -175,6 +175,61 @@ describe('L2 — what a context token is', () => {
       expect(classifyToken('kafe', false)).toBe('place');
     });
   });
+
+  /**
+   * And then the short words came in anyway, through the front door instead of
+   * the substring one. These are the commonest words in the entire phonebook —
+   * „deda" is on 26,533 people — and they were the last to arrive, because a
+   * substring dictionary cannot hold a four-letter word.
+   */
+  describe('the short words, matched as a whole token', () => {
+    it.each([
+      ['deda', 'relation'],
+      ['dedas', 'relation'],
+      ['დედა', 'relation'],
+      ['დედას', 'relation'],
+      ['mama', 'relation'],
+      ['mamao', 'relation'],
+      ['bebo', 'relation'],
+      ['dzia', 'relation'],
+      ['ძია', 'relation'],
+      ['gori', 'place'],
+      ['goris', 'place'],
+      ['goridan', 'place'],
+      ['saxli', 'place'],
+      ['saxlis', 'place'],
+      ['manqana', 'place'],
+      ['aveji', 'place'],
+      ['ავეჯი', 'place'],
+    ])('%s is %s', (token, kind) => {
+      expect(classifyToken(token, false)).toBe(kind);
+    });
+
+    // „ბებია" is why this tier is read BEFORE the surname endings: it ends in
+    // „ია", so the ending rule claimed it and a grandmother was somebody's
+    // family name.
+    it('a grandmother is no longer a surname', () => {
+      expect(classifyToken('ბებია', false)).toBe('relation');
+      expect(classifyToken('bebia', false)).toBe('relation');
+    });
+
+    it('the anchor is what keeps Igori a man and Mamardashvili a family', () => {
+      expect(classifyToken('igori', false)).toBe('name');
+      expect(classifyToken('gorishvili', false)).toBe('name');
+      expect(classifyToken('mamardashvili', false)).toBe('name');
+    });
+
+    // Three letters is exactly „dze". Without the second guard the adjective
+    // „big" would eat 117 people's family name.
+    it('an ending that is a SURNAME ending is not a case ending', () => {
+      expect(classifyToken('dididze', false)).toBe('name');
+    });
+
+    it('„lari" is still refused: Larisa cannot be told from the money', () => {
+      expect(classifyToken('larisa', false)).not.toBe('place');
+      expect(classifyToken('lari', false)).not.toBe('place');
+    });
+  });
 });
 
 describe('L3/L4 — the three numbers and the signals', () => {

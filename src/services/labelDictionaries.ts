@@ -571,3 +571,69 @@ export const STARTUP_WORDS = [
   'startupbureau',
   'techstars',
 ];
+
+/**
+ * THE SHORT WORDS — matched as a WHOLE TOKEN, never as a substring.
+ *
+ * Everything above is read with `containsAny`, a substring match, and that is
+ * right for a long word: Georgian inflects by suffix, so „mdzgolis" and
+ * „bugalteria" have to be caught by the stem sitting inside them. It is fatal
+ * for a short one. Measured on the live base, that is the whole reason these
+ * words — the commonest in the entire phonebook — were still missing:
+ *
+ *   deda   26,533 carriers   „mother"       inside them: nothing
+ *   mama   22,279            „father"       MAMARDASHVILI
+ *   saxli   9,558            „house"
+ *   dzia    8,810            „uncle"
+ *   gori    7,716            the town       IGORI, 175 men
+ *   bebo   10,162            „granny"
+ *
+ * So they are read by `matchesAnchored` instead: the token IS the word, or the
+ * word plus at most three letters of case ending. „gori", „goris", „goridan"
+ * are the town; „igori" and „grigori" are not the town at all, and „gorishvili"
+ * is somebody's family.
+ *
+ * AND THE ENDING MUST NOT BE A SURNAME'S. Three letters is exactly „dze", so
+ * without that second guard „dididze" — 117 people — would stop being a name.
+ *
+ * WHAT IS STILL REFUSED, and this is the honest edge of the mechanism:
+ *
+ *   lari   „larisa" (821) and „larissa" (24) are a woman. The ending „sa" is
+ *          not a surname's, so no guard here can tell her from the money.
+ *   didi   the adjective „big". It belongs to no class this file has.
+ *
+ * `larisa` is read as a company word today, which is wrong but PROVISIONAL —
+ * the three-saver rule drops it. A dictionary hit is final. Turning a quiet
+ * wrong answer into a confident one is the worse trade.
+ */
+export const ANCHORED_SUFFIX_MAX = 3;
+
+/** Carriers matched by the anchored rule, Latin then Georgian. */
+export const SHORT_RELATION_WORDS = [
+  'deda', // 25,134
+  'დედა', // 18,640
+  'mama', // 19,047
+  'მამა', // 12,568
+  'bebo', // 9,871
+  'ბებო', // 8,303
+  'dzia', // 4,527
+  'ძია', // 4,239
+  // „ბებია" is the one this tier was most needed for: it ends in „ია", so the
+  // surname rule claimed it and a grandmother was read as a family name.
+  'bebia', // 2,679
+  'ბებია', // 2,839
+];
+
+export const SHORT_PLACE_WORDS = [
+  'gori', // 4,847 — the town. Refused by the substring tier because of Igori.
+];
+
+export const SHORT_THING_WORDS = [
+  'saxli', // 8,593
+  'სახლ', // 5,035
+  'sakhli', // 393
+  'manqana', // 5,440
+  'მანქან', // 5,658
+  'aveji', // 3,969
+  'ავეჯ', // 2,483
+];
