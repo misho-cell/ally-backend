@@ -27,6 +27,16 @@ export interface ConnectorOutcome {
   found: boolean;
   reason?: string;
   results?: ConnectorResult[];
+  /**
+   * How many people the group tag matched in the OWNER'S OWN phonebook — the
+   * population `member_links` is counted against, and not the group's
+   * membership. See getGroupConnectors.
+   */
+  group_size?: number;
+  /** How many connectors are here. Fewer than exist when the limit bit. */
+  shown?: number;
+  /** Present only when the ranking was cut, and it says so in words. */
+  note?: string;
 }
 
 interface Neo4jIntLike {
@@ -129,7 +139,19 @@ export async function getTopConnectors(
 
   const results = await resolveConnectors(userId, ranked);
   if (results.length === 0) return { found: false, reason: 'no_connectors' };
-  return { found: true, results };
+  /**
+   * The seat's 368: any number a tool returns should say what it counts and
+   * whether it is complete. Here `reach` is a graph score and the list is cut
+   * to `limit`, so the cut is said rather than left to be inferred.
+   */
+  return {
+    found: true,
+    results,
+    shown: results.length,
+    ...(ranked.length >= limit && {
+      note: `Ranked the top ${results.length} only — there may be more connectors.`,
+    }),
+  };
 }
 
 /**
@@ -192,7 +214,47 @@ export async function getGroupConnectors(
 
   const results = await resolveConnectors(userId, ranked);
   if (results.length === 0) return { found: false, reason: 'no_connectors' };
-  return { found: true, results };
+  /**
+   * SAYS WHAT ITS NUMBERS COUNT, which is the seat's 368 and 369 asked as one
+   * convention: „any number a tool returns says what it counts and whether it
+   * is complete".
+   *
+   * Two numbers here needed it, and one of them had already misled somebody.
+   *
+   * `member_links` IS NOT A MEMBERSHIP FIGURE. It counts, for one of the
+   * owner's own contacts, how many of `groupPhones` that person has in THEIR
+   * phonebook — and `groupPhones` is „every phone the OWNER tagged with this
+   * word", read from the owner's own `UserTags`. It is not the roster, which
+   * is built from public `member_of` facts and is a different population
+   * entirely.
+   *
+   * The seat read „Iro Cagareishvili — member_links: 52" against „the roster
+   * says Axel has fifty" and offered it as a second proof that the roster caps
+   * at 50. The roster does cap at 50 — that is read from the code and fixed —
+   * but THIS IS NOT EVIDENCE OF IT. 52 is counted against the owner's 84
+   * contacts tagged `axel`, which is the same 84 `get_network_stats` reports.
+   * Two populations, and the comparison only looked decisive because neither
+   * number said what it was.
+   *
+   * `shown` and `note` are the other half: the ranking is cut to `limit`
+   * (default 10, max 25) and said nothing about it.
+   */
+  const cut = ranked.length >= limit;
+  return {
+    found: true,
+    results,
+    group_size: groupPhones.length,
+    shown: results.length,
+    ...(cut && {
+      note:
+        `Ranked the top ${results.length} only — there may be more connectors. ` +
+        `\`member_links\` counts how many of the ${groupPhones.length} people YOU tagged ` +
+        '„' +
+        groupTag +
+        '" that person has in their own phonebook. It is NOT the size of the ' +
+        'group and NOT a roster membership count; do not compare it with a roster total.',
+    }),
+  };
 }
 
 export interface GraphDiagnostic {
