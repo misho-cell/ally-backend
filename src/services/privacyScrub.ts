@@ -4,7 +4,37 @@
 // server-side so they can never reach Claude's context or the chat UI. ISO
 // dates and short numeric runs (ages, counts, house numbers) are spared.
 
-const PHONE_LIKE_PATTERN = '\\+?\\d[\\d\\s\\-().]{5,}\\d';
+/**
+ * A DIGIT RUN GLUED INTO A WORD IS AN IDENTIFIER, NOT A PHONE.
+ *
+ * The seat's 367: Nika Abramishvili's stored LinkedIn link read
+ * `linkedin.com/in/nika-abramishvili-[hidden]/`, in two separate facts months
+ * apart, and they concluded the digits had been destroyed before the write and
+ * the URL could never be recovered.
+ *
+ * THE RECORD IS INTACT. `contact_facts` holds zero rows containing „[hidden]",
+ * and four LinkedIn links whose slug ends in a nine-digit run are stored whole
+ * — 957914321, 262049200, 741764199 twice. What they read was this function,
+ * at the display boundary, eating the slug on the way out. Reproduced exactly:
+ *
+ *   .../in/nika-abramishvili-123456789/  ->  .../in/nika-abramishvili-[hidden]/
+ *
+ * So it is a rendering bug, not a data loss, and it is reversible — which is
+ * the difference between „this cannot be recovered" and „this needs one
+ * lookbehind". Their mechanism was right and their conclusion was not.
+ *
+ * The cost was still real: a link that comes back masked is a link nobody can
+ * open, and the model cannot hand the owner a working profile.
+ *
+ * The two lookbehinds, each earning its place:
+ *   (?<![\p{L}/])   not glued to a letter, and not a path segment after „/"
+ *   (?<!\p{L}-)     not after a hyphen that follows a letter — the slug case
+ *
+ * A real phone is delimited by space, start-of-text or punctuation like „:",
+ * never welded to the end of a word. Every phone shape in the tests below
+ * still redacts.
+ */
+const PHONE_LIKE_PATTERN = '(?<![\\p{L}/])(?<!\\p{L}-)\\+?\\d[\\d\\s\\-().]{5,}\\d';
 const PHONE_KEY_RE = /phone|msisdn/i;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Year ranges ("2015-2017", "2015 - 2017") are education/work dates, not phones.
@@ -45,7 +75,7 @@ const ALLOW_SPAN_RE = /⟦own⟧[\s\S]*?⟦\/own⟧/g;
 export function scrubText(text: string): string {
   return text
     .split(ALLOW_SPAN_RE)
-    .map((part) => part.replace(new RegExp(PHONE_LIKE_PATTERN, 'g'), redactCandidate))
+    .map((part) => part.replace(new RegExp(PHONE_LIKE_PATTERN, 'gu'), redactCandidate))
     .reduce((acc, part, i) => {
       const spans = text.match(ALLOW_SPAN_RE) ?? [];
       return acc + (i > 0 ? spans[i - 1] : '') + part;
@@ -360,6 +390,6 @@ export function scrubEmailsDeep(value: unknown): unknown {
 /** Leak check used by tests and defensive assertions — true if anything phone-like survives. */
 export function containsPhoneLike(value: unknown): boolean {
   const serialized = JSON.stringify(value) ?? '';
-  const matches = serialized.match(new RegExp(PHONE_LIKE_PATTERN, 'g')) ?? [];
+  const matches = serialized.match(new RegExp(PHONE_LIKE_PATTERN, 'gu')) ?? [];
   return matches.some((m) => redactCandidate(m) === REDACTED);
 }

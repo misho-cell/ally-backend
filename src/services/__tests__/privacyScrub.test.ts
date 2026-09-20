@@ -180,3 +180,52 @@ describe('row 116 third shape — an abbreviated label, and not the inside of a 
     expect(stripRedactionArtifactsForDisplay(input)).toBe(input);
   });
 });
+
+/**
+ * The seat's 367 — a LinkedIn slug ending in digits was being eaten at the
+ * display boundary, and they read the mask as a destroyed record.
+ *
+ * Their evidence: Nika Abramishvili's stored link read
+ * `linkedin.com/in/nika-abramishvili-[hidden]/` in two separate facts months
+ * apart, so they concluded the digits were scrubbed BEFORE the write and the
+ * URL could never be recovered.
+ *
+ * THE RECORD WAS INTACT. `contact_facts` holds zero rows containing „[hidden]"
+ * and four LinkedIn links whose slug ends in a nine-digit run, stored whole —
+ * 957914321, 262049200, 741764199 twice. This function was doing it on the way
+ * out. A rendering bug, not a data loss, and therefore reversible.
+ *
+ * The cost was real anyway: a link that arrives masked is a link nobody can
+ * open, and the model cannot hand the owner a working profile.
+ */
+describe('a digit run welded into a word is an identifier, not a phone', () => {
+  it.each([
+    'https://www.linkedin.com/in/nika-abramishvili-123456789/',
+    'linkedin.com/in/levan-kholuashvili-957914321',
+    'https://www.linkedin.com/in/dato-mikeladzeee-262049200/',
+    // Mixed letters and digits never tripped it, which is why only some links broke.
+    'https://www.linkedin.com/in/misha-abaiadze-a099a36',
+  ])('keeps the slug in %s', (url) => {
+    expect(scrubText(url)).toBe(url);
+  });
+
+  /**
+   * The boundary this protects has to hold exactly as before. A real phone is
+   * delimited by a space, the start of the text, or punctuation like „:" — it
+   * is never welded to the end of a word.
+   */
+  it.each([
+    'call me on +995 599 12 34 56',
+    '+995599123456',
+    '995599123456',
+    'tel:995599123456',
+    'my number is 599 12 34 56 ok',
+  ])('still redacts a real phone in %s', (text) => {
+    expect(scrubText(text)).toContain('[hidden]');
+  });
+
+  it('leaves dates and year ranges alone, as it always did', () => {
+    expect(scrubText('2015-2017')).toBe('2015-2017');
+    expect(scrubText('2026-09-20')).toBe('2026-09-20');
+  });
+});
