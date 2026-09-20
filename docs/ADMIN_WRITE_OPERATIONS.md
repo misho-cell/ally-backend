@@ -1257,6 +1257,26 @@ account with no contacts", no „any name starting with Netai Test". **501,
 160584, 167250 and every other real account are unreachable through it** — by
 an admin, by mistake, or by asking. A test holds each of those.
 
+### Verified live, both directions, 20:03 UTC
+
+Not „deployed" — **called**, with the same admin token the seat holds:
+
+```
+POST /admin/test-seat/token  {"user_id":"171870"}  -> minted, ttl 12h, role user
+POST /admin/test-seat/token  {"user_id":"501"}     -> 403, id named, six listed
+```
+
+And the audit trail is real rather than promised — both calls are in the
+container log:
+
+```
+20:03:27  [test-seat] admin 167250 minted a token for test account 171870
+20:03:27  [test-seat] admin 167250 asked for 501 — REFUSED, not fictional
+```
+
+**A route that hands out tokens is not finished when it deploys.** The refusal
+is the half worth proving, and it is proved against the founder's own id.
+
 ### UNDO
 
 Delete the route and `testSeatTokens.ts`; nothing else reads them. Tokens
