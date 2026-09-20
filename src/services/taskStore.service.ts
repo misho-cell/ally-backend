@@ -514,6 +514,32 @@ export async function getMyTasks(userId: string, status?: TaskStatus): Promise<T
  */
 export type ClosedAs = 'finished' | 'stopped';
 
+/**
+ * A CLOSE MUST SAY WHICH KIND OF CLOSE IT WAS — enforced by the compiler, not
+ * by remembering.
+ *
+ * The seat's 363, 20 September: „no goal has ever been recorded as solved",
+ * measured as 59 closed goals on four accounts, every one `stopped`. The base
+ * is kinder than their sample — two rows do read `finished` — but the shape
+ * they found is real and the reason is here. Across every closed goal:
+ *
+ *   (null)    187      of which the biggest groups are hand-written admin
+ *                      closes: „მომხმარებელმა დახურა" 28, „test goal —
+ *                      closed on Tornike's account" 25, „battery test" 7
+ *   stopped    79
+ *   finished    2
+ *
+ * `closedAs` was optional, so a caller that simply did not think about it
+ * wrote NULL, and NULL is indistinguishable from „we never asked". The column
+ * that answers „how many of my goals actually worked" was two-thirds silence.
+ *
+ * Making it REQUIRED does not fix the old rows — nothing can, the information
+ * was never captured — but it means no new close can be silent, and the
+ * compiler names every path rather than a future reader discovering one.
+ * `'stopped'` is the honest value for a close that is not a completion; there
+ * is no third option on purpose, because „unknown" as a stored value is the
+ * thing this is removing.
+ */
 export async function updateTask(
   userId: string,
   taskId: number,

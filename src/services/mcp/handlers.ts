@@ -1147,7 +1147,24 @@ export async function mcpFinishTask(
   const taskId = parseTaskRef(args.task_ref ?? '');
   if (taskId === null) return { closed: false, error: UNKNOWN_TASK_REF };
   const summary = (args.summary ?? 'done').slice(0, 500);
-  const closed = await updateTask(userId, taskId, 'closed', summary);
+  /**
+   * RECORDS ITS OUTCOME NOW. This wrote NULL — the same tool name as the app's
+   * `finish_task`, meaning the same thing, and recording nothing — so every
+   * goal finished through the connector became part of the 187 closed rows
+   * that cannot say whether they worked. Third instance today of one surface
+   * knowing something the other does not.
+   *
+   * AND THE GUARD IS STILL MISSING HERE, which is worth saying rather than
+   * hiding behind a tidier column. The app's finish_task refuses unless the
+   * owner has actually said the goal is solved — „Not closed: the owner has
+   * not said this is solved" — and it refuses often: 15 calls in thirty days,
+   * 4 of them allowed through. The connector has no such check, so a
+   * `finished` written here is the MODEL's judgement that the work is done,
+   * not the owner's word for it. That gap is real and is not closed by this
+   * line; it is named so the next reader of the column knows what it can and
+   * cannot bear.
+   */
+  const closed = await updateTask(userId, taskId, 'closed', summary, 'finished');
   if (closed) await cancelAsksForTask(taskId);
   return { closed };
 }
