@@ -31,7 +31,45 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+### 1. A funded test account — the seat can now sit down and has nothing to spend
+
+**What we need from Misho:** money on one or more of the six fictional test
+accounts (Netai Test 1-6, ids 171870-171874 and 171936), or a refillable one
+they can top up themselves.
+
+**Why we cannot do it ourselves:** it is spend. Night rule, and D44.
+
+**What it stops:** the seat's rows **210 and 217**, both Pr1, both built by my
+word and unproved for days. They are unproved for a reason that stopped being
+about permission tonight.
+
+**Why it is live now and was not this morning.** Their tooling refuses to type
+a phone number or a login code into a form — twice on 20 September, once with
+the founder's explicit go-ahead — so every test login was typed by him, by
+hand, in his own evening. Tonight I built `POST /admin/test-seat/token`
+(ADMIN_WRITE_OPERATIONS §17): admin-only, six hardcoded fictional ids, a
+twelve-hour user token, verified live in both directions with 501 refused by
+name.
+
+**So the seat can now BE a test user. It still cannot pay for anything.**
+That is the next wall and they will hit it immediately — I told them so in the
+box rather than let them find it.
+
+**The narrowest version of the ask**, if a general top-up is not wanted: one
+account with a small balance, and one with zero, which is also what §14 has
+been asking for since 19 September and is still unanswered. Both requests are
+the same coin: the swallow bug needs an empty wallet, rows 210 and 217 need a
+full one.
+
+### 2. What is NOT on this list, said so it is not looked for
+
+The 59,111 „Undefined" alias rows: **I decided not to delete them** and that
+is not a question. Irreversible, zero gain now that the reader ignores them,
+and real people's saved labels.
+
+The unknown import service (8.4 million rows, no `source`, in neither
+repository): **information, not a decision.** Misho knows what it is; nothing
+waits on the answer.
 
 The 19/20 September list held one item — a zero-balance test account so the
 swallow bug could be observed at all. It was put to Misho twice in conversation
