@@ -683,6 +683,23 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
      * 86% of this query's time is disk reads, so a real user's first search of
      * the day is the 15-second p90 the phase log has been showing.
      *
+     * AND THE FIRST REAL TRAFFIC IS MORE MODEST THAN THAT, which belongs here
+     * next to the bench rather than in a reply nobody will find. The seat ran
+     * two searches on the same account nine minutes after this shipped:
+     *
+     *   patterns 2  sql 1,893 ms      pre-change at 1,917 phones: 2,121 / 3,519
+     *   patterns 3  sql 1,249 ms      no pre-change reading at 3
+     *
+     * Like-for-like that is roughly 1.1x to 1.9x, NOT twelve. Neither call was
+     * cold — they ran ten seconds apart, so the second read pages the first had
+     * warmed — and neither had the five patterns the 14,079 ms reading had. The
+     * bench is not contradicted; it is simply not what these two measure.
+     *
+     * WHAT WILL SETTLE IT is not a percentile. `search_second_degree:opening`
+     * failed 51 times out of 152 in the week before this, every one a statement
+     * timeout at about 16.4 seconds — the five-pattern cold cases. If this
+     * works that count collapses. `scripts/ops/slow.sh` reads it.
+     *
      * A TERM UNDER THREE CHARACTERS CANNOT USE A TRIGRAM INDEX, and one
      * unindexable branch in the OR chain costs the whole chain its index while
      * still looking like a pre-filter. When any term is that short every
