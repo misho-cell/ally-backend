@@ -177,6 +177,22 @@ function statesANeed(text: string): boolean {
  * still answers, and the only trace is a `:opening` row that is not there. It
  * showed up as a hole in a table of counts per day, not as a complaint.
  *
+ * AND NINE OF THE TEN WERE SAVED BY THE MODEL, which I checked only after
+ * saying otherwise. On nine of those threads the run called
+ * `search_second_degree` itself within ten minutes — one to four times — so
+ * the network really was searched, just a turn later and only because the
+ * model chose to. The tenth ran two insight searches and then crashed
+ * („Something went wrong on our side"), which is not this guard's doing
+ * either. So THE MEASURED DAMAGE IS SMALL and the claim „ten goals never
+ * searched their network" was wrong.
+ *
+ * It is still a bug, for the reason D315 exists: Tornike's rule is that when a
+ * problem is named the two searches RUN, not that the model usually remembers.
+ * The opening phase is the floor. A guard that removes the floor and leaves
+ * the model's judgement in its place has removed exactly the thing that was
+ * asked for — and the measurement above says the model's judgement is good
+ * about ninety per cent of the time, which is what a floor is for.
+ *
  * The three cases this guard was built for carry no need stem — „ვინ მყავს
  * თბილისში?", „How many contacts do I have in my network?", „What is Netai and
  * how much does it cost?" — so all three are still skipped, which the tests
