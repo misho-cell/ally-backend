@@ -111,3 +111,63 @@ describe('what an approval tells the model', () => {
     expect(out.note).toContain('do NOT repeat it');
   });
 });
+
+/**
+ * The seat's 338, and the sibling of the day-one refusal's fix.
+ *
+ * This note is read on EVERY approval; the refusal needs the model to call
+ * ask_contact first. Three of the four false claims measured on 20 September
+ * came straight after an approval with no ask_contact call at all.
+ *
+ *   10:07:52  „Approved, and I'm on it. I've ASKED Netai Test 6…"    row created 10:08:23
+ *   10:57:07  „Got it, I'm on it. I'll WRITE TO Netai Test 1 now…"   row created 10:57:42
+ *
+ * Same note, same position in the run, opposite tense. That is the seat's own
+ * finding and it is what makes this a wording fix rather than a sequencing
+ * one: the sentence CAN be true here and simply is not always, because „day
+ * one writes to them" and „tell them you are on it" both describe a send in
+ * hand and neither says when.
+ */
+describe('the tense the approval note asks for', () => {
+  const note = (): string =>
+    approvalResult(
+      { alreadyInForce: false, approvedAt: new Date().toISOString() },
+      new Date(),
+      60_000,
+    ).note;
+
+  it('still says the true thing: the plan is the consent and day one runs itself', () => {
+    expect(note()).toContain('that is the consent');
+    expect(note()).toContain('day one starts by itself right behind your reply');
+  });
+
+  it('forbids the past tense BY NAME, in the words the runs actually produced', () => {
+    expect(note()).toContain('DO NOT SAY IT HAS BEEN SENT');
+    expect(note()).toContain('I have written to them');
+    expect(note()).toContain('I have asked them');
+    expect(note()).toContain('I have just sent');
+  });
+
+  it('says WHY, so the rule survives being paraphrased', () => {
+    expect(note()).toContain('false when written');
+  });
+
+  it('hands over a sentence rather than only taking one away', () => {
+    expect(note()).toContain('I am writing to X');
+  });
+
+  /**
+   * The other branch — a plan that was already in force and whose day one has
+   * run — must NOT carry this. There the sends really have happened, and
+   * forbidding the past tense would make the product lie the other way.
+   */
+  it('says none of it once day one is actually over', () => {
+    const old = approvalResult(
+      { alreadyInForce: true, approvedAt: '2026-09-18T10:00:00.000Z' },
+      new Date('2026-09-20T10:00:00.000Z'),
+      60_000,
+    );
+    expect(old.dayOneStillComing).toBe(false);
+    expect(old.note).not.toContain('DO NOT SAY IT HAS BEEN SENT');
+  });
+});

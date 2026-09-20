@@ -1839,7 +1839,32 @@ export function approvalResult(
       '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
       'starts by itself right behind your reply and writes to the first 3–5 people the plan ' +
       'names. Tell the user in one or two sentences that you are on it and when you will be ' +
-      'back. Nothing else.',
+      'back. Nothing else. ' +
+      /**
+       * AND NOT IN THE PAST TENSE. This is the sibling of the day-one
+       * refusal's line and it is the one that actually fires: the refusal
+       * needs the model to CALL ask_contact, while this note is read on every
+       * single approval. Three of the four false claims the seat measured came
+       * straight after an approval with no ask_contact call at all.
+       *
+       *   10:07:52  „Approved, and I'm on it. I've ASKED Netai Test 6…"     row created 10:08:23
+       *   10:57:07  „Got it, I'm on it. I'll WRITE TO Netai Test 1 now…"    row created 10:57:42
+       *
+       * Same note, same position in the run, opposite tense — which is the
+       * seat's own finding in their 338 and the reason this is a wording fix
+       * and not a sequencing one. The sentence CAN be true here; it simply is
+       * not always, because „day one writes to them" and „tell them you are on
+       * it" both describe a send in hand and neither says when.
+       *
+       * THIS IS NOT D343. That ruling is about the whole product and is still
+       * waiting on Misho. This is the second of two strings that were talking
+       * the model into breaking it.
+       */
+      'DO NOT SAY IT HAS BEEN SENT. Nothing has gone to anybody at the moment you are ' +
+      'writing — day one has not run yet. „I have written to them", „I have asked them", ' +
+      '„I have just sent" are all false when written, even though they become true a minute ' +
+      'later. Write the future or the present: „I am on it — I am writing to X and Y now and ' +
+      'I will come back as soon as somebody answers."',
   };
 }
 
