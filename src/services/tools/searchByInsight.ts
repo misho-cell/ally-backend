@@ -220,8 +220,64 @@ const NEGATION_MARKERS = [
   ' გარდა ',
 ];
 
+/**
+ * A NEGATION ABOUT THE ASKER IS NOT A NEGATION OF THE TARGET.
+ *
+ * The seat's 353, 20 September, on the founder's own network. Same person
+ * wanted, one clause added:
+ *
+ *   „I need a lawyer who understands trademarks"                    found 1
+ *   „I need a lawyer who understands trademarks,
+ *    I do not know where to start"                                  REFUSED
+ *   „I need a lawyer, my usual one is not free this week"           REFUSED
+ *   „I need a lawyer, I don't have one yet"                         found 0
+ *
+ * Neither refused sentence excludes anybody. „I do not know where to start"
+ * describes the ASKER; „my usual one is not free" describes a third person who
+ * is not the target. And `don't` passes while `not` does not, which shows the
+ * trigger was the bare token rather than the meaning.
+ *
+ * Refusing is worse than missing: this does not return zero rows, it tells the
+ * model not to answer with a list at all. „I do not know anyone in that field"
+ * is the sentence somebody types when they need the search most.
+ *
+ * WHAT THIS DOES NOT DO. It does not try to parse negation. It exempts a short
+ * closed list of ASKER-PREDICAMENT phrases — statements about the person
+ * asking, which can never be a description of who they want. Everything the
+ * guard was built for still trips it, including first-person searches:
+ * „I am not looking for investors" and „I do not want recruiters" are about
+ * the TARGET and are deliberately absent from the list below.
+ *
+ * AND IT HAS NEVER FIRED ON A REAL QUERY. 766 insight searches in fourteen
+ * days; three carry a negation marker and all three are the seat's, tonight.
+ * The reason is worth knowing: the queries reaching this tool are the
+ * distiller's short phrases („trademark lawyer"), not people's sentences. So
+ * this is a guard against a path that does not exist yet — and row 145's voice
+ * input, which hands a whole spoken sentence straight through, is exactly that
+ * path arriving.
+ */
+const ABOUT_THE_ASKER = [
+  /\bi do ?n['’]?o?t know\b/,
+  /\bi don['’]t know\b/,
+  /\bi have not\b/,
+  /\bi do not have\b/,
+  /\bi ?a?m not sure\b/,
+  /\bmy \w+( \w+)? is not\b/,
+  // NO `\b` ON THE GEORGIAN ONES. It is ASCII-only, so between „ვიცი" and the
+  // space after it there is no word boundary at all and the pattern matches
+  // nothing. Three files in this repository carry that warning and I wrote
+  // `\b` here anyway; the test below is what caught it.
+  /არ ვიცი/,
+  /არ მყავს/,
+  /არ მაქვს/,
+];
+
 export function isNegatedQuery(searchQuery: string): boolean {
-  const padded = ` ${searchQuery.toLowerCase().replace(/\s+/g, ' ').trim()} `;
+  const flat = searchQuery.toLowerCase().replace(/\s+/g, ' ').trim();
+  // The asker's own predicament is stripped before the markers are looked for,
+  // so a negation left anywhere else still trips the guard.
+  const aboutTheTarget = ABOUT_THE_ASKER.reduce((text, phrase) => text.replace(phrase, ' '), flat);
+  const padded = ` ${aboutTheTarget.replace(/\s+/g, ' ').trim()} `;
   return NEGATION_MARKERS.some((marker) => padded.includes(marker));
 }
 

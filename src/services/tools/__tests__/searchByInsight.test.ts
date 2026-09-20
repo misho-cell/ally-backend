@@ -9,7 +9,7 @@ jest.mock('../../block.service', () => ({
 }));
 
 import { query } from '../../../db/postgres/client';
-import { searchByInsight } from '../searchByInsight';
+import { searchByInsight, isNegatedQuery } from '../searchByInsight';
 import { scrubEmailsDeep } from '../../privacyScrub';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -622,5 +622,58 @@ describe('a stored fact that says the opposite (task 14 / 14.1)', () => {
       expect(sql).toContain('no longer | former | ex-| stopped | left');
       expect(sql).toContain('bool_or(NOT (');
     }
+  });
+});
+
+/**
+ * The seat's 353, 20 September, measured on the founder's own network. One
+ * clause about the ASKER turned a working search into a refusal:
+ *
+ *   „I need a lawyer who understands trademarks"                    found 1
+ *   „… , I do not know where to start"                              REFUSED
+ *   „I need a lawyer, my usual one is not free this week"           REFUSED
+ *   „I need a lawyer, I don't have one yet"                         found 0
+ *
+ * Neither refused sentence excludes anybody, and `don't` passing while `not`
+ * failed showed the trigger was the bare token, not the meaning.
+ *
+ * Refusing is worse than missing: the guard does not return zero rows, it
+ * tells the model not to answer with a list at all.
+ */
+describe('the negation guard reads WHO is being negated', () => {
+  it('lets through a negation about the asker’s own predicament', () => {
+    expect(
+      isNegatedQuery('I need a lawyer who understands trademarks, I do not know where to start'),
+    ).toBe(false);
+    expect(isNegatedQuery('I need a lawyer, my usual one is not free this week')).toBe(false);
+    expect(isNegatedQuery('I need a lawyer, I do not have one yet')).toBe(false);
+    expect(isNegatedQuery('მჭირდება ადვოკატი, არ ვიცი საიდან დავიწყო')).toBe(false);
+  });
+
+  /**
+   * The case the guard was built for, and it must not soften. Live, twice, a
+   * day apart: „people who are explicitly not investors" returned five
+   * investors — the query's own words handed back as an answer.
+   */
+  it('still refuses a negation about the TARGET', () => {
+    expect(isNegatedQuery('people who are explicitly not investors')).toBe(true);
+    expect(isNegatedQuery('someone who never invests their own money')).toBe(true);
+    expect(isNegatedQuery('a designer without an agency')).toBe(true);
+    expect(isNegatedQuery('ინვესტორი, რომელიც აღარ არის აქტიური')).toBe(true);
+  });
+
+  /**
+   * First person is not the test — WHOSE STATE is. These two begin with „I"
+   * and are about the target, so they stay refused; exempting them would put
+   * the original bug back behind a friendlier sentence.
+   */
+  it('does not exempt a first-person search that negates the target', () => {
+    expect(isNegatedQuery('I am not looking for investors')).toBe(true);
+    expect(isNegatedQuery('I want someone who is not a recruiter')).toBe(true);
+  });
+
+  it('leaves an ordinary query alone', () => {
+    expect(isNegatedQuery('trademark lawyer')).toBe(false);
+    expect(isNegatedQuery('I need a lawyer who understands trademarks')).toBe(false);
   });
 });
