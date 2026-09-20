@@ -1108,6 +1108,38 @@ connector.
 **If a line ever appears in that log, it names its own source**, and that is
 the thing to fix rather than a reason to weaken the refusal.
 
+### The size of it, measured 20 September — a number this section never had
+
+Every accepted introduction in the product's history:
+
+| | |
+|---|---|
+| accepted introductions, all time | **23** |
+| of those, `intro_channel` recorded | **0** |
+| of those, a phone number appeared in the introduction thread | **6** |
+
+**Not one accept in twenty-three has ever recorded how.** Item 5's choice has
+never been captured, on any surface, since introductions began — so „does the
+app send a channel" was never the question; nothing did.
+
+**Six is an UPPER BOUND on silent hand-overs, not a count.** „A number
+appeared in an assistant message on that thread" cannot tell whose number it
+was — it may be the requester's own, a business line, or a number inside a
+quoted message. What it does establish is that the disclosure path is not
+hypothetical: it runs, and it has run without the mediator being asked.
+
+**And the two most recent accepts show both halves.** Request 1123 (20 Sep,
+the seat's test) and 1090 (18 Sep, a real pair) are both `accepted` with a
+NULL channel. On 1090 **nothing was disclosed** — the run said „ნომერი
+ავტომატურად ვერ მოვძებნე", it could not find the number — which is worth
+recording precisely because it is the case that did NOT go wrong. A NULL
+channel reads as `direct`, but reading as direct only costs something when
+there is a number to give.
+
+So the refusal stays, and now for a measured reason rather than a feared one:
+the choice has never been recorded once, and the path that would use it is
+live.
+
 ### What happened
 
 Item 5 shipped this morning: an accept must say HOW — `direct` hands the
