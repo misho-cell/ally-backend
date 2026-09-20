@@ -151,3 +151,159 @@ export function outgoingRequestOpening(
             `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
   }
 }
+
+/**
+ * The third message the introduction writes, and the last one that was still
+ * Georgian on every account: what the TARGET reads when the mediator says yes.
+ *
+ * It carries the number-disclosure sentence, which is the part that must be
+ * right in whatever language the reader has — it is the sentence that tells
+ * somebody their phone number has left the mediator's phonebook.
+ */
+export function introAcceptedTitle(language: RunLanguage, requesterName: string): string {
+  switch (language) {
+    case 'en':
+      return `Introduction: ${requesterName}`;
+    case 'ru':
+      return `Знакомство: ${requesterName}`;
+    case 'es':
+      return `Presentación: ${requesterName}`;
+    default:
+      return `გაცნობა: ${requesterName}`;
+  }
+}
+
+/**
+ * Item 5's whole point, in the reader's language: whether a number was handed
+ * over, said plainly, because saying yes to an introduction is what hands it
+ * over and nobody should learn that afterwards.
+ */
+export function numberDisclosureLine(
+  language: RunLanguage,
+  numberWasGiven: boolean,
+  mediatorName: string,
+  requesterName: string,
+): string {
+  if (!numberWasGiven) {
+    switch (language) {
+      case 'en':
+        return (
+          'Your number has not been passed to anybody — ' +
+          `${requesterName} has to ask ${mediatorName} for your contact.`
+        );
+      case 'ru':
+        return (
+          'Твой номер никому не передан — ' +
+          `${requesterName} должен попросить твой контакт у ${mediatorName}.`
+        );
+      case 'es':
+        return (
+          'Tu número no se ha dado a nadie — ' +
+          `${requesterName} tiene que pedirle tu contacto a ${mediatorName}.`
+        );
+      default:
+        return (
+          'შენი ნომერი არავის გადაცემია — ' +
+          `${geoName(requesterName, 'dat')} შენი კონტაქტი ${geoName(mediatorName, 'dat')} უნდა სთხოვოს.`
+        );
+    }
+  }
+  switch (language) {
+    case 'en':
+      return (
+        `${mediatorName} passed your number to ${requesterName} from their own phonebook — ` +
+        'that is what saying yes to an introduction means. If you would rather not get ' +
+        'questions through Netai, tell me and I will stop them.'
+      );
+    case 'ru':
+      return (
+        `${mediatorName} передал твой номер ${requesterName} из своей записной книжки — ` +
+        'согласие на знакомство означает именно это. Если не хочешь получать вопросы через ' +
+        'Netai, скажи, и я это прекращу.'
+      );
+    case 'es':
+      return (
+        `${mediatorName} le ha dado tu número a ${requesterName} desde su propia agenda — ` +
+        'eso es lo que significa aceptar una presentación. Si prefieres no recibir preguntas ' +
+        'por Netai, dímelo y lo detengo.'
+      );
+    default:
+      return (
+        `შენი ნომერი ${geoName(mediatorName, 'erg')} თავისი წიგნაკიდან ${geoName(requesterName, 'dat')} ` +
+        'გადასცა — გაცნობაზე თანხმობა სწორედ ამას ნიშნავს. თუ არ გინდა, რომ Netai-ს გავლით კითხვები ' +
+        'მოგდიოდეს, მითხარი და შევაჩერებ.'
+      );
+  }
+}
+
+/** „X said yes: Y would like to meet you." */
+export function introAcceptedOpening(
+  language: RunLanguage,
+  mediatorName: string,
+  requesterName: string,
+  reason: string | null,
+  numberWasGiven: boolean,
+): string {
+  const why = (label: string): string => (reason ? ` — ${label} „${reason}"` : '.');
+  const disclosure = numberDisclosureLine(language, numberWasGiven, mediatorName, requesterName);
+  switch (language) {
+    case 'en':
+      return (
+        `${mediatorName} said yes to an introduction: **${requesterName}** would like to meet you` +
+        why('their reason:') +
+        `\n\nThey may get in touch soon — they know ${mediatorName} introduced you. ` +
+        disclosure
+      );
+    case 'ru':
+      return (
+        `${mediatorName} согласился познакомить: **${requesterName}** хочет с тобой познакомиться` +
+        why('причина:') +
+        `\n\nВозможно, скоро свяжется — он знает, что вас познакомил ${mediatorName}. ` +
+        disclosure
+      );
+    case 'es':
+      return (
+        `${mediatorName} ha aceptado presentarte: **${requesterName}** quiere conocerte` +
+        why('su motivo:') +
+        `\n\nPuede que te escriba pronto — sabe que ${mediatorName} os ha presentado. ` +
+        disclosure
+      );
+    default:
+      return (
+        `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requesterName}**-ს შენი გაცნობა უნდა` +
+        why('მიზეზი:') +
+        `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
+        disclosure
+      );
+  }
+}
+
+/** The same news on a lock screen. */
+export function introAcceptedPush(
+  language: RunLanguage,
+  mediatorName: string,
+  requesterName: string,
+): { title: string; body: string } {
+  switch (language) {
+    case 'en':
+      return {
+        title: 'Netai — introduction',
+        body: `${mediatorName} introduced you to ${requesterName}. Open Netai.`,
+      };
+    case 'ru':
+      return {
+        title: 'Netai — знакомство',
+        body: `${mediatorName} познакомил тебя с ${requesterName}. Открой Netai.`,
+      };
+    case 'es':
+      return {
+        title: 'Netai — presentación',
+        body: `${mediatorName} te ha presentado a ${requesterName}. Abre Netai.`,
+      };
+    default:
+      return {
+        title: 'Netai — გაცნობა',
+        body: `${mediatorName}-მ გაგაცნო ${geoName(requesterName, 'dat')}. გახსენი Netai.`,
+      };
+  }
+}

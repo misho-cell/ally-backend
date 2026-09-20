@@ -2,11 +2,18 @@ import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
-import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from './threads.service';
+import {
+  createThread,
+  getThreadsByIntroRequestId,
+  saveThreadMessage,
+  userLanguage,
+} from './threads.service';
 import { scrubText } from './privacyScrub';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
+import { introAcceptedOpening, introAcceptedPush, introAcceptedTitle } from './introOpening';
+import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
 
 export interface PendingRequest {
@@ -470,50 +477,6 @@ interface AcceptOutcome {
  * Degrades honestly when the target cannot be resolved: the requester is told
  * to get the contact from the mediator directly.
  */
-/**
- * WHAT THE PERSON BEING INTRODUCED IS TOLD ABOUT THEIR OWN NUMBER.
- *
- * This line said, to every registered target, in every case:
- *
- *     „შენი ნომერი ამ შეტყობინებით არავის გადაცემია."
- *     (your number has not been given to anyone with this message)
- *
- * It is literally true about that message and false about the event. In the
- * same operation, `requesterExtra` below writes this person's number — out of
- * the mediator's own phonebook — into the requester's thread. Twenty-two
- * introductions have been accepted on this system. Somebody reading „my number
- * has not gone anywhere" at the exact moment it went somewhere is being
- * misled by a sentence that was engineered to be defensible.
- *
- * THE BEHAVIOUR STAYS. That was Misho's decision, made knowing what it costs:
- * handing the contact over is what Task 16 built, because thirteen accepted
- * introductions had previously produced no way for anybody to talk to anybody.
- * Only the sentence changes, and it changes to the truth.
- *
- * WHAT IT DELIBERATELY DOES NOT OFFER is a way to take the number back, because
- * there is none. `stop_contacting_me` stops future questions through Netai and
- * that is real, so it is offered in those words; nothing stops a phone number
- * that is already in somebody's hands, and saying otherwise would be the same
- * class of comfort as the sentence being replaced.
- */
-function numberDisclosureLine(
-  numberWasGiven: boolean,
-  mediatorName: string,
-  requesterName: string,
-): string {
-  if (!numberWasGiven) {
-    return (
-      'შენი ნომერი არავის გადაცემია — ' +
-      `${geoName(requesterName, 'dat')} შენი კონტაქტი ${geoName(mediatorName, 'dat')} უნდა სთხოვოს.`
-    );
-  }
-  return (
-    `შენი ნომერი ${geoName(mediatorName, 'erg')} თავისი წიგნაკიდან ${geoName(requesterName, 'dat')} ` +
-    'გადასცა — გაცნობაზე თანხმობა სწორედ ამას ნიშნავს. თუ არ გინდა, რომ Netai-ს გავლით კითხვები ' +
-    'მოგდიოდეს, მითხარი და შევაჩერებ.'
-  );
-}
-
 async function deliverAcceptOutcome(
   req: RequestRow,
   mediatorName: string,
@@ -552,23 +515,30 @@ async function deliverAcceptOutcome(
 
   if (targetUserId !== null && String(targetUserId) !== String(req.requester_user_id)) {
     try {
-      const thread = await createThread(String(targetUserId), 'regular', `გაცნობა: ${requester}`);
+      // The TARGET's own language. This is the message that tells somebody
+      // their phone number has left another person's phonebook, so of the
+      // three the introduction writes it is the one that can least afford to
+      // arrive in a script they cannot read.
+      const language = await userLanguage(String(targetUserId)).catch(() => 'ka' as RunLanguage);
+      const thread = await createThread(
+        String(targetUserId),
+        'regular',
+        introAcceptedTitle(language, requester),
+      );
       await saveThreadMessage(
         thread.id,
         targetUserId,
         'assistant',
-        `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
-          (req.message?.trim() ? ` — მიზეზი: „${scrubText(req.message.trim())}"` : '.') +
-          `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
-          numberDisclosureLine(
-            channel === 'direct' && targetPhone !== null,
-            mediatorName,
-            requester,
-          ),
+        introAcceptedOpening(
+          language,
+          mediatorName,
+          requester,
+          req.message?.trim() ? scrubText(req.message.trim()) : null,
+          channel === 'direct' && targetPhone !== null,
+        ),
       );
       await sendPushNotification(String(targetUserId), {
-        title: 'Netai — გაცნობა',
-        body: `${mediatorName}-მ გაგაცნო ${requester}-ს. გახსენი Netai.`,
+        ...introAcceptedPush(language, mediatorName, requester),
         url: `/chat/${thread.id}`,
       }).catch(() => undefined);
     } catch (err) {

@@ -9,7 +9,13 @@ import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
 import { geoName } from './georgianCase';
-import { askCancelledNote, buildAskOpening, unknownSenderName } from './askOpening';
+import {
+  answeredByYourRule,
+  askCancelledNote,
+  bridgeThanks,
+  buildAskOpening,
+  unknownSenderName,
+} from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { isPhoneOptedOut } from './privacyRights.service';
@@ -892,12 +898,13 @@ async function answerAutomatically(
     ASK_QUERY_TIMEOUT_MS,
   );
   await recordRuleUse(rule.id).catch(() => undefined);
+  // The recipient's own language, like the wrapper above it in the same thread.
+  const ruleLanguage = await userLanguage(String(recipientUserId)).catch(() => 'ka' as RunLanguage);
   await saveThreadMessage(
     askThreadId,
     Number(recipientUserId),
     'assistant',
-    `შენი წესით („${rule.kind}") ავტომატურად ვუპასუხე:\n\n"${rule.answer}"\n\n` +
-      'თუ ეს წესი აღარ გინდა, მითხარი და გავაუქმებ — შემდეგ ჯერზე ისევ შენ გკითხავ.',
+    answeredByYourRule(ruleLanguage, rule.kind, rule.answer),
   );
   await setThreadStatus(recipientUserId, askThreadId, 'done', { isTask: true });
   await deliverCapturedAnswer(captured, recipientUserId);
@@ -1153,14 +1160,15 @@ async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
  */
 async function thankTheBridge(relay: RelayShape, namedName: string | null): Promise<void> {
   if (relay.bridgeThreadId === null) return;
-  // „გიპასუხა" is an aorist, so its subject is ergative: ერეკლემ, not ერეკლე.
-  const who = namedName?.trim() ? geoName(namedName.trim(), 'erg') : 'ადამიანმა';
+  // The BRIDGE's own language — they are a third person in this exchange and
+  // need not share a script with either side of it.
+  const language = await userLanguage(String(relay.bridgeUserId)).catch(() => 'ka' as RunLanguage);
   try {
     await saveThreadMessage(
       relay.bridgeThreadId,
       relay.bridgeUserId,
       'assistant',
-      `${who} გიპასუხა და პასუხი კითხვის ავტორს გადაეცა. დიდი მადლობა, რომ დააკავშირე.`,
+      bridgeThanks(language, namedName),
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -1755,15 +1763,18 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
   );
   for (const row of due.rows) {
     if (row.ask_thread_id === null) continue;
+    // The RECIPIENT's language. They are often a stranger, the wrapper above
+    // this has spoken to them in it since 19 September, and the push below is
+    // all they see on a lock screen.
+    const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
     await saveThreadMessage(
       row.ask_thread_id,
       row.to_user_id,
       'assistant',
-      'შეხსენება: ეს კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.',
+      RUN_STRINGS[language].askReminder,
     ).catch(() => undefined);
     void sendPushNotification(String(row.to_user_id), {
-      title: 'Netai — შეხსენება',
-      body: 'უპასუხო კითხვა გელოდება.',
+      ...RUN_STRINGS[language].askReminderPush,
       url: `/chat/${row.ask_thread_id}`,
     }).catch(() => undefined);
   }

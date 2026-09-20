@@ -406,24 +406,27 @@ export async function wakeTask(
       // with four devices — is exactly what silenced Lika's phone (row 6).
       const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
       void sendPushNotification(ownerId, {
-        title: 'Netai — დავალებაზე სიახლეა',
+        // The conversation's own language, read at the top of this function.
+        // The PREVIEW is the reply itself and is already in it; the chrome
+        // around it was Georgian on every lock screen in the world.
+        title: RUN_STRINGS[language].goalNewsPush.title,
         body:
           preview.length > PUSH_PREVIEW_MAX_CHARS
             ? preview.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
-            : preview || 'დავალებაზე სიახლეა',
+            : preview || RUN_STRINGS[language].goalNewsPush.body,
         url: `/chat/${thread.id}`,
       }).catch(() => undefined);
       return 'woken';
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message);
-      emitRunError(ownerId, thread.id, runId, 'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით ვცდი.');
+      emitRunError(ownerId, thread.id, runId, RUN_STRINGS[language].stepFailedWillRetry);
       void markRunFailed(ownerId, thread.id);
       await saveThreadMessage(
         thread.id,
         Number(ownerId),
         'assistant',
-        'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით თავად ვცდი ხელახლა.',
+        RUN_STRINGS[language].stepFailedWillRetry,
         'error',
         // Row 202: the run that died, so the failure can be joined to it.
         runId,
@@ -598,9 +601,23 @@ export async function ownerSpokeRecently(
  *
  * Test 1, 19 September. The plan was approved at 19:24:36, permission granted
  * four seconds later, and `startDayOne` queued the turn that writes to the
- * plan's people. Fifteen hours later: zero asks, and `next_wake_at` NULL —
- * which means not „late" but NEVER. Nothing in the product would have touched
- * that goal again.
+ * plan's people. My own deploy's SIGTERM reached that container at 19:24:58,
+ * two seconds after the wake began. Fifteen hours later: zero asks, and
+ * `next_wake_at` NULL.
+ *
+ * NOT „NEVER", AND I SAID NEVER. The nightly sweep does read exactly this
+ * shape — `getStaleOpenTasks` selects `next_wake_at IS NULL` — but it also
+ * wants twenty hours of quiet, and that goal had been touched minutes before,
+ * so the first sweep that can see it is not the next night's but the one
+ * after: thirty-one hours late, and pushed out again by any activity in the
+ * thread. That is the true number and it is bad enough without rounding it to
+ * infinity. It is written above `wakeTask`'s own floor too, from the first
+ * time I worked this out — I re-derived the goal this morning without reading
+ * it and reached for the bigger word.
+ *
+ * What this floor adds is the paths the one inside `wakeTask` cannot reach:
+ * day one, the plan proposal and the introduction outcome all die BEFORE
+ * `wakeTask`, so they never arrive at its floor.
  *
  * Everything above this line is a `setTimeout` and nothing else. The database
  * learns that a wake is owed only inside `onWoken`, which runs on exactly one
@@ -613,17 +630,12 @@ export async function ownerSpokeRecently(
  *
  * and a fifth that reaches no branch at all: THE PROCESS DIES. A deploy
  * between the approval and the wake takes the timer with it, and nothing on
- * disk says anything was ever owed.
- *
- * I have written before — in the founder's own document — that this class was
- * fixed, because the guard was moved ahead of the step that can die. It was
- * moved ahead of the step inside `wakeTask`. This path never reached that
- * guard, because it never reached `wakeTask`.
+ * disk says anything was owed within the day.
  *
  * So the floor is written here, first, before anything that can be lost. It
  * only fills a NULL (`ensureNextWake`), so it can never shorten a wake a run
  * chooses for itself; all it promises is that an open goal is picked up within
- * a day instead of never.
+ * a day instead of on the sweep's own terms.
  */
 function wakeWhenFree(
   taskId: number,

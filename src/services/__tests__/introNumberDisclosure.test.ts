@@ -1,5 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { numberDisclosureLine } from '../introOpening';
+import { RunLanguage } from '../runLanguage';
 
 /**
  * What the person being introduced is told about their own phone number.
@@ -26,10 +28,23 @@ import { join } from 'path';
  * sentence, so the test reads sentences.
  */
 const SOURCE = readFileSync(join(__dirname, '..', 'introduction.service.ts'), 'utf8');
-const DISCLOSURE = SOURCE.slice(
-  SOURCE.indexOf('function numberDisclosureLine'),
-  SOURCE.indexOf('async function deliverAcceptOutcome'),
+/**
+ * 20 September: the line moved to `introOpening.ts` and gained four languages,
+ * so it is CALLED here rather than read. The claims below are the same claims;
+ * only Georgian still needs the source read, for the inflection.
+ */
+const DISCLOSURE = readFileSync(join(__dirname, '..', 'introOpening.ts'), 'utf8').slice(
+  readFileSync(join(__dirname, '..', 'introOpening.ts'), 'utf8').indexOf(
+    'export function numberDisclosureLine',
+  ),
+  readFileSync(join(__dirname, '..', 'introOpening.ts'), 'utf8').indexOf(
+    'export function introAcceptedOpening',
+  ),
 );
+const gave = (language: RunLanguage, m = 'ნინო', r = 'დათო'): string =>
+  numberDisclosureLine(language, true, m, r);
+const gaveNothing = (language: RunLanguage, m = 'ნინო', r = 'დათო'): string =>
+  numberDisclosureLine(language, false, m, r);
 /** The function that composes and saves the target's message. */
 const DELIVER = SOURCE.slice(
   SOURCE.indexOf('async function deliverAcceptOutcome'),
@@ -80,7 +95,36 @@ describe('what the target is told about their own number', () => {
     // It gained a second half with item 5: „a number exists" is no longer
     // enough, because on `via_mediator` one exists and is deliberately not
     // given. The disclosure follows what was DONE, not what was findable.
-    expect(SOURCE).toContain('numberDisclosureLine(');
     expect(SOURCE).toContain("channel === 'direct' && targetPhone !== null");
+  });
+
+  /**
+   * And in every language, because this is the sentence that tells somebody
+   * their phone number has left another person's phonebook. It was Georgian
+   * for every reader in the world until 20 September.
+   */
+  describe.each(['en', 'ru', 'es'] as RunLanguage[])('%s', (language) => {
+    // Latin names here on purpose: a Georgian NAME in an English sentence is
+    // correct and would fail a blanket script check. What must carry no
+    // Georgian is the sentence the server wrote around it.
+    it('carries no Georgian of its own, in either branch', () => {
+      expect(gave(language, 'Nino', 'Dato')).not.toMatch(/[\u10A0-\u10FF]/);
+      expect(gaveNothing(language, 'Nino', 'Dato')).not.toMatch(/[\u10A0-\u10FF]/);
+    });
+
+    it('names both people when the number really was given', () => {
+      expect(gave(language, 'Nino', 'Dato')).toContain('Nino');
+      expect(gave(language, 'Nino', 'Dato')).toContain('Dato');
+    });
+
+    it('the two branches say opposite things, not the same thing twice', () => {
+      expect(gave(language)).not.toBe(gaveNothing(language));
+    });
+  });
+
+  it('ka is unchanged — the inflection is the reason this is not a string table', () => {
+    expect(gave('ka')).toContain('ნინომ');
+    expect(gave('ka')).toContain('დათოს');
+    expect(gaveNothing('ka')).toContain('შენი ნომერი არავის გადაცემია');
   });
 });

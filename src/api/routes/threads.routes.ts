@@ -37,7 +37,12 @@ import {
 import { hasPendingIntroForThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
-import { ThreadStatus, deleteThread, threadLanguage } from '../../services/threads.service';
+import {
+  ThreadStatus,
+  deleteThread,
+  threadLanguage,
+  userLanguage,
+} from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance } from '../../services/tokenWallet.service';
 import { budgetWindow } from '../../services/budgetWindow';
@@ -53,6 +58,7 @@ import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
 import {
   RUN_STRINGS,
+  RunLanguage,
   detectRunLanguage,
   isPlaceholderThreadTitle,
   messageHeldNoTokens,
@@ -312,13 +318,20 @@ threadsRouter.use(
       if (!match) return;
       const userId = (req as AuthenticatedRequest).user?.userId;
       if (!userId) return;
-      void saveThreadMessage(
-        Number(match[1]),
-        Number(userId),
-        'assistant',
-        'შეტყობინება ვერ მივიღე — ძალიან ბევრი ზედიზედ. ერთ წუთში ისევ სცადე.',
-        'error',
-      ).catch(() => undefined);
+      // The owner's own language. Fire-and-forget either way — a rate-limit
+      // notice must never hold up the 429 it explains.
+      void userLanguage(String(userId))
+        .catch(() => 'ka' as RunLanguage)
+        .then((language) =>
+          saveThreadMessage(
+            Number(match[1]),
+            Number(userId),
+            'assistant',
+            RUN_STRINGS[language].tooManyMessages,
+            'error',
+          ),
+        )
+        .catch(() => undefined);
     },
   }),
 );

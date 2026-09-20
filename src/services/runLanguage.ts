@@ -122,6 +122,33 @@ interface RunStrings {
      */
     unavailable: string;
   };
+  /**
+   * 20 September, the sweep after the introduction was localised: every call
+   * site that writes a message a PERSON reads, checked for a Georgian literal.
+   * Six were left, and the three worst reach somebody who is not the owner —
+   * the ask flow, whose wrapper has been in the reader's own language since
+   * the 19th while everything around it stayed Georgian.
+   *
+   * The forty-eight-hour nudge on an unanswered question. It goes to the
+   * RECIPIENT, who is often a stranger: the wrapper above it speaks their
+   * language and this did not.
+   */
+  askReminder: string;
+  /** The same nudge on their lock screen, where it is all they see. */
+  askReminderPush: { title: string; body: string };
+  /**
+   * The engine's own step died and WILL RETRY ITSELF — deliberately not
+   * `runDied`, which tells the owner to try again. Here nobody needs to.
+   */
+  stepFailedWillRetry: string;
+  /** Too many messages too fast. Written into the thread as an error row. */
+  tooManyMessages: string;
+  /**
+   * The chrome around a goal's own push. The BODY is the reply itself and is
+   * already in the owner's language; the title above it, and the fallback when
+   * the reply is empty, were Georgian on every lock screen in the world.
+   */
+  goalNewsPush: { title: string; body: string };
 }
 
 export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
@@ -147,6 +174,12 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       failed: 'შეფერხდა — სცადე თავიდან',
       unavailable: 'სერვისი დროებით მიუწვდომელია',
     },
+    askReminder:
+      'შეხსენება: ეს კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.',
+    askReminderPush: { title: 'Netai — შეხსენება', body: 'უპასუხო კითხვა გელოდება.' },
+    stepFailedWillRetry: 'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით თავად ვცდი ხელახლა.',
+    tooManyMessages: 'შეტყობინება ვერ მივიღე — ძალიან ბევრი ზედიზედ. ერთ წუთში ისევ სცადე.',
+    goalNewsPush: { title: 'Netai — დავალებაზე სიახლეა', body: 'დავალებაზე სიახლეა' },
   },
   en: {
     opening: '🔎 Starting — working out what we need...',
@@ -170,6 +203,12 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       failed: 'Hit a snag — try again',
       unavailable: 'Service temporarily unavailable',
     },
+    askReminder:
+      'A reminder: this question is still unanswered — if you have a minute, your answer would really help. If you do not know, tell me that too and I will stop bothering you.',
+    askReminderPush: { title: 'Netai — reminder', body: 'A question is waiting for your answer.' },
+    stepFailedWillRetry: 'That step could not be finished — I will try again myself later.',
+    tooManyMessages: 'I could not take that message — too many at once. Try again in a minute.',
+    goalNewsPush: { title: 'Netai — goal update', body: 'There is news on your goal' },
   },
   ru: {
     opening: '🔎 Начинаю — разбираюсь, что нужно...',
@@ -194,6 +233,12 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       failed: 'Сбой — попробуй ещё раз',
       unavailable: 'Сервис временно недоступен',
     },
+    askReminder:
+      'Напоминание: на этот вопрос пока нет ответа — если найдётся минута, твой ответ очень поможет. Если не знаешь, тоже напиши, и я больше не побеспокою.',
+    askReminderPush: { title: 'Netai — напоминание', body: 'Вопрос ждёт твоего ответа.' },
+    stepFailedWillRetry: 'Шаг задачи не удалось завершить — позже попробую сам ещё раз.',
+    tooManyMessages: 'Не смог принять сообщение — слишком много подряд. Попробуй через минуту.',
+    goalNewsPush: { title: 'Netai — новости по задаче', body: 'Есть новости по задаче' },
   },
   es: {
     opening: '🔎 Empiezo — viendo qué necesitamos...',
@@ -218,6 +263,12 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       failed: 'Algo falló — inténtalo de nuevo',
       unavailable: 'Servicio no disponible ahora',
     },
+    askReminder:
+      'Un recordatorio: esta pregunta sigue sin respuesta — si tienes un minuto, tu respuesta ayudaría mucho. Si no lo sabes, dímelo también y no te molesto más.',
+    askReminderPush: { title: 'Netai — recordatorio', body: 'Una pregunta espera tu respuesta.' },
+    stepFailedWillRetry: 'No se pudo terminar ese paso — lo intentaré yo mismo más tarde.',
+    tooManyMessages: 'No pude recibir el mensaje — demasiados seguidos. Inténtalo en un minuto.',
+    goalNewsPush: { title: 'Netai — novedades', body: 'Hay novedades en tu objetivo' },
   },
 };
 

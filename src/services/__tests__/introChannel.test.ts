@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { numberDisclosureLine } from '../introOpening';
 import { join } from 'path';
 
 /**
@@ -78,8 +79,11 @@ describe('what each channel does', () => {
 
   it('direct keeps what Task 16 built, which is why the choice exists at all', () => {
     // Thirteen accepted introductions had produced no way for anybody to talk
-    // to anybody. Removing the handover would walk that back.
-    expect(deliver).toContain('წიგნაკიდან');
+    // to anybody. Removing the handover would walk that back. The sentence
+    // itself moved to introOpening.ts on 20 September with its four languages
+    // — introNumberDisclosure.test.ts holds it — so what is asserted here is
+    // that this function still decides the fact.
+    expect(numberDisclosureLine('ka', true, 'ნინო', 'დათო')).toContain('წიგნაკიდან');
   });
 
   it('tells the target the truth for the channel actually chosen', () => {
@@ -87,7 +91,6 @@ describe('what each channel does', () => {
     // was, so it must not say so — same sentence, two different facts.
     // The condition, not the whole call: prettier wraps the arguments and a
     // single-line assertion would be a test of the formatter.
-    expect(deliver).toContain('numberDisclosureLine(');
     expect(deliver).toContain("channel === 'direct' && targetPhone !== null");
   });
 

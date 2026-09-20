@@ -151,3 +151,70 @@ export function askCancelledNote(language: RunLanguage): string {
       return 'ეს კითხვა აღარ არის აქტუალური — პასუხი აღარ არის საჭირო. მადლობა!';
   }
 }
+
+/**
+ * „Your rule answered this for you."
+ *
+ * Reaches the RECIPIENT in their own ask thread — the same stranger the
+ * wrapper above speaks to, and this was Georgian for all of them until today.
+ */
+export function answeredByYourRule(
+  language: RunLanguage,
+  ruleKind: string,
+  answer: string,
+): string {
+  const quoted = `\n\n"${answer}"\n\n`;
+  switch (language) {
+    case 'en':
+      return (
+        `Your rule („${ruleKind}") answered this automatically:${quoted}` +
+        'If you no longer want that rule, tell me and I will drop it — next time I will ask you.'
+      );
+    case 'ru':
+      return (
+        `Твоё правило („${ruleKind}") ответило автоматически:${quoted}` +
+        'Если это правило больше не нужно, скажи — я его сниму, и в следующий раз спрошу тебя.'
+      );
+    case 'es':
+      return (
+        `Tu regla („${ruleKind}") respondió automáticamente:${quoted}` +
+        'Si ya no la quieres, dímelo y la quito — la próxima vez te preguntaré a ti.'
+      );
+    default:
+      return (
+        `შენი წესით („${ruleKind}") ავტომატურად ვუპასუხე:${quoted}` +
+        'თუ ეს წესი აღარ გინდა, მითხარი და გავაუქმებ — შემდეგ ჯერზე ისევ შენ გკითხავ.'
+      );
+  }
+}
+
+/**
+ * The thank-you to the BRIDGE once the person they passed the question to has
+ * answered. Georgian needs the ergative, because „გიპასუხა" is an aorist and
+ * „ერეკლე გიპასუხა" is ungrammatical; no other language here inflects.
+ */
+export function bridgeThanks(language: RunLanguage, namedName: string | null): string {
+  const name = namedName?.trim() ?? '';
+  switch (language) {
+    case 'en':
+      return (
+        `${name || 'They'} answered, and the answer has gone to the person who asked. ` +
+        'Thank you for making the connection.'
+      );
+    case 'ru':
+      return (
+        `${name || 'Человек'} ответил, и ответ передан тому, кто спрашивал. ` +
+        'Спасибо, что связал.'
+      );
+    case 'es':
+      return (
+        `${name || 'La persona'} ha respondido y la respuesta ha llegado a quien preguntaba. ` +
+        'Gracias por hacer la conexión.'
+      );
+    default:
+      return (
+        `${name ? geoName(name, 'erg') : 'ადამიანმა'} გიპასუხა და პასუხი კითხვის ავტორს ` +
+        'გადაეცა. დიდი მადლობა, რომ დააკავშირე.'
+      );
+  }
+}

@@ -16,6 +16,10 @@ jest.mock('../threads.service', () => ({
   getThreadsByIntroRequestId: jest.fn().mockResolvedValue([]),
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 77 }),
+  // The target's own language, read at the moment their thread is created
+  // (20 September). Georgian here keeps every assertion below about the
+  // Georgian wording true.
+  userLanguage: jest.fn().mockResolvedValue('ka'),
 }));
 jest.mock('../debrief.service', () => ({
   __esModule: true,
