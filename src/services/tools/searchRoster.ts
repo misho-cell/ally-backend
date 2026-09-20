@@ -24,7 +24,17 @@ export interface RosterSearchRow {
 }
 
 export type RosterSearchOutcome =
-  | { found: true; group: string; count: number; results: RosterSearchRow[] }
+  | {
+      found: true;
+      group: string;
+      /** EVERYBODY who matched, before the cap — not the number of rows below. */
+      count: number;
+      /** How many rows are actually here. Equal to `count` unless capped. */
+      shown: number;
+      /** Present only when rows were dropped, and it says so in words. */
+      note?: string;
+      results: RosterSearchRow[];
+    }
   | {
       found: false;
       group: string;
@@ -65,9 +75,25 @@ export async function searchRoster(
         'contacts are reachable as always; anyone else through a mutual acquaintance.',
     };
   }
-  const matched = filterRoster(members, nameQuery)
-    .filter((m) => m.user_id === null || String(m.user_id) !== userId)
-    .slice(0, RESULT_LIMIT);
+  const everyone = filterRoster(members, nameQuery).filter(
+    (m) => m.user_id === null || String(m.user_id) !== userId,
+  );
+  /**
+   * NETAI USERS SURVIVE THE CAP. The seat's 365: the unfiltered Axel roster
+   * returned fifty rows carrying three Netai users, and one name filter
+   * surfaced two more the cap had dropped — George Simongulashvili and Giorgi
+   * Abramishvili, both `is_member: true`.
+   *
+   * A Netai user is the only person on a roster who can be reached through
+   * their own assistant. Dropping one does not cost a row in a list, it costs
+   * the warm route, which is the entire reason this tool reaches past the
+   * user's own contacts. So they are ordered first and the cap falls on the
+   * people a cap can afford to fall on.
+   */
+  const matched = [
+    ...everyone.filter((m) => m.on_netai),
+    ...everyone.filter((m) => !m.on_netai),
+  ].slice(0, RESULT_LIMIT);
   if (matched.length === 0) {
     return {
       found: false,
@@ -76,10 +102,38 @@ export async function searchRoster(
       note: 'Nobody on the roster matches.',
     };
   }
+  /**
+   * `count` WAS THE NUMBER OF ROWS AFTER THE CAP, and that is a ceiling
+   * wearing the name of a total.
+   *
+   * The seat's 365 and 366, on the founder's own group: unfiltered Axel came
+   * back `count: 50` with fifty rows and nothing saying more existed. Asked
+   * again with `name: "a"` — a letter in nearly every name — it returned the
+   * same fifty. Asked with `name: "Giorgi"` it returned sixteen, ten of whom
+   * were not in the fifty. So the filter runs before the cap, the fifty are
+   * not „the first fifty of the group", and an assistant reading `count: 50`
+   * would tell the owner in good faith that Axel has fifty members.
+   *
+   * `get_network_stats` says 84 contacts on that account carry the tag `axel`.
+   * Two numbers for one group, and the smaller one was the confident one.
+   *
+   * Now `count` is everybody who matched, `shown` is what is here, and a
+   * truncated answer carries a sentence saying so — because a model cannot be
+   * expected to infer a ceiling from a round number.
+   */
+  const truncated = everyone.length > matched.length;
   return {
     found: true,
     group: trimmed,
-    count: matched.length,
+    count: everyone.length,
+    shown: matched.length,
+    ...(truncated && {
+      note:
+        `${everyone.length} people on the ${trimmed} roster match and only ${matched.length} are ` +
+        'here — this list is INCOMPLETE. Do not tell the user this is the whole group or quote ' +
+        'the number of rows as a total. Narrow it with a `name` and ask again. Netai users are ' +
+        'listed first, so the ones who can actually be asked are not the ones dropped.',
+    }),
     results: matched.map(toRow),
   };
 }

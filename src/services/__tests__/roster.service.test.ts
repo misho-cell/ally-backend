@@ -150,18 +150,39 @@ describe('the roster', () => {
 });
 
 describe('search_roster — the one search past the phonebook', () => {
+  /**
+   * THE ORDER CHANGED ON 20 SEPTEMBER AND THE CHANGE IS THE POINT, so this
+   * asserts by identity instead of by position.
+   *
+   * The seat's 365: on the live Axel roster the fifty-row cap had dropped two
+   * Netai users, found only because they tried a name filter. A Netai user is
+   * the only person on a roster who can be reached through their own
+   * assistant, so they are now returned FIRST and the cap falls on people it
+   * can afford to drop. This test used to read `results[0]` and `results[1]`,
+   * which is how it came to assert the old order as though it were a rule.
+   */
   it('a member sees fellow members, each with the route that fits their state', async () => {
     const out = await searchRoster('501', 'Axel');
     expect(out.found).toBe(true);
     if (out.found) {
-      // Never themselves.
-      expect(out.results.map((r) => r.name)).toEqual(['Jaba Kikvidze', 'Lika Ose', null]);
-      const jaba = out.results[0];
+      // Never themselves, and everybody else is here whatever the order.
+      expect(out.results.map((r) => r.name).sort()).toEqual(
+        ['Jaba Kikvidze', 'Lika Ose', null].sort(),
+      );
+      const jaba = out.results.find((r) => r.name === 'Jaba Kikvidze');
       expect(jaba?.account_state).toBe('ally_account');
       expect(jaba?.route).toBe('invite_contact');
-      const lika = out.results[1];
+      const lika = out.results.find((r) => r.name === 'Lika Ose');
       expect(lika?.is_member).toBe(true);
       expect(lika?.route).toBe('ask_contact');
+    }
+  });
+
+  it('puts the reachable people first, because the cap falls on the tail', async () => {
+    const out = await searchRoster('501', 'Axel');
+    expect(out.found).toBe(true);
+    if (out.found) {
+      expect(out.results[0]?.is_member).toBe(true);
     }
   });
 
