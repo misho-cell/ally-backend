@@ -134,6 +134,15 @@ function routeAskQueries(opts: {
    * somebody who has not replied, which is not a new round.
    */
   liveStatus?: 'sent' | 'answered';
+  /**
+   * How long ago that live ask went out. Two hours by default, because every
+   * test written before row 205 is about a LATER message — „one more thing"
+   * added to a thread, not the same question fired twice inside one run. The
+   * duplicate guard only looks at the first ten minutes.
+   */
+  liveSecondsAgo?: number;
+  /** Who sent that live ask. The caller in these tests, unless a test says otherwise. */
+  liveFromUserId?: string;
   sentToday?: number;
   receivedToday?: number;
 }): void {
@@ -160,11 +169,18 @@ function routeAskQueries(opts: {
     // whether it is a new round, and `liveWithThisPerson` below exempts a live
     // conversation from the receiving-side brake. They are matched apart
     // because only the first one needs the status.
-    if (sql.includes('SELECT ask_thread_id, status FROM task_asks'))
+    if (sql.includes('SELECT ask_thread_id, status'))
       return Promise.resolve(
         rows(
           opts.liveThread
-            ? [{ ask_thread_id: opts.liveThread, status: opts.liveStatus ?? 'answered' }]
+            ? [
+                {
+                  ask_thread_id: opts.liveThread,
+                  status: opts.liveStatus ?? 'answered',
+                  from_user_id: opts.liveFromUserId ?? '42',
+                  seconds_ago: opts.liveSecondsAgo ?? 7200,
+                },
+              ]
             : [],
         ) as never,
       );
@@ -1367,5 +1383,102 @@ describe('a second message to somebody who has not replied', () => {
 
     expect(mockFollowUpBudget).toHaveBeenCalled();
     expect(mockCheckBudget).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Row 205 — one approval sending the same person the same question twice,
+ * seconds apart.
+ *
+ *   goal 5580 -> 144942   12:52:40 · 12:53:21    41s
+ *   goal 4627 -> 13927    14:23:29 · 14:23:50    21s
+ *   goal 4627 -> 575      14:23:29 · 14:23:49    20s
+ *   goal 4627 -> 118509   14:23:29 · 14:23:50    21s
+ *
+ * The two questions are never the same string — one is the other reworded —
+ * so the discriminator is time and silence, not wording. That measurement is
+ * why there is no text comparison anywhere in this guard.
+ */
+describe('the same question twice inside one run (row 205)', () => {
+  it('refuses a second ask to somebody who has not answered the one sent seconds ago', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'sent',
+      liveSecondsAgo: 41,
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'იცნობ სანდო ბუღალტერს თბილისში?');
+
+    expect(out.sent).toBe(false);
+    expect((out as { reason?: string }).reason).toBe('duplicate_ask_in_flight');
+    // Nothing reaches the person: no row, no message on their phone.
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO task_asks')),
+    ).toBe(false);
+    expect(mockSaveMessage).not.toHaveBeenCalled();
+  });
+
+  it('names the wait in seconds and forbids the reworded retry by name', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'sent',
+      liveSecondsAgo: 21,
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'იგივე კითხვა სხვა სიტყვებით');
+
+    const error = (out as { error: string }).error;
+    expect(error).toContain('21 წამის წინ');
+    expect(error).toContain('სხვა სიტყვებით');
+    // And it says what to do instead, in this same run — the standing rule
+    // that one block never stops the list.
+    expect(error).toContain('მეორე წრით');
+  });
+
+  it('lets a LATER message through — a nudge is not a duplicate', async () => {
+    // Deliberate: the four-a-day per-person cap is what governs a second
+    // message to somebody who has not replied. This guard only covers the
+    // window inside one run.
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'sent',
+      liveSecondsAgo: 3600,
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'one more thing');
+
+    expect(out.sent).toBe(true);
+  });
+
+  it('lets a second question through once they have ANSWERED, however fast', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'answered',
+      liveSecondsAgo: 5,
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', '12:00');
+
+    expect(out.sent).toBe(true);
+  });
+
+  it('does not block a DIFFERENT sender reaching the same person on the same goal', async () => {
+    // A relay arriving from somebody else is a different person asking, not
+    // the same question twice; the receiving cap governs that one.
+    routeAskQueries({
+      member: { userId: 7, name: 'გია' },
+      liveThread: 9413,
+      liveStatus: 'sent',
+      liveSecondsAgo: 30,
+      liveFromUserId: '99',
+    });
+
+    const out = await createAsk('42', 3, '+995599111222', 'იცნობ ბუღალტერს?');
+
+    expect(out.sent).toBe(true);
   });
 });

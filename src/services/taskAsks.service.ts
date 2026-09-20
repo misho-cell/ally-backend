@@ -83,7 +83,8 @@ export type AskRefusalReason =
   | 'conversation_ask_limit_reached'
   | 'monthly_ask_budget_reached'
   | 'ask_fatigue_budget_exhausted'
-  | 'person_daily_relay_limit_reached';
+  | 'person_daily_relay_limit_reached'
+  | 'duplicate_ask_in_flight';
 
 export type CreateAskOutcome =
   /**
@@ -611,14 +612,75 @@ export async function createAsk(
   // a different budget, and no new thread row in their list. The old rule
   // ("one task never asks the same person twice") is what stopped Lika from
   // sending Tornike the hour they had just agreed on.
-  const live = await query<{ ask_thread_id: number | null; status: string }>(
-    `SELECT ask_thread_id, status FROM task_asks
+  const live = await query<{
+    ask_thread_id: number | null;
+    status: string;
+    from_user_id: string;
+    seconds_ago: number;
+  }>(
+    `SELECT ask_thread_id, status, from_user_id::text AS from_user_id,
+            EXTRACT(EPOCH FROM (NOW() - created_at))::int AS seconds_ago
+     FROM task_asks
      WHERE task_id = $1 AND to_user_id = $2 AND status IN ('sent', 'answered')
      ORDER BY id DESC LIMIT 1`,
     [taskId, toUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
   const liveThreadId = live.rows[0]?.ask_thread_id ?? null;
+
+  /**
+   * Row 205 — one approval, the same person, the same question twice, seconds
+   * apart.
+   *
+   * Every pair on record, read off `task_asks`:
+   *
+   *   goal 5580 -> 144942   12:52:40 · 12:53:21    41s
+   *   goal 4627 -> 13927    14:23:29 · 14:23:50    21s
+   *   goal 4627 -> 575      14:23:29 · 14:23:49    20s
+   *   goal 4627 -> 118509   14:23:29 · 14:23:50    21s
+   *
+   * THE TWO QUESTIONS ARE NEVER THE SAME STRING, and that is the part that
+   * decides the shape of this guard. „იცნობ სანდო ბუღალტერს მცირე ბიზნესისთვის
+   * თბილისში?" and „იცნობ სანდო ბუღალტერს ან საბუღალტრო კომპანიას თბილისში,
+   * მცირე ბიზნესის…" are one question reworded — the model trying again, not a
+   * person adding something. A dedupe on the text would have caught none of
+   * the four, which is why I measured before writing one.
+   *
+   * So the discriminator is TIME AND SILENCE, not wording: an ask to somebody
+   * who has not answered the one they were sent a minute ago is the same
+   * question arriving twice, whatever words it wears.
+   *
+   * AND A LATER NUDGE STAYS LEGAL, deliberately. The four-a-day per-person cap
+   * exists because a second message to somebody who has not replied is
+   * sometimes right — it spends their patience and the budget charges it
+   * there. What is never right is spending it twice inside one run. Ten
+   * minutes is longer than any run this service allows and far shorter than a
+   * human deciding to nudge.
+   *
+   * SAME SENDER ONLY. All four pairs are one account sending twice inside one
+   * run. A relay arriving at the same person on the same goal from somebody
+   * else is a different person asking, not the same question twice, and the
+   * per-person receiving cap is what governs that.
+   */
+  const previous = live.rows[0];
+  const secondsSincePrevious = previous?.seconds_ago;
+  if (
+    previous?.status === 'sent' &&
+    previous.from_user_id === fromUserId &&
+    secondsSincePrevious !== undefined &&
+    secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS
+  ) {
+    return {
+      sent: false,
+      reason: 'duplicate_ask_in_flight',
+      error:
+        `${toName}-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე ${secondsSincePrevious} წამის წინ და ` +
+        'პასუხი ჯერ არ მოსულა — მეორედ არ გაუგზავნო. სხვა სიტყვებით გადაკეთებაც იგივე ' +
+        'კითხვის მეორედ მიღებაა მისთვის. დაელოდე პასუხს; სანამ ელოდები, ამავე გაშვებაში ' +
+        'გააგრძელე სხვა ადამიანებით, მეორე წრით და ვებით.' +
+        PROMISE_NO_ANSWER,
+    };
+  }
   /**
    * „They answered, so this is a new round" — and nobody checked that they had.
    *
@@ -1663,6 +1725,16 @@ async function relayAskInner(
   }
   return createAsk(relayerUserId, row.task_id, target.phone, relayed, row.id);
 }
+
+/**
+ * Row 205 — how long after an unanswered ask a second one to the same person
+ * on the same goal is a duplicate rather than a nudge.
+ *
+ * Every observed pair was inside forty-one seconds. This is longer than any
+ * run this service allows (the hard timeout is minutes) and far shorter than a
+ * person deciding to follow somebody up.
+ */
+const DUPLICATE_ASK_WINDOW_SECONDS = 600;
 
 // One polite reminder per unanswered ask, after this long.
 const ASK_REMINDER_AFTER_HOURS = 48;
