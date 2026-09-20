@@ -541,6 +541,25 @@ describe('junk that reached the label store is not a company', () => {
    * a mother identifies a relation. The list replaces the two GUESSES at the
    * bottom of classifyToken; it never overrules a dictionary.
    */
+  /**
+   * Five names the list did not hold, found by classifying the 300
+   * most-carried tokens and reading the LEAD SHARE of everything that came
+   * back „organisation". A name leads its label, a company follows one, and
+   * both ends are measured: nino .91, tbc .37.
+   *
+   *   megi .91 · madona .91 · nia .90 · erekle .89 · bela .88
+   *
+   * `skola` came back „organisation" too and was LEFT THERE — it is already in
+   * the organisation dictionary, and its .08 lead share is a company word
+   * behaving like one, not a name hiding.
+   */
+  it('reads the five the base calls names', () => {
+    for (const name of ['megi', 'madona', 'nia', 'erekle', 'bela']) {
+      expect(classifyToken(name, false)).toBe('name');
+    }
+    expect(classifyToken('skola', false)).toBe('organisation');
+  });
+
   it('never takes a word a dictionary already owns', () => {
     expect(classifyToken('დედა', false)).toBe('relation');
     expect(classifyToken('bebia', false)).toBe('relation');

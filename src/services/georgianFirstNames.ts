@@ -1335,6 +1335,38 @@ export const GEORGIAN_FIRST_NAMES: ReadonlySet<string> = new Set([
   'ჯემალ',
   'ჯონ',
   'ჯუმბერ',
+  /**
+   * 20 September — five that the base says are names and the list did not
+   * hold, found by classifying the 300 most-carried tokens and reading the
+   * LEAD SHARE of the ones that came back „organisation".
+   *
+   * A name leads its label; a company follows one. The two ends of that scale
+   * are measured, not assumed — „nino" .91 against „tbc" .37:
+   *
+   *     megi     2,995 carriers   lead .91
+   *     madona   2,792            lead .91
+   *     nia      2,747            lead .90
+   *     erekle   1,900            lead .89
+   *     bela     2,439            lead .88
+   *
+   * Every one of them sits with nino and not within half the distance of tbc.
+   * Until now `classifyToken` gave up on all five and called them companies.
+   *
+   * HERE AND NOT IN AMBIGUOUS_FIRST_NAMES: that list is for names that are
+   * also ordinary words — „avto" a car, „data" data, „imedi" hope. None of
+   * these five is a word; they are only names, so the leading-position rule
+   * would buy nothing and would keep calling them companies everywhere else.
+   *
+   * „lari" was refused on the same day by the same measurement, and the
+   * contrast is the point: „larisa" and „larissa" are people whose names
+   * CONTAIN it, and no guard separates them. These five are whole tokens with
+   * nothing living inside them.
+   */
+  'megi',
+  'madona',
+  'nia',
+  'erekle',
+  'bela',
 ]);
 
 /**
