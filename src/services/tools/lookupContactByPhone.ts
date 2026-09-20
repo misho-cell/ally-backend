@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 export async function lookupContactByPhone(phoneNumber: string): Promise<object> {
   try {
@@ -50,6 +51,7 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
     };
   } catch (err) {
     console.error('lookupContactByPhone error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    // A search that could not run is not an empty network — see searchDidNotFinish.
+    return searchDidNotFinish('The contact lookup', err);
   }
 }

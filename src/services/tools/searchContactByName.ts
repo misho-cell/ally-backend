@@ -22,6 +22,7 @@ import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions'
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { collapseMergedPhones } from './mergedIdentities';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 const FUZZY_THRESHOLD = 0.45;
 // The first letters a fuzzy neighbour must share with the term (see the
@@ -340,7 +341,8 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    // A search that could not run is not an empty network — see searchDidNotFinish.
+    return searchDidNotFinish('The name search', err);
   }
 }
 

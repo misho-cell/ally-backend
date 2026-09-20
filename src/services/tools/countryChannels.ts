@@ -2,6 +2,7 @@ import { query } from '../../db/postgres/client';
 import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 // Ticket 4 item 4C: the channel sweep as a TOOL. Six prompt rewrites could not
 // make the model go back and search alumni/club/chamber angles after it had
@@ -316,6 +317,7 @@ export async function getCountryChannels(
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('getCountryChannels error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    // A search that could not run is not an empty network — see searchDidNotFinish.
+    return searchDidNotFinish('The country-channels search', err);
   }
 }

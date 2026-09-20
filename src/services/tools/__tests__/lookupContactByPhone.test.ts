@@ -73,14 +73,38 @@ describe('lookupContactByPhone', () => {
     );
   });
 
-  it('returns found: false with error on DB failure', async () => {
-    mockQuery.mockRejectedValueOnce(new Error('timeout'));
+  /**
+   * A SEARCH THAT COULD NOT RUN IS NOT AN EMPTY RESULT, and this test used to
+   * assert the opposite: `found: false` plus the raw database string. That is
+   * the same shape the tool returns when nobody matched, so the model read a
+   * timeout as „nobody is there" — measured 51 times in seven days on the
+   * second-degree opening search alone.
+   */
+  it('says the search DID NOT FINISH, and never leaks the database string', async () => {
+    mockQuery.mockRejectedValue(new Error('canceling statement due to statement timeout') as never);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
 
     expect(result.found).toBe(false);
-    expect(result.error).toBe('timeout');
+    expect(result.reason).toBe('search_timed_out');
+    expect(String(result.note)).toContain('DID NOT FINISH');
+    expect(String(result.note)).toContain('Do NOT tell the user nobody was found');
+    // CLAUDE.md: a raw DB error never reaches a client, and this one reaches
+    // the model, which then has to explain it to a person.
+    expect(JSON.stringify(result)).not.toContain('canceling statement');
+    expect(result.error).toBeUndefined();
+    consoleSpy.mockRestore();
+  });
+
+  it('a fault that is not a timeout is still not an empty result', async () => {
+    mockQuery.mockRejectedValue(new Error('connection terminated') as never);
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+
+    expect(result.reason).toBe('search_failed');
+    expect(JSON.stringify(result)).not.toContain('connection terminated');
     consoleSpy.mockRestore();
   });
 });

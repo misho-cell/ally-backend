@@ -21,6 +21,7 @@ import {
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 const FUZZY_THRESHOLD = 0.45;
 const RESULT_LIMIT = 20;
@@ -366,6 +367,7 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     return payload;
   } catch (err) {
     console.error('searchByTag error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    // A search that could not run is not an empty network — see searchDidNotFinish.
+    return searchDidNotFinish('The tag search', err);
   }
 }

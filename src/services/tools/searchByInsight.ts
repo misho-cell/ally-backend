@@ -11,6 +11,7 @@ import {
 } from './membership';
 import { vetoedPhonesFor } from '../factCorrections.service';
 import { fetchSignalStrength } from './searchSecondDegree';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 const RESULT_LIMIT = 20;
 const SEARCH_TIMEOUT_MS = 12_000;
@@ -660,6 +661,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
     };
   } catch (err) {
     console.error('searchByInsight error:', (err as Error).message);
-    return { found: false, error: (err as Error).message };
+    // A search that could not run is not an empty network — see searchDidNotFinish.
+    return searchDidNotFinish('The insight search', err);
   }
 }
