@@ -21,32 +21,6 @@ import {
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
-/**
- * The Georgian caption per status, shown under the thread title in the chat
- * list. `done` carries no line — an idle thread needs no caption.
- *
- * NO LONGER THE DEFAULT. It was, and the seat measured what that cost on
- * Test 1 — thirteen threads, not one Georgian character in anything the owner
- * ever wrote, six of them captioned „ველოდები პასუხს" (their 332). Every
- * caller of `setThreadStatus` that named no line took this constant, which has
- * no language input at all. `defaultStatusLine` in threadStatus.service asks
- * the owner instead.
- *
- * The two INTRODUCTION threads were the last callers, and they were left here
- * for a day because their title and their opening message were hard-coded
- * Georgian too — a translated caption above an untranslated message reads
- * worse than neither. Both are in the reader's own language now
- * (`introOpening.ts`), so nothing writes from this constant any more. It is
- * kept as the Georgian column of the four: `RUN_STRINGS.ka.statusLines`.
- */
-export const STATUS_LINES: Readonly<Record<ThreadStatus, string | null>> = {
-  working: 'ვმუშაობ…',
-  waiting: 'ველოდები პასუხს',
-  needs_you: 'შენი პასუხი სჭირდება',
-  done: null,
-  failed: 'შეფერხდა — სცადე თავიდან',
-};
-
 export interface Thread {
   id: number;
   user_id: number;
@@ -189,8 +163,8 @@ const HAS_A_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id)`;
  * than as the thread remembers.
  *
  * The caption written at the moment of the stop does not survive. Every later
- * `setThreadStatus(..., 'done')` that passes no line takes `STATUS_LINES.done`,
- * which is null, and erases it — so the thread of a stopped goal reads
+ * `setThreadStatus(..., 'done')` that passes no line takes the `done` default,
+ * which is null in every language, and erases it — so the thread of a stopped goal reads
  * „finished", with nothing under it, as soon as anything touches it again.
  *
  * Measured on account 501: of seventy goals closed with `closed_as = 'stopped'`,
@@ -321,7 +295,7 @@ export async function getThreadsForUser(
  * Both land on `done`, because `ThreadStatus` has one word for „this is over"
  * and the product needs two. The caption was supposed to carry the difference
  * and does not survive: any later `setThreadStatus(..., 'done')` passing no
- * line takes `STATUS_LINES.done`, which is null, and erases it. On account 501
+ * line takes the `done` default, null in every language, and erases it. On 501
  * that is thirty-seven of seventy stopped goals with nothing left to show.
  *
  * So the caption is supplied here when the goal record says the goal was

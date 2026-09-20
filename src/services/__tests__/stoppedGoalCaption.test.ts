@@ -17,7 +17,7 @@ import { STOPPED_STATUS_LINE } from '../runLanguage';
  *
  * And the cause is not a second stop path: `goalStop` is the only writer of
  * `closed_as = 'stopped'`. It is that ANY later `setThreadStatus(..., 'done')`
- * which passes no line takes `STATUS_LINES.done`, which is null, and erases
+ * which passes no line takes the `done` default, null in every language, and erases
  * the caption. The split is simply which threads were touched again.
  *
  * So the caption is derived at read time from the goal record, the same way

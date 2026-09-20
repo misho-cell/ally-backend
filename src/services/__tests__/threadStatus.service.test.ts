@@ -5,7 +5,8 @@ jest.mock('../threads.service', () => {
 });
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadUpdated: jest.fn() }));
 
-import { updateThreadStatus, STATUS_LINES } from '../threads.service';
+import { updateThreadStatus } from '../threads.service';
+import { RUN_STRINGS } from '../runLanguage';
 import { emitThreadUpdated } from '../sse.service';
 import { setThreadStatus, endsWithQuestion, runStatus } from '../threadStatus.service';
 
@@ -33,15 +34,49 @@ describe('endsWithQuestion', () => {
 });
 
 describe('setThreadStatus', () => {
-  it('persists the status with its default line and broadcasts thread_updated', async () => {
+  /**
+   * The default caption follows the OWNER, and as of 20 September it is on
+   * their screen: the client used to read `status_line` in one place, to check
+   * for a snooze, and never drew it. It draws it now, so a caption in the
+   * wrong language is a caption a person reads.
+   *
+   * There is no `STATUS_LINES` constant behind this any more. It was a flat
+   * Georgian table with no language input, it had no callers left once the two
+   * introduction threads were localised, and a second copy of a translated
+   * string is the kind of thing that drifts. `RUN_STRINGS` is the one table.
+   *
+   * Georgian here because the mocked query returns nothing, so `userLanguage`
+   * finds no words of the owner's and falls back — which is the case the
+   * fallback exists for.
+   */
+  it('persists the owner-language default line and broadcasts thread_updated', async () => {
     await setThreadStatus('42', 7, 'working');
 
-    expect(mockUpdate).toHaveBeenCalledWith(7, 'working', STATUS_LINES.working, undefined);
+    const expected = RUN_STRINGS.ka.statusLines.working;
+    expect(mockUpdate).toHaveBeenCalledWith(7, 'working', expected, undefined);
     expect(mockEmit).toHaveBeenCalledWith('42', {
       id: 7,
       status: 'working',
-      status_line: STATUS_LINES.working,
+      status_line: expected,
     });
+  });
+
+  it('asks the owner rather than reaching for one fixed language', async () => {
+    await setThreadStatus('42', 7, 'needs_you');
+
+    const [, , line] = mockUpdate.mock.calls[0];
+    // The four tables are the only source; whatever it wrote must be one of
+    // this status's four, and not a fifth string from somewhere else.
+    const known = (['ka', 'en', 'ru', 'es'] as const).map(
+      (l) => RUN_STRINGS[l].statusLines.needs_you,
+    );
+    expect(known).toContain(line);
+  });
+
+  it('writes NO caption for done, in any language — an idle thread needs none', async () => {
+    await setThreadStatus('42', 7, 'done');
+
+    expect(mockUpdate).toHaveBeenCalledWith(7, 'done', null, undefined);
   });
 
   it('honors an explicit status line and the isTask flag', async () => {
