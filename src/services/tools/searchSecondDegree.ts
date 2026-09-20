@@ -697,8 +697,28 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
      *
      * WHAT WILL SETTLE IT is not a percentile. `search_second_degree:opening`
      * failed 51 times out of 152 in the week before this, every one a statement
-     * timeout at about 16.4 seconds — the five-pattern cold cases. If this
-     * works that count collapses. `scripts/ops/slow.sh` reads it.
+     * timeout at about 16.4 seconds. If this works that count collapses.
+     * `scripts/ops/slow.sh` reads it.
+     *
+     * AND READING THOSE 51 SHARPENS THE PREDICTION, which I had backwards.
+     * Every one is account 501 — 1,907 contacts, 306 bridges — and every one
+     * is a query that matches NOBODY:
+     *
+     *   „a licensed falconry equipment maker in Morocco"   16,337 ms
+     *   „a certified kimono restorer in Kyoto"             16,317 ms
+     *   „a licensed yak veterinarian in Bhutan"            16,977 ms
+     *
+     * A query that matches nothing is the one where the scan runs to
+     * COMPLETION over all 605,086 tag rows, because nothing lets it stop
+     * early. That is the worst case for the regex and the BEST case for a
+     * trigram index, which throws almost every row away before the regex is
+     * evaluated at all.
+     *
+     * So this should help most exactly where the failures are, and least on
+     * the common terms — the opposite of the regime I was worried about when I
+     * called the common cases „a wash". The 2,640 ms `:opening` call an hour
+     * after this shipped is NOT evidence of that: it ran on an account with
+     * three contacts.
      *
      * A TERM UNDER THREE CHARACTERS CANNOT USE A TRIGRAM INDEX, and one
      * unindexable branch in the OR chain costs the whole chain its index while
