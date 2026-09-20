@@ -2,6 +2,10 @@ import {
   incomingRequestOpening,
   incomingRequestTitle,
   introAnsweredLine,
+  introAnsweredPush,
+  introMediatorFollowUp,
+  introOutcomeLine,
+  introRequesterExtra,
   introSnoozedLine,
   outgoingRequestOpening,
   outgoingRequestTitle,
@@ -118,5 +122,83 @@ describe('the captions, once the client started drawing them', () => {
   it('ka keeps the words it already had', () => {
     expect(introSnoozedLine('ka')).toBe('გადადებულია');
     expect(introAnsweredLine('ka')).toBe('პასუხი მოვიდა');
+  });
+});
+
+/**
+ * The rest of the accept path — what the REQUESTER and the MEDIATOR read once
+ * the answer is in. Found by reading ahead while the seat was mid-test, after
+ * the same read caught three Georgian buttons in the channel refusal.
+ *
+ * `introduction.service.ts` now has NO Georgian text and no `geoName` import
+ * at all: every sentence it writes comes from this file, in the reader's own
+ * language. Three readers, three languages, none required to share one.
+ */
+describe('the accept path, on all three sides', () => {
+  describe.each(OTHERS)('%s', (language) => {
+    it('the requester is told the outcome without Georgian', () => {
+      for (const accepted of [true, false]) {
+        for (const direct of [true, false]) {
+          expect(introOutcomeLine(language, 'Dato', accepted, direct, null)).not.toMatch(GEORGIAN);
+        }
+      }
+    });
+
+    it('the requester’s extra carries the number and no Georgian', () => {
+      const withNumber = introRequesterExtra(
+        language,
+        'Nino',
+        'Dato',
+        '+995555000005',
+        false,
+        true,
+      );
+      expect(withNumber).toContain('+995555000005');
+      expect(withNumber).not.toMatch(GEORGIAN);
+    });
+
+    it('the mediator’s closing line carries no Georgian', () => {
+      expect(introMediatorFollowUp(language, 'Nino', 'Dato', '+9955', false, true)).not.toMatch(
+        GEORGIAN,
+      );
+      expect(introMediatorFollowUp(language, 'Nino', 'Dato', null, true, false)).not.toMatch(
+        GEORGIAN,
+      );
+    });
+
+    it('the push carries no Georgian either — it is all they see', () => {
+      const push = introAnsweredPush(language, 'Dato', true);
+      expect(push.title).not.toMatch(GEORGIAN);
+      expect(push.body).not.toMatch(GEORGIAN);
+    });
+  });
+
+  /**
+   * „We could not find a number" and „they chose to stay in the middle"
+   * produce the same silence and mean opposite things. A reader who cannot
+   * tell them apart chases the mediator for a contact deliberately withheld.
+   */
+  it('never lets a withheld number read like a missing one', () => {
+    for (const language of [...OTHERS, 'ka' as const]) {
+      const withheld = introRequesterExtra(language, 'Nino', 'Dato', null, true, false);
+      const notFound = introRequesterExtra(language, 'Nino', 'Dato', null, false, false);
+      expect(withheld).not.toBe(notFound);
+    }
+  });
+
+  it('a quoted answer survives into every language, and absence stays absent', () => {
+    for (const language of [...OTHERS, 'ka' as const]) {
+      expect(introOutcomeLine(language, 'Dato', true, true, 'any time this week')).toContain(
+        'any time this week',
+      );
+      expect(introOutcomeLine(language, 'Dato', true, true, null)).not.toContain('„');
+    }
+  });
+
+  it('ka keeps its inflection on every one of them', () => {
+    // 'on' — „დათოზე გაცნობის მოთხოვნა", not the bare name.
+    expect(introOutcomeLine('ka', 'დათო', true, false, null)).toContain('დათოზე');
+    expect(introRequesterExtra('ka', 'ნინო', 'დათო', null, true, false)).toContain('ნინომ');
+    expect(introMediatorFollowUp('ka', 'ნინო', 'დათო', null, true, false)).toContain('ნინოს');
   });
 });

@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { numberDisclosureLine } from '../introOpening';
+import { introMediatorFollowUp, introRequesterExtra, numberDisclosureLine } from '../introOpening';
 import { join } from 'path';
 
 /**
@@ -101,8 +101,28 @@ describe('what each channel does', () => {
     // „no number found" and „they chose to stay in the middle" produce the
     // same silence and mean opposite things. A reader who cannot tell them
     // apart will chase the mediator for a contact they deliberately withheld.
-    expect(deliver).toContain('ეს მისი გადაწყვეტილებაა, არა ხარვეზი');
-    expect(deliver).toContain('ნომერი არავის გადაეცა');
+    //
+    // The sentences moved to introOpening.ts on 20 September with their four
+    // languages, so they are CALLED here rather than read out of the service.
+    expect(introRequesterExtra('ka', 'ნინო', 'დათო', null, true, false)).toContain(
+      'ეს მისი გადაწყვეტილებაა, არა ხარვეზი',
+    );
+    expect(introMediatorFollowUp('ka', 'ნინო', 'დათო', null, true, false)).toContain(
+      'ნომერი არავის გადაეცა',
+    );
+  });
+
+  /**
+   * And in every language, because this is the branch where somebody's number
+   * was deliberately NOT handed over and the reader has to be able to tell
+   * that from „we could not find it".
+   */
+  it.each(['en', 'ru', 'es'] as const)('%s says the withholding was a choice', (language) => {
+    const said = introRequesterExtra(language, 'Nino', 'Dato', null, true, false);
+    expect(said).not.toMatch(/[Ⴀ-ჿ]/);
+    // The two must not read alike: one is a decision, the other is ignorance.
+    const noNumberFound = introRequesterExtra(language, 'Nino', 'Dato', null, false, false);
+    expect(said).not.toBe(noNumberFound);
   });
 
   it('direct keeps what Task 16 built, which is why the choice exists at all', () => {

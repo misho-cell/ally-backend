@@ -17,10 +17,13 @@ import {
   introAcceptedPush,
   introAcceptedTitle,
   introAnsweredLine,
+  introAnsweredPush,
+  introMediatorFollowUp,
+  introOutcomeLine,
+  introRequesterExtra,
   introSnoozedLine,
 } from './introOpening';
 import { RunLanguage } from './runLanguage';
-import { geoName } from './georgianCase';
 
 export interface PendingRequest {
   id: number;
@@ -444,19 +447,29 @@ async function loadRequestForMediator(
 // used to keep reading "ველოდები პასუხს" forever after a decline — the asker
 // concluded the person ignored him when she had answered clearly (ticket 4
 // PART B miss 3).
-function outcomeMessage(req: RequestRow, action: IntroductionAction, response?: string): string {
-  const answer = response?.trim() ? `\n\nპასუხი: „${scrubText(response.trim())}"` : '';
-  const direct = req.mediator_user_id === null;
-  if (action === 'accept') {
-    // Direct case (task 18): the target themself agreed — that IS the outcome.
-    // Mediated accepts get the richer outcome from deliverAcceptOutcome.
-    return direct
-      ? `${req.target_name} დათანხმდა გაცნობას.${answer} ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
-      : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნა მიღებულია.${answer}`;
-  }
-  return direct
-    ? `${geoName(req.target_name, 'erg')} გაცნობაზე ამჯერად უარი თქვა.${answer} სხვა გზა მოვძებნოთ?`
-    : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${answer} სხვა გზა მოვძებნოთ?`;
+/**
+ * What the REQUESTER is told when the mediator answers, in their own language.
+ *
+ * Was Georgian on every account until 20 September — found by reading ahead
+ * while the seat was mid-test, after the same read caught three Georgian
+ * buttons in the channel refusal. The target's side had been localised that
+ * morning; this side and the mediator's had not.
+ */
+async function outcomeMessage(
+  req: RequestRow,
+  action: IntroductionAction,
+  response?: string,
+): Promise<string> {
+  const language = await userLanguage(String(req.requester_user_id)).catch(
+    () => 'ka' as RunLanguage,
+  );
+  return introOutcomeLine(
+    language,
+    req.target_name,
+    action === 'accept',
+    req.mediator_user_id === null,
+    response?.trim() ? scrubText(response.trim()) : null,
+  );
 }
 
 interface AcceptOutcome {
@@ -566,28 +579,56 @@ async function deliverAcceptOutcome(
    * reader who cannot tell them apart will chase the mediator for a contact
    * they deliberately withheld.
    */
+  // Each side reads its own; the requester and the mediator need not share a
+  // language, and the requester's line is the one that carries a phone number.
+  const requesterLanguage = await userLanguage(String(req.requester_user_id)).catch(
+    () => 'ka' as RunLanguage,
+  );
+  const mediatorLanguage =
+    req.mediator_user_id === null
+      ? requesterLanguage
+      : await userLanguage(String(req.mediator_user_id)).catch(() => 'ka' as RunLanguage);
+
   if (channel === 'via_mediator') {
     return {
-      requesterExtra:
-        `\n\n${geoName(mediatorName, 'erg')} აირჩია, რომ კავშირი მის გავლით გაგრძელდეს — ` +
-        `ნომერი არ გადმოუციათ და ეს მისი გადაწყვეტილებაა, არა ხარვეზი. ` +
-        `დამიწერე, რისი გადაცემა გინდა ${geoName(req.target_name, 'dat')}, და ${geoName(mediatorName, 'dat')} გადავცემ.`,
-      mediatorFollowUp:
-        `მადლობა! ${geoName(requester, 'dat')} ვაცნობე, რომ თანხმობა მოგვეცი და რომ ` +
-        `კავშირი შენი გავლით გაგრძელდება. ${geoName(req.target_name, 'gen')} ნომერი არავის გადაეცა.`,
+      requesterExtra: introRequesterExtra(
+        requesterLanguage,
+        mediatorName,
+        req.target_name,
+        null,
+        true,
+        false,
+      ),
+      mediatorFollowUp: introMediatorFollowUp(
+        mediatorLanguage,
+        requester,
+        req.target_name,
+        null,
+        true,
+        false,
+      ),
     };
   }
 
-  const requesterExtra = targetPhone
-    ? `\n\n${geoName(req.target_name, 'gen')} ნომერი ${geoName(mediatorName, 'gen')} წიგნაკიდან: ${targetPhone}. ` +
-      `მისწერე და უთხარი, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ${targetUserId !== null ? ' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე' : ''}.`
-    : `\n\nნომერი ავტომატურად ვერ მოვძებნე — ${geoName(mediatorName, 'dat')} პირდაპირ ჰკითხე ${geoName(req.target_name, 'gen')} კონტაქტი, თანხმობა უკვე გაქვს.`;
-
-  const mediatorFollowUp = targetPhone
-    ? `მადლობა! ${geoName(requester, 'dat')} გადავეცი ${geoName(req.target_name, 'gen')} კონტაქტი${targetUserId !== null ? ` და ${geoName(req.target_name, 'dat')}-აც ვაცნობე` : ''}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`
-    : `მადლობა! ${geoName(requester, 'dat')} ვაცნობე შენი თანხმობა. ${geoName(req.target_name, 'gen')} კონტაქტი ვერ ვიპოვე შენს წიგნაკში — შესაძლოა ${geoName(requester, 'erg')} პირდაპირ გთხოვოს.`;
-
-  return { requesterExtra, mediatorFollowUp };
+  const targetWasTold = targetUserId !== null;
+  return {
+    requesterExtra: introRequesterExtra(
+      requesterLanguage,
+      mediatorName,
+      req.target_name,
+      targetPhone,
+      false,
+      targetWasTold,
+    ),
+    mediatorFollowUp: introMediatorFollowUp(
+      mediatorLanguage,
+      requester,
+      req.target_name,
+      targetPhone,
+      false,
+      targetWasTold,
+    ),
+  };
 }
 
 /**
@@ -636,7 +677,7 @@ async function syncRequestThreads(
           thread.id,
           thread.user_id,
           'assistant',
-          outcomeMessage(req, action, response) + (outcome?.requesterExtra ?? ''),
+          (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? ''),
         ).catch(() => undefined);
         await setThreadStatus(owner, thread.id, 'needs_you', {
           statusLine: introAnsweredLine(ownerLanguage),
@@ -686,12 +727,13 @@ async function wakeRequestersGoal(req: RequestRow, accepted: boolean): Promise<v
 }
 
 async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void> {
-  const body = accepted
-    ? `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
-    : `${geoName(req.target_name, 'on')} გაცნობის მოთხოვნაზე უარი მიიღე.`;
+  // The requester's own language — a lock screen is all they see, and there is
+  // no thread around it to make a foreign sentence guessable.
+  const language = await userLanguage(String(req.requester_user_id)).catch(
+    () => 'ka' as RunLanguage,
+  );
   await sendPushNotification(String(req.requester_user_id), {
-    title: 'Netai — გაცნობის პასუხი',
-    body,
+    ...introAnsweredPush(language, req.target_name, accepted),
     url: '/chat',
   }).catch(() => undefined);
 }

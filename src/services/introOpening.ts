@@ -408,3 +408,230 @@ export function introChannelRequired(language: RunLanguage): string {
       );
   }
 }
+
+/**
+ * The rest of what an introduction says once the mediator has answered — the
+ * REQUESTER's outcome line and the MEDIATOR's closing line.
+ *
+ * Found by reading ahead on 20 September while the seat was mid-test, after
+ * the same read caught three Georgian buttons. The target's side was localised
+ * in the morning; these two sides were not, and they are the substance of
+ * item 5 — one of them carries an actual phone number.
+ *
+ * Three readers, three languages, none of them required to share one.
+ */
+export function introOutcomeLine(
+  language: RunLanguage,
+  targetName: string,
+  accepted: boolean,
+  direct: boolean,
+  response: string | null,
+): string {
+  const quoted = (label: string): string => (response ? `\n\n${label} „${response}"` : '');
+  if (accepted) {
+    switch (language) {
+      case 'en':
+        return direct
+          ? `${targetName} said yes.${quoted('Their answer:')} You can write to them now — they know who you are and why.`
+          : `Your introduction request to ${targetName} has been accepted.${quoted('The answer:')}`;
+      case 'ru':
+        return direct
+          ? `${targetName} согласился.${quoted('Ответ:')} Теперь можешь написать — он знает, кто ты и зачем.`
+          : `Запрос на знакомство с ${targetName} принят.${quoted('Ответ:')}`;
+      case 'es':
+        return direct
+          ? `${targetName} ha dicho que sí.${quoted('Su respuesta:')} Ya puedes escribirle — sabe quién eres y por qué.`
+          : `Tu solicitud de presentación a ${targetName} ha sido aceptada.${quoted('La respuesta:')}`;
+      default:
+        return direct
+          ? `${targetName} დათანხმდა გაცნობას.${quoted('პასუხი:')} ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
+          : `${geoName(targetName, 'on')} გაცნობის მოთხოვნა მიღებულია.${quoted('პასუხი:')}`;
+    }
+  }
+  switch (language) {
+    case 'en':
+      return direct
+        ? `${targetName} has said no for now.${quoted('Their answer:')} Shall we find another way?`
+        : `The introduction to ${targetName} was declined for now — the mediator could not help.${quoted('The answer:')} Shall we find another way?`;
+    case 'ru':
+      return direct
+        ? `${targetName} пока отказался.${quoted('Ответ:')} Поищем другой путь?`
+        : `По знакомству с ${targetName} пока отказ — посредник не смог помочь.${quoted('Ответ:')} Поищем другой путь?`;
+    case 'es':
+      return direct
+        ? `${targetName} ha dicho que no por ahora.${quoted('Su respuesta:')} ¿Buscamos otra vía?`
+        : `La presentación a ${targetName} ha sido rechazada por ahora — el intermediario no pudo ayudar.${quoted('La respuesta:')} ¿Buscamos otra vía?`;
+    default:
+      return direct
+        ? `${geoName(targetName, 'erg')} გაცნობაზე ამჯერად უარი თქვა.${quoted('პასუხი:')} სხვა გზა მოვძებნოთ?`
+        : `${geoName(targetName, 'on')} გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${quoted('პასუხი:')} სხვა გზა მოვძებნოთ?`;
+  }
+}
+
+/** What the REQUESTER is told after a mediated accept, per channel. */
+export function introRequesterExtra(
+  language: RunLanguage,
+  mediatorName: string,
+  targetName: string,
+  targetPhone: string | null,
+  viaMediator: boolean,
+  targetWasTold: boolean,
+): string {
+  if (viaMediator) {
+    switch (language) {
+      case 'en':
+        return (
+          `\n\n${mediatorName} chose to keep the connection going through them — no number was ` +
+          `passed on, and that is their decision rather than a fault. Tell me what you want ` +
+          `${targetName} to hear and I will pass it to ${mediatorName}.`
+        );
+      case 'ru':
+        return (
+          `\n\n${mediatorName} решил, что связь пойдёт через него — номер не передан, и это его ` +
+          `решение, а не сбой. Напиши, что передать ${targetName}, и я передам ${mediatorName}.`
+        );
+      case 'es':
+        return (
+          `\n\n${mediatorName} ha decidido que el contacto siga pasando por él — no se ha dado ` +
+          `ningún número, y es su decisión, no un fallo. Dime qué quieres que ${targetName} ` +
+          `sepa y se lo paso a ${mediatorName}.`
+        );
+      default:
+        return (
+          `\n\n${geoName(mediatorName, 'erg')} აირჩია, რომ კავშირი მის გავლით გაგრძელდეს — ` +
+          `ნომერი არ გადმოუციათ და ეს მისი გადაწყვეტილებაა, არა ხარვეზი. ` +
+          `დამიწერე, რისი გადაცემა გინდა ${geoName(targetName, 'dat')}, და ${geoName(mediatorName, 'dat')} გადავცემ.`
+        );
+    }
+  }
+  if (targetPhone === null) {
+    switch (language) {
+      case 'en':
+        return `\n\nI could not find the number automatically — ask ${mediatorName} for ${targetName}'s contact directly, you already have the yes.`;
+      case 'ru':
+        return `\n\nНомер автоматически не нашёлся — попроси контакт ${targetName} прямо у ${mediatorName}, согласие уже есть.`;
+      case 'es':
+        return `\n\nNo he podido encontrar el número automáticamente — pídele a ${mediatorName} el contacto de ${targetName} directamente, el sí ya lo tienes.`;
+      default:
+        return `\n\nნომერი ავტომატურად ვერ მოვძებნე — ${geoName(mediatorName, 'dat')} პირდაპირ ჰკითხე ${geoName(targetName, 'gen')} კონტაქტი, თანხმობა უკვე გაქვს.`;
+    }
+  }
+  const told = (t: string): string => (targetWasTold ? t : '');
+  switch (language) {
+    case 'en':
+      return (
+        `\n\n${targetName}'s number, from ${mediatorName}'s phonebook: ${targetPhone}. ` +
+        `Write to them and say ${mediatorName} introduced you` +
+        told(' — they have already been told you may be in touch') +
+        '.'
+      );
+    case 'ru':
+      return (
+        `\n\nНомер ${targetName} из записной книжки ${mediatorName}: ${targetPhone}. ` +
+        `Напиши и скажи, что вас познакомил ${mediatorName}` +
+        told(' — его уже предупредили, что ты можешь написать') +
+        '.'
+      );
+    case 'es':
+      return (
+        `\n\nEl número de ${targetName}, de la agenda de ${mediatorName}: ${targetPhone}. ` +
+        `Escríbele y dile que ${mediatorName} os ha presentado` +
+        told(' — ya le hemos avisado de que podrías escribirle') +
+        '.'
+      );
+    default:
+      return (
+        `\n\n${geoName(targetName, 'gen')} ნომერი ${geoName(mediatorName, 'gen')} წიგნაკიდან: ${targetPhone}. ` +
+        `მისწერე და უთხარი, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ` +
+        told(' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე') +
+        '.'
+      );
+  }
+}
+
+/** The MEDIATOR's own closing line — what happened because they said yes. */
+export function introMediatorFollowUp(
+  language: RunLanguage,
+  requesterName: string,
+  targetName: string,
+  targetPhone: string | null,
+  viaMediator: boolean,
+  targetWasTold: boolean,
+): string {
+  if (viaMediator) {
+    switch (language) {
+      case 'en':
+        return `Thank you! I have told ${requesterName} that you said yes and that the connection keeps going through you. ${targetName}'s number was given to nobody.`;
+      case 'ru':
+        return `Спасибо! Я сказал ${requesterName}, что ты согласился и что связь идёт через тебя. Номер ${targetName} никому не передан.`;
+      case 'es':
+        return `¡Gracias! Le he dicho a ${requesterName} que aceptas y que el contacto sigue pasando por ti. El número de ${targetName} no se ha dado a nadie.`;
+      default:
+        return (
+          `მადლობა! ${geoName(requesterName, 'dat')} ვაცნობე, რომ თანხმობა მოგვეცი და რომ ` +
+          `კავშირი შენი გავლით გაგრძელდება. ${geoName(targetName, 'gen')} ნომერი არავის გადაეცა.`
+        );
+    }
+  }
+  const told = (t: string): string => (targetWasTold ? t : '');
+  if (targetPhone === null) {
+    switch (language) {
+      case 'en':
+        return `Thank you! I have told ${requesterName} you said yes. I could not find ${targetName}'s contact in your phonebook — ${requesterName} may ask you for it directly.`;
+      case 'ru':
+        return `Спасибо! Я сказал ${requesterName}, что ты согласился. Контакт ${targetName} в твоей записной книжке не нашёлся — ${requesterName} может попросить его напрямую.`;
+      case 'es':
+        return `¡Gracias! Le he dicho a ${requesterName} que aceptas. No he encontrado el contacto de ${targetName} en tu agenda — puede que ${requesterName} te lo pida directamente.`;
+      default:
+        return `მადლობა! ${geoName(requesterName, 'dat')} ვაცნობე შენი თანხმობა. ${geoName(targetName, 'gen')} კონტაქტი ვერ ვიპოვე შენს წიგნაკში — შესაძლოა ${geoName(requesterName, 'erg')} პირდაპირ გთხოვოს.`;
+    }
+  }
+  switch (language) {
+    case 'en':
+      return `Thank you! I have given ${requesterName} ${targetName}'s contact${told(` and told ${targetName} as well`)}. They will take it from here.`;
+    case 'ru':
+      return `Спасибо! Я передал ${requesterName} контакт ${targetName}${told(` и предупредил ${targetName}`)}. Дальше они свяжутся сами.`;
+    case 'es':
+      return `¡Gracias! Le he dado a ${requesterName} el contacto de ${targetName}${told(` y también he avisado a ${targetName}`)}. A partir de aquí siguen ellos.`;
+    default:
+      return `მადლობა! ${geoName(requesterName, 'dat')} გადავეცი ${geoName(targetName, 'gen')} კონტაქტი${told(` და ${geoName(targetName, 'dat')}-აც ვაცნობე`)}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`;
+  }
+}
+
+/** The requester's lock screen when the mediator answers. */
+export function introAnsweredPush(
+  language: RunLanguage,
+  targetName: string,
+  accepted: boolean,
+): { title: string; body: string } {
+  switch (language) {
+    case 'en':
+      return {
+        title: 'Netai — introduction answered',
+        body: accepted
+          ? `Your introduction request to ${targetName} has an answer. Open Netai.`
+          : `Your introduction request to ${targetName} was declined.`,
+      };
+    case 'ru':
+      return {
+        title: 'Netai — ответ на знакомство',
+        body: accepted
+          ? `На запрос знакомства с ${targetName} пришёл ответ. Открой Netai.`
+          : `На запрос знакомства с ${targetName} пришёл отказ.`,
+      };
+    case 'es':
+      return {
+        title: 'Netai — respuesta a la presentación',
+        body: accepted
+          ? `Tu solicitud de presentación a ${targetName} tiene respuesta. Abre Netai.`
+          : `Tu solicitud de presentación a ${targetName} ha sido rechazada.`,
+      };
+    default:
+      return {
+        title: 'Netai — გაცნობის პასუხი',
+        body: accepted
+          ? `${geoName(targetName, 'on')} გაცნობის მოთხოვნაზე პასუხი მოვიდა. გახსენი Netai.`
+          : `${geoName(targetName, 'on')} გაცნობის მოთხოვნაზე უარი მიიღე.`,
+      };
+  }
+}
