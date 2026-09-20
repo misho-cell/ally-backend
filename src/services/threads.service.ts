@@ -1,11 +1,17 @@
 import { query } from '../db/postgres/client';
-import { geoName } from './georgianCase';
 import {
   languageOfConversation,
   NEW_THREAD_TITLE,
   RunLanguage,
+  RUN_STRINGS,
   STOPPED_STATUS_LINE,
 } from './runLanguage';
+import {
+  incomingRequestOpening,
+  incomingRequestTitle,
+  outgoingRequestOpening,
+  outgoingRequestTitle,
+} from './introOpening';
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
@@ -26,11 +32,12 @@ export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'faile
  * no language input at all. `defaultStatusLine` in threadStatus.service asks
  * the owner instead.
  *
- * What is left here is the two INTRODUCTION threads below, and deliberately:
- * their title and their opening message are hard-coded Georgian too, so a
- * translated caption above an untranslated message would read worse than what
- * is there now. Localising that flow is its own piece of work and it is not
- * pretended to here.
+ * The two INTRODUCTION threads were the last callers, and they were left here
+ * for a day because their title and their opening message were hard-coded
+ * Georgian too — a translated caption above an untranslated message reads
+ * worse than neither. Both are in the reader's own language now
+ * (`introOpening.ts`), so nothing writes from this constant any more. It is
+ * kept as the Georgian column of the four: `RUN_STRINGS.ka.statusLines`.
  */
 export const STATUS_LINES: Readonly<Record<ThreadStatus, string | null>> = {
   working: 'ვმუშაობ…',
@@ -930,7 +937,11 @@ export async function createIncomingRequestThread(
   // never "X wants you to introduce them to yourself" (live row #793).
   direct = false,
 ): Promise<Thread> {
-  const title = direct ? `${requesterName} → შენ` : `${requesterName} → ${targetName}`;
+  // The MEDIATOR's own language — their sidebar, their message. Georgian for
+  // somebody who has never written anything here, which is what this always
+  // was and is the only case nothing can do better on.
+  const language = await userLanguage(String(mediatorUserId)).catch(() => 'ka' as RunLanguage);
+  const title = incomingRequestTitle(language, requesterName, targetName, direct);
   // The mediator must answer this request — the thread is born a task awaiting them.
   const thread = await createThread(
     String(mediatorUserId),
@@ -940,19 +951,16 @@ export async function createIncomingRequestThread(
     {
       isTask: true,
       status: 'needs_you',
-      statusLine: STATUS_LINES.needs_you,
+      statusLine: RUN_STRINGS[language].statusLines.needs_you,
     },
   );
 
-  const openingMessage = direct
-    ? `გამარჯობა! **${geoName(requesterName, 'dat')}** შენი გაცნობა უნდა.` +
-      (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
-      `\n\nდათანხმდები?`
-    : `გამარჯობა! **${requesterName}** გთხოვს, გააცნო **${geoName(targetName, 'dat')}**.` +
-      (message ? `\n\nმისი შეტყობინება: _"${message}"_` : '') +
-      `\n\nდაეხმარები? 🤝`;
-
-  await saveThreadMessage(thread.id, mediatorUserId, 'assistant', openingMessage);
+  await saveThreadMessage(
+    thread.id,
+    mediatorUserId,
+    'assistant',
+    incomingRequestOpening(language, requesterName, targetName, message, direct),
+  );
 
   return thread;
 }
@@ -964,7 +972,10 @@ export async function createOutgoingRequestThread(
   targetName: string,
   direct = false,
 ): Promise<Thread> {
-  const title = direct ? `გაცნობა: ${targetName}` : `${mediatorName} → ${targetName}`;
+  // The REQUESTER's own language, which need not be the mediator's. Two
+  // readers, two threads, one each.
+  const language = await userLanguage(String(requesterUserId)).catch(() => 'ka' as RunLanguage);
+  const title = outgoingRequestTitle(language, mediatorName, targetName, direct);
   // The requester is waiting on the mediator — born a task in the waiting state.
   const thread = await createThread(
     String(requesterUserId),
@@ -974,17 +985,16 @@ export async function createOutgoingRequestThread(
     {
       isTask: true,
       status: 'waiting',
-      statusLine: STATUS_LINES.waiting,
+      statusLine: RUN_STRINGS[language].statusLines.waiting,
     },
   );
 
-  const openingMessage = direct
-    ? `**${geoName(targetName, 'dat')}** გაეგზავნა შენი გაცნობის თხოვნა.\n\n` +
-      `Netai-ს გახსნისას ნახავს და გიპასუხებს. 😊`
-    : `**${geoName(mediatorName, 'gen')}თვის** გაიგზავნა გაცნობის მოთხოვნა **${geoName(targetName, 'on')}**.\n\n` +
-      `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`;
-
-  await saveThreadMessage(thread.id, requesterUserId, 'assistant', openingMessage);
+  await saveThreadMessage(
+    thread.id,
+    requesterUserId,
+    'assistant',
+    outgoingRequestOpening(language, mediatorName, targetName, direct),
+  );
 
   return thread;
 }
