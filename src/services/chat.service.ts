@@ -38,6 +38,7 @@ import {
   getIntroStatusForRequester,
   getIntroStatusForMediator,
   getIntroStatusForTarget,
+  IntroChannel,
   getPassedOnAsks,
   PendingRequest,
   RespondedRequest,
@@ -385,6 +386,8 @@ interface AnthropicToolProperty {
   type: string;
   description: string;
   items?: { type: string };
+  /** A closed set of allowed values — the model sees them in the schema. */
+  enum?: readonly string[];
 }
 
 interface AnthropicTool {
@@ -473,7 +476,13 @@ const GET_INTRO_STATUS_TOOL: AnthropicTool = {
 const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'respond_to_introduction',
   description:
-    'Respond to a pending introduction request (when acting as mediator). Call after the user decides whether to help and what information to share.',
+    'Respond to a pending introduction request (when acting as mediator). Call after the user ' +
+    'decides whether to help. ON A YES YOU MUST ALSO ASK HOW, BEFORE CALLING THIS: the choice ' +
+    'between putting the two in touch directly and keeping the conversation through this user ' +
+    "is THEIRS, not ours, and it decides whether the other person's contact is handed over. " +
+    'Offer three buttons with present_choices — „პირდაპირ დააკავშირე" / „ჩემი გავლით" / ' +
+    '„არა, ამჯერად" — and pass their answer as `channel`. An accept with no `channel` is ' +
+    'refused and nothing is recorded.',
   input_schema: {
     type: 'object',
     properties: {
@@ -484,6 +493,15 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
       accepted: {
         type: 'boolean',
         description: 'Whether the mediator agrees to help with the introduction',
+      },
+      channel: {
+        type: 'string',
+        enum: ['direct', 'via_mediator'],
+        description:
+          "REQUIRED when accepted is true, and it is the user's choice rather than yours. " +
+          '„direct": the two are put in touch and the other person\'s contact goes to the ' +
+          'requester. „via_mediator": the contact is NOT handed over and messages keep coming ' +
+          'through this user. Do not guess it and do not infer it from a plain „yes" — ask.',
       },
       response: {
         type: 'string',
@@ -4912,13 +4930,18 @@ async function executeToolCall(
       }
       return introOutcome;
     }
-    case 'respond_to_introduction':
+    case 'respond_to_introduction': {
+      const said = input['channel'];
+      const channel =
+        said === 'direct' || said === 'via_mediator' ? (said as IntroChannel) : undefined;
       return respondToIntroduction(
         userId,
         input['request_id'] as number,
         input['accepted'] as boolean,
         input['response'] as string | undefined,
+        channel,
       );
+    }
     case 'get_intro_status': {
       /**
        * All three sides, because the seat's 293 asked about the one this tool

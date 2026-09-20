@@ -73,9 +73,14 @@ describe('what the target is told about their own number', () => {
     expect(DISCLOSURE).not.toMatch(/დავაბრუნებ|წავშლი|გავაუქმებ/);
   });
 
-  it('branches on whether the number was actually found', () => {
-    // The same flag that decides whether the requester gets the number decides
-    // what the target is told about it — one fact, one source.
-    expect(SOURCE).toContain('numberDisclosureLine(targetPhone !== null');
+  it('branches on whether the number was actually handed over', () => {
+    // The same condition that decides whether the requester gets the number
+    // decides what the target is told about it — one fact, one source.
+    //
+    // It gained a second half with item 5: „a number exists" is no longer
+    // enough, because on `via_mediator` one exists and is deliberately not
+    // given. The disclosure follows what was DONE, not what was findable.
+    expect(SOURCE).toContain('numberDisclosureLine(');
+    expect(SOURCE).toContain("channel === 'direct' && targetPhone !== null");
   });
 });

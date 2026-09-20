@@ -155,7 +155,11 @@ describe('resolveIntroductionRequest', () => {
     // requests where mediator_user_id is NULL by design).
     expect(update?.[0]).toContain("status = 'pending'");
     expect(update?.[0]).toContain('responded_by_user_id');
-    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7']);
+    // The fifth parameter is item 5's `intro_channel`, COALESCE'd so a call
+    // that passes none leaves whatever is stored alone. Null here because this
+    // test predates the channel and answers without one - which is the same
+    // shape as every request answered before the question existed.
+    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', null]);
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),

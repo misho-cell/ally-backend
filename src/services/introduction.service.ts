@@ -359,6 +359,22 @@ export async function hasPendingIntroForThread(introRequestId: number | null): P
   return result.rows.length > 0;
 }
 
+/**
+ * HOW an accepted introduction is made — Misho's design, 20 September.
+ *
+ * The assistant asking a mediator to connect two people must also ask, up
+ * front, which of these it is. The mediator chooses; the product does not
+ * assume, and until now it assumed `direct` every time without saying so.
+ *
+ *   'direct'        the requester is given the target's contact, as today
+ *   'via_mediator'  the contact is NOT handed over — the mediator stays in
+ *                   the middle and carries the messages
+ *
+ * A stored NULL is every request answered before the question existed. It is
+ * not a third option: it means nobody was asked.
+ */
+export type IntroChannel = 'direct' | 'via_mediator';
+
 export type IntroductionAction = 'accept' | 'decline' | 'snooze';
 export type ResolveSource = 'chat' | 'button';
 
@@ -498,7 +514,11 @@ function numberDisclosureLine(
   );
 }
 
-async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Promise<AcceptOutcome> {
+async function deliverAcceptOutcome(
+  req: RequestRow,
+  mediatorName: string,
+  channel: IntroChannel,
+): Promise<AcceptOutcome> {
   // The target's phone: the stored one, or the single match in the MEDIATOR's
   // own phonebook (it is their contact to give).
   let targetPhone = req.target_phone;
@@ -540,7 +560,11 @@ async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Prom
         `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requester}**-ს შენი გაცნობა უნდა` +
           (req.message?.trim() ? ` — მიზეზი: „${scrubText(req.message.trim())}"` : '.') +
           `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
-          numberDisclosureLine(targetPhone !== null, mediatorName, requester),
+          numberDisclosureLine(
+            channel === 'direct' && targetPhone !== null,
+            mediatorName,
+            requester,
+          ),
       );
       await sendPushNotification(String(targetUserId), {
         title: 'Netai — გაცნობა',
@@ -554,6 +578,32 @@ async function deliverAcceptOutcome(req: RequestRow, mediatorName: string): Prom
         (err as Error).message,
       );
     }
+  }
+
+  /**
+   * THE MEDIATOR'S CHOICE, and it is the whole of item 5.
+   *
+   * „ჩემი გავლით" means the contact is not handed over. The requester is told
+   * the introduction stands and that the way to reach the target is through
+   * the person who agreed to it — which is the arrangement they chose, not a
+   * failure to find a number.
+   *
+   * It is kept apart from the „no number found" case below on purpose: those
+   * two produce the same silence and mean opposite things. One is somebody
+   * deciding to stay in the middle; the other is us not knowing a number. A
+   * reader who cannot tell them apart will chase the mediator for a contact
+   * they deliberately withheld.
+   */
+  if (channel === 'via_mediator') {
+    return {
+      requesterExtra:
+        `\n\n${geoName(mediatorName, 'erg')} აირჩია, რომ კავშირი მის გავლით გაგრძელდეს — ` +
+        `ნომერი არ გადმოუციათ და ეს მისი გადაწყვეტილებაა, არა ხარვეზი. ` +
+        `დამიწერე, რისი გადაცემა გინდა ${geoName(req.target_name, 'dat')}, და ${geoName(mediatorName, 'dat')} გადავცემ.`,
+      mediatorFollowUp:
+        `მადლობა! ${geoName(requester, 'dat')} ვაცნობე, რომ თანხმობა მოგვეცი და რომ ` +
+        `კავშირი შენი გავლით გაგრძელდება. ${geoName(req.target_name, 'gen')} ნომერი არავის გადაეცა.`,
+    };
   }
 
   const requesterExtra = targetPhone
@@ -682,7 +732,13 @@ export async function resolveIntroductionRequest(
   mediatorUserId: string,
   target: { requestId?: number; requestRef?: string },
   action: IntroductionAction,
-  opts: { response?: string; snoozeDays?: number; source: ResolveSource },
+  opts: {
+    response?: string;
+    snoozeDays?: number;
+    source: ResolveSource;
+    /** Required on a MEDIATED accept — see IntroChannel. */
+    channel?: IntroChannel;
+  },
 ): Promise<ResolveOutcome> {
   const req = await loadRequestForMediator(mediatorUserId, target);
   if (req === null) return { ok: false, code: 'not_found', error: ERR_NOT_FOUND };
@@ -726,9 +782,10 @@ export async function resolveIntroductionRequest(
   const updated = await query(
     `UPDATE introduction_requests
      SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL,
-         responded_by_user_id = $4::int
+         responded_by_user_id = $4::int,
+         intro_channel = COALESCE($5::text, intro_channel)
      WHERE id = $3 AND status = 'pending'`,
-    [newStatus, opts.response ?? null, req.id, mediatorUserId],
+    [newStatus, opts.response ?? null, req.id, mediatorUserId, opts.channel ?? null],
   );
   if ((updated.rowCount ?? 0) === 0) {
     return { ok: false, code: 'conflict', error: ERR_ALREADY_ANSWERED };
@@ -778,6 +835,10 @@ export async function resolveIntroductionRequest(
     outcome = await deliverAcceptOutcome(
       req,
       mediatorName.rows[0]?.name?.trim() || 'შუამავალმა',
+      // A request answered before the question existed carries NULL, and the
+      // behaviour it actually got was `direct`. Reading it as anything else
+      // would rewrite what already happened to those people.
+      opts.channel ?? 'direct',
     ).catch((err: unknown) => {
       // The accept itself must never fail on outcome delivery — log and
       // degrade to the plain acceptance message.
