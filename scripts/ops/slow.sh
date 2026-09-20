@@ -25,13 +25,65 @@
 # build, the bench was measuring something the product does not do, and the
 # change should be judged on that rather than on my arithmetic.
 #
+# READ THE DAYS, NEVER THE WEEK — and this file is the reason that rule exists.
+# Its own first run said `search_second_degree:opening` had failed 51 times in
+# seven days, and I shipped a change to fix it. Split by day, 45 of the 51 are
+# 16–17 September and there are ZERO on the 19th and 20th — the count reached
+# the target before the change existed. Worse, the call VOLUME runs 3 / 81 / 56
+# / 6 / 7 across those days, so the week's average is an average over two busy
+# days and three quiet ones, and a summary row cannot tell a fix from a quiet
+# Saturday. Pass a tool name as the second argument to get that split.
+#
 # `--since` takes anything Postgres reads as an interval: '2 hours', '3 days'.
 #
-# Usage:  ./scripts/ops/slow.sh ['7 days']
+# Usage:  ./scripts/ops/slow.sh ['7 days']                 every tool, summary
+#         ./scripts/ops/slow.sh '10 days' search_by_tag    one tool, by day
 set -euo pipefail
 
 SINCE="${1:-7 days}"
+TOOL="${2:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+if [ -n "$TOOL" ]; then
+  # One tool, one row per day. The prefix match is deliberate: a phase-tagged
+  # tool („search_second_degree:opening") and its untagged self are different
+  # populations and both are wanted.
+  "$HERE/ro.sh" <<SQL | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+if not d.get("success"):
+    print("could not read:", d.get("error", "")[:160]); raise SystemExit(1)
+rows = d["data"]["rows"]
+if not rows:
+    print("no calls to that tool in that window"); raise SystemExit
+print("%-12s %-30s %6s %7s %8s %8s %8s" % (
+    "day", "tool", "calls", "failed", "p50", "p90", "max"))
+for r in rows:
+    print("%-12s %-30s %6s %7s %7sms %7sms %7sms" % (
+        str(r["day"])[:10], r["tool"], r["calls"], r["failed"],
+        r["p50"], r["p90"], r["max_ms"]))
+print()
+print("A change is judged against the days either side of it, on days with")
+print("COMPARABLE VOLUME. Calls that fell to a handful explain a p50 on their")
+print("own, and no deploy is needed to produce one.")
+'
+SELECT DATE_TRUNC('day', created_at) AS day,
+       tool,
+       COUNT(*) AS calls,
+       COUNT(*) FILTER (WHERE NOT ok) AS failed,
+       percentile_disc(0.5) WITHIN GROUP (ORDER BY duration_ms) AS p50,
+       percentile_disc(0.9) WITHIN GROUP (ORDER BY duration_ms) AS p90,
+       MAX(duration_ms) AS max_ms
+FROM tool_call_log
+WHERE created_at > NOW() - INTERVAL '$SINCE'
+  AND duration_ms IS NOT NULL
+  AND (tool = '$TOOL' OR tool LIKE '$TOOL:%')
+GROUP BY 1, 2
+ORDER BY 2, 1
+LIMIT 100
+SQL
+  exit 0
+fi
 
 "$HERE/ro.sh" <<SQL | python3 -c '
 import sys, json
@@ -47,7 +99,9 @@ for r in rows:
         r["tool"], r["calls"], r["p50"], r["p90"], r["max_ms"], r["failed"]))
 print()
 print("Compare against the header of this file. A p90 that has not moved after")
-print("a change made on a bench means the bench measured the wrong thing.")
+print("a change made on a bench means the bench measured the wrong thing — and")
+print("one that HAS moved means nothing until you re-run with the tool name as")
+print("the second argument and check the volume moved with it.")
 '
 SELECT tool,
        COUNT(*) AS calls,

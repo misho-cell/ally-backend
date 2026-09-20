@@ -700,6 +700,31 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
      * timeout at about 16.4 seconds. If this works that count collapses.
      * `scripts/ops/slow.sh` reads it.
      *
+     * EXCEPT THAT IT HAD ALREADY COLLAPSED, TWO DAYS BEFORE THIS SHIPPED, and
+     * I only saw it by splitting the week by day instead of reading it whole:
+     *
+     *   16 Sep    3 calls   3 failed   p50 17,168 ms
+     *   17 Sep   81 calls  42 failed   p50 16,337 ms
+     *   18 Sep   56 calls   6 failed   p50  7,698 ms
+     *   19 Sep    6 calls   0 failed   p50  3,288 ms
+     *   20 Sep    7 calls   0 failed   p50  3,033 ms   <- this shipped 12:35
+     *
+     * So the count this change was going to be judged by reached zero on 19
+     * September and stayed there, and NOTHING I did is why. `web_search:opening`
+     * — which touches no database of ours — runs 3 / 83 / 56 / 6 / 7 on the same
+     * days, within one call of this every day. The opening phase fires once per
+     * goal, so that column is not a search metric at all: it is how many goals
+     * were opened. 17 and 18 September were the seat's deep test; 19 and 20 are
+     * quiet.
+     *
+     * WHICH MEANS THE TIMEOUTS WERE A LOAD EFFECT and the measurement I proposed
+     * cannot tell load apart from the fix. A quiet day proves nothing about this
+     * change in either direction, and „0 failed" today is not a result. THE
+     * VERDICT NEEDS A DAY WITH AT LEAST FIFTY OPENINGS ON ACCOUNT 501 — until
+     * one happens, this is an unevaluated change that is correct by construction
+     * and no more. `scripts/ops/slow.sh` now prints the day column for this
+     * reason; read the days, never the week.
+     *
      * AND READING THOSE 51 SHARPENS THE PREDICTION, which I had backwards.
      * Every one is account 501 — 1,907 contacts, 306 bridges — and every one
      * is a query that matches NOBODY:
