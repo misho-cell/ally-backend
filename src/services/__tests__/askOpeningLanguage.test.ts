@@ -4,7 +4,7 @@ import {
   buildAskOpening,
   unknownSenderName,
 } from '../askOpening';
-import { RunLanguage } from '../runLanguage';
+import { NEW_THREAD_TITLE, RunLanguage, isPlaceholderThreadTitle } from '../runLanguage';
 
 /**
  * The seat's 289 and 290 — the first thing a person ever reads from somebody
@@ -103,5 +103,39 @@ describe('the note a recipient gets when the question is withdrawn', () => {
     for (const language of LANGUAGES.filter((l) => l !== 'ka')) {
       expect(askCancelledNote(language)).not.toMatch(/[Ⴀ-ჿ]/);
     }
+  });
+});
+
+/**
+ * The fifth locale sighting, and the fourth that is the server's: a brand-new
+ * conversation on an English account appeared in its own sidebar as
+ * „ახალი საუბარი".
+ *
+ * A thread cannot be born titleless — a null title rendered as a row with no
+ * rename or delete control at all, an unremovable ghost — so every account
+ * gets this word, and until now every account got it in Georgian.
+ */
+describe('the placeholder title a thread is born with', () => {
+  it('exists in every language and carries no Georgian outside Georgian', () => {
+    for (const language of LANGUAGES) expect(NEW_THREAD_TITLE[language].length).toBeGreaterThan(3);
+    for (const language of LANGUAGES.filter((l) => l !== 'ka')) {
+      expect(NEW_THREAD_TITLE[language]).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+
+  it('is recognised as a placeholder in any language, including the old one', () => {
+    // The route asks „does this thread still need a real title". It has to
+    // accept all four — and the Georgian one doubles as the value every thread
+    // created before this existed carries, so it must keep matching.
+    for (const language of LANGUAGES) {
+      expect(isPlaceholderThreadTitle(NEW_THREAD_TITLE[language])).toBe(true);
+    }
+    expect(isPlaceholderThreadTitle('ახალი საუბარი')).toBe(true);
+  });
+
+  it('does not mistake a real title for the placeholder', () => {
+    expect(isPlaceholderThreadTitle('New conversation with Nino')).toBe(false);
+    expect(isPlaceholderThreadTitle('I need a plumber')).toBe(false);
+    expect(isPlaceholderThreadTitle(null)).toBe(false);
   });
 });

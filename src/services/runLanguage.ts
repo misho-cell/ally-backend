@@ -366,3 +366,32 @@ export const STOPPED_STATUS_LINE: Readonly<Record<RunLanguage, string>> = {
   ru: 'Остановлено',
   es: 'Detenido',
 };
+
+/**
+ * „New conversation" — the placeholder title a thread is born with, replaced
+ * by a real one as soon as the first message arrives.
+ *
+ * It was one Georgian constant, so an English account's new chat appeared in
+ * its own sidebar as „ახალი საუბარი". The seat's fifth locale sighting and the
+ * fourth that is the server's: a thread cannot be born titleless (a null title
+ * rendered as a row with no rename or delete control at all — an unremovable
+ * ghost) so every account gets this word, and until now every account got it
+ * in Georgian.
+ */
+export const NEW_THREAD_TITLE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'ახალი საუბარი',
+  en: 'New conversation',
+  ru: 'Новый разговор',
+  es: 'Nueva conversación',
+};
+
+/**
+ * Is this title still the placeholder, in ANY language?
+ *
+ * Asked by the route that decides whether a thread still needs a provisional
+ * title. It has to accept all four, and the Georgian one doubles as the value
+ * every thread created before this existed carries.
+ */
+export function isPlaceholderThreadTitle(title: string | null): boolean {
+  return title !== null && Object.values(NEW_THREAD_TITLE).includes(title);
+}

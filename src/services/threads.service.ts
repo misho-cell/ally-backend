@@ -1,6 +1,11 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
-import { languageOfConversation, RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
+import {
+  languageOfConversation,
+  NEW_THREAD_TITLE,
+  RunLanguage,
+  STOPPED_STATUS_LINE,
+} from './runLanguage';
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
@@ -356,7 +361,7 @@ async function promotedGoalThreadIds(userId: string): Promise<number[]> {
 // A brand-new thread is never born titleless: a null title left the row blank
 // in the client with no rename/delete controls at all — an unremovable ghost
 // (ticket 6 B2, threads 9080/9115). The first message replaces this.
-export const DEFAULT_NEW_THREAD_TITLE = 'ახალი საუბარი';
+export const DEFAULT_NEW_THREAD_TITLE = NEW_THREAD_TITLE.ka;
 
 export async function createThread(
   userId: string,
@@ -365,6 +370,15 @@ export async function createThread(
   introRequestId?: number,
   task?: ThreadTaskState,
 ): Promise<Thread> {
+  /**
+   * The placeholder in the OWNER's language, which needs a read — and takes
+   * one only when it is actually about to be used. A thread created with a
+   * title of its own (an ask thread, a request thread) asks nothing.
+   */
+  const placeholder =
+    title === undefined && type === 'regular'
+      ? NEW_THREAD_TITLE[await userLanguage(userId).catch(() => 'ka' as RunLanguage)]
+      : null;
   const result = await query<Thread>(
     `INSERT INTO threads (user_id, type, title, introduction_request_id, is_task, status, status_line)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -373,7 +387,7 @@ export async function createThread(
     [
       userId,
       type,
-      title ?? (type === 'regular' ? DEFAULT_NEW_THREAD_TITLE : null),
+      title ?? placeholder,
       introRequestId ?? null,
       task?.isTask ?? false,
       task?.status ?? 'done',

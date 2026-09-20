@@ -17,7 +17,6 @@ import {
   updateThreadTitle,
   saveThreadMessage,
   getLongestRunStep,
-  DEFAULT_NEW_THREAD_TITLE,
 } from '../../services/threads.service';
 import { processChat, ChatResult, keepUserMessage } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
@@ -52,7 +51,11 @@ import {
 } from '../../services/sse.service';
 import { sendPushNotification } from '../../services/notification.service';
 import { scrubText } from '../../services/privacyScrub';
-import { RUN_STRINGS, detectRunLanguage } from '../../services/runLanguage';
+import {
+  RUN_STRINGS,
+  detectRunLanguage,
+  isPlaceholderThreadTitle,
+} from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread } from '../../services/threadRunQueue';
 import { looksLikeStopRequest } from '../../services/stopIntent';
@@ -534,9 +537,12 @@ threadsRouter.post(
       // the model-written title is generated AFTER the run, from the FINAL
       // reply (ticket 6 close, task 20: draft-time titles echoed the opener
       // the strip was about to remove and contradicted their own answers).
+      // The placeholder has four languages now, and a thread created before it
+      // did carries the Georgian one — which is why this asks „is it still the
+      // placeholder" rather than comparing against a single string.
       const needsTitle =
         thread.type === 'regular' &&
-        (thread.title === null || thread.title === DEFAULT_NEW_THREAD_TITLE);
+        (thread.title === null || isPlaceholderThreadTitle(thread.title));
       if (needsTitle) {
         await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
       }
