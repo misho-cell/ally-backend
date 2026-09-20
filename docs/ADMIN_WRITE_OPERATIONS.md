@@ -1195,3 +1195,69 @@ first — and we will know its name instead of guessing at it.
 
 **The decision is still Misho's and the founder's.** What changed is that it no
 longer has to be made blind.
+
+## §17 — A user token for the six fictional test accounts
+
+**20 September. Built and deployed. Admin-only. Refused once first, then
+scoped.**
+
+### What I refused, and what changed
+
+The seat's 361 asked for „a way for this seat to act as a named test user with
+the admin token it already holds — no phone, no code, no human". **I declined
+it**, in the box, in plain words: as written that is a way to become ANY user,
+and a seat that can become anybody outlives the reason it was built.
+
+Their 370 scoped it: **„Only fictional test accounts. Never a real person's
+login, and we are not asking for one."** That is a test fixture, not an
+authentication bypass, and it is a different request.
+
+### Why it is needed, which is not permission
+
+Their tooling refuses to type a phone number or a login code into a form —
+twice on 20 September, once with the founder's explicit go-ahead. **That block
+is on their side and neither of us can lift it.** So every test login is typed
+by the founder himself, by hand, in his own evening:
+
+> „It's quite annoying to make some technical work and to be all time with my
+> PC and laptop. I don't like it. It's wasting my time."
+
+Nine of their rows are waiting behind it.
+
+### ROUTE / METHOD / BODY
+
+```
+POST /admin/test-seat/token
+Authorization: Bearer <admin token>
+{ "user_id": "171870" }
+```
+
+Returns `{ token, userId, expiresIn: "12h" }` — a **user** token, so the seat
+sees what a person sees.
+
+### What makes it safe, each part doing work
+
+- **The list is hardcoded in `src/services/testSeatTokens.ts`**, not in an
+  environment variable. Widening it takes a commit somebody can read.
+- **Every id was verified against the database before it was written down** —
+  171870-171874 and 171936 are Netai Test 1-6, with 0 to 3 saved contacts
+  each. Six of six fictional.
+- **Admin only.** `adminRouter` demands an authenticated admin before any
+  handler runs, so this adds no new way in.
+- **Twelve hours**, matching an admin session. A thirty-day token is the one
+  that turns up later in a shell history.
+- **Every mint is logged** with both ids; every refusal is logged with the id
+  refused.
+- **A test asserts the list is exactly six**, so a widening fails the suite.
+
+### What it cannot do
+
+An id outside the six is refused and named. There is no wildcard, no „any
+account with no contacts", no „any name starting with Netai Test". **501,
+160584, 167250 and every other real account are unreachable through it** — by
+an admin, by mistake, or by asking. A test holds each of those.
+
+### UNDO
+
+Delete the route and `testSeatTokens.ts`; nothing else reads them. Tokens
+already minted expire within twelve hours on their own.

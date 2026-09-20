@@ -1,3 +1,8 @@
+import {
+  fictionalTestAccountIds,
+  mintTestSeatToken,
+  NotATestAccountError,
+} from '../../services/testSeatTokens';
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import {
@@ -1614,6 +1619,62 @@ export function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: s
     };
   return { allowed: true };
 }
+
+/**
+ * A user token for one of the six FICTIONAL test accounts — the seat's 361 and
+ * 370, scoped down until it was safe to build.
+ *
+ * Their first ask was „act as a named test user", which I refused on
+ * 20 September: as written it was a way to become anybody. Their 370 scoped
+ * it to „only fictional test accounts, never a real person's login, and we are
+ * not asking for one", which is a test fixture rather than an authentication
+ * bypass.
+ *
+ * It adds no new way in. The caller is already an authenticated admin — this
+ * router demands that before any handler runs — so the route converts a
+ * session they hold into a token for an account belonging to nobody. The six
+ * ids are hardcoded in `testSeatTokens.ts`, verified against the database
+ * before being written down, and anything else is refused by name.
+ *
+ * Logged with both ids, because „who acted as Test 3" must have an answer.
+ */
+adminRouter.post('/test-seat/token', (req: Request, res: Response) => {
+  const secret = process.env.JWT_SECRET ?? '';
+  if (!secret) {
+    res.status(500).json({ success: false, error: 'JWT_SECRET is not configured' });
+    return;
+  }
+  const requested = String((req.body as { user_id?: unknown })?.user_id ?? '').trim();
+  if (!requested) {
+    res.status(400).json({
+      success: false,
+      error: 'user_id is required',
+      available: fictionalTestAccountIds(),
+    });
+    return;
+  }
+  const admin = (req as AuthenticatedRequest).user.userId;
+  try {
+    const minted = mintTestSeatToken(requested, secret);
+    // eslint-disable-next-line no-console
+    console.log(`[test-seat] admin ${admin} minted a token for test account ${minted.userId}`);
+    res.status(200).json({ success: true, data: minted });
+  } catch (error) {
+    if (error instanceof NotATestAccountError) {
+      // eslint-disable-next-line no-console
+      console.warn(`[test-seat] admin ${admin} asked for ${requested} — REFUSED, not fictional`);
+      res.status(403).json({
+        success: false,
+        error: error.message,
+        available: fictionalTestAccountIds(),
+      });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.error('[test-seat] mint failed:', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.get('/pilot/threads', async (req: Request, res: Response) => {
   try {
