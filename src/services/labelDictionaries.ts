@@ -81,6 +81,66 @@ export const ROLE_WORDS = [
 // list is the founder's examples and the criteria file's own
 // (khelosani, karobka, avtomatika, airbagi), nothing more.
 export const TRADE_WORDS = [
+  /**
+   * 20 September. The ticket 20 row 8 audit closed the eight trades it went
+   * looking for and left the same hole open everywhere else: a word sitting
+   * here in ONE script only. Asked mechanically — every Georgian entry in
+   * every dictionary, transliterated (canonical spelling and the drift
+   * spellings people actually type), then looked for in its own list — 46 of
+   * the 230 entries had no Latin twin at all.
+   *
+   * The number beside each is the one that matters and it is NOT the carrier
+   * count. It is how many aliases carry this word and NO word any of the 230
+   * current entries already catches — what the entry actually newly reads.
+   * `xelosan` carries 17,577 people and only 660 of them are new, because most
+   * of those labels also say „santeqniki" or „eleqtrikosi" and were already
+   * read. Thirty-one entries, 21,987 aliases nobody could classify this
+   * morning.
+   *
+   * The second number is the entry's cost: how much of its carrier set it
+   * catches INSIDE a longer word, since containsAny is a substring match.
+   *
+   *   xelosan       660 handyman     1%      khelosan      11             0%
+   *   eqim          445 doctor       4%      ekim         180 doctor      3%
+   *   mdzgol        201 driver       1%      mdzghol      367 driver      0%
+   *   dacv        1,216 security    14%      makler     1,327 broker      1%
+   *   maliar        695 plasterer    0%      mkerav        39 tailor      0%
+   *   mascavlebel 1,206 teacher      1%      pediatr       64 paediatr.   1%
+   *   bughalter     464 accountant   0%      durgal       337 carpenter   0%
+   *   potograp      236 photographer 0%      mgebav       115 painter     0%
+   *   shemdugeb     103 welder       0%
+   *
+   * `dacv`'s fourteen per cent was read rather than assumed, and it is not a
+   * cost: the words it reaches inside are `jandacva` (healthcare) and
+   * `tavdacva` (self-defence). Both are the thing this list is for.
+   *
+   * FOUR WERE REJECTED, each on what the buried carriers turned out to be:
+   *
+   *   gori     36%  igori (175) — a man's first name. Also grigori, algoritmi.
+   *   lari     50%  beglari, ilarioni, solariumi, kancelaria.
+   *   kape     10%  eskape — a business — and chkapelia, A SURNAME. The
+   *                 dictionaries are read BEFORE the surname endings, so this
+   *                 one would turn a family name into a thing. `kafe` is
+   *                 already here and loses nothing.
+   *   helosan  98%  every single one is `khelosani`, which is added above.
+   */
+  'xelosan',
+  'khelosan',
+  'eqim',
+  'ekim',
+  'mdzgol',
+  'mdzghol',
+  'dacv',
+  'makler',
+  'maliar',
+  'mkerav',
+  'mascavlebel',
+  'pediatr',
+  'bughalter',
+  'durgal',
+  'potograp',
+  'mgebav',
+  'shemdugeb',
   // Ticket 20 row 8, founder's ruling of 16 September. Measured on the live
   // base: of the 400 commonest whole-word tokens, 34 would have been printed as
   // somebody's EMPLOYER, and eight of those are trades. They were missing for
@@ -244,6 +304,15 @@ export const ORGANISATION_WORDS = [
 // the neighbour — the second word is a relationship, not a surname, and the
 // list must not treat it as one (ticket 9 task 23).
 export const RELATIONSHIP_WORDS = [
+  // 20 September, the one-script sweep described above TRADE_WORDS. Newly
+  // classified aliases, and the substring cost:
+  //
+  //   klasel    111 classmate  1%   — `klaseli` was here; this reads klaselma,
+  //                                   klaselia, klaselze, which it could not.
+  //   bitsola    46 aunt       0%   — the canonical spelling of ბიცოლა, beside
+  //                                   the `bicola` people type more often.
+  'klasel',
+  'bitsola',
   // Ticket 20 row 8, same audit. „ნათლია" and „ბიცოლა" were already here in
   // Georgian and were still read as an EMPLOYER when typed in Latin.
   //   natlia   4,642  +313 (6%)
@@ -285,6 +354,23 @@ export const RELATIONSHIP_WORDS = [
 // lari). Generic words, not a brand list — every one of them is a thing rather
 // than a person, in any building in the country.
 export const THING_WORDS = [
+  // 20 September, the one-script sweep described above TRADE_WORDS. Newly
+  // classified aliases, and the substring cost:
+  //
+  //   binis     1,606 of a flat   6%      nacilebi  1,158 parts      4%
+  //   fosta       685 post        5%      aftiaq      628 pharmacy   7%
+  //   aptiak      172 pharmacy    5%      aftiak      124 pharmacy   8%
+  //   natsilebi   125 parts       6%
+  //
+  // Three spellings of აფთიაქ are here because all three are typed and no two
+  // of them contain each other.
+  'binis',
+  'nacilebi',
+  'natsilebi',
+  'fosta',
+  'aftiaq',
+  'aptiak',
+  'aftiak',
   // Ticket 20 row 8, same audit: car parts read as a company name.
   //   dashlilebi  3,386  +40 (1%)
   //   nawilebi    2,917  +197 (6%)
@@ -339,6 +425,24 @@ export const THING_WORDS = [
 // A city is where somebody is, never who they are — and „ბათუმი ორბი 2" is a
 // building, not a person.
 export const PLACE_WORDS = [
+  // 20 September, the one-script sweep described above TRADE_WORDS. Five towns
+  // and a district were here in Georgian only. Newly classified aliases, and
+  // the substring cost:
+  //
+  //   telavi   2,381  0%      zugdidi  2,091  0%      poti  2,076  11%
+  //   foti     1,500  1%      gudauri  1,334  1%      dighomi  284  5%
+  //
+  // `poti`'s eleven per cent is `kapoti` (a car bonnet), `kompoti` and
+  // `kalapoti` — twenty carriers, two, two. Things rather than people, so the
+  // worst it can do is decline to count a word as a company, which is the mild
+  // direction. `gori` was rejected on the same test and is NOT here: its
+  // buried carriers are `igori`, a man's first name, 175 of them.
+  'telavi',
+  'zugdidi',
+  'poti',
+  'foti',
+  'gudauri',
+  'dighomi',
   // Ticket 20 row 8, same audit. „ქუთაისი" was here twice over — as Georgian
   // and as `kutaisi` — and still missed `qutaisi`, because ქ is written both
   // ways. Two Tbilisi districts were in neither script.

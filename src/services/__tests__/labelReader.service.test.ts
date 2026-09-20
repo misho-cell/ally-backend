@@ -100,6 +100,81 @@ describe('L2 — what a context token is', () => {
     expect(classifyToken('ქოიავა', false)).toBe('name');
     expect(classifyToken('burchuladze', false)).toBe('name');
   });
+
+  /**
+   * 20 September, the one-script sweep. Forty-six dictionary entries sat here
+   * in Georgian only, so the same word typed in Latin — which is how much of
+   * this base is written — was read as somebody's EMPLOYER.
+   */
+  describe('a word typed in Latin is the same word', () => {
+    it.each([
+      ['xelosani', 'trade'],
+      ['khelosani', 'trade'],
+      ['eqimi', 'trade'],
+      ['ekimi', 'trade'],
+      ['mdzgolma', 'trade'],
+      ['mdzgholi', 'trade'],
+      ['dacvis', 'trade'],
+      ['maklerad', 'trade'],
+      ['maliari', 'trade'],
+      ['mkeravi', 'trade'],
+      ['mascavlebeli', 'trade'],
+      ['bughalteri', 'trade'],
+      ['durgali', 'trade'],
+      ['potograpi', 'trade'],
+      ['mgebavi', 'trade'],
+      ['shemdugebeli', 'trade'],
+      ['klaselma', 'relation'],
+      ['bitsola', 'relation'],
+      ['telavi', 'place'],
+      ['zugdidi', 'place'],
+      ['poti', 'place'],
+      ['foti', 'place'],
+      ['gudauri', 'place'],
+      ['dighomi', 'place'],
+      ['binis', 'place'],
+      ['nacilebi', 'place'],
+      ['aftiaqi', 'place'],
+    ])('%s is %s, not a company', (token, kind) => {
+      expect(classifyToken(token, false)).toBe(kind);
+    });
+  });
+
+  /**
+   * The four the same sweep found and REFUSED, each on what its buried
+   * carriers turned out to be. containsAny is a substring match, so a short
+   * word costs whatever longer words contain it — and the dictionaries are
+   * read BEFORE the surname endings, so a wrong one silently eats a name.
+   */
+  describe('the short words the sweep refused', () => {
+    it('„gori" stays out: it is inside Igori, and Igori is a man', () => {
+      // 175 carriers. The list knows him; adding „gori" would make him a town.
+      expect(classifyToken('igori', true)).toBe('name');
+    });
+
+    it('„lari" stays out: it is inside Beglari, Ilarioni, solariumi', () => {
+      expect(classifyToken('beglari', false)).not.toBe('place');
+      expect(classifyToken('ilarioni', false)).not.toBe('place');
+      expect(classifyToken('solariumi', false)).not.toBe('place');
+    });
+
+    /**
+     * „chkapelia" and „grigori" are read as company words today, and that is
+     * the milder of the two wrong answers rather than a second bug: an
+     * unconfirmed company word is dropped by the three-saver rule, so it
+     * reaches nobody. A dictionary hit is FINAL — it is never reconsidered.
+     * That asymmetry is the whole reason a short word is refused even when its
+     * carriers run to thousands.
+     */
+    it('„kape" stays out: Chkapelia would go from provisional to settled', () => {
+      expect(classifyToken('chkapelia', false)).toBe('organisation');
+      expect(classifyToken('grigori', false)).toBe('organisation');
+    });
+
+    it('and „kafe", the word itself, was never in doubt', () => {
+      expect(classifyToken('kafe', false)).toBe('place');
+    });
+  });
 });
 
 describe('L3/L4 — the three numbers and the signals', () => {
