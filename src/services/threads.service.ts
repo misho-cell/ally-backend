@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
-import { languageOfConversation, RunLanguage } from './runLanguage';
+import { languageOfConversation, RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
@@ -79,6 +79,8 @@ export interface ThreadMessage {
 interface ThreadRow extends Thread {
   last_message: string | null;
   last_message_at: string | null;
+  /** Row 207: this thread's goal was stopped by its owner — see GOAL_WAS_STOPPED. */
+  goal_stopped?: boolean;
   // Public ref of the linked introduction request (null on regular threads) —
   // what the client posts to /requests/:ref/{accept,decline,snooze}.
   request_ref: string | null;
@@ -155,6 +157,29 @@ const HAS_OPEN_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AN
  * is written to the morning list instead.
  */
 const HAS_A_GOAL = `EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id)`;
+/**
+ * This thread's goal was STOPPED by its owner, as the goal record says rather
+ * than as the thread remembers.
+ *
+ * The caption written at the moment of the stop does not survive. Every later
+ * `setThreadStatus(..., 'done')` that passes no line takes `STATUS_LINES.done`,
+ * which is null, and erases it — so the thread of a stopped goal reads
+ * „finished", with nothing under it, as soon as anything touches it again.
+ *
+ * Measured on account 501: of seventy goals closed with `closed_as = 'stopped'`,
+ * thirty-seven have no caption left and thirty-three do, and the split is not a
+ * deploy or a second code path — `goalStop` is the only writer of that value.
+ * It is which threads were touched afterwards.
+ *
+ * So the caption is derived, the same way the status above it already is, and
+ * for the same reason: correcting the stored rows would be a write across live
+ * data and somebody's decision to authorise, while deriving it at read time
+ * needs nobody and fixes every thread at once.
+ */
+const GOAL_WAS_STOPPED = `EXISTS (
+       SELECT 1 FROM tasks k
+        WHERE k.thread_id = t.id AND k.status = 'closed' AND k.closed_as = 'stopped'
+     )`;
 const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
 
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
@@ -182,7 +207,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        t.updated_at,
        ir.request_ref,
        LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
-       lm.created_at AS last_message_at`;
+       lm.created_at AS last_message_at,
+       ${GOAL_WAS_STOPPED} AS goal_stopped`;
 
 const THREAD_LIST_JOINS = `FROM threads t
      LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
@@ -248,7 +274,9 @@ export async function getThreadsForUser(
      LIMIT $4::int`,
     [userId, before, beforeId, limit, promoted],
   );
-  if (before !== null || promoted.length === 0) return result.rows.map(cleanPreview);
+  if (before !== null || promoted.length === 0) {
+    return withStoppedCaption(userId, result.rows.map(cleanPreview));
+  }
   const goals = await query<ThreadRow>(
     `SELECT
        ${THREAD_LIST_COLUMNS}
@@ -257,7 +285,40 @@ export async function getThreadsForUser(
      ORDER BY t.updated_at DESC, t.id DESC`,
     [promoted],
   );
-  return [...goals.rows, ...result.rows].map(cleanPreview);
+  return withStoppedCaption(userId, [...goals.rows, ...result.rows].map(cleanPreview));
+}
+
+/**
+ * Row 207 — a goal its owner cancelled reads the same as one that succeeded.
+ *
+ * Both land on `done`, because `ThreadStatus` has one word for „this is over"
+ * and the product needs two. The caption was supposed to carry the difference
+ * and does not survive: any later `setThreadStatus(..., 'done')` passing no
+ * line takes `STATUS_LINES.done`, which is null, and erases it. On account 501
+ * that is thirty-seven of seventy stopped goals with nothing left to show.
+ *
+ * So the caption is supplied here when the goal record says the goal was
+ * stopped and the thread has lost its own. Derived rather than migrated, for
+ * the reason the status above it is derived: it fixes every existing thread at
+ * once and needs nobody's permission to write across live data.
+ *
+ * THE LANGUAGE IS READ ONCE FOR THE WHOLE LIST, not per thread. A caption is
+ * chrome, the list is one screen, and forty extra queries to vary one word
+ * across it would be the wrong trade — the owner's most recent words decide,
+ * which is the same rule every other fixed string follows.
+ *
+ * It does NOT overwrite a caption that is still there: a thread that kept its
+ * own says whatever it was given, in whatever language it was given in.
+ */
+async function withStoppedCaption(userId: string, rows: ThreadRow[]): Promise<ThreadRow[]> {
+  const needsOne = rows.some((r) => r.goal_stopped === true && r.status_line === null);
+  if (!needsOne) return rows;
+  const language = await userLanguage(userId).catch(() => 'ka' as RunLanguage);
+  return rows.map((r) =>
+    r.goal_stopped === true && r.status_line === null
+      ? { ...r, status_line: STOPPED_STATUS_LINE[language] }
+      : r,
+  );
 }
 
 /**

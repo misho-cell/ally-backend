@@ -350,3 +350,19 @@ export function answerHeldNoTokens(language: RunLanguage, who: string): string {
       return `${who}-მა გიპასუხა. პასუხის ჩამოყალიბებას ტოკენების შევსება სჭირდება — არაფერი დაკარგულა, გელოდება.`;
   }
 }
+
+/**
+ * „Stopped" — the caption under a thread whose goal its owner stopped.
+ *
+ * Lives here rather than in goalStop because two places need it now: the write
+ * at the moment of the stop, and the READ that supplies it when the write has
+ * since been erased. A thread's caption is nulled by any later
+ * `setThreadStatus(..., 'done')`, so the stored one is not a reliable record of
+ * anything and the reader has to be able to say it too.
+ */
+export const STOPPED_STATUS_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'შეჩერებულია',
+  en: 'Stopped',
+  ru: 'Остановлено',
+  es: 'Detenido',
+};

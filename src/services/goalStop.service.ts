@@ -4,7 +4,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { emitChoicesCleared } from './sse.service';
-import { RunLanguage } from './runLanguage';
+import { RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
 
 /**
  * The owner's kill switch, in one place.
@@ -119,12 +119,6 @@ export function stoppedLine(
 }
 
 /** The caption a stopped thread carries in the list. */
-const STOPPED_STATUS: Record<RunLanguage, string> = {
-  ka: 'შეჩერებულია',
-  en: 'Stopped',
-  ru: 'Остановлено',
-  es: 'Detenido',
-};
 
 /**
  * Close the goal, cancel every unanswered ask (the recipients get an honest
@@ -183,7 +177,7 @@ export async function stopGoal(
       console.error(`[stop] could not clear buttons on thread ${task.thread_id}:`, err);
     });
     void setThreadStatus(userId, task.thread_id, 'done', {
-      statusLine: STOPPED_STATUS[language],
+      statusLine: STOPPED_STATUS_LINE[language],
     });
   }
   return said === undefined
