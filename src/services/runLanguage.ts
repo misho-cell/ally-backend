@@ -144,6 +144,15 @@ interface RunStrings {
   /** Too many messages too fast. Written into the thread as an error row. */
   tooManyMessages: string;
   /**
+   * The owner paused this goal themselves. Not „done" — a paused goal is
+   * stopped-for-now and they are the one who resumes it.
+   *
+   * On the screen since 20 September, when the client started drawing
+   * `status_line` instead of its own generic label. Before that this was a
+   * field nobody read; now it is the sentence under the goal's title.
+   */
+  goalPaused: string;
+  /**
    * The chrome around a goal's own push. The BODY is the reply itself and is
    * already in the owner's language; the title above it, and the fallback when
    * the reply is empty, were Georgian on every lock screen in the world.
@@ -179,6 +188,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     askReminderPush: { title: 'Netai — შეხსენება', body: 'უპასუხო კითხვა გელოდება.' },
     stepFailedWillRetry: 'დავალების ნაბიჯი ვერ დასრულდა — მოგვიანებით თავად ვცდი ხელახლა.',
     tooManyMessages: 'შეტყობინება ვერ მივიღე — ძალიან ბევრი ზედიზედ. ერთ წუთში ისევ სცადე.',
+    goalPaused: 'პაუზაზეა',
     goalNewsPush: { title: 'Netai — დავალებაზე სიახლეა', body: 'დავალებაზე სიახლეა' },
   },
   en: {
@@ -208,6 +218,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     askReminderPush: { title: 'Netai — reminder', body: 'A question is waiting for your answer.' },
     stepFailedWillRetry: 'That step could not be finished — I will try again myself later.',
     tooManyMessages: 'I could not take that message — too many at once. Try again in a minute.',
+    goalPaused: 'Paused',
     goalNewsPush: { title: 'Netai — goal update', body: 'There is news on your goal' },
   },
   ru: {
@@ -238,6 +249,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     askReminderPush: { title: 'Netai — напоминание', body: 'Вопрос ждёт твоего ответа.' },
     stepFailedWillRetry: 'Шаг задачи не удалось завершить — позже попробую сам ещё раз.',
     tooManyMessages: 'Не смог принять сообщение — слишком много подряд. Попробуй через минуту.',
+    goalPaused: 'На паузе',
     goalNewsPush: { title: 'Netai — новости по задаче', body: 'Есть новости по задаче' },
   },
   es: {
@@ -268,6 +280,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     askReminderPush: { title: 'Netai — recordatorio', body: 'Una pregunta espera tu respuesta.' },
     stepFailedWillRetry: 'No se pudo terminar ese paso — lo intentaré yo mismo más tarde.',
     tooManyMessages: 'No pude recibir el mensaje — demasiados seguidos. Inténtalo en un minuto.',
+    goalPaused: 'En pausa',
     goalNewsPush: { title: 'Netai — novedades', body: 'Hay novedades en tu objetivo' },
   },
 };

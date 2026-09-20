@@ -12,7 +12,13 @@ import { scrubText } from './privacyScrub';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
-import { introAcceptedOpening, introAcceptedPush, introAcceptedTitle } from './introOpening';
+import {
+  introAcceptedOpening,
+  introAcceptedPush,
+  introAcceptedTitle,
+  introAnsweredLine,
+  introSnoozedLine,
+} from './introOpening';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
 
@@ -401,10 +407,6 @@ const MIN_SNOOZE_DAYS = 1;
 const MAX_SNOOZE_DAYS = 30;
 const ERR_NOT_FOUND = 'მოთხოვნა ვერ მოიძებნა';
 const ERR_ALREADY_ANSWERED = 'ამ მოთხოვნაზე უკვე გაქვს პასუხი';
-// Requester-side thread caption once the mediator has answered.
-const LINE_RESPONSE_ARRIVED = 'პასუხი მოვიდა';
-// Mediator-side thread caption while a request is snoozed.
-const LINE_SNOOZED = 'გადადებულია';
 
 interface RequestRow {
   id: number;
@@ -604,10 +606,13 @@ async function syncRequestThreads(
     const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
       const owner = String(thread.user_id);
+      // Each side's own language — the two readers need not share one, and
+      // this caption is on their screen as of 20 September.
+      const ownerLanguage = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
       if (thread.type === 'incoming_request') {
         if (action === 'snooze') {
           await setThreadStatus(owner, thread.id, 'waiting', {
-            statusLine: LINE_SNOOZED,
+            statusLine: introSnoozedLine(ownerLanguage),
             requestRef: req.request_ref,
           });
         } else {
@@ -634,7 +639,7 @@ async function syncRequestThreads(
           outcomeMessage(req, action, response) + (outcome?.requesterExtra ?? ''),
         ).catch(() => undefined);
         await setThreadStatus(owner, thread.id, 'needs_you', {
-          statusLine: LINE_RESPONSE_ARRIVED,
+          statusLine: introAnsweredLine(ownerLanguage),
           requestRef: req.request_ref,
         });
       }

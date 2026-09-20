@@ -1,6 +1,8 @@
 import {
   incomingRequestOpening,
   incomingRequestTitle,
+  introAnsweredLine,
+  introSnoozedLine,
   outgoingRequestOpening,
   outgoingRequestTitle,
 } from '../introOpening';
@@ -88,5 +90,33 @@ describe('the introduction arrives in the reader’s own language', () => {
   it('the two sides are asked separately', () => {
     expect(incomingRequestTitle('en', 'Nino', 'Dato', true)).toBe('Nino → you');
     expect(outgoingRequestTitle('ka', 'Nino', 'Dato', true)).toBe('გაცნობა: Dato');
+  });
+});
+
+/**
+ * The two captions the introduction writes when a thread MOVES — snoozed on
+ * the mediator's side, answered on the requester's.
+ *
+ * They were the last Georgian in this flow and they were invisible until
+ * 20 September, when the client started drawing `status_line` instead of its
+ * own generic label. Everything beside them had been in the reader's language
+ * since the morning; these had not, so a mediator reading English would have
+ * had „გადადებულია" under an English thread.
+ */
+describe('the captions, once the client started drawing them', () => {
+  it.each(OTHERS)('%s carries no Georgian', (language) => {
+    expect(introSnoozedLine(language)).not.toMatch(GEORGIAN);
+    expect(introAnsweredLine(language)).not.toMatch(GEORGIAN);
+  });
+
+  it('says two different things — one is a wait, the other is news', () => {
+    for (const language of [...OTHERS, 'ka' as const]) {
+      expect(introSnoozedLine(language)).not.toBe(introAnsweredLine(language));
+    }
+  });
+
+  it('ka keeps the words it already had', () => {
+    expect(introSnoozedLine('ka')).toBe('გადადებულია');
+    expect(introAnsweredLine('ka')).toBe('პასუხი მოვიდა');
   });
 });

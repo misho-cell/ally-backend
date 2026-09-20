@@ -1,5 +1,7 @@
 import { query } from '../db/postgres/client';
 import { setThreadStatus } from './threadStatus.service';
+import { RunLanguage, RUN_STRINGS } from './runLanguage';
+import { userLanguage } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { goalNamedIn } from './goalMention';
 import type { TaskPlan } from './taskPlans.service';
@@ -575,10 +577,17 @@ export async function updateTask(
    * stopped-for-now and the owner is the one who resumes it.
    */
   if (updated && status === 'paused' && threadId != null) {
-    void setThreadStatus(userId, threadId, 'waiting', {
-      isTask: true,
-      statusLine: 'პაუზაზეა',
-    });
+    // The owner's own language. On their screen since 20 September — the
+    // client used to draw a generic label and throw this away.
+    void userLanguage(userId)
+      .catch(() => 'ka' as RunLanguage)
+      .then((language) =>
+        setThreadStatus(userId, threadId, 'waiting', {
+          isTask: true,
+          statusLine: RUN_STRINGS[language].goalPaused,
+        }),
+      )
+      .catch(() => undefined);
   }
   if (updated && status === 'closed' && threadId != null) {
     /**

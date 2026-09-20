@@ -307,3 +307,39 @@ export function introAcceptedPush(
       };
   }
 }
+
+/**
+ * The two captions the introduction writes onto a thread once it moves —
+ * snoozed on the mediator's side, answered on the requester's.
+ *
+ * They were the last Georgian left in this flow and they were invisible until
+ * 20 September, when the client started drawing `status_line` instead of its
+ * own generic label. The messages and titles beside them have been in the
+ * reader's language since `0529540`; these had not, so a mediator reading
+ * English would have had „გადადებულია" under an English thread.
+ */
+export function introSnoozedLine(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'Put off for now';
+    case 'ru':
+      return 'Отложено';
+    case 'es':
+      return 'Aplazado';
+    default:
+      return 'გადადებულია';
+  }
+}
+
+export function introAnsweredLine(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'They have answered';
+    case 'ru':
+      return 'Ответ пришёл';
+    case 'es':
+      return 'Han respondido';
+    default:
+      return 'პასუხი მოვიდა';
+  }
+}
