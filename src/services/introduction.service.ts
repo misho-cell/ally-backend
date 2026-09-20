@@ -477,6 +477,13 @@ interface AcceptOutcome {
   requesterExtra: string;
   /** Closing line for the mediator's own thread — what happens next. */
   mediatorFollowUp: string;
+  /**
+   * Did a number actually move? The requester's GOAL wake needs this, and
+   * before request 1123 it was not given it — so the model guessed, and told
+   * the asker the opposite of what the target had just been told. One fact,
+   * one branch, three accounts that agree.
+   */
+  contactHandedOver: boolean;
 }
 
 /**
@@ -607,6 +614,7 @@ async function deliverAcceptOutcome(
         true,
         false,
       ),
+      contactHandedOver: false,
     };
   }
 
@@ -628,6 +636,9 @@ async function deliverAcceptOutcome(
       false,
       targetWasTold,
     ),
+    // The same branch the other two messages came from — targetPhone is what
+    // actually decides whether anything moved.
+    contactHandedOver: targetPhone !== null,
   };
 }
 
@@ -709,14 +720,21 @@ async function syncRequestThreads(
  * is recorded and visible whatever happens here, and an introduction must
  * never fail to be accepted because a wake could not be scheduled.
  */
-async function wakeRequestersGoal(req: RequestRow, accepted: boolean): Promise<void> {
+async function wakeRequestersGoal(
+  req: RequestRow,
+  accepted: boolean,
+  contactHandedOver: boolean,
+): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
     const [{ startIntroOutcome }, { introOutcomeEvent }] = await Promise.all([
       import('./taskEngine.service'),
       import('./taskEngine.events'),
     ]);
-    startIntroOutcome(req.requester_task_id, introOutcomeEvent(req.target_name, accepted));
+    startIntroOutcome(
+      req.requester_task_id,
+      introOutcomeEvent(req.target_name, accepted, contactHandedOver),
+    );
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(
@@ -868,6 +886,7 @@ export async function resolveIntroductionRequest(
     });
   }
   await syncRequestThreads(req, action, opts.response, outcome);
-  await wakeRequestersGoal(req, action === 'accept');
+  // The wake is told what the other two messages were told — see AcceptOutcome.
+  await wakeRequestersGoal(req, action === 'accept', outcome?.contactHandedOver === true);
   return { ok: true, status: newStatus };
 }

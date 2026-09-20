@@ -87,31 +87,70 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
  * requester's request thread already carries it; this event says only that
  * there is one, and the run reads it from the thread rather than from us.
  */
+/**
+ * WHETHER THE NUMBER MOVED IS A FACT THE SERVER HOLDS, AND THIS EVENT USED TO
+ * ASK THE MODEL TO GUESS IT.
+ *
+ * It said: „if the contact has already been handed over, remind them they can
+ * write themselves now; IF NOT, say whom to get it from" — a fork, with
+ * nothing to decide it on. Request 1123, 20 September, is what that costs.
+ * Three people, one introduction, forty-one seconds:
+ *
+ *   to the MEDIATOR  „I passed Netai Test 4's contact to Netai Test 1"
+ *   to the TARGET    „your number was passed from Netai Test 2's phonebook"
+ *   to the ASKER     „they chose to keep it through themselves rather than
+ *                     handing over contact details directly"
+ *
+ * The first two are the server's own templates and they are right. The third
+ * is the model filling this fork in, and it filled it in backwards — so the
+ * person whose number moved was told it moved, and the person who received it
+ * was told it had not. One of them acts on a false belief about where a phone
+ * number is.
+ *
+ * So the fact is stated rather than offered. `contactHandedOver` comes from
+ * the same branch that decides what the other two are told, which is the only
+ * way three accounts of one event can be made to agree.
+ */
 export function introOutcomeEvent(
   targetName: string,
   accepted: boolean,
+  contactHandedOver = false,
 ): Readonly<Record<RunLanguage, string>> {
+  const handover = {
+    ka: contactHandedOver
+      ? `${targetName}-ის კონტაქტი უკვე გადმოცემულია — შეახსენე, რომ ახლა თავად შეუძლია მისწეროს.`
+      : `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
+        'ნუ ეტყვი, რომ ნომერი აქვს.',
+    en: contactHandedOver
+      ? `${targetName}'s contact has ALREADY been handed over — remind them they can write themselves now.`
+      : 'NO contact was handed over — the mediator chose to keep the connection going through ' +
+        'them. Do NOT tell the owner they have the number.',
+    ru: contactHandedOver
+      ? `Контакт ${targetName} УЖЕ передан — напомни, что теперь он может написать сам.`
+      : 'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
+        'что номер у него есть.',
+    es: contactHandedOver
+      ? `El contacto de ${targetName} YA ha sido entregado — recuérdale que ya puede escribir él mismo.`
+      : 'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
+        'él. No le digas al propietario que tiene el número.',
+  };
   return accepted
     ? {
         ka:
           `${targetName}-თან გაცნობაზე თანხმობა მოვიდა. უთხარი მფლობელს ერთი წინადადებით, რომ ` +
-          'პასუხი დადებითია, და გადადგი შემდეგი ნაბიჯი ამ მიზნისთვის: თუ კონტაქტი უკვე ' +
-          'გადმოცემულია, შეახსენე რომ ახლა თავად შეუძლია მისწეროს; თუ არა — უთხარი ვისგან ' +
-          'აიღოს. მერე შეამოწმე, მიზანი ამით მოგვარდა თუ კიდევ რჩება გასაკეთებელი.',
+          `პასუხი დადებითია. ${handover.ka} ` +
+          'მერე შეამოწმე, მიზანი ამით მოგვარდა თუ კიდევ რჩება გასაკეთებელი.',
         en:
           `The introduction to ${targetName} has been agreed. Tell the owner in one sentence that ` +
-          'the answer is yes, and take the next step for this goal: if the contact has already ' +
-          'been handed over, remind them they can write themselves now; if not, say whom to get ' +
-          'it from. Then check whether this solves the goal or whether something is still open.',
+          `the answer is yes. ${handover.en} ` +
+          'Then check whether this solves the goal or whether something is still open.',
         ru:
           `На знакомство с ${targetName} получено согласие. Скажи владельцу одним предложением, ` +
-          'что ответ положительный, и сделай следующий шаг по этой цели: если контакт уже ' +
-          'передан — напомни, что теперь он может написать сам; если нет — скажи, у кого его ' +
-          'взять. Затем проверь, закрывает ли это цель или осталось что-то ещё.',
+          `что ответ положительный. ${handover.ru} ` +
+          'Затем проверь, закрывает ли это цель или осталось что-то ещё.',
         es:
           `La presentación a ${targetName} ha sido aceptada. Dile al propietario en una frase que ` +
-          'la respuesta es sí, y da el siguiente paso para esta meta: si el contacto ya fue ' +
-          'entregado, recuérdale que ya puede escribir él mismo; si no, dile a quién pedírselo. ' +
+          `la respuesta es sí. ${handover.es} ` +
           'Luego comprueba si esto resuelve la meta o si queda algo abierto.',
       }
     : {

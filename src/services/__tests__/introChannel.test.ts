@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { introMediatorFollowUp, introRequesterExtra, numberDisclosureLine } from '../introOpening';
+import { introOutcomeEvent } from '../taskEngine.events';
 import { join } from 'path';
 
 /**
@@ -188,5 +189,67 @@ describe('the button path, which is the one mediators actually use', () => {
     // `.optional()`, so today's button keeps working unchanged. The silence it
     // produces is the product question, not a thing to break from here.
     expect(ROUTE).toMatch(/body\('channel'\)\s*\.optional\(\)/);
+  });
+});
+
+/**
+ * THREE PEOPLE, ONE INTRODUCTION, TWO CONTRADICTING ON WHETHER A PHONE NUMBER
+ * MOVED. Request 1123, 20 September, within forty-one seconds:
+ *
+ *   to the MEDIATOR  „I passed Netai Test 4's contact to Netai Test 1"
+ *   to the TARGET    „your number was passed from Netai Test 2's phonebook"
+ *   to the ASKER     „they chose to keep it through themselves rather than
+ *                     handing over contact details directly"
+ *
+ * The first two are server templates and they were right. The third is the
+ * model filling in a fork this event handed it — „if the contact has already
+ * been handed over… IF NOT, say whom to get it from" — with nothing to decide
+ * on. It filled it in backwards.
+ *
+ * So the person whose number moved was told it moved, and the person who
+ * received it was told it had not. One of them acts on a false belief about
+ * where a phone number is.
+ */
+describe('the requester’s goal wake is told what actually happened', () => {
+  const EVENTS = readFileSync(join(__dirname, '..', 'taskEngine.events.ts'), 'utf8');
+
+  it('states the fact instead of offering the model a fork', () => {
+    // The conditional that produced the wrong half is gone from the EVENT
+    // BODY. It survives a few lines above, inside the note that records what
+    // it cost — deleting the quote would delete the evidence, which is the
+    // same reason introNumberDisclosure scopes its assertion rather than the
+    // whole file.
+    const built = introOutcomeEvent('Dato', true, true).en;
+    expect(built).not.toContain('if the contact has already been handed over');
+    expect(EVENTS).toContain('contactHandedOver');
+  });
+
+  it.each(['ka', 'en', 'ru', 'es'] as const)('%s says which of the two it was', (language) => {
+    const handed = introOutcomeEvent('Dato', true, true)[language];
+    const withheld = introOutcomeEvent('Dato', true, false)[language];
+    expect(handed).not.toBe(withheld);
+  });
+
+  it('forbids the sentence that was actually written, when nothing moved', () => {
+    expect(introOutcomeEvent('Dato', true, false).en).toContain('NO contact was handed over');
+    expect(introOutcomeEvent('Dato', true, false).en).toContain(
+      'Do NOT tell the owner they have the number',
+    );
+  });
+
+  it('and says plainly that it HAS moved, when it has', () => {
+    expect(introOutcomeEvent('Dato', true, true).en).toContain('ALREADY been handed over');
+  });
+
+  /**
+   * The fact comes from the SAME branch the other two messages come from.
+   * Deriving it a second way is how three accounts of one event drift apart —
+   * which is the whole of this bug.
+   */
+  it('is carried on the outcome, beside the two texts it must agree with', () => {
+    expect(SERVICE).toContain('contactHandedOver: boolean');
+    expect(SERVICE).toContain('contactHandedOver: targetPhone !== null');
+    expect(SERVICE).toContain('contactHandedOver: false');
+    expect(SERVICE).toContain('outcome?.contactHandedOver === true');
   });
 });
