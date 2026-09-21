@@ -645,6 +645,38 @@ export async function getThreadMessages(
   // `run_id` was null on every message and nothing read the stamps back. A
   // LEFT JOIN, so a message from before the link existed still renders.
   const result = await query<ThreadMessage>(
+    /**
+     * `prompt_mode` DESCRIBES THE RUN, NOT THE ROW — it arrives by a JOIN on
+     * `run_id`, and it is the mode the run was assembled in.
+     *
+     * The seat's 377 and 378 read it as a row attribute and concluded that
+     * „52 of the engine's own step rows reach the client with kind: message".
+     * They measured carefully — two accounts, 44 threads, no skipped failures
+     * — and their counts reproduce exactly against the database. The reading
+     * is what went wrong, and it is an easy reading to make, because the field
+     * sits on the row in the payload.
+     *
+     * A goal run in `task_step` mode writes BOTH: step rows as it works, and
+     * one final answer when it is done. The step rows are `kind: 'step'` and
+     * `kindFilter` above removes them. The final answer is `kind: 'message'`
+     * because that is what it is — the assistant speaking to the person — and
+     * it carries `prompt_mode: 'task_step'` because a goal run produced it.
+     *
+     * Measured on their two accounts, 21 September:
+     *
+     *   account   delivered   from task_step runs   of those kind=message
+     *   171870          164                    58                      52
+     *   171871           55                    22                      22
+     *
+     *   kind='step' rows in the database:        6 and 8
+     *   kind='step' rows reaching the client:    0 and 0
+     *
+     * Zero, on both, while the rows exist. The filter holds.
+     *
+     * If this is ever renamed, `run_mode` is the honest name. Not renamed now:
+     * the client reads this key and a rename is theirs to schedule, not a
+     * thing to do to them overnight.
+     */
     `SELECT page.*, s.mode AS prompt_mode, s.block_versions AS prompt_blocks
      FROM (
        -- Ticket 20 row 132, second pass: answered_by rides with the message.
