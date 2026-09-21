@@ -1,6 +1,5 @@
 import { query } from '../db/postgres/client';
 import { queueFollowUp } from './pendingUpdates.service';
-import { saveThreadMessage } from './threads.service';
 import { planInForce, TaskPlan } from './taskPlans.service';
 
 /**
@@ -10,10 +9,30 @@ import { planInForce, TaskPlan } from './taskPlans.service';
  *
  * Deterministic on purpose. The nightly wake is a model run and may say
  * anything; this is a ledger read, so what it says is what happened. It is
- * written into every open goal's own thread, so the goal is never silent for a
- * week, and queued once as a typed pending item, so the connector's
- * get_pending_updates carries it too (the tester's finding of 5 and 7 Sep:
- * nothing reached the connector unless a goal had a question).
+ * queued once as a typed pending item, so the connector's get_pending_updates
+ * carries it (the tester's finding of 5 and 7 Sep: nothing reached the
+ * connector unless a goal had a question).
+ *
+ * IT USED TO BE WRITTEN INTO EVERY OPEN GOAL'S THREAD TOO, „so the goal is
+ * never silent for a week". That sentence was mine and it does not survive
+ * contact with a real network.
+ *
+ * Lika, 21 September, 36 open goals. Between 06:00:13 and 06:00:22 UTC the
+ * same 9,607-character summary was written into 32 of her goal threads —
+ * **32 identical copies in nine seconds, about 307,000 characters into one
+ * person's chats in a minute.** The Monday before: eight copies of a 3,479
+ * character version, still sitting there. And she did not find it on the home
+ * screen at all; she found it by opening chats one at a time.
+ *
+ * The shape was wrong from the start, not merely at scale: a summary of ALL
+ * her goals, copied into EACH goal, is a message that is 97% about other
+ * goals in every thread it lands in. „Never silent for a week" was a real
+ * worry and this was the wrong answer to it — the silence it filled was
+ * filled with noise.
+ *
+ * So: ONE pending item and no thread writes. Whether the summary also deserves
+ * a place of its own on the screen is a product question, and it belongs to
+ * the frontend and Misho rather than to a loop in here.
  */
 
 const SUMMARY_QUERY_TIMEOUT_MS = 15_000;
@@ -190,15 +209,15 @@ async function summarisedRecently(userId: string): Promise<boolean> {
 }
 
 /**
- * Send one user's summary: into every open goal's thread, and once into the
- * pending list. Returns what was sent so an admin run can show it.
+ * Send one user's summary: ONCE, into the pending list. Returns what was sent
+ * so an admin run can show it.
+ *
+ * The per-goal thread write is gone — see the note at the top of this file.
+ * Nothing replaces it here on purpose: a second copy somewhere else would be
+ * the same mistake with a smaller number.
  */
 export async function sendWeeklySummary(userId: string): Promise<WeeklySummary> {
   const summary = await composeWeeklySummary(userId);
-  for (const goal of summary.goals) {
-    if (goal.thread_id === null) continue;
-    await saveThreadMessage(goal.thread_id, Number(userId), 'assistant', summary.text);
-  }
   await queueFollowUp(
     userId,
     null,

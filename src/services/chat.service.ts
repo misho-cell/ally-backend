@@ -928,17 +928,49 @@ const NOT_YET_LABEL = 'ჯერ არა';
 const STOP_LABEL = 'შევაჩეროთ';
 
 /**
- * Did the OWNER say this goal is solved?
+ * Row 207, and the fault was one word wide.
  *
- * The same shape as approvalBelongsToThePlan, and for the same reason: ticket
- * 19 G2 proved a `confirmed` flag cannot tell „they said yes to THIS" from
- * „they said yes to something". The model sets the flag; only the thread can
- * say what the owner was answering.
+ * `SOLVED_LABEL` is Georgian, and it was the ONLY word this guard knew. The
+ * assistant speaks the owner's language — it is told to, everywhere — so on an
+ * English thread it offers „Solved", the owner taps their own button, and the
+ * server does not recognise the word the product just put in front of them.
  *
- * Deliberately narrow. „ჯერ არა" and „შევაჩეროთ" are the other two buttons on
- * the same card, and neither is a yes — a rule that accepted anything typed
- * under a finish card would repeat G2's first pass exactly.
+ * MEASURED BY THE SEAT, 21 September, and it was they who separated it from my
+ * own wrong reading. I had told them a goal with an unapproved plan „cannot be
+ * closed at all"; the control was confounded, because the approved goal had
+ * been closed with „გადაწყდა" and the unapproved ones with „Solved".
+ *
+ *   English „Solved"      refused  8 of 8   (goals 7096 x3, 7063 x2, 7261 x2, 7294)
+ *   Georgian „გადაწყდა"   closed   4 of 4   (6667, 7261, 7294, 7096 — two approved, two not)
+ *
+ * The plan state had nothing to do with it.
+ *
+ * AND THE BARE YES WAS SHUT TOO, which is the half that is easy to miss: the
+ * „is a finish card on screen" test compared the offered labels against the
+ * same single Georgian string, so on an English thread even a plain „yes"
+ * could not be read as one. Both tests now use the same set of words.
+ *
+ * STILL DELIBERATELY NARROW. „ჯერ არა" / „Not yet" and „შევაჩეროთ" / „Pause"
+ * are the other two buttons on the same card and neither is a yes; a rule that
+ * accepted anything typed under a finish card would repeat G2's first pass.
  */
+const SOLVED_WORDS: readonly string[] = [
+  'გადაწყდა',
+  'მოგვარდა',
+  'solved',
+  'resolved',
+  'done',
+  'решено',
+  'решён',
+  'resuelto',
+];
+
+/** Is this label the finish card's YES, in whichever language it was offered? */
+function isSolvedLabel(label: string): boolean {
+  const words = wordsOf(label);
+  return SOLVED_WORDS.some((w) => words.includes(w));
+}
+
 export function ownerSaysSolved(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
@@ -946,13 +978,13 @@ export function ownerSaysSolved(
   const said = (lastOwnerMessage ?? '').trim();
   if (said === '') return false;
   if (TAKES_IT_BACK.test(said)) return false;
-  // The button itself, whatever else the sentence carries.
-  if (wordsOf(said).includes(SOLVED_LABEL.toLowerCase())) return true;
+  // The button itself, whatever else the sentence carries, in any of the
+  // languages the product offers it in.
+  if (isSolvedLabel(said)) return true;
   // A bare yes counts only while a finish card is the newest thing on screen —
-  // the same condition a plan's bare yes has to meet.
-  const finishCardOnScreen = (newestOfferedChoices ?? []).some(
-    (label) => label.trim() === SOLVED_LABEL,
-  );
+  // the same condition a plan's bare yes has to meet, and now recognised
+  // whatever language the card was drawn in.
+  const finishCardOnScreen = (newestOfferedChoices ?? []).some((label) => isSolvedLabel(label));
   return finishCardOnScreen && PLAN_YES.test(said);
 }
 
@@ -5695,9 +5727,11 @@ async function executeToolCall(
             closed: false,
             asked: true,
             error:
-              'Not closed: the owner has not said this is solved. Their last message was about ' +
-              `something else. Show what was achieved and offer „${SOLVED_LABEL}" / ` +
-              `„${NOT_YET_LABEL}" / „${STOP_LABEL}", and call this only after they answer THAT.`,
+              'NOT CLOSED — and do not tell them it is. The goal is still open. Their last ' +
+              'message was about something else, so nobody has said this is solved. Show what ' +
+              `was achieved and offer „${SOLVED_LABEL}" / „${NOT_YET_LABEL}" / „${STOP_LABEL}" ` +
+              '(in their language), and call this only after they answer THAT. Saying „closed" ' +
+              'now would be telling them something that did not happen.',
           };
         }
       }

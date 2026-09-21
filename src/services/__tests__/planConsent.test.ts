@@ -478,3 +478,59 @@ describe('row 156 — a yes already given is not erased by the next sentence', (
     expect(approvalBelongsToThePlan('ოკ', PLAN_CARD)).toBe(false);
   });
 });
+
+/**
+ * Row 207 — the guard knew ONE word, and the product speaks four languages.
+ *
+ * `SOLVED_LABEL` is Georgian. The assistant is told everywhere to speak the
+ * owner's language, so on an English thread it offers „Solved", the owner taps
+ * the button the product just drew for them, and the server does not recognise
+ * it.
+ *
+ * The seat separated this from my own wrong reading on 21 September. I had
+ * told them a goal whose plan was never approved „cannot be closed at all";
+ * the control was confounded — the approved goal had been closed with
+ * „გადაწყდა" and the unapproved ones with „Solved":
+ *
+ *   English „Solved"     refused  8 of 8   (7096 x3, 7063 x2, 7261 x2, 7294)
+ *   Georgian „გადაწყდა"  closed   4 of 4   (6667, 7261, 7294, 7096)
+ *
+ * Two approved and two not among the four that closed. The plan state had
+ * nothing to do with it.
+ */
+describe('the finish card closes in the language it was offered in', () => {
+  const EN_CARD = ['Solved', 'Not yet', "Let's pause it"];
+  const RU_CARD = ['Решено', 'Ещё нет', 'Приостановим'];
+
+  it.each([
+    ['Solved', EN_CARD],
+    ['solved', EN_CARD],
+    ['Решено', RU_CARD],
+  ])('„%s" closes it', (said, card) => {
+    expect(ownerSaysSolved(said, card)).toBe(true);
+  });
+
+  /**
+   * The half that is easy to miss: the „is a finish card on screen" test
+   * compared the offered labels against the same single Georgian string, so on
+   * an English thread even a plain „yes" could not be read as one.
+   */
+  it('lets a bare yes through under an ENGLISH finish card', () => {
+    expect(ownerSaysSolved('yes', EN_CARD)).toBe(true);
+    expect(ownerSaysSolved('ok', EN_CARD)).toBe(true);
+  });
+
+  /** Still narrow: the other two buttons on the same card are not a yes. */
+  it.each([
+    ['Not yet', EN_CARD],
+    ["Let's pause it", EN_CARD],
+    ['Ещё нет', RU_CARD],
+  ])('„%s" does not close it', (said, card) => {
+    expect(ownerSaysSolved(said, card)).toBe(false);
+  });
+
+  /** And a bare yes with no finish card on screen is still not one. */
+  it('a bare yes under something else is still refused', () => {
+    expect(ownerSaysSolved('yes', ['Approve', 'Change it'])).toBe(false);
+  });
+});

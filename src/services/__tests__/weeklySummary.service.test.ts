@@ -82,7 +82,21 @@ describe('the words of the weekly summary', () => {
 });
 
 describe('sending it', () => {
-  it('writes into every open goal thread and once into the pending list', async () => {
+  /**
+   * IT USED TO WRITE INTO EVERY OPEN GOAL THREAD, and this test asserted it.
+   *
+   * Lika, 21 September, 36 open goals: the same 9,607-character summary
+   * written into 32 of her goal threads between 06:00:13 and 06:00:22 —
+   * 32 identical copies in nine seconds, about 307,000 characters into one
+   * person's chats in a minute. She did not find it on the home screen at all;
+   * she found it by opening chats one at a time.
+   *
+   * The shape was wrong before it was big: a summary of ALL her goals copied
+   * into EACH goal is a message that is 97% about other goals in every thread
+   * it lands in. „Never silent for a week" was a real worry and this was the
+   * wrong answer to it — the silence got filled with noise.
+   */
+  it('goes ONCE into the pending list and into no goal thread at all', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM tasks t'))
         return Promise.resolve({
@@ -127,8 +141,9 @@ describe('sending it', () => {
 
     expect(out.goals).toHaveLength(2);
     expect(out.tokens_spent).toBe(17);
-    expect(saveThreadMessage).toHaveBeenCalledTimes(2);
-    expect((saveThreadMessage as jest.Mock).mock.calls.map((c) => c[0])).toEqual([9698, 9406]);
+    // Not once, not into the newest one, not anywhere: a second copy
+    // somewhere else would be the same mistake with a smaller number.
+    expect(saveThreadMessage).not.toHaveBeenCalled();
     expect(queueFollowUp).toHaveBeenCalledTimes(1);
     const [userId, taskId, kind, payload, delay] = (queueFollowUp as jest.Mock).mock.calls[0];
     expect([userId, taskId, kind, delay]).toEqual(['501', null, WEEKLY_SUMMARY_KIND, 0]);
