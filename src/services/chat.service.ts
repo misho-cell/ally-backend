@@ -492,7 +492,14 @@ const GET_INTRO_STATUS_TOOL: AnthropicTool = {
     'to and when. Answer FROM this result — never from thread ' +
     'text or memory: statuses change between turns. An empty list means nothing was FOUND, ' +
     'which is not the same as nothing having happened — say what you searched, never that it ' +
-    'did not happen.',
+    'did not happen. ' +
+    'HOW THE CONNECTION WAS MADE IS A SEPARATE FACT FROM WHO ANSWERED, and confusing them ' +
+    'tells the owner something untrue about a third person: `contact_handed_over: true` means ' +
+    'the mediator gave the contact over and the owner may write themselves; `false` means the ' +
+    'mediator chose to stay in the middle — do NOT say the owner can reach them directly; ' +
+    '`null` means nobody has said, which is not permission either way. ' +
+    '`answered_by_the_person_themselves` is a different thing again — it only means there was ' +
+    'no go-between on the REQUEST, and it says nothing about the channel.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 

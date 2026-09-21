@@ -200,7 +200,39 @@ export interface IntroStatusRow {
   response: string | null;
   asked_at: string;
   responded_at: string | null;
-  direct: boolean;
+  /**
+   * There was no go-between: the person the owner wanted to meet answered for
+   * themselves. RENAMED from `direct`, which is the whole point of this change.
+   *
+   * The seat's 407 §5b: an hour after mediator 171870 chose `via_mediator` on
+   * request 1289 — staying in the middle, no number passed on — the assistant
+   * told the owner that person „will connect you directly". The outcome
+   * message on the request's own thread had said it correctly; the plan was
+   * written in a DIFFERENT thread, and there the model had this tool's result
+   * and a field called `direct`.
+   *
+   * It read the obvious way. `direct` meant „nobody is in the middle of the
+   * REQUEST"; it was taken to mean „the connection will be direct", which is
+   * the channel — a different fact, and the one that is somebody else's
+   * decision about their own privacy.
+   */
+  answered_by_the_person_themselves: boolean;
+  /**
+   * Row 223's answer, finally readable: did the mediator hand the contact over
+   * (`direct`), or keep the connection through themselves (`via_mediator`)?
+   *
+   * NULL is not „no". It is „nobody has said" — the request is unanswered, or
+   * it was answered before the channel was ever recorded. On NULL the owner
+   * must not be told either thing.
+   */
+  intro_channel: string | null;
+  /**
+   * The one question the model is actually asking when it writes a next step:
+   * may I tell the owner they can reach this person themselves? True only on a
+   * recorded `direct`; false on a recorded `via_mediator`; null when nobody
+   * has said, which is not permission.
+   */
+  contact_handed_over: boolean | null;
 }
 
 /**
@@ -219,7 +251,10 @@ export async function getIntroStatusForRequester(
             ir.mediator_response AS response,
             ir.created_at AS asked_at,
             ir.responded_at,
-            (ir.mediator_user_id IS NULL) AS direct
+            (ir.mediator_user_id IS NULL) AS answered_by_the_person_themselves,
+            ir.intro_channel,
+            CASE WHEN ir.intro_channel IS NULL THEN NULL
+                 ELSE ir.intro_channel = 'direct' END AS contact_handed_over
      FROM introduction_requests ir
      LEFT JOIN "User" m ON m.id = ir.mediator_user_id
      WHERE ir.requester_user_id = $1
