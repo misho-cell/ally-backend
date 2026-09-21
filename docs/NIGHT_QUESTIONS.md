@@ -63,6 +63,17 @@ full one.
 
 ### 2. What is NOT on this list, said so it is not looked for
 
+**Lika saw an error yesterday evening and one of my deploys caused it.**
+Information, not a decision, and it is here because a real person hitting a
+failure should not reach Misho only if he happens to ask. At 21:42:02 an engine
+run started on her thread; my deploy's SIGTERM landed eighteen seconds later;
+she read „ტექნიკური შეფერხება მოხდა". The shutdown drain reported **„0 run(s)
+in flight" while cutting hers in half** — it counted chat runs only and had
+never been able to see an engine run at all. Fixed and deployed tonight
+(`e0bb608`), with a test that fails if a new run path forgets to register.
+**Nothing is wanted from Misho.** If he wants to tell her anything, the fact is
+that her run was lost to a deploy of mine and not to anything she did.
+
 The 59,111 „Undefined" alias rows: **I decided not to delete them** and that
 is not a question. Irreversible, zero gain now that the reader ignores them,
 and real people's saved labels.
