@@ -174,7 +174,21 @@ describe('search_roster — the one search past the phonebook', () => {
       expect(jaba?.route).toBe('invite_contact');
       const lika = out.results.find((r) => r.name === 'Lika Ose');
       expect(lika?.is_member).toBe(true);
-      expect(lika?.route).toBe('ask_contact');
+      /**
+       * Row 234. This used to read `ask_contact`, and the seat caught it on a
+       * live page — nine members of nine carrying the old word, hours after
+       * the descriptions had been rewritten to say an introduction never goes
+       * through ask_contact. A response is read at the moment the model picks
+       * its next call, so it beats the description; fixing the sentence and
+       * leaving the data fixes the half nobody obeys.
+       *
+       * Two fields now, because one scalar cannot be honest: the row does not
+       * know whether the user wants to MEET this person or ASK them something.
+       */
+      expect(lika?.route).toBe('request_introduction');
+      expect(lika?.ask_route).toBe('ask_contact');
+      // And a non-member has no ask route at all — nothing reaches them.
+      expect(jaba?.ask_route).toBeUndefined();
     }
   });
 

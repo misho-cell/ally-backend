@@ -19,8 +19,24 @@ export interface RosterSearchRow {
   group: string;
   is_member: boolean;
   account_state: 'netai_user' | 'ally_account' | 'none';
-  /** Shows the ask route only for a Netai user; the invite route otherwise. */
-  route: 'ask_contact' | 'invite_contact';
+  /**
+   * How to REACH this person — row 234, and the reason it is two fields now.
+   *
+   * It used to be one scalar reading `ask_contact` for every member, and on
+   * 21 September the seat read a live page: nine members of nine, all
+   * `ask_contact`, hours after the descriptions had been rewritten to say that
+   * an introduction never goes through `ask_contact`. Their point is the whole
+   * lesson: **the response is read at the moment the model picks its next
+   * call, so it wins over the description.** Fixing the sentence and leaving
+   * the data is fixing the half nobody obeys.
+   *
+   * One scalar cannot be honest here, because the row does not know what the
+   * user wants. To MEET this person is an introduction; to ASK them something
+   * is a question. So the row states both facts and chooses neither.
+   */
+  route: 'request_introduction' | 'invite_contact';
+  /** Present only for a member: the route if the user wants to ASK, not meet. */
+  ask_route?: 'ask_contact';
 }
 
 export type RosterSearchOutcome =
@@ -147,6 +163,7 @@ function toRow(m: RosterMember): RosterSearchRow {
     group: m.group,
     is_member: m.on_netai,
     account_state: state,
-    route: m.on_netai ? 'ask_contact' : 'invite_contact',
+    route: m.on_netai ? 'request_introduction' : 'invite_contact',
+    ...(m.on_netai ? { ask_route: 'ask_contact' as const } : {}),
   };
 }

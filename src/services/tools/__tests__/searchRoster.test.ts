@@ -132,3 +132,47 @@ describe('the roster cap stops lying about the total', () => {
     expect(out.results.some((r) => r.phone === '+995555000001')).toBe(false);
   });
 });
+
+/**
+ * Row 234 — the descriptions were fixed and the DATA was not.
+ *
+ * The seat read a live roster page on 21 September, hours after dd8f05c: nine
+ * members of nine carrying `route: "ask_contact"`, while the tool's own
+ * description said an introduction never goes through ask_contact. Their
+ * sentence is the lesson and it is worth keeping in a test: **the response is
+ * read at the moment the model picks its next call, so it wins over the
+ * description.** Fixing the text and leaving the field fixes the half nobody
+ * obeys — the same shape as the guard that lived in the chat tool while the
+ * mediator pressed the app's button.
+ */
+describe('the row says what the description says', () => {
+  it('sends a member to request_introduction, never to ask_contact alone', async () => {
+    const out = await searchRoster(USER, 'Axel');
+    if (!out.found) throw new Error('expected a roster');
+    for (const row of out.results.filter((r) => r.is_member)) {
+      expect(row.route).toBe('request_introduction');
+    }
+  });
+
+  /**
+   * And it does not lose the question case by choosing. One scalar cannot be
+   * honest here: the row does not know whether the user wants to MEET this
+   * person or to ASK them something, so it states both and chooses neither.
+   */
+  it('still offers ask_contact for a member, as a separate named field', async () => {
+    const out = await searchRoster(USER, 'Axel');
+    if (!out.found) throw new Error('expected a roster');
+    for (const row of out.results.filter((r) => r.is_member)) {
+      expect(row.ask_route).toBe('ask_contact');
+    }
+  });
+
+  it('gives a non-member no ask route at all — nothing reaches them', async () => {
+    const out = await searchRoster(USER, 'Axel');
+    if (!out.found) throw new Error('expected a roster');
+    for (const row of out.results.filter((r) => !r.is_member)) {
+      expect(row.route).toBe('invite_contact');
+      expect(row.ask_route).toBeUndefined();
+    }
+  });
+});

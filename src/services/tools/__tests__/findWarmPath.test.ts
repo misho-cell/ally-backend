@@ -85,6 +85,21 @@ describe('findWarmPath', () => {
     ]);
     expect(out.paths[1].bridges[0].account_state).toBe('ally_account');
     expect(out.note).toContain('relay_ask');
+
+    /**
+     * Row 234 — the note is served in the RESPONSE, and a response is read at
+     * the moment the model picks its next call, so it beats the description.
+     * It said „write to the FIRST bridge with ask_contact" for hours after the
+     * description had been rewritten to say the opposite, and the seat caught
+     * it on a live one-hop path.
+     */
+    expect(out.note).toContain('that is an introduction and goes through request_introduction');
+    expect(out.note).toContain('never ask_contact');
+    // And the distinction the description keeps: requestIntroduction resolves
+    // the mediator out of the REQUESTER's own aliases, so only the first
+    // bridge is addressable and the hops beyond it still need ask_contact.
+    expect(out.note).toContain('On a LONGER path, ask_contact the first bridge');
+    expect(out.note).not.toContain('write to the FIRST bridge with ask_contact');
   });
 
   it('walks the graph point-to-point, directed, capped at three hops', async () => {

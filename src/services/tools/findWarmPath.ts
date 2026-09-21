@@ -59,11 +59,27 @@ export type WarmPathOutcome =
       note: string;
     };
 
+/**
+ * Row 234 — this note is served in the RESPONSE, and a response is read at the
+ * moment the model picks its next call. It said „write to the FIRST bridge
+ * with ask_contact" for hours after the tool's own description had been
+ * rewritten to say the opposite, and the description was never going to win
+ * that argument.
+ *
+ * Now it says what the description says, and it keeps the distinction the
+ * description keeps: `requestIntroduction` resolves the mediator out of the
+ * REQUESTER's own aliases, so it can be addressed to the first bridge and to
+ * nobody further along the chain.
+ */
 const CONSENT_NOTE =
-  'Each bridge is asked before the request passes on: write to the FIRST bridge with ' +
-  'ask_contact (they are a direct contact), and their assistant relays to the next with ' +
-  'their consent (relay_ask). A path with relayable:false has a bridge who is not on Netai — ' +
-  'the chain stops there; offer the user an invite for that person or the next path. ' +
+  'Each bridge is asked before the request passes on. When the FIRST bridge can reach the ' +
+  'target themselves (hops: 1), that is an introduction and goes through request_introduction ' +
+  '— never ask_contact, which files it as an ordinary question and connects nobody. On a ' +
+  'LONGER path, ask_contact the first bridge for the hops in between, because ' +
+  'request_introduction can only be addressed to the user’s own contact and the second and ' +
+  'third bridges are not; their assistant relays onward with their consent (relay_ask). ' +
+  'A path with relayable:false has a bridge who is not on Netai — the chain stops there; ' +
+  'offer the user an invite for that person or the next path. ' +
   'Name the bridges to the user; never a number.';
 
 interface PathRow {
