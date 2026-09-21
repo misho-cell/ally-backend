@@ -623,14 +623,43 @@ export async function getThreadMessages(
   threadId: number,
   opts: ThreadMessageOptions = {},
 ): Promise<ThreadMessage[]> {
-  // Step rows are live-run narration (kept in the DB as timeout-salvage
-  // material) — in the chat view they read as the assistant saying almost the
-  // same thing twice (ticket 3 §6.2: a step at 07:49:11 and the final message
-  // at 07:49:20 in thread 7921). 'event' rows are engine turns written FOR THE
-  // MODEL — tags, tool instructions and all (ticket 4 item 0C.2). Neither
-  // belongs in a chat; the admin window keeps both for word-for-word
-  // inspection.
-  const kindFilter = opts.includeSteps ? '' : ` AND kind NOT IN ('step', 'event')`;
+  /**
+   * Step rows are live-run narration (kept in the DB as timeout-salvage
+   * material) — in the chat view they read as the assistant saying almost the
+   * same thing twice (ticket 3 §6.2: a step at 07:49:11 and the final message
+   * at 07:49:20 in thread 7921). 'event' rows are engine turns written FOR THE
+   * MODEL — tags, tool instructions and all (ticket 4 item 0C.2). Neither
+   * belongs in a chat; the admin window keeps both for word-for-word
+   * inspection.
+   *
+   * ROW 204 — AN ALLOWLIST, AND IT USED TO BE A DENYLIST.
+   *
+   * `kind NOT IN ('step', 'event')` shows anything it has not been told to
+   * hide, so **a kind nobody remembered to add appears in every chat by
+   * default**, and nothing fails until a person reads it. That is this row's
+   * pattern exactly: a rule that reads part of the picture and answers with
+   * confidence.
+   *
+   * It is not hypothetical. §20 in the admin register is 26 engine turns
+   * sitting in the founder's chat as ordinary messages, from the hour before
+   * the `event` kind existed — the row was internal, the filter had no word
+   * for it, and so it was drawn.
+   *
+   * Turned round, the failure mode turns round with it: a new internal kind is
+   * hidden until somebody decides it should be seen. A kind wrongly hidden is
+   * a bug the person who added it notices; a kind wrongly shown is other
+   * people's text in somebody's chat.
+   *
+   * SAFE BECAUSE IT WAS COUNTED, not because it looks safe. Every kind in the
+   * table, 21 September: message 36,544 · step 3,483 · event 960 ·
+   * pending 218 · error 74. Five, and the three below are exactly the three
+   * written FOR A PERSON — `pending` is the updates card („6 more are waiting")
+   * and `error` is a failure the owner is owed. Nothing existing disappears.
+   */
+  const SHOWN_TO_A_PERSON = ['message', 'pending', 'error'];
+  const kindFilter = opts.includeSteps
+    ? ''
+    : ` AND kind IN (${SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ')})`;
   const limit =
     opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_MESSAGE_PAGE);
   // The cursor clause is BUILT, not NULL-tricked: conversations.id is a UUID
