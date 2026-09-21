@@ -1,3 +1,10 @@
+// The collapse is a database read and this file is about the roster's own
+// logic, so it is stubbed to "nothing is merged" — the state of almost every
+// roster. Its own behaviour is held in rosterOnePersonOneRow.test.ts.
+jest.mock('../mergedIdentities', () => ({
+  __esModule: true,
+  collapseMergedPhones: jest.fn(async (rows: unknown[]) => ({ rows, collapsed: 0 })),
+}));
 jest.mock('../../roster.service', () => ({
   __esModule: true,
   rosterMembers: jest.fn(),

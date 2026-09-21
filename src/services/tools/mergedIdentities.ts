@@ -29,9 +29,22 @@ const MERGE_LOOKUP_TIMEOUT_MS = 5_000;
 // goes back to one row per number without a deploy.
 const MERGED_READS_OFF = process.env.IDENTITY_MERGED_READS === 'off';
 
+/**
+ * All a row needs to be collapsible: a phone to look up, and room for the two
+ * marks a collapse leaves behind.
+ *
+ * It used to carry `[key: string]: unknown` as well, which made every caller's
+ * row type an open bag — a precisely typed payload (RosterSearchRow) could not
+ * be passed at all, which is how the roster ended up as the one search that
+ * never collapsed. The index signature was never needed: the only keys this
+ * file writes are the two below.
+ */
 export interface MergeablePhoneRow {
   phone?: unknown;
-  [key: string]: unknown;
+  /** How many further numbers of this person folded into this row. */
+  also_known_numbers?: number;
+  /** Said in words, because a bare count invites the model to ask which one. */
+  same_person_note?: string;
 }
 
 /**

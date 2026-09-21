@@ -1,4 +1,5 @@
 import { filterRoster, isOnRoster, rosterMembers, RosterMember } from '../roster.service';
+import { collapseMergedPhones } from './mergedIdentities';
 
 /**
  * Find a fellow member of a named network to write to (Ticket 10 Task 23,
@@ -37,6 +38,10 @@ export interface RosterSearchRow {
   route: 'request_introduction' | 'invite_contact';
   /** Present only for a member: the route if the user wants to ASK, not meet. */
   ask_route?: 'ask_contact';
+  /** Set when other numbers of this same person folded into this row. */
+  also_known_numbers?: number;
+  /** The sentence that goes with that count, so it is not read as two people. */
+  same_person_note?: string;
 }
 
 export type RosterSearchOutcome =
@@ -137,12 +142,38 @@ export async function searchRoster(
    * truncated answer carries a sentence saying so — because a model cannot be
    * expected to infer a ceiling from a round number.
    */
+  /**
+   * ONE PERSON, ONE ROW — the last search that was still missing this.
+   *
+   * The seat, 21 September: on the founder's own Axel roster one man came back
+   * as THREE rows — the same name, three contact refs, two `account_state:
+   * none` and one `ally_account` — and the count read 107 for a list of about
+   * a hundred people. `search_by_tag`, `search_contact_by_name` and
+   * `search_second_degree` have all collapsed merged numbers since Ticket 16
+   * Task 23; this one never did, and nobody noticed because the roster is the
+   * search nobody runs.
+   *
+   * Measured on the live Axel roster the same evening: 108 rows, of which 9
+   * carry a `person_identities` row and those 9 are 8 people — so this removes
+   * one duplicate today and every pair the founder approves from now on.
+   *
+   * IT DOES NOT FIX THE ONE THE SEAT SAW, and saying so is the point. Those
+   * three numbers are not merged; nobody has reviewed them. They are three
+   * rows because the identity queue has 2,156 pairs waiting, not because this
+   * search forgot to look. Collapsing here is right on its own terms and is
+   * not that fix.
+   *
+   * After the cap, deliberately: the cap keeps Netai users first, and a
+   * collapse that ran before it could drop the reachable row of a pair and
+   * keep the unreachable one.
+   */
+  const collapsed = await collapseMergedPhones(matched.map(toRow));
   const truncated = everyone.length > matched.length;
   return {
     found: true,
     group: trimmed,
     count: everyone.length,
-    shown: matched.length,
+    shown: collapsed.rows.length,
     ...(truncated && {
       note:
         `${everyone.length} people on the ${trimmed} roster match and only ${matched.length} are ` +
@@ -150,7 +181,7 @@ export async function searchRoster(
         'the number of rows as a total. Narrow it with a `name` and ask again. Netai users are ' +
         'listed first, so the ones who can actually be asked are not the ones dropped.',
     }),
-    results: matched.map(toRow),
+    results: collapsed.rows,
   };
 }
 
