@@ -8912,7 +8912,23 @@ export async function processChat(
   // Scrubbed HERE, once, so the stored row and the SSE event carry the same
   // bytes by construction. They reach the client by two different paths and
   // only one of them used to scrub; see toDisplayText for why that mattered.
-  const shareTextRaw = replySafe ? takeShareText(runId) : undefined;
+  /**
+   * TAKEN UNCONDITIONALLY, USED ONLY IF THE REPLY SURVIVED. 21 September.
+   *
+   * This read `replySafe ? takeShareText(runId) : undefined`, so a BLOCKED
+   * reply never called the take — and `takeShareText` is the thing that
+   * deletes the entry. The two lines below it say the discipline out loud:
+   * „read-and-forget, so the flag can never reach the next run". This one
+   * forgot only when the reply was safe.
+   *
+   * It is a leak and not a leak of data: the map is keyed by `runId`, so no
+   * other run can reach the orphan, and there have been six blocked replies
+   * since August. Nothing is at risk. What was wrong is a read-and-forget
+   * that forgets conditionally sitting next to two that do not — the next
+   * person to add an attachment here would have copied the wrong one.
+   */
+  const shareTextHeld = takeShareText(runId);
+  const shareTextRaw = replySafe ? shareTextHeld : undefined;
   const shareText = shareTextRaw === undefined ? undefined : toDisplayText(shareTextRaw);
   /**
    * Ticket 20 row 33 — a goal split out of an old chat opened empty and read
