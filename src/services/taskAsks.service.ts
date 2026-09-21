@@ -1102,7 +1102,10 @@ async function deliverCapturedAnswer(
       // eslint-disable-next-line no-console
       console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
     }
-    if (relay) await thankTheBridge(relay, captured.fromName);
+    if (relay) {
+      await closeTheBridgesOwnAsk(relay.parentAskId);
+      await thankTheBridge(relay, captured.fromName);
+    }
   }
 }
 
@@ -1117,6 +1120,8 @@ async function deliverCapturedAnswer(
  * Null when the answered ask was not a relay, which is the ordinary case.
  */
 interface RelayShape {
+  /** The bridge's OWN ask — the one that is still open until this is closed. */
+  readonly parentAskId: number;
   readonly bridgeUserId: number;
   readonly bridgeThreadId: number | null;
   readonly bridgeName: string | null;
@@ -1124,11 +1129,13 @@ interface RelayShape {
 
 async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
   const result = await query<{
+    parent_ask_id: number;
     bridge_user_id: number;
     bridge_thread_id: number | null;
     bridge_name: string | null;
   }>(
-    `SELECT p.to_user_id   AS bridge_user_id,
+    `SELECT p.id           AS parent_ask_id,
+            p.to_user_id   AS bridge_user_id,
             p.ask_thread_id AS bridge_thread_id,
             b.name          AS bridge_name
        FROM task_asks c
@@ -1148,10 +1155,58 @@ async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
   const row = result?.rows[0];
   if (!row || row.bridge_thread_id === null) return null;
   return {
+    parentAskId: row.parent_ask_id,
     bridgeUserId: row.bridge_user_id,
     bridgeThreadId: row.bridge_thread_id,
     bridgeName: row.bridge_name,
   };
+}
+
+/**
+ * The bridge's own ask is finished the moment the relay it started is answered.
+ *
+ * FOUND BY THE SEAT, 21 September, in their 387, as a question rather than a
+ * claim: „ask 3071 is still `sent`, `answered_at` NULL — after its recipient
+ * answered, after the relay it spawned completed, and after the requester was
+ * told." It is two of two: ask 2609 (19 September) is in the same state.
+ *
+ * WHY IT MATTERS, and it is worse than an untidy row. `getPendingAsksForUser`
+ * selects `status = 'sent'`, so the BRIDGE goes on being shown a question
+ * waiting for them — forever, on a thing they already helped with. They said
+ * „ask Erekle", the relay went, Erekle answered, the asker was told, and the
+ * product keeps telling the bridge somebody is waiting on them.
+ *
+ * WHY `answered` AND NOT A NEW STATUS. There are three — `sent`, `answered`,
+ * `cancelled` — and six readers. `cancelled` would be a lie (nothing was
+ * stopped) and a fourth status is a migration plus every one of those readers.
+ * The word here means RESOLVED, not „the bridge typed an answer": the answer
+ * column stays NULL on purpose, because C's words are C's and writing them
+ * into B's ask would say B said them.
+ *
+ * AND `wake_delivered_at` IS SET IN THE SAME STATEMENT, which is the part that
+ * would have bitten. `listUnwokenAnswers` picks up every row with
+ * `status = 'answered' AND answered_at IS NOT NULL AND wake_delivered_at IS
+ * NULL` and delivers its answer — so marking the parent answered WITHOUT this
+ * would hand the backstop sweep a row whose answer is NULL, and wake the
+ * asker's goal with nothing in it. The wake genuinely did happen; it happened
+ * through the child.
+ *
+ * Best-effort, like the thank-you beside it: the asker's answer is already on
+ * its way and must not be lost to a tidy-up failing.
+ */
+async function closeTheBridgesOwnAsk(parentAskId: number): Promise<void> {
+  await query(
+    `UPDATE task_asks
+     SET status = 'answered',
+         answered_at = COALESCE(answered_at, NOW()),
+         wake_delivered_at = COALESCE(wake_delivered_at, NOW())
+     WHERE id = $1 AND status = 'sent'`,
+    [parentAskId],
+    ASK_QUERY_TIMEOUT_MS,
+  ).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[relay-close] could not close the bridge’s own ask:', (err as Error).message),
+  );
 }
 
 /**
