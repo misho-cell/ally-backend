@@ -12,7 +12,13 @@ import {
   THING_WORDS,
   TRADE_WORDS,
 } from './labelDictionaries';
-import { companyWordShare, isCompanyWordShare, isNameToken } from './labelReader.service';
+import {
+  companyWordShare,
+  isCompanyWordShare,
+  isNameToken,
+  isShortPlaceOrThingWord,
+  isShortDictionaryWord,
+} from './labelReader.service';
 import { findUnmetNeeds, UnmetNeed } from './unmetNeeds.service';
 import { multiplierFor, outcomeLearning } from './outcomeLearning.service';
 import { basePool } from './basePool.service';
@@ -937,7 +943,13 @@ function nameTokens(label: string): string[] {
         !containsAny(token, RELATIONSHIP_WORDS) &&
         !containsAny(token, PLACE_WORDS) &&
         !containsAny(token, THING_WORDS) &&
-        !containsAny(token, TRADE_WORDS),
+        !containsAny(token, TRADE_WORDS) &&
+        // 21 September. The SHORT lists — „deda", „mama", „bebo", „saxli",
+        // „gori", „babu" — are matched as a whole token, never as a substring,
+        // and until today only `classifyToken` asked them. 33,580 contacts
+        // whose ENTIRE label is one of these words were counted here as a
+        // person whose name is „mother". See `isShortDictionaryWord`.
+        !isShortDictionaryWord(token),
     );
 }
 
@@ -1197,7 +1209,14 @@ async function analyzeAliases(phones: string[]): Promise<Map<string, AliasAnalys
     }
     const dominantIsPlaceOrThing =
       dominantLabel !== null &&
-      (containsAny(dominantLabel, PLACE_WORDS) || containsAny(dominantLabel, THING_WORDS));
+      (containsAny(dominantLabel, PLACE_WORDS) ||
+        containsAny(dominantLabel, THING_WORDS) ||
+        // The short words, asked as whole tokens — „saxli" 526, „manqana" 400,
+        // „gori" 83 as the entire label. A house, a car and a town are what
+        // this gate is for, and until today it could not see them. The
+        // RELATION words are deliberately not asked here: a mother is a
+        // person.
+        tokenize(dominantLabel).some(isShortPlaceOrThingWord));
 
     const someoneAgreesOnAName = Array.from(nameContributors.values()).some(
       (contributors) => contributors.size >= 2,

@@ -1,7 +1,13 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { classifyToken, isNameToken, readLabels } from '../labelReader.service';
+import {
+  classifyToken,
+  isNameToken,
+  isShortDictionaryWord,
+  isShortPlaceOrThingWord,
+  readLabels,
+} from '../labelReader.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -657,6 +663,48 @@ describe('the trades, relations and places the base still called companies', () 
     expect(classifyToken('bebia', false)).toBe('relation');
     expect(classifyToken('goris', false)).toBe('place');
     expect(classifyToken('dididze', false)).toBe('name');
+  });
+
+  /**
+   * ONE LIST, READ BY EVERYTHING — the 16 September ruling, and this is the
+   * third time it has had to be enforced rather than assumed.
+   *
+   * The SHORT lists and `matchesAnchored` went in on 20 September and only
+   * `classifyToken` was taught to ask them. `targetScoring`'s `nameTokens`
+   * reads the LONG lists with a substring match, so every word the anchored
+   * tier exists for walked past it and counted as part of a person's name —
+   * 33,580 contacts whose whole label is „deda", „mama", „saxli", „gori".
+   * Only „დედა" was caught, and by accident: „და" (sister) sits inside it.
+   *
+   * These two exports are what the other readers now ask. The test is here so
+   * that widening a SHORT list can never again reach one consumer and not the
+   * others.
+   */
+  it('answers the short lists for every reader, and not by substring', () => {
+    for (const t of ['deda', 'დედა', 'mama', 'bebo', 'babu', 'papa', 'saxli', 'gori']) {
+      expect(isShortDictionaryWord(t)).toBe(true);
+    }
+    // The case ending comes through; the family name does not.
+    expect(isShortDictionaryWord('goris')).toBe(true);
+    expect(isShortDictionaryWord('mamardashvili')).toBe(false);
+    expect(isShortDictionaryWord('papava')).toBe(false);
+    expect(isShortDictionaryWord('igori')).toBe(false);
+  });
+
+  /**
+   * The narrower question, and the narrowing decides who stays on the target
+   * list. „saxli" is a house and the `place_or_thing` gate should drop it;
+   * „deda" is a mother, who is a person, and dropping her would be the gate
+   * doing harm.
+   */
+  it('separates a house from a mother, because one of them is a person', () => {
+    for (const t of ['saxli', 'სახლი', 'manqana', 'aveji', 'gori']) {
+      expect(isShortPlaceOrThingWord(t)).toBe(true);
+    }
+    for (const t of ['deda', 'mama', 'bebia', 'babu', 'papa']) {
+      expect(isShortPlaceOrThingWord(t)).toBe(false);
+      expect(isShortDictionaryWord(t)).toBe(true);
+    }
   });
 
   it('reads the six new names and still refuses the car wash and the market', () => {

@@ -237,6 +237,52 @@ function matchesAnchored(token: string, words: readonly string[]): boolean {
 }
 
 /**
+ * The three SHORT lists as one question, because both readers want the same
+ * one: is this token a grandmother, a house or a town rather than a word?
+ *
+ * EXPORTED ON 21 SEPTEMBER, and the reason is the whole of the 16 September
+ * ruling: one list, read by everything, never a private copy.
+ *
+ * `matchesAnchored` and the SHORT lists went in on 20 September, and only
+ * `classifyToken` was taught to ask them. `targetScoring`'s `nameTokens`
+ * reads the LONG lists with a substring match and nothing else — so every
+ * word the anchored tier exists for walked straight past it and was counted
+ * as part of somebody's name. Measured whole-base, contacts whose ENTIRE
+ * label is one of those words:
+ *
+ *   deda 7,160 · mama 6,046 · დედა 5,170 · მამა 4,348 · bebo 2,186
+ *   ბებო 1,574 · babu 1,011 · papa 945 · პაპა 721 · ბებია 674 · bebia 619
+ *   ბაბუ 542 · saxli 526 · manqana 400 · მანქანა 368 · ძია 283 · სახლი 275
+ *   dzia 217 · ავეჯი 208 · aveji 174 · gori 83 · გორი 50
+ *
+ * **33,580 people**, every one of them read by the target engine as a person
+ * whose name is „mother". Only „დედა" was caught, and by accident — the word
+ * „და" (sister) sits inside it.
+ *
+ * It cannot be a plain substring match here any more than it can there:
+ * „mama" inside „Mamardashvili" is the failure the anchored rule was written
+ * for. So the rule travels with the lists instead of the lists travelling
+ * alone.
+ */
+export function isShortDictionaryWord(token: string): boolean {
+  return matchesAnchored(token, SHORT_RELATION_WORDS) || isShortPlaceOrThingWord(token);
+}
+
+/**
+ * The same question narrowed to a PLACE or a THING, and the narrowing is the
+ * point: the two are used for different decisions.
+ *
+ * `nameTokens` wants all three lists, because „deda" is not part of anybody's
+ * name. The `place_or_thing` exclusion wants only these two, because a mother
+ * IS a person and excluding her from the target list would be wrong — while
+ * „saxli" (526 people), „manqana" (400) and „gori" (83) are a house, a car and
+ * a town, which is exactly what that gate exists to drop.
+ */
+export function isShortPlaceOrThingWord(token: string): boolean {
+  return matchesAnchored(token, SHORT_PLACE_WORDS) || matchesAnchored(token, SHORT_THING_WORDS);
+}
+
+/**
  * L1: is this token the person's NAME?
  *
  * Three ways, in order of certainty: the founder's first-name list, a

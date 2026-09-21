@@ -8,6 +8,7 @@ import {
   COMPANY_MARKERS,
   RELATIONSHIP_WORDS,
 } from './labelDictionaries';
+import { isShortDictionaryWord } from './labelReader.service';
 import { normalizePhone } from './phone';
 
 const IDENTITY_QUERY_TIMEOUT_MS = 30_000;
@@ -669,6 +670,13 @@ const JUNK_WORDS: readonly string[] = [
 const JUNK_STEM_MIN_CHARS = 5;
 
 function isJunkWord(token: string): boolean {
+  // 21 September — the SHORT lists, asked first. They are four and five
+  // characters, so `JUNK_STEM_MIN_CHARS` refuses them the stem rule and only
+  // an exact spelling would have matched: „deda" yes, „dedis" no. The anchored
+  // rule handles the case ending and refuses „Mamardashvili", which is why the
+  // question is asked THERE and not copied here. A bare „deda" was already
+  // rejected by the one-word rule below; „sabas babu dedis mxridan" was not.
+  if (isShortDictionaryWord(token)) return true;
   return JUNK_WORDS.some(
     (w) => token === w || (w.length >= JUNK_STEM_MIN_CHARS && token.startsWith(w)),
   );
