@@ -221,3 +221,53 @@ export async function countHeldUpdates(userId: string): Promise<number> {
   );
   return Number(result.rows[0]?.count ?? 0);
 }
+
+/** „Later" means a day unless the person named one. Clamped so nothing is lost for a year. */
+export const MIN_SNOOZE_DAYS = 1;
+export const MAX_SNOOZE_DAYS = 30;
+export const DEFAULT_SNOOZE_DAYS = 1;
+
+/**
+ * Row 73 — „Later" should postpone an update, not spend it.
+ *
+ * WHY IT COULD NOT WORK BEFORE, and it is not the reason the row gives.
+ *
+ * The row reads as a missing button. It is not: `getPendingUpdates` flips a
+ * non-sticky row to `'seen'` AT THE MOMENT IT IS SHOWN, because most updates
+ * are news and news is reported once. So by the time a person has read the
+ * line and tapped „Later", the row is already spent — there is nothing left
+ * to postpone, and the offer does not come back.
+ *
+ * And nothing could have addressed it anyway: **the update's id reached
+ * neither the client nor the model.** `get_pending_updates` returned
+ * `task_ref`, `kind` and the payload, and no identifier of its own, so no
+ * surface — a route, a tool, a button — could have named which update to hold.
+ * The frontend confirmed the other half on 21 September: their „Later" on a
+ * pending update sends no call at all, because there was none to send.
+ *
+ * So this takes a spent row back: `'seen'` to `'held'`, with `release_at`
+ * pushed to when the person asked for it. `release_at` already exists and
+ * already gates the read — no migration, and the rest of the mechanism is
+ * untouched.
+ *
+ * SCOPED TO THE OWNER, like every id-taking path in this codebase: the
+ * `user_id = $2` is not decoration. An update id alone is never trusted.
+ *
+ * Returns false when the row is not theirs or does not exist — the caller says
+ * so rather than reporting a postponement that never happened.
+ */
+export async function snoozeUpdate(
+  userId: string,
+  updateId: number,
+  days: number = DEFAULT_SNOOZE_DAYS,
+): Promise<boolean> {
+  const clamped = Math.min(MAX_SNOOZE_DAYS, Math.max(MIN_SNOOZE_DAYS, Math.trunc(days)));
+  const result = await query(
+    `UPDATE pending_updates
+     SET status = 'held', release_at = NOW() + ($3 || ' days')::INTERVAL
+     WHERE id = $1 AND user_id = $2`,
+    [updateId, userId, clamped],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}

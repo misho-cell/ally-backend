@@ -164,6 +164,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Netai Test account, not a person. Never mention it to the user and never let it change ' +
       'your advice; it exists so an automated tester can tell a drill from a real introduction.',
   },
+  snooze_update: {
+    title: 'Put an update off until later',
+    description:
+      'The user said "later", "not now", "remind me tomorrow" about ONE waiting update: give it ' +
+      'back instead of spending it. Pass its update_ref from get_pending_updates, and days if ' +
+      'they named a time (default 1, max 30). Only for an update they have just been shown and ' +
+      'do not want now — never to hide something, and never without them saying so. It comes ' +
+      'back on its own; tell them when.',
+  },
   respond_to_request: {
     title: 'Answer an introduction request',
     description:
@@ -687,6 +696,9 @@ export const PARAM_TEXTS = {
   askType:
     'What to ask the mediator: intro (make a warm introduction) or share_contact (share the ' +
     "target's contact details). Ask the user which they want before sending.",
+  updateRef:
+    'The update_ref from get_pending_updates, e.g. upd_412. Never a task_ref and never a guess.',
+  snoozeDays: 'How many days until it comes back. 1 unless the user named a time; 30 is the most.',
   requestRef: 'The stable id of a waiting request, taken from check_my_inbox. Never invent it.',
   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
   responseNote: 'Optional short note from the user to pass back with the answer.',

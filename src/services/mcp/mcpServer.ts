@@ -5,6 +5,7 @@ import { SEARCH_OUTCOMES } from '../searchOutcome.service';
 import {
   mcpBlockContact,
   mcpCheckInbox,
+  mcpSnoozeUpdate,
   mcpGetContactFacts,
   mcpGetContactProfile,
   mcpGetGroupConnectors,
@@ -211,6 +212,19 @@ function registerIntroTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     () => runTool(userId, 'check_my_inbox', () => mcpCheckInbox(userId)),
+  );
+  server.registerTool(
+    'snooze_update',
+    {
+      title: TOOL_TEXTS.snooze_update.title,
+      description: TOOL_TEXTS.snooze_update.description,
+      inputSchema: {
+        update_ref: z.string().describe(PARAM_TEXTS.updateRef),
+        days: z.number().int().min(1).max(30).optional().describe(PARAM_TEXTS.snoozeDays),
+      },
+      annotations: DESTRUCTIVE,
+    },
+    (args) => runTool(userId, 'snooze_update', () => mcpSnoozeUpdate(userId, args)),
   );
   server.registerTool(
     'respond_to_request',

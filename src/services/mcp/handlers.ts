@@ -49,6 +49,10 @@ import {
   getPendingUpdates,
   listSeenUpdates,
   queueResult,
+  snoozeUpdate,
+  DEFAULT_SNOOZE_DAYS,
+  MIN_SNOOZE_DAYS,
+  MAX_SNOOZE_DAYS,
 } from '../pendingUpdates.service';
 import {
   blockContact,
@@ -922,6 +926,12 @@ export async function mcpAllowContactingMe(userId: string): Promise<McpToolPaylo
 // other payload leaving the connector.
 
 const TASK_REF_PREFIX = 'task_';
+/**
+ * Row 73. An update had no identifier of its own in any payload, so nothing —
+ * a route, a tool or a button — could name which one to postpone. The
+ * frontend's „Later" sent no call because there was none to send.
+ */
+const UPDATE_REF_PREFIX = 'upd_';
 
 function parseTaskRef(ref: string): number | null {
   if (!ref.startsWith(TASK_REF_PREFIX)) return null;
@@ -1451,6 +1461,7 @@ export async function mcpGetPendingUpdates(
   });
   const items = [
     ...updates.map((u) => ({
+      update_ref: UPDATE_REF_PREFIX + String(u.id),
       task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),
       kind: u.kind,
       ...(scrubDeep(u.payload) as McpToolPayload),
@@ -1471,6 +1482,36 @@ export async function mcpGetPendingUpdates(
     more_pending: morePending,
     ...(alreadyShown !== null && { already_shown: alreadyShown }),
   };
+}
+
+/**
+ * Row 73 — „Later" gives an update back instead of spending it.
+ *
+ * A non-sticky update is flipped to 'seen' the moment it is shown, because
+ * most updates are news and news is reported once. This takes one back:
+ * 'held' again, released when the person asked for it. Nothing is lost and
+ * nothing is repeated a minute later.
+ *
+ * The refusal is explicit. An id that is not this user's, or does not exist,
+ * comes back as a plain false — never as a cheerful confirmation of a
+ * postponement that did not happen.
+ */
+export async function mcpSnoozeUpdate(
+  userId: string,
+  args: { update_ref?: string; days?: number },
+): Promise<McpToolPayload> {
+  const ref = args.update_ref ?? '';
+  const id = Number(ref.slice(UPDATE_REF_PREFIX.length));
+  if (!ref.startsWith(UPDATE_REF_PREFIX) || !Number.isInteger(id) || id <= 0) {
+    return { success: false, error: 'Unknown update_ref — take it from get_pending_updates.' };
+  }
+  const days = typeof args.days === 'number' ? args.days : DEFAULT_SNOOZE_DAYS;
+  const moved = await snoozeUpdate(userId, id, days);
+  if (!moved) {
+    return { success: false, error: 'That update is not yours or no longer exists.' };
+  }
+  const clamped = Math.min(MAX_SNOOZE_DAYS, Math.max(MIN_SNOOZE_DAYS, Math.trunc(days)));
+  return { success: true, update_ref: ref, coming_back_in_days: clamped };
 }
 
 export async function mcpCorrectContactFact(
