@@ -226,6 +226,36 @@ export async function threadAwaitsOwner(threadId: number): Promise<boolean> {
   return result.rows.length > 0;
 }
 
+/**
+ * Has this goal already reached somebody outside the app — an ask relayed to a
+ * contact, or an introduction request sent for it?
+ *
+ * The seat's 391 found a plan proposed nine seconds after the mediator had
+ * already answered, and the mechanism is plain once the two timestamps are put
+ * side by side: `startPlanProposal` is queued four seconds after a goal is
+ * created and retried while the thread is busy, so on a goal that spends that
+ * minute actually DOING the thing, the proposal lands after the work.
+ *
+ * Measured rather than argued, and it is not one instance. Of 214 proposals in
+ * the six days `tool_call_log` covers, five came after the goal had already
+ * acted — and three of those five are 47, 55 and 64 seconds, one on each of
+ * the 19th, 20th and 21st. The other two are eight days and a day apart and
+ * cannot be this timer at all; they are the model proposing on its own, which
+ * this function does not gate.
+ *
+ * `LIMIT 1` on each side: the question is whether there is any, never how many.
+ */
+export async function goalHasActedOutward(taskId: number): Promise<boolean> {
+  const result = await query<{ acted: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM task_asks WHERE task_id = $1 LIMIT 1)
+         OR EXISTS (SELECT 1 FROM introduction_requests WHERE requester_task_id = $1 LIMIT 1)
+       AS acted`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.acted === true;
+}
+
 export async function getTaskById(taskId: number): Promise<(Task & { user_id: string }) | null> {
   const result = await query<Task & { user_id: string }>(
     `SELECT user_id, ${TASK_COLUMNS} FROM tasks WHERE id = $1 LIMIT 1`,

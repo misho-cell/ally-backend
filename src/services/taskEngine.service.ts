@@ -3,6 +3,7 @@ import { query } from '../db/postgres/client';
 import { processChat } from './chat.service';
 import {
   getTaskById,
+  goalHasActedOutward,
   getDueTasks,
   getStaleOpenTasks,
   getGoalsUnansweredForADay,
@@ -755,10 +756,30 @@ const PLAN_PROPOSAL_DELAY_MS = 4_000;
 // argue with this line and with propose_task_plan's text to win, which is not
 // a fair fight: a model reads a server instruction as a fact about the job.
 
-async function planStillMissing(taskId: number): Promise<boolean> {
+/**
+ * „Is a plan still missing" was the wrong question, and the seat's 391 caught
+ * it with a timestamp: goal 7063 sent its introduction at 12:17:21, the
+ * mediator accepted at 12:18:15, and at 12:18:25 this timer — queued at
+ * 12:16:57 and retried the whole time because the thread was busy DOING the
+ * work — woke the run to propose a plan. The plan it proposed was „solved
+ * when: Netai Test 2 responds to the introduction request", nine seconds after
+ * they had responded, with an I approve button under it.
+ *
+ * The model was not wrong to propose one. A server wake that says „propose a
+ * plan" reads as a fact about the job, which is the same asymmetry row 117
+ * records two comments above.
+ *
+ * So the predicate now asks what it always meant: is there still something to
+ * plan. A goal that has already reached somebody has answered that itself. It
+ * gates ONLY this timer — the model's own propose_task_plan is untouched, and
+ * so are the two long-gap proposals (eight days, one day) that a later round
+ * legitimately produced.
+ */
+export async function nothingToPlanYet(taskId: number): Promise<boolean> {
   const task = await getTaskById(taskId);
   if (!task || task.status !== 'open') return false;
-  return task.plan === null && task.plan_proposed === null;
+  if (task.plan !== null || task.plan_proposed !== null) return false;
+  return !(await goalHasActedOutward(taskId));
 }
 
 /**
@@ -786,7 +807,7 @@ export function startPlanProposal(taskId: number): void {
   wakeWhenFree(
     taskId,
     PLAN_PROPOSAL_EVENT,
-    () => planStillMissing(taskId),
+    () => nothingToPlanYet(taskId),
     () => Promise.resolve(),
     PLAN_PROPOSAL_DELAY_MS,
   );

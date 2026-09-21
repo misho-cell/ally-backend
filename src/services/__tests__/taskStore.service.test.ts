@@ -12,6 +12,7 @@ import {
   ensureNextWake,
   getGoalsSilentForDays,
   markMethodChangeWoken,
+  goalHasActedOutward,
 } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -331,5 +332,46 @@ describe('closing a goal keeps its wake', () => {
     await updateTask(USER, 3433, 'closed', 'stopped', 'stopped');
 
     expect(String(mockQuery.mock.calls[0][0])).toContain('pending_question = CASE');
+  });
+});
+
+/**
+ * The seat's 391: a plan proposed nine seconds after the mediator answered.
+ * The timer's only question was „is a plan missing", and this is the second
+ * half of the real one — has this goal already reached anybody.
+ *
+ * Both tables, because the two ways out are not the same row: a relayed
+ * question is a `task_asks`, an introduction is an `introduction_requests`,
+ * and goal 7063 took the second one.
+ */
+describe('has this goal already reached somebody', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('asks about both ways out, keyed on the goal', async () => {
+    mockQuery.mockResolvedValue(result([{ acted: false }]) as never);
+
+    await goalHasActedOutward(7063);
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('task_asks');
+    expect(sql).toContain('introduction_requests');
+    expect(sql).toContain('requester_task_id = $1');
+    expect(mockQuery.mock.calls[0][1]).toEqual([7063]);
+    // CLAUDE.md: every query carries a timeout.
+    expect(typeof mockQuery.mock.calls[0][2]).toBe('number');
+  });
+
+  it('is true when something went out and false when nothing did', async () => {
+    mockQuery.mockResolvedValue(result([{ acted: true }]) as never);
+    await expect(goalHasActedOutward(7063)).resolves.toBe(true);
+
+    mockQuery.mockResolvedValue(result([{ acted: false }]) as never);
+    await expect(goalHasActedOutward(7063)).resolves.toBe(false);
+  });
+
+  /** A row that never came back is not a goal that acted. */
+  it('is false when the query returns nothing at all', async () => {
+    mockQuery.mockResolvedValue(result([]) as never);
+    await expect(goalHasActedOutward(7063)).resolves.toBe(false);
   });
 });
