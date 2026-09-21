@@ -31,7 +31,47 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+**Six questions, all put to Misho at 18:45 UTC and none answered yet.** Written
+here because a question asked and not answered is exactly what this file is
+for — if the container restarts tonight, these survive the clone.
+
+**1. §20 — 26 engine rows drawn as ordinary messages in the founder's own
+chat.** 10–11 August, not growing, all on account 501. Registered with route,
+method, body and undo. **No content changes** — the text stays byte for byte
+and the admin window still shows it; only the chat stops drawing it, and the
+undo is the same statement with the kinds swapped. *My recommendation: do it.*
+
+**2. Row 74 — Misho's screen-by-screen list.** Not a code task. Either he sends
+the file into his own conversation and I commit it as
+`docs/MISHO_SCREEN_CHECKS.md`, or the tester gives me their shared folder's
+path — which I have asked for and do not have.
+
+**3. Row 125 — the relay chain has never run across three REAL people.** The
+one answered relay in the product's history is between three fictional
+accounts. This is EVIDENCE, not code: I cannot manufacture it. *Question: do we
+stage one deliberately, and with whom, or wait for it to happen?*
+
+**4. Row 108 — the measurement needs a busy day.** Today gave 54 search calls
+against the 227 of the days the row was measured on, and the before/after reads
+as noise. *My recommendation: wait for real traffic rather than ask the seat to
+generate load — synthetic volume does not reproduce a real user's query shape,
+and the number would still be arguable.*
+
+**5. Row 224 — formal address, five messages in fourteen days.** Fixing it
+properly means asking the model to rewrite a reply when a formal form is
+detected; the existing check only RECORDS and deliberately does not refuse,
+because refusing there would leave the owner with nothing. *My recommendation:
+do not build it.* Five messages a fortnight does not earn a rewrite loop with a
+false-positive cost. Said out loud because it is a judgement, not a fact.
+
+**6. The frontend's five rows — 218, 91, 93, 88, 111 — none started.**
+*Question: do I write and ask for dates, or does Misho carry it?*
+
+**NOT a question, but it belongs on this page:** §19's token route reaches the
+six fictional test accounts and nothing else. If a real user ever needs a
+credit — a refund, an apology — that is a DIFFERENT operation with a different
+blast radius, and it needs its own section here and its own yes. I have not
+built it and will not until somebody asks.
 
 ## Handed over, 21 September (07:05 UTC) — the 20/21 night
 
