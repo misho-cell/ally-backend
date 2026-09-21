@@ -111,11 +111,11 @@ export async function searchRoster(
    * user's own contacts. So they are ordered first and the cap falls on the
    * people a cap can afford to fall on.
    */
-  const matched = [
+  const netaiFirst = [
     ...everyone.filter((m) => m.on_netai),
     ...everyone.filter((m) => !m.on_netai),
-  ].slice(0, RESULT_LIMIT);
-  if (matched.length === 0) {
+  ];
+  if (netaiFirst.length === 0) {
     return {
       found: false,
       group: trimmed,
@@ -141,6 +141,12 @@ export async function searchRoster(
    * Now `count` is everybody who matched, `shown` is what is here, and a
    * truncated answer carries a sentence saying so — because a model cannot be
    * expected to infer a ceiling from a round number.
+   *
+   * AND SINCE 21 SEPTEMBER `count` COUNTS PEOPLE, NOT ROWS. The first version
+   * of the fold below ran after the cap, so 49 rows came back under
+   * `count: 107` and a note that still said „only 50 are here". The seat read
+   * it within the hour. A count that says 107 for 49 rows is the same fault
+   * this comment was written about, one layer along.
    */
   /**
    * ONE PERSON, ONE ROW — the last search that was still missing this.
@@ -163,25 +169,31 @@ export async function searchRoster(
    * search forgot to look. Collapsing here is right on its own terms and is
    * not that fix.
    *
-   * After the cap, deliberately: the cap keeps Netai users first, and a
-   * collapse that ran before it could drop the reachable row of a pair and
-   * keep the unreachable one.
+   * BEFORE THE CAP, AND THE ORDER OF THOSE TWO IS THE WHOLE POINT. I ran it
+   * after the cap first, reasoning that folding early could drop the reachable
+   * row of a pair and keep the unreachable one. That danger is real and is
+   * already answered one line above: the Netai-first ordering happens BEFORE
+   * the fold, and the fold keeps the first row of each person, so the
+   * reachable row is the one that survives. Folding after the cap bought
+   * nothing and made the count a count of rows.
    */
-  const collapsed = await collapseMergedPhones(matched.map(toRow));
-  const truncated = everyone.length > matched.length;
+  const folded = await collapseMergedPhones(netaiFirst.map(toRow));
+  const shown = folded.rows.slice(0, RESULT_LIMIT);
+  const people = folded.rows.length;
+  const truncated = people > shown.length;
   return {
     found: true,
     group: trimmed,
-    count: everyone.length,
-    shown: collapsed.rows.length,
+    count: people,
+    shown: shown.length,
     ...(truncated && {
       note:
-        `${everyone.length} people on the ${trimmed} roster match and only ${matched.length} are ` +
+        `${people} people on the ${trimmed} roster match and only ${shown.length} are ` +
         'here — this list is INCOMPLETE. Do not tell the user this is the whole group or quote ' +
         'the number of rows as a total. Narrow it with a `name` and ask again. Netai users are ' +
         'listed first, so the ones who can actually be asked are not the ones dropped.',
     }),
-    results: collapsed.rows,
+    results: shown,
   };
 }
 

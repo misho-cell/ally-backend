@@ -83,11 +83,13 @@ describe('search_roster collapses a person the founder marked as one', () => {
   });
 
   /**
-   * `count` is everybody who matched BEFORE the cap and before the collapse.
-   * It answers "how big is this group", which the collapse does not change —
-   * and conflating the two is how `count: 50` came to mean a ceiling.
+   * `count` COUNTS PEOPLE, and that is the seat's correction of my first
+   * version an hour after it shipped. Folding after the cap returned 49 rows
+   * under `count: 107` with a note still saying „only 50 are here" — a count
+   * of rows wearing the name of a count of people, which is the exact fault
+   * the `count` comment in that file was written about.
    */
-  it('leaves `count` alone: it answers a different question from `shown`', async () => {
+  it('counts people, not rows: a folded pair is one', async () => {
     mockMembers.mockResolvedValue([member(1, true), member(2, false)] as never);
     mockCollapse.mockImplementation(async (rows) => ({ rows: [rows[0]], collapsed: 1 }));
 
@@ -95,20 +97,57 @@ describe('search_roster collapses a person the founder marked as one', () => {
 
     expect(out.found).toBe(true);
     if (!out.found) return;
-    expect(out.count).toBe(2);
+    expect(out.count).toBe(1);
     expect(out.shown).toBe(1);
   });
 
-  it('collapses AFTER the cap, so a reachable member is never the one dropped', async () => {
-    // 51 people, the Netai user last in the source order: the cap must have
-    // already pulled them to the front by the time the collapse sees the list.
+  it('folds BEFORE the cap, and the Netai ordering happens before the fold', async () => {
+    // 51 people, the only Netai user last in the source order. The fold must
+    // see them FIRST, because the fold keeps the first row of each person —
+    // that ordering is what makes folding early safe.
     const many = [...Array(50).keys()].map((i) => member(i + 1, false));
     mockMembers.mockResolvedValue([...many, member(99, true)] as never);
 
     await searchRoster(USER, 'Axel');
 
     const passed = mockCollapse.mock.calls[0][0] as { phone: string; is_member: boolean }[];
-    expect(passed).toHaveLength(50);
+    expect(passed).toHaveLength(51);
     expect(passed[0].is_member).toBe(true);
+  });
+
+  /**
+   * The three numbers have to agree or one of them is lying. This is the
+   * assertion that would have caught what the seat caught.
+   */
+  it('the count, the rows and the sentence all say the same thing', async () => {
+    const many = [...Array(60).keys()].map((i) => member(i + 1, false));
+    mockMembers.mockResolvedValue(many as never);
+    // One pair folds away: 60 people become 59.
+    mockCollapse.mockImplementation(async (rows) => ({ rows: rows.slice(1), collapsed: 1 }));
+
+    const out = await searchRoster(USER, 'Axel');
+
+    expect(out.found).toBe(true);
+    if (!out.found) return;
+    expect(out.count).toBe(59);
+    expect(out.shown).toBe(50);
+    expect(out.results).toHaveLength(50);
+    expect(out.note).toContain('59 people');
+    expect(out.note).toContain('only 50 are');
+  });
+
+  it('says nothing about being incomplete when the fold makes it complete', async () => {
+    // 51 people, one of whom is a second number: 50 remain, which fits.
+    const many = [...Array(51).keys()].map((i) => member(i + 1, false));
+    mockMembers.mockResolvedValue(many as never);
+    mockCollapse.mockImplementation(async (rows) => ({ rows: rows.slice(1), collapsed: 1 }));
+
+    const out = await searchRoster(USER, 'Axel');
+
+    expect(out.found).toBe(true);
+    if (!out.found) return;
+    expect(out.count).toBe(50);
+    expect(out.shown).toBe(50);
+    expect(out.note).toBeUndefined();
   });
 });
