@@ -3555,6 +3555,7 @@ async function runLoggedSearch(
   searchQuery: string,
   run: (userId: string, q: string) => Promise<object>,
   runId?: string,
+  threadId?: number | null,
 ): Promise<object> {
   const result = await searchWithRetry(() => run(userId, searchQuery));
   const rawCount = (result as { count?: unknown }).count;
@@ -3574,7 +3575,7 @@ async function runLoggedSearch(
       return null;
     },
   );
-  if (searchId !== null && runId) noteSearchResults(runId, searchId, result);
+  if (searchId !== null && runId) noteSearchResults(runId, searchId, result, threadId);
   return searchId === null ? result : { ...result, search_id: searchId };
 }
 
@@ -3592,7 +3593,82 @@ interface RunSearchResults {
 const runSearchResults = new Map<string, RunSearchResults[]>();
 const AUTO_SENT_REASON = 'auto: an ask or introduction went to a person this search returned';
 
-function noteSearchResults(runId: string, searchId: number, result: object): void {
+/**
+ * THE SAME LINK, KEPT PAST THE END OF THE RUN — row 225, 21 September.
+ *
+ * `runSearchResults` is dropped by `clearRunState` at both run exits, so the
+ * only send it can ever explain is one that happens in the SAME run as the
+ * search. That is not how people use this: they search in one turn, read the
+ * answer, and say „yes, write to her" in the next.
+ *
+ * Measured before writing a line of this, on `tool_call_log`:
+ *
+ *     successful ask_contact calls                        55
+ *     …that ran in the SAME run as a search                5
+ *     …whose THREAD held an earlier search                42
+ *
+ * So the run-scoped map can explain five sends out of fifty-five, and the
+ * thread can reach forty-two. That is the whole of why `search_activity` shows
+ * 12,573 searches, 10,998 of them with no outcome at all.
+ *
+ * WHY THE THREAD MAP STILL MATCHES ON THE PHONE, and this is the part that
+ * decides the design. A cheaper version would say „a send happened in a thread
+ * that once held a search, so mark that search sent". It would reach more rows
+ * and it would be a GUESS — the send might belong to a different search, or to
+ * no search at all. This codebase has spent two days removing numbers that
+ * looked measured and were inferred, and the outcome ladder is the last place
+ * to add one: its whole purpose is to say what actually worked.
+ *
+ * So the phone set travels with the entry and the match stays exact. What is
+ * given up is durability — this lives in memory and a deploy empties it. That
+ * costs a MISSED link, never a false one, which is the right direction to
+ * fail. If the number after this is still poor, the next step is storing the
+ * result phones, and that is a privacy decision rather than a coding one:
+ * „which people did this person's search for X return" is not written down
+ * anywhere today.
+ */
+interface ThreadSearchEntry extends RunSearchResults {
+  readonly at: number;
+}
+const threadSearchResults = new Map<number, ThreadSearchEntry[]>();
+/** A conversation's own span. Longer buys little; shorter loses the next turn. */
+const THREAD_SEARCH_TTL_MS = 60 * 60_000;
+/** Per thread, so one long conversation cannot grow without bound. */
+const MAX_THREAD_SEARCHES = 20;
+/**
+ * And a bound across threads, because per-thread caps alone leave the number
+ * of THREADS unbounded. A quiet thread's entry is only pruned when something
+ * writes, so without this the map would grow for as long as the process lives.
+ * Deploys empty it several times a day in practice — this is the guard for the
+ * day they do not.
+ */
+const MAX_TRACKED_THREADS = 500;
+const AUTO_SENT_LATER_RUN_REASON =
+  'auto: an ask or introduction went to a person this search returned, in a later run of the same thread';
+
+function pruneThreadSearches(threadId: number, now: number): ThreadSearchEntry[] {
+  const kept = (threadSearchResults.get(threadId) ?? []).filter(
+    (e) => now - e.at < THREAD_SEARCH_TTL_MS,
+  );
+  if (kept.length === 0) threadSearchResults.delete(threadId);
+  else threadSearchResults.set(threadId, kept.slice(-MAX_THREAD_SEARCHES));
+  // Oldest threads out first. Map preserves insertion order, and a thread that
+  // is still being used is re-inserted on every note, so this drops the ones
+  // nobody has searched in.
+  while (threadSearchResults.size > MAX_TRACKED_THREADS) {
+    const oldest = threadSearchResults.keys().next();
+    if (oldest.done) break;
+    threadSearchResults.delete(oldest.value);
+  }
+  return threadSearchResults.get(threadId) ?? [];
+}
+
+export function noteSearchResults(
+  runId: string,
+  searchId: number,
+  result: object,
+  threadId?: number | null,
+): void {
   const rows = (result as { results?: unknown }).results;
   if (!Array.isArray(rows)) return;
   const phones = new Set<string>();
@@ -3604,35 +3680,60 @@ function noteSearchResults(runId: string, searchId: number, result: object): voi
   const list = runSearchResults.get(runId) ?? [];
   list.push({ searchId, phones });
   runSearchResults.set(runId, list);
+  if (typeof threadId === 'number') {
+    const now = Date.now();
+    const kept = pruneThreadSearches(threadId, now);
+    // Delete before set, so an active thread moves to the END of the insertion
+    // order and the eviction above reaches the quiet ones instead of it.
+    threadSearchResults.delete(threadId);
+    threadSearchResults.set(threadId, [...kept, { searchId, phones, at: now }]);
+  }
 }
 
-async function markSearchSent(
+export async function markSearchSent(
   runId: string | undefined,
   userId: string,
   rawPhones: readonly unknown[],
+  threadId?: number | null,
 ): Promise<void> {
-  if (!runId) return;
-  const list = runSearchResults.get(runId);
-  if (!list) return;
   const wanted = rawPhones
     .filter((p): p is string => typeof p === 'string' && p.length > 0)
     .map(normalizePhone);
   if (wanted.length === 0) return;
-  for (let i = list.length - 1; i >= 0; i -= 1) {
-    const search = list[i];
-    if (!wanted.some((p) => search.phones.has(p))) continue;
-    await recordSearchOutcome({
-      searchId: search.searchId,
-      userId,
-      outcome: 'sent',
-      reason: AUTO_SENT_REASON,
-      onlyIfUnset: true,
-    }).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.error('[search-outcome] auto sent failed:', (err as Error).message),
-    );
+
+  // This run first — the send and the search in one turn, which is the case
+  // the original version handled and the rarer one in practice (5 of 55).
+  const thisRun = (runId ? runSearchResults.get(runId) : undefined) ?? [];
+  for (let i = thisRun.length - 1; i >= 0; i -= 1) {
+    if (!wanted.some((p) => thisRun[i].phones.has(p))) continue;
+    await writeSentOutcome(thisRun[i].searchId, userId, AUTO_SENT_REASON);
     return;
   }
+
+  // Then the rest of the conversation, newest search first. Still an EXACT
+  // phone match — the thread only widens WHICH searches are looked at, never
+  // what counts as a hit. The reason names the wider scope so the two can be
+  // told apart in the data afterwards.
+  if (typeof threadId !== 'number') return;
+  const earlier = pruneThreadSearches(threadId, Date.now());
+  for (let i = earlier.length - 1; i >= 0; i -= 1) {
+    if (!wanted.some((p) => earlier[i].phones.has(p))) continue;
+    await writeSentOutcome(earlier[i].searchId, userId, AUTO_SENT_LATER_RUN_REASON);
+    return;
+  }
+}
+
+async function writeSentOutcome(searchId: number, userId: string, reason: string): Promise<void> {
+  await recordSearchOutcome({
+    searchId,
+    userId,
+    outcome: 'sent',
+    reason,
+    onlyIfUnset: true,
+  }).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[search-outcome] auto sent failed:', (err as Error).message),
+  );
 }
 
 // Ticket 16 Task 96: the plan's two buttons are typed by the model and came
@@ -4915,9 +5016,17 @@ async function executeToolCall(
         input['name_query'] as string,
         searchContactByName,
         runId,
+        threadId,
       );
     case 'search_by_tag':
-      return runLoggedSearch(userId, 'tag', input['tag_query'] as string, searchByTag, runId);
+      return runLoggedSearch(
+        userId,
+        'tag',
+        input['tag_query'] as string,
+        searchByTag,
+        runId,
+        threadId,
+      );
     case 'search_by_insight':
       return runLoggedSearch(
         userId,
@@ -4925,6 +5034,7 @@ async function executeToolCall(
         input['search_query'] as string,
         searchByInsight,
         runId,
+        threadId,
       );
     case 'search_second_degree':
       return runLoggedSearch(
@@ -4933,6 +5043,7 @@ async function executeToolCall(
         input['tag_query'] as string,
         searchSecondDegree,
         runId,
+        threadId,
       );
     case 'search_contacts_by_country':
       return searchContactsByCountry(userId, input['country'] as string);
@@ -5030,7 +5141,12 @@ async function executeToolCall(
         goalForIntro === null ? {} : { requesterTaskId: goalForIntro.id },
       );
       if ((introOutcome as { success?: unknown }).success === true) {
-        await markSearchSent(runId, userId, [input['mediator_phone'], input['target_phone']]);
+        await markSearchSent(
+          runId,
+          userId,
+          [input['mediator_phone'], input['target_phone']],
+          threadId,
+        );
       }
       return introOutcome;
     }
@@ -5326,7 +5442,7 @@ async function executeToolCall(
         threadId,
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
-        await markSearchSent(runId, userId, [input['phone']]);
+        await markSearchSent(runId, userId, [input['phone']], threadId);
         noteIntroductionSentAsAQuestion(runId, threadId, taskId, question);
       }
       return askOutcome;
