@@ -205,14 +205,34 @@ function containsAny(haystack: string, words: readonly string[]): boolean {
  * AND THE ENDING IS CHECKED AGAINST THE SURNAME LIST. Three letters is exactly
  * „dze": without this second guard „dididze", 117 people, would stop being a
  * family name and become the adjective „big".
+ *
+ * THE SECOND GUARD, 21 September, and it is what let „papa" in at all.
+ *
+ * The first guard compares the ENDING to a surname ending, exactly. That is
+ * too narrow by one letter, because a surname ending can overlap the word it
+ * follows. „papava" is „papa" plus „va" — and „va" is not a surname ending,
+ * while „ava" is, and the token ends in it. Measured whole-base: „papava" 671
+ * and „პაპავა" 364, a family that `isNameToken` reads correctly as a name
+ * TODAY, which the anchored rule would have taken away. „ბაბულია" 57 is the
+ * same shape.
+ *
+ * So a token LONGER than the word, ending in a surname ending, is that
+ * family's name rather than the word wearing a case ending. The length test is
+ * the whole of the exception: „ბებია" IS the word, ends in „ია", and the
+ * grandmother the previous fix was written for must keep coming through.
  */
+function endsLikeASurname(lower: string): boolean {
+  return ALL_SURNAME_ENDINGS.some((e) => lower.endsWith(e));
+}
+
 function matchesAnchored(token: string, words: readonly string[]): boolean {
   const lower = token.toLowerCase();
   return words.some((w) => {
     if (!lower.startsWith(w)) return false;
     const ending = lower.slice(w.length);
     if (ending.length > ANCHORED_SUFFIX_MAX) return false;
-    return !ALL_SURNAME_ENDINGS.includes(ending);
+    if (ALL_SURNAME_ENDINGS.includes(ending)) return false;
+    return ending.length === 0 || !endsLikeASurname(lower);
   });
 }
 

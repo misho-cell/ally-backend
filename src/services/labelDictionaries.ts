@@ -210,8 +210,26 @@ export const TRADE_WORDS = [
   'ეარბეგ',
   'shpana',
   'შპანა',
-  'მასწავლებელ',
-  'maswavlebel',
+  /**
+   * 21 September — SHORTENED, not added, and the shortening is the fix.
+   *
+   * „maswavlebel" read the word spelled right. Whole-base, every token that
+   * contains „masw" at all:
+   *
+   *   maswavlebeli 4,995   masw 2,690   maswi 2,333   maswii 95
+   *   maswav 45   maswa 35   maswavkebeli 15   maswaclebeli 15
+   *   maswavleveli 14   maswalebeli 13   maswavlebli 12 … and fifty more
+   *
+   * `masw` is the abbreviation people actually type — „nino masw matematika",
+   * „neli rusulis masw" — and it never leads a label (0% of 33 in the sample,
+   * against 93% for a first name). The longer entry could not see it, so
+   * roughly five thousand teachers per script were read as a company word
+   * called „masw". **Every token in the base containing „masw" is this word or
+   * a misspelling of it — no collateral at all**, which is why four characters
+   * are safe here and „gori" is not.
+   */
+  'მასწ',
+  'masw',
   'mastsavlebel',
   'დამლაგებელ',
   'damlagebel',
@@ -240,6 +258,45 @@ export const TRADE_WORDS = [
   'დურგალ',
   'მღებავ',
   'შემდუღებ',
+  /**
+   * 21 September. Four trades that the 400 most-carried tokens in the base
+   * still hand to `classifyToken`'s give-up branch — read as company words.
+   * Every token in the WHOLE base containing each entry was listed before the
+   * entry was written, not sampled:
+   *
+   *   dazgvev / დაზღვევ  2,211 + 1,404   insurance   collateral: none
+   *   kurier  / კურიერ   2,023 + 2,012   courier     collateral: none
+   *   stilist / სტილისტ  1,516 + 1,141   stylist     collateral: none
+   *
+   * „none" is literal: every token containing them is the word, its case
+   * endings, a misspelling, or a name glued to it („mishakurieri",
+   * „elzastilisti"). The only entries they reach inside a longer word that is
+   * not the trade are five insurers written as one word — „tbcdazgveva",
+   * „primedazgveva", „imedielidazgveva" — thirteen people, who go from an
+   * organisation word to a trade. They sell insurance; that is not a loss.
+   */
+  'dazgvev',
+  'დაზღვევ',
+  'kurier',
+  'კურიერ',
+  'stilist',
+  'სტილისტ',
+  /**
+   * The nanny, and the ONLY one of the four that costs something measured.
+   *
+   * It has to be the whole word „dzidza" and never the stem „dzidz": that
+   * stem is three Georgian families — Dzidziguri (465 + 287), Dzidzishvili
+   * (90 + 52), Dzidzikashvili (85 + 40) — roughly a thousand people whose
+   * surname would become a job.
+   *
+   * With the full word the cost is two families that end in „-a": Dzidzava
+   * (23 + 13) and Dzidzaria (26 + 13), 75 people read as nannies. Against
+   * 2,250 who are nannies. Dzidzava is the real regression — `isNameToken`
+   * reads it correctly today by its „ava" ending — and 36 people is the price
+   * of the other 2,250 not being a company called Dzidza.
+   */
+  'dzidza',
+  'ძიძა',
 ];
 
 /**
@@ -346,6 +403,14 @@ export const RELATIONSHIP_WORDS = [
   'neighbour',
   'neighbor',
   'cousin',
+  /**
+   * 21 September. „Friend" — 2,965 + 1,568 whole-base, and it was being read
+   * as a company word. Every token containing it is the word with a case
+   * ending or somebody's friend („anasmegobari", „dedasmegobari"), so the
+   * substring tier holds it with nothing to declare.
+   */
+  'megobar',
+  'მეგობარ',
 ];
 
 // Words for a dwelling, a door or a price. After the relabelling, two rows
@@ -476,6 +541,15 @@ export const PLACE_WORDS = [
   'ბაკურიანი',
   'bakuriani',
   'გუდაური',
+  /**
+   * 21 September. Pekini — the avenue in Tbilisi and the market on it, 626 +
+   * 242 whole-base and read as a company until now. Every token containing it
+   * is the street, its case endings, or an address built on it
+   * („pekiniplaza", „pekinis30"). The one word that is not is „pekinuri",
+   * four people, the dog.
+   */
+  'pekin',
+  'პეკინ',
 ];
 
 export const BRAND_STOPLIST: ReadonlySet<string> = new Set([
@@ -622,6 +696,43 @@ export const SHORT_RELATION_WORDS = [
   // surname rule claimed it and a grandmother was read as a family name.
   'bebia', // 2,679
   'ბებია', // 2,839
+  /**
+   * 21 September — the grandfather, in the two words Georgian actually uses,
+   * and both of them needed the new second guard in `matchesAnchored`.
+   *
+   * Whole-base, and the split is read rather than assumed:
+   *
+   *   babu  2,920 + babua 1,644 + babus/babuu/babuas/… ≈ 4,900
+   *   ბაბუ  1,809 + ბაბუა 1,875 + ბაბუშკა 35 + …       ≈ 3,900
+   *
+   * „sabas babu dedis mxridan" — Saba's grandfather on his mother's side. Not
+   * a company, and 8,700 people were carrying it as one, over `BIG_ORG_SIZE`
+   * by a factor of sixty. That is the „Undefined" failure at a fifth of the
+   * scale.
+   *
+   * WHAT IT CATCHES THAT IS NOT A GRANDFATHER, counted: babuka 77, babulia
+   * 75, babuna 74, babula 51, babuca 48, babuki 20 and a few smaller —
+   * roughly 680 across both scripts, first names and family names. **Every
+   * one of them is read as an ORGANISATION today**, so they lose nothing they
+   * have; they move from one wrong answer to a harmless one. The single real
+   * regression was „ბაბულია" (57), a surname `isNameToken` gets right — and
+   * the second guard now refuses it, because the token is longer than „ბაბუ"
+   * and ends in „ია".
+   *
+   * „papa" is here for the same reason and is the word that forced the guard:
+   * 2,884 + 2,188 grandfathers against Papava, 671 + 364, whose name the
+   * anchored rule would have eaten. With the guard Papava, Papashvili,
+   * Papaskiri and Papadze all stay names, and what is left is Papasha 53 and
+   * Papala 28 — organisations today, relations after.
+   *
+   * „babushka" (94) is NOT reached: „shka" is four letters and the anchor
+   * allows three. Left as it is rather than widened — the limit is doing work
+   * everywhere else.
+   */
+  'babu', // 2,920
+  'ბაბუ', // 1,809
+  'papa', // 2,884
+  'პაპა', // 2,188
 ];
 
 export const SHORT_PLACE_WORDS = [

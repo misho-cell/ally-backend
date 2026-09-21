@@ -1367,6 +1367,46 @@ export const GEORGIAN_FIRST_NAMES: ReadonlySet<string> = new Set([
   'nia',
   'erekle',
   'bela',
+  /**
+   * 21 September — six more, the same measurement run again over the 400
+   * most-carried tokens now that yesterday's five are in. Carriers are
+   * whole-base and exact-token; the lead share is from a 60,000-row sample,
+   * with the same two controls beside it: „nino" .93 at one end, „tbc" .15 and
+   * „kidobani" .02 at the other.
+   *
+   *     lizi     4,706 carriers   lead .93
+   *     joni     3,691            lead .94
+   *     barbare  2,708            lead .94
+   *     eto      2,649            lead .92
+   *     taso     2,010            lead .85
+   *     sali     1,906            lead .90
+   *
+   * „sali" was the one I would not take on the number alone — it could as
+   * easily be a fragment — so I read the labels: „sali nikolozashvili", „sali
+   * mchedlishvili", „sali kezherashvili". A first name in front of a family
+   * name, which is what .90 was already saying.
+   *
+   * „ჯონ" was in this list and „joni" was not, and the two do not meet:
+   * `spellings` transliterates „ჯონი" to „joni", never to the stem. Three
+   * thousand six hundred men fell through that gap.
+   *
+   * REFUSED on the same run, each for a reason the labels gave:
+   *
+   *   saga      .11 lead — „giorgi saga gamorecxa", „sofo administrator
+   *             saga". A car wash, and the list would have hidden it.
+   *   kidobani  .02 — the wholesale market.
+   *   masw      .00 — the abbreviation of „მასწავლებელი". A trade, and it is
+   *             in TRADE_WORDS as of today.
+   *   babu/papa .66 / .59 — in between, because a grandfather leads a label
+   *             too. „sabas babu dedis mxridan" settled it: they are
+   *             relations, and they are in SHORT_RELATION_WORDS as of today.
+   */
+  'lizi',
+  'joni',
+  'barbare',
+  'eto',
+  'taso',
+  'sali',
 ]);
 
 /**

@@ -567,3 +567,104 @@ describe('junk that reached the label store is not a company', () => {
     expect(classifyToken('manqana', false)).toBe('place');
   });
 });
+
+/**
+ * 21 September. The same measurement as the five names above, run again over
+ * the 400 most-carried tokens in the base. Forty-six still came back
+ * „organisation"; ten of those are rescued in a name's position, and of the
+ * rest these are the ones the labels themselves settled.
+ *
+ * Every entry behind these tests was measured WHOLE-BASE, not on a sample —
+ * every token in the alias store that contains the word, listed before the
+ * word was written down. That is what makes the difference between „kurieri",
+ * where there is no collateral at all, and „dzidz", which is three Georgian
+ * families.
+ */
+describe('the trades, relations and places the base still called companies', () => {
+  /**
+   * The abbreviation, not the word. „maswavlebel" was already here and could
+   * not see „nino masw matematika" — 2,690 „masw" and 2,333 „maswi" per
+   * script, read as a company. Shortening the entry to four characters is safe
+   * only because every token in the base containing „masw" is this word or a
+   * misspelling of it.
+   */
+  it('reads the teacher written short, and the misspellings with it', () => {
+    for (const t of ['masw', 'maswi', 'maswavlebeli', 'maswaclebeli', 'მასწ', 'მასწი']) {
+      expect(classifyToken(t, false)).toBe('trade');
+    }
+  });
+
+  it('reads the courier, the stylist and the insurance seller in both scripts', () => {
+    for (const t of ['kurieri', 'კურიერი', 'stilisti', 'სტილისტი', 'dazgveva', 'დაზღვევა']) {
+      expect(classifyToken(t, false)).toBe('trade');
+    }
+  });
+
+  /**
+   * THE ONE THAT HAD TO BE A WHOLE WORD. The stem „dzidz" is Dzidziguri (752
+   * people across both scripts), Dzidzishvili and Dzidzikashvili — a thousand
+   * surnames that would have become a job. The full word costs two families in
+   * „-a", which is written down where the entry is.
+   */
+  it('reads the nanny without eating the three families called Dzidz-', () => {
+    expect(classifyToken('dzidza', false)).toBe('trade');
+    expect(classifyToken('ძიძა', false)).toBe('trade');
+    expect(classifyToken('dzidziguri', false)).not.toBe('trade');
+    expect(classifyToken('dzidzishvili', false)).toBe('name');
+    expect(classifyToken('ძიძიშვილი', false)).toBe('name');
+  });
+
+  it('reads „friend" and the Pekini avenue', () => {
+    expect(classifyToken('megobari', false)).toBe('relation');
+    expect(classifyToken('მეგობარი', false)).toBe('relation');
+    expect(classifyToken('pekini', false)).toBe('place');
+    expect(classifyToken('პეკინი', false)).toBe('place');
+  });
+
+  /**
+   * „sabas babu dedis mxridan" — Saba's grandfather on his mother's side.
+   * 8,700 people carried it as a company word with an org_size sixty times
+   * over `BIG_ORG_SIZE`.
+   */
+  it('reads the grandfather in both of the words Georgian uses', () => {
+    for (const t of ['babu', 'babua', 'babus', 'ბაბუ', 'ბაბუა', 'papa', 'პაპა']) {
+      expect(classifyToken(t, false)).toBe('relation');
+    }
+  });
+
+  /**
+   * THE GUARD THAT MADE „papa" POSSIBLE, and the reason it is a test.
+   *
+   * The anchored rule compares the ENDING to a surname ending, exactly — and a
+   * surname ending overlaps the word in front of it. „papava" is „papa" plus
+   * „va", and „va" is not on the list while „ava" is. Without the second
+   * guard, 671 Papavas and 364 პაპავას — a family `isNameToken` reads
+   * correctly today — would have been read as somebody's grandfather.
+   */
+  it('leaves a family name that only looks like the word plus an ending', () => {
+    for (const t of ['papava', 'პაპავა', 'papashvili', 'papadze', 'ბაბულია']) {
+      expect(classifyToken(t, false)).toBe('name');
+    }
+  });
+
+  /**
+   * And the guard must not reach the case it was NOT written for: „ბებია" IS
+   * the word, it ends in „ია", and the grandmother has to keep coming through.
+   * That is what the length test in `matchesAnchored` is for.
+   */
+  it('does not take the grandmother back from the previous fix', () => {
+    expect(classifyToken('ბებია', false)).toBe('relation');
+    expect(classifyToken('bebia', false)).toBe('relation');
+    expect(classifyToken('goris', false)).toBe('place');
+    expect(classifyToken('dididze', false)).toBe('name');
+  });
+
+  it('reads the six new names and still refuses the car wash and the market', () => {
+    for (const n of ['lizi', 'joni', 'barbare', 'eto', 'taso', 'sali', 'ლიზი', 'ჯონი']) {
+      expect(classifyToken(n, false)).toBe('name');
+    }
+    // .11 and .02 lead share: a company behaving like one, not a name hiding.
+    expect(classifyToken('saga', false)).toBe('organisation');
+    expect(classifyToken('kidobani', false)).toBe('organisation');
+  });
+});
