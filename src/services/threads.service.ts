@@ -81,14 +81,6 @@ export interface ThreadMessage {
    * warning needed"), so this is what the field is called now.
    */
   run_mode?: string | null;
-  /**
-   * @deprecated The same value under the old name, sent while the client
-   * switches. Two names for one thing is the fault I have spent today
-   * complaining about (`req_<id>` against the UUID), so this is a transition
-   * and not a second key: it goes the moment the frontend says they read
-   * `run_mode`.
-   */
-  prompt_mode?: string | null;
   prompt_blocks?: string[] | null;
 }
 
@@ -689,7 +681,7 @@ export async function getThreadMessages(
   // LEFT JOIN, so a message from before the link existed still renders.
   const result = await query<ThreadMessage>(
     /**
-     * `prompt_mode` DESCRIBES THE RUN, NOT THE ROW — it arrives by a JOIN on
+     * `run_mode` DESCRIBES THE RUN, NOT THE ROW — it arrives by a JOIN on
      * `run_id`, and it is the mode the run was assembled in.
      *
      * The seat's 377 and 378 read it as a row attribute and concluded that
@@ -703,7 +695,7 @@ export async function getThreadMessages(
      * one final answer when it is done. The step rows are `kind: 'step'` and
      * `kindFilter` above removes them. The final answer is `kind: 'message'`
      * because that is what it is — the assistant speaking to the person — and
-     * it carries `prompt_mode: 'task_step'` because a goal run produced it.
+     * it carries `run_mode: 'task_step'` because a goal run produced it.
      *
      * Measured on their two accounts, 21 September:
      *
@@ -720,14 +712,16 @@ export async function getThreadMessages(
      * warning needed" — so the field is `run_mode`, which is what it has
      * always described.
      *
-     * BOTH NAMES GO OUT FOR NOW, and only for now. A hard rename would make
-     * the field silently undefined on a client that has not shipped yet, and
-     * the order of two deploys is not something worth gambling a display on.
-     * `prompt_mode` is deprecated and comes out as soon as they say they read
-     * the new one — because two names for one thing is precisely the fault
-     * `req_<id>` against the UUID has been costing the tester all week.
+     * BOTH NAMES SHIPPED FOR FOUR HOURS AND THE OLD ONE IS NOW GONE. The
+     * overlap existed so a hard rename could not make the field silently
+     * undefined on a client that had not deployed yet; the frontend hid the
+     * old column (build a1e858c) and said plainly that deleting it breaks
+     * nothing on their side, so it is deleted rather than left to rot. Two
+     * names for one thing is the fault `req_<id>` against the UUID has been
+     * costing the tester all week, and keeping a transition past its
+     * transition is how that fault is born.
      */
-    `SELECT page.*, s.mode AS run_mode, s.mode AS prompt_mode,
+    `SELECT page.*, s.mode AS run_mode,
             s.block_versions AS prompt_blocks
      FROM (
        -- Ticket 20 row 132, second pass: answered_by rides with the message.
