@@ -1428,8 +1428,34 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
     [taskId],
     ASK_QUERY_TIMEOUT_MS,
   );
+  /**
+   * Row 148 — one note per PERSON, not one per ask.
+   *
+   * The seat filed it on 17 September: somebody got the same „no longer
+   * needed" note TWICE, in the same second. It was never checked and it has
+   * happened twice more since, most recently TODAY:
+   *
+   *   thread 14885   16 Sep 16:38:53   0.328 s apart
+   *   thread 15512   17 Sep 18:37:17   0.317 s apart   <- the seat's case
+   *   thread 20098   21 Sep 13:19:23   0.440 s apart
+   *
+   * All three are the same shape and the cause is one line: a relayed
+   * conversation CONTINUES IN ONE THREAD — „later messages land in the same
+   * thread on their phone" is ask_contact's own promise — so a goal with two
+   * sent asks to one person has two rows pointing at one thread, and the loop
+   * wrote a note for each row. Two of the three were an ask plus its follow-up
+   * and the third was two ordinary asks, so „skip follow-ups" would have fixed
+   * two cases out of three and looked right.
+   *
+   * THE COUNT THE OWNER SEES DOES NOT CHANGE. They sent two questions and two
+   * were cancelled; that line stays 2. It is the RECIPIENT who is told once,
+   * because two identical apologies in the same second read as a fault in the
+   * product rather than as courtesy.
+   */
+  const told = new Set<number>();
   for (const row of cancelled.rows) {
-    if (row.ask_thread_id === null) continue;
+    if (row.ask_thread_id === null || told.has(row.ask_thread_id)) continue;
+    told.add(row.ask_thread_id);
     // In the RECIPIENT's language: this is the message that closes a
     // stranger's loop - they were asked for a favour and are being let off,
     // and being let off in a script they cannot read is worse than silence.

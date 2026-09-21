@@ -1489,3 +1489,72 @@ describe('the same question twice inside one run (row 205)', () => {
     expect(out.sent).toBe(true);
   });
 });
+
+/**
+ * Row 148 — one note per PERSON, not one per ask.
+ *
+ * The seat filed it on 17 September: somebody got the same „no longer needed"
+ * note TWICE, in the same second. It sat as „could not check" on the plate,
+ * and it had happened twice more by the time anybody looked:
+ *
+ *   thread 14885   16 Sep 16:38:53.415 / .743   task 2971, asks 1519 + 1585
+ *   thread 15512   17 Sep 18:37:17.575 / .892   task 3433, asks 1816 + 2080
+ *   thread 20098   21 Sep 13:19:23.834 / :24.274  task 6667, asks 3136 + 3369
+ *
+ * A relayed conversation CONTINUES IN ONE THREAD — that is ask_contact's own
+ * promise, „later messages land in the same thread on their phone" — so a goal
+ * with two sent asks to one person has two rows pointing at one thread.
+ *
+ * Two of the three were an ask plus its follow-up and the third was two
+ * ordinary asks, which is why „skip follow-ups" is the wrong fix: it would
+ * have closed two of three and looked correct.
+ */
+describe('cancelAsksForTask tells each person once', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('writes ONE note when two asks share a thread', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { ask_thread_id: 20098, to_user_id: 7 },
+        { ask_thread_id: 20098, to_user_id: 7 },
+      ]) as never,
+    );
+
+    const n = await cancelAsksForTask(6667);
+
+    expect(mockSaveMessage).toHaveBeenCalledTimes(1);
+    expect(mockSaveMessage.mock.calls[0][0]).toBe(20098);
+    // The owner still hears the truth: two questions were cancelled.
+    expect(n).toBe(2);
+  });
+
+  it('still writes to each DIFFERENT person', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { ask_thread_id: 61, to_user_id: 7 },
+        { ask_thread_id: 62, to_user_id: 8 },
+        { ask_thread_id: 61, to_user_id: 7 },
+      ]) as never,
+    );
+
+    await cancelAsksForTask(3);
+
+    expect(mockSaveMessage).toHaveBeenCalledTimes(2);
+    expect(mockSaveMessage.mock.calls.map((c) => c[0])).toEqual([61, 62]);
+  });
+
+  /** And the header is cleared once too, not twice (row 233). */
+  it('clears the thread header once per thread', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { ask_thread_id: 20098, to_user_id: 7 },
+        { ask_thread_id: 20098, to_user_id: 7 },
+      ]) as never,
+    );
+
+    await cancelAsksForTask(6667);
+
+    const forThread = (setThreadStatus as jest.Mock).mock.calls.filter((c) => c[1] === 20098);
+    expect(forThread).toHaveLength(1);
+  });
+});
