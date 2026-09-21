@@ -64,6 +64,54 @@ export const BLOCK_TOO_LONG_MESSAGE =
 // a mode rides on every call in that mode, so raising this raises the cost of
 // each of those calls — prune before raising again.
 const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 40_000);
+
+/**
+ * A ceiling one mode may have that the others do not — Misho, 21 September:
+ * **„აუწიე 44000-ზე"**, raise it to 44,000.
+ *
+ * WHY IT IS RAISED. The seat tried the trim first, which is the right order.
+ * Four compression passes on the Forty-eight rule lost the „when the count is
+ * one" clause and two teaching examples and still landed at 39,999 of 40,000 —
+ * one character of headroom and nothing left for the next rule. A ceiling that
+ * can only be met by deleting the reasoning is not doing the job the ceiling
+ * was put there for.
+ *
+ * WHY IT IS PER MODE AND NOT THE GLOBAL NUMBER. `MODE_BLOCK_BUDGET_CHARS` is
+ * one variable for every mode, so raising it would hand `task_step` 4,000
+ * characters nobody asked for — it sits at 30,986 and has room. I told Misho
+ * that before he answered and recommended the split; this is it. One line
+ * below reverses it.
+ *
+ * WHY IT IS CODE RATHER THAN CONFIG. The global is an environment variable and
+ * the honest thing about a standing cost is that it should be readable by
+ * anyone who looks at the repository. Every enabled block in a mode rides on
+ * EVERY call in that mode; 4,000 characters is roughly 1,000 tokens on every
+ * quick answer the product serves, for as long as this line stands. A number
+ * like that belongs in git with the reason beside it, not in a console.
+ *
+ * WHAT IT COSTS, MEASURED RATHER THAN FEARED. Five days of `usage_events`:
+ * 3,201 chat calls, $155.51, and per call 39,090 tokens READ from cache
+ * against 11,786 written. The system prompt sits behind a cache breakpoint, so
+ * its size is paid at roughly a tenth of input price after the first call in a
+ * window. The expensive act is EDITING a block, which throws the cached prefix
+ * away for everyone in that mode — not holding one.
+ */
+const MODE_BLOCK_BUDGET_OVERRIDES: Readonly<Partial<Record<RunMode, number>>> = {
+  quick_answer: 44_000,
+};
+
+/**
+ * The ceiling in force for one mode.
+ *
+ * Takes a plain string because `PromptBlock.modes` is one — validation has
+ * already refused an unknown mode by the time this runs, and a name that is
+ * somehow not a RunMode gets the default rather than an exception. A budget
+ * check is the wrong place to throw about a typo.
+ */
+export function modeBlockBudget(mode: string): number {
+  if (!isRunMode(mode)) return MODE_BLOCK_BUDGET_CHARS;
+  return MODE_BLOCK_BUDGET_OVERRIDES[mode] ?? MODE_BLOCK_BUDGET_CHARS;
+}
 const HISTORY_KEEP_PER_BLOCK = 10;
 const RUN_STAMP_RETENTION_DAYS = 30;
 const RUN_STAMP_LIST_LIMIT = 50;
@@ -190,20 +238,23 @@ export async function listPromptBlocks(): Promise<PromptBlock[]> {
 
 /** Per-mode sum of enabled block content vs the ceiling — the admin UI's live meter. */
 export function computeModeTotals(blocks: readonly PromptBlock[]): ModeTotal[] {
-  return RUN_MODES.map((mode) => ({
-    mode,
-    enabled_chars: blocks
+  return RUN_MODES.map((mode) => {
+    const used = blocks
       .filter((b) => b.enabled && b.modes.includes(mode))
-      .reduce((sum, b) => sum + b.content.length, 0),
-    budget_chars: MODE_BLOCK_BUDGET_CHARS,
-    // The number a person actually needs before pasting. Everyone was
-    // subtracting it by hand, and "29,997 of 30,000" reads as roomy.
-    remaining_chars:
-      MODE_BLOCK_BUDGET_CHARS -
-      blocks
-        .filter((b) => b.enabled && b.modes.includes(mode))
-        .reduce((sum, b) => sum + b.content.length, 0),
-  }));
+      .reduce((sum, b) => sum + b.content.length, 0);
+    // Each mode's OWN ceiling, not the global one. Reporting 40,000 while the
+    // saver enforces 44,000 would send the next editor to trim text that fits,
+    // which is the shape of trimming the seat had already been put through.
+    const budget = modeBlockBudget(mode);
+    return {
+      mode,
+      enabled_chars: used,
+      budget_chars: budget,
+      // The number a person actually needs before pasting. Everyone was
+      // subtracting it by hand, and "29,997 of 30,000" reads as roomy.
+      remaining_chars: budget - used,
+    };
+  });
 }
 
 async function getPromptBlock(name: string): Promise<PromptBlock | null> {
@@ -254,13 +305,15 @@ async function assertModeBudgets(merged: PromptBlock): Promise<void> {
       .filter((b) => b.modes.includes(mode))
       .reduce((sum, b) => sum + b.content.length, 0);
     const total = otherChars + merged.content.length;
-    if (total > MODE_BLOCK_BUDGET_CHARS) {
+    const ceiling = modeBlockBudget(mode);
+    if (total > ceiling) {
       throw new PromptBlockValidationError(
         `mode ${mode} would hold ${total} chars of enabled blocks — over the ` +
-          `${MODE_BLOCK_BUDGET_CHARS} ceiling by ${total - MODE_BLOCK_BUDGET_CHARS}. ` +
+          `${ceiling} ceiling by ${total - ceiling}. ` +
           `This is the MODE budget (the sum of every enabled block bound to ${mode}), ` +
-          `not the ${MAX_BLOCK_CONTENT_CHARS}-char per-block cap. Disable or shorten a ` +
-          `block, or raise MODE_BLOCK_BUDGET_CHARS — it is config, no deploy.`,
+          `not the ${MAX_BLOCK_CONTENT_CHARS}-char per-block cap. Each mode has its own ` +
+          `ceiling (MODE_BLOCK_BUDGET_OVERRIDES in promptBlocks.service.ts, default ` +
+          `${MODE_BLOCK_BUDGET_CHARS}). Disable or shorten a block, or raise this mode's.`,
       );
     }
   }

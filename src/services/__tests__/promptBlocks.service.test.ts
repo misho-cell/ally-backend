@@ -10,6 +10,7 @@ import {
   upsertPromptBlock,
   deletePromptBlock,
   computeModeTotals,
+  modeBlockBudget,
   isValidBlockName,
   isRunMode,
   stampRunMode,
@@ -387,5 +388,46 @@ describe('the stamp records which base prompt the run was given', () => {
     await stampRunMode('run-4', '501', null, 'quick_answer', []);
 
     expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][6]).toBeNull();
+  });
+});
+
+/**
+ * Misho, 21 September: **„აუწიე 44000-ზე"** — raise it to 44,000.
+ *
+ * The seat tried the trim first, which is the right order. Four compression
+ * passes on the Forty-eight rule lost the „when the count is one" clause and
+ * two teaching examples and still landed at 39,999 of 40,000 — one character
+ * of headroom and nothing left for the next rule. A ceiling that can only be
+ * met by deleting the reasoning is not doing its job.
+ *
+ * PER MODE, and that part is mine rather than his. The global
+ * `MODE_BLOCK_BUDGET_CHARS` is one variable for every mode, so raising it
+ * would hand `task_step` 4,000 characters nobody asked for — it sits at 30,986
+ * and has room. I told him that before he answered and recommended the split.
+ */
+describe('one mode may have more room than the others', () => {
+  it('gives quick_answer 44,000 and leaves the rest at the default', () => {
+    expect(modeBlockBudget('quick_answer')).toBe(44_000);
+    expect(modeBlockBudget('task_step')).toBe(40_000);
+    expect(modeBlockBudget('onboarding')).toBe(40_000);
+  });
+
+  /** A budget check is the wrong place to throw about a typo. */
+  it('gives an unknown mode the default rather than an exception', () => {
+    expect(modeBlockBudget('drafting')).toBe(40_000);
+  });
+
+  /**
+   * The admin read must agree with the saver. Reporting 40,000 while the saver
+   * enforces 44,000 sends the next editor to trim text that fits — which is
+   * exactly the trimming this change exists to stop.
+   */
+  it('reports each mode its own ceiling, not the global one', () => {
+    const totals = computeModeTotals([]);
+    const quick = totals.find((t) => t.mode === 'quick_answer');
+    const step = totals.find((t) => t.mode === 'task_step');
+    expect(quick?.budget_chars).toBe(44_000);
+    expect(quick?.remaining_chars).toBe(44_000);
+    expect(step?.budget_chars).toBe(40_000);
   });
 });
