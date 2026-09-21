@@ -224,9 +224,32 @@ export const TRADE_WORDS = [
    * „neli rusulis masw" — and it never leads a label (0% of 33 in the sample,
    * against 93% for a first name). The longer entry could not see it, so
    * roughly five thousand teachers per script were read as a company word
-   * called „masw". **Every token in the base containing „masw" is this word or
-   * a misspelling of it — no collateral at all**, which is why four characters
-   * are safe here and „gori" is not.
+   * called „masw".
+   *
+   * WHAT THE COLLATERAL ACTUALLY IS, after I got it wrong once.
+   *
+   * I first wrote here „no collateral at all". That came from a listing of the
+   * thirty most-carried tokens containing `masw`, and I read a truncated list
+   * as a census — the same mistake as `count: 50` meaning fifty exist. The
+   * seat's 380 turned up the counterexample inside a live network the same
+   * hour: `swormasworo`, which contains „masw" and is not a teacher.
+   *
+   * Asked properly — every distinct token in the base containing it and NOT
+   * starting with it, no limit — there are about 120, and all but a handful
+   * are „NameTeacher" written as one word: `ninomasw`, `lalimaswi`,
+   * `specmaswavlebeli`, `ინგლისურისმასწავლებელი`. Those are teachers and
+   * reading them as a trade is right.
+   *
+   * The genuine misses are six people:
+   *
+   *   მამასწარაშვილი  1   A SURNAME, and the one that matters.
+   *   mimaswavla      3   „taught me" — a verb.
+   *   amaswavlebe     1   the same verb.
+   *   swormasworo     1   the seat's find.
+   *
+   * Six against roughly seven thousand, and none of them becomes a company —
+   * they become a trade, which is the mild direction. The entry stays. What
+   * does not stay is the sentence claiming there was nothing to measure.
    */
   'მასწ',
   'masw',
@@ -264,16 +287,21 @@ export const TRADE_WORDS = [
    * Every token in the WHOLE base containing each entry was listed before the
    * entry was written, not sampled:
    *
-   *   dazgvev / დაზღვევ  2,211 + 1,404   insurance   collateral: none
-   *   kurier  / კურიერ   2,023 + 2,012   courier     collateral: none
-   *   stilist / სტილისტ  1,516 + 1,141   stylist     collateral: none
+   *   dazgvev / დაზღვევ  2,211 + 1,404   insurance
+   *   kurier  / კურიერ   2,023 + 2,012   courier
+   *   stilist / სტილისტ  1,516 + 1,141   stylist
    *
-   * „none" is literal: every token containing them is the word, its case
-   * endings, a misspelling, or a name glued to it („mishakurieri",
-   * „elzastilisti"). The only entries they reach inside a longer word that is
-   * not the trade are five insurers written as one word — „tbcdazgveva",
-   * „primedazgveva", „imedielidazgveva" — thirteen people, who go from an
-   * organisation word to a trade. They sell insurance; that is not a loss.
+   * Their collateral was re-asked the strict way after the `masw` correction
+   * below — every distinct token containing the word and NOT starting with it,
+   * no limit on the listing. Nothing in any of the six lists is outside the
+   * trade: `sakuriero` (a courier service, 118 + 149), `sadazgvevo` (an
+   * insurer, 245 + 137), `avtodazgveva`, `motokurieri`, and names glued to the
+   * word — `elzastilisti`, `mishakurieri`. **No surnames and no other word.**
+   *
+   * The only entries they reach that are not the trade itself are insurers
+   * written as one word — „tbcdazgveva", „primedazgveva" — thirteen people,
+   * who go from an organisation word to a trade. They sell insurance; that is
+   * not a loss.
    */
   'dazgvev',
   'დაზღვევ',
