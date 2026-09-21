@@ -1587,3 +1587,25 @@ scrolled past a hundred times, is not an urgent harm.
 
 **So it is his call and Misho's, not mine, and nothing happens until one of
 them says so.**
+
+### 21 SEPTEMBER — AUTHORISED, AND DONE AS A MIGRATION RATHER THAN A ROUTE
+
+Misho, on the entry above: **„გააკეთე როგორც ამბობ."**
+
+**The method changed and this section says so rather than quietly diverging.**
+I registered `POST /admin/conversations/reclassify-engine-rows`. I then argued
+myself out of exactly that shape twice today in other people's rows — the
+frontend's row 73 („a route nobody calls is the guard standing on the wrong
+path", which was my own sentence handed back to me) and again in row 234.
+
+This is a one-off correction with a fixed, knowable scope. **That is what a
+migration is for**: it runs once, it is in git where anyone can read it, and it
+leaves no admin power standing behind it. `164_reclassify_engine_rows.sql`.
+
+**The undo is unchanged** — the same statement with the kinds swapped, bounded
+by `created_at < 2026-08-11 13:00`, which is what keeps an undo from claiming
+the 850 legitimate `event` rows written since.
+
+**Re-counted immediately before writing it**, not taken from this morning's
+reading: 26 rows, 22 threads, 10 August 02:30 to 11 August 12:07, all on
+account 501.
