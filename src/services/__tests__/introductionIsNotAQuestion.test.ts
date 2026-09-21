@@ -166,3 +166,34 @@ describe('the connector says the same thing as the chat', () => {
     expect(warmPath).toContain('can only be addressed to the user’s own contact');
   });
 });
+
+/**
+ * The seat's 396, counted rather than reported: every introduction raised from
+ * a seat today — 1189, 1222, 1255, 1256 — carries `message` NULL, and the
+ * mediator's GET /requests row shows "message": null.
+ *
+ * The tool's PROSE has said „saved verbatim so the eventual reply keeps its
+ * context" for weeks. Its SCHEMA said „Optional context message for the
+ * mediator" and left it out of `required`. A schema wins that argument every
+ * time, and the one line that lets a person say yes never left the app.
+ *
+ * The connector required it all along — `z.string()` with no `.optional()`.
+ * Same split as the three routing sentences above.
+ */
+describe('the why reaches the mediator', () => {
+  it('the chat tool requires message, as the connector already did', () => {
+    // Comments stripped: the block above this test quotes the old wording, and
+    // a plain search would go green against my own note about the fix rather
+    // than against the fix. That has happened here before.
+    const code = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const schema = code.slice(code.indexOf("name: 'request_introduction'"));
+    expect(schema).toContain("required: ['mediator_name', 'target_name', 'message']");
+    expect(schema).not.toContain('Optional context message');
+  });
+
+  it('says what the line is for, not only that it is needed', () => {
+    const schema = SOURCE.slice(SOURCE.indexOf("name: 'request_introduction'"));
+    expect(schema).toContain('the line that lets the mediator say yes');
+    expect(schema).toContain('ask them before calling this');
+  });
+});

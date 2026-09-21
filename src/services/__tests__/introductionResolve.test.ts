@@ -434,3 +434,88 @@ describe('row 210 — the requester’s goal hears the answer', () => {
     expect(out.ok).toBe(true);
   });
 });
+
+/**
+ * Row 210, reopened by the seat's 394 — and the split they proposed is not the
+ * one in the data.
+ *
+ * They read three cases as „with an approved plan the watched chat is told,
+ * without one it never is". Two of the three WERE told, in their own threads:
+ * goal 7162 accepted 13:24:57 told 13:25:20 (23 s), goal 7195 accepted
+ * 13:43:38 told 13:44:19 (41 s). Both had no plan.
+ *
+ * What the silent one actually is: a REAL person, 10:19, who typed
+ * „სთხოვე ლიკას გამაცნოს ნიტა ჩხეიძე" into an ordinary chat. Request 1156,
+ * `requester_task_id` NULL, so `wakeRequestersGoal` returns on its first line
+ * and the outcome reached only the request's own thread. Since column 156
+ * shipped there have been six requests: five from test seats, all inside a
+ * goal, all told; one from a real account, with no goal, not told.
+ */
+describe('an introduction asked in a plain chat answers into that chat', () => {
+  const NO_GOAL = { ...REQUEST_ROW, requester_task_id: null, origin_thread_id: 20131 };
+
+  it('writes the outcome into the chat it was asked in', async () => {
+    setup({ request: NO_GOAL });
+    mockThreads.mockResolvedValue([{ id: 11, user_id: 7, type: 'incoming_request' }] as never);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', {
+      response: 'კი, სიამოვნებით',
+      channel: 'via_mediator',
+    });
+    await settled();
+
+    const intoOrigin = mockSaveThreadMessage.mock.calls.filter((c) => c[0] === 20131);
+    expect(intoOrigin).toHaveLength(1);
+    expect(intoOrigin[0][1]).toBe(9); // the requester, not the mediator
+    expect(intoOrigin[0][2]).toBe('assistant');
+    expect(String(intoOrigin[0][3])).toContain('კი, სიამოვნებით');
+  });
+
+  /** A goal-backed request is told by its wake — a second copy would be noise. */
+  it('stays out of the way when there IS a goal to wake', async () => {
+    setup({ request: { ...NO_GOAL, requester_task_id: 7063 } });
+    mockThreads.mockResolvedValue([]);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', { channel: 'direct' });
+    await settled();
+
+    expect(mockWakeGoal).toHaveBeenCalledWith(7063, expect.anything());
+    expect(mockSaveThreadMessage.mock.calls.filter((c) => c[0] === 20131)).toHaveLength(0);
+  });
+
+  /** Nothing to write into: the connector has no conversation. */
+  it('does nothing when the request carries no thread either', async () => {
+    setup({ request: { ...NO_GOAL, origin_thread_id: null } });
+    mockThreads.mockResolvedValue([]);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', { channel: 'direct' });
+    await settled();
+
+    expect(mockSaveThreadMessage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * When the request was raised inside its own outgoing thread, `syncRequestThreads`
+   * has already written there and a second copy would be the same sentence twice.
+   */
+  it('does not write twice into the request’s own thread', async () => {
+    setup({ request: { ...NO_GOAL, origin_thread_id: 12 } });
+    mockThreads.mockResolvedValue([{ id: 12, user_id: 9, type: 'outgoing_request' }] as never);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', { channel: 'direct' });
+    await settled();
+
+    expect(mockSaveThreadMessage.mock.calls.filter((c) => c[0] === 12)).toHaveLength(1);
+  });
+
+  /** A snooze is not an answer, and the chat has nothing to hear yet. */
+  it('says nothing on a snooze', async () => {
+    setup({ request: NO_GOAL });
+    mockThreads.mockResolvedValue([]);
+
+    await resolveIntroductionRequest('7', { requestId: 5 }, 'snooze', {});
+    await settled();
+
+    expect(mockSaveThreadMessage.mock.calls.filter((c) => c[0] === 20131)).toHaveLength(0);
+  });
+});

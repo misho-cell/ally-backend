@@ -92,6 +92,13 @@ export type IntroAskType = 'intro' | 'share_contact';
 export interface IntroRequestContext {
   /** The requester's open goal, when the conversation had one. */
   requesterTaskId?: number;
+  /**
+   * The thread this was asked in. Row 210 reopened: without a goal there is
+   * nothing to wake, and on 21 September a real person's chat stayed silent
+   * through an accept because the outcome had only the request's own thread to
+   * go to. Absent over the connector, which has no conversation.
+   */
+  originThreadId?: number;
 }
 
 export async function requestIntroduction(
@@ -260,8 +267,8 @@ async function requestIntroductionInner(
       // Row 210: `requester_task_id` is the goal this was raised for, so the
       // answer can be walked back to it instead of waiting to be asked about.
       `INSERT INTO introduction_requests
-         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id, origin_thread_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, request_ref`,
       isDirect
         ? [
@@ -273,6 +280,7 @@ async function requestIntroductionInner(
             resolvedPhone,
             'direct',
             context.requesterTaskId ?? null,
+            context.originThreadId ?? null,
           ]
         : [
             requesterUserId,
@@ -283,6 +291,7 @@ async function requestIntroductionInner(
             targetPhone ?? null,
             askType,
             context.requesterTaskId ?? null,
+            context.originThreadId ?? null,
           ],
     ),
     getRequesterName(requesterUserId),

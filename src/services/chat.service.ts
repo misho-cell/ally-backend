@@ -444,7 +444,11 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
       },
       message: {
         type: 'string',
-        description: 'Optional context message for the mediator',
+        description:
+          "One plain line of why the user wants the intro, in the user's words, saved verbatim " +
+          'so the reply keeps its context. It is the line that lets the mediator say yes: ' +
+          'without it their card reads only "X wants to meet Y". REQUIRED — if the user has ' +
+          'not said why, ask them before calling this.',
       },
       ask_type: {
         type: 'string',
@@ -459,7 +463,18 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
           'they explicitly say yes.',
       },
     },
-    required: ['mediator_name', 'target_name'],
+    /**
+     * The seat's 396: all four introductions raised from a seat today carry
+     * `message` NULL, and the mediator's card shows "message": null. The
+     * description has said „saved verbatim so the reply keeps its context"
+     * for weeks and the SCHEMA said „Optional context message" — the schema
+     * wins that argument every time.
+     *
+     * The connector has required it all along (`z.string()`, no `.optional()`).
+     * This is the chat copy catching up, which is the same split as the three
+     * routing sentences and the intro-as-ask counter.
+     */
+    required: ['mediator_name', 'target_name', 'message'],
   },
 };
 
@@ -5092,8 +5107,13 @@ async function executeToolCall(
        * thread to pull on, and it has to be taken here because this is the
        * last place that knows which conversation the request came out of.
        *
-       * Absent is a real answer: an introduction asked for in a chat with no
-       * goal has no goal to wake, and that is not a failure.
+       * „ABSENT IS A REAL ANSWER" IS WHAT I WROTE HERE, AND IT WAS HALF TRUE.
+       * A chat with no goal has no goal to wake — that part stands. What it
+       * skipped is that such a request then has nothing at all to carry its
+       * answer back, and on 21 September a real person lived that: she asked
+       * in an ordinary chat at 10:19, the mediator agreed at 10:22, and her
+       * chat said nothing. So the THREAD goes with the request too, and the
+       * resolve writes into it when there is no goal (request 1156).
        */
       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
       const introOutcome = await requestIntroduction(
@@ -5106,7 +5126,10 @@ async function executeToolCall(
         input['target_phone'] as string | undefined,
         input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
         input['accept_dormant'] === true,
-        goalForIntro === null ? {} : { requesterTaskId: goalForIntro.id },
+        {
+          ...(goalForIntro === null ? {} : { requesterTaskId: goalForIntro.id }),
+          ...(threadId == null ? {} : { originThreadId: threadId }),
+        },
       );
       if ((introOutcome as { success?: unknown }).success === true) {
         await markSearchSent(

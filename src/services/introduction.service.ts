@@ -442,6 +442,8 @@ interface RequestRow {
   status: string;
   /** Row 210: the requester's goal this was raised for, when there was one. */
   requester_task_id: number | null;
+  /** Row 210 reopened: the chat it was asked in, when there was no goal. */
+  origin_thread_id: number | null;
 }
 
 async function loadRequestForMediator(
@@ -452,7 +454,7 @@ async function loadRequestForMediator(
   const result = await query<RequestRow>(
     `SELECT ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
             ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,
-            ir.requester_task_id
+            ir.requester_task_id, ir.origin_thread_id
      FROM introduction_requests ir
      WHERE ${RESPONDER_COND(1)} AND ${byRef ? 'ir.request_ref = $2' : 'ir.id = $2'}
      LIMIT 1`,
@@ -739,6 +741,51 @@ async function syncRequestThreads(
  * is recorded and visible whatever happens here, and an introduction must
  * never fail to be accepted because a wake could not be scheduled.
  */
+/**
+ * Row 210 reopened — the answer reaches the chat the person is watching even
+ * when there is no goal to wake.
+ *
+ * `wakeRequestersGoal` needs a task, and 21 September showed what that leaves
+ * out: a real person typed „სთხოვე ლიკას გამაცნოს ნიტა ჩხეიძე" into an
+ * ordinary chat, the mediator agreed two minutes later, and her chat said
+ * nothing — the outcome went to the request's own thread, which she was not
+ * looking at. Request 1156, `requester_task_id` NULL.
+ *
+ * WRITTEN, NOT RUN, and that is the whole design. The outgoing-request thread
+ * already receives this exact sentence from `syncRequestThreads`; the same
+ * text goes into the origin chat. No model call, so it cannot cost tokens, hit
+ * an empty wallet, or be phrased into something the other two messages do not
+ * say. A goal-backed request is untouched — it is told by its wake, measured
+ * today at 23 and 41 seconds, and a second copy would be noise.
+ *
+ * Best-effort, after the threads are synced, like every other delivery here:
+ * an introduction must never fail to be accepted because a chat could not be
+ * written to.
+ */
+async function tellTheChatItWasAskedIn(
+  req: RequestRow,
+  action: IntroductionAction,
+  response: string | undefined,
+  outcome: AcceptOutcome | undefined,
+): Promise<void> {
+  if (req.requester_task_id !== null) return;
+  if (req.origin_thread_id === null || action === 'snooze') return;
+  try {
+    // Never twice into the same thread: when the request was raised inside its
+    // own outgoing thread there is nothing to add.
+    const ownThreads = await getThreadsByIntroRequestId(req.id);
+    if (ownThreads.some((t) => t.id === req.origin_thread_id)) return;
+    const text = (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? '');
+    await saveThreadMessage(req.origin_thread_id, req.requester_user_id, 'assistant', text);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[intro] could not tell chat ${req.origin_thread_id} about request ${req.id}:`,
+      (err as Error).message,
+    );
+  }
+}
+
 async function wakeRequestersGoal(
   req: RequestRow,
   accepted: boolean,
@@ -933,5 +980,7 @@ export async function resolveIntroductionRequest(
   await syncRequestThreads(req, action, opts.response, outcome);
   // The wake is told what the other two messages were told — see AcceptOutcome.
   await wakeRequestersGoal(req, action === 'accept', outcome?.contactHandedOver === true);
+  // ...and when there is no goal to wake, the chat it was asked in is told.
+  await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
   return { ok: true, status: newStatus };
 }
