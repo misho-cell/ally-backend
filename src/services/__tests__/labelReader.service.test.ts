@@ -746,6 +746,31 @@ describe('the trades, relations and places the base still called companies', () 
     expect(classifyToken('მამარდაშვილი', false)).toBe('name');
   });
 
+  /**
+   * ROW 8'S LEFTOVERS, 21 September. „and", „no", „none" and „100 არა" were
+   * already fixed; what was still open was the SAME WORDS IN LATIN. Asked
+   * mechanically — every Georgian entry in `IDENTIFIES_NOBODY` and
+   * `NOT_A_WORD`, transliterated, looked for in the same set — four of
+   * thirty-six had no twin, and `da` alone carries 7,352 people.
+   *
+   * Three of the four were refused. The reasons are beside the entries; the
+   * one worth repeating is „an", which is how people shorten Ana.
+   */
+  it('reads the grammar words in Latin too, not only in Georgian', () => {
+    for (const t of ['da', 'ara', 'sxva', 'skhva', 'და', 'არა', 'სხვა']) {
+      expect(classifyToken(t, false)).toBe('not_a_word');
+    }
+  });
+
+  it('refuses the twin that is a shortened name, and the one that is a job code', () => {
+    // „an mikadze", „an dgebuadze", „anna an" — a conjunction carries no
+    // surname. And „ho" is „natia bughashvili projeckt manager ho", used the
+    // same way by forty people: somebody's code, not the Georgian for yes.
+    expect(classifyToken('an', false)).not.toBe('not_a_word');
+    expect(classifyToken('ho', false)).not.toBe('not_a_word');
+    expect(classifyToken('ki', false)).not.toBe('not_a_word');
+  });
+
   it('reads the six new names and still refuses the car wash and the market', () => {
     for (const n of ['lizi', 'joni', 'barbare', 'eto', 'taso', 'sali', 'ლიზი', 'ჯონი']) {
       expect(classifyToken(n, false)).toBe('name');

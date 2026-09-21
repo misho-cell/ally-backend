@@ -853,6 +853,56 @@ export const IDENTIFIES_NOBODY: ReadonlySet<string> = new Set([
   'ან',
   'არა',
   'სხვა',
+  /**
+   * 21 September — THE LATIN TWINS, and three of the four were refused.
+   *
+   * Row 8's leftovers sent me back here. Asked mechanically: every Georgian
+   * entry in this set and in NOT_A_WORD, transliterated, looked for in the
+   * same set. Thirty-six entries, four with no Latin twin — `და`→`da`,
+   * `ან`→`an`, `არა`→`ara`, `სხვა`→`skhva`. This base is written in both
+   * scripts, so half of each of those words was unprotected.
+   *
+   * WHICH WENT IN WAS MEASURED, because a wrong entry here is final: this list
+   * means „never print as an employer", so a real company word on it loses a
+   * real signal for good.
+   *
+   * The lead share separates a name from a company and says nothing useful
+   * about a conjunction, so the discriminator is the LABEL'S LENGTH. Grammar
+   * lives inside a sentence; a name is the whole label. Controls at both ends,
+   * „nino" and „tbc":
+   *
+   *     token   labels   mean tokens   1-2 token labels
+   *     nino    48,359       2.4            72%     ← a name
+   *     tbc      7,151       3.0            31%     ← a company
+   *     da       3,787       4.3            13%     IN
+   *     ara        121       4.1            31%     IN
+   *     sxva       141       3.8            17%     IN
+   *     an         311       3.7            39%     refused
+   *     ki          92       3.3            53%     refused
+   *     ho          40       2.5            58%     refused
+   *
+   * `da` carries 7,352 people whole-token and sits at three per cent lead — it
+   * is „and" inside a note, every sample of it. Note that `და` is both „and"
+   * and „sister" and has been on this list since the beginning; the Latin twin
+   * inherits that trade-off rather than making a new one.
+   *
+   * REFUSED, each on what the labels turned out to be:
+   *
+   *   an   the twin of „ან", and still refused: it is how people shorten Ana.
+   *        „an mikadze", „an dgebuadze", „an chonakhidze", „anna an", „megi
+   *        an" — 37 standing alone. A conjunction does not carry a surname.
+   *   ki   53% of its labels are one or two words. „კი" is not on this list in
+   *        Georgian either, so there was no twin to mirror.
+   *   ho   NOT the Georgian „yes". Read the labels: „natia bughashvili
+   *        projeckt manager ho", „lia kuprashvili ho bughalteri", „andrea ho
+   *        sealing machine". It is somebody's job code, used consistently, and
+   *        putting it here would delete a real signal from forty people.
+   *   diax two carriers. Not worth a final answer.
+   */
+  'da',
+  'ara',
+  'sxva',
+  'skhva',
   // Ticket 19 [8], found after the first fix and worse than what was
   // reported. Of the 400 commonest tokens in the whole base, 71 classify as
   // „organisation" — and ten of those cleared the two gates above. They are
