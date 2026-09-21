@@ -329,6 +329,79 @@ function standing(returning: boolean): string {
     : 'Netai-ზე ჯერ არ არის';
 }
 
+/**
+ * Row 40 — WHY THIS PERSON, and WHAT YOU TWO HAVE IN COMMON.
+ *
+ * Tornike's row asks for four things on every campaign row: who is being
+ * contacted, WHY THEM, who is inviting them, and what you and they have in
+ * common. Two of the four existed. `technique_reason` looked like the third
+ * and is not — it is the id of a phrasing variant, a number between 5 and 8.
+ *
+ * And the two missing ones were missing from the MESSAGE as well, which is
+ * where they actually matter: all four variants said a name and a persuasion
+ * line, so the founder, with 31 of these queued, saw a name and nothing else.
+ *
+ * Misho's word, 21 September: „დაამატე რიგი 40-ის ტექსტში."
+ *
+ * WHY THEM is not a guess and never was — the engine picked this person
+ * because THEY ARE IN YOUR PHONEBOOK and have never opened Netai. That is the
+ * whole selection rule (`inviters.get(target.phone)` above), so the message can
+ * simply say it.
+ *
+ * WHAT YOU HAVE IN COMMON is the count of people who are BOTH in your contacts
+ * AND hold this person in theirs. Measured live before it was written: for
+ * account 160584 and campaign 265, 113 accounts hold the target and 46 of them
+ * are in her own contacts. 0.79 seconds, index-backed on `UserAlias.phone`.
+ *
+ * NO NAMES, EVER. A count is what the product already gives elsewhere („N
+ * other people know him as X"); naming the 46 would hand somebody a slice of
+ * forty-six other people's phonebooks to make an invitation sound warmer.
+ *
+ * Best-effort: a campaign ask must never fail to send because a count could
+ * not be taken. A failure returns null and the line is simply absent.
+ */
+export async function sharedCircleWith(
+  inviterUserId: number,
+  targetPhone: string,
+): Promise<number | null> {
+  try {
+    const result = await query<{ shared: string }>(
+      `WITH savers AS (
+         SELECT DISTINCT up.phone
+         FROM "UserAlias" ua
+         JOIN "UserPhone" up ON up."userId" = ua."contactId"
+         WHERE ua.phone = $2
+       )
+       SELECT count(*) AS shared
+       FROM "UserAlias" mine
+       WHERE mine."contactId" = $1 AND mine.phone IN (SELECT phone FROM savers)`,
+      [inviterUserId, targetPhone],
+      CAMPAIGN_QUERY_TIMEOUT_MS,
+    );
+    return Number(result.rows[0]?.shared ?? 0);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[chorus] shared-circle count failed:', (err as Error).message);
+    return null;
+  }
+}
+
+/**
+ * The two facts row 40 asks for, appended to whichever phrasing was chosen.
+ *
+ * Appended rather than woven in, so the four technique variants stay
+ * comparable: the experiment varies HOW we ask, and this is the same sentence
+ * on all four. Row 40 is about what the person is told, not about the dial.
+ */
+export function whyThemAndWhatIsShared(shared: number | null): string {
+  const why =
+    ' ვინ და რატომ: ის შენს წიგნაკშია და Netai-ზე ჯერ არ შემოსულა — ამიტომ გეკითხები შენ.';
+  if (shared === null) return why;
+  if (shared <= 0) return `${why} საერთო ნაცნობი ამ ქსელში ჯერ ვერ ვნახე.`;
+  if (shared === 1) return `${why} ერთი საერთო ნაცნობი გყავთ ამ ქსელში.`;
+  return `${why} ${shared} საერთო ნაცნობი გყავთ ამ ქსელში.`;
+}
+
 /** technique_how → the message that phrasing actually is. */
 const CAMPAIGN_ASK_VARIANTS: Readonly<
   Record<number, (label: string, returning: boolean) => string>
@@ -454,11 +527,15 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
       { isTask: true, status: 'needs_you', statusLine: 'პასუხს ელოდება' },
     );
     const how = techniqueHowFor(row.id);
+    // Row 40: the same two facts on every variant, taken here because this is
+    // the only place that knows both the inviter and the target.
+    const shared = await sharedCircleWith(row.inviter_user_id, row.target_phone);
     await saveThreadMessage(
       thread.id,
       row.inviter_user_id,
       'assistant',
-      CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true),
+      CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true) +
+        whyThemAndWhatIsShared(shared),
     );
     await query(
       `UPDATE invite_campaign_participants

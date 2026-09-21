@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 jest.mock('../targetScoring.service', () => ({
   __esModule: true,
@@ -66,6 +68,8 @@ import {
   sweepStaleParticipants,
   attributeCampaignJoin,
   techniqueHowFor,
+  sharedCircleWith,
+  whyThemAndWhatIsShared,
 } from '../chorusCampaign.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -917,5 +921,83 @@ describe('seedTestCampaign — a verification lever that cannot touch a real per
 
     expect(out.opened).toBe(false);
     expect(out.error).toContain('already open');
+  });
+});
+
+/**
+ * Row 40 — WHY THEM and WHAT YOU HAVE IN COMMON, which the plate said were the
+ * frontend's and were not.
+ *
+ * Tornike's row asks four things of every campaign row: who is contacted, why
+ * them, who invites, and what you and they have in common. Two existed.
+ * `technique_reason` looked like the third and is not — it is the id of a
+ * phrasing variant, a number between 5 and 8.
+ *
+ * And both were missing from the MESSAGE, which is where they matter: all four
+ * variants said a name and a persuasion line, so the founder — 31 of these
+ * queued — saw a name and nothing else.
+ *
+ * Misho, 21 September: „დაამატე რიგი 40-ის ტექსტში."
+ *
+ * The shared count is real and was measured before it was written: account
+ * 160584 against campaign 265 — 113 accounts hold the target, 46 of them are in
+ * her own contacts, 0.79 s.
+ */
+describe('the campaign ask says why this person, and what you two share', () => {
+  it('always says why THEM — the selection rule, not a guess', () => {
+    for (const shared of [null, 0, 1, 46]) {
+      const line = whyThemAndWhatIsShared(shared);
+      expect(line).toContain('შენს წიგნაკშია');
+      expect(line).toContain('ამიტომ გეკითხები შენ');
+    }
+  });
+
+  it('names the number of shared people, and never a person', () => {
+    const line = whyThemAndWhatIsShared(46);
+    expect(line).toContain('46 საერთო ნაცნობი');
+    // A count is what the product already gives elsewhere. Naming the 46 would
+    // hand somebody a slice of forty-six other people's phonebooks.
+    expect(line).not.toMatch(/[ა-ჿ]+ [ა-ჿ]+ძე|[ა-ჿ]+შვილი/);
+  });
+
+  it('says one rather than „1"', () => {
+    expect(whyThemAndWhatIsShared(1)).toContain('ერთი საერთო ნაცნობი');
+  });
+
+  /** „None found" and „could not count" are different facts and read alike. */
+  it('tells zero apart from unknown', () => {
+    expect(whyThemAndWhatIsShared(0)).toContain('ჯერ ვერ ვნახე');
+    expect(whyThemAndWhatIsShared(null)).not.toContain('საერთო ნაცნობი');
+  });
+
+  /** A campaign ask must never fail to send because a count could not be taken. */
+  it('returns null rather than throwing when the count fails', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('db down') as never);
+    await expect(sharedCircleWith(160584, '+995500000000')).resolves.toBeNull();
+  });
+
+  it('counts the people who are in BOTH phonebooks', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ shared: '46' }], rowCount: 1 } as never);
+
+    await expect(sharedCircleWith(160584, '+995599000123')).resolves.toBe(46);
+
+    const [sql, params] = mockQuery.mock.calls[mockQuery.mock.calls.length - 1] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('savers');
+    expect(sql).toContain('mine."contactId" = $1');
+    expect(params).toEqual([160584, '+995599000123']);
+  });
+});
+
+/** And it has to reach the message. Comments stripped: the block above quotes it. */
+describe('the ask that is actually sent carries it', () => {
+  it('appends the two facts to whichever variant was chosen', () => {
+    const code = readFileSync(join(__dirname, '..', 'chorusCampaign.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    expect(code).toContain('whyThemAndWhatIsShared(shared)');
+    expect(code).toContain('sharedCircleWith(row.inviter_user_id, row.target_phone)');
   });
 });
