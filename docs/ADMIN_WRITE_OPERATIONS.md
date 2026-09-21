@@ -1228,6 +1228,45 @@ first — and we will know its name instead of guessing at it.
 **The decision is still Misho's and the founder's.** What changed is that it no
 longer has to be made blind.
 
+### 21 SEPTEMBER — THE FIRST READING, AND IT IS THE GOOD DIRECTION
+
+**A channel has been recorded. Once, today, for the first time ever.**
+
+| | |
+|---|---|
+| introduction rows | 45 |
+| accepted | 24 |
+| **accepted WITH `intro_channel`** | **1** |
+
+Request **1156**, mediator **160584**, accepted **2026-09-21 10:22:50**, channel
+**`via_mediator`** — a real mediator on a real account, not a drill.
+
+**And the warn did not fire for it**, which is the point: the instrumentation
+shipped 20 September 13:46:34, exactly **one** introduction has been answered
+since, and it supplied a channel. Searched every deployment back to 08:54
+today: **zero `[intro-accept-no-channel]` lines.**
+
+**WHY THE SILENCE MEANS SOMETHING, checked rather than assumed.** There are two
+ways to accept and both pass the warn:
+
+* `src/services/tools/respondToIntroduction.ts:41` — the MCP tool
+* `src/api/routes/requests.routes.ts:105` — the HTTP route
+
+(`privacyRights.service.ts:505` also writes to the table, but it only NULLs
+`mediator_response` for a data-rights erase; it cannot accept anything.)
+
+So no accept can slip past the log, and a quiet log is a real quiet.
+
+**WHAT THIS IS NOT.** One accept in twenty-two hours is not the week this
+section asked for, and one is not a sample. **The plan does not change** — keep
+counting. What changed is that the first reading is in the direction that would
+make refusing free, and that `intro_channel` is no longer a column nothing has
+ever written.
+
+**Note for anyone quoting the old number:** „zero, ever" was true until
+10:22:50 today. Both the seat and I reported it within the hour before it
+stopped being true.
+
 ## §17 — A user token for the six fictional test accounts
 
 **20 September. Built and deployed. Admin-only. Refused once first, then
