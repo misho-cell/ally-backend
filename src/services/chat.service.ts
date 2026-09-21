@@ -156,7 +156,7 @@ import {
   getExcludedPhoneSet,
 } from './block.service';
 import { normalizePhone } from './phone';
-import { isReplySafe } from './moderation.service';
+import { moderateReply } from './moderation.service';
 import { applyOfficeholderGate, clearRunEvidence, recordRunEvidence } from './officeholderGate';
 import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
@@ -8991,12 +8991,28 @@ export async function processChat(
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  const replySafe = await isReplySafe(cleanedFinal, userId);
+  const verdict = await moderateReply(cleanedFinal, userId);
+  const replySafe = verdict.safe;
   if (!replySafe) {
-    // Log enough to characterize the pattern without logging the content.
+    /**
+     * Row 76 — the line used to say a block had happened and not what it was.
+     *
+     * 21 September, thread 20857: a plain Georgian question about Tbilisi's
+     * office districts, blocked at 15:37:00 after 75 seconds, twenty tokens
+     * spent on an answer nobody read, and „repeat it" produced a full answer
+     * a minute later. The record left behind was „(len=1148)", which cannot
+     * distinguish a false block from a true one — and the seat asked, quite
+     * reasonably, which check had fired.
+     *
+     * The CATEGORY is logged and the CONTENT still is not. That is deliberate
+     * rather than incomplete: a reply blocked for sexual content or harassment
+     * is the last text that belongs in a log file, and a category on a
+     * question about office districts already says the block was wrong.
+     */
     // eslint-disable-next-line no-console
     console.warn(
-      `[moderation] run ${runId} thread ${threadId} reply blocked by content filter (len=${cleanedFinal.length})`,
+      `[moderation] run ${runId} thread ${threadId} reply blocked by content filter ` +
+        `(len=${cleanedFinal.length}, category=${verdict.reason ?? 'unnamed'})`,
     );
   }
   const reply = wrapAllowedNumbers(
