@@ -1015,8 +1015,15 @@ export async function cancelIntroductionRequestsForTask(taskId: number): Promise
       mediator_user_id: number | null;
       target_name: string;
     }>(
+      /**
+       * `responded_at` is deliberately left NULL: NOBODY RESPONDED. The
+       * requester withdrew, and stamping a response time would make the row
+       * read as answered — `getMyIntroRequests` shows anything resolved in the
+       * last few days, and a withdrawal has no business in the list of what
+       * came back.
+       */
       `UPDATE introduction_requests
-       SET status = 'cancelled', responded_at = COALESCE(responded_at, NOW())
+       SET status = 'cancelled'
        WHERE requester_task_id = $1 AND status = 'pending'
        RETURNING id, mediator_user_id, target_name`,
       [taskId],
