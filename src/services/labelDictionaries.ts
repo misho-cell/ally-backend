@@ -601,6 +601,46 @@ export const PLACE_WORDS = [
    */
   'pekin',
   'პეკინ',
+  /**
+   * REFUSED, 21 September — the last two tokens of row 8's dictionary half,
+   * and both are refusals with numbers rather than open questions.
+   *
+   * `usa` — 2,207 carriers as a whole token, and it cannot be had by either
+   * tier. As a substring it is inside 400 other tokens (5,574 people):
+   * `rusa`, `kusa`, `musa`, `susana`, `marusa`, `rusadze`. Anchored is no
+   * better, because **„usa-" is a Georgian negation prefix**: `usafrtxoeba`
+   * (უსაფრთხოება, SECURITY — a trade) 686, `usaxelo` 69, `usayvarlesi` 16.
+   * With three characters of slack the anchored rule reaches `usaid` — USAID,
+   * a real organisation with 227 carriers — plus `usaf` and `usafrt`, which
+   * are that same word truncated. Roughly 278 wrong against 2,207 right, and
+   * one of the wrong ones is an institution. „USA" and „unsafe" begin the same
+   * way in this base and no rule here can separate them.
+   *
+   * `georgia` — and this one I was about to add, because the arithmetic looked
+   * decisive. Anchored it is 4,098 right against 18 wrong (`georgiana`,
+   * `georgiani`, `georgiano`), and the company compounds — `expogeorgia`,
+   * `flygeorgia`, `georgianairlink`, `georgianbus`, `mediclubgeorgia` — are
+   * all excluded by the three-character limit. One in two hundred.
+   *
+   * **What stopped it was measuring the OTHER consumer.** This list is read by
+   * `isShortPlaceOrThingWord`, and that feeds the `place_or_thing` gate, which
+   * DROPS a number from the target list. So I read the 40 phones whose
+   * most-saved label carries the word:
+   *
+   *     82 savers   badri diplomat georgia      a person
+   *     78          tornike georgia             a person
+   *     37          george georgia              a person
+   *     10          georgia vachnadze           a person — it is her NAME
+   *     27          georgian bus                a company
+   *      8          bank of georgia             a company
+   *
+   * The top of that list is people, and one of them is called Georgia.
+   * Adding the word would have removed them from the target list silently —
+   * nobody reports the approach that never happened. **The employer field it
+   * would have tidied is already harmless; the target list it would have
+   * thinned is not.** The two exports exist precisely so this question has to
+   * be asked separately, and this is the first time it has changed an answer.
+   */
 ];
 
 export const BRAND_STOPLIST: ReadonlySet<string> = new Set([
