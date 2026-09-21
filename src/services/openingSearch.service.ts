@@ -280,7 +280,7 @@ export async function runOpeningSearches(
     const raw = await search;
     // The way-in lookups run HERE, inside the web branch, after the search
     // they depend on.
-    waysIn = await findWaysIn(userId, webResultNames(raw));
+    waysIn = await findWaysIn(userId, webResultNames(raw), { threadId, runId });
     return serialised;
   })();
 
@@ -526,19 +526,72 @@ function firstPersonNamed(result: unknown): string | null {
 }
 
 /**
+ * Where a way-in lookup came from, so the search it runs can be written down.
+ * Absent for a caller that has no thread — see `findWaysIn`.
+ */
+export interface WayInOrigin {
+  readonly threadId?: number | null;
+  readonly runId?: string | null;
+}
+
+/**
  * For each name the web returned, who in the owner's own contacts is tied to
  * it. Never throws: a way-in lookup that fails leaves `unchecked`, and the
  * section says so in words rather than implying an empty network.
+ *
+ * EVERY ONE OF THESE IS A TAG SEARCH, AND UNTIL 21 SEPTEMBER NONE OF THEM WAS
+ * WRITTEN DOWN. Measured that evening on one build's own log, 15:36-15:50:
+ *
+ *   tag searches the product actually ran   16
+ *   tag searches `tool_call_log` recorded    2   (the model's own calls)
+ *
+ * The other fourteen were these. So every figure anyone has quoted about what
+ * `search_by_tag` costs — row 108's whole question, the day-by-day tables in
+ * TASKS.md, `slow.sh --ready` — was drawn from a QUARTER of the calls, and
+ * from the cheap quarter: the model types a trade word, while a way-in looks
+ * up a web page's title and carries a median of 12 spelling variants against
+ * the model's three or four.
+ *
+ * The comment three hundred lines above this one says „a search nobody logs is
+ * a search nobody can ask about", and it was written about the web search in
+ * the same function, four hours before these lookups were added beneath it.
+ *
+ * Logged under `search_by_tag:way_in`, the same suffix convention the opening
+ * searches use, so a reader can tell a lookup the product chose from a call
+ * the model chose — and so the counters that ask about the model's behaviour
+ * keep answering about the model.
+ *
+ * NO RESULT SAMPLE, ever. These results are the owner's own contacts. The
+ * opening web search samples its titles because a web page is public; a
+ * phonebook is not, and a debugging table is not the place for one.
+ *
+ * A caller without a thread cannot be recorded at all: `tool_call_log`
+ * declares `thread_id NOT NULL`. That is a limit worth knowing rather than
+ * working around, so it is written here instead of being hidden by a zero.
  */
 export async function findWaysIn(
   userId: string,
   names: readonly string[],
+  origin: WayInOrigin = {},
 ): Promise<Map<string, WayIn>> {
   const out = new Map<string, WayIn>();
   if (names.length === 0) return out;
   const deadline = Date.now() + WAY_IN_BUDGET_MS;
+  const record = (name: string, result: unknown, startedAt: number): void => {
+    if (origin.threadId === undefined || origin.threadId === null) return;
+    void logToolCall({
+      threadId: origin.threadId,
+      runId: origin.runId ?? null,
+      userId,
+      tool: 'search_by_tag:way_in',
+      input: { tag_query: name },
+      result,
+      durationMs: Date.now() - startedAt,
+    });
+  };
   await Promise.all(
     names.map(async (name) => {
+      const startedAt = Date.now();
       try {
         const left = deadline - Date.now();
         if (left <= 0) {
@@ -552,6 +605,10 @@ export async function findWaysIn(
             t.unref?.();
           }),
         ]);
+        // The budget running out is recorded too, and as its own outcome: a
+        // lookup that did not finish is the difference between „nobody" and
+        // „we did not look", which is the whole reason `unchecked` exists.
+        record(name, result === null ? { found: false, timed_out: true } : result, startedAt);
         if (result === null) {
           out.set(name, { kind: 'unchecked' });
           return;
@@ -564,6 +621,7 @@ export async function findWaysIn(
           `[opening-search] way-in lookup failed for "${name}":`,
           (err as Error).message,
         );
+        record(name, { error: (err as Error).message }, startedAt);
         out.set(name, { kind: 'unchecked' });
       }
     }),

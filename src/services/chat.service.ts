@@ -5095,7 +5095,7 @@ async function executeToolCall(
        * the model has them at the moment it is deciding what to say about
        * each firm rather than in a section it read a minute ago.
        */
-      const waysIn = await findWaysIn(userId, webResultNames(found));
+      const waysIn = await findWaysIn(userId, webResultNames(found), { threadId, runId });
       noteWaysIn(runId, waysIn);
       if (waysIn.size === 0) return found;
       return {
