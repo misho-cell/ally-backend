@@ -19,6 +19,23 @@
 # honestly say. What settles it is the container's own log around that minute
 # — `logs.sh logs <deploymentId>`.
 #
+# AND THE NUMBER IS FROM THE DEPLOY'S CREATION, NOT FROM THE CUTOVER — which
+# is a different moment and the column cannot see it.
+#
+# 21 September, and this misled me for ten minutes on my own tool. The column
+# said „DEPLOY +157s" beside a failure at 21:43:27, so I went to read the logs
+# of the container that was going away. It had shut down cleanly. The build
+# takes about eighty seconds: the new container had started at 21:42:04 and
+# SIGTERM landed on the old one at 21:42:20, so „+157s" was in truth about 67
+# SECONDS AFTER the cutover, in the NEW container, where the answer was.
+#
+#   deployment created   →  ~80s build  →  container starts  →  SIGTERM to old
+#
+# Railway's API gives `createdAt` and nothing else, so this is a limit of what
+# can be joined here rather than something to correct — which is why it is
+# written down instead of silently approximated. Subtract roughly eighty
+# seconds before deciding WHICH container to open, and let the log settle it.
+#
 # WHAT COUNTS AS OWNER-FACING: a row with `kind='error'`, which is the client's
 # system-styled failure with a retry. A tool that failed inside a run is not
 # here; `slow.sh` has those.
@@ -106,7 +123,10 @@ for row in rows:
         unchecked += 1
     elif near:
         closest = min(near, key=lambda d: abs((when - d).total_seconds()))
-        mark = "DEPLOY +%ds" % int((when - closest).total_seconds())
+        # From the deploy's CREATION, not its cutover — see the header. The
+        # build costs about eighty seconds, so a small positive number here is
+        # usually still the OLD container and a large one is the new one.
+        mark = "DEPLOY created +%ds" % int((when - closest).total_seconds())
         in_window += 1
     else:
         mark = ""
