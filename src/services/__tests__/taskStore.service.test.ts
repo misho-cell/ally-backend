@@ -77,6 +77,50 @@ describe('taskStore.service', () => {
     expect(await updateTask(USER, 7, 'paused')).toBe(true);
   });
 
+  /**
+   * Row 207 — „you cannot tell, looking at your own list, which goals were
+   * really solved."
+   *
+   * Measured 21 September, whole base: 188 closed goals record NOTHING,
+   * 79 read „stopped", 2 read „finished". The column that answers „how many of
+   * my goals actually worked" was two-thirds silence, and it was still filling
+   * up with silence — 35 of 48 closes on 18 September carried no value.
+   *
+   * Three callers pass one. The two that do not are both the generic
+   * `update_task`, where the owner asked to close and claimed no completion.
+   * That IS „stopped", so the write says so rather than storing nothing.
+   */
+  it('a close that names nothing is stored as stopped, never as silence', async () => {
+    mockQuery.mockResolvedValue(result([], 1) as never);
+
+    await updateTask(USER, 7, 'closed', 'user asked');
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toContain("COALESCE($5::text, 'stopped')");
+  });
+
+  it('still records a completion as a completion', async () => {
+    mockQuery.mockResolvedValue(result([], 1) as never);
+
+    await updateTask(USER, 7, 'closed', 'solved it', 'finished');
+
+    expect((mockQuery.mock.calls[0][1] as unknown[])[4]).toBe('finished');
+  });
+
+  /**
+   * And a pause or a reopen must not acquire one. `closed_as` is only written
+   * when the status IS 'closed'; the CASE around it is what keeps a reopened
+   * goal from carrying a closing verdict it no longer has.
+   */
+  it('leaves closed_as alone when the goal is not being closed', async () => {
+    mockQuery.mockResolvedValue(result([], 1) as never);
+
+    await updateTask(USER, 7, 'paused');
+
+    expect(mockQuery.mock.calls[0][0]).toContain("WHEN $3 = 'closed'");
+    expect(mockQuery.mock.calls[0][0]).toContain('ELSE closed_as END');
+  });
+
   it('grantTaskPermission scopes to the owner and reports success', async () => {
     mockQuery.mockResolvedValue(result([], 1) as never);
 

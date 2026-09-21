@@ -533,12 +533,36 @@ export type ClosedAs = 'finished' | 'stopped';
  * wrote NULL, and NULL is indistinguishable from „we never asked". The column
  * that answers „how many of my goals actually worked" was two-thirds silence.
  *
- * Making it REQUIRED does not fix the old rows — nothing can, the information
- * was never captured — but it means no new close can be silent, and the
- * compiler names every path rather than a future reader discovering one.
- * `'stopped'` is the honest value for a close that is not a completion; there
- * is no third option on purpose, because „unknown" as a stored value is the
- * thing this is removing.
+ * 21 SEPTEMBER — THIS PARAGRAPH USED TO SAY THE PARAMETER HAD BEEN MADE
+ * REQUIRED. IT HAD NOT. The signature below still reads `closedAs?`, and the
+ * silence never stopped:
+ *
+ *     closed on   rows   with closed_as NULL
+ *     16 Sep        39        38
+ *     17 Sep        69        10
+ *     18 Sep        48        35
+ *     19 Sep        12         4
+ *     20 Sep         1         1
+ *
+ * A comment describing a change nobody made is worse than no comment: the next
+ * reader — me, five days later — takes it for the state of the code.
+ *
+ * WHAT IS ACTUALLY DONE NOW, and it is the smaller half of what that paragraph
+ * promised. The write below COALESCEs to `'stopped'`, so a close can no longer
+ * store nothing. Three callers pass a value already (`finish_task` twice with
+ * `'finished'`, the stop path with `'stopped'`); the two that do not are both
+ * the generic `update_task`, where the owner asked to close and claimed no
+ * completion — and `'stopped'` is exactly what that is.
+ *
+ * WHAT IS STILL NOT DONE, said rather than implied: the parameter is still
+ * optional, so the compiler still does not name a new path. Making it required
+ * would force every `'open'` and `'paused'` caller to pass a value that means
+ * nothing to them. The default removes the silence; it does not remove the
+ * chance that somebody closes a goal without thinking about it. Those are
+ * different guarantees and only the first one is in place.
+ *
+ * Old rows are untouched — 188 of them, and nothing can fix those: the
+ * information was never captured.
  */
 export async function updateTask(
   userId: string,
@@ -551,7 +575,10 @@ export async function updateTask(
     `UPDATE tasks
      SET status = $3,
          closed_reason = CASE WHEN $3 = 'closed' THEN $4 ELSE closed_reason END,
-         closed_as = CASE WHEN $3 = 'closed' THEN $5::text ELSE closed_as END,
+         -- COALESCE, not $5 alone: a close that names nothing is a close
+         -- that was not a completion, and that is what 'stopped' means. NULL
+         -- here is the value this column exists to stop storing.
+         closed_as = CASE WHEN $3 = 'closed' THEN COALESCE($5::text, 'stopped') ELSE closed_as END,
          pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
          pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
          /*
