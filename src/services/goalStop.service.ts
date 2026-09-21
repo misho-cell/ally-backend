@@ -1,5 +1,6 @@
 import { Task, updateTask, getGoalOnThread } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
+import { cancelIntroductionRequestsForTask } from './introduction.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
@@ -147,6 +148,18 @@ export async function stopGoal(
     await updateTask(userId, task.id, 'closed', 'stopped_by_user', 'stopped');
   }
   const cancelledAsks = await cancelAsksForTask(task.id);
+  /**
+   * Row 232. The asks were let off and the INTRODUCTION was not: goal 7262's
+   * request sat pending in its mediator's waiting list twelve minutes after
+   * the owner had stopped the goal, and the same person was asked the same
+   * thing again inside a new one. An introduction asks a bigger favour than a
+   * question does; it cannot be the one that goes unwithdrawn.
+   *
+   * Not folded into the count the owner is shown below — that line says how
+   * many QUESTIONS were cancelled, and quietly changing what a number means is
+   * how a true sentence becomes a wrong one.
+   */
+  await cancelIntroductionRequestsForTask(task.id);
   let said: string | undefined;
   if (task.thread_id !== null) {
     if (wasOpen) {

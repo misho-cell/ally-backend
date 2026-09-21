@@ -1440,6 +1440,18 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
       'assistant',
       askCancelledNote(language),
     ).catch(() => undefined);
+    /**
+     * Row 233 — the note went in and the thread went on saying „Needs your
+     * answer". The seat read two of two from the 12:59 stop, still needs_you
+     * at 14:48: „this question is no longer needed" sitting under a header
+     * asking for an answer, which is a contradiction the reader has to resolve
+     * themselves, and they will resolve it the wrong way.
+     *
+     * `done` rather than `waiting`: nothing is expected of them any more.
+     */
+    await setThreadStatus(String(row.to_user_id), row.ask_thread_id, 'done', {
+      isTask: true,
+    }).catch(() => undefined);
   }
   return cancelled.rowCount ?? cancelled.rows.length;
 }

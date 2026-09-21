@@ -635,3 +635,57 @@ export function introAnsweredPush(
       };
   }
 }
+
+/**
+ * „That introduction is no longer needed" — what a MEDIATOR is told when the
+ * requester stops the goal the request came out of (row 232).
+ *
+ * The seat's 401: goal 7262 was stopped at 14:36, and at 14:48 its request
+ * 1290 was still `pending`, still in the mediator's waiting list, its thread
+ * still reading „Needs your answer" — and at 14:44 the same person was asked
+ * the same thing AGAIN inside a brand-new goal. An ask on a stopped goal gets
+ * this note in four or five seconds and has since Ticket 6; an introduction,
+ * which asks a bigger favour of the same person, got nothing.
+ *
+ * In the MEDIATOR's language, for the reason `askCancelledNote` records: this
+ * is the message that lets a stranger off a favour, and being let off in a
+ * script they cannot read is worse than not being told.
+ */
+export function introCancelledNote(language: RunLanguage, targetName: string): string {
+  switch (language) {
+    case 'en':
+      return (
+        `The introduction to ${targetName} is no longer needed — they have withdrawn the ` +
+        'request, so there is nothing to answer. Thank you for considering it!'
+      );
+    case 'ru':
+      return (
+        `Знакомство с ${targetName} больше не нужно — запрос отозван, отвечать не нужно. ` +
+        'Спасибо, что рассмотрели!'
+      );
+    case 'es':
+      return (
+        `La presentación con ${targetName} ya no hace falta: han retirado la petición, así ` +
+        'que no hay nada que responder. ¡Gracias por considerarlo!'
+      );
+    default:
+      return (
+        `${targetName}-თან გაცნობა აღარ არის საჭირო — მოთხოვნა გაუქმდა, პასუხი აღარ ` +
+        'არის საჭირო. მადლობა, რომ განიხილე!'
+      );
+  }
+}
+
+/** The mediator's thread header once the request has been withdrawn. */
+export function introCancelledLine(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'Withdrawn';
+    case 'ru':
+      return 'Отозвано';
+    case 'es':
+      return 'Retirada';
+    default:
+      return 'გაუქმებულია';
+  }
+}

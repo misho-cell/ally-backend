@@ -29,6 +29,8 @@ jest.mock('../debrief.service', () => ({
 // chat service, which pulls in this one.
 jest.mock('../taskEngine.service', () => ({ __esModule: true, startIntroOutcome: jest.fn() }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { armIntroDebrief } from '../debrief.service';
 import { sendPushNotification } from '../notification.service';
@@ -36,7 +38,10 @@ import { recordProductEvent } from '../productEvents.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { createThread, getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
 import { startIntroOutcome } from '../taskEngine.service';
-import { resolveIntroductionRequest } from '../introduction.service';
+import {
+  cancelIntroductionRequestsForTask,
+  resolveIntroductionRequest,
+} from '../introduction.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockPush = sendPushNotification as jest.MockedFunction<typeof sendPushNotification>;
@@ -517,5 +522,87 @@ describe('an introduction asked in a plain chat answers into that chat', () => {
     await settled();
 
     expect(mockSaveThreadMessage.mock.calls.filter((c) => c[0] === 20131)).toHaveLength(0);
+  });
+});
+
+/**
+ * Row 232 (the seat's 401) — a stopped goal leaves its introduction standing.
+ *
+ * Goal 7262 was stopped at 14:36:16 („Nothing further will be sent"). At 14:48
+ * its request 1290 was still `pending`, still in the mediator's waiting list,
+ * its incoming thread still reading „Needs your answer" — and at 14:44:42 the
+ * same person was asked the same thing AGAIN, with Yes/No/Later, inside a
+ * brand-new goal.
+ *
+ * An ASK on a stopped goal has had its note in four or five seconds since
+ * Ticket 6. An introduction asks a bigger favour of the same person and got
+ * nothing, because nothing connected the two tables in this direction.
+ */
+describe('a stopped goal withdraws the introduction it asked for', () => {
+  beforeEach(() => {
+    mockThreads.mockResolvedValue([{ id: 31, user_id: 7, type: 'incoming_request' }] as never);
+  });
+
+  it('cancels only the PENDING ones, and tells the mediator', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: 7, target_name: 'ნიტა' }]) as never,
+    );
+
+    const n = await cancelIntroductionRequestsForTask(7262);
+
+    expect(n).toBe(1);
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain("SET status = 'cancelled'");
+    expect(sql).toContain("status = 'pending'");
+    expect(mockQuery.mock.calls[0][1]).toEqual([7262]);
+
+    expect(mockSaveThreadMessage).toHaveBeenCalledTimes(1);
+    const [threadId, , role, text] = mockSaveThreadMessage.mock.calls[0];
+    expect(threadId).toBe(31);
+    expect(role).toBe('assistant');
+    expect(String(text)).toContain('ნიტა');
+  });
+
+  /**
+   * Row 233's fault, not repeated: the note and the header have to agree, or
+   * „no longer needed" sits under „Needs your answer" and the reader resolves
+   * the contradiction themselves — the wrong way.
+   */
+  it('clears the header too, so the thread stops asking for an answer', async () => {
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: 7, target_name: 'ნიტა' }]) as never,
+    );
+
+    await cancelIntroductionRequestsForTask(7262);
+
+    expect(mockSetStatus).toHaveBeenCalledWith('7', 31, 'done', expect.anything());
+  });
+
+  /** A stop must never fail because a thread could not be written to. */
+  it('returns 0 rather than throwing when the update fails', async () => {
+    mockQuery.mockRejectedValue(new Error('db down') as never);
+    await expect(cancelIntroductionRequestsForTask(7262)).resolves.toBe(0);
+  });
+
+  it('says nothing when the goal had no request out', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    await expect(cancelIntroductionRequestsForTask(7262)).resolves.toBe(0);
+    expect(mockSaveThreadMessage).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * And the function has to be CALLED. Row 232 was never a missing function — it
+ * was a stop path that cancelled asks and stopped there. Comments stripped:
+ * the block above quotes the fix, and a plain search would go green against my
+ * own note about it.
+ */
+describe('the stop path calls it', () => {
+  it('cancels the introductions beside the asks', () => {
+    const code = readFileSync(join(__dirname, '..', 'goalStop.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    expect(code).toContain('await cancelIntroductionRequestsForTask(task.id)');
+    expect(code).toContain('await cancelAsksForTask(task.id)');
   });
 });

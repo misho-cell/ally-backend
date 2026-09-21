@@ -18,6 +18,8 @@ import {
   introAcceptedTitle,
   introAnsweredLine,
   introAnsweredPush,
+  introCancelledLine,
+  introCancelledNote,
   introMediatorFollowUp,
   introOutcomeLine,
   introRequesterExtra,
@@ -983,4 +985,69 @@ export async function resolveIntroductionRequest(
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
   return { ok: true, status: newStatus };
+}
+
+/**
+ * Row 232 — a stopped goal withdraws the introduction it asked for.
+ *
+ * The seat's 401, with the timestamps: goal 7262 was stopped at 14:36:16
+ * („Nothing further will be sent"), and at 14:48 its request 1290 was still
+ * `pending`, still in the mediator's `GET /requests` waiting list, its
+ * incoming thread still reading „Needs your answer" — and at 14:44:42 the same
+ * person was asked the same thing AGAIN, with Yes/No/Later, inside a brand-new
+ * goal.
+ *
+ * An ASK on a stopped goal has been getting its note in four or five seconds
+ * since Ticket 6 (`cancelAsksForTask`). An INTRODUCTION asks a bigger favour of
+ * the same person and got nothing, because nothing connected the two tables —
+ * the same gap `requester_task_id` was added to close for the ANSWER direction
+ * and which nobody walked back the other way.
+ *
+ * Only `pending`: an accepted or declined request is finished, and rewriting a
+ * mediator's answered thread to say it was withdrawn would be a lie about what
+ * they did. Best-effort throughout — a stop must never fail because a thread
+ * could not be written to.
+ */
+export async function cancelIntroductionRequestsForTask(taskId: number): Promise<number> {
+  try {
+    const cancelled = await query<{
+      id: number;
+      mediator_user_id: number | null;
+      target_name: string;
+    }>(
+      `UPDATE introduction_requests
+       SET status = 'cancelled', responded_at = COALESCE(responded_at, NOW())
+       WHERE requester_task_id = $1 AND status = 'pending'
+       RETURNING id, mediator_user_id, target_name`,
+      [taskId],
+    );
+    for (const row of cancelled.rows) {
+      if (row.mediator_user_id === null) continue;
+      const owner = String(row.mediator_user_id);
+      const language = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
+      const threads = await getThreadsByIntroRequestId(row.id).catch(() => []);
+      for (const thread of threads) {
+        if (thread.type !== 'incoming_request') continue;
+        await saveThreadMessage(
+          thread.id,
+          thread.user_id,
+          'assistant',
+          introCancelledNote(language, row.target_name),
+        ).catch(() => undefined);
+        // Row 233's fault, not repeated here: the note and the header have to
+        // agree, or „no longer needed" sits under „Needs your answer".
+        await setThreadStatus(owner, thread.id, 'done', {
+          statusLine: introCancelledLine(language),
+        }).catch(() => undefined);
+      }
+    }
+    return cancelled.rowCount ?? cancelled.rows.length;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[intro] could not withdraw requests for stopped goal ${taskId}:`,
+      (err as Error).message,
+    );
+    return 0;
+  }
 }

@@ -30,7 +30,14 @@ jest.mock('../askBudget.service', () => ({
   checkFollowUpBudget: jest.fn().mockResolvedValue({ allowed: true }),
   RELAY_MESSAGES_PER_PERSON_PER_DAY: 4,
 }));
-jest.mock('../threadStatus.service', () => ({ __esModule: true, setThreadStatus: jest.fn() }));
+// Resolves, because the real one does. A mock that hands back `undefined`
+// where the function returns a Promise is a mock that lies, and it broke the
+// moment a caller added a `.catch` — row 233's status fix, which is the kind
+// of best-effort tail every other call in this file already has.
+jest.mock('../threadStatus.service', () => ({
+  __esModule: true,
+  setThreadStatus: jest.fn().mockResolvedValue(undefined),
+}));
 // sendApprovedAskAnswer reaches taskEngine via a dynamic import (static would
 // be a load-order cycle) — the mock intercepts that import all the same.
 jest.mock('../taskEngine.service', () => ({
