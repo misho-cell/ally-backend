@@ -61,7 +61,34 @@ been asking for since 19 September and is still unanswered. Both requests are
 the same coin: the swallow bug needs an empty wallet, rows 210 and 217 need a
 full one.
 
-### 2. What is NOT on this list, said so it is not looked for
+### 2. Nine old messages that gave out a private mobile with no source — the founder's call, and the seat is raising it too
+
+**What it is.** Row 139 asked how many assistant messages hand out a phone
+number without saying where it came from. Measured over the whole table —
+18,506 assistant messages, 51 carrying a real phone: **20 name the source, 20
+are the owner's own contact behind the marker, 2 are not phones, and 9 name
+nothing.** All nine are a private individual's mobile. **All nine are June or
+before 6 July**, and the eleven weeks since are clean: 28 phone-bearing
+messages, every one marker-wrapped, an accept naming the phonebook, or a
+public business line citing the web.
+
+**So the behaviour is fixed and the nine old messages are still sitting in
+those threads.**
+
+**Why I am not touching them.** Editing or removing them changes live data in
+real people's conversations — the night rule and D44 both. It is also not
+obviously the right thing: the numbers were given to the owner who asked, and
+rewriting somebody's chat history has its own cost.
+
+**What is wanted:** a decision, not a task. Leave them, or redact the nine.
+If redaction, it is a D44 write and goes in
+`ADMIN_WRITE_OPERATIONS.md` with route, body and undo **before** anything runs.
+
+**The seat is raising this with the founder in the morning as well** (their
+384). Two channels, one item — if he answers one of us, that is the answer.
+**Nothing is blocked on it.**
+
+### 3. What is NOT on this list, said so it is not looked for
 
 **Lika saw an error yesterday evening and one of my deploys caused it.**
 Information, not a decision, and it is here because a real person hitting a
