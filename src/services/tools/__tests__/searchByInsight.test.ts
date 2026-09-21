@@ -728,10 +728,25 @@ describe('a concept search asks in both scripts', () => {
    * the fix as bigger than it is. „photography" reaching „ფოტოგრაფი" would need
    * a dictionary, not a character map. That half stays the model's job and the
    * tool's description now says so.
+   *
+   * ROW 222 MADE THIS ASSERTION SUBTLER RATHER THAN FALSE. A Latin word now
+   * also goes out in its Georgian readings, and „photographer" reads as
+   * ფოთოგრაფჰერი / ფოტოგრაფჰერი — which CONTAIN the string „ფოტოგრაფ" without
+   * matching the word ფოტოგრაფი, because a `%…%` pattern has to be contained
+   * IN the label, not the other way round. So the old substring check went
+   * green on a coincidence of loanwords and says nothing.
+   *
+   * What is actually promised is checked instead: no pattern sent would match
+   * the Georgian word. The English word still reaches nobody, which is the
+   * point — the model translates, the character map does not.
    */
   it('does not pretend to translate', async () => {
     await searchByInsight('501', 'photographer');
-    expect(patternsSent().join(' ')).not.toContain('ფოტოგრაფ');
+    const label = 'ფოტოგრაფი';
+    const wouldMatch = patternsSent()
+      .filter((p) => typeof p === 'string' && /^%.*%$/.test(p))
+      .filter((p) => label.includes(p.slice(1, -1)));
+    expect(wouldMatch).toEqual([]);
   });
 
   /**

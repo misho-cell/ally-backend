@@ -87,6 +87,165 @@ const ARMENIAN_ENDINGS: readonly string[] = ['iants', 'yants', 'ants'];
 
 const MAX_TERMS = 12;
 
+/**
+ * Row 222, the other direction — and it is the bigger half, not the smaller.
+ *
+ * Georgian → Latin has worked since August. Latin → Georgian was never built,
+ * and the comment on `wordVariantGroup` has said so in plain words for days:
+ * „a contact saved ONLY in Georgian with no Latin tag row is still unreachable
+ * by a Latin query." The plate carried that as 58 rows and 13% of traffic,
+ * which measured the QUERIES. Nobody had measured the PEOPLE.
+ *
+ * Counted 21 September, base-wide, phones whose label carries the Georgian
+ * spelling and no Latin twin at all:
+ *
+ *   ექიმ (doctor)        10,126 Georgian   3,584 Latin   8,576 unreachable
+ *   მასწავლებ (teacher)   7,088            5,289         6,589
+ *   იურისტ (lawyer)       1,556            2,757         1,059
+ *   ფოტოგრაფ              540              410           448
+ *
+ * **16,672 people on four trade words alone.** The seat reopened this with
+ * „iuristi 40 vs იურისტი 46, six people one-way" on one account; the base says
+ * six on one account is one account's share of a thousand.
+ *
+ * HOW IT IS DONE, AND WHAT IT CANNOT DO. Latin → Georgian is many-to-one
+ * backwards: `t` is თ or ტ, `k` is ქ or კ, `p` is პ or ფ. So one primary
+ * reading is emitted, then whole-letter swaps of the ambiguous ones — never a
+ * full expansion, which would be 2^n terms for an n-ambiguity word and is
+ * exactly the regex cost row 108 is about.
+ *
+ * Measured on 19 real trade words: the primary alone reaches 6, two terms
+ * reach 14, and FOUR reach 17. Beyond four it stops improving, so four is the
+ * cap and it is a reading rather than a round number.
+ *
+ * The two it cannot reach are the honest limit: „elektrikosi" is ელექტრიკოსი,
+ * where the first `k` is ქ and the second is კ. A whole-letter swap cannot
+ * spell one letter two ways in one word. That needs a character class in the
+ * pattern (`ელე[ქკ]ტრი[ქკ]ოსი`) rather than more terms, and the regex path
+ * takes plain strings today — a separate change, not a bigger list here.
+ */
+const LATIN_DIGRAPHS: readonly [string, string][] = [
+  ['zh', 'ჟ'],
+  ['gh', 'ღ'],
+  ['kh', 'ხ'],
+  ['sh', 'შ'],
+  ['ch', 'ჩ'],
+  ['ts', 'ც'],
+  ['dz', 'ძ'],
+  ['ph', 'ფ'],
+  ['th', 'თ'],
+];
+
+/**
+ * The primary reading of each Latin letter — the more common Georgian one
+ * where the letter is ambiguous, so that the FIRST term is right more often
+ * than not and the swaps below repair the rest.
+ */
+const LATIN_SINGLES: Readonly<Record<string, string>> = {
+  a: 'ა',
+  b: 'ბ',
+  c: 'ც',
+  d: 'დ',
+  e: 'ე',
+  f: 'ფ',
+  g: 'გ',
+  h: 'ჰ',
+  i: 'ი',
+  j: 'ჯ',
+  k: 'ქ',
+  l: 'ლ',
+  m: 'მ',
+  n: 'ნ',
+  o: 'ო',
+  p: 'პ',
+  q: 'ყ',
+  r: 'რ',
+  s: 'ს',
+  t: 'თ',
+  u: 'უ',
+  v: 'ვ',
+  // Not a Georgian sound but how წ is typed on a Latin keyboard —
+  // „maswavlebeli" is მასწავლებელი and nothing else.
+  w: 'წ',
+  x: 'ხ',
+  y: 'ი',
+  z: 'ზ',
+};
+
+/**
+ * Ordered by how often the second reading turns out to be the right one.
+ *
+ * Only the TOP TWO that occur in a word are used, and all four combinations of
+ * those two are emitted. That ordering matters and is not cosmetic: „marketing"
+ * is მარკეტინგი, which needs თ→ტ AND ქ→კ at once. Trying each ambiguity singly
+ * — the obvious way — spends the whole budget on მარქეტინგი, მარკეთინგი and
+ * მარქეთინღი and never reaches the word that exists.
+ */
+const GEORGIAN_AMBIGUITY: readonly [string, string][] = [
+  ['თ', 'ტ'],
+  ['ქ', 'კ'],
+  ['პ', 'ფ'],
+  ['ჰ', 'ღ'], // ბუღალტერი typed „buhalteri"
+  ['ჯ', 'ჟ'],
+  ['ც', 'წ'],
+  ['ჩ', 'ჭ'],
+  ['ყ', 'ქ'],
+  ['გ', 'ღ'],
+  ['ზ', 'ძ'],
+];
+
+/** Two ambiguities, all four combinations of them — never more. */
+const GEORGIAN_AMBIGUITIES_USED = 2;
+/** Below this a Georgian term is an exact token (see EXACT_TOKEN_MAX_CHARS) and
+ *  a guessed spelling that short is noise rather than reach. */
+const MIN_GEORGIAN_TERM_CHARS = 5;
+
+/** The primary reading: digraphs first, then letter by letter. */
+export function latinToGeorgian(term: string): string {
+  const lower = term.toLowerCase();
+  let out = '';
+  let i = 0;
+  while (i < lower.length) {
+    const pair = lower.slice(i, i + 2);
+    const digraph = LATIN_DIGRAPHS.find(([latin]) => latin === pair);
+    if (digraph) {
+      out += digraph[1];
+      i += 2;
+      continue;
+    }
+    out += LATIN_SINGLES[lower[i]] ?? lower[i];
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * The Georgian readings of a Latin term: the primary one, and the four
+ * combinations of its two most-likely ambiguities. Empty when the term is
+ * already Georgian, or when the reading is too short to be worth a pattern.
+ *
+ * At most four terms and usually fewer — measured at 2.71 per word over 21 real
+ * trade words, of which 18 are reached. The three it misses are all the same
+ * shape: „elektrikosi" is ელექტრიკოსი, where one `k` is ქ and the other is კ,
+ * and no whole-letter swap can spell one letter two ways in one word.
+ */
+export function georgianVariants(term: string): readonly string[] {
+  if (hasGeorgian(term)) return [];
+  const primary = latinToGeorgian(term);
+  if (primary.length < MIN_GEORGIAN_TERM_CHARS) return [];
+  const live = GEORGIAN_AMBIGUITY.filter(([from]) => primary.includes(from)).slice(
+    0,
+    GEORGIAN_AMBIGUITIES_USED,
+  );
+  const out = new Set<string>([primary]);
+  for (const [from, to] of live) out.add(primary.split(from).join(to));
+  if (live.length === GEORGIAN_AMBIGUITIES_USED) {
+    const [[from1, to1], [from2, to2]] = live;
+    out.add(primary.split(from1).join(to1).split(from2).join(to2));
+  }
+  return [...out];
+}
+
 function driftVariants(term: string): string[] {
   const out = new Set<string>([term]);
   for (const [from, to] of DRIFT_PAIRS) {
@@ -110,8 +269,11 @@ function endingVariants(term: string): string[] {
 
 /**
  * Query terms to try: the lowercased original, its Latin transliteration when
- * Georgian, common drift variants of the Latin form, and Armenian-ending folds —
- * deduped and capped.
+ * Georgian, common drift variants of the Latin form, Armenian-ending folds, and
+ * — for a Latin query — the Georgian readings of it (row 222). Deduped, and
+ * capped on each side separately so the Georgian forms cannot crowd out the
+ * Latin ones and the Latin ones cannot swallow the budget before the Georgian
+ * ones are reached.
  */
 export function buildSearchTerms(rawQuery: string): readonly string[] {
   const lower = rawQuery.trim().toLowerCase();
@@ -121,7 +283,8 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
   for (const drift of driftVariants(latin)) {
     for (const withEnding of endingVariants(drift)) terms.add(withEnding);
   }
-  return [...terms].slice(0, MAX_TERMS);
+  const capped = [...terms].slice(0, MAX_TERMS);
+  return [...new Set([...capped, ...georgianVariants(lower)])];
 }
 
 /**

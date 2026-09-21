@@ -63,9 +63,14 @@ describe('searchSecondDegree tag matching', () => {
     // query, same rows both ways). The per-word patterns are still sent — they
     // are what word_hits counts with — so a one-word query sends its pattern
     // twice, which is why $3 and $4 are equal below.
-    expect(sql).toContain(`LOWER(ut.tag) ~ $4`);
-    expect(sql).toContain(`LOWER(ua_m.alias) ~ $4`);
-    expect(sql).toContain(`bool_or(label ~ $3)`);
+    // Row 222 moved these: one Latin word is now three patterns (itself plus
+    // two Georgian readings), so the filter alternation sits at $6 rather than
+    // $4 and word_hits ORs the three together. The SHAPE is what matters and
+    // it is unchanged — one filter condition per column, the words still
+    // counted as one group.
+    expect(sql).toContain(`LOWER(ut.tag) ~ $6`);
+    expect(sql).toContain(`LOWER(ua_m.alias) ~ $6`);
+    expect(sql).toContain(`bool_or(label ~ $3 OR label ~ $4 OR label ~ $5)`);
     expect(sql).not.toContain(`|| '') ~`);
     expect(sql).not.toContain('normalize_search_token');
     expect(sql).toContain('JOIN LATERAL');
@@ -76,12 +81,21 @@ describe('searchSecondDegree tag matching', () => {
     // TEXT (the contact_facts role lookup — $1 is inferred int by the joins),
     // $8/$9 = where the title and the employer may come from, in preference
     // order (ticket 9 task 25: 'role' was never read and holds 96 public rows).
+    //
+    // Row 222: a Latin word now also carries its Georgian readings, so $3 is an
+    // alternation even for one word. This is the cheapest of the three searches
+    // to widen — the filter was ALREADY one alternation, so the added readings
+    // cost a longer pattern and one more pre-filter LIKE, not another pass.
     expect(params).toEqual([
       '42',
       [FRIEND_PHONE],
       '\\mburalteri',
-      '\\mburalteri',
+      '\\mბურალთერი',
+      '\\mბურალტერი',
+      '\\mburalteri|\\mბურალთერი|\\mბურალტერი',
       '%buralteri%',
+      '%ბურალთერი%',
+      '%ბურალტერი%',
       [],
       '42',
       ['role', 'occupation'],
@@ -118,7 +132,21 @@ describe('searchSecondDegree tag matching', () => {
     expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
     // And one pre-filter pattern per word, in front of it. They are a strict
     // superset of the regex, so they can only remove rows it would reject too.
-    expect(prefilter).toEqual(['%buralteri%', '%marketing%', '%marqeting%']);
+    // Row 222 widened this: each word's Georgian readings are pre-filtered too,
+    // and „marketing" is the case that justifies the four-combination rule —
+    // მარკეტინგი needs თ→ტ and ქ→კ at once, and trying each singly would have
+    // spent the budget without ever reaching the word that exists.
+    expect(prefilter).toEqual([
+      '%buralteri%',
+      '%ბურალთერი%',
+      '%ბურალტერი%',
+      '%marketing%',
+      '%marqeting%',
+      '%მარქეთინგ%',
+      '%მარქეტინგ%',
+      '%მარკეთინგ%',
+      '%მარკეტინგ%',
+    ]);
     expect(sql).toContain('LIKE $');
     // And the words are still counted separately, which is what the ranking
     // needs: a person carrying both query words must outrank one carrying one.
@@ -510,7 +538,21 @@ describe('the pre-filter in front of the regex', () => {
       (c[0] as string).includes('tag_hits'),
     ) as [string, unknown[]];
     const prefilter = (params as string[]).filter((v) => typeof v === 'string' && /^%.*%$/.test(v));
-    expect(prefilter).toEqual(['%buralteri%', '%marketing%', '%marqeting%']);
+    // Row 222 widened this: each word's Georgian readings are pre-filtered too,
+    // and „marketing" is the case that justifies the four-combination rule —
+    // მარკეტინგი needs თ→ტ and ქ→კ at once, and trying each singly would have
+    // spent the budget without ever reaching the word that exists.
+    expect(prefilter).toEqual([
+      '%buralteri%',
+      '%ბურალთერი%',
+      '%ბურალტერი%',
+      '%marketing%',
+      '%marqeting%',
+      '%მარქეთინგ%',
+      '%მარქეტინგ%',
+      '%მარკეთინგ%',
+      '%მარკეტინგ%',
+    ]);
     // The regex is still there and still one per column: the LIKE narrows the
     // rows the index has to read, it does not decide what matches.
     expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);

@@ -232,8 +232,15 @@ describe('a Georgian case ending no longer hides the surname', () => {
     expect(buildRawWordGroups('თორნიკე')[0]).toContain('tornike');
   });
 
-  it('never touches a Latin query', () => {
-    expect(buildRawWordGroups('tornike abuladze')[1]).toEqual(['abuladze']);
+  /**
+   * It used to leave a Latin query alone entirely, and that WAS the row 222
+   * gap: a contact saved only as „აბულაძე" could not be reached by typing
+   * „abuladze". The Latin stemming behaviour is unchanged — georgianStem has
+   * nothing to trim off a Latin word — and what is added is the Georgian
+   * reading of it.
+   */
+  it('adds the Georgian reading of a Latin query and stems nothing', () => {
+    expect(buildRawWordGroups('tornike abuladze')[1]).toEqual(['abuladze', 'აბულაძე']);
   });
 });
 

@@ -99,7 +99,20 @@ describe('searchByTag', () => {
     // $1 userId, then each word-start regex (individual placeholders — never
     // ANY(array)), last blocked. No LIKE patterns: the trigram GIN path is
     // deliberately unusable here (KA scripts extract ~no trigrams on prod).
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mengineer', '42', []]);
+    //
+    // Row 222: the Georgian readings ride along, because a Latin query used to
+    // reach nothing written in Georgian. „engineer" is an English word, so
+    // these two find nobody and are the price of the ones that do — a query
+    // for „iuristi" reaches იურისტი the same way, and 1,059 people carry that
+    // label with no Latin twin.
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      '\\mengineer',
+      '\\mენგინეერ',
+      '\\mენღინეერ',
+      '42',
+      [],
+    ]);
   });
 
   it('passes Georgian term, transliteration and drift variants as word-start regexes', async () => {

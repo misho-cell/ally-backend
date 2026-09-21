@@ -87,12 +87,32 @@ describe('searchContactByName', () => {
     for (const p of params.slice(1, -2)) expect(String(p).startsWith('\\m')).toBe(true);
   });
 
-  it('passes one word-start pattern for a Latin query (no transliteration)', async () => {
+  /**
+   * Row 222's other direction. It used to send the Latin word alone, and a
+   * contact saved only as „ლივინგსტონი" could not be reached by typing it in
+   * Latin. The Georgian readings now go with it — the primary and the four
+   * combinations of its two likeliest ambiguities, here თ/ტ and გ/ღ.
+   *
+   * THE COST IS REAL AND THIS TEST NAMES IT: this query went from one
+   * word-start pattern to five, OR'd in the same single pass. A name that is
+   * English rather than Georgian-typed-in-Latin pays that for nothing, which
+   * is the honest half of the trade.
+   */
+  it('sends the Latin word AND its Georgian readings', async () => {
     setup({ main: [mockRow], count: 1 });
 
     await searchContactByName('42', 'Livingston');
 
-    expect(mockQuery.mock.calls[0][1]).toEqual(['42', '\\mlivingston', '42', []]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      '42',
+      '\\mlivingston',
+      '\\mლივინგსთონ',
+      '\\mლივინგსტონ',
+      '\\mლივინღსთონ',
+      '\\mლივინღსტონ',
+      '42',
+      [],
+    ]);
   });
 
   it('carries a hand-set human_relationship_tier alongside a machine relationship, one never overwriting the other — ticket 6 task 4', async () => {
