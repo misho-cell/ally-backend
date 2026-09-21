@@ -30,6 +30,16 @@ export interface PendingRequest {
   target_name: string;
   message: string | null;
   requester_name: string | null;
+  /**
+   * WHO IS ASKING, as an id rather than only as a name.
+   *
+   * Answering one of these writes to a real person, so the tester's seat has
+   * been unable to touch `POST /requests/:ref/:action` at all — the payload
+   * named the counterpart and never said whether that name belongs to
+   * somebody real or to one of the six fictional test accounts. Their 379
+   * asked for exactly this and ranked it last themselves.
+   */
+  requester_user_id: number | null;
   created_at: string;
   /** No mediator stored: the target themself answers (task 18). */
   direct: boolean;
@@ -61,6 +71,7 @@ export async function getPendingRequestsForMediator(
 ): Promise<PendingRequest[]> {
   const result = await query<PendingRequest>(
     `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
+            ir.requester_user_id,
             u.name AS requester_name,
             (ir.mediator_user_id IS NULL) AS direct
      FROM introduction_requests ir
@@ -84,6 +95,7 @@ export async function getPendingRequestById(
 ): Promise<PendingRequest | null> {
   const result = await query<PendingRequest>(
     `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
+            ir.requester_user_id,
             u.name AS requester_name,
             (ir.mediator_user_id IS NULL) AS direct
      FROM introduction_requests ir

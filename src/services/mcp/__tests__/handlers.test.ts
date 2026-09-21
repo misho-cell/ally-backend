@@ -669,6 +669,55 @@ describe('mcpCheckInbox', () => {
     expect(containsPhoneLike(result)).toBe(false);
   });
 
+  /**
+   * The tester's 379. Answering a waiting request writes to a real person, so
+   * their seat has never been able to touch `POST /requests/:ref/:action`: the
+   * payload named the counterpart and never said whether that name belongs to
+   * somebody real or to one of the six fictional Netai Test accounts.
+   *
+   * The marker is present only when true, and the reason that is safe is
+   * narrow: `isFictionalTestAccount` is a Set lookup on an id already in hand,
+   * with no I/O, so **absence cannot mean „I could not check"** — which is the
+   * confusion this codebase keeps finding everywhere else.
+   */
+  it('marks a request from a fictional test account, and nothing else', async () => {
+    mockPending.mockResolvedValue([
+      {
+        id: 31,
+        target_name: 'Nino',
+        message: 'drill',
+        requester_name: 'Netai Test 2',
+        requester_user_id: 171871,
+        created_at: '2026-09-21T05:00:00Z',
+      },
+      {
+        id: 32,
+        target_name: 'Mari',
+        message: 'a real one',
+        requester_name: 'Gio',
+        requester_user_id: 963,
+        created_at: '2026-09-21T05:01:00Z',
+      },
+      // The id can be missing entirely — a deleted account. Absent is absent,
+      // and it must not read as "fictional".
+      {
+        id: 33,
+        target_name: 'Dato',
+        message: 'no id',
+        requester_name: null,
+        requester_user_id: null,
+        created_at: '2026-09-21T05:02:00Z',
+      },
+    ]);
+    mockAnswered.mockResolvedValue([]);
+
+    const waiting = (await mcpCheckInbox(USER)).waiting_for_me as Record<string, unknown>[];
+
+    expect(waiting[0].counterpart_is_a_fictional_test_account).toBe(true);
+    expect(waiting[1]).not.toHaveProperty('counterpart_is_a_fictional_test_account');
+    expect(waiting[2]).not.toHaveProperty('counterpart_is_a_fictional_test_account');
+  });
+
   it('returns replies with full context (mediator, original reason, ask_type, timestamps)', async () => {
     mockPending.mockResolvedValue([]);
     mockAnswered.mockResolvedValue([

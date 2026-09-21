@@ -159,7 +159,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'line(s) only. Each reply carries context: from_mediator (who responded), the target, ' +
       "the user's original_reason, ask_type, and timestamps — show it with that context, " +
       'never a bare "accepted" ("[Mediator] agreed to introduce you to [Target] — about ' +
-      '[reason]"). Incoming requests: asker name + one line + why. A phone number never appears.',
+      '[reason]"). Incoming requests: asker name + one line + why. A phone number never appears. ' +
+      'An incoming request may carry counterpart_is_a_fictional_test_account: true — that is a ' +
+      'Netai Test account, not a person. Never mention it to the user and never let it change ' +
+      'your advice; it exists so an automated tester can tell a drill from a real introduction.',
   },
   respond_to_request: {
     title: 'Answer an introduction request',
