@@ -44,16 +44,40 @@
 # look — and a plan that depends on me remembering is not a plan, which is the
 # sentence at the top of this very file.
 #
-# `--ready <tool> <min-calls> [since]` answers it: since the date given, has
+# `--ready <tool> <min-calls> [since] [account]` answers it: since the date given, has
 # there been a day carrying at least that many calls? It prints the qualifying
 # days and exits non-zero for „not yet", so it can gate something.
 #
 # It answers about VOLUME and nothing else. A qualifying day means the numbers
 # from it are worth reading; it does not mean they say what you hoped.
 #
+# AND ON 21 SEPTEMBER IT LIED TO ME, WITH MY OWN FAVOURITE MISTAKE. It counted
+# `tool = X` OR `tool LIKE 'X:%'` — the second being the PHASE rows a search
+# writes about its own internals. Asked whether a day carried 50 second-degree
+# searches, it answered „READY — 21 September, 50 calls". The real number was
+# 32 searches and 18 phase rows.
+#
+# The inflation is not even a constant to correct for: 3 phase rows against 94
+# calls on 16 September (3%), 81 against 183 on the 17th (44%), 18 against 32
+# today (56%). So the SAME threshold meant a different thing every day, and the
+# day it happened to wave through was the one sitting exactly on the line.
+#
+# It now counts the searches, and prints the phase rows beside them rather than
+# inside them — nothing hidden, nothing added up that should not be. Only two
+# tools write phase rows (web_search and search_second_degree) and both also
+# write bare rows, so nothing becomes invisible by counting this way.
+#
 # Usage:  ./scripts/ops/slow.sh ['7 days']                 every tool, summary
 #         ./scripts/ops/slow.sh '10 days' search_by_tag    one tool, by day
 #         ./scripts/ops/slow.sh --ready search_by_tag 150 2026-09-19
+#         ./scripts/ops/slow.sh --ready search_second_degree 50 2026-09-01 501
+#
+# THE FOURTH ARGUMENT IS ONE ACCOUNT, and it is there because the rows parked
+# on this gate do not say „a busy day", they say „a busy day ON 501". That is
+# not pedantry: what these searches cost depends on the size of the phonebook
+# they walk, and 501's is the large one. On 19-21 September the tool ran 35,
+# 26 and 32 times — of which 2, 6 and 2 were 501's. A day can look busy and
+# carry almost nothing from the account the question is about.
 set -euo pipefail
 
 READY_PY='
@@ -62,18 +86,22 @@ d = json.load(sys.stdin)
 tool = os.environ["READY_TOOL"]
 need = os.environ["READY_MIN"]
 since = os.environ["READY_FROM"]
+who = os.environ.get("READY_USER", "")
+whose = (" on account %s" % who) if who else ""
 if not d.get("success"):
     print("could not read:", d.get("error", "")[:160])
     raise SystemExit(2)
 rows = d["data"]["rows"]
 if not rows:
-    print("NOT YET - no day since %s carries %s+ calls to %s." % (since, need, tool))
+    print("NOT YET - no day since %s carries %s+ calls to %s%s." % (since, need, tool, whose))
     print("         That says the measurement cannot be TAKEN, not that the")
     print("         change did nothing. They are different answers.")
     raise SystemExit(1)
-print("READY - %d day(s) since %s carry %s+ calls to %s:" % (len(rows), since, need, tool))
+print("READY - %d day(s) since %s carry %s+ calls to %s%s:" % (len(rows), since, need, tool, whose))
 for r in rows:
-    print("  %s  %s calls" % (str(r["day"])[:10], r["calls"]))
+    phases = int(r["phase_rows"])
+    extra = "   (+%d phase row(s), not counted)" % phases if phases else ""
+    print("  %s  %s calls%s" % (str(r["day"])[:10], r["calls"], extra))
 print("")
 print("Volume only. A qualifying day means the numbers are worth reading; it")
 print("does not mean they say what you hoped. Read them with the tool name as")
@@ -81,18 +109,27 @@ print("the second argument.")
 '
 
 if [ "${1:-}" = --ready ]; then
-  export READY_TOOL="${2:?usage: slow.sh --ready <tool> <min-calls> [since-date]}"
-  export READY_MIN="${3:?usage: slow.sh --ready <tool> <min-calls> [since-date]}"
+  export READY_TOOL="${2:?usage: slow.sh --ready <tool> <min-calls> [since-date] [account]}"
+  export READY_MIN="${3:?usage: slow.sh --ready <tool> <min-calls> [since-date] [account]}"
   export READY_FROM="${4:-2026-01-01}"
+  # One account, or every account when it is left out. Quoted into the SQL as
+  # a literal like every other argument here — this file reaches a read-only
+  # endpoint with a fixed statement and is not a query builder.
+  export READY_USER="${5:-}"
+  USER_CLAUSE=""
+  [ -n "$READY_USER" ] && USER_CLAUSE="AND user_id = '$READY_USER'"
   HERE="$(cd "$(dirname "$0")" && pwd)"
   "$HERE/ro.sh" <<SQL | python3 -c "$READY_PY"
-SELECT DATE_TRUNC('day', created_at) AS day, COUNT(*) AS calls
+SELECT DATE_TRUNC('day', created_at) AS day,
+       COUNT(*) FILTER (WHERE tool = '$READY_TOOL') AS calls,
+       COUNT(*) FILTER (WHERE tool LIKE '$READY_TOOL:%') AS phase_rows
 FROM tool_call_log
 WHERE created_at >= '$READY_FROM'
   AND duration_ms IS NOT NULL
   AND (tool = '$READY_TOOL' OR tool LIKE '$READY_TOOL:%')
+  $USER_CLAUSE
 GROUP BY 1
-HAVING COUNT(*) >= $READY_MIN
+HAVING COUNT(*) FILTER (WHERE tool = '$READY_TOOL') >= $READY_MIN
 ORDER BY 1
 LIMIT 60
 SQL
