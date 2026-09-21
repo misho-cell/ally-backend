@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms, buildRawWordGroups } from './transliterate';
+import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
@@ -164,26 +165,54 @@ async function runExactSearch(
  * that endpoint all day. If it still times out the log will say so, and the
  * next lever is that the exact and fuzzy passes run one after the other when
  * nothing makes them.
+ *
+ * AND MOST OF WHAT IT WAS PAYING FOR WAS THE SAME PATTERN TWICE — found
+ * 21 September while measuring what row 222's Latin-to-Georgian direction
+ * costs. The query terms are compared as `normalize_search_token(term)`, and
+ * that function transliterates Georgian to Latin before folding gh/kh/ts/x/q,
+ * so variants that differ on paper collapse to one string in the database.
+ * Read back from the live function that day:
+ *
+ *   santexniki · santekhniki · santexniqi · სანთეხნიქი · სანტეხნიქი · სანთეხნიკი
+ *     → six terms, all `santekniki`, one pattern
+ *   accountant → six terms, all `accountant`
+ *
+ * So the pass was charging 6 terms (2.2 s) for what 1 term (≈0.4 s) reaches,
+ * on a majority of real queries. Deduplicating by the normalized form CANNOT
+ * change a result — it is the value the comparison is made on — so this is
+ * cost removed and nothing else. It also frees cap slots for terms that do
+ * differ, which is recall on a long query.
  */
 const MAX_FUZZY_TERMS = 6;
 
 export function cappedFuzzyTerms(perWord: readonly (readonly string[])[]): string[] {
   const flat = perWord.flat();
-  if (flat.length <= MAX_FUZZY_TERMS) return [...flat];
   const kept: string[] = [];
+  const alreadyCovered = new Set<string>();
   const depth = Math.max(...perWord.map((w) => w.length), 0);
   for (let i = 0; i < depth && kept.length < MAX_FUZZY_TERMS; i++) {
     for (const word of perWord) {
       if (kept.length >= MAX_FUZZY_TERMS) break;
       const term = word[i];
-      if (term !== undefined) kept.push(term);
+      if (term === undefined) continue;
+      const normalized = normalizeSearchToken(term);
+      if (alreadyCovered.has(normalized)) continue;
+      alreadyCovered.add(normalized);
+      kept.push(term);
     }
   }
-  // eslint-disable-next-line no-console
-  console.log(
-    `[tag-fuzzy] ${flat.length} variants over ${perWord.length} word(s); ` +
-      `searching ${kept.length}: ${kept.join(' ')}`,
-  );
+  if (kept.length < flat.length) {
+    // The distinct count is taken over EVERY variant, not over the ones the
+    // walk reached before the cap — otherwise the line would report the cap
+    // back to itself and never show a query whose variants really outnumber it.
+    const distinct = new Set(flat.map(normalizeSearchToken)).size;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[tag-fuzzy] ${flat.length} variants over ${perWord.length} word(s), ` +
+        `${distinct} distinct once normalized; ` +
+        `searching ${kept.length}: ${kept.join(' ')}`,
+    );
+  }
   return kept;
 }
 

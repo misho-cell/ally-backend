@@ -11,17 +11,33 @@ import { cappedFuzzyTerms } from '../searchByTag';
  *    6 terms   2 179 ms
  *    8 terms   2 924 ms
  *   12 terms   4 462 ms   <- what the real queries carry
+ *
+ * 21 September: most of what it was paying for was THE SAME PATTERN TWICE. The
+ * comparison is made on `normalize_search_token(term)`, which transliterates
+ * Georgian to Latin and then folds gh/kh/zh/ts/x/q — so „santexniki",
+ * „santekhniki", „santexniqi" and three Georgian spellings of it are one
+ * string to the database. Deduplicating by that value cannot change a result;
+ * it only stops the pass being charged for the duplicate.
  */
 const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
 beforeEach(() => log.mockClear());
 afterAll(() => log.mockRestore());
 
 describe('cappedFuzzyTerms', () => {
-  it('leaves a short list alone and says nothing', () => {
-    const perWord = [['ფოტოგრაფი', 'fotografi', 'potograpi']];
+  it('leaves a list alone when every term is its own pattern, and says nothing', () => {
+    const perWord = [['ფოტოგრაფი', 'potograpi', 'photographer']];
 
-    expect(cappedFuzzyTerms(perWord)).toEqual(['ფოტოგრაფი', 'fotografi', 'potograpi']);
+    expect(cappedFuzzyTerms(perWord)).toEqual(['ფოტოგრაფი', 'potograpi', 'photographer']);
     expect(log).not.toHaveBeenCalled();
+  });
+
+  it('drops a spelling the database cannot tell from one already kept', () => {
+    // „ფოტოგრაფი" and „fotografi" both normalize to `fotografi`, so the second
+    // is a second charge for the first one's pattern and no extra reach.
+    expect(cappedFuzzyTerms([['ფოტოგრაფი', 'fotografi', 'potograpi']])).toEqual([
+      'ფოტოგრაფი',
+      'potograpi',
+    ]);
   });
 
   it('gives EVERY word its own spelling before any word gets a second', () => {
@@ -39,7 +55,10 @@ describe('cappedFuzzyTerms', () => {
     expect(kept).toHaveLength(6);
     // One of each word first, then round again.
     expect(kept.slice(0, 3)).toEqual(['ქორწილის', 'ფოტოგრაფის', 'მომსახურება']);
-    expect(kept.slice(3)).toEqual(['kortsilis', 'fotografis', 'momsakhureba']);
+    // And the second round is now three patterns the first round did not have.
+    // „ქორწილის" contributes nothing to it: all three of its Latin spellings
+    // normalize to `korcilis`, which the Georgian spelling already covers.
+    expect(kept.slice(3)).toEqual(['potograpis', 'momsaqhureba', 'momsahureba']);
   });
 
   it('never drops a word entirely while another word has a spare spelling', () => {
@@ -56,8 +75,10 @@ describe('cappedFuzzyTerms', () => {
 
     const kept = cappedFuzzyTerms(perWord);
 
-    expect(kept).toHaveLength(6);
-    expect(new Set(kept).size).toBe(6);
+    // Four, not six: „ori" and „sami" are the Latin readings of the Georgian
+    // words beside them and normalize to the same string.
+    expect(kept).toEqual(['ერთი', 'ორი', 'სამი', 'samy']);
+    expect(new Set(kept).size).toBe(kept.length);
   });
 
   it('says what it kept when it cuts', () => {
