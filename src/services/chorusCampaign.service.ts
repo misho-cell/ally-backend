@@ -386,6 +386,110 @@ export async function sharedCircleWith(
   }
 }
 
+/** `${inviterUserId}|${targetPhone}` — the pair a shared count belongs to. */
+export function sharedCircleKey(inviterUserId: number, targetPhone: string): string {
+  return `${inviterUserId}|${targetPhone}`;
+}
+
+/**
+ * The same count as `sharedCircleWith`, for every pair on a page of campaigns,
+ * in ONE query.
+ *
+ * WHY NOT JUST CALL THE OTHER ONE IN A LOOP. Because the frontend asked for
+ * this number on the admin row and I measured what the loop would cost before
+ * writing anything: the per-pair query is 0.79 s against an 8.4M-row table,
+ * the open campaigns carry 77 pairs, and 77 × 0.79 is about a minute on a page
+ * that answers in well under one today. That is not a tuning problem, it is
+ * the wrong shape.
+ *
+ * MEASURED, 21 September, on the live database, worst case — every campaign
+ * rather than the open ones, 500 rows:
+ *
+ *   cold   2.3 s
+ *   warm   0.5-0.6 s   (three runs)
+ *
+ * and it is started beside the page query rather than after it, so the page
+ * costs the slower of the two and not their sum.
+ *
+ * The count itself is unchanged and so is its rule: people who are BOTH in the
+ * inviter's contacts AND hold the target in theirs. No names, ever — naming
+ * them would hand somebody a slice of other people's phonebooks.
+ *
+ * Best-effort, like its per-pair twin: an admin page must not fail to render
+ * because a count could not be taken. An empty map means „not known", and the
+ * caller must not print it as zero.
+ */
+export async function sharedCirclesForCampaigns(limit: number): Promise<Map<string, number>> {
+  try {
+    const result = await query<{ inviter: number; target: string; shared: string }>(
+      `WITH page AS (
+         SELECT id, target_phone FROM invite_campaigns ORDER BY opened_at DESC LIMIT $1
+       ),
+       pairs AS (
+         SELECT DISTINCT p.inviter_user_id AS inviter, c.target_phone AS target
+         FROM page c
+         JOIN invite_campaign_participants p ON p.campaign_id = c.id
+         WHERE p.inviter_user_id IS NOT NULL
+       ),
+       savers AS (
+         SELECT ua.phone AS target, up.phone AS saver
+         FROM "UserAlias" ua
+         JOIN "UserPhone" up ON up."userId" = ua."contactId"
+         WHERE ua.phone IN (SELECT target FROM pairs)
+         GROUP BY 1, 2
+       )
+       SELECT pr.inviter, pr.target, count(*) AS shared
+       FROM pairs pr
+       JOIN savers s ON s.target = pr.target
+       JOIN "UserAlias" mine ON mine."contactId" = pr.inviter AND mine.phone = s.saver
+       GROUP BY 1, 2`,
+      [limit],
+      CAMPAIGN_QUERY_TIMEOUT_MS,
+    );
+    return new Map(
+      result.rows.map((r) => [sharedCircleKey(Number(r.inviter), r.target), Number(r.shared)]),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[chorus] shared-circle page count failed:', (err as Error).message);
+    return new Map();
+  }
+}
+
+/**
+ * Put each inviter's shared-circle count on their own row of a campaign.
+ *
+ * The count belongs to the PAIR (this inviter, this target), not to the
+ * campaign, so it goes inside `inviters[]` rather than on the campaign row —
+ * two inviters of the same person have two different numbers.
+ *
+ * A pair the query could not answer for is left ABSENT, never zero. Zero is a
+ * real answer here („you two share nobody") and the difference between that
+ * and „the count did not run" is the distinction this whole week has been
+ * about.
+ */
+export function withSharedCircles(
+  rows: readonly Record<string, unknown>[],
+  shared: ReadonlyMap<string, number>,
+): Record<string, unknown>[] {
+  if (shared.size === 0) return [...rows];
+  return rows.map((row) => {
+    const inviters = row['inviters'];
+    if (!Array.isArray(inviters)) return row;
+    const target = typeof row['target_phone'] === 'string' ? row['target_phone'] : '';
+    return {
+      ...row,
+      inviters: inviters.map((entry) => {
+        if (entry === null || typeof entry !== 'object') return entry;
+        const id = (entry as { inviter_user_id?: unknown }).inviter_user_id;
+        if (typeof id !== 'number') return entry;
+        const count = shared.get(sharedCircleKey(id, target));
+        return count === undefined ? entry : { ...entry, shared_circle: count };
+      }),
+    };
+  });
+}
+
 /**
  * The two facts row 40 asks for, appended to whichever phrasing was chosen.
  *

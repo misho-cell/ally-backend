@@ -193,6 +193,8 @@ import {
   closeStaleCampaigns,
   seedTestCampaign,
   currentGlobalDial,
+  sharedCirclesForCampaigns,
+  withSharedCircles,
 } from '../../services/chorusCampaign.service';
 
 const adminRouter = Router();
@@ -3624,7 +3626,7 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
-    const [campaigns, dial] = await Promise.all([
+    const [campaigns, dial, sharedCircles] = await Promise.all([
       // Ticket 17 Task 40. Read on 12 September: 50 open campaigns, every one of
       // them "with an empty inviter and an empty reason". The data was never
       // empty — all 50 have participants and 11 have sent an ask. This endpoint
@@ -3647,6 +3649,11 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
                   jsonb_agg(
                     jsonb_build_object(
                       'name', COALESCE(NULLIF(TRIM(u.name), ''), 'უსახელო ანგარიში'),
+                      -- Row 40's fourth column is a count per INVITER-target
+                      -- pair, so the row has to say which inviter it is. The
+                      -- id and not the phone: an admin list already shows the
+                      -- target's number and does not need a second one.
+                      'inviter_user_id', p.inviter_user_id,
                       'state', p.state,
                       'asked_at', p.asked_at,
                       'scheduled_ask_at', p.scheduled_ask_at)
@@ -3671,10 +3678,16 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
         [limit],
       ),
       currentGlobalDial(),
+      // Row 40's fourth column, in one query for the whole page rather than
+      // one per pair — see sharedCirclesForCampaigns for what the loop would
+      // have cost. Started BESIDE the page query, so the page pays the slower
+      // of the two and not their sum.
+      sharedCirclesForCampaigns(limit),
     ]);
-    res
-      .status(200)
-      .json({ success: true, data: { campaigns: campaigns.rows, current_dial: dial } });
+    res.status(200).json({
+      success: true,
+      data: { campaigns: withSharedCircles(campaigns.rows, sharedCircles), current_dial: dial },
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin chorus campaigns]', error);
