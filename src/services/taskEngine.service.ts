@@ -39,7 +39,7 @@ import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.se
 import { emitRunComplete, emitRunError } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
-import { isDraining } from './inFlightRuns';
+import { beginRun, endRun, isDraining } from './inFlightRuns';
 import { scrubText } from './privacyScrub';
 import { enterThread, leaveThread, threadHolder } from './threadRunQueue';
 import { sweepUnansweredIntroOutcomes } from './partH.service';
@@ -192,6 +192,33 @@ export async function wakeTask(
     const wakeRunId = randomUUID();
     await enterThread(thread.id, wakeRunId, THREAD_QUEUE_BUDGET_MS, THREAD_QUEUE_POLL_MS);
     holding = { threadId: thread.id, runId: wakeRunId };
+    /**
+     * 21 September — AND THE DRAIN HAS TO BE ABLE TO SEE IT.
+     *
+     * This path read `isDraining()` on the way in and never registered what it
+     * then started. `beginRun`/`endRun` were called from `threads.routes.ts`
+     * and nowhere else, so `inFlightCount()` counted chat runs only — and an
+     * engine run in flight was invisible to the shutdown that killed it.
+     *
+     * Read from the logs rather than reasoned about. 20 September:
+     *
+     *   21:42:02.635  run 28e53894, mode task_step, thread 16737, owner 160584
+     *   21:42:20.057  [shutdown] SIGTERM: draining, 0 run(s) in flight
+     *   21:42:20.057  [shutdown] all runs finished          (4 µs later)
+     *   21:43:36.366  [run-reaper] reaped 1 orphaned run(s)
+     *
+     * The owner was told „ტექნიკური შეფერხება მოხდა". The drain had a
+     * twenty-second budget, the run was seventeen seconds old, and the drain
+     * spent none of it — because the count was zero and the count was wrong.
+     *
+     * THE HONEST LIMIT, because the count being right is most of what this
+     * buys: an engine run takes sixty to ninety seconds and the budget is
+     * twenty, so registering it does not promise to save it. What it ends is
+     * a shutdown that reports „0 run(s) in flight" while cutting one in half —
+     * the same failure this codebase keeps finding in its own numbers, where
+     * „I cannot see any" is printed as „there are none".
+     */
+    beginRun(wakeRunId);
     // Ticket 19 G1 and G5: and a thread the owner is still TALKING in is not
     // free either, whatever its status says.
     //
@@ -442,7 +469,10 @@ export async function wakeTask(
     runningTasks.delete(taskId);
     // Row 209: and let the conversation go, whichever way this ended. A wake
     // that returned 'stopped' on an empty wallet still took the lock.
-    if (holding !== null) leaveThread(holding.threadId, holding.runId);
+    if (holding !== null) {
+      endRun(holding.runId);
+      leaveThread(holding.threadId, holding.runId);
+    }
   }
 }
 
