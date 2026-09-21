@@ -718,6 +718,45 @@ describe('mcpCheckInbox', () => {
     expect(waiting[2]).not.toHaveProperty('counterpart_is_a_fictional_test_account');
   });
 
+  /**
+   * THE SEAT'S 385, and they were right to ask rather than assume.
+   *
+   * `requester_user_id` was added to the underlying read so the marker above
+   * can be computed. They asked the question I had not written down: does that
+   * id reach the MODEL, or only the server? Because if it reaches the model,
+   * every ordinary user's inbox now carries another person's account id — a
+   * new identifier about a third party, on every item, for people who are not
+   * test accounts.
+   *
+   * It does not. But „it does not today" is what a later edit undoes with one
+   * `...request` spread, so the key set is pinned closed here instead of
+   * checked once by hand.
+   */
+  it('never lets the counterpart’s account id reach the payload', async () => {
+    mockPending.mockResolvedValue([
+      {
+        id: 40,
+        target_name: 'Nino',
+        message: 'hello',
+        requester_name: 'Gio',
+        requester_user_id: 963,
+        created_at: '2026-09-21T06:00:00Z',
+      },
+    ]);
+    mockAnswered.mockResolvedValue([]);
+
+    const waiting = (await mcpCheckInbox(USER)).waiting_for_me as Record<string, unknown>[];
+
+    expect(Object.keys(waiting[0]).sort()).toEqual([
+      'created_at',
+      'from',
+      'message',
+      'request_ref',
+      'wants_to_meet',
+    ]);
+    expect(JSON.stringify(waiting)).not.toContain('963');
+  });
+
   it('returns replies with full context (mediator, original reason, ask_type, timestamps)', async () => {
     mockPending.mockResolvedValue([]);
     mockAnswered.mockResolvedValue([
