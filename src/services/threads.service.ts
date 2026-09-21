@@ -74,6 +74,20 @@ export interface ThreadMessage {
    * `name@ISO` per block it loaded. Null on a message whose run predates the
    * stamp link, and on user messages.
    */
+  /**
+   * The honest name. `prompt_mode` describes the RUN, not the row, and the
+   * seat read it as a row attribute and drew a wrong conclusion from it — see
+   * the SELECT below. The frontend cleared the rename („rename whenever, no
+   * warning needed"), so this is what the field is called now.
+   */
+  run_mode?: string | null;
+  /**
+   * @deprecated The same value under the old name, sent while the client
+   * switches. Two names for one thing is the fault I have spent today
+   * complaining about (`req_<id>` against the UUID), so this is a transition
+   * and not a second key: it goes the moment the frontend says they read
+   * `run_mode`.
+   */
   prompt_mode?: string | null;
   prompt_blocks?: string[] | null;
 }
@@ -673,11 +687,19 @@ export async function getThreadMessages(
      *
      * Zero, on both, while the rows exist. The filter holds.
      *
-     * If this is ever renamed, `run_mode` is the honest name. Not renamed now:
-     * the client reads this key and a rename is theirs to schedule, not a
-     * thing to do to them overnight.
+     * RENAMED 21 SEPTEMBER. The frontend cleared it — „rename whenever, no
+     * warning needed" — so the field is `run_mode`, which is what it has
+     * always described.
+     *
+     * BOTH NAMES GO OUT FOR NOW, and only for now. A hard rename would make
+     * the field silently undefined on a client that has not shipped yet, and
+     * the order of two deploys is not something worth gambling a display on.
+     * `prompt_mode` is deprecated and comes out as soon as they say they read
+     * the new one — because two names for one thing is precisely the fault
+     * `req_<id>` against the UUID has been costing the tester all week.
      */
-    `SELECT page.*, s.mode AS prompt_mode, s.block_versions AS prompt_blocks
+    `SELECT page.*, s.mode AS run_mode, s.mode AS prompt_mode,
+            s.block_versions AS prompt_blocks
      FROM (
        -- Ticket 20 row 132, second pass: answered_by rides with the message.
        -- The seat reads replies only through this endpoint, so a column they
