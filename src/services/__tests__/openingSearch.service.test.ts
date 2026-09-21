@@ -774,10 +774,31 @@ describe('the name taken out of a web result', () => {
       names([
         {
           title: 'Looking for trusted office movers in Chicago, IL for a small job',
+          url: 'https://movers-chicago.example.com/thread/x',
+        },
+      ]),
+    ).toEqual(['movers-chicago.example.com']);
+  });
+
+  /**
+   * CHANGED DELIBERATELY, 21 September. This case used to expect „reddit.com",
+   * and the expectation was the old behaviour rather than a good outcome: a
+   * card reading „No way in yet: reddit.com" and a phonebook searched for
+   * „reddit.com" help nobody, and the search is not free.
+   *
+   * The fallback still applies to an ordinary host, as the test above holds.
+   * A platform anybody can post on names no firm, so there the honest answer
+   * is no name — see HOSTS_THAT_NAME_NOBODY.
+   */
+  it('gives no name at all when the sentence is on a platform', () => {
+    expect(
+      names([
+        {
+          title: 'Looking for trusted office movers in Chicago, IL for a small job',
           url: 'https://www.reddit.com/r/chicago/comments/x',
         },
       ]),
-    ).toEqual(['reddit.com']);
+    ).toEqual([]);
   });
 
   it('leaves an ordinary company name exactly as it was', () => {

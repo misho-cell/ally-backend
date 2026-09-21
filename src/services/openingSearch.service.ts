@@ -447,6 +447,37 @@ function cutAtAWord(name: string): string {
  * rules and is still wrong. Deciding that a directory heading or a zoo is not
  * in the trade needs judgement this cannot do, and guessing at it would drop
  * real firms with plain names. It stays on the row.
+ *
+ * ── 21 September, and this time the whole list was measured rather than two
+ * cards read. The seat's done-when for row 154 is not „does a verdict line
+ * exist" (it does, on 152 of 152) but „is the card built from the raw first
+ * results" — their example being „Custom Cabinets in North Georgia" on a
+ * TBILISI carpenter goal, North Georgia being the American state.
+ *
+ * It reproduces exactly. I replayed the real titles of the last 60 opening web
+ * searches, from this tool's own log, through this function:
+ *
+ *   60 searches  →  179 names  →  140 distinct
+ *   carrying Georgian letters or a .ge host:  25 of 179
+ *
+ * and of the distinct 140, roughly four shapes:
+ *
+ *   page furniture      „Terms of Service" ×4, „Publication" ×2, „Page 3",
+ *                       „Exam Preparation", „Certification Forum"
+ *   a platform's name   „LinkedIn", youtube.com ×2, facebook.com ×2
+ *   a data broker       rocketreach.co, bookyourdata.com, pearsonvue.com,
+ *                       introhive.com, revenuegrid.com, PitchBook
+ *   a description       „GNN-Powered AIOps" ×6, „Piano lessons in Tbilisi",
+ *                       „Long Distance Moving Companies", and the seat's
+ *                       „Custom Cabinets in North Georgia"
+ *
+ * The first three are mechanical and are fixed below. THE FOURTH IS NOT, and
+ * it is the one the seat picked — it needs the judgement the paragraph above
+ * already says this cannot do. Row 154 stays open on their list; what changes
+ * is that the junk around their example stops being searched.
+ *
+ * Every one of these is also a tag search against the owner's phonebook, which
+ * is why the count matters and not only the card.
  */
 const PAGE_WORDS = new Set([
   'about',
@@ -463,7 +494,88 @@ const PAGE_WORDS = new Set([
   'news',
   'faq',
   'welcome',
+  // Read off the live titles, 21 September — each of these reached a card and
+  // then a phonebook search as if it were the name of a firm.
+  'terms of service',
+  'terms',
+  'terms and conditions',
+  'privacy policy',
+  'privacy',
+  'publication',
+  'publications',
+  'login',
+  'log in',
+  'sign in',
+  'search results',
+  'exam preparation',
+  'certification forum',
 ]);
+/** „Page 3" is pagination, and it appeared as a name. A word plus a number. */
+const PAGINATION_SEGMENT = /^page\s+\d+$/i;
+
+/**
+ * Hosts that never name a firm the owner could know: a platform anybody can
+ * publish on, and a data broker that sells contact lists.
+ *
+ * Used ONLY on the host fallback, never on a title segment — „NetAI Inc. |
+ * LinkedIn" must still yield „NetAI Inc.". The fallback is reached when every
+ * segment was furniture or a sentence, and on one of these hosts that means
+ * the result names nothing to look for. Returning no name drops the row
+ * instead of spending a way-in check asking whether the owner knows somebody
+ * called youtube.com.
+ */
+/**
+ * The same platforms written as a TITLE segment — „… | Medium", „… | LinkedIn".
+ *
+ * Only reached when the segments before it were furniture or sentences, so
+ * skipping it falls through to the host, which is on the list below and yields
+ * no name. The two lists are the same idea in the two places a platform can
+ * appear, and are kept apart because one is matched against a host and the
+ * other against prose.
+ *
+ * Data brokers are deliberately NOT here. „PitchBook" as a title segment could
+ * be a firm somebody knows; as a HOST it is the broker. The narrower rule is
+ * the one with evidence behind it.
+ */
+const PLATFORM_SEGMENTS = new Set([
+  'youtube',
+  'linkedin',
+  'facebook',
+  'instagram',
+  'tiktok',
+  'reddit',
+  'medium',
+  'wikipedia',
+  'pinterest',
+  'quora',
+]);
+
+const HOSTS_THAT_NAME_NOBODY = new Set([
+  'youtube.com',
+  'linkedin.com',
+  'facebook.com',
+  'instagram.com',
+  'x.com',
+  'twitter.com',
+  'tiktok.com',
+  'reddit.com',
+  'medium.com',
+  'wikipedia.org',
+  'en.wikipedia.org',
+  'pinterest.com',
+  'quora.com',
+  'rocketreach.co',
+  'bookyourdata.com',
+  'introhive.com',
+  'revenuegrid.com',
+  'pitchbook.com',
+  'zoominfo.com',
+  'apollo.io',
+  'crunchbase.com',
+  'lusha.com',
+  'signalhire.com',
+]);
+
 /** A name is short. Beyond this it is a sentence, and a sentence has no name in it. */
 const MAX_NAME_WORDS = 6;
 
@@ -484,12 +596,17 @@ function nameFromResult(row: Record<string, unknown>): string {
     .filter(Boolean);
   for (const segment of segments) {
     if (PAGE_WORDS.has(segment.toLowerCase())) continue;
+    if (PAGINATION_SEGMENT.test(segment)) continue;
+    if (PLATFORM_SEGMENTS.has(segment.toLowerCase())) continue;
     if (segment.split(/\s+/).length > MAX_NAME_WORDS) continue;
     return cutAtAWord(segment);
   }
   // Every segment was a page word or a sentence: the host is what is left, and
-  // it is the one part of a web result that always names something real.
-  return hostOf(row.url);
+  // it is the one part of a web result that USUALLY names something real. On a
+  // platform or a data broker it does not, and there the honest answer is no
+  // name at all — see HOSTS_THAT_NAME_NOBODY.
+  const host = hostOf(row.url);
+  return HOSTS_THAT_NAME_NOBODY.has(host) ? '' : host;
 }
 
 export function webResultNames(result: unknown): string[] {
