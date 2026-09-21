@@ -5,6 +5,7 @@ import {
   createSaveContactInsightTool,
   SaveContactInsightParams,
 } from './tools/save_contact_insight';
+import { noteIntroductionSentAsAQuestion } from './introductionShaped';
 import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
 import { searchByTag } from './tools/searchByTag';
@@ -4635,45 +4636,12 @@ function searchTermOf(input: Record<string, unknown>): string {
 }
 
 /**
- * An introduction that went out as an ordinary question — counted, never
- * blocked.
- *
- * The seat's 339: four requests worded „Would you introduce me to X?" all
- * filed as `incoming_ask` with a null `introduction_request_id`, and
- * `introduction_requests` down from three-to-seven a week to nothing since
- * the first week of September. The cause is which TOOL the model picks, and
- * the first fix is the two descriptions that now name the boundary.
- *
- * A DESCRIPTION IS NOT A WALL — row 117 and G6 both wrote that down — so the
- * next question is whether the sentences did anything, and nothing in this
- * product could have told me introductions had stopped. That is the real
- * failure: two weeks, zero, unnoticed.
- *
- * So this counts rather than guesses. It does NOT reroute and it does NOT
- * refuse: deciding from a text pattern that somebody meant an introduction is
- * exactly the kind of inference that goes wrong quietly, and the message has
- * already gone by the time this runs. It writes one line I can grep in a week,
- * with the wording that reached it, and THEN the choice between „the
- * descriptions worked" and „a server check is needed" is measured.
- *
- * Four languages, because the base is written in all four.
+ * Row 220's counter now lives in `introductionShaped.ts`, because the
+ * connector calls `ask_contact` too — 63 of the 150 relayed asks — and a
+ * counter that only one of the two surfaces calls reports the quieter half of
+ * a number as a zero. Three of the four wordings the first reading added came
+ * through that surface.
  */
-const INTRODUCTION_SHAPED =
-  /introduce|introduction|put (?:me|us) in touch|connect me\b|გააცნო|გაცნობ|გამაცნო|დამაკავშირ|познаком|свести (?:меня|нас)|presenta(?:r|me)|ponerme en contacto/i;
-
-function noteIntroductionSentAsAQuestion(
-  runId: string | undefined,
-  threadId: number | undefined,
-  taskId: number,
-  question: string,
-): void {
-  if (!INTRODUCTION_SHAPED.test(question)) return;
-  // eslint-disable-next-line no-console
-  console.log(
-    `[intro-as-ask] run ${runId ?? '-'} thread ${threadId ?? '-'} task ${taskId}: ` +
-      `an introduction-shaped question went out through ask_contact — "${question.slice(0, 160)}"`,
-  );
-}
 
 /** Did this search find anybody? Empty and „not found" are the same answer. */
 function foundNobody(raw: unknown): boolean {
@@ -5443,7 +5411,7 @@ async function executeToolCall(
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
         await markSearchSent(runId, userId, [input['phone']], threadId);
-        noteIntroductionSentAsAQuestion(runId, threadId, taskId, question);
+        noteIntroductionSentAsAQuestion({ surface: 'chat', runId, threadId, taskId }, question);
       }
       return askOutcome;
     }

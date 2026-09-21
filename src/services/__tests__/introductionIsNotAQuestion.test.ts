@@ -109,55 +109,60 @@ describe('an introduction is not a question, and both tools say so', () => {
 });
 
 /**
- * And the counter, because a description is not a wall and nothing in this
- * product could have told me introductions had stopped. Two weeks, zero,
- * unnoticed — that is the real failure, and it is the one a second sentence
- * does not fix.
+ * THE CONNECTOR NEVER GOT ANY OF THIS, and that is row 220's remaining half.
  *
- * It COUNTS and does not reroute. Deciding from a text pattern that somebody
- * meant an introduction is the kind of inference that goes wrong quietly, and
- * by the time this runs the message has already gone.
+ * The descriptions above live in `chat.service.ts` — the in-app chat. The
+ * connector serves its own copies from `mcp/texts.ts`, and until 21 September
+ * those still named `ask_contact` as the warm-intro route in three separate
+ * places (get_contact_profile, search_roster, find_warm_path). 63 of the 150
+ * relayed asks in the table's whole life came through that surface.
+ *
+ * Exactly the shape of the accept-channel fault recorded in
+ * `docs/ADMIN_WRITE_OPERATIONS.md` §16: „the guard lives in the chat tool, the
+ * mediator pressed the app's button".
  */
-const COUNTER = joined('const INTRODUCTION_SHAPED', 'case ');
+const TEXTS = readFileSync(join(__dirname, '..', 'mcp', 'texts.ts'), 'utf8');
+const mcpText = (name: string): string => {
+  const start = TEXTS.indexOf(`  ${name}: {`);
+  return TEXTS.slice(start, TEXTS.indexOf('\n  },', start)).replace(/'\s*\+\s*'/g, '');
+};
 
-describe('the counter that will say whether the sentences worked', () => {
-  it('recognises the four wordings the seat actually saw, in four languages', () => {
-    const pattern = /\/(.*)\/i;/.exec(COUNTER);
-    expect(pattern).not.toBeNull();
-    const re = new RegExp(pattern![1], 'i');
-    for (const said of [
-      'Would you introduce me to Netai Test 4?',
-      'Could you introduce me to Netai Test 3, we both work in logistics',
-      'შეგიძლია გამაცნო ნინო?',
-      'გააცნობ ჩემს მეგობარს?',
-      'можешь познакомить меня с Ниной?',
-      '¿Puedes presentarme a Nino?',
-    ]) {
-      expect(re.test(said)).toBe(true);
+describe('the connector says the same thing as the chat', () => {
+  it('its request_introduction names what it is for', () => {
+    expect(mcpText('request_introduction')).toContain('I WANT TO MEET X');
+    expect(mcpText('request_introduction')).toContain('ask_contact is the wrong one');
+  });
+
+  it('its ask_contact names what it is not, and the share-contact case too', () => {
+    const askContact = mcpText('ask_contact');
+    expect(askContact).toContain('NOT FOR AN INTRODUCTION');
+    expect(askContact).toContain('nobody is ever connected');
+    // Read as source, so the apostrophe is still escaped here.
+    expect(askContact).toContain("ask Y to send me X\\'s contact");
+  });
+
+  /**
+   * The three routing sentences, which are what actually produced the
+   * behaviour: a model following them was not misbehaving, it was obeying.
+   */
+  it('no tool text routes an introduction through ask_contact any more', () => {
+    for (const name of ['get_contact_profile', 'search_roster', 'find_warm_path']) {
+      expect(mcpText(name)).not.toMatch(/\(ask_contact \/ a warm intro\)/);
     }
+    expect(mcpText('get_contact_profile')).toContain('never ask_contact');
+    expect(mcpText('search_roster')).toContain('"request_introduction" to MEET them');
   });
 
-  it('leaves an ordinary question alone, which is the cost of getting it wrong', () => {
-    const pattern = /\/(.*)\/i;/.exec(COUNTER);
-    const re = new RegExp(pattern![1], 'i');
-    for (const said of [
-      'Do you know a good plumber in Tbilisi?',
-      'იცნობ სანდო ბუღალტერს?',
-      'Кто у тебя есть из электриков?',
-      'Can you recommend a photographer for a wedding?',
-    ]) {
-      expect(re.test(said)).toBe(false);
-    }
-  });
-
-  it('never blocks and never reroutes — it writes one line and returns', () => {
-    expect(COUNTER).toContain('console.log');
-    expect(COUNTER).toContain('[intro-as-ask]');
-    // No return value, so nothing downstream can branch on it by accident.
-    expect(COUNTER).toContain('): void {');
-  });
-
-  it('carries the wording, because the next decision needs to read it', () => {
-    expect(COUNTER).toContain('question.slice(0, 160)');
+  /**
+   * `find_warm_path` keeps ask_contact for hops 2 and 3 and this is not an
+   * oversight: `requestIntroduction` resolves the mediator out of the
+   * REQUESTER's own `UserAlias` rows, so it cannot be addressed to a bridge
+   * the user does not hold. Saying „always request_introduction" there would
+   * name a tool that returns „not in your contacts".
+   */
+  it('keeps ask_contact for the hops request_introduction cannot address', () => {
+    const warmPath = mcpText('find_warm_path');
+    expect(warmPath).toContain('Only a LONGER path uses ask_contact');
+    expect(warmPath).toContain('can only be addressed to the user’s own contact');
   });
 });

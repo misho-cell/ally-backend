@@ -13,6 +13,7 @@ import {
 import { getContactCount } from '../tools/getContactCount';
 import { getContactFullProfile, isDisplayableTag } from '../tools/getContactFullProfile';
 import { requestIntroduction } from '../tools/requestIntroduction';
+import { noteIntroductionSentAsAQuestion } from '../introductionShaped';
 import { inviteContact } from '../tools/inviteContact';
 import { getInviteLink } from '../referralLink.service';
 import { getLabelQueueForUser, getLabelQueueTotalForUser } from '../labelParser.service';
@@ -1150,7 +1151,13 @@ export async function mcpAskContact(
   }
   // T10: threadId omitted deliberately — MCP has no conversation concept, so
   // only the monthly budget gate applies here, not the per-conversation one.
-  const outcome = await createAsk(userId, taskId, phone, args.question ?? '');
+  const question = args.question ?? '';
+  const outcome = await createAsk(userId, taskId, phone, question);
+  // Row 220: the counter shipped on the chat path alone, and three of the four
+  // introductions it was found to have missed came through here.
+  if ((outcome as { sent?: unknown }).sent === true) {
+    noteIntroductionSentAsAQuestion({ surface: 'connector', taskId }, question);
+  }
   return scrubDeep(outcome) as McpToolPayload;
 }
 

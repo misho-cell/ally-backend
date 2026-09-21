@@ -120,8 +120,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'here as a tag many people used, it IS them (search "Kituashvili", result "Maxo OMOFOX", ' +
       'profile shows both — same person). The profile shows no phone number — numbers never ' +
       'reach you; a connection is made only through request_introduction. It also shows ' +
-      'is_member and account_state. Reach a NETAI user (is_member true) through their assistant ' +
-      '(ask_contact / a warm intro). For anyone NOT on Netai the order is fixed (D122): FIRST ' +
+      'is_member and account_state. Reach a NETAI user (is_member true) through their assistant: ' +
+      'to MEET them or be put in touch, request_introduction — never ask_contact, which files it ' +
+      'as an ordinary question and connects nobody. For anyone NOT on Netai the order is fixed (D122): FIRST ' +
       'invite_contact — an invite text the user sends themselves; SECOND the user writes to them ' +
       'directly — draft the message for them; THIRD a mutual acquaintance — request_introduction ' +
       'with share_contact. Never jump to the third. An "ally_account" has a login and has never ' +
@@ -139,6 +140,13 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   request_introduction: {
     title: 'Send an introduction request',
     description:
+      'THE TOOL FOR "I WANT TO MEET X" AND "ASK Y TO INTRODUCE ME TO X". If the user wants to be ' +
+      'PUT IN TOUCH WITH somebody — introduced, connected, given a way to reach them — this is ' +
+      'the tool, and ask_contact is the wrong one. The discriminator is what the user wants at ' +
+      'the end: a RELATIONSHIP with the third person is an introduction; an ANSWER, a ' +
+      'recommendation or a piece of information is a question, and that is ask_contact. "Ask Gio ' +
+      'whether he knows a plumber" is a question. "Ask Gio to introduce me to Nino" is an ' +
+      'introduction, even though both sentences begin with "ask". ' +
       'Sends a request to a mediator (a mutual contact) to connect the user to a target. First ' +
       'ask the user what to request of the mediator — a warm introduction (ask_type: intro) OR ' +
       "to share the target's contact (ask_type: share_contact) — and send it that way. Confirm " +
@@ -426,9 +434,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'The one search that reaches past the user’s own contacts (D121): the members of a named ' +
       'network — "Axel" — as the public roster states them, for a user who is on that roster ' +
       'themselves. A non-member is told so and gets no list. Each row carries a contact_ref, ' +
-      'is_member and account_state, and the route that fits: "ask_contact" for a Netai user ' +
-      '(the recipient is told a fellow member is asking), "invite_contact" for an account that ' +
-      'never opened Netai (invite first, D122). Optional name to narrow it.',
+      'is_member and account_state, and the route that fits: for a Netai user, ' +
+      '"request_introduction" to MEET them and "ask_contact" only to ASK them something (either ' +
+      'way the recipient is told a fellow member is asking); "invite_contact" for an account ' +
+      'that never opened Netai (invite first, D122). Optional name to narrow it.',
   },
   find_warm_path: {
     title: 'The warm path to one identified person',
@@ -437,8 +446,11 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       '(D132). Only once the target is identified (named by the user or found by a search); ' +
       'never a way to discover who to ask. Each bridge comes by name with is_member and a ' +
       'contact_ref; a path is relayable only when every bridge is a Netai user. The first ' +
-      'bridge is a direct contact (ask_contact); each further bridge is asked by their own ' +
-      'assistant before the request passes on. No path → offer an invite or the user’s own message.',
+      'bridge is a direct contact: when that bridge can reach the target themselves, this is an ' +
+      'introduction and goes through request_introduction. Only a LONGER path uses ask_contact ' +
+      'for the hops in between, because request_introduction can only be addressed to the ' +
+      'user’s own contact and the second and third bridges are not. No path → offer an invite ' +
+      'or the user’s own message.',
   },
   list_answer_rules: {
     title: "The user's standing answer rules",
@@ -574,6 +586,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   ask_contact: {
     title: 'Ask a contact on a task',
     description:
+      'NOT FOR AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN TOUCH with them ' +
+      '— including "ask Y to introduce me to X" and "ask Y to send me X\'s contact" — that is ' +
+      'request_introduction, not this. Sending it here files the whole thing as an ordinary ' +
+      'question: no introduction is created, the mediator is never offered the accept/decline ' +
+      'choice or asked HOW, and nobody is ever connected. The discriminator is what the user ' +
+      'wants at the end — an ANSWER is a question, a RELATIONSHIP is an introduction. ' +
       "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
       'get it as a message in their own app and their reply comes back to the task. Only ' +
       "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +
