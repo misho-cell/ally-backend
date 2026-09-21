@@ -36,9 +36,70 @@
 #
 # `--since` takes anything Postgres reads as an interval: '2 hours', '3 days'.
 #
+# IS THE MEASUREMENT READY YET — `--ready`, added 21 September.
+#
+# Three rows in TASKS.md are parked on the same sentence: „judge it on a day
+# with comparable volume." That is the right rule and it has no owner. Nothing
+# watches for the day to arrive, so the answer depends on me remembering to
+# look — and a plan that depends on me remembering is not a plan, which is the
+# sentence at the top of this very file.
+#
+# `--ready <tool> <min-calls> [since]` answers it: since the date given, has
+# there been a day carrying at least that many calls? It prints the qualifying
+# days and exits non-zero for „not yet", so it can gate something.
+#
+# It answers about VOLUME and nothing else. A qualifying day means the numbers
+# from it are worth reading; it does not mean they say what you hoped.
+#
 # Usage:  ./scripts/ops/slow.sh ['7 days']                 every tool, summary
 #         ./scripts/ops/slow.sh '10 days' search_by_tag    one tool, by day
+#         ./scripts/ops/slow.sh --ready search_by_tag 150 2026-09-19
 set -euo pipefail
+
+READY_PY='
+import os, sys, json
+d = json.load(sys.stdin)
+tool = os.environ["READY_TOOL"]
+need = os.environ["READY_MIN"]
+since = os.environ["READY_FROM"]
+if not d.get("success"):
+    print("could not read:", d.get("error", "")[:160])
+    raise SystemExit(2)
+rows = d["data"]["rows"]
+if not rows:
+    print("NOT YET - no day since %s carries %s+ calls to %s." % (since, need, tool))
+    print("         That says the measurement cannot be TAKEN, not that the")
+    print("         change did nothing. They are different answers.")
+    raise SystemExit(1)
+print("READY - %d day(s) since %s carry %s+ calls to %s:" % (len(rows), since, need, tool))
+for r in rows:
+    print("  %s  %s calls" % (str(r["day"])[:10], r["calls"]))
+print("")
+print("Volume only. A qualifying day means the numbers are worth reading; it")
+print("does not mean they say what you hoped. Read them with the tool name as")
+print("the second argument.")
+'
+
+if [ "${1:-}" = --ready ]; then
+  export READY_TOOL="${2:?usage: slow.sh --ready <tool> <min-calls> [since-date]}"
+  export READY_MIN="${3:?usage: slow.sh --ready <tool> <min-calls> [since-date]}"
+  export READY_FROM="${4:-2026-01-01}"
+  HERE="$(cd "$(dirname "$0")" && pwd)"
+  "$HERE/ro.sh" <<SQL | python3 -c "$READY_PY"
+SELECT DATE_TRUNC('day', created_at) AS day, COUNT(*) AS calls
+FROM tool_call_log
+WHERE created_at >= '$READY_FROM'
+  AND duration_ms IS NOT NULL
+  AND (tool = '$READY_TOOL' OR tool LIKE '$READY_TOOL:%')
+GROUP BY 1
+HAVING COUNT(*) >= $READY_MIN
+ORDER BY 1
+LIMIT 60
+SQL
+  # The pipeline's EXIT CODE is python's, never curl's — the same trap that let
+  # a red `npm run verify` through a `| tail` on 20 September.
+  exit "${PIPESTATUS[1]}"
+fi
 
 SINCE="${1:-7 days}"
 TOOL="${2:-}"
