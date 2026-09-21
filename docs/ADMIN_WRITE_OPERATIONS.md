@@ -1524,3 +1524,66 @@ refund, an apology — that is a different operation with a different blast
 radius, and it needs its own section here and its own yes. **The permission
 Misho gave was for a test account, and the route is built so it cannot
 outlive that.**
+
+## §20 — Twenty-six engine rows showing as chat messages in the founder's own account
+
+**Status: registered, NOT run, and it is a small one. Nothing is blocked on it.**
+
+Found while checking row 125's clause „nothing internal is ever saved into
+anybody's chat", which is part of that row's done-when and had never been
+measured.
+
+### WHAT IS THERE
+
+Engine turns are written into the thread as `role: 'user'` so the model has
+them in its history, and they carry `kind: 'event'` so the client never draws
+them — `getThreadMessages` filters `kind NOT IN ('step', 'event')`. That works:
+
+| | |
+|---|---|
+| rows beginning `[მოვლენა]` / `[სისტემა]` with `kind = 'event'` | **850** |
+| the same, with `kind = 'message'` | **26** |
+
+**The 26 are rendered, because `message` is exactly what the filter lets
+through.** They read as if the owner had typed the engine's instruction to
+itself — „[მოვლენა] The introduction to X has been agreed. Tell the owner in
+one sentence…" — in their own voice, in their own chat.
+
+### WHY THERE ARE EXACTLY 26, AND WHY THE NUMBER IS NOT GROWING
+
+They are 10–11 August. The FIRST row ever written with `kind = 'event'` is
+11 August 13:28:49, and the last mis-kinded one is 11 August 12:07:24 — an hour
+earlier. **The kind was introduced that lunchtime and everything after it is
+correct**, 850 rows over six weeks with none misfiled.
+
+**All 26 are on account 501 — the founder's own.** No other account holds one.
+
+### ROUTE, METHOD, BODY — IF IT IS DECIDED
+
+```
+POST /admin/conversations/reclassify-engine-rows      (admin only)
+body: { "confirm": true }
+```
+
+`UPDATE conversations SET kind = 'event' WHERE kind = 'message' AND (content
+LIKE '[მოვლენა]%' OR content LIKE '[სისტემა]%')` — 26 rows, named by a pattern
+that matches only the server's own two prefixes.
+
+### UNDO
+
+**The same statement with the kinds swapped**, and that is the whole reason
+this is worth offering at all: **NO CONTENT IS CHANGED.** The text stays byte
+for byte, the admin window still shows it word for word, and the only thing
+that moves is whether the chat draws it. That is materially different from §18,
+where the undo required copying nine private numbers into a second place.
+
+### THE ARGUMENT AGAINST, STATED SO IT IS NOT HIDDEN
+
+Rewriting anything in somebody's chat history has a cost even when the content
+survives — six weeks from now, „why does this thread look different from the
+export I took in August" is a question with no good answer unless this section
+is found. And 26 rows in the founder's own account, which he has presumably
+scrolled past a hundred times, is not an urgent harm.
+
+**So it is his call and Misho's, not mine, and nothing happens until one of
+them says so.**
