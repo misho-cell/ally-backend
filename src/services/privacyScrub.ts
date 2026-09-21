@@ -108,6 +108,24 @@ export function scrubText(text: string): string {
  * honest outcome: a partial fix that says so beats a confident one that
  * mangles the grammar.
  *
+ * RE-MEASURED 21 SEPTEMBER, because „deliberately partial" with no current
+ * number is a claim that quietly goes stale. Fourteen days of assistant
+ * messages: 15 carry a possessive (handled above) and FIVE carry the bare
+ * pronoun. **Two of the five are today**, so the remainder is not converging.
+ *
+ *   21 Sep 14:18  „თქვენ გაქვთ ორი … დავალება"        pronoun + verb
+ *   21 Sep 14:16  „ბანკებში თქვენ … არავინ გყავს"      PRONOUN ONLY
+ *   18 Sep 00:16  „პირდაპირ თქვენს კონტაქტებში … გყავთ" possessive + verb
+ *   17 Sep 14:12  „რადგან თქვენ თხოვეთ"                pronoun + verb
+ *   16 Sep 20:46  „თუ გინდათ … თქვენ თვითონ დაურეკავთ" two verbs, one pronoun
+ *
+ * ONE OF THE FIVE WOULD BE FULLY FIXED BY A BARE `თქვენ → შენ`, and it is
+ * still not added. On the other four the same swap produces „შენ გაქვთ" and
+ * „შენ თხოვეთ" — the exact breakage this function refuses to commit. A rule
+ * that fixes one row in five and mangles three is worse than the one that
+ * leaves all five alone, and the case for conjugating is a case for doing it
+ * properly rather than for widening a regex.
+ *
  * Display-only, like the em-dash rule below it and for the same reason — the
  * prompt has been asked twice and the render layer is where a rule cannot be
  * argued with. Stored text is untouched.
