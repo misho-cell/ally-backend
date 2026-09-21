@@ -265,6 +265,55 @@ export async function creditTopup(
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * §19 — an admin grant to a FICTIONAL test account, and its own reversal.
+ *
+ * Deliberately not `creditTopup`, for two reasons that are the whole design:
+ *
+ *   * `creditTopup` writes `reason = 'topup'`, and a grant must never be
+ *     indistinguishable from a purchase in the ledger.
+ *   * It refuses anything ≤ 0, which would leave this operation with no undo.
+ *     Here the amount is SIGNED, so reversing a grant is the same call with
+ *     the number negated — an ordinary row beside the first one, visible, and
+ *     the balance is the sum of the column. An undo that leaves a trail.
+ *
+ * The caller checks that the account is one of the six; this function does the
+ * arithmetic and nothing else. The bound is here as well as at the route
+ * because a cap enforced in one place is a cap until somebody adds a second
+ * caller.
+ */
+export const MAX_ADMIN_TOKEN_ADJUSTMENT = 50_000;
+const ADMIN_ADJUST_REASON = 'admin_adjust';
+
+export class TokenAdjustmentOutOfRange extends Error {
+  constructor(tokens: number) {
+    super(
+      `${tokens} is outside ±${MAX_ADMIN_TOKEN_ADJUSTMENT}, or is zero. A test seat ` +
+        'spends in the tens; the bound is here so an extra digit is a refusal.',
+    );
+    this.name = 'TokenAdjustmentOutOfRange';
+  }
+}
+
+export async function adjustTestAccountTokens(
+  userId: string,
+  tokens: number,
+  note: string,
+  externalId: string,
+): Promise<number> {
+  const amount = Math.trunc(tokens);
+  if (amount === 0 || Math.abs(amount) > MAX_ADMIN_TOKEN_ADJUSTMENT) {
+    throw new TokenAdjustmentOutOfRange(amount);
+  }
+  await query(
+    `INSERT INTO token_transactions (user_id, amount, reason, external_id, note)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO NOTHING`,
+    [userId, amount, ADMIN_ADJUST_REASON, externalId, note],
+  );
+  return getBalance(userId);
+}
+
 /** Balance view for the app (GET /billing/tokens). */
 export async function getWalletSummary(userId: string): Promise<WalletSummary> {
   const enabled = await isWalletEnabled();

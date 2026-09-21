@@ -1,8 +1,15 @@
 import {
   fictionalTestAccountIds,
+  isFictionalTestAccount,
   mintTestSeatToken,
   NotATestAccountError,
 } from '../../services/testSeatTokens';
+import {
+  adjustTestAccountTokens,
+  MAX_ADMIN_TOKEN_ADJUSTMENT,
+  TokenAdjustmentOutOfRange,
+} from '../../services/tokenWallet.service';
+import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import {
@@ -1675,6 +1682,78 @@ adminRouter.post('/test-seat/token', (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * §19 — tokens for a fictional test account. Registered in
+ * `docs/ADMIN_WRITE_OPERATIONS.md` before a line of it was written, which is
+ * what D44 asks for, and authorised by Misho on 21 September („netAI-ს
+ * ტოკენების დამატებაზე თუ არის საუბარი დაუმატე").
+ *
+ * WHAT IT NARROWS. The four `admin_adjust` rows in the ledger were typed
+ * straight into the database in July — 999,999 tokens to one real account,
+ * 100,000 to another — with no external_id, no note, no code. This route
+ * reaches the six fictional accounts and nothing else, caps a call at
+ * ±50,000, demands a written reason, and records where the row came from.
+ * A real person's wallet is not available through it.
+ *
+ * THE UNDO IS THE SAME CALL WITH THE NUMBER NEGATED, which is why the amount
+ * is signed. A reversal is a row beside the grant rather than a deletion.
+ */
+adminRouter.post(
+  '/test-accounts/:id/tokens',
+  param('id').isString().trim().notEmpty(),
+  body('tokens').isInt({ min: -MAX_ADMIN_TOKEN_ADJUSTMENT, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error:
+          `tokens must be a non-zero integer within ±${MAX_ADMIN_TOKEN_ADJUSTMENT}, ` +
+          'and note must say why (3-500 chars).',
+      });
+      return;
+    }
+    const target = String(req.params.id).trim();
+    const admin = (req as AuthenticatedRequest).user.userId;
+    if (!isFictionalTestAccount(target)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[test-tokens] admin ${admin} asked for ${target} — REFUSED, not fictional`);
+      res.status(403).json({
+        success: false,
+        error: new NotATestAccountError(target).message,
+        available: fictionalTestAccountIds(),
+      });
+      return;
+    }
+    const { tokens, note } = req.body as { tokens: number; note: string };
+    try {
+      const balance = await adjustTestAccountTokens(
+        target,
+        tokens,
+        String(note).trim(),
+        `admin:${randomUUID()}`,
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `[test-tokens] admin ${admin} adjusted test account ${target} by ${tokens} ` +
+          `— balance ${balance} — ${String(note).trim()}`,
+      );
+      res.status(200).json({
+        success: true,
+        data: { user_id: target, adjusted_by: tokens, balance, note: String(note).trim() },
+      });
+    } catch (error) {
+      if (error instanceof TokenAdjustmentOutOfRange) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error('[test-tokens] adjust failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.get('/pilot/threads', async (req: Request, res: Response) => {
   try {

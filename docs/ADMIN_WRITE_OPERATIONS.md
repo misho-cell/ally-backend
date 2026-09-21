@@ -1432,3 +1432,95 @@ copying nine private numbers into a second place in order to protect them.
 700, never committed, never in a file in this repository — D149) for the
 length of one week, and deleted after. That is the undo, and it is worse than
 most undos in this file.** Anyone approving this should approve that too.
+
+### 21 SEPTEMBER — DECIDED: LEAVE THEM. Misho's word, and the reasoning
+
+Misho, 21 September: **„შენით გადაწყვიტე რომელიც უფრო არასახიფათოა"** — decide
+yourself, whichever is less dangerous. So this is my decision, recorded with
+its reason rather than left as a silence.
+
+**LEAVE THEM. Nothing will be written.**
+
+**The argument that settles it: redaction does not reduce the exposure at all.**
+Each of those nine numbers was given to the owner who asked for it, in their
+own conversation, and they have had it since June. Deleting it from the
+transcript does not take it back off their phone. What redaction changes is
+the transcript, not the world.
+
+Against that nothing: rewriting a real person's chat history, permanently, on
+a regex — and **this file already records that the regex is not good enough for
+that job.** „My own regex missed two that name a source in other words, which
+is why the strict number is the safe one to quote." A pattern that misses two
+in the direction of over-counting will also, run as a redactor, delete text
+that was fine. The strict nine is a safe number to QUOTE and an unsafe number
+to DELETE, and those are not the same thing.
+
+And the undo above is the worst in this file: it would copy nine private
+mobiles into a second place in order to protect them.
+
+**What remains true and is the reason this section stays rather than being
+deleted:** the behaviour that produced them has been silent for eleven weeks —
+28 phone-bearing messages since 6 July, every one marker-wrapped or sourced,
+zero without. If that ever changes, the new ones are the problem, not these.
+
+## §19 — Granting tokens to a fictional test account
+
+**Status: authorised by Misho 21 September, scoped by me, REGISTERED HERE
+BEFORE IT IS BUILT — which is what D44 asks for.**
+
+Misho, 21 September, answering „money on a test account":
+**„netAI-ს ტოკენების დამატებაზე თუ არის საუბარი დაუმატე"** — if it is about
+adding Netai tokens, add them.
+
+### WHY THERE IS NOTHING TO CALL TODAY
+
+I looked before building. `creditTopup` is the only function that credits a
+wallet and **its single caller is the Paddle webhook** — there is no admin
+route, no script, nothing. The four `admin_adjust` rows in the ledger were
+written by hand, in July, straight into the database:
+
+| user | amount | when |
+|---|---|---|
+| 501 | 999,999 | 3 July |
+| 160584 | 100,000 | 29 July |
+| 13927 | 1,000 | 31 July |
+| 564 | 1,000 | 31 July |
+
+None carries an `external_id` and none came from code. **So the precedent for
+this operation is hand-written SQL against real people's accounts, and what is
+registered below is narrower than that in every direction.**
+
+### ROUTE, METHOD, BODY
+
+```
+POST /admin/test-accounts/:id/tokens          (requireAdminRole)
+body: { "tokens": <integer, -50000..50000, never 0>, "note": "<why, required>" }
+```
+
+* **`:id` must be one of the six fictional accounts** — the same hardcoded set
+  §17 uses (`FICTIONAL_TEST_ACCOUNTS`, 171870-171874, 171936). Any other id is
+  refused and the refusal names it. **A real person's wallet cannot be reached
+  through this route**, which is exactly what the July rows did reach.
+* **±50,000 a call.** A test seat spends in the tens; the cap is there so an
+  extra zero is a refusal rather than a million tokens.
+* **`note` is required** and stored, so „who topped up Test 3 and why" has an
+  answer in the ledger rather than in somebody's memory.
+* Written as `reason = 'admin_adjust'` with `external_id = 'admin:<uuid>'`.
+  **Never `topup`** — a grant must not be indistinguishable from a purchase in
+  the ledger.
+
+### UNDO
+
+**Call the same route with the amount negated.** That is why the range is
+signed and why this does not reuse `creditTopup`, which refuses anything ≤ 0.
+The reversal is an ordinary ledger row, visible beside the grant, and the
+balance is the sum of the column — so an undo leaves a trail instead of
+erasing one.
+
+### WHAT IT DELIBERATELY IS NOT
+
+Not a general token-granting tool. If a real user ever needs a credit — a
+refund, an apology — that is a different operation with a different blast
+radius, and it needs its own section here and its own yes. **The permission
+Misho gave was for a test account, and the route is built so it cannot
+outlive that.**
