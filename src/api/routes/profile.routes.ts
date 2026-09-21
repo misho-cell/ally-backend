@@ -50,6 +50,16 @@ interface ProfileData {
    * say how long is left instead of letting access stop without warning.
    */
   readonly subscription_status_changed_at: string | null;
+  /**
+   * Row 228 — the subscription is running out rather than renewing. Stripe
+   * keeps the STATUS at `trialing` or `active` when somebody cancels at period
+   * end, so without this the screen cannot tell a cancelled account from one
+   * about to be charged, and account 4511 was told its payment was automatic
+   * on the day it cancelled. When true, `cancels_at` is the day it stops and
+   * is the date to show instead of a renewal.
+   */
+  readonly cancel_at_period_end: boolean;
+  readonly cancels_at: string | null;
   /** Minted on first read — the invite currency (founder decision F.1). */
   referral_code?: string | null;
 }
@@ -260,7 +270,9 @@ profileRouter.get(
                 u.subscription_status,
                 u.trial_ends_at,
                 u.current_period_ends_at,
-                u.subscription_status_changed_at
+                u.subscription_status_changed_at,
+                u.cancel_at_period_end,
+                u.cancels_at
          FROM "User" u
          LEFT JOIN "UserPhone" up ON up."userId" = u.id
          WHERE u.id = $1

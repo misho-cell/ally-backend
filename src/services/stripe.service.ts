@@ -201,6 +201,18 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
 
   const active = ACTIVE_STATUSES.has(subscription.status);
   const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+  /**
+   * Row 228. A cancel-at-period-end moves NONE of the four values above:
+   * Stripe leaves the status at `trialing` or `active` and raises this flag
+   * instead. Account 4511 cancelled on 21 September and the record stayed
+   * byte for byte what it was, so the app went on saying the payment was
+   * automatic. Read from the subscription every time — including when it goes
+   * back to false, because a cancellation can be undone on Stripe's page and
+   * a stale true would tell somebody their subscription is ending when it is
+   * not.
+   */
+  const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
+  const cancelsAt = subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : null;
 
   await query(
     // $1 is cast on both sides on purpose. The column is varchar, so the
@@ -220,9 +232,20 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
            WHEN subscription_status::text IS DISTINCT FROM $1::text THEN NOW()
            ELSE subscription_status_changed_at
          END,
+         cancel_at_period_end   = $7,
+         cancels_at             = $8,
          "updatedAt"            = NOW()
      WHERE id = $6`,
-    [subscription.status, active, TIER, trialEnd, periodEnd(subscription), userId],
+    [
+      subscription.status,
+      active,
+      TIER,
+      trialEnd,
+      periodEnd(subscription),
+      userId,
+      cancelAtPeriodEnd,
+      cancelsAt,
+    ],
     STRIPE_TIMEOUT_MS,
   );
 

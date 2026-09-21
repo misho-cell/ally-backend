@@ -325,3 +325,85 @@ describe('createCheckoutSession — one trial per person', () => {
     expect(mockCheckoutCreate.mock.calls[0][0].subscription_data.trial_period_days).toBeUndefined();
   });
 });
+
+/**
+ * Row 228 (the seat's 394, Pr1) — a user who cancelled looked exactly like a
+ * user who was about to be charged.
+ *
+ * 21 September, account 4511, a real card. The payment ran clean at 11:26
+ * ($19.99/month, five days free, nothing charged), then „Cancel subscription"
+ * on Stripe, whose own page then read „cancels 26 Sept". At 12:35 UTC the
+ * Netai record still read premium / trialing / 26 Sept — byte for byte what it
+ * read before — and the profile still said the payment was automatic.
+ *
+ * THE EVENT WAS NEVER MISSING. `customer.subscription.updated` has been
+ * handled all along and `applySubscription` ran on it. What that function
+ * reads is status, tier, trial end and period end, and a cancel-at-period-end
+ * moves none of them: Stripe keeps the status at `trialing` and raises
+ * `cancel_at_period_end` instead. The write happened and put the same four
+ * values back.
+ */
+describe('a cancellation that does not move the status', () => {
+  it('records that the subscription is ending, not renewing', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 42 }]) as never);
+
+    await stripeService.handleStripeEvent({
+      type: 'customer.subscription.updated',
+      data: {
+        object: subscription({
+          status: 'trialing',
+          cancel_at_period_end: true,
+          cancel_at: 1_800_500_000,
+        }),
+      },
+    } as never);
+
+    const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE "User"')) as [
+      string,
+      unknown[],
+    ];
+    expect(update[0]).toContain('cancel_at_period_end');
+    expect(update[1][6]).toBe(true);
+    expect(update[1][7]).toEqual(new Date(1_800_500_000 * 1000));
+    // The status is still what Stripe says it is — this is an ADDITION, and a
+    // cancelled trial is still a trial until the day it ends.
+    expect(update[1][0]).toBe('trialing');
+  });
+
+  /**
+   * A cancellation can be undone on Stripe's own page. A flag that only ever
+   * goes up would tell somebody their subscription is ending after they had
+   * already changed their mind.
+   */
+  it('clears the flag when the cancellation is undone', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 42 }]) as never);
+
+    await stripeService.handleStripeEvent({
+      type: 'customer.subscription.updated',
+      data: { object: subscription({ cancel_at_period_end: false, cancel_at: null }) },
+    } as never);
+
+    const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE "User"')) as [
+      string,
+      unknown[],
+    ];
+    expect(update[1][6]).toBe(false);
+    expect(update[1][7]).toBeNull();
+  });
+
+  /** A subscription that never mentions it is not a cancelled one. */
+  it('reads a missing flag as not cancelled, never as unknown', async () => {
+    mockQuery.mockResolvedValue(rows([{ id: 42 }]) as never);
+
+    await stripeService.handleStripeEvent({
+      type: 'customer.subscription.updated',
+      data: { object: subscription() },
+    } as never);
+
+    const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE "User"')) as [
+      string,
+      unknown[],
+    ];
+    expect(update[1][6]).toBe(false);
+  });
+});
