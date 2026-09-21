@@ -51,6 +51,8 @@ import {
   listSeenUpdates,
   queueResult,
   snoozeUpdate,
+  toUpdateRef,
+  parseUpdateRef,
   DEFAULT_SNOOZE_DAYS,
   MIN_SNOOZE_DAYS,
   MAX_SNOOZE_DAYS,
@@ -932,7 +934,6 @@ const TASK_REF_PREFIX = 'task_';
  * a route, a tool or a button — could name which one to postpone. The
  * frontend's „Later" sent no call because there was none to send.
  */
-const UPDATE_REF_PREFIX = 'upd_';
 
 function parseTaskRef(ref: string): number | null {
   if (!ref.startsWith(TASK_REF_PREFIX)) return null;
@@ -1468,7 +1469,7 @@ export async function mcpGetPendingUpdates(
   });
   const items = [
     ...updates.map((u) => ({
-      update_ref: UPDATE_REF_PREFIX + String(u.id),
+      update_ref: toUpdateRef(u.id),
       task_ref: u.task_id === null ? null : TASK_REF_PREFIX + String(u.task_id),
       kind: u.kind,
       ...(scrubDeep(u.payload) as McpToolPayload),
@@ -1508,8 +1509,8 @@ export async function mcpSnoozeUpdate(
   args: { update_ref?: string; days?: number },
 ): Promise<McpToolPayload> {
   const ref = args.update_ref ?? '';
-  const id = Number(ref.slice(UPDATE_REF_PREFIX.length));
-  if (!ref.startsWith(UPDATE_REF_PREFIX) || !Number.isInteger(id) || id <= 0) {
+  const id = parseUpdateRef(ref);
+  if (id === null) {
     return { success: false, error: 'Unknown update_ref — take it from get_pending_updates.' };
   }
   const days = typeof args.days === 'number' ? args.days : DEFAULT_SNOOZE_DAYS;

@@ -222,6 +222,30 @@ export async function countHeldUpdates(userId: string): Promise<number> {
   return Number(result.rows[0]?.count ?? 0);
 }
 
+/**
+ * The ONE identifier for a waiting update, shared by every surface that names
+ * one — the connector and the REST route both import these rather than each
+ * spelling `upd_` out for itself.
+ *
+ * This is not tidiness. `POST /requests/:ref/:action` takes a UUID while
+ * `check_my_inbox` hands back `req_<id>`: two identifiers with one name, and
+ * feeding one to the other is a 400. That has blocked the tester's seat since
+ * the beginning and cost a route (`GET /requests`) to work around. The second
+ * time a ref is invented in two places is a choice, not an accident.
+ */
+export const UPDATE_REF_PREFIX = 'upd_';
+
+export function toUpdateRef(updateId: number): string {
+  return UPDATE_REF_PREFIX + String(updateId);
+}
+
+/** The id, or null — never a guess, and never a NaN reaching a query. */
+export function parseUpdateRef(ref: string): number | null {
+  if (!ref.startsWith(UPDATE_REF_PREFIX)) return null;
+  const id = Number(ref.slice(UPDATE_REF_PREFIX.length));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 /** „Later" means a day unless the person named one. Clamped so nothing is lost for a year. */
 export const MIN_SNOOZE_DAYS = 1;
 export const MAX_SNOOZE_DAYS = 30;

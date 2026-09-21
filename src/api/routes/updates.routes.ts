@@ -1,0 +1,144 @@
+import { Router, Request, Response } from 'express';
+import { body, param, validationResult } from 'express-validator';
+import {
+  authenticateJwt,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../middleware/auth.middleware';
+import { rateLimit } from '../middleware/rateLimit.middleware';
+import {
+  getPendingUpdates,
+  listSeenUpdates,
+  countHeldUpdates,
+  snoozeUpdate,
+  toUpdateRef,
+  parseUpdateRef,
+  PendingUpdate,
+  MIN_SNOOZE_DAYS,
+  MAX_SNOOZE_DAYS,
+  DEFAULT_SNOOZE_DAYS,
+} from '../../services/pendingUpdates.service';
+import { ApiResponse } from '../../types';
+
+/**
+ * Row 73 — the updates screen's half that is mine.
+ *
+ * The frontend checked rather than assumed and said there is no such screen in
+ * their code at all: nothing reads an `update_ref`, nothing draws an update as
+ * its own row. So they told me not to build the route, and they were right —
+ * their words, and mine first, on item 5: „a route nobody calls is exactly the
+ * guard that stands on the wrong path."
+ *
+ * Misho's answer on 21 September to „should the screen be built": **აშენდეს.**
+ * So this is the half that has to exist BEFORE theirs can: the list the screen
+ * reads, and the postponement it writes.
+ *
+ * THE IDENTIFIER IS THE SAME ONE THE CONNECTOR HANDS OUT, imported rather
+ * than respelled. `POST /requests/:ref/:action` takes a UUID while
+ * `check_my_inbox` returns `req_<id>` — two identifiers under one name, a 400
+ * when either is fed to the other, and the tester's seat blocked on it since
+ * the beginning. Doing that twice would be a choice.
+ *
+ * WHAT IT DELIBERATELY IS NOT: a way to read an update without it counting as
+ * read. `getPendingUpdates` marks what it releases as seen, exactly as the
+ * assistant's own call does — which is the fault row 73 turned out to be about
+ * (a row marked seen on display, so „later" was not late, it was impossible).
+ * A screen that showed updates without spending them would be a second,
+ * quieter version of the same bug.
+ */
+const updatesRouter = Router();
+
+updatesRouter.use(authenticateJwt, requireUserRole);
+updatesRouter.use(rateLimit({ windowMs: 60_000, max: 30 }));
+
+interface UpdateRow {
+  readonly update_ref: string;
+  readonly kind: string;
+  readonly payload: unknown;
+  readonly task_id: number | null;
+}
+
+function updatePayload(u: PendingUpdate): UpdateRow {
+  return {
+    update_ref: toUpdateRef(u.id),
+    kind: u.kind,
+    payload: u.payload,
+    task_id: u.task_id ?? null,
+  };
+}
+
+interface UpdatesView {
+  readonly due: readonly UpdateRow[];
+  readonly seen: readonly UpdateRow[];
+  readonly held: number;
+}
+
+/**
+ * What the screen draws: what is due now, what was already shown (so a reload
+ * is not a blank page — the third part of row 73), and how many are still
+ * being held back.
+ *
+ * `due` is read FIRST and `held` after it, because releasing marks rows seen
+ * and the two counts have to agree on the same moment.
+ */
+updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesView>>) => {
+  const userId = String((req as AuthenticatedRequest).user.userId);
+  try {
+    const due = await getPendingUpdates(userId);
+    const [seen, held] = await Promise.all([listSeenUpdates(userId), countHeldUpdates(userId)]);
+    res.status(200).json({
+      success: true,
+      data: { due: due.map(updatePayload), seen: seen.map(updatePayload), held },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[updates] list failed:', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/** „Later" — give the update back instead of spending it. */
+updatesRouter.post(
+  '/:ref/snooze',
+  param('ref').isString().trim().notEmpty(),
+  body('days').optional().isInt({ min: MIN_SNOOZE_DAYS, max: MAX_SNOOZE_DAYS }),
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ update_ref: string; coming_back_in_days: number }>>,
+  ) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `days must be a whole number between ${MIN_SNOOZE_DAYS} and ${MAX_SNOOZE_DAYS}.`,
+      });
+      return;
+    }
+    const ref = String(req.params.ref);
+    const id = parseUpdateRef(ref);
+    if (id === null) {
+      res.status(400).json({
+        success: false,
+        error: 'Unknown update_ref — take it from GET /updates.',
+      });
+      return;
+    }
+    const days = Number((req.body as { days?: number }).days ?? DEFAULT_SNOOZE_DAYS);
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      // Scoped to the caller inside snoozeUpdate — somebody else's ref is a
+      // 404 here rather than a postponement of a row that is not theirs.
+      const moved = await snoozeUpdate(userId, id, days);
+      if (!moved) {
+        res.status(404).json({ success: false, error: 'No such update waiting for you.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { update_ref: ref, coming_back_in_days: days } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[updates] snooze failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+export default updatesRouter;
