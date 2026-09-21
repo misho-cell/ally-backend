@@ -106,6 +106,12 @@ interface RunStrings {
    * with the default done status and no goal ever contradicted it. A goal that
    * never started is not a completed goal, so the thread says what is actually
    * true and what the owner can do about it.
+   *
+   * ROW 221, 21 September — it used to read „top up and I will carry on", and
+   * the message underneath it read „send it again and I will pick it up". Two
+   * promises about the same moment, and the badge's was the false one: the
+   * seat established that a refused message creates no goal, so nothing
+   * resumes on its own and the person must resend. They say one thing now.
    */
   statusLines: {
     working: string;
@@ -179,7 +185,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'ვმუშაობ…',
       waiting: 'ველოდები პასუხს',
       needs_you: 'შენი პასუხი სჭირდება',
-      needs_topup: 'ტოკენები ამოიწურა — შეავსე და გავაგრძელებ',
+      needs_topup: 'ტოკენები ამოიწურა — შეავსე და ხელახლა გამომიგზავნე',
       failed: 'შეფერხდა — სცადე თავიდან',
       unavailable: 'სერვისი დროებით მიუწვდომელია',
     },
@@ -209,7 +215,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Working…',
       waiting: 'Waiting for a reply',
       needs_you: 'Needs your answer',
-      needs_topup: 'Out of tokens — top up and I will carry on',
+      needs_topup: 'Out of tokens — top up and send it again',
       failed: 'Hit a snag — try again',
       unavailable: 'Service temporarily unavailable',
     },
@@ -240,7 +246,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Работаю…',
       waiting: 'Жду ответа',
       needs_you: 'Нужен твой ответ',
-      needs_topup: 'Токены закончились — пополни, и я продолжу',
+      needs_topup: 'Токены закончились — пополни и отправь ещё раз',
       failed: 'Сбой — попробуй ещё раз',
       unavailable: 'Сервис временно недоступен',
     },
@@ -271,7 +277,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       working: 'Trabajando…',
       waiting: 'Esperando respuesta',
       needs_you: 'Necesita tu respuesta',
-      needs_topup: 'Sin tokens — recarga y sigo',
+      needs_topup: 'Sin tokens — recarga y envíalo otra vez',
       failed: 'Algo falló — inténtalo de nuevo',
       unavailable: 'Servicio no disponible ahora',
     },

@@ -42,17 +42,51 @@ describe('a run refused for an empty wallet', () => {
     }
   });
 
-  it('says the same two things in every language: it ran out, and it will continue', () => {
-    // „Out of tokens" alone reads as an ending. The owner must be told the work
-    // resumes, because on the account this happened to it did not.
-    const resumes: Record<RunLanguage, RegExp> = {
-      ka: /გავაგრძელებ/,
-      en: /carry on/i,
-      ru: /продолжу/i,
-      es: /sigo/i,
+  /**
+   * IT USED TO PROMISE THAT THE WORK WOULD CONTINUE, and the comment under
+   * this test said why: „the owner must be told the work resumes, because on
+   * the account this happened to it did not."
+   *
+   * Row 221, 21 September: the seat established that a refused message creates
+   * no goal, so nothing resumes on its own — the person has to send it again.
+   * The badge said „top up and I will carry on" while the message directly
+   * under it said „send it again and I will pick it up". Two promises about
+   * one moment, and the comfortable one was the false one.
+   *
+   * „Out of tokens" alone still reads as an ending, so the second half stays —
+   * it just has to be the half that is true.
+   */
+  it('says the same two things in every language: it ran out, and to send it again', () => {
+    const sendItAgain: Record<RunLanguage, RegExp> = {
+      ka: /ხელახლა გამომიგზავნე/,
+      en: /send it again/i,
+      ru: /отправь ещё раз/i,
+      es: /envíalo otra vez/i,
     };
     for (const language of ['ka', 'en', 'ru', 'es'] as const) {
-      expect(RUN_STRINGS[language].statusLines.needs_topup).toMatch(resumes[language]);
+      expect(RUN_STRINGS[language].statusLines.needs_topup).toMatch(sendItAgain[language]);
+    }
+  });
+
+  /**
+   * And the badge and the sentence beneath it must not disagree again.
+   *
+   * The distinction that matters is not the word „continue" — the MESSAGE says
+   * „send it again and I will pick it up", and that is true, because the
+   * continuing is conditional on the resend. What was false was the badge
+   * promising to carry on with no resend at all. So the test is that both ask
+   * for the same action, not that neither mentions continuing.
+   */
+  it('asks for the same action as the message it sits above', () => {
+    const sendItAgain: Record<RunLanguage, RegExp> = {
+      ka: /ხელახლა გამომიგზავნე/,
+      en: /send it again/i,
+      ru: /отправь ещё раз/i,
+      es: /envíalo otra vez/i,
+    };
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(RUN_STRINGS[language].statusLines.needs_topup).toMatch(sendItAgain[language]);
+      expect(messageHeldNoTokens(language)).toMatch(sendItAgain[language]);
     }
   });
 

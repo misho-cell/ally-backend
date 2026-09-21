@@ -314,6 +314,49 @@ export async function adjustTestAccountTokens(
   return getBalance(userId);
 }
 
+/**
+ * Row 221 — D348 item 2, and the ruling is precise about which message.
+ *
+ * The founder, 20 September: at zero the person's next message is still
+ * ACCEPTED AND ANSWERED ONCE, and the top-up wall comes after that answer
+ * rather than instead of it. Not a reserve, not a change to who pays — one
+ * sentence through, then the wall.
+ *
+ * What happened instead, measured by the seat on 21 September with no parallel
+ * runs: seat 171873 walked 30 -> 15 in single questions, one more question
+ * took it 15 -> -16 in a single run, and the next message got a 402 in 0.3
+ * seconds with no answer at all.
+ *
+ * TWO THINGS THAT MEASUREMENT SETTLES, both of them in the code below:
+ *
+ *   * „AT ZERO" IS „BELOW ZERO" for almost everyone. A run's cost is not
+ *     bounded by what is left, so the crossing run lands negative. The grace
+ *     cannot test `balance === 0`; it fires whenever the allowance is refused.
+ *   * THE CROSSING RUN IS NOT THE ONCE. It was paid for when it started. The
+ *     ruling is about the message AFTER the balance is gone, which is exactly
+ *     the message this function is asked about.
+ *
+ * ATOMIC ON PURPOSE. The claim and the check are one UPDATE, so two messages
+ * arriving together cannot both be told they are the one — a `SELECT` then an
+ * `UPDATE` would hand out the grace twice under exactly the load that makes
+ * somebody run out.
+ *
+ * It renews with the window rather than by hand: a stamp older than the
+ * current window's start is not this window's grace.
+ */
+export async function takeGraceAnswer(userId: string): Promise<boolean> {
+  const window = budgetWindow();
+  const result = await query<{ id: number }>(
+    `UPDATE "User"
+     SET grace_answer_used_at = NOW()
+     WHERE id = $1
+       AND (grace_answer_used_at IS NULL OR grace_answer_used_at < ${window.windowStartSql})
+     RETURNING id`,
+    [userId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 /** Balance view for the app (GET /billing/tokens). */
 export async function getWalletSummary(userId: string): Promise<WalletSummary> {
   const enabled = await isWalletEnabled();

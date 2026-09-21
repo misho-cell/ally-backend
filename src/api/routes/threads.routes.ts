@@ -44,7 +44,7 @@ import {
   userLanguage,
 } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
-import { checkRunAllowance } from '../../services/tokenWallet.service';
+import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
 import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
@@ -577,7 +577,35 @@ threadsRouter.post(
       const payerId = await runPayerFor(userId, threadId, thread.type);
       const allowance =
         payerId === null ? { allowed: true as const } : await checkRunAllowance(payerId);
-      if (!allowance.allowed && payerId === userId) {
+      /**
+       * Row 221 — D348 item 2. At zero the person's next message is still
+       * ANSWERED ONCE, and the wall comes after that answer rather than
+       * instead of it. The founder's words, 20 September.
+       *
+       * What the seat measured on 21 September: the 402 came in 0.3 seconds
+       * with no answer at all, so the wall was standing in the answer's place.
+       *
+       * The grace is claimed here and not inside the refusal, because claiming
+       * it means the run PROCEEDS — everything below this block is the wall,
+       * and the point of the ruling is to get past it once.
+       *
+       * The header is set all the same, so the person is not left thinking the
+       * balance is fine while the one answer is being written. The words and
+       * the badge now say the same thing (see `needs_topup`): send it again
+       * after a top-up. Nothing resumes on its own — no goal is created by a
+       * refused message, which the seat established — and the badge used to
+       * promise that it would.
+       */
+      if (!allowance.allowed && payerId === userId && (await takeGraceAnswer(userId))) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[wallet] user ${userId}: balance ${allowance.balance} — answering once (D348), ` +
+            'the wall comes on the next message',
+        );
+        void setThreadStatus(userId, threadId, 'needs_you', {
+          statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.needs_topup,
+        });
+      } else if (!allowance.allowed && payerId === userId) {
         /**
          * P0, 18 September — the refusal must not take the owner's words with
          * it, and must not call an unstarted goal finished.
