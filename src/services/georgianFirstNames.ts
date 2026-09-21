@@ -1407,6 +1407,25 @@ export const GEORGIAN_FIRST_NAMES: ReadonlySet<string> = new Set([
   'eto',
   'taso',
   'sali',
+  /**
+   * `elen` — row 8's own first example, and the list already held `elene`.
+   *
+   * The ticket reported „Elen" appearing as somebody's EMPLOYER. It is the
+   * short form of Elene, and the full spelling has been here since the
+   * beginning — so the label „elen sukhashvili" had a surname the rule caught
+   * and a first name it did not, and the first name fell through to
+   * „organisation".
+   *
+   * 112 carriers as a whole token. It sits beside nino and nowhere near tbc:
+   *
+   *     nino   52,154 labels   lead .90   mean 2.4 tokens   72% are 1-2 words
+   *     elen       89          lead .75   mean 2.2          74%
+   *     tbc     8,005          lead .28   mean 3.1          28%
+   *
+   * The samples are a first name every time: „elen sukhashvili", „elen
+   * davitadze", „elen qetusa", „doni elen", and „elen" standing alone.
+   */
+  'elen',
 ]);
 
 /**

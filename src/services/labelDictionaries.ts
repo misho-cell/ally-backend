@@ -325,6 +325,29 @@ export const TRADE_WORDS = [
    */
   'dzidza',
   'ძიძა',
+  /**
+   * Translation — row 8's third example, „თარგმნა and Service", and the one
+   * the ticket had wrong about what kind of fault it was.
+   *
+   * It is not a stripper bug. The word is in NO dictionary, in either script,
+   * so `classifyToken` gave up on it and called it a company. „თარგმნა
+   * ნოტარიუსი", „targmna kartuli-inglisuri", „tamar akhmeteli targmna
+   * notariusi", „სოფო ტრადოსი თარგმნა" — every one of them is somebody who
+   * translates for a living.
+   *
+   * THE STEM, not the word, and it is worth the two extra characters: `targmn`
+   * also reaches `mtargmneli` and `მთარგმნელი` — the actual noun for a
+   * translator, 53 people, which was equally unclassified.
+   *
+   *   targmn   274 carriers    თარგმნ   130
+   *
+   * Whole-base collateral, every token containing it without starting with
+   * it: 13 in Latin and 7 in Georgian, and all of them are this trade or its
+   * verb — `mtargmneli` 31, `მთარგმნელი` 22, `mitargmne`, `gadatargmna`,
+   * `სათარგმნი`. No surnames and no other word.
+   */
+  'targmn',
+  'თარგმნ',
 ];
 
 /**
@@ -903,6 +926,23 @@ export const IDENTIFIES_NOBODY: ReadonlySet<string> = new Set([
   'ara',
   'sxva',
   'skhva',
+  /**
+   * `near` — row 8's second example, and it is a preposition doing exactly
+   * what the Georgian conjunctions above do.
+   *
+   * The labels are addresses: „bussines near pizza hut", „real estate near
+   * radisson", „notary near restaurant diana", „hostel near the square",
+   * „iura lachinovi glass repair near roniko". It tells you where somebody is
+   * and never who they are, and it was being printed as their employer.
+   *
+   * 29 carriers as a whole token, and the most sentence-bound word measured
+   * on this list — further from a name than „da" is:
+   *
+   *     near   20 labels   lead .05   mean 4.8 tokens   5% are 1-2 words
+   *     da  3,787          lead .03   mean 4.3         13%
+   *     nino   52,154      lead .90   mean 2.4         72%
+   */
+  'near',
   // Ticket 19 [8], found after the first fix and worse than what was
   // reported. Of the 400 commonest tokens in the whole base, 71 classify as
   // „organisation" — and ten of those cleared the two gates above. They are

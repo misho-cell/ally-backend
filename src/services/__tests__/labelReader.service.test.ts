@@ -771,6 +771,27 @@ describe('the trades, relations and places the base still called companies', () 
     expect(classifyToken('ki', false)).not.toBe('not_a_word');
   });
 
+  /**
+   * ROW 8'S OWN THREE REMAINING EXAMPLES, and each is a different fault —
+   * which is why the row could not be closed by one change.
+   *
+   *   Elen      a first name whose LONG form was already on the list
+   *   Near      a preposition, pure address grammar
+   *   თარგმნა   a trade in no dictionary in either script
+   */
+  it('closes row 8’s own three examples, each by its own route', () => {
+    // „elen sukhashvili" had a surname the rule caught and a first name it
+    // did not — `elene` was listed, `elen` was not.
+    expect(classifyToken('elen', false)).toBe('name');
+    expect(classifyToken('elene', false)).toBe('name');
+    // „real estate near radisson", „notary near restaurant diana".
+    expect(classifyToken('near', false)).toBe('not_a_word');
+    // The stem, so the noun for a translator comes with the verb.
+    for (const t of ['targmna', 'თარგმნა', 'mtargmneli', 'მთარგმნელი']) {
+      expect(classifyToken(t, false)).toBe('trade');
+    }
+  });
+
   it('reads the six new names and still refuses the car wash and the market', () => {
     for (const n of ['lizi', 'joni', 'barbare', 'eto', 'taso', 'sali', 'ლიზი', 'ჯონი']) {
       expect(classifyToken(n, false)).toBe('name');
