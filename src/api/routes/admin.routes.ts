@@ -2450,6 +2450,14 @@ adminRouter.get('/intro-requests', async (req: Request, res: Response) => {
               ir.requester_user_id, rq.name AS requester_name,
               ir.mediator_user_id, md.name AS mediator_name,
               ir.responded_by_user_id, rb.name AS responded_by_name,
+              -- 21 September. The seat filtered 45 rows on intro_channel and
+              -- got zero, and their filter could never have returned anything,
+              -- because this SELECT did not carry the column. Their zero was
+              -- not a stale reading; it was a reading of a field that was not
+              -- in the payload at all. With rows 220 and 223 turning on this
+              -- value, my database reads were the only ones anybody could
+              -- make. Now they can be checked by somebody other than me.
+              ir.intro_channel,
               ir.created_at, ir.responded_at
        FROM introduction_requests ir
        LEFT JOIN "User" rq ON rq.id = ir.requester_user_id

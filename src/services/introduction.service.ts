@@ -27,6 +27,13 @@ import { RunLanguage } from './runLanguage';
 
 export interface PendingRequest {
   id: number;
+  /**
+   * The UUID the POST route takes. `id` is the integer `check_my_inbox`
+   * dresses as `req_<id>`, and the two were never the same identifier — which
+   * is the trap `GET /requests` exists to keep people out of. Both are carried
+   * so no caller has to guess which one its consumer wants.
+   */
+  request_ref: string;
   target_name: string;
   message: string | null;
   requester_name: string | null;
@@ -70,7 +77,7 @@ export async function getPendingRequestsForMediator(
   mediatorUserId: string,
 ): Promise<PendingRequest[]> {
   const result = await query<PendingRequest>(
-    `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
+    `SELECT ir.id, ir.request_ref, ir.target_name, ir.message, ir.created_at,
             ir.requester_user_id,
             u.name AS requester_name,
             (ir.mediator_user_id IS NULL) AS direct
@@ -94,7 +101,7 @@ export async function getPendingRequestById(
   requestId: number,
 ): Promise<PendingRequest | null> {
   const result = await query<PendingRequest>(
-    `SELECT ir.id, ir.target_name, ir.message, ir.created_at,
+    `SELECT ir.id, ir.request_ref, ir.target_name, ir.message, ir.created_at,
             ir.requester_user_id,
             u.name AS requester_name,
             (ir.mediator_user_id IS NULL) AS direct

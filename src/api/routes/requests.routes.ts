@@ -10,7 +10,11 @@ import {
   IntroChannel,
   resolveIntroductionRequest,
   IntroductionAction,
+  getPendingRequestsForMediator,
+  PendingRequest,
 } from '../../services/introduction.service';
+import { isFictionalTestAccount } from '../../services/testSeatTokens';
+import { scrubText } from '../../services/privacyScrub';
 import { ApiResponse } from '../../types';
 
 const requestsRouter = Router();
@@ -50,6 +54,83 @@ function handleValidationErrors(
  * Idempotent: repeating the applied answer returns success with already:true;
  * a conflicting answer returns 409.
  */
+/**
+ * GET /requests — the requests waiting for THIS person to answer.
+ *
+ * THE FOUNDER'S RULING, 21 September, one letter: „c". Three shapes were put
+ * to him for the same problem and he took this one.
+ *
+ * THE PROBLEM IT SOLVES IS DISCOVERY, NOT ACTING. `POST /requests/:ref/:action`
+ * has existed for a while and works — but nothing anywhere would tell you a
+ * ref. The seat's own words for it: a postbox where letters arrive, you hear
+ * about one when the postman happens to mention it, and you cannot look
+ * inside. Three questions are waiting on the founder right now and the only
+ * way he learns of one is if the assistant brings it up.
+ *
+ * WHY NOT THE OTHER TWO, because the refusals are the reasoning:
+ *
+ *   Shape 1 — put the UUID in every `check_my_inbox` item. Rejected by both
+ *     sides independently: a second identifier in every ordinary user's model
+ *     context, on every message, forever, for a rare need.
+ *   Shape 2 — let the POST accept `req_<id>` as well as the UUID. The worst
+ *     trade of the three: it pays a cost and leaves the problem standing. It
+ *     makes acting on a request you ALREADY KNOW ABOUT easier, and does
+ *     nothing about finding one.
+ *
+ * And this one is the cheap base for the rest: a screen saying „3 waiting", a
+ * phone badge that counts them, a test seat answering one — every one of those
+ * needs this and nothing else.
+ *
+ * THE REF IS THE UUID, deliberately. `check_my_inbox` returns `req_<id>`, the
+ * POST takes the UUID, and the two were never the same identifier — which is
+ * exactly the trap this route exists to keep people out of. What comes back
+ * here is what the POST takes.
+ *
+ * Same auth as the POST, no subscription gate: somebody whose subscription
+ * lapsed must still be able to see who is waiting on them.
+ */
+/**
+ * The row as this route hands it out. Exported so the three decisions in it
+ * are testable without standing up the router: WHICH ref goes out, that the
+ * message is scrubbed like every other surface, and that the test-account
+ * marker appears only when it is true.
+ */
+export function waitingRequestPayload(r: PendingRequest): Record<string, unknown> {
+  return {
+    // What POST /requests/:ref/:action takes. Not req_<id>.
+    request_ref: r.request_ref,
+    from: r.requester_name,
+    wants_to_meet: r.target_name,
+    // The same scrub the chat surfaces use: a number never rides out on a
+    // payload just because this one is new.
+    message: r.message === null ? null : scrubText(r.message),
+    created_at: r.created_at,
+    direct: r.direct,
+    ...(r.requester_user_id !== null && isFictionalTestAccount(String(r.requester_user_id))
+      ? { counterpart_is_a_fictional_test_account: true }
+      : {}),
+  };
+}
+
+requestsRouter.get('/', async (req: Request, res: Response<ApiResponse<unknown>>) => {
+  const userId = (req as AuthenticatedRequest).user?.userId;
+  if (userId === undefined) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  try {
+    const pending = await getPendingRequestsForMediator(String(userId));
+    res.status(200).json({
+      success: true,
+      data: { waiting_for_me: pending.map(waitingRequestPayload), count: pending.length },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /requests]', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 requestsRouter.post(
   '/:ref/:action',
   param('ref').isUUID().withMessage('ref must be a valid request ref'),
