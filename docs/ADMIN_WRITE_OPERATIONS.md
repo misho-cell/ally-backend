@@ -1313,3 +1313,83 @@ is the half worth proving, and it is proved against the founder's own id.
 
 Delete the route and `testSeatTokens.ts`; nothing else reads them. Tokens
 already minted expire within twelve hours on their own.
+
+## §18 — Nine old messages that gave out a private mobile with no source — REGISTERED, NOT RUN, AND POSSIBLY NEVER SHOULD BE
+
+**Status: undecided. Nothing has been written. Nothing is blocked on it.**
+
+Registered here rather than left on the night list, for the reason §14 sets:
+an undecided D44 item belongs in the register with its statement and its undo,
+where it survives a container and cannot quietly become a habit.
+
+### WHAT WAS MEASURED (21 September, row 139)
+
+The whole `conversations` table, not a sample. **18,506 assistant messages; 51
+carry a real phone number** (the rest of the 102 regex hits are dates, prices
+and ids):
+
+| | |
+|---|---|
+| source named in the message | 20 |
+| the owner's own contact, behind the `⟦own⟧` marker | 20 |
+| **no source named** | **9** |
+| not a phone at all — an Instagram handle, an employee headcount | 2 |
+
+**All nine are a private individual's mobile.** Several of those people hold a
+business role; the number is personal. The only genuine business numbers in
+the set are a clinic switchboard and a physiotherapist's public line, and both
+cite the web in the same message.
+
+**All nine are June or before 6 July.** Since then: 28 phone-bearing messages,
+every one marker-wrapped, an introduction accept naming the phonebook, or a
+public business line citing the web. **Zero without a source, over eleven
+weeks.** The month table says this is the guard working rather than traffic
+drying up — June has zero redactions and zero markers, September has 29
+redactions against 36 phone-bearing messages.
+
+**The strict count is 9 and the loose count is about 4** — several sit under a
+heading like „from your network", or open with „Got it" after the owner had
+just typed the number. My own regex missed two that name a source in other
+words, which is why the strict number is the safe one to quote. **Whether a
+section heading counts as a source note is a judgement, and it is not mine to
+make.**
+
+### THE DECISION WANTED
+
+**Leave them, or redact the nine.** Not a task — a decision. Arguments both
+ways, stated so neither is hidden:
+
+* **Leave.** The numbers were given to the owner who asked for them, in their
+  own conversation. Rewriting somebody's chat history has its own cost, and
+  the behaviour that produced them has been fixed for eleven weeks.
+* **Redact.** Nine private mobiles are sitting in message bodies with nothing
+  saying where they came from, and a transcript read six weeks from now cannot
+  tell that from a leak.
+
+### ROUTE, METHOD, BODY — IF AND ONLY IF REDACTION IS CHOSEN
+
+There is no route today and **I am not building one before the decision.**
+What it would be:
+
+```
+POST /admin/conversations/:id/redact-phone      (admin only)
+body: { "confirm": true }
+```
+
+It would apply the existing `privacyScrub` phone pattern to `content` and
+write back, leaving `[hidden]` — the same token the live scrubber already
+writes, so a redacted old row becomes indistinguishable from a row the
+scrubber handled at the time. Nine ids, named explicitly, one call each. No
+bulk form, no pattern match over the table.
+
+### UNDO
+
+**There is not a clean one, and that is the argument for deciding slowly.**
+The original text is not stored anywhere else — `conversations.content` is the
+record. An undo would mean capturing the nine bodies first, which means
+copying nine private numbers into a second place in order to protect them.
+
+**So: if this runs, the nine bodies are read and kept in `~/.netai-ops` (mode
+700, never committed, never in a file in this repository — D149) for the
+length of one week, and deleted after. That is the undo, and it is worse than
+most undos in this file.** Anyone approving this should approve that too.

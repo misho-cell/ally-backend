@@ -31,96 +31,29 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-### 1. A funded test account — the seat can now sit down and has nothing to spend
+_Nothing yet._
 
-**What we need from Misho:** money on one or more of the six fictional test
-accounts (Netai Test 1-6, ids 171870-171874 and 171936), or a refillable one
-they can top up themselves.
+## Handed over, 21 September (07:05 UTC) — the 20/21 night
 
-**Why we cannot do it ourselves:** it is spend. Night rule, and D44.
+Reported to Misho in his own conversation and cleared from here, so the next
+night starts on a clean page. **Nothing was deleted to make the page look
+finished:** each item says where it now lives.
 
-**What it stops:** the seat's rows **210 and 217**, both Pr1, both built by my
-word and unproved for days. They are unproved for a reason that stopped being
-about permission tonight.
-
-**Why it is live now and was not this morning.** Their tooling refuses to type
-a phone number or a login code into a form — twice on 20 September, once with
-the founder's explicit go-ahead — so every test login was typed by him, by
-hand, in his own evening. Tonight I built `POST /admin/test-seat/token`
-(ADMIN_WRITE_OPERATIONS §17): admin-only, six hardcoded fictional ids, a
-twelve-hour user token, verified live in both directions with 501 refused by
-name.
-
-**So the seat can now BE a test user. It still cannot pay for anything.**
-That is the next wall and they will hit it immediately — I told them so in the
-box rather than let them find it.
-
-**The narrowest version of the ask**, if a general top-up is not wanted: one
-account with a small balance, and one with zero, which is also what §14 has
-been asking for since 19 September and is still unanswered. Both requests are
-the same coin: the swallow bug needs an empty wallet, rows 210 and 217 need a
-full one.
-
-### 2. Nine old messages that gave out a private mobile with no source — the founder's call, and the seat is raising it too
-
-**What it is.** Row 139 asked how many assistant messages hand out a phone
-number without saying where it came from. Measured over the whole table —
-18,506 assistant messages, 51 carrying a real phone: **20 name the source, 20
-are the owner's own contact behind the marker, 2 are not phones, and 9 name
-nothing.** All nine are a private individual's mobile. **All nine are June or
-before 6 July**, and the eleven weeks since are clean: 28 phone-bearing
-messages, every one marker-wrapped, an accept naming the phonebook, or a
-public business line citing the web.
-
-**So the behaviour is fixed and the nine old messages are still sitting in
-those threads.**
-
-**Why I am not touching them.** Editing or removing them changes live data in
-real people's conversations — the night rule and D44 both. It is also not
-obviously the right thing: the numbers were given to the owner who asked, and
-rewriting somebody's chat history has its own cost.
-
-**What is wanted:** a decision, not a task. Leave them, or redact the nine.
-If redaction, it is a D44 write and goes in
-`ADMIN_WRITE_OPERATIONS.md` with route, body and undo **before** anything runs.
-
-**The seat is raising this with the founder in the morning as well** (their
-384). Two channels, one item — if he answers one of us, that is the answer.
-**Nothing is blocked on it.**
-
-### 3. What is NOT on this list, said so it is not looked for
-
-**Lika saw an error yesterday evening and one of my deploys caused it.**
-Information, not a decision, and it is here because a real person hitting a
-failure should not reach Misho only if he happens to ask. At 21:42:02 an engine
-run started on her thread; my deploy's SIGTERM landed eighteen seconds later;
-she read „ტექნიკური შეფერხება მოხდა". The shutdown drain reported **„0 run(s)
-in flight" while cutting hers in half** — it counted chat runs only and had
-never been able to see an engine run at all. Fixed and deployed tonight
-(`e0bb608`), with a test that fails if a new run path forgets to register.
-**Nothing is wanted from Misho.** If he wants to tell her anything, the fact is
-that her run was lost to a deploy of mine and not to anything she did.
-
-The 59,111 „Undefined" alias rows: **I decided not to delete them** and that
-is not a question. Irreversible, zero gain now that the reader ignores them,
-and real people's saved labels.
-
-The unknown import service (8.4 million rows, no `source`, in neither
-repository): **information, not a decision.** Misho knows what it is; nothing
-waits on the answer.
-
-The 19/20 September list held one item — a zero-balance test account so the
-swallow bug could be observed at all. It was put to Misho twice in conversation
-overnight and is **still unanswered**; it is not dropped, it lives in
-`ADMIN_WRITE_OPERATIONS.md` §14 with its statement and its undo, which is where
-an undecided D44 item belongs. Cleared from here so the next night starts on a
-clean page.
-
-The 18/19 September list was worked through with Misho item by item between
-05:00 and 07:30 on the 19th, in his own conversation, and is cleared from here
-so the next night starts on a clean page. Nothing was deleted to make it look
-finished: what was DONE moved to `ADMIN_WRITE_OPERATIONS.md`, what is still
-open moved to the section below with who holds it.
+- **A funded test account.** Still unanswered, and now asked twice. It lives in
+  `ADMIN_WRITE_OPERATIONS.md` §14 (a zero-balance account, open since
+  19 September) and §17 (the seat can now BE a test user and still cannot pay).
+  **Blocks the seat's rows 210 and 217, both Pr1.**
+- **The nine old messages carrying a private mobile with no source.** Moved to
+  `ADMIN_WRITE_OPERATIONS.md` §18 — registered, not run, with the measurement,
+  both arguments, the route it WOULD be, and an undo that is worse than most in
+  that file. **A decision, not a task. Nothing is blocked on it.** The seat is
+  putting the same item to the founder (their 384).
+- **`POST /requests/:ref/:action` — three possible shapes.** Not a D44 item: no
+  live data changes, it is an API design choice. It lives in `TASKS.md` with
+  all three and their costs. The seat cannot reach that route today and knows
+  it.
+- **Lika's error.** Information, not a decision — the cause was my deploy and
+  it is fixed (`e0bb608`). Kept in the section below.
 
 ## Handed over, 19 September — what came off the list and what did not
 
