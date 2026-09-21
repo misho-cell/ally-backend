@@ -6,6 +6,7 @@ import {
   isNameToken,
   isShortDictionaryWord,
   isShortPlaceOrThingWord,
+  labelTokens,
   readLabels,
 } from '../labelReader.service';
 
@@ -705,6 +706,44 @@ describe('the trades, relations and places the base still called companies', () 
       expect(isShortPlaceOrThingWord(t)).toBe(false);
       expect(isShortDictionaryWord(t)).toBe(true);
     }
+  });
+
+  /**
+   * THE SEAT'S 381, and it was the right question to ask.
+   *
+   * The 33,580 counted contacts whose ENTIRE label is one of these words —
+   * measured with an exact match in SQL. In the founder's own phonebook two
+   * were the word plus emoji, and they asked the question I had not: does a
+   * whole-token rule read „დედა😍😍😍" as one token that merely STARTS with
+   * the word, in which case those people are outside the count and still
+   * misread?
+   *
+   * They are not, and this test is why that is a fact rather than a reading of
+   * the regex. `labelTokens` matches runs of `[a-zA-Zა-ჿᲐ-Ჿ0-9]+`, so an
+   * emoji is a separator like a space.
+   *
+   * BUT THE COUNT WAS AN UNDERCOUNT, and by a lot. Asked again with the
+   * non-alphanumerics stripped, the decorated labels are **10,197 more
+   * contacts** — so the real figure is about 43,800, not 33,580.
+   *
+   * And their reasoning was right to the ratio. „People decorate family labels
+   * and do not decorate plumbers":
+   *
+   *   დედა   5,170 bare   2,309 decorated   31%
+   *   ბებო   1,574          656              29%
+   *   სახლი    275           21               7%
+   *   ავეჯი    208            2               1%
+   */
+  it('an emoji is a separator, so a decorated family label is still the word', () => {
+    for (const label of ['დედა😍😍😍', 'ბებია❤️❤️', 'mama♥', 'babu🙏', '😍დედა😍']) {
+      const tokens = labelTokens(label);
+      expect(tokens).toHaveLength(1);
+      expect(classifyToken(tokens[0].lower, true)).toBe('relation');
+    }
+    // The other half of what they found in the same account: a living family
+    // whose name contains those four letters, which must stay a name.
+    expect(classifyToken('mamardashvili', false)).toBe('name');
+    expect(classifyToken('მამარდაშვილი', false)).toBe('name');
   });
 
   it('reads the six new names and still refuses the car wash and the market', () => {
