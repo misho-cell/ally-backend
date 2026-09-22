@@ -449,6 +449,43 @@ export function answerHeldNoTokens(language: RunLanguage, who: string): string {
 }
 
 /**
+ * The goal is closed, and the person who ANSWERED is finally told so.
+ *
+ * The seat's reading, 22 September, from one goal closed at 10:32:58:
+ *
+ *   10:32:57  Netai Test 7, who NEVER ANSWERED, got „this question is no
+ *             longer needed, no reply necessary. Thank you!" and went to done
+ *   10:32:19  Netai Test 9, who DID answer, last heard anything at the moment
+ *             he sent it. Nothing at the finish. Nothing since.
+ *
+ * „The person who ignored the question is thanked, and the person who actually
+ * helped is not." That is their sentence and it is the right way to put it.
+ *
+ * ONE LINE, NOT TWO, AND THE MISSING HALF IS SAID OUT LOUD. They wrote two —
+ * one for „your answer is what settled it" and one for „they got there another
+ * way" — and were right that no single line can honestly carry both. But
+ * NOTHING RECORDS WHICH IT WAS: `tasks` has no link from its result to an ask,
+ * and `record_debrief_outcome` only asks three days later, after this has to
+ * be said. So this is their wording with the one clause removed that neither
+ * of us can support, rather than a guess dressed as either.
+ *
+ * It thanks them, it closes, and it asks nothing — which is the rest of what
+ * they specified.
+ */
+export function askAnsweredAndGoalClosed(language: RunLanguage, asker: string): string {
+  switch (language) {
+    case 'en':
+      return `${asker} has finished with this. Thank you for taking the time to answer.`;
+    case 'ru':
+      return `${asker} закрыл этот вопрос. Спасибо, что нашёл время ответить.`;
+    case 'es':
+      return `${asker} ya ha cerrado esto. Gracias por tomarte el tiempo de responder.`;
+    default:
+      return `${geoName(asker, 'erg')} ეს საკითხი დახურა. მადლობა, რომ დრო დაუთმე და გვიპასუხე.`;
+  }
+}
+
+/**
  * The asker's question died because the person he asked switched questions
  * off — and until today nobody told him, ever.
  *

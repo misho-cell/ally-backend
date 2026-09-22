@@ -4,7 +4,12 @@ import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { createThread, saveThreadMessage, userLanguage } from './threads.service';
-import { askWithdrawnAfterOptOut, RunLanguage, RUN_STRINGS } from './runLanguage';
+import {
+  askAnsweredAndGoalClosed,
+  askWithdrawnAfterOptOut,
+  RunLanguage,
+  RUN_STRINGS,
+} from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
@@ -1516,7 +1521,75 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
       isTask: true,
     }).catch(() => undefined);
   }
+  await thankThePeopleWhoAnswered(taskId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ask-close] could not thank the answerers of ${taskId}:`,
+      (err as Error).message,
+    ),
+  );
   return cancelled.rowCount ?? cancelled.rows.length;
+}
+
+/**
+ * Row 233's other half — the person who ANSWERED is told the goal is closed.
+ *
+ * The seat's reading, 22 September, of one goal closed at 10:32:58:
+ *
+ *   10:32:57  Netai Test 7, who NEVER ANSWERED, got „this question is no
+ *             longer needed, no reply necessary. Thank you!" and went to done
+ *   10:32:19  Netai Test 9, who DID answer, last heard anything at the moment
+ *             he sent it. Nothing at the finish. Nothing since.
+ *
+ * „The person who ignored the question is thanked, and the person who actually
+ * helped is not." Their sentence, and the right way to put it.
+ *
+ * IT RUNS INSIDE `cancelAsksForTask`, which is not where it obviously belongs
+ * and IS where it has to be: that function is what every close already calls,
+ * on the finish and on the stop, from five separate call sites. A sixth caller
+ * that remembered to cancel and forgot to thank is precisely the shape of this
+ * whole row — the badge close lived in one branch of two and the typed answer
+ * never got one.
+ *
+ * ONE LINE, NOT THE TWO THEY WROTE, and the missing half is said out loud in
+ * `askAnsweredAndGoalClosed`: nothing records whose answer settled it.
+ *
+ * Their thread is already `done` — `deliverCapturedAnswer` closed it when they
+ * answered — so this adds the sentence and leaves the state alone.
+ */
+async function thankThePeopleWhoAnswered(taskId: number): Promise<void> {
+  const answered = await query<{
+    ask_thread_id: number | null;
+    to_user_id: number;
+    asker_name: string | null;
+  }>(
+    `SELECT ta.ask_thread_id, ta.to_user_id,
+            (SELECT u.name FROM "User" u WHERE u.id = ta.from_user_id) AS asker_name
+       FROM task_asks ta
+      WHERE ta.task_id = $1 AND ta.status = 'answered'`,
+    [taskId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+
+  // One thank-you per PERSON's thread, not per ask — row 148's rule, and a
+  // relayed conversation deliberately continues in one thread, so a goal that
+  // asked somebody twice has two rows pointing at one chat.
+  const told = new Set<number>();
+  for (const row of answered.rows) {
+    if (row.ask_thread_id === null || told.has(row.ask_thread_id)) continue;
+    const asker = row.asker_name?.trim();
+    if (asker === undefined || asker === '') continue;
+    told.add(row.ask_thread_id);
+    // THEIR language. They are a stranger doing somebody a favour, and being
+    // thanked in a script they cannot read is worse than not being thanked.
+    const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
+    await saveThreadMessage(
+      row.ask_thread_id,
+      row.to_user_id,
+      'assistant',
+      askAnsweredAndGoalClosed(language, asker),
+    ).catch(() => undefined);
+  }
 }
 
 /**
