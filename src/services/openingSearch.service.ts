@@ -69,6 +69,39 @@ const OPENING_SEARCH_BUDGET_MS = 18_000;
 const MAX_QUERY_CHARS = 200;
 
 /**
+ * Row 253 — the goal is about REACHING A NAMED PERSON, so the web has nothing
+ * to be asked and a name has nothing to gain by going there.
+ *
+ * Deliberately a short list of phrases and not a guess at whether a name is
+ * present. „Is this a person's name" is a judgement, and a wrong yes silently
+ * takes the web away from a real trade search — the 17 September shape that
+ * cost ten goals their second circle and went unseen for three days. „Did the
+ * owner ask to be introduced to somebody" is a reading of their own words, and
+ * these are the exact phrasings behind all 42 measured cases.
+ *
+ * A TRADE IN THE SAME SENTENCE STILL GETS ITS SEARCH. „Introduce me to a good
+ * plumber" is a trade request wearing an introduction's clothes, and the web
+ * can answer it — so the trade stems win. That half is narrow on purpose too:
+ * it only has to be right about the sentences that actually occur.
+ */
+const REACHING_FOR_A_PERSON =
+  /\b(introduce me|introduced to|introduction to|an introduction from|arrange a meeting with|put me in touch|get in touch with)\b|დაკავშირებ|გამაცნ|გააცნო|შემახვედრ/i;
+
+/** A trade named in the same breath is still a trade, and the web can help. */
+const NAMES_A_TRADE =
+  /\b(lawyer|accountant|plumber|electrician|photographer|architect|dentist|doctor|tutor|translator|designer|developer|mechanic|carpenter|notary|barber|painter|driver|videographer|printer|agency|clinic|contractor)\b|იურისტ|ბუღალტერ|სანტექნიკ|ელექტრიკ|ფოტოგრაფ|არქიტექტორ|სტომატოლოგ|ექიმ|რეპეტიტორ|თარჯიმან|დიზაინერ|დეველოპერ|ავტოხელოსან|ხურო|ნოტარიუს|დალაქ|მღებავ|მძღოლ|ზეინკალ/i;
+
+/**
+ * Exported for its own test: this decides whether a person's name leaves the
+ * building, which is not a thing to hold only through the function that calls
+ * it.
+ */
+export function goalAsksToReachAPerson(goalText: string): boolean {
+  if (!REACHING_FOR_A_PERSON.test(goalText)) return false;
+  return !NAMES_A_TRADE.test(goalText);
+}
+
+/**
  * NO CITY IS READ HERE, AND THE ABSENCE IS THE RULE.
  *
  * The fourth pass first fetched User.city and offered it to the distiller.
@@ -255,7 +288,52 @@ export async function runOpeningSearches(
   // Row 154: filled by the web branch below, once the search it depends on
   // has returned. Declared here so the caller can read it after both branches.
   let waysIn: Map<string, WayIn> = new Map();
-  const webWork = (async (): Promise<string> => {
+
+  /**
+   * ROW 253 — A PERSON'S NAME MUST NOT LEAVE THE BUILDING TO ANSWER A QUESTION
+   * THE WEB CANNOT ANSWER.
+   *
+   * Found on 22 September while measuring something else. This log carries the
+   * distilled query beside the goal text, and on introduction goals it reads:
+   *
+   *   query=Netai Test 1            goal=Ask Netai Test 1 to introduce me to Netai Test 2.
+   *   query=Netai Test 8 contact    goal=I want to be introduced to Netai Test 9 through Netai Test 8
+   *   query=Netai Test 10           goal=Arrange a meeting with Netai Test 10 next week
+   *   query=<a real personal name>  goal=I need to reach <them> — do you know them?
+   *
+   * The product was putting its own users' names into a third-party search
+   * API. Since 16 September: 320 opening web searches, 41 carrying a test
+   * seat's name or an „introduce" phrase, and one carrying a real person's.
+   *
+   * D149 is written about phone numbers. A person's full name together with
+   * „somebody wants to be introduced to them", handed to an outside service,
+   * is the same class of thing — and unlike a wasted handyman search it cannot
+   * even be defended as a call that might have helped. Searching the web for
+   * „Netai Test 8" finds nothing, ever, by construction.
+   *
+   * ONLY THE WEB HALF IS SKIPPED. The second circle is the search that can
+   * actually answer „who can introduce me to this person", it never leaves the
+   * building, and D315 says it runs when a problem is named. It runs.
+   */
+  const reachingForAPerson = goalAsksToReachAPerson(query);
+  if (reachingForAPerson) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[opening-search] run ${runId} thread ${threadId}: web skipped — the goal asks to reach a person, and their name is not the web's to read`,
+    );
+  }
+  /**
+   * A FUNCTION, NOT AN IMMEDIATELY-INVOKED ONE, and row 253 is why.
+   *
+   * This was `const webWork = (async () => {…})()`, which STARTS THE MOMENT IT
+   * IS DEFINED. The first version of the skip above tested the flag where the
+   * promise is awaited, which would have been no skip at all: the search — and
+   * the name inside it — would already have gone out, and the only thing
+   * refused would have been the result. Caught before it shipped, and it is
+   * the same shape as every other thing found today: the guard was in the
+   * right file and the wrong line.
+   */
+  const startWebWork = async (): Promise<string> => {
     // Charged like any other web search, because it is one. A pre-fetch that
     // did not reach the ledger would be spend the cost report cannot see.
     await recordFixedUsage({
@@ -283,17 +361,20 @@ export async function runOpeningSearches(
     // they depend on.
     waysIn = await findWaysIn(userId, webResultNames(raw), { threadId, runId });
     return serialised;
-  })();
+  };
 
   const [web, secondDegree] = await Promise.all([
-    withBudget(webWork, 'web_search'),
+    reachingForAPerson ? Promise.resolve(null) : withBudget(startWebWork(), 'web_search'),
     withBudget(
       logged('search_second_degree', searchSecondDegree(userId, searched.query), false, searched),
       'search_second_degree',
     ),
   ]);
   const missing: string[] = [];
-  if (web === null) missing.push('web_search');
+  // A search we CHOSE not to run is not missing. `missing` exists so the prompt
+  // can be honest about what failed to arrive, and an apology for a deliberate
+  // decision would be a false one.
+  if (web === null && !reachingForAPerson) missing.push('web_search');
   if (secondDegree === null) missing.push('search_second_degree');
   return { web, secondDegree, missing, waysIn };
 }
