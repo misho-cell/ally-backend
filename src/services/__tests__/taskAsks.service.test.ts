@@ -1667,3 +1667,82 @@ describe('the phone-level stop is enforced too, and it is a different list', () 
     expect(said).toContain('ტექნიკური შეფერხება');
   });
 });
+
+/**
+ * THE THREE CONDITIONS IN ONE LINE, AND ONLY THE PERMISSION BESIDE THEM WAS HELD.
+ *
+ * Sabotage, 22 September:
+ *
+ *   `!task.permission_granted`                              1 test fails   HELD
+ *   `!task || user_id !== fromUserId || status !== 'open'`  3,728 pass     NOT HELD
+ *
+ * The second line carries three separate refusals and the middle one is an
+ * AUTHORISATION check: without it, one account can create asks against another
+ * account's goal — writing to real people in somebody else's name, from their
+ * goal, with their permission flag standing in for consent that was never
+ * given about this.
+ *
+ * The comment above the gate explains the permission half at length and says
+ * nothing about ownership, which is probably why only the permission half ever
+ * got a test. All three are refusals of the same weight at the same choke
+ * point, so all three are held here.
+ */
+describe('the gate refuses on all three counts, not only the permission', () => {
+  it('refuses when the goal does not exist', async () => {
+    mockGetTask.mockResolvedValue(null as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('task_not_open');
+  });
+
+  /**
+   * THE AUTHORISATION ONE. Account 99 asking on account 42's goal is not a
+   * mistake to report politely — it is somebody writing to real people out of
+   * a goal that is not theirs.
+   */
+  it('refuses when the caller does not own the goal', async () => {
+    mockGetTask.mockResolvedValue({
+      id: 3,
+      user_id: 42,
+      status: 'open',
+      permission_granted: true,
+    } as never);
+
+    const out = await createAsk('99', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('task_not_open');
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the goal is closed', async () => {
+    mockGetTask.mockResolvedValue({
+      id: 3,
+      user_id: 42,
+      status: 'done',
+      permission_granted: true,
+    } as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('task_not_open');
+  });
+
+  /**
+   * The control: the same call with all three satisfied must still go out, or
+   * the three above would pass against a gate that refuses everything.
+   */
+  it('and still sends when the goal exists, is owned, and is open', async () => {
+    // The recipient and the budget queries, same as every sending test here.
+    // Without them the three refusals above would pass against a gate that
+    // refuses everything, which proves nothing about any of them.
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(true);
+  });
+});
