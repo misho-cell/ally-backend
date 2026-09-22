@@ -44,8 +44,8 @@ import jwt from 'jsonwebtoken';
  *   * EVERY MINT IS LOGGED with both ids, so „who acted as Test 3 last
  *     Tuesday" has an answer.
  *
- * WHAT IT STILL CANNOT DO, and this is the line: an id that is not one of the
- * six is refused, and the refusal names the id. There is no wildcard, no
+ * WHAT IT STILL CANNOT DO, and this is the line: an id that is not on the list
+ * is refused, and the refusal names the id. There is no wildcard, no
  * „any account with no contacts", no „any account whose name starts with
  * Netai Test". A real person's account cannot be reached through this even by
  * an admin, even by mistake, even if the seat asks.
@@ -57,6 +57,24 @@ const FICTIONAL_TEST_ACCOUNTS: ReadonlySet<string> = new Set([
   '171873', // Netai Test 4
   '171874', // Netai Test 5
   '171936', // Netai Test 6
+  // 22 September. The seat asked for „a SEVENTH fictional account" so rows 210
+  // and 232 could be proved — every pair on the six had been used, and the
+  // assistant refuses a second request on a used pair. I went to create one
+  // and found FIVE already there, made 19 September in one batch and untouched
+  // since: zero threads, zero goals, zero tokens. They were unreachable only
+  // because this list stopped at six, so nothing could mint a token for them.
+  //
+  // VERIFIED THE SAME WAY THE FIRST SIX WERE, and §7a is the reason it is not
+  // a formality — Netai Test 5 sits on a number a real owner had in their
+  // phonebook since August. Checked for these five: every holder of 0107-0111
+  // is itself a test seat, so no real person's phonebook is touched by any of
+  // them. Names, reserved number block, batch creation and empty histories all
+  // agree.
+  '171937', // Netai Test 7
+  '171938', // Netai Test 8
+  '171939', // Netai Test 9
+  '171940', // Netai Test 10
+  '171941', // Netai Test 11
 ]);
 
 /** Twelve hours, matching an admin session — a fixture, not a login. */
@@ -72,7 +90,7 @@ export class NotATestAccountError extends Error {
   constructor(userId: string) {
     super(
       `${userId} is not one of the fictional test accounts. This route reaches ` +
-        'Netai Test 1-6 and nothing else — a real person’s account is not available ' +
+        'Netai Test 1-11 and nothing else — a real person’s account is not available ' +
         'through it, by design.',
     );
     this.name = 'NotATestAccountError';

@@ -45,7 +45,7 @@ export interface PendingRequest {
    * Answering one of these writes to a real person, so the tester's seat has
    * been unable to touch `POST /requests/:ref/:action` at all — the payload
    * named the counterpart and never said whether that name belongs to
-   * somebody real or to one of the six fictional test accounts. Their 379
+   * somebody real or to one of the fictional test accounts. Their 379
    * asked for exactly this and ranked it last themselves.
    */
   requester_user_id: number | null;

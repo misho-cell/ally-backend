@@ -277,7 +277,7 @@ export async function creditTopup(
  *     the number negated — an ordinary row beside the first one, visible, and
  *     the balance is the sum of the column. An undo that leaves a trail.
  *
- * The caller checks that the account is one of the six; this function does the
+ * The caller checks that the account is a fictional seat; this function does the
  * arithmetic and nothing else. The bound is here as well as at the route
  * because a cap enforced in one place is a cap until somebody adds a second
  * caller.

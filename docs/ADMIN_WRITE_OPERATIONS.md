@@ -1609,3 +1609,76 @@ the 850 legitimate `event` rows written since.
 **Re-counted immediately before writing it**, not taken from this morning's
 reading: 26 rows, 22 threads, 10 August 02:30 to 11 August 12:07, all on
 account 501.
+
+## §21 — The seventh test account already existed, and four more with it
+
+**22 September. Misho's word, in one line, for all three of the morning's
+asks: „გააკეთე სამივე".** This is the second of them.
+
+### WHAT WAS ASKED, AND WHY I DID NOT DO IT
+
+The seat asked for a SEVENTH fictional account: rows 210 and 232 cannot be
+proved on the six, because the assistant remembers every earlier request and
+answers „already in motion" on a pair that has been used — and all nine
+non-direct pairs on the six were used on 21 September.
+
+**I went to create one and found five already there.** Netai Test 7-11,
+accounts 171937-171941, created 19 September in one batch and untouched since:
+
+| | threads | goals | tokens | holds | held by |
+|---|---|---|---|---|---|
+| Netai Test 7 (171937) | 0 | 0 | 0 | 2 | 2 |
+| Netai Test 8 (171938) | 0 | 0 | 0 | 2 | 2 |
+| Netai Test 9 (171939) | 0 | 0 | 0 | 1 | 1 |
+| Netai Test 10 (171940) | 0 | 0 | 0 | 1 | 1 |
+| Netai Test 11 (171941) | 0 | 0 | 0 | 0 | 0 |
+
+**They were unreachable only because `FICTIONAL_TEST_ACCOUNTS` stopped at six**,
+so nothing could mint a token for them and no tokens could be granted.
+
+**So no account was created and no phonebook row was written.** The operation
+turned out to be a list and a balance.
+
+### AND THEIR SHAPE IS ALREADY THE ONE THE ROWS NEED
+
+    10 ── 7 ── 8 ── 9          11 (isolated)
+
+A path, not a mesh — which is the same reason §7's shape has missing edges:
+if everyone holds everyone, no introduction is ever necessary and the rows
+become untestable. Test 7 holds 8, 8 holds 9, **7 does not hold 9** — a real
+two-hop chain that has never been used.
+
+### WHAT CHANGED
+
+```
+src/services/testSeatTokens.ts — FICTIONAL_TEST_ACCOUNTS + 171937..171941
+```
+
+No route, no migration, no data write. §17's own promise is that widening this
+list „takes a commit somebody can read", and the test that spells the list out
+failed the moment the ids were added — which is the point at which somebody
+has to say why. It now carries the reason.
+
+### VERIFIED FIRST, AND §7a IS WHY THAT IS NOT A FORMALITY
+
+Netai Test 5 sits on a number a real owner has had in their phonebook since
+August. So for these five I checked the same thing rather than assuming:
+**every holder of the numbers ending 0107-0111 is itself a test seat.** No real
+person's phonebook touches any of them. Names, the reserved number block, the
+batch creation and the empty histories all agree.
+
+### TOKENS
+
+250 each to Test 7, 8 and 9 — the three the chain needs — through §19's route,
+which now reaches them. Not to 10 and 11: a seat with no work to do does not
+need a balance, and a grant nobody asked for is still a grant.
+
+### UNDO
+
+Two, and both are ordinary:
+
+* **The access:** remove the ids from `FICTIONAL_TEST_ACCOUNTS`. They go back to
+  being unreachable, which is the state they were in this morning.
+* **The tokens:** §19's route with the amount negated, exactly as §19 says.
+
+Nothing was created, so there is nothing to delete.

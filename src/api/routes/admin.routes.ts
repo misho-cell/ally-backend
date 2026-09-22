@@ -1630,7 +1630,7 @@ export function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: s
 }
 
 /**
- * A user token for one of the six FICTIONAL test accounts — the seat's 361 and
+ * A user token for one of the FICTIONAL test accounts — the seat's 361 and
  * 370, scoped down until it was safe to build.
  *
  * Their first ask was „act as a named test user", which I refused on
@@ -1694,7 +1694,7 @@ adminRouter.post('/test-seat/token', (req: Request, res: Response) => {
  * WHAT IT NARROWS. The four `admin_adjust` rows in the ledger were typed
  * straight into the database in July — 999,999 tokens to one real account,
  * 100,000 to another — with no external_id, no note, no code. This route
- * reaches the six fictional accounts and nothing else, caps a call at
+ * reaches the fictional accounts and nothing else, caps a call at
  * ±50,000, demands a written reason, and records where the row came from.
  * A real person's wallet is not available through it.
  *

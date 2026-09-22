@@ -66,8 +66,24 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
     expect(decoded.exp - decoded.iat).toBe(12 * 60 * 60);
   });
 
-  it('lists exactly six, so a widening shows up as a failing test', () => {
-    expect(fictionalTestAccountIds()).toHaveLength(6);
+  /**
+   * THE LIST IS SPELLED OUT SO A WIDENING CANNOT BE QUIET, and on 22 September
+   * it did its job: adding five ids made this the only failing test in the
+   * suite, which is exactly the moment somebody has to say why.
+   *
+   * Why the five. The seat needed a fictional account whose pairs had never
+   * been used, so rows 210 and 232 could be proved at all. Netai Test 7-11
+   * already existed — made 19 September in one batch, untouched since — and
+   * were unreachable only because this list stopped at six.
+   *
+   * Verified before being written down, as the first six were, and §7a of
+   * ADMIN_WRITE_OPERATIONS is why that is not a formality: Netai Test 5 sits
+   * on a number a real owner has had in their phonebook since August. For
+   * these five, every holder of 0107-0111 is itself a test seat. No real
+   * person's phonebook is touched by any of them.
+   */
+  it('lists exactly the verified ids, so a widening shows up as a failing test', () => {
+    expect(fictionalTestAccountIds()).toHaveLength(11);
     expect([...fictionalTestAccountIds()].sort()).toEqual([
       '171870',
       '171871',
@@ -75,6 +91,11 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
       '171873',
       '171874',
       '171936',
+      '171937',
+      '171938',
+      '171939',
+      '171940',
+      '171941',
     ]);
   });
 });
