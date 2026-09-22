@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { recordFixedUsage } from '../costLedger.service';
+import { logToolCall } from '../toolCallLog.service';
 import { SEARCH_OUTCOMES } from '../searchOutcome.service';
 import {
   mcpBlockContact,
@@ -91,13 +92,35 @@ interface McpTextResult {
 }
 
 /**
- * Runs one tool call: records it in the cost ledger (fire-and-forget — the
- * ledger must never break the tool), executes the handler, and converts the
- * payload to MCP text content. Raw errors never reach the client.
+ * Runs one tool call: records it in the cost ledger and in `tool_call_log`
+ * (both fire-and-forget — neither may break the tool), executes the handler,
+ * and converts the payload to MCP text content. Raw errors never reach the
+ * client.
+ *
+ * THE LOG WRITE IS NEW, 22 September, from the tester's observation: this
+ * function wrote the ledger and not the log, so every call made through the
+ * connector was invisible in the one table that says what a tool actually
+ * DID. It could not be written — `tool_call_log.thread_id` was NOT NULL and a
+ * connector call has no conversation to belong to. Migration 166 makes the
+ * column nullable and adds `surface`.
+ *
+ * WHAT IT COST: for three days I took counts out of that table and called them
+ * „every call". They were every CHAT call. `surface` is what lets an old
+ * number and a new one be asked for in the same query, because the totals
+ * either side of today are otherwise not comparable.
  */
 async function runTool(
   userId: string,
   toolName: string,
+  /**
+   * What the client asked for. Passed at every call site rather than left out,
+   * because a column that promises the arguments and is blank on half the rows
+   * is worse than one that is absent: the next person reading the table cannot
+   * tell „nothing was passed" from „we did not bother to write it down".
+   * `logToolCall` summarises and redacts it (D149: a phone as its last four
+   * digits, never in full) exactly as it does the chat's.
+   */
+  args: Record<string, unknown>,
   run: () => Promise<McpToolPayload>,
 ): Promise<McpTextResult> {
   recordFixedUsage({
@@ -111,12 +134,36 @@ async function runTool(
     console.error(`[mcp] ledger write failed for ${toolName}:`, err);
   });
 
+  const startedAt = Date.now();
+  /**
+   * Written whichever way the call ends, and a throw is recorded as the
+   * failure it is. A log that holds only the calls that worked answers „how
+   * often does this fail" with silence, which is the substitution this
+   * codebase keeps having to undo.
+   *
+   * No thread and no run: a connector call belongs to neither.
+   */
+  const record = (result: unknown): void => {
+    void logToolCall({
+      threadId: null,
+      surface: 'connector',
+      runId: null,
+      userId,
+      tool: toolName,
+      input: args,
+      result,
+      durationMs: Date.now() - startedAt,
+    });
+  };
+
   try {
     const payload = await run();
+    record(payload);
     return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[mcp] ${toolName} failed:`, err);
+    record({ error: (err as Error).message });
     return {
       content: [{ type: 'text', text: JSON.stringify({ error: GENERIC_TOOL_ERROR }) }],
       isError: true,
@@ -139,7 +186,7 @@ function registerSearchTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'search_contacts', () => mcpSearchContacts(userId, args)),
+    (args) => runTool(userId, 'search_contacts', args, () => mcpSearchContacts(userId, args)),
   );
   server.registerTool(
     'search_by_insight',
@@ -149,7 +196,7 @@ function registerSearchTools(server: McpServer, userId: string): void {
       inputSchema: { query: z.string().describe(PARAM_TEXTS.insightQuery) },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'search_by_insight', () => mcpSearchByInsight(userId, args)),
+    (args) => runTool(userId, 'search_by_insight', args, () => mcpSearchByInsight(userId, args)),
   );
   server.registerTool(
     'search_second_degree',
@@ -159,7 +206,8 @@ function registerSearchTools(server: McpServer, userId: string): void {
       inputSchema: { query: z.string().describe(PARAM_TEXTS.secondDegreeQuery) },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'search_second_degree', () => mcpSearchSecondDegree(userId, args)),
+    (args) =>
+      runTool(userId, 'search_second_degree', args, () => mcpSearchSecondDegree(userId, args)),
   );
 }
 
@@ -172,7 +220,7 @@ function registerProfileTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'get_network_stats', () => mcpGetNetworkStats(userId)),
+    () => runTool(userId, 'get_network_stats', {}, () => mcpGetNetworkStats(userId)),
   );
   server.registerTool(
     'get_contact_profile',
@@ -182,7 +230,8 @@ function registerProfileTools(server: McpServer, userId: string): void {
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_contact_profile', () => mcpGetContactProfile(userId, args)),
+    (args) =>
+      runTool(userId, 'get_contact_profile', args, () => mcpGetContactProfile(userId, args)),
   );
 }
 
@@ -201,7 +250,8 @@ function registerIntroTools(server: McpServer, userId: string): void {
       },
       annotations: DESTRUCTIVE,
     },
-    (args) => runTool(userId, 'request_introduction', () => mcpRequestIntroduction(userId, args)),
+    (args) =>
+      runTool(userId, 'request_introduction', args, () => mcpRequestIntroduction(userId, args)),
   );
   server.registerTool(
     'check_my_inbox',
@@ -211,7 +261,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'check_my_inbox', () => mcpCheckInbox(userId)),
+    () => runTool(userId, 'check_my_inbox', {}, () => mcpCheckInbox(userId)),
   );
   server.registerTool(
     'snooze_update',
@@ -224,7 +274,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       },
       annotations: DESTRUCTIVE,
     },
-    (args) => runTool(userId, 'snooze_update', () => mcpSnoozeUpdate(userId, args)),
+    (args) => runTool(userId, 'snooze_update', args, () => mcpSnoozeUpdate(userId, args)),
   );
   server.registerTool(
     'respond_to_request',
@@ -239,7 +289,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       },
       annotations: DESTRUCTIVE,
     },
-    (args) => runTool(userId, 'respond_to_request', () => mcpRespondToRequest(userId, args)),
+    (args) => runTool(userId, 'respond_to_request', args, () => mcpRespondToRequest(userId, args)),
   );
   // Engine T11: never destructive (nothing is sent to the non-member — the
   // user pastes the text themselves), so a plain write annotation.
@@ -254,7 +304,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    (args) => runTool(userId, 'invite_contact', () => mcpInviteContact(userId, args)),
+    (args) => runTool(userId, 'invite_contact', args, () => mcpInviteContact(userId, args)),
   );
   // Engine T3: a bare, unlimited invite link — never messages anyone, no
   // destructive/write footprint beyond the sent-event log, so READ_ONLY.
@@ -266,7 +316,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'get_invite_link', () => mcpGetInviteLink(userId)),
+    () => runTool(userId, 'get_invite_link', {}, () => mcpGetInviteLink(userId)),
   );
   // Ticket 6 (24 Aug): T2's ambiguity queue, contact_ref only — never a raw
   // phone number crosses this boundary, same guarantee as every other tool.
@@ -278,7 +328,8 @@ function registerIntroTools(server: McpServer, userId: string): void {
       inputSchema: { limit: z.number().optional().describe(PARAM_TEXTS.labelQueueLimit) },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_unresolved_labels', () => mcpGetUnresolvedLabels(userId, args)),
+    (args) =>
+      runTool(userId, 'get_unresolved_labels', args, () => mcpGetUnresolvedLabels(userId, args)),
   );
   server.registerTool(
     'get_intro_status',
@@ -288,7 +339,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'get_intro_status', () => mcpGetIntroStatus(userId)),
+    () => runTool(userId, 'get_intro_status', {}, () => mcpGetIntroStatus(userId)),
   );
 }
 
@@ -312,7 +363,8 @@ function registerProfileQuestionTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_profile_question', () => mcpGetProfileQuestion(userId, args)),
+    (args) =>
+      runTool(userId, 'get_profile_question', args, () => mcpGetProfileQuestion(userId, args)),
   );
   server.registerTool(
     'answer_profile_question',
@@ -328,7 +380,9 @@ function registerProfileQuestionTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) =>
-      runTool(userId, 'answer_profile_question', () => mcpAnswerProfileQuestion(userId, args)),
+      runTool(userId, 'answer_profile_question', args, () =>
+        mcpAnswerProfileQuestion(userId, args),
+      ),
   );
 }
 
@@ -360,7 +414,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'save_contact_fact', () => mcpSaveContactFact(userId, args)),
+    (args) => runTool(userId, 'save_contact_fact', args, () => mcpSaveContactFact(userId, args)),
   );
   server.registerTool(
     'get_contact_facts',
@@ -370,7 +424,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_contact_facts', () => mcpGetContactFacts(userId, args)),
+    (args) => runTool(userId, 'get_contact_facts', args, () => mcpGetContactFacts(userId, args)),
   );
   server.registerTool(
     'block_contact',
@@ -380,7 +434,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'block_contact', () => mcpBlockContact(userId, args)),
+    (args) => runTool(userId, 'block_contact', args, () => mcpBlockContact(userId, args)),
   );
   server.registerTool(
     'unblock_contact',
@@ -390,7 +444,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'unblock_contact', () => mcpUnblockContact(userId, args)),
+    (args) => runTool(userId, 'unblock_contact', args, () => mcpUnblockContact(userId, args)),
   );
   server.registerTool(
     'list_blocked_contacts',
@@ -400,7 +454,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'list_blocked_contacts', () => mcpListBlocked(userId)),
+    () => runTool(userId, 'list_blocked_contacts', {}, () => mcpListBlocked(userId)),
   );
   server.registerTool(
     'remove_contact_from_network',
@@ -414,7 +468,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       annotations: DESTRUCTIVE,
     },
     (args) =>
-      runTool(userId, 'remove_contact_from_network', () =>
+      runTool(userId, 'remove_contact_from_network', args, () =>
         mcpRemoveContactFromNetwork(userId, args),
       ),
   );
@@ -433,7 +487,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'create_task', () => mcpCreateTask(userId, args)),
+    (args) => runTool(userId, 'create_task', args, () => mcpCreateTask(userId, args)),
   );
   server.registerTool(
     'get_my_tasks',
@@ -445,7 +499,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_my_tasks', () => mcpGetMyTasks(userId, args)),
+    (args) => runTool(userId, 'get_my_tasks', args, () => mcpGetMyTasks(userId, args)),
   );
   server.registerTool(
     'update_task',
@@ -459,7 +513,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'update_task', () => mcpUpdateTask(userId, args)),
+    (args) => runTool(userId, 'update_task', args, () => mcpUpdateTask(userId, args)),
   );
   server.registerTool(
     'grant_task_permission',
@@ -469,7 +523,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       inputSchema: { task_ref: z.string().describe(PARAM_TEXTS.taskRef) },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'grant_task_permission', () => mcpGrantTaskPermission(userId, args)),
+    (args) =>
+      runTool(userId, 'grant_task_permission', args, () => mcpGrantTaskPermission(userId, args)),
   );
   server.registerTool(
     'propose_task_plan',
@@ -506,7 +561,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'propose_task_plan', () => mcpProposeTaskPlan(userId, args)),
+    (args) => runTool(userId, 'propose_task_plan', args, () => mcpProposeTaskPlan(userId, args)),
   );
   server.registerTool(
     'approve_task_plan',
@@ -519,7 +574,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'approve_task_plan', () => mcpApproveTaskPlan(userId, args)),
+    (args) => runTool(userId, 'approve_task_plan', args, () => mcpApproveTaskPlan(userId, args)),
   );
   server.registerTool(
     'save_user_note',
@@ -532,7 +587,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'save_user_note', () => mcpSaveUserNote(userId, args)),
+    (args) => runTool(userId, 'save_user_note', args, () => mcpSaveUserNote(userId, args)),
   );
   server.registerTool(
     'get_user_notes',
@@ -547,7 +602,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_user_notes', () => mcpGetUserNotes(userId, args)),
+    (args) => runTool(userId, 'get_user_notes', args, () => mcpGetUserNotes(userId, args)),
   );
   server.registerTool(
     'forget_user_note',
@@ -558,7 +613,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
         note_ref: z.string().describe('The note_ref from get_user_notes, e.g. note_42'),
       },
     },
-    (args) => runTool(userId, 'forget_user_note', () => mcpForgetUserNote(userId, args)),
+    (args) => runTool(userId, 'forget_user_note', args, () => mcpForgetUserNote(userId, args)),
   );
   server.registerTool(
     'list_answer_rules',
@@ -568,7 +623,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    () => runTool(userId, 'list_answer_rules', () => mcpListAnswerRules(userId)),
+    () => runTool(userId, 'list_answer_rules', {}, () => mcpListAnswerRules(userId)),
   );
   server.registerTool(
     'delete_answer_rule',
@@ -578,7 +633,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       inputSchema: { rule_id: z.number().describe('The rule, from list_answer_rules.') },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'delete_answer_rule', () => mcpDeleteAnswerRule(userId, args)),
+    (args) => runTool(userId, 'delete_answer_rule', args, () => mcpDeleteAnswerRule(userId, args)),
   );
   server.registerTool(
     'queue_result',
@@ -593,7 +648,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'queue_result', () => mcpQueueResult(userId, args)),
+    (args) => runTool(userId, 'queue_result', args, () => mcpQueueResult(userId, args)),
   );
   server.registerTool(
     'record_search_outcome',
@@ -614,7 +669,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'record_search_outcome', () => mcpRecordSearchOutcome(userId, args)),
+    (args) =>
+      runTool(userId, 'record_search_outcome', args, () => mcpRecordSearchOutcome(userId, args)),
   );
   server.registerTool(
     'correct_contact_fact',
@@ -633,7 +689,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'correct_contact_fact', () => mcpCorrectContactFact(userId, args)),
+    (args) =>
+      runTool(userId, 'correct_contact_fact', args, () => mcpCorrectContactFact(userId, args)),
   );
   server.registerTool(
     'save_close_contact',
@@ -649,7 +706,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'save_close_contact', () => mcpSaveCloseContact(userId, args)),
+    (args) => runTool(userId, 'save_close_contact', args, () => mcpSaveCloseContact(userId, args)),
   );
   server.registerTool(
     'save_contact_relationship',
@@ -666,7 +723,9 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) =>
-      runTool(userId, 'save_contact_relationship', () => mcpSaveContactRelationship(userId, args)),
+      runTool(userId, 'save_contact_relationship', args, () =>
+        mcpSaveContactRelationship(userId, args),
+      ),
   );
   server.registerTool(
     'forget_contact_relationship',
@@ -681,7 +740,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: DESTRUCTIVE,
     },
     (args) =>
-      runTool(userId, 'forget_contact_relationship', () =>
+      runTool(userId, 'forget_contact_relationship', args, () =>
         mcpForgetContactRelationship(userId, args),
       ),
   );
@@ -696,7 +755,9 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) =>
-      runTool(userId, 'get_contact_relationships', () => mcpGetContactRelationships(userId, args)),
+      runTool(userId, 'get_contact_relationships', args, () =>
+        mcpGetContactRelationships(userId, args),
+      ),
   );
   server.registerTool(
     'record_debrief_outcome',
@@ -713,7 +774,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) =>
-      runTool(userId, 'record_debrief_outcome', () => mcpRecordDebriefOutcome(userId, args)),
+      runTool(userId, 'record_debrief_outcome', args, () => mcpRecordDebriefOutcome(userId, args)),
   );
   server.registerTool(
     'answer_goal_question',
@@ -726,7 +787,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'answer_goal_question', () => mcpAnswerGoalQuestion(userId, args)),
+    (args) =>
+      runTool(userId, 'answer_goal_question', args, () => mcpAnswerGoalQuestion(userId, args)),
   );
   server.registerTool(
     'respond_to_thanks_loop_offer',
@@ -739,7 +801,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) =>
-      runTool(userId, 'respond_to_thanks_loop_offer', () =>
+      runTool(userId, 'respond_to_thanks_loop_offer', args, () =>
         mcpRespondToThanksLoopOffer(userId, args),
       ),
   );
@@ -759,7 +821,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) =>
-      runTool(userId, 'get_pending_updates', () =>
+      runTool(userId, 'get_pending_updates', args, () =>
         mcpGetPendingUpdates(userId, { include_seen: args.include_seen === true }),
       ),
   );
@@ -775,7 +837,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'ask_contact', () => mcpAskContact(userId, args)),
+    (args) => runTool(userId, 'ask_contact', args, () => mcpAskContact(userId, args)),
   );
   server.registerTool(
     'set_task_brief',
@@ -788,7 +850,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'set_task_brief', () => mcpSetTaskBrief(userId, args)),
+    (args) => runTool(userId, 'set_task_brief', args, () => mcpSetTaskBrief(userId, args)),
   );
   server.registerTool(
     'set_task_wake',
@@ -801,7 +863,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'set_task_wake', () => mcpSetTaskWake(userId, args)),
+    (args) => runTool(userId, 'set_task_wake', args, () => mcpSetTaskWake(userId, args)),
   );
   server.registerTool(
     'finish_task',
@@ -814,7 +876,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'finish_task', () => mcpFinishTask(userId, args)),
+    (args) => runTool(userId, 'finish_task', args, () => mcpFinishTask(userId, args)),
   );
   server.registerTool(
     'exclude_contact',
@@ -829,7 +891,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'exclude_contact', () => mcpExcludeContact(userId, args)),
+    (args) => runTool(userId, 'exclude_contact', args, () => mcpExcludeContact(userId, args)),
   );
   server.registerTool(
     'remove_contact_exclusion',
@@ -842,7 +904,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'remove_contact_exclusion', () => mcpRemoveExclusion(userId, args)),
+    (args) =>
+      runTool(userId, 'remove_contact_exclusion', args, () => mcpRemoveExclusion(userId, args)),
   );
   server.registerTool(
     'mark_contact_deceased',
@@ -852,7 +915,8 @@ function registerGoalTools(server: McpServer, userId: string): void {
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: DESTRUCTIVE,
     },
-    (args) => runTool(userId, 'mark_contact_deceased', () => mcpMarkContactDeceased(userId, args)),
+    (args) =>
+      runTool(userId, 'mark_contact_deceased', args, () => mcpMarkContactDeceased(userId, args)),
   );
   server.registerTool(
     'retract_contact_fact',
@@ -867,7 +931,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'retract_contact_fact', () => mcpRetractFact(userId, args)),
+    (args) => runTool(userId, 'retract_contact_fact', args, () => mcpRetractFact(userId, args)),
   );
   server.registerTool(
     'forget_contact_fact',
@@ -883,7 +947,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
       },
       annotations: DESTRUCTIVE,
     },
-    (args) => runTool(userId, 'forget_contact_fact', () => mcpForgetFact(userId, args)),
+    (args) => runTool(userId, 'forget_contact_fact', args, () => mcpForgetFact(userId, args)),
   );
 }
 
@@ -898,7 +962,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_top_connectors', () => mcpGetTopConnectors(userId, args)),
+    (args) => runTool(userId, 'get_top_connectors', args, () => mcpGetTopConnectors(userId, args)),
   );
   server.registerTool(
     'get_group_connectors',
@@ -911,7 +975,8 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_group_connectors', () => mcpGetGroupConnectors(userId, args)),
+    (args) =>
+      runTool(userId, 'get_group_connectors', args, () => mcpGetGroupConnectors(userId, args)),
   );
   server.registerTool(
     'search_roster',
@@ -924,7 +989,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'search_roster', () => mcpSearchRoster(userId, args)),
+    (args) => runTool(userId, 'search_roster', args, () => mcpSearchRoster(userId, args)),
   );
   server.registerTool(
     'find_warm_path',
@@ -937,7 +1002,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'find_warm_path', () => mcpFindWarmPath(userId, args)),
+    (args) => runTool(userId, 'find_warm_path', args, () => mcpFindWarmPath(userId, args)),
   );
   server.registerTool(
     'get_upcoming_birthdays',
@@ -950,7 +1015,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       annotations: READ_ONLY,
     },
     (args) =>
-      runTool(userId, 'get_upcoming_birthdays', () => mcpGetUpcomingBirthdays(userId, args)),
+      runTool(userId, 'get_upcoming_birthdays', args, () => mcpGetUpcomingBirthdays(userId, args)),
   );
   server.registerTool(
     'get_curiosity_queue',
@@ -962,7 +1027,8 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_curiosity_queue', () => mcpGetCuriosityQueue(userId, args)),
+    (args) =>
+      runTool(userId, 'get_curiosity_queue', args, () => mcpGetCuriosityQueue(userId, args)),
   );
   server.registerTool(
     'get_country_channels',
@@ -975,7 +1041,8 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_country_channels', () => mcpGetCountryChannels(userId, args)),
+    (args) =>
+      runTool(userId, 'get_country_channels', args, () => mcpGetCountryChannels(userId, args)),
   );
   server.registerTool(
     'get_netai_info',
@@ -987,7 +1054,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: READ_ONLY,
     },
-    (args) => runTool(userId, 'get_netai_info', () => mcpGetNetaiInfo(userId, args)),
+    (args) => runTool(userId, 'get_netai_info', args, () => mcpGetNetaiInfo(userId, args)),
   );
   server.registerTool(
     'stop_contacting_me',
@@ -1000,7 +1067,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       },
       annotations: WRITE,
     },
-    (args) => runTool(userId, 'stop_contacting_me', () => mcpStopContactingMe(userId, args)),
+    (args) => runTool(userId, 'stop_contacting_me', args, () => mcpStopContactingMe(userId, args)),
   );
   server.registerTool(
     'allow_contacting_me',
@@ -1010,7 +1077,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       inputSchema: {},
       annotations: WRITE,
     },
-    () => runTool(userId, 'allow_contacting_me', () => mcpAllowContactingMe(userId)),
+    () => runTool(userId, 'allow_contacting_me', {}, () => mcpAllowContactingMe(userId)),
   );
 }
 

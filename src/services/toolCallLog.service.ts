@@ -193,8 +193,22 @@ export function outcomeOf(result: unknown): ToolOutcome {
   };
 }
 
+/**
+ * Where the call came from.
+ *
+ * The connector's calls were never written down at all — `thread_id` was NOT
+ * NULL and a connector call has no thread — so for three days I read this
+ * table's counts as „every call" when they were „every CHAT call". The value
+ * is stored rather than derived from a null thread, because a meaning that has
+ * to be remembered is one that gets forgotten, and because the numbers either
+ * side of migration 166 are only comparable through this column.
+ */
+export type ToolCallSurface = 'chat' | 'connector';
+
 export interface ToolCallRecord {
-  readonly threadId: number;
+  /** Null for a connector call: there is no conversation it belongs to. */
+  readonly threadId: number | null;
+  readonly surface: ToolCallSurface;
   readonly runId: string | null;
   readonly userId: string;
   readonly tool: string;
@@ -230,12 +244,13 @@ export async function logToolCall(record: ToolCallRecord): Promise<void> {
     const outcome = outcomeOf(record.result);
     await query(
       `INSERT INTO tool_call_log
-         (thread_id, run_id, user_id, tool, args_summary,
+         (thread_id, surface, run_id, user_id, tool, args_summary,
           result_count, result_empty, result_chars, duration_ms, ok, result_keys, error_text,
           result_sample)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         record.threadId,
+        record.surface,
         record.runId,
         record.userId,
         record.tool,

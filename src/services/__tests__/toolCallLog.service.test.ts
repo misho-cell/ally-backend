@@ -11,7 +11,18 @@
  * copy of what people wrote to each other, and a place a full phone number
  * ends up (D149).
  */
-import { outcomeOf, redactPhones, resultCountOf, summariseArgs } from '../toolCallLog.service';
+jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+
+import { query } from '../../db/postgres/client';
+import {
+  logToolCall,
+  outcomeOf,
+  redactPhones,
+  resultCountOf,
+  summariseArgs,
+} from '../toolCallLog.service';
+
+const mockQuery = query as jest.MockedFunction<typeof query>;
 
 describe('Ticket 19 G7 — summarising a tool call for the admin', () => {
   describe('phones (D149)', () => {
@@ -207,5 +218,80 @@ describe('row 125 — the reason, not just the fact', () => {
     expect(outcomeOf({ ok: false, error: '   ' }).error).toBeNull();
     // Still a failure, though: `ok` reads the key's presence, not its type.
     expect(outcomeOf({ ok: false, error: { code: 17 } }).ok).toBe(false);
+  });
+});
+
+/**
+ * 22 September — the surface a call came from, and a thread that may not exist.
+ *
+ * The connector's calls could not be written at all: `thread_id` was NOT NULL
+ * and a connector call has no conversation. Migration 166 makes the column
+ * nullable and adds `surface`, and the two go together — a null thread is what
+ * makes the row possible, and `surface` is what makes the counts either side
+ * of today comparable, which a derived `thread_id IS NULL` would not.
+ */
+describe('where a call came from', () => {
+  const written = (): { sql: string; params: unknown[] } => {
+    const call = mockQuery.mock.calls[0];
+    return { sql: String(call[0]), params: call[1] as unknown[] };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQuery.mockResolvedValue({ rows: [] } as never);
+  });
+
+  it('writes the surface beside the thread, for a chat call', async () => {
+    await logToolCall({
+      threadId: 21121,
+      surface: 'chat',
+      runId: 'r1',
+      userId: '501',
+      tool: 'search_by_tag',
+      input: { tag: 'vet' },
+      result: { found: true, count: 3 },
+      durationMs: 42,
+    });
+
+    const { sql, params } = written();
+    expect(sql).toContain('surface');
+    expect(params[0]).toBe(21121);
+    expect(params[1]).toBe('chat');
+  });
+
+  it('writes a connector call with no thread, which is what used to be impossible', async () => {
+    await logToolCall({
+      threadId: null,
+      surface: 'connector',
+      runId: null,
+      userId: '501',
+      tool: 'search_contacts',
+      input: { tag: 'vet' },
+      result: { found: true, count: 3 },
+      durationMs: 42,
+    });
+
+    const { params } = written();
+    expect(params[0]).toBeNull();
+    expect(params[1]).toBe('connector');
+  });
+
+  it('redacts a connector call’s arguments exactly as a chat call’s (D149)', async () => {
+    await logToolCall({
+      threadId: null,
+      surface: 'connector',
+      runId: null,
+      userId: '501',
+      tool: 'get_contact_profile',
+      input: { contact_ref: '995599123456', message: 'x'.repeat(40) },
+      result: {},
+      durationMs: 1,
+    });
+
+    const summary = String(written().params[5]);
+    expect(summary).toContain('…3456');
+    expect(summary).not.toContain('995599123456');
+    // The free-text field is counted, never copied.
+    expect(summary).toContain('message=<40 chars>');
   });
 });

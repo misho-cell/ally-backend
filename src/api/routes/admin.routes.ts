@@ -3641,8 +3641,17 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
       query(
         `SELECT c.id, c.target_phone, c.target_label, c.city, c.status, c.ask_count_dial,
                 c.opened_at, c.closed_at, c.closed_reason,
-                COUNT(p.id) AS participant_count,
-                COUNT(p.id) FILTER (WHERE p.asked_at IS NOT NULL) AS asked_count,
+                -- ::int, and it is not cosmetic. Postgres COUNT is bigint, and
+                -- node-postgres hands a bigint back as a STRING rather than
+                -- lose precision on it. So this page was sending "12" and "9",
+                -- and in the client "12" > "9" is false — a sort or a
+                -- threshold on either column reads backwards, silently, on
+                -- exactly the rows that matter most. I warned the frontend
+                -- about it and left the server sending the wrong type, which
+                -- is the wrong half to fix: a count of campaign participants
+                -- has no precision to lose.
+                COUNT(p.id)::int AS participant_count,
+                COUNT(p.id) FILTER (WHERE p.asked_at IS NOT NULL)::int AS asked_count,
                 MIN(p.scheduled_ask_at) FILTER (WHERE p.asked_at IS NULL)
                   AS next_ask_due_at,
                 COALESCE(

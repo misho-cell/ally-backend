@@ -6727,6 +6727,7 @@ async function runOneToolBlock(
   // break a user's answer is worse than no debugging record.
   void logToolCall({
     threadId,
+    surface: 'chat',
     runId,
     userId,
     tool: block.name,

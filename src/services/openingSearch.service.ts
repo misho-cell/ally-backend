@@ -189,6 +189,7 @@ export async function runOpeningSearches(
     const result = await work;
     void logToolCall({
       threadId,
+      surface: 'chat',
       runId,
       userId,
       tool: `${tool}:opening`,
@@ -698,6 +699,7 @@ export async function findWaysIn(
     if (origin.threadId === undefined || origin.threadId === null) return;
     void logToolCall({
       threadId: origin.threadId,
+      surface: 'chat',
       runId: origin.runId ?? null,
       userId,
       tool: 'search_by_tag:way_in',
