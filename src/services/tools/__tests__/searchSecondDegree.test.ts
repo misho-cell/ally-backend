@@ -86,16 +86,23 @@ describe('searchSecondDegree tag matching', () => {
     // alternation even for one word. This is the cheapest of the three searches
     // to widen — the filter was ALREADY one alternation, so the added readings
     // cost a longer pattern and one more pre-filter LIKE, not another pass.
+    //
+    // AND SINCE 22 SEPTEMBER THE TERMS ARE STEMS: „buralteri" → „buralter".
+    // The Latin side never stemmed while the Georgian side always did, so
+    // „arqiteqtori" could not reach the label „arkitektorebi". Note the count
+    // did NOT change — seven parameters before and seven after. A stem is a
+    // PREFIX of the word it came from, so it supersedes it instead of joining
+    // it, which is the same rule the Georgian stem has used since row 10.
     expect(params).toEqual([
       '42',
       [FRIEND_PHONE],
-      '\\mburalteri',
-      '\\mბურალთერი',
-      '\\mბურალტერი',
-      '\\mburalteri|\\mბურალთერი|\\mბურალტერი',
-      '%buralteri%',
-      '%ბურალთერი%',
-      '%ბურალტერი%',
+      '\\mburalter',
+      '\\mბურალთერ',
+      '\\mბურალტერ',
+      '\\mburalter|\\mბურალთერ|\\mბურალტერ',
+      '%buralter%',
+      '%ბურალთერ%',
+      '%ბურალტერ%',
       [],
       '42',
       ['role', 'occupation'],
@@ -137,9 +144,9 @@ describe('searchSecondDegree tag matching', () => {
     // მარკეტინგი needs თ→ტ and ქ→კ at once, and trying each singly would have
     // spent the budget without ever reaching the word that exists.
     expect(prefilter).toEqual([
-      '%buralteri%',
-      '%ბურალთერი%',
-      '%ბურალტერი%',
+      '%buralter%',
+      '%ბურალთერ%',
+      '%ბურალტერ%',
       '%marketing%',
       '%marqeting%',
       '%მარქეთინგ%',
@@ -543,9 +550,9 @@ describe('the pre-filter in front of the regex', () => {
     // მარკეტინგი needs თ→ტ and ქ→კ at once, and trying each singly would have
     // spent the budget without ever reaching the word that exists.
     expect(prefilter).toEqual([
-      '%buralteri%',
-      '%ბურალთერი%',
-      '%ბურალტერი%',
+      '%buralter%',
+      '%ბურალთერ%',
+      '%ბურალტერ%',
       '%marketing%',
       '%marqeting%',
       '%მარქეთინგ%',

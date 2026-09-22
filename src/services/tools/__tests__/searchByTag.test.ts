@@ -164,7 +164,10 @@ describe('searchByTag', () => {
     await searchByTag('42', 'Radiatori 2');
 
     const params = mockQuery.mock.calls[0][1] as unknown[];
-    expect(params).toContain('\\mradiatori');
+    // Row 222, 22 September: the Latin side stems now, so „radiatori" reaches
+    // the search as „radiator" — which matches radiatori, radiatoris and
+    // radiatorebi. A stem is a prefix, so this is the same search and wider.
+    expect(params).toContain('\\mradiator');
     // '2' is short AND word-ending -> exact token.
     expect(params).toContain('\\m2\\M');
     // No %…% patterns at all — the exact search never touches the trigram path.

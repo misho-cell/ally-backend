@@ -1,4 +1,5 @@
 import { georgianStem } from './georgianStem';
+import { normalizeSearchToken } from './normalizeSearchToken';
 import { nameFormVariants } from './nameForms';
 
 const GEO_TO_LATIN: readonly [string, string][] = [
@@ -382,10 +383,82 @@ function supersededBy(term: string, stemTerms: readonly string[]): boolean {
   );
 }
 
+/**
+ * Ticket 20 row 222, the half that had never been built — a LATIN query is
+ * never stemmed, and a Georgian one always is.
+ *
+ * `georgianStem`'s first line returns the word unchanged when it holds no
+ * Georgian letter. So „არქიტექტორი" stems to „არქიტექტორ" and reaches the
+ * label `arkitektorebi`, while „arqiteqtori" does not — which is exactly the
+ * seat's 69-against-74 on one account.
+ *
+ * MEASURED before it was built, twice. Reach first, against the live base:
+ *
+ *   arkitektori   1,746 -> 1,848      bugalteri  12,983 -> 13,320
+ *   santekniki    2,740 -> 3,969      elektrikos    289 ->    300
+ *   together     17,758 -> 19,437 people, +9.5%
+ *
+ * Then precision, on 501, by eye, tags only: of the twelve tags only the stem
+ * reaches, ELEVEN are the same trade — plurals, genitive plurals, the ღ/ხ and
+ * ქ/კ spellings, a feminine form. The twelfth is wrong: „bebia" is grandmother
+ * and the stem „bebi" reaches „bebiko", somebody's nickname.
+ *
+ * AND IT IS WRONG EXACTLY AT THE FLOOR. „bebi" is four characters, which is
+ * `georgianStem`'s own minimum, and every stem of five or more was right. So
+ * the threshold here is FIVE, and it is the seat's decision on that number
+ * rather than my preference.
+ *
+ * NO ENDING LIST OF MY OWN. The Georgian reading already exists
+ * (`latinToGeorgian`, built for the other direction of this same row) and the
+ * ending list already exists and is tested. This joins the two and invents
+ * nothing: Latin in, Georgian reading, stem it, Latin back out.
+ *
+ * AND IT HAS TO REFUSE ENGLISH, which the first version did not. Measured over
+ * the week's 373 real tag queries before shipping: it was stemming
+ * „sustainability" to „sustainabilit", „falconry" to „faltsonr", „wordpress"
+ * to „tsordpres" and „agency" to „agents". Those are Georgian CASE endings
+ * being applied to English words, and the round trip mangles the rest of the
+ * word on the way. It is the same fault as writing „accountant" in Georgian
+ * letters, which I removed from this file last night.
+ *
+ * THE TEST IS THE ROUND TRIP ITSELF, which needs no word list. A word that is
+ * really Georgian typed in Latin survives Latin → Georgian → Latin unchanged
+ * once the database's own folds are applied: „arqiteqtori" comes back
+ * „arkitektori", which normalizes to the same string. „wordpress" comes back
+ * „tsordpres", which does not. So the reading is only trusted when it is
+ * faithful, and `normalizeSearchToken`'s rule is the one that decides —
+ * the same rule the search itself compares by.
+ */
+const MIN_LATIN_STEM_CHARS = 5;
+
+/**
+ * Does the Georgian reading of this Latin word give the word back?
+ *
+ * Folded with the database's own normalization, so q/k, gh/g and the rest of
+ * the drift the search already treats as one thing do not count as damage.
+ */
+function theReadingIsFaithful(latin: string, reading: string): boolean {
+  return normalizeSearchToken(georgianToLatin(reading)) === normalizeSearchToken(latin);
+}
+
+export function latinStem(word: string): string {
+  const lower = word.toLowerCase();
+  // The Georgian path stems already; doing it twice would be the same answer.
+  if (hasGeorgian(lower)) return lower;
+  const reading = latinToGeorgian(lower);
+  if (!theReadingIsFaithful(lower, reading)) return lower;
+  const stemmed = georgianStem(reading);
+  if (stemmed === reading) return lower;
+  const back = georgianToLatin(stemmed);
+  return back.length >= MIN_LATIN_STEM_CHARS ? back : lower;
+}
+
 function wordVariantGroup(word: string): string[] {
   const lower = word.toLowerCase();
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
-  const stem = georgianStem(lower);
+  // Row 222: the Georgian stem for a Georgian word, the Latin one for a Latin
+  // word. Never both — each returns the word untouched on the other's input.
+  const stem = hasGeorgian(lower) ? georgianStem(lower) : latinStem(lower);
   const stemTerms = stem === lower ? [] : buildSearchTerms(stem);
   const group = new Set<string>(stemTerms);
   for (const term of buildSearchTerms(word)) {
