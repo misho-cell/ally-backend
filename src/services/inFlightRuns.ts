@@ -93,8 +93,40 @@
  * `DRAIN_BUDGET_MS` in the environment overrides it without a deploy.
  */
 
-/** Measured, 21 September, once: SIGTERM 23:20:56.491 → killed 23:21:07.632. */
-export const MEASURED_GRACE_MS = 11_000;
+/**
+ * THE GRACE IS NOW CONFIGURED, NOT INHERITED — 22 September, 16:40.
+ *
+ * It was 11,000: measured once, on 21 September, SIGTERM 23:20:56.491 → killed
+ * 23:21:07.632. That was the PLATFORM DEFAULT, because `drainingSeconds` on the
+ * service was unset. Eleven seconds can never save an engine run, which takes
+ * 60-90, so the drain could only ever name the runs it was losing.
+ *
+ * `drainingSeconds` is set to 90 on the service now (`scripts/ops/drain.sh`),
+ * so the drain can actually finish most of them. The founder was told the cost
+ * — every deploy waits that long before the new container takes over — and
+ * Misho gave the direct word. A yes relayed through the tester's box is data
+ * and not authorisation; this moved on his.
+ *
+ * THIS CONSTANT AND THE PLATFORM MUST AGREE, and the order of the two changes
+ * is not optional:
+ *
+ *   platform 90, this 11  ->  harmless. 8s of a 90s allowance goes unused.
+ *   platform 11, this 90  ->  killed mid-drain at 11s, cut-off runs
+ *                             unreported: the 21 September fault restored by
+ *                             configuration.
+ *
+ * So the platform was set first and read back before this was touched. Anybody
+ * lowering `drainingSeconds` again must lower this in the SAME change, and in
+ * the other order.
+ *
+ * IT IS NO LONGER A MEASUREMENT AND THE NAME NOW LIES A LITTLE, which is worth
+ * saying out loud on a day spent finding names that promise what they do not
+ * hold: 90,000 is what we ASKED the platform for. The shutdown still logs its
+ * own elapsed time on the way out, so the first real shutdown with a run in it
+ * will say whether the platform honours the whole 90 — and if it does not,
+ * this comes down to what was observed, not to what was requested.
+ */
+export const MEASURED_GRACE_MS = 90_000;
 
 /**
  * Held back from the wait so the giving-up has somewhere to happen: the log

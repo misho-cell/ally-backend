@@ -102,8 +102,27 @@ export function installShutdownHandlers(server: Closable): void {
   reportTheBudgetAgainstTheGrace();
   const shutdown = (signal: string): void => {
     const startedAt = Date.now();
+    /**
+     * THE BUDGET IS NAMED HERE BECAUSE THE FAILURE IS A MISSING LINE.
+     *
+     * `reportElapsed` compares the elapsed time against `MEASURED_GRACE_MS` and
+     * says OVER or inside — but it can only say either if the process is still
+     * alive to say it. If the platform's `drainingSeconds` is ever lowered
+     * below this budget, the container is killed mid-drain and that line is
+     * never written at all. The evidence of the fault is the ABSENCE of the
+     * second line, which is unreadable unless the first one told you what to
+     * expect.
+     *
+     * So this line names the wait. „draining, 2 run(s), waiting up to 87000 ms"
+     * followed by nothing means the platform did not give us 87 seconds, and
+     * `MEASURED_GRACE_MS` and `scripts/ops/drain.sh show` disagree.
+     */
     // eslint-disable-next-line no-console
-    console.log(`[shutdown] ${signal}: draining, ${inFlightCount()} run(s) in flight`);
+    console.log(
+      `[shutdown] ${signal}: draining, ${inFlightCount()} run(s) in flight, ` +
+        `waiting up to ${DRAIN_BUDGET_MS} ms (grace ${MEASURED_GRACE_MS} ms). ` +
+        'If no "exiting after" line follows, the platform killed us first.',
+    );
     server.close();
     void finishShutdown(signal)
       .catch((err: unknown) => {

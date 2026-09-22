@@ -122,4 +122,24 @@ describe('a budget that cannot fit inside the grace says so at boot', () => {
   it('stays quiet when the numbers do fit, which is the shipped default', () => {
     expect(DRAIN_BUDGET_MS + REPORT_RESERVE_MS).toBeLessThanOrEqual(MEASURED_GRACE_MS);
   });
+
+  /**
+   * AND THE ONE THING NO TEST CAN CHECK IS NAMED IN THE LOG INSTEAD.
+   *
+   * `MEASURED_GRACE_MS` is 90,000 because `drainingSeconds` on the Railway
+   * service was set to 90 on 22 September. Nothing here can read Railway, so
+   * no test can hold the two together — and if they ever disagree the wrong
+   * way (platform lower than the budget) the container is killed mid-drain and
+   * `reportElapsed` never runs. The fault's evidence is then a MISSING line,
+   * which is unreadable unless the first line said what to expect.
+   *
+   * So the opening line names the wait. „waiting up to 87000 ms" followed by
+   * no „exiting after" line is the whole diagnosis.
+   */
+  it('names the wait on the way in, so its own silence is readable', () => {
+    const source = readFileSync(join(__dirname, '..', 'gracefulShutdown.service.ts'), 'utf8');
+
+    expect(source).toContain('waiting up to ${DRAIN_BUDGET_MS} ms');
+    expect(source).toContain('the platform killed us first');
+  });
 });
