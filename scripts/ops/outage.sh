@@ -55,8 +55,36 @@ fi
 
 echo "last ${WINDOW_MIN}m: ${ERRORS} error(s), ${REPLIES} reply(ies), ${CALLS} model call(s)"
 
-# Nothing happened at all. A quiet product is not a broken one.
-if [ "$ERRORS" -eq 0 ]; then echo "OK — nobody saw an error."; exit 0; fi
+# NOTHING HAPPENED AT ALL — and „no errors" is not „working".
+#
+# Caught on this script's FIRST firing, 13:12, during the outage it was written
+# for. It printed „OK — nobody saw an error" over a window with zero errors,
+# zero model calls and one server-written reply. True, and useless: after
+# 12:51 nobody had tried. Silence and recovery look identical from here, and
+# the whole point of this file is to stop me reading one as the other.
+#
+# Still exit 0, because it is not evidence of an outage either and a routine
+# that cries at every quiet hour gets ignored. What changes is that it says
+# WHAT IT SAW rather than pronouncing on what it did not.
+#
+# AND THE TEST IS THE MODEL CALL, NOT THE REPLY. The first version of this
+# branch also required zero replies, and the window that caught it had ONE —
+# written by the server, not by the model. A reply with no model call behind it
+# is the product apologising, which is exactly the state being investigated.
+if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
+  echo "NOTHING PROVEN — no errors, and no model call went through in ${WINDOW_MIN} minutes."
+  echo "  A product nobody is using and a product that cannot answer look"
+  echo "  exactly alike from here. ${REPLIES} reply(ies) in the window were written"
+  echo "  by the server, not by the model. If an outage is known to be open, it"
+  echo "  is STILL OPEN until a model call succeeds."
+  exit 0
+fi
+
+# A quiet product is not a broken one — but it has to have DONE something.
+if [ "$ERRORS" -eq 0 ]; then
+  echo "OK — nobody saw an error, and ${CALLS} model call(s) went through."
+  exit 0
+fi
 
 # THE SIGNATURE OF 22 SEPTEMBER: errors arriving while nothing succeeds. One
 # error beside working replies is an ordinary failure and not an outage — the
