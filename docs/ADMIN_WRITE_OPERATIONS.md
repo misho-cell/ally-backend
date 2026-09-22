@@ -1685,7 +1685,20 @@ Nothing was created, so there is nothing to delete.
 
 ## §22 — One log row carries a phone number I put there this morning
 
-**Status: registered, NOT run. Waiting on Misho's or the founder's word.**
+**Status: APPROVED by Misho, 22 September — „დიახ, წაშალე
+მნიშვნელობა". NOT RUN, AND I CANNOT RUN IT.**
+
+**Why not, plainly.** The only database path I have is `scripts/ops/ro.sh`,
+which reaches `/internal/ro-sql`. That endpoint refuses anything but a single
+SELECT/WITH and runs it on a connection opened with
+`default_transaction_read_only=on`. There is no write path in my tooling, by
+design, and I am not building one to change one row — a route that can rewrite
+log rows is a worse thing to have than the row is.
+
+**So this needs somebody with write access to run the statement below.** It is
+one line and it is exact. Until then the row stands, the leak is closed going
+forward, and the fact is written here rather than being quietly dropped
+because the approval could not be acted on.
 
 ### WHAT IS THERE
 
