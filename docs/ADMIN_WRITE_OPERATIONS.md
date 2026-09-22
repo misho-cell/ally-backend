@@ -1682,3 +1682,87 @@ Two, and both are ordinary:
 * **The tokens:** §19's route with the amount negated, exactly as §19 says.
 
 Nothing was created, so there is nothing to delete.
+
+## §22 — One log row carries a phone number I put there this morning
+
+**Status: registered, NOT run. Waiting on Misho's or the founder's word.**
+
+### WHAT IS THERE
+
+The connector's tool-call logging went live at 10:02 today. Three rows have
+arrived and one of them reads:
+
+```
+tool_call_log id ?   surface 'connector'   tool 'find_warm_path'
+args_summary  target_ref=c_gFNfLaot3-O_GP1zSAWEBj4eezKYzEryBplmNOvxDtLwNzbfsYoaYsh-duFf
+created_at    2026-09-22T10:47:36.215Z
+```
+
+`encodeContactRef` is AES-256-GCM over `<userId>|<phone>`, and the module's own
+comment says what it is for: „the phone sealed inside never leaves the server".
+It left, into a debugging table that people read.
+
+**With the key it is the full number, which D149 forbids.** Without the key the
+ref is still deterministic by design, so the value is a stable per-person
+identifier that can be correlated across rows.
+
+### THE BLAST RADIUS, MEASURED RATHER THAN ASSUMED
+
+```sql
+SELECT surface,
+       COUNT(*) FILTER (WHERE args_summary  ~ 'c_[A-Za-z0-9_-]{24,}') AS in_args,
+       COUNT(*) FILTER (WHERE result_sample ~ 'c_[A-Za-z0-9_-]{24,}') AS in_samples,
+       COUNT(*) FILTER (WHERE error_text    ~ 'c_[A-Za-z0-9_-]{24,}') AS in_errors,
+       COUNT(*) AS total
+FROM tool_call_log GROUP BY surface;
+```
+
+| surface | in_args | in_samples | in_errors | total |
+|---|---|---|---|---|
+| chat | 0 | 0 | 0 | 6,499 |
+| connector | **1** | 0 | 0 | 3 |
+
+**Exactly one row in the whole table**, and it is from today, from my change.
+The chat side never had any — contact refs are a connector idea, and the chat
+tools pass phones, which `redactPhones` has always caught.
+
+**The leak is already closed going forward** (`SEALED_CONTACT_REF` redacts by
+value, shipped in `31c48bc`). This register entry is only about the one row
+that is already written.
+
+### THE OPERATION
+
+There is no admin route for this. It is a single statement on the read-write
+connection, and it is an UPDATE rather than a DELETE so the row keeps saying
+that `find_warm_path` was called, how long it took and what came back — which
+is the whole reason the table exists.
+
+```
+STATEMENT
+  UPDATE tool_call_log
+     SET args_summary = regexp_replace(args_summary,
+                                       'c_[A-Za-z0-9_-]{24,}',
+                                       '<contact ref>',
+                                       'g')
+   WHERE args_summary ~ 'c_[A-Za-z0-9_-]{24,}';
+
+EXPECTED   1 row
+```
+
+### UNDO
+
+**There is none, and that is the point of asking rather than doing.** The ref
+is not recoverable from anything else once the column is overwritten — it is
+not stored in a second place, and it is derived from a phone the table is not
+allowed to hold. So the undo is „there is nothing to undo, and nothing worth
+undoing": what is lost is a value that should never have been written.
+
+If the row itself matters more than the value, the alternative is to leave it
+and let it age out with the table.
+
+### WHY IT IS NOT URGENT AND IS STILL WORTH ASKING
+
+One row, encrypted, in a table whose readers do not hold the key. But D149 does
+not say „no readable phone numbers" — it says a phone appears as its last four
+digits and never in full, and this is in full. Leaving a known one in place
+because it is inconvenient to remove is how a rule stops being a rule.
