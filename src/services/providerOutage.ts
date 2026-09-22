@@ -68,3 +68,51 @@ export function isProviderRefusal(error: unknown): boolean {
   if (status === 400 && typeof message === 'string' && BILLING_REFUSAL.test(message)) return true;
   return false;
 }
+
+/**
+ * WHAT the provider said, for the log — 22 September, during an outage I could
+ * not diagnose because of this gap.
+ *
+ * From 12:04 every run in the product died in 0.2-0.4 seconds with no usage
+ * recorded at all, on four different accounts. The container said, ten times:
+ *
+ *   [provider] run <id> thread <id>: the model provider refused the request
+ *
+ * and not ONE of those lines says which refusal it was. „A record that says
+ * something happened and not what" is the fault this codebase keeps finding,
+ * and here it sat in the one line anybody reads while people are staring at an
+ * error.
+ *
+ * IT MATTERS BECAUSE THE STATUSES ARE NOT ONE THING. 401/402/403 is an account
+ * that will not be served until somebody pays or fixes a key — no retry will
+ * ever pass. 429 and 529 are load, and the next minute may be fine. The
+ * owner-facing line says „trying again now will not help" for all of them, and
+ * for the transient ones that is false. Knowing which is the difference
+ * between checking the billing page and waiting five minutes.
+ *
+ * THE MESSAGE IS CLIPPED AND NOT REDACTED, deliberately: a provider's error
+ * text is its own words about our account, not anybody's personal data, and
+ * the one thing that must not appear — a key — is not in it. It is short
+ * because a stack of vendor JSON in a log line is how the useful part gets
+ * scrolled past.
+ */
+const MAX_REFUSAL_CHARS = 200;
+
+export function describeProviderRefusal(error: unknown): string {
+  if (error === null || typeof error !== 'object') return 'unrecognised';
+  const { status, message } = error as MaybeApiError;
+  const code = typeof status === 'number' ? String(status) : 'no status';
+  const said = typeof message === 'string' ? message.trim().slice(0, MAX_REFUSAL_CHARS) : '';
+  /**
+   * The two families named, because the owner-facing sentence is right for one
+   * and wrong for the other and the reader should not have to remember which
+   * codes are which.
+   */
+  const family =
+    typeof status === 'number' && [401, 402, 403].includes(status)
+      ? ' — ACCOUNT: no retry will pass until this is fixed (credit or key)'
+      : typeof status === 'number' && [429, 529, 500, 502, 503].includes(status)
+        ? ' — LOAD: this one may pass on its own, and the owner was told it will not'
+        : '';
+  return said === '' ? `status ${code}${family}` : `status ${code}${family}: ${said}`;
+}

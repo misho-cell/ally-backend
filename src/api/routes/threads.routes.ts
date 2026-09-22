@@ -66,7 +66,7 @@ import {
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread } from '../../services/threadRunQueue';
 import { looksLikeStopRequest } from '../../services/stopIntent';
-import { isProviderRefusal } from '../../services/providerOutage';
+import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { ApiResponse } from '../../types';
 
@@ -1020,7 +1020,8 @@ threadsRouter.post(
             // eslint-disable-next-line no-console
             console.error(
               `[provider] run ${runId} thread ${threadId}: the model provider refused the ` +
-                'request — the owner is told the service is unavailable, not to retry',
+                'request — the owner is told the service is unavailable, not to retry. ' +
+                describeProviderRefusal(error),
             );
           }
           const userMessage = refused
