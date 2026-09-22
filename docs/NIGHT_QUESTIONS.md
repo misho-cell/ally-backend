@@ -31,7 +31,86 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+### 1. `privacy.routes.ts` takes an admin token on the erasure endpoint
+
+Found at 21:47 by a new test that asks whether the auth middleware is MOUNTED
+rather than whether it works. `privacy.routes.ts` mounts `authenticateJwt` and
+**not** `requireUserRole`, and it carries the data summary, the export and
+`deleteMyAccount` — which its own comment calls irreversible and rate-limits to
+ten a minute for that reason.
+
+**Not a cross-account hole.** An admin token acts on the ADMIN's own account,
+never on somebody else's. What it means is that an admin JWT left in shared
+client storage — the exact case `requireUserRole` was written for — reaches the
+erasure door, and the account it would erase is the admin's own.
+
+**Why we cannot decide it:** the file says it is deliberately not behind
+`requireSubscription` („the right to erasure cannot depend on having paid") and
+says nothing about the role, so the omission reads as unconsidered rather than
+decided — but an admin flow we cannot see from the source may depend on it.
+Adding `requireUserRole` is one word and it changes who can reach an
+irreversible endpoint.
+
+**What is blocked:** nothing. The test pins the current state, so whichever way
+it goes is a deliberate edit.
+
+### 2. The zero-wallet fixture refills itself every period
+
+`171941` (Netai Test 11) is the reserved empty-wallet account and it is
+carrying 245 tokens. Nobody granted them: `ensurePeriodGrant` credited 250 at
+17:56 today, because its only condition is `subscription_status` being active
+and every test seat's is.
+
+Two of my own documents (§13 and §19 of `ADMIN_WRITE_OPERATIONS.md`) say
+„171941 stays at zero". It cannot, by construction.
+
+**Why we cannot decide it:** the fix is to make that seat's subscription
+INACTIVE, which is an access change on an account. Removing the 250 is also a
+ledger write and would last only until the next period.
+
+**What is blocked:** any row 221 reading that needs a genuinely empty wallet.
+Test 10's −6 tonight is real evidence and stands; Test 11 is not a spare for it.
+
+### 3. Row 253's second half — the goal that names no trade and no place
+
+Closed tonight: a person's name no longer reaches the search engine. NOT closed:
+„I have a problem with my apartment" still fires an opening web search, which
+returned Greensboro, North Carolina handymen.
+
+**Why we cannot decide it:** the rule that would stop it is the positive test
+`goalIntent.ts` has already measured and rejected — when a similar guard shipped
+on 17 September it denied ten real goals their opening second-circle search and
+nobody saw it for three days. And D315 says both searches RUN when a problem is
+named. Two standing decisions point the other way; this needs the founder, not a
+regex.
+
+### 4. Row 253's other door — the distiller is a second provider
+
+The skip added tonight sits AFTER `distilSearchQuery`, which is a model call on
+OpenAI (`config/openai.ts`), not on the model that answers the conversation. So
+on an introduction goal the name still reaches OpenAI to be distilled; what is
+blocked is the distilled name reaching Tavily.
+
+**Why we cannot decide it tonight:** the obvious fix is to skip distillation
+too, and the distilled query is also what the SECOND CIRCLE searches with. Row
+110 measured what a raw sentence costs there — a phrase matching 0 people, a
+sentence timing out at 15 s three times. For an introduction goal the distilled
+query is just the person's name, so raw text probably costs nothing — and
+„probably" is what makes it daylight work.
+
+**What is blocked:** nothing; it is mine to finish with a measurement.
+
+### 5. Rows 251 and 252 — both against the consent and privacy walls
+
+Both specced tonight, neither built, each for a reason written into `TASKS.md`:
+251 widens who the model may write to (an accepted introduction should put that
+person inside that goal's plan), and 252 changes who is discoverable across
+accounts (331 of 372 role facts are on a phone no tag can find). Neither is a
+thing to change in the dark on my own reading, and today I proved the consent
+wall had no tests at all until this afternoon.
+
+**What is blocked:** nothing else waits on them.
+
 
 ## Handed over, 22 September (07:15 UTC) — the 21/22 night
 
