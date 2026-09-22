@@ -1,6 +1,18 @@
 #!/bin/bash
 # „Is the product answering people right now?" — one question, one answer.
 #
+# `model IS NOT NULL` IS THE WHOLE OF THE SECOND COLUMN, AND LEAVING IT OUT
+# MADE THIS SCRIPT LIE. `usage_events` is every paid thing, not every model
+# call: a WhatsApp OTP is a row in it. At 13:23, with the Anthropic balance
+# empty and not one inference going through, the count came back as 1 — an
+# `otp_whatsapp` row, provider `whatsapp`, no model, no tokens — and this file
+# printed „1 model call(s) did reach the provider, so it is not refusing
+# everything."
+#
+# That is the fault this script exists to catch, committed by the script, on
+# its second firing: a number that counts something other than what its name
+# promises, read out as reassurance. Third time today in my own work.
+#
 # WHY THIS EXISTS, 22 September. From 12:04 every run in the product died in
 # 0.2-0.4 seconds on four different accounts, and nobody noticed until Misho
 # sent me a screenshot of his own phone at 12:55. Fifty minutes.
@@ -33,7 +45,8 @@ SQL_TEXT="SELECT
     WHERE role = 'assistant' AND kind = 'message' AND content <> ''
       AND created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS replies,
   (SELECT COUNT(*) FROM usage_events
-    WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS model_calls"
+    WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
+      AND model IS NOT NULL)                                       AS model_calls"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
 
