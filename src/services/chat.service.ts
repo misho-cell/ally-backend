@@ -28,7 +28,11 @@ import {
 import { getEnabledToolKeys } from './enabledTools.service';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
-import { requestIntroduction, DisambiguationCandidate } from './tools/requestIntroduction';
+import {
+  requestIntroduction,
+  DisambiguationCandidate,
+  IntroRequestContext,
+} from './tools/requestIntroduction';
 import { respondToIntroduction } from './tools/respondToIntroduction';
 import {
   getPendingRequestsForMediator,
@@ -5364,10 +5368,7 @@ async function executeToolCall(
         input['target_phone'] as string | undefined,
         input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
         input['accept_dormant'] === true,
-        {
-          ...(goalForIntro === null ? {} : { requesterTaskId: goalForIntro.id }),
-          ...(threadId == null ? {} : { originThreadId: threadId }),
-        },
+        introContextFor(threadId, goalForIntro?.id),
       );
       if ((introOutcome as { success?: unknown }).success === true) {
         await markSearchSent(
@@ -6897,6 +6898,39 @@ const TOOLS_WHOSE_NARRATION_OVERPROMISES: ReadonlySet<string> = new Set(['save_u
 export function narrationIsSafeToPublish(roundToolNames: readonly string[]): boolean {
   if (roundToolNames.length === 0) return true;
   return !roundToolNames.every((name) => TOOLS_WHOSE_NARRATION_OVERPROMISES.has(name));
+}
+
+/**
+ * WHAT AN INTRODUCTION CARRIES BACK WITH IT — row 210, and the half nothing held.
+ *
+ * `resolveIntroductionRequest` is tested five ways on this: it writes into the
+ * origin chat when there is no goal, stays quiet when there is one, does
+ * nothing when there is no thread either, never writes twice into the request's
+ * own thread, and says nothing on a snooze. Every one of those five passes with
+ * THIS function deleted, because they set `origin_thread_id` on a fixture row.
+ *
+ * In production nothing would set it. `origin_thread_id` would be NULL on every
+ * request, `tellTheChatItWasAskedIn` would return on its second line, and the
+ * fault would be exactly what it was on 21 September — a real person asking in
+ * an ordinary chat at 10:19, the mediator agreeing at 10:22, and her chat
+ * saying nothing. Five green tests over a dead feature.
+ *
+ * Measured 22 September: 8 of the 8 requests raised since the writer shipped
+ * carry the thread, so it works today. None of those 8 lacked a goal, so the
+ * path it exists for has still never run in production — built and unproven,
+ * which is a different thing from fixed.
+ *
+ * Absent keys rather than undefined values: the connector genuinely has no
+ * conversation and no goal, and „this request never had one" is the meaning.
+ */
+export function introContextFor(
+  threadId: number | null | undefined,
+  goalId: number | null | undefined,
+): IntroRequestContext {
+  return {
+    ...(goalId == null ? {} : { requesterTaskId: goalId }),
+    ...(threadId == null ? {} : { originThreadId: threadId }),
+  };
 }
 
 const MIN_BURIED_ANSWER_CHARS = 200;
