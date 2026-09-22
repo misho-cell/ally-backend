@@ -284,6 +284,40 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
   for (const drift of driftVariants(latin)) {
     for (const withEnding of endingVariants(drift)) terms.add(withEnding);
   }
+  /**
+   * ROW 222, THE ASYMMETRY — measured 22 September on account 501, the exact
+   * pass, counting PEOPLE rather than queries:
+   *
+   *   arqiteqtori / არქიტექტორი    67 and 67, the same set
+   *   iuristi / იურისტი            41 and 41, the same set
+   *   bugalteri / ბუღალტერი        10 and 15 — FIVE the Latin query misses
+   *
+   * The cause is visible in the terms and it is not the stemming:
+   *
+   *   typed „bugalteri"  -> bugalter, ბუგალთერ, ბუგალტერ, ბუღალთერ, ბუღალტერ
+   *   typed „ბუღალტერი"  -> ბუღალტერ, bughalter, buralter, bugalter
+   *
+   * A GEORGIAN query reaches Latin spellings a LATIN query never generates.
+   * `driftVariants` folds gh → g, ღ's three Latin readings collapsing onto
+   * one — it narrows and never widens — so a Georgian word arrives at all
+   * three and a Latin word arrives at the one it was typed as.
+   *
+   * The loop closes here: each Georgian reading of a Latin word is mapped BACK
+   * to Latin and drifted, which is exactly the set a Georgian typist would
+   * have produced. The five people are tagged in one of those spellings.
+   *
+   * AND IT COSTS SOMETHING, said plainly because I measured the cost of
+   * variants this same afternoon: every extra term is another regex pass over
+   * the owner's whole book, and on 501 six variants cost three to four times
+   * what one does. This adds two for „bugalteri". Recall against speed, and
+   * for a word the owner typed, a third of the people missing is the worse of
+   * the two.
+   */
+  if (!hasGeorgian(lower)) {
+    for (const reading of georgianVariants(lower)) {
+      for (const drift of driftVariants(georgianToLatin(reading))) terms.add(drift);
+    }
+  }
   const capped = [...terms].slice(0, MAX_TERMS);
   return [...new Set([...capped, ...georgianVariants(lower)])];
 }

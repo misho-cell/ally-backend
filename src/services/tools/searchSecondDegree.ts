@@ -145,23 +145,59 @@ const NEVER_A_TAG = new Set([
  */
 const MAX_QUERY_PATTERNS = 15;
 
-/** Always search for something, even if the first word alone is over budget. */
+/**
+ * Fit the query inside the budget by dropping SPELLINGS, not WORDS.
+ *
+ * 22 September. Closing row 222's asymmetry gave „bugalteri" two more Latin
+ * readings, and that pushed „marketing agency" from fourteen patterns to
+ * seventeen — so this function, which kept whole groups until the budget ran
+ * out, threw „agency" away entirely. A two-word query searching for one word.
+ *
+ * THAT IS ROW 110's OWN FAILURE, arriving through the back door, and the
+ * comment above already promised it could not happen: „high enough that a
+ * distilled query — two to four words — is never touched". It was true when it
+ * was written and a change three files away made it false.
+ *
+ * So the cap trims INSIDE the words now. Every word keeps its primary spelling
+ * first, and what budget is left goes round-robin through the alternatives —
+ * the same shape as `cappedFuzzyTerms` in the tag search, for the same reason.
+ * Losing a spelling of a word costs some recall on that word; losing the word
+ * costs the whole intersection that makes „Dachi Axel" find one person instead
+ * of a hundred and fifty.
+ *
+ * A sentence with more WORDS than the budget has patterns is the one case
+ * where words still have to go — Ninia's fifty-one-pattern sentence is why the
+ * backstop exists at all — and it is reported as before.
+ */
 export function cappedGroups(groups: string[][], userId: string): string[][] {
   const meaningful = groups.filter((g) => !NEVER_A_TAG.has(g[0] ?? ''));
   const candidates = meaningful.length > 0 ? meaningful : groups;
-  const kept: string[][] = [];
-  let patterns = 0;
-  for (const group of candidates) {
-    if (kept.length > 0 && patterns + group.length > MAX_QUERY_PATTERNS) break;
-    kept.push(group);
-    patterns += group.length;
+  const total = candidates.reduce((n, g) => n + g.length, 0);
+  if (candidates.length === groups.length && total <= MAX_QUERY_PATTERNS) return groups;
+
+  // More words than the budget can hold even one pattern each: the old
+  // behaviour, because there is nothing to trim within a single term.
+  const words = candidates.slice(0, Math.max(1, MAX_QUERY_PATTERNS));
+  const kept = words.map((group) => group.slice(0, 1));
+  let patterns = kept.length;
+  for (let depth = 1; patterns < MAX_QUERY_PATTERNS; depth += 1) {
+    let addedThisRound = false;
+    for (let i = 0; i < words.length && patterns < MAX_QUERY_PATTERNS; i += 1) {
+      const term = words[i][depth];
+      if (term === undefined) continue;
+      kept[i].push(term);
+      patterns += 1;
+      addedThisRound = true;
+    }
+    if (!addedThisRound) break;
   }
-  if (kept.length === groups.length) return groups;
+
+  if (patterns === total && kept.length === groups.length) return groups;
   // eslint-disable-next-line no-console
   console.warn(
     `[second-degree] user ${userId}: query had ${groups.length} word groups ` +
-      `(${groups.flat().length} patterns); searching ${kept.length} (${patterns} patterns): ` +
-      kept.map((g) => g[0]).join(' '),
+      `(${groups.flat().length} patterns); searching ${kept.length} word(s), ` +
+      `${patterns} pattern(s): ${kept.map((g) => g[0]).join(' ')}`,
   );
   return kept;
 }

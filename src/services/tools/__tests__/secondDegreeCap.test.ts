@@ -51,11 +51,27 @@ describe('cappedGroups', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('counts PATTERNS, not words', () => {
+  /**
+   * 22 September — THIS USED TO EXPECT THE SIXTH WORD TO BE THROWN AWAY, and
+   * that expectation was the bug arriving through the back door.
+   *
+   * Closing row 222's asymmetry gave Latin words two more readings, and
+   * „marketing agency" went from fourteen patterns to seventeen — so the
+   * old rule dropped „agency" and searched a two-word query for one word.
+   * That is row 110's own failure, and the comment on MAX_QUERY_PATTERNS
+   * promised it could not happen to a two-to-four-word query.
+   *
+   * The budget is spent on WORDS first and spellings after.
+   */
+  it('keeps every word and trims the spellings instead', () => {
     const six = ['ერთი', 'ორი', 'სამი', 'ოთხი', 'ხუთი', 'ექვსი'].map(word);
 
-    // Five words are fifteen patterns and fit exactly; the sixth makes eighteen.
-    expect(cappedGroups(six, '501')).toHaveLength(5);
+    const kept = cappedGroups(six, '501');
+
+    expect(kept).toHaveLength(6);
+    expect(kept.flat()).toHaveLength(15);
+    // Every word is still searched for, under its own primary spelling.
+    expect(kept.map((g) => g[0])).toEqual(['ერთი', 'ორი', 'სამი', 'ოთხი', 'ხუთი', 'ექვსი']);
   });
 
   it('drops the words that can never be anybody’s tag, before it counts', () => {
@@ -67,13 +83,35 @@ describe('cappedGroups', () => {
     expect(kept.map((g) => g[0])).toEqual(['ფოტოგრაფი']);
   });
 
-  it('never drops half a word’s spellings', () => {
-    // A word searched in Georgian but not in its Latin spelling finds half the
-    // people who match it, and reads as a ranking bug for weeks.
-    const kept = cappedGroups(['ერთი', 'ორი', 'სამი', 'ოთხი', 'ხუთი'].map(word), '501');
-    expect(kept.length).toBeGreaterThan(0);
+  /**
+   * WHAT THIS COSTS, said rather than buried. A word searched in Georgian but
+   * not in its Latin spelling finds fewer of the people who match it — that is
+   * why this test was written, and it is still true.
+   *
+   * The two harms are now ranked instead of one of them being invisible.
+   * Losing a WORD takes it out of `word_hits` altogether, so the intersection
+   * that makes „Dachi Axel" find one person rather than the hundred and fifty
+   * who carry „Axel" is gone. Losing a SPELLING leaves the word searched and
+   * counted, with less recall on it. The first is worse, so spellings go first.
+   *
+   * A query that FITS is still never touched, which is every ordinary one.
+   */
+  it('leaves every spelling alone when the query fits', () => {
+    const five = ['ერთი', 'ორი', 'სამი', 'ოთხი', 'ხუთი'].map(word);
 
-    for (const group of kept) expect(group).toHaveLength(3);
+    expect(cappedGroups(five, '501')).toBe(five);
+    for (const group of cappedGroups(five, '501')) expect(group).toHaveLength(3);
+  });
+
+  it('spends the budget on the words first, so none is searched blind', () => {
+    // Eight words is twenty-four patterns; every one keeps its primary form.
+    const eight = ['ა', 'ბ', 'გ', 'დ', 'ე', 'ვ', 'ზ', 'თ'].map(word);
+
+    const kept = cappedGroups(eight, '501');
+
+    expect(kept).toHaveLength(8);
+    expect(kept.every((g) => g.length >= 1)).toBe(true);
+    expect(kept.flat().length).toBeLessThanOrEqual(15);
   });
 
   it('still searches for something when the first word alone is over budget', () => {

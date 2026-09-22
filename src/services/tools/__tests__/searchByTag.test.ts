@@ -105,9 +105,20 @@ describe('searchByTag', () => {
     // these two find nobody and are the price of the ones that do — a query
     // for „iuristi" reaches იურისტი the same way, and 1,059 people carry that
     // label with no Latin twin.
+    //
+    // 22 SEPTEMBER, AND THE SAME PRICE IS PAID TWICE NOW. „enghineer" and
+    // „enrineer" are the Latin readings of the Georgian reading — the loop
+    // closing, because a Georgian query reached Latin spellings a Latin query
+    // never generated. Measured on 501: „bugalteri" found 10 people where
+    // „ბუღალტერი" found 15, and the five it missed are tagged „bughalteri".
+    // For an ENGLISH word these two find nobody, exactly as the two Georgian
+    // ones above do, and for the same reason: nothing here can tell a Georgian
+    // word typed in Latin from an English one.
     expect(mockQuery.mock.calls[0][1]).toEqual([
       '42',
       '\\mengineer',
+      '\\menghineer',
+      '\\menrineer',
       '\\mენგინეერ',
       '\\mენღინეერ',
       '42',

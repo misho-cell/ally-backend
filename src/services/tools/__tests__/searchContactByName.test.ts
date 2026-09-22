@@ -106,6 +106,13 @@ describe('searchContactByName', () => {
     expect(mockQuery.mock.calls[0][1]).toEqual([
       '42',
       '\\mlivingston',
+      // 22 September: the Latin readings of the Georgian readings. A Georgian
+      // query reached Latin spellings a Latin query never generated — on 501,
+      // „bugalteri" found 10 people where „ბუღალტერი" found 15. A surname pays
+      // the same price an English word does, and for the same reason: nothing
+      // here can tell a Georgian word typed in Latin from a foreign one.
+      '\\mlivinghston',
+      '\\mlivinrston',
       '\\mლივინგსთონ',
       '\\mლივინგსტონ',
       '\\mლივინღსთონ',
