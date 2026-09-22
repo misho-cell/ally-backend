@@ -62,8 +62,37 @@ export interface ToolCallRow {
   readonly created_at: string;
 }
 
+/**
+ * A SEALED CONTACT REFERENCE IS A PHONE NUMBER, and I put one in this table
+ * myself this morning.
+ *
+ * Read back from the live rows three hours after shipping the connector's
+ * logging — the third of three, and the only one with an argument worth
+ * looking at:
+ *
+ *   find_warm_path   target_ref=c_gFNfLaot3-O_GP1zSAWEBj4eezKYzEryBplmN…
+ *
+ * `encodeContactRef` is AES-256-GCM over „<userId>|<phone>", and its own
+ * comment says what it is for: „the phone sealed inside never leaves the
+ * server". It just left, into a debugging table that people read.
+ *
+ * TWO THINGS ARE WRONG WITH IT AND ONLY ONE NEEDS A KEY. With the key it is
+ * the full number, which is the exact thing D149 forbids. WITHOUT the key it
+ * is still deterministic by design — the same contact always yields the same
+ * ref — so the column becomes a stable per-person identifier anybody can
+ * correlate across rows and across days.
+ *
+ * REDACTED BY VALUE AND NOT BY KEY NAME, deliberately. `NEVER_LOGGED_KEYS`
+ * would catch `contact_ref` and `target_ref` and miss whatever the next tool
+ * calls its parameter — the same reason phones are matched by shape rather
+ * than by the word „phone".
+ */
+const SEALED_CONTACT_REF = /\bc_[A-Za-z0-9_-]{24,}/g;
+
 export function redactPhones(text: string): string {
-  return text.replace(PHONE_LIKE, (match) => `…${match.replace(/\D/g, '').slice(-4)}`);
+  return text
+    .replace(PHONE_LIKE, (match) => `…${match.replace(/\D/g, '').slice(-4)}`)
+    .replace(SEALED_CONTACT_REF, '<contact ref>');
 }
 
 /**

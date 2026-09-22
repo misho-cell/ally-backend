@@ -295,3 +295,49 @@ describe('where a call came from', () => {
     expect(summary).toContain('message=<40 chars>');
   });
 });
+
+/**
+ * A SEALED CONTACT REFERENCE IS A PHONE NUMBER — caught in my own rows three
+ * hours after shipping the connector's logging, not by a test.
+ *
+ *   find_warm_path   target_ref=c_gFNfLaot3-O_GP1zSAWEBj4eezKYzEryBplmN…
+ *
+ * `encodeContactRef` is AES-256-GCM over „<userId>|<phone>" and its own
+ * comment says „the phone sealed inside never leaves the server". It left.
+ *
+ * With the key it is the full number, which D149 forbids. Without the key it
+ * is still deterministic by design, so the column becomes a stable per-person
+ * identifier anybody can correlate across rows.
+ */
+describe('a sealed contact ref never reaches the table', () => {
+  it('redacts it by SHAPE, whatever the parameter is called', () => {
+    const out = summariseArgs({
+      target_ref: 'c_gFNfLaot3-O_GP1zSAWEBj4eezKYzEryBplmNOvxDtLwNzbfsYoaYsh-duFf',
+    });
+
+    expect(out).not.toContain('gFNfLaot');
+    expect(out).toContain('<contact ref>');
+    // The key survives: „which argument was passed" is the whole point of the
+    // column, and only the value is the problem.
+    expect(out).toContain('target_ref=');
+  });
+
+  it('catches one under a key nobody has thought of yet', () => {
+    const out = summariseArgs({ whoever: 'c_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
+
+    expect(out).not.toContain('AAAAAAAA');
+    expect(out).toContain('<contact ref>');
+  });
+
+  it('catches one sitting inside a longer sentence', () => {
+    expect(redactPhones('resolved c_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ok')).toBe(
+      'resolved <contact ref> ok',
+    );
+  });
+
+  /** „c_" is not a magic prefix on its own — an ordinary short word is left be. */
+  it('leaves an ordinary value alone', () => {
+    expect(redactPhones('c_abc and c_12')).toBe('c_abc and c_12');
+    expect(summariseArgs({ group: 'Axel' })).toBe('group=Axel');
+  });
+});
