@@ -91,9 +91,18 @@ fi
 # threshold is deliberately about the RATIO and not about the count.
 if [ "$ERRORS" -ge 3 ] && [ "$REPLIES" -eq 0 ]; then
   echo "NOT ANSWERING — ${ERRORS} errors and not one reply in ${WINDOW_MIN} minutes."
-  echo "  Model calls in the same window: ${CALLS}. Zero means the provider refused before"
-  echo "  inference — an account or key problem, not load. Check the provider's balance."
-  echo "  Look for [provider] lines in the container log; they now name the status."
+  # The line used to read „Model calls: N. Zero means…" and printed that
+  # sentence whatever N was — it said „Zero means" over a 1 on its second
+  # firing. A sentence the number beside it contradicts is the fault this whole
+  # file was written to catch, in the file itself. Two branches now.
+  if [ "$CALLS" -eq 0 ]; then
+    echo "  NO model call reached the provider in that window — refused before inference,"
+    echo "  which is an account or key problem and not load."
+  else
+    echo "  ${CALLS} model call(s) did reach the provider, so it is not refusing everything."
+  fi
+  echo "  Read the cause, do not guess it: [provider] lines in the container log name the"
+  echo "  status and say ACCOUNT (no retry will pass) or LOAD (it may clear by itself)."
   exit 1
 fi
 
