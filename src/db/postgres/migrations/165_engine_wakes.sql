@@ -24,8 +24,16 @@
 -- sweeper picks up anything still unclaimed after its due time, so a restart
 -- costs a minute instead of a day.
 --
--- Claimed with an UPDATE ... RETURNING, so the timer and the sweeper cannot
--- both run the same wake whatever the timing.
+-- Claimed with an UPDATE ... RETURNING, so two sweepers cannot both take one
+-- row.
+--
+-- THE SENTENCE THAT WAS HERE SAID „so the timer and the sweeper cannot both run
+-- the same wake whatever the timing", and that was not true. The timer never
+-- claims anything — it does not touch this table until it has finished — so the
+-- claim cannot see it and cannot exclude it. What actually keeps them apart is
+-- `wakeDoneSince` in engineWakes.service.ts, which asks whether somebody else
+-- closed this wake after the caller was queued. Corrected in place on
+-- 22 September, comment only; the DDL below is unchanged and has not re-run.
 --
 -- NO PAYLOAD COLUMN. The first draft carried the event text, and the text is
 -- not a string — it is one sentence per language, chosen at wake time. The

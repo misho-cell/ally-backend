@@ -46,8 +46,17 @@ async function sweepOnce(): Promise<void> {
   const engine = await import('./taskEngine.service');
   for (const wake of due) {
     if (wake.kind !== DAY_ONE_WAKE) {
+      // NOT „leaving it claimed", which is what this line used to say and is
+      // not what happens: the claim expires in five minutes, the row comes back
+      // round, and after five attempts `abandonExhaustedWakes` closes it as
+      // though it had been run. A kind with no handler is a deploy that added
+      // a producer and not a consumer, so it is worth the row it burns and
+      // worth being told the truth about.
       // eslint-disable-next-line no-console
-      console.error(`[engine-wakes] no handler for kind ${wake.kind}; leaving it claimed`);
+      console.error(
+        `[engine-wakes] no handler for kind ${wake.kind}; it will be retried ` +
+          `until its attempts run out and then closed unrun`,
+      );
       continue;
     }
     // eslint-disable-next-line no-console

@@ -90,11 +90,17 @@ export async function finishWake(taskId: number, kind: string): Promise<void> {
 /**
  * How long past its due time a wake has to be before the sweeper takes it.
  *
- * The timer's own window is the delay plus fifteen retries at six seconds,
- * about ninety seconds in all, so anything shorter than that would race a
- * timer that is still working. Two minutes is that window plus a margin, and
- * it is also the seat's done-when — „every approval gets its first day within
- * two minutes, restart or not".
+ * THIS NUMBER IS THE TIMER'S WINDOW FOR GETTING INTO THE THREAD, AND NOT THE
+ * TIMER'S WINDOW. The delay is three seconds and there are fifteen retries at
+ * six, about ninety seconds in all — but that is ninety seconds of ASKING. The
+ * run the timer then starts takes sixty to ninety seconds more, and this number
+ * does not contain it.
+ *
+ * Two minutes is kept, because it is the seat's done-when — „every approval
+ * gets its first day within two minutes, restart or not" — and lengthening it
+ * to cover the run would break that promise to protect a case that
+ * `wakeDoneSince` protects properly. What is not kept is the claim that the
+ * grace separates the two: it does not, and `wakeDoneSince` says why.
  */
 const OVERDUE_AFTER_SECONDS = 120;
 
@@ -143,6 +149,57 @@ export async function claimOverdueWakes(limit: number): Promise<OverdueWake[]> {
     kind: r.kind,
     attempts: r.attempts,
   }));
+}
+
+/**
+ * Has this wake already been finished by somebody else since the caller queued
+ * its own attempt at it?
+ *
+ * THE ATOMIC CLAIM DOES NOT SERIALISE THE TIMER AGAINST THE SWEEPER, and this
+ * file, its test and the migration all said that it did.
+ *
+ * `claimOverdueWakes` is an UPDATE ... RETURNING, so two sweepers cannot take
+ * one row — that part is true. The timer takes nothing. It never touches this
+ * table until it is finished, so the claim cannot see it and therefore cannot
+ * exclude it. The only thing standing between them was `OVERDUE_AFTER_SECONDS`,
+ * and that number measures the wrong span.
+ *
+ * The timeline it lets through, with today's real constants:
+ *
+ *   due+0    the timer fires; the owner is mid-conversation, so the thread is
+ *            busy and it starts retrying every six seconds
+ *   due+60   the thread frees, the timer enters it and the run begins
+ *   due+120  the sweeper claims the row — `done_at` is still NULL, because the
+ *            run has not finished — and its own retry loop starts
+ *   due+150  the timer's run ends and calls `finishWake`
+ *   due+156  the sweeper's next retry finds an open goal and a free thread and
+ *            writes day one A SECOND TIME, to the plan's real people
+ *
+ * Goal 7790 this morning came within thirty seconds of it: claimed 09:00:12,
+ * finished 09:00:42. That one was the net working — the timer had given up at
+ * 08:59:28 and the sweeper was the only runner. Nothing in the guard could have
+ * told the difference.
+ *
+ * `since` is when the CALLER's wake was queued, not when the row was made. A
+ * `done_at` later than that can only be somebody else's run of the same wake,
+ * which is exactly and only the question being asked. Asking instead „is there
+ * an open row" would answer the same in the common case and answer wrongly for
+ * a second approval whose `recordWake` failed: no open row, an old closed one,
+ * and a first day refused for ever.
+ *
+ * Throws on a database failure rather than guessing, like the `goalOpen` beside
+ * it at the call site: that guard already abandons the wake when it cannot read
+ * the goal, and one policy is safer to reason about than two.
+ */
+export async function wakeDoneSince(taskId: number, kind: string, since: Date): Promise<boolean> {
+  const result = await query<{ id: string }>(
+    `SELECT id FROM engine_wakes
+      WHERE task_id = $1 AND kind = $2 AND done_at > $3
+      LIMIT 1`,
+    [taskId, kind, since],
+    WAKE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
 }
 
 /**

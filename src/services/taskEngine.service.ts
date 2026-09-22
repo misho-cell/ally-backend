@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
-import { DAY_ONE_WAKE, finishWake, recordWake } from './engineWakes.service';
+import { DAY_ONE_WAKE, finishWake, recordWake, wakeDoneSince } from './engineWakes.service';
 import { processChat } from './chat.service';
 import {
   getTaskById,
@@ -757,13 +757,29 @@ async function goalOpen(taskId: number): Promise<boolean> {
  *
  * `delayMs` is a parameter only so the sweeper can re-run the same wake with
  * no delay. Nothing else passes it.
+ *
+ * `queuedAt` is read here, at the top, because it is what the guard below
+ * compares against: „did somebody else finish this wake after I was queued".
+ * The timer and the sweeper can BOTH be queued for one wake — the claim does
+ * not stop that, whatever the table's own comment used to say — and this is the
+ * only thing that keeps the second one from writing day one twice.
  */
 export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS): void {
+  const queuedAt = new Date();
   void recordWake(taskId, DAY_ONE_WAKE, delayMs);
   wakeWhenFree(
     taskId,
     DAY_ONE_EVENT,
     async () => {
+      // Asked before the goal's own state, because a wake already run is not
+      // owed however open the goal is. This is the sweeper standing down when
+      // the timer's run finished underneath its retry loop — and the timer
+      // standing down in the mirror case.
+      if (await wakeDoneSince(taskId, DAY_ONE_WAKE, queuedAt)) {
+        // eslint-disable-next-line no-console
+        console.log(`[task-engine] task ${taskId}: day one already ran, standing down`);
+        return false;
+      }
       const open = await goalOpen(taskId);
       // A closed goal will never want its first day. Taking it off the list
       // here and not only on the woken path is what stops the sweeper picking
