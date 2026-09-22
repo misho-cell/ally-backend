@@ -1252,6 +1252,26 @@ adminRouter.get(
   },
 );
 
+/**
+ * The page, its real total, and whether it was cut — built in one place so the
+ * three cannot drift, and exported so the claim can be tested.
+ *
+ * `truncated` is the sentence this route makes to a reader who is counting, and
+ * it was a sentence nobody held. Every row carries the window count, so the
+ * total and the rows come from one snapshot; taking the count off each row here
+ * is what stops `total_count` being published as though `task_asks` had such a
+ * column.
+ */
+export function askPageFrom<T extends { total_count: number }>(
+  rows: readonly T[],
+): { asks: Omit<T, 'total_count'>[]; total: number; truncated: boolean } {
+  const asks = rows.map(({ total_count: _total, ...ask }) => ask);
+  // No rows means no row to carry the count, and zero is then the truth rather
+  // than a missing value — an empty page under these filters.
+  const total = rows[0]?.total_count ?? 0;
+  return { asks, total, truncated: asks.length < total };
+}
+
 // The ask log (tester register T2-02, requested three times): every ask ever
 // sent, with its delivery state — the only way to reconstruct what a user
 // actually received when two surfaces disagree. Newest first; ?limit= and
@@ -1283,13 +1303,29 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
      * as totals"), and this route was left as it was. Same shape now: the rows,
      * the real total, and whether the page was cut.
      *
-     * The count runs BESIDE the page, under the same filters, so the two
-     * cannot describe different populations — and the page pays the slower of
-     * the two rather than their sum.
+     * ONE QUERY, NOT TWO IN PARALLEL, and the first version of this was two.
+     *
+     * „The count runs beside the page under the same filters, so the two cannot
+     * describe different populations" was the sentence, and two statements on a
+     * live table are two snapshots however they are launched. An ask written
+     * between them makes `total` 100 and the page 100 rows, and the route then
+     * publishes `truncated: false` over a table that holds 101 — the same false
+     * reassurance this change was made to remove, moved one step along.
+     *
+     * `COUNT(*) OVER ()` is evaluated before the LIMIT, so it is the real total
+     * under the same filters AND from the same snapshot as the rows it travels
+     * with. It costs a full scan of the filtered set where the paged read alone
+     * could have stopped at the limit; against 176 rows that is nothing, and a
+     * number that cannot be wrong is worth more than the scan when it is not.
      */
-    const [result, totalRow] = await Promise.all([
-      query(
-        `SELECT ta.id, ta.task_id, ta.parent_ask_id,
+    const result = await query<{ total_count: number }>(
+      // Cast, so the total arrives as a number: an uncast COUNT is bigint and
+      // node-postgres hands bigint back as a STRING. The comparison below
+      // would have survived it on coercion; the JSON would not — the route
+      // would publish `"total": "176"` beside a numeric `truncated`, and the
+      // reader would have to know which of the two to trust.
+      `SELECT (COUNT(*) OVER ())::int AS total_count,
+              ta.id, ta.task_id, ta.parent_ask_id,
               ta.from_user_id, fu.name AS from_name,
               ta.to_user_id, tu.name AS to_name,
               ta.origin_user_id, ta.automatic, ta.answer_rule_id, ta.is_follow_up,
@@ -1302,23 +1338,13 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
          AND ($2::int IS NULL OR ta.from_user_id = $2::int OR ta.to_user_id = $2::int)
        ORDER BY ta.id DESC
        LIMIT $3::int`,
-        [taskId, userId, limit],
-      ),
-      query<{ count: string }>(
-        `SELECT COUNT(*)::int AS count
-           FROM task_asks ta
-          WHERE ($1::int IS NULL OR ta.task_id = $1::int)
-            AND ($2::int IS NULL OR ta.from_user_id = $2::int OR ta.to_user_id = $2::int)`,
-        [taskId, userId],
-      ),
-    ]);
-    const asks = result.rows;
-    const total = Number(totalRow.rows[0]?.count ?? asks.length);
+      [taskId, userId, limit],
+    );
     res.status(200).json({
       success: true,
       // A SHAPE CHANGE, and deliberately the same one `/admin/goals` already
       // has rather than a third invention: `data` was the bare array.
-      data: { asks, total, truncated: asks.length < total },
+      data: askPageFrom(result.rows),
       note: 'Member-to-member asks. The technique tag (when · how · reason) belongs to campaign invites: GET /admin/chorus/asks.',
     });
   } catch (error) {
