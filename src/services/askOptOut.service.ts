@@ -35,11 +35,25 @@ export async function optOutFromAsks(userId: string, reason?: string): Promise<v
     [userId, reason ?? null],
     OPTOUT_QUERY_TIMEOUT_MS,
   );
-  await query(
-    `UPDATE task_asks SET status = 'cancelled' WHERE to_user_id = $1::int AND status = 'sent'`,
-    [userId],
-    OPTOUT_QUERY_TIMEOUT_MS,
-  );
+  /**
+   * The cancelling, and — new on 22 September — telling the people who asked.
+   *
+   * It lives in `taskAsks` because the ask domain does, and it is reached by a
+   * dynamic import because that module imports THIS one: `isOptedOutFromAsks`
+   * is read on every send. A static import back would be a load-order cycle.
+   *
+   * After the opt-out itself is recorded, and best-effort: a person must never
+   * fail to be left alone because somebody else's thread could not be written
+   * to. If this throws, every ask is still cancelled by the statement inside
+   * it and only the telling is lost.
+   */
+  try {
+    const { withdrawAsksToOptedOutPerson } = await import('./taskAsks.service');
+    await withdrawAsksToOptedOutPerson(userId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[opt-out] could not withdraw pending asks:', (err as Error).message);
+  }
 }
 
 /** The way back — a stop that cannot be lifted is its own problem. */

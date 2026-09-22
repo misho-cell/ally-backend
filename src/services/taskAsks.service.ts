@@ -4,7 +4,7 @@ import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { createThread, saveThreadMessage, userLanguage } from './threads.service';
-import { RunLanguage, RUN_STRINGS } from './runLanguage';
+import { askWithdrawnAfterOptOut, RunLanguage, RUN_STRINGS } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { scrubText } from './privacyScrub';
@@ -1515,6 +1515,73 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
     await setThreadStatus(String(row.to_user_id), row.ask_thread_id, 'done', {
       isTask: true,
     }).catch(() => undefined);
+  }
+  return cancelled.rowCount ?? cancelled.rows.length;
+}
+
+/**
+ * A person switched questions off, so every question already on its way to
+ * them dies — AND THE PEOPLE WHO ASKED THEM ARE TOLD.
+ *
+ * The seat asked whether the asker is ever told and would not report it until
+ * one of us knew. Read from the live table: ask 3665 went to `cancelled` at
+ * 09:27:40 on 22 September, and account 171937's held updates that morning are
+ * two debriefs and two search follow-ups — none of them about it. The 3-day
+ * debrief for that ask would have said „no answer for 3 days … keep waiting",
+ * which is false about a withdrawn question, and it is correctly dropped at
+ * release time by `debriefStillDue`. So the answer was: silence, correctly,
+ * and permanently. His goal waits on a question that can never come back.
+ *
+ * THE CANCELLING ITSELF WAS ALREADY RIGHT and is deliberately silent towards
+ * the RECIPIENT — they have just asked for no more messages, and a
+ * cancellation notice is a message. This adds nothing on that side. It is the
+ * other side, the person who asked, who was never told anything.
+ *
+ * AND IT SAYS NOTHING ABOUT WHY. The other person's refusal is theirs; a line
+ * explaining it would publish one person's choice to another. He is told his
+ * question is gone and offered the only thing he can act on.
+ *
+ * Best-effort throughout, and the opt-out is recorded before any of this runs:
+ * a person must never fail to be left alone because a thread could not be
+ * written to.
+ */
+export async function withdrawAsksToOptedOutPerson(optedOutUserId: string): Promise<number> {
+  const cancelled = await query<{
+    task_id: number;
+    from_user_id: number;
+    thread_id: number | null;
+    to_name: string | null;
+  }>(
+    `UPDATE task_asks ta SET status = 'cancelled'
+      WHERE ta.to_user_id = $1::int AND ta.status = 'sent'
+      RETURNING ta.task_id, ta.from_user_id,
+                (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS thread_id,
+                (SELECT u.name FROM "User" u WHERE u.id = ta.to_user_id) AS to_name`,
+    [optedOutUserId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+
+  /**
+   * One line per GOAL, not per ask. A goal that wrote to this person twice
+   * (ticket 9 task 12 makes that ordinary) has two rows here, and two
+   * identical withdrawals in the same second read as a fault in the product
+   * rather than as courtesy — which is row 148's lesson, in a third place.
+   */
+  const told = new Set<number>();
+  for (const row of cancelled.rows) {
+    if (row.thread_id === null || told.has(row.thread_id)) continue;
+    told.add(row.thread_id);
+    // The ASKER's own language: this lands in the conversation he has been
+    // living in, not in the other person's.
+    const language = await userLanguage(String(row.from_user_id)).catch(() => 'ka' as RunLanguage);
+    const who = row.to_name?.trim();
+    if (who === undefined || who === '') continue;
+    await saveThreadMessage(
+      row.thread_id,
+      row.from_user_id,
+      'assistant',
+      askWithdrawnAfterOptOut(language, who),
+    ).catch(() => undefined);
   }
   return cancelled.rowCount ?? cancelled.rows.length;
 }

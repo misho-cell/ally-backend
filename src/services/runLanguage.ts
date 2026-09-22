@@ -1,3 +1,5 @@
+import { geoName } from './georgianCase';
+
 // Ticket 6, task 22 (g)/(h): the run's FIXED strings — step lines, the
 // working/failure lines, the status captions — must follow the conversation's
 // language, server-side. Every English thread used to carry Georgian chrome:
@@ -443,6 +445,41 @@ export function answerHeldNoTokens(language: RunLanguage, who: string): string {
       return `${who} ha respondido. No puedo redactar su respuesta hasta que recargues los tokens: no se ha perdido nada, está esperando.`;
     default:
       return `${who}-მა გიპასუხა. პასუხის ჩამოყალიბებას ტოკენების შევსება სჭირდება — არაფერი დაკარგულა, გელოდება.`;
+  }
+}
+
+/**
+ * The asker's question died because the person he asked switched questions
+ * off — and until today nobody told him, ever.
+ *
+ * The seat asked whether he is ever told and would not report it until one of
+ * us knew. Read from the live table: ask 3665 went to `cancelled` at 09:27:40
+ * and account 171937's held updates that morning are two debriefs and two
+ * search follow-ups, none of them about it. The 3-day debrief for that ask
+ * WOULD have said „no answer for 3 days … keep waiting", which is false about
+ * a withdrawn question — and it will not be said, because `debriefStillDue`
+ * keeps a relayed-ask debrief only while the ask is still `sent`. So: silence,
+ * correctly, and permanently.
+ *
+ * WHY THIS SAYS NOTHING ABOUT WHY, and that is the whole of it: the other
+ * person's refusal to be contacted is theirs, and a line explaining it would
+ * publish one person's choice to another. He is told his question is gone and
+ * offered the only thing he can act on.
+ *
+ * The seat's wording, not mine — I said I would not invent it and they wrote
+ * it. The Georgian, Russian and Spanish are mine from their English, which is
+ * worth knowing before anybody treats the Georgian as reviewed.
+ */
+export function askWithdrawnAfterOptOut(language: RunLanguage, who: string): string {
+  switch (language) {
+    case 'en':
+      return `I have withdrawn your question to ${who} — it will not be answered. Would you like me to ask somebody else?`;
+    case 'ru':
+      return `Я отозвал твой вопрос к ${who} — ответа не будет. Хочешь, спрошу кого-то другого?`;
+    case 'es':
+      return `He retirado tu pregunta a ${who}: no habrá respuesta. ¿Quieres que pregunte a otra persona?`;
+    default:
+      return `${geoName(who, 'gen')}თვის გაგზავნილი შენი კითხვა გავაუქმე — პასუხი აღარ მოვა. გინდა სხვას ვკითხო?`;
   }
 }
 
