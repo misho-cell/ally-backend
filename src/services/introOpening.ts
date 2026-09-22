@@ -676,6 +676,49 @@ export function introCancelledNote(language: RunLanguage, targetName: string): s
   }
 }
 
+/**
+ * The same withdrawal, said to the person who caused it — B31, 22 September.
+ *
+ * Read from three live threads. Requests 1387 and 1453 were CANCELLED at 08:38
+ * and 08:52 when their goals were stopped, and at 09:25 the asker's own
+ * outgoing-request thread still said, word for word and with a smiling face,
+ * that the request „has gone to Netai Test 8, they will see it next time they
+ * open Netai and reply" — status still „waiting", and nothing else in that
+ * chat, ever.
+ *
+ * The mediator has been let off since row 232. The person who let them off was
+ * left holding a promise of a reply that can never come. Both sides of a
+ * withdrawal are one event and only one side was being told.
+ *
+ * NOT AN APOLOGY AND NOT A QUESTION. They stopped the goal; they know why.
+ * What they do not know is that we acted on it, and that nobody is now waiting
+ * on anybody.
+ */
+export function introWithdrawnByOwnerNote(language: RunLanguage, targetName: string): string {
+  switch (language) {
+    case 'en':
+      return (
+        `You stopped this goal, so the introduction request about ${targetName} has been ` +
+        'withdrawn. Nothing more will be sent, and no reply is coming.'
+      );
+    case 'ru':
+      return (
+        `Ты остановил эту цель, поэтому запрос на знакомство с ${targetName} отозван. ` +
+        'Больше ничего не отправится, и ответа не будет.'
+      );
+    case 'es':
+      return (
+        `Paraste este objetivo, así que la petición de presentación sobre ${targetName} ` +
+        'queda retirada. No se enviará nada más y no llegará respuesta.'
+      );
+    default:
+      return (
+        `შენ შეაჩერე ეს დავალება, ამიტომ ${targetName}-თან გაცნობის მოთხოვნა გაუქმდა. ` +
+        'მეტი აღარაფერი გაიგზავნება და პასუხიც აღარ მოვა.'
+      );
+  }
+}
+
 /** The mediator's thread header once the request has been withdrawn. */
 export function introCancelledLine(language: RunLanguage): string {
   switch (language) {

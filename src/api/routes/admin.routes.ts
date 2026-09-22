@@ -1267,8 +1267,29 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
     // CAMPAIGN invites — it lives on /admin/chorus/asks, not on this table.
     // What this table does carry since Ticket 10: who pays for the chain
     // (origin_user_id, D123) and whether a standing rule answered (Task 22).
-    const result = await query(
-      `SELECT ta.id, ta.task_id, ta.parent_ask_id,
+    /**
+     * 22 September — THE COUNT TRAVELS WITH THE PAGE, because without it this
+     * route silently published a number that meant nothing.
+     *
+     * The seat read „100 asks before the block and 100 after" as evidence that
+     * the introduction route creates no ask row, and wrote it down. It reads
+     * 100 whatever happens: a bare array capped at 100, no total, no flag.
+     * They caught it themselves, on the fourth reading, by asking this table
+     * the question I keep having to ask everything else — WHAT POPULATION DOES
+     * THIS NUMBER COUNT.
+     *
+     * Ticket 16 Task 64 solved exactly this for `/admin/goals` („three screens
+     * read three numbers for one thing... two of them were page sizes printed
+     * as totals"), and this route was left as it was. Same shape now: the rows,
+     * the real total, and whether the page was cut.
+     *
+     * The count runs BESIDE the page, under the same filters, so the two
+     * cannot describe different populations — and the page pays the slower of
+     * the two rather than their sum.
+     */
+    const [result, totalRow] = await Promise.all([
+      query(
+        `SELECT ta.id, ta.task_id, ta.parent_ask_id,
               ta.from_user_id, fu.name AS from_name,
               ta.to_user_id, tu.name AS to_name,
               ta.origin_user_id, ta.automatic, ta.answer_rule_id, ta.is_follow_up,
@@ -1281,11 +1302,23 @@ adminRouter.get('/asks', async (req: Request, res: Response) => {
          AND ($2::int IS NULL OR ta.from_user_id = $2::int OR ta.to_user_id = $2::int)
        ORDER BY ta.id DESC
        LIMIT $3::int`,
-      [taskId, userId, limit],
-    );
+        [taskId, userId, limit],
+      ),
+      query<{ count: string }>(
+        `SELECT COUNT(*)::int AS count
+           FROM task_asks ta
+          WHERE ($1::int IS NULL OR ta.task_id = $1::int)
+            AND ($2::int IS NULL OR ta.from_user_id = $2::int OR ta.to_user_id = $2::int)`,
+        [taskId, userId],
+      ),
+    ]);
+    const asks = result.rows;
+    const total = Number(totalRow.rows[0]?.count ?? asks.length);
     res.status(200).json({
       success: true,
-      data: result.rows,
+      // A SHAPE CHANGE, and deliberately the same one `/admin/goals` already
+      // has rather than a third invention: `data` was the bare array.
+      data: { asks, total, truncated: asks.length < total },
       note: 'Member-to-member asks. The technique tag (when · how · reason) belongs to campaign invites: GET /admin/chorus/asks.',
     });
   } catch (error) {

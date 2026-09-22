@@ -178,13 +178,24 @@ describe('resolveIntroductionRequest', () => {
       source: 'button',
       request_ref: REQUEST_ROW.request_ref,
     });
-    // Mediator's incoming thread settles; requester's outgoing flips to
-    // needs_you. Both events carry the ref so the client can keep targeting
-    // /requests/:ref without a refetch.
+    /**
+     * BOTH threads settle. Both events carry the ref so the client can keep
+     * targeting /requests/:ref without a refetch.
+     *
+     * The requester's side read `needs_you` until 22 September, and B31 caught
+     * it on thread 21454: the mediator accepted at 08:41, the outcome was
+     * written correctly with the answer quoted, and the badge over it said
+     * „Needs your answer". Nothing was needed from him, and it was never his
+     * move — the whole thread is somebody else answering a question he asked.
+     * One fact, one event, and one side of it was being closed while the other
+     * stayed open.
+     *
+     * The caption still says what happened; only the state changes.
+     */
     expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'done', {
       requestRef: REQUEST_ROW.request_ref,
     });
-    expect(mockSetStatus).toHaveBeenCalledWith('9', 12, 'needs_you', {
+    expect(mockSetStatus).toHaveBeenCalledWith('9', 12, 'done', {
       statusLine: 'პასუხი მოვიდა',
       requestRef: REQUEST_ROW.request_ref,
     });
@@ -587,6 +598,77 @@ describe('a stopped goal withdraws the introduction it asked for', () => {
   it('says nothing when the goal had no request out', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
     await expect(cancelIntroductionRequestsForTask(7262)).resolves.toBe(0);
+    expect(mockSaveThreadMessage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * B31, 22 September — THE OTHER SIDE OF THE WITHDRAWAL.
+   *
+   * The mediator has been let off since row 232. The person who let them off
+   * was left holding a chat that still said, with a smiling face, that the
+   * request „has gone to Netai Test 8, they will see it next time they open
+   * Netai and reply" — status „waiting", nothing after it, ever. Requests 1387
+   * and 1453, cancelled at 08:38 and 08:52, still saying it at 09:25.
+   *
+   * The loop skipped every thread that was not the mediator's, and skipped the
+   * whole row when there was no mediator at all.
+   */
+  it('tells the person who withdrew it, on their own thread', async () => {
+    mockThreads.mockResolvedValue([
+      { id: 31, user_id: 7, type: 'incoming_request' },
+      { id: 32, user_id: 9, type: 'outgoing_request' },
+    ] as never);
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: 7, target_name: 'ნიტა' }]) as never,
+    );
+
+    await cancelIntroductionRequestsForTask(7262);
+
+    const written = mockSaveThreadMessage.mock.calls.map((call) => [call[0], String(call[3])]);
+    const mine = written.find(([threadId]) => threadId === 32);
+    expect(mine).toBeDefined();
+    // It names the person and it promises nothing: no reply is coming.
+    expect(String(mine?.[1])).toContain('ნიტა');
+    expect(String(mine?.[1])).toContain('პასუხიც აღარ მოვა');
+  });
+
+  it('leaves that thread settled rather than waiting for a reply that cannot come', async () => {
+    mockThreads.mockResolvedValue([{ id: 32, user_id: 9, type: 'outgoing_request' }] as never);
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: 7, target_name: 'ნიტა' }]) as never,
+    );
+
+    await cancelIntroductionRequestsForTask(7262);
+
+    expect(mockSetStatus).toHaveBeenCalledWith('9', 32, 'done', expect.anything());
+  });
+
+  /**
+   * A null mediator means there is no INCOMING thread to write. It never meant
+   * there was nothing to do — a direct request has a requester and a thread of
+   * his like any other, and the old `continue` threw both away.
+   */
+  it('still tells the requester when the request had no mediator', async () => {
+    mockThreads.mockResolvedValue([{ id: 32, user_id: 9, type: 'outgoing_request' }] as never);
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: null, target_name: 'ნიტა' }]) as never,
+    );
+
+    await cancelIntroductionRequestsForTask(7262);
+
+    expect(mockSaveThreadMessage).toHaveBeenCalledTimes(1);
+    expect(mockSaveThreadMessage.mock.calls[0][0]).toBe(32);
+  });
+
+  /** Neither side's thread is the other's: a regular chat is left alone. */
+  it('does not write into the goal’s own chat, which is told by its own path', async () => {
+    mockThreads.mockResolvedValue([{ id: 40, user_id: 9, type: 'regular' }] as never);
+    mockQuery.mockResolvedValue(
+      rows([{ id: 90, mediator_user_id: 7, target_name: 'ნიტა' }]) as never,
+    );
+
+    await cancelIntroductionRequestsForTask(7262);
+
     expect(mockSaveThreadMessage).not.toHaveBeenCalled();
   });
 });

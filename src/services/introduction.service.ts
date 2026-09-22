@@ -20,6 +20,7 @@ import {
   introAnsweredPush,
   introCancelledLine,
   introCancelledNote,
+  introWithdrawnByOwnerNote,
   introMediatorFollowUp,
   introOutcomeLine,
   introRequesterExtra,
@@ -748,7 +749,25 @@ async function syncRequestThreads(
           'assistant',
           (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? ''),
         ).catch(() => undefined);
-        await setThreadStatus(owner, thread.id, 'needs_you', {
+        /**
+         * B31's second half — „needs_you" was wrong twice over.
+         *
+         * Thread 21454, 22 September: the mediator ACCEPTED at 08:41, the
+         * outcome was written correctly with the answer quoted, and the badge
+         * over it read „Needs your answer". Nothing was needed from him, and
+         * it was never his move — the whole thread is somebody else answering
+         * a question he asked. The mediator's own incoming thread goes to
+         * `done` on the same event, ten lines up, so one side of one fact was
+         * being closed and the other left open.
+         *
+         * `done`, on a decline as well as an accept: the request is answered
+         * either way and there is nothing left to do IN THIS THREAD. What
+         * happens next belongs to his goal, which row 210's wake tells.
+         *
+         * The caption still says what happened. „Done" alone would lose the
+         * one thing he wants to see from the list.
+         */
+        await setThreadStatus(owner, thread.id, 'done', {
           statusLine: introAnsweredLine(ownerLanguage),
           requestRef: req.request_ref,
         });
@@ -1063,21 +1082,42 @@ export async function cancelIntroductionRequestsForTask(taskId: number): Promise
        RETURNING id, mediator_user_id, target_name`,
       [taskId],
     );
+    /**
+     * B31, 22 September — BOTH SIDES OF THE WITHDRAWAL, not one.
+     *
+     * This loop used to `continue` on a null mediator and then skip every
+     * thread that was not the mediator's. So the person who stopped the goal
+     * kept an outgoing-request chat reading „it has gone to them, they will
+     * see it next time they open Netai and reply", with a smiling face, on
+     * status „waiting", for good. Requests 1387 and 1453, cancelled 08:38 and
+     * 08:52, still saying it at 09:25.
+     *
+     * A null mediator means there is no INCOMING thread to write — it never
+     * meant there was nothing to do, and the requester's own thread exists
+     * either way.
+     *
+     * Each side in ITS OWN owner's language: the two need not share one, and a
+     * person let off a favour — or told their request is gone — in a script
+     * they cannot read is worse off than one told nothing.
+     */
     for (const row of cancelled.rows) {
-      if (row.mediator_user_id === null) continue;
-      const owner = String(row.mediator_user_id);
-      const language = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
       const threads = await getThreadsByIntroRequestId(row.id).catch(() => []);
       for (const thread of threads) {
-        if (thread.type !== 'incoming_request') continue;
+        const isIncoming = thread.type === 'incoming_request';
+        if (!isIncoming && thread.type !== 'outgoing_request') continue;
+        const owner = String(thread.user_id);
+        const language = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
         await saveThreadMessage(
           thread.id,
           thread.user_id,
           'assistant',
-          introCancelledNote(language, row.target_name),
+          isIncoming
+            ? introCancelledNote(language, row.target_name)
+            : introWithdrawnByOwnerNote(language, row.target_name),
         ).catch(() => undefined);
         // Row 233's fault, not repeated here: the note and the header have to
-        // agree, or „no longer needed" sits under „Needs your answer".
+        // agree, or „no longer needed" sits under „Needs your answer". Same
+        // header on both sides, because it is the same fact about the request.
         await setThreadStatus(owner, thread.id, 'done', {
           statusLine: introCancelledLine(language),
         }).catch(() => undefined);
