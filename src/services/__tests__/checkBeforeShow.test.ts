@@ -12,10 +12,11 @@
  */
 import { answerChunkHandler, answerStreamingSuppressed } from '../chat.service';
 
-function spyHandler(suppressed: boolean) {
+function spyHandler(suppressed: boolean, stopped?: () => boolean) {
   const seen = { text: 0, signal: 0, visible: [] as string[] };
   const handle = answerChunkHandler({
     suppressed,
+    stopped,
     onText: () => (seen.text += 1),
     onSignal: () => (seen.signal += 1),
     onVisible: (c) => seen.visible.push(c),
@@ -69,6 +70,101 @@ describe('with streaming switched back on', () => {
     expect(seen.visible).toEqual(['ერთი', ' ორი']);
     expect(seen.signal).toBe(2);
     expect(seen.text).toBe(2);
+  });
+});
+
+/**
+ * THE STOP IS READ HERE TOO, AND NOTHING HELD IT.
+ *
+ * Sabotage, 22 September: `if (opts.stopped?.() === true) return;` removed —
+ * 3,746 tests passed. The line's own comment is an incident report, which is
+ * what makes its being untested worth a file of its own.
+ *
+ * Thread 16840, the tester: at 19:07:59 the server correctly wrote „there is
+ * no goal to stop in this conversation", and ten seconds later the model said
+ * „now you have only one open goal left … I am closing it." It closed nothing
+ * — the write was refused and 3433 is still open. But the owner READ it.
+ *
+ * The withholding that already existed runs where the reply is STORED, and the
+ * answer reaches the screen token by token long before that. Stored and shown
+ * are two different acts, and only one of them was covered. This is the other
+ * one, and it is the one the owner's eyes are on.
+ */
+describe('after the owner has stopped it, the rest of the answer is not shown', () => {
+  const STOPPED = (): boolean => true;
+  const RUNNING = (): boolean => false;
+
+  it('shows nothing once the run is stopped', () => {
+    const { seen, handle } = spyHandler(false, STOPPED);
+
+    handle('ახლა ერთი ღია მიზანი გაქვს');
+    handle(' — ვხურავ');
+
+    expect(seen.visible).toEqual([]);
+  });
+
+  it('raises no heartbeat either, because nothing reached the client', () => {
+    // onSignal means „something got to the screen". Saying so when the chunk
+    // was withheld would make the silence look like a reply in progress.
+    const { seen, handle } = spyHandler(false, STOPPED);
+
+    handle('a');
+    handle('b');
+
+    expect(seen.signal).toBe(0);
+  });
+
+  it('still counts that the turn produced text', () => {
+    // Same reason as suppression: a turn that turns out to want tools moves
+    // its narration to the steps panel, and that needs the run to know text
+    // was made. Stopping the SHOWING must not corrupt the bookkeeping.
+    const { seen, handle } = spyHandler(false, STOPPED);
+
+    handle('ვხურავ');
+
+    expect(seen.text).toBe(1);
+  });
+
+  /**
+   * THE ONE THAT MATTERS MOST. The stop arrives mid-answer — that is the only
+   * way it ever arrives. So the flag is read per chunk, and the words written
+   * before it are kept while everything after it is dropped. A check made once
+   * at the start would pass every test above and fail the only real case.
+   */
+  it('cuts at the moment of the stop, keeping what was already read', () => {
+    let stopped = false;
+    const { seen, handle } = spyHandler(false, () => stopped);
+
+    handle('ვნახავ');
+    handle(' ეკეს');
+    stopped = true;
+    handle(' პროფილს');
+    handle(' და ვხურავ');
+
+    expect(seen.visible).toEqual(['ვნახავ', ' ეკეს']);
+  });
+
+  /** The control. Without it „nothing shown" would pass for a broken handler. */
+  it('shows everything while the run is still going', () => {
+    const { seen, handle } = spyHandler(false, RUNNING);
+
+    handle('ერთი');
+
+    expect(seen.visible).toEqual(['ერთი']);
+  });
+
+  /**
+   * A caller that passes no stop at all — the engine's own runs — must behave
+   * exactly as before. `stopped?.() === true` is written that way on purpose:
+   * absent is not stopped, and neither is a callback that answers anything but
+   * a literal true.
+   */
+  it('treats an absent stop as not stopped', () => {
+    const { seen, handle } = spyHandler(false, undefined);
+
+    handle('ერთი');
+
+    expect(seen.visible).toEqual(['ერთი']);
   });
 });
 
