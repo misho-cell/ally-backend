@@ -220,7 +220,11 @@ export async function wakeTask(
      * the same failure this codebase keeps finding in its own numbers, where
      * „I cannot see any" is printed as „there are none".
      */
-    beginRun(wakeRunId);
+    // 22 September: `kind: 'engine'` is load-bearing, not a label. A shutdown
+    // that cut this off must NOT write „your answer was cut off" underneath
+    // it — nobody asked for a wake, so there is no reply of theirs to have
+    // failed. It is logged and left to the reaper.
+    beginRun(wakeRunId, { kind: 'engine', userId: Number(ownerId), threadId: thread.id });
     // Ticket 19 G1 and G5: and a thread the owner is still TALKING in is not
     // free either, whatever its status says.
     //

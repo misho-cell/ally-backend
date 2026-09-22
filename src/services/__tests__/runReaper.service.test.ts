@@ -182,6 +182,80 @@ describe('row 33 — a thread nobody has asked anything in', () => {
 });
 
 /**
+ * 22 September — and this one is about two of our own sentences meeting.
+ *
+ * The shutdown drain now writes the owner the true reason („the server
+ * restarted") the instant it gives up on their run, because it is the only
+ * thing in the system that KNOWS a run was cut off rather than merely quiet.
+ * What it deliberately does not do is clear the thread's status: that needs
+ * the `awaits_owner` reading this sweep does, and „failed" over a thread that
+ * should say „needs your answer" is ticket 9 task 20 (b) undone.
+ *
+ * So the thread is still on 'working' when this sweep comes round, and without
+ * the guard the owner reads „the server restarted — send it again" and then,
+ * directly beneath it, „something went wrong, please try again": two accounts
+ * of one moment, and the second of them false.
+ */
+describe('the reaper does not write a second error under the first', () => {
+  it('clears the status and stays quiet when the owner has already been told', async () => {
+    reaped([
+      {
+        id: 21121,
+        user_id: 171871,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: false,
+        was_asked: true,
+        already_told: true,
+      },
+    ]);
+
+    const n = await sweepOrphanedRuns();
+
+    expect(n).toBe(1);
+    // The spinner still has to stop and the badge still has to be right.
+    expect(updateThreadStatus).toHaveBeenCalled();
+    expect(saveThreadMessage).not.toHaveBeenCalled();
+  });
+
+  it('still speaks when nobody has told them anything', async () => {
+    reaped([
+      {
+        id: 21121,
+        user_id: 171871,
+        status: 'failed',
+        status_line: 'ვერ დასრულდა',
+        answered: false,
+        was_asked: true,
+        already_told: false,
+      },
+    ]);
+
+    await sweepOrphanedRuns();
+
+    expect(saveThreadMessage).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * THE NEWEST ROW, not „an error row recently" — which is why the column is
+   * written as a position in the conversation rather than a time window. If
+   * the owner has typed again since being told, their message is the newest
+   * one, this reads false, and a run that then dies silently is reported
+   * exactly as it always was.
+   */
+  it('asks the database for the newest row, not for a recent one', async () => {
+    reaped([]);
+
+    await sweepOrphanedRuns();
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('AS already_told');
+    expect(sql).toContain('ORDER BY c.created_at DESC');
+    expect(sql).toContain('LIMIT 1');
+  });
+});
+
+/**
  * 18 September, thread 17724 — a run the reaper killed left the only message
  * on an English owner's screen in Georgian: 57 Georgian characters, no Latin.
  * It is the one message a person reads carefully, because it is the one saying

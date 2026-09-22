@@ -811,7 +811,10 @@ threadsRouter.post(
       // late result is ignored and never double-emitted.)
       // Row 205: counted for the drain, so a shutdown knows what it is about
       // to cut off and can say so.
-      beginRun(runId);
+      // 22 September: with the owner and the thread on it, because „1 run(s)
+      // cut off" named nobody. On the 21st I found out whose answer my deploy
+      // had killed by reading two containers' logs by hand.
+      beginRun(runId, { kind: 'chat', userId: Number(userId), threadId });
       const hardTimeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
       );

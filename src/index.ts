@@ -19,7 +19,7 @@ import roQueryRouter from './api/routes/roQuery.routes';
 import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
-import { drain, inFlightCount } from './services/inFlightRuns';
+import { installShutdownHandlers } from './services/gracefulShutdown.service';
 import { startLoopLagWatch } from './services/loopLag';
 import { checkCriticalIndexes } from './db/postgres/indexSanity';
 import { EnrichmentJob } from './services/enrichment.job';
@@ -143,38 +143,7 @@ runMigrations()
     // tells a quiet API from a busy process.
     startLoopLagWatch();
 
-    /**
-     * Ticket 20 row 205 — a deploy must not cut a run in half.
-     *
-     * Measured 17 September: the container's last log line on every deploy is
-     * `npm error signal SIGTERM`. Nothing handled it, so the process died
-     * where it stood and every run inside it died with it. Of six fresh goals
-     * that morning four lost a run, and three sat against a deploy window.
-     *
-     * The wait is honest about its own size: a run takes 60-90 seconds and the
-     * platform's grace is a few, so this cannot save one that is halfway
-     * through. What it does save is the part that was purely self-inflicted —
-     * a run STARTED inside a container already on its way out, which never had
-     * a chance and still told its owner „please try again".
-     *
-     * How many runs were still going when the wait ran out is logged rather
-     * than swallowed. Exiting quietly would make a lost answer look like a
-     * clean shutdown, which is the substitution this codebase keeps finding.
-     */
-    const shutdown = (signal: string): void => {
-      // eslint-disable-next-line no-console
-      console.log(`[shutdown] ${signal}: draining, ${inFlightCount()} run(s) in flight`);
-      server.close();
-      void drain().then((stillRunning) => {
-        // eslint-disable-next-line no-console
-        if (stillRunning > 0)
-          console.error(`[shutdown] ${stillRunning} run(s) cut off by ${signal}`);
-        else console.log('[shutdown] all runs finished');
-        process.exit(0);
-      });
-    };
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    installShutdownHandlers(server);
   })
   .catch((err: unknown) => {
     // eslint-disable-next-line no-console

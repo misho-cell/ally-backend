@@ -53,17 +53,94 @@
  * have already broken.
  */
 
+/**
+ * ---------------------------------------------------------------------------
+ * 22 SEPTEMBER: THE BUDGET IS BIGGER THAN THE GRACE, SO EVERYTHING AFTER THE
+ * WAIT HAS NEVER RUN EITHER.
+ *
+ * `railway.toml` set this measurement up two days ago and I never came back
+ * for it: „the gap between that line and the container's last breath is also
+ * the first real measurement of how long the platform actually grants us,
+ * which DRAIN_BUDGET_MS (20 s) is currently guessing at."
+ *
+ * The gap, from the one shutdown in this service's history that has ever had a
+ * run to wait for — 21 September, and it is the one the seat caught:
+ *
+ *   23:20:55.825  [msg-in] user 171871 thread 21121: 65 chars
+ *   23:20:56.491  [shutdown] SIGTERM: draining, 1 run(s) in flight
+ *   23:21:07.632  Stopping Container
+ *
+ * ELEVEN SECONDS AND A HUNDRED AND FOURTEEN MILLISECONDS. The budget was
+ * twenty. So the wait cannot end of its own accord: the process is killed
+ * inside it, and the line that names what was cut off, and the clean exit
+ * under it, are unreachable. THAT IS THE SECOND TIME IN THIS ONE MODULE — the
+ * block above records the first, when the whole handler was dead for three
+ * days because npm stood between the platform and node.
+ *
+ * And it is the same shape a third time: a number that promises more than it
+ * can spend, printed as though it had been spent.
+ *
+ * WHAT LOWERING IT COSTS, plainly: a run that would have finished between the
+ * eighth and the eleventh second after SIGTERM is now cut off where before it
+ * had those three seconds. WHAT IT BUYS: for every run that does NOT finish,
+ * a record of who lost an answer and a true sentence on their screen at once
+ * instead of a generic one seventy-eight seconds later. Nothing beyond the
+ * eleventh second was ever survivable either way.
+ *
+ * ONE SAMPLE. The grace below is a single measurement, so the shutdown logs
+ * its own elapsed time on the way out and every future one that has to wait
+ * adds another — a number to correct this with evidence rather than reasoning.
+ * `DRAIN_BUDGET_MS` in the environment overrides it without a deploy.
+ */
+
+/** Measured, 21 September, once: SIGTERM 23:20:56.491 → killed 23:21:07.632. */
+export const MEASURED_GRACE_MS = 11_000;
+
+/**
+ * Held back from the wait so the giving-up has somewhere to happen: the log
+ * line naming each cut-off run, and the sentence written into its owner's
+ * thread. Three seconds is several database round trips, and the drain is a
+ * whole-process event — at most a handful of runs are ever in it.
+ */
+export const REPORT_RESERVE_MS = 3_000;
+
 /** How long a shutdown waits for work already under way. */
-const DRAIN_BUDGET_MS = 20_000;
+export const DRAIN_BUDGET_MS = Number(
+  process.env.DRAIN_BUDGET_MS ?? MEASURED_GRACE_MS - REPORT_RESERVE_MS,
+);
 
 /** How often the drain checks whether the last run has finished. */
 const DRAIN_POLL_MS = 250;
 
-const inFlight = new Set<string>();
+/**
+ * Which run this is, in the terms a person could be named by.
+ *
+ * It used to be a `Set<string>` of run ids, and the route's own comment above
+ * `beginRun` said the shutdown „knows what it is about to cut off and can say
+ * so". It could not: an opaque uuid names nobody. On the 21st I found out who
+ * had lost their answer by reading container logs by hand.
+ */
+export interface RunMark {
+  /**
+   * A chat run is an answer somebody is WAITING FOR; an engine wake is work
+   * nobody asked for. They are not owed the same thing when one is cut off,
+   * which is row 33's rule in a second place — a claim about „your reply" is
+   * only true where there was a reply to fail.
+   */
+  readonly kind: 'chat' | 'engine';
+  readonly userId: number;
+  readonly threadId: number;
+}
+
+export interface CutOffRun extends RunMark {
+  readonly runId: string;
+}
+
+const inFlight = new Map<string, RunMark>();
 let draining = false;
 
-export function beginRun(runId: string): void {
-  inFlight.add(runId);
+export function beginRun(runId: string, mark: RunMark): void {
+  inFlight.set(runId, mark);
 }
 
 export function endRun(runId: string): void {
@@ -93,15 +170,17 @@ export function resetDrainState(): void {
 /**
  * Stop taking new work and wait for what is already running.
  *
- * Returns how many runs were still going when the wait ran out, so the caller
- * can say so rather than exiting as if everything had finished. Zero is the
- * good case and the number is the honest one.
+ * Returns the runs that were still going when the wait ran out — not how many.
+ * An empty list is the good case, and what is in a non-empty one is the only
+ * place in the system that KNOWS, rather than infers, that an answer was cut
+ * off: the reaper reads a silence and reasons from it, seventy-five seconds
+ * later; this is the process that was running them, on its way out.
  */
-export async function drain(budgetMs: number = DRAIN_BUDGET_MS): Promise<number> {
+export async function drain(budgetMs: number = DRAIN_BUDGET_MS): Promise<readonly CutOffRun[]> {
   draining = true;
   const until = Date.now() + budgetMs;
   while (inFlight.size > 0 && Date.now() < until) {
     await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
   }
-  return inFlight.size;
+  return [...inFlight].map(([runId, mark]) => ({ runId, ...mark }));
 }

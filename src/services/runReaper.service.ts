@@ -161,6 +161,26 @@ export async function sweepOrphanedRuns(): Promise<number> {
      * written when it is true.
      */
     was_asked: boolean;
+    /**
+     * 22 September — somebody has ALREADY told this owner, and it was not this
+     * sweep.
+     *
+     * The shutdown drain now writes the true sentence itself („the server
+     * restarted") the moment it gives up on a run, because it is the only
+     * thing in the system that knows for certain that a run was cut off rather
+     * than merely quiet. It cannot clear the thread's status, though — that
+     * needs the `awaits_owner` reading below — so the thread is still sitting
+     * on 'working' when this sweep comes round, and without this the owner
+     * would read „the server restarted" and then, underneath it, „something
+     * went wrong, please try again": two different accounts of one moment, the
+     * second of them wrong.
+     *
+     * THE NEWEST ROW, not „an error row recently". If the owner has typed
+     * again since, their message is the newest one, this is false, and a run
+     * that then died silently is reported exactly as before — which is the
+     * whole reason it is written as a position rather than a time window.
+     */
+    already_told: boolean;
   }>(
     `WITH orphaned AS (
        SELECT t.id,
@@ -185,7 +205,17 @@ export async function sweepOrphanedRuns(): Promise<number> {
                 SELECT 1 FROM conversations c
                 WHERE c.thread_id = t.id AND c.role = 'user'
                   AND c.kind = 'message' AND c.content <> ''
-              ) AS was_asked
+              ) AS was_asked,
+              -- The shutdown drain's own sentence, written the instant it gave
+              -- up on the run. The status still needs clearing; the sentence
+              -- does not need saying twice.
+              COALESCE((
+                SELECT c.role = 'assistant' AND c.kind = 'error'
+                FROM conversations c
+                WHERE c.thread_id = t.id
+                ORDER BY c.created_at DESC
+                LIMIT 1
+              ), false) AS already_told
        FROM threads t
        WHERE t.status = 'working'
          AND t.updated_at < NOW() - ($1 || ' seconds')::interval
@@ -202,7 +232,7 @@ export async function sweepOrphanedRuns(): Promise<number> {
          updated_at = NOW()
      FROM orphaned o
      WHERE o.id = t.id
-     RETURNING t.id, t.user_id, t.status, o.answered, o.was_asked`,
+     RETURNING t.id, t.user_id, t.status, o.answered, o.was_asked, o.already_told`,
     [RUN_SILENT_SECONDS],
   );
   for (const thread of result.rows) {
@@ -217,6 +247,12 @@ export async function sweepOrphanedRuns(): Promise<number> {
         console.warn(
           `[run-reaper] thread ${thread.id} was stale on 'working' but had answered — ` +
             'status cleared, no error shown',
+        );
+      } else if (thread.already_told) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[run-reaper] thread ${thread.id} had already been told why its run ended — ` +
+            'status cleared, no second error shown',
         );
       } else if (!thread.was_asked) {
         // Row 33: nobody has asked anything here, so no reply of theirs failed.

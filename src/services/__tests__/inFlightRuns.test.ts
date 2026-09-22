@@ -2,11 +2,15 @@ import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import {
   beginRun,
+  DRAIN_BUDGET_MS,
   drain,
   endRun,
   inFlightCount,
   isDraining,
+  MEASURED_GRACE_MS,
+  REPORT_RESERVE_MS,
   resetDrainState,
+  RunMark,
 } from '../inFlightRuns';
 
 beforeEach(() => resetDrainState());
@@ -19,10 +23,12 @@ beforeEach(() => resetDrainState());
  * stood and every run inside it died with it. Of six fresh goals that morning,
  * four lost a run and three sat against a deploy window.
  */
+const chat = (threadId: number): RunMark => ({ kind: 'chat', userId: 501, threadId });
+
 describe('counting what a shutdown is about to cut off', () => {
   it('counts runs in and out', () => {
-    beginRun('a');
-    beginRun('b');
+    beginRun('a', chat(1));
+    beginRun('b', chat(2));
     expect(inFlightCount()).toBe(2);
 
     endRun('a');
@@ -30,11 +36,23 @@ describe('counting what a shutdown is about to cut off', () => {
   });
 
   it('ending a run twice is not a negative count', () => {
-    beginRun('a');
+    beginRun('a', chat(1));
     endRun('a');
     endRun('a');
 
     expect(inFlightCount()).toBe(0);
+  });
+
+  /**
+   * The same run id registered twice is one run, not two. It was a Set and it
+   * is a Map, and a Map keyed on anything but the run id would have quietly
+   * turned row 115's five duplicate submissions into five things to wait for.
+   */
+  it('one run id is one run, however often it is registered', () => {
+    beginRun('a', chat(1));
+    beginRun('a', chat(1));
+
+    expect(inFlightCount()).toBe(1);
   });
 });
 
@@ -52,21 +70,64 @@ describe('draining', () => {
     await waiting;
   });
 
-  it('returns 0 when everything finished in time', async () => {
-    beginRun('a');
+  it('returns nothing when everything finished in time', async () => {
+    beginRun('a', chat(1));
     setTimeout(() => endRun('a'), 50);
 
-    expect(await drain(2_000)).toBe(0);
+    expect(await drain(2_000)).toEqual([]);
   });
 
-  it('returns what it could NOT wait for, rather than exiting as if clean', async () => {
-    // A run takes 60-90 seconds and the platform's grace is a few, so this
-    // cannot save one halfway through. Reporting zero here would make a lost
-    // answer look like a clean shutdown.
-    beginRun('a');
-    beginRun('b');
+  /**
+   * A run takes 60-90 seconds and the platform grants eleven, so this cannot
+   * save one halfway through. Reporting nothing here would make a lost answer
+   * look like a clean shutdown.
+   *
+   * 22 September it returns WHO rather than how many, and that is the whole
+   * point of the change: „1 run(s) cut off by SIGTERM" named nobody, so on the
+   * 21st I found out whose answer my deploy had killed by reading two
+   * containers' logs line by line.
+   */
+  it('returns who it could NOT wait for, not how many', async () => {
+    beginRun('a', chat(21121));
+    beginRun('b', { kind: 'engine', userId: 160584, threadId: 16737 });
 
-    expect(await drain(300)).toBe(2);
+    expect(await drain(300)).toEqual([
+      { runId: 'a', kind: 'chat', userId: 501, threadId: 21121 },
+      { runId: 'b', kind: 'engine', userId: 160584, threadId: 16737 },
+    ]);
+  });
+
+  it('leaves out the runs that did finish', async () => {
+    beginRun('a', chat(1));
+    beginRun('b', chat(2));
+    setTimeout(() => endRun('a'), 50);
+
+    const cutOff = await drain(400);
+
+    expect(cutOff.map((run) => run.runId)).toEqual(['b']);
+  });
+
+  /**
+   * THE BUDGET WAS BIGGER THAN THE GRACE, so nothing after the wait had ever
+   * run — not the line naming what was cut off, not the clean exit under it.
+   *
+   * Measured 21 September, the one shutdown in this service's history that
+   * ever had a run to wait for: SIGTERM at 23:20:56.491, „Stopping Container"
+   * at 23:21:07.632. Eleven seconds and a hundred and fourteen milliseconds,
+   * against a twenty-second budget.
+   *
+   * This is the rule, not the number: whatever the grace turns out to be, the
+   * wait plus the reporting has to fit inside it, or the reporting is dead
+   * code again — which it has now been twice in this one module.
+   */
+  it('the wait and the reporting together fit inside the measured grace', () => {
+    expect(DRAIN_BUDGET_MS + REPORT_RESERVE_MS).toBeLessThanOrEqual(MEASURED_GRACE_MS);
+  });
+
+  it('still waits long enough to be worth doing', () => {
+    // A budget of nothing is the old bug with the sign flipped: a run that
+    // would have landed in the next second is thrown away to buy a log line.
+    expect(DRAIN_BUDGET_MS).toBeGreaterThanOrEqual(5_000);
   });
 
   it('does not wait at all when nothing is running', async () => {

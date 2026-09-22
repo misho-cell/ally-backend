@@ -82,6 +82,23 @@ interface RunStrings {
   /** The same, when it died of the clock rather than a fault. */
   tookTooLong: string;
   /**
+   * The same again, when WE killed it — a deploy landed on top of a run that
+   * was working perfectly well.
+   *
+   * 21 September, thread 21121: the owner typed at 23:20:55, my deploy's
+   * SIGTERM reached the container at 23:20:56, the platform killed it at
+   * 23:21:07, and at 23:22:14 the reaper wrote them `runDied` — „something
+   * went wrong on our side, please try again". Every word of that is true and
+   * the shape of it is not: it is the sentence for a fault, and this was not a
+   * fault. It arrived seventy-eight seconds late, after a spinner that never
+   * stopped, and it invites a retry into the same restart.
+   *
+   * So this one names the cause, promises nothing about resuming — the process
+   * that held the run is gone and nothing picks it back up — and says the one
+   * thing the owner can act on.
+   */
+  restartedMidRun: string;
+  /**
    * Row 217 — the provider refused us, and no amount of trying again will
    * change that. Says so without saying WHY: our billing is not the owner's
    * to carry, and „your answer failed because we ran out of credit" tells
@@ -176,6 +193,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     serviceUnavailable:
       'სერვისი დროებით მიუწვდომელია — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. ხელახლა ცდა ახლა არ დაგეხმარება; როგორც კი აღდგება, დაუყოვნებლივ გავაგრძელებ.',
     tookTooLong: 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.',
+    restartedMidRun:
+      'სერვერი განახლდა და ეს პასუხი შუა გზაზე შეწყდა — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
     nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
@@ -206,6 +225,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     serviceUnavailable:
       'The service is temporarily unavailable — that is on us, not on you. Trying again now will not help; I will carry on the moment it is back.',
     tookTooLong: 'The answer took too long to put together. Please try again.',
+    restartedMidRun:
+      'The server restarted and this answer was cut off partway — that is on us, not on you. Send it again and I will pick it straight back up.',
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
     nameNotVerified: '(name not verified on an official page)',
@@ -235,6 +256,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     runDied:
       'На нашей стороне произошёл сбой, и ответ не завершился. Пожалуйста, попробуй ещё раз.',
     tookTooLong: 'Ответ готовился слишком долго. Пожалуйста, попробуй ещё раз.',
+    restartedMidRun:
+      'Сервер перезапустился, и этот ответ прервался на середине — это на нашей стороне, не на твоей. Отправь его ещё раз, и я сразу продолжу.',
     serviceUnavailable:
       'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно; как только он вернётся, я сразу продолжу.',
     moderationBlocked:
@@ -266,6 +289,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     runDied:
       'Algo falló de nuestro lado y la respuesta no se completó. Inténtalo de nuevo, por favor.',
     tookTooLong: 'La respuesta tardó demasiado en prepararse. Inténtalo de nuevo, por favor.',
+    restartedMidRun:
+      'El servidor se reinició y esta respuesta se cortó a medias — es cosa nuestra, no tuya. Envíala otra vez y la retomo enseguida.',
     serviceUnavailable:
       'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar no ayudará; en cuanto vuelva, sigo de inmediato.',
     moderationBlocked:
