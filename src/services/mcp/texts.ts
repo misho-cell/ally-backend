@@ -426,7 +426,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Saves something the user tells you about THEMSELF so it persists across chats — kind is ' +
       '"need" (an open thing they want), "preference" (how they like things), or "profile" (a ' +
       'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
-      'contacts). Notes accumulate. Confirm in one short line.',
+      'contacts). Notes accumulate. A note steers YOUR OWN replies to this user and nothing ' +
+      "else: it does not stop other people's assistants asking them anything. Confirm in one " +
+      'short line, and read `scope` in the result before you do.',
   },
   search_roster: {
     title: 'Find a fellow member of a network',

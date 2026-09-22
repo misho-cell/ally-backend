@@ -111,6 +111,7 @@ import {
   deleteUserNotes,
   getUserNotes,
   isUserNoteKind,
+  NOTE_SCOPE,
   saveUserNote,
   UserNote,
 } from './userNotes.service';
@@ -2045,7 +2046,7 @@ const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
 const SAVE_USER_NOTE_TOOL: AnthropicTool = {
   name: 'save_user_note',
   description:
-    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts).',
+    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts). A note steers YOUR OWN replies to this user and nothing else: it does not stop other people\'s assistants asking them anything. Read `scope` in the result before you confirm.',
   input_schema: {
     type: 'object',
     properties: {
@@ -6333,7 +6334,9 @@ async function executeToolCall(
       const text = ((input['text'] as string) ?? '').trim();
       if (!text) return { saved: false, error: 'Pass a non-empty text.' };
       await saveUserNote(userId, kind, text);
-      return { saved: true };
+      // The same `scope` the connector returns — one sentence, one place, so
+      // the two surfaces cannot promise different things (22 September).
+      return { saved: true, scope: NOTE_SCOPE };
     }
     case 'forget_user_note': {
       const id = Number(input['id']);

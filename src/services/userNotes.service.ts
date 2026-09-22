@@ -18,6 +18,47 @@ export function isUserNoteKind(v: string): v is UserNoteKind {
 }
 
 /**
+ * WHAT A SAVED NOTE ACTUALLY DOES, travelling with every save, because the
+ * model was telling people it does something it does not.
+ *
+ * Measured by the tester twice on the live build, 22 September:
+ *
+ *   14:11:49  a user tells their OWN assistant „I do not want to be asked
+ *             anything about plumbers. Never pass me those questions."
+ *   14:12:2x  save_user_note ok — and the assistant replies „Got it, noted:
+ *             no questions about plumbers or plumbing will come your way."
+ *   14:12:54  a DIFFERENT user opens a plumber goal
+ *   14:13:43  plan v1 names her
+ *   14:14:52  the ask is sent to her, and is sitting in her chat
+ *
+ * Two minutes thirty, nothing capped, nothing throttled. The note is real: it
+ * saves, it persists, her own assistant reads it back to her. Every read of
+ * `user_notes` in this codebase is `WHERE user_id = $1` — the owner's context,
+ * their tone, their export, their connector. Nobody else's search, plan or
+ * send can see it, and `text` is free prose with no topic in it, so nothing
+ * COULD match it to a plan without putting every note through a model.
+ *
+ * The boundary needs a store it does not have — (user_id, topic), read by
+ * other people's searches — and `ask_optouts`, the one store shaped for it, is
+ * `(user_id, reason, created_at)` with nothing reading `reason`: a boolean per
+ * person, which is why it is the only door and why people press it over
+ * something small.
+ *
+ * That store is the founder's decision and is not built here. What IS fixed
+ * here is the sentence: Misho's word, 22 September — take the promise off. A
+ * note that is saved is confirmed as saved, and nothing is claimed about what
+ * it will stop. Of the two faults, telling somebody they are protected when
+ * they are not is the worse one, and it is the one that could be mended today.
+ */
+export const NOTE_SCOPE =
+  'Saved. This note is read by THIS user’s own assistant only — their context, ' +
+  'their tone, their export. No other person’s assistant can see it, so it does ' +
+  'not change who any other user’s search, plan or ask reaches. Confirm in one ' +
+  'short line that it is saved, in their words. Do NOT tell them it will stop ' +
+  'anything from being sent to them, or that they will no longer be asked about ' +
+  'it — nothing enforces that yet, and saying so is a promise the product breaks.';
+
+/**
  * Save something the user told the assistant about THEMSELF. Notes accumulate,
  * but the SAME text is never stored twice ("keep answers short" existed four
  * times) — a duplicate save returns the existing row's id.

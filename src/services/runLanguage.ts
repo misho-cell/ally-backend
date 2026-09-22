@@ -105,6 +105,27 @@ interface RunStrings {
    * change that. Says so without saying WHY: our billing is not the owner's
    * to carry, and „your answer failed because we ran out of credit" tells
    * somebody something about us they did not ask for.
+   *
+   * AND IT NO LONGER PROMISES TO CARRY ON BY ITSELF, because nothing does.
+   *
+   * The sentence was „I will carry on the moment it is back", and on
+   * 22 September that was measured against the thing it promises. Anthropic
+   * was dark from 11:15:21 to 13:40:27. Two goals died inside it — threads
+   * 21784 and 21789, tasks 8089 and 8094 — and at 13:49, an hour and three
+   * quarters after the service returned, both were still `failed`, still two
+   * messages long, `next_wake_at` NULL. The condition the sentence named
+   * arrived and nothing happened.
+   *
+   * Nothing retries a dead run: `markRunFailed` sets a status and returns.
+   * The `engine_wakes` sweeper re-runs a wake the process lost, not a call the
+   * provider refused. And a retry is not the mend — `messageHeldNoTokens`
+   * already decided this exact question for the empty wallet: „re-running
+   * somebody's message hours later, unasked, could send real messages to real
+   * people on a decision they have had all night to change their mind about."
+   *
+   * So the sentence asks instead of promising, which is a thing the owner can
+   * actually cause. Misho's word, 22 September. `restartedMidRun` has said it
+   * this way since the day it was written, and these two now agree.
    */
   serviceUnavailable: string;
   moderationBlocked: string;
@@ -193,7 +214,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'პასუხი ვერ ჩამოყალიბდა — სცადე თავიდან, ან სხვანაირად დასვი კითხვა.',
     runDied: 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.',
     serviceUnavailable:
-      'სერვისი დროებით მიუწვდომელია — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. ხელახლა ცდა ახლა არ დაგეხმარება; როგორც კი აღდგება, დაუყოვნებლივ გავაგრძელებ.',
+      'სერვისი დროებით მიუწვდომელია — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. ხელახლა ცდა ახლა არ დაგეხმარება. როცა აღდგება, გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
     tookTooLong: 'პასუხის მომზადებას ძალიან დიდი დრო დასჭირდა. გთხოვ, სცადე თავიდან.',
     restartedMidRun:
       'სერვერი განახლდა და ეს პასუხი შუა გზაზე შეწყდა — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
@@ -225,7 +246,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     emptyFinalFailure: 'The reply did not come together — try again, or rephrase the question.',
     runDied: 'Something went wrong on our side and the answer did not finish. Please try again.',
     serviceUnavailable:
-      'The service is temporarily unavailable — that is on us, not on you. Trying again now will not help; I will carry on the moment it is back.',
+      'The service is temporarily unavailable — that is on us, not on you. Trying again now will not help. When it is back, send it to me again and I will pick it straight up.',
     tookTooLong: 'The answer took too long to put together. Please try again.',
     restartedMidRun:
       'The server restarted and this answer was cut off partway — that is on us, not on you. Send it again and I will pick it straight back up.',
@@ -261,7 +282,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     restartedMidRun:
       'Сервер перезапустился, и этот ответ прервался на середине — это на нашей стороне, не на твоей. Отправь его ещё раз, и я сразу продолжу.',
     serviceUnavailable:
-      'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно; как только он вернётся, я сразу продолжу.',
+      'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно. Когда он вернётся, отправь мне сообщение ещё раз, и я сразу его возьму.',
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
     nameNotVerified: '(имя не подтверждено на официальной странице)',
@@ -294,7 +315,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     restartedMidRun:
       'El servidor se reinició y esta respuesta se cortó a medias — es cosa nuestra, no tuya. Envíala otra vez y la retomo enseguida.',
     serviceUnavailable:
-      'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar no ayudará; en cuanto vuelva, sigo de inmediato.',
+      'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar ahora no ayudará. Cuando vuelva, envíamelo otra vez y lo retomo enseguida.',
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
     nameNotVerified: '(nombre no verificado en una página oficial)',

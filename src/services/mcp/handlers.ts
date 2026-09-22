@@ -44,7 +44,13 @@ import { searchRoster } from '../tools/searchRoster';
 import { isFictionalTestAccount } from '../testSeatTokens';
 import { findWarmPath } from '../tools/findWarmPath';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
-import { deleteUserNotes, getUserNotes, isUserNoteKind, saveUserNote } from '../userNotes.service';
+import {
+  deleteUserNotes,
+  getUserNotes,
+  isUserNoteKind,
+  NOTE_SCOPE,
+  saveUserNote,
+} from '../userNotes.service';
 import {
   countHeldUpdates,
   getPendingUpdates,
@@ -1298,7 +1304,10 @@ export async function mcpSaveUserNote(
   const text = (args.text ?? '').trim();
   if (!text) return { saved: false, error: 'Pass a non-empty text.' };
   await saveUserNote(userId, args.kind as 'need' | 'preference' | 'profile', text);
-  return { saved: true, kind: args.kind };
+  // `scope` travels with every save: the model writes its confirmation from
+  // the RESULT, and a tool description read at the top of the prompt was not
+  // enough to stop it promising a boundary nothing keeps.
+  return { saved: true, kind: args.kind, scope: NOTE_SCOPE };
 }
 
 /**
