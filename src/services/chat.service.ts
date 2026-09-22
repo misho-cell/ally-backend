@@ -4160,6 +4160,53 @@ const TAKES_IT_BACK = new RegExp(
 );
 
 /**
+ * „შევცვალოთ" — LET'S CHANGE IT — the plan card's own third button, and until
+ * today it left the approval standing.
+ *
+ * Found on the way through row 237 and written down rather than quietly fixed
+ * inside somebody else's correction, because it is older than that night and
+ * the seat's to decide. They decided: a request to change the plan withdraws
+ * the yes. This is that.
+ *
+ * WHY `TAKES_IT_BACK` COULD NOT ALREADY DO IT. That list is negations — „არა",
+ * „მაგრამ", „but", „if" — and its own comment says what it is for: „each is a
+ * direct answer to the assistant in which the owner said NO." A change request
+ * is not a no. It is a yes to something that no longer exists, which is a
+ * different fact and needs a different list, or the next person reading either
+ * one is misled about what it holds.
+ *
+ * SO „go ahead" followed by „შევცვალოთ" read as approved, and an approved plan
+ * puts real asks on real people's phones.
+ *
+ * VERBS, NOT THE NOUN. „ცვლილება" (a change) is left out on purpose: „approve
+ * the change" and „დაამტკიცე ცვლილება" are approvals that happen to name one,
+ * and the English side is written as phrases for the same reason — a bare
+ * „change" would refuse them. The Georgian imperatives have no such collision.
+ *
+ * AND THE DIRECTION OF ERROR IS THE SAME AS ABOVE: refusing a real yes costs
+ * the owner one more tap; accepting a withdrawn one sends messages that cannot
+ * be recalled.
+ */
+const ASKS_FOR_A_CHANGE_STEMS = ['შეცვალ', 'შევცვალ', 'შეიცვალ', 'შეცვლ', 'სხვანაირად'];
+const ASKS_FOR_A_CHANGE = new RegExp(
+  `${NOT_A_LETTER_BEFORE}(?:${ASKS_FOR_A_CHANGE_STEMS.join('|')})` +
+    `|\\bchange it\\b|\\bchange that\\b|\\bchange the plan\\b|\\blet'?s change\\b` +
+    `|\\binstead\\b|\\brewrite\\b|\\bredo\\b|\\bdo it differently\\b`,
+  'iu',
+);
+
+/**
+ * Is the yes still a yes after this line?
+ *
+ * Two different ways for it not to be, deliberately kept apart above: the
+ * owner said no, or the owner asked for something else. Every place that asks
+ * „does the approval still stand" has to ask both.
+ */
+function withdrawsTheApproval(said: string): boolean {
+  return TAKES_IT_BACK.test(said) || ASKS_FOR_A_CHANGE.test(said);
+}
+
+/**
  * Ticket 20 row 122, the founder's D292: keep BOTH the button and the words.
  *
  * Ninia, testing live on 16 September, said yes in words twice and was sent to
@@ -4321,10 +4368,23 @@ export function approvalBelongsToThePlan(
     // approval scan, not after. „გააგზავნე" is in the go-ahead list and is also
     // the draft card's label, so testing it for approval first would be G2.
     const usable = lines.filter((line) => !pressedSomethingElse.has(canon(line)));
-    const at = usable.findIndex(approves);
+    /**
+     * THE APPROVING LINE IS HELD TO THE SAME TEST AS THE ONES AFTER IT, and
+     * until today it was not — a hole this row's fix walked straight into.
+     *
+     * „დამტკიცებულია, ოღონდ..." („approved, only...") approved: the scan found
+     * the yes in that line, then looked at everything AFTER it, and there was
+     * nothing after it. The single-message path a few lines down has always
+     * checked the line itself; this one never did, so the same sentence read
+     * two different ways depending on how many lines the owner had typed.
+     *
+     * A later line can still carry the approval: „approved, but..." followed
+     * by „ok, send it" is a yes, and the scan goes on looking.
+     */
+    const at = usable.findIndex((line) => approves(line) && !withdrawsTheApproval(line));
     if (at !== -1) {
       // Everything said AFTER the approval decides whether it still stands.
-      return !usable.slice(at + 1).some((line) => TAKES_IT_BACK.test(line));
+      return usable.slice(at + 1).every((line) => !withdrawsTheApproval(line));
     }
     // Lines existed and none of them approved. Never fall through to the last
     // message: that would reach back past the card the owner is answering.
@@ -4333,7 +4393,7 @@ export function approvalBelongsToThePlan(
 
   const said = lastOwnerMessage?.trim() ?? '';
   if (said === '') return false;
-  if (TAKES_IT_BACK.test(said)) return false;
+  if (withdrawsTheApproval(said)) return false;
   return approves(said);
 }
 
