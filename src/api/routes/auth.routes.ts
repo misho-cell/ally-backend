@@ -20,6 +20,63 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 
 const authRouter = Router();
 
+/**
+ * THE REFERRAL CODE, UNDER ANY SPELLING THE CLIENT USES — row 229.
+ *
+ * `/referral/opened` already learned this the expensive way: the deployed
+ * /join page sent `{referralCode}` while the route demanded `{code}`, every
+ * real page load was rejected 400, and the funnel never moved. That route
+ * accepts both spellings now, and the comment there says why — „a route this
+ * endpoint-shaped must not lose real events over a field name."
+ *
+ * REGISTRATION WAS LEFT ON ONE SPELLING, and it is the route where the same
+ * mistake costs the most AND shows the least. A rejected page load is a 400
+ * somebody can see. A registration that arrives with the code under the wrong
+ * key is not an error at all: `referralCode` is simply `undefined`, the gate
+ * falls through to `mode: 'open'`, the account is created, the person is let
+ * in, and the inviter is lost for good with nothing anywhere saying so.
+ *
+ * WHAT IS MEASURED, 22 September. The last attributed registration in this
+ * database is 31 August 14:36; since then 25 real registrations and zero
+ * attributed. Inside that same window `referral_link_events` holds FIFTEEN
+ * `opened` rows, the most recent on 15 September — and `recordLinkOpened`
+ * writes a row ONLY when `findUserByReferralCode` resolves the code. So a
+ * resolvable code demonstrably reaches this server in this window, and the
+ * codes themselves are well formed (42 issued, all eight characters, all
+ * upper case). „The code is invalid" is eliminated; what is left is the code
+ * not arriving at registration under the name registration reads.
+ *
+ * THIS DOES NOT PROVE THE CLIENT SENDS THE WRONG NAME and is not written as
+ * though it does — the visitor who opens a link and the person who registers
+ * cannot be joined from here, because `referral_link_events` records the link
+ * OWNER. It removes a whole class of cause instead of diagnosing one, which is
+ * the only thing a backend can do about a field it never receives.
+ *
+ * `ref` is included because it is the spelling the link itself carries:
+ * `/join?ref=CODE`, written by `getInviteLink`. A page passing its own query
+ * parameter straight through is the likeliest shape of this bug.
+ */
+export const REFERRAL_CODE_KEYS = ['referralCode', 'code', 'ref'] as const;
+
+export interface ReferralCodeIn {
+  /** The code itself. Never logged, never echoed: it is a credential (D149). */
+  readonly code?: string;
+  /** WHICH spelling carried it, or undefined when none did. Safe to log. */
+  readonly key?: (typeof REFERRAL_CODE_KEYS)[number];
+}
+
+export function referralCodeFrom(body: unknown): ReferralCodeIn {
+  if (typeof body !== 'object' || body === null) return {};
+  const bag = body as Record<string, unknown>;
+  for (const key of REFERRAL_CODE_KEYS) {
+    const raw = bag[key];
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (trimmed !== '') return { code: trimmed, key };
+  }
+  return {};
+}
+
 // Unauthenticated endpoints — limit by IP to curb OTP/login abuse.
 authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));
 
@@ -173,13 +230,19 @@ authRouter.post(
     }
 
     try {
-      const { phone, name, referralPhone, referralCode } = req.body as {
+      const { phone, name, referralPhone } = req.body as {
         phone: string;
         name: string;
         referralPhone?: string;
-        referralCode?: string;
       };
-      const result = await registerUser(phone, name, referralPhone, referralCode);
+      const ref = referralCodeFrom(req.body);
+      // The KEY, never the code. „Which spelling arrived" is the one thing
+      // three weeks of silence could not answer, and a field name is not a
+      // credential — the code itself stays out of the log exactly as a phone
+      // number does (D149).
+      // eslint-disable-next-line no-console
+      console.log(`[register] referral code arrived under: ${ref.key ?? 'NO KEY AT ALL'}`);
+      const result = await registerUser(phone, name, referralPhone, ref.code);
       res.status(201).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'რეგისტრაცია ვერ მოხერხდა';
@@ -210,12 +273,15 @@ authRouter.post(
     }
 
     try {
-      const { phone, referralPhone, referralCode } = req.body as {
+      const { phone, referralPhone } = req.body as {
         phone: string;
         referralPhone?: string;
-        referralCode?: string;
       };
-      const result = await checkRegistrationEligibility(phone, referralPhone, referralCode);
+      const result = await checkRegistrationEligibility(
+        phone,
+        referralPhone,
+        referralCodeFrom(req.body).code,
+      );
       // inviterUserId stays server-side — no user ids for unauthenticated callers.
       res.status(200).json({
         success: true,
