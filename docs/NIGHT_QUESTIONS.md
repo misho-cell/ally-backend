@@ -118,6 +118,39 @@ door shuts with it. Fewer people, and the door needs a different key: distil
 LOCALLY for this case, since the person's name is already the whole query,
 rather than asking a second provider for it.
 
+### 6. The outage monitor is blind all night, and it took me until 22:41 to notice
+
+`outage.sh` has three verdicts in its text and two in its exit codes. The third
+— **NOTHING PROVEN**, meaning no errors AND no Anthropic call in the window —
+exits 0, deliberately and with the reasoning written next to it: „a routine
+that cries at every quiet hour gets ignored".
+
+That reasoning is right for the day and it has a consequence nobody wrote down.
+**At night, NOTHING PROVEN is the normal answer.** Three checks between 22:07
+and 22:37 all reported 0 errors and 0 calls, because nobody is using the
+product. The routine that runs this reads exit 0 as „the product answers" and
+tells me to write nothing and end the turn.
+
+So an outage that starts at midnight would be found by the first person awake.
+That is the 22 September 12:04 blind spot — the one this file exists for —
+stretched from fifty minutes to nine hours.
+
+**What I did tonight:** the script now SAYS this in its own output, so nobody
+reads a quiet night as a healthy one. That is honesty, not a fix.
+
+**Why we cannot fix it overnight:** the fix is a positive probe — one cheap
+model call when the window is empty, so that silence becomes evidence instead
+of the absence of it. A probe costs money on every quiet check, and money is
+Misho's. It also needs a number: how cheap, how often, and against which
+account.
+
+**And a habit of my own, worth admitting:** I have been running these checks as
+`./scripts/ops/outage.sh 20 | tail -3; echo $?`, which prints TAIL's exit code
+and not the script's. Nothing was missed — the verdict is also in the text and
+I read it every time — but for hours I was quoting a number that came from the
+wrong command. Fixed by capturing to a file and reading the code before the
+text.
+
 ### 5. Rows 251 and 252 — both against the consent and privacy walls
 
 Both specced tonight, neither built, each for a reason written into `TASKS.md`:

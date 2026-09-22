@@ -117,6 +117,22 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
   echo "  exactly alike from here. ${REPLIES} reply(ies) in the window were written"
   echo "  by the server, not by the model. If an outage is known to be open, it"
   echo "  is STILL OPEN until an Anthropic call succeeds."
+  # 22 September, 22:41 — AND AT NIGHT THIS IS THE NORMAL ANSWER, which makes
+  # the monitor blind for nine hours at a stretch. Three checks in a row
+  # between 22:07 and 22:37 reported 0 errors and 0 calls, because nobody was
+  # using the product. The routine that runs this reads „exit 0" as „the
+  # product answers" and writes nothing — so an outage that began at midnight
+  # would be found by the first person awake, which is the exact 50-minute
+  # blind spot on 22 September that this file was written for, stretched to a
+  # whole night.
+  #
+  # The exit code stays 0 on purpose (see above: a routine that cries at every
+  # quiet hour gets ignored) and saying so here is not a fix. The fix is a
+  # positive probe — one cheap model call when the window is empty, so silence
+  # becomes evidence instead of the absence of it — and a probe costs money,
+  # which is Misho's to authorise. Written into docs/NIGHT_QUESTIONS.md.
+  echo "  NOTE: at night this is the NORMAL answer, so this check cannot see an"
+  echo "  outage that starts after everyone goes to bed. See NIGHT_QUESTIONS.md."
   if [ "$OTHER" -gt 0 ]; then
     echo "  ${OTHER} other usage row(s) are NOT that proof: that column also holds"
     echo "  tool names and a second provider, neither of which touches Anthropic."
