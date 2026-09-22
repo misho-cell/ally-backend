@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
+import { DAY_ONE_WAKE, finishWake, recordWake } from './engineWakes.service';
 import { processChat } from './chat.service';
 import {
   getTaskById,
@@ -675,6 +676,12 @@ function wakeWhenFree(
   onWoken: () => Promise<void>,
   delayMs: number,
   attempt = 1,
+  /**
+   * Rows 231/239: called on the ways out that are NOT „woken" and are not
+   * worth retrying, so a durable record of the wake can be closed. Optional —
+   * the callers that keep no record pass nothing and behave as before.
+   */
+  onGaveUp?: () => Promise<void>,
 ): void {
   if (attempt === 1) {
     void ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
@@ -701,15 +708,27 @@ function wakeWhenFree(
         if (woken === 'stopped') {
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: wake gave up, nothing a retry would change`);
+          if (onGaveUp) await onGaveUp();
           return;
         }
         if (attempt < WAKE_RETRY_ATTEMPTS) {
-          wakeWhenFree(taskId, eventText, stillWanted, onWoken, WAKE_RETRY_DELAY_MS, attempt + 1);
+          wakeWhenFree(
+            taskId,
+            eventText,
+            stillWanted,
+            onWoken,
+            WAKE_RETRY_DELAY_MS,
+            attempt + 1,
+            onGaveUp,
+          );
         } else {
           // eslint-disable-next-line no-console
           console.error(
             `[task-engine] task ${taskId}: thread still busy after ${attempt} attempts`,
           );
+          // Left OPEN on purpose: a thread too busy for ninety seconds is
+          // exactly the case the sweeper should try again, later, when it is
+          // not. `attempts` on the row is what stops that going on for ever.
         }
       })
       .catch((err: unknown) =>
@@ -724,15 +743,37 @@ async function goalOpen(taskId: number): Promise<boolean> {
   return task !== null && task.status === 'open';
 }
 
-export function startDayOne(taskId: number): void {
+/**
+ * Rows 231 and 239 — day one is written down before the timer starts.
+ *
+ * The timer is unchanged and is still the fast path: 30 of the last 41
+ * approvals got their first day in 7-67 seconds through it. The row is the net
+ * under the other eleven, which lost their timer to a restart and waited for
+ * the day-long floor while the product told them it had already started.
+ *
+ * `delayMs` is a parameter only so the sweeper can re-run the same wake with
+ * no delay. Nothing else passes it.
+ */
+export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS): void {
+  void recordWake(taskId, DAY_ONE_WAKE, delayMs);
   wakeWhenFree(
     taskId,
     DAY_ONE_EVENT,
-    () => goalOpen(taskId),
+    async () => {
+      const open = await goalOpen(taskId);
+      // A closed goal will never want its first day. Taking it off the list
+      // here and not only on the woken path is what stops the sweeper picking
+      // the same dead goal up five times.
+      if (!open) await finishWake(taskId, DAY_ONE_WAKE);
+      return open;
+    },
     async () => {
       await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+      await finishWake(taskId, DAY_ONE_WAKE);
     },
-    DAY_ONE_DELAY_MS,
+    delayMs,
+    1,
+    () => finishWake(taskId, DAY_ONE_WAKE),
   );
 }
 

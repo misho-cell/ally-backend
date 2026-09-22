@@ -28,6 +28,7 @@ import { startAiNotificationCron } from './services/aiNotification.cron';
 import { startChorusCampaignCron } from './services/chorusCampaign.cron';
 import { startLabReportCron } from './services/labReport.cron';
 import { startIdentityScanCron } from './services/identityScan.cron';
+import { startEngineWakeCron } from './services/engineWakes.cron';
 import { startRunReaper } from './services/runReaper.service';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
@@ -133,6 +134,8 @@ runMigrations()
     startChorusCampaignCron();
     startLabReportCron();
     startIdentityScanCron();
+    // Rows 231/239: the net under the engine's in-process timers.
+    startEngineWakeCron();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
     // Row 202 fourth pass: says nothing until the event loop is actually
