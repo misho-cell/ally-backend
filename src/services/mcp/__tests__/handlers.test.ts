@@ -983,6 +983,31 @@ describe('memory tools', () => {
     expect(result.contact_ref).toBe(ref);
     expect(containsPhoneLike(result)).toBe(false);
   });
+
+  /**
+   * THE TWIN OF `mcpGetContactProfile`'s LAST TEST, AND IT WAS MISSING.
+   *
+   * Sabotage, 22 September: the exclusion line removed from this handler —
+   * 3,773 tests passed. The identical line in `mcpGetContactProfile` is held
+   * by its own test four hundred lines above; this one had nothing, and the
+   * two are a pair by design. `isExcludedContact`'s own comment says what it
+   * is for: „searches already exclude these contacts, so a fresh ref should
+   * never point at one — but a stale/reused ref must not surface a blocked
+   * person's profile OR FACTS."
+   *
+   * Facts are the worse of the two to leak. A profile is tags and a summary;
+   * the facts are what somebody told us about a person who has since been
+   * blocked, or who has died.
+   */
+  it('returns unavailable (never the facts) for a blocked/deceased contact', async () => {
+    mockExcludedSet.mockResolvedValueOnce(new Set([normalizePhone(PHONE)]));
+    const ref = encodeContactRef(USER, PHONE);
+
+    const result = await mcpGetContactFacts(USER, { contact_ref: ref });
+
+    expect(result.error).toContain('unavailable');
+    expect(mockGetFacts).not.toHaveBeenCalled();
+  });
 });
 
 describe('blocking tools', () => {
