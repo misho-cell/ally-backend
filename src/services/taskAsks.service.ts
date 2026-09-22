@@ -911,7 +911,9 @@ async function answerAutomatically(
     'assistant',
     answeredByYourRule(ruleLanguage, rule.kind, rule.answer),
   );
-  await setThreadStatus(recipientUserId, askThreadId, 'done', { isTask: true });
+  // Row 233: the close used to live here and ONLY here, which is why a typed
+  // answer never got one. It is now in `deliverCapturedAnswer`, which both
+  // paths go through.
   await deliverCapturedAnswer(captured, recipientUserId);
 }
 
@@ -923,6 +925,8 @@ async function answerAutomatically(
 export interface CapturedAnswer {
   askId: number;
   taskId: number;
+  /** The recipient's own thread — the one whose badge has to stop asking. */
+  askThreadId: number;
   firstAnswer: boolean;
   answer: string;
   /** Who answered — the wake event names them (ticket 4 item 0C.3). */
@@ -995,6 +999,10 @@ export async function recordAskAnswer(
   return {
     askId: row.id,
     taskId: row.task_id,
+    // Row 233: carried so `deliverCapturedAnswer` can close the thread without
+    // its caller having to remember to — which is precisely what one of the
+    // two callers did not do.
+    askThreadId,
     firstAnswer,
     answer: safe,
     fromName: check.rows[0]?.from_name ?? null,
@@ -1059,6 +1067,35 @@ async function deliverCapturedAnswer(
   captured: CapturedAnswer,
   recipientUserId: string,
 ): Promise<void> {
+  /**
+   * Row 233 — THE PERSON WHO ANSWERED WAS STILL BEING ASKED.
+   *
+   * Thread 21509, account 171940, read from the live table at 10:20 today:
+   *
+   *   09:19:14  ask 3664 sent, thread born `needs_you` / „Needs your answer"
+   *   09:48:45  he ANSWERED it — task_asks.status = 'answered'
+   *   09:49:23  the thread's last update … still `needs_you`
+   *
+   * And it still says it. Compare 21510, the ask the recipient's opt-out
+   * cancelled: `done`. So the CANCEL path cleared the badge and the ANSWER
+   * path did not.
+   *
+   * The close existed — in `answerAutomatically`, the standing-rule branch, and
+   * nowhere else. A person who answers by TYPING, which is every ordinary
+   * answer, kept a chat asking them for something they had already given.
+   *
+   * It goes HERE because this function's own comment already claimed the
+   * ground: „what every answer does once it is recorded, typed or automatic".
+   * It was true of the warmth and the wake and false of the badge. Both
+   * callers pass through it, so neither can forget again — which is how the
+   * typed path came to be missing it in the first place.
+   *
+   * Every answer, not only the first: a second message appending to an answer
+   * must not reopen a thread that is finished, and closing a closed thread
+   * costs one idempotent write.
+   */
+  await setThreadStatus(recipientUserId, captured.askThreadId, 'done', { isTask: true });
+
   // Two people who write back to each other have a real tie — the founder's
   // own third source of warmth (ticket 9 task 13.1). Evidence about the PAIR,
   // so it lands on both sides. Best-effort: the answer is what matters here.

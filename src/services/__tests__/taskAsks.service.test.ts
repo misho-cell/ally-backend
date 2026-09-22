@@ -791,6 +791,46 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     expect(markCall?.[1]).toEqual([77]);
   });
 
+  /**
+   * ROW 233 — THE PERSON WHO ANSWERED WAS STILL BEING ASKED.
+   *
+   * Thread 21509, account 171940, read from the live table today:
+   *
+   *   09:19:14  ask 3664 sent, thread born `needs_you` / „Needs your answer"
+   *   09:48:45  he ANSWERED it
+   *   09:49:23  the thread's last update … still `needs_you`
+   *
+   * And it still said it two hours later. Thread 21510, whose ask the
+   * recipient's opt-out CANCELLED, read `done` — so the cancel path cleared
+   * the badge and the answer path did not.
+   *
+   * The close existed in `answerAutomatically` and nowhere else, so a person
+   * who answered by TYPING — every ordinary answer — kept a chat asking them
+   * for something they had already given.
+   */
+  it('stops asking the person who has just answered', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
+    mockWakeTask.mockResolvedValue('woken');
+
+    await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
+
+    expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 55, 'done', { isTask: true });
+  });
+
+  /**
+   * A second message appending to an answer must not reopen a thread that is
+   * finished — so the close does not hang off `firstAnswer`, and closing a
+   * closed thread costs one idempotent write.
+   */
+  it('and keeps it closed when a later message appends to the answer', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'answered' } });
+    mockWakeTask.mockResolvedValue('woken');
+
+    await sendApprovedAskAnswer('7', 55, 'და კიდევ ერთი რამ');
+
+    expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 55, 'done', { isTask: true });
+  });
+
   it('refuses when the thread carries no ask, or the ask is addressed to someone else', async () => {
     routeApprovedAnswerQueries({ ask: { to_user_id: 99, status: 'sent' } });
 
@@ -842,10 +882,13 @@ describe('recordAskAnswer', () => {
     const out = await recordAskAnswer(55, 'ბიძაშვილი აკეთებს BMW-ებს');
 
     // The verbatim scrubbed text + ask id ride back for the wake event and
-    // its delivery marker (ticket 3 §5, ticket 4 blocker 1).
+    // its delivery marker (ticket 3 §5, ticket 4 blocker 1). Row 233 adds the
+    // thread: the badge that has to stop asking belongs to the answer, not to
+    // whichever caller happened to remember it.
     expect(out).toEqual({
       askId: 77,
       taskId: 3,
+      askThreadId: 55,
       firstAnswer: true,
       answer: 'ბიძაშვილი აკეთებს BMW-ებს',
       fromName: 'გია',
