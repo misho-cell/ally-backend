@@ -433,10 +433,11 @@ describe('row 154 — the way in, beside each web result', () => {
     it('answers nothing for a shape it does not recognise', () => {
       expect(webResultNames(null)).toEqual([]);
       expect(webResultNames({ results: 'nope' })).toEqual([]);
-      // A row with a URL and no title is malformed, and since 18 September the
-      // host is the fallback for a title that names nothing. It names something
-      // real, which is more than the empty answer did.
-      expect(webResultNames({ results: [{ url: 'https://x.ge' }] })).toEqual(['x.ge']);
+      // A row with a URL and no title is malformed. From 18 September the host
+      // was the fallback here, „because it names something real"; the table
+      // says otherwise — 106 host lookups, none of which ever matched a
+      // contact — so a row with no title now yields no name.
+      expect(webResultNames({ results: [{ url: 'https://x.ge' }] })).toEqual([]);
       expect(webResultNames({ results: [{}] })).toEqual([]);
     });
   });
@@ -685,10 +686,11 @@ describe('webResultNames cuts at a word', () => {
   it('does not offer that headline as a name at all any more', () => {
     // 18 September: a title of thirteen words is a sentence, and a sentence has
     // no company name in it. The cut-at-a-word rule below still governs a name
-    // that is genuinely long; this one is not a name.
+    // that is genuinely long; this one is not a name. Since 22 September the
+    // host is not one either, so the answer is nothing at all.
     expect(
       webResultNames({ results: [{ title: long, url: 'https://news.example.com/x' }] }),
-    ).toEqual(['news.example.com']);
+    ).toEqual([]);
   });
 
   it('does not end a name inside a word', () => {
@@ -775,7 +777,15 @@ describe('the name taken out of a web result', () => {
     ]);
   });
 
-  it('falls back to the host when the title is a sentence', () => {
+  /**
+   * THIS EXPECTED THE HOST UNTIL 22 SEPTEMBER, AND THE TABLE TURNED IT.
+   *
+   * Over the whole life of the feature: 482 way-in lookups, 37 of which found
+   * somebody. Of those 37, not one came from a bare host (106 lookups) and not
+   * one from a description (90). „The host usually names something real" was
+   * an assumption nobody had asked the log about.
+   */
+  it('gives no name when the title is a sentence, because the host is not one', () => {
     expect(
       names([
         {
@@ -783,7 +793,7 @@ describe('the name taken out of a web result', () => {
           url: 'https://movers-chicago.example.com/thread/x',
         },
       ]),
-    ).toEqual(['movers-chicago.example.com']);
+    ).toEqual([]);
   });
 
   /**
@@ -792,9 +802,9 @@ describe('the name taken out of a web result', () => {
    * card reading „No way in yet: reddit.com" and a phonebook searched for
    * „reddit.com" help nobody, and the search is not free.
    *
-   * The fallback still applies to an ordinary host, as the test above holds.
-   * A platform anybody can post on names no firm, so there the honest answer
-   * is no name — see HOSTS_THAT_NAME_NOBODY.
+   * That was the right idea aimed at one name at a time. Since 22 September
+   * there is no host fallback at all and the deny-list is gone with it, so
+   * this case and the one above now agree for the same reason.
    */
   it('gives no name at all when the sentence is on a platform', () => {
     expect(
@@ -812,13 +822,16 @@ describe('the name taken out of a web result', () => {
     expect(names([{ title: '312 MOVERS — Chicago', url: 'https://312movers.com' }])).toEqual([
       '312 MOVERS',
     ]);
+    // AND THIS ONE IMPROVED ON ITS OWN. It used to answer „Electrician in
+    // Tbilisi" — the first segment, a description — and the firm's actual name
+    // sat in the second segment, unused. The description rule skips past it.
     expect(
       names([{ title: 'Electrician in Tbilisi — NeoFix', url: 'https://neofix.ge/en' }]),
-    ).toEqual(['Electrician in Tbilisi']);
+    ).toEqual(['NeoFix']);
   });
 
-  it('drops www but keeps the host otherwise, because it names something real', () => {
-    expect(names([{ title: 'Home', url: 'https://www.ruderal.com/' }])).toEqual(['ruderal.com']);
+  it('answers nothing for a page word over a host, now that the host is not a name', () => {
+    expect(names([{ title: 'Home', url: 'https://www.ruderal.com/' }])).toEqual([]);
   });
 
   it('survives a result with no url to fall back to', () => {

@@ -43,9 +43,9 @@ function results(...rows: [string, string][]): unknown {
 describe('a way-in name is a name, not a page', () => {
   it('skips the page furniture that reached live cards', () => {
     // Each of these was observed as an extracted "name" on 21 September.
-    expect(webResultNames(results(['Terms of Service', 'https://www.netai.ai/terms']))).toEqual([
-      'netai.ai',
-    ]);
+    // „Terms of Service" leaves nothing behind it: the host is no longer a
+    // fallback, for the reason measured at `nameFromResult`.
+    expect(webResultNames(results(['Terms of Service', 'https://www.netai.ai/terms']))).toEqual([]);
     expect(
       webResultNames(results(['Publication - GIST NetAI Laboratory', 'https://netai.smartx.kr/x'])),
     ).toEqual(['GIST NetAI Laboratory']);
@@ -86,7 +86,22 @@ describe('a way-in name is a name, not a page', () => {
     ).toEqual([]);
   });
 
-  it('keeps an ordinary host, which usually does name a real firm', () => {
+  /**
+   * THIS TEST USED TO SAY THE OPPOSITE, AND THE TABLE IS WHY IT TURNED.
+   *
+   * It read „keeps an ordinary host, which usually does name a real firm" and
+   * expected `modernroofing.ge`. „Usually" was an assumption and it had never
+   * been checked. Over the whole life of the feature, 482 lookups:
+   *
+   *   found a way in                            37
+   *   name was a bare host          106         0
+   *   name was a description         90         0
+   *
+   * Not one host has ever matched a contact. So the host fallback is gone, and
+   * with it the deny-list of platforms and brokers that was trying to patch it
+   * one name at a time.
+   */
+  it('does not fall back to the host, because a host has never found anybody', () => {
     expect(
       webResultNames(
         results([
@@ -94,22 +109,63 @@ describe('a way-in name is a name, not a page', () => {
           'https://modernroofing.ge/',
         ]),
       ),
-    ).toEqual(['modernroofing.ge']);
+    ).toEqual([]);
   });
 
   /**
-   * THE SEAT'S OWN EXAMPLE, PINNED AS STILL WRONG.
+   * THE SEAT'S OWN EXAMPLE, AND THIS TEST IS THE ONE THAT TURNED.
+   *
+   * It read „still lets a description through, and row 154 is still open
+   * because of it", and its comment said: „If this test ever fails, somebody
+   * has fixed that." Somebody has.
    *
    * „Custom Cabinets in North Georgia" — the American state — on a Tbilisi
-   * carpenter goal. It is three words and not a page word, so it passes every
-   * mechanical rule here, and telling a description from a name needs judgement
-   * this function does not have. Row 154 stays open on the seat's list. If this
-   * test ever fails, somebody has fixed that, and the comment above should stop
-   * saying it is unfixed.
+   * carpenter goal. Three words, no page word, so every mechanical rule passed
+   * it. What settles it is not judgement but the same table: 90 lookups of a
+   * description-shaped name, none of which ever matched a contact.
    */
-  it('still lets a description through, and row 154 is still open because of it', () => {
+  it('drops a description, which is the shape row 154 was written about', () => {
     expect(
       webResultNames(results(['Custom Cabinets in North Georgia', 'https://example.com/cabinets'])),
-    ).toEqual(['Custom Cabinets in North Georgia']);
+    ).toEqual([]);
+    // Tonight's, from thread 22363 — „I have a problem with my apartment".
+    expect(
+      webResultNames(results(['Handyman Services in Greensboro, NC', 'https://example.com/h'])),
+    ).toEqual([]);
+  });
+
+  /**
+   * AND THE CONTROL, which matters more than either of the two above: the
+   * names that DID find somebody must survive. A rule that drops everything
+   * passes every test in this file up to here.
+   */
+  it('keeps a real firm name, including an odd one', () => {
+    expect(webResultNames(results(['Nb Dental', 'https://example.com/1']))).toEqual(['Nb Dental']);
+    expect(webResultNames(results(['PlacidWay', 'https://example.com/2']))).toEqual(['PlacidWay']);
+    expect(webResultNames(results(['GNN-Powered AIOps', 'https://example.com/3']))).toEqual([
+      'GNN-Powered AIOps',
+    ]);
+    // Kept whole, and that is the real behaviour rather than the tidy one:
+    // TITLE_SEPARATORS carries „·" (U+00B7) and not „•" (U+2022), so this one
+    // is never split. It is a real bilingual firm name from the log, it is
+    // neither a host nor a description, and these two rules are not the place
+    // to start trimming it.
+    expect(webResultNames(results(['PrintWell • პრინტველი', 'https://example.com/4']))).toEqual([
+      'PrintWell • პრინტველი',
+    ]);
+  });
+
+  /**
+   * The preposition rule is about ENGLISH and says nothing about Georgian. A
+   * Georgian name that happens to contain one of those letter sequences inside
+   * a word must not be caught by it — the rule needs spaces on both sides.
+   */
+  it('does not catch a preposition buried inside a word', () => {
+    expect(webResultNames(results(['Intercity Group', 'https://example.com/5']))).toEqual([
+      'Intercity Group',
+    ]);
+    expect(webResultNames(results(['Atlas Clinic', 'https://example.com/6']))).toEqual([
+      'Atlas Clinic',
+    ]);
   });
 });

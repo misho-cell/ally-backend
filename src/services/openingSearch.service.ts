@@ -583,43 +583,26 @@ const PLATFORM_SEGMENTS = new Set([
   'quora',
 ]);
 
-const HOSTS_THAT_NAME_NOBODY = new Set([
-  'youtube.com',
-  'linkedin.com',
-  'facebook.com',
-  'instagram.com',
-  'x.com',
-  'twitter.com',
-  'tiktok.com',
-  'reddit.com',
-  'medium.com',
-  'wikipedia.org',
-  'en.wikipedia.org',
-  'pinterest.com',
-  'quora.com',
-  'rocketreach.co',
-  'bookyourdata.com',
-  'introhive.com',
-  'revenuegrid.com',
-  'pitchbook.com',
-  'zoominfo.com',
-  'apollo.io',
-  'crunchbase.com',
-  'lusha.com',
-  'signalhire.com',
-]);
-
 /** A name is short. Beyond this it is a sentence, and a sentence has no name in it. */
 const MAX_NAME_WORDS = 6;
 
-function hostOf(url: unknown): string {
-  if (typeof url !== 'string') return '';
-  try {
-    return new URL(url).hostname.replace(/^www\./i, '');
-  } catch {
-    return '';
-  }
-}
+/**
+ * A DESCRIPTION IS NOT A NAME, and this is row 154's fourth kind — the one the
+ * test below pinned as unfixed since 21 September, and the one the seat chose
+ * as their example.
+ *
+ * „Custom Cabinets in North Georgia" on a Tbilisi carpenter goal. Three words,
+ * no page word, so every mechanical rule here passed it and it went into
+ * somebody's phone book as if it were a person. Tonight's run produced
+ * „Handyman Services in Greensboro, NC" for „I have a problem with my
+ * apartment".
+ *
+ * The rule is one English preposition between two words, and it is narrow on
+ * purpose: it says nothing about Georgian, and it will not touch „GNN-Powered
+ * AIOps" or any other odd-but-real firm name, because telling those apart
+ * needs judgement this function still does not have.
+ */
+const DESCRIPTION_SHAPE = /\s(in|from|for|near|at)\s/i;
 
 function nameFromResult(row: Record<string, unknown>): string {
   const title = typeof row.title === 'string' ? row.title : '';
@@ -631,15 +614,35 @@ function nameFromResult(row: Record<string, unknown>): string {
     if (PAGE_WORDS.has(segment.toLowerCase())) continue;
     if (PAGINATION_SEGMENT.test(segment)) continue;
     if (PLATFORM_SEGMENTS.has(segment.toLowerCase())) continue;
+    if (DESCRIPTION_SHAPE.test(segment)) continue;
     if (segment.split(/\s+/).length > MAX_NAME_WORDS) continue;
     return cutAtAWord(segment);
   }
-  // Every segment was a page word or a sentence: the host is what is left, and
-  // it is the one part of a web result that USUALLY names something real. On a
-  // platform or a data broker it does not, and there the honest answer is no
-  // name at all — see HOSTS_THAT_NAME_NOBODY.
-  const host = hostOf(row.url);
-  return HOSTS_THAT_NAME_NOBODY.has(host) ? '' : host;
+  /**
+   * AND WHEN NO SEGMENT IS A NAME, THERE IS NO NAME — the host is not one.
+   *
+   * This used to fall back to the hostname, on the stated ground that „it is
+   * the one part of a web result that USUALLY names something real", with a
+   * deny-list of platforms and data brokers beside it. The table disagrees,
+   * over the whole life of the feature:
+   *
+   *   every way-in lookup ever                482     found a way in: 37
+   *   lookups whose name was a bare host      106     found a way in:  0
+   *   lookups whose name was a description     90     found a way in:  0
+   *   the two together                        196     found a way in:  0
+   *                                       115.2 seconds of database work
+   *
+   * Not one host and not one description has ever matched a contact. All 37
+   * successes came from a name that is neither. The deny-list was the right
+   * idea aimed at the wrong half: `tiktok.com` was refused and `electrik.ge`,
+   * `whatclinic.com`, `preply.com` and `Architect.Tbilisi.Gov.Ge` were not —
+   * and that last one is the seat's „a government website address", going
+   * into somebody's contacts as if it were a person.
+   *
+   * So the fallback and its deny-list are both gone. Forty-one per cent of the
+   * lookups go with them and nothing measurable is lost.
+   */
+  return '';
 }
 
 export function webResultNames(result: unknown): string[] {
