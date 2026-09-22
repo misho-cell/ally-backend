@@ -4,6 +4,7 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 1 }),
   userLanguage: jest.fn().mockResolvedValue('en'),
+  lastAssistantMessageIs: jest.fn().mockResolvedValue(false),
 }));
 jest.mock('../threadStatus.service', () => ({
   __esModule: true,
@@ -11,13 +12,16 @@ jest.mock('../threadStatus.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { saveThreadMessage, userLanguage } from '../threads.service';
+import { lastAssistantMessageIs, saveThreadMessage, userLanguage } from '../threads.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
+const mockAlreadyTold = lastAssistantMessageIs as jest.MockedFunction<
+  typeof lastAssistantMessageIs
+>;
 
 /** The close runs two statements: cancel the unanswered, then read the answered. */
 function closing(opts: { cancelled?: unknown[]; answered?: unknown[] }): void {
@@ -38,6 +42,7 @@ function closing(opts: { cancelled?: unknown[]; answered?: unknown[] }): void {
 beforeEach(() => {
   jest.clearAllMocks();
   mockLanguage.mockResolvedValue('en');
+  mockAlreadyTold.mockResolvedValue(false);
 });
 
 /**
@@ -170,5 +175,48 @@ describe('closing a goal thanks the people who answered it', () => {
 
     expect(quiet).toHaveBeenCalled();
     quiet.mockRestore();
+  });
+});
+
+/**
+ * AND NOT ONCE PER CLOSE, which the first version of this got wrong and a
+ * re-read caught an hour later.
+ *
+ * `cancelAsksForTask` runs from FIVE call sites and its own UPDATE is
+ * idempotent — it only touches rows still `sent`. The thank-you's read is not:
+ * an ANSWERED row stays answered for ever. So a goal closed twice thanked the
+ * same person twice, and `finish_task` followed by `update_task(status=closed)`
+ * is an ordinary pair. The thread delete is a third door into the same place.
+ *
+ * Row 148's lesson again — two identical courtesies read as a fault.
+ */
+describe('and it does not thank the same person twice for the same close', () => {
+  it('stays quiet when that exact line is already their last message', async () => {
+    mockAlreadyTold.mockResolvedValue(true);
+    closing({
+      answered: [{ ask_thread_id: 21720, to_user_id: 171940, asker_name: 'Netai Test 7' }],
+    });
+
+    await cancelAsksForTask(7829);
+
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The EXACT line, not a status flag. A flag could only ever answer „has this
+   * thread been told anything", and the apology to somebody who never answered
+   * would then swallow the thank-you to somebody who did.
+   */
+  it('compares the line it is about to write, not merely that something was written', async () => {
+    closing({
+      answered: [{ ask_thread_id: 21720, to_user_id: 171940, asker_name: 'Netai Test 7' }],
+    });
+
+    await cancelAsksForTask(7829);
+
+    const [threadId, asked] = mockAlreadyTold.mock.calls[0];
+    expect(threadId).toBe(21720);
+    expect(String(asked)).toContain('Netai Test 7');
+    expect(String(asked)).toBe(String(mockSave.mock.calls[0][3]));
   });
 });

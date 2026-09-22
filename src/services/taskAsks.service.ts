@@ -3,7 +3,12 @@ import { getTaskById } from './taskStore.service';
 import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
-import { createThread, saveThreadMessage, userLanguage } from './threads.service';
+import {
+  createThread,
+  lastAssistantMessageIs,
+  saveThreadMessage,
+  userLanguage,
+} from './threads.service';
 import {
   askAnsweredAndGoalClosed,
   askWithdrawnAfterOptOut,
@@ -1571,9 +1576,22 @@ async function thankThePeopleWhoAnswered(taskId: number): Promise<void> {
     ASK_QUERY_TIMEOUT_MS,
   );
 
-  // One thank-you per PERSON's thread, not per ask — row 148's rule, and a
-  // relayed conversation deliberately continues in one thread, so a goal that
-  // asked somebody twice has two rows pointing at one chat.
+  /**
+   * One thank-you per PERSON's thread, not per ask — row 148's rule, and a
+   * relayed conversation deliberately continues in one thread, so a goal that
+   * asked somebody twice has two rows pointing at one chat.
+   *
+   * AND NOT ONCE PER CLOSE EITHER, which the first version of this got wrong.
+   * `cancelAsksForTask` runs from FIVE call sites and its own UPDATE is
+   * idempotent — it only touches rows still `sent`. This read is not: an
+   * ANSWERED row stays answered for ever, so a goal closed twice thanked the
+   * same person twice. `finish_task` followed by `update_task(status=closed)`
+   * is an ordinary pair, and the thread delete is a third door.
+   *
+   * The same test the engine uses for „has this person already been told
+   * THIS": the exact line against their last assistant message. A status flag
+   * could only answer „has this thread been told anything".
+   */
   const told = new Set<number>();
   for (const row of answered.rows) {
     if (row.ask_thread_id === null || told.has(row.ask_thread_id)) continue;
@@ -1583,12 +1601,11 @@ async function thankThePeopleWhoAnswered(taskId: number): Promise<void> {
     // THEIR language. They are a stranger doing somebody a favour, and being
     // thanked in a script they cannot read is worse than not being thanked.
     const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
-    await saveThreadMessage(
-      row.ask_thread_id,
-      row.to_user_id,
-      'assistant',
-      askAnsweredAndGoalClosed(language, asker),
-    ).catch(() => undefined);
+    const line = askAnsweredAndGoalClosed(language, asker);
+    if (await lastAssistantMessageIs(row.ask_thread_id, line).catch(() => false)) continue;
+    await saveThreadMessage(row.ask_thread_id, row.to_user_id, 'assistant', line).catch(
+      () => undefined,
+    );
   }
 }
 
