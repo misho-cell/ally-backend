@@ -159,7 +159,6 @@ export async function checkRegistrationEligibility(
   // 26, D125): it opens the door whatever the gate says, and carries its own
   // free period. Asked before the personal codes, because it outranks them.
   const cohort = referralCode?.trim() ? await findCohortByCode(referralCode) : null;
-  if (cohort) return { eligible: true, mode: 'cohort', cohortCode: cohort.code };
 
   // A referral CODE resolves first (founder decision, ticket 5 F.1: codes are
   // the invite currency; the phone path stays for backward compatibility).
@@ -169,6 +168,51 @@ export async function checkRegistrationEligibility(
     (hasReferralPhone(referralPhone)
       ? await findInviterForAttribution(referralPhone, phone)
       : undefined);
+
+  /**
+   * Ticket 20 row 229 — WHY NOTHING HAS BEEN ATTRIBUTED SINCE 31 AUGUST, and
+   * the honest answer is that nobody could tell, which is its own fault.
+   *
+   * The seat: Lika registered a new account through an invite link on
+   * 21 September and `inviterReferralUserId` came out empty, so no reward can
+   * be computed and neither side sees anything.
+   *
+   * Measured before touching anything: the last attributed registration in
+   * this database is 31 AUGUST 14:36. Since then 25 real registrations and
+   * ZERO attributed, while the link table recorded 12 issued, 5 sent and 29
+   * OPENED. Links are being used and nothing that registers afterwards carries
+   * an inviter.
+   *
+   * WHAT I CANNOT SEE FROM HERE is whether a code reaches this function at
+   * all: the route accepts `referralCode`, this resolves it, and an
+   * unresolvable or absent code falls through to `mode: 'open'` with no
+   * inviter and no trace. So „the client never sent it" and „it arrived and
+   * did not resolve" have looked identical for three weeks, and neither of
+   * them leaves a line anywhere.
+   *
+   * This line ends that. No phone and no code text — a code is a credential
+   * and belongs in a log no more than a number does (D149). Three booleans and
+   * the mode are enough to tell the two cases apart on the next registration.
+   */
+  // eslint-disable-next-line no-console
+  console.log(
+    `[invite-gate] attribution: code_given=${Boolean(referralCode?.trim())} ` +
+      `code_resolved=${codeOwner !== null} cohort=${cohort !== null} ` +
+      `phone_given=${hasReferralPhone(referralPhone)} attributed=${attribution !== undefined}`,
+  );
+
+  /**
+   * Row 229, the one defect I CAN see from here: this used to return before
+   * `attribution` was computed, so a person who arrives with a cohort code AND
+   * a friend's invitation lost the friend. The cohort still outranks the
+   * personal code for the free period — that is D125 and it is unchanged —
+   * but the inviter travels with them now. It is not the cause of the three
+   * weeks (none of the 25 carries a cohort either) and it is a real hole on
+   * the same line.
+   */
+  if (cohort) {
+    return { eligible: true, mode: 'cohort', cohortCode: cohort.code, inviterUserId: attribution };
+  }
 
   // D137 (8 Sep): a founder's own invitation inside the launch window carries
   // the launch cohort's free period — the attribution stays with the inviter.

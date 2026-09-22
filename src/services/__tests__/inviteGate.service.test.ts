@@ -19,6 +19,9 @@ interface GateWorld {
   attributedInviterId?: number | null;
   // An invite cohort behind the typed code (Ticket 10 Task 26).
   cohort?: { code: string; name: string; trial_days: number; tier: string; active: boolean };
+  // Row 229: the personal code lookup now runs even on the cohort path, so the
+  // world has to be able to answer it.
+  codeOwner?: { id: number; subscription_status: string } | null;
 }
 
 // Route gate queries by a distinctive SQL fragment.
@@ -29,6 +32,8 @@ function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: 
     return world.registered ? rows([{ userId: 42 }]) : rows([]);
   if (sql.includes('FROM "UserAlias" ua'))
     return rows([{ total: String(world.totalOwners), subscribed: String(world.subscribedOwners) }]);
+  if (sql.includes('UPPER(referral_code)'))
+    return world.codeOwner ? rows([world.codeOwner]) : rows([]);
   if (sql.includes('subscription_status = ANY'))
     return world.referrerId === null ? rows([]) : rows([{ id: world.referrerId }]);
   if (sql.includes('JOIN "User" u ON u.id = up."userId"'))
@@ -79,6 +84,32 @@ describe('checkRegistrationEligibility', () => {
     const result = await checkRegistrationEligibility('+995599000001', undefined, 'axel2026');
 
     expect(result).toEqual({ eligible: true, mode: 'cohort', cohortCode: 'AXEL2026' });
+  });
+
+  /**
+   * Ticket 20 row 229. The cohort branch used to return BEFORE attribution was
+   * computed, so somebody arriving with a company code and a friend's
+   * invitation lost the friend — silently, and for good, because nothing
+   * downstream can recover an inviter that was never written.
+   *
+   * The cohort still outranks the personal code for the free period (D125,
+   * unchanged). What travels with them now is who brought them.
+   */
+  it('a cohort code no longer throws away the friend who invited them', async () => {
+    setWorld({
+      ...CLOSED_WORLD,
+      cohort: { code: 'AXEL2026', name: 'Axel launch', trial_days: 20, tier: 'pro', active: true },
+      attributedInviterId: 909,
+    });
+
+    const result = await checkRegistrationEligibility('+995599000001', '+995599000777', 'axel2026');
+
+    expect(result).toEqual({
+      eligible: true,
+      mode: 'cohort',
+      cohortCode: 'AXEL2026',
+      inviterUserId: 909,
+    });
   });
 
   it('a code that is not a cohort still goes down the personal-referral path', async () => {
