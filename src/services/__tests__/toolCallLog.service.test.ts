@@ -341,3 +341,60 @@ describe('a sealed contact ref never reaches the table', () => {
     expect(summariseArgs({ group: 'Axel' })).toBe('group=Axel');
   });
 });
+
+/**
+ * D149 AT THE ONE CALL SITE THAT WAS NOT HELD.
+ *
+ * `redactPhones` is tested from several angles and so are two of its three
+ * callers. Sabotage, 22 September:
+ *
+ *   redactPhones itself           7 tests fail   HELD
+ *   args_summary's call           4 tests fail   HELD
+ *   error_text's call             1 test fails   HELD
+ *   result_sample's call          3,732 pass     NOT HELD
+ *
+ * And `result_sample` is the worst one to lose, because it carries the tool's
+ * actual OUTPUT — a search result, a contact row — which is where a real phone
+ * number actually lives. The other two carry arguments and error strings.
+ *
+ * This morning a sealed `contact_ref` reached this table for the same family
+ * of reason, so the redaction covers both shapes and so does this.
+ */
+describe('the result sample is redacted on its way into the table (D149)', () => {
+  const sampleWritten = async (resultSample: string): Promise<string> => {
+    mockQuery.mockClear();
+    await logToolCall({
+      threadId: 21121,
+      surface: 'chat',
+      runId: 'r1',
+      userId: '501',
+      tool: 'search_contacts',
+      input: { tag: 'vet' },
+      result: { found: true },
+      durationMs: 42,
+      resultSample,
+    });
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    return String(params[params.length - 1]);
+  };
+
+  it('keeps only the last four digits of a phone in the sample', async () => {
+    const written = await sampleWritten('Nino, +995 599 12 34 56, vet in Vake');
+
+    expect(written).toContain('…3456');
+    expect(written).not.toContain('599 12 34 56');
+    expect(written).not.toContain('99559912');
+  });
+
+  /** The sealed ref is a phone in a wrapper — this morning's leak. */
+  it('strips a sealed contact_ref from the sample', async () => {
+    const written = await sampleWritten('ref c_AAAABBBBCCCCDDDDEEEEFFFFGGGG for Nino');
+
+    expect(written).toContain('<contact ref>');
+    expect(written).not.toContain('c_AAAABBBB');
+  });
+
+  it('leaves a sample with nothing to hide alone', async () => {
+    expect(await sampleWritten('found 3 vets in Vake')).toBe('found 3 vets in Vake');
+  });
+});
