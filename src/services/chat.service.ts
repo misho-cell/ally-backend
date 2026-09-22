@@ -4449,10 +4449,18 @@ function runNotedGoalQuestion(runId: string | undefined, taskId: number): boolea
   return itemsSurfacedGoalQuestion(runPendingItems.get(runId) ?? [], taskId);
 }
 
+/**
+ * Row 237: the count card is filtered HERE and not where it is noted, because
+ * the order of tool calls inside a run is the model's to choose.
+ * `get_pending_updates` usually runs first, so a check at note time would miss
+ * the very case this is for — the plan proposed later in the same run.
+ * Delivery happens once, after everything, and knows the whole run.
+ */
 function takePendingItems(runId: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
   runPendingItems.delete(runId);
-  return items;
+  if (!takePlanWentOnScreen(runId)) return items;
+  return items.filter((item) => item.kind !== 'more_pending');
 }
 
 // Ticket 19 [18]. How long a delivered incoming-request message stands before
@@ -4604,6 +4612,54 @@ const runNothingToSend = new Set<string>();
 
 function noteNothingToSendToday(runId: string | undefined): void {
   if (runId) runNothingToSend.add(runId);
+}
+
+/**
+ * Ticket 20 row 237 — the product's own updates card was refusing the owner's
+ * typed approval, and this is the half of the fix that is safe to make.
+ *
+ * The seat, 21 September 23:25: a plan card went up with „I approve / Change
+ * it", and in the SAME SECOND, after it, „8 more updates are waiting" with
+ * „Show them / Later". Typed „go ahead" at 23:26:24 was REFUSED, because the
+ * consent guard reads the NEWEST card that offers buttons and asks whether it
+ * is a plan's. It was not — it was the count card — so a typed yes stopped
+ * counting and only the button's exact words got through.
+ *
+ * The guard is right to exist (Ticket 19 G2: a tap on a DRAFT's „yes, send it"
+ * was recorded as approving a three-person plan and wrote to two people the
+ * founder had not chosen). What is wrong is that the server deals a card of
+ * its own on top of an unanswered plan.
+ *
+ * THE COUNT CARD IS THE ONE THAT CAN SAFELY BE HELD, and it is held here:
+ * it is derived from `countHeldUpdates` every run, so not dealing it loses
+ * nothing — the same count is there next time. The update ITEMS cannot be
+ * treated this way: `getPendingUpdates` has already released them from the
+ * queue by the time they reach this point, so dropping them would drop the
+ * only copy.
+ *
+ * SO THIS IS HALF A FIX AND THE OTHER HALF IS NOT MINE TO GUESS AT TONIGHT.
+ * Every pending item carries buttons too, so an item delivered after a plan
+ * masks it the same way. The full repair belongs in the guard — a delivered
+ * card is `kind: 'pending'` and a model's card is `kind: 'message'`, so the
+ * guard could look for the newest MODEL card — but that has a trap in it I
+ * found before writing it: the intro-accept item's label IS an affirmative, so
+ * ignoring pending cards outright would let a tap on „yes, I will meet them"
+ * reach a plan. That is G2 returning through another door, and it is written
+ * up in TASKS.md rather than attempted at one in the morning in the one code
+ * path that puts asks on real people's phones.
+ */
+const runProposedAPlan = new Set<string>();
+
+function notePlanIsOnScreen(runId: string | undefined): void {
+  if (runId) runProposedAPlan.add(runId);
+}
+
+/** Read-and-forget, the same discipline as `runNothingToSend` beside it. */
+function takePlanWentOnScreen(runId: string | undefined): boolean {
+  if (runId === undefined) return false;
+  const flagged = runProposedAPlan.has(runId);
+  runProposedAPlan.delete(runId);
+  return flagged;
 }
 
 /**
@@ -4928,6 +4984,10 @@ function clearRunState(runId: string): void {
   runCreatedGoals.delete(runId);
   runPendingItems.delete(runId);
   runShareText.delete(runId);
+  // Row 237's flag. Its consumer forgets it too, but a run that exits early
+  // never reaches the consumer, and a flag that outlives its run is the shape
+  // of fault this file has already been bitten by once today.
+  runProposedAPlan.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -6020,6 +6080,8 @@ async function executeToolCall(
             runId ?? null,
           );
           planIsOnScreen = true;
+          // Row 237: nothing the server deals may land on top of it.
+          notePlanIsOnScreen(runId);
           unreachable = {
             nobodyReachable: nobodyCanBeWrittenTo(stored),
             invitees: peopleToInvite(stored),
