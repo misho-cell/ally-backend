@@ -151,6 +151,39 @@ I read it every time — but for hours I was quoting a number that came from the
 wrong command. Fixed by capturing to a file and reading the code before the
 text.
 
+### 7. The ask reminder pushes a real person's phone at five in the morning
+
+`sendDueAskReminders` writes the chat line AND fires `sendPushNotification`,
+and it looks at no clock at all. It runs when the cron runs, 48 hours after
+the question.
+
+Measured over the whole history:
+
+    reminders sent                              56
+    to a non-test account                       46
+    outside 08:00-22:00 Tbilisi                 13
+      of those, to a real person                11
+
+    the hours:  01 -> 1 · 04 -> 1 · 05 -> 3 · 06 -> 1 · 07 -> 3 · 23 -> 2
+
+Eleven real people have had a lock-screen push in the middle of the night,
+three of them at five in the morning. The wording is courteous — „if you have
+a minute … if you do not know, tell me that too and I will stop bothering you"
+— and the hour it arrives is not.
+
+**Assumption named:** the hour is converted to Tbilisi. Most users are +995 and
+not all, so 11 is close and not exact.
+
+**Why we cannot decide it overnight:** this is behaviour that reaches real
+people, which is one of the five things this file exists to hold back — and
+the question is not „should there be quiet hours" but WHICH HOURS AND IN WHOSE
+TIME ZONE. A person in Buenos Aires (+54, our second-largest group, 651
+accounts) has a different night from a person in Tbilisi.
+
+**What is blocked:** nothing else. Found at 23:19 by following up two replies
+that had no model call behind them, which is the one thing `outage.sh`'s
+NOTHING PROVEN branch asks a reader to do.
+
 ### 5. Rows 251 and 252 — both against the consent and privacy walls
 
 Both specced tonight, neither built, each for a reason written into `TASKS.md`:
