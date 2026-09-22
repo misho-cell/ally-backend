@@ -6858,6 +6858,47 @@ const STREAM_FIRST_EVENT_TIMEOUT_MS = 120_000;
 // A narration step at least this long is treated as a real (buried) answer, not
 // process chatter, so it can be promoted over a shorter final turn (e.g. a
 // pending-request wrap-up). Below it, a longer prior step is just narration.
+/**
+ * A ROUND WHOSE NARRATION MUST NOT BE PUBLISHED, because the model writes it
+ * before the tool answers and no tool result can reach it.
+ *
+ * Measured 22 September, thread 22045. A user asked not to be asked about tyre
+ * fitters. At 15:25:50 the STEP read „ამიერიდან საბურავების ხელოსნებზე
+ * აღარაფერს გკითხავ" — from now on I will not ask you about it. At 15:25:51
+ * `save_user_note` returned, carrying `reply_rule`. At 15:25:55 the final
+ * message read „შენახულია, როგორც შენი პრეფერენცია" — clean, 2 of 2.
+ *
+ * So the rule fixed the reply and could not touch the narration: the narration
+ * is written BEFORE the call and the result does not exist yet. The only lever
+ * in front of the model at that moment is the tool description, and changing
+ * that was already tried in the same deploy and did not hold.
+ *
+ * THIS STOPS ASKING. The step panel's job is one short line about what is
+ * happening now; for this tool the answer arrives four seconds later and says
+ * „შენახულია", so the line is worth nothing and is the last place the product
+ * still promises something it cannot keep. Nothing new is written — the
+ * sentence is simply not published — which is what „take the promise off"
+ * means, and it needs no new wording for anybody to approve.
+ *
+ * ONLY WHEN THE WHOLE ROUND IS THIS TOOL. A round that also searched has
+ * narration about the search, and that is worth showing.
+ *
+ * THE EMPTY-FINAL RISK IS REAL AND IT IS HANDLED. A suppressed narration is
+ * also kept out of `bestNarration`, so the buried-answer rescue cannot promote
+ * it — which matters more than it looks, because promoting it would put the
+ * promise into the FINAL message and undo `reply_rule` entirely. If that
+ * leaves the run with nothing to say, an empty final already surfaces as
+ * `emptyFinalFailure` („the reply did not come together — try again"): an
+ * honest failure a person can act on, and strictly better than a confident
+ * sentence that is false.
+ */
+const TOOLS_WHOSE_NARRATION_OVERPROMISES: ReadonlySet<string> = new Set(['save_user_note']);
+
+export function narrationIsSafeToPublish(roundToolNames: readonly string[]): boolean {
+  if (roundToolNames.length === 0) return true;
+  return !roundToolNames.every((name) => TOOLS_WHOSE_NARRATION_OVERPROMISES.has(name));
+}
+
 const MIN_BURIED_ANSWER_CHARS = 200;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
@@ -7582,8 +7623,9 @@ async function runToolLoop(
       !runWasStopped(threadId, runId)
     ) {
       iterations++;
-      toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
-      for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
+      const roundTools = response.content.flatMap((b) => (b.type === 'tool_use' ? [b.name] : []));
+      toolCallCount += roundTools.length;
+      toolNamesUsed.push(...roundTools);
 
       // Stream the model's narration that accompanies this round of tool calls,
       // so the client sees the process step by step rather than one final answer.
@@ -7591,7 +7633,9 @@ async function runToolLoop(
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
       const narration = scrubStep(threadId, extractText(response.content), runId);
-      if (narration) {
+      // Not emitted, not persisted, and NOT eligible for the buried-answer
+      // rescue — all three, or the sentence simply moves to another screen.
+      if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         if (narration.length > bestNarration.length) {
@@ -7649,12 +7693,15 @@ async function runToolLoop(
     // blocks or the API rejects the next call.) The tools array is kept identical
     // (tool_choice: none) so the cached prompt prefix still hits.
     if (response.stop_reason === 'tool_use') {
-      toolCallCount += response.content.filter((b) => b.type === 'tool_use').length;
-      for (const b of response.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
+      const roundTools = response.content.flatMap((b) => (b.type === 'tool_use' ? [b.name] : []));
+      toolCallCount += roundTools.length;
+      toolNamesUsed.push(...roundTools);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
       const narration = scrubStep(threadId, extractText(response.content), runId);
-      if (narration) {
+      // Not emitted, not persisted, and NOT eligible for the buried-answer
+      // rescue — all three, or the sentence simply moves to another screen.
+      if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         if (narration.length > bestNarration.length) {
