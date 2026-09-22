@@ -236,6 +236,92 @@ describe('createAsk', () => {
     expect(mockCreateThread).not.toHaveBeenCalled();
   });
 
+  /**
+   * ROW 249 — THE REFUSAL IS RIGHT AND THE STATE IS A THIRD OF A SECOND STALE.
+   *
+   * Run d8d74e6d, goal 8402, 22 September, one single model turn:
+   *
+   *   19:15:24.792  ask_contact            refused — permission is false
+   *   19:15:25.092  approve_task_plan      lands 300ms later
+   *   19:15:28.382  ask_contact            the retry
+   *   19:15:28.384  grant_task_permission  2ms after its own retry
+   *
+   * `processToolBlocks` runs one turn's tools concurrently because „a single
+   * turn's tool_use blocks are independent by construction". This pair is the
+   * counterexample. The model then obeyed the old text's last sentence, went
+   * back to the owner with a fresh draft for a plan they had already approved,
+   * and day one sent it while that card was still on the screen. Two of ten
+   * approvals that evening.
+   *
+   * These hold the ORDER of the three instructions, because the order is the
+   * fix: the true case first, the owner last.
+   */
+  describe('the refusal tells the model what is actually wrong, in order', () => {
+    async function refusal(): Promise<string> {
+      routeAskQueries({ member: { userId: 7, name: 'გია' } });
+      mockGetTask.mockResolvedValue({
+        id: 3,
+        user_id: 42,
+        status: 'open',
+        permission_granted: false,
+      } as never);
+      const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+      return (out as { error: string }).error;
+    }
+
+    it('names the same-turn race first, because that is what it usually is', async () => {
+      const text = await refusal();
+
+      expect(text).toContain('ამავე სვლაში');
+      expect(text).toContain('გაიმეორე ask_contact');
+    });
+
+    it('names approve_task_plan, which it never used to', async () => {
+      // The old text offered only grant_task_permission. A goal with a plan
+      // proposed needs the other door, and the model was never told so here.
+      const text = await refusal();
+
+      expect(text).toContain('approve_task_plan');
+      expect(text).toContain('grant_task_permission');
+    });
+
+    it('puts going back to the owner LAST, and only if they were never asked', async () => {
+      const text = await refusal();
+
+      const race = text.indexOf('ამავე სვლაში');
+      const voiced = text.indexOf('თანხმობა უკვე ნათქვამი');
+      const askThem = text.indexOf('ჰკითხე ერთხელ');
+      expect(race).toBeGreaterThanOrEqual(0);
+      expect(voiced).toBeGreaterThan(race);
+      expect(askThem).toBeGreaterThan(voiced);
+    });
+
+    it('tells it not to show a new draft to somebody who has already answered', async () => {
+      // This is the sentence the owner saw the consequence of: „since this
+      // task is set to ask before anything goes out", under an approved plan.
+      const text = await refusal();
+
+      expect(text).toContain('ახალ ტექსტს ნუ');
+    });
+
+    /** And none of the wording moves the wall itself. */
+    it('still refuses, and still sends nothing', async () => {
+      routeAskQueries({ member: { userId: 7, name: 'გია' } });
+      mockGetTask.mockResolvedValue({
+        id: 3,
+        user_id: 42,
+        status: 'open',
+        permission_granted: false,
+      } as never);
+
+      const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+      expect(out.sent).toBe(false);
+      expect(out.reason).toBe('consent_pending');
+      expect(mockCreateThread).not.toHaveBeenCalled();
+    });
+  });
+
   it('a relay (parentAskId set) bypasses the sender-permission gate by design', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
     mockGetTask.mockResolvedValue(null as never);

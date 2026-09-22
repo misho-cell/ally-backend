@@ -441,18 +441,51 @@ export async function createAsk(
       return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
     }
     if (!task.permission_granted) {
-      // The wording matters (ticket 3 §6.8): the old text sent the model back
-      // to the user even when consent had JUST been voiced, producing three
-      // permission prompts for one send (thread 8152).
+      /**
+       * The wording matters (ticket 3 §6.8): the old text sent the model back
+       * to the user even when consent had JUST been voiced, producing three
+       * permission prompts for one send (thread 8152).
+       *
+       * ROW 249, 22 September, AND THE CASE THE WORDING STILL DID NOT COVER:
+       * the refusal is correct and the state is a third of a second stale.
+       * Run d8d74e6d, goal 8402, one single turn:
+       *
+       *   19:15:24.792  ask_contact            refused — permission is false
+       *   19:15:25.092  approve_task_plan      the approval lands, 300ms later
+       *   19:15:28.382  ask_contact            the retry
+       *   19:15:28.384  grant_task_permission  2ms after its own retry
+       *
+       * `processToolBlocks` runs one turn's tools CONCURRENTLY, on the stated
+       * ground that „a single turn's tool_use blocks are independent by
+       * construction". This pair is the counterexample: one grants the
+       * permission the other needs, and the model emitted them together
+       * meaning an order the server does not keep. Two of ten approvals
+       * tonight went this way.
+       *
+       * The model then obeyed the last sentence of this text and went back to
+       * the owner with a fresh draft card — „since this task is set to ask
+       * before anything goes out" — for a plan the owner had ALREADY approved,
+       * and day one sent it while that card was still on the screen. So the
+       * first thing this text now says is the thing that was true: your own
+       * consent call may simply not have landed yet.
+       *
+       * THE ORDERING ITSELF IS THE REAL FIX and it is not made here. It is a
+       * change to the hot path of every run, next to the consent wall, and it
+       * is written up rather than done in the dark.
+       */
       return {
         sent: false,
         reason: 'consent_pending',
         error:
-          'ნებართვა არ არის: ამ დავალებაზე grant_task_permission ჯერ არ გამოძახებულა. თუ ' +
-          'მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი აქვს („კი, გაუგზავნე") — ხელახლა ' +
-          'ნუ ჰკითხავ: გამოიძახე grant_task_permission ახლავე და გაიმეორე ask_contact. თუ ' +
-          'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
-          'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
+          'ნებართვა არ არის: ამ დავალებაზე ნებართვა ჯერ ჩაწერილი არ არის. (1) თუ ამავე ' +
+          'სვლაში უკვე გამოიძახე approve_task_plan ან grant_task_permission — ეს უარი მათ ' +
+          'გაუსწრო და არაფერი გიშლის ხელს: გამოიძახე ის ერთი ცალკე და გაიმეორე ' +
+          'ask_contact. (2) თუ მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი აქვს ' +
+          '(„კი, გაუგზავნე", „დამტკიცებულია") — ხელახლა ნუ ჰკითხავ და ახალ ტექსტს ნუ ' +
+          'აჩვენებ: გეგმაზე გამოიძახე approve_task_plan, გეგმის გარეშე ' +
+          'grant_task_permission, და გაიმეორე ask_contact. (3) მხოლოდ მაშინ, თუ თანხმობა ' +
+          'ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ტექსტს. ' +
+          'უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
     }
     // Ticket 16 Task 99 (D119): a plan proposed and not yet approved is the
