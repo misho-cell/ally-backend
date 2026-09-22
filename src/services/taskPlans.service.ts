@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
+import { georgianStem } from './tools/georgianStem';
 import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
@@ -149,6 +150,69 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
   const onlyRoute = routes.length === 1 ? routes[0].name : null;
 
   /**
+   * Ticket 20 row 244, third cut — a RE-WORDING is neither the same string nor
+   * one inside the other, and that is what is still being refused.
+   *
+   * The seat's twenty-question run, 22 September: 6 of 21 `propose_task_plan`
+   * calls refused, 5 of them here, each costing a retry. All five read back
+   * from `error_text`, which is the column added for exactly this:
+   *
+   *   said „მეორე წრე - ბიძგი "Gogi - Carpenter"-თან"
+   *   of  „მეორე წრე (ბიძგები)" · „საკუთარი ქსელი" · „ვები"
+   *
+   *   said „ხიდი Levani Matematika-სთან"
+   *   of  „პირდაპირი კონტაქტები, თავად მათემატიკოსები" ·
+   *       „second-degree ხიდები, მეგობრების შენახული რეპეტიტორები"
+   *
+   * Not a substring either way, and obvious to a person: the same route said
+   * differently, with the particular person's name folded into it. The model
+   * is not inventing a route — it is naming the one it declared and adding who
+   * is on it.
+   *
+   * SO THE COMPARISON BECOMES THE WORDS, and the safety stays exactly where it
+   * was: a clear single winner, or nothing. A tie is a refusal, as two
+   * containment candidates already were, because attaching a person to the
+   * wrong road is a guess about where they belong and the ask path enforces
+   * that guess.
+   *
+   * STEMMED, and case four is why: „ხიდი" against „ხიდები" shares no whole
+   * word at all, and with the case endings off it shares the one word that
+   * decides it.
+   *
+   * MEASURED AGAINST ALL FIVE BEFORE SHIPPING. Four resolve. The fifth —
+   * „მეორე წრე - ვები/გრაფიკული დიზაინერები" against three routes that between
+   * them own „ვები", „გრაფიკული" and „მეორე წრე" — ties, and is still refused.
+   * That is the rule working, not failing: nothing in the string says which of
+   * the three the person is on.
+   */
+  const MIN_WORD_CHARS = 3;
+  const stemsOf = (text: string): Set<string> =>
+    new Set(
+      text
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((word) => word.length >= MIN_WORD_CHARS)
+        .map((word) => georgianStem(word, MIN_WORD_CHARS))
+        .filter((stem) => stem.length >= MIN_WORD_CHARS),
+    );
+  const routeStems = routes.map((r) => ({ name: r.name, stems: stemsOf(r.name) }));
+
+  function routeSharingMostWords(said: string): string | null {
+    const mine = stemsOf(said);
+    if (mine.size === 0) return null;
+    const scored = routeStems.map((route) => ({
+      name: route.name,
+      shared: [...route.stems].filter((stem) => mine.has(stem)).length,
+    }));
+    const best = scored.reduce((a, b) => (b.shared > a.shared ? b : a));
+    if (best.shared === 0) return null;
+    // Strictly the best, or it is a guess. One other route sharing as much
+    // means the words do not say which road this person is on.
+    const rivals = scored.filter((route) => route.shared === best.shared);
+    return rivals.length === 1 ? best.name : null;
+  }
+
+  /**
    * Ticket 20 row 101a, second cut. The relaxation above took case and
    * whitespace out of the comparison and the refusals went on: 21 of the 95
    * refused propose_task_plan calls of the last fourteen days are still this
@@ -171,7 +235,8 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
     const near = [...routesByKey].filter(
       ([routeName]) => routeName.includes(key) || key.includes(routeName),
     );
-    return near.length === 1 ? near[0][1] : null;
+    if (near.length === 1) return near[0][1];
+    return routeSharingMostWords(said);
   }
 
   const peopleRaw = Array.isArray(input.people_to_involve) ? input.people_to_involve : [];
