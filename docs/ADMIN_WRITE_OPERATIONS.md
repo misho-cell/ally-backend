@@ -1014,6 +1014,40 @@ Read back from the new container's own boot log:
 restart (any push to main) — an unset alone does not redeploy, and the running
 container keeps the old value until it does.
 
+#### 22 September — extended to ten, and the reason was a drift between two lists
+
+**Misho's word, asked and given while the tester was mid-run.**
+
+  was  `171870,171871,171872,171873,171874,171936`
+  now  `171870,171871,171872,171873,171874,171936,171937,171938,171939,171940`
+
+**WHY, and it is a fault rather than a new request.** Two lists of „test
+account" had drifted apart:
+
+| list | where | holds |
+|---|---|---|
+| `FICTIONAL_TEST_ACCOUNTS` | `testSeatTokens.ts`, code | Test 6–11 |
+| `ASK_CAP_EXEMPT_USER_IDS` | environment | Test 1–5 and Test 6 |
+
+So Netai Test 7, 8, 9 and 10 are fictional test accounts by one list and
+ordinary protected people by the other — and those four are the seats in use.
+At 18:03:33 two `ask_contact` calls were refused with „Netai Test 8 has
+already had 2 new questions in the last 24 hours", which is D134 working
+exactly as designed on accounts nobody meant to protect.
+
+**The cap itself is unchanged and so is everyone else's.** The exemption is
+keyed on the RECEIVER; a test account asking a real person is capped exactly
+as before, and `MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY` stays at 2 for the whole
+base.
+
+**Test 11 (171941) is deliberately NOT added.** It is fictional and unused; a
+protection switched off for an account nobody is testing is the failure mode
+this list's own comment warns about — „a list like this outlives the test
+nobody remembers running."
+
+**Read the boot line to confirm it took:** `[ask-caps] receiving caps are OFF
+for 10 account(s): …`. Ten, not six.
+
 ### What they asked for, and why it cannot be done as asked
 
 > „Raise `relay_messages_per_person_per_day` to something like 20 for the six
