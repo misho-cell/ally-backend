@@ -104,6 +104,9 @@ export async function finishWake(taskId: number, kind: string): Promise<void> {
  */
 const OVERDUE_AFTER_SECONDS = 120;
 
+/** Exported for the sweep-budget test, which holds the three-minute promise. */
+export const OVERDUE_AFTER_SECONDS_FOR_TEST = OVERDUE_AFTER_SECONDS;
+
 /**
  * How long a claim holds before the sweeper may take the wake again. A claimed
  * wake whose process then died would otherwise be stuck for ever, which is the

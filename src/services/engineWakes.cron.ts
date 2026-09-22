@@ -20,15 +20,47 @@ import { abandonExhaustedWakes, claimOverdueWakes, DAY_ONE_WAKE } from './engine
  * having on the first version of something that wakes goals: if this ever
  * starts a run it should not, the fix is a variable and not a build.
  */
-const TICK_INTERVAL_MS = Number(process.env.ENGINE_WAKE_TICK_MS ?? 60_000);
+/**
+ * TWENTY SECONDS, NOT SIXTY — and the throttle below moves with it in the same
+ * change, which is the whole point.
+ *
+ * The seat's done-when was „every approval gets its first day within three
+ * minutes". Measured against the shipped constants that breached in three
+ * cases of four: 3 s delay + 120 s grace + up to 60 s of tick + a 30-90 s run
+ * is 153 s at best and 273 s at worst. The one real recovery — task 7790,
+ * 167 s — was the lucky corner: the tick happened to land 14 s after the row
+ * came due and the run happened to take 30.
+ *
+ * The binding constraint is the 120 s grace and it cannot come down: the timer
+ * itself retries for up to 93 s, and a shorter grace would have this sweeper
+ * racing a timer still working. 120 plus a 60 s run is 180 before anything
+ * else is counted, so three minutes measured to the FINISH is unreachable.
+ *
+ * So the done-when moved to where the promise actually is. „Day one is already
+ * starting behind your reply" promises a START, and the owner is told nothing
+ * about the finish. To the start: 3 + 120 + 20 = 143 s worst case, 2m23s,
+ * inside three minutes with real margin.
+ */
+export const TICK_INTERVAL_MS = Number(process.env.ENGINE_WAKE_TICK_MS ?? 20_000);
 const ENABLED = (process.env.ENGINE_WAKE_SWEEP ?? 'on') !== 'off';
 
 /**
  * Small on purpose. A tick that sweeps up fifty goals at once is a tick that
- * writes to fifty people's contacts at once, and the interval comes round
- * again in a minute.
+ * writes to fifty people's contacts at once.
+ *
+ * FIVE BECAME TWO WHEN THE TICK BECAME THREE TIMES FASTER, and the two numbers
+ * belong in one change. Left at 5 with a 20-second tick this would have gone
+ * from 5 goals a minute to 15 — a tripling of a deliberate safety ceiling,
+ * arriving as the side effect of a latency fix, which is how a good change
+ * becomes the next incident. The comment above is load-bearing and was written
+ * by somebody who meant it.
+ *
+ * 2 every 20 s is 6 a minute against the old 5. NOT identical, and saying so:
+ * it is a fifth more, not the same number. There is no integer pair at exactly
+ * 5 a minute on a 20-second tick, and 1 every 20 s would be 3 — slower than
+ * today, which would make a backlog worse to buy a tidier number.
  */
-const PER_TICK = 5;
+export const PER_TICK = 2;
 
 let ticking = false;
 
