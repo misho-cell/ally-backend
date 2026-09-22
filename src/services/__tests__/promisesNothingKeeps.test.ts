@@ -117,7 +117,40 @@ describe('a saved note does not claim to stop anything', () => {
    */
   it('keeps the rule short enough to survive being skimmed', () => {
     expect(NOTE_SCOPE.length).toBeLessThan(150);
-    expect(NOTE_REPLY_RULE.length).toBeLessThan(350);
+    // 288 characters worked 3 of 4; the Georgian exemplars below take it to
+    // 371. The bound is raised deliberately and not quietly: I do not know
+    // whether brevity or the `reply_rule` naming is what beat the 484-character
+    // version, because that one differed in both. Still far short of 484.
+    expect(NOTE_REPLY_RULE.length).toBeLessThan(400);
+  });
+
+  /**
+   * THE FAILURE THAT PROMPTED THESE, AND WHY THE DIAGNOSIS MATTERED.
+   *
+   * Thread 22111 came back „აღარაფერს გკითხავენ" — they will no longer ask you
+   * anything. The tester read that as a word the list did not have. It did:
+   * „that they will not be asked" is the second clause, and that Georgian is
+   * exactly it in the third person plural. So it is not a coverage gap and a
+   * fifth English clause would not close it — it is one refusal to follow a
+   * rule that already says the thing.
+   *
+   * What the list gains instead is the Georgian itself, in the language the
+   * failures actually happen in.
+   */
+  it('names the Georgian the model actually produced, verbatim', () => {
+    for (const said of [
+      'კითხვებს არ დაგისვამ',
+      'აღარაფერს გკითხავ',
+      'აღარაფერს გკითხავენ',
+      'არ მიგიწვდენ',
+    ]) {
+      expect(NOTE_REPLY_RULE).toContain(said);
+    }
+  });
+
+  /** The English clause that already covered 22111 is still there. */
+  it('still forbids it in English, which was never the gap', () => {
+    expect(NOTE_REPLY_RULE).toContain('they will not be asked');
   });
 
   /**
@@ -128,8 +161,7 @@ describe('a saved note does not claim to stop anything', () => {
   it('forbids the sentences the model actually wrote', () => {
     expect(NOTE_REPLY_RULE).toContain('questions will stop');
     expect(NOTE_REPLY_RULE).toContain('they will not be asked');
-    expect(NOTE_REPLY_RULE).toContain('nothing will reach them');
-    expect(NOTE_REPLY_RULE).toContain('you will not put such questions to them');
+    expect(NOTE_REPLY_RULE).toContain('anyone will stop asking them');
   });
 
   /**

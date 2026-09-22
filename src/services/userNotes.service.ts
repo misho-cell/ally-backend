@@ -71,6 +71,25 @@ export const NOTE_SCOPE =
  * rule, short enough that it cannot be skimmed past, and it forbids the exact
  * words that were produced rather than the idea behind them.
  *
+ * THIRD VERSION, 16:20, AND THE TESTER'S DIAGNOSIS OF IT WAS WRONG IN A WAY
+ * THAT CHANGES THE FIX. Thread 22111 came back „ესეც შენახულია, ფანჯრების
+ * ოსტატებზე აღარაფერს გკითხავენ" — they will no longer ask you anything. They
+ * read it as „a word the list does not have". The list HAS it: „that they will
+ * not be asked" is the second forbidden clause, and that Georgian is exactly
+ * it, in the third person plural.
+ *
+ * So it is not a coverage gap, and a fifth English clause would not close it.
+ * It is one refusal to follow a rule that already says the thing — 3 clean of
+ * 4. What is added instead is the Georgian ITSELF, verbatim: every form the
+ * model has actually produced today, in the language the failures happen in,
+ * rather than more abstraction in the language they do not.
+ *
+ * It is longer than the 288 characters that worked 3 of 4, and I do not know
+ * whether brevity or the `reply_rule` naming is what made that one work — the
+ * 484-character failure differed in both. Attempt three, with no claim that it
+ * holds. If it fails again the answer is not a fourth wording: it is that the
+ * assistant should not be composing this sentence at all.
+ *
  * What it still cannot reach is the STEP line, and that is not a second bug to
  * fix here: the step is the model's own narration BEFORE the call, so the tool
  * result does not exist yet when it is written. Only the tool DESCRIPTION is in
@@ -78,9 +97,11 @@ export const NOTE_SCOPE =
  */
 export const NOTE_REPLY_RULE =
   'Say only that the note is saved, in one short line, in their language. Do ' +
-  'NOT say that questions will stop, that they will not be asked, that nothing ' +
-  'will reach them, or that you will not put such questions to them. Other ' +
-  'people’s assistants cannot see this note, so all of that is false.';
+  'NOT promise that questions will stop, that they will not be asked, or that ' +
+  'anyone will stop asking them. Banned in Georgian, verbatim: ' +
+  '„კითხვებს არ დაგისვამ", „აღარაფერს გკითხავ", „აღარაფერს გკითხავენ", ' +
+  '„არ მიგიწვდენ", „აღარ მოგივა". Other assistants cannot see this note, so ' +
+  'all of that is false.';
 
 /**
  * Save something the user told the assistant about THEMSELF. Notes accumulate,
