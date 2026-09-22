@@ -3870,8 +3870,13 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
        LIMIT $3::int`,
       [campaignId, inviterId, limit],
     );
-    const total = result.rows[0]?.total_count ?? 0;
-    const asks = result.rows.map(({ total_count: _total, ...r }) => ({
+    // COMPOSED WITH `askPageFrom`, NOT A SECOND COPY OF IT. That function is
+    // where `truncated` is decided and tested, and the whole reason this route
+    // is being touched is that its sibling published a page size as a total.
+    // Writing the same three lines again here is how the two drift apart.
+    // Enriching afterwards is safe: a map changes no length.
+    const page = askPageFrom(result.rows);
+    const asks = page.asks.map((r) => ({
       ...r,
       why_them: whyThisPerson(r.tie_strength),
       technique: {
@@ -3882,7 +3887,7 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
     }));
     res.status(200).json({
       success: true,
-      data: { asks, total, truncated: asks.length < total },
+      data: { asks, total: page.total, truncated: page.truncated },
       note:
         'why_them is recovered at read time from contact_relationship_scores — the score that ' +
         'chose this inviter is not stored on the row. A null tie_strength is not missing data: ' +

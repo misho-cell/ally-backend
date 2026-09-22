@@ -62,6 +62,23 @@ describe('the ask page reports what it actually holds', () => {
   });
 
   /**
+   * `/admin/chorus/asks` composes with this rather than repeating it — the
+   * campaign screen had the SAME bare-array-capped-at-the-limit fault, and two
+   * copies of „truncated" is how they come to disagree. Enrichment happens
+   * after, on `asks`, so the shape this returns has to survive being mapped.
+   */
+  it('returns asks the caller can enrich without losing total or truncated', () => {
+    const { asks, total, truncated } = askPageFrom(page(100, 125));
+    const enriched = asks.map((a) => ({ ...a, why_them: 'because' }));
+
+    expect(enriched).toHaveLength(100);
+    expect(enriched[0]).toMatchObject({ id: 1, why_them: 'because' });
+    expect(enriched[0]).not.toHaveProperty('total_count');
+    // A map changes no length, so the flag computed before it still holds.
+    expect(enriched.length < total).toBe(truncated);
+  });
+
+  /**
    * The count comes from the same snapshot as the rows, so this cannot happen
    * from the database. It can happen from a caller that builds the rows itself,
    * and „more rows than the table holds" must not read as `truncated: false`
