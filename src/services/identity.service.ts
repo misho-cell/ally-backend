@@ -406,6 +406,21 @@ export interface IdentityCandidate {
   evidence: Record<string, unknown>;
   status: string;
   created_at: string;
+  /**
+   * Row 236 — the merged person, on an APPROVED row and nowhere else.
+   *
+   * `POST /admin/identity/unmerge` takes a `person_id` and there was no way to
+   * learn one. The single-approve route returns it; the BULK route — which is
+   * what the review page posts — threw it away and answered with counts, and
+   * this listing never carried it at all. So an approved pair had no id
+   * anywhere the screen could reach, and the undo button asked the reviewer to
+   * type one.
+   *
+   * Absent on a pending or rejected row, because there is no merged person to
+   * name — absent rather than null, so „not merged" and „merged, id unknown"
+   * stay different answers.
+   */
+  person_id?: string;
 }
 
 /**
@@ -501,7 +516,19 @@ export async function listIdentityCandidates(
                   id ASC`;
   const [page, total, matched] = await Promise.all([
     query<IdentityCandidate>(
-      `SELECT id, phones, confidence, evidence, status, created_at
+      /**
+       * Row 236: the merged person's id rides along on an APPROVED row, so the
+       * undo button has the value it needs instead of a field to type it into.
+       *
+       * Only for `approved`, and the CASE is why: the pending queue is the hot
+       * read on this page and a correlated lookup per row would be paid on
+       * every review, for rows that have no merged person to name.
+       */
+      `SELECT id, phones, confidence, evidence, status, created_at,
+              CASE WHEN status = 'approved'
+                   THEN (SELECT pi.person_id FROM person_identities pi
+                          WHERE pi.phone = ANY(identity_candidates.phones) LIMIT 1)
+              END AS person_id
        FROM identity_candidates WHERE status = $1${bandClause}
        ${order} LIMIT $2 OFFSET $3`,
       [status, limit, opts.offset ?? 0],
@@ -726,6 +753,9 @@ export function toReviewCandidate(row: IdentityCandidate): ReviewCandidate {
   const namePhones =
     typeof e.name_distinct_phones === 'number' ? (e.name_distinct_phones as number) : null;
   return {
+    // `...row` carries `person_id` through when the query supplied one, and
+    // leaves the key absent when it did not — which is the distinction the
+    // field's own comment asks for.
     ...row,
     sample_alias: alias,
     name_as_saved: alias,
@@ -970,11 +1000,32 @@ export interface BulkDecision {
 export async function applyIdentityDecisions(
   decisions: readonly BulkDecision[],
   actor: string,
-): Promise<{ approved: number; rejected: number; skipped: number; errors: string[] }> {
+): Promise<{
+  approved: number;
+  rejected: number;
+  skipped: number;
+  errors: string[];
+  /**
+   * Row 236 — WHICH person each approval produced, not just how many there
+   * were.
+   *
+   * `approveIdentityCandidate` returns the `person_id` and this function threw
+   * it away, answering with three counts. `POST /admin/identity/unmerge` takes
+   * exactly that id, so a pair approved through this route — which is the one
+   * the review page posts to — could never be undone from the screen, whatever
+   * the button did. The red error asking the reviewer for a person id was the
+   * frontend having nothing to send.
+   *
+   * The counts stay: they are the summary the screen shows. This is beside
+   * them, not instead of them.
+   */
+  merged: { id: number; person_id: string }[];
+}> {
   let approved = 0;
   let rejected = 0;
   let skipped = 0;
   const errors: string[] = [];
+  const merged: { id: number; person_id: string }[] = [];
   for (const row of decisions) {
     const verdict = String(row.decision ?? '')
       .trim()
@@ -989,11 +1040,13 @@ export async function applyIdentityDecisions(
       ? await approveIdentityCandidate(row.id, actor)
       : await rejectIdentityCandidate(row.id, actor);
     if (outcome.ok) {
-      if (yes) approved += 1;
-      else rejected += 1;
+      if (yes) {
+        approved += 1;
+        if (outcome.person_id) merged.push({ id: row.id, person_id: outcome.person_id });
+      } else rejected += 1;
     } else {
       errors.push(`#${row.id}: ${outcome.error ?? 'failed'}`);
     }
   }
-  return { approved, rejected, skipped, errors };
+  return { approved, rejected, skipped, errors, merged };
 }

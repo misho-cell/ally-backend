@@ -579,7 +579,10 @@ describe('loading the founder’s answers back (ticket 9 task 29)', () => {
       'admin:1',
     );
 
-    expect(out).toEqual({ approved: 0, rejected: 0, skipped: 2, errors: [] });
+    // Row 236: `merged` rides beside the counts — which person each approval
+    // produced, because the undo needs the id and the bulk route threw it
+    // away. An unsure answer merges nobody, so the list is empty.
+    expect(out).toEqual({ approved: 0, rejected: 0, skipped: 2, errors: [], merged: [] });
   });
 });
 
