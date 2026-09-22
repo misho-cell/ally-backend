@@ -7,7 +7,7 @@
  * each case the condition arrived and nothing happened.
  */
 import { RUN_STRINGS, RunLanguage } from '../runLanguage';
-import { NOTE_SCOPE } from '../userNotes.service';
+import { NOTE_REPLY_RULE, NOTE_SCOPE } from '../userNotes.service';
 
 const LANGUAGES: readonly RunLanguage[] = ['ka', 'en', 'ru', 'es'];
 
@@ -100,23 +100,44 @@ describe('the outage sentence asks instead of promising', () => {
  * decision and is not taken here. The promise is what is fixed here.
  */
 describe('a saved note does not claim to stop anything', () => {
-  it('says plainly that no other assistant can see it', () => {
+  it('states the fact, and only the fact', () => {
     expect(NOTE_SCOPE).toContain('own assistant only');
-    expect(NOTE_SCOPE).toContain('No other person’s assistant can see it');
-  });
-
-  it('forbids the promise in the words the model actually used', () => {
-    expect(NOTE_SCOPE).toContain('Do NOT tell them it will stop');
-    expect(NOTE_SCOPE).toContain('no longer be asked');
+    expect(NOTE_SCOPE).toContain('does not reach anyone else');
   });
 
   /**
-   * The note IS saved, and a confirmation is owed. „Say nothing" would be a
-   * second false impression — that the line was not recorded — so the scope
-   * asks for the confirmation and bounds it.
+   * THE FIRST VERSION WAS 484 CHARACTERS AND FAILED 3 OF 3, twenty minutes
+   * after it shipped. The tester logged `result_keys` „saved,scope" on every
+   * call, so it reached the model; the model read it and wrote „კითხვებს არ
+   * დაგისვამ" anyway. A field named `scope` carrying four sentences of
+   * reasoning reads as background, and background loses to the sentence the
+   * user just asked for.
+   *
+   * The rule is a rule now, and short enough that it cannot be skimmed past.
    */
-  it('still asks for the save to be confirmed', () => {
-    expect(NOTE_SCOPE).toMatch(/^Saved\./);
-    expect(NOTE_SCOPE).toContain('Confirm in one short line');
+  it('keeps the rule short enough to survive being skimmed', () => {
+    expect(NOTE_SCOPE.length).toBeLessThan(150);
+    expect(NOTE_REPLY_RULE.length).toBeLessThan(350);
+  });
+
+  /**
+   * The words that were actually produced, not the idea behind them — „will
+   * not be asked", „will not reach you", „I will not put those to you". A rule
+   * against the concept let all three through.
+   */
+  it('forbids the sentences the model actually wrote', () => {
+    expect(NOTE_REPLY_RULE).toContain('questions will stop');
+    expect(NOTE_REPLY_RULE).toContain('they will not be asked');
+    expect(NOTE_REPLY_RULE).toContain('nothing will reach them');
+    expect(NOTE_REPLY_RULE).toContain('you will not put such questions to them');
+  });
+
+  /**
+   * The note IS saved, and a confirmation is owed. „Say nothing" would leave a
+   * second false impression — that the line was not recorded.
+   */
+  it('still asks for the save to be confirmed, in their language', () => {
+    expect(NOTE_REPLY_RULE).toMatch(/^Say only that the note is saved/);
+    expect(NOTE_REPLY_RULE).toContain('in their language');
   });
 });

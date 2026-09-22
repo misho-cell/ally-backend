@@ -427,8 +427,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       '"need" (an open thing they want), "preference" (how they like things), or "profile" (a ' +
       'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
       'contacts). Notes accumulate. A note steers YOUR OWN replies to this user and nothing ' +
-      "else: it does not stop other people's assistants asking them anything. Confirm in one " +
-      'short line, and read `scope` in the result before you do.',
+      "else: it does not stop other people's assistants asking them anything. So NEITHER your " +
+      'narration before the call NOR your reply after it may say that questions will stop, that ' +
+      'they will not be asked, or that nothing will reach them — say only that the note is ' +
+      'saved, in one short line. Obey `reply_rule` in the result.',
   },
   search_roster: {
     title: 'Find a fellow member of a network',

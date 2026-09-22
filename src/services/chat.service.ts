@@ -111,6 +111,7 @@ import {
   deleteUserNotes,
   getUserNotes,
   isUserNoteKind,
+  NOTE_REPLY_RULE,
   NOTE_SCOPE,
   saveUserNote,
   UserNote,
@@ -2046,7 +2047,7 @@ const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
 const SAVE_USER_NOTE_TOOL: AnthropicTool = {
   name: 'save_user_note',
   description:
-    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts). A note steers YOUR OWN replies to this user and nothing else: it does not stop other people\'s assistants asking them anything. Read `scope` in the result before you confirm.',
+    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts). A note steers YOUR OWN replies to this user and nothing else: it does not stop other people\'s assistants asking them anything. So NEITHER your narration before the call NOR your reply after it may say that questions will stop, that they will not be asked, or that nothing will reach them — say only that the note is saved. Obey `reply_rule` in the result.',
   input_schema: {
     type: 'object',
     properties: {
@@ -6334,9 +6335,12 @@ async function executeToolCall(
       const text = ((input['text'] as string) ?? '').trim();
       if (!text) return { saved: false, error: 'Pass a non-empty text.' };
       await saveUserNote(userId, kind, text);
-      // The same `scope` the connector returns — one sentence, one place, so
-      // the two surfaces cannot promise different things (22 September).
-      return { saved: true, scope: NOTE_SCOPE };
+      // The same two fields the connector returns — one place, so the two
+      // surfaces cannot promise different things (22 September). `reply_rule`
+      // is named as a rule on purpose: the first version put the same thing
+      // under `scope` as four sentences of reasoning, and the model read all
+      // 484 characters of it and promised anyway, 3 of 3.
+      return { saved: true, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE };
     }
     case 'forget_user_note': {
       const id = Number(input['id']);

@@ -51,12 +51,36 @@ export function isUserNoteKind(v: string): v is UserNoteKind {
  * they are not is the worse one, and it is the one that could be mended today.
  */
 export const NOTE_SCOPE =
-  'Saved. This note is read by THIS user’s own assistant only — their context, ' +
-  'their tone, their export. No other person’s assistant can see it, so it does ' +
-  'not change who any other user’s search, plan or ask reaches. Confirm in one ' +
-  'short line that it is saved, in their words. Do NOT tell them it will stop ' +
-  'anything from being sent to them, or that they will no longer be asked about ' +
-  'it — nothing enforces that yet, and saying so is a promise the product breaks.';
+  'Read by this user’s own assistant only. It does not reach anyone else’s ' +
+  'search, plan or ask.';
+
+/**
+ * THE FIRST VERSION OF THIS WAS 484 CHARACTERS AND THE MODEL PROMISED ANYWAY,
+ * THREE TIMES OUT OF THREE, TWENTY MINUTES AFTER IT SHIPPED.
+ *
+ * The tester ran the measurement I asked for and it disproved the hypothesis I
+ * stated with it. I had written that a promise surviving the fix „would mean
+ * the scope field is not reaching the model". It reached the model: all three
+ * calls logged `result_keys` „saved,scope", 484 characters of it. The model
+ * read it and wrote „კითხვებს არ დაგისვამ" — I will not put those questions to
+ * you — in the live language, twice out of two.
+ *
+ * So the layer was right and the SHAPE was wrong. A field named `scope`
+ * carrying four sentences of reasoning reads as background, and background
+ * loses to the sentence the user just asked for. This is the rule, named as a
+ * rule, short enough that it cannot be skimmed past, and it forbids the exact
+ * words that were produced rather than the idea behind them.
+ *
+ * What it still cannot reach is the STEP line, and that is not a second bug to
+ * fix here: the step is the model's own narration BEFORE the call, so the tool
+ * result does not exist yet when it is written. Only the tool DESCRIPTION is in
+ * front of the model at that moment, and it carries the same rule.
+ */
+export const NOTE_REPLY_RULE =
+  'Say only that the note is saved, in one short line, in their language. Do ' +
+  'NOT say that questions will stop, that they will not be asked, that nothing ' +
+  'will reach them, or that you will not put such questions to them. Other ' +
+  'people’s assistants cannot see this note, so all of that is false.';
 
 /**
  * Save something the user told the assistant about THEMSELF. Notes accumulate,

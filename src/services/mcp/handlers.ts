@@ -48,6 +48,7 @@ import {
   deleteUserNotes,
   getUserNotes,
   isUserNoteKind,
+  NOTE_REPLY_RULE,
   NOTE_SCOPE,
   saveUserNote,
 } from '../userNotes.service';
@@ -1307,7 +1308,7 @@ export async function mcpSaveUserNote(
   // `scope` travels with every save: the model writes its confirmation from
   // the RESULT, and a tool description read at the top of the prompt was not
   // enough to stop it promising a boundary nothing keeps.
-  return { saved: true, kind: args.kind, scope: NOTE_SCOPE };
+  return { saved: true, kind: args.kind, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE };
 }
 
 /**
