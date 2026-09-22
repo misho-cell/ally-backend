@@ -9455,7 +9455,41 @@ export async function processChat(
     // Row 150: null is „nobody asked for this conversation" — a campaign
     // invite. Charging the person we approached for the approach is the
     // charge D133 exists to forbid, so there is no debit and no event.
-    if (payerId !== null) {
+    /**
+     * ROW 76 — „NOTHING WAS LOST" WAS NOT TRUE, AND WE WERE CHARGING FOR IT.
+     *
+     * When the reply moderation blocks an answer, the owner reads
+     * `moderationBlocked`, which says in every language: „that is on us, not
+     * on your wording. Nothing was lost; say „again" and I will rewrite it."
+     *
+     * They were charged for the answer they never saw. The three real blocks
+     * in the fifteen days to 22 September, with what each cost its owner:
+     *
+     *   13 Sep  thread 14792   run f13787a8    6 tokens
+     *   15 Sep  thread 15016   run 20711eb2   10 tokens
+     *   21 Sep  thread 20857   run dad8bba4   20 tokens
+     *
+     * Thirty-six tokens in fifteen days. THE MONEY IS NOT THE POINT — the
+     * product was telling somebody nothing was lost while keeping what they
+     * had paid, and then charging them again for the retry that worked. The
+     * seat's done-when says it plainly: „the person is not charged for the
+     * lost answer and is told plainly." The second half was already true and
+     * the first half made it a false sentence.
+     *
+     * NO DEBIT RATHER THAN A REFUND, deliberately. A refund means charging and
+     * giving back, which dips the balance in between and can refuse the very
+     * retry we are inviting; and it needs a second reason and a second unique
+     * index to stop it paying twice. `usage_events` still records what the
+     * provider cost us — the business's own books are untouched, and a run
+     * with a cost and no `chat_debit` is exactly what happened.
+     */
+    if (payerId !== null && !replySafe) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[wallet] run ${runId} thread ${threadId}: NOT charged — the reply was blocked by ` +
+          'moderation and the owner never saw it',
+      );
+    } else if (payerId !== null) {
       const debited = await debitRun(payerId, runId);
       if (debited > 0) emitTokensDebited(payerId, threadId, runId, debited);
     }
