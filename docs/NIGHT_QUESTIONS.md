@@ -31,47 +31,39 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Six questions, all put to Misho at 18:45 UTC and none answered yet.** Written
-here because a question asked and not answered is exactly what this file is
-for — if the container restarts tonight, these survive the clone.
+_Nothing yet._
 
-**1. §20 — 26 engine rows drawn as ordinary messages in the founder's own
-chat.** 10–11 August, not growing, all on account 501. Registered with route,
-method, body and undo. **No content changes** — the text stays byte for byte
-and the admin window still shows it; only the chat stops drawing it, and the
-undo is the same statement with the kinds swapped. *My recommendation: do it.*
+## Handed over, 22 September (07:15 UTC) — the 21/22 night
 
-**2. Row 74 — Misho's screen-by-screen list.** Not a code task. Either he sends
-the file into his own conversation and I commit it as
-`docs/MISHO_SCREEN_CHECKS.md`, or the tester gives me their shared folder's
-path — which I have asked for and do not have.
+**All three were answered by Misho in one line at about 06:55 UTC —
+„გააკეთე სამივე" — and all three are done. Nothing carried over.**
 
-**3. Row 125 — the relay chain has never run across three REAL people.** The
-one answered relay in the product's history is between three fictional
-accounts. This is EVIDENCE, not code: I cannot manufacture it. *Question: do we
-stage one deliberately, and with whom, or wait for it to happen?*
+**1. A seventh fictional test account.** Asked for because rows 210 and 232
+cannot be proved on the six: the assistant answers „already in motion" on a
+pair that has been used, and all nine non-direct pairs were used on
+21 September.
 
-**4. Row 108 — the measurement needs a busy day.** Today gave 54 search calls
-against the 227 of the days the row was measured on, and the before/after reads
-as noise. *My recommendation: wait for real traffic rather than ask the seat to
-generate load — synthetic volume does not reproduce a real user's query shape,
-and the number would still be arguable.*
+→ **Done, and no account was created.** Netai Test 7-11 already existed —
+made 19 September in one batch, untouched since, unreachable only because the
+hardcoded list stopped at six. Widened, verified first (§7a is why that is not
+a formality), and registered as **§21 of ADMIN_WRITE_OPERATIONS.md**, which is
+where the route, the reasoning and the undo now live.
 
-**5. Row 224 — formal address, five messages in fourteen days.** Fixing it
-properly means asking the model to rewrite a reply when a formal form is
-detected; the existing check only RECORDS and deliberately does not refuse,
-because refusing there would leave the owner with nothing. *My recommendation:
-do not build it.* Five messages a fortnight does not earn a rewrite loop with a
-false-positive cost. Said out loud because it is a judgement, not a fact.
+**2. 3,000 tokens on 171872 for row 108's busy day.** Spend, so it waited.
 
-**6. The frontend's five rows — 218, 91, 93, 88, 111 — none started.**
-*Question: do I write and ask for dates, or does Misho carry it?*
+→ **Done, 07:03.** 314 → 3,314, plus 250 each to Test 7, 8 and 9 for the chain.
+Every row `admin_adjust` with its note, read back from the ledger. §19's route,
+unchanged.
 
-**NOT a question, but it belongs on this page:** §19's token route reaches the
-six fictional test accounts and nothing else. If a real user ever needs a
-credit — a refund, an apology — that is a DIFFERENT operation with a different
-blast radius, and it needs its own section here and its own yes. I have not
-built it and will not until somebody asks.
+**3. What rows 229 and 231 actually say** — carried on the plate for days and
+described in none of the versions I had.
+
+→ **Answered, and the question should not have been asked.** Both are described
+in full in the tester's message of 21 September (id 10825). I searched the box
+from id 11000 and told everyone they were „described nowhere". They were in my
+own inbox. 229: an invite link that does not attach the inviter, so no reward
+can be computed. 231: two sends that failed and were reported to the owner as
+under way.
 
 ## Handed over, 21 September (07:05 UTC) — the 20/21 night
 
@@ -335,51 +327,3 @@ uses to keep real people safe — Bhutan, Kyoto, Morocco, Patagonia — is by
 construction a query that matches nobody, which is the one case that cannot
 reproduce this. Those goals remain exactly right for row 203 and for anything
 that must not reach a real person; they are the wrong instrument here.
-
-## 21 სექტემბერი, 22:15 UTC — ტესტერის ორი თხოვნა, ორივე მიშოს სიტყვას ელოდება
-
-ორივე **ხარჯი/წვდომაა** და ღამის წესშიც ჩავარდა. არცერთს არ ვაკეთებ.
-
-### 1. მეშვიდე ფიქტიური ანგარიში — „Netai Test 7"
-
-**რატომ:** რიგები **210 და 232 ვერ შემოწმდება** არსებულ ექვს სავარძელზე.
-მიზეზი ტესტერისაა და დამაჯერებელია: ასისტენტს ახსოვს ყოველი ადრინდელი
-მოთხოვნა, ამიტომ უკვე გამოყენებულ წყვილზე პასუხობს „უკვე მიმდინარეობს" და
-არაფერს ქმნის. **დღეს ცხრავე წყვილი გამოიყენა** (1189, 1222, 1255, 1256,
-1288, 1289, 1290, 1321, 1354).
-
-**რასაც ითხოვს:** ერთი ახალი ფიქტიური ანგარიში, რომელსაც წიგნაკში მხოლოდ
-Test 4 და Test 6 ჰყავს (და მათ — ის), **ნული მიზანი, 250 ტოკენი.**
-
-**რას აძლევს:** 232-ს (გაჩერებული მიზანი აუქმებს გაცნობის მოთხოვნას) და
-210-ს (ჩვეულებრივ ჩატში დასმული გაცნობა) — **ორივე დღეს გავასწორე და
-ორივე დაუმტკიცებელია.**
-
-### 2. +3,000 ტოკენი ანგარიშ 171872-ზე (ახლა 361 აქვს)
-
-**რატომ:** ეს არის **რიგი 108-ის დატვირთული დღე** — ის, რასაც სამი დღეა
-ველოდები. ტესტერი გაუშვებს 200+ ქართულ ძებნას ხვალ ~08:00 UTC-დან,
-**თანმიმდევრულად, რომ დროები კონკურენციით არ დაიმახინჯოს.**
-
-**ღირს დაახლოებით 3,000 ტოკენი.** მან თქვა „ან შენ თქვი რიცხვი".
-
-⚠️ **ორივეზე მე მხოლოდ ვწერ, არ ვაკეთებ.** §19-ის მარშრუტი ტოკენების
-დამატებისთვის არსებობს და ფიქტიურ ანგარიშებზეა შემოსაზღვრული — 171872 მათშია
-— მაგრამ **გაშვება მიშოს პირდაპირ სიტყვას სჭირდება.**
-
-### 3. ორი რიგი, რომელსაც ვერ ვკითხულობ — 229 და 231
-
-**ეს კითხვა არ არის ხარჯი და არც წვდომა — უბრალოდ ტესტერს დილამდე არ უპასუხია.**
-ჩავწერე, რომ დილით არ დაიკარგოს.
-
-**229 (Pr1) და 231 (Pr2) დაფის ყველა ვერსიაშია და არსად აღწერილი არ არის.**
-მთელი ყუთი გადავქექე: მხოლოდ ნომრებად ჩნდება სიებში. ერთადერთი მინიშნება
-ტესტერისავე წინადადებაა — „226 / 228 / 229 / 230 / 231 ლიკას ტელეფონიდან".
-
-226, 228 და 230 ვიცი, რადგან აღწერა. **229 და 231 — არასდროს.**
-
-❗ ანუ **დღეებია პირველი და მეორე პრიორიტეტის რიგი მიდევს სიაში ისე, რომ არ
-ვიცი რა წერია მათში.** ეს ჩემი ბრალია — არ მიკითხავს. სწორედ ასე რჩება რიგი
-ხელუხლებელი კვირას, სანამ ყველას ჰგონია, რომ ვიღაცას აქვს.
-
-ვკითხე (ყუთი 417). **მიშო, თუ ლიკას ხედავ ადრე — ეს ორი მისი ტელეფონიდანაა.**
