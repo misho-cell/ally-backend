@@ -1,4 +1,4 @@
-jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTag: jest.fn() }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTagExactOnly: jest.fn() }));
 jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
@@ -14,11 +14,11 @@ jest.mock('../costLedger.service', () => ({
 }));
 jest.mock('../searchQuery.service', () => ({ __esModule: true, distilSearchQuery: jest.fn() }));
 
-import { searchByTag } from '../tools/searchByTag';
+import { searchByTagExactOnly } from '../tools/searchByTag';
 import { logToolCall } from '../toolCallLog.service';
 import { findWaysIn } from '../openingSearch.service';
 
-const mockTag = searchByTag as jest.MockedFunction<typeof searchByTag>;
+const mockTag = searchByTagExactOnly as jest.MockedFunction<typeof searchByTagExactOnly>;
 const mockLog = logToolCall as jest.MockedFunction<typeof logToolCall>;
 
 /**

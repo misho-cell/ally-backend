@@ -1,5 +1,5 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
-import { searchByTag } from './tools/searchByTag';
+import { searchByTagExactOnly } from './tools/searchByTag';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -380,7 +380,39 @@ export function buildOpeningSearchSection(found: OpeningSearches): string {
 /** How many of the web's results get a way-in search. */
 const MAX_WAY_IN_CHECKS = 3;
 
-/** The way-in searches share this, after the web search has returned. */
+/**
+ * The way-in searches share this, after the web search has returned.
+ *
+ * 22 SEPTEMBER — THREE SECONDS WAS SMALLER THAN THE THING IT WAS TIMING, and
+ * for three days that meant this feature did nothing at all on a real account.
+ * From `tool_call_log`, account 501, the twenty-question run of this morning:
+ *
+ *   way-in lookups that TIMED OUT   76   p50 3,000 ms  (min 2,999, max 3,006)
+ *   way-in lookups that FINISHED     2      2,355 and 2,762 ms
+ *   real tag queries, same hour, same book       p50 3,705 ms
+ *
+ * The lookup called the full `searchByTag` — exact pass, fuzzy pass and five
+ * enrichment queries — whose median on that book is 3.7 seconds. A three-second
+ * ceiling over a 3.7-second median is a ceiling that is essentially always hit,
+ * and the two that got under it came in at 2.4 and 2.8: right against it.
+ *
+ * So ninety-seven times in a hundred the model was handed `unchecked` — „we did
+ * not look" — three seconds after the question, having learnt nothing. THE
+ * FEATURE WAS PURE COST ON EXACTLY THE ACCOUNTS IT WAS BUILT FOR.
+ *
+ * THE BUDGET IS NOT WHAT CHANGED. `searchByTagExactOnly` is: the way-in
+ * question is „does anybody in my contacts carry this web-card name, as
+ * written", and the exact pass answers it without the fuzzy pass a human's
+ * typo needs or the enrichment a verdict of one name never reads. The ceiling
+ * stays where it is, as a ceiling rather than as the normal outcome, and if it
+ * is still being hit the rows say so — `timed_out: true` is how this was found.
+ *
+ * A NOTE FOR THE NEXT PERSON WHO SETS ONE OF THESE. This is the third budget
+ * today that promised what it could not deliver: the shutdown drain's twenty
+ * seconds against the platform's eleven, `/admin/asks` printing a page size as
+ * a total, and this. A budget is a claim about how long something takes, and a
+ * claim about how long something takes has to be measured before it is written.
+ */
 const WAY_IN_BUDGET_MS = 3_000;
 
 /** A title is „Name — tagline"; the name is what a network is searched for. */
@@ -718,7 +750,7 @@ export async function findWaysIn(
           return;
         }
         const result = await Promise.race([
-          searchByTag(userId, name),
+          searchByTagExactOnly(userId, name),
           new Promise<null>((resolve) => {
             const t = setTimeout(() => resolve(null), left);
             t.unref?.();

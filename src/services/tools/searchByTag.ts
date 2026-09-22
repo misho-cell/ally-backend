@@ -336,6 +336,57 @@ function shape(
   return approximate ? { ...withMeta, approximate: true } : withMeta;
 }
 
+/**
+ * The way-in lookup's own search: the EXACT pass, and nothing else.
+ *
+ * 22 SEPTEMBER, AND THE NUMBER IS THE WHOLE ARGUMENT. `findWaysIn` calls the
+ * full `searchByTag` and gives it a 3,000 ms budget. On account 501 today:
+ *
+ *   way-in lookups that TIMED OUT   76   p50 3,000 ms   (min 2,999, max 3,006)
+ *   way-in lookups that FINISHED     2      2,355 ms and 2,762 ms
+ *   real tag queries, same account, same hour   p50 3,705 ms
+ *
+ * I put a three-second budget on an operation whose median is 3.7 seconds. It
+ * cannot succeed on a real phonebook, and 97% of the time it did not: the
+ * model was handed „we could not look" instead of an answer, three seconds
+ * later, on every question. THE FEATURE WAS PURE COST ON EXACTLY THE ACCOUNTS
+ * IT WAS BUILT FOR.
+ *
+ * The seat read those 76 as „returned nothing". They did not return nothing;
+ * they did not finish — which `findWaysIn` records honestly (`timed_out`) and
+ * renders as `unchecked`, and which is the one distinction this codebase keeps
+ * having to rebuild.
+ *
+ * WHY THE EXACT PASS IS ENOUGH HERE, and this is not a shortcut. The fuzzy
+ * pass exists so a person typing „ბუღალტერი" also finds „ბუხალტერი" — spelling
+ * tolerance for a HUMAN's query. A way-in name is not typed by anybody: it is
+ * a title or a host name lifted verbatim off a web card, and the question
+ * asked of it is „does anyone in my contacts carry THIS, as written". A
+ * near-spelling of a web page's title is not evidence of a way in.
+ *
+ * And none of the enrichment is read: the caller takes `results[0].name` and
+ * throws the rest away. Facts, account states, relationship scores, exclusion
+ * scopes and human tiers were five more queries per lookup, for a string.
+ */
+export async function searchByTagExactOnly(userId: string, tagQuery: string): Promise<object> {
+  const rawGroups = buildRawWordGroups(tagQuery);
+  if (rawGroups.length === 0) return { found: false, query: tagQuery };
+
+  const blockedPhones = await getExcludedPhones(userId);
+  const excludedSet = new Set(blockedPhones.map(normalizePhone));
+  const exact = await runExactSearch(userId, rawGroups, blockedPhones);
+  const rows = exact.rows.filter((r) => !excludedSet.has(normalizePhone(r.phone)));
+  if (rows.length === 0) return { found: false, query: tagQuery };
+
+  return {
+    found: true,
+    query: tagQuery,
+    count: rows.length,
+    // The shape the caller reads, and no more. A way-in verdict is a name.
+    results: rows.map((r) => ({ name: r.name ?? r.saved_as ?? '' })),
+  };
+}
+
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId);

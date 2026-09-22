@@ -15,14 +15,20 @@ jest.mock('../searchQuery.service', () => ({
   __esModule: true,
   distilSearchQuery: jest.fn(),
 }));
-jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTag: jest.fn() }));
+/**
+ * `searchByTagExactOnly`, not `searchByTag`, since 22 September: the way-in
+ * lookup ran the full search — fuzzy pass and five enrichment queries — inside
+ * a 3,000 ms budget, against a median of 3,705 ms on a real book. 76 of 78
+ * lookups on account 501 that morning timed out having learnt nothing.
+ */
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTagExactOnly: jest.fn() }));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import { distilSearchQuery } from '../searchQuery.service';
-import { searchByTag } from '../tools/searchByTag';
+import { searchByTagExactOnly } from '../tools/searchByTag';
 import {
   runOpeningSearches,
   buildOpeningSearchSection,
@@ -34,7 +40,7 @@ import {
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockSecond = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
 const mockDistil = distilSearchQuery as jest.MockedFunction<typeof distilSearchQuery>;
-const mockTag = searchByTag as jest.MockedFunction<typeof searchByTag>;
+const mockTag = searchByTagExactOnly as jest.MockedFunction<typeof searchByTagExactOnly>;
 
 beforeEach(() => {
   jest.clearAllMocks();
