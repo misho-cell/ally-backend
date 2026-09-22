@@ -1,111 +1,73 @@
-#!/bin/bash
-# How long each tool actually takes, from tool_call_log, after the fact.
-#
-# WHY IT IS A FILE AND NOT A QUERY I REMEMBER. My own rule, written after
-# apologising to the tester with figures on 19 September:
-#
-#   „a performance claim is made from tool_call_log, AFTER the fact — never
-#    from EXPLAIN, before it."
-#
-# I broke the spirit of it again on 20 September: the `search_second_degree`
-# pre-filter (row 108, fifth cut) shipped on a bench of my own running, with
-# „I will read the p90 tomorrow" as the plan. A plan that depends on me
-# remembering is not a plan. This is the reading, as a command.
-#
-# WHAT TO COMPARE IT AGAINST — the figures that sent me looking, 7 days to
-# 20 September, BEFORE the pre-filter:
-#
-#   search_second_degree   503 calls   p50  6,470   p90 15,161   max 33,995
-#   search_by_tag          676 calls   p50  3,989   p90 10,417   max 22,853
-#   web_search             297 calls   p50  4,321   p90  6,237
-#   search_by_insight      414 calls   p50  1,994   p90  3,505
-#
-# The bench said 12,517 ms -> 999 ms on the cold case. If the p90 for
-# search_second_degree has not moved once real searches have run on the new
-# build, the bench was measuring something the product does not do, and the
-# change should be judged on that rather than on my arithmetic.
-#
-# READ THE DAYS, NEVER THE WEEK — and this file is the reason that rule exists.
-# Its own first run said `search_second_degree:opening` had failed 51 times in
-# seven days, and I shipped a change to fix it. Split by day, 45 of the 51 are
-# 16–17 September and there are ZERO on the 19th and 20th — the count reached
-# the target before the change existed. Worse, the call VOLUME runs 3 / 81 / 56
-# / 6 / 7 across those days, so the week's average is an average over two busy
-# days and three quiet ones, and a summary row cannot tell a fix from a quiet
-# Saturday. Pass a tool name as the second argument to get that split.
-#
-# `--since` takes anything Postgres reads as an interval: '2 hours', '3 days'.
-#
-# IS THE MEASUREMENT READY YET — `--ready`, added 21 September.
-#
-# Three rows in TASKS.md are parked on the same sentence: „judge it on a day
-# with comparable volume." That is the right rule and it has no owner. Nothing
-# watches for the day to arrive, so the answer depends on me remembering to
-# look — and a plan that depends on me remembering is not a plan, which is the
-# sentence at the top of this very file.
-#
-# `--ready <tool> <min-calls> [since] [account]` answers it: since the date given, has
-# there been a day carrying at least that many calls? It prints the qualifying
-# days and exits non-zero for „not yet", so it can gate something.
-#
-# It answers about VOLUME and nothing else. A qualifying day means the numbers
-# from it are worth reading; it does not mean they say what you hoped.
-#
-# AND ON 21 SEPTEMBER IT LIED TO ME, WITH MY OWN FAVOURITE MISTAKE. It counted
-# `tool = X` OR `tool LIKE 'X:%'` — the second being the PHASE rows a search
-# writes about its own internals. Asked whether a day carried 50 second-degree
-# searches, it answered „READY — 21 September, 50 calls". The real number was
-# 32 searches and 18 phase rows.
-#
-# The inflation is not even a constant to correct for: 3 phase rows against 94
-# calls on 16 September (3%), 81 against 183 on the 17th (44%), 18 against 32
-# today (56%). So the SAME threshold meant a different thing every day, and the
-# day it happened to wave through was the one sitting exactly on the line.
-#
-# It now counts the searches, and prints the phase rows beside them rather than
-# inside them — nothing hidden, nothing added up that should not be. Only two
-# tools write phase rows (web_search and search_second_degree) and both also
-# write bare rows, so nothing becomes invisible by counting this way.
-#
-# Usage:  ./scripts/ops/slow.sh ['7 days']                 every tool, summary
-#         ./scripts/ops/slow.sh '10 days' search_by_tag    one tool, by day
-#         ./scripts/ops/slow.sh --ready search_by_tag 150 2026-09-19
-#         ./scripts/ops/slow.sh --ready search_second_degree 50 2026-09-01 501
-#
-# THE FOURTH ARGUMENT IS ONE ACCOUNT, and it is there because the rows parked
-# on this gate do not say „a busy day", they say „a busy day ON 501". That is
-# not pedantry: what these searches cost depends on the size of the phonebook
-# they walk, and 501's is the large one. On 19-21 September the tool ran 35,
-# 26 and 32 times — of which 2, 6 and 2 were 501's. A day can look busy and
-# carry almost nothing from the account the question is about.
-set -euo pipefail
-
 READY_PY='
 import os, sys, json
+
+# THE EXIT CODE IS THE ANSWER, so nothing about PRINTING may change it.
+#
+# Found by piping this gate through `head`: the reader closed the pipe, the
+# print raised BrokenPipeError, and a READY day left with a non-zero status —
+# which to any caller reads as NOT YET. The same shape as the PIPESTATUS trap
+# noted below: a failure in the plumbing wearing the verdict of the thing being
+# measured. The verdict is decided before any of it is printed, and a reader
+# who walks away cannot change it.
+VERDICT = [2]
+
+def emit(line):
+    try:
+        print(line)
+    except BrokenPipeError:
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        os._exit(VERDICT[0])
+
 d = json.load(sys.stdin)
 tool = os.environ["READY_TOOL"]
 need = os.environ["READY_MIN"]
 since = os.environ["READY_FROM"]
 who = os.environ.get("READY_USER", "")
 whose = (" on account %s" % who) if who else ""
+
 if not d.get("success"):
-    print("could not read:", d.get("error", "")[:160])
+    emit("could not read: " + str(d.get("error", ""))[:160])
     raise SystemExit(2)
+
 rows = d["data"]["rows"]
 if not rows:
-    print("NOT YET - no day since %s carries %s+ calls to %s%s." % (since, need, tool, whose))
-    print("         That says the measurement cannot be TAKEN, not that the")
-    print("         change did nothing. They are different answers.")
+    VERDICT[0] = 1
+    emit("NOT YET - no day since %s carries %s+ calls to %s%s." % (since, need, tool, whose))
+    emit("         That says the measurement cannot be TAKEN, not that the")
+    emit("         change did nothing. They are different answers.")
     raise SystemExit(1)
-print("READY - %d day(s) since %s carry %s+ calls to %s%s:" % (len(rows), since, need, tool, whose))
+
+VERDICT[0] = 0
+emit("READY - %d day(s) since %s carry %s+ calls to %s%s:" % (len(rows), since, need, tool, whose))
+emit("  %-10s %7s %8s  %-20s %7s" % ("day", "calls", "p50", "rest-of-day", "ratio"))
 for r in rows:
     phases = int(r["phase_rows"])
-    extra = "   (+%d phase row(s), not counted)" % phases if phases else ""
-    print("  %s  %s calls%s" % (str(r["day"])[:10], r["calls"], extra))
-print("")
-print("Volume only. A qualifying day means the numbers are worth reading; it")
-print("does not mean they say what you hoped. Read them with the tool name as")
-print("the second argument.")
+    mine = r["tool_p50"]
+    rest = r["rest_p50"]
+    # A day on which this account called nothing else has no control, and a
+    # blank is the honest print. A ratio invented from one number is the fault
+    # this whole gate exists to stop.
+    ratio = ("%.2fx" % (float(mine) / float(rest))) if mine and rest else "-"
+    emit("  %-10s %7s %8s  %-20s %7s%s" % (
+        str(r["day"])[:10], r["calls"],
+        mine if mine else "-",
+        ("%s (%s calls)" % (rest, r["rest_calls"])) if rest else "no control",
+        ratio,
+        ("   +%d phase row(s), not counted" % phases) if phases else ""))
+emit("")
+emit("RATIO is the tool p50 against every OTHER tool the account called that")
+emit("day. It is the column to read across days: a p50 that fell while the")
+emit("ratio held is a quiet day, not a faster tool. A control tool picked by")
+emit("hand is not a substitute - search_by_tag moved WITH the subject here,")
+emit("and a tool that shares the bottleneck is a second subject.")
+emit("")
+emit("Volume and one control. A qualifying day means the numbers are worth")
+emit("reading; it does not mean they say what you hoped. Read them with the")
+emit("tool name as the second argument.")
+
 '
 
 if [ "${1:-}" = --ready ]; then
@@ -122,11 +84,20 @@ if [ "${1:-}" = --ready ]; then
   "$HERE/ro.sh" <<SQL | python3 -c "$READY_PY"
 SELECT DATE_TRUNC('day', created_at) AS day,
        COUNT(*) FILTER (WHERE tool = '$READY_TOOL') AS calls,
-       COUNT(*) FILTER (WHERE tool LIKE '$READY_TOOL:%') AS phase_rows
+       COUNT(*) FILTER (WHERE tool LIKE '$READY_TOOL:%') AS phase_rows,
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)
+             FILTER (WHERE tool = '$READY_TOOL')) AS tool_p50,
+       -- The control: everything else this account ran that day. Phase rows of
+       -- the tool under test are excluded from BOTH sides — they are neither
+       -- the subject nor independent of it.
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)
+             FILTER (WHERE tool <> '$READY_TOOL'
+                       AND tool NOT LIKE '$READY_TOOL:%')) AS rest_p50,
+       COUNT(*) FILTER (WHERE tool <> '$READY_TOOL'
+                          AND tool NOT LIKE '$READY_TOOL:%') AS rest_calls
 FROM tool_call_log
 WHERE created_at >= '$READY_FROM'
   AND duration_ms IS NOT NULL
-  AND (tool = '$READY_TOOL' OR tool LIKE '$READY_TOOL:%')
   $USER_CLAUSE
 GROUP BY 1
 HAVING COUNT(*) FILTER (WHERE tool = '$READY_TOOL') >= $READY_MIN
