@@ -368,8 +368,44 @@ function shape(
  * throws the rest away. Facts, account states, relationship scores, exclusion
  * scopes and human tiers were five more queries per lookup, for a string.
  */
+/**
+ * A web-card name, split into words and no further — 22 September, second pass.
+ *
+ * `buildRawWordGroups` gives each word up to twenty-four SPELLING VARIANTS:
+ * every transliteration of it, both scripts, all the ღ/გ and ქ/ყ readings. That
+ * exists so a person typing „ბუღალტერი" also finds „bughalteri", and it is
+ * right for a person.
+ *
+ * NOBODY TYPED THIS. A way-in name is a title or a host lifted verbatim off a
+ * web card, and the question asked of it is „does anybody carry THIS, as
+ * written". A Georgian transliteration of „Bookkeeping.ge" is not a spelling
+ * anyone uses — for „eleqtrikosi" the expansion produces ელეყთრიქოს and four
+ * more of the same kind — so the extra passes buy nothing here.
+ *
+ * AND EACH VARIANT IS ANOTHER FULL PASS OVER THE OWNER'S BOOK. Measured on 501
+ * today, against a 470 ms network floor, warm:
+ *
+ *   one variant, tags + aliases     592 · 869 ms
+ *   six variants, same shape        973 · 1,205 · 2,243 ms
+ *
+ * Roughly three to four times the work, for spellings of a web page's title.
+ *
+ * I AM NOT PROMISING A SPEED FIGURE FOR THIS. The numbers above are noisy —
+ * identical queries ran 592 and 1,846 — and I have now been wrong twice about
+ * where this row's three seconds go. The change stands on what the lookup
+ * MEANS; the seat's next run on a real book is what will measure it.
+ */
+function wordsAsWritten(tagQuery: string): string[][] {
+  return tagQuery
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.toLowerCase())
+    .filter(Boolean)
+    .map((word) => [word]);
+}
+
 export async function searchByTagExactOnly(userId: string, tagQuery: string): Promise<object> {
-  const rawGroups = buildRawWordGroups(tagQuery);
+  const rawGroups = wordsAsWritten(tagQuery);
   if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
   const blockedPhones = await getExcludedPhones(userId);

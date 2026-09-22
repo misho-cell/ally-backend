@@ -135,3 +135,56 @@ describe('the way-in lookup runs the exact pass and nothing else', () => {
     });
   });
 });
+
+/**
+ * And no SPELLING VARIANTS either — second pass, same day.
+ *
+ * `buildRawWordGroups` gives each word up to twenty-four transliterations, so
+ * a person typing „ბუღალტერი" also finds „bughalteri". Nobody typed a way-in
+ * name: it is a title lifted verbatim off a web card, and each variant is
+ * another full pass over the owner's book. Measured on account 501 against a
+ * 470 ms network floor: one variant 592-869 ms, six variants 973-2,243 ms.
+ */
+describe('it looks for the name as written, not for spellings of it', () => {
+  const patterns = (): string[] =>
+    mockQuery.mock.calls
+      .flatMap((call) => (call[1] as unknown[]) ?? [])
+      .filter((p): p is string => typeof p === 'string');
+
+  it('sends one pattern per word, not a transliteration of each', async () => {
+    found([{ phone: '+995555123456', name: 'ნინო' }]);
+
+    await searchByTagExactOnly('501', 'arqiteqtori');
+
+    const sent = patterns().join(' ');
+    // The Georgian readings buildRawWordGroups would add for this word.
+    expect(sent).not.toContain('არქიტექტორ');
+    expect(sent).not.toContain('არყითეყთორ');
+    expect(sent).toContain('arqiteqtor');
+  });
+
+  it('still treats a two-word name as two words', async () => {
+    found([]);
+
+    await searchByTagExactOnly('501', 'Axel Group');
+
+    const sent = patterns().join(' ');
+    expect(sent).toContain('axel');
+    expect(sent).toContain('group');
+  });
+
+  /**
+   * The count is the point: one pattern per word, where the full builder would
+   * have sent six for this one. A future change that quietly restores the
+   * variants fails here rather than in a production p50.
+   */
+  it('sends exactly as many patterns as there are words', async () => {
+    found([]);
+
+    await searchByTagExactOnly('501', 'arqiteqtori');
+
+    // Two calls (page and COUNT) each carrying the same single pattern.
+    const distinct = new Set(patterns().filter((p) => p.includes('arqiteqtor')));
+    expect(distinct.size).toBe(1);
+  });
+});
