@@ -64,6 +64,65 @@ describe('webNumbersWithSource', () => {
     expect(out).toEqual([]);
   });
 
+  /**
+   * AND THE TEST ABOVE PASSES WITHOUT THE FLOOR, WHICH MEANS IT WAS NOT
+   * TESTING IT.
+   *
+   * Sabotage, 22 September: `if (phone.replace(/\D/g, '').length <
+   * MIN_SHOWABLE_DIGITS) continue;` removed — every test in this file still
+   * passed, that one included. „2015 წელს, 40" never reaches the floor at all:
+   * the regex wants a digit, then six or more of [digit, space, dash,
+   * brackets], then a digit, and Georgian letters break the run long before
+   * that. So it was refused one step earlier and the line under test was never
+   * consulted.
+   *
+   * These are runs the REGEX accepts and the FLOOR must refuse — seven and
+   * eight digits, which is what a room number, a price list or a date range
+   * looks like once the punctuation is in it. Without the floor each of them
+   * is offered to the owner as somebody's phone number, with a source, which
+   * is the shape of the guarantee row 139 is built on.
+   */
+  it.each([
+    ['a room or extension list', '123-45-67'],
+    ['an eight-digit reference', '12 34 56 78'],
+  ])('refuses %s, which the regex accepts and the floor must not', (_what, text) => {
+    const out = webNumbersWithSource(result([{ url: 'https://example.ge/x', content: text }]));
+
+    expect(out).toEqual([]);
+  });
+
+  /**
+   * The control, and the pair that makes the floor a floor rather than a wall:
+   * nine digits is in, eight is out, and one digit is the whole difference.
+   */
+  it('takes nine digits and refuses eight', () => {
+    const nine = webNumbersWithSource(
+      result([{ url: 'https://example.ge/x', content: 'ტელ: 415-22-33-44' }]),
+    );
+    const eight = webNumbersWithSource(
+      result([{ url: 'https://example.ge/x', content: 'ტელ: 415-22-33-4' }]),
+    );
+
+    expect(nine).toHaveLength(1);
+    expect(eight).toEqual([]);
+  });
+
+  /**
+   * AND WHAT THE FLOOR DOES NOT CATCH, written down rather than left for
+   * somebody to find. „(2015) 2016-2024" carries twelve digits, so it clears a
+   * nine-digit floor and is offered as a phone with a source. The floor is
+   * about LENGTH and nothing else; telling a date range from a number needs
+   * something this function does not have, and pretending otherwise in a test
+   * would be worse than saying so here.
+   */
+  it('does not pretend to catch a long date range', () => {
+    const out = webNumbersWithSource(
+      result([{ url: 'https://example.ge/x', content: '(2015) 2016-2024' }]),
+    );
+
+    expect(out.length).toBeGreaterThan(0);
+  });
+
   it('is bounded, so one directory page cannot fill a run', () => {
     const many = Array.from({ length: 40 }, (_, i) => `+99541522${String(1000 + i)}`).join(' ');
     const out = webNumbersWithSource(result([{ url: 'https://example.ge/list', content: many }]));

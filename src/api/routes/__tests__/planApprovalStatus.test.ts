@@ -140,3 +140,85 @@ describe('a thread whose goal is still open', () => {
     ).toBe('done');
   });
 });
+
+/**
+ * AND EVERY TEST ABOVE PASSES `awaitingPlanApproval: false`, SO THE RULE THEY
+ * ARE NAMED AFTER WAS NEVER RUN.
+ *
+ * Sabotage, 22 September: `if (opts.awaitingPlanApproval) return 'needs_you';`
+ * removed — the whole suite passed, this file included. The flag is in every
+ * call above and it is false in every one of them, so the line it exists for
+ * was reached by nothing.
+ *
+ * What it is for, from its own comment: goal 3466 / thread 15577. The tester
+ * typed a detail under the plan card, the model answered in a sentence — no
+ * question mark, no buttons — and the run fell through. The app showed
+ * „დასრულდა", filed the goal under finished, and hid the approve buttons AND
+ * „გაჩერება". The goal sat open behind the screen at stage plan_proposed with
+ * no way left to approve it, change it or stop it.
+ *
+ * Removing the line today would not put it back to `done` — the open-goal rule
+ * beneath it catches that now and answers `waiting`. That is quieter and still
+ * wrong: `waiting` means „somebody else owes you something", so the owner is
+ * not told to act on a plan that cannot move without them.
+ */
+describe('a plan proposed and not yet approved is waiting on the OWNER', () => {
+  const quietReply = { reply: 'გავაგრძელებ და შედეგს მოგწერ.' } as Parameters<
+    typeof statusAfterRun
+  >[0];
+
+  it('says needs_you however quiet the reply was', () => {
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: true,
+        flagged: false,
+        awaitingPlanApproval: true,
+        openGoal: true,
+      }),
+    ).toBe('needs_you');
+  });
+
+  /** And NOT `waiting`, which is where it falls through to without the rule. */
+  it('is not filed as waiting on somebody else', () => {
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: true,
+        flagged: false,
+        awaitingPlanApproval: true,
+        openGoal: true,
+      }),
+    ).not.toBe('waiting');
+  });
+
+  /**
+   * It outranks a pending ask too. A goal can be waiting on a stranger's
+   * answer AND on the owner's approval at once, and only one of those two is
+   * something the owner can do anything about.
+   */
+  it('outranks an ask sitting on somebody else’s phone', () => {
+    expect(
+      statusAfterRun(quietReply, true, {
+        workItem: true,
+        flagged: false,
+        awaitingPlanApproval: true,
+        openGoal: true,
+      }),
+    ).toBe('needs_you');
+  });
+
+  /**
+   * And it is read BEFORE „not a work item", deliberately: the rule is about
+   * the plan, not about how the thread happens to be classified. A plan
+   * waiting for a yes is waiting for a yes.
+   */
+  it('holds even on a thread that does not look like work', () => {
+    expect(
+      statusAfterRun(quietReply, false, {
+        workItem: false,
+        flagged: false,
+        awaitingPlanApproval: true,
+        openGoal: false,
+      }),
+    ).toBe('needs_you');
+  });
+});
