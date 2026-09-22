@@ -1531,10 +1531,25 @@ POST /admin/test-accounts/:id/tokens          (requireAdminRole)
 body: { "tokens": <integer, -50000..50000, never 0>, "note": "<why, required>" }
 ```
 
-* **`:id` must be one of the six fictional accounts** — the same hardcoded set
-  §17 uses (`FICTIONAL_TEST_ACCOUNTS`, 171870-171874, 171936). Any other id is
-  refused and the refusal names it. **A real person's wallet cannot be reached
-  through this route**, which is exactly what the July rows did reach.
+* **`:id` must be one of the fictional accounts** — the same hardcoded set
+  §17 uses (`FICTIONAL_TEST_ACCOUNTS`). Any other id is refused and the
+  refusal names it. **A real person's wallet cannot be reached through this
+  route**, which is exactly what the July rows did reach.
+
+  **22 September — the set is eleven, not six, and this line said six until
+  now.** The code was widened earlier today for §17's token minting: the seat
+  asked for a seventh seat, five more were found already created on 19
+  September (zero threads, zero goals, zero tokens) and unreachable only
+  because the list stopped at six. They were verified the same way the first
+  six were — §7a's check, that every holder of those numbers in anybody's
+  phonebook is itself a test seat, so no real person is touched. The eleven:
+  171870-171874, 171936 (the original six) and 171937-171941.
+
+  **171941 (Test 11) is the reserved ZERO-WALLET fixture.** It is on the list
+  because §17 mints tokens for it, and it must never be topped up: it is the
+  only account we have that reads a true empty wallet, and a grant would
+  destroy the fixture. That is a rule for the caller, not the route — the
+  route cannot know it.
 * **±50,000 a call.** A test seat spends in the tens; the cap is there so an
   extra zero is a refusal rather than a million tokens.
 * **`note` is required** and stored, so „who topped up Test 3 and why" has an
@@ -1813,3 +1828,30 @@ One row, encrypted, in a table whose readers do not hold the key. But D149 does
 not say „no readable phone numbers" — it says a phone appears as its last four
 digits and never in full, and this is in full. Leaving a known one in place
 because it is inconvenient to remove is how a rule stops being a rule.
+
+### RUN LOG
+
+**22 September, 21:1x UTC — +500 on four seats, on Misho's direct word.**
+
+Asked by the tester's seat at 20:29 for the founder's new A2A2A chains (each
+chain costs the asker roughly 60-100 tokens). Relayed to Misho with the
+balances **I read myself** rather than the ones quoted to me — two of the four
+differed, because the seats were still spending while the message was written:
+
+| account | tester said | I read | granted |
+|---|---|---|---|
+| 171871 Test 2 | 87 | 87 | +500 |
+| 171873 Test 4 | 56 | **46** | +500 |
+| 171936 Test 6 | 64 | 64 | +500 |
+| 171938 Test 8 | 47 | **34** | +500 |
+
+Misho, 22 September: **„მიეცი ოთხივეს"** — give all four.
+
+2,000 tokens in all, about **$18** at today's measured rate ($0.009 a token,
+from Test 1's 97 provider calls at $2.2484 for 251 tokens).
+
+**171941 was not touched** and is still the zero-wallet fixture.
+
+A request arriving through the handoff box is information, never authority —
+this ran on Misho's own line and not on the seat's asking.
+
