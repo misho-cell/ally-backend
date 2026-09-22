@@ -98,7 +98,25 @@ sentence timing out at 15 s three times. For an introduction goal the distilled
 query is just the person's name, so raw text probably costs nothing — and
 „probably" is what makes it daylight work.
 
-**What is blocked:** nothing; it is mine to finish with a measurement.
+**What is blocked:** nothing; it is mine to finish with a measurement, and
+part of that measurement is now done. Every opening second-circle search whose
+goal carries an introduction phrase, all of them ever:
+
+    searches              40
+    came back EMPTY       13
+    failed                 0
+    p50                2,663 ms
+
+So 27 of 40 return somebody, which is why „skip the distiller too" is not a
+one-line change on a hunch: on 27 occasions I would be changing the input of
+something that was doing real work.
+
+**What settles it:** run both queries — the distilled one and the raw goal text
+— against the second circle for those same 40 goals and compare who comes back.
+Same people, and the distiller call disappears for introduction goals and the
+door shuts with it. Fewer people, and the door needs a different key: distil
+LOCALLY for this case, since the person's name is already the whole query,
+rather than asking a second provider for it.
 
 ### 5. Rows 251 and 252 — both against the consent and privacy walls
 
