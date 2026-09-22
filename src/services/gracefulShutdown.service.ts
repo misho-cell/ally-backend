@@ -1,5 +1,12 @@
 import { tellOwnersTheirRunWasCutOff } from './cutOffRunNotice.service';
-import { CutOffRun, drain, inFlightCount, MEASURED_GRACE_MS } from './inFlightRuns';
+import {
+  CutOffRun,
+  DRAIN_BUDGET_MS,
+  drain,
+  inFlightCount,
+  MEASURED_GRACE_MS,
+  REPORT_RESERVE_MS,
+} from './inFlightRuns';
 
 /**
  * Ticket 20 row 205 and the deploy row of 22 September — a deploy must not cut
@@ -65,7 +72,34 @@ export async function finishShutdown(signal: string, budgetMs?: number): Promise
   await tellOwnersTheirRunWasCutOff(cutOff);
 }
 
+/**
+ * THE BUDGET CAN BE SET FROM THE ENVIRONMENT, AND NOTHING CHECKED THE VALUE.
+ *
+ * `DRAIN_BUDGET_MS` is overridable on purpose — the grace is one measurement
+ * and correcting it should not need a deploy. But the test that holds „the
+ * wait plus the reporting fits inside the grace" runs in CI, where the
+ * variable is unset. Set it to twenty seconds in production and the test still
+ * passes, while the process is killed inside the wait exactly as it was before
+ * this morning — the original bug, restored by configuration, silently.
+ *
+ * So the check moves to where the value actually is. Once, at boot, in the log
+ * the deploy already prints. The override stays possible; a bad one announces
+ * itself instead of waiting for somebody to notice a missing line.
+ */
+function reportTheBudgetAgainstTheGrace(): void {
+  const needed = DRAIN_BUDGET_MS + REPORT_RESERVE_MS;
+  if (needed <= MEASURED_GRACE_MS) return;
+  // eslint-disable-next-line no-console
+  console.error(
+    `[shutdown] MISCONFIGURED: the drain waits ${DRAIN_BUDGET_MS} ms and needs ` +
+      `${REPORT_RESERVE_MS} ms to report, which is ${needed} ms against a measured grace of ` +
+      `${MEASURED_GRACE_MS} ms. The process will be killed inside the wait and a cut-off run ` +
+      'will go unreported — the exact fault of 21 September. Lower DRAIN_BUDGET_MS.',
+  );
+}
+
 export function installShutdownHandlers(server: Closable): void {
+  reportTheBudgetAgainstTheGrace();
   const shutdown = (signal: string): void => {
     const startedAt = Date.now();
     // eslint-disable-next-line no-console

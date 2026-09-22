@@ -5,7 +5,9 @@ jest.mock('../threads.service', () => ({
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitRunError: jest.fn() }));
 
-import { CutOffRun } from '../inFlightRuns';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { CutOffRun, REPORT_RESERVE_MS } from '../inFlightRuns';
 import { RUN_STRINGS } from '../runLanguage';
 import { emitRunError } from '../sse.service';
 import { saveThreadMessage, threadLanguage } from '../threads.service';
@@ -14,6 +16,9 @@ import { tellOwnersTheirRunWasCutOff } from '../cutOffRunNotice.service';
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockEmit = emitRunError as jest.MockedFunction<typeof emitRunError>;
 const mockLanguage = threadLanguage as jest.MockedFunction<typeof threadLanguage>;
+
+/** The value the module computes, recomputed here from the one source. */
+const NOTICE_TIMEOUT_MS_FOR_TEST = Math.max(0, REPORT_RESERVE_MS - 500);
 
 const CHAT: CutOffRun = { runId: 'r1', kind: 'chat', userId: 171871, threadId: 21121 };
 const ENGINE: CutOffRun = { runId: 'r2', kind: 'engine', userId: 160584, threadId: 16737 };
@@ -131,5 +136,33 @@ describe('telling the owner who cut their run off', () => {
 
     expect(told).toBe(0);
     expect(mockLanguage).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * ONE NUMBER, NOT TWO — found by reading back what I shipped this morning.
+ *
+ * This file held `const NOTICE_TIMEOUT_MS = 2_500` while `inFlightRuns` held
+ * `REPORT_RESERVE_MS = 3_000` to describe the same window. Two numbers for one
+ * thing, free to drift: raise this one to four seconds and the budget still
+ * reserves three, the budget test still passes, and the process is killed
+ * mid-write to somebody's thread.
+ *
+ * That is the defect this whole row is about — a number promising what it does
+ * not control — reappearing inside the fix for it.
+ */
+describe('the notice spends the reserve it was given, not one of its own', () => {
+  it('takes its budget from REPORT_RESERVE_MS', () => {
+    const source = readFileSync(join(__dirname, '..', 'cutOffRunNotice.service.ts'), 'utf8');
+    const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ' ');
+
+    expect(code).toContain('REPORT_RESERVE_MS');
+    // No second literal describing the same window.
+    expect(code).not.toMatch(/NOTICE_TIMEOUT_MS = \d/);
+  });
+
+  it('leaves a margin inside it, so the log lines and the exit still fit', () => {
+    expect(NOTICE_TIMEOUT_MS_FOR_TEST).toBeLessThan(REPORT_RESERVE_MS);
+    expect(NOTICE_TIMEOUT_MS_FOR_TEST).toBeGreaterThan(0);
   });
 });

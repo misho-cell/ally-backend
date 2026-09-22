@@ -4,7 +4,16 @@ jest.mock('../cutOffRunNotice.service', () => ({
 }));
 
 import { tellOwnersTheirRunWasCutOff } from '../cutOffRunNotice.service';
-import { beginRun, endRun, resetDrainState } from '../inFlightRuns';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import {
+  beginRun,
+  DRAIN_BUDGET_MS,
+  endRun,
+  MEASURED_GRACE_MS,
+  REPORT_RESERVE_MS,
+  resetDrainState,
+} from '../inFlightRuns';
 import { finishShutdown } from '../gracefulShutdown.service';
 
 /** The real budget is eight seconds; nothing here is testing the wait itself. */
@@ -76,5 +85,41 @@ describe('what a shutdown does with what it could not save', () => {
     await finishShutdown('SIGTERM', DRAIN_BUDGET_IN_TESTS);
 
     expect(mockTell).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * THE BUDGET IS OVERRIDABLE FROM THE ENVIRONMENT AND NOTHING CHECKED IT.
+ *
+ * `inFlightRuns` has a test holding „the wait plus the reporting fits inside
+ * the grace". It runs in CI, where `DRAIN_BUDGET_MS` is unset. Set it to
+ * twenty seconds in production and that test still passes while the process is
+ * killed inside the wait — the original fault of 21 September, restored by
+ * configuration, silently.
+ *
+ * So the check lives where the value actually is: once, at boot.
+ */
+describe('a budget that cannot fit inside the grace says so at boot', () => {
+  it('checks the value before anything can use it', () => {
+    const source = readFileSync(join(__dirname, '..', 'gracefulShutdown.service.ts'), 'utf8');
+    const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ' ');
+
+    const install = code.indexOf('export function installShutdownHandlers');
+    const check = code.indexOf('reportTheBudgetAgainstTheGrace()', install);
+    const handler = code.indexOf('const shutdown =', install);
+
+    expect(check).toBeGreaterThan(install);
+    expect(check).toBeLessThan(handler);
+  });
+
+  it('says what to do about it, not merely that it is wrong', () => {
+    const source = readFileSync(join(__dirname, '..', 'gracefulShutdown.service.ts'), 'utf8');
+
+    expect(source).toContain('MISCONFIGURED');
+    expect(source).toContain('Lower DRAIN_BUDGET_MS');
+  });
+
+  it('stays quiet when the numbers do fit, which is the shipped default', () => {
+    expect(DRAIN_BUDGET_MS + REPORT_RESERVE_MS).toBeLessThanOrEqual(MEASURED_GRACE_MS);
   });
 });

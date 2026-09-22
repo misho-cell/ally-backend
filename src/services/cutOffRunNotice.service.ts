@@ -1,4 +1,4 @@
-import { CutOffRun } from './inFlightRuns';
+import { CutOffRun, REPORT_RESERVE_MS } from './inFlightRuns';
 import { RUN_STRINGS } from './runLanguage';
 import { emitRunError } from './sse.service';
 import { saveThreadMessage, threadLanguage } from './threads.service';
@@ -43,8 +43,25 @@ import { saveThreadMessage, threadLanguage } from './threads.service';
  *   held it is gone. „Send it again" is the whole of what is true.
  */
 
-/** One INSERT and one language read per run; the reserve is three seconds. */
-const NOTICE_TIMEOUT_MS = 2_500;
+/**
+ * The reserve, TAKEN FROM THE RESERVE, and not a second number beside it.
+ *
+ * This read `const NOTICE_TIMEOUT_MS = 2_500` when it shipped this morning,
+ * three hours after I wrote `REPORT_RESERVE_MS = 3_000` in another file to
+ * describe the same window. Two numbers for one thing, free to drift: raise
+ * this one to four seconds and the budget still reserves three, the test in
+ * `inFlightRuns` still passes, and the process is killed in the middle of
+ * writing to somebody's thread.
+ *
+ * That is the defect this whole row is about — a number that promises what it
+ * does not control — reappearing inside the fix for it. So there is one
+ * number, and it lives with the budget that is sized around it.
+ *
+ * A margin under the reserve rather than all of it: the log lines and the
+ * exit have to happen after this returns, inside the same window.
+ */
+const NOTICE_MARGIN_MS = 500;
+const NOTICE_TIMEOUT_MS = Math.max(0, REPORT_RESERVE_MS - NOTICE_MARGIN_MS);
 
 async function tellOneOwner(run: CutOffRun): Promise<void> {
   // Same source as the reaper's own message, so the two cannot drift into two
