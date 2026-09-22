@@ -4494,6 +4494,78 @@ export function readPlanConsentScreen(
   };
 }
 
+/**
+ * THE PLAN-CONSENT WALL, AS ONE DECISION, BECAUSE NOTHING HELD IT.
+ *
+ * Sabotaged on 22 September: each of its two layers was disabled in turn and
+ * the whole suite re-run. **Both times, 3,705 tests passed.** The predicate
+ * underneath — `approvalBelongsToThePlan`, `approves`, `withdrawsTheApproval` —
+ * is tested from every angle. The wall that CALLS it was held by nothing, the
+ * same shape as row 210 an hour earlier: a well-tested piece behind an
+ * untested wire.
+ *
+ * What the two layers are for, and both are production incidents that already
+ * happened:
+ *
+ *   LAYER 1, row 1 (14 September). `approve_task_plan` was called at 14:37:40
+ *   with no yes from the user at all — the model read its own persuasive
+ *   summary as the approval. `ask_contact` then fired on two real people, and
+ *   was refused only because neither had ever opened Netai. The server gate is
+ *   why that stopped being possible.
+ *
+ *   LAYER 2, ticket 19 G2 (15 September). A tap on a DRAFT card's „კი,
+ *   გააგზავნე" was recorded as approving a three-person plan, and the day-one
+ *   turn wrote to two people the founder had not chosen. `confirmed` cannot
+ *   tell that apart — he did say yes — so the server reads what was on the
+ *   screen instead.
+ *
+ * A null screen lets it through on purpose: the read is best-effort and a
+ * database hiccup must not block an approval the owner really gave. Layer 1
+ * still stands in that case, which is the layer that needs no screen.
+ */
+export type PlanApprovalRefusal = {
+  readonly approved: false;
+  readonly error: string;
+  readonly reason: 'not_confirmed' | 'yes_was_about_something_else';
+};
+
+export function planApprovalRefusal(
+  confirmed: unknown,
+  screen: PlanConsentScreen | null,
+): PlanApprovalRefusal | null {
+  if (confirmed !== true) {
+    return {
+      approved: false,
+      reason: 'not_confirmed',
+      error:
+        'Not recorded: the user has not said yes to the plan. Show the summary, ask, and ' +
+        'call again with confirmed: true only after their explicit approval.',
+    };
+  }
+  if (
+    screen !== null &&
+    !approvalBelongsToThePlan(
+      screen.lastOwnerMessage,
+      screen.newestOfferedChoices,
+      // Row 156: everything said since the card, so a short „ok" after the
+      // button does not erase the button.
+      screen.ownerSaidSinceCard,
+      // Row 237: a press of another card's button is not an approval.
+      screen.labelsDealtAfterTheCard,
+    )
+  ) {
+    return {
+      approved: false,
+      reason: 'yes_was_about_something_else',
+      error:
+        "Not recorded: the user's last yes was about something else — the newest buttons " +
+        "on their screen were not a plan's. Show the plan again with its own approve " +
+        'button and call this only after they answer THAT.',
+    };
+  }
+  return null;
+}
+
 async function planConsentOnScreen(threadId: number): Promise<PlanConsentScreen> {
   const [cards, owner] = await Promise.all([
     query<{ created_at: string; choices: unknown }>(
@@ -6248,49 +6320,26 @@ async function executeToolCall(
     case 'approve_task_plan': {
       // Server-side gate, the same shape as send_answer_to_asker: without the
       // user's explicit yes nothing is recorded, whatever the prompt believes.
-      if (input['confirmed'] !== true) {
-        return {
-          approved: false,
-          error:
-            'Not recorded: the user has not said yes to the plan. Show the summary, ask, and ' +
-            'call again with confirmed: true only after their explicit approval.',
-        };
-      }
-      // Ticket 19 G2: and the yes has to have been about the PLAN. On
-      // 15 September a tap on a DRAFT's „კი, გააგზავნე" was recorded as
-      // approving a three-person plan, and the day-one turn then wrote to two
-      // people the founder had not chosen. `confirmed` cannot tell that apart
-      // — he did say yes — so the server reads what was on the screen instead.
-      if (threadId !== undefined) {
-        const screen = await planConsentOnScreen(threadId).catch((err: unknown) => {
-          // eslint-disable-next-line no-console
-          console.error('[plan-consent] could not read the thread:', (err as Error).message);
-          return null;
-        });
-        if (
-          screen !== null &&
-          !approvalBelongsToThePlan(
-            screen.lastOwnerMessage,
-            screen.newestOfferedChoices,
-            // Row 156: everything said since the card, so a short „ok" after
-            // the button does not erase the button.
-            screen.ownerSaidSinceCard,
-            // Row 237: a press of another card's button is not an approval.
-            screen.labelsDealtAfterTheCard,
-          )
-        ) {
+      // BOTH LAYERS IN ONE DECISION — see planApprovalRefusal, which is where
+      // the reasoning lives and where the tests reach it. Sabotaging either
+      // layer here used to leave the whole suite green.
+      const screen =
+        threadId === undefined
+          ? null
+          : await planConsentOnScreen(threadId).catch((err: unknown) => {
+              // eslint-disable-next-line no-console
+              console.error('[plan-consent] could not read the thread:', (err as Error).message);
+              return null;
+            });
+      const refusal = planApprovalRefusal(input['confirmed'], screen);
+      if (refusal !== null) {
+        if (refusal.reason === 'yes_was_about_something_else') {
           // eslint-disable-next-line no-console
           console.warn(
             `[plan-consent] run ${runId ?? '-'} thread ${threadId}: approval refused — the yes was not about the plan`,
           );
-          return {
-            approved: false,
-            error:
-              "Not recorded: the user's last yes was about something else — the newest buttons " +
-              "on their screen were not a plan's. Show the plan again with its own approve " +
-              'button and call this only after they answer THAT.',
-          };
         }
+        return { approved: false, error: refusal.error };
       }
       const outcome = await approveTaskPlan(
         userId,
