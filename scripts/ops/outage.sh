@@ -1,17 +1,36 @@
 #!/bin/bash
 # „Is the product answering people right now?" — one question, one answer.
 #
-# `model IS NOT NULL` IS THE WHOLE OF THE SECOND COLUMN, AND LEAVING IT OUT
-# MADE THIS SCRIPT LIE. `usage_events` is every paid thing, not every model
-# call: a WhatsApp OTP is a row in it. At 13:23, with the Anthropic balance
-# empty and not one inference going through, the count came back as 1 — an
-# `otp_whatsapp` row, provider `whatsapp`, no model, no tokens — and this file
-# printed „1 model call(s) did reach the provider, so it is not refusing
-# everything."
+# THE COUNT IS AN ALLOW-LIST NOW, AND THE TWO ATTEMPTS BEFORE IT WERE BOTH
+# „NOT THE THING I JUST SAW". `usage_events` is every paid thing, and I have
+# now had to learn twice what is in it.
 #
-# That is the fault this script exists to catch, committed by the script, on
-# its second firing: a number that counts something other than what its name
-# promises, read out as reassurance. Third time today in my own work.
+#   FIRST, no filter at all. At 13:23, with the Anthropic balance empty and not
+#   one inference going through, the count came back 1 — an `otp_whatsapp` row,
+#   provider `whatsapp`, no model — and this file printed „1 model call(s) did
+#   reach the provider, so it is not refusing everything."
+#
+#   SECOND, `model IS NOT NULL`, shipped at 13:57 and declared a fix. Read the
+#   distinct values of that column and it holds TOOL NAMES: `search_contacts`
+#   223 times, `get_contact_facts` 153, `update_task` 90, thirty more. A
+#   connector user calling `search_contacts` during a total Anthropic outage
+#   writes a row that column counts, and this file would have called it a model
+#   call reaching the provider.
+#
+#   AND IT HOLDS A SECOND PROVIDER. `gpt-5.6-terra` answered at 12:13:47 today,
+#   in the middle of an Anthropic outage that began at 11:15 — because the
+#   Anthropic credit balance has nothing to do with it. That single row is why
+#   I gave the tester a dark window an hour and a quarter short of the truth.
+#
+# So the question is asked positively: does this row represent an ANTHROPIC
+# inference. `model LIKE 'claude%'`, an allow-list, because „not the thing I
+# just saw" has now been wrong twice about the same column. The other provider
+# is counted and PRINTED, never merged into the verdict — its calls say nothing
+# about the one the chat and the engine run on.
+#
+# That is the fault this script exists to catch, committed by the script three
+# times: a number that counts something other than what its name promises, read
+# out as reassurance.
 #
 # WHY THIS EXISTS, 22 September. From 12:04 every run in the product died in
 # 0.2-0.4 seconds on four different accounts, and nobody noticed until Misho
@@ -46,18 +65,21 @@ SQL_TEXT="SELECT
       AND created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS replies,
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
-      AND model IS NOT NULL)                                       AS model_calls"
+      AND model LIKE 'claude%')                                    AS anthropic_calls,
+  (SELECT COUNT(*) FROM usage_events
+    WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
+      AND model IS NOT NULL AND model NOT LIKE 'claude%')          AS other_rows"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
 
-read -r ERRORS REPLIES CALLS <<< "$(
+read -r ERRORS REPLIES CALLS OTHER <<< "$(
   python3 -c '
 import sys, json
 try:
     row = json.load(sys.stdin)["data"]["rows"][0]
 except Exception:
-    print("x x x"); raise SystemExit
-print(row["errors"], row["replies"], row["model_calls"])
+    print("x x x x"); raise SystemExit
+print(row["errors"], row["replies"], row["anthropic_calls"], row["other_rows"])
 ' <<< "$OUT"
 )"
 
@@ -66,7 +88,12 @@ if [ "$ERRORS" = "x" ]; then
   exit 2
 fi
 
-echo "last ${WINDOW_MIN}m: ${ERRORS} error(s), ${REPLIES} reply(ies), ${CALLS} model call(s)"
+# The other rows are printed and never counted: „N other" is a mixture of a
+# second provider's inferences and bare tool calls, and this script has no way
+# to tell those apart. Naming it as an unsorted remainder is the honest shape —
+# the alternative is a second number that means as little as the first one did.
+echo "last ${WINDOW_MIN}m: ${ERRORS} error(s), ${REPLIES} reply(ies), ${CALLS} anthropic call(s)" \
+  "(+${OTHER} other usage row(s), not evidence either way)"
 
 # NOTHING HAPPENED AT ALL — and „no errors" is not „working".
 #
@@ -85,17 +112,21 @@ echo "last ${WINDOW_MIN}m: ${ERRORS} error(s), ${REPLIES} reply(ies), ${CALLS} m
 # written by the server, not by the model. A reply with no model call behind it
 # is the product apologising, which is exactly the state being investigated.
 if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
-  echo "NOTHING PROVEN — no errors, and no model call went through in ${WINDOW_MIN} minutes."
+  echo "NOTHING PROVEN — no errors, and no Anthropic call went through in ${WINDOW_MIN} minutes."
   echo "  A product nobody is using and a product that cannot answer look"
   echo "  exactly alike from here. ${REPLIES} reply(ies) in the window were written"
   echo "  by the server, not by the model. If an outage is known to be open, it"
-  echo "  is STILL OPEN until a model call succeeds."
+  echo "  is STILL OPEN until an Anthropic call succeeds."
+  if [ "$OTHER" -gt 0 ]; then
+    echo "  ${OTHER} other usage row(s) are NOT that proof: that column also holds"
+    echo "  tool names and a second provider, neither of which touches Anthropic."
+  fi
   exit 0
 fi
 
 # A quiet product is not a broken one — but it has to have DONE something.
 if [ "$ERRORS" -eq 0 ]; then
-  echo "OK — nobody saw an error, and ${CALLS} model call(s) went through."
+  echo "OK — nobody saw an error, and ${CALLS} Anthropic call(s) went through."
   exit 0
 fi
 
@@ -109,10 +140,14 @@ if [ "$ERRORS" -ge 3 ] && [ "$REPLIES" -eq 0 ]; then
   # firing. A sentence the number beside it contradicts is the fault this whole
   # file was written to catch, in the file itself. Two branches now.
   if [ "$CALLS" -eq 0 ]; then
-    echo "  NO model call reached the provider in that window — refused before inference,"
-    echo "  which is an account or key problem and not load."
+    echo "  NO Anthropic call reached the provider in that window — refused before"
+    echo "  inference, which is an account or key problem and not load."
+    if [ "$OTHER" -gt 0 ]; then
+      echo "  The ${OTHER} other usage row(s) do not soften that: today's outage had a"
+      echo "  gpt-5.6-terra call succeed at 12:13:47 while Anthropic refused everything."
+    fi
   else
-    echo "  ${CALLS} model call(s) did reach the provider, so it is not refusing everything."
+    echo "  ${CALLS} Anthropic call(s) did reach the provider, so it is not refusing everything."
   fi
   echo "  Read the cause, do not guess it: [provider] lines in the container log name the"
   echo "  status and say ACCOUNT (no retry will pass) or LOAD (it may clear by itself)."
@@ -120,7 +155,7 @@ if [ "$ERRORS" -ge 3 ] && [ "$REPLIES" -eq 0 ]; then
 fi
 
 if [ "$CALLS" -eq 0 ] && [ "$ERRORS" -ge 1 ]; then
-  echo "NOT ANSWERING — ${ERRORS} error(s) and NO model call reached the provider at all."
+  echo "NOT ANSWERING — ${ERRORS} error(s) and NO Anthropic call reached the provider at all."
   exit 1
 fi
 
