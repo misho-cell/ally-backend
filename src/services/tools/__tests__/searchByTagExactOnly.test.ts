@@ -188,3 +188,59 @@ describe('it looks for the name as written, not for spellings of it', () => {
     expect(distinct.size).toBe(1);
   });
 });
+
+/**
+ * ROW 108, IN A SECOND PLACE, AND I SHIPPED IT AN HOUR AGO.
+ *
+ * The first version of the as-written lookup split on whitespace and nothing
+ * else. A web-card title is not a typed query — it carries brackets, trailing
+ * stops, pipes and quotes — so:
+ *
+ *   „axel group."   ->  \mgroup\.        matches nobody, costs a full pass
+ *   „(architect)"   ->  \m\(architect\)  cannot match at all, because \m
+ *                                           needs a word character after it
+ *
+ * Row 108's own comment describes exactly this: „it never matched anything,
+ * and still cost a full regex pass over 885,942 rows." Found by reading the
+ * change back rather than by a test, which is the second time today.
+ */
+describe('the sentence’s punctuation never reaches the pattern', () => {
+  const patterns = (): string =>
+    mockQuery.mock.calls
+      .flatMap((call) => (call[1] as unknown[]) ?? [])
+      .filter((p): p is string => typeof p === 'string')
+      .join(' ');
+
+  it('drops a trailing stop, which would otherwise match nobody', async () => {
+    found([]);
+
+    await searchByTagExactOnly('501', 'Axel Group.');
+
+    expect(patterns()).toContain('group');
+    expect(patterns()).not.toContain('group\\.');
+  });
+
+  it('drops the brackets a web card puts round a word', async () => {
+    found([]);
+
+    await searchByTagExactOnly('501', '(Architect)');
+
+    expect(patterns()).toContain('architect');
+    expect(patterns()).not.toContain('\\(');
+  });
+
+  /**
+   * ONLY THE ENDS. A host name's dot is part of the word, not the sentence's
+   * punctuation, and „bookkeeping.ge" is exactly the kind of name a way-in
+   * lookup is given.
+   */
+  it('leaves a host name whole', async () => {
+    found([]);
+
+    await searchByTagExactOnly('501', 'Bookkeeping.ge');
+
+    // Whole, with the dot escaped so it matches a literal dot — which is what
+    // a host name needs and what a trailing stop must never become.
+    expect(patterns()).toContain('bookkeeping\\.ge');
+  });
+});

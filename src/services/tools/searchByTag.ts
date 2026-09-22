@@ -1,5 +1,5 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildRawWordGroups } from './transliterate';
+import { buildSearchTerms, buildRawWordGroups, splitIntoWords } from './transliterate';
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
@@ -396,12 +396,14 @@ function shape(
  * MEANS; the seat's next run on a real book is what will measure it.
  */
 function wordsAsWritten(tagQuery: string): string[][] {
-  return tagQuery
-    .trim()
-    .split(/\s+/)
-    .map((word) => word.toLowerCase())
-    .filter(Boolean)
-    .map((word) => [word]);
+  // `splitIntoWords`, not a split of my own: the first version of this took
+  // whitespace and nothing else, so „axel group." searched for `\mgroup\.` —
+  // a pattern that matches nobody and still costs a full pass over the book —
+  // and „(architect)" produced `\m\(architect\)`, which cannot match at all
+  // because \m needs a word character after it. That is row 108 in a second
+  // place, and a web-card title carries more brackets and stops than anything
+  // a person types. „bookkeeping.ge" survives whole: only the ends are trimmed.
+  return splitIntoWords(tagQuery).map((word) => [word.toLowerCase()]);
 }
 
 export async function searchByTagExactOnly(userId: string, tagQuery: string): Promise<object> {

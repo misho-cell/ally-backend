@@ -348,12 +348,35 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
  */
 const SENTENCE_PUNCTUATION = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}+#]+$/gu;
 
-export function buildRawWordGroups(rawQuery: string): string[][] {
-  const words = rawQuery
+/**
+ * A query's words, with the SENTENCE's punctuation off each end.
+ *
+ * Exported, and the reason is a bug I shipped an hour ago and found by reading
+ * my own change back. `searchByTagExactOnly` split a web-card name on
+ * whitespace and no further, so:
+ *
+ *   „axel group."   ->  \mgroup\.       matches nobody, costs a full pass
+ *   „(architect)"   ->  \m\(architect\) can never match — \m needs a word
+ *                                        character and „(" is not one
+ *
+ * That is row 108, verbatim, in a second place — and web-card titles are
+ * FULL of brackets, trailing stops, pipes and quotes, so it lands harder
+ * there than in anything a person types.
+ *
+ * ONLY THE ENDS, which is why „bookkeeping.ge" survives whole: a host name's
+ * dot is part of the word, and „c++" keeps its plusses. The rule was always
+ * the sentence's punctuation and never the word's.
+ */
+export function splitIntoWords(rawQuery: string): string[] {
+  return rawQuery
     .trim()
     .split(/\s+/)
     .map((word) => word.replace(SENTENCE_PUNCTUATION, ''))
     .filter(Boolean);
+}
+
+export function buildRawWordGroups(rawQuery: string): string[][] {
+  const words = splitIntoWords(rawQuery);
   return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
 }
 
