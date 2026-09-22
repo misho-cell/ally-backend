@@ -7,6 +7,7 @@ import {
   createThread,
   lastAssistantMessageIs,
   saveThreadMessage,
+  threadLanguage,
   userLanguage,
 } from './threads.service';
 import {
@@ -1268,8 +1269,10 @@ async function closeTheBridgesOwnAsk(parentAskId: number): Promise<void> {
 async function thankTheBridge(relay: RelayShape, namedName: string | null): Promise<void> {
   if (relay.bridgeThreadId === null) return;
   // The BRIDGE's own language — they are a third person in this exchange and
-  // need not share a script with either side of it.
-  const language = await userLanguage(String(relay.bridgeUserId)).catch(() => 'ka' as RunLanguage);
+  // need not share a script with either side of it. Their own thread answers
+  // that better than their account does, and falls back to the account when
+  // the thread cannot say.
+  const language = await threadLanguage(relay.bridgeThreadId).catch(() => 'ka' as RunLanguage);
   try {
     await saveThreadMessage(
       relay.bridgeThreadId,
@@ -1506,7 +1509,11 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
     // In the RECIPIENT's language: this is the message that closes a
     // stranger's loop - they were asked for a favour and are being let off,
     // and being let off in a script they cannot read is worse than silence.
-    const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
+    // THEIR LANGUAGE IN THIS THREAD, for the reason set out at
+    // `withdrawAsksToOptedOutPerson`: if they have answered here, that is the
+    // best evidence there is, and `threadLanguage` falls back to exactly the
+    // account-wide reading this line used to do when they have not.
+    const language = await threadLanguage(row.ask_thread_id).catch(() => 'ka' as RunLanguage);
     await saveThreadMessage(
       row.ask_thread_id,
       row.to_user_id,
@@ -1600,7 +1607,9 @@ async function thankThePeopleWhoAnswered(taskId: number): Promise<void> {
     told.add(row.ask_thread_id);
     // THEIR language. They are a stranger doing somebody a favour, and being
     // thanked in a script they cannot read is worse than not being thanked.
-    const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
+    // Read from this thread first — they have by definition just written in
+    // it, since this line only goes out because they answered.
+    const language = await threadLanguage(row.ask_thread_id).catch(() => 'ka' as RunLanguage);
     const line = askAnsweredAndGoalClosed(language, asker);
     if (await lastAssistantMessageIs(row.ask_thread_id, line).catch(() => false)) continue;
     await saveThreadMessage(row.ask_thread_id, row.to_user_id, 'assistant', line).catch(
@@ -1661,9 +1670,26 @@ export async function withdrawAsksToOptedOutPerson(optedOutUserId: string): Prom
   for (const row of cancelled.rows) {
     if (row.thread_id === null || told.has(row.thread_id)) continue;
     told.add(row.thread_id);
-    // The ASKER's own language: this lands in the conversation he has been
-    // living in, not in the other person's.
-    const language = await userLanguage(String(row.from_user_id)).catch(() => 'ka' as RunLanguage);
+    /**
+     * THE CHAT'S LANGUAGE, NOT THE ACCOUNT'S — and that distinction is the
+     * whole of the seat's blemish 1, 22 September.
+     *
+     * Thread 22280, 18:39:52, an English conversation: „Netai Test 3-ისთვის
+     * გაგზავნილი შენი კითხვა გავაუქმე, პასუხი აღარ მოვა."
+     *
+     * `userLanguage` was not wrong about the person — it reads their last
+     * eight messages ANYWHERE, and this owner does write Georgian, in other
+     * threads. It was answering a different question from the one that
+     * matters. The line lands in one conversation, and that conversation has
+     * a language of its own.
+     *
+     * `threadLanguage` is the same reading done in the right order: this
+     * thread's own words first, the account's everywhere-language when the
+     * thread has none yet, Georgian only for somebody who has never written
+     * anything. Nothing is lost for an empty thread, which is the case
+     * `userLanguage` was picked for.
+     */
+    const language = await threadLanguage(row.thread_id).catch(() => 'ka' as RunLanguage);
     const who = row.to_name?.trim();
     if (who === undefined || who === '') continue;
     await saveThreadMessage(

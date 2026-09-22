@@ -6120,9 +6120,25 @@ async function executeToolCall(
       if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
         return { updated: false };
       }
+      /**
+       * IN THE RUN'S LANGUAGE, and this call was the last stop path without
+       * one. The seat, thread 22344, 22 September: the owner typed „Stop
+       * pursuing it." in an English chat at 19:25:45 and the thread answered
+       * „შევაჩერე: Please ask my contacts whether they know a good notary in
+       * Tbilisi. 2 გაგზავნილი კითხვა გავაუქმე…" — a Georgian frame around an
+       * English title.
+       *
+       * `stopGoal`'s language argument defaults to 'ka' for a caller that
+       * cannot say, which is right: a wrong-language line is a blemish and a
+       * MISSING stop line is row 113. This caller can say. The typed-stop
+       * intercept two thousand lines below has passed `detectRunLanguage` of
+       * the owner's own words since row 155; the model's `update_task` never
+       * did, so a stop that reached the tool instead of the intercept — which
+       * is what eight seconds of model round means — came out Georgian.
+       */
       const ok =
         closing && toStop !== null
-          ? (await stopGoal(userId, toStop)).stopped
+          ? (await stopGoal(userId, toStop, runLang(runId))).stopped
           : await updateTask(userId, taskIdToUpdate, status, input['note'] as string | undefined);
       if (!ok) return { updated: false };
       /**

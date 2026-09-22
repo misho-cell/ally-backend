@@ -4,15 +4,17 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 1 }),
   userLanguage: jest.fn().mockResolvedValue('en'),
+  threadLanguage: jest.fn().mockResolvedValue('en'),
 }));
 
 import { query } from '../../db/postgres/client';
-import { saveThreadMessage, userLanguage } from '../threads.service';
+import { saveThreadMessage, threadLanguage, userLanguage } from '../threads.service';
 import { withdrawAsksToOptedOutPerson } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
-const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
+const mockLanguage = threadLanguage as jest.MockedFunction<typeof threadLanguage>;
+const mockAccountLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
 
 const cancelled = (rows: unknown[]): void => {
   mockQuery.mockResolvedValue({ rows, rowCount: rows.length } as never);
@@ -89,9 +91,31 @@ describe('the person who asked is told his question is gone', () => {
 
     await withdrawAsksToOptedOutPerson('171938');
 
-    expect(mockLanguage).toHaveBeenCalledWith('171937');
     // Declined, not hyphenated: „კახიძე" → „კახიძისთვის".
     expect(String(mockSave.mock.calls[0][3])).toContain('კახიძისთვის');
+  });
+
+  /**
+   * AND IT IS THE CHAT'S LANGUAGE, NOT THE ACCOUNT'S. The seat, 22 September,
+   * thread 22280 at 18:39:52 — an English conversation answered „Netai Test
+   * 3-ისთვის გაგზავნილი შენი კითხვა გავაუქმე".
+   *
+   * `userLanguage` was not wrong about the person; it reads their last eight
+   * messages ANYWHERE, and this owner does write Georgian in other threads. It
+   * was answering a different question from the one that matters, because the
+   * line lands in ONE conversation and that conversation has a language.
+   *
+   * `threadLanguage` falls back to `userLanguage` when the thread has nothing
+   * to say, so nothing is lost for the empty-thread case the old call was
+   * chosen for.
+   */
+  it('asks the thread, not the account', async () => {
+    cancelled([{ task_id: 7829, from_user_id: 171937, thread_id: 21504, to_name: 'Netai Test 3' }]);
+
+    await withdrawAsksToOptedOutPerson('171938');
+
+    expect(mockLanguage).toHaveBeenCalledWith(21504);
+    expect(mockAccountLanguage).not.toHaveBeenCalled();
   });
 
   /**

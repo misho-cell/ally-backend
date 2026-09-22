@@ -4,6 +4,7 @@ jest.mock('../threads.service', () => ({
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 1 }),
   userLanguage: jest.fn().mockResolvedValue('en'),
+  threadLanguage: jest.fn().mockResolvedValue('en'),
   lastAssistantMessageIs: jest.fn().mockResolvedValue(false),
 }));
 jest.mock('../threadStatus.service', () => ({
@@ -12,13 +13,13 @@ jest.mock('../threadStatus.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { lastAssistantMessageIs, saveThreadMessage, userLanguage } from '../threads.service';
+import { lastAssistantMessageIs, saveThreadMessage, threadLanguage } from '../threads.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { cancelAsksForTask } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
-const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
+const mockLanguage = threadLanguage as jest.MockedFunction<typeof threadLanguage>;
 const mockAlreadyTold = lastAssistantMessageIs as jest.MockedFunction<
   typeof lastAssistantMessageIs
 >;
@@ -104,7 +105,11 @@ describe('closing a goal thanks the people who answered it', () => {
 
     await cancelAsksForTask(7829);
 
-    expect(mockLanguage).toHaveBeenCalledWith('171940');
+    // THE THREAD they answered in, not the account. They have by definition
+    // just written in it — that is why this line is going out at all — so it
+    // is the best reading of their language there is, and it falls back to
+    // the account-wide one when the thread cannot say.
+    expect(mockLanguage).toHaveBeenCalledWith(21720);
     // Declined, not hyphenated: „კახიძე" in the ergative is „კახიძემ".
     expect(String(mockSave.mock.calls[0][3])).toContain('კახიძემ');
   });

@@ -18,6 +18,7 @@ jest.mock('../threads.service', () => ({
   // thread is empty at the moment this text is written. Georgian here keeps
   // every existing assertion in this file about the Georgian opening true.
   userLanguage: jest.fn().mockResolvedValue('ka'),
+  threadLanguage: jest.fn().mockResolvedValue('ka'),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
 jest.mock('../askOptOut.service', () => ({
