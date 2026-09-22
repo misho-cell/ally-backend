@@ -3776,6 +3776,56 @@ function techniqueWord(value: number | null): string {
 // table that does). Each value comes twice: the stored number and the word it
 // means, so a 0 is never again read as a zero count.
 //   GET /admin/chorus/asks?limit=100&campaign_id=&inviter_user_id=
+/**
+ * WHY THIS PERSON — row 40's missing column, and the reason was being computed
+ * and then thrown away.
+ *
+ * The row asks each line to show WHO, WHY THEM, WHO INVITES and WHAT YOU HAVE
+ * IN COMMON. Two of the four were nowhere, and my own note proposed filling
+ * „why them" from `target_label` and `city`. Reading the selection code killed
+ * that idea: those two describe the CAMPAIGN, so every participant of one
+ * campaign carries the same string. It answers „what is this campaign looking
+ * for", not „why this person", and printing it under the second heading would
+ * be the substitution this codebase keeps finding in its own reporting.
+ *
+ * The real reason is in `scheduleParticipants`: candidates are ordered by
+ * `contact_relationship_scores.strength_score DESC NULLS LAST` and the top
+ * `dial` are taken. That score IS the answer, and the INSERT stores only
+ * (campaign_id, inviter_user_id, state, scheduled_ask_at) — the number that
+ * decided it is discarded. The score table persists, so it is recovered here
+ * at read time instead.
+ *
+ * AND THE RECOVERY IS PARTIAL, WHICH IS ITSELF THE FINDING. Of the 85 pending
+ * participants, 35 have a score (0.4 to 0.95) and FIFTY HAVE NONE — `NULLS
+ * LAST` means a candidate with no measured tie is still eligible and gets
+ * taken when there are not enough scored ones. „Strong tie, 0.95" and „no
+ * measured tie at all" are the two things a founder deciding whom to approve
+ * most needs to tell apart, and until now the screen showed him neither.
+ *
+ * WHAT YOU HAVE IN COMMON is answered narrowly and the narrowness is stated in
+ * the payload, because the obvious reading cannot be answered at all: the
+ * target is not a member, so we hold no contact list for them and there is no
+ * set to intersect. What IS knowable is how many people in the network already
+ * have this target in their contacts, and that is what `known_by` counts.
+ *
+ * COST, MEASURED BEFORE PROMISING (my own note said to). Written with
+ * `regexp_replace` on both sides it timed out at fifteen seconds; written as
+ * plain equality it is 1.9 s for a hundred rows. That is not a shortcut — both
+ * columns are `+`-prefixed with no separators on 100% of rows (1,927,483 of
+ * 1,927,483 scores, 120 of 120 campaigns), so the regexp was a no-op that only
+ * destroyed the index. Both indexes this needs already exist, so nothing is
+ * added to the database for it.
+ *
+ * NO PHONE LEAVES THIS ROUTE (D149). `target_phone` is joined on and never
+ * selected.
+ */
+export function whyThisPerson(tieStrength: number | null): string {
+  if (tieStrength === null) {
+    return 'No measured tie to the target — taken because the dial had room, not because this person is known to be close.';
+  }
+  return `Measured tie to the target: ${tieStrength}. Candidates are ordered strongest first.`;
+}
+
 adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
@@ -3787,32 +3837,60 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
       ? Number(req.query.inviter_user_id)
       : null;
     const result = await query<{
+      total_count: number;
       technique_when: number | null;
       technique_how: number | null;
       technique_reason: number | null;
+      tie_strength: number | null;
+      known_by: number;
     }>(
-      `SELECT p.id, p.campaign_id, c.target_label, c.city, c.status AS campaign_status,
+      // The same total-with-the-page shape `/admin/asks` and `/admin/goals`
+      // carry: this route was a bare array capped at the limit, which is the
+      // fault its sibling was mended for this morning.
+      `SELECT (COUNT(*) OVER ())::int AS total_count,
+              p.id, p.campaign_id, c.target_label, c.city, c.status AS campaign_status,
               p.inviter_user_id, u.name AS inviter_name, p.state, p.scheduled_ask_at,
               p.asked_at, p.thread_id, p.state_updated_at,
-              p.technique_when, p.technique_how, p.technique_reason
+              p.technique_when, p.technique_how, p.technique_reason,
+              crs.strength_score AS tie_strength,
+              COALESCE(k.known_by, 0)::int AS known_by
        FROM invite_campaign_participants p
        JOIN invite_campaigns c ON c.id = p.campaign_id
        LEFT JOIN "User" u ON u.id = p.inviter_user_id
+       LEFT JOIN contact_relationship_scores crs
+              ON crs.user_id = p.inviter_user_id AND crs.contact_phone = c.target_phone
+       LEFT JOIN LATERAL (
+         SELECT COUNT(DISTINCT s.user_id) AS known_by
+           FROM contact_relationship_scores s
+          WHERE s.contact_phone = c.target_phone
+       ) k ON true
        WHERE ($1::int IS NULL OR p.campaign_id = $1::int)
          AND ($2::int IS NULL OR p.inviter_user_id = $2::int)
        ORDER BY p.id DESC
        LIMIT $3::int`,
       [campaignId, inviterId, limit],
     );
-    const rows = result.rows.map((r) => ({
+    const total = result.rows[0]?.total_count ?? 0;
+    const asks = result.rows.map(({ total_count: _total, ...r }) => ({
       ...r,
+      why_them: whyThisPerson(r.tie_strength),
       technique: {
         when: techniqueWord(r.technique_when),
         how: techniqueWord(r.technique_how),
         reason: techniqueWord(r.technique_reason),
       },
     }));
-    res.status(200).json({ success: true, data: rows });
+    res.status(200).json({
+      success: true,
+      data: { asks, total, truncated: asks.length < total },
+      note:
+        'why_them is recovered at read time from contact_relationship_scores — the score that ' +
+        'chose this inviter is not stored on the row. A null tie_strength is not missing data: ' +
+        'the candidate had no measured tie and was taken anyway (NULLS LAST). known_by counts ' +
+        'people in the network who already have this target in their contacts; it is NOT shared ' +
+        'contacts between inviter and target, which cannot be computed — the target is not a ' +
+        'member and we hold no contact list for them.',
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin chorus asks]', error);
