@@ -24,6 +24,13 @@ jest.mock('../askOptOut.service', () => ({
   __esModule: true,
   isOptedOutFromAsks: jest.fn().mockResolvedValue(false),
 }));
+// The PHONE-level stop, which this file did not mock and therefore did not
+// test — see „the phone-level half" at the bottom. `taskAsks.service` imports
+// nothing else from this module, so a one-export mock covers it exactly.
+jest.mock('../privacyRights.service', () => ({
+  __esModule: true,
+  isPhoneOptedOut: jest.fn().mockResolvedValue(false),
+}));
 jest.mock('../askBudget.service', () => ({
   __esModule: true,
   checkAskBudget: jest.fn().mockResolvedValue({ allowed: true }),
@@ -74,6 +81,7 @@ import { matchAnswerRule, saveAnswerRule } from '../answerRules.service';
 import { sharedRoster } from '../roster.service';
 import { getTaskById } from '../taskStore.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
+import { isPhoneOptedOut } from '../privacyRights.service';
 import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { createThread, saveThreadMessage } from '../threads.service';
@@ -93,6 +101,7 @@ import {
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockOptedOut = isOptedOutFromAsks as jest.MockedFunction<typeof isOptedOutFromAsks>;
+const mockPhoneStop = isPhoneOptedOut as jest.MockedFunction<typeof isPhoneOptedOut>;
 const mockCheckBudget = checkAskBudget as jest.MockedFunction<typeof checkAskBudget>;
 const mockFollowUpBudget = checkFollowUpBudget as jest.MockedFunction<typeof checkFollowUpBudget>;
 const mockSetThreadStatus = setThreadStatus as jest.MockedFunction<typeof setThreadStatus>;
@@ -108,6 +117,7 @@ beforeEach(() => {
   (matchAnswerRule as jest.Mock).mockResolvedValue(null);
   (sharedRoster as jest.Mock).mockResolvedValue(null);
   mockOptedOut.mockResolvedValue(false);
+  mockPhoneStop.mockResolvedValue(false);
   mockCheckBudget.mockResolvedValue({ allowed: true });
   mockFollowUpBudget.mockResolvedValue({ allowed: true });
   // Default: an open task owned by the caller WITH the blanket permission —
@@ -1599,5 +1609,61 @@ describe('cancelAsksForTask tells each person once', () => {
 
     const forThread = (setThreadStatus as jest.Mock).mock.calls.filter((c) => c[1] === 20098);
     expect(forThread).toHaveLength(1);
+  });
+});
+
+/**
+ * THE PHONE-LEVEL HALF, WHICH NOTHING HELD.
+ *
+ * Found by sabotage on 22 September. Disabling each guard in turn and running
+ * the whole suite:
+ *
+ *   user-level stop   createAsk               2 tests fail      HELD
+ *   phone-level stop  createAsk               3,697 pass        NOT HELD
+ *
+ * The two lists are two different people. `ask_optouts` is a Netai user who
+ * pressed stop. `phone_optouts` outlives a DELETED ACCOUNT (migration 056) —
+ * the comment above the guard says why: „an erased number must not be
+ * reachable again just because someone still has it in a contact list." The
+ * single live row in that table today is exactly that: reason
+ * `account_deleted`, 2 September.
+ *
+ * So the untested half is the one protecting the person who is no longer here
+ * to complain about it.
+ */
+describe('the phone-level stop is enforced too, and it is a different list', () => {
+  it('refuses when the PHONE is on the stop list, though the account is not', async () => {
+    mockOptedOut.mockResolvedValue(false);
+    mockPhoneStop.mockResolvedValue(true);
+
+    const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('recipient_opted_out');
+    expect(mockPhoneStop).toHaveBeenCalledWith('+995599111222');
+  });
+
+  /** Nothing is written and nobody is told — the refusal is the whole act. */
+  it('creates no thread and writes no message for an erased number', async () => {
+    mockPhoneStop.mockResolvedValue(true);
+
+    await createAsk('42', 3, '+995599111222', 'კითხვა');
+
+    expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(mockSaveMessage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The owner hears the truth, not „a technical delay" — the wording contract
+   * written above the guard, and the reason a refusal must not read as a
+   * failure the owner should retry.
+   */
+  it('tells the owner it was the person’s decision', async () => {
+    mockPhoneStop.mockResolvedValue(true);
+
+    const said = String((await createAsk('42', 3, '+995599111222', 'კითხვა')).error);
+
+    expect(said).toContain('მისი გადაწყვეტილებაა');
+    expect(said).toContain('ტექნიკური შეფერხება');
   });
 });
