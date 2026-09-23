@@ -765,3 +765,64 @@ public facts were written by account 501, the rest spread over eight accounts
 including three of the tester's test seats. If the test seats are curators,
 their runs publish facts a real member's would not, which is worth knowing
 about every fact test they have run.
+
+---
+
+## 23 September, 20:55 — what tonight leaves for the morning
+
+Five, and the first two are the only ones with money or a real person in them.
+
+### 1. The outage probe, narrowed — MISHO
+
+Item D above is now half built for free: the crons are the heartbeat, and
+`outage.sh` shouts past 240 minutes of night silence. **That leaves exactly the
+first three hours uncovered**, because 205 minutes of silence is normal here.
+
+The question is smaller than it was and still needs the same three numbers:
+how cheap a probe, how often, against which account. **It is worth asking
+whether it is worth buying at all** now that the worst case is four hours
+rather than nine — that is a judgement about what an outage costs, and it is
+not mine.
+
+### 2. Row 242's refusing half has never fired — MISHO
+
+Shipped tonight: asking for the same thing twice no longer opens a second goal.
+**Proved: goals still open normally** (9967 at 19:01). **Not proved: that a
+duplicate is actually caught** — no duplicate has been attempted in production
+since it deployed.
+
+The seats are busy with the tester's own runs. **I can test it on Misho's
+account in two minutes** — one goal, the same sentence again, read the refusal,
+close both goals. Two rows on his account, nothing sent to anybody. **It needs
+his word because it writes to a real account, and „I would only close what I
+opened" is exactly the sentence a rule exists to not have to trust.**
+
+### 3. Thirty-one questions shown and unanswered — TORNIKE
+
+Separated from the 52 never shown (see the correction in §9 of
+`SCREEN_CHECKLIST.md`). These were put in front of real people and not
+answered: 22 of Lika Ose's, some of Tornike's own, the oldest from 6 September.
+
+**That is not a bug and I have no fix to offer.** It is either the questions
+being the wrong questions, or the moment being the wrong moment, and the
+founder is the one who can say which. Worth one line from him before anybody
+builds a nudge.
+
+### 4. Row 236 — admin page, or the app? — THE TESTER
+
+Asked at 19:11, unanswered. There is no user-facing merge route today, so if
+the row means a merge a normal user does, the route does not exist and it is
+mine to build. I will not guess: guessing here means building a user-facing
+write nobody asked for.
+
+### 5. Rows 16 and 230 need a screen, not a decision — THE APP TEAM
+
+Both server halves are done and verified tonight. Neither closes until somebody
+draws the screen over them and a person taps it. They are on the app team's
+list, not waiting on a ruling.
+
+### And what does NOT need anybody
+
+The tester's plate has nothing of mine left on it. If tonight's two changes
+want proving — the answer relay's speed and 242's refusal — both are one seat
+run each and the tester has them.
