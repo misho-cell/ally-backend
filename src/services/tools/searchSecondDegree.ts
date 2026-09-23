@@ -415,6 +415,22 @@ function concurrentLine(marks: readonly (readonly [string, number])[]): string {
   return joinMarks(marks, ' / ');
 }
 
+/**
+ * The smaller of two source counts, or null when neither value came from a
+ * fact at all.
+ *
+ * Counts come back from pg as strings (bigint), and a value taken from the
+ * self-profile has no count. Null means „not a fact", which is different from
+ * zero and must not collapse into it.
+ */
+export function fewestSources(...counts: readonly (string | number | null)[]): number | null {
+  const present = counts
+    .filter((c): c is string | number => c !== null && c !== undefined)
+    .map((c) => Number(c))
+    .filter((n) => Number.isFinite(n));
+  return present.length === 0 ? null : Math.min(...present);
+}
+
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
   const began = Date.now();
   const marks: [string, number][] = [];
@@ -840,6 +856,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       via_contacts: { name: string | null; phone: string }[] | null;
       employer: string | null;
       jobPosition: string | null;
+      employer_sources: string | number | null;
+      jobPositionSources: string | number | null;
       warmth: number | null;
     }>(
       `WITH friend_users AS (
@@ -886,6 +904,20 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- one-scan shape it wins in every regime. It is now what the single
        -- filter parameter carries — see the measurement above the query.
        bridges AS (SELECT ARRAY(SELECT DISTINCT "userId" FROM friend_users) AS ids),
+       /**
+        * TEXT, BECAUSE "contact_facts.submitted_by_user_id" IS TEXT AND
+        * "UserTags."contactId"" IS AN INTEGER.
+        *
+        * The comment further down this file records an "integer = text" P0 in
+        * this very query. Casting the DATA — "submitted_by_user_id::int" —
+        * would throw on the first row anybody ever writes that is not a
+        * number, and „all 1,282 live rows are numeric today" is a fact about
+        * today. Casting the small, known, server-made array instead cannot
+        * throw at all.
+        */
+       bridge_ids_text AS (
+         SELECT ARRAY(SELECT DISTINCT "userId"::text FROM friend_users) AS ids
+       ),
        tag_hits AS (
          SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
          FROM "UserTags" ut, bridges b
@@ -898,6 +930,60 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          WHERE ua_m."contactId" = ANY(b.ids)
            AND (${aliasConds})
        ),
+       /**
+        * ROW 252 — A FACT COULD RANK SOMEBODY AND COULD NEVER FIND THEM.
+        *
+        * "contact_facts" appears three times in this query and not once as a
+        * source of candidates: a LATERAL join to show an already-found
+        * person's title, a ranking score, and a ranking bonus. So a person
+        * whose trade is written as a FACT and not as a tag did not exist for
+        * this search. If Giorgi is saved as an architect by somebody who knows
+        * him, and nobody tagged him „architect", an architect search could not
+        * reach him.
+        *
+        * THE FOUNDER, 22 September (D440): „fact is saved, Giorgi is foundable
+        * when someone looks for architect, but only Netai sees that. it is not
+        * public until 2 men confirm it. before that assistant just gives you
+        * his name when you are looking for architect." So the fact makes him a
+        * CANDIDATE at once — this CTE — and whether it may be SAID is row 255,
+        * below in the shaped row.
+        *
+        * WHAT IT COSTS, MEASURED BEFORE IT WAS WRITTEN, because my own note on
+        * the board said this was row 108 territory and worth hesitating over:
+        *
+        *     contact_facts, every row ever                     1,545
+        *     travelling and role-shaped                          392
+        *     UserTags on one account's bridges               605,086
+        *
+        * Timed against production three times: a full scan of this table with
+        * the regex on it is INDISTINGUISHABLE FROM AN EMPTY QUERY — 436 ms
+        * against a 443 ms round trip for "SELECT 1". The whole table is a
+        * rounding error beside the tag scan it rides next to, and the caution
+        * I wrote on the board was unfounded. Said plainly because the note is
+        * still there and someone will read it.
+        *
+        * WHOSE FACTS. The same rule the tag half uses: written BY a bridge.
+        * "tag_hits" takes tags whose "contactId" is a bridge; this takes facts
+        * whose SUBMITTER is one. Anything else would reach outside the second
+        * circle, which is not this tool's to do.
+        *
+        * AND THE SAME TRAVEL FILTER AS EVERYWHERE ELSE — "is_public OR
+        * is_matchable". A strictly private fact must not put its subject into
+        * a stranger's results, which is the rule "fetchSignalStrength" already
+        * states in those words.
+        */
+       fact_hits AS (
+         SELECT cf.neo4j_contact_id AS phone,
+                cf.submitted_by_user_id::int AS "contactId",
+                LOWER(COALESCE(cf.canonical_value, cf.value)) AS label
+         FROM contact_facts cf, bridge_ids_text bt
+         WHERE cf.submitted_by_user_id = ANY(bt.ids)
+           AND cf.retracted_at IS NULL
+           AND (cf.is_public OR cf.is_matchable)
+           AND (cf.field_type = ANY($${titleFieldsIdx}::text[])
+                OR cf.field_type = ANY($${employerFieldsIdx}::text[]))
+           AND LOWER(COALESCE(cf.canonical_value, cf.value)) ~ $${filterIdx}
+       ),
        -- The label rides along ONLY as far as word_hits below. It never leaves
        -- this CTE: the outer select aggregates phones and joins names, so the
        -- text somebody wrote in their phonebook reaches the ranking and never
@@ -906,6 +992,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT phone, "contactId", label FROM tag_hits
          UNION
          SELECT phone, "contactId", label FROM alias_hits
+         UNION
+         SELECT phone, "contactId", label FROM fact_hits
        ),
        ranked AS (
          SELECT m.phone,
@@ -940,6 +1028,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                 'phone', fu.via_phone))                                        AS via_contacts,
               COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
               COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
+              -- Row 255: how many DISTINCT members said this, so the caller can
+              -- tell a corroborated fact from one person's note. Null when the
+              -- value came from the self-profile rather than from a fact.
+              MAX(fe.sources)                                                  AS employer_sources,
+              MAX(fj.sources)                                                  AS "jobPositionSources",
               -- via_warmth v2 (task 55, founder pulled it forward): the flat
               -- 0.4 was the unscored-edge baseline. Real signals now blend in,
               -- computed only for the LIMITed page: the bridge's relationship
@@ -983,7 +1076,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- only PUBLIC (2+ confirmations) facts or the SEARCHER'S OWN. Empty
        -- strings count as missing (§10).
        LEFT JOIN LATERAL (
-         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
+         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val,
+                (SELECT COUNT(DISTINCT cf2.submitted_by_user_id)
+                   FROM contact_facts cf2
+                  WHERE cf2.neo4j_contact_id = cf.neo4j_contact_id
+                    AND cf2.field_type = cf.field_type
+                    AND cf2.retracted_at IS NULL
+                    AND LOWER(TRIM(COALESCE(cf2.canonical_value, cf2.value)))
+                        = LOWER(TRIM(COALESCE(cf.canonical_value, cf.value)))) AS sources
          FROM contact_facts cf
          WHERE cf.neo4j_contact_id = r.phone
            AND cf.field_type = ANY($${employerFieldsIdx}::text[])
@@ -996,7 +1096,14 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          LIMIT 1
        ) fe ON TRUE
        LEFT JOIN LATERAL (
-         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val
+         SELECT NULLIF(TRIM(COALESCE(cf.canonical_value, cf.value)), '') AS val,
+                (SELECT COUNT(DISTINCT cf2.submitted_by_user_id)
+                   FROM contact_facts cf2
+                  WHERE cf2.neo4j_contact_id = cf.neo4j_contact_id
+                    AND cf2.field_type = cf.field_type
+                    AND cf2.retracted_at IS NULL
+                    AND LOWER(TRIM(COALESCE(cf2.canonical_value, cf2.value)))
+                        = LOWER(TRIM(COALESCE(cf.canonical_value, cf.value)))) AS sources
          FROM contact_facts cf
          WHERE cf.neo4j_contact_id = r.phone
            AND cf.field_type = ANY($${titleFieldsIdx}::text[])
@@ -1123,6 +1230,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       const fromLabel = (row.name !== null ? labelRoles.get(row.name) : undefined) ?? {};
       const employer = row.employer ?? fromLabel.employer ?? null;
       const jobPosition = row.jobPosition ?? fromLabel.title ?? null;
+      // The weaker of the two, because one uncorroborated half is enough to
+      // make the pair something to say carefully. Counts arrive as strings
+      // from pg's bigint mapping.
+      const sources = fewestSources(row.jobPositionSources, row.employer_sources);
       return {
         phone: row.phone,
         name: row.name ?? null,
@@ -1134,6 +1245,30 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         (row.jobPosition === null && jobPosition !== null)
           ? { role_source: 'label' }
           : {}),
+        /**
+         * ROW 255 — ONE MEMBER'S NOTE IS NOT A FACT ABOUT SOMEBODY.
+         *
+         * The founder, 23 September (D449), after the tester found Test 2's
+         * assistant stating „Netai Test 6 is a tax accountant" three times flat
+         * on the strength of a single note Test 1 had saved: his own notes
+         * count at once; anyone else's make the person FINDABLE at once and are
+         * shown as a fact only once a second, independent member says the same;
+         * before that the assistant gives the name and not the fact.
+         *
+         * `role_sources` is how many DISTINCT members said this value. The
+         * caller decides what to do with it, and the prompt line that does so
+         * is the tester's half — this only has to make the fact TELLABLE APART,
+         * which until now it was not: a one-source note and a corroborated one
+         * arrived as the same string.
+         *
+         * WHAT THE NUMBER CANNOT SEE, so nobody reads more into it than it
+         * holds: two members who write „tax accountant" and „accountant" are
+         * two sources only once `runSemanticMatching` has canonicalised them
+         * together. Where it has not, this reads 1. It under-reports, never
+         * over-reports — which is the safe direction here, since a low count
+         * means the name is given without the fact.
+         */
+        ...(sources !== null ? { role_sources: sources } : {}),
         ownership: OWNERSHIP.SECOND_DEGREE,
         // Consistent with the direct-search tools: every person-shaped result
         // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
