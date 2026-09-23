@@ -7,7 +7,7 @@ jest.mock('../costLedger.service', () => ({ __esModule: true, recordClaudeUsage:
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { questionForReader } from '../askTranslation.service';
+import { looksLikeATranslation, questionForReader } from '../askTranslation.service';
 
 /**
  * ROW 254 — THE FRAME WAS BUILT IN THE READER'S LANGUAGE AND THE QUESTION
@@ -226,6 +226,87 @@ describe('the failure is visible', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+/**
+ * THE FIRST TWO TRANSLATIONS THAT EVER RAN, AS FIXTURES.
+ *
+ * They ran at 18:22 and 18:25 and they were bad. Both are here verbatim,
+ * because a rule written from a description of a failure is a rule written
+ * from my memory of it.
+ */
+describe('a mangled translation is worse than no translation', () => {
+  const PICKUPS =
+    'Just so you have it: the pickups would be Tuesday and Thursday mornings, in case that ' +
+    'jogs anyone to mind. No need to reply unless someone comes to mind.';
+
+  it('rejects the Korean word that arrived inside the Georgian (ask 4819)', async () => {
+    create.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: '픽업ები იქნებოდა სამშაბათ და ხუთშაბათის დილით, თუ ეს ვინმეს გაახსენებს.',
+        },
+      ],
+      usage: {},
+    });
+
+    const out = await questionForReader(PICKUPS, 'ka');
+
+    expect(out.text).toBe(PICKUPS);
+    expect(out.skipped).toBe('failed');
+  });
+
+  it('rejects the model’s own remarks appended to the answer (ask 4820)', async () => {
+    const short = 'Thanks for the recommendation. Is Nino still the person?';
+    create.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text:
+            'მადლობა რეკომენდაციისთვის. ნინო კვლავ ის ადამიანია?\n\n' +
+            'I cannot provide an accurate translation for this message because it appears to be ' +
+            'a continuation of a previous conversation where a recommendation was made about ' +
+            'someone, and I would need more context to render it faithfully for the reader.',
+        },
+      ],
+      usage: {},
+    });
+
+    const out = await questionForReader(short, 'ka');
+
+    expect(out.text).toBe(short);
+    expect(out.skipped).toBe('failed');
+  });
+
+  it('lets an ordinary translation through, names and all', async () => {
+    create.mockResolvedValue({
+      content: [{ type: 'text', text: 'იცნობ კარგ ელექტრიკოსს? Nino გვირჩევს.' }],
+      usage: {},
+    });
+
+    const out = await questionForReader('Do you know a good electrician? Nino recommends.', 'ka');
+
+    expect(out.skipped).toBeUndefined();
+    expect(out.text).toContain('ორიგინალი');
+  });
+
+  /**
+   * AND WHAT IT CANNOT DO, ON THE RECORD. „არ დაგვიწერთ პასუხი" is Georgian
+   * letters, the right length, and the OPPOSITE of „no need to reply". The
+   * wall is a wall against the two things checkable without a second opinion;
+   * the strong model and the labelled original are what stand behind meaning,
+   * and pretending otherwise is how the next one gets missed.
+   */
+  it('cannot catch an inverted meaning, and the test says so', () => {
+    const inverted = 'არ დაგვიწერთ პასუხი, თუ ვინმე გაახსენდება.';
+
+    expect(
+      looksLikeATranslation(inverted, 'No need to reply unless someone comes to mind.', 'en', 'ka'),
+    ).toEqual({
+      ok: true,
+    });
   });
 });
 

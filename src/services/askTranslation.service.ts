@@ -94,7 +94,7 @@ const MAX_QUESTION_CHARS = 1_200;
  * on the deploy that carries it. The variable exists so the model can be
  * corrected without a release — NOT so the feature can be off.
  */
-const TRANSLATE_MODEL = process.env.ASK_TRANSLATION_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const TRANSLATE_MODEL = process.env.ASK_TRANSLATION_MODEL?.trim() || 'claude-sonnet-5';
 
 const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
@@ -146,6 +146,95 @@ function brief(to: RunLanguage, what: RelayedKind): string {
     '- Answer with the translation ALONE. No quotes, no notes, no explanation.',
     '- If you cannot translate it, answer with the original text unchanged.',
   ].join('\n');
+}
+
+/**
+ * ────────────────────────────────────────────────────────────────────────
+ * THIRD CUT, 18:32, FOUR MINUTES AFTER THE FIRST TWO TRANSLATIONS EVER RAN.
+ *
+ * They ran. They were also BAD, in two different ways, and I read them before
+ * the seat did only because I went looking the moment the ledger moved:
+ *
+ *   ask 4819, into Georgian, from „…the pickups would be Tuesday and Thursday
+ *   mornings… No need to reply unless someone comes to mind."
+ *
+ *       „픽업ები იქნებოდა სამშაბათ და ხუთშაბათის დილით…
+ *        არ დაგვიწერთ პასუხი, თუ ვინმე გაახსენდება."
+ *
+ *   — a KOREAN word spliced into the Georgian, and the last clause INVERTED:
+ *   „do not write to us if somebody comes to mind" is the opposite of what
+ *   was asked.
+ *
+ *   ask 4820, into Georgian: „ფблагодарность…" — Georgian and Russian fused
+ *   into one word — followed by a paragraph of the model talking to itself in
+ *   English: „I cannot provide an accurate translation for this message
+ *   because…", delivered to the reader as if it were part of the question.
+ *
+ * A MANGLED TRANSLATION IS WORSE THAN NO TRANSLATION, and that is the whole
+ * ruling here. The untranslated original carries the exact meaning and the
+ * reader can do something with it; „do not reply" in place of „no need to
+ * reply" changes what a person is being asked, in their own language, with
+ * our name on it.
+ *
+ * SO TWO CHANGES, AND THE SECOND IS THE ONE THAT HOLDS:
+ *
+ * 1. The model is the strong one, not Haiku. These are rare and short — 2
+ *    calls in the first hour — and this text goes in front of a stranger doing
+ *    somebody a favour.
+ * 2. A WALL THAT DOES NOT DEPEND ON THE MODEL BEHAVING. Every answer must be
+ *    written in the reader's script (plus the asker's, for names, and plus
+ *    Latin and digits), and must not be wildly longer than what was sent. A
+ *    letter from a script belonging to neither language is not a translation,
+ *    whatever else it is, and three times the length is a model adding its
+ *    own remarks. Both failures above are caught by those two rules, and
+ *    neither rule asks a model whether it did well.
+ *
+ * WHAT IT CANNOT DO IS CHECK MEANING. „არ დაგვიწერთ" is Georgian letters, the
+ * right length, and wrong. The script wall would NOT have caught the inversion
+ * on its own — the strong model and the labelled original are what stand
+ * behind that one, and the original is the reason a wrong translation can be
+ * seen rather than believed. I would rather write that down than imply this
+ * fixes it.
+ * ────────────────────────────────────────────────────────────────────────
+ */
+
+/** Beyond this multiple of the original, the model has added something. */
+const MAX_LENGTH_RATIO = 3;
+
+const SCRIPTS: Readonly<Record<RunLanguage, RegExp>> = {
+  ka: /[Ⴀ-ჿ]/u,
+  ru: /[Ѐ-ӿ]/u,
+  en: /[A-Za-z]/u,
+  es: /[A-Za-z]/u,
+};
+
+/** Letters that belong to no language here: CJK, Hangul, Arabic, Hebrew, … */
+function lettersOutside(text: string, allowed: readonly RegExp[]): string[] {
+  return [...text].filter((ch) => {
+    if (!/\p{L}/u.test(ch)) return false;
+    if (/[A-Za-z]/u.test(ch)) return false; // names, brands, the Latin alphabet
+    return !allowed.some((script) => script.test(ch));
+  });
+}
+
+/**
+ * Is this a translation at all? Nothing here judges how GOOD it is — these are
+ * the two things that can be known without a second opinion.
+ */
+export function looksLikeATranslation(
+  translated: string,
+  original: string,
+  from: RunLanguage,
+  to: RunLanguage,
+): { ok: true } | { ok: false; why: string } {
+  const strays = lettersOutside(translated, [SCRIPTS[to], SCRIPTS[from]]);
+  if (strays.length > 0) {
+    return { ok: false, why: `letters from another script: ${[...new Set(strays)].join('')}` };
+  }
+  if (translated.length > original.length * MAX_LENGTH_RATIO) {
+    return { ok: false, why: `${translated.length} chars for an original of ${original.length}` };
+  }
+  return { ok: true };
 }
 
 export interface RelayedQuestion {
@@ -238,6 +327,11 @@ export async function relayedForReader(
     // translation and must not be dressed up as one with a label.
     if (translated === '' || translated === text) {
       untranslated(asked, readerLanguage, what, 'the model returned nothing new');
+      return { text: question, skipped: 'failed' };
+    }
+    const sane = looksLikeATranslation(translated, text, asked, readerLanguage);
+    if (!sane.ok) {
+      untranslated(asked, readerLanguage, what, `rejected — ${sane.why}`);
       return { text: question, skipped: 'failed' };
     }
     return { text: labelled(translated, text, readerLanguage), original: text };
