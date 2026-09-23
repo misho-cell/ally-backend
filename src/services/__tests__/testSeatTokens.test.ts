@@ -104,9 +104,18 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
    * building it: each took the first slot in +1 202 555 0100–0199 that was
    * registered to nobody AND saved in nobody's phonebook — the second half
    * being the one that would have caught Netai Test 5. 0100, 0112 and 0113.
+   *
+   * AND THREE MORE THE SEAT MADE THEMSELVES, 14:15 the same day, which is the
+   * route doing what it was built for. They were blocked on this list and only
+   * on this list: their `GET /requests` showed
+   * `counterpart_is_a_fictional_test_account` UNDEFINED and that side will not
+   * accept an introduction without it. One commit per batch of seats is the
+   * price of keeping the marker on a Set with no I/O, and it is worth paying —
+   * absence there means „not fictional", which is only honest while the check
+   * cannot fail.
    */
   it('lists exactly the verified ids, so a widening shows up as a failing test', () => {
-    expect(fictionalTestAccountIds()).toHaveLength(14);
+    expect(fictionalTestAccountIds()).toHaveLength(17);
     expect([...fictionalTestAccountIds()].sort()).toEqual([
       '171870',
       '171871',
@@ -122,6 +131,9 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
       '172068',
       '172069',
       '172070',
+      '172101',
+      '172102',
+      '172103',
     ]);
   });
 });

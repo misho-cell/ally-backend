@@ -88,6 +88,17 @@ const FICTIONAL_TEST_ACCOUNTS: ReadonlySet<string> = new Set([
   '172068', // Netai Test 14 — the target
   '172069', // Netai Test 13 — the mediator, holds 14
   '172070', // Netai Test 12 — the requester, holds 13 and NOT 14
+  //
+  // The second triangle, made by the seat themselves through the route at
+  // 14:15 and blocked on exactly this line: their `GET /requests` showed
+  // `counterpart_is_a_fictional_test_account` UNDEFINED, and that side will
+  // not accept an introduction without it. The cost of keeping the marker on a
+  // Set with no I/O is one commit per batch of seats, and it is worth paying —
+  // absence there means „not fictional", which is only honest while the check
+  // cannot fail.
+  '172101', // Netai Test 17 — the target
+  '172102', // Netai Test 16 — the mediator, holds 17
+  '172103', // Netai Test 15 — the requester, holds 16 and NOT 17
 ]);
 
 /** Twelve hours, matching an admin session — a fixture, not a login. */
