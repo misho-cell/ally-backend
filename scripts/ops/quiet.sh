@@ -1,6 +1,22 @@
 #!/bin/bash
 # May I deploy right now? Exits 0 for yes, 1 for no, and says which.
 #
+# ⚠️ DO NOT PIPE THIS INTO ANYTHING IF YOU ARE GOING TO ACT ON THE ANSWER.
+#
+#     ./scripts/ops/quiet.sh && git push …          ← the answer decides
+#     ./scripts/ops/quiet.sh | tail -1 && git push  ← ALWAYS PUSHES
+#
+# A pipeline's exit code is the LAST command's, so `| tail` reports tail's
+# success and this script's verdict is discarded. I wrote the second form
+# repeatedly on 23 September to keep the output short, and it silently turned
+# every one of those gates into decoration — at 19:47 it printed „NO — the last
+# tool call was 108s ago. Wait." and the push ran anyway.
+#
+# Nothing reached production that should not have, and the reason is the
+# pre-push hook, which runs this script DIRECTLY and refuses the push itself.
+# That is the whole argument for having a wall as well as a habit: the habit
+# was broken for hours and the wall did not notice the difference.
+#
 # WHY THIS IS A COMMAND AND NOT A HABIT. `inFlightRuns.ts` has carried the rule
 # since 17 September, in its own words:
 #
