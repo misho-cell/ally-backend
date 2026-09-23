@@ -60,7 +60,29 @@ esac
 case "$SQL" in
   *'"User"'*|*' User '*)
     case "$SQL" in
-      *hasAccessToAlly*|*test_seats*) ;;
+      # ⚠️ 22:05 — THE GUARD I WROTE AT 20:50 WOULD HAVE STAYED SILENT ON THE
+      # WORST QUERY OF THE NIGHT, WHICH WAS MINE AND NAMED THIS VERY COLUMN.
+      #
+      # It treated `hasAccessToAlly` as evidence that the asker had thought
+      # about populations. At 21:31 I used that column to mean „is a Netai
+      # person", shipped it, and had it verified by somebody else before I
+      # noticed. The column does not mean that:
+      #
+      #   * `adminLogin` READS it — it is the admin-login permission
+      #   * `setAdminAccess` WRITES it
+      #   * `registerUser` also sets it true for every Netai registrant
+      #   * and 35 of the 45 people who have USED Netai do not carry it,
+      #     including the second most active account in the product
+      #
+      # So naming it is not reassurance. It is the moment to say what it is.
+      *hasAccessToAlly*)
+        echo 'ro.sh: NOTE — "hasAccessToAlly" is the ADMIN-LOGIN flag (adminLogin reads it,' >&2
+        echo '        setAdminAccess writes it), which registerUser ALSO sets true for every' >&2
+        echo '        Netai registrant. It is not „uses Netai": 35 of the 45 people who have' >&2
+        echo '        used this product do not carry it, including the second most active' >&2
+        echo '        account. For USE, ask for a row in `threads`.' >&2
+        ;;
+      *test_seats*) ;;
       *)
         echo 'ro.sh: NOTE — "User" holds THREE populations and this query names none:' >&2
         echo '        62,200 legacy ALLY accounts (hasAccessToAlly = false) who have' >&2
