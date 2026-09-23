@@ -48,12 +48,48 @@ SINCE="${1:-$DEFAULT_SINCE}"
 # real person may one day be called anything. `test_seats` is a row that only
 # exists because a seat went through the creation checks, which is the only
 # honest way to know.
+# AND A SECOND POPULATION THAT IS NOT A NETAI REGISTRATION EITHER — FOUND THE
+# SAME EVENING, BY THIS CHECK RAISING ITS SECOND FALSE ALARM IN FOUR HOURS.
+#
+# 23 September 18:37: „1 registration since 22 Sep 15:32, and NONE carried an
+# inviter." The Routine's own text then says to tell the frontend their fix did
+# not hold. Account 172167, 17:57:51.
+#
+# IT NEVER TOUCHED THE NETAI REGISTRATION SCREEN. The proof is a column and not
+# a judgement: `registerUser` INSERTs `"hasAccessToAlly"` as a LITERAL `true`,
+# on every path, with no branch — and that account has it FALSE. Two log lines
+# that every Netai registration prints („[register] referral code arrived
+# under: …" and „[invite-gate] attribution: …") are also absent from every
+# container log covering that minute, and the log stream for that window is
+# provably complete: the database records exactly one chat run in it and the
+# log shows exactly that one.
+#
+# WHAT IT IS: the legacy ALLY app registering somebody into the SAME DATABASE.
+#
+#     hasAccessToAlly = false   62,200 accounts     4 in the last 7 days
+#     hasAccessToAlly = true        33 accounts    20 in the last 7 days
+#
+# The 62,200 are the Ally base — the product's own language calls them
+# „ally_account: has never opened Netai". They are targets, not members, and
+# people are still joining that one. Counting them here reads another app's
+# signups as ours.
+#
+# So the window asks for accounts the NETAI path created. A registration this
+# code makes cannot be missed by it: the column is a literal in the INSERT, not
+# something a caller can pass.
+#
+# 📌 TWICE IN ONE EVENING THIS FILE COUNTED THE WRONG POPULATION — six fictional
+# seats at 14:37, one other product's user at 18:37 — and both times the next
+# step was telling somebody their work had failed. The lesson is not „add
+# another filter": it is that a count of PEOPLE needs a definition of which
+# people, written down, and both of these are now columns rather than guesses.
 SQL_TEXT="SELECT
   COUNT(*)                                                       AS registrations,
   COUNT(*) FILTER (WHERE u.\"inviterReferralUserId\" IS NOT NULL) AS attributed,
   COALESCE(MAX(TO_CHAR(u.\"createdAt\", 'MM-DD HH24:MI')), '-')   AS latest
 FROM \"User\" u
 WHERE u.\"createdAt\" >= TIMESTAMPTZ '${SINCE}'
+  AND u.\"hasAccessToAlly\" = true
   AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
@@ -76,8 +112,14 @@ fi
 
 if [ "$TOTAL" -eq 0 ]; then
   echo "NOTHING TO REPORT — no registration since ${SINCE}."
-  echo "  The fix is UNTESTED, not working. Nobody has registered through it yet"
-  echo "  (registrations run about two a day), so there is nothing to read."
+  echo "  The fix is UNTESTED, not working. Nobody has registered through it yet,"
+  echo "  so there is nothing to read."
+  # „About two a day" stood here until 23 September and it was the Ally base's
+  # rate, not Netai's. Netai's own: THIRTEEN people ever, the newest on
+  # 9 SEPTEMBER, none in the last fourteen days. „Wait for the next one" is
+  # therefore not a plan — somebody has to bring a person in.
+  echo "  Netai's own rate, for whoever reads this next: 13 people have ever"
+  echo "  registered through it, the newest on 9 September. Waiting is not a plan."
   exit 0
 fi
 

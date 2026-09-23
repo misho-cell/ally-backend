@@ -231,6 +231,24 @@ export function looksLikeATranslation(
   if (strays.length > 0) {
     return { ok: false, why: `letters from another script: ${[...new Set(strays)].join('')}` };
   }
+  /**
+   * AND THE HOLE THE SEAT NAMED IN THE SAME HOUR (their 505): „reject the
+   * model's own voice — „I cannot", „you've specified"".
+   *
+   * They are right and the two rules above do not cover it. Latin letters are
+   * ALLOWED inside a Georgian translation, because names stay as they are — so
+   * „I cannot translate this." is Latin, short, and would have gone straight to
+   * the reader. Tonight's example was long enough for the ratio to catch; a
+   * shorter refusal would not have been.
+   *
+   * The rule is not a phrase list, which would need the next refusal to be
+   * worded like the last one. A translation INTO a non-Latin script must
+   * contain some of that script. Nothing written entirely in Latin is a
+   * Georgian or Russian sentence, whatever it says.
+   */
+  if (SCRIPTS[to] !== SCRIPTS.en && !SCRIPTS[to].test(translated)) {
+    return { ok: false, why: `not one letter of ${to} in it` };
+  }
   if (translated.length > original.length * MAX_LENGTH_RATIO) {
     return { ok: false, why: `${translated.length} chars for an original of ${original.length}` };
   }

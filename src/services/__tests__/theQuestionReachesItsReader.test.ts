@@ -120,10 +120,13 @@ describe('a question in another language is translated for its reader', () => {
    * a Georgian translation is the same fault one layer down.
    */
   it.each([
-    ['en', 'оригинал', 'original'],
-    ['ru', 'original', 'оригинал'],
-  ])('labels it in %s', async (language, absent, present) => {
-    create.mockResolvedValue({ content: [{ type: 'text', text: 'translated' }], usage: {} });
+    // Each answer is written in ITS OWN target's script, because since the
+    // third cut one that is not is refused — and a fixture that could not
+    // happen in production is how the first cut passed eleven tests.
+    ['en', 'оригинал', 'original', 'Do you know a good electrician?'],
+    ['ru', 'original', 'оригинал', 'Знаешь хорошего электрика?'],
+  ])('labels it in %s', async (language, absent, present, answer) => {
+    create.mockResolvedValue({ content: [{ type: 'text', text: answer }], usage: {} });
 
     const out = await questionForReader('იცნობ კარგ ელექტრიკოსს?', language as 'en' | 'ru');
 
@@ -290,6 +293,24 @@ describe('a mangled translation is worse than no translation', () => {
 
     expect(out.skipped).toBeUndefined();
     expect(out.text).toContain('ორიგინალი');
+  });
+
+  /**
+   * THE SEAT'S OWN ADDITION (their 505), AND NOT AS A PHRASE LIST. A refusal
+   * written in Latin is short and Latin is allowed inside a Georgian
+   * translation, because names stay as they are — so it would have walked
+   * past both of the other rules.
+   */
+  it('rejects a refusal with not one Georgian letter in it', async () => {
+    create.mockResolvedValue({
+      content: [{ type: 'text', text: 'I cannot translate this.' }],
+      usage: {},
+    });
+
+    const out = await questionForReader('Do you know an electrician in Tbilisi?', 'ka');
+
+    expect(out.text).toBe('Do you know an electrician in Tbilisi?');
+    expect(out.skipped).toBe('failed');
   });
 
   /**
