@@ -15,3 +15,5 @@ dist/
 !.claude/settings.json
 
 .sabotage.pid
+__pycache__/
+*.pyc
