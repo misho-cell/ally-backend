@@ -105,7 +105,7 @@ import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
-import { pilotReport } from '../../services/pilotReport.service';
+import { pilotPeople, pilotReport } from '../../services/pilotReport.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -2025,6 +2025,38 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * Row 16 — WHOSE conversation to open, which was the missing first step.
+ *
+ * Both reading routes below need a `user_id` and nothing answered „who are the
+ * pilot's people". Thirteen accounts sit inside 62,233, and the founder cannot
+ * type an id he has never seen.
+ *
+ * BEHIND THE SAME GATE AS THE READING. A list that names the pilot's members
+ * is not a lesser capability than reading them, and putting it behind a weaker
+ * door would lose the point of the door. No phone number, not even the last
+ * four (D149) — a name to show and an id to fetch with is all a screen needs.
+ */
+adminRouter.get('/pilot/people', async (req: Request, res: Response) => {
+  try {
+    const gate = pilotReaderAllowed(req);
+    if (!gate.allowed) {
+      res.status(403).json({ success: false, error: gate.reason });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[pilot-reader] the pilot's people listed by admin ${(req as AuthenticatedRequest).user.userId}`,
+    );
+    const people = await pilotPeople();
+    res.status(200).json({ success: true, data: { total: people.length, people } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin pilot people]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.get('/pilot/threads', async (req: Request, res: Response) => {
   try {

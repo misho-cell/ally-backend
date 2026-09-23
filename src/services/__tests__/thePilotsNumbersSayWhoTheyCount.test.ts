@@ -6,7 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { pilotReport } from '../pilotReport.service';
+import { pilotPeople, pilotReport } from '../pilotReport.service';
 
 /**
  * ROW 256 — THE PILOT'S RESULTS OVER TIME, AND THE TWO WAYS THAT SCREEN COULD
@@ -158,5 +158,46 @@ describe('ignored, waiting and cancelled are three different things', () => {
     expect(sql).toContain('AS waiting');
     expect(sql).toContain('AS cancelled');
     expect(sql).toContain("a.status <> 'cancelled'");
+  });
+});
+
+/**
+ * ROW 16 — „the founder can open and read a real conversation", and the step
+ * that was missing is WHOSE.
+ *
+ * The reading routes need a `user_id`; nothing answered „who are the pilot's
+ * people". I probed the gate without touching anybody's data — `GET
+ * /admin/pilot/threads` with no `user_id` answers 400 where a closed gate
+ * would answer 403, because the gate is checked before the parameter — so the
+ * reader is on and the list was the whole of what was missing.
+ */
+describe('the list of people to read', () => {
+  it('asks only for the pilot’s real people, by the same rule as the report', async () => {
+    await pilotPeople();
+
+    const sql = String(dbQuery.mock.calls[0][0]);
+    expect(sql).toContain('"hasAccessToAlly" = true');
+    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM test_seats');
+  });
+
+  /** D149: a screen needs a name and an id. A number would ride along for nothing. */
+  it('carries no phone number, not even the last four', async () => {
+    await pilotPeople();
+
+    const sql = String(dbQuery.mock.calls[0][0]);
+    expect(sql).not.toMatch(/phone/i);
+    expect(sql).not.toContain('UserPhone');
+  });
+
+  /** The same gate as reading the conversations themselves — see the route. */
+  it('is behind the pilot reader gate', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    const at = routes.indexOf("adminRouter.get('/pilot/people'");
+
+    expect(at).toBeGreaterThan(-1);
+    expect(routes.slice(at, at + 400)).toContain('pilotReaderAllowed(req)');
   });
 });

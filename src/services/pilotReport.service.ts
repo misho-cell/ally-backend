@@ -304,3 +304,78 @@ export async function pilotReport(days = DEFAULT_DAYS): Promise<PilotReport> {
     seats,
   };
 }
+
+/**
+ * ROW 16 — „no screen to read pilot users' conversations → the founder can open
+ * and read a real conversation."
+ *
+ * THE READING ROUTES ALREADY EXIST and the gate is OPEN — I probed it without
+ * touching anybody's data by calling `GET /admin/pilot/threads` with no
+ * `user_id`: the gate is checked before the parameter, so a 400 („user_id is
+ * required") proves the reader is on where a 403 would have proved it off.
+ *
+ * WHAT WAS MISSING IS THE FIRST STEP. Both routes need a `user_id`, and
+ * nothing anywhere answers „whose conversation is worth opening". The founder
+ * cannot type an id he has never seen, and the pilot's people are thirteen
+ * accounts hidden inside 62,233.
+ *
+ * So this is that list, behind the SAME gate as the reading itself — a
+ * capability that names the pilot's members is not a lesser one than reading
+ * them, and putting it behind a weaker door would be the whole point of the
+ * door lost.
+ *
+ * NO PHONE NUMBER, NOT EVEN THE LAST DIGITS (D149). The screen needs a name to
+ * show and an id to fetch with; a number would be carried through a browser
+ * for nothing.
+ */
+export interface PilotPerson {
+  readonly user_id: number;
+  readonly name: string | null;
+  readonly registered_at: string;
+  /** Days since registration — the founder's day-20 call reads this. */
+  readonly day: number;
+  readonly paying: boolean;
+  readonly threads: number;
+  readonly goals: number;
+  readonly last_active_at: string | null;
+}
+
+/** The pilot's real people, newest first. Seats and the Ally base are not here. */
+export async function pilotPeople(): Promise<readonly PilotPerson[]> {
+  const result = await query<{
+    user_id: number;
+    name: string | null;
+    registered_at: string;
+    day: string;
+    paying: boolean;
+    threads: string;
+    goals: string;
+    last_active_at: string | null;
+  }>(
+    `SELECT u.id                                                        AS user_id,
+            u.name,
+            u."createdAt"::text                                         AS registered_at,
+            FLOOR(EXTRACT(EPOCH FROM (NOW() - u."createdAt")) / 86400)   AS day,
+            (u.subscription_status = ANY($1))                            AS paying,
+            (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id)            AS threads,
+            (SELECT COUNT(*) FROM tasks k WHERE k.user_id = u.id::text)        AS goals,
+            (SELECT MAX(c.created_at)::text FROM conversations c
+              WHERE c.user_id = u.id AND c.role = 'user')                AS last_active_at
+       FROM "User" u
+      WHERE ${REAL}
+      ORDER BY u."createdAt" DESC
+      LIMIT 200`,
+    [['active', 'past_due']],
+    PILOT_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({
+    user_id: r.user_id,
+    name: r.name,
+    registered_at: r.registered_at,
+    day: Number(r.day),
+    paying: r.paying,
+    threads: Number(r.threads),
+    goals: Number(r.goals),
+    last_active_at: r.last_active_at,
+  }));
+}
