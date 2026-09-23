@@ -901,3 +901,29 @@ devices. Deduping at send time is a behaviour change whose failure direction is
 silently not delivering. Having the client send `device_id` on every
 registration and deduping on that is the durable one and belongs to the app
 team. My recommendation is the third, then the first, after she answers.
+
+**⚠️ 22:35 — CORRECTION TO MY OWN RECOMMENDATION, BEFORE ANYBODY BUILDS IT.
+„DEDUPE ON `device_id`" WOULD NOT HAVE CAUGHT THIS.**
+
+A second real person has it, and her rows are the proof. Salome Parkosadze:
+
+    14 Sep   Apple   iPhone OS 18_7   device_id 35413bde…
+    21 Sep   Apple   iPhone OS 18_7   device_id b1edfbe3…
+
+    both alive, both received the same notification at 09:07:52 today,
+    0 failures on either
+
+**Both rows carry a device_id and the two do not match** — same iPhone model,
+same iOS, seven days apart. So the id does not survive whatever happened
+between the two registrations (a reinstall, cleared storage, a new install),
+and a rule that dedupes on it would have kept both rows exactly as they are.
+
+**What actually identifies the duplicate is the endpoint being REPLACED, and
+only the client knows it** — the browser can read its previous subscription
+before registering a new one. So the fix is: the client unsubscribes the old
+subscription, or sends the endpoint it is replacing so the server can retire
+that row. Heuristics on user_agent would collapse two genuinely different
+iPhones into one and stop notifications reaching a real device.
+
+**And it is not one person's quirk:** of the three people who hold more than
+one subscription, TWO have duplicate Apple endpoints, both receiving.

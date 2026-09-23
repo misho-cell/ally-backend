@@ -85,9 +85,10 @@ case "$SQL" in
       *test_seats*) ;;
       *)
         echo 'ro.sh: NOTE — "User" holds THREE populations and this query names none:' >&2
-        echo '        62,200 legacy ALLY accounts (hasAccessToAlly = false) who have' >&2
-        echo '        never opened Netai and are still signing up; 20 fictional test' >&2
-        echo '        seats (a row in test_seats); and 13 real Netai people.' >&2
+        echo '        62,164 legacy ALLY accounts who have never opened Netai and are' >&2
+        echo '        still signing up; 20 fictional test seats (a row in test_seats);' >&2
+        echo '        and 45 real people who HAVE used Netai — of whom only 10 carry' >&2
+        echo '        hasAccessToAlly, so that column does not identify them.' >&2
         echo '        A count of „users" that does not say which one is probably wrong.' >&2
         ;;
     esac
