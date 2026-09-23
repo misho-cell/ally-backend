@@ -118,7 +118,7 @@ door shuts with it. Fewer people, and the door needs a different key: distil
 LOCALLY for this case, since the person's name is already the whole query,
 rather than asking a second provider for it.
 
-### 6. The outage monitor is blind all night, and it took me until 22:41 to notice
+### 5. The outage monitor is blind all night, and it took me until 22:41 to notice
 
 `outage.sh` has three verdicts in its text and two in its exit codes. The third
 — **NOTHING PROVEN**, meaning no errors AND no Anthropic call in the window —
@@ -151,7 +151,7 @@ I read it every time — but for hours I was quoting a number that came from the
 wrong command. Fixed by capturing to a file and reading the code before the
 text.
 
-### 7. The ask reminder pushes a real person's phone at five in the morning
+### 6. The ask reminder pushes a real person's phone at five in the morning
 
 `sendDueAskReminders` writes the chat line AND fires `sendPushNotification`,
 and it looks at no clock at all. It runs when the cron runs, 48 hours after
@@ -184,7 +184,7 @@ accounts) has a different night from a person in Tbilisi.
 that had no model call behind them, which is the one thing `outage.sh`'s
 NOTHING PROVEN branch asks a reader to do.
 
-### 5. Rows 251 and 252 — both against the consent and privacy walls
+### 7. Rows 251 and 252 — both against the consent and privacy walls
 
 Both specced tonight, neither built, each for a reason written into `TASKS.md`:
 251 widens who the model may write to (an accepted introduction should put that
