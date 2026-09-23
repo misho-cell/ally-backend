@@ -232,3 +232,65 @@ describe('an unapproved plan does not block the person who accepted', () => {
     expect(asks).toContain('unapproved plan bypassed for an accepted introduction (row 251)');
   });
 });
+
+/**
+ * THE LAST MILE — RESOLVING THE TARGET IN THE MEDIATOR'S OWN PHONEBOOK.
+ *
+ * MEASURED AFTER THE FIRST FIX RATHER THAN ASSUMED. Of the accepted, direct
+ * introductions since it shipped: three, of which ONE carried a number and TWO
+ * carried neither a number nor a user id. So resolving from `target_user_id`
+ * helps nobody in the commonest case, because on a mediated request the
+ * requester typed a NAME — not knowing the person is the whole premise.
+ *
+ * The mediator is the one person who certainly knows them, and they have just
+ * said „yes, and hand the contact over".
+ */
+describe('the mediator’s own book is where the number comes from', () => {
+  const intro = readFileSync(join(__dirname, '..', 'introduction.service.ts'), 'utf8');
+
+  /**
+   * EXACTLY ONE MATCH OR NOTHING, and this is the assertion whose absence would
+   * be a disclosure rather than a bug: a wrong match hands a THIRD PERSON'S
+   * number to somebody who asked to meet a different third person.
+   */
+  it('takes a single match and refuses to choose between two', () => {
+    const at = intro.indexOf('let resolvedFromMediator');
+    const block = intro.slice(at, at + 700);
+
+    expect(block).toContain('matches.length === 1 ? matches[0] : null');
+    expect(block).toContain('findContactPhonesByName(String(mediatorUserId), req.target_name, 2)');
+  });
+
+  /** Only on an accept, only on direct, and only when there is no number yet. */
+  it('does not look unless the case calls for it', () => {
+    const at = intro.indexOf('let resolvedFromMediator');
+    const block = intro.slice(at, at + 400);
+
+    expect(block).toContain("action === 'accept'");
+    expect(block).toContain("opts.channel === 'direct'");
+    expect(block).toContain('!req.target_phone');
+  });
+
+  /**
+   * AND THE AMBIGUOUS CASE LEAVES A LINE. „Two Ninos in the book" is the reason
+   * an introduction has no handle, and without the line the next person reads
+   * it as the lookup not running at all.
+   */
+  it('says when it found several and chose none', () => {
+    expect(intro).toContain('contacts match that name — no number recorded');
+  });
+
+  /**
+   * THE STORED SPELLING, NOT THE DIGITS. `findContactPhonesByName` returns
+   * digit strings; the owner is shown this number, so what is saved is the
+   * mediator's own saved form rather than „995599010106".
+   */
+  it('stores the number as it was written, not as digits', () => {
+    const at = intro.indexOf('target_phone = COALESCE(');
+    const block = intro.slice(at, at + 700);
+
+    expect(block).toContain('SELECT ua.phone FROM "UserAlias" ua');
+    // readFileSync gives the SOURCE, where the escape is written twice.
+    expect(block).toContain("regexp_replace(ua.phone, '\\\\D', '', 'g') = $6::text");
+  });
+});

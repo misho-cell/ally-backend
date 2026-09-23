@@ -168,7 +168,18 @@ describe('resolveIntroductionRequest', () => {
     // that passes none leaves whatever is stored alone. Null here because this
     // test predates the channel and answers without one - which is the same
     // shape as every request answered before the question existed.
-    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', null]);
+    //
+    // The SIXTH is row 251's: the target resolved in the MEDIATOR'S own
+    // phonebook, so an accepted introduction carries somebody the model can
+    // actually write to. Null here for two separate reasons, both of which
+    // should keep it null — this call passes no channel (so it is not the
+    // `direct` case the lookup is for), and the lookup is only attempted when
+    // the row has no number already.
+    //
+    // The list is asserted whole, deliberately: this file's own history is a
+    // parameter list that shifted under a change and took an `integer = text`
+    // P0 with it.
+    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', null, null]);
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),

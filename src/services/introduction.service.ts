@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { findContactPhonesByName } from './tools/nameMatch';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
 import { setThreadStatus } from './threadStatus.service';
@@ -1007,6 +1008,40 @@ export async function resolveIntroductionRequest(
    * four digits and never in full. This is a column, it is a join key for the
    * consent gate, and no line of this function prints it.
    */
+  /**
+   * ROW 251, THE LAST MILE — RESOLVING THE TARGET IN THE MEDIATOR'S OWN BOOK.
+   *
+   * MEASURED AFTER THE FIRST FIX RATHER THAN ASSUMED. Of the accepted, direct
+   * introductions since it shipped: 3, of which ONE carried a number and TWO
+   * carried neither a number nor a user id. So resolving from
+   * `target_user_id` — the first fix — helps nobody in the commonest case,
+   * because on a mediated request the requester typed a NAME. My „21 of 37" in
+   * the earlier write-up was a right number to a wrong question.
+   *
+   * The mediator is the one person who certainly knows them: the target is in
+   * THEIR phonebook, which is why they are the bridge, and they have just said
+   * „yes, and hand the contact over".
+   *
+   * EXACTLY ONE MATCH OR NOTHING. A wrong match here hands a THIRD PERSON'S
+   * NUMBER to somebody who asked to meet a different third person, which is not
+   * a bug but a disclosure. `findContactPhonesByName` says in its own comment
+   * that it „makes no ambiguity judgment itself" and leaves 0 / 1 / many to the
+   * caller; this caller's judgement is that only 1 is an answer. Two
+   * „Nino"s in the mediator's book and the row stays as it is, which is exactly
+   * today's behaviour.
+   */
+  let resolvedFromMediator: string | null = null;
+  if (action === 'accept' && opts.channel === 'direct' && !req.target_phone) {
+    const matches = await findContactPhonesByName(String(mediatorUserId), req.target_name, 2);
+    resolvedFromMediator = matches.length === 1 ? matches[0] : null;
+    if (matches.length > 1) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[intro] request ${req.id}: ${matches.length} contacts match that name — no number recorded`,
+      );
+    }
+  }
+
   const updated = await query(
     `UPDATE introduction_requests
      SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL,
@@ -1016,10 +1051,23 @@ export async function resolveIntroductionRequest(
            target_phone,
            (SELECT up.phone FROM "UserPhone" up
              WHERE up."userId" = introduction_requests.target_user_id
+             LIMIT 1),
+           -- The mediator's own saved spelling, so what the owner is shown
+           -- reads like a number rather than a digit string.
+           (SELECT ua.phone FROM "UserAlias" ua
+             WHERE ua."contactId" = $4::int
+               AND regexp_replace(ua.phone, '\\D', '', 'g') = $6::text
              LIMIT 1)
          )
      WHERE id = $3 AND status = 'pending'`,
-    [newStatus, opts.response ?? null, req.id, mediatorUserId, opts.channel ?? null],
+    [
+      newStatus,
+      opts.response ?? null,
+      req.id,
+      mediatorUserId,
+      opts.channel ?? null,
+      resolvedFromMediator,
+    ],
   );
   if ((updated.rowCount ?? 0) === 0) {
     return { ok: false, code: 'conflict', error: ERR_ALREADY_ANSWERED };
