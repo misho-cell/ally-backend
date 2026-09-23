@@ -234,17 +234,32 @@ anywhere, which in this codebase means nobody decided it.
 written down — in the prompt for the neighbouring path, not in the code for
 this one.
 
-**Why it is the founder's and not mine.** It costs a model call per ask, on the
-path that reaches strangers and the one we want to grow. And a translated
-question is a question the asker did not write: „do you know a reliable
-electrician" is safe, and a sentence carrying a name, a price or a condition is
-where a translation starts answering something nobody asked — with the answer
-coming back as though it had answered theirs.
+**ANSWERED AT 01:11 — THE VISION ALREADY DECIDES IT, so this is not a question
+for the morning after all.** The seat quoted it: „the assistant … conveys its
+meaning to the other assistant, which speaks to its own user in a suitable
+tone. Meaning, conditions and agreements must be preserved accurately. Wording
+and tone can be adapted to the recipient." Translate for the reader, meaning
+exact. Filed as **row 254, Pr2, mine to build.**
 
-**What I would propose:** translate AND keep the original visible, which is the
-shape the vision walk already confirmed for the outcome („Test 1's Georgian
-answer → English translation, meaning exact, original kept"). One rule, both
-directions.
+**Why it is still not built tonight.** The night rule lists five things that
+wait for daylight whatever the tester and I agree, and the fifth is „releasing
+a behaviour that writes to real people in an owner's name". This changes the
+words a stranger reads, in the asker's name. It is the one item on that list
+this row lands on — and a founder's decision relayed through the box at one in
+the morning is the least checkable kind of authority there is. Not about
+doubting the seat; about the hour.
+
+**Its price, measured so the row carries it:** 227 asks all time, 143 in the
+last seven days, 64 in the last twenty-four. A model call per ask is real money
+on the path we want to grow, and „it is only a few a day" stops being true this
+week.
+
+**The design risk that goes on the row:** translating the question means TWO
+translations between two humans — ours outbound, and the one already working on
+the answer's way back. Meaning survives one hop and drifts over two, and it
+drifts exactly where the vision says it must not: a condition, a time, a price.
+So „the original kept visible" is part of the feature on BOTH hops, not a
+nicety on one.
 
 **Recorded under it:** blemish 1 (the stop and cancellation lines following the
 chat's language) is confirmed 11 of 11 by the seat, on every recipient thread
