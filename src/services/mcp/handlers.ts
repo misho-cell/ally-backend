@@ -28,6 +28,7 @@ import {
 } from '../contactFacts.service';
 import {
   createTask,
+  findOpenTaskNamedIn,
   getMyTasksPage,
   getTaskById,
   grantTaskPermission,
@@ -972,10 +973,34 @@ function parseTaskRef(ref: string): number | null {
 
 export async function mcpCreateTask(
   userId: string,
-  args: { title: string; description?: string; task_type?: string },
+  args: { title: string; description?: string; task_type?: string; separate?: boolean },
 ): Promise<McpToolPayload> {
   const title = (args.title ?? '').trim();
   if (!title) return { created: false, error: 'Pass a non-empty title.' };
+  /**
+   * Row 242 — the third wire, and the one nobody would have found by looking
+   * at the evidence, because the seat's pair came through the other two.
+   *
+   * The connector opens goals with the same tool and the same consequences,
+   * and a rule that lives in the chat service is a rule this path never sees.
+   * Same check, same escape, asserted by filename in the row's test.
+   */
+  const alreadyOpen =
+    args.separate === true ? null : await findOpenTaskNamedIn(userId, title).catch(() => null);
+  if (alreadyOpen !== null) {
+    return {
+      created: false,
+      already_open: {
+        task_ref: TASK_REF_PREFIX + String(alreadyOpen.id),
+        title: alreadyOpen.title,
+        status: alreadyOpen.status,
+      },
+      next:
+        'They already have this goal open. Tell them where it stands rather than opening a ' +
+        'second one. If they say it is a DIFFERENT need, call create_task again with ' +
+        'separate: true and it will be created.',
+    };
+  }
   const taskType = args.task_type === 'reach' ? 'reach' : 'solve';
   const description = (args.description ?? '').trim() || null;
   const { id } = await createTask(userId, title, description, taskType);

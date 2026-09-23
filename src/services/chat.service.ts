@@ -866,6 +866,17 @@ const CREATE_TASK_TOOL: AnthropicTool = {
           'ASK the user once when forming the task: "ask_first" (confirm with them before ' +
           'writing to anyone) or "autonomous" (act and just keep them posted). Default ask_first.',
       },
+      /**
+       * Row 242: the way through the one refusal this tool makes. The refusal
+       * hands back the goal that already exists; this is how the user's „no,
+       * this is a different thing" becomes a goal instead of a dead end.
+       */
+      separate: {
+        type: 'boolean',
+        description:
+          'Only after this tool has answered already_open and the USER has said it is a ' +
+          'DIFFERENT need from the goal it named. Never set it on a first call.',
+      },
     },
     required: ['title'],
   },
@@ -5898,6 +5909,32 @@ async function executeToolCall(
       // The new goal gets its own thread. Its id comes back in the result so
       // the model can say where it went, rather than leaving the user to find a
       // conversation they did not know was opened.
+      /**
+       * Row 242, the model's own hand. The wire above this one is the app
+       * opening a goal from a stated need; this is the model calling the tool,
+       * and both made the pair the seat reproduced. It refuses ONCE and names
+       * the way through — a refusal that only refuses leaves the model to
+       * invent the next move, and what it invents here is a second goal under
+       * a slightly different title.
+       */
+      const alreadyOpen =
+        input['separate'] === true
+          ? null
+          : await findOpenTaskNamedIn(userId, title).catch(() => null);
+      if (alreadyOpen !== null) {
+        return {
+          created: false,
+          already_open: {
+            task_ref: `task_${alreadyOpen.id}`,
+            title: alreadyOpen.title,
+            status: alreadyOpen.status,
+          },
+          next:
+            'They already have this goal open. Tell them where it stands rather than opening a ' +
+            'second one. If they say it is a DIFFERENT need, call create_task again with ' +
+            'separate: true and it will be created.',
+        };
+      }
       const occupied = threadId !== undefined ? await getOpenTaskByThread(threadId) : null;
       let goalThreadId = threadId;
       let movedTo: number | undefined;
@@ -9195,6 +9232,61 @@ async function ensureGoalForRequest(
   if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
   try {
     if ((await getOpenTaskByThread(threadId)) !== null) return null;
+    /**
+     * ROW 242 — ASKING FOR THE SAME THING TWICE OPENED A SECOND GOAL, AND
+     * NEITHER OF THEM POINTED AT THE OTHER.
+     *
+     * The seat reproduced it in forty-three seconds on Test 2 — the same
+     * sentence typed into two fresh chats:
+     *
+     *   10:18:13  thread 23497  „I need a good carpenter for kitchen shelves."
+     *                           → goal 9439
+     *   10:18:56  thread 23530  the same sentence, word for word
+     *                           → goal 9472
+     *
+     * MEASURED OVER THE WHOLE HISTORY, pairs of goals one owner opened with the
+     * identical title, fictional seats separated from real people by the
+     * `test_seats` list and not by an id range:
+     *
+     *     real accounts    5 pairs BOTH STILL OPEN, on 3 people
+     *     seats           67 pairs both open, on 6 seats
+     *
+     * The oldest real pair is five days apart (1948 / 2279, „ბუღალტერის პოვნა
+     * მცირე ბიზნესისთვის"), so this is not only a double-tap: it is the same
+     * need stated again a week later, in a new conversation, by somebody who
+     * cannot see that the first one is still running.
+     *
+     * THE CHECK THAT ALREADY EXISTED, USED ONE STEP EARLIER. `findOpenTaskNamedIn`
+     * runs a few lines below this call, and its whole job is „this message is a
+     * turn of a goal that exists". It ran AFTER the goal was opened, so by the
+     * time it looked there were two matching goals — an ambiguity, which it
+     * answers with null, and both goals lived on.
+     *
+     * WHY THE STRICT MATCHER AND NOT A CLEVERER ONE. Every meaningful word of
+     * the existing title must appear in the new message. Read against this
+     * owner's real board, that is the whole safety margin:
+     *
+     *     ქუთაისში ფოტოგრაფი მჭირდება   ≠   მჭირდება კარგი ფოტოგრაფი თბილისში
+     *     თბილისში კარგი დიჯეის პოვნა    ≠   კახეთში დიჯეის პოვნა
+     *
+     * Four photographer goals and two DJ goals that a „same subject" judgement
+     * would have merged are four and two different requests, and merging them
+     * would silently drop a request the person made. The word that distinguishes
+     * them is the city, and the strict rule keeps it load-bearing.
+     *
+     * FAILING OPEN, deliberately: any error in the lookup opens the goal, which
+     * is today's behaviour. A goal that quietly does not appear is worse than a
+     * second goal that does, and that sentence is already twenty lines up this
+     * function about a different guard.
+     */
+    const already = await findOpenTaskNamedIn(userId, userMessage).catch(() => null);
+    if (already !== null) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[goal-intent] thread ${threadId}: no second goal — this is goal ${already.id} again`,
+      );
+      return null;
+    }
     const { id } = await createTask(
       userId,
       goalTitleFrom(userMessage),

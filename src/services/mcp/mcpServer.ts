@@ -484,6 +484,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
         title: z.string().describe(PARAM_TEXTS.taskTitle),
         description: z.string().optional().describe(PARAM_TEXTS.taskDescription),
         task_type: z.enum(['solve', 'reach']).optional().describe(PARAM_TEXTS.taskType),
+        separate: z.boolean().optional().describe(PARAM_TEXTS.taskSeparate),
       },
       annotations: WRITE,
     },

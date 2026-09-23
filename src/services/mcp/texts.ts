@@ -379,7 +379,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'closes (e.g. "find a lawyer for my startup", "get introduced to the CEO of X"). ' +
       'task_type is "solve" (find several helpers) or "reach" (a path to one specific target). ' +
       'Use whenever the user states something they want to achieve through their network, not a ' +
-      'one-off lookup. Returns a task_ref. Does NOT start any outreach on its own.',
+      'one-off lookup. Returns a task_ref. Does NOT start any outreach on its own. If they ' +
+      'already have this goal open it is NOT created again: the answer names the one that ' +
+      'exists, and you tell them where it stands.',
   },
   get_my_tasks: {
     title: 'My open goals',
@@ -781,6 +783,14 @@ export const PARAM_TEXTS = {
   taskType:
     '"solve" to find several helpers (fan-out) or "reach" to orchestrate a path to one specific ' +
     'target. Defaults to "solve".',
+  /**
+   * Row 242: the one way past the duplicate refusal, and it needs the user in
+   * it — the refusal hands back the goal that already exists, and only their
+   * „no, this is a different thing" turns this on.
+   */
+  taskSeparate:
+    'Only after create_task has answered already_open and the USER has said it is a DIFFERENT ' +
+    'need from the goal it named. Never set it on a first call.',
   taskStatus: 'One of: open, paused, closed.',
   taskRef: 'The stable id of a goal, taken from get_my_tasks. Never invent it.',
   taskNote: 'On close, a short outcome note (e.g. "solved — Nino took it").',
