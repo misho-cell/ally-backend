@@ -99,8 +99,49 @@ describe('the loader is scoped to one goal and one asker', () => {
     const at = plans.indexOf('export async function acceptedIntroductionPhones');
     const fn = plans.slice(at, at + 2600);
 
-    expect(fn).toContain('WHERE requester_task_id = $1');
-    expect(fn).toContain("AND status = 'accepted'");
+    expect(fn).toContain('WHERE ir.requester_task_id = $1');
+    expect(fn).toContain("AND ir.status = 'accepted'");
+  });
+
+  /**
+   * AND IT READS BOTH COLUMNS THE CONSENT CAN BE RECORDED IN.
+   *
+   * An accepted introduction names its target either by phone or, when the
+   * target is a member, by user id. Reading only `target_phone` threw away six
+   * real acceptances on production at the time of writing — 1520, 1420, 1321,
+   * 1289, 1256, 1090 — each one a Netai member with a `"UserPhone"` row and a
+   * recorded yes. The same shape this project keeps finding: the rule went on
+   * one wire and the other one kept running.
+   *
+   * THE JOIN IS A LEFT JOIN AND THAT IS NOT A DETAIL. An inner join would drop
+   * every acceptance whose target is not a member — the majority — and turn a
+   * widening of reach into a narrowing of it.
+   */
+  it('resolves a member’s number from the id when no phone was stored', () => {
+    const at = plans.indexOf('export async function acceptedIntroductionPhones');
+    const fn = plans.slice(at, at + 2600);
+
+    expect(fn).toContain('LEFT JOIN "UserPhone" up ON up."userId" = ir.target_user_id');
+    expect(fn).toContain('COALESCE(ir.target_phone, up.phone)');
+    expect(fn).not.toMatch(/\n\s*JOIN "UserPhone"/);
+  });
+
+  /**
+   * THE SCOPE DID NOT MOVE WHEN THE REACH DID. Every clause that makes this an
+   * acceptance for THIS goal by THIS asker is still in the same WHERE, and the
+   * join added a column to read, not a row to match on.
+   */
+  it('keeps every scope clause it had before the join', () => {
+    const at = plans.indexOf('export async function acceptedIntroductionPhones');
+    const fn = plans.slice(at, at + 2600);
+
+    for (const clause of [
+      'ir.requester_task_id = $1',
+      'ir.requester_user_id = $2::int',
+      "ir.status = 'accepted'",
+    ]) {
+      expect(fn).toContain(clause);
+    }
   });
 
   /**
@@ -122,7 +163,7 @@ describe('the loader is scoped to one goal and one asker', () => {
     const at = plans.indexOf('export async function acceptedIntroductionPhones');
     const fn = plans.slice(at, at + 2600);
 
-    expect(fn).toContain('AND requester_user_id = $2::int');
+    expect(fn).toContain('AND ir.requester_user_id = $2::int');
     expect(fn).not.toContain('requester_user_id = $2::text');
   });
 

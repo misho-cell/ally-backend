@@ -588,19 +588,42 @@ export function planAllows(
  *
  * Found in the container log by following two unrelated owner-visible errors,
  * about twenty minutes after deploying it.
+ *
+ * AND THE CONSENT IS NOT ALWAYS IN THE COLUMN THIS READS. An accepted
+ * introduction identifies its target in one of two ways: `target_phone`, or
+ * `target_user_id` when the target is a Netai member. The first version read
+ * only the phone, so for a member whose number the database holds in
+ * `"UserPhone"` the gate stayed shut although the yes was recorded and the
+ * person was identified beyond doubt.
+ *
+ * Measured on production, 23 September: of the accepted introductions,
+ * SIX carry a `target_user_id` with a real `"UserPhone"` row and no
+ * `target_phone` — 1520, 1420, 1321, 1289, 1256, 1090. Every one of them is a
+ * consent this function was throwing away.
+ *
+ * The acceptance UPDATE fills `target_phone` from the same place as of
+ * af25080, so new rows arrive complete. This is the READ side of that, and it
+ * is here rather than in a backfill for two reasons: a backfill writes to live
+ * data, and a write-time fix cannot cover a row whose resolution fails on the
+ * day. Resolving at read time covers both, and it widens nothing — same goal,
+ * same asker, same accepted status, the same person's own number.
  */
+const MAX_ACCEPTED_INTRODUCTIONS_PER_GOAL = 20;
+
 export async function acceptedIntroductionPhones(
   taskId: number,
   requesterUserId: string,
 ): Promise<string[]> {
   try {
     const result = await query<{ target_phone: string }>(
-      `SELECT DISTINCT target_phone
-         FROM introduction_requests
-        WHERE requester_task_id = $1
-          AND requester_user_id = $2::int
-          AND status = 'accepted'
-          AND target_phone IS NOT NULL`,
+      `SELECT DISTINCT COALESCE(ir.target_phone, up.phone) AS target_phone
+         FROM introduction_requests ir
+         LEFT JOIN "UserPhone" up ON up."userId" = ir.target_user_id
+        WHERE ir.requester_task_id = $1
+          AND ir.requester_user_id = $2::int
+          AND ir.status = 'accepted'
+          AND COALESCE(ir.target_phone, up.phone) IS NOT NULL
+        LIMIT ${MAX_ACCEPTED_INTRODUCTIONS_PER_GOAL}`,
       [taskId, requesterUserId],
       PLAN_QUERY_TIMEOUT_MS,
     );
