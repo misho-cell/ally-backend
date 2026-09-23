@@ -48,6 +48,12 @@ export interface Task {
   plan_proposed: TaskPlan | null;
   plan_approved_at: string | null;
   plan_version: number;
+  /**
+   * Row 238 (D119): the owner has asked for a change and not yet given a new
+   * yes. NOT a revocation — the plan stays approved and what is in flight
+   * keeps running; only the wakes that would START a new wave stand down.
+   */
+  plan_change_requested_at: string | null;
   created_at: string;
   last_activity_at: string;
 }
@@ -143,7 +149,7 @@ async function retitleThreadIfStale(threadId: number, newTitle: string): Promise
 
 const TASK_COLUMNS = `id, user_id, title, description, task_type, status, permission_granted,
             thread_id, autonomy, brief, next_wake_at, pending_question, pending_question_at,
-            plan, plan_proposed, plan_approved_at, plan_version,
+            plan, plan_proposed, plan_approved_at, plan_version, plan_change_requested_at,
             created_at, last_activity_at`;
 
 /**
@@ -309,6 +315,10 @@ export async function getDueTasks(limit: number): Promise<Array<Task & { user_id
   const result = await query<Task & { user_id: string }>(
     `SELECT user_id, ${TASK_COLUMNS} FROM tasks
      WHERE status = 'open' AND next_wake_at IS NOT NULL AND next_wake_at <= NOW()
+       -- Row 238 (D119): the owner has asked for a change and not yet given a
+       -- new yes. The plan stays approved and what is in flight keeps running;
+       -- this is the AUTOMATIC next wave, and it waits.
+       AND plan_change_requested_at IS NULL
      ORDER BY next_wake_at ASC
      LIMIT $1`,
     [limit],
@@ -370,6 +380,9 @@ export async function getSilentGoals(hours: number, limit: number): Promise<Task
   const result = await query<Task>(
     `SELECT ${TASK_COLUMNS} FROM tasks t
      WHERE t.status = 'open' AND t.plan IS NOT NULL
+       -- Row 238 (D119): widening the circle is a new wave, and the owner has
+       -- asked for the plan to change. It waits for their yes.
+       AND t.plan_change_requested_at IS NULL
        AND EXISTS (SELECT 1 FROM task_asks a
                    WHERE a.task_id = t.id AND a.status = 'sent'
                      AND a.created_at < NOW() - ($1 || ' hours')::interval)
@@ -858,4 +871,45 @@ export async function hiddenGoals(
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+/**
+ * ROW 238 (D119) — the owner has asked for a change, so the automatic next
+ * wave waits for their new yes.
+ *
+ * NOT A REVOCATION, and the founder's own sentence is why: „a change to the
+ * plan needs a new yes, AND THE UNCHANGED PARTS KEEP RUNNING MEANWHILE". A
+ * blanket clear of `plan_approved_at` keeps the first half and breaks the
+ * second. So the plan stays approved, what is in flight stays in flight, and
+ * only the wakes that would START a new wave stand down.
+ *
+ * ONLY WHILE A PLAN IS ACTUALLY IN FORCE. A goal with no approved plan has no
+ * standing permission to pause, and stamping one would give the sweepers a
+ * reason to skip a goal that was never running.
+ *
+ * Returns the goal it stamped, so the caller can say so in the log rather than
+ * guess whether anything happened.
+ */
+export async function notePlanChangeRequested(threadId: number): Promise<number | null> {
+  const result = await query<{ id: number }>(
+    `UPDATE tasks
+        SET plan_change_requested_at = NOW()
+      WHERE thread_id = $1
+        AND status = 'open'
+        AND plan_approved_at IS NOT NULL
+        AND plan_change_requested_at IS NULL
+      RETURNING id`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+/** Their new yes, or a fresh go-ahead: the wave may start again. */
+export async function clearPlanChangeRequest(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET plan_change_requested_at = NULL WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
 }

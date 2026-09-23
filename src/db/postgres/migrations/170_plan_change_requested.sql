@@ -1,0 +1,38 @@
+-- Ticket 20 row 238 — nothing anywhere revoked a standing permission.
+--
+-- `withdrawsTheApproval` has existed for days and is used in three places, all
+-- of them deciding whether a NEW `approve_task_plan` counts. It has never
+-- closed one already standing. `grep "permission_granted = FALSE"` returns
+-- nothing; so does `grep "plan_approved_at = NULL"`.
+--
+-- MEASURED BEFORE BUILDING, over the whole history — every goal with an
+-- approved plan whose owner afterwards asked for a change:
+--
+--     such goals                                          2
+--     of those, an ask that went out AFTER the change      0
+--
+--     5743  a real person   approved 09-18 14:11
+--                           change asked 09-19 15:29, a day later, nothing sent
+--     8251  Netai Test 1    approved 18:19, change asked 18:39
+--
+-- Nobody has walked through this hole. That is not a reason to leave it open —
+-- it is the consent wall, and "five symptom-free days is a good sign and not
+-- proof" is a sentence already on this board about row 101.
+--
+-- THE FOUNDER'S RULING (D119, confirmed 23 September): the plan is NOT
+-- revoked. His own sentence has two halves and a blanket revocation keeps one
+-- and breaks the other —
+--
+--     "a change to the plan needs a new yes, AND THE UNCHANGED PARTS KEEP
+--      RUNNING MEANWHILE"
+--
+-- So: nothing new starts, what is running keeps running. The plan stays
+-- approved, what is already in flight is untouched, and what pauses is the
+-- AUTOMATIC NEXT WAVE — day one, the ticker, the silent-day widening — until a
+-- new plan is approved or the owner says go ahead again.
+--
+-- WHY A TIMESTAMP AND NOT A BOOLEAN. "When" answers a question a flag cannot:
+-- whether the request came before or after the approval that is now in force.
+-- An approval clears it, so a stale one cannot outlive the yes that answered
+-- it.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_change_requested_at TIMESTAMPTZ;

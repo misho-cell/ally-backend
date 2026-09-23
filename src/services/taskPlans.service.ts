@@ -487,6 +487,10 @@ export async function approveTaskPlan(
          plan_approved_by = $3::text,
          plan_approved_via = $4::text,
          permission_granted = TRUE,
+         -- Row 238 (D119): this IS the new yes the paused wave was waiting
+         -- for. Cleared in the same statement that records the approval, so
+         -- there is no instant where a goal is approved and still held.
+         plan_change_requested_at = NULL,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open' AND plan_proposed IS NOT NULL

@@ -68,6 +68,7 @@ import {
   updateTask,
   getTaskById,
   getOpenTaskByThread,
+  notePlanChangeRequested,
   findOpenTaskNamedIn,
   setTaskBrief,
   setTaskWake,
@@ -9201,6 +9202,46 @@ export async function processChat(
   // thing: whether the tools that record the owner's own consent exist for
   // this run (ticket 19 item 0).
   const ownerAbsent = userMessage.startsWith(RUN_EVENT_PREFIX);
+  /**
+   * ROW 238 (D119) — the owner asking for a change stops the NEXT WAVE, and
+   * until today it stopped nothing at all.
+   *
+   * `withdrawsTheApproval` has existed for days and is used in three places,
+   * every one of them deciding whether a NEW `approve_task_plan` counts. It
+   * never closed one already standing. Measured over the whole history: two
+   * goals where the owner asked for a change after an approval, and zero asks
+   * that went out afterwards — so nobody has walked through the hole, which is
+   * not the same as it being shut.
+   *
+   * NOT A REVOCATION. The founder's sentence has two halves — „a change to the
+   * plan needs a new yes, AND THE UNCHANGED PARTS KEEP RUNNING MEANWHILE" —
+   * and a blanket clear of the approval keeps the first and breaks the second.
+   * The plan stays approved, what is in flight stays in flight, and what waits
+   * is day one, the ticker and the silent-day widening.
+   *
+   * HERE, BECAUSE `ownerAbsent` IS HERE. Every path into a run comes through
+   * this function — the route, an engine wake, an answer wake — and this is
+   * the line that already tells a person's words from the engine's own. An
+   * event that happens to contain „instead" is the product talking to itself
+   * and must not pause anybody's goal.
+   *
+   * Best-effort: the run is the person's reply and must not fail because a
+   * column could not be written.
+   */
+  if (!ownerAbsent && withdrawsTheApproval(userMessage)) {
+    void notePlanChangeRequested(threadId)
+      .then((taskId) => {
+        if (taskId === null) return;
+        // eslint-disable-next-line no-console
+        console.log(
+          `[task-engine] task ${taskId}: the owner asked for a change — the next wave waits for their new yes (the plan stays approved)`,
+        );
+      })
+      .catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] could not note the change request:', (err as Error).message);
+      });
+  }
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.

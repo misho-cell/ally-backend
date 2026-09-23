@@ -787,7 +787,25 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
       // here and not only on the woken path is what stops the sweeper picking
       // the same dead goal up five times.
       if (!open) await finishWake(taskId, DAY_ONE_WAKE);
-      return open;
+      if (!open) return false;
+      /**
+       * ROW 238 (D119) — day one IS the new wave, so it is the first thing
+       * that waits when the owner asks for a change.
+       *
+       * The plan stays approved and nothing in flight is touched; this is the
+       * automatic start that does not happen until their new yes. The wake is
+       * NOT finished — it is left open on purpose, so the approval that
+       * follows finds it still there rather than having to arm a second one.
+       */
+      const task = await getTaskById(taskId);
+      if (task?.plan_change_requested_at != null) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[task-engine] task ${taskId}: day one waits — the owner asked for a change and has not said yes to a new plan`,
+        );
+        return false;
+      }
+      return true;
     },
     async () => {
       await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
