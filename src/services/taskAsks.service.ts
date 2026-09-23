@@ -801,11 +801,53 @@ export async function createAsk(
    */
   const previous = live.rows[0];
   const secondsSincePrevious = previous?.seconds_ago;
+  /**
+   * ROW 259 — AND THE OWNER SPEAKING IS WHAT THE GUARD ABOVE COULD NOT SEE.
+   *
+   * The seat, 23 September, goal 9736. Ask 4555 went at 13:53:19. The owner
+   * then typed „Tell Netai Test 7 that Thursday afternoon works for me" at
+   * 13:54:05 and „The electrician visit." at 13:55:00. The send at 13:55:12
+   * was refused as a duplicate — 113 seconds — and THE OWNER'S OWN WORDS NEVER
+   * REACHED THE PERSON. The assistant kept them in the brief and said so,
+   * which is honest and is not the same as delivering them.
+   *
+   * The guard above chose time and silence over wording, and the measurement
+   * behind that choice still stands: all four historical duplicates were the
+   * model rewording its own question, and a text comparison would have caught
+   * none of them. So the answer is not to compare the text.
+   *
+   * IT IS TO ASK WHETHER THE PERSON WHOSE NAME IS ON THE MESSAGE HAS SAID
+   * ANYTHING SINCE. Measured across every pair on record before writing it:
+   *
+   *     goal 4627  ask 2050  20s after 2049   owner spoke between:  0
+   *     goal 4627  ask 2051  21s              owner spoke between:  0
+   *     goal 4627  ask 2052  21s              owner spoke between:  0
+   *     goal 5580  ask 2246  40s after 2245   owner spoke between:  0
+   *     goal 9736  the refused one, 113s      owner spoke between:  2
+   *
+   * Clean on all five. The four the guard exists for are a model firing twice
+   * inside one run with nobody adding anything; the one it should not have
+   * caught is a person typing a new sentence.
+   *
+   * `kind = 'message'` and a non-empty body, because `role = 'user'` also
+   * carries the engine's own `[მოვლენა]` event lines and the empty rows a
+   * button press leaves. An event is the product talking to itself and must
+   * not unlock a send.
+   *
+   * AND THE CAPS STILL GOVERN WHAT THIS OPENS. A person may receive two asks a
+   * day from everyone; the plan still decides who may be written to at all.
+   * This removes one refusal, not a budget.
+   */
+  const ownerAddedSomething =
+    previous !== undefined &&
+    secondsSincePrevious !== undefined &&
+    (await ownerSpokeSince(taskId, secondsSincePrevious));
   if (
     previous?.status === 'sent' &&
     previous.from_user_id === fromUserId &&
     secondsSincePrevious !== undefined &&
-    secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS
+    secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&
+    !ownerAddedSomething
   ) {
     return {
       sent: false,
@@ -854,7 +896,10 @@ export async function createAsk(
    * already been approached. Patience is what is being spent, so patience is
    * what it is charged to.
    */
-  const isFollowUp = live.rows[0]?.status === 'answered';
+  // Row 259: a second message the owner's own new words asked for is a
+  // FOLLOW-UP, not a first ask — the recipient is told „wrote again", which is
+  // exactly what happened, and the badge maths stays honest.
+  const isFollowUp = live.rows[0]?.status === 'answered' || ownerAddedSomething;
   const sameThread = liveThreadId !== null;
 
   // Budgets: server-side, same relay exemption as the permission gate above.
@@ -2223,4 +2268,49 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     }).catch(() => undefined);
   }
   return due.rows.length;
+}
+
+/**
+ * ROW 259 — has the owner typed anything into this goal since that ask went?
+ *
+ * `role = 'user'` is not enough on its own: the engine writes its own wake and
+ * outcome lines under that role with `kind = 'event'`, and a button press
+ * leaves an empty row. Neither is a person adding something, and neither may
+ * unlock a second message in their name.
+ *
+ * FALSE ON ANY FAILURE, which keeps the duplicate guard exactly as it was
+ * yesterday. The direction matters: a failure here costs the owner a retry,
+ * and the other direction costs somebody a second copy of a question they have
+ * not answered yet.
+ */
+async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<boolean> {
+  try {
+    const result = await query<{ spoke: boolean }>(
+      `SELECT EXISTS (
+                SELECT 1
+                  FROM conversations c
+                  JOIN tasks t ON t.thread_id = c.thread_id
+                 WHERE t.id = $1
+                   AND c.role = 'user'
+                   AND c.kind = 'message'
+                   AND TRIM(c.content) <> ''
+                   -- "conversations.created_at" has NO time zone. The server
+                   -- runs on UTC today, so a bare NOW() happens to work — and
+                   -- „happens to work" is how this file already earned one
+                   -- „integer = text" P0. Comparing against an explicitly
+                   -- naive UTC instant needs no setting to stay true.
+                   AND c.created_at > (NOW() AT TIME ZONE 'UTC') - ($2 || ' seconds')::INTERVAL
+              ) AS spoke`,
+      [taskId, secondsAgo],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.spoke === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-asks] could not read the owner's lines for goal ${taskId}:`,
+      (err as Error).message,
+    );
+    return false;
+  }
 }
