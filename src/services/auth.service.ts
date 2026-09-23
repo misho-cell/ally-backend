@@ -362,9 +362,34 @@ export async function registerUser(
 export async function completeLogin(phone: string): Promise<{ token: string; isNewUser: boolean }> {
   // Same format-independent compare as registration — a login with a different
   // phone format must find the EXISTING user, never mint a new one.
-  const result = await query<{ id: number }>(
-    `SELECT "userId" AS id FROM "UserPhone"
-     WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
+  /**
+   * THE SECOND COLUMN IS ROW 229's BLIND SPOT, AND IT COSTS NOTHING TO READ.
+   *
+   * 62,163 legacy Ally accounts hold a phone number. When one of those people
+   * clicks an invite link, `registerUser` REFUSES them — „this number is
+   * already registered" — and they arrive here instead, where a session is
+   * minted and no inviter is recorded, because this route does not accept a
+   * referral code and this function takes one argument.
+   *
+   * It is not theoretical: of the 45 people who have used Netai, 35 never
+   * registered. They came through this door.
+   *
+   * WHETHER LOGIN SHOULD CARRY AN INVITER IS NOT MINE — it needs the founder
+   * (does an existing Ally user earn somebody a referral; does a link clicked
+   * today still count in six weeks). **But the event being INVISIBLE is mine**,
+   * and it is the same fault as everything else found today: a thing happens,
+   * nothing says so, and the absence reads as „it did not happen".
+   *
+   * So the query answers one more question — has this account ever used Netai
+   * — in the same round trip, and a first arrival writes a line. No phone
+   * number in it (D149): the account id is the handle, and it is enough to
+   * read the row back.
+   */
+  const result = await query<{ id: number; has_used_netai: boolean }>(
+    `SELECT up."userId" AS id,
+            EXISTS (SELECT 1 FROM threads t WHERE t.user_id = up."userId") AS has_used_netai
+       FROM "UserPhone" up
+      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
     [phone],
   );
 
@@ -382,6 +407,16 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
   }
 
   const userId = result.rows[0].id;
+  if (!result.rows[0].has_used_netai) {
+    // An account that existed before tonight, opening Netai for the first
+    // time. If somebody invited them, that invitation cannot be credited by
+    // this route — see the comment above — so at minimum it must be readable.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[login] account ${userId} opened Netai for the first time — existing account, ` +
+        'so no inviter can have been recorded on this path (row 229)',
+    );
+  }
   const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
   return { token, isNewUser: false };
 }

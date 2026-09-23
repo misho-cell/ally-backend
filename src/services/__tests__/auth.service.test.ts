@@ -284,6 +284,76 @@ describe('completeLogin', () => {
     expect(result.isNewUser).toBe(true);
     expect(result.token).toBe('');
   });
+
+  /**
+   * ROW 229's BLIND SPOT, MADE READABLE.
+   *
+   * 62,163 legacy Ally accounts hold a phone number. When one of those people
+   * clicks an invite link, `registerUser` refuses them — the number already
+   * exists — and they arrive HERE, where a session is minted and no inviter is
+   * recorded, because this route does not accept a referral code.
+   *
+   * Of the 45 people who have used Netai, 35 never registered. They came
+   * through this door, and not one of them could have carried an inviter.
+   *
+   * Whether login SHOULD carry one is the founder's decision. That the arrival
+   * is invisible is not: a thing happens, nothing says so, and the silence
+   * reads as „it did not happen" — the fault behind half of this week.
+   */
+  it('says so when an existing account opens Netai for the first time', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve({ rows: [{ id: 7, has_used_netai: false }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
+
+    try {
+      await completeLogin('+995555123456');
+
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('opened Netai for the first time'));
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('row 229'));
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  /** And an account that has used it before is an ordinary login, silently. */
+  it('says nothing when the account has used Netai before', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve({ rows: [{ id: 7, has_used_netai: true }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
+
+    try {
+      await completeLogin('+995555123456');
+
+      expect(log).not.toHaveBeenCalledWith(
+        expect.stringContaining('opened Netai for the first time'),
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  /** One round trip: the question rides the lookup that was already happening. */
+  it('does not add a query to the login path', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve({ rows: [{ id: 7, has_used_netai: true }], rowCount: 1 } as never);
+      return Promise.resolve({ rows: [], rowCount: 1 } as never);
+    });
+
+    await completeLogin('+995555123456');
+
+    const lookups = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('FROM "UserPhone"'),
+    );
+    expect(lookups).toHaveLength(1);
+    expect(String(lookups[0][0])).toContain('has_used_netai');
+  });
 });
 
 describe('adminLogin', () => {
