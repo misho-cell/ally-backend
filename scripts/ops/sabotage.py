@@ -139,8 +139,22 @@ def dirty_files() -> list[str]:
     )
     return [
         ln for ln in r.stdout.splitlines()
-        if ln.strip() and 'node_modules' not in ln
+        if ln.strip() and 'node_modules' not in ln and '.sabotage.pid' not in ln
     ]
+
+
+def another_sweep_is_running() -> int | None:
+    """The pid of a live sweep holding this worktree, or None."""
+    lock = ROOT / '.sabotage.pid'
+    try:
+        pid = int(lock.read_text().strip())
+    except (OSError, ValueError):
+        return None
+    try:
+        os.kill(pid, 0)  # signal 0 asks „does this process exist", kills nothing
+    except OSError:
+        return None  # stale lock from a run that died
+    return pid
 
 
 def main() -> None:
@@ -148,6 +162,28 @@ def main() -> None:
         print('REFUSING: run this in a worktree, not in your checkout — see the', file=sys.stderr)
         print('  module docstring. Set SABOTAGE_ROOT.', file=sys.stderr)
         raise SystemExit(2)
+
+    # TWO SWEEPS ON ONE WORKTREE PRODUCE TWO SETS OF LIES, and that is the
+    # second thing 23 September taught.
+    #
+    # A backgrounded run looked dead — the wrapper around it reported „exit
+    # code 0" — and was not. A second sweep was started on the same worktree
+    # and the two mutated the same files in step with each other for half an
+    # hour. Every „held" either of them printed could have been the OTHER one's
+    # mutation being caught, and both runs went in the bin.
+    #
+    # The dirty check above cannot see this: at the instant a sweep starts, the
+    # other one is usually between mutations and the tree is clean. So the lock
+    # is a separate question from the tree's state, and it asks the operating
+    # system rather than the filesystem: signal 0 says whether that pid is
+    # still alive, so a lock left by a killed run does not block anybody.
+    running = another_sweep_is_running()
+    if running is not None:
+        print(f'REFUSING: sweep pid {running} is already working in {ROOT}.', file=sys.stderr)
+        print('  Two sweeps on one worktree mutate the same files and every', file=sys.stderr)
+        print('  verdict either prints is worthless. Wait for it, or give this', file=sys.stderr)
+        print('  run a worktree of its own.', file=sys.stderr)
+        raise SystemExit(4)
 
     # A DIRTY WORKTREE MAKES EVERY RESULT BELOW A LIE, and 23 September is how
     # that was learned.
@@ -173,6 +209,18 @@ def main() -> None:
         print(f'  Read them, then: git -C {ROOT} checkout -- .', file=sys.stderr)
         raise SystemExit(3)
 
+    lock = ROOT / '.sabotage.pid'
+    lock.write_text(str(os.getpid()))
+    try:
+        sweep()
+    finally:
+        # Best effort: a SIGKILL takes this with it, which is why the check
+        # above asks the OS whether the pid is alive rather than trusting the
+        # file's existence.
+        lock.unlink(missing_ok=True)
+
+
+def sweep() -> None:
     cands = candidates()
     print(f'{len(cands)} guards to sabotage, mode={MODE}, root={ROOT}', flush=True)
     survivors = []

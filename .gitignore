@@ -13,3 +13,5 @@ dist/
 # and its contents re-excluded instead.)
 .claude/*
 !.claude/settings.json
+
+.sabotage.pid
