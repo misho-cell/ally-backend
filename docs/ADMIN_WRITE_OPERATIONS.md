@@ -1996,3 +1996,56 @@ change and it is one line to put back.
 Verify by behaviour rather than by reading the variable: a test seat saves a
 work fact on a contact and the row must come out `is_public = false`. Until a
 seat does that, this is „set" and not „proved".
+
+---
+
+## Tokens for seven fictional test seats, so rows 251/252/255 can be staged
+
+**Registered 23 September ~12:2x UTC, then run. Under §19's standing
+authorization from Misho, 21 September: „netAI-ს ტოკენების დამატებაზე თუ არის
+საუბარი დაუმატე".** No new permission asked for, because this is the operation
+that authorization is about and the route reaches nothing else.
+
+### WHY
+
+The tester's 489: „251's recipe cannot be staged on our seats — every pair
+already carries an accepted introduction and the model reuses it." Their ask
+was „(a) a top-up on Tests 7–10 so 7 → 8 → 9 / 10 → 7 → 8 can be a fresh
+triangle".
+
+I read the seat graph and the balances myself rather than taking the list on
+trust, and it is worse than they said — seven of the eleven seats cannot run a
+turn at all:
+
+    Test 1   -24      Test 4    -5      Test 6    -3
+    Test 7   -25      Test 8   -28      Test 10  -23
+    Test 9    23      (one turn)
+
+    Test 2    43   ·  Test 3   744   ·  Test 5  168  ·  Test 11  190
+
+And the 7/8/9/10 cluster is the only one with an unused pair: its phonebooks
+are 7→{8,10}, 8→{7,9}, 9→{8}, 10→{7}, and the single accepted introduction on
+it is 8→10 via 7. So 9 → 8 → 7 is a fresh triangle and nothing else is.
+
+### ROUTE / METHOD / BODY
+
+    ./scripts/ops/tokens.sh <id> 500 "<why>"
+    → POST /admin/test-accounts/:id/tokens   {"tokens":500,"note":"…"}
+
+    171870 171873 171936 171937 171938 171939 171940      500 each, 3,500 total
+
+A seat turn costs about twenty tokens, so 500 is roughly twenty-five turns —
+enough for the four Pr1 re-runs and not a pool nobody has to think about again.
+
+### UNDO
+
+    ./scripts/ops/tokens.sh <id> -500 "undo"
+
+The amount is signed and a reversal is a row beside the grant, never a
+deletion; the balance is the sum of the column.
+
+### WHAT IT CANNOT REACH
+
+A real person's wallet. The eleven ids are hardcoded in `testSeatTokens.ts` and
+the route refuses anything else by name — that is enforced where it cannot be
+edited around, not promised by the script.
