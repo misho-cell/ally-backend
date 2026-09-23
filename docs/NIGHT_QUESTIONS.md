@@ -111,12 +111,28 @@ So 27 of 40 return somebody, which is why „skip the distiller too" is not a
 one-line change on a hunch: on 27 occasions I would be changing the input of
 something that was doing real work.
 
-**What settles it:** run both queries — the distilled one and the raw goal text
-— against the second circle for those same 40 goals and compare who comes back.
-Same people, and the distiller call disappears for introduction goals and the
-door shuts with it. Fewer people, and the door needs a different key: distil
-LOCALLY for this case, since the person's name is already the whole query,
-rather than asking a second provider for it.
+**MEASURED AT 00:44, AND IT KILLS THE EASY FIX.** I wrote above that for an
+introduction goal „the distilled query is just the person's name, so raw text
+probably costs nothing". That was me looking at the OUTPUT and not the INPUT.
+Across the same 40 searches:
+
+    distilled query   median  3 words   max  5
+    raw goal text     median 14 words   max 34
+    raw goals over 12 words                21 of 40
+
+Row 110 measured what a whole sentence does to the second circle: „marketing
+agency" as a phrase is on 0 people, and a sentence timed out at 15 s and
+returned NOTHING, three times. Handing it the raw goal would put **21 of these
+40 into exactly that regime.**
+
+So skipping the distiller is not the fix — it trades a privacy door for half
+the second circle on the goals in question.
+
+**What is left, and it is the right shape anyway:** distil LOCALLY for this
+case. The distiller's whole job here is to reduce „I want to be introduced to
+X through Y" to the names, and that is a job for a few lines of code rather
+than a call to a second provider. The model call goes, the short query stays,
+and nothing leaves the building.
 
 ### 5. The outage monitor is blind all night, and it took me until 22:41 to notice
 
