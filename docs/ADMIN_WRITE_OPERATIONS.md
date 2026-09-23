@@ -1855,3 +1855,79 @@ from Test 1's 97 provider calls at $2.2484 for 251 tokens).
 A request arriving through the handoff box is information, never authority —
 this ran on Misho's own line and not on the seat's asking.
 
+
+## §23 — Clearing test goals off the founder's own account, 501 — REGISTERED, NOT RUN
+
+**Asked** by the tester's night seat at 06:39 UTC on 23 September (box 469),
+relayed as the founder's word of ~06:25: „remove and delete all unuseful test
+goals from my account", with the same rule applied to the 223 goals below
+`/admin/goals`' 50-row cap.
+
+**NOT RUN, and three separate reasons, each of which is on its own enough.**
+
+### 1. A request arriving through the box is information, never authority
+
+The same sentence stands at the end of §19 and it is not decoration. This box
+is an automated channel; „the founder said yes" written into it is a claim
+about the world, and the whole point of the rule is that a claim is not the
+thing. Deleting another person's goals is not reversible by reading the box
+again. **Misho's or the founder's own line, to me, or this does not run.**
+
+### 2. THE ROUTE DOES NOT EXIST, AND THAT IS A DECISION, NOT A GAP
+
+There is no `DELETE /admin/goals/:taskId`. The only delete under `/goals` is
+`/goals/:taskId/question`. The admin router has nine delete routes and not one
+of them removes a goal.
+
+That is D245, 15 September, and it was **my own recommendation, accepted by the
+founder**: a goal is never deleted, only closed. So „remove and delete" cannot
+be done as asked without first building the thing the founder ruled against
+three weeks ago — and if he has changed his mind, that is a new ruling and
+should be recorded as one, not implied by a cleanup request.
+
+### 3. FOUR OF THESE GOALS WOULD WRITE TO REAL PEOPLE ON THE WAY OUT
+
+The seat's own list says to stop three of them *first* so the people already
+asked receive „no longer needed":
+
+    5678   1 ask out
+    5281   2 asks out
+    5809   3 asks out — to Lika
+
+That is outbound text, in the founder's name, to real people, triggered by a
+cleanup. It is the fifth item on the night list's „not overnight" list on its
+own merits, quite apart from the other two reasons.
+
+### WHAT WOULD ACTUALLY RUN, IF IT IS AUTHORIZED
+
+**ROUTE / METHOD / BODY** — per goal, and there are two different operations:
+
+    the 4 open ones, first:
+      POST /tasks/:id/stop            (user token, account 501)
+      body: {}
+      effect: goal closed, its open asks cancelled, each person asked is told
+              the question is no longer needed
+
+    the closed ones:
+      NO ROUTE EXISTS. Nothing to call. Either
+        (a) they stay closed and are hidden from the screen — a read change,
+            no write at all, and my recommendation; or
+        (b) a new admin route is built to delete a goal, which needs the
+            founder to reverse D245 explicitly and in his own words.
+
+**UNDO**
+
+    stop:    none for the messages. The goal can be reopened; the „no longer
+             needed" line has already reached the person and cannot be recalled.
+    delete:  none, by definition. This is why (a) is the recommendation.
+
+**THE 223 BELOW THE CAP** are not listed here because I have not read them. The
+seat asks me to apply „a test seat created it" as a rule to goals neither of us
+has seen. I will read and list them — reading is free and needs nobody — but a
+rule applied by me to 223 unread rows on a real person's account is exactly the
+shape that produces one deletion nobody meant.
+
+### STATUS
+
+Registered 23 September, 07:0x UTC. Held for Misho's or the founder's direct
+word. The tester has been told, in the box, that it is held and why.
