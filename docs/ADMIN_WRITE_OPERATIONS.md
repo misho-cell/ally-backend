@@ -2281,3 +2281,54 @@ history I have read a fraction of. I will post the candidate list to the seat
 with each goal's title and date, they confirm, and only then does anything run.
 Registered now so the mechanism is on the record before it is pointed at
 anything.
+
+---
+
+## The eleven original seats are filed as seats — one list for SQL
+
+**Registered 23 September ~17:2x UTC. Misho's own word: „you can run the query
+yourself — run it."**
+
+### WHY
+
+Since `POST /admin/test-accounts` shipped there have been TWO sources of „is
+this account fictional": a hardcoded Set in `testSeatTokens.ts`, which SQL
+cannot see, and `test_seats`, which holds only the seats the route made. That
+split is mine, and it is why keeping fictional accounts out of a population
+read costs a parameter in every query instead of one clause.
+
+Measured the same afternoon: **41 accounts with an active subscription, 20 of
+them fictional.** Half. Every count and ranking on „active" was half fiction.
+
+### ROUTE / METHOD / BODY
+
+A MIGRATION, not a route and not an ad-hoc statement:
+`171_backfill_original_seats.sql`. It is in git, it is reviewed like any other
+change, it runs on deploy, and `ON CONFLICT DO NOTHING` makes a re-run a no-op.
+
+**There is deliberately no way for me to run arbitrary SQL against production.**
+`ro.sh` is a single SELECT on a read-only connection, enforced by the server.
+Keeping it that way is worth more than the convenience, so a data change goes
+through a migration or a named route — never through a hole opened for the
+occasion.
+
+### UNDO
+
+    DELETE FROM test_seats WHERE created_by = 'source list';
+
+The eleven are marked `created_by = 'source list'`, so the backfilled rows are
+distinguishable from the ones the route made and the undo cannot touch those.
+
+### THE CARE THAT MATTERS
+
+**The ids are written out one by one, not as a range.** „171870 to 171941"
+reads as the eleven and contains **171903 — a real person's account**, a
+Georgian name on a +995 number, inside the range only because of when it was
+created. A backfill on the range would have filed a human being as a fictional
+test seat, and every later read of this table would have believed it. I used
+that range in a measurement earlier the same day and caught it only by going to
+look at the two phonebook rows it produced.
+
+The name and number are read from the live rows rather than typed into the
+migration: a list of numbers copied by hand is a second place for them to be
+wrong.
