@@ -3,7 +3,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
-import { hideGoal, unhideGoal } from '../taskStore.service';
+import { hideGoal, hideGoals, unhideGoal } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -39,8 +39,8 @@ describe('hiding is a list somebody wrote, not a rule about what looks like a te
    * that produces one hidden goal somebody wanted.
    */
   it('infers nothing — the list is the only source', () => {
-    const at = store.indexOf('export async function hideGoal');
-    const fn = store.slice(at, at + 1400);
+    const at = store.indexOf('export async function hideGoals');
+    const fn = store.slice(at, at + 2000);
 
     expect(fn).toContain('INSERT INTO hidden_goals');
     for (const guess of ['LIKE', 'ILIKE', 'title ~', 'createdAt <']) {
@@ -59,7 +59,7 @@ describe('hiding is a list somebody wrote, not a rule about what looks like a te
  */
 describe('an open goal cannot be hidden at all', () => {
   it('refuses one, and says which refusal it is', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ status: 'open' }]) as never);
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7, status: 'open' }]) as never);
 
     expect(await hideGoal(7, 'admin:1', 'row 258')).toBe('refused_open');
     // And nothing was written.
@@ -75,18 +75,47 @@ describe('an open goal cannot be hidden at all', () => {
   });
 
   it('hides a closed one', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ status: 'closed' }]) as never);
-    mockQuery.mockResolvedValueOnce(rows([], 1) as never);
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7, status: 'closed' }]) as never);
+    mockQuery.mockResolvedValueOnce(rows([{ task_id: 7 }]) as never);
 
     expect(await hideGoal(7, 'admin:1', 'row 258')).toBe('hidden');
   });
 
   /** Hiding twice is not an error; it is the same answer arriving again. */
   it('says so when it was already hidden', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ status: 'closed' }]) as never);
-    mockQuery.mockResolvedValueOnce(rows([], 0) as never);
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7, status: 'closed' }]) as never);
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
 
     expect(await hideGoal(7, 'admin:1', 'row 258')).toBe('already_hidden');
+  });
+
+  /**
+   * TWO QUERIES FOR ANY NUMBER OF IDS, AND THIS TEST EXISTS BECAUSE THE FIRST
+   * VERSION DID NOT.
+   *
+   * It looped, two round trips per goal. Pointed at the real list of 221 it
+   * made 442 of them, the gateway cut the connection at 127, and the caller
+   * got no answer at all about what had happened. Recoverable only because the
+   * insert is ON CONFLICT DO NOTHING and the table could be read afterwards.
+   */
+  it('asks the database twice however long the list is', async () => {
+    mockQuery.mockResolvedValueOnce(
+      rows([
+        { id: 1, status: 'closed' },
+        { id: 2, status: 'closed' },
+        { id: 3, status: 'open' },
+        // 4 is missing entirely.
+      ]) as never,
+    );
+    mockQuery.mockResolvedValueOnce(rows([{ task_id: 1 }]) as never);
+
+    const out = await hideGoals([1, 2, 3, 4], 'admin:1', 'row 258');
+
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(out.get(1)).toBe('hidden');
+    expect(out.get(2)).toBe('already_hidden');
+    expect(out.get(3)).toBe('refused_open');
+    expect(out.get(4)).toBe('no_such_goal');
   });
 });
 

@@ -764,31 +764,74 @@ export async function grantTaskPermission(userId: string, taskId: number): Promi
  */
 export type HideOutcome = 'hidden' | 'already_hidden' | 'refused_open' | 'no_such_goal';
 
+/**
+ * ROW 258 (D466) — take CLOSED goals out of their owner's own list.
+ *
+ * The founder chose this over D450's stop-and-remove, which would have sent
+ * „no longer needed" to three real people who had already been asked. Not
+ * deleted, not closed, not stopped: not listed.
+ *
+ * REFUSES AN OPEN GOAL, and that is the seat's own check made impossible to
+ * fail rather than merely tested: their done-when is that the open-goal count
+ * does not move, so an open goal cannot be hidden at all.
+ *
+ * TWO QUERIES FOR ANY NUMBER OF IDS, AND THAT IS NOT PREMATURE TUNING — IT IS
+ * A BUG I SHIPPED AND HIT WITHIN THE HOUR. The first version looped, two
+ * round trips per goal. Pointed at the real list of 221 it made 442 of them,
+ * the gateway cut the connection at 127, and the caller got no answer at all
+ * about what had happened. The work was recoverable only because the insert is
+ * `ON CONFLICT DO NOTHING` and I could read the table afterwards.
+ *
+ * The per-id answers survive the change: a status read tells `no_such_goal`
+ * from `refused_open`, and `RETURNING` tells a row this call inserted from one
+ * that was already there.
+ */
+export async function hideGoals(
+  taskIds: readonly number[],
+  hiddenBy: string,
+  reason: string,
+): Promise<Map<number, HideOutcome>> {
+  const why = reason.trim();
+  if (why === '') throw new Error('a hidden goal needs a reason');
+  const outcome = new Map<number, HideOutcome>();
+  const wanted = [...new Set(taskIds)];
+  if (wanted.length === 0) return outcome;
+
+  const known = await query<{ id: number; status: string }>(
+    `SELECT id, status FROM tasks WHERE id = ANY($1::int[])`,
+    [wanted],
+    QUERY_TIMEOUT_MS,
+  );
+  const status = new Map(known.rows.map((r) => [r.id, r.status]));
+  const closed: number[] = [];
+  for (const id of wanted) {
+    const state = status.get(id);
+    if (state === undefined) outcome.set(id, 'no_such_goal');
+    else if (state !== 'closed') outcome.set(id, 'refused_open');
+    else closed.push(id);
+  }
+  if (closed.length === 0) return outcome;
+
+  const inserted = await query<{ task_id: number }>(
+    `INSERT INTO hidden_goals (task_id, hidden_by, reason)
+     SELECT id, $2, $3 FROM unnest($1::int[]) AS id
+     ON CONFLICT (task_id) DO NOTHING
+     RETURNING task_id`,
+    [closed, hiddenBy, why],
+    QUERY_TIMEOUT_MS,
+  );
+  const fresh = new Set(inserted.rows.map((r) => r.task_id));
+  for (const id of closed) outcome.set(id, fresh.has(id) ? 'hidden' : 'already_hidden');
+  return outcome;
+}
+
+/** One goal, for a caller with one. */
 export async function hideGoal(
   taskId: number,
   hiddenBy: string,
   reason: string,
 ): Promise<HideOutcome> {
-  const why = reason.trim();
-  if (why === '') throw new Error('a hidden goal needs a reason');
-
-  const goal = await query<{ status: string }>(
-    `SELECT status FROM tasks WHERE id = $1 LIMIT 1`,
-    [taskId],
-    QUERY_TIMEOUT_MS,
-  );
-  const status = goal.rows[0]?.status;
-  if (status === undefined) return 'no_such_goal';
-  if (status !== 'closed') return 'refused_open';
-
-  const done = await query(
-    `INSERT INTO hidden_goals (task_id, hidden_by, reason)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (task_id) DO NOTHING`,
-    [taskId, hiddenBy, why],
-    QUERY_TIMEOUT_MS,
-  );
-  return (done.rowCount ?? 0) > 0 ? 'hidden' : 'already_hidden';
+  return (await hideGoals([taskId], hiddenBy, reason)).get(taskId) ?? 'no_such_goal';
 }
 
 /** The undo, and it is a plain delete: the goal returns to the list unchanged. */

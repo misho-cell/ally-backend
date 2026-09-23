@@ -1,4 +1,4 @@
-import { hideGoal, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
+import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   createTestSeat,
   createdTestSeats,
@@ -1750,14 +1750,19 @@ adminRouter.post(
     const admin = (req as AuthenticatedRequest).user.userId;
     const { task_ids: taskIds, reason } = req.body as { task_ids: unknown[]; reason: string };
     try {
+      // Row 258: ONE call for the whole list. The first version looped, two
+      // round trips per goal; pointed at the real 221 it made 442 of them and
+      // the gateway cut the connection at 127, leaving the caller with no
+      // answer about what had happened.
       const outcomes: Record<string, string> = {};
+      const ids: number[] = [];
       for (const raw of taskIds) {
         const id = Number(raw);
-        if (!Number.isInteger(id) || id <= 0) {
-          outcomes[String(raw)] = 'not_an_id';
-          continue;
-        }
-        outcomes[String(id)] = await hideGoal(id, `admin:${admin}`, reason);
+        if (Number.isInteger(id) && id > 0) ids.push(id);
+        else outcomes[String(raw)] = 'not_an_id';
+      }
+      for (const [id, outcome] of await hideGoals(ids, `admin:${admin}`, reason)) {
+        outcomes[String(id)] = outcome;
       }
       // eslint-disable-next-line no-console
       console.log(`[hidden-goals] admin ${admin} hid ${taskIds.length} goal(s) — ${reason}`);
