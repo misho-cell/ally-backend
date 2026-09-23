@@ -365,7 +365,9 @@ const CURATOR_WORK_FIELDS: readonly string[] = (
 /**
  * A curator's own work fact — and only one they actually WROTE.
  *
- * The founder's ruling (D81) is that "a core fact THEY RECORD is public the
+ * The founder's ruling (D80, 1 September — NOT D81, which is the third state
+ * going live; the tester's register corrected this on 23 September) is that
+ * "a core fact THEY RECORD is public the
  * moment they write it". A sweep extraction is not the curator recording
  * anything: it is a background job reading their conversation and guessing on
  * their behalf. On 4 September that distinction was missing and the sweep

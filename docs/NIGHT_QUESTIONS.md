@@ -44,7 +44,7 @@ other three are mine, written here so nothing is invisible.
 | 6 | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone |
 | 7 | rows 251 and 252 | mine, specced, daylight |
 | 8 | a question reaches its reader untranslated | mine — the seat found the vision already decides it (row 254) |
-| 9 | row 255: two of the founder's rulings disagree about publishing a fact | **his** — one question, and it decides which code gets written |
+| 9 | row 255: D80 and D440 disagree about publishing a one-source fact | **his** — one question, and it decides which code gets written |
 
 So: **1, 2, 3, 5, 6 and 9 wait for you. 7 and 8 wait only for daylight; 4 is done.**
 
@@ -615,7 +615,7 @@ construction a query that matches nobody, which is the one case that cannot
 reproduce this. Those goals remain exactly right for row 203 and for anything
 that must not reach a real person; they are the wrong instrument here.
 
-### 9. Row 255 — D81 and D440 disagree, and one of them has to go
+### 9. Row 255 — D80 and D440 disagree, and one of them has to go
 
 The night seat found a one-source note reaching another member as a flat
 statement: Test 6's `occupation = 'tax accountant'`, written by Test 1 alone,
@@ -641,13 +641,13 @@ reading as a second person. It is simply jumped over first, by design:
 
 **Why we cannot decide it:** two of the founder's own rulings disagree.
 
-    D81,  1 September  — a trusted curator's core fact is public the moment
+    D80,  1 September  — a trusted curator's core fact is public the moment
                          they write it, no second source.
     D440, 22 September — not public until 2 men confirm it; before that the
                          assistant just gives the name.
 
-D440 is three weeks newer and he may not have had D81 in mind. Three answers
-are each coherent and each builds differently: D81 stands and 255 shrinks to
+D440 is three weeks newer and he may not have had D80 in mind. Three answers
+are each coherent and each builds differently: D80 stands and 255 shrinks to
 six rows; D440 supersedes and the curator path goes; or both stand and the
 RESULT must carry the source count so the assistant gives the name without
 stating the fact. Only the third needs the count plumbed through, and the

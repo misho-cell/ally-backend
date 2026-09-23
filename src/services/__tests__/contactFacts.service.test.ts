@@ -247,7 +247,7 @@ describe('submitContactFact — free-text notes (agent-moderated publicity)', ()
   it("does NOT publish a SWEEP's guess, even on the curator's own account", async () => {
     // Live on 4 September: „occupation: ქოუჩი" about a real person went
     // network-public from one unverified source, because the sweep wrote it
-    // under the founder's id. D81 publishes what a curator RECORDS; a
+    // under the founder's id. D80 publishes what a curator RECORDS; a
     // background job guessing from their conversation is not that.
     process.env.TRUSTED_FACT_CURATOR_USER_IDS = '501';
     mockQuery.mockResolvedValue(rows([]) as never);
