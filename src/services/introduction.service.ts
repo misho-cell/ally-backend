@@ -27,6 +27,7 @@ import {
   introRequesterExtra,
   introSnoozedLine,
 } from './introOpening';
+import { relayedForReader } from './askTranslation.service';
 import { RunLanguage } from './runLanguage';
 
 export interface PendingRequest {
@@ -585,12 +586,20 @@ async function outcomeMessage(
   const language = await userLanguage(String(req.requester_user_id)).catch(
     () => 'ka' as RunLanguage,
   );
+  /**
+   * Row 254, second cut: the line around it is the requester's language and
+   * the answer quoted inside it is the person who answered, in theirs. The
+   * original is kept and labelled — a yes with a condition in it is exactly
+   * the sentence somebody must be able to check word for word.
+   */
+  const said = response?.trim() ? scrubText(response.trim()) : null;
+  const relayed = said === null ? null : await relayedForReader(said, language, 'answer');
   return introOutcomeLine(
     language,
     req.target_name,
     action === 'accept',
     req.mediator_user_id === null,
-    response?.trim() ? scrubText(response.trim()) : null,
+    relayed?.text ?? said,
   );
 }
 
@@ -669,6 +678,10 @@ async function deliverAcceptOutcome(
         'regular',
         introAcceptedTitle(language, requester),
       );
+      // Row 254, second cut: „their reason: „…"" — the frame is this reader's
+      // and the reason is the requester's own sentence. Same shape as the ask.
+      const why = req.message?.trim() ? scrubText(req.message.trim()) : null;
+      const relayed = why === null ? null : await relayedForReader(why, language, 'request');
       await saveThreadMessage(
         thread.id,
         targetUserId,
@@ -677,7 +690,7 @@ async function deliverAcceptOutcome(
           language,
           mediatorName,
           requester,
-          req.message?.trim() ? scrubText(req.message.trim()) : null,
+          relayed?.text ?? why,
           channel === 'direct' && targetPhone !== null,
         ),
       );

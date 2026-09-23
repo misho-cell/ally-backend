@@ -1,12 +1,7 @@
 const create = jest.fn();
-jest.mock('../../config/openai', () => ({
+jest.mock('../../config/anthropic', () => ({
   __esModule: true,
-  openaiClient: () => ({ chat: { completions: { create } } }),
-}));
-jest.mock('../finalAnswer.service', () => ({
-  __esModule: true,
-  finalAnswerModel: () => 'a-model',
-  toLedgerUsage: () => ({}),
+  default: { messages: { create } },
 }));
 jest.mock('../costLedger.service', () => ({ __esModule: true, recordClaudeUsage: async () => {} }));
 
@@ -20,25 +15,81 @@ import { questionForReader } from '../askTranslation.service';
  *
  * The night seat found it in their own stops: „Netai Test 3-ის ასისტენტი
  * გეკითხება: "Do you know a reliable electrician…"" — a Georgian frame around
- * an English question, because the asker wrote in English. There was no
- * translation step anywhere in the ask path and NO COMMENT SAYING THERE SHOULD
- * NOT BE, which in this codebase means nobody decided it rather than somebody
- * deciding against it. One path over, `goalQuestions.service` already tells the
- * model to „translate if the conversation is in another language".
+ * an English question, because the asker wrote in English. One path over,
+ * `goalQuestions.service` already tells the model to „translate if the
+ * conversation is in another language".
  *
  * The founder's vision settles it without a new ruling: „the assistant conveys
  * its meaning to the other assistant, which speaks to its own user in a
  * suitable tone. Meaning, conditions and agreements must be preserved
  * accurately."
  *
- * THE CONTROL IS FIRST AND IT IS PART OF THE DONE-WHEN, agreed with the seat at
- * 01:43 rather than checked afterwards. Most asks here are Georgian to
- * Georgian. A version that pays for a model call on those fails on price
- * however good its translations are.
+ * ────────────────────────────────────────────────────────────────────────
+ * WHY THIS FILE BEGINS WITH A CONFIGURATION AND NOT A TRANSLATION.
+ *
+ * The first cut of this row shipped at 09:48 with eleven passing assertions
+ * below, and TRANSLATED NOTHING ALL DAY. It asked for `finalAnswerModel()` —
+ * `CHAT_FINAL_ANSWER_MODEL`, an optional flag that is unset in production — so
+ * every ask took the „no model" line and returned the asker's own words. The
+ * ledger for the day: 157 openai calls on the variable that IS set, zero
+ * `ask_translation` rows, ever.
+ *
+ * Every assertion below mocked the model PRESENT. Not one of them ran the
+ * configuration the server is in, so all eleven passed on a version that could
+ * not work. That is the fault this file now opens with, and the reason the
+ * service runs on Anthropic — the provider that throws at boot when it is
+ * missing, so „not configured" is not a state this path can be in.
+ * ────────────────────────────────────────────────────────────────────────
  */
 beforeEach(() => {
   jest.clearAllMocks();
-  create.mockResolvedValue({ choices: [{ message: { content: 'თარგმანი' } }], usage: {} });
+  create.mockResolvedValue({ content: [{ type: 'text', text: 'თარგმანი' }], usage: {} });
+});
+
+describe('the configuration production is actually in', () => {
+  const OPTIONAL_MODEL_FLAGS = [
+    'CHAT_FINAL_ANSWER_MODEL',
+    'SEARCH_QUERY_MODEL',
+    'ASK_TRANSLATION_MODEL',
+  ];
+
+  /**
+   * THE TEST THE FIRST CUT WOULD HAVE FAILED. With no optional model variable
+   * set anywhere — which is this server today — a question that crosses a
+   * language line must still reach its reader translated.
+   */
+  it('translates with every optional model flag unset', async () => {
+    const saved = OPTIONAL_MODEL_FLAGS.map((name) => [name, process.env[name]] as const);
+    for (const [name] of saved) delete process.env[name];
+    try {
+      jest.resetModules();
+      const { questionForReader: fresh } = await import('../askTranslation.service');
+
+      const out = await fresh('Do you know a reliable electrician?', 'ka');
+
+      expect(create).toHaveBeenCalled();
+      expect(out.text.startsWith('თარგმანი')).toBe(true);
+      expect(out.skipped).toBeUndefined();
+    } finally {
+      for (const [name, value] of saved) if (value !== undefined) process.env[name] = value;
+      jest.resetModules();
+    }
+  });
+
+  /**
+   * AND IT MUST NOT GO BACK. The behaviour above is one import away from being
+   * hung off an off-by-default flag again, and the next person to reach for
+   * „the model we use for the final answer" will not know this day happened.
+   */
+  it('does not depend on the optional second provider', () => {
+    const source = readFileSync(join(__dirname, '..', 'askTranslation.service.ts'), 'utf8');
+    // The IMPORTS and not the prose: the comment above them names both of these
+    // on purpose, because what went wrong is the thing worth writing down.
+    const imports = source.split('\n').filter((line) => line.startsWith('import '));
+
+    expect(imports.join('\n')).not.toMatch(/finalAnswer\.service|config\/openai/);
+    expect(imports.join('\n')).toContain("from '../config/anthropic'");
+  });
 });
 
 describe('the same-language case spends nothing — the control', () => {
@@ -72,7 +123,7 @@ describe('a question in another language is translated for its reader', () => {
     ['en', 'оригинал', 'original'],
     ['ru', 'original', 'оригинал'],
   ])('labels it in %s', async (language, absent, present) => {
-    create.mockResolvedValue({ choices: [{ message: { content: 'translated' } }], usage: {} });
+    create.mockResolvedValue({ content: [{ type: 'text', text: 'translated' }], usage: {} });
 
     const out = await questionForReader('იცნობ კარგ ელექტრიკოსს?', language as 'en' | 'ru');
 
@@ -84,7 +135,7 @@ describe('a question in another language is translated for its reader', () => {
   it('asks for the meaning to be kept and the tone to be human', async () => {
     await questionForReader('Do you know an electrician?', 'ka');
 
-    const brief = String(create.mock.calls[0][0].messages[0].content);
+    const brief = String(create.mock.calls[0][0].system);
     expect(brief).toContain('Georgian');
     expect(brief).toContain('EXACTLY');
     expect(brief).toMatch(/Names, numbers, dates and places stay as they are/);
@@ -93,9 +144,10 @@ describe('a question in another language is translated for its reader', () => {
 
 describe('and it never loses the question', () => {
   /**
-   * EVERY FAILURE RETURNS THE ASKER'S OWN WORDS, which is exactly today's
-   * behaviour — so the worst this change can do is what already happens. That
-   * is the whole reason it was safe to put in front of a real message.
+   * EVERY FAILURE RETURNS THE ASKER'S OWN WORDS, which is exactly the behaviour
+   * before this file existed — so the worst this change can do is what already
+   * happens. That is the whole reason it was safe to put in front of a real
+   * message.
    */
   it('sends the original when the model throws', async () => {
     create.mockRejectedValue(new Error('down'));
@@ -108,7 +160,7 @@ describe('and it never loses the question', () => {
   });
 
   it('sends the original when the answer is empty', async () => {
-    create.mockResolvedValue({ choices: [{ message: { content: '   ' } }], usage: {} });
+    create.mockResolvedValue({ content: [{ type: 'text', text: '   ' }], usage: {} });
 
     const out = await questionForReader('Do you know an electrician?', 'ka');
 
@@ -123,7 +175,7 @@ describe('and it never loses the question', () => {
    */
   it('does not dress the original up as a translation of itself', async () => {
     create.mockResolvedValue({
-      choices: [{ message: { content: 'Do you know an electrician?' } }],
+      content: [{ type: 'text', text: 'Do you know an electrician?' }],
       usage: {},
     });
 
@@ -145,9 +197,42 @@ describe('and it never loses the question', () => {
 });
 
 /**
+ * A CROSSED LANGUAGE LINE THAT WENT OUT UNTRANSLATED IS A LOGGED LINE.
+ *
+ * The first cut logged only its SUCCESSES, so a path that never succeeded once
+ * wrote nothing at all, and eight hours of it looked exactly like the code not
+ * being deployed. The event somebody would go looking for is the failure.
+ */
+describe('the failure is visible', () => {
+  it('warns when the reader is handed a language they did not write in', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    create.mockRejectedValue(new Error('timeout'));
+    try {
+      await questionForReader('Do you know an electrician?', 'ka');
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('UNTRANSLATED'));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('en→ka'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('says nothing on the same-language case, which is most of them', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await questionForReader('იცნობ კარგ ელექტრიკოსს?', 'ka');
+
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+/**
  * THE WIRE. Every assertion above holds the function; this project keeps
  * finding that the piece is tested from every angle and the line that calls it
- * is not — twice today in my own work.
+ * is not.
  */
 describe('the ask path actually uses it, where the frame is chosen', () => {
   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
@@ -172,5 +257,64 @@ describe('the ask path actually uses it, where the frame is chosen', () => {
   it('stores the asker’s own words, not the translation', () => {
     const at = asks.indexOf('INSERT INTO task_asks');
     expect(asks.slice(at, at + 700)).toContain('safeQuestion');
+  });
+});
+
+/**
+ * AND EVERY OTHER WIRE THAT QUOTES A PERSON, NAMED BY FILENAME.
+ *
+ * The first cut fixed the ask and stopped there, because the ask is where the
+ * row was found. Reading the three places that put „…" around somebody's own
+ * sentence turned up the introduction path doing the identical thing:
+ *
+ *   incomingRequestOpening  „Their message: „…""    threads.service
+ *   introAcceptedOpening    „their reason: „…""     introduction.service
+ *   introOutcomeLine        „Their answer: „…""     introduction.service
+ *
+ * Each frame is built in the reader's language, and each quotes a sentence
+ * written by somebody who need not share it. A shared helper does not fix the
+ * one-wire fault by existing — it fixes it on the wires that call it, so each
+ * one is asserted here by the file it lives in.
+ */
+describe('every wire that quotes a person translates for the reader', () => {
+  const read = (file: string): string => readFileSync(join(__dirname, '..', file), 'utf8');
+
+  it('the introduction request: the mediator reads the requester’s message', () => {
+    const source = read('threads.service.ts');
+    const at = source.indexOf('incomingRequestOpening(language');
+
+    expect(source).toContain("await relayedForReader(message, language, 'request')");
+    expect(source.slice(at, at + 200)).toContain('relayed?.text ?? message');
+  });
+
+  it('the accepted introduction: the target reads the requester’s reason', () => {
+    const source = read('introduction.service.ts');
+    const at = source.indexOf('introAcceptedOpening(');
+
+    expect(source).toContain("await relayedForReader(why, language, 'request')");
+    expect(source.slice(at, at + 220)).toContain('relayed?.text ?? why');
+  });
+
+  it('the outcome: the requester reads the answer they were given', () => {
+    const source = read('introduction.service.ts');
+    const at = source.indexOf('return introOutcomeLine(');
+
+    expect(source).toContain("await relayedForReader(said, language, 'answer')");
+    expect(source.slice(at, at + 220)).toContain('relayed?.text ?? said');
+  });
+
+  /**
+   * AND NOTHING IS PAID FOR A PERSON WHO WROTE NOTHING. All three of these are
+   * optional — most introduction requests carry no message at all — so the
+   * null case must not reach a model call.
+   */
+  it('asks no model when there is no sentence to translate', () => {
+    for (const [file, guard] of [
+      ['threads.service.ts', 'message === null ? null :'],
+      ['introduction.service.ts', 'why === null ? null :'],
+      ['introduction.service.ts', 'said === null ? null :'],
+    ] as const) {
+      expect(read(file)).toContain(guard);
+    }
   });
 });

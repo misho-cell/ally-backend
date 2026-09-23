@@ -19,6 +19,7 @@ import {
   stripEmDashesForDisplay,
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
+import { relayedForReader } from './askTranslation.service';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
@@ -1013,11 +1014,22 @@ export async function createIncomingRequestThread(
     },
   );
 
+  /**
+   * Row 254, second cut: the frame is the mediator's language and the sentence
+   * quoted inside it is the requester's own. Same shape as the ask, one path
+   * over — „Hello! X would like to meet you. Their message: „…"" with the
+   * „…" in a language this reader may never have written a word of.
+   *
+   * `relayedForReader` returns the original on every failure, so the worst case
+   * here is exactly the behaviour before this line.
+   */
+  const relayed = message === null ? null : await relayedForReader(message, language, 'request');
+
   await saveThreadMessage(
     thread.id,
     mediatorUserId,
     'assistant',
-    incomingRequestOpening(language, requesterName, targetName, message, direct),
+    incomingRequestOpening(language, requesterName, targetName, relayed?.text ?? message, direct),
   );
 
   return thread;
