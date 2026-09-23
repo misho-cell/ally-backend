@@ -270,6 +270,22 @@ last seven days, 64 in the last twenty-four. A model call per ask is real money
 on the path we want to grow, and „it is only a few a day" stops being true this
 week.
 
+**Scope agreed with the seat at 01:43, all four points:** composed where the
+frame is chosen; only when the two languages differ; the original always under
+it, labelled, on BOTH hops; and on a failed translation the ORIGINAL goes out
+rather than nothing — „an untranslated question beats a lost one".
+
+**Their test, which makes the cost part of the done-when:** Test 3 asks in
+English → Test 2 sees Georgian plus the original; Test 2 answers in Georgian →
+Test 3 sees English plus the original; and a SAME-LANGUAGE control, Test 4 →
+Test 3, makes **no translation call at all**. That last one is the one to write
+the code around — the row is not done if it costs a model call on the majority
+case where both sides already share a language.
+
+**The source, checkable without either of us:**
+`Netai_Vision_and_Action_Plan_EN_2026-09-08.docx`, section „Each person speaks
+to their own assistant".
+
 **The design risk that goes on the row:** translating the question means TWO
 translations between two humans — ours outbound, and the one already working on
 the answer's way back. Meaning survives one hop and drifts over two, and it
