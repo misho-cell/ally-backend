@@ -131,18 +131,33 @@ export async function createTestSeat(
   const phone = await firstFreeFictionalPhone();
 
   /**
-   * The same shape as the eleven that exist, read off Netai Test 11 rather
-   * than assembled from what the columns suggest: a seat that differs from the
-   * others is a seat whose test results mean something different.
+   * The same shape as the eleven that exist — and I wrote that sentence the
+   * first time round while doing the opposite.
    *
-   * `subscription_status = 'active'` is what makes the account a NETAI USER
-   * for `isNetaiUser`, and a seat that is not one cannot be asked anything —
-   * which is the first thing anybody would test and the first thing that would
-   * fail.
+   * The first version set `subscription_tier`, `subscription_status` and
+   * `hasAccessToAlly`, because those are the columns the words „is this
+   * account active" bring to mind. All three seats came out with
+   * `current_period_ends_at` NULL, and the seat found it within twenty
+   * minutes: every one of them got 403 `subscription_required` on
+   * `POST /threads`. They could be read, they had tokens, they were Netai
+   * users — and they could not open a chat, so row 251 could not start.
+   *
+   * `hasActiveSubscription` is the gate and it reads the PERIOD END, not the
+   * status: „active" means `current_period_ends_at !== null && > now`. Netai
+   * Test 8 carries its creation date plus one year, and so does every other
+   * seat. I checked the columns I was thinking about and not the one beside
+   * them — the third time in a week, after the `::text` cast and the sweep
+   * exclusion.
+   *
+   * A YEAR, matching the eleven exactly, so a seat and a seat behave the same.
+   * The test beside this does not match this string: it feeds the row this
+   * INSERT produces to `hasActiveSubscription` itself, because what matters is
+   * not which columns are named here but whether the product's own gate opens.
    */
   const created = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status, "hasAccessToAlly")
-     VALUES ($1, '', 'ACTIVE', 'pro', 'active', true)
+    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
+                         "hasAccessToAlly", current_period_ends_at)
+     VALUES ($1, '', 'ACTIVE', 'pro', 'active', true, NOW() + INTERVAL '1 year')
      RETURNING id`,
     [seatName],
     SEAT_QUERY_TIMEOUT_MS,

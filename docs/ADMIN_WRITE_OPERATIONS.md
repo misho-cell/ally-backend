@@ -2122,3 +2122,50 @@ payload, which stays on the Set because a comment in `mcp/handlers.ts` rests on
 that check having no failure mode — giving it a query would turn „I could not
 look" into „there is nobody there". A new seat gets the marker when its id is
 added to the Set in source, which is one line in the next commit.
+
+---
+
+## The three new seats could not open a chat — a subscription grant on each
+
+**Registered and RUN, 23 September ~13:4x UTC. Under the same authorization as
+their creation** (the founder's D464 and Misho's own word, the entry above).
+This finishes a creation that was already authorized and does not widen it.
+
+### WHAT WENT WRONG — mine
+
+The create route set `subscription_tier`, `subscription_status` and
+`hasAccessToAlly`, because those are the columns the words „is this account
+active" bring to mind. It did not set `current_period_ends_at`.
+
+`hasActiveSubscription` reads the **period end**, not the status: „active"
+means `current_period_ends_at !== null && > now`. So all three seats came out
+readable, funded and Netai users, and every one got **403
+`subscription_required` on `POST /threads`**. The seat found it twenty minutes
+later with the status codes printed. Row 251 could not start.
+
+I checked the columns I was thinking about and not the one beside them — the
+third time this week, after the `::text` cast on an integer and the sweep
+exclusion on row 252.
+
+### ROUTE / METHOD / BODY
+
+    POST /admin/users/:id/subscription   {"action":"grant","tier":"pro","days":365}
+
+    172068 · 172069 · 172070
+
+An existing, already-registered capability rather than a new write. 365 days
+matches the eleven exactly — Netai Test 8 carries its creation date plus one
+year — so a seat and a seat behave the same.
+
+### UNDO
+
+    POST /admin/users/:id/subscription   {"action":"deactivate"}
+
+### THE CODE FIX THAT MAKES THIS THE LAST TIME
+
+The route now sets `current_period_ends_at` on creation, and the test beside it
+does **not** match a string in the INSERT — a string test would have passed on
+the broken version too, because the broken version named every column it
+thought of. It builds the row the statement produces and asks
+`hasActiveSubscription` itself, and asserts that the shape without the period
+end is refused.

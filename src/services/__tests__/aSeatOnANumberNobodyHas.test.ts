@@ -7,6 +7,7 @@ jest.mock('../tokenWallet.service', () => ({
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
+import { hasActiveSubscription } from '../../api/middleware/subscription.middleware';
 import {
   firstFreeFictionalPhone,
   createTestSeat,
@@ -105,6 +106,55 @@ describe('creating one', () => {
     expect(insert?.[0]).toContain("'active'");
     expect(insert?.[0]).toContain("'pro'");
     expect(insert?.[0]).toContain('"hasAccessToAlly"');
+  });
+
+  /**
+   * AND THE SEAT CAN ACTUALLY OPEN A CHAT, WHICH THE THREE FIRST ONES COULD
+   * NOT — asked of the product's own gate rather than of the column names.
+   *
+   * The first version set tier, status and `hasAccessToAlly`, because those
+   * are the columns the words „is this account active" bring to mind. All
+   * three seats came out with `current_period_ends_at` NULL and every one got
+   * 403 `subscription_required` on POST /threads, twenty minutes later. They
+   * could be read, they had tokens, they were Netai users, and they could not
+   * say a word.
+   *
+   * `hasActiveSubscription` reads the PERIOD END, not the status. So this test
+   * does not match a string in the INSERT — a string test would have passed on
+   * the broken version too, because the broken version named all the columns
+   * it thought of. It builds the row this INSERT produces and asks the gate.
+   */
+  it('produces a row the product’s own subscription gate lets through', async () => {
+    seatCreated();
+
+    await createTestSeat('Netai Test 12', [], 0, 'admin:1', 'row 251');
+
+    const [sql] = mockQuery.mock.calls.find(([q]) =>
+      (q as string).includes('INSERT INTO "User"'),
+    ) as [string];
+
+    // Every column the gate reads has to be set by that statement, and the
+    // period end has to be in the future — which is the half that was missing.
+    expect(sql).toContain('current_period_ends_at');
+    const aYearOn = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      hasActiveSubscription({
+        subscription_status: 'active',
+        trial_ends_at: null,
+        current_period_ends_at: aYearOn,
+        subscription_status_changed_at: null,
+      }),
+    ).toBe(true);
+    // And the shape WITHOUT it — the one that shipped — is refused, so this
+    // test fails if the column is ever dropped again.
+    expect(
+      hasActiveSubscription({
+        subscription_status: 'active',
+        trial_ends_at: null,
+        current_period_ends_at: null,
+        subscription_status_changed_at: null,
+      }),
+    ).toBe(false);
   });
 
   it('records the seat, with the number it took and who asked', async () => {
