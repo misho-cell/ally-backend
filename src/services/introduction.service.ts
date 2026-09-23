@@ -54,6 +54,28 @@ export interface PendingRequest {
   created_at: string;
   /** No mediator stored: the target themself answers (task 18). */
   direct: boolean;
+  /**
+   * IS THE PERSON ASKING A FICTIONAL TEST SEAT? — read in the SAME query as
+   * the row it describes, which is the whole point of it being here.
+   *
+   * The first version answered this from a hardcoded Set in
+   * `testSeatTokens.ts`, on the argument that a lookup with no I/O „has no
+   * failure mode, so absence cannot mean unchecked". That was true and it cost
+   * a commit for every batch of seats the tester made — three batches in three
+   * hours on 23 September, and the third one blocked on my next push.
+   *
+   * The seat put it better than I had: a seat the creation route made IS
+   * fictional by construction. So the honest fix is not a bigger list, it is
+   * to ask the table the route writes — and to ask it HERE, inside the query
+   * that fetches the request, so it shares that read's fate. If this fails,
+   * the inbox fails and the caller sees an error. There is still no state in
+   * which „I could not look" is served as „there is nobody there", which was
+   * the only thing the Set was protecting.
+   *
+   * ALWAYS PRESENT, true or false, rather than present-only-when-true. That
+   * was the other half of the Set's bargain and it is no longer needed.
+   */
+  requester_is_a_test_seat: boolean;
 }
 
 export interface RespondedRequest {
@@ -84,7 +106,9 @@ export async function getPendingRequestsForMediator(
     `SELECT ir.id, ir.request_ref, ir.target_name, ir.message, ir.created_at,
             ir.requester_user_id,
             u.name AS requester_name,
-            (ir.mediator_user_id IS NULL) AS direct
+            (ir.mediator_user_id IS NULL) AS direct,
+            EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ir.requester_user_id)
+              AS requester_is_a_test_seat
      FROM introduction_requests ir
      LEFT JOIN "User" u ON u.id = ir.requester_user_id
      WHERE ${RESPONDER_COND(1)} AND ir.status = 'pending'
@@ -108,7 +132,9 @@ export async function getPendingRequestById(
     `SELECT ir.id, ir.request_ref, ir.target_name, ir.message, ir.created_at,
             ir.requester_user_id,
             u.name AS requester_name,
-            (ir.mediator_user_id IS NULL) AS direct
+            (ir.mediator_user_id IS NULL) AS direct,
+            EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ir.requester_user_id)
+              AS requester_is_a_test_seat
      FROM introduction_requests ir
      LEFT JOIN "User" u ON u.id = ir.requester_user_id
      WHERE ir.id = $1 AND ${RESPONDER_COND(2)} AND ir.status = 'pending'

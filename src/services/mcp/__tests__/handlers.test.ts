@@ -680,6 +680,16 @@ describe('mcpCheckInbox', () => {
    * with no I/O, so **absence cannot mean „I could not check"** — which is the
    * confusion this codebase keeps finding everywhere else.
    */
+  /**
+   * ALWAYS PRESENT NOW, TRUE OR FALSE. It used to be present only when true,
+   * read from a hardcoded Set, on the argument that a lookup with no I/O has
+   * no failure mode — and the comment beside it named the condition for
+   * changing that: „if it ever grows a query … an explicit true/false". It
+   * grew one when the tester got a route to create their own seats, because a
+   * Set in source cannot grow at runtime and it was costing a commit per
+   * batch. The value now comes off the row, read in the same query, so it
+   * shares that read's fate.
+   */
   it('marks a request from a fictional test account, and nothing else', async () => {
     mockPending.mockResolvedValue([
       {
@@ -688,6 +698,7 @@ describe('mcpCheckInbox', () => {
         message: 'drill',
         requester_name: 'Netai Test 2',
         requester_user_id: 171871,
+        requester_is_a_test_seat: true,
         created_at: '2026-09-21T05:00:00Z',
       },
       {
@@ -696,16 +707,18 @@ describe('mcpCheckInbox', () => {
         message: 'a real one',
         requester_name: 'Gio',
         requester_user_id: 963,
+        requester_is_a_test_seat: false,
         created_at: '2026-09-21T05:01:00Z',
       },
-      // The id can be missing entirely — a deleted account. Absent is absent,
-      // and it must not read as "fictional".
+      // A deleted account has no id at all, and the database still answers:
+      // „no such seat" is a real answer, so the field is FALSE, not absent.
       {
         id: 33,
         target_name: 'Dato',
         message: 'no id',
         requester_name: null,
         requester_user_id: null,
+        requester_is_a_test_seat: false,
         created_at: '2026-09-21T05:02:00Z',
       },
     ]);
@@ -714,8 +727,8 @@ describe('mcpCheckInbox', () => {
     const waiting = (await mcpCheckInbox(USER)).waiting_for_me as Record<string, unknown>[];
 
     expect(waiting[0].counterpart_is_a_fictional_test_account).toBe(true);
-    expect(waiting[1]).not.toHaveProperty('counterpart_is_a_fictional_test_account');
-    expect(waiting[2]).not.toHaveProperty('counterpart_is_a_fictional_test_account');
+    expect(waiting[1].counterpart_is_a_fictional_test_account).toBe(false);
+    expect(waiting[2].counterpart_is_a_fictional_test_account).toBe(false);
   });
 
   /**
@@ -740,6 +753,7 @@ describe('mcpCheckInbox', () => {
         message: 'hello',
         requester_name: 'Gio',
         requester_user_id: 963,
+        requester_is_a_test_seat: false,
         created_at: '2026-09-21T06:00:00Z',
       },
     ]);
@@ -748,6 +762,10 @@ describe('mcpCheckInbox', () => {
     const waiting = (await mcpCheckInbox(USER)).waiting_for_me as Record<string, unknown>[];
 
     expect(Object.keys(waiting[0]).sort()).toEqual([
+      // Always present since 23 September, true or false — see the note above
+      // the marker test. The key set stays pinned closed either way, which is
+      // the whole point of this test: the id must not arrive with it.
+      'counterpart_is_a_fictional_test_account',
       'created_at',
       'from',
       'message',

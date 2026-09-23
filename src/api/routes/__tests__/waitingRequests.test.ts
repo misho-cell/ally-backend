@@ -58,21 +58,30 @@ describe('what a waiting request hands out', () => {
   });
 
   /**
-   * Present only when true, for the reason argued when it was added to
-   * check_my_inbox: isFictionalTestAccount is a Set lookup on an id already in
-   * hand, with no I/O, so it has no failure mode and absence cannot mean
-   * „unchecked". A real person's request carries nothing.
+   * ALWAYS PRESENT NOW, TRUE OR FALSE, AND THIS TEST CHANGED WITH IT.
+   *
+   * It used to be present only when true, read from a hardcoded Set, and the
+   * argument was sound: a Set lookup with no I/O has no failure mode, so
+   * absence could not mean „unchecked". The comment beside it said what would
+   * have to change if the check ever grew a query — „an explicit true/false".
+   *
+   * It grew one on 23 September, when the tester got a route to create their
+   * own seats: a Set in source cannot grow at runtime, and it was costing a
+   * commit per batch, three batches in three hours. The answer is the table
+   * the creation route writes, read in the SAME query as the row it describes,
+   * so it shares that read's fate — a failure is an error, never a false
+   * „not fictional".
+   *
+   * The value therefore comes off the row rather than being computed here, and
+   * a deleted account with no id at all is FALSE rather than absent: the
+   * database answers „no such seat", which is a real answer.
    */
-  it('marks a drill, and says nothing at all about a real person', () => {
-    const drill = waitingRequestPayload(pending({ requester_user_id: 171871 }));
+  it('marks a drill, and says so either way about a real person', () => {
+    const drill = waitingRequestPayload(pending({ requester_is_a_test_seat: true }));
     expect(drill.counterpart_is_a_fictional_test_account).toBe(true);
 
-    const real = waitingRequestPayload(pending({ requester_user_id: 963 }));
-    expect(real).not.toHaveProperty('counterpart_is_a_fictional_test_account');
-
-    // A deleted account has no id at all — absent must not read as fictional.
-    const gone = waitingRequestPayload(pending({ requester_user_id: null }));
-    expect(gone).not.toHaveProperty('counterpart_is_a_fictional_test_account');
+    const real = waitingRequestPayload(pending({ requester_is_a_test_seat: false }));
+    expect(real.counterpart_is_a_fictional_test_account).toBe(false);
   });
 
   it('carries who is asking and who they want, so the row can be read at all', () => {

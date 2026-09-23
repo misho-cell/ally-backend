@@ -41,7 +41,6 @@ import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
 import { searchRoster } from '../tools/searchRoster';
-import { isFictionalTestAccount } from '../testSeatTokens';
 import { findWarmPath } from '../tools/findWarmPath';
 import { removeContactExclusion, saveContactExclusion } from '../tools/contactExclusions';
 import {
@@ -486,22 +485,26 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
        * accounts. **They asked for this and ranked it last themselves**; it
        * is here because an hour was free, not because I re-ranked their list.
        *
-       * PRESENT ONLY WHEN TRUE, and the reason that is safe here is narrow
-       * enough to write down. Normally an absent field is the thing this
-       * codebase keeps getting wrong — „I could not look" arriving dressed as
-       * „there is nobody there". `isFictionalTestAccount` is a lookup in a
-       * hardcoded Set, on an id already in hand, with no I/O: **it has no
-       * failure mode, so absence cannot mean „unchecked".** It means the
-       * counterpart is not a fictional seat.
+       * IT USED TO BE PRESENT ONLY WHEN TRUE, read from a hardcoded Set, and
+       * the argument for that was real: a lookup with no I/O has no failure
+       * mode, so absence could not mean „unchecked" — the confusion this whole
+       * codebase keeps finding. The sentence right there said what would have
+       * to change if it ever grew a query: „this field must become an explicit
+       * true/false".
        *
-       * If it ever grows a query, a cache or a config read, this field must
-       * become an explicit true/false — and then a real user's inbox carries
-       * it too, which is the cost being avoided today.
+       * IT GREW ONE, AND HERE IT IS. The tester can now create seats through
+       * `POST /admin/test-accounts`, and a Set in source cannot grow at
+       * runtime — it cost a commit per batch, three batches in three hours on
+       * 23 September, with the third one blocked waiting on my push. Their own
+       * words settled it: a seat the route made is fictional by construction,
+       * so the answer is the table the route writes, not a longer list.
+       *
+       * The read happens INSIDE the query that fetches this request, so it
+       * shares that read's fate: if it fails, the inbox fails and the caller
+       * sees an error. There is still no state in which „I could not look" is
+       * served as „there is nobody there".
        */
-      ...(request.requester_user_id !== null &&
-      isFictionalTestAccount(String(request.requester_user_id))
-        ? { counterpart_is_a_fictional_test_account: true }
-        : {}),
+      counterpart_is_a_fictional_test_account: request.requester_is_a_test_seat,
     })),
     replies_to_my_requests: answered.map((reply) => ({
       request_ref: REQUEST_REF_PREFIX + String(reply.id),

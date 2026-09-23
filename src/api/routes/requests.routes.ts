@@ -13,7 +13,6 @@ import {
   getPendingRequestsForMediator,
   PendingRequest,
 } from '../../services/introduction.service';
-import { isFictionalTestAccount } from '../../services/testSeatTokens';
 import { scrubText } from '../../services/privacyScrub';
 import { ApiResponse } from '../../types';
 
@@ -106,9 +105,10 @@ export function waitingRequestPayload(r: PendingRequest): Record<string, unknown
     message: r.message === null ? null : scrubText(r.message),
     created_at: r.created_at,
     direct: r.direct,
-    ...(r.requester_user_id !== null && isFictionalTestAccount(String(r.requester_user_id))
-      ? { counterpart_is_a_fictional_test_account: true }
-      : {}),
+    // Always present now, true or false, and read in the same query as the row
+    // it describes — see the note in `mcp/handlers.ts`. A Set in source cannot
+    // grow at runtime, and the tester creates their own seats.
+    counterpart_is_a_fictional_test_account: r.requester_is_a_test_seat,
   };
 }
 
