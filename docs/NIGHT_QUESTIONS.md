@@ -29,184 +29,40 @@ a relayed „they said yes" is least checkable:
 Writing messages, reading, measuring, fixing code, shipping a fix between runs,
 and answering the tester are all ordinary night work and need nobody.
 
+
 ## Tonight's list
 
-**Read this first.** Nine items. Six need a word from you or the founder; the
-other three are mine, written here so nothing is invisible.
+_Nothing yet._
 
-| # | what it is | whose |
-|---|---|---|
-| 1 | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase |
-| 2 | the zero-wallet test seat refills itself | **yours** — the fix is an access change on an account |
-| 3 | the opening web search on a goal naming no trade or place | **yours** — it collides with D315 |
-| 4 | the distiller sends the goal text to a second provider | mine — **BUILT AND DEPLOYED 04:53, 048b6fb** |
-| 5 | the outage monitor is blind all night | **yours** — the fix is a probe, and a probe costs money |
-| 6 | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone |
-| 7 | rows 251 and 252 | mine, specced, daylight |
-| 8 | a question reaches its reader untranslated | mine — the seat found the vision already decides it (row 254) |
-| 9 | row 255: D80 and D440 disagree about publishing a one-source fact | **his** — one question, and it decides which code gets written |
+Cleared on the morning of 23 September after the handover. Anything still
+waiting on a person is below, in **Waiting**, because a list that is emptied
+while its questions are unanswered is a list that loses them.
 
-So: **1, 2, 3, 5, 6 and 9 wait for you. 7 and 8 wait only for daylight; 4 is done.**
+## Waiting on Misho or the founder
 
-### 1. `privacy.routes.ts` takes an admin token on the erasure endpoint
+Carried out of the night of 22→23 September and put to Misho at 07:0x UTC.
+Ordered by what else they block.
 
-Found at 21:47 by a new test that asks whether the auth middleware is MOUNTED
-rather than whether it works. `privacy.routes.ts` mounts `authenticateJwt` and
-**not** `requireUserRole`, and it carries the data summary, the export and
-`deleteMyAccount` — which its own comment calls irreversible and rate-limits to
-ten a minute for that reason.
+| # | what it is | whose | what it blocks |
+|---|---|---|---|
+| A | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone | nothing else, and it is happening to real people now |
+| B | clearing the founder's test goals (§23 of the write register) | **his or yours** — and D245 says a goal is never deleted | the tester's tidy-up of account 501 |
+| C | the opening web search on a goal naming no trade or place | **the founder's** — it collides with D315 | row 253's remaining half |
+| D | the outage monitor is blind all night | **yours** — the fix is a probe and a probe costs money | nothing; it is a hole in what we can see |
+| E | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase | nothing; the test pins today's behaviour |
+| F | the zero-wallet test seat refills itself | **yours** — the fix is an access change | any row 221 reading that needs an empty wallet |
 
-**Not a cross-account hole.** An admin token acts on the ADMIN's own account,
-never on somebody else's. What it means is that an admin JWT left in shared
-client storage — the exact case `requireUserRole` was written for — reaches the
-erasure door, and the account it would erase is the admin's own.
+**Answered or done since the list was written:**
 
-**Why we cannot decide it:** the file says it is deliberately not behind
-`requireSubscription` („the right to erasure cannot depend on having paid") and
-says nothing about the role, so the omission reads as unconsidered rather than
-decided — but an admin flow we cannot see from the source may depend on it.
-Adding `requireUserRole` is one word and it changes who can reach an
-irreversible endpoint.
+- the distiller as a second provider — **built and deployed**, 048b6fb, 04:53.
+- D80 against D440 — **the founder ruled, D449, ~06:20**: his own notes count
+  at once, everyone else's need a second member, test seats come off the
+  trusted list. Row 255 is mine to build.
 
-**What is blocked:** nothing. The test pins the current state, so whichever way
-it goes is a deliberate edit.
+**Mine, needing nobody:** rows 251, 252 and 254.
 
-### 2. The zero-wallet fixture refills itself every period
 
-`171941` (Netai Test 11) is the reserved empty-wallet account and it is
-carrying 245 tokens. Nobody granted them: `ensurePeriodGrant` credited 250 at
-17:56 today, because its only condition is `subscription_status` being active
-and every test seat's is.
-
-Two of my own documents (§13 and §19 of `ADMIN_WRITE_OPERATIONS.md`) say
-„171941 stays at zero". It cannot, by construction.
-
-**Why we cannot decide it:** the fix is to make that seat's subscription
-INACTIVE, which is an access change on an account. Removing the 250 is also a
-ledger write and would last only until the next period.
-
-**What is blocked:** any row 221 reading that needs a genuinely empty wallet.
-Test 10's −6 tonight is real evidence and stands; Test 11 is not a spare for it.
-
-### 3. Row 253's second half — the goal that names no trade and no place
-
-Closed tonight: a person's name no longer reaches the search engine. NOT closed:
-„I have a problem with my apartment" still fires an opening web search, which
-returned Greensboro, North Carolina handymen.
-
-**Why we cannot decide it:** the rule that would stop it is the positive test
-`goalIntent.ts` has already measured and rejected — when a similar guard shipped
-on 17 September it denied ten real goals their opening second-circle search and
-nobody saw it for three days. And D315 says both searches RUN when a problem is
-named. Two standing decisions point the other way; this needs the founder, not a
-regex.
-
-### 4. Row 253's other door — the distiller is a second provider
-
-The skip added tonight sits AFTER `distilSearchQuery`, which is a model call on
-OpenAI (`config/openai.ts`), not on the model that answers the conversation. So
-on an introduction goal the name still reaches OpenAI to be distilled; what is
-blocked is the distilled name reaching Tavily.
-
-**Why we cannot decide it tonight:** the obvious fix is to skip distillation
-too, and the distilled query is also what the SECOND CIRCLE searches with. Row
-110 measured what a raw sentence costs there — a phrase matching 0 people, a
-sentence timing out at 15 s three times. For an introduction goal the distilled
-query is just the person's name, so raw text probably costs nothing — and
-„probably" is what makes it daylight work.
-
-**What is blocked:** nothing; it is mine to finish with a measurement, and
-part of that measurement is now done. Every opening second-circle search whose
-goal carries an introduction phrase, all of them ever:
-
-    searches              40
-    came back EMPTY       13
-    failed                 0
-    p50                2,663 ms
-
-So 27 of 40 return somebody, which is why „skip the distiller too" is not a
-one-line change on a hunch: on 27 occasions I would be changing the input of
-something that was doing real work.
-
-**MEASURED AT 00:44, AND IT KILLS THE EASY FIX.** I wrote above that for an
-introduction goal „the distilled query is just the person's name, so raw text
-probably costs nothing". That was me looking at the OUTPUT and not the INPUT.
-Across the same 40 searches:
-
-    distilled query   median  3 words   max  5
-    raw goal text     median 14 words   max 34
-    raw goals over 12 words                21 of 40
-
-Row 110 measured what a whole sentence does to the second circle: „marketing
-agency" as a phrase is on 0 people, and a sentence timed out at 15 s and
-returned NOTHING, three times. Handing it the raw goal would put **21 of these
-40 into exactly that regime.**
-
-So skipping the distiller is not the fix — it trades a privacy door for half
-the second circle on the goals in question.
-
-**What is left, and it is the right shape anyway:** distil LOCALLY for this
-case. The distiller's whole job here is to reduce „I want to be introduced to
-X through Y" to the names, and that is a job for a few lines of code rather
-than a call to a second provider. The model call goes, the short query stays,
-and nothing leaves the building.
-
-**DONE — 048b6fb, deployed 04:53 on 23 September.** `distilIntroductionLocally`
-reads the name beside the phrase the owner used: after it in English, before it
-in Georgian, four words at most, stopping at the clause. No call of any kind.
-
-Measured against every introduction goal in `tool_call_log`, all 31 of them:
-
-    identical to the model's query      11
-    different                           19
-    declined, falls back to raw text     1
-
-Of the 19, most are the TARGET's name where the model took the bridge's, or
-the model's filler dropped („contact", „introduction request", „and 8"); three
-are goals where the model returned no name at all and found nobody, so the
-local rule can only be better there. The one decline is the 19 September goal
-quoted above — four sentences, the person being reached six words and a comma
-from the phrase — and it falls back to the goal text as typed, which is this
-module's existing path when the model fails. Slow, sometimes empty, never a
-leak.
-
-**What is NOT claimed:** that the local query finds the same PEOPLE. That is a
-live measurement on a real book and it is with the tester.
-
-### 5. The outage monitor is blind all night, and it took me until 22:41 to notice
-
-`outage.sh` has three verdicts in its text and two in its exit codes. The third
-— **NOTHING PROVEN**, meaning no errors AND no Anthropic call in the window —
-exits 0, deliberately and with the reasoning written next to it: „a routine
-that cries at every quiet hour gets ignored".
-
-That reasoning is right for the day and it has a consequence nobody wrote down.
-**At night, NOTHING PROVEN is the normal answer.** Three checks between 22:07
-and 22:37 all reported 0 errors and 0 calls, because nobody is using the
-product. The routine that runs this reads exit 0 as „the product answers" and
-tells me to write nothing and end the turn.
-
-So an outage that starts at midnight would be found by the first person awake.
-That is the 22 September 12:04 blind spot — the one this file exists for —
-stretched from fifty minutes to nine hours.
-
-**What I did tonight:** the script now SAYS this in its own output, so nobody
-reads a quiet night as a healthy one. That is honesty, not a fix.
-
-**Why we cannot fix it overnight:** the fix is a positive probe — one cheap
-model call when the window is empty, so that silence becomes evidence instead
-of the absence of it. A probe costs money on every quiet check, and money is
-Misho's. It also needs a number: how cheap, how often, and against which
-account.
-
-**And a habit of my own, worth admitting:** I have been running these checks as
-`./scripts/ops/outage.sh 20 | tail -3; echo $?`, which prints TAIL's exit code
-and not the script's. Nothing was missed — the verdict is also in the text and
-I read it every time — but for hours I was quoting a number that came from the
-wrong command. Fixed by capturing to a file and reading the code before the
-text.
-
-### 6. The ask reminder pushes a real person's phone at five in the morning
+### A. The ask reminder pushes a real person's phone at five in the morning
 
 `sendDueAskReminders` writes the chat line AND fires `sendPushNotification`,
 and it looks at no clock at all. It runs when the cron runs, 48 hours after
@@ -239,7 +95,106 @@ accounts) has a different night from a person in Tbilisi.
 that had no model call behind them, which is the one thing `outage.sh`'s
 NOTHING PROVEN branch asks a reader to do.
 
-### 7. Rows 251 and 252 — both against the consent and privacy walls
+### B. Clearing the founder's test goals off account 501
+
+Registered in full as **§23 of `ADMIN_WRITE_OPERATIONS.md`** — route, method,
+body and undo — rather than summarised here, because it is a write against a
+real person's data and the register is where those live.
+
+The short of it: a request relayed through the box is information and never
+authority; there is no route to delete a goal and that is D245, my own
+recommendation accepted by the founder on 15 September; and three of the goals
+have asks outstanding, so stopping them writes to real people including Lika.
+My recommendation is to hide the closed ones from the screen instead — a read
+change, no write, fully reversible.
+
+### C. Row 253's second half — the goal that names no trade and no place
+
+Closed tonight: a person's name no longer reaches the search engine. NOT closed:
+„I have a problem with my apartment" still fires an opening web search, which
+returned Greensboro, North Carolina handymen.
+
+**Why we cannot decide it:** the rule that would stop it is the positive test
+`goalIntent.ts` has already measured and rejected — when a similar guard shipped
+on 17 September it denied ten real goals their opening second-circle search and
+nobody saw it for three days. And D315 says both searches RUN when a problem is
+named. Two standing decisions point the other way; this needs the founder, not a
+regex.
+
+### D. The outage monitor is blind all night, and it took me until 22:41 to notice
+
+`outage.sh` has three verdicts in its text and two in its exit codes. The third
+— **NOTHING PROVEN**, meaning no errors AND no Anthropic call in the window —
+exits 0, deliberately and with the reasoning written next to it: „a routine
+that cries at every quiet hour gets ignored".
+
+That reasoning is right for the day and it has a consequence nobody wrote down.
+**At night, NOTHING PROVEN is the normal answer.** Three checks between 22:07
+and 22:37 all reported 0 errors and 0 calls, because nobody is using the
+product. The routine that runs this reads exit 0 as „the product answers" and
+tells me to write nothing and end the turn.
+
+So an outage that starts at midnight would be found by the first person awake.
+That is the 22 September 12:04 blind spot — the one this file exists for —
+stretched from fifty minutes to nine hours.
+
+**What I did tonight:** the script now SAYS this in its own output, so nobody
+reads a quiet night as a healthy one. That is honesty, not a fix.
+
+**Why we cannot fix it overnight:** the fix is a positive probe — one cheap
+model call when the window is empty, so that silence becomes evidence instead
+of the absence of it. A probe costs money on every quiet check, and money is
+Misho's. It also needs a number: how cheap, how often, and against which
+account.
+
+**And a habit of my own, worth admitting:** I have been running these checks as
+`./scripts/ops/outage.sh 20 | tail -3; echo $?`, which prints TAIL's exit code
+and not the script's. Nothing was missed — the verdict is also in the text and
+I read it every time — but for hours I was quoting a number that came from the
+wrong command. Fixed by capturing to a file and reading the code before the
+text.
+
+### E. `privacy.routes.ts` takes an admin token on the erasure endpoint
+
+Found at 21:47 by a new test that asks whether the auth middleware is MOUNTED
+rather than whether it works. `privacy.routes.ts` mounts `authenticateJwt` and
+**not** `requireUserRole`, and it carries the data summary, the export and
+`deleteMyAccount` — which its own comment calls irreversible and rate-limits to
+ten a minute for that reason.
+
+**Not a cross-account hole.** An admin token acts on the ADMIN's own account,
+never on somebody else's. What it means is that an admin JWT left in shared
+client storage — the exact case `requireUserRole` was written for — reaches the
+erasure door, and the account it would erase is the admin's own.
+
+**Why we cannot decide it:** the file says it is deliberately not behind
+`requireSubscription` („the right to erasure cannot depend on having paid") and
+says nothing about the role, so the omission reads as unconsidered rather than
+decided — but an admin flow we cannot see from the source may depend on it.
+Adding `requireUserRole` is one word and it changes who can reach an
+irreversible endpoint.
+
+**What is blocked:** nothing. The test pins the current state, so whichever way
+it goes is a deliberate edit.
+
+### F. The zero-wallet fixture refills itself every period
+
+`171941` (Netai Test 11) is the reserved empty-wallet account and it is
+carrying 245 tokens. Nobody granted them: `ensurePeriodGrant` credited 250 at
+17:56 today, because its only condition is `subscription_status` being active
+and every test seat's is.
+
+Two of my own documents (§13 and §19 of `ADMIN_WRITE_OPERATIONS.md`) say
+„171941 stays at zero". It cannot, by construction.
+
+**Why we cannot decide it:** the fix is to make that seat's subscription
+INACTIVE, which is an access change on an account. Removing the 250 is also a
+ledger write and would last only until the next period.
+
+**What is blocked:** any row 221 reading that needs a genuinely empty wallet.
+Test 10's −6 tonight is real evidence and stands; Test 11 is not a spare for it.
+
+### Mine, needing nobody: rows 251 and 252
 
 Both specced tonight, neither built, each for a reason written into `TASKS.md`:
 251 widens who the model may write to (an accepted introduction should put that
@@ -250,8 +205,7 @@ wall had no tests at all until this afternoon.
 
 **What is blocked:** nothing else waits on them.
 
-
-### 8. A relayed question reaches a Georgian recipient in English
+### Mine, needing nobody: a relayed question reaches its reader untranslated (row 254)
 
 The seat found it in their own 00:03 stops and asked rather than filing it: on
 a Georgian-framed ask thread the question itself sits in English inside the
@@ -615,7 +569,79 @@ construction a query that matches nobody, which is the one case that cannot
 reproduce this. Those goals remain exactly right for row 203 and for anything
 that must not reach a real person; they are the wrong instrument here.
 
-### 9. Row 255 — D80 and D440 disagree, and one of them has to go
+### DONE 04:53 — row 253's other door, the distiller as a second provider
+
+The skip added tonight sits AFTER `distilSearchQuery`, which is a model call on
+OpenAI (`config/openai.ts`), not on the model that answers the conversation. So
+on an introduction goal the name still reaches OpenAI to be distilled; what is
+blocked is the distilled name reaching Tavily.
+
+**Why we cannot decide it tonight:** the obvious fix is to skip distillation
+too, and the distilled query is also what the SECOND CIRCLE searches with. Row
+110 measured what a raw sentence costs there — a phrase matching 0 people, a
+sentence timing out at 15 s three times. For an introduction goal the distilled
+query is just the person's name, so raw text probably costs nothing — and
+„probably" is what makes it daylight work.
+
+**What is blocked:** nothing; it is mine to finish with a measurement, and
+part of that measurement is now done. Every opening second-circle search whose
+goal carries an introduction phrase, all of them ever:
+
+    searches              40
+    came back EMPTY       13
+    failed                 0
+    p50                2,663 ms
+
+So 27 of 40 return somebody, which is why „skip the distiller too" is not a
+one-line change on a hunch: on 27 occasions I would be changing the input of
+something that was doing real work.
+
+**MEASURED AT 00:44, AND IT KILLS THE EASY FIX.** I wrote above that for an
+introduction goal „the distilled query is just the person's name, so raw text
+probably costs nothing". That was me looking at the OUTPUT and not the INPUT.
+Across the same 40 searches:
+
+    distilled query   median  3 words   max  5
+    raw goal text     median 14 words   max 34
+    raw goals over 12 words                21 of 40
+
+Row 110 measured what a whole sentence does to the second circle: „marketing
+agency" as a phrase is on 0 people, and a sentence timed out at 15 s and
+returned NOTHING, three times. Handing it the raw goal would put **21 of these
+40 into exactly that regime.**
+
+So skipping the distiller is not the fix — it trades a privacy door for half
+the second circle on the goals in question.
+
+**What is left, and it is the right shape anyway:** distil LOCALLY for this
+case. The distiller's whole job here is to reduce „I want to be introduced to
+X through Y" to the names, and that is a job for a few lines of code rather
+than a call to a second provider. The model call goes, the short query stays,
+and nothing leaves the building.
+
+**DONE — 048b6fb, deployed 04:53 on 23 September.** `distilIntroductionLocally`
+reads the name beside the phrase the owner used: after it in English, before it
+in Georgian, four words at most, stopping at the clause. No call of any kind.
+
+Measured against every introduction goal in `tool_call_log`, all 31 of them:
+
+    identical to the model's query      11
+    different                           19
+    declined, falls back to raw text     1
+
+Of the 19, most are the TARGET's name where the model took the bridge's, or
+the model's filler dropped („contact", „introduction request", „and 8"); three
+are goals where the model returned no name at all and found nobody, so the
+local rule can only be better there. The one decline is the 19 September goal
+quoted above — four sentences, the person being reached six words and a comma
+from the phrase — and it falls back to the goal text as typed, which is this
+module's existing path when the model fails. Slow, sometimes empty, never a
+leak.
+
+**What is NOT claimed:** that the local query finds the same PEOPLE. That is a
+live measurement on a real book and it is with the tester.
+
+### ANSWERED 06:20 (D449) — row 255: D80 and D440 disagreed, and the founder chose
 
 The night seat found a one-source note reaching another member as a flat
 statement: Test 6's `occupation = 'tax accountant'`, written by Test 1 alone,
