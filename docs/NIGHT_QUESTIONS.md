@@ -953,3 +953,31 @@ something already on her screen.
 
 So row 101 no longer waits on anybody to answer a question. It waits on the
 decision above, which is a better place for it.
+
+**AND ONE PIECE OF IT IS DECISION-READY AND PROVABLY SAFE — NOT SHIPPED
+TONIGHT, AND HERE IS WHY NOT.**
+
+The server keeps a subscription for ever unless the push service answers 404 or
+410. Apple has never said either for these rows, so nothing retires them. One
+narrow rule would stop the pile growing, and it is not a heuristic:
+
+    when a registration arrives carrying a device_id that already has a row
+    with a DIFFERENT endpoint, retire the old row
+
+A browser holds at most one push subscription per service-worker registration,
+so an older endpoint for the same `device_id` cannot still be that browser's —
+it is definitionally dead, whatever the push service says.
+
+**Two reasons it waited for the morning rather than going out at 23:15:**
+
+1. **It would not help either person affected today.** Salome's two rows carry
+   DIFFERENT device_ids, and Lika's older row has none at all. It prevents
+   future accumulation and fixes nobody tonight — so shipping it at midnight
+   buys nothing and spends the one thing a night deploy can cost.
+2. **It deletes a row belonging to a real person**, which is on the list above
+   whatever the reasoning, and the app team may be about to implement the
+   client-side retire. Two mechanisms racing to delete the same row is worse
+   than one arriving a day later.
+
+It is small, it is written, and it can go out in one step after somebody
+decides — together with, or instead of, the client change.
