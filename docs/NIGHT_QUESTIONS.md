@@ -39,13 +39,13 @@ decision from you — the rest are mine, written here so nothing is invisible.
 | 1 | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase |
 | 2 | the zero-wallet test seat refills itself | **yours** — the fix is an access change on an account |
 | 3 | the opening web search on a goal naming no trade or place | **yours** — it collides with D315 |
-| 4 | the distiller sends the goal text to a second provider | mine, measured, fix known |
+| 4 | the distiller sends the goal text to a second provider | mine — **BUILT AND DEPLOYED 04:53, 048b6fb** |
 | 5 | the outage monitor is blind all night | **yours** — the fix is a probe, and a probe costs money |
 | 6 | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone |
 | 7 | rows 251 and 252 | mine, specced, daylight |
 | 8 | a question reaches its reader untranslated | mine — the seat found the vision already decides it (row 254) |
 
-So: **1, 2, 3, 5 and 6 wait for you. 4, 7 and 8 wait only for daylight.**
+So: **1, 2, 3, 5 and 6 wait for you. 7 and 8 wait only for daylight; 4 is done.**
 
 ### 1. `privacy.routes.ts` takes an admin token on the erasure endpoint
 
@@ -149,6 +149,28 @@ case. The distiller's whole job here is to reduce „I want to be introduced to
 X through Y" to the names, and that is a job for a few lines of code rather
 than a call to a second provider. The model call goes, the short query stays,
 and nothing leaves the building.
+
+**DONE — 048b6fb, deployed 04:53 on 23 September.** `distilIntroductionLocally`
+reads the name beside the phrase the owner used: after it in English, before it
+in Georgian, four words at most, stopping at the clause. No call of any kind.
+
+Measured against every introduction goal in `tool_call_log`, all 31 of them:
+
+    identical to the model's query      11
+    different                           19
+    declined, falls back to raw text     1
+
+Of the 19, most are the TARGET's name where the model took the bridge's, or
+the model's filler dropped („contact", „introduction request", „and 8"); three
+are goals where the model returned no name at all and found nobody, so the
+local rule can only be better there. The one decline is the 19 September goal
+quoted above — four sentences, the person being reached six words and a comma
+from the phrase — and it falls back to the goal text as typed, which is this
+module's existing path when the model fails. Slow, sometimes empty, never a
+leak.
+
+**What is NOT claimed:** that the local query finds the same PEOPLE. That is a
+live measurement on a real book and it is with the tester.
 
 ### 5. The outage monitor is blind all night, and it took me until 22:41 to notice
 
