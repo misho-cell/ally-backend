@@ -55,6 +55,27 @@ WINDOW_MIN="${1:-15}"
 
 # The SQL is built into a variable and PIPED, not fed by a heredoc inside a
 # command substitution: the parentheses of COUNT(*) end the substitution early
+# ON BEHALF OF SOMEBODY, AND NOT MERELY BY THE SERVER. 23 September, 03:55:
+# this file read „500 anthropic call(s) … OK — nobody saw an error" with ZERO
+# replies in the same window. Every one of the 500 was the nightly enrichment
+# job — Haiku, 03:40 to 03:49, $0.27, capped at 500, and it has run at about
+# this hour since 16 September.
+#
+# That is worse than the quiet-hour blindness below, because „OK" is a claim
+# rather than a shrug. For the nine minutes that job runs, every night, this
+# check would report a healthy product with the user-facing half completely
+# dead — which is the exact state of 22 September at 12:04 that the file was
+# written for.
+#
+# The filter is `user_id IS NOT NULL` rather than a list of background kinds,
+# deliberately. A list has to be kept in step with whatever gets added next,
+# and a list that drifts is how this project produces its faults — „two lists
+# of test account had drifted" cost the tester a run this week. Measured over
+# seven days before changing it: chat, moderation, fact_extraction_sweep,
+# thread_title and notification carry a user_id on EVERY row (8,673 of 8,673);
+# enrichment, fact_moderation and fact_extraction carry one on none (2,055 of
+# 2,055). „A call made for a person" needs no list.
+#
 # in that form, and the failure looks exactly like the database not answering.
 SQL_TEXT="SELECT
   (SELECT COUNT(*) FROM conversations
@@ -65,7 +86,8 @@ SQL_TEXT="SELECT
       AND created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS replies,
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
-      AND model LIKE 'claude%')                                    AS anthropic_calls,
+      AND model LIKE 'claude%'
+      AND user_id IS NOT NULL AND user_id <> '')                   AS anthropic_calls,
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
       AND model IS NOT NULL AND model NOT LIKE 'claude%')          AS other_rows"
