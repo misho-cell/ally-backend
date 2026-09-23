@@ -17,6 +17,27 @@ but a single SELECT. The script cannot lie about that.
 `logs.sh` sends GraphQL **queries** only. Changing an environment variable is a
 `variableUpsert` mutation and is deliberately NOT in here — see below.
 
+### And one that is not a capability at all: `sabotage.py`
+
+It touches nothing outside a git worktree and nothing outside this repository.
+It is here because it found **fourteen untested guards in a single day**, more
+than any other thing tried on this codebase, and because it spent that day in a
+scratch directory that the next container would have taken.
+
+What it does: disables one guard at a time and runs the whole suite. A guard
+whose removal breaks nothing is a guard nothing holds in place.
+
+What it keeps finding is one shape. **The piece is tested from every angle and
+the wire that calls it is not.** `isBlockedFetchHost` had ten tests and its
+call site had none; the stop predicate had nine and its call site had none.
+A unit test reaches for a function by name, so it cannot notice the day
+nothing reaches for it — that is not a gap in anybody's diligence, it is a
+thing a test suite structurally cannot see.
+
+It refuses to run in your checkout, on purpose: it edits source files and puts
+them back, and a crash halfway through would leave a sabotaged line in a tree
+somebody is about to commit. The docstring has the two commands.
+
 ### Use `sync`, not `read` then `mark`
 
 `box.sh sync` prints everything unread and marks it in the same command. Reach
