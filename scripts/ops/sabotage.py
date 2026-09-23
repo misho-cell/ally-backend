@@ -40,6 +40,17 @@ tree somebody is about to commit. Ask it to make one:
     SABOTAGE_ROOT=/tmp/sabotage SABOTAGE_MODE=block \\
       python3 scripts/ops/sabotage.py src/api/routes
 
+IT REFUSES TO START ON A DIRTY WORKTREE, and that is not fussiness. The
+`finally` that restores a file cannot run when the process is SIGKILLed — a
+backgrounded run was killed that way on 23 September and left a guard commented
+out. A sweep starting on top of that measures 185 mutations against a tree that
+is already missing one, and calls the survivors „held". Read what is dirty,
+then `git -C $SABOTAGE_ROOT checkout -- .`.
+
+DO NOT BACKGROUND IT WITH `&` OR `nohup` inside a tool call that then exits:
+that is exactly how the kill above happened. Give it its own long-running
+process.
+
 AND READ THE OUTPUT TO A FILE, NOT THROUGH `tail`. Piping this through `tail`
 throws away the per-candidate lines and the head of the result, which is how a
 sweep of 127 came back as „60 survivors" with no way to tell how many were
@@ -121,11 +132,46 @@ def suite_passes() -> bool:
         return False
 
 
+def dirty_files() -> list[str]:
+    """Anything modified in the worktree, node_modules aside."""
+    r = subprocess.run(
+        ['git', 'status', '--porcelain'], cwd=ROOT, capture_output=True, text=True,
+    )
+    return [
+        ln for ln in r.stdout.splitlines()
+        if ln.strip() and 'node_modules' not in ln
+    ]
+
+
 def main() -> None:
     if ROOT == Path.cwd():
         print('REFUSING: run this in a worktree, not in your checkout — see the', file=sys.stderr)
         print('  module docstring. Set SABOTAGE_ROOT.', file=sys.stderr)
         raise SystemExit(2)
+
+    # A DIRTY WORKTREE MAKES EVERY RESULT BELOW A LIE, and 23 September is how
+    # that was learned.
+    #
+    # The `finally` that puts a file back cannot run when the process is
+    # SIGKILLed, and a backgrounded sweep was killed exactly that way. It left
+    # `if (isBlocked…)` commented out in one file — so the next sweep would
+    # have run all 185 of its mutations against a tree that ALREADY had a guard
+    # missing, and reported „held" for anything the suite still caught.
+    #
+    # The worktree is what kept that out of the checkout, which is what it is
+    # for. This is the other half: a run that starts on top of a previous run's
+    # corpse cannot be trusted, so it does not start. `git -C <root> checkout
+    # -- .` is the whole fix and the operator should see what they are
+    # discarding before they run it.
+    dirty = dirty_files()
+    if dirty:
+        print(f'REFUSING: {ROOT} has uncommitted changes, so a previous sweep may', file=sys.stderr)
+        print('  have died before restoring a file. Every verdict below would be', file=sys.stderr)
+        print('  measured against a tree that is already missing a guard.', file=sys.stderr)
+        for ln in dirty[:20]:
+            print(f'    {ln}', file=sys.stderr)
+        print(f'  Read them, then: git -C {ROOT} checkout -- .', file=sys.stderr)
+        raise SystemExit(3)
 
     cands = candidates()
     print(f'{len(cands)} guards to sabotage, mode={MODE}, root={ROOT}', flush=True)
