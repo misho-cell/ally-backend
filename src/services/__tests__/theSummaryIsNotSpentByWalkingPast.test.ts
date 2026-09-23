@@ -86,3 +86,40 @@ describe('and the tap is what spends it', () => {
     expect(route.slice(at, at + 1200)).toContain('No such update of yours.');
   });
 });
+
+/**
+ * AND THE NAME OF THE PER-GOAL FIELD IS PINNED, BECAUSE THE FRONTEND ASKED FOR
+ * THAT AND WAS RIGHT TO.
+ *
+ * They shipped the card reading three spellings — `goals`, `per_goal`,
+ * `breakdown` — so that whichever one the payload used would work, and then
+ * asked me to settle on one so the three-way read does not live in their code
+ * for ever. Their comparison: the same trap `members` / `results` set for them
+ * once already.
+ *
+ * It is `goals`, and this is what stops it drifting. A field the other side
+ * reads by name is part of the contract whether or not anybody wrote it down,
+ * and „whatever you have will work" is how two names both end up permanent.
+ */
+describe('the weekly summary payload keeps the names the screen reads', () => {
+  const summary = readFileSync(join(__dirname, '..', 'weeklySummary.service.ts'), 'utf8');
+  const at = summary.indexOf('export async function sendWeeklySummary');
+  const queued = summary.slice(at, at + 1400);
+
+  it.each([['goals'], ['week_start'], ['text']])('carries %s', (field) => {
+    expect(queued).toContain(`${field}:`);
+  });
+
+  it('spells the per-goal list one way and not three', () => {
+    expect(queued).toContain('goals: summary.goals.map');
+    expect(queued).not.toContain('per_goal');
+    expect(queued).not.toContain('breakdown');
+  });
+
+  it.each([['task_id'], ['title'], ['asks_sent'], ['asks_answered'], ['pending_question']])(
+    'each goal carries %s',
+    (field) => {
+      expect(queued).toContain(`${field}:`);
+    },
+  );
+});
