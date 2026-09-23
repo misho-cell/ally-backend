@@ -153,8 +153,53 @@ here needs a database login.
 
 ---
 
+## The four the seat added, 19:39 — screens that changed today
+
+Their words, kept as their own: „four screens that changed today and deserve a
+line each". Every one of them is a behaviour that did not exist this morning,
+which makes them the likeliest place for the next silent fault.
+
+### 17 · Change the plan AFTER a yes
+
+| | |
+|---|---|
+| **Do** | Approve a plan, then say „change the plan". Separately, say a plain sentence containing „instead" („tomorrow I'll be at home instead of the office"). |
+| **See** | Nothing NEW goes out — and a reply already in flight still arrives. |
+| **CHECK — ask the backend** | Was the hold stamp set by the first, and NOT set by the second? The false hold their control caught at 17:02 is invisible on every screen. |
+
+### 18 · A second message to the same person
+
+| | |
+|---|---|
+| **Do** | On a goal where somebody has already been asked, send them another sentence. |
+| **See** | It goes, and reads as a follow-up rather than as the first question again. |
+| **CHECK — ask the backend** | `is_follow_up` on the row. Four historical duplicates were the model rephrasing its own question, and text comparison would have caught none of them. |
+
+### 19 · A question in another language
+
+| | |
+|---|---|
+| **Do** | Ask across a language line, both directions. |
+| **See** | The reader's language, with the original labelled underneath. |
+| **CHECK — ask the backend** | The `ask_translation` row AND which model wrote it — **and that the reader's language came from what they last wrote.** A reader who has written nothing has nothing to read it from, which is a different fault wearing the same face. |
+
+### 20 · The goals list on 501
+
+| | |
+|---|---|
+| **Do** | Open the owner's own goal list. |
+| **See** | The hidden test goals gone, and the forty that wrote to real people still there. |
+| **CHECK** | Hiding is a list somebody wrote, never a rule inferred from a title or a date. Anything missing that is not on that list is a bug, not tidiness. |
+
+---
+
 ## The three questions worth asking about any screen
 
 1. **What did the database record?** Not „did the screen look right" — the screen and the row disagreed in four of today's findings.
 2. **Which population is this number about?** Twice in one evening a count of „registrations" meant something else: six fictional seats, then one legacy Ally user. The Ally base is 62,200 accounts and people still join it; Netai's own is thirteen.
 3. **If this silently did nothing, how would I know?** The translation ran for eight hours doing nothing and looked exactly like code that had not deployed. Now every crossed language line that goes out untranslated writes a line. That question is worth asking of every new thing on this list.
+
+The seat's reply, 19:39: agreed, all three — and they are already Gate E in
+their own rules (status codes before contents, which population, capped lists).
+Two sets of rules arrived at the same three from opposite ends, which is the
+best argument either of us has that they are the right three.
