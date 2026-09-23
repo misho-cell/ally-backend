@@ -131,27 +131,58 @@ export async function runSemanticMatching(
  * MEASURED before the change: 55 core-fact rows on 48 people are invisible to
  * every cross-account search this way.
  *
- * WHAT DOES NOT BECOME MATCHABLE, and both exclusions are already the
- * founder's own, applied two functions down for publication:
- *
- *   - `confidence 'mentioned'` — what the assistant took from a web page or
- *     inferred. „is_matchable is what lets ANOTHER person's search hit this
- *     row, which is publication by a quieter name" is written in this file
- *     about exactly that case, and it still holds.
- *   - `source 'sweep'` — a guess made from a conversation, which the curator
- *     rule below already refuses to publish on the same grounds. 15 rows on
- *     12 people sit in that group today; whether the sweep's „stated" is a
- *     person's word is a question for the seat, not a thing to decide inside
- *     a helper.
+ * WHAT DOES NOT BECOME MATCHABLE: `confidence 'mentioned'` — what the
+ * assistant took from a web page or inferred. „is_matchable is what lets
+ * ANOTHER person's search hit this row, which is publication by a quieter
+ * name" is written in this file about exactly that case, and it is the
+ * founder's own ruling of 17 September.
  *
  * A null confidence is left alone: it means „not recorded", most of it
  * predates the column, and 774 rows should not change meaning here.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * AND `source 'sweep'` IS NOT A SECOND EXCLUSION, WHICH IS A CORRECTION OF MY
+ * OWN FIRST VERSION — MADE AN HOUR LATER, WITH THE MEASUREMENT THAT FORCED IT.
+ *
+ * The first version here excluded the sweep too, borrowing the curator rule's
+ * exclusion below. The seat's re-run disproved it within the hour: they saved
+ * „beekeeper" as an occupation in chat, searched one ring out, and found
+ * nobody. The row had come out `source sweep, confidence stated` — because the
+ * SWEEP is how an occupation mentioned in a conversation is recorded, whatever
+ * the person typed. Counted over every core fact with a recorded provenance:
+ *
+ *     occupation   sweep/stated  19      chat/stated   8
+ *
+ * So excluding the sweep left row 252 mostly inert for the one field it exists
+ * for, and the seat's failure was my rule working exactly as written.
+ *
+ * THE BORROWED EXCLUSION DID NOT TRANSFER, and that is the real mistake. The
+ * curator rule excludes the sweep from PUBLISHING — saying a thing out loud, as
+ * fact, in the curator's name. Being FINDABLE says nothing out loud: the
+ * founder's D440 is two switches precisely so that one person's word can make
+ * somebody findable without making anything quotable, and row 255 enforces the
+ * other half — below two sources the assistant gives the NAME and does not
+ * state the role.
+ *
+ * What carries the founder's intent is CONFIDENCE, not source. „stated" means
+ * the person said it; „mentioned" means the assistant read or inferred it, and
+ * that is the one he ruled on.
+ *
+ * THE RESIDUAL RISK, NAMED. Ticket 9 item 5 is a real observation: the sweep
+ * has stored the assistant's OWN sentences as facts. If it mislabels one as
+ * „stated", a wrong value now makes somebody findable. The cost of that is a
+ * candidate who should not have surfaced — never a wrong sentence said about
+ * them, because the value is not quoted below two sources and the search's
+ * matching label never leaves its query. A recall error, not a disclosure.
+ *
+ * ONE LINE TO REVERSE, and the seat has been told so: add `source !== 'sweep'`.
+ * ────────────────────────────────────────────────────────────────────────
  */
 export function coreFactIsMatchable(
-  source: FactSource,
+  _source: FactSource,
   confidence: FactConfidence | null,
 ): boolean {
-  return source !== 'sweep' && confidence === 'stated';
+  return confidence === 'stated';
 }
 
 async function upsertFact(

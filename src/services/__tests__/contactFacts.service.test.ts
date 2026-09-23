@@ -643,10 +643,31 @@ describe('row 252 — a core fact from one member can be matched on', () => {
     expect(upsertCall()[1][IS_MATCHABLE]).toBe(false);
   });
 
-  it('does not make a sweep guess matchable', async () => {
+  /**
+   * AND A SWEEP-RECORDED „STATED" IS MATCHABLE, WHICH REVERSES THIS FILE'S OWN
+   * FIRST VERSION.
+   *
+   * That version excluded the sweep, borrowing the curator rule's exclusion.
+   * The seat disproved it within the hour: they saved „beekeeper" as an
+   * occupation in chat, searched one ring out and found nobody, because the
+   * SWEEP is how an occupation mentioned in a conversation is recorded —
+   * 19 sweep/stated occupations against 8 chat/stated, over every core fact
+   * with a recorded provenance. The borrowed exclusion is about PUBLISHING, and
+   * being findable says nothing out loud.
+   */
+  it('makes a sweep-recorded statement matchable — it is still what the person said', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
     await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect', 'sweep', 'stated');
+
+    expect(upsertCall()[1][IS_MATCHABLE]).toBe(true);
+  });
+
+  /** „mentioned" from the sweep is still the assistant's own reading, and still out. */
+  it('does not make a sweep GUESS matchable', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect', 'sweep', 'mentioned');
 
     expect(upsertCall()[1][IS_MATCHABLE]).toBe(false);
   });
