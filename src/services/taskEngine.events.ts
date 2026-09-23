@@ -206,6 +206,53 @@ export function introOutcomeEvent(
  * unrecognised labels get onto plan cards. Each language now names its own
  * current pair.
  */
+/**
+ * ROW 104 — A GOAL THAT IS AN INSTRUCTION GETS THIS INSTEAD OF THE PLAN EVENT.
+ *
+ * The first version of the row 104 fix simply SUPPRESSED the plan wake for such
+ * a goal, and the tester's run showed what silence buys: „Tell Netai Test 9 I
+ * can do Thursday" produced no plan card and no message either — the model
+ * asked „I do not see any open goal about a meeting or a date. Could you tell
+ * me what this is about?" Instruction → question → plan → one more yes. No
+ * better for the owner than before.
+ *
+ * That is the same lesson as the card refusal an hour earlier: A REFUSAL THAT
+ * ONLY REFUSES LEAVES THE MODEL TO INVENT THE NEXT MOVE. Taking the plan away
+ * without saying what to do instead is a refusal.
+ *
+ * D316, the founder, 19 September: a typed instruction naming one person and
+ * one action IS the yes. It goes, with one line afterwards saying who it went
+ * to. So the words to relay are the OWNER'S OWN — „Thursday works for me" needs
+ * no context from us, and asking what it is about is asking the owner to
+ * explain a sentence they have already finished writing.
+ */
+export const INSTRUCTION_EVENT: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'ეს მიზანი თავად არის ინსტრუქცია: მფლობელმა დაასახელა ერთი ადამიანი და ერთი მოქმედება. ' +
+    'მისი სიტყვები თავად არის თანხმობა (D316) — გეგმა არ შეადგინო, ღილაკები არ აჩვენო და ' +
+    'ხელახლა ნუ ჰკითხავ. გადაეცი ის, რაც მფლობელმა თქვა, მისივე სიტყვებით. თუ არ იცი რას ' +
+    'ნიშნავს მისი ნათქვამი — არ გჭირდება: გადაეცი როგორც არის. მერე ერთი წინადადება: ვის ' +
+    'მიუვიდა. მხოლოდ მაშინ იკითხე, თუ ვერ ხვდები ვის უნდა მისწერო.',
+  en:
+    'This goal IS an instruction: the owner named one person and one action. Their words are ' +
+    'themselves the consent (D316) — do not draw up a plan, do not show buttons, and do not ask ' +
+    'again. Pass on what the owner said, in their own words. If you do not know what they meant ' +
+    'by it, you do not need to: relay it as it stands. Then one sentence saying who it went to. ' +
+    'Ask only if you cannot tell WHICH person they meant.',
+  ru:
+    'Эта цель САМА является поручением: владелец назвал одного человека и одно действие. Его ' +
+    'слова и есть согласие (D316) — не составляй план, не показывай кнопки и не переспрашивай. ' +
+    'Передай то, что он сказал, его же словами. Если не понимаешь, что он имел в виду, это и не ' +
+    'нужно: передай как есть. Потом одно предложение — кому ушло. Спрашивай только если не ' +
+    'понимаешь, КОГО он имел в виду.',
+  es:
+    'Esta meta ES una instrucción: el propietario nombró a una persona y una acción. Sus palabras ' +
+    'son el consentimiento (D316) — no hagas un plan, no muestres botones y no vuelvas a ' +
+    'preguntar. Transmite lo que dijo, con sus propias palabras. Si no sabes qué quiso decir, no ' +
+    'hace falta: pásalo tal cual. Luego una frase diciendo a quién le llegó. Pregunta sólo si no ' +
+    'sabes A QUIÉN se refería.',
+};
+
 export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
   ka:
     'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +

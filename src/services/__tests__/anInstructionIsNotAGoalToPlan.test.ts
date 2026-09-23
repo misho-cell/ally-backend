@@ -44,7 +44,8 @@ jest.mock('../inFlightRuns', () => ({
 import { getTaskById } from '../taskStore.service';
 import { messageNamesOwnContact } from '../tools/nameMatch';
 import { query } from '../../db/postgres/client';
-import { nothingToPlanYet } from '../taskEngine.service';
+import { nothingToPlanYet, goalIsAnInstruction } from '../taskEngine.service';
+import { INSTRUCTION_EVENT, PLAN_PROPOSAL_EVENT } from '../taskEngine.events';
 
 const mockTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
 const mockNames = messageNamesOwnContact as jest.MockedFunction<typeof messageNamesOwnContact>;
@@ -155,5 +156,69 @@ describe('and an ordinary goal still gets its plan, which is the control', () =>
 
     expect(await nothingToPlanYet(9109)).toBe(false);
     expect(mockNames).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * AND THE OTHER HALF, WHICH THE FIRST VERSION OF THIS FIX DID NOT HAVE.
+ *
+ * Suppressing the plan was only half an answer, and the tester's run is the
+ * proof: „Tell Netai Test 9 I can do Thursday" produced no plan card AND no
+ * message — the model asked „could you tell me what this is about", the owner
+ * explained, and only then did a goal, a plan and one more yes appear.
+ * Instruction → question → plan → yes. No better than before.
+ *
+ * The same lesson as the card refusal an hour earlier: A REFUSAL THAT ONLY
+ * REFUSES LEAVES THE MODEL TO INVENT THE NEXT MOVE.
+ */
+describe('and it is told what to do instead of being left in silence', () => {
+  /**
+   * THE TWO GATES CANNOT BOTH BE TRUE OR BOTH FALSE, and that is the whole
+   * safety of arming two wakes. They share `goalIsAnInstruction`, so a goal
+   * gets exactly one of the two events — never both, and never neither, which
+   * is what the tester saw.
+   */
+  it('is an instruction exactly when no plan is asked for', async () => {
+    openGoal('Tell Netai Test 9 I can do Thursday');
+    mockNames.mockResolvedValue(true);
+
+    expect(await goalIsAnInstruction(9109)).toBe(true);
+    expect(await nothingToPlanYet(9109)).toBe(false);
+  });
+
+  it('is not an instruction exactly when a plan IS asked for', async () => {
+    openGoal('I need a good photographer in Tbilisi for a wedding');
+
+    expect(await goalIsAnInstruction(9109)).toBe(false);
+    expect(await nothingToPlanYet(9109)).toBe(true);
+  });
+
+  /**
+   * WHAT THE EVENT ACTUALLY HAS TO SAY. „Do not plan" is the easy half; the
+   * half the tester's run needed is „relay the owner's own words, you do not
+   * need to know what they meant".
+   */
+  it.each(['ka', 'en', 'ru', 'es'] as const)('%s tells it to relay and not to re-ask', (lang) => {
+    const text = INSTRUCTION_EVENT[lang];
+
+    expect(text.length).toBeGreaterThan(120);
+    expect(text).toMatch(/D316/);
+  });
+
+  it('says in English exactly the three things the run got wrong', () => {
+    const text = INSTRUCTION_EVENT.en;
+
+    expect(text).toContain('do not draw up a plan');
+    expect(text).toContain('do not ask');
+    expect(text).toContain('in their own words');
+    // The question the model actually asked — „what is this about" — is
+    // answered in advance.
+    expect(text).toContain('you do not need to');
+  });
+
+  /** It is a different event from the plan one, or nothing has changed. */
+  it('is not the plan event wearing a new name', () => {
+    expect(INSTRUCTION_EVENT.en).not.toBe(PLAN_PROPOSAL_EVENT.en);
+    expect(INSTRUCTION_EVENT.en).not.toContain('propose_task_plan');
   });
 });

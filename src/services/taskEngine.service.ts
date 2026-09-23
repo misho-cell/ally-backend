@@ -33,7 +33,7 @@ import {
   threadLanguage,
 } from './threads.service';
 import { RunLanguage, RUN_STRINGS, answerHeldNoTokens } from './runLanguage';
-import { DAY_ONE_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
+import { DAY_ONE_EVENT, INSTRUCTION_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
@@ -869,17 +869,36 @@ export async function nothingToPlanYet(taskId: number): Promise<boolean> {
    * goal, not on the hot path, and it is what keeps „ask" in an ordinary
    * sentence from being read as an instruction to somebody.
    */
-  const goalText = `${task.title ?? ''} ${task.brief ?? ''}`.trim();
-  if (
-    looksLikeContactInstruction(goalText) &&
-    (await messageNamesOwnContact(String(task.user_id), goalText))
-  ) {
+  if (await goalIsAnInstruction(taskId)) {
     // eslint-disable-next-line no-console
     console.log(
       `[task-engine] goal ${taskId}: no plan asked for — the goal IS an instruction naming one contact (D316)`,
     );
     return false;
   }
+  return !(await goalHasActedOutward(taskId));
+}
+
+/**
+ * Is this goal itself a one-person, one-action instruction?
+ *
+ * ONE PREDICATE FOR BOTH WAKES, on purpose. `nothingToPlanYet` uses it to stay
+ * silent and `instructionStillWaiting` uses it to speak; if the two read the
+ * sentence differently a goal would get both events or neither, and „neither"
+ * is exactly what the tester saw while this was only a suppression.
+ */
+export async function goalIsAnInstruction(taskId: number): Promise<boolean> {
+  const task = await getTaskById(taskId);
+  if (!task || task.status !== 'open') return false;
+  if (task.plan !== null || task.plan_proposed !== null) return false;
+  const goalText = `${task.title ?? ''} ${task.brief ?? ''}`.trim();
+  if (!looksLikeContactInstruction(goalText)) return false;
+  return messageNamesOwnContact(String(task.user_id), goalText);
+}
+
+/** The same goal, still unacted-on, is what the instruction event is for. */
+async function instructionStillWaiting(taskId: number): Promise<boolean> {
+  if (!(await goalIsAnInstruction(taskId))) return false;
   return !(await goalHasActedOutward(taskId));
 }
 
@@ -909,6 +928,24 @@ export function startPlanProposal(taskId: number): void {
     taskId,
     PLAN_PROPOSAL_EVENT,
     () => nothingToPlanYet(taskId),
+    () => Promise.resolve(),
+    PLAN_PROPOSAL_DELAY_MS,
+  );
+  /**
+   * ROW 104 — AND THE OTHER HALF, because taking the plan away is only half an
+   * answer and the tester proved it: no plan card, and no message either.
+   *
+   * Both wakes are armed and their gates are mutually exclusive by
+   * construction — `nothingToPlanYet` is false exactly when
+   * `instructionStillWaiting` is true, because both ask `goalIsAnInstruction`.
+   * Arming both rather than choosing here keeps the decision at the moment the
+   * wake FIRES, when the goal's state is settled; that is why every other gate
+   * in this file is a callback and not a branch at call time.
+   */
+  wakeWhenFree(
+    taskId,
+    INSTRUCTION_EVENT,
+    () => instructionStillWaiting(taskId),
     () => Promise.resolve(),
     PLAN_PROPOSAL_DELAY_MS,
   );
