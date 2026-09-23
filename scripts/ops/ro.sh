@@ -34,6 +34,57 @@ case "$SQL" in
     ;;
 esac
 
+# ────────────────────────────────────────────────────────────────────────────
+# AND THE TWO TRAPS THAT COST ME FOUR WRONG NUMBERS IN ONE DAY, 23 SEPTEMBER.
+#
+# Every one of them was the same move: a count whose DEFINITION I had not
+# asked for, read out of a query that looked obviously correct.
+#
+#   14:37  six fictional test seats counted as six registrations — one step
+#          from telling the frontend their fix had failed
+#   18:37  one LEGACY ALLY account counted as a Netai registration; that base
+#          is 62,200 people and four of them joined last week
+#   20:32  MIN(error_text) read as „the common reason" — it is the
+#          alphabetically first one; 98 failures became 2
+#   20:45  „held" read as „never shown", for a kind that is HELD BY DESIGN.
+#          That one reached the board twice and the app team once.
+#
+# The first, second and fourth are queries, so they get a note here — the same
+# treatment as UserAlias.created_at above, and for the same reason: a trap that
+# lives in TypeScript cannot be seen from a shell query, so the query has to
+# carry it. (MIN(error_text) is a habit, not a column, and no note can catch
+# it; it lives on the board instead.)
+#
+# These print to stderr BEFORE the answer, so the definition arrives before the
+# number does.
+case "$SQL" in
+  *'"User"'*|*' User '*)
+    case "$SQL" in
+      *hasAccessToAlly*|*test_seats*) ;;
+      *)
+        echo 'ro.sh: NOTE — "User" holds THREE populations and this query names none:' >&2
+        echo '        62,200 legacy ALLY accounts (hasAccessToAlly = false) who have' >&2
+        echo '        never opened Netai and are still signing up; 20 fictional test' >&2
+        echo '        seats (a row in test_seats); and 13 real Netai people.' >&2
+        echo '        A count of „users" that does not say which one is probably wrong.' >&2
+        ;;
+    esac
+    ;;
+esac
+case "$SQL" in
+  *pending_updates*)
+    case "$SQL" in
+      *held*|*status*)
+        echo "ro.sh: NOTE — in pending_updates, 'held' does NOT mean unseen." >&2
+        echo "        goal_question is STICKY by design: it describes a state, so it is" >&2
+        echo "        shown, left held, and re-offered after a 24h cooldown. A sticky row" >&2
+        echo "        that HAS been shown has release_at pushed past created_at — that is" >&2
+        echo "        the only way to tell 'never shown' from 'shown, still unanswered'." >&2
+        ;;
+    esac
+    ;;
+esac
+
 curl -sS -X POST "$API/internal/ro-sql" \
   -H 'Content-Type: application/json' \
   -H "x-ro-key: $(cat "$OPS/.ro_key")" \
