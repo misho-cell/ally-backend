@@ -277,3 +277,36 @@ export async function createdTestSeats(): Promise<{ userId: string; name: string
   );
   return rows.rows.map((r) => ({ userId: String(r.user_id), name: r.name }));
 }
+
+/**
+ * „This account belongs to nobody" — the one definition, in SQL.
+ *
+ * WHY IT IS A FRAGMENT AND NOT A JOIN EVERY CALLER WRITES. Since the seat
+ * route shipped, „is this fictional" has had two homes: a hardcoded Set in
+ * source, which SQL cannot see, and this table. The eleven were backfilled on
+ * 23 September so the table is now the whole truth, and this is the one place
+ * the question is phrased.
+ *
+ * WHAT IT COST BEFORE ANYBODY NOTICED, measured the same afternoon:
+ *
+ *     accounts with an ACTIVE subscription        41
+ *       of them fictional seats                   20     ← 49%
+ *
+ * Half of every pool, count and ranking built on „active" belonged to nobody,
+ * and it grew by one each time a seat was made.
+ *
+ * NOT AN ID RANGE AND NOT A PHONE PREFIX, and that is the whole care in it.
+ * „171870 to 171941" reads as the eleven and CONTAINS 171903 — a real person's
+ * account, inside the range only because of when it was created. A filter on
+ * the range would have removed a human being from the product, silently. The
+ * +1202555 prefix is the same mistake in better clothes: true of every seat,
+ * and still a property the data happens to have rather than a list anybody
+ * wrote.
+ *
+ * The argument is a column name written in this codebase, never anything a
+ * caller supplies — the same shape as `RESPONDER_COND` in
+ * `introduction.service`.
+ */
+export function notATestSeat(userIdColumn: string): string {
+  return `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ${userIdColumn})`;
+}

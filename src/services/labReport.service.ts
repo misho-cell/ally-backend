@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { notATestSeat } from './testSeatCreate.service';
 import { getReferralFunnel, ReferralFunnel } from './referralLink.service';
 import {
   MONTHLY_GROWTH_ASK_BUDGET_BASE,
@@ -304,7 +305,9 @@ async function buildBudgetsLadderState(): Promise<BudgetsLadderState> {
            AND created_at > NOW() - ($1 || ' days')::INTERVAL
          GROUP BY from_user_id
        ) ignored ON ignored.from_user_id = u.id
-       WHERE u.subscription_status = 'active'
+       -- 20 of the 41 active accounts were fictional seats on 23 September;
+       -- a fatigue histogram half made of nobody is a figure a person reads.
+       WHERE u.subscription_status = 'active' AND ${notATestSeat('u.id')}
      ) x
      GROUP BY fatigue_signals
      ORDER BY fatigue_signals`,

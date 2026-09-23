@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { notATestSeat } from './testSeatCreate.service';
 import { phoneDigits } from './phone';
 import { queueFollowUp } from './pendingUpdates.service';
 
@@ -188,6 +189,10 @@ export async function queueWarmTieQuestions(limit: number): Promise<number> {
     `SELECT u.id AS user_id
      FROM "User" u
      WHERE u.subscription_status = 'active' AND u."deletedAt" IS NULL
+       -- A fictional seat is not somebody to ask about their warm ties. This
+       -- queues a QUESTION to a person, which is the strongest reason of the
+       -- three places this exclusion was added on 23 September.
+       AND ${notATestSeat('u.id')}
        AND (
          SELECT COUNT(DISTINCT w.contact_phone) FROM warmth_events w
          WHERE w.user_id = u.id AND w.created_at > NOW() - ($2 || ' days')::INTERVAL

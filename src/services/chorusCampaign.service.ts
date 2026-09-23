@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { notATestSeat } from './testSeatCreate.service';
 import { approvedTargetPhones } from './targetDecisions.service';
 import {
   buildTargetList,
@@ -175,7 +176,9 @@ async function inviterCandidatesForPhones(
        FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
        WHERE ucp.phone = ANY($1)
      ) x
+     -- A fictional seat must not be chosen as the person who invites somebody.
      JOIN "User" u ON u.id = x.uid AND u.subscription_status = 'active'
+       AND ${notATestSeat('u.id')}
      LEFT JOIN contact_relationship_scores crs
        ON crs.user_id = x.uid AND crs.contact_phone = x.phone
      WHERE NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = x.uid)
