@@ -196,6 +196,44 @@ wall had no tests at all until this afternoon.
 **What is blocked:** nothing else waits on them.
 
 
+### 8. A relayed question reaches a Georgian recipient in English
+
+The seat found it in their own 00:03 stops and asked rather than filing it: on
+a Georgian-framed ask thread the question itself sits in English inside the
+Georgian frame — „Netai Test 3-ის ასისტენტი გეკითხება: \"Do you know a
+reliable electrician…\"" — because the asker wrote in English.
+
+**What the code says.** The FRAME is the recipient's, deliberately:
+`openAskThread` takes their language and its comment says why („the caption
+above this thread is the first thing they see of it, and it was Georgian on
+every account in every country"). The QUESTION is `safeQuestion`, the asker's
+own words, scrubbed for numbers and nothing else. There is no translation step
+anywhere in the ask path — **and no comment saying there should not be.** Every
+other deliberate choice in that file is argued in place. This one is not argued
+anywhere, which in this codebase means nobody decided it.
+
+**And the product says the opposite one path over.**
+`goalQuestions.service.ts` instructs the model to relay a question „verbatim
+(translate if the conversation is in another language)". The intent is already
+written down — in the prompt for the neighbouring path, not in the code for
+this one.
+
+**Why it is the founder's and not mine.** It costs a model call per ask, on the
+path that reaches strangers and the one we want to grow. And a translated
+question is a question the asker did not write: „do you know a reliable
+electrician" is safe, and a sentence carrying a name, a price or a condition is
+where a translation starts answering something nobody asked — with the answer
+coming back as though it had answered theirs.
+
+**What I would propose:** translate AND keep the original visible, which is the
+shape the vision walk already confirmed for the outcome („Test 1's Georgian
+answer → English translation, meaning exact, original kept"). One rule, both
+directions.
+
+**Recorded under it:** blemish 1 (the stop and cancellation lines following the
+chat's language) is confirmed 11 of 11 by the seat, on every recipient thread
+the five 00:03 stops touched — not a sample.
+
 ## Handed over, 22 September (07:15 UTC) — the 21/22 night
 
 **All three were answered by Misho in one line at about 06:55 UTC —
