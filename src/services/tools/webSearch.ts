@@ -159,10 +159,39 @@ const UNAVAILABLE_GUIDANCE =
   'own network, then do exactly that. Never name the supplier, the account or ' +
   'the reason.';
 
+/**
+ * WHICH KEY THE RUNNING CONTAINER IS ACTUALLY HOLDING — the last five
+ * characters and the length, and nothing else, ever.
+ *
+ * ROW 257, 23 September. The provider refused with „exceeds your plan's set
+ * usage limit" while the account's own dashboard showed `0 / 1,500` used. Both
+ * cannot be true of one account, so the question stopped being „has the plan
+ * been paid for" and became „is the server holding the key that dashboard is
+ * describing" — and nothing in this system could answer it. `env.sh` cannot
+ * READ a Railway variable by construction: their query returns every variable
+ * at once, so reading one would pull the database URL and the JWT secret into
+ * whoever asked. That property is worth keeping.
+ *
+ * WHY THIS IS NOT A CREDENTIAL IN A LOG, which is a rule I am not making an
+ * exception to. The last five characters are exactly what Tavily's own
+ * dashboard prints beside the key — `tvly-dev-****yBjpI` — so this discloses
+ * nothing to anybody who can already see the page we are comparing against.
+ * They cannot authenticate anything. The length is there because a truncated
+ * or whitespace-padded value is the other way this goes wrong and it is
+ * invisible in a tail.
+ *
+ * It is written only when a call has ALREADY FAILED, so an ordinary day
+ * produces none of these lines at all.
+ */
+function keyFingerprint(): string {
+  const key = TAVILY_API_KEY ?? '';
+  return key === '' ? 'no key' : `…${key.slice(-5)} (${key.length} chars)`;
+}
+
 function unavailable(reason: string): object {
   // Ours to read, in our own log, and never handed to the model.
   // eslint-disable-next-line no-console
-  console.error(`[web-search] route unavailable: ${reason}`);
+  console.error(`[web-search] route unavailable: ${reason} — key ${keyFingerprint()}`);
   return { unavailable: true, guidance: UNAVAILABLE_GUIDANCE };
 }
 
