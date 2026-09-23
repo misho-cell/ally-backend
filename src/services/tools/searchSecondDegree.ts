@@ -958,23 +958,65 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         * hands back the integer id directly, so nothing can throw and there is
         * no second array to keep in step.
         *
-        * WHOSE FACTS. The same rule the tag half uses: written BY a bridge.
-        * "tag_hits" takes tags whose "contactId" is a bridge; this takes facts
-        * whose SUBMITTER is one. Anything else would reach outside the second
-        * circle, which is not this tool's to do.
+        * WHOSE FACTS — AND I WROTE THE WRONG ANSWER HERE FIRST, IN THIS COMMENT.
+        *
+        * It said: "the same rule the tag half uses: written BY a bridge …
+        * anything else would reach outside the second circle, which is not this
+        * tool's to do." That reasoning conflates two different questions, and
+        * the seat's run on 23 September is what showed it. Test 2 saved "wine
+        * importer" on Test 3. Test 6, whose bridge to Test 3 is Test 4, searched
+        * nine ways and found nobody — because the fact's AUTHOR was not in Test
+        * 6's ring, although the PERSON plainly was.
+        *
+        * The two questions are: whose word says what this person does, and who
+        * can reach them. The second circle is enforced by the bridge, and the
+        * bridge is who has this person in their phonebook — which is what the
+        * join below now asks. A tag belongs to the tagger, so "contactId" is
+        * both answers at once for "tag_hits"; a fact is a statement ABOUT
+        * somebody and the two come apart.
+        *
+        * NOTHING NEW BECOMES VISIBLE. The rows returned are still exactly the
+        * people one of the owner's own contacts knows: the join to "bridges" is
+        * the same second circle, reached through the same phonebooks. What
+        * changes is that a person already in that circle can now be FOUND by
+        * what somebody outside it wrote about them — and the label still never
+        * leaves this CTE, so that somebody's words reach the ranking and never
+        * the reply.
+        *
+        * AND THE BRIDGE IS NOW THE RIGHT PERSON TO NAME. Under the old shape
+        * the "via" offered to the owner was the fact's author, who may be a
+        * stranger to them; it is now whoever in their own ring knows the
+        * target, which is the person an introduction has to go through anyway.
+        *
+        * MEASURED ON PRODUCTION before changing it, three runs each, account
+        * 501 with its 305 bridges and a three-word pattern:
+        *
+        *     old shape   465 / 537 / 497 ms      8 candidate rows
+        *     new shape   496 / 537 / 475 ms    224 candidate rows
+        *
+        * Indistinguishable in time — the phone side of "UserAlias" is indexed
+        * ("idx_user_alias_phone") and "contact_facts" is 1,545 rows whole — and
+        * twenty-eight times the reach. The duplicate rows a phonebook with the
+        * same number twice produces are collapsed by the UNION in "matches",
+        * exactly as they are for the tag half.
         *
         * AND THE SAME TRAVEL FILTER AS EVERYWHERE ELSE — "is_public OR
         * is_matchable". A strictly private fact must not put its subject into
         * a stranger's results, which is the rule "fetchSignalStrength" already
-        * states in those words.
+        * states in those words. That filter is also why this CTE found nothing
+        * on the seat's run even for the author's own ring: a core fact from a
+        * single member was written with BOTH flags false, so no search could
+        * carry it. That half is fixed in "contactFacts.service".
         */
        fact_hits AS (
          SELECT cf.neo4j_contact_id AS phone,
-                fu_f."userId" AS "contactId",
+                ua_b."contactId",
                 LOWER(COALESCE(cf.canonical_value, cf.value)) AS label
          FROM contact_facts cf
-         JOIN friend_users fu_f ON fu_f."userId"::text = cf.submitted_by_user_id
-         WHERE cf.retracted_at IS NULL
+         JOIN "UserAlias" ua_b ON ua_b.phone = cf.neo4j_contact_id,
+              bridges b
+         WHERE ua_b."contactId" = ANY(b.ids)
+           AND cf.retracted_at IS NULL
            AND (cf.is_public OR cf.is_matchable)
            AND (cf.field_type = ANY($${titleFieldsIdx}::text[])
                 OR cf.field_type = ANY($${employerFieldsIdx}::text[]))

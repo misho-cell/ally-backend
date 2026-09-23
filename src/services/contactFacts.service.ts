@@ -103,6 +103,57 @@ export async function runSemanticMatching(
   return parseModelJson<SemanticResult>(text) ?? { canonical: null, matching_indices: [] };
 }
 
+/**
+ * ROW 252 — ONE PERSON'S CORE FACT MAKES ITS SUBJECT FINDABLE. IT DOES NOT
+ * MAKE THEM QUOTABLE.
+ *
+ * THE FOUNDER, 22 September (D440), in his own words: „fact is saved, Giorgi
+ * is foundable when someone looks for architect, but only Netai sees that. it
+ * is not public until 2 men confirm it. before that assistant just gives you
+ * his name when you are looking for architect."
+ *
+ * That is two separate switches and this file only ever set one of them. A
+ * core fact written by a single member went in with `is_public` and
+ * `is_matchable` both at their defaults — FALSE — and only crowd confirmation
+ * or a trusted curator ever raised `is_public`. So „findable by one person's
+ * word" had no state it could be in: the row existed, the owner's own
+ * assistant could read it, and no other search in the product could see it.
+ *
+ * THIS IS WHY ROW 252 FAILED ONE RING OUT AND PASSED ONE RING IN. On
+ * 23 September the seat saved „wine importer" (occupation) and „wine import"
+ * (industry) on a contact and then could not find them from the second circle
+ * in nine tries. Both rows are `is_public false, is_matchable false`, so the
+ * second-degree query's travel filter — „is_public OR is_matchable", the same
+ * filter everywhere else — correctly refused to carry them. The fact CTE I
+ * built for this row was reading a table whose rows were not allowed to
+ * travel. The piece was right; the rows never reached it.
+ *
+ * MEASURED before the change: 55 core-fact rows on 48 people are invisible to
+ * every cross-account search this way.
+ *
+ * WHAT DOES NOT BECOME MATCHABLE, and both exclusions are already the
+ * founder's own, applied two functions down for publication:
+ *
+ *   - `confidence 'mentioned'` — what the assistant took from a web page or
+ *     inferred. „is_matchable is what lets ANOTHER person's search hit this
+ *     row, which is publication by a quieter name" is written in this file
+ *     about exactly that case, and it still holds.
+ *   - `source 'sweep'` — a guess made from a conversation, which the curator
+ *     rule below already refuses to publish on the same grounds. 15 rows on
+ *     12 people sit in that group today; whether the sweep's „stated" is a
+ *     person's word is a question for the seat, not a thing to decide inside
+ *     a helper.
+ *
+ * A null confidence is left alone: it means „not recorded", most of it
+ * predates the column, and 774 rows should not change meaning here.
+ */
+export function coreFactIsMatchable(
+  source: FactSource,
+  confidence: FactConfidence | null,
+): boolean {
+  return source !== 'sweep' && confidence === 'stated';
+}
+
 async function upsertFact(
   userId: string,
   neo4jContactId: string,
@@ -115,13 +166,26 @@ async function upsertFact(
     // The arbiter is the partial unique index uq_contact_facts_structured, so
     // its predicate (only the four core facts) must be repeated here; free-form
     // keys have no such index and are never routed through this path.
-    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, source, confidence)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    //
+    // `is_matchable` is re-decided on the update rather than kept: the value
+    // changed, so an earlier row's matchability was about earlier words. The
+    // same reasoning already demotes `is_public` on this line, and demoting is
+    // the direction of error that costs a search rather than a disclosure.
+    `INSERT INTO contact_facts (neo4j_contact_id, submitted_by_user_id, field_type, value, source, confidence, is_matchable)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
        WHERE field_type IN ('occupation', 'employer', 'city', 'industry')
      DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW(),
-                   source = $5, confidence = $6`,
-    [neo4jContactId, userId, fieldType, value, source, confidence],
+                   source = $5, confidence = $6, is_matchable = $7`,
+    [
+      neo4jContactId,
+      userId,
+      fieldType,
+      value,
+      source,
+      confidence,
+      coreFactIsMatchable(source, confidence),
+    ],
   );
 }
 

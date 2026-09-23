@@ -91,17 +91,42 @@ describe('the second-circle query looks in the facts', () => {
   });
 
   /**
-   * THE SECOND CIRCLE IS THE BRIDGES' KNOWLEDGE. `tag_hits` takes tags whose
-   * `contactId` is a bridge; this takes facts whose SUBMITTER is one. Anything
-   * wider would reach outside the circle this tool is allowed to see.
+   * THE SECOND CIRCLE IS WHO THE BRIDGES KNOW — NOT WHO WROTE THE NOTE, WHICH
+   * IS WHAT THIS ASSERTION USED TO SAY AND WHAT THE SEAT'S RUN DISPROVED.
+   *
+   * It required `JOIN friend_users fu_f ON fu_f."userId"::text =
+   * cf.submitted_by_user_id`: a fact counted only if its AUTHOR was one of the
+   * owner's contacts. On 23 September Test 2 saved „wine importer" on Test 3,
+   * and Test 6 — whose bridge to Test 3 is Test 4 — searched nine ways and
+   * found nobody, because the author was a stranger to them although the
+   * person was not.
+   *
+   * Whose word says what somebody does, and who can reach them, are two
+   * questions. A tag answers both at once because it belongs to the tagger; a
+   * fact is a statement ABOUT somebody and they come apart. The circle is
+   * enforced HERE, by the bridge's own phonebook, which is also the person an
+   * introduction would have to go through.
    */
-  it('only reads facts a bridge wrote', () => {
+  it('reaches only people a bridge actually has in their phonebook', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 1600);
+    const cte = sql.slice(at, at + 2200);
 
-    expect(cte).toContain(
-      'JOIN friend_users fu_f ON fu_f."userId"::text = cf.submitted_by_user_id',
-    );
+    expect(cte).toContain('JOIN "UserAlias" ua_b ON ua_b.phone = cf.neo4j_contact_id');
+    expect(cte).toContain('WHERE ua_b."contactId" = ANY(b.ids)');
+    // The bridge named to the owner is the one who knows them, not the author.
+    expect(cte).toContain('ua_b."contactId",');
+  });
+
+  /**
+   * AND THE AUTHOR IS NO LONGER A CONDITION AT ALL. Left in place beside the
+   * new join it would have been an AND, and the row would have gone on failing
+   * for exactly the reason it failed before.
+   */
+  it('no longer requires the fact’s author to be a bridge', () => {
+    const at = sql.indexOf('fact_hits AS (');
+    const cte = sql.slice(at, at + 2200);
+
+    expect(cte).not.toContain('cf.submitted_by_user_id');
   });
 
   /**
@@ -118,17 +143,28 @@ describe('the second-circle query looks in the facts', () => {
   });
 
   /**
-   * AND THE FIRST VERSION OF THIS CTE DID CAST THE DATA, which is the fault
-   * this file's own P0 comment is about. It survived one review and was caught
-   * by asking what happens to the first non-numeric submitter id anybody
-   * writes — „all 1,282 live rows are numeric" is a fact about today.
+   * AND IT CASTS NOTHING, WHICH IS WHERE THIS CTE'S TWO EARLIER VERSIONS BOTH
+   * WENT WRONG.
+   *
+   * The first cast the DATA — `cf.submitted_by_user_id::int` — which throws on
+   * the first non-numeric submitter id anybody ever writes; „all 1,282 live
+   * rows are numeric" is a fact about today. The second cast the server-made
+   * column instead, which was safe but only because the join existed at all.
+   *
+   * The join that replaced it needs no cast in either direction, and that was
+   * checked against the live catalogue rather than assumed:
+   * `"UserAlias".phone` is varchar and `contact_facts.neo4j_contact_id` is
+   * text — one type family; `"UserAlias"."contactId"` and the bridge ids are
+   * both integer. This file already carries an „integer = text" P0 and I have
+   * written one more since, on this same row.
    */
-  it('never casts the data, only the server-made column', () => {
+  it('casts no join column, because every pair already matches', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 1600);
+    const cte = sql.slice(at, at + 2200);
 
-    expect(cte).not.toContain('cf.submitted_by_user_id::int');
-    expect(cte).toContain('fu_f."userId"::text');
+    // The only casts left are on the two field-type ARRAYS, which are
+    // parameters and not columns of anybody's table.
+    expect(cte.replace(/::text\[\]/g, '')).not.toMatch(/::(int|text)\b/);
   });
 
   /** Row 255: the count has to leave the query, or the caller cannot use it. */

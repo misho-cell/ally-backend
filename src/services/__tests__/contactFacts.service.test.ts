@@ -8,6 +8,8 @@ jest.mock('../../config/anthropic', () => ({
   default: { messages: { create: jest.fn() } },
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import anthropic from '../../config/anthropic';
 import {
@@ -580,5 +582,96 @@ describe('a web-sourced fact stays on the owner’s own copy', () => {
     );
 
     expect(result.is_public).toBe(true);
+  });
+});
+
+/**
+ * ROW 252 — ONE PERSON'S CORE FACT MAKES ITS SUBJECT FINDABLE, NOT QUOTABLE.
+ *
+ * The founder, 22 September (D440): „fact is saved, Giorgi is foundable when
+ * someone looks for architect, but only Netai sees that. it is not public
+ * until 2 men confirm it. before that assistant just gives you his name when
+ * you are looking for architect."
+ *
+ * Two switches, and this file only ever set one. A core fact from a single
+ * member went in with `is_public` and `is_matchable` both at their defaults —
+ * false — so „findable on one person's word" had no state it could be in.
+ *
+ * WHICH IS WHY THE ROW FAILED ONE RING OUT AND PASSED ONE RING IN. The seat
+ * saved „wine importer" (occupation) and „wine import" (industry) on a contact
+ * and could not find them from the second circle in nine tries. Both rows are
+ * `is_public false, is_matchable false`, and every cross-account search filters
+ * on „is_public OR is_matchable". The fact CTE built for this row was reading
+ * rows that were not allowed to travel: 55 of them, on 48 people.
+ */
+describe('row 252 — a core fact from one member can be matched on', () => {
+  /** The parameter positions of the upsert, which is a different call shape. */
+  const IS_MATCHABLE = 6;
+
+  function upsertCall(): [string, unknown[]] {
+    const call = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)'),
+    );
+    return [call?.[0] as string, call?.[1] as unknown[]];
+  }
+
+  it.each(['occupation', 'employer', 'city', 'industry'])(
+    'a stated %s saved in chat is matchable from the first source',
+    async (fieldType) => {
+      mockQuery.mockResolvedValue(rows([]) as never);
+
+      const result = await submitContactFact(USER, RAW_PHONE, fieldType, 'wine importer', 'chat');
+
+      const [, params] = upsertCall();
+      expect(params[IS_MATCHABLE]).toBe(true);
+      // And NOT public: that still takes a second person.
+      expect(result.is_public).toBe(false);
+    },
+  );
+
+  /**
+   * THE TWO EXCLUSIONS ARE THE FOUNDER'S OWN, already applied one function down
+   * for publication. „is_matchable is what lets ANOTHER person's search hit
+   * this row, which is publication by a quieter name" is written in this file
+   * about the web case, and it still holds.
+   */
+  it('does not make a web reading matchable', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect', 'chat', 'mentioned');
+
+    expect(upsertCall()[1][IS_MATCHABLE]).toBe(false);
+  });
+
+  it('does not make a sweep guess matchable', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect', 'sweep', 'stated');
+
+    expect(upsertCall()[1][IS_MATCHABLE]).toBe(false);
+  });
+
+  /**
+   * A NULL CONFIDENCE IS LEFT ALONE. It means „not recorded", most of it
+   * predates the column, and 774 rows should not change meaning here.
+   */
+  it('leaves an unrecorded confidence where it was', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect', 'chat', null);
+
+    expect(upsertCall()[1][IS_MATCHABLE]).toBe(false);
+  });
+
+  /**
+   * AND THE UPDATE RE-DECIDES IT RATHER THAN KEEPING IT. The value changed, so
+   * an earlier row's matchability was about earlier words — the same reasoning
+   * that already demotes `is_public` on that line.
+   */
+  it('re-decides matchability when the value is replaced', () => {
+    const src = readFileSync(join(__dirname, '..', 'contactFacts.service.ts'), 'utf8');
+    const at = src.indexOf('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)');
+
+    expect(src.slice(at, at + 400)).toContain('is_matchable = $7');
   });
 });
