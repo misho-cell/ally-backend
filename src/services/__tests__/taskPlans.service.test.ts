@@ -908,3 +908,58 @@ describe('row 206 — a plan card says a thing once', () => {
     expect(text).toContain('- გია — search the web');
   });
 });
+
+/**
+ * THE REFUSAL THAT TOLD THE MODEL THE ONE THING THAT WAS NOT TRUE.
+ *
+ * Six times in seven days — the last on goal 9871 at 16:55 on 23 September —
+ * `propose_task_plan` answered „plan must be an object". I read what was
+ * actually passed in all six instead of imagining it, and every one of them
+ * was a JSON object sent as a string:
+ *
+ *     plan={"solved_when": "You have the name and contact of a good
+ *            electrician for your Tbilisi office", "routes": [{"name": …
+ *
+ * The decoder exists for exactly that and tries to parse it. When the parse
+ * fails — a plan cut off by the model's output limit is the likely cause — the
+ * string is handed back and the next line calls it „not an object".
+ *
+ * So the model was told to fix the one thing it had got right. It sent an
+ * object; what it did not send was valid JSON. Each of those six cost a run on
+ * a live goal while the owner waited.
+ */
+describe('a plan that arrived as broken JSON says so', () => {
+  it('names the parse failure and the length instead of the shape', () => {
+    const cutOff = '{"solved_when": "You have the name of a good electrician", "routes": [{"nam';
+
+    const out = parsePlan(cutOff);
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toContain('not valid JSON');
+    expect(out.error).toContain(String(cutOff.length));
+    expect(out.error).toContain('cut off');
+    expect(out.error).not.toBe('plan must be an object');
+  });
+
+  /** And the old message survives for things that are genuinely not objects. */
+  it.each([['a bare sentence'], [42], [null]])('still refuses %p as not an object', (bad) => {
+    const out = parsePlan(bad);
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toBe('plan must be an object');
+  });
+
+  /** A well-formed plan sent as text keeps working — that decoder is why. */
+  it('still accepts a valid plan that arrived as text', () => {
+    const out = parsePlan(
+      JSON.stringify({
+        solved_when: 'The owner has an electrician',
+        routes: [{ name: 'ask direct contacts', status: 'waiting' }],
+      }),
+    );
+
+    expect(out.ok).toBe(true);
+  });
+});

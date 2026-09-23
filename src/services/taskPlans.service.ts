@@ -102,13 +102,57 @@ function decodeIfJsonText(raw: unknown): unknown {
 }
 
 /**
+ * WHY „plan must be an object" WAS THE WRONG THING TO SAY, and how much it
+ * cost: six times in seven days, the last of them today at 16:55 on goal 9871.
+ *
+ * I went and read what was actually passed in all six rather than imagining
+ * it. Every one of them looked like this:
+ *
+ *     plan={"solved_when": "You have the name and contact of a good
+ *            electrician for your Tbilisi office", "routes": [{"name": …
+ *
+ * A JSON OBJECT, sent as a string. `decodeIfJsonText` above exists precisely
+ * for that and tries to parse it — and when the parse FAILS (a plan cut off
+ * mid-way by the model's output limit is the likely one) it hands the string
+ * back untouched, and the next line says „plan must be an object".
+ *
+ * So the model is told the one thing that is not true. It believes it sent an
+ * object; it did send one; what it did not send was VALID JSON. A refusal that
+ * only refuses leaves the model to invent the next move — a refusal that
+ * misdescribes the fault sends it to invent a fix for a problem it does not
+ * have, and the owner waits through both.
+ *
+ * The position from `JSON.parse` is included because it is the one piece of
+ * evidence that separates the two cases a model can act on: a truncated plan
+ * ends near the end of the text, a malformed one does not.
+ */
+function jsonTextComplaint(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const text = raw.trim();
+  if (!text.startsWith('{')) return null;
+  try {
+    JSON.parse(text);
+    return null;
+  } catch (err) {
+    const why = err instanceof Error ? err.message : 'it is not valid JSON';
+    return (
+      `the plan arrived as TEXT that is not valid JSON (${why}), ${text.length} characters long. ` +
+      'It looks like an object, so this is not a shape problem: it was probably cut off. ' +
+      'Send the plan again as an object, shorter if it was long.'
+    );
+  }
+}
+
+/**
  * Read a plan out of whatever the model passed. Strict on the shape and
  * forgiving on nothing: a plan the ask path will enforce has to be exact.
  */
 export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
   const raw = decodeIfJsonText(rawInput);
-  if (raw === null || typeof raw !== 'object')
-    return { ok: false, error: 'plan must be an object' };
+  if (raw === null || typeof raw !== 'object') {
+    const complaint = jsonTextComplaint(rawInput);
+    return { ok: false, error: complaint ?? 'plan must be an object' };
+  }
   const input = raw as Record<string, unknown>;
   const solved = cleanText(input.solved_when, 'solved_when');
   if (!solved.ok) return solved;
