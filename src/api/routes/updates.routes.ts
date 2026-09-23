@@ -11,6 +11,7 @@ import {
   listSeenUpdates,
   countHeldUpdates,
   snoozeUpdate,
+  markUpdateSeen,
   toUpdateRef,
   parseUpdateRef,
   PendingUpdate,
@@ -96,6 +97,53 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * ROW 230 (D462) — „I have read it", which is the only thing that spends the
+ * weekly summary card.
+ *
+ * The founder's second answer: „the card must NOT be spent by merely opening
+ * the screen." `getPendingUpdates` now releases a `weekly_summary` and leaves
+ * it held, so the card survives somebody opening the page and walking past it.
+ * This is the tap.
+ *
+ * WHY IT IS A ROUTE AND NOT A FLAG ON THE FRONTEND'S SIDE. They had already
+ * made the card survive, by looking in `due` and `seen` both — and then told
+ * me, unprompted, that the record still said „seen" when nobody had read it.
+ * A screen that looks right over a row that says something untrue is the exact
+ * fault this whole week has been about, and they were right to refuse to leave
+ * it there.
+ */
+updatesRouter.post(
+  '/:ref/seen',
+  param('ref').isString().trim().notEmpty(),
+  async (req: Request, res: Response<ApiResponse<{ update_ref: string }>>) => {
+    const ref = String(req.params.ref);
+    const id = parseUpdateRef(ref);
+    if (id === null) {
+      res.status(400).json({
+        success: false,
+        error: 'Unknown update_ref — take it from GET /updates.',
+      });
+      return;
+    }
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      // Another account's row is a no-op, not a write — and 404 rather than a
+      // quiet 200, so a wrong ref is visible instead of looking like success.
+      const marked = await markUpdateSeen(userId, id);
+      if (!marked) {
+        res.status(404).json({ success: false, error: 'No such update of yours.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { update_ref: ref } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[updates] mark seen failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 /** „Later" — give the update back instead of spending it. */
 updatesRouter.post(

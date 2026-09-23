@@ -65,6 +65,34 @@ export async function queueResult(
 const STICKY_KINDS = ['goal_question'];
 
 /**
+ * ROW 230 (D462) — SHOWN WITHOUT BEING SPENT, AND THE RECORD HAS TO AGREE WITH
+ * THE SCREEN.
+ *
+ * The founder decided on 23 September that the weekly summary is a CARD OF ITS
+ * OWN at the top of the updates screen, staying there until the person opens
+ * it, and — his second answer, on my own question — „the card must NOT be
+ * spent by merely opening the screen."
+ *
+ * The frontend built the card and then told me, unprompted, that they could
+ * only keep half of that: their side finds the summary in `due` OR `seen`, so
+ * the card stays visually, but `GET /updates` had already written „seen" into
+ * the row. Their words: „ჩანაწერი ტყუის" — the record lies. If anybody ever
+ * measures how many people read the weekly summary, the number is wrong, and
+ * it is wrong in the exact way this project has spent a week hunting: a record
+ * that claims more than happened.
+ *
+ * So this kind is released and LEFT HELD. It is spent by `markUpdateSeen`,
+ * which the card's own button calls — „seen" then means „tapped", which is the
+ * only thing it was ever supposed to mean.
+ *
+ * NOT THE SAME AS STICKY. A sticky item goes back to held WITH A COOLDOWN
+ * because it is a question waiting for an answer and must return on its own. A
+ * summary is not waiting for anything: it stays until it is read, and there is
+ * exactly one a week, so no cooldown and no cap.
+ */
+const UNSPENT_KINDS = ['weekly_summary'];
+
+/**
  * How long a sticky item waits before it may surface again. A day: long
  * enough that it is not nagging inside one conversation, short enough that a
  * goal cannot sit blocked for a week on nobody's screen.
@@ -158,10 +186,19 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
        LIMIT $2
      )
      UPDATE pending_updates pu
-     SET status = CASE WHEN pu.kind = ANY($3::text[]) THEN 'held' ELSE 'seen' END,
-         release_at = CASE WHEN pu.kind = ANY($3::text[])
-                           THEN NOW() + ($4 || ' hours')::INTERVAL
-                           ELSE pu.release_at END
+     -- Row 230: an UNSPENT kind is shown and left exactly as it was — no
+     -- 'seen', and no cooldown either, because it is not waiting for an answer
+     -- and there is one a week. It is spent by markUpdateSeen, when the person
+     -- actually taps the card.
+     SET status = CASE
+                    WHEN pu.kind = ANY($6::text[]) THEN pu.status
+                    WHEN pu.kind = ANY($3::text[]) THEN 'held'
+                    ELSE 'seen' END,
+         release_at = CASE
+                        WHEN pu.kind = ANY($6::text[]) THEN pu.release_at
+                        WHEN pu.kind = ANY($3::text[])
+                          THEN NOW() + ($4 || ' hours')::INTERVAL
+                        ELSE pu.release_at END
      WHERE pu.id IN (SELECT id FROM chosen)
      RETURNING pu.id, pu.task_id, pu.kind, pu.payload`,
     [
@@ -170,6 +207,7 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
       STICKY_KINDS,
       STICKY_COOLDOWN_HOURS,
       MAX_BLOCKING_QUESTIONS_PER_READ,
+      UNSPENT_KINDS,
     ],
     QUERY_TIMEOUT_MS,
   );
@@ -291,6 +329,26 @@ export async function snoozeUpdate(
      SET status = 'held', release_at = NOW() + ($3 || ' days')::INTERVAL
      WHERE id = $1 AND user_id = $2`,
     [updateId, userId, clamped],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * ROW 230 (D462) — THE TAP, which is what „seen" was always supposed to mean.
+ *
+ * An UNSPENT kind is released by `getPendingUpdates` and left held, so the
+ * card survives a person opening the screen and walking past it. This is the
+ * other half: the card's own button spends it, once, and only then.
+ *
+ * Scoped to the owner, so another account's row is a no-op and not a write.
+ * Idempotent by nature — a second tap sets 'seen' on a row that already says
+ * it, which is the right answer to a double tap on a phone.
+ */
+export async function markUpdateSeen(userId: string, updateId: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE pending_updates SET status = 'seen' WHERE id = $1 AND user_id = $2`,
+    [updateId, userId],
     QUERY_TIMEOUT_MS,
   );
   return (result.rowCount ?? 0) > 0;
