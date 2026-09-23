@@ -67,6 +67,53 @@ describe('the population is written into the query, not assumed', () => {
   });
 });
 
+/**
+ * THE SECOND NUMBER THAT STOPS THE FIRST FROM BEING MISREAD.
+ *
+ * The first live read of this report, one minute after it deployed: „159 goals
+ * opened by real people last week". True, and it came from THREE people in
+ * twenty-eight days, most of it one account. „159 goals last week" is a
+ * sentence somebody repeats; „from 3 people" is what makes it mean something.
+ */
+describe('how many people the movement came from', () => {
+  it('counts the people, once, over the whole window', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(sql).toContain('AS n FROM mine');
+    expect(sql).toContain('a.from_user_id = mine.id');
+  });
+
+  /**
+   * AND NOT PER DAY OR PER WEEK. Distinct counts do not add up — summing
+   * „people active" across seven days counts one person seven times, and a
+   * field meaning one thing in `days` and another in `weeks` is the trap this
+   * file is written against.
+   */
+  it('is not on the day rows, where it could not be summed honestly', async () => {
+    dbQuery.mockResolvedValue({
+      rows: [
+        {
+          day: '2026-09-23',
+          goals_opened: '1',
+          goals_finished: '0',
+          goals_stopped: '0',
+          goals_closed_unknown: '0',
+          asks_sent: '2',
+          asks_answered: '1',
+        },
+      ],
+      rowCount: 1,
+    });
+
+    const report = await pilotReport(7);
+
+    expect(report.real).toHaveProperty('active_people_in_window');
+    expect(report.real.days[0]).not.toHaveProperty('active_people_in_window');
+    expect(report.real.weeks[0]).not.toHaveProperty('active_people_in_window');
+  });
+});
+
 describe('a closed goal is dated by the column that records it', () => {
   it('counts closures by closed_at and not by updated_at', async () => {
     await pilotReport(7);

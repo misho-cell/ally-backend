@@ -98,6 +98,25 @@ export interface PilotPeople {
 }
 
 export interface PilotSide {
+  /**
+   * HOW MANY PEOPLE THE WHOLE WINDOW'S MOVEMENT CAME FROM, and it is here
+   * because the first live read of this report needed it within a minute.
+   *
+   *     real side, week of 17 September:   159 goals opened
+   *     people they came from:             see this field
+   *
+   * „159 goals opened by real people last week" is a sentence somebody would
+   * repeat, and on this pilot most of that is ONE account — the founder's own,
+   * which is a real Netai account and belongs in the numbers. The count is not
+   * a correction to them; it is the second number that stops the first from
+   * being misread.
+   *
+   * ON THE WINDOW AND NOT ON EACH DAY OR WEEK, deliberately: distinct counts
+   * do not add up. Summing „people active" across seven days would count the
+   * same person seven times, and a field that means one thing in `days` and
+   * another in `weeks` is the trap this whole file is written against.
+   */
+  readonly active_people_in_window: number;
   readonly days: readonly PilotDay[];
   readonly weeks: readonly PilotDay[];
   readonly asks: PilotAsks;
@@ -198,7 +217,7 @@ function intoWeeks(days: readonly PilotDay[]): PilotDay[] {
 }
 
 async function sideFor(who: string, span: number): Promise<PilotSide> {
-  const [daily, asks, people] = await Promise.all([
+  const [daily, asks, people, active] = await Promise.all([
     query<DayRow>(
       `WITH d AS (
          SELECT generate_series(
@@ -258,12 +277,24 @@ async function sideFor(who: string, span: number): Promise<PilotSide> {
       [['active', 'past_due']],
       PILOT_QUERY_TIMEOUT_MS,
     ),
+    query<{ n: string }>(
+      `WITH mine AS (SELECT u.id FROM "User" u WHERE ${who}),
+            since AS (SELECT (CURRENT_DATE - ($1::int - 1))::date AS d)
+       SELECT COUNT(*) AS n FROM mine
+        WHERE EXISTS (SELECT 1 FROM tasks t, since
+                       WHERE t.user_id = mine.id::text AND t.created_at::date >= since.d)
+           OR EXISTS (SELECT 1 FROM task_asks a, since
+                       WHERE a.from_user_id = mine.id AND a.created_at::date >= since.d)`,
+      [span],
+      PILOT_QUERY_TIMEOUT_MS,
+    ),
   ]);
 
   const days = daily.rows.map(day);
   const a = asks.rows[0];
   const p = people.rows[0];
   return {
+    active_people_in_window: Number(active.rows[0]?.n ?? 0),
     days,
     weeks: intoWeeks(days),
     asks: {
