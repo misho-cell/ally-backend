@@ -31,12 +31,30 @@ cd "$(dirname "$0")/../.."
 DEFAULT_SINCE="2026-09-22 15:32:00+00"
 SINCE="${1:-$DEFAULT_SINCE}"
 
+# A SEAT IS NOT A REGISTRATION, and on 23 September this check said it was.
+#
+# At 14:37 it reported „6 registration(s), NONE carried an inviter" and the
+# Routine behind it was one step from telling the frontend their fix had not
+# held. All six were FICTIONAL TEST SEATS — three I made at 13:14 and three the
+# tester made at 14:15 through the route built that afternoon. Not one real
+# person had registered; the number was entirely my own doing, two hours old.
+#
+# That is the exact fault this whole file was written about — a measurement
+# claiming more than happened — arriving inside the measurement itself. It
+# would have cost the frontend an afternoon chasing a bug that was not there.
+#
+# So the count excludes anything the seat route recorded in `test_seats`. It
+# does NOT try to guess from the name: „Netai Test 14" is a convention and a
+# real person may one day be called anything. `test_seats` is a row that only
+# exists because a seat went through the creation checks, which is the only
+# honest way to know.
 SQL_TEXT="SELECT
   COUNT(*)                                                       AS registrations,
-  COUNT(*) FILTER (WHERE \"inviterReferralUserId\" IS NOT NULL)   AS attributed,
-  COALESCE(MAX(TO_CHAR(\"createdAt\", 'MM-DD HH24:MI')), '-')     AS latest
-FROM \"User\"
-WHERE \"createdAt\" >= TIMESTAMPTZ '${SINCE}'"
+  COUNT(*) FILTER (WHERE u.\"inviterReferralUserId\" IS NOT NULL) AS attributed,
+  COALESCE(MAX(TO_CHAR(u.\"createdAt\", 'MM-DD HH24:MI')), '-')   AS latest
+FROM \"User\" u
+WHERE u.\"createdAt\" >= TIMESTAMPTZ '${SINCE}'
+  AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
 
