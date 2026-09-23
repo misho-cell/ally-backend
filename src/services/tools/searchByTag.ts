@@ -410,7 +410,7 @@ export async function searchByTagExactOnly(userId: string, tagQuery: string): Pr
   const rawGroups = wordsAsWritten(tagQuery);
   if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
-  const blockedPhones = await getExcludedPhones(userId);
+  const blockedPhones = await getExcludedPhones(userId, tagQuery);
   const excludedSet = new Set(blockedPhones.map(normalizePhone));
   const exact = await runExactSearch(userId, rawGroups, blockedPhones);
   const rows = exact.rows.filter((r) => !excludedSet.has(normalizePhone(r.phone)));
@@ -427,7 +427,7 @@ export async function searchByTagExactOnly(userId: string, tagQuery: string): Pr
 
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
-    const blockedPhones = await getExcludedPhones(userId);
+    const blockedPhones = await getExcludedPhones(userId, tagQuery);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
 

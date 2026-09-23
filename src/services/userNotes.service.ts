@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { detectAskBoundary, saveAskBoundary } from './askBoundary.service';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const NOTES_LIMIT = 100;
@@ -104,15 +105,57 @@ export const NOTE_REPLY_RULE =
   'all of that is false.';
 
 /**
+ * ROW 247 — AND WHEN THE BOUNDARY IS REAL, THE BAN ABOVE BECOMES THE FAULT.
+ *
+ * Everything in `NOTE_SCOPE` and `NOTE_REPLY_RULE` was written because the
+ * promise was FALSE: no other assistant could see the note, so „I will not put
+ * those questions to you" was a sentence the product could not keep. The
+ * founder ruled on 22 September that it must keep it, and it now does — a
+ * topic boundary is recorded and every subject search leaves that person out.
+ *
+ * So the pair has to be chosen by whether a boundary was actually recorded.
+ * Keeping the ban over a boundary that now works would be the same fault
+ * reflected: the product would honour a person's word and tell them it cannot.
+ * And „a refusal that only refuses leaves the model to invent the next move" —
+ * the lesson from row 104 this morning — applies to the reverse too, so this
+ * says what to SAY and not only what not to say.
+ *
+ * It stays narrow. Only a TOPIC is honoured, because the founder refused the
+ * all-or-nothing button in the same ruling, and the sentence below promises
+ * one subject and never „nothing will reach you".
+ */
+export const BOUNDARY_SCOPE =
+  'Recorded as a boundary on this subject. Other people’s searches will now ' +
+  'leave them out of it — they will not be named in anyone’s plan for it and ' +
+  'no question about it will reach them.';
+
+export const BOUNDARY_REPLY_RULE =
+  'Confirm in one short line, in their language, that you have noted it and ' +
+  'that questions about THIS SUBJECT will not reach them. Name the subject. ' +
+  'Do NOT widen it: do not say that nothing will reach them, or that nobody ' +
+  'will ask them anything — only this subject is covered.';
+
+export interface SavedUserNote {
+  readonly id: number;
+  /** The subject, in the person's own words, when one was recorded (row 247). */
+  readonly boundaryTopic?: string;
+}
+
+/**
  * Save something the user told the assistant about THEMSELF. Notes accumulate,
  * but the SAME text is never stored twice ("keep answers short" existed four
  * times) — a duplicate save returns the existing row's id.
+ *
+ * THE BOUNDARY IS TAKEN HERE, IN THE ONE FUNCTION BOTH SURFACES CALL. The app's
+ * tool handler and the connector's each save a note, and a rule added to one of
+ * them is the fault this codebase keeps finding in its own work. Neither of
+ * them can forget this because neither of them does it.
  */
 export async function saveUserNote(
   userId: string,
   kind: UserNoteKind,
   text: string,
-): Promise<{ id: number }> {
+): Promise<SavedUserNote> {
   const existing = await query<{ id: number }>(
     `SELECT id FROM user_notes
      WHERE user_id = $1 AND kind = $2 AND LOWER(TRIM(text)) = LOWER(TRIM($3))
@@ -120,16 +163,49 @@ export async function saveUserNote(
     [userId, kind, text],
     QUERY_TIMEOUT_MS,
   );
-  if (existing.rows.length > 0) return { id: existing.rows[0].id };
+  const id =
+    existing.rows.length > 0
+      ? existing.rows[0].id
+      : (
+          await query<{ id: number }>(
+            `INSERT INTO user_notes (user_id, kind, text)
+             VALUES ($1, $2, $3)
+             RETURNING id`,
+            [userId, kind, text],
+            QUERY_TIMEOUT_MS,
+          )
+        ).rows[0].id;
 
-  const result = await query<{ id: number }>(
-    `INSERT INTO user_notes (user_id, kind, text)
-     VALUES ($1, $2, $3)
-     RETURNING id`,
-    [userId, kind, text],
-    QUERY_TIMEOUT_MS,
-  );
-  return { id: result.rows[0].id };
+  return { id, ...(await boundaryFor(userId, kind, text, id)) };
+}
+
+/**
+ * Only a `preference`, and never the tone note — which is this product's own
+ * writing, carries a fixed prefix, and is about how sentences should sound. A
+ * model call on every note saved would be paid on `need` and `profile` rows
+ * that cannot contain a boundary by definition.
+ *
+ * Best-effort throughout: the note is already stored and is what the person
+ * asked for. If this fails they are exactly where they were a minute ago —
+ * with a note their own assistant reads — rather than looking at an error.
+ */
+async function boundaryFor(
+  userId: string,
+  kind: UserNoteKind,
+  text: string,
+  noteId: number,
+): Promise<{ boundaryTopic?: string }> {
+  if (kind !== 'preference' || text.startsWith(TONE_NOTE_PREFIX)) return {};
+  try {
+    const boundary = await detectAskBoundary(text);
+    if (boundary === null) return {};
+    const saved = await saveAskBoundary(userId, boundary, noteId);
+    return saved > 0 ? { boundaryTopic: boundary.topic } : {};
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ask-boundary] note saved, boundary not:', (err as Error).message);
+    return {};
+  }
 }
 
 /** Read the user's own notes back — loaded at session start alongside get_my_tasks. */
@@ -170,7 +246,45 @@ export async function deleteUserNotes(userId: string, ids: number[]): Promise<{ 
     [userId, ids],
     QUERY_TIMEOUT_MS,
   );
+  await liftBoundariesFrom(userId, ids);
   return { deleted: result.rowCount ?? 0 };
+}
+
+/**
+ * ROW 247 — DELETING THE NOTE LIFTS THE BOUNDARY, OR THERE IS NO WAY BACK.
+ *
+ * The boundary is invisible by design: the person is absent from other
+ * people's searches and nobody, including them, is told. If the note they
+ * wrote were the only visible trace and deleting it left the rows behind, they
+ * would have taken back the sentence and stayed excluded for ever, with
+ * nothing on any screen to explain it.
+ *
+ * That is the exact shape of the 17 September guard which took search away
+ * from ten real goals for three days — an exclusion nobody could see. A door
+ * out is not a nicety here; it is the thing that makes a silent filter
+ * acceptable at all.
+ *
+ * AFTER the delete and scoped to the same owner, so a failure here leaves a
+ * boundary without its note — recoverable, and visible in the log — rather
+ * than a note whose boundary is already gone.
+ */
+async function liftBoundariesFrom(userId: string, noteIds: number[]): Promise<void> {
+  try {
+    const lifted = await query(
+      'DELETE FROM ask_boundaries WHERE user_id = $1::int AND note_id = ANY($2::bigint[])',
+      [userId, noteIds],
+      QUERY_TIMEOUT_MS,
+    );
+    if ((lifted.rowCount ?? 0) > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask-boundary] user ${userId}: ${lifted.rowCount} term(s) lifted with the deleted note — they are findable again`,
+      );
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ask-boundary] note deleted, boundary not lifted:', (err as Error).message);
+  }
 }
 
 /**

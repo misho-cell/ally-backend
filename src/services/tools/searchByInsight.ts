@@ -673,7 +673,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       // Blocked/deceased, plus everyone this user has said is NOT this
       // (ticket 9 task 14): a correction the founder made in July must stop
       // the July claim being offered back to him in September.
-      Promise.all([getExcludedPhoneSet(userId), vetoedPhonesFor(userId, words)]).then(
+      Promise.all([getExcludedPhoneSet(userId, searchQuery), vetoedPhonesFor(userId, words)]).then(
         ([blocked, vetoed]) => new Set([...blocked, ...vetoed]),
       ),
     ]);

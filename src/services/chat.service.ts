@@ -117,6 +117,8 @@ import {
   isUserNoteKind,
   NOTE_REPLY_RULE,
   NOTE_SCOPE,
+  BOUNDARY_SCOPE,
+  BOUNDARY_REPLY_RULE,
   saveUserNote,
   UserNote,
 } from './userNotes.service';
@@ -2168,7 +2170,7 @@ const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
 const SAVE_USER_NOTE_TOOL: AnthropicTool = {
   name: 'save_user_note',
   description:
-    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts). A note steers YOUR OWN replies to this user and nothing else: it does not stop other people\'s assistants asking them anything. So NEITHER your narration before the call NOR your reply after it may say that questions will stop, that they will not be asked, or that nothing will reach them — say only that the note is saved. Obey `reply_rule` in the result.',
+    'Save something the user tells you about THEMSELF so it persists across chats. kind = "need" (open want), "preference" (how they like things), or "profile" (a stable fact). About the user, not a contact (use save_contact_fact for contacts). A note steers YOUR OWN replies to this user. The ONE exception is a request not to be asked about a particular SUBJECT — that is recorded as a boundary and other people\'s searches do leave them out of it. You cannot tell which it was until the result comes back, so your NARRATION BEFORE THE CALL must never say that questions will stop, that they will not be asked, or that nothing will reach them; say only that you are saving it. After the call, obey `reply_rule` in the result, which knows whether a boundary was recorded. A boundary is never about everything — nothing here stops all questions.',
   input_schema: {
     type: 'object',
     properties: {
@@ -6652,13 +6654,24 @@ async function executeToolCall(
       if (!isUserNoteKind(kind)) return { saved: false, error: 'Invalid kind.' };
       const text = ((input['text'] as string) ?? '').trim();
       if (!text) return { saved: false, error: 'Pass a non-empty text.' };
-      await saveUserNote(userId, kind, text);
+      const note = await saveUserNote(userId, kind, text);
       // The same two fields the connector returns — one place, so the two
       // surfaces cannot promise different things (22 September). `reply_rule`
       // is named as a rule on purpose: the first version put the same thing
       // under `scope` as four sentences of reasoning, and the model read all
       // 484 characters of it and promised anyway, 3 of 3.
-      return { saved: true, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE };
+      //
+      // Row 247: when a topic boundary WAS recorded the promise is true, and
+      // the ban would make the product keep somebody's word and tell them it
+      // had not. Both surfaces read the same field, decided in saveUserNote.
+      return note.boundaryTopic === undefined
+        ? { saved: true, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE }
+        : {
+            saved: true,
+            boundary_topic: note.boundaryTopic,
+            scope: BOUNDARY_SCOPE,
+            reply_rule: BOUNDARY_REPLY_RULE,
+          };
     }
     case 'forget_user_note': {
       const id = Number(input['id']);

@@ -50,6 +50,8 @@ import {
   isUserNoteKind,
   NOTE_REPLY_RULE,
   NOTE_SCOPE,
+  BOUNDARY_SCOPE,
+  BOUNDARY_REPLY_RULE,
   saveUserNote,
 } from '../userNotes.service';
 import {
@@ -1321,11 +1323,23 @@ export async function mcpSaveUserNote(
   }
   const text = (args.text ?? '').trim();
   if (!text) return { saved: false, error: 'Pass a non-empty text.' };
-  await saveUserNote(userId, args.kind as 'need' | 'preference' | 'profile', text);
+  const note = await saveUserNote(userId, args.kind as 'need' | 'preference' | 'profile', text);
   // `scope` travels with every save: the model writes its confirmation from
   // the RESULT, and a tool description read at the top of the prompt was not
   // enough to stop it promising a boundary nothing keeps.
-  return { saved: true, kind: args.kind, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE };
+  //
+  // Row 247: a boundary that WAS recorded is a promise the product now keeps,
+  // so the pair flips. The decision is taken in saveUserNote, which both
+  // surfaces call, rather than twice.
+  return note.boundaryTopic === undefined
+    ? { saved: true, kind: args.kind, scope: NOTE_SCOPE, reply_rule: NOTE_REPLY_RULE }
+    : {
+        saved: true,
+        kind: args.kind,
+        boundary_topic: note.boundaryTopic,
+        scope: BOUNDARY_SCOPE,
+        reply_rule: BOUNDARY_REPLY_RULE,
+      };
 }
 
 /**

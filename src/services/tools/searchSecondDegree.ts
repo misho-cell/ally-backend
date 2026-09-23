@@ -557,7 +557,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
-    const blockedPhones = await getExcludedPhones(userId);
+    const blockedPhones = await getExcludedPhones(userId, tagQuery);
     const blockedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => blockedSet.has(normalizePhone(phone));
 

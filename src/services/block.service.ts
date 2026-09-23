@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
+import { boundaryExclusionsFor } from './askBoundary.service';
 
 export async function blockContact(userId: string, phone: string): Promise<void> {
   await query(
@@ -67,12 +68,43 @@ export async function getBlockedPhones(userId: string): Promise<string[]> {
 
 /**
  * Every phone that must be hidden from this user's search results:
- * blocked phones (both directions), contacts the user marked as deceased, and
- * the user's OWN phone numbers — a real prospect asked for a bridge into a
- * company and was recommended HERSELF (her own number saved in her phonebook).
- * The user must never appear in their own results, on any tool.
+ * blocked phones (both directions), contacts the user marked as deceased, the
+ * user's OWN phone numbers — a real prospect asked for a bridge into a company
+ * and was recommended HERSELF (her own number saved in her phonebook); the
+ * user must never appear in their own results, on any tool — and, when the
+ * caller says what it is searching FOR, the people who have asked their own
+ * assistant not to be involved in that subject.
+ *
+ * ROW 247 — WHY THE BOUNDARY BELONGS HERE AND NOWHERE ELSE.
+ *
+ * The founder's rule is that such a person is „not in the plan … because the
+ * search system finds that she has asked her assistant not to bother her with
+ * it" — absent, not named and refused later. So it has to act on the SEARCH,
+ * and this function already IS the search's answer to „who must not appear":
+ * seven tools call it and none of them has its own idea about exclusion.
+ *
+ * That is also the defence against this project's most frequent fault. Adding
+ * the rule to each search in turn is precisely the shape — the rule on one
+ * wire and the other one still running — that produced rows 103/104, 251 and
+ * 252 in the last three days. One UNION branch cannot be half-applied.
+ *
+ * `aboutQuery` IS OPTIONAL AND ITS ABSENCE MEANS SOMETHING. Several callers of
+ * this function are not searching for a subject at all — a warm path to one
+ * named person, a country's channels — and for them there is nothing a
+ * boundary could be about. Absent leaves the behaviour exactly as it was, so
+ * this change cannot alter a caller that was not looked at.
  */
-export async function getExcludedPhones(userId: string): Promise<string[]> {
+export async function getExcludedPhones(userId: string, aboutQuery?: string): Promise<string[]> {
+  const [own, boundaries] = await Promise.all([
+    excludedForUser(userId),
+    aboutQuery === undefined || aboutQuery.trim() === ''
+      ? Promise.resolve<string[]>([])
+      : boundaryExclusionsFor(aboutQuery),
+  ]);
+  return [...new Set([...own, ...boundaries])];
+}
+
+async function excludedForUser(userId: string): Promise<string[]> {
   const result = await query<{ phone: string }>(
     `SELECT "blockedPhone" AS phone
      FROM "UserBlock"
@@ -107,7 +139,10 @@ export async function getExcludedPhones(userId: string): Promise<string[]> {
  * Callers normalize each candidate phone with normalizePhone() before checking
  * membership — so "+995…", "995…" and a bare local number all match.
  */
-export async function getExcludedPhoneSet(userId: string): Promise<Set<string>> {
-  const phones = await getExcludedPhones(userId);
+export async function getExcludedPhoneSet(
+  userId: string,
+  aboutQuery?: string,
+): Promise<Set<string>> {
+  const phones = await getExcludedPhones(userId, aboutQuery);
   return new Set(phones.map((p) => normalizePhone(p)));
 }
