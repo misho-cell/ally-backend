@@ -81,9 +81,32 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
    * on a number a real owner has had in their phonebook since August. For
    * these five, every holder of 0107-0111 is itself a test seat. No real
    * person's phonebook is touched by any of them.
+   *
+   * AND IT DID ITS JOB A SECOND TIME, 23 September, on the three below: adding
+   * them made this the only failing test in the suite again. That is the whole
+   * design of it, so the reason goes here rather than the number being bumped.
+   *
+   * WHY THE THREE. Row 251's done-when needs a requester, a mediator and a
+   * target with NO introduction ever asked between them, and by that morning
+   * every pair across the eleven above had one — 8 → 10 via 7, 9 → 7 via 8,
+   * 3 ↔ 6, 2 ↔ 4 via 3, 3 → 1 via 2. The assistant refuses a second request on
+   * a used pair, which is correct behaviour and left the row unprovable.
+   *
+   * WHAT IS DIFFERENT ABOUT THEM. These are the first seats this codebase MADE
+   * rather than found — `POST /admin/test-accounts`, under D464 and Misho's
+   * own word. They already work without being in this list, because the
+   * operating routes read `test_seats` too; being here only earns them the
+   * cosmetic `fictional_counterpart` marker in the inbox payload, which stays
+   * on a Set with no I/O because the comment justifying its
+   * absence-means-something rule rests on that check having no failure mode.
+   *
+   * AND THE NUMBER CHECK WAS THE ROUTE'S, NOT A PERSON'S, which is the point of
+   * building it: each took the first slot in +1 202 555 0100–0199 that was
+   * registered to nobody AND saved in nobody's phonebook — the second half
+   * being the one that would have caught Netai Test 5. 0100, 0112 and 0113.
    */
   it('lists exactly the verified ids, so a widening shows up as a failing test', () => {
-    expect(fictionalTestAccountIds()).toHaveLength(11);
+    expect(fictionalTestAccountIds()).toHaveLength(14);
     expect([...fictionalTestAccountIds()].sort()).toEqual([
       '171870',
       '171871',
@@ -96,6 +119,9 @@ describe('a test-seat token reaches the six fictional accounts and nothing else'
       '171939',
       '171940',
       '171941',
+      '172068',
+      '172069',
+      '172070',
     ]);
   });
 });

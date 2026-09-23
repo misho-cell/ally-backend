@@ -75,6 +75,19 @@ const FICTIONAL_TEST_ACCOUNTS: ReadonlySet<string> = new Set([
   '171939', // Netai Test 9
   '171940', // Netai Test 10
   '171941', // Netai Test 11
+  //
+  // 23 September. The first three made by `POST /admin/test-accounts` rather
+  // than by hand — row 251 needed a triangle with no introduction ever asked
+  // between its three seats, and every pair on the eleven above had one.
+  //
+  // They already WORK without being here: the operating routes read
+  // `test_seats` as well. This list is the COSMETIC marker in the inbox
+  // payload, which stays a Set with no I/O because the comment justifying its
+  // absence-means-something rule rests on the check having no failure mode.
+  // So each created seat gets one line here in the commit after it is made.
+  '172068', // Netai Test 14 — the target
+  '172069', // Netai Test 13 — the mediator, holds 14
+  '172070', // Netai Test 12 — the requester, holds 13 and NOT 14
 ]);
 
 /** Twelve hours, matching an admin session — a fixture, not a login. */
