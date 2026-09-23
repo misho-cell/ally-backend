@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { isStaffUser } from './staff';
+import { fictionalTestAccountIds } from './testSeatTokens';
 import {
   BRAND_STOPLIST,
   COMPANY_MARKERS,
@@ -796,12 +797,41 @@ export interface TargetInviter {
  * One definition now, used by the display and by the sender.
  */
 async function askableInviterIds(): Promise<number[]> {
+  /**
+   * FICTIONAL SEATS ARE NOT PEOPLE AND MUST NOT SIT IN A POOL OF PEOPLE WHO
+   * CAN BE ASKED TO DO SOMETHING.
+   *
+   * Measured 23 September, hours after the seat-creation route shipped:
+   *
+   *     accounts with an ACTIVE subscription        41
+   *       of them fictional seats                   20     ← 49%
+   *
+   * This pool is `subscription_status = 'active'` and no opt-out, so half of
+   * it belonged to nobody, and it grew by one every time a seat was made.
+   * Nothing reached a real person — a seat can only be the best inviter for
+   * somebody in its own phonebook — but every count and every ranking built on
+   * this list was half fiction, and „41 active users" is 21.
+   *
+   * THE TWO LISTS, AND NOTHING THAT MERELY CORRELATES WITH THEM. The eleven
+   * original seats are a hardcoded Set in source; the ones the route makes are
+   * rows in `test_seats`. Both are lists a person wrote.
+   *
+   * I DID NOT USE THE ID RANGE, and that is not fussiness — I tried it and it
+   * was wrong. „171870 to 171941" reads as the seats and contains 171903, a
+   * REAL person's account with a Georgian name and a +995 number, inside the
+   * range only because of when it was created. Filtering on the range would
+   * have removed a real human being from this pool the day they subscribed,
+   * silently. An id range is not a fact about a person. Neither is a name, and
+   * neither is a phone prefix on its own.
+   */
   const result = await query<{ id: number }>(
     `SELECT u.id FROM "User" u
      WHERE u."deletedAt" IS NULL
        AND u.subscription_status = 'active'
-       AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = u.id)`,
-    [],
+       AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = u.id)
+       AND u.id <> ALL($1::int[])
+       AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)`,
+    [fictionalTestAccountIds().map(Number)],
     SCORE_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => r.id);
