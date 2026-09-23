@@ -2058,7 +2058,38 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
               properties: {
                 name: { type: 'string' },
                 phone: { type: 'string' },
-                route: { type: 'string' },
+                /**
+                 * ROW 244(a) — AND BOTH REFUSALS THE TESTER FILED UNDER IT ARE
+                 * THE SERVER BEING RIGHT.
+                 *
+                 * They read the two as „the route name was reworded, the looser
+                 * match is still not loose enough". Read against the data, they
+                 * are two different things and neither wants a looser match:
+                 *
+                 *   route: „architect, likely deals with contractors/plumbers
+                 *   through renovation work"
+                 *     — that is a REASON, not a road. The only word it shares
+                 *       with any route is „plumber". Matching it would put a
+                 *       person on a road by coincidence of one word.
+                 *
+                 *   route: „direct contact - dentist", against „direct contact
+                 *   who is a dentist" AND „ask another direct contact for a
+                 *   dentist recommendation"
+                 *     — a real TIE, and the two roads mean opposite things: the
+                 *       first says this person IS the dentist, the second says
+                 *       they know one. Guessing would mislabel why they are
+                 *       there.
+                 *
+                 * So the resolver stays as it is and the contract is stated
+                 * where the model reads it instead.
+                 */
+                route: {
+                  type: 'string',
+                  description:
+                    'EXACTLY one of the names in routes above, copied character for character. ' +
+                    'Not a reason for choosing this person and not a rewording — if no route ' +
+                    'fits them, add the route to routes first.',
+                },
               },
               required: ['name', 'phone'],
             },
