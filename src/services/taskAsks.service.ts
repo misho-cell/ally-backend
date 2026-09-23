@@ -32,6 +32,7 @@ import {
 } from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
+import { askBoundaryBlocks } from './askBoundary.service';
 import { isPhoneOptedOut } from './privacyRights.service';
 import {
   checkAskBudget,
@@ -104,7 +105,8 @@ export type AskRefusalReason =
   | 'monthly_ask_budget_reached'
   | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached'
-  | 'duplicate_ask_in_flight';
+  | 'duplicate_ask_in_flight'
+  | 'recipient_boundary';
 
 export type CreateAskOutcome =
   /**
@@ -580,6 +582,43 @@ export async function createAsk(
         `${toName}-მ მოითხოვა, რომ Netai-დან შეტყობინებები აღარ მიეღო — ამიტომ მას ვერაფერს ვწერთ, ` +
         'ვერც ამ და ვერც სხვა დავალებაზე. ეს მისი გადაწყვეტილებაა და პატივს ვცემთ. მფლობელს ' +
         'პირდაპირ და მშვიდად უთხარი ეს (არა „ტექნიკური შეფერხება") და შესთავაზე სხვა ადამიანი.',
+    };
+  }
+
+  /**
+   * ROW 247 — THE LAST NET, AND IT IS DELIBERATELY NOT WHERE THE RULE LIVES.
+   *
+   * „Never named and marked, never refused at send" is the shape the founder
+   * REJECTED, which is why the search and the plan act first and this person is
+   * normally absent long before anything reaches here. This line exists so that
+   * „no question about that subject will reach them" is true whatever else went
+   * wrong — and the seat's run of 12:20 is why it is not theoretical: every
+   * subject search came back empty and the model named her anyway, off
+   * `get_top_connectors`.
+   *
+   * THE REFUSAL SAYS NOTHING ABOUT A BOUNDARY, and that is the whole point. The
+   * asker must never learn that one exists; the message above it, for a person
+   * who has stopped everything, is a decision that person chose to make public
+   * by making it absolute. This one is a subject they did not want to discuss,
+   * and the model is told to move on rather than to explain.
+   *
+   * THE SUBJECT HERE IS THE QUESTION ITSELF, not the goal, and that is the
+   * more precise thing to compare at this point: the question is what would
+   * actually arrive on their phone. The plan gate one layer up uses the goal,
+   * because there the person is being chosen for a goal and no question exists
+   * yet.
+   */
+  if (await askBoundaryBlocks(contactPhone, question)) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask-boundary] task ${taskId}: send refused — the recipient's own boundary covers this subject`,
+    );
+    return {
+      sent: false,
+      reason: 'recipient_boundary',
+      error:
+        `${toName} ამ თემაზე არ ჯდება — სხვას ჰკითხე. მფლობელს ამის შესახებ არაფერი უთხრა ` +
+        'და მიზეზი არ ახსენო: უბრალოდ სხვა ადამიანი შესთავაზე ან განაგრძე ძებნა.',
     };
   }
 

@@ -321,3 +321,111 @@ describe('deleting the note lifts the boundary', () => {
     expect(notes.slice(at, at + 700)).toContain('findable again');
   });
 });
+
+/**
+ * AND THE SEARCH FILTER WAS NOT ENOUGH — THE SEAT PROVED IT WITHIN THE HOUR OF
+ * IT SHIPPING, WHICH IS THE BEST OUTCOME THIS ROW COULD HAVE HAD.
+ *
+ * Test 9 saved „never ask me about electricians" at 12:19:28 and eight terms
+ * were recorded correctly — the write half worked. At 12:20:01 Test 8 opened an
+ * electrician goal and the plan named her anyway. The tool log says exactly
+ * why:
+ *
+ *     12:20:11  search_by_tag „electrician"          EMPTY
+ *     12:20:11  search_second_degree „ელექტრიკოსი"   EMPTY
+ *     12:20:27  get_top_connectors  limit=10         1 row
+ *     12:20:38  search_contact_by_name „Netai Test"  2 rows
+ *     12:20:47  propose_task_plan → names Test 9
+ *
+ * Every subject search came back empty and the model named her from a list of
+ * best-connected contacts and a lookup by name. Neither is a search for a
+ * subject, so neither could carry one — there is nothing in „who do I know
+ * best" for a boundary to match against.
+ *
+ * THE SUBJECT IS THE GOAL, NOT THE QUERY. And the place every naming tool ends
+ * up is the plan, which is also where the founder's rule points: „she has not
+ * to be in plan".
+ */
+describe('the plan drops her, whichever tool named her', () => {
+  const plans = readFileSync(join(__dirname, '..', 'taskPlans.service.ts'), 'utf8');
+
+  it('filters the named people before the plan is stored', () => {
+    const at = plans.indexOf('export async function proposeTaskPlan');
+    const fn = plans.slice(at, at + 3000);
+
+    expect(fn).toContain('const boundarySubject = await goalSubject(taskId);');
+    expect(fn).toContain('await withoutAskBoundaries(');
+  });
+
+  /**
+   * BEFORE REACHABILITY, so a person who is not in the plan is never looked up
+   * and never carries a `reach` field into a card she should not be on.
+   */
+  it('drops them before anything else is decided about them', () => {
+    const at = plans.indexOf('export async function proposeTaskPlan');
+    const fn = plans.slice(at, at + 3000);
+
+    expect(fn.indexOf('withoutAskBoundaries')).toBeLessThan(
+      fn.indexOf('withReachability(allowed)'),
+    );
+  });
+
+  /** An unreadable goal must not empty a plan: no subject matches no boundary. */
+  it('leaves the plan alone when the goal cannot be read', () => {
+    const at = plans.indexOf('async function goalSubject');
+    expect(plans.slice(at, at + 600)).toContain("catch {\n    return '';");
+  });
+
+  /**
+   * SILENTLY — the opposite of the row 117 refusal twenty lines above it, and
+   * on purpose. Row 117 is the OWNER'S own instruction and they know about it;
+   * this is a third person's boundary the asker must never learn exists.
+   */
+  it('says nothing to the asker, and says it with a count in the log', () => {
+    const boundary = readFileSync(join(__dirname, '..', 'askBoundary.service.ts'), 'utf8');
+    const at = boundary.indexOf('export async function withoutAskBoundaries');
+    const fn = boundary.slice(at, at + 900);
+
+    expect(fn).toContain('taken out of the plan');
+    expect(fn).not.toContain('return {');
+  });
+});
+
+/**
+ * AND THE LAST NET, WHICH IS DELIBERATELY NOT WHERE THE RULE LIVES.
+ *
+ * „Never named and marked, never refused at send" is the shape the founder
+ * rejected. This is not that — it is the line that makes „no question about it
+ * will reach them" true whatever else went wrong, and after 12:20 it is not
+ * theoretical.
+ */
+describe('and nothing reaches her even if both of those miss', () => {
+  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const boundary = readFileSync(join(__dirname, '..', 'askBoundary.service.ts'), 'utf8');
+
+  it('checks the recipient before an ask is created', () => {
+    expect(asks).toContain('if (await askBoundaryBlocks(contactPhone, question)) {');
+  });
+
+  /** The refusal names no boundary — the asker must not learn one exists. */
+  it('gives the model no reason it could pass on', () => {
+    const at = asks.indexOf('askBoundaryBlocks(contactPhone, question)');
+    const block = asks.slice(at, at + 700);
+
+    expect(block).toContain('მფლობელს ამის შესახებ არაფერი უთხრა');
+    expect(block).toContain('მიზეზი არ ახსენო');
+  });
+
+  /**
+   * THIS ONE FAILS CLOSED, unlike the two above it, and the split is the
+   * argument: open where the error is recoverable and something else is
+   * watching, closed where the next step is a message to a person who said no.
+   * `isOptedOutFromAsks`, one function over, has always failed the same way.
+   */
+  it('throws rather than passing when it cannot read', () => {
+    const at = boundary.indexOf('export async function askBoundaryBlocks');
+    const fn = boundary.slice(at, at + 900);
+
+    expect(fn).not.toContain('catch');
+  });
+});

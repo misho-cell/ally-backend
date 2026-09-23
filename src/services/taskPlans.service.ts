@@ -4,6 +4,7 @@ import { georgianStem } from './tools/georgianStem';
 import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
+import { withoutAskBoundaries } from './askBoundary.service';
 
 /**
  * The plan a goal runs inside (Ticket 10 Task 21; D118, D119).
@@ -316,7 +317,29 @@ export async function proposeTaskPlan(
   // owner reads it before saying yes. Concurrent, and a lookup that fails
   // leaves `reach` undefined — which renders as nothing, never as a claim that
   // somebody is unreachable.
-  const withReach = await withReachability(parsed.value.people_to_involve);
+  /**
+   * ROW 247 — „she has not to be in plan", and this is the one place every
+   * tool that can name somebody ends up.
+   *
+   * The search filter alone was not enough and the seat proved it in an hour:
+   * every subject search came back empty and the model named her anyway, off
+   * `get_top_connectors` and a lookup by name. Neither of those is a search
+   * for a subject, so the subject cannot come from the query — it comes from
+   * the GOAL, which is what the person is being asked about either way.
+   *
+   * Silently. That is the opposite of the row 117 refusal twenty lines up, and
+   * deliberately: row 117 is the owner's OWN instruction and they know about
+   * it, while this is a third person's boundary the asker must never learn
+   * exists. „My human assistant will never ask Nino about it — because she
+   * knows she will not answer."
+   */
+  const boundarySubject = await goalSubject(taskId);
+  const allowed = await withoutAskBoundaries(
+    parsed.value.people_to_involve,
+    boundarySubject,
+    taskId,
+  );
+  const withReach = await withReachability(allowed);
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
   // an approved plan decides whether a route may claim to be under way. The
@@ -345,6 +368,26 @@ export async function proposeTaskPlan(
       everApproved,
     },
   };
+}
+
+/**
+ * What this goal is ABOUT, in the owner's own words — the title and whatever
+ * brief was written under it. Never throws and never blocks the plan: an
+ * unreadable goal leaves the subject empty, which matches no boundary at all,
+ * which is the behaviour of the day before this existed.
+ */
+async function goalSubject(taskId: number): Promise<string> {
+  try {
+    const result = await query<{ title: string | null; brief: string | null }>(
+      `SELECT title, brief FROM tasks WHERE id = $1 LIMIT 1`,
+      [taskId],
+      PLAN_QUERY_TIMEOUT_MS,
+    );
+    const row = result.rows[0];
+    return `${row?.title ?? ''} ${row?.brief ?? ''}`.trim();
+  } catch {
+    return '';
+  }
 }
 
 /**

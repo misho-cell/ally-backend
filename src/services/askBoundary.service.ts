@@ -5,6 +5,7 @@ import { parseModelJson } from './modelJson';
 import { recordClaudeUsage } from './costLedger.service';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
 import { georgianStem } from './tools/georgianStem';
+import { phoneDigits } from './phone';
 
 /**
  * ROW 247 — „DO NOT ASK ME ABOUT PLUMBERS" HAS TO REACH OTHER PEOPLE'S
@@ -265,4 +266,102 @@ export async function askBoundariesOf(userId: string): Promise<AskBoundary[]> {
     byTopic.set(row.topic, terms);
   }
   return [...byTopic].map(([topic, terms]) => ({ topic, terms }));
+}
+
+/**
+ * ROW 247, SECOND CAUSE — THE SEARCH FILTER WAS NOT ENOUGH, AND THE SEAT'S RUN
+ * SHOWED EXACTLY WHY WITHIN THE HOUR.
+ *
+ * Test 9 saved „never ask me about electricians" at 12:19:28. Eight terms were
+ * recorded correctly — that half worked. At 12:20:01 Test 8 opened an
+ * electrician goal, and the plan named Test 9 anyway. The tool log says why:
+ *
+ *     12:20:11  search_by_tag „electrician"         EMPTY
+ *     12:20:11  search_second_degree „ელექტრიკოსი"  EMPTY
+ *     12:20:27  get_top_connectors  limit=10        1 row
+ *     12:20:38  search_contact_by_name „Netai Test" 2 rows
+ *     12:20:47  propose_task_plan → names Test 9
+ *
+ * EVERY SUBJECT SEARCH CAME BACK EMPTY AND THE MODEL NAMED HER ANYWAY, from a
+ * list of the owner's best-connected contacts and a lookup by name. Neither of
+ * those is a search for a subject, so neither could have a boundary applied to
+ * it — there is nothing in „who do I know best" for a boundary to match.
+ *
+ * So the subject is not the search string. THE SUBJECT IS THE GOAL. A person
+ * who will not be asked about electricians must be absent from every list the
+ * model builds while it is working on an electrician goal, whichever tool
+ * produced the name — and the founder's rule says where that has to bite:
+ * „she has not to be in plan".
+ *
+ * Which makes `proposeTaskPlan` the one place it cannot be walked around. Each
+ * of the seven or eight tools that can name a person is a wire I would have to
+ * remember; the plan is the single thing they all end in.
+ *
+ * SILENTLY, AND THAT IS NOT THE USUAL RULE HERE. Row 117 refuses a plan rather
+ * than emptying it, „so the model's message still lists what it found as leads
+ * instead of quietly dropping the work" — right there, because that is the
+ * OWNER'S OWN instruction and they already know about it. This is a third
+ * person's boundary and the founder's ruling is that the asker never learns it
+ * exists: „my human assistant will never ask Nino about it — because she knows
+ * she will not answer." Nobody's privacy is spent and nobody's time is wasted.
+ *
+ * FAILING OPEN HERE IS DELIBERATE AND IT IS NOT THE ONLY NET. A database
+ * hiccup that silently emptied plans would be unreadable from every seat; a
+ * hiccup that leaves a plan as it was costs one visible name, and the send
+ * still refuses. The fail directions are split on purpose: open where the
+ * error is recoverable and something else is watching, closed where the next
+ * step is a message to a person who said no.
+ */
+export async function withoutAskBoundaries<T extends { readonly phone: string }>(
+  people: readonly T[],
+  subject: string,
+  taskId: number,
+): Promise<T[]> {
+  if (people.length === 0) return [...people];
+  const withheld = new Set((await boundaryExclusionsFor(subject)).map(phoneDigits));
+  if (withheld.size === 0) return [...people];
+
+  const kept = people.filter((p) => !withheld.has(phoneDigits(p.phone)));
+  if (kept.length < people.length) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask-boundary] goal ${taskId}: ${people.length - kept.length} of ${people.length} taken out of the plan — their own boundary on this subject`,
+    );
+  }
+  return kept;
+}
+
+/**
+ * The last net, at the send, and this one FAILS CLOSED.
+ *
+ * The founder did not want the boundary to live here — „never named and
+ * marked, never refused at send" is the shape he rejected, and it is why the
+ * search and the plan act first. This is not that. It is the line that makes
+ * „no question about it will reach them" true whatever else went wrong, and by
+ * the time a caller reaches it the next thing to happen is a message to a
+ * person who said no.
+ *
+ * So it throws rather than returning false when it cannot read, which is the
+ * same direction `isOptedOutFromAsks` has always failed in one function over:
+ * an ask that fails costs a retry, and one that goes out cannot be recalled.
+ */
+export async function askBoundaryBlocks(phone: string, subject: string): Promise<boolean> {
+  const terms = queryTerms(subject);
+  if (terms.length === 0) return false;
+  const digits = phoneDigits(phone);
+  if (digits === '') return false;
+
+  const result = await query<{ phone: string }>(
+    `SELECT up.phone
+       FROM ask_boundaries ab
+       JOIN "UserPhone" up ON up."userId" = ab.user_id
+      WHERE EXISTS (
+              SELECT 1 FROM unnest($1::text[]) AS w
+               WHERE ab.term = w
+                  OR ab.term LIKE w || '%'
+                  OR w LIKE ab.term || '%')`,
+    [terms],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.some((r) => phoneDigits(r.phone) === digits);
 }
