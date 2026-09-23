@@ -517,34 +517,51 @@ export function introRequesterExtra(
     }
   }
   const told = (t: string): string => (targetWasTold ? t : '');
+  /**
+   * ROW 251 / D438 — THE SECOND SENTENCE THAT SENT PEOPLE OFF THE PRODUCT, AND
+   * THE ONE THE OWNER ACTUALLY READS.
+   *
+   * I changed `introOutcomeEvent`'s handover line earlier today and the tester's
+   * run still showed „Write to them and say X introduced you". It was never
+   * that text. THIS is the one on the owner's screen, and it says the same
+   * thing in four languages: here is the number, now go and do it yourself.
+   *
+   * My own error, and the exact shape I keep reporting in other people's code:
+   * the rule went on one wire and the other one kept running.
+   *
+   * The number still goes — the mediator chose to hand it over and that is
+   * theirs to decide. What changes is that Netai is offered FIRST, because the
+   * founder's rule is that after the yes the two assistants carry it. „You also
+   * have the number" is a fallback, not the instruction.
+   */
   switch (language) {
     case 'en':
       return (
-        `\n\n${targetName}'s number, from ${mediatorName}'s phonebook: ${targetPhone}. ` +
-        `Write to them and say ${mediatorName} introduced you` +
-        told(' — they have already been told you may be in touch') +
-        '.'
+        `\n\n${mediatorName} passed ${targetName} on, so the two of you are connected here now: ` +
+        `tell me what to say and I will carry it to them, and their reply comes back here` +
+        told(' — they already know you may be in touch') +
+        `. Their number, from ${mediatorName}'s phonebook, if you would rather write yourself: ${targetPhone}.`
       );
     case 'ru':
       return (
-        `\n\nНомер ${targetName} из записной книжки ${mediatorName}: ${targetPhone}. ` +
-        `Напиши и скажи, что вас познакомил ${mediatorName}` +
-        told(' — его уже предупредили, что ты можешь написать') +
-        '.'
+        `\n\n${mediatorName} передал ${targetName} дальше, так что вы теперь связаны здесь: ` +
+        `скажи, что передать, и я отнесу, а ответ придёт сюда же` +
+        told(' — он уже знает, что ты можешь написать') +
+        `. Его номер из записной книжки ${mediatorName}, если хочешь написать сам: ${targetPhone}.`
       );
     case 'es':
       return (
-        `\n\nEl número de ${targetName}, de la agenda de ${mediatorName}: ${targetPhone}. ` +
-        `Escríbele y dile que ${mediatorName} os ha presentado` +
-        told(' — ya le hemos avisado de que podrías escribirle') +
-        '.'
+        `\n\n${mediatorName} os ha puesto en contacto, así que ya estáis conectados aquí: ` +
+        `dime qué decir y yo se lo llevo, y su respuesta vuelve aquí` +
+        told(' — ya sabe que podrías escribirle') +
+        `. Su número, de la agenda de ${mediatorName}, por si prefieres escribirle tú: ${targetPhone}.`
       );
     default:
       return (
-        `\n\n${geoName(targetName, 'gen')} ნომერი ${geoName(mediatorName, 'gen')} წიგნაკიდან: ${targetPhone}. ` +
-        `მისწერე და უთხარი, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ` +
-        told(' — მას უკვე ვაცნობეთ, რომ შესაძლოა დაუკავშირდე') +
-        '.'
+        `\n\n${geoName(mediatorName, 'erg')} ${geoName(targetName, 'dat')} გადმოგაბარა, ანუ ახლა აქ ხართ ` +
+        `დაკავშირებული: დამიწერე რისი თქმა გინდა და მე გადავცემ, პასუხიც აქვე მოვა` +
+        told(' — მან უკვე იცის, რომ შესაძლოა დაუკავშირდე') +
+        `. ნომერი ${geoName(mediatorName, 'gen')} წიგნაკიდან, თუ თავად გირჩევნია მიწერა: ${targetPhone}.`
       );
   }
 }
