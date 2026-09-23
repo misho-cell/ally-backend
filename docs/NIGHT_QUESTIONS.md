@@ -31,8 +31,8 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Read this first.** Eight items, and only three of them actually need a
-decision from you — the rest are mine, written here so nothing is invisible.
+**Read this first.** Nine items. Six need a word from you or the founder; the
+other three are mine, written here so nothing is invisible.
 
 | # | what it is | whose |
 |---|---|---|
