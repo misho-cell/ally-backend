@@ -7001,9 +7001,69 @@ async function processToolBlocks(
       toolStepCaption(block.name, runLang(runId)) ?? TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
   }
+  /**
+   * ROW 249 — A CARD THAT COULD NOT MEAN ANYTHING, OFFERED IN THE SAME BREATH
+   * AS THE APPROVAL IT CONTRADICTS.
+   *
+   * Goal 9011, 23 September, 07:31:10. One step called `approve_task_plan`
+   * (confirmed true) AND `present_choices` with „Send both / Send only to Netai
+   * Test 1 / Send only to Netai Test 4 / Change the wording". The reply said
+   * „Approved. Before I send anything, here are the two exact messages, since
+   * this task waits for your yes on each one" and then, in the same message,
+   * „Understood, no need for that extra check, your approval covers it." The
+   * four buttons stayed on the owner's screen. Day one sent the messages
+   * anyway, which is correct — so the card asked the owner to decide something
+   * that was already decided and that their answer could not change.
+   *
+   * D119: the plan's approval IS the consent; there is no per-message yes. A
+   * card offered in the same step as the approval is asking for one.
+   *
+   * WHY HERE AND NOT IN THE PROMPT. The seat has a prompt fix ready and it is
+   * the right one for the wording. This is the wall behind it, and the reason
+   * is written in five places in this file already: a sentence in a prompt is
+   * not a wall. The model emitted both calls in ONE step, meaning an order the
+   * server does not keep — the same concurrency the seat identified for the
+   * approve/ask_contact pair in row 249's first diagnosis.
+   *
+   * THE WHOLE TURN IS REFUSED, NOT THE MATCHING LABELS. Reading the labels to
+   * decide which cards are „send-per-person" is a judgement about wording, and
+   * this file's own history says those drift. „Was an approval recorded in this
+   * same step" is a fact about the turn.
+   */
+  const approvingThisTurn = toolBlocks.some((b) => b.name === 'approve_task_plan');
   return Promise.all(
-    toolBlocks.map((block) => runOneToolBlock(userId, threadId, runId, block, ownerAbsent)),
+    toolBlocks.map((block) =>
+      approvingThisTurn && block.name === 'present_choices'
+        ? Promise.resolve(choicesRefusedBesideAnApproval(block))
+        : runOneToolBlock(userId, threadId, runId, block, ownerAbsent),
+    ),
   );
+}
+
+/**
+ * The refusal itself, as a tool result the model can act on in the same turn.
+ *
+ * It says what to do INSTEAD rather than only what was refused: an approval has
+ * just been recorded, so the next thing the owner should read is one or two
+ * sentences saying the work is under way — not a question.
+ */
+function choicesRefusedBesideAnApproval(
+  block: Anthropic.ToolUseBlock,
+): Anthropic.ToolResultBlockParam {
+  // eslint-disable-next-line no-console
+  console.log('[consent] present_choices dropped: offered in the same step as approve_task_plan');
+  return {
+    type: 'tool_result',
+    tool_use_id: block.id,
+    content: JSON.stringify({
+      shown: false,
+      error:
+        'No buttons were shown. You called approve_task_plan in this same step, and the plan’s ' +
+        'approval IS the consent — there is no separate yes for each message (D119). A card here ' +
+        'would ask the owner to decide something already decided. Say in one or two sentences ' +
+        'that you are on it and when you will be back, and nothing else.',
+    }),
+  };
 }
 
 // Streaming keeps the connection alive token-by-token, so the per-call cap can
