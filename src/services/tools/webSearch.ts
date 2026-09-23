@@ -127,9 +127,48 @@ export function webSearchConfigured(): boolean {
   return Boolean(TAVILY_API_KEY);
 }
 
+/**
+ * A ROUTE THAT IS DOWN IS NOT A SEARCH THAT FOUND NOTHING, AND THE OWNER WAS
+ * BEING TOLD THE SECOND.
+ *
+ * 23 September, 08:09:16: Tavily began refusing every call — „This request
+ * exceeds your plan's set usage limit." Twelve failures in five minutes. What
+ * the owner saw was the assistant writing that it had found nothing on the web
+ * and would try again, because the only thing this function handed the model
+ * was `{ error: "Tavily error 432: …" }` and the model had to invent the rest.
+ *
+ * TWO DIFFERENT FAULTS WERE BEING RETURNED AS ONE FACT. „I looked and there is
+ * nothing" and „I could not look" are not the same sentence, and only the first
+ * of them is ever true when the route is down. It is the same distinction
+ * `outage.sh` makes between NOTHING PROVEN and OK, and the same one the second
+ * circle's `missing` list already makes — this tool was the one place that
+ * collapsed them.
+ *
+ * AND THE PROVIDER'S OWN WORDS MUST NOT REACH THE MODEL. „exceeds your plan's
+ * set usage limit. Please upgrade your plan or contact support@tavily.com" is
+ * commercial detail about OUR account, handed to something that is talking to a
+ * user. A person asking for a plumber does not need to hear which supplier we
+ * buy search from or what we owe them. The status is kept for OUR log; what the
+ * model gets is what it is allowed to say.
+ */
+const UNAVAILABLE_GUIDANCE =
+  'THE WEB ROUTE IS UNAVAILABLE RIGHT NOW — this is NOT an empty result. ' +
+  'Do NOT say you found nothing on the web, and do NOT say you will try again ' +
+  'in this conversation. Tell the owner in one short sentence that the web ' +
+  'search is not working at the moment and that you are going on with their ' +
+  'own network, then do exactly that. Never name the supplier, the account or ' +
+  'the reason.';
+
+function unavailable(reason: string): object {
+  // Ours to read, in our own log, and never handed to the model.
+  // eslint-disable-next-line no-console
+  console.error(`[web-search] route unavailable: ${reason}`);
+  return { unavailable: true, guidance: UNAVAILABLE_GUIDANCE };
+}
+
 export async function webSearch(query: string): Promise<object> {
   if (!TAVILY_API_KEY) {
-    return { error: 'Web search not configured (TAVILY_API_KEY missing)' };
+    return unavailable('TAVILY_API_KEY missing');
   }
 
   // If query contains Georgian script, append transliterated Latin version
@@ -155,7 +194,7 @@ export async function webSearch(query: string): Promise<object> {
 
     if (!response.ok) {
       const body = await response.text();
-      return { error: `Tavily error ${response.status}: ${body}` };
+      return unavailable(`Tavily error ${response.status}: ${body}`);
     }
 
     const data = (await response.json()) as TavilyResponse;
@@ -174,7 +213,7 @@ export async function webSearch(query: string): Promise<object> {
       })),
     };
   } catch (err) {
-    return { error: (err as Error).message };
+    return unavailable((err as Error).message);
   } finally {
     clearTimeout(timer);
   }

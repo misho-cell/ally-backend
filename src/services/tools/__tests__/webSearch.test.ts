@@ -69,20 +69,62 @@ describe('webSearch', () => {
     expect(body.include_answer).toBe(false);
   });
 
-  it('returns an error object when Tavily responds non-ok', async () => {
+  /**
+   * A ROUTE THAT IS DOWN IS NOT A SEARCH THAT FOUND NOTHING, AND THESE TWO
+   * TESTS USED TO ASSERT THE OPPOSITE.
+   *
+   * They pinned the raw provider string being handed back — „Tavily error 503"
+   * — and on 23 September that is exactly what reached a real conversation.
+   * From 08:09:16 every call failed with „This request exceeds your plan's set
+   * usage limit", twelve in five minutes, and what the owner saw was the
+   * assistant saying it had found nothing on the web and would try again. The
+   * model had nothing else to work from.
+   *
+   * „I looked and there is nothing" and „I could not look" are different
+   * facts, and only the first is ever true when the route is down. So the tests
+   * changed with the behaviour rather than being deleted.
+   */
+  it('says the route is unavailable rather than reporting an empty search', async () => {
     mockFetch({ ok: false, status: 503, text: async () => 'unavailable' });
 
     const webSearch = await loadWebSearch('test-key');
     const result = (await webSearch('x')) as Record<string, unknown>;
 
-    expect(result.error).toEqual(expect.stringContaining('503'));
+    expect(result.unavailable).toBe(true);
+    expect(result.results).toBeUndefined();
+    expect(String(result.guidance)).toContain('NOT an empty result');
   });
 
-  it('reports a clear error when the API key is missing', async () => {
+  /**
+   * AND THE PROVIDER'S OWN WORDS MUST NOT REACH THE MODEL. „exceeds your plan's
+   * set usage limit. Please upgrade your plan or contact support@tavily.com" is
+   * commercial detail about OUR account, handed to something that is talking to
+   * a user. A person looking for a plumber does not need to hear which supplier
+   * we buy search from or what we owe them.
+   */
+  it('never hands the supplier’s text or name to the model', async () => {
+    mockFetch({
+      ok: false,
+      status: 432,
+      text: async () =>
+        '{"detail":{"error":"This request exceeds your plan\'s set usage limit. Please upgrade your plan or contact support@tavily.com"}}',
+    });
+
+    const webSearch = await loadWebSearch('test-key');
+    const result = JSON.stringify(await webSearch('x'));
+
+    expect(result).not.toMatch(/tavily/i);
+    expect(result).not.toContain('usage limit');
+    expect(result).not.toContain('upgrade');
+    expect(result).not.toContain('432');
+  });
+
+  it('treats a missing key the same way, and does not name the key', async () => {
     const webSearch = await loadWebSearch(undefined);
     const result = (await webSearch('x')) as Record<string, unknown>;
 
-    expect(result.error).toEqual(expect.stringContaining('TAVILY_API_KEY'));
+    expect(result.unavailable).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('TAVILY_API_KEY');
   });
 });
 
