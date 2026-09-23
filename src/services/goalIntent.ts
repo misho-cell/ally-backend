@@ -313,9 +313,29 @@ export function goalTitleFrom(message: string): string {
  * is the harder one to notice.
  */
 
-/** „ask", „tell", „write to" — and the Georgian, which inflects at the end. */
+/**
+ * „ask", „tell", „write to" — and the Georgian, which inflects at the end.
+ *
+ * TWO ADDED 23 SEPTEMBER, both found by checking the tester's own test cases
+ * against the build BEFORE they ran them rather than after.
+ *
+ * `უთხ` — „tell". The list already held the Georgian for ASK (ჰკითხე) and for
+ * WRITE (მისწერ) and the English for all three, so „Netai Test 2-ს უთხარი რომ
+ * ხუთშაბათს შემიძლია" was not an instruction while its English twin was. That
+ * is an asymmetry rather than a decision: nothing anywhere argues that a
+ * Georgian „tell" should count for less.
+ *
+ * `send … to/through` — and it carries its direction ON PURPOSE. A bare „send"
+ * would swallow „send me the list" and „send it again", which are instructions
+ * to the ASSISTANT about its own output and not about reaching a person. What
+ * row 104 is actually about is „send the introduction request THROUGH Test 3",
+ * where the preposition is the whole difference. This matters more than it
+ * would have yesterday, because since today this predicate also stands at the
+ * consent wall, where the phonebook half is deliberately not paid for — so the
+ * verb has to carry the weight on its own.
+ */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|კითხე|მისწერ|მიწერ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b)/iu;
+  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the

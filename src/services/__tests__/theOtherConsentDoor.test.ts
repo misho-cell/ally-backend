@@ -71,26 +71,41 @@ describe('the honest grants still go through — the control, first', () => {
    */
 
   /**
-   * AND WHAT THIS DOES NOT COVER, WRITTEN DOWN RATHER THAN STRETCHED TO FIT.
+   * ROW 104's OWN SENTENCE, AND I CHANGED MY MIND ABOUT IT IN THE RIGHT ORDER.
    *
-   * Row 104's LITERAL sentence — „Please send the introduction request through
-   * them again" — names no person. „Them" is somebody established earlier in
-   * the conversation, and resolving a pronoun is not something a regex at the
-   * consent wall should be doing: the way to make this pass would be to drop
-   * the requirement for a name, and a rule that accepts any imperative to send
-   * is not a consent check any more.
+   * „Please send the introduction request through them again" names no person
+   * — „them" is somebody established earlier — and the first version of this
+   * file asserted that it must stay REFUSED, on the reasoning that resolving a
+   * pronoun is not the consent wall's job and that accepting any imperative to
+   * send is not a consent check at all.
    *
-   * So this sentence is still refused, and row 104 is NOT closed by this file.
-   * It is no worse than today either — on 22 September that sentence was
-   * already refused, by the plan wall, which is how the row was filed. What
-   * would settle it is a measurement of how often an owner types a
-   * send-imperative that does NOT mean „go ahead and contact people", and that
-   * measurement is not done.
+   * The second half of that is still true and is what changed the answer. The
+   * verb was not widened to a bare „send"; it was widened to „send … TO /
+   * THROUGH / VIA", and the preposition is the whole of it. „Send me the list"
+   * is an instruction to the assistant about its own output and is refused
+   * below. „Send it through them" routes something to a person, which is the
+   * thing D316 is about, and it does not need the name resolved to be that.
+   *
+   * So the sentence passes, and row 104's own case is covered. Written out
+   * because the file argued the opposite an hour earlier and a reader deserves
+   * to see which argument survived.
    */
-  it('does not pretend to cover row 104’s own sentence', () => {
-    expect(
-      ownerWordsGrantPermission('Please send the introduction request through them again', []),
-    ).toBe(false);
+  it.each([
+    'Please send the introduction request through them again',
+    'Send the introduction request through Test 3 again.',
+    'Netai Test 2-ს უთხარი რომ ხუთშაბათს შემიძლია',
+  ])('covers row 104’s own shape, direction and all: %j', (said) => {
+    expect(ownerWordsGrantPermission(said, [])).toBe(true);
+  });
+
+  /**
+   * AND THE LINE THAT WIDENING HAD TO STAY BEHIND. An imperative about the
+   * assistant's OWN output is not permission to write to anybody, and a bare
+   * „send" would have swallowed it.
+   */
+  it('does not read an instruction about our own output as consent', () => {
+    expect(ownerWordsGrantPermission('send me the list', [])).toBe(false);
+    expect(ownerWordsGrantPermission('send me the screenshots', [])).toBe(false);
   });
 
   /**
