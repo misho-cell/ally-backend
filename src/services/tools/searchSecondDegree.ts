@@ -904,20 +904,6 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- one-scan shape it wins in every regime. It is now what the single
        -- filter parameter carries — see the measurement above the query.
        bridges AS (SELECT ARRAY(SELECT DISTINCT "userId" FROM friend_users) AS ids),
-       /**
-        * TEXT, BECAUSE "contact_facts.submitted_by_user_id" IS TEXT AND
-        * "UserTags."contactId"" IS AN INTEGER.
-        *
-        * The comment further down this file records an "integer = text" P0 in
-        * this very query. Casting the DATA — "submitted_by_user_id::int" —
-        * would throw on the first row anybody ever writes that is not a
-        * number, and „all 1,282 live rows are numeric today" is a fact about
-        * today. Casting the small, known, server-made array instead cannot
-        * throw at all.
-        */
-       bridge_ids_text AS (
-         SELECT ARRAY(SELECT DISTINCT "userId"::text FROM friend_users) AS ids
-       ),
        tag_hits AS (
          SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
          FROM "UserTags" ut, bridges b
@@ -962,6 +948,16 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         * I wrote on the board was unfounded. Said plainly because the note is
         * still there and someone will read it.
         *
+        * NO CAST ON THE DATA, AND THAT IS NOT FUSSINESS EITHER. This file
+        * already carries an "integer = text" P0: "UserTags."contactId"" is an
+        * integer and "contact_facts.submitted_by_user_id" is text. The first
+        * version of this CTE cast the DATA — "submitted_by_user_id::int" —
+        * which throws on the first non-numeric row anybody ever writes, and
+        * "all 1,282 live rows are numeric today" is a fact about today. A join
+        * against "friend_users" casts the small server-made COLUMN instead and
+        * hands back the integer id directly, so nothing can throw and there is
+        * no second array to keep in step.
+        *
         * WHOSE FACTS. The same rule the tag half uses: written BY a bridge.
         * "tag_hits" takes tags whose "contactId" is a bridge; this takes facts
         * whose SUBMITTER is one. Anything else would reach outside the second
@@ -974,11 +970,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         */
        fact_hits AS (
          SELECT cf.neo4j_contact_id AS phone,
-                cf.submitted_by_user_id::int AS "contactId",
+                fu_f."userId" AS "contactId",
                 LOWER(COALESCE(cf.canonical_value, cf.value)) AS label
-         FROM contact_facts cf, bridge_ids_text bt
-         WHERE cf.submitted_by_user_id = ANY(bt.ids)
-           AND cf.retracted_at IS NULL
+         FROM contact_facts cf
+         JOIN friend_users fu_f ON fu_f."userId"::text = cf.submitted_by_user_id
+         WHERE cf.retracted_at IS NULL
            AND (cf.is_public OR cf.is_matchable)
            AND (cf.field_type = ANY($${titleFieldsIdx}::text[])
                 OR cf.field_type = ANY($${employerFieldsIdx}::text[]))

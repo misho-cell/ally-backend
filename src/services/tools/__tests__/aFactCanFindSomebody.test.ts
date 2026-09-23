@@ -97,9 +97,11 @@ describe('the second-circle query looks in the facts', () => {
    */
   it('only reads facts a bridge wrote', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 900);
+    const cte = sql.slice(at, at + 1600);
 
-    expect(cte).toContain('cf.submitted_by_user_id = ANY(bt.ids)');
+    expect(cte).toContain(
+      'JOIN friend_users fu_f ON fu_f."userId"::text = cf.submitted_by_user_id',
+    );
   });
 
   /**
@@ -116,18 +118,17 @@ describe('the second-circle query looks in the facts', () => {
   });
 
   /**
-   * TEXT AGAINST TEXT. `contact_facts.submitted_by_user_id` is text and
-   * `UserTags."contactId"` is an integer; this file already carries an
-   * `integer = text` P0 from that mismatch. Casting the DATA would throw on the
-   * first non-numeric row anybody ever writes, so the small server-made array
-   * is what gets cast.
+   * AND THE FIRST VERSION OF THIS CTE DID CAST THE DATA, which is the fault
+   * this file's own P0 comment is about. It survived one review and was caught
+   * by asking what happens to the first non-numeric submitter id anybody
+   * writes — „all 1,282 live rows are numeric" is a fact about today.
    */
-  it('compares the ids without casting the data', () => {
-    expect(sql).toContain('bridge_ids_text AS (');
-    expect(sql).toContain('SELECT ARRAY(SELECT DISTINCT "userId"::text FROM friend_users) AS ids');
-
+  it('never casts the data, only the server-made column', () => {
     const at = sql.indexOf('fact_hits AS (');
-    expect(sql.slice(at, at + 900)).not.toContain('cf.submitted_by_user_id::int = ANY');
+    const cte = sql.slice(at, at + 1600);
+
+    expect(cte).not.toContain('cf.submitted_by_user_id::int');
+    expect(cte).toContain('fu_f."userId"::text');
   });
 
   /** Row 255: the count has to leave the query, or the caller cannot use it. */
