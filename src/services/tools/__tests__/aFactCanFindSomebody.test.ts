@@ -139,3 +139,43 @@ describe('the second-circle query looks in the facts', () => {
     expect(sql).toContain('role_sources: sources');
   });
 });
+
+/**
+ * AND THE TOOL HAS TO SAY WHAT THE NUMBER MEANS, WHICH THE FIRST VERSION DID
+ * NOT — found by running the live search and reading my own output.
+ *
+ * The description told the model: a row carrying `role_source: label` is a
+ * label and must not be stated as fact, „without that field the value is
+ * confirmed". That sentence was true the hour before this shipped and false the
+ * hour after: a fact with `role_sources: 1` carries no `role_source`, so the
+ * model would have read one member's note as a CONFIRMED FACT — which is row
+ * 255's original bug, walked straight back in through the tool description
+ * while the query underneath was busy preventing it.
+ *
+ * The first live search returned `"role_sources":1` on a CFO, which is exactly
+ * the row that would have been announced.
+ */
+describe('the model is told what the count means', () => {
+  const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+  const at = chat.indexOf('Search for contacts of contacts (2nd degree)');
+  const description = chat.slice(at, at + 2600);
+
+  it('explains role_sources rather than leaving it to be guessed', () => {
+    expect(description).toContain('role_sources');
+    expect(description).toContain('FEWER THAN TWO');
+  });
+
+  /** Name, not role — the founder's own words for what to do below two. */
+  it('says to give the name and not the role below two sources', () => {
+    expect(description).toMatch(/give the NAME and do not state the role/);
+  });
+
+  /**
+   * AND THE OLD SENTENCE IS GONE, not merely added to. „Without that field the
+   * value is confirmed" contradicts everything above it and the model would
+   * have had to choose between two rules in one paragraph.
+   */
+  it('no longer says an unlabelled value is confirmed', () => {
+    expect(description).not.toContain('without that field the value is confirmed');
+  });
+});
