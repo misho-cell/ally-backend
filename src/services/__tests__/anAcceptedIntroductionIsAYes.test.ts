@@ -178,3 +178,57 @@ describe('acceptance records the number, which is what makes the gate reachable'
     expect(intro.slice(at, at + 260)).toContain('COALESCE(\n           target_phone,');
   });
 });
+
+/**
+ * THE THIRD GATE, FOUND BY GETTING THROUGH THE OTHER TWO.
+ *
+ * The tester's run on c61f4d3: the handle worked, the model called ask_contact
+ * with the RIGHT number on the RIGHT goal — the first time anybody reached this
+ * gate — and it was refused, because goal 7163 has carried a plan nobody
+ * approved since 21 September. The channel worked and a two-day-old unapproved
+ * draft stopped it. The owner got there in the end, through one extra approval.
+ *
+ * The draft is about who the OWNER will write to for this goal and it is right
+ * that it waits for them. An accepted introduction is a different fact about a
+ * different person: the owner ASKED for it and the target THEMSELVES said yes,
+ * relayed by somebody who knows them both. Both parties have agreed about that
+ * one person — more than the unapproved plan carried about anybody.
+ */
+describe('an unapproved plan does not block the person who accepted', () => {
+  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+
+  it('checks the acceptance before refusing for an unapproved plan', () => {
+    expect(asks).toContain('const introAccepted =');
+    expect(asks).toContain(
+      'if (!introAccepted && (task.plan_proposed ?? null) !== null && planInForce(task) === null) {',
+    );
+  });
+
+  /** This task, this asker — the same scoping as the gate below it. */
+  it('is scoped to the goal and the asker, not to the person alone', () => {
+    const at = asks.indexOf('const introAccepted =');
+    const block = asks.slice(at, at + 420);
+
+    expect(block).toContain('acceptedIntroductionPhones(taskId, fromUserId)');
+    expect(block).toContain('phoneDigits(p) === phoneDigits(contactPhone)');
+  });
+
+  /**
+   * AND IT ONLY EVER APPLIES WHERE THE OLD GATE WOULD HAVE FIRED. The condition
+   * repeats `plan_proposed !== null && planInForce === null` rather than
+   * standing alone, so a goal with no draft pays nothing for this and the
+   * bypass cannot reach a case the wall was not already refusing.
+   */
+  it('costs a goal with no unapproved draft nothing', () => {
+    const at = asks.indexOf('const introAccepted =');
+    const block = asks.slice(at, at + 420);
+
+    expect(block).toContain('(task.plan_proposed ?? null) !== null &&');
+    expect(block).toContain('planInForce(task) === null &&');
+  });
+
+  /** It says so in the log, or the next person cannot tell why an ask went. */
+  it('leaves a line saying the draft was bypassed', () => {
+    expect(asks).toContain('unapproved plan bypassed for an accepted introduction (row 251)');
+  });
+});

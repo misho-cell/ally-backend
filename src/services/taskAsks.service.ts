@@ -3,6 +3,7 @@ import { getTaskById } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
+import { phoneDigits } from './phone';
 import { questionForReader } from './askTranslation.service';
 import {
   createThread,
@@ -489,10 +490,44 @@ export async function createAsk(
           'უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
     }
-    // Ticket 16 Task 99 (D119): a plan proposed and not yet approved is the
-    // wall too — goal 1619 carried a legacy grant from August, a proposed plan
-    // v1 and no approval, and an ask still went out. Until the yes, nothing new.
-    if ((task.plan_proposed ?? null) !== null && planInForce(task) === null) {
+    /**
+     * Ticket 16 Task 99 (D119): a plan proposed and not yet approved is the
+     * wall too — goal 1619 carried a legacy grant from August, a proposed plan
+     * v1 and no approval, and an ask still went out. Until the yes, nothing new.
+     *
+     * ROW 251 — AND AN ACCEPTED INTRODUCTION REACHES PAST IT, FOR THE ONE
+     * PERSON IT NAMES.
+     *
+     * This is the THIRD gate the row had to cross, and the tester found it by
+     * getting through the other two: on goal 7163 the ask reached the right
+     * person with the right number and was refused here, because that goal has
+     * carried a proposed plan nobody approved since 21 September. The channel
+     * worked; a two-day-old unapproved draft stopped it.
+     *
+     * The draft is about who the OWNER will write to for this goal, and it is
+     * right that it waits for them. An accepted introduction is a different
+     * fact about a different person: the owner ASKED for it, and the target
+     * THEMSELVES said yes, relayed by somebody who knows them both. Both
+     * parties have agreed about that one person, which is more than the plan
+     * would have carried.
+     *
+     * NARROW IN THE SAME WAY AS THE PLAN GATE BELOW: this task only, this
+     * asker only, and only the phones on an accepted, direct introduction.
+     * Everyone else still waits for the plan.
+     */
+    const introAccepted =
+      (task.plan_proposed ?? null) !== null &&
+      planInForce(task) === null &&
+      (await acceptedIntroductionPhones(taskId, fromUserId)).some(
+        (p) => phoneDigits(p) === phoneDigits(contactPhone),
+      );
+    if (introAccepted) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask] task ${taskId}: unapproved plan bypassed for an accepted introduction (row 251)`,
+      );
+    }
+    if (!introAccepted && (task.plan_proposed ?? null) !== null && planInForce(task) === null) {
       return {
         sent: false,
         reason: 'consent_pending',
