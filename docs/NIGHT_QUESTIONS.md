@@ -45,7 +45,7 @@ Ordered by what else they block.
 
 | # | what it is | whose | what it blocks |
 |---|---|---|---|
-| A | ~~the ask reminder pushes a real person at 5 a.m.~~ **STOPPED 23 Sep** — a Tbilisi quiet window that defers rather than drops | **still yours, but smaller** — which hours, on whose clock, before there are real users further west | nothing |
+| A | ~~the ask reminder pushes a real person at 5 a.m.~~ **CLOSED 23 Sep** — quiet window shipped, and **D472** settled the hours | ~~yours~~ — answered; per-recipient time is scoped when a real user west of Georgia registers | nothing |
 | B | clearing the founder's test goals (§23 of the write register) | **his or yours** — and D245 says a goal is never deleted | the tester's tidy-up of account 501 |
 | C | the opening web search on a goal naming no trade or place | **the founder's** — it collides with D315 | row 253's remaining half |
 | D | the outage monitor is blind all night | **yours** — the fix is a probe and a probe costs money | nothing; it is a hole in what we can see |
@@ -110,12 +110,18 @@ has ever received a reminder, because an old Ally account that never opened
 Netai cannot be asked anything in the first place. One country has ever been
 hurt by this and the window covers it.
 
-**WHAT IS STILL YOURS, and it is now small and precise.** For the one other
-country reached, +420 at UTC+2, this window is 06:00–20:00 local: early, not
-night, and nobody there has had one outside it yet. The moment there are real
-users further west, Tbilisi's day stops being theirs — Buenos Aires would be
-01:00–15:00. So: **which hours, and on whose clock?** Needed before that
-happens rather than after. It is two named constants; your answer is one line.
+**ANSWERED — D472, the founder, 23 September 16:30 UTC.** Put to him as one
+question with the recommendation and two alternatives (a narrower window, or
+per-person time now). His answer: „ok".
+
+    08:00–22:00 Tbilisi STANDS, on one clock.
+    Per-recipient local time, from the phone's country code, is SCOPED WHEN
+    THE FIRST REAL USER WEST OF GEORGIA REGISTERS — not before.
+
+So the two constants stay as shipped and nobody re-asks him. The trigger for
+the next build is a fact about the user base, not a date: today every reminder
+that has ever gone to a real person went to +995 or +420, and +420 lands at
+06:00–20:00 local, which is early and not night.
 
 ---
 
