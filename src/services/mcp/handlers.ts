@@ -559,7 +559,24 @@ export async function mcpRespondToRequest(
 // never wired here (the same registration gap invite_contact had).
 export async function mcpGetIntroStatus(userId: string): Promise<McpToolPayload> {
   const introductions = await getIntroStatusForRequester(userId);
-  return { introductions } as unknown as McpToolPayload;
+  /**
+   * ROW 251 — THE HANDLE CROSSES AS A REF, NEVER AS A NUMBER.
+   *
+   * The in-app model is given phones and always has been; the connector is
+   * not, and „numbers never reach you — stripped" is the promise its own
+   * instructions make to it. So the accepted target arrives here the same way
+   * every other person does: an opaque ref this account can spend and nobody
+   * else can read.
+   *
+   * Deleting the phone afterwards rather than never selecting it is deliberate
+   * — one place decides what an accepted introduction means, and the two
+   * surfaces differ only in how the person is named.
+   */
+  const withRefs = introductions.map(({ target_phone, ...rest }) => ({
+    ...rest,
+    ...(target_phone ? { contact_ref: encodeContactRef(userId, target_phone) } : {}),
+  }));
+  return { introductions: withRefs } as unknown as McpToolPayload;
 }
 
 // D23 path (1), founder-decided unlink. Same registration gap as above —

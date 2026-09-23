@@ -518,7 +518,17 @@ const GET_INTRO_STATUS_TOOL: AnthropicTool = {
     'mediator chose to stay in the middle — do NOT say the owner can reach them directly; ' +
     '`null` means nobody has said, which is not permission either way. ' +
     '`answered_by_the_person_themselves` is a different thing again — it only means there was ' +
-    'no go-between on the REQUEST, and it says nothing about the channel.',
+    'no go-between on the REQUEST, and it says nothing about the channel. ' +
+    // Row 251 / D438: the owner is not sent off to finish their own
+    // introduction. „The channel is open" was a sentence the model could not
+    // act on, because the person is by definition NOT in the owner's
+    // phonebook — that is why there was an introduction — so a name search
+    // finds nothing and the model concluded it had no way to write.
+    'WHEN contact_handed_over IS TRUE THE ROW CARRIES `target_phone` AND `for_goal_id`: that ' +
+    'is the person, already agreed, and you may pass them straight to ask_contact on that ' +
+    'goal. Do NOT search the phonebook for them first and do NOT ask the owner for a number — ' +
+    'they will not have one, which is the whole reason they asked for an introduction. Do NOT ' +
+    'tell them to write to the person themselves.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 

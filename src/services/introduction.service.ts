@@ -198,6 +198,14 @@ export interface IntroStatusRow {
   target_name: string;
   responder_name: string | null;
   status: string;
+  /**
+   * Row 251: what to pass to `ask_contact`, present only on an accepted
+   * introduction whose mediator handed the contact over. Null everywhere else.
+   * The connector turns this into an opaque ref — numbers do not reach it.
+   */
+  target_phone?: string | null;
+  /** The goal the introduction was asked for, so the ask lands in the right one. */
+  for_goal_id?: number | null;
   response: string | null;
   asked_at: string;
   responded_at: string | null;
@@ -255,7 +263,35 @@ export async function getIntroStatusForRequester(
             (ir.mediator_user_id IS NULL) AS answered_by_the_person_themselves,
             ir.intro_channel,
             CASE WHEN ir.intro_channel IS NULL THEN NULL
-                 ELSE ir.intro_channel = 'direct' END AS contact_handed_over
+                 ELSE ir.intro_channel = 'direct' END AS contact_handed_over,
+            /**
+             * ROW 251 — THE HANDLE, WITHOUT WHICH THE CHANNEL IS A SENTENCE.
+             * (No backticks in this comment: it lives inside a template literal,
+             * and one of them ended the SQL string this morning too.)
+             *
+             * The tester's trace, 09:49: the owner said „write to Netai Test 6
+             * now", the model searched their phonebook twice, found nobody —
+             * OF COURSE it found nobody, not knowing the person is the entire
+             * reason there was an introduction — and answered „I have no way
+             * to send them a question through the app on your behalf. Do you
+             * have their number to share?"
+             *
+             * Everything else in the row was in place by then: the plan gate
+             * accepts them, the acceptance records their number. What was
+             * missing is that NOTHING HANDED THE MODEL SOMETHING IT COULD PASS
+             * TO ask_contact. It could see „accepted, contact handed over" and
+             * a name, and a name is not an argument.
+             *
+             * ONLY WHEN THE MEDIATOR CHOSE TO HAND THE CONTACT OVER. On
+             * "via_mediator" they decided to stay in the middle — surfacing the
+             * number there would undo their choice, which is theirs and not the
+             * product's. And only on an ACCEPTED request, for the obvious
+             * reason.
+             */
+            CASE WHEN ir.status = 'accepted' AND ir.intro_channel = 'direct'
+                 THEN ir.target_phone END AS target_phone,
+            CASE WHEN ir.status = 'accepted' AND ir.intro_channel = 'direct'
+                 THEN ir.requester_task_id END AS for_goal_id
      FROM introduction_requests ir
      LEFT JOIN "User" m ON m.id = ir.mediator_user_id
      WHERE ir.requester_user_id = $1
