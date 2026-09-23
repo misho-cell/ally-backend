@@ -872,3 +872,32 @@ But a column named for Ally access, used as the admin gate, and set true by
 every registration is one careless read away from being believed. I made
 exactly that read at 19:00 and shipped it. Worth renaming when somebody has a
 quiet hour; it is not worth a night.
+
+### 8. Row 101's likely cause — one send, two Apple deliveries — LIKA, THEN THE APP TEAM
+
+Found at 22:25 by measuring the one remaining candidate I could see from here.
+
+A notification goes to EVERY row in `push_subscriptions` for that person. Lika
+Ose's account has five, and **two of them are Apple Web Push**:
+
+    30 Jul   Apple    no user_agent, no device_id   (predates both)
+    15 Sep   Apple    iPhone OS 18_7, device_id
+
+    notifications delivered to BOTH in the same second, 7 days:   205
+    failures on either:                                             0
+
+**Proven:** one event, two successful Apple deliveries, 205 times, 17–23 Sep.
+**Not proven:** that both are the same iPhone. An iPhone AND an iPad would make
+this correct behaviour and no bug at all.
+
+**The question is hers and takes one sentence: does she have a second Apple
+device?** If not, she has received every notification twice since at least 17
+September — which is row 101, on the phone row 101 names, and the reason every
+send-side measurement came back clean.
+
+**Three fixes, none taken tonight.** Deleting the stale subscription is a write
+on a real person's data (D44) and is the wrong first move if she owns two Apple
+devices. Deduping at send time is a behaviour change whose failure direction is
+silently not delivering. Having the client send `device_id` on every
+registration and deduping on that is the durable one and belongs to the app
+team. My recommendation is the third, then the first, after she answers.
