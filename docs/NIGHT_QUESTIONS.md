@@ -45,7 +45,7 @@ Ordered by what else they block.
 
 | # | what it is | whose | what it blocks |
 |---|---|---|---|
-| A | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone | nothing else, and it is happening to real people now |
+| A | ~~the ask reminder pushes a real person at 5 a.m.~~ **STOPPED 23 Sep** — a Tbilisi quiet window that defers rather than drops | **still yours, but smaller** — which hours, on whose clock, before there are real users further west | nothing |
 | B | clearing the founder's test goals (§23 of the write register) | **his or yours** — and D245 says a goal is never deleted | the tester's tidy-up of account 501 |
 | C | the opening web search on a goal naming no trade or place | **the founder's** — it collides with D315 | row 253's remaining half |
 | D | the outage monitor is blind all night | **yours** — the fix is a probe and a probe costs money | nothing; it is a hole in what we can see |
@@ -85,7 +85,41 @@ a minute … if you do not know, tell me that too and I will stop bothering you"
 **Assumption named:** the hour is converted to Tbilisi. Most users are +995 and
 not all, so 11 is close and not exact.
 
-**Why we cannot decide it overnight:** this is behaviour that reaches real
+---
+
+### ✅ FIXED IN DAYLIGHT, 23 September ~16:00 UTC — and the question got smaller
+
+A quiet window now stands: nothing is sent outside 08:00–22:00 Tbilisi.
+
+**It DEFERS, it does not drop**, which is why it did not need the ruling first.
+The claim and the send are one statement, so at a quiet hour the rows are
+simply not claimed and the next sweep inside the window finds them unchanged.
+Nobody loses a reminder; a few arrive in the morning instead of at five. There
+is a test pinning those two halves together, because splitting them would turn
+the deferral into a drop.
+
+**AND I MEASURED WHO THE TIME ZONE ACTUALLY AFFECTS** rather than leaving it as
+a named assumption. Every reminder ever sent, by the recipient's number:
+
+    +995   51   of which 12 outside Tbilisi's day   ← all of the harm
+    +1202  12   the fictional test seats, nobody
+    +420    2   both inside Tbilisi's day
+
+**The Buenos Aires worry below does not land.** Not one of those 651 accounts
+has ever received a reminder, because an old Ally account that never opened
+Netai cannot be asked anything in the first place. One country has ever been
+hurt by this and the window covers it.
+
+**WHAT IS STILL YOURS, and it is now small and precise.** For the one other
+country reached, +420 at UTC+2, this window is 06:00–20:00 local: early, not
+night, and nobody there has had one outside it yet. The moment there are real
+users further west, Tbilisi's day stops being theirs — Buenos Aires would be
+01:00–15:00. So: **which hours, and on whose clock?** Needed before that
+happens rather than after. It is two named constants; your answer is one line.
+
+---
+
+**Why it could not be decided overnight:** this is behaviour that reaches real
 people, which is one of the five things this file exists to hold back — and
 the question is not „should there be quiet hours" but WHICH HOURS AND IN WHOSE
 TIME ZONE. A person in Buenos Aires (+54, our second-largest group, 651

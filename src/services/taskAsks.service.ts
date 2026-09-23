@@ -2265,14 +2265,28 @@ const ASK_REMINDER_AFTER_HOURS = 48;
  * window picks them up unchanged. Nobody loses a reminder; a few of them
  * arrive in the morning instead of at five.
  *
- * ONE CLOCK, TBILISI, AND THAT IS THE PART THAT IS NOT MINE TO SETTLE. Almost
- * every user is +995 and the file above already says „that is the clock every
- * user of this product is on" — but „almost" is not „every", and a person in
- * another zone now gets their reminder at Tbilisi's daytime rather than their
- * own. That is a smaller wrong than five in the morning and it is still a
- * wrong, so the precise question — which hours, and on whose clock — is with
- * the founder. The window is two named constants so his answer is a one-line
- * change.
+ * ONE CLOCK, TBILISI — AND I WENT AND MEASURED WHO THAT ACTUALLY AFFECTS
+ * RATHER THAN CALLING IT AN ASSUMPTION AND MOVING ON. Every reminder ever
+ * sent, by the recipient's number:
+ *
+ *     +995   51   of which 12 outside Tbilisi's day   ← all of the harm
+ *     +1202  12   the fictional test seats, nobody
+ *     +420    2   both inside Tbilisi's day
+ *
+ * So one country has ever been hurt by this and this window covers it. The
+ * night list worried about +54 — 651 accounts, the second-largest group — and
+ * the worry does not land: not one of them has ever received a reminder,
+ * because an old Ally account that never opened Netai cannot be asked anything
+ * in the first place.
+ *
+ * WHAT IS STILL NOT MINE TO SETTLE, and it is now a small and precise
+ * question rather than a large vague one. For the one other country reached,
+ * +420 at UTC+2, this window is 06:00-20:00 local — early, not night, and
+ * nobody there has had one outside it yet. The moment the product has real
+ * users further west, Tbilisi's day stops being theirs: Buenos Aires would be
+ * 01:00-15:00. So the founder's answer — which hours, and on whose clock — is
+ * still needed, and it is needed BEFORE that happens rather than after. The
+ * window is two named constants so it is a one-line change.
  *
  * Tbilisi has not observed daylight saving since 2005, so its hour needs no
  * calendar arithmetic.
