@@ -4322,6 +4322,47 @@ const ASKS_FOR_A_CHANGE = new RegExp(
 );
 
 /**
+ * ROW 238, SECOND CUT — TWO LISTS, BECAUSE THE TWO ANSWERS COST DIFFERENT
+ * THINGS. The seat's own control found this within the hour.
+ *
+ * On goal 9871, at 17:02:13, the owner typed:
+ *
+ *     „By the way, tomorrow I will be at home INSTEAD of the office."
+ *
+ * …and the goal was held. A real goal, paused because somebody mentioned where
+ * they would be, with nothing on any screen to say so. That is the fault this
+ * whole row is about, arriving through the fix for it.
+ *
+ * THE BROAD LIST IS NOT WRONG WHERE IT LIVES. It decides whether a NEW
+ * `approve_task_plan` counts, and the comment above it argues the direction:
+ * „refusing a real yes costs the owner one more tap; accepting a withdrawn one
+ * sends messages that cannot be recalled." At one tap, catching „instead" too
+ * often is the cheap mistake.
+ *
+ * PAUSING A GOAL IS NOT ONE TAP. It is invisible — no card, no line, nothing
+ * the owner or the seat can see — and it stops the work until somebody
+ * approves a plan. So the pause gets its own list, and it holds only
+ * sentences that can hardly be anything but „change the plan".
+ *
+ * WHAT THIS DELIBERATELY MISSES, said out loud rather than discovered: „Ask
+ * only Netai Test 8, not Netai Test 10" IS a change request and this list does
+ * not catch it. The wave may start on a plan the owner is mid-changing — which
+ * is exactly what happened before today and is the lesser of the two, because
+ * it is visible and the consent wall still stands in front of every send.
+ */
+const ASKS_TO_CHANGE_THE_PLAN = new RegExp(
+  `${NOT_A_LETTER_BEFORE}(?:${ASKS_FOR_A_CHANGE_STEMS.join('|')})` +
+    `|\\bchange it\\b|\\bchange that\\b|\\bchange the plan\\b|\\blet'?s change\\b` +
+    `|\\brewrite the plan\\b|\\bredo the plan\\b|\\bdo it differently\\b`,
+  'iu',
+);
+
+/** The narrow one: only a sentence that can hardly be anything but „change the plan". */
+export function asksToChangeThePlan(said: string): boolean {
+  return ASKS_TO_CHANGE_THE_PLAN.test(said);
+}
+
+/**
  * Is the yes still a yes after this line?
  *
  * Two different ways for it not to be, deliberately kept apart above: the
@@ -9228,7 +9269,7 @@ export async function processChat(
    * Best-effort: the run is the person's reply and must not fail because a
    * column could not be written.
    */
-  if (!ownerAbsent && withdrawsTheApproval(userMessage)) {
+  if (!ownerAbsent && asksToChangeThePlan(userMessage)) {
     void notePlanChangeRequested(threadId)
       .then((taskId) => {
         if (taskId === null) return;

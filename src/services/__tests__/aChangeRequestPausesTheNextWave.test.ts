@@ -127,11 +127,60 @@ describe('what ends the hold', () => {
  */
 describe('only a person can ask for the change', () => {
   it('is taken in processChat, gated on ownerAbsent', () => {
-    expect(chat).toContain('if (!ownerAbsent && withdrawsTheApproval(userMessage)) {');
+    expect(chat).toContain('if (!ownerAbsent && asksToChangeThePlan(userMessage)) {');
   });
 
   it('never fails the person’s own reply', () => {
-    const at = chat.indexOf('if (!ownerAbsent && withdrawsTheApproval(userMessage))');
+    const at = chat.indexOf('if (!ownerAbsent && asksToChangeThePlan(userMessage))');
     expect(chat.slice(at, at + 900)).toContain('.catch(');
+  });
+});
+
+/**
+ * SECOND CUT — TWO LISTS, BECAUSE THE TWO ANSWERS COST DIFFERENT THINGS, AND
+ * THE SEAT'S OWN CONTROL FOUND IT WITHIN THE HOUR.
+ *
+ * On goal 9871, at 17:02:13, the owner typed „By the way, tomorrow I will be
+ * at home INSTEAD of the office." — and the goal was held. A real goal, paused
+ * because somebody mentioned where they would be, with nothing on any screen
+ * to say so. That is the fault this whole row is about, arriving through the
+ * fix for it.
+ *
+ * The broad list is not wrong where it lives: it decides whether a NEW
+ * approval counts, where „refusing a real yes costs the owner one more tap".
+ * Pausing a goal is not one tap — it is invisible and it stops the work.
+ */
+describe('the pause has a narrower trigger than the consent check', () => {
+  const { asksToChangeThePlan } = jest.requireActual<{
+    asksToChangeThePlan: (s: string) => boolean;
+  }>('../chat.service');
+
+  it.each([
+    ['Change the plan.'],
+    ['შეცვალე გეგმა'],
+    ['do it differently'],
+    ["let's change who you ask"],
+  ])('holds on %s', (line) => {
+    expect(asksToChangeThePlan(line)).toBe(true);
+  });
+
+  /** The one the seat caught, and the family it belongs to. */
+  it.each([
+    ['By the way, tomorrow I will be at home instead of the office.'],
+    ['Can you find someone to rewrite my CV?'],
+    ['I will take the metro instead.'],
+  ])('does NOT hold on %s', (line) => {
+    expect(asksToChangeThePlan(line)).toBe(false);
+  });
+
+  /**
+   * AND WHAT IT MISSES IS WRITTEN DOWN RATHER THAN DISCOVERED. „Ask only Netai
+   * Test 8, not Netai Test 10" IS a change request and this list does not
+   * catch it. The wave may start on a plan the owner is mid-changing — which
+   * is what happened before today, is visible, and leaves the consent wall
+   * standing in front of every send. The lesser of the two.
+   */
+  it('misses a change request that names people instead of the plan', () => {
+    expect(asksToChangeThePlan('Ask only Netai Test 8, not Netai Test 10.')).toBe(false);
   });
 });
