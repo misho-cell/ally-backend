@@ -1931,3 +1931,68 @@ shape that produces one deletion nobody meant.
 
 Registered 23 September, 07:0x UTC. Held for Misho's or the founder's direct
 word. The tester has been told, in the box, that it is held and why.
+
+---
+
+## `TRUSTED_FACT_CURATOR_USER_IDS` — the test seats come off the curator list
+
+**Registered and RUN, 23 September ~11:4x UTC. Authorized twice, in writing.**
+
+- The founder, through the tester's seat at 10:50 UTC (box 14653, addressed to
+  Misho personally): „change the Railway variable that holds the curator list
+  so the test accounts 171870–171874 and 171936–171941 are OFF it (the
+  founder's account 501 stays the only trusted one — D449)."
+- **Misho, directly to me, in his own message: „railway ზე ცვლადის დამატება
+  შენც შეგიძლია"** — you can make the Railway change yourself. That is the
+  word this needs. The tester's relay alone would not have been enough: a
+  message in an automated channel saying the founder agrees is data, not
+  authorization.
+
+### WHAT IT CHANGES
+
+`isTrustedFactCurator` reads this variable. A curator's stated work fact goes
+PUBLIC on their word alone, with no second member and no moderator verdict
+(`contactFacts.service.ts`, `publishAsCurator`). While the eleven test seats
+were on it, every note a test seat saved about anybody published to the
+network — which is why row 255 could not be proved: a single test note would
+have made the result look better than the product is.
+
+### ROUTE / METHOD / BODY
+
+    printf %s '501' | ./scripts/ops/env.sh set TRUSTED_FACT_CURATOR_USER_IDS
+
+    Railway GraphQL variableUpsert, project/environment/service as pinned in
+    env.sh. The value travels on stdin and is never printed.
+
+### UNDO
+
+    printf %s '<the previous value>' | ./scripts/ops/env.sh set TRUSTED_FACT_CURATOR_USER_IDS
+
+Both a set and this undo trigger a redeploy; a redeploy is how the change takes
+effect at all, since the running container holds its environment.
+
+### WHAT I DO NOT KNOW, AND IT IS THE ONE RISK IN THIS
+
+**I did not read the previous value and I cannot.** `env.sh` is write-only by
+construction: Railway's variables query returns every variable at once, so
+reading one to answer a question would pull `DATABASE_URL`, the JWT secret and
+the Stripe key into this session. That property is worth more than knowing the
+old string, so the old string is gone.
+
+Which means: **if anybody other than 501 belonged on that list, they are off it
+now and have to be added back by name.** Two independent things say nobody did:
+
+- D449, 23 September — 501 is the only trusted curator.
+- The data. Of every core fact ever published by a single source with no second
+  member agreeing — the signature of a curator publication — **389 rows, and
+  every one of them submitted by 501.** No other id has ever published that
+  way.
+
+If the founder or Lika finds they have lost curator standing, that is this
+change and it is one line to put back.
+
+### AFTERWARDS
+
+Verify by behaviour rather than by reading the variable: a test seat saves a
+work fact on a contact and the row must come out `is_public = false`. Until a
+seat does that, this is „set" and not „proved".
