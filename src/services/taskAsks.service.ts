@@ -3,6 +3,7 @@ import { getTaskById } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
+import { questionForReader } from './askTranslation.service';
 import {
   createThread,
   lastAssistantMessageIs,
@@ -848,13 +849,24 @@ export async function createAsk(
   // The three openings, the roster clause and the „reply here" tail all live in
   // askOpening.ts now — one per language, because the Georgian one inflects the
   // sender's name and no other language has anything to inflect.
+  /**
+   * Row 254: the frame has always been the reader's; now the question is too.
+   * Composed HERE, where the frame's language is chosen, so the two can never
+   * disagree — and `questionForReader` returns the asker's own words unchanged
+   * on every failure, so the worst case is exactly today's behaviour.
+   */
+  const relayed = await questionForReader(safeQuestion, language);
   const opening = buildAskOpening(
     language,
     senderName,
     roster,
-    safeQuestion,
+    relayed.text,
     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
   );
+  if (relayed.original !== undefined) {
+    // eslint-disable-next-line no-console
+    console.log(`[ask-relay] ask thread ${askThreadId}: question translated for the reader`);
+  }
   await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
