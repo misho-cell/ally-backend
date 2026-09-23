@@ -97,11 +97,33 @@ describe('the loader is scoped to one goal and one asker', () => {
    */
   it('reads only this task’s acceptances, from this asker', () => {
     const at = plans.indexOf('export async function acceptedIntroductionPhones');
-    const fn = plans.slice(at, at + 1200);
+    const fn = plans.slice(at, at + 2600);
 
     expect(fn).toContain('WHERE requester_task_id = $1');
-    expect(fn).toContain('AND requester_user_id = $2::text');
     expect(fn).toContain("AND status = 'accepted'");
+  });
+
+  /**
+   * THE CAST, BECAUSE I GOT IT WRONG AND PRODUCTION CAUGHT IT RATHER THAN THIS
+   * FILE.
+   *
+   * The first version said `requester_user_id = $2::text`. That column is an
+   * INTEGER, so every call failed with „operator does not exist: integer =
+   * text" — the exact fault whose P0 comment I had quoted in the same change,
+   * while congratulating myself for avoiding it on `submitted_by_user_id` three
+   * files away. I checked the type of the column I had been warned about and
+   * not the one beside it.
+   *
+   * The test that would have caught it is not a mock of `query`; it is this:
+   * name the cast, against the type the database actually has. Both columns
+   * asserted, since they sit in the same WHERE and were the two I confused.
+   */
+  it('casts each id to the type its column really is', () => {
+    const at = plans.indexOf('export async function acceptedIntroductionPhones');
+    const fn = plans.slice(at, at + 2600);
+
+    expect(fn).toContain('AND requester_user_id = $2::int');
+    expect(fn).not.toContain('requester_user_id = $2::text');
   });
 
   /**

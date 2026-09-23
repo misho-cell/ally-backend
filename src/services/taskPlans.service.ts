@@ -570,6 +570,24 @@ export function planAllows(
  * asked for and to the person who asked. Empty on any failure, so a database
  * hiccup narrows the gate rather than widening it — the direction of error
  * that costs a retry instead of a message nobody agreed to.
+ *
+ * AND THAT FAIL-SAFE IS THE ONLY REASON THIS WAS NOT WORSE. The first version
+ * of this query said `requester_user_id = $2::text`. That column is an
+ * INTEGER, so every call failed in production with „operator does not exist:
+ * integer = text" — the exact fault whose P0 comment I had quoted, in the same
+ * change, while congratulating myself for avoiding it on `submitted_by_user_id`
+ * three files away. I checked the type of the column I was warned about and
+ * not the type of the one beside it.
+ *
+ * What it cost: row 251's gate silently returned nothing, so an accepted
+ * introduction went on being refused as `outside_plan` exactly as before. What
+ * it did NOT cost: nothing widened, nobody was written to, and no owner saw an
+ * error — because the catch below turns a broken query into a narrower gate
+ * rather than an open one. That is the whole argument for writing the failure
+ * direction into a guard instead of letting it throw.
+ *
+ * Found in the container log by following two unrelated owner-visible errors,
+ * about twenty minutes after deploying it.
  */
 export async function acceptedIntroductionPhones(
   taskId: number,
@@ -580,7 +598,7 @@ export async function acceptedIntroductionPhones(
       `SELECT DISTINCT target_phone
          FROM introduction_requests
         WHERE requester_task_id = $1
-          AND requester_user_id = $2::text
+          AND requester_user_id = $2::int
           AND status = 'accepted'
           AND target_phone IS NOT NULL`,
       [taskId, requesterUserId],
