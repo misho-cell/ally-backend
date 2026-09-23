@@ -1588,11 +1588,21 @@ const GRANT_TASK_PERMISSION_TOOL: AnthropicTool = {
   name: 'grant_task_permission',
   description:
     'Record the user\'s one blanket "yes, you can ask people in my network about this" for a goal (by task_id). Ask in plain words first; call only after they agree.' +
-    ' WHEN: their blanket yes before anything is asked of anyone.',
+    ' WHEN: their blanket yes before anything is asked of anyone.' +
+    " The server checks the user's own words as well as this flag, and refuses if nothing they typed reads as a yes.",
   input_schema: {
     type: 'object',
-    properties: { task_id: { type: 'number', description: 'Task id from get_my_tasks' } },
-    required: ['task_id'],
+    properties: {
+      task_id: { type: 'number', description: 'Task id from get_my_tasks' },
+      // Required for the same reason it is required next door: this tool sets
+      // the flag that lets a message reach a real person, and until today it
+      // asked for nothing at all.
+      confirmed: {
+        type: 'boolean',
+        description: 'True only after the user has said yes in their own words. Never assume it.',
+      },
+    },
+    required: ['task_id', 'confirmed'],
   },
 };
 /**
@@ -4566,6 +4576,135 @@ export function planApprovalRefusal(
   return null;
 }
 
+/**
+ * THE CONSENT WALL HAD A DOOR BESIDE IT, AND ROW 104 IS WHY I WALKED INTO IT.
+ *
+ * Two tools record the owner's consent and both end at the same place —
+ * `permission_granted = true`, the one flag `createAsk` reads before a message
+ * reaches a real person's phone:
+ *
+ *   approve_task_plan       behind `confirmed` AND the screen check
+ *   grant_task_permission   the plan-free route — ONE argument, `task_id`,
+ *                           and a handler that was a single UPDATE
+ *
+ * So everything `planApprovalRefusal` refuses could be had by calling the other
+ * tool. The only thing in the way was a sentence in the tool's own description
+ * („call only after they agree"), and the comment above the row 117 guard in
+ * this same file says what this codebase thinks of that: a sentence in a prompt
+ * is not a wall. Layer 1 of the other tool exists because on 14 September the
+ * model read its own summary as the owner's approval.
+ *
+ * MEASURED BEFORE BUILDING, so this is not dressed up as an incident: two goals
+ * in the product's whole history were ever permitted without an approval, three
+ * asks went out between them, and both look legitimate — one of them is
+ * „Tell Netai Test 2 I can do Thursday", which is exactly the shape this route
+ * is FOR. Nothing went wrong. The door was open.
+ *
+ * WHY THE SECOND LAYER IS NOT THE PLAN'S. `approvalBelongsToThePlan` asks
+ * whether a plan CARD was the thing being answered. A blanket yes is given in
+ * plain words with no card at all, so requiring one would refuse every honest
+ * grant — turning a consent hole into a silence bug, which is a trade this
+ * project has made by accident before. The honest equivalent is to read the
+ * OWNER'S OWN WORDS out of the database rather than take the model's word for
+ * them, and that is the whole difference: `confirmed` is asserted by the model,
+ * this is not.
+ *
+ * AND THIS IS ROW 104. „A typed instruction naming one person and one action is
+ * itself the yes" (the founder, 19 September) — so such a line grants the
+ * plan-free permission at once, and the owner is not asked a second time. It
+ * still cannot approve a PLAN: a sentence naming one person must never stand
+ * for a plan naming five, which is ticket 19 G2 rebuilt. That is why this is
+ * here and not a loosening of the wall next door.
+ */
+export function ownerWordsGrantPermission(
+  lastOwnerMessage: string | null,
+  ownerSaidSinceCard: readonly string[] = [],
+): boolean {
+  const saysYes = (said: string): boolean =>
+    isApproveLabel(said) || APPROVE_LIKE_RE.test(said) || PLAN_YES.test(said) || saysGoAhead(said);
+
+  /**
+   * Row 104 / D316. The phonebook half (`messageNamesOwnContact`) is NOT asked
+   * here: it costs a query on the hot path, and the cheap half has already
+   * established that the owner told us to contact a named person. Being wrong
+   * in this direction grants a permission the owner's own sentence asked for.
+   */
+  const instructs = (said: string): boolean => looksLikeContactInstruction(said);
+
+  /**
+   * AN INSTRUCTION IS NOT AN ANSWER, SO IT CANNOT CONTRADICT ITSELF — and the
+   * first version of this got that wrong in a way only the test caught.
+   *
+   * `TAKES_IT_BACK` holds the negations, and „if" is one of them, for the good
+   * reason that „yes, but only if…" is not a clean yes. Then the D316 sentence
+   * the founder actually ruled on is „ask Tornike Abuladze IF he knows a good
+   * philosopher" — an ordinary instruction that contains the word. Composed
+   * naively, the rule read the owner's own instruction as withdrawing an
+   * approval nobody had given, and row 104 failed on the sentence row 104 is
+   * about.
+   *
+   * So the withdrawal test applies to a WORD-YES, which is an answer to
+   * something, and not to an instruction, which is the request itself. A later
+   * line can still take either back.
+   */
+  const grantsOnItsOwn = (said: string): boolean =>
+    instructs(said) || (saysYes(said) && !withdrawsTheApproval(said));
+
+  const lines = ownerSaidSinceCard.map((line) => line.trim()).filter((line) => line !== '');
+  if (lines.length > 0) {
+    // Same shape as the plan wall: find the granting line, then let everything
+    // after it decide whether it still stands.
+    const at = lines.findIndex(grantsOnItsOwn);
+    if (at === -1) return false;
+    return lines.slice(at + 1).every((line) => !withdrawsTheApproval(line));
+  }
+
+  const said = lastOwnerMessage?.trim() ?? '';
+  if (said === '') return false;
+  return grantsOnItsOwn(said);
+}
+
+export type GrantPermissionRefusal = {
+  readonly granted: false;
+  readonly error: string;
+  readonly reason: 'not_confirmed' | 'owner_did_not_say_so';
+};
+
+/**
+ * A NULL SCREEN LETS IT THROUGH, exactly as the plan wall does and for the same
+ * reason: the read is best-effort and a database hiccup must not block a
+ * permission the owner really gave. Layer 1 still stands in that case.
+ */
+export function grantPermissionRefusal(
+  confirmed: unknown,
+  screen: PlanConsentScreen | null,
+): GrantPermissionRefusal | null {
+  if (confirmed !== true) {
+    return {
+      granted: false,
+      reason: 'not_confirmed',
+      error:
+        'Not recorded: the user has not said yes. Ask in plain words what you want permission ' +
+        'to do, and call again with confirmed: true only after they answer.',
+    };
+  }
+  if (
+    screen !== null &&
+    !ownerWordsGrantPermission(screen.lastOwnerMessage, screen.ownerSaidSinceCard)
+  ) {
+    return {
+      granted: false,
+      reason: 'owner_did_not_say_so',
+      error:
+        'Not recorded: nothing the user typed in this conversation reads as a yes. Their own ' +
+        'words are what counts here, not your reading of them — ask plainly, and call again ' +
+        'after they answer. A one-line instruction naming one person and one action counts ' +
+        'as their yes on its own.',
+    };
+  }
+  return null;
+}
+
 async function planConsentOnScreen(threadId: number): Promise<PlanConsentScreen> {
   const [cards, owner] = await Promise.all([
     query<{ created_at: string; choices: unknown }>(
@@ -6178,8 +6317,14 @@ async function executeToolCall(
         }),
       };
     }
-    case 'grant_task_permission':
+    case 'grant_task_permission': {
+      // The same shape as approve_task_plan's wall, and the screen is read only
+      // when there is a thread to read it from.
+      const grantScreen = threadId === undefined ? null : await planConsentOnScreen(threadId);
+      const refused = grantPermissionRefusal(input['confirmed'], grantScreen);
+      if (refused) return refused;
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
+    }
     case 'propose_task_plan': {
       const taskId = Number(input['task_id']);
       // Ticket 20 row 117: the owner's own words outrank the plan. Refused
