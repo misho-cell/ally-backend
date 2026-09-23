@@ -58,14 +58,26 @@ SUITE_TIMEOUT_S = int(os.environ.get('SABOTAGE_TIMEOUT', '300'))
 
 # A guard is only interesting if its absence could hurt somebody. Defensive
 # null checks are not the hunt.
+#
+# `busy|holder|lock` added 23 September, for a reason worth keeping: row 101's
+# two concurrency guards — a wake refusing a thread a live run already owns —
+# are the ones that let eight messages reach three real people twice, and
+# neither word in `if (threadHolder(thread.id) !== undefined) return 'busy';`
+# was in this list. A filter that cannot see the guard behind the worst
+# outbound duplicate we have had is a filter with a hole in it.
 HARM = re.compile(
     r'block|opt_?out|optOut|deceased|consent|permission|approved|approv|'
     r'\bcap\b|budget|limit|redact|phone|token|safe|moderat|owner|drain|'
-    r'exclud|stop|member|allow|denied|forbid',
+    r'exclud|stop|member|allow|denied|forbid|busy|holder|lock',
     re.I,
 )
 
-SINGLE_LINE = re.compile(r'^(\s*)if \(.*\) (return|throw|continue)\b.*;\s*$')
+# A TRAILING COMMENT USED TO HIDE A GUARD COMPLETELY, and the same two lines
+# found it. `if (thread.status === 'working') return 'busy'; // a live run owns
+# the thread right now` did not end in `;`, so the sweep never offered it —
+# a guard explained in place is exactly the kind most worth testing, and the
+# explanation was what made it invisible. `(?:\s*//.*)?` is the whole fix.
+SINGLE_LINE = re.compile(r'^(\s*)if \(.*\) (return|throw|continue)\b.*;(?:\s*//.*)?\s*$')
 BLOCK_OPEN = re.compile(r'^(\s*)if \((.+)\) \{\s*$')
 
 DEFAULT_TARGETS = ['src/services', 'src/api']
