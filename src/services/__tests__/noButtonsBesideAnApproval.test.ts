@@ -45,7 +45,7 @@ describe('no buttons in the same step as an approval', () => {
     const dispatch = chat.slice(at, at + 500);
 
     expect(dispatch).toContain("block.name === 'present_choices'");
-    expect(dispatch).toContain('choicesRefusedBesideAnApproval(block)');
+    expect(dispatch).toContain('choicesRefusedBesideAnApproval(block, userId, threadId, runId)');
     // The other branch is the ordinary path, untouched.
     expect(dispatch).toContain('runOneToolBlock(userId, threadId, runId, block, ownerAbsent)');
   });
@@ -58,7 +58,7 @@ describe('no buttons in the same step as an approval', () => {
    */
   it('does not try to judge the labels', () => {
     const at = chat.indexOf('function choicesRefusedBesideAnApproval');
-    const fn = chat.slice(at, at + 1200);
+    const fn = chat.slice(at, at + 2600);
 
     expect(fn).not.toMatch(/Send both|Send only|label/i);
   });
@@ -70,11 +70,34 @@ describe('no buttons in the same step as an approval', () => {
    */
   it('tells the model what the owner should read instead', () => {
     const at = chat.indexOf('function choicesRefusedBesideAnApproval');
-    const fn = chat.slice(at, at + 1200);
+    const fn = chat.slice(at, at + 2600);
 
     expect(fn).toContain('shown: false');
     expect(fn).toContain('D119');
     expect(fn).toMatch(/one or two sentences/);
+  });
+
+  /**
+   * A REFUSED CARD IS LOGGED LIKE ANY OTHER CALL, AND THE FIRST VERSION OF THIS
+   * GUARD DID NOT DO THAT.
+   *
+   * Refusing here means never reaching `runOneToolBlock`, and that is what
+   * writes `tool_call_log` — so every card this dropped was INVISIBLE. Twelve
+   * cards an hour go through the path; if the rule is ever wrong, the only
+   * evidence would have been an owner noticing a button that never came.
+   *
+   * Which is the fault this entire day has been about — a guard nothing can
+   * see — committed inside the guard written to fix one. It was caught by
+   * asking why no card had been logged in the twelve minutes after it shipped.
+   * (The real answer was that no approval had happened yet. The blind spot was
+   * real regardless.)
+   */
+  it('leaves a record of every card it drops', () => {
+    const at = chat.indexOf('function choicesRefusedBesideAnApproval');
+    const fn = chat.slice(at, at + 1800);
+
+    expect(fn).toContain('void logToolCall({');
+    expect(fn).toContain("tool: 'present_choices:refused_beside_approval'");
   });
 
   /**
@@ -83,7 +106,7 @@ describe('no buttons in the same step as an approval', () => {
    */
   it('answers the call it refuses', () => {
     const at = chat.indexOf('function choicesRefusedBesideAnApproval');
-    const fn = chat.slice(at, at + 1200);
+    const fn = chat.slice(at, at + 2600);
 
     expect(fn).toContain('tool_use_id: block.id');
     expect(fn).toContain("type: 'tool_result'");

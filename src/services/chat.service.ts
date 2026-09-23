@@ -7034,7 +7034,7 @@ async function processToolBlocks(
   return Promise.all(
     toolBlocks.map((block) =>
       approvingThisTurn && block.name === 'present_choices'
-        ? Promise.resolve(choicesRefusedBesideAnApproval(block))
+        ? Promise.resolve(choicesRefusedBesideAnApproval(block, userId, threadId, runId))
         : runOneToolBlock(userId, threadId, runId, block, ownerAbsent),
     ),
   );
@@ -7049,9 +7049,35 @@ async function processToolBlocks(
  */
 function choicesRefusedBesideAnApproval(
   block: Anthropic.ToolUseBlock,
+  userId: string,
+  threadId: number,
+  runId: string,
 ): Anthropic.ToolResultBlockParam {
   // eslint-disable-next-line no-console
   console.log('[consent] present_choices dropped: offered in the same step as approve_task_plan');
+  /**
+   * AND IT IS LOGGED LIKE ANY OTHER CALL, WHICH THE FIRST VERSION WAS NOT.
+   *
+   * Refusing here means never reaching `runOneToolBlock`, and `runOneToolBlock`
+   * is what writes `tool_call_log` — so the first version of this guard made
+   * every card it refused INVISIBLE. Twelve cards an hour go through this path;
+   * if this rule is ever wrong, the only evidence would have been an owner
+   * noticing a button that never came.
+   *
+   * That is the fault this whole day has been about — a guard nothing can see —
+   * committed inside the guard written to fix one. Caught by asking why no card
+   * had been logged in the twelve minutes after deploying it.
+   */
+  void logToolCall({
+    threadId,
+    surface: 'chat',
+    runId,
+    userId,
+    tool: 'present_choices:refused_beside_approval',
+    input: block.input as Record<string, unknown>,
+    result: { shown: false },
+    durationMs: 0,
+  });
   return {
     type: 'tool_result',
     tool_use_id: block.id,
