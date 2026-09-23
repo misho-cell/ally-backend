@@ -94,6 +94,7 @@ here needs a database login.
 | **Do** | Press „later" on something. Close the app. Open it the next day. |
 | **See** | The item is easy to find. |
 | **CHECK — ask the backend** | Opening the screen must NOT mark a weekly summary as seen — only a tap does (`POST /updates/:ref/seen`). |
+| **⚠️ CORRECTED 20:45** | I wrote „96 items waiting, 68 of them questions with nowhere to show" in this file and twice on the board. **That composition was wrong and I had not asked what `held` means for each kind.** `goal_question` is STICKY on purpose — it describes a state, so it is left held after being shown and re-offered a day later. Held does not mean unseen for it. The true split, real accounts, due right now: **52 never shown at all** (36 goal questions, 10 chorus asks, 6 weekly summaries) and **43 shown and still unanswered** (31 goal questions, 12 debriefs). The oldest never-shown item was created 28 August. The row is still real; the sentence was not. |
 | **Right now** | **96 items are due and unseen on real accounts**, 68 of them questions the product asked somebody. The oldest has waited since 28 August. That is row 73 and it is the biggest number on the board. |
 
 ## 10 · A notification on a locked phone
