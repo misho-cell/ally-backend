@@ -9195,14 +9195,53 @@ export interface RunIntent {
   alreadyStored?: boolean;
 }
 
+/**
+ * Row 242, second cut — WHAT THE FIRST CUT PROVED AND WHAT IT LEFT UNDONE.
+ *
+ * The seat reproduced it at 20:50 on a clean account: the same sentence twice,
+ * twelve seconds apart, two fresh chats. The log:
+ *
+ *     20:50:44  thread 24124: goal 10000 opened from the message
+ *     20:50:56  thread 24125: no second goal — this is goal 10000 again
+ *
+ * **The duplicate was prevented.** Goal 10000 is the only row on that account.
+ * That is the half that had never fired in production, and it fired on the
+ * plainest possible case.
+ *
+ * AND THE PERSON WAS NOT TAKEN ANYWHERE. The run in the second chat searched
+ * their contacts from scratch and asked „Which city is your apartment in?" —
+ * no mention of the goal that already exists, which is the row's own
+ * done-when: „a repeated request takes the person to the goal that exists".
+ *
+ * WHY, AND IT IS NOT A MISSING WIRE. `findOpenTaskNamedIn` runs again below
+ * and binds goal 10000 as `namedTask`, so the run IS a task step with that
+ * goal's state loaded. The model then did what a model in a task step
+ * reasonably does: it got on with the work. **Nothing told it that this
+ * message was the owner asking AGAIN**, and a fact nobody states is a fact the
+ * model has to guess.
+ *
+ * So this returns the goal it recognised, and the caller states it — in the
+ * same breath as the goal's data, where a rule cannot drift out of step with
+ * the code that enforces it. Same shape as the tool's `already_open`.
+ */
+const NO_GOAL_FOR_REQUEST: GoalForRequest = { opened: null, repeats: null };
+
+interface GoalForRequest {
+  /** A goal opened by this message, when one was. */
+  readonly opened: number | null;
+  /** The OPEN goal this message repeats, when it repeats one. */
+  readonly repeats: Task | null;
+}
+
 async function ensureGoalForRequest(
   userId: string,
   threadType: string,
   threadId: number,
   userMessage: string,
   intent: RunIntent | undefined,
-): Promise<number | null> {
-  if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX)) return null;
+): Promise<GoalForRequest> {
+  if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
+    return NO_GOAL_FOR_REQUEST;
   // Row 103: the app flag may turn a statement into a goal; it may not turn a
   // question into one. Named in the log rather than dropped silently — a goal
   // that quietly does not appear is the mirror image of the bug being fixed.
@@ -9210,7 +9249,7 @@ async function ensureGoalForRequest(
     if (intent?.asGoal === true)
       // eslint-disable-next-line no-console
       console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is a question`);
-    return null;
+    return NO_GOAL_FOR_REQUEST;
   }
   // Row 103/104: the flag may turn a statement into a goal; it may not turn an
   // INSTRUCTION TO A NAMED PERSON into one. Lika typed „ask Tornike Abuladze
@@ -9226,12 +9265,12 @@ async function ensureGoalForRequest(
       console.log(
         `[goal-intent] thread ${threadId}: app flag ignored, the message instructs a named contact`,
       );
-      return null;
+      return NO_GOAL_FOR_REQUEST;
     }
   }
-  if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return null;
+  if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return NO_GOAL_FOR_REQUEST;
   try {
-    if ((await getOpenTaskByThread(threadId)) !== null) return null;
+    if ((await getOpenTaskByThread(threadId)) !== null) return NO_GOAL_FOR_REQUEST;
     /**
      * ROW 242 — ASKING FOR THE SAME THING TWICE OPENED A SECOND GOAL, AND
      * NEITHER OF THEM POINTED AT THE OTHER.
@@ -9285,7 +9324,7 @@ async function ensureGoalForRequest(
       console.log(
         `[goal-intent] thread ${threadId}: no second goal — this is goal ${already.id} again`,
       );
-      return null;
+      return { opened: null, repeats: already };
     }
     const { id } = await createTask(
       userId,
@@ -9299,11 +9338,11 @@ async function ensureGoalForRequest(
     console.log(
       `[goal-intent] thread ${threadId}: goal ${id} opened from the message (${intent?.asGoal === true ? 'app flag' : 'stated need'})`,
     );
-    return id;
+    return { opened: id, repeats: null };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[goal-intent] could not open the goal:', (err as Error).message);
-    return null;
+    return NO_GOAL_FOR_REQUEST;
   }
 }
 
@@ -9504,7 +9543,14 @@ export async function processChat(
      */
     return { reply: said, stopped: true, stoppedLine: said, language: stopLang };
   }
-  const autoGoalId = await ensureGoalForRequest(userId, thread.type, threadId, userMessage, intent);
+  const goalForRequest = await ensureGoalForRequest(
+    userId,
+    thread.type,
+    threadId,
+    userMessage,
+    intent,
+  );
+  const autoGoalId = goalForRequest.opened;
   // Row 155: provisional, and refined the moment the thread's history is in
   // hand — see the recompute below. Set now because a run that fails before
   // then still needs a language for its error line.
@@ -9711,7 +9757,37 @@ export async function processChat(
   // ten seconds. They reach the model in the loop instead. A side effect worth
   // having: this prefix is now byte-identical on goal runs and ordinary ones,
   // so the cached prompt is shared by both.
-  const systemPrompt = agentPrompt.prompt + buildReplyLanguageDirective(language);
+  /**
+   * Row 242, second cut: SAY that this is the same request again.
+   *
+   * The wall already holds — no second goal is created (log, 20:50:56, the
+   * seat's own reproduction). What was missing is that nobody told the run
+   * WHY it had been bound to a goal it did not open. It read as an ordinary
+   * task step, so the model searched from scratch and asked the owner for
+   * their city, on a goal that was already running with a plan.
+   *
+   * Written by the SERVER, beside the goal's own state, for the reason this
+   * file gives twice already: a rule the model reads in the same breath as the
+   * data it applies to cannot drift out of step with the code that enforces
+   * it. The prompt team can reword it; they cannot lose it.
+   *
+   * It does NOT tell the model what to conclude — the owner may well want
+   * something new on the same subject, and „ask them" is the honest move when
+   * the two readings differ. What it removes is the model having to guess that
+   * a repeat happened at all.
+   */
+  const repeatedGoal = goalForRequest.repeats;
+  const sameRequestAgain =
+    repeatedGoal === null
+      ? ''
+      : `\n\nTHE OWNER HAS JUST ASKED FOR THIS AGAIN. This message repeats goal ` +
+        `${repeatedGoal.id} ("${repeatedGoal.title}"), which is ALREADY OPEN and whose state ` +
+        `you have above — so no second goal was created for it. Do not start this work over ` +
+        `and do not ask them again for what the goal already knows. Tell them where that goal ` +
+        `stands in a sentence or two. If what they want now is genuinely DIFFERENT from it, ` +
+        `say what you think the difference is and ask them.`;
+  const systemPrompt =
+    agentPrompt.prompt + sameRequestAgain + buildReplyLanguageDirective(language);
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.

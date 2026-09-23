@@ -146,6 +146,36 @@ describe('every wire that opens a goal asks first', () => {
     expect(body).toContain('await findOpenTaskNamedIn(userId, userMessage)');
   });
 
+  /**
+   * AND THE SECOND HALF, WHICH THE SEAT'S REPRODUCTION EXPOSED AT 20:50.
+   *
+   * The wall held — „no second goal — this is goal 10000 again" is in the
+   * container log, and goal 10000 is the only row on that account. But the run
+   * in the second chat searched from scratch and asked the owner which city
+   * their apartment was in, because NOTHING TOLD IT that this was the same
+   * request arriving twice. A fact nobody states is a fact the model guesses.
+   *
+   * The server states it now, beside the goal's own data.
+   */
+  it('tells the run that the message is the same request again', () => {
+    expect(chat).toContain('THE OWNER HAS JUST ASKED FOR THIS AGAIN');
+
+    const at = chat.indexOf('const sameRequestAgain =');
+    const clause = chat.slice(at, at + 900);
+    // It names the goal, so the model cannot redirect to the wrong one.
+    expect(clause).toContain('repeatedGoal.id');
+    expect(clause).toContain('repeatedGoal.title');
+    // And it leaves room for the reading where the owner wants something new.
+    expect(clause).toContain('genuinely DIFFERENT');
+  });
+
+  /** Nothing is appended when the message is not a repeat. */
+  it('says nothing on an ordinary message', () => {
+    const at = chat.indexOf('const sameRequestAgain =');
+
+    expect(chat.slice(at, at + 120)).toContain("repeatedGoal === null\n      ? ''");
+  });
+
   it('the model’s own create_task call checks before creating', () => {
     const at = chat.indexOf("case 'create_task': {");
     const body = chat.slice(at, at + 4000);
