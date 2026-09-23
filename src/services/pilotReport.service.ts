@@ -145,14 +145,50 @@ export interface PilotReport {
   readonly seats: PilotSide;
 }
 
-const REAL = `u."hasAccessToAlly" = true
-              AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)`;
+/**
+ * ⚠️ 21:31 — THE FIRST VERSION OF THIS RULE EXCLUDED THE SECOND MOST ACTIVE
+ * PERSON IN THE PRODUCT, AND I SHIPPED IT AND HAD IT VERIFIED BEFORE I NOTICED.
+ *
+ * It said `hasAccessToAlly = true`, with a confident argument beside it:
+ * `registerUser` writes that column as a literal `true`, so nothing the Netai
+ * path creates can fall outside it. **Every word of that is true and it
+ * answers a different question.** It identifies who REGISTERED THROUGH THE
+ * NETAI SCREEN. It does not identify who USES NETAI.
+ *
+ * Lika Ose, account 160584: `hasAccessToAlly` FALSE, 321 threads, 51 goals,
+ * typed today. Ninia Abramishvili: false, 35 threads, 27 goals. Salome
+ * Parkosadze: false, 15 threads, typed today. They arrived before the Netai
+ * registration path existed, or through the old app, and then used this one.
+ *
+ *     people who have actually used Netai        45
+ *       of them carrying the flag                10
+ *       of them NOT carrying it                  35
+ *
+ * **Thirty-five of forty-five were invisible to every number I produced
+ * tonight** — the pilot report, the people list behind row 16, the push
+ * finding for row 111, and „thirteen people have ever registered".
+ *
+ * So the rule is USE, not a flag: a thread in this product is a thing somebody
+ * did here, and the 62,200 legacy accounts have none. The flag stays in the
+ * OR because somebody who registered yesterday and has not opened a chat is
+ * still one of the pilot's people.
+ *
+ * 📌 The lesson is not „that column was wrong". The column is exactly what it
+ * says. I asked „who is a Netai account" and used the answer for „who is a
+ * Netai person", and those are two questions. That is the fifth time today,
+ * and the first one where the wrong answer reached shipped code.
+ */
+const REAL = `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+              AND (u."hasAccessToAlly" = true
+                   OR EXISTS (SELECT 1 FROM threads th WHERE th.user_id = u.id))`;
 const SEAT = `EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)`;
 
 const POPULATION_RULE =
-  'real = a Netai account (hasAccessToAlly, set as a literal by registerUser) that is not in ' +
-  'test_seats; seats = the fictional accounts the seat route created. The 62,200 legacy Ally ' +
-  'accounts are in neither: they have never opened Netai.';
+  'real = somebody who has USED Netai (has a thread here) or registered through it ' +
+  '(hasAccessToAlly), and is not in test_seats. USE and not the flag: 35 of the 45 real ' +
+  'people who have used this product do not carry it, including the second most active ' +
+  'account. seats = the fictional accounts the seat route created. The 62,200 legacy Ally ' +
+  'accounts are in neither: they have no thread here.';
 
 interface DayRow {
   day: Date | string;

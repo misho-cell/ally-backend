@@ -42,12 +42,42 @@ describe('the population is written into the query, not assumed', () => {
     expect(sql).toMatch(/EXISTS \(SELECT 1 FROM test_seats ts WHERE ts\.user_id = u\.id\)/);
   });
 
+  /**
+   * ⚠️ THE ASSERTION THAT WAS MISSING, AND THE ONE THE TEST ABOVE LET THROUGH.
+   *
+   * The first version of the rule was `hasAccessToAlly = true` alone, and the
+   * test above passed on it — it still passes now, because that column is
+   * still named. What it never asked was whether the rule covers people who
+   * USE the product without carrying the flag.
+   *
+   *     people who have used Netai     45
+   *       carrying the flag            10
+   *       NOT carrying it              35    ← invisible to every number
+   *
+   * Among the thirty-five: Lika Ose, 321 threads and 51 goals, typed the day
+   * this shipped. A pilot report that hides the second most active person in
+   * the product is worse than no pilot report.
+   *
+   * A source test is what is available here — the behavioural version needs an
+   * account with threads and no flag, which is a database. So it pins the one
+   * thing that cannot be true again: USE is in the rule.
+   */
+  it('counts people who USE Netai, not only those who carry the flag', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(sql).toContain('EXISTS (SELECT 1 FROM threads th WHERE th.user_id = u.id)');
+    expect(sql).toMatch(/hasAccessToAlly" = true\s*\n?\s*OR EXISTS/);
+  });
+
   it('carries the rule in the payload, so a number cannot travel without it', async () => {
     const report = await pilotReport(7);
 
     expect(report.population).toContain('hasAccessToAlly');
     expect(report.population).toContain('test_seats');
     expect(report.population).toContain('legacy Ally');
+    // And it says USE first, because that is what the flag alone got wrong.
+    expect(report.population).toContain('USED Netai');
   });
 
   /**
