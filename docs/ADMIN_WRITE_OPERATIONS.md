@@ -2169,3 +2169,62 @@ the broken version too, because the broken version named every column it
 thought of. It builds the row the statement produces and asks
 `hasActiveSubscription` itself, and asserts that the shape without the period
 end is refused.
+
+---
+
+## `TAVILY_API_KEY` — the web route's key replaced
+
+**Registered and RUN, 23 September ~14:3x UTC. Misho's direct word, in his own
+message: „რაც არის საჭირო გააკეთე რომ ჩართო. ცვალდის შეცვლა შენც შეგიძლია
+railway ზე."**
+
+### WHY
+
+Row 257. The provider refused every call with
+
+    432 "This request exceeds your plan's set usage limit. Please upgrade your
+         plan or contact support@tavily.com"
+
+…while the account's own dashboard showed **0 / 1,500 used**. Both cannot be
+true of one account, so the question was never „has it been paid for" — it was
+„is the server holding the key that dashboard describes". Misho checked and
+answered it: **the key did not match.** The server was on an older key
+belonging to an account that is over its limit.
+
+### ROUTE / METHOD / BODY
+
+    ./scripts/ops/env.sh set TAVILY_API_KEY   (value on stdin, never in argv)
+    → Railway GraphQL variableUpsert
+
+### UNDO
+
+    ./scripts/ops/env.sh set TAVILY_API_KEY   with the previous key
+
+**I do not hold the previous value and cannot read it** — `env.sh` is write-only
+by construction, because Railway's query returns every variable at once and
+reading one would pull the database URL and the JWT secret into whoever asked.
+The old key is on the older Tavily account, and it was refusing every call, so
+the undo is „put back the key that did not work" and nobody should want it.
+
+### THE RESTART IS NOT AUTOMATIC AND THIS IS THE SECOND TIME TODAY
+
+Setting a variable did **not** produce a deployment when I changed
+`TRUSTED_FACT_CURATOR_USER_IDS` at 11:31 — watched three times, 45 seconds
+apart, nothing. The running container keeps its environment until something
+restarts it. So this change is followed by a push, and it is not live until
+that deployment reads SUCCESS.
+
+### HOW IT IS VERIFIED, WHICH WAS IMPOSSIBLE BEFORE TODAY
+
+The web route's failure line now carries the key's **last five characters and
+its length** — exactly what Tavily's own dashboard prints (`tvly-dev-****yBjpI`),
+so it discloses nothing to anybody who can see that page, and it authenticates
+nothing. If a search still fails, the log says whether the container is on the
+new key or the old one, which are two different problems with opposite fixes.
+
+### ONE THING FOR MISHO, SAID ONCE
+
+The key was pasted into a chat, so it is in that conversation's history.
+Nothing here logs it and nothing prints it, but if he wants it clean the right
+move is to rotate it on Tavily once the web route is confirmed working — and
+then this same route sets the new one.
