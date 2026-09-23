@@ -12,7 +12,14 @@ jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../searchQuery.service', () => ({ __esModule: true, distilSearchQuery: jest.fn() }));
+// The LOCAL distiller is the real one on purpose: it makes no call and has no
+// side effect, and a stub of it would hide the very thing row 253's second
+// door is about — that an introduction goal reaches no provider at all.
+jest.mock('../searchQuery.service', () => ({
+  __esModule: true,
+  distilSearchQuery: jest.fn(),
+  distilIntroductionLocally: jest.requireActual('../searchQuery.service').distilIntroductionLocally,
+}));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
@@ -139,5 +146,38 @@ describe('the web search is not merely ignored — it never happens', () => {
 
     expect(mockWeb).toHaveBeenCalled();
     expect(mockSecond).toHaveBeenCalled();
+  });
+
+  /**
+   * THE SECOND DOOR, 23 SEPTEMBER — AND THE FIRST FIX LEFT IT OPEN.
+   *
+   * Everything above stops the name reaching TAVILY. `distilSearchQuery` runs
+   * before all of it and is a model call on OPENAI — a second provider, not
+   * the one the conversation runs on — and it was handed the goal text, name
+   * included, on every one of these goals. The web half was closed and the
+   * name still left the building.
+   *
+   * These two are the behavioural hold on that. Removing the branch at the
+   * call site failed exactly ONE test when I sabotaged it, and that one was a
+   * source-text assertion — which is the shape this project keeps finding and
+   * keeps deciding is not enough.
+   */
+  it('sends the goal to no provider at all, not even to be shortened', async () => {
+    await runOpeningSearches('501', INTRO, 'run-1', 900);
+
+    expect(mockDistil).not.toHaveBeenCalled();
+  });
+
+  it('searches the second circle with the name it built itself', async () => {
+    await runOpeningSearches('501', INTRO, 'run-1', 900);
+
+    expect(mockSecond).toHaveBeenCalledWith('501', 'Netai Test 2');
+  });
+
+  /** And the control keeps its model call — this changes nothing for a trade goal. */
+  it('still shortens an ordinary trade goal with the model', async () => {
+    await runOpeningSearches('501', 'Find me a good notary in Tbilisi.', 'run-2', 901);
+
+    expect(mockDistil).toHaveBeenCalled();
   });
 });

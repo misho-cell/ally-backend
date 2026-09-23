@@ -12,7 +12,14 @@ jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../searchQuery.service', () => ({ __esModule: true, distilSearchQuery: jest.fn() }));
+// The LOCAL distiller is the real one on purpose: it makes no call and has no
+// side effect, and a stub of it would hide the very thing row 253's second
+// door is about — that an introduction goal reaches no provider at all.
+jest.mock('../searchQuery.service', () => ({
+  __esModule: true,
+  distilSearchQuery: jest.fn(),
+  distilIntroductionLocally: jest.requireActual('../searchQuery.service').distilIntroductionLocally,
+}));
 
 import { webResultNames } from '../openingSearch.service';
 

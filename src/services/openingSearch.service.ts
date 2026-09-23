@@ -3,7 +3,7 @@ import { searchByTagExactOnly } from './tools/searchByTag';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
-import { distilSearchQuery } from './searchQuery.service';
+import { distilSearchQuery, distilIntroductionLocally } from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -284,7 +284,21 @@ export async function runOpeningSearches(
    * The second circle starts one model call later than it does today and
    * finishes seven to eleven seconds earlier — or at all.
    */
-  const searched = await distilSearchQuery(query, { userId, runId });
+  /**
+   * ROW 253's SECOND DOOR — AND IT IS WHY THIS LINE IS ABOVE THE DISTILLER
+   * RATHER THAN BELOW IT.
+   *
+   * What shipped last night skipped the WEB search. It could not skip this,
+   * because `distilSearchQuery` had already run by the time the flag existed —
+   * and that call is a model call on OpenAI, a second provider, handed the
+   * goal text with the person's name in it. The web half was closed and the
+   * name still left the building, to a different company. The whole of the fix
+   * is three lines and two of them are the order.
+   */
+  const reachingForAPerson = goalAsksToReachAPerson(query);
+  const searched = reachingForAPerson
+    ? distilIntroductionLocally(query)
+    : await distilSearchQuery(query, { userId, runId });
   // Row 154: filled by the web branch below, once the search it depends on
   // has returned. Declared here so the caller can read it after both branches.
   let waysIn: Map<string, WayIn> = new Map();
@@ -315,11 +329,10 @@ export async function runOpeningSearches(
    * actually answer „who can introduce me to this person", it never leaves the
    * building, and D315 says it runs when a problem is named. It runs.
    */
-  const reachingForAPerson = goalAsksToReachAPerson(query);
   if (reachingForAPerson) {
     // eslint-disable-next-line no-console
     console.log(
-      `[opening-search] run ${runId} thread ${threadId}: web skipped — the goal asks to reach a person, and their name is not the web's to read`,
+      `[opening-search] run ${runId} thread ${threadId}: web skipped and the query built here, not by a model — the goal asks to reach a person, and their name is neither the web's to read nor a second provider's`,
     );
   }
   /**

@@ -14,6 +14,9 @@ jest.mock('../toolCallLog.service', () => ({
 jest.mock('../searchQuery.service', () => ({
   __esModule: true,
   distilSearchQuery: jest.fn(),
+  // Real, not stubbed: it makes no call, and stubbing it would hide the
+  // thing row 253's second door is about.
+  distilIntroductionLocally: jest.requireActual('../searchQuery.service').distilIntroductionLocally,
 }));
 /**
  * `searchByTagExactOnly`, not `searchByTag`, since 22 September: the way-in

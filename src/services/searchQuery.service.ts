@@ -259,3 +259,244 @@ function declined(goalText: string, reason: string): DistilledQuery {
   console.warn(`[search-query] not distilled (${reason}); searching the goal text as typed`);
   return { query: goalText };
 }
+
+/**
+ * ROW 253's SECOND DOOR — THE DISTILLER IS A SECOND PROVIDER, AND IT WAS STILL
+ * BEING HANDED THE NAME.
+ *
+ * What shipped on 22 September stops a person's name reaching the WEB SEARCH.
+ * It sits after `distilSearchQuery`, which is a model call on OpenAI
+ * (`config/openai.ts`) and not on the model that answers the conversation. So
+ * on „I want to be introduced to <a real person>" the name still left the
+ * building — to a different company from the one the whole product runs on —
+ * and what was blocked was only the distilled name reaching Tavily. Half a
+ * door. I wrote it down the same night rather than let it read as closed.
+ *
+ * THE OBVIOUS FIX IS THE WRONG ONE, AND I MEASURED IT BEFORE BELIEVING IT.
+ * „Skip the distiller too" was my first answer, on the reasoning that for an
+ * introduction goal the distilled query is just a name, so the raw text
+ * probably costs nothing. That was reading the OUTPUT and not the INPUT.
+ * Across every opening second-circle search whose goal carries an
+ * introduction phrase:
+ *
+ *     distilled query   median  3 words   max  5
+ *     raw goal text     median 14 words   max 34
+ *     raw goals over 12 words                21 of 40
+ *
+ * Row 110 measured what a whole sentence does to the second circle — a phrase
+ * matching 0 people, and a sentence timing out at 15 s returning NOTHING,
+ * three times. Handing it the raw goal would put 21 of those 40 into exactly
+ * that regime. Skipping the distiller trades a privacy door for half the
+ * second circle.
+ *
+ * SO THE QUERY IS BUILT HERE, FROM THE OWNER'S OWN WORDS, AND NOTHING LEAVES.
+ *
+ * WHY A WORD RULE IS RIGHT HERE AND WRONG ABOVE. The top of this file argues
+ * at length that a stop-word rule cannot distil a general goal: in „notary for
+ * an apartment purchase contract" the value is the first noun, in „repairman
+ * for a Toyota Prius hybrid battery" it is everything after it, and telling
+ * those apart is reading the sentence. All of that still stands. It does not
+ * apply to THIS case, and the difference is not a matter of degree: here we
+ * are not deciding what the sentence is about. The owner has already said it,
+ * in one of a short list of phrasings, and the thing we want is the name
+ * sitting next to the phrase they used. That is a position in a sentence, not
+ * a judgement about one.
+ */
+
+/** English: the name follows the phrase. „introduce me to X", „meeting with X". */
+const INTRODUCTION_LEAD =
+  /\b(?:introduce me to|introduced to|introduction to|an introduction from|arrange a meeting with|put me in touch with|get in touch with)\b/gi;
+
+/** Georgian: the name precedes it. „<X>-თან დაკავშირება", „<X> გამაცანი". */
+const INTRODUCTION_TRAIL = /(?:დაკავშირებ|გამაცნ|გააცნო|შემახვედრ)\p{L}*/gu;
+
+/**
+ * Four is the whole of the name in every shape we have logged, „Netai Test 10"
+ * included, and a fifth word has never been part of one.
+ */
+const MAX_LOCAL_QUERY_WORDS = 4;
+
+/**
+ * TWO WORDS OR NOTHING, and one real goal is the reason.
+ *
+ * On 19 September somebody wrote four sentences ending „…ნინია აბრამიშვილთან
+ * პირდაპირი შეკითხვა, აქსელთან დაკავშირებით რჩევასთან დაკავშირებით." The
+ * phrase they used sits beside „აქსელთან" — the subject they want advice
+ * about — and the person they are trying to reach is six words earlier, on the
+ * far side of a comma. A rule that reads a position in a sentence gets that
+ * one wrong, and no rule of this kind will get it right.
+ *
+ * What it CAN do is know that it has not found a name. One bare word beside
+ * the phrase is not a person; the four shapes that are carry two or more. So a
+ * single word declines, and declining falls back to the goal text as typed —
+ * the same path this file has always taken when the model failed, slow and
+ * occasionally empty and NEVER a leak.
+ */
+const MIN_LOCAL_QUERY_WORDS = 2;
+
+/**
+ * The words that end a name, in both languages.
+ *
+ * Not a general stop-word list — it never has to be one. It only has to stop
+ * at the word after the name in the sentences people actually write, and every
+ * entry here is one that occurred in the logged goals.
+ */
+const NOT_PART_OF_A_NAME = new Set([
+  'a',
+  'an',
+  'the',
+  'i',
+  'my',
+  'me',
+  'we',
+  'he',
+  'she',
+  'they',
+  'them',
+  'him',
+  'her',
+  'it',
+  'to',
+  'for',
+  'about',
+  'through',
+  'with',
+  'from',
+  'and',
+  'or',
+  'but',
+  'because',
+  'so',
+  'who',
+  'that',
+  'this',
+  'next',
+  'please',
+  'asking',
+  'ask',
+  'want',
+  'would',
+  'like',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'do',
+  'does',
+  'did',
+  'not',
+  'no',
+  'if',
+  'when',
+  'მჭირდება',
+  'მინდა',
+  'გთხოვ',
+  'უნდა',
+  'არის',
+  'და',
+  'რომ',
+  'ამ',
+  'მას',
+  'იცნობ',
+]);
+
+/** A clause ends the name: „…to Netai Test 4. I want this done as…". */
+const ENDS_A_CLAUSE = /[.,;:!?—–]$/u;
+
+/** Leading and trailing punctuation only — „(Nino," is „Nino". */
+const EDGE_PUNCTUATION = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
+
+/**
+ * „Test 6-თან" — a Georgian case ending hung off a name that is not Georgian.
+ *
+ * `georgianStem` already trims these endings downstream, and it never sees
+ * this one: the word it is attached to is Latin, so the stemmer does not read
+ * it. Ticket 20 row 10 is the same fault in the other direction — „რატიანს"
+ * matched nothing because of one letter.
+ */
+const HYPHENATED_GEORGIAN_ENDING = /-[Ⴀ-ჿ]+$/u;
+
+function cleanWord(raw: string): string {
+  return raw.replace(EDGE_PUNCTUATION, '').replace(HYPHENATED_GEORGIAN_ENDING, '');
+}
+
+/**
+ * The phrase is never part of the name, AND THE FIRST MEASUREMENT IS WHY THIS
+ * LINE EXISTS.
+ *
+ * A goal can use the phrase twice — „…ნინია აბრამიშვილთან პირდაპირი შეკითხვა,
+ * აქსელთან დაკავშირებით რჩევასთან დაკავშირებით." Reading back from the second
+ * occurrence walks straight over the first one, and the query came out as
+ * „აქსელთან დაკავშირებით რჩევასთან": three words, so the two-word floor below
+ * passed it, and one of the three was the phrase itself. Stopping here makes
+ * that span one word, which is the floor's job and it then does it.
+ */
+const IS_THE_PHRASE = /^(?:დაკავშირებ|გამაცნ|გააცნო|შემახვედრ)/u;
+
+/**
+ * The name beside the phrase, read outwards until the clause ends.
+ *
+ * `backwards` is the Georgian case: there the phrase follows the name, so a
+ * word whose own spelling ends the clause is the boundary and is NOT taken —
+ * it belongs to the clause before the name, not to the name.
+ */
+function nameBeside(text: string, backwards: boolean): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const ordered = backwards ? [...words].reverse() : words;
+  const taken: string[] = [];
+  for (const raw of ordered) {
+    if (backwards && ENDS_A_CLAUSE.test(raw)) break;
+    const word = cleanWord(raw);
+    if (word === '' || NOT_PART_OF_A_NAME.has(word.toLowerCase())) break;
+    if (IS_THE_PHRASE.test(word)) break;
+    taken.push(word);
+    if (taken.length === MAX_LOCAL_QUERY_WORDS) break;
+    if (!backwards && ENDS_A_CLAUSE.test(raw)) break;
+  }
+  return backwards ? taken.reverse() : taken;
+}
+
+/**
+ * The goal's search query, built without a model and without leaving the
+ * building. Empty string when it cannot find a name — never a guess.
+ *
+ * Every occurrence of every phrase is read, and the longest name wins: a goal
+ * naming both a bridge and a target („Ask X to introduce me to Y") mentions
+ * the phrase once, but „send a formal introduction request to X, asking X to
+ * introduce me to Y" mentions two, and the one carrying a name is not always
+ * the first.
+ */
+export function introductionQueryWithoutAModel(goalText: string): string {
+  let best: string[] = [];
+  const consider = (candidate: string[]): void => {
+    if (candidate.length > best.length) best = candidate;
+  };
+
+  for (const match of goalText.matchAll(INTRODUCTION_LEAD)) {
+    consider(nameBeside(goalText.slice(match.index + match[0].length), false));
+  }
+  for (const match of goalText.matchAll(INTRODUCTION_TRAIL)) {
+    consider(nameBeside(goalText.slice(0, match.index), true));
+  }
+
+  return best.length >= MIN_LOCAL_QUERY_WORDS ? best.join(' ') : '';
+}
+
+/**
+ * What `distilSearchQuery` is to an ordinary goal, this is to one that asks to
+ * reach a named person — with no model call of any kind behind it.
+ *
+ * Returns the same shape, so the caller logs and searches identically and the
+ * tool log still shows both the query and the goal it came from.
+ */
+export function distilIntroductionLocally(goalText: string): DistilledQuery {
+  const query = introductionQueryWithoutAModel(goalText);
+  if (query === '')
+    return declined(
+      goalText,
+      'no name found beside the phrase, and nothing sent out to look for one',
+    );
+  return { query, fromGoal: goalText };
+}
