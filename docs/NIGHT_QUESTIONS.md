@@ -927,3 +927,29 @@ iPhones into one and stop notifications reaching a real device.
 
 **And it is not one person's quirk:** of the three people who hold more than
 one subscription, TWO have duplicate Apple endpoints, both receiving.
+
+**22:40 — AND THE „IS IT ONE PHONE OR TWO DEVICES" QUESTION IS ANSWERED. IT
+DOES NOT NEED HER.**
+
+`push_deliveries` writes `skipped` when a device was LIVE at send time. By day,
+Salome's two Apple endpoints:
+
+    day      old (reg 14 Sep)     new (reg 21 Sep)
+             live  pushed         live  pushed
+    14 Sep     6     2            — did not exist —
+    15-20      0    25
+    21 Sep     0     7              2     2
+    22 Sep     0    12              8     4
+    23 Sep     0     4              0     4
+
+**The old device key was live the day it registered and never again; the new
+one starts the day it appears. Never both on one day, across ten days.** Two
+real Apple devices owned by one person would overlap. This is one phone whose
+`device_id` changed.
+
+**What she receives, 22 September:** 4 notifications to BOTH endpoints — seen
+twice — and 8 to the stale endpoint alone WHILE THE APP WAS OPEN, a push for
+something already on her screen.
+
+So row 101 no longer waits on anybody to answer a question. It waits on the
+decision above, which is a better place for it.
