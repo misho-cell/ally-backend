@@ -44,8 +44,9 @@ decision from you — the rest are mine, written here so nothing is invisible.
 | 6 | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone |
 | 7 | rows 251 and 252 | mine, specced, daylight |
 | 8 | a question reaches its reader untranslated | mine — the seat found the vision already decides it (row 254) |
+| 9 | row 255: two of the founder's rulings disagree about publishing a fact | **his** — one question, and it decides which code gets written |
 
-So: **1, 2, 3, 5 and 6 wait for you. 7 and 8 wait only for daylight; 4 is done.**
+So: **1, 2, 3, 5, 6 and 9 wait for you. 7 and 8 wait only for daylight; 4 is done.**
 
 ### 1. `privacy.routes.ts` takes an admin token on the erasure endpoint
 
@@ -613,3 +614,52 @@ uses to keep real people safe — Bhutan, Kyoto, Morocco, Patagonia — is by
 construction a query that matches nobody, which is the one case that cannot
 reproduce this. Those goals remain exactly right for row 203 and for anything
 that must not reach a real person; they are the wrong instrument here.
+
+### 9. Row 255 — D81 and D440 disagree, and one of them has to go
+
+The night seat found a one-source note reaching another member as a flat
+statement: Test 6's `occupation = 'tax accountant'`, written by Test 1 alone,
+read back to Test 2 three times as fact. Their question was whether the
+second-circle result carries how many members stand behind a fact.
+
+**It does not** — each row carries one value per field and no count, so the
+model cannot tell one source from ten. That part is server work.
+
+**But the gate is not what its own comment claims, and that is the finding.**
+`searchSecondDegree` gates those joins on `cf.is_public`, with a comment
+reading „only PUBLIC (2+ confirmations) facts". Measured:
+
+    live public facts                    1,068
+      with only ONE distinct source      1,062
+      with two or more                       6
+
+The two-source rule is implemented properly and correctly refuses a web
+reading as a second person. It is simply jumped over first, by design:
+
+    // A trusted curator needs no second source (the founder's ruling, 1 Sep)
+    if (isTrustedFactCurator(userId) && source !== 'sweep' && confidence === 'stated')
+
+**Why we cannot decide it:** two of the founder's own rulings disagree.
+
+    D81,  1 September  — a trusted curator's core fact is public the moment
+                         they write it, no second source.
+    D440, 22 September — not public until 2 men confirm it; before that the
+                         assistant just gives the name.
+
+D440 is three weeks newer and he may not have had D81 in mind. Three answers
+are each coherent and each builds differently: D81 stands and 255 shrinks to
+six rows; D440 supersedes and the curator path goes; or both stand and the
+RESULT must carry the source count so the assistant gives the name without
+stating the fact. Only the third needs the count plumbed through, and the
+second would delete what the third adds — so starting before he answers is
+writing code to throw away.
+
+**What is blocked:** row 255 entirely. Nothing else.
+
+**And one thing this seat deliberately cannot check:** who is on the curator
+list. `TRUSTED_FACT_CURATOR_USER_IDS` is a Railway environment variable and we
+never read those. Inferred from the data instead — 991 of the 1,062 one-source
+public facts were written by account 501, the rest spread over eight accounts
+including three of the tester's test seats. If the test seats are curators,
+their runs publish facts a real member's would not, which is worth knowing
+about every fact test they have run.
