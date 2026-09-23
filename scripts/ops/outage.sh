@@ -153,11 +153,74 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
   # positive probe — one cheap model call when the window is empty, so silence
   # becomes evidence instead of the absence of it — and a probe costs money,
   # which is Misho's to authorise. Written into docs/NIGHT_QUESTIONS.md.
-  echo "  NOTE: at night this is the NORMAL answer, so this check cannot see an"
-  echo "  outage that starts after everyone goes to bed. See NIGHT_QUESTIONS.md."
+  echo "  NOTE: at night this is the NORMAL answer, so a quiet window alone cannot"
+  echo "  see an outage that starts after everyone goes to bed. See NIGHT_QUESTIONS.md."
   if [ "$OTHER" -gt 0 ]; then
     echo "  ${OTHER} other usage row(s) are NOT that proof: that column also holds"
     echo "  tool names and a second provider, neither of which touches Anthropic."
+  fi
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 23 SEPTEMBER, 20:28 — THE PROBE WAS ALREADY THERE AND ALREADY PAID FOR.
+  #
+  # NIGHT_QUESTIONS.md item D says the fix for this blindness "is a positive
+  # probe — one cheap model call when the window is empty — and a probe costs
+  # money, which is Misho's to authorise". That was written without asking one
+  # question: DOES THE PRODUCT ALREADY CALL THE PROVIDER AT NIGHT BY ITSELF?
+  #
+  # It does. Measured over seven nights (20:00-07:00 UTC), by the hour:
+  #
+  #     02:00   886 calls on 7 of 7 nights      the nightly review
+  #     03:00 1,706 calls on 5 of 7
+  #     04:00    72 calls on 7 of 7
+  #     05:00   176 calls on 7 of 7             the notification cron
+  #
+  # The crons ARE the heartbeat. Nobody has to spend anything.
+  #
+  # AND THE THRESHOLD IS MEASURED, NOT GUESSED — the longest silence inside
+  # each of the last seven nights:
+  #
+  #     16 Sep 200 min · 17 Sep 100 · 18 Sep 205 · 19 Sep 121
+  #     20 Sep  85 min · 21 Sep  77 · 22 Sep  89
+  #
+  # So 205 minutes of night silence is NORMAL here, and anything that cries
+  # sooner cries most nights. 240 minutes is the first number that is above
+  # every one of them with room to spare.
+  #
+  # WHAT THIS BUYS AND WHAT IT DOES NOT. It does not catch an outage in twenty
+  # minutes; nothing free can, because the product genuinely goes silent for
+  # three hours at a time. It turns "found by the first person awake" — nine
+  # hours — into "found within four". That is half the harm for no money and
+  # nobody's permission, and it is worth having while the paid probe is still
+  # a question for Misho rather than instead of it.
+  #
+  # Re-measure the seven-night table if the crons move; the number is only as
+  # good as the schedule it was taken from.
+  # ────────────────────────────────────────────────────────────────────────
+  # Overridable so the alarm branch can be PROVEN rather than assumed:
+  #   NIGHT_SILENCE_LIMIT_MIN=1 ./scripts/ops/outage.sh 20
+  # should shout on any quiet night. I ran exactly that before shipping it.
+  NIGHT_SILENCE_LIMIT_MIN="${NIGHT_SILENCE_LIMIT_MIN:-240}"
+  HOUR_NOW="$(date -u +%-H)"
+  if [ "$HOUR_NOW" -ge 20 ] || [ "$HOUR_NOW" -lt 7 ]; then
+    QUIET_FOR="$(printf '%s' "SELECT COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(created_at)))/60), 99999)::int AS quiet_min FROM usage_events WHERE provider = 'anthropic'" \
+      | ./scripts/ops/ro.sh 2>/dev/null \
+      | python3 -c 'import sys,json
+try: print(json.load(sys.stdin)["data"]["rows"][0]["quiet_min"])
+except Exception: print("x")')"
+    if [ "$QUIET_FOR" = "x" ]; then
+      echo "  AND I COULD NOT READ THE LAST CALL'S AGE — that is not reassurance either."
+    elif [ "$QUIET_FOR" -gt "$NIGHT_SILENCE_LIMIT_MIN" ]; then
+      echo ""
+      echo "SILENT LONGER THAN ANY NIGHT THIS WEEK — ${QUIET_FOR} minutes since the last"
+      echo "  Anthropic call. The longest silence inside any of the last seven nights"
+      echo "  was 205 minutes, and the crons (nightly review 02:30, notifications 05:00)"
+      echo "  call the provider on 7 of 7 nights. Something that always happens has not."
+      exit 1
+    else
+      echo "  Last Anthropic call: ${QUIET_FOR} min ago. Normal night silence here runs"
+      echo "  to 205 min, so this is not yet evidence of anything — at ${NIGHT_SILENCE_LIMIT_MIN} it would be."
+    fi
   fi
   exit 0
 fi

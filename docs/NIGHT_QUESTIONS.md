@@ -48,7 +48,7 @@ Ordered by what else they block.
 | A | ~~the ask reminder pushes a real person at 5 a.m.~~ **CLOSED 23 Sep** — quiet window shipped, and **D472** settled the hours | ~~yours~~ — answered; per-recipient time is scoped when a real user west of Georgia registers | nothing |
 | B | clearing the founder's test goals (§23 of the write register) | **his or yours** — and D245 says a goal is never deleted | the tester's tidy-up of account 501 |
 | C | the opening web search on a goal naming no trade or place | **the founder's** — it collides with D315 | row 253's remaining half |
-| D | the outage monitor is blind all night | **yours** — the fix is a probe and a probe costs money | nothing; it is a hole in what we can see |
+| D | the outage monitor is blind all night | **half of it was free and is now built** (the crons are the heartbeat, 240-min alarm); the paid probe for the first three hours is still yours | nine hours of blindness became four |
 | E | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase | nothing; the test pins today's behaviour |
 | F | the zero-wallet test seat refills itself | **yours** — the fix is an access change | any row 221 reading that needs an empty wallet |
 
@@ -185,6 +185,42 @@ reads a quiet night as a healthy one. That is honesty, not a fix.
 model call when the window is empty, so that silence becomes evidence instead
 of the absence of it. A probe costs money on every quiet check, and money is
 Misho's. It also needs a number: how cheap, how often, and against which
+account.
+
+---
+
+**23 SEPTEMBER, 20:28 — HALF OF IT WAS FREE, AND I HAD NOT ASKED THE QUESTION
+THAT SHOWED IT.**
+
+The paragraph above reasons from „a probe costs money" straight to „so we
+cannot". It never asks: **does the product already call the provider at night
+by itself?** It does — the crons do, every night:
+
+    02:00     886 calls on 7 of 7 nights     the nightly review
+    03:00   1,706 calls on 5 of 7
+    04:00      72 calls on 7 of 7
+    05:00     176 calls on 7 of 7            the notification cron
+
+The heartbeat was already there and already paid for. What was missing was
+somebody reading it.
+
+**And the threshold is measured rather than guessed** — the longest silence
+inside each of the last seven nights:
+
+    16 Sep 200 min · 17 Sep 100 · 18 Sep 205 · 19 Sep 121
+    20 Sep  85 min · 21 Sep  77 · 22 Sep  89
+
+205 minutes of night silence is NORMAL here. `outage.sh` now says how long the
+product has been silent on every quiet night check, and **shouts and exits 1
+past 240 minutes** — the first number above all seven with room to spare. The
+alarm branch was proven by running it with the limit at 1, not assumed.
+
+**WHAT THIS DOES NOT DO, so nobody reads it as closed:** it cannot catch an
+outage in twenty minutes. Nothing free can, because the product genuinely goes
+quiet for three hours at a stretch. It turns „found by the first person awake"
+— nine hours — into „found within four". The paid probe is still the only thing
+that would close the first three hours, and that is still Misho's question,
+with the same three numbers needed: how cheap, how often, against which
 account.
 
 **And a habit of my own, worth admitting:** I have been running these checks as
