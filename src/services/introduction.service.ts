@@ -936,11 +936,52 @@ export async function resolveIntroductionRequest(
 
   // status='pending' in the WHERE guards the race of two simultaneous answers:
   // exactly one wins; the loser sees rowCount 0 and reports the conflict.
+  /**
+   * ROW 251 — THE ACCEPTED INTRODUCTION LEARNS THE TARGET'S NUMBER HERE, AND
+   * NOWHERE ELSE IT COULD.
+   *
+   * The row is „after the mediator's yes, the two assistants get a direct
+   * channel". The wall in the way is `planAllows`, which matches on a PHONE and
+   * refuses anyone the plan does not name — so an accepted introduction can
+   * only lift that wall if it knows who, by number.
+   *
+   * MEASURED BEFORE WRITING THIS, because building the wall half first would
+   * have fixed four cases and looked finished. Of every accepted introduction
+   * there has ever been:
+   *
+   *     accepted                                   37
+   *       carrying a target phone                  14
+   *       carrying a requester task                13
+   *       carrying BOTH, which is what the gate needs   4
+   *
+   * AND THE MISSING PHONE IS NOT AN OMISSION AT THE OTHER END. In a mediated
+   * introduction the requester does not HAVE the number — that is the whole
+   * reason they are asking a mediator — so `requestIntroduction` storing null
+   * is the honest answer at that moment. Acceptance is the moment it becomes
+   * known: the mediator is exactly the person who has it, because the target is
+   * in THEIR phonebook, which is why they are the bridge.
+   *
+   * COALESCE, so a number already recorded is never overwritten — a direct
+   * introduction resolved its phone at creation and that one is better evidence
+   * than this lookup. Seven of the seven accepted rows that lack a phone and
+   * carry a target user resolve through `UserPhone` today, so this is not a
+   * hypothetical recovery.
+   *
+   * IT IS WRITTEN AND NEVER LOGGED. D149: a phone appears in a file as its last
+   * four digits and never in full. This is a column, it is a join key for the
+   * consent gate, and no line of this function prints it.
+   */
   const updated = await query(
     `UPDATE introduction_requests
      SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL,
          responded_by_user_id = $4::int,
-         intro_channel = COALESCE($5::text, intro_channel)
+         intro_channel = COALESCE($5::text, intro_channel),
+         target_phone = COALESCE(
+           target_phone,
+           (SELECT up.phone FROM "UserPhone" up
+             WHERE up."userId" = introduction_requests.target_user_id
+             LIMIT 1)
+         )
      WHERE id = $3 AND status = 'pending'`,
     [newStatus, opts.response ?? null, req.id, mediatorUserId, opts.channel ?? null],
   );

@@ -116,21 +116,44 @@ export function introOutcomeEvent(
   accepted: boolean,
   contactHandedOver = false,
 ): Readonly<Record<RunLanguage, string>> {
+  /**
+   * ROW 251 / D438 — THIS SENTENCE WAS THE FIRST CAUSE, AND I WROTE IT.
+   *
+   * It used to say „remind them they can write themselves now", and the tester
+   * found two threads (22518, 22476) where the assistant did exactly that —
+   * „this is one for you to send yourself rather than through me" — and NOTHING
+   * WAS EVER SENT. The founder's rule is the opposite: after the yes, the two
+   * assistants carry it, and nobody is pushed off the product to finish their
+   * own introduction.
+   *
+   * AND IT IS CHANGED ONLY NOW, WITH THE CHANNEL, NOT BEFORE IT. Saying „write
+   * to them through Netai" while `planAllows` still refused the target would
+   * have been the product promising a channel it then fails to provide — row
+   * 247's fault exactly, and the one the founder minds most. The gate went in
+   * first; this follows it.
+   *
+   * The OTHER branch is untouched. When the mediator kept the connection, no
+   * number was handed over and the owner must not be told they have one.
+   */
   const handover = {
     ka: contactHandedOver
-      ? `${targetName}-ის კონტაქტი უკვე გადმოცემულია — შეახსენე, რომ ახლა თავად შეუძლია მისწეროს.`
+      ? `${targetName}-თან პირდაპირი არხი გახსნილია — ახლა შეგიძლია მას პირდაპირ მისწერო ` +
+        'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ.'
       : `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
         'ნუ ეტყვი, რომ ნომერი აქვს.',
     en: contactHandedOver
-      ? `${targetName}'s contact has ALREADY been handed over — remind them they can write themselves now.`
+      ? `The direct channel to ${targetName} is open — you may now write to them directly ` +
+        'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it.'
       : 'NO contact was handed over — the mediator chose to keep the connection going through ' +
         'them. Do NOT tell the owner they have the number.',
     ru: contactHandedOver
-      ? `Контакт ${targetName} УЖЕ передан — напомни, что теперь он может написать сам.`
+      ? `Прямой канал к ${targetName} открыт — теперь можно написать напрямую через Netai, ` +
+        'без посредника. Скажи, что передать, и я передам.'
       : 'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
         'что номер у него есть.',
     es: contactHandedOver
-      ? `El contacto de ${targetName} YA ha sido entregado — recuérdale que ya puede escribir él mismo.`
+      ? `El canal directo con ${targetName} está abierto — ya puedes escribirle directamente ` +
+        'por Netai, sin el intermediario. Dime qué decir y yo lo llevo.'
       : 'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
         'él. No le digas al propietario que tiene el número.',
   };

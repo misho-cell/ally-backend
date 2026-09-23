@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { getTaskById } from './taskStore.service';
-import { planAllows, planInForce, TaskPlan } from './taskPlans.service';
+import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import {
@@ -641,7 +641,14 @@ export async function createAsk(
   // user said never. A person the plan does not name is a change to the plan:
   // refused with the instruction to propose one, while the people the plan
   // does name keep being written to. A goal without a plan keeps the old rule.
-  const verdict = planAllows(planInForce(await planRowFor(taskId)), contactPhone);
+  // Row 251: an accepted introduction is the TARGET's own yes, relayed by
+  // somebody who knows them both, and it counts for THIS goal only. Loaded
+  // beside the plan so the two arrive together.
+  const [planRow, acceptedPhones] = await Promise.all([
+    planRowFor(taskId),
+    acceptedIntroductionPhones(taskId, fromUserId),
+  ]);
+  const verdict = planAllows(planInForce(planRow), contactPhone, acceptedPhones);
   if (!verdict.allowed && verdict.reason === 'never_contact') {
     return {
       sent: false,

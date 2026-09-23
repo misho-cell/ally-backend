@@ -507,7 +507,7 @@ export function planInForce(
 }
 
 export type PlanVerdict =
-  | { allowed: true; reason: 'no_plan' | 'in_plan' }
+  | { allowed: true; reason: 'no_plan' | 'in_plan' | 'accepted_introduction' }
   | { allowed: false; reason: 'never_contact' | 'outside_plan' };
 
 /**
@@ -517,17 +517,79 @@ export type PlanVerdict =
  * runs elsewhere). A person on never_contact → refused on every route. A
  * person the plan does not name → refused: that is a change to the plan and
  * needs a new yes, while everything the plan does name keeps running.
+ *
+ * ROW 251 / D438 — AND THE ACCEPTED INTRODUCTION, WHICH IS A STRONGER YES THAN
+ * THE PLAN'S AND DID NOT COUNT.
+ *
+ * The founder's rule: after the mediator's yes, the asker's and the solver's
+ * assistants get a direct channel. The wall in the way was this function. A
+ * plan is the OWNER saying „you may write to these people"; an accepted
+ * introduction is the TARGET THEMSELVES saying „yes, they may reach me",
+ * relayed by somebody who knows them both. That is the stronger consent of the
+ * two, and until now it lost to a list it was never on.
+ *
+ * THREE THINGS KEEP IT NARROW, and each has its own test:
+ *
+ *   never_contact IS CHECKED FIRST and is not reachable past. The owner saying
+ *   „never this person" outranks anybody's acceptance, including the person's
+ *   own — the two are about different things and the owner's goal is ours to
+ *   run.
+ *
+ *   ONE GOAL. The phones are loaded for THIS task id only, so an introduction
+ *   accepted for a plumber does not open a channel inside an unrelated goal.
+ *
+ *   ONE PERSON. Only the target of an accepted request, matched on digits, and
+ *   `acceptedIntroductionPhones` is empty for every caller that does not pass
+ *   it — so nothing changes anywhere this was not deliberately wired.
  */
-export function planAllows(plan: StoredPlan | null, phone: string): PlanVerdict {
+export function planAllows(
+  plan: StoredPlan | null,
+  phone: string,
+  acceptedIntroductionPhones: readonly string[] = [],
+): PlanVerdict {
   if (plan === null) return { allowed: true, reason: 'no_plan' };
   const digits = phoneDigits(phone);
+  // FIRST, and deliberately before the acceptance: „never" is the owner's word
+  // about their own goal and nothing below may reach past it.
   if (plan.never_contact.some((n) => n.phone !== undefined && phoneDigits(n.phone) === digits)) {
     return { allowed: false, reason: 'never_contact' };
   }
   if (plan.people_to_involve.some((p) => phoneDigits(p.phone) === digits)) {
     return { allowed: true, reason: 'in_plan' };
   }
+  if (acceptedIntroductionPhones.some((p) => phoneDigits(p) === digits)) {
+    return { allowed: true, reason: 'accepted_introduction' };
+  }
   return { allowed: false, reason: 'outside_plan' };
+}
+
+/**
+ * The phones of people who have ACCEPTED an introduction for this one goal.
+ *
+ * Scoped by task AND by requester: an acceptance belongs to the goal it was
+ * asked for and to the person who asked. Empty on any failure, so a database
+ * hiccup narrows the gate rather than widening it — the direction of error
+ * that costs a retry instead of a message nobody agreed to.
+ */
+export async function acceptedIntroductionPhones(
+  taskId: number,
+  requesterUserId: string,
+): Promise<string[]> {
+  try {
+    const result = await query<{ target_phone: string }>(
+      `SELECT DISTINCT target_phone
+         FROM introduction_requests
+        WHERE requester_task_id = $1
+          AND requester_user_id = $2::text
+          AND status = 'accepted'
+          AND target_phone IS NOT NULL`,
+      [taskId, requesterUserId],
+      PLAN_QUERY_TIMEOUT_MS,
+    );
+    return result.rows.map((r) => r.target_phone);
+  } catch {
+    return [];
+  }
 }
 
 /**

@@ -237,8 +237,36 @@ describe('the requester’s goal wake is told what actually happened', () => {
     );
   });
 
+  /**
+   * ROW 251 CHANGED WHAT „IT HAS MOVED" IS SUPPOSED TO MEAN, so this assertion
+   * moved with it rather than being deleted.
+   *
+   * It used to read „ALREADY been handed over — remind them they can write
+   * themselves now", and the tester caught the assistant obeying that to the
+   * letter on threads 22518 and 22476: „this is one for you to send yourself
+   * rather than through me", and nothing was ever sent. The founder's rule
+   * (D438) is that after the yes the two ASSISTANTS carry it.
+   *
+   * What the test still holds is the same thing it always held — that this
+   * branch says plainly that the connection is open, and does not hedge. What
+   * changed is where the owner is pointed: through Netai, not out of it.
+   */
   it('and says plainly that it HAS moved, when it has', () => {
-    expect(introOutcomeEvent('Dato', true, true).en).toContain('ALREADY been handed over');
+    const built = introOutcomeEvent('Dato', true, true).en;
+
+    expect(built).toContain('direct channel to Dato is open');
+    expect(built).toContain('directly through Netai');
+    // The whole of the row: nobody is sent off to do it themselves.
+    expect(built).not.toContain('write themselves');
+  });
+
+  /**
+   * AND EVERY LANGUAGE SAYS IT, because the owner reading this in Georgian is
+   * the common case and a rule that only lands in English is not a rule. The
+   * three that are not English were the ones most likely to be left behind.
+   */
+  it.each(['ka', 'en', 'ru', 'es'] as const)('%s points through Netai, not out of it', (lang) => {
+    expect(introOutcomeEvent('Dato', true, true)[lang]).toMatch(/Netai/);
   });
 
   /**
