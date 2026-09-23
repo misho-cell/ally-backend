@@ -826,3 +826,49 @@ list, not waiting on a ruling.
 The tester's plate has nothing of mine left on it. If tonight's two changes
 want proving — the answer relay's speed and 242's refusal — both are one seat
 run each and the tester has them.
+
+### 6. An invite link cannot credit 62,163 of the people it is for — THE FOUNDER
+
+Found at 21:45 while re-checking tonight's claims. **Urgent for the morning
+because the morning is when he sends the link.**
+
+    POST /auth/register   phone, name, referralPhone, referralCode
+    POST /auth/login      phone.  That is the whole body.
+
+`registerUser` REFUSES a number that already exists. `completeLogin(phone)`
+finds it, consumes the OTP and mints a 30-day session — and takes no referral
+code, because the route does not accept one.
+
+    legacy Ally accounts with a phone number    62,163
+
+Those are the people the product's own instructions call „a target, not a
+member", and the link's code has no path into the system for any of them. It
+is already visible: of the 45 people who have used Netai, 35 never registered —
+they logged in on accounts that already existed, and not one could have
+carried an inviter.
+
+**For tomorrow:** if he invites a number already in the base, the person joins,
+nothing is credited, and the hourly check reports „registration with no
+inviter" — which reads as the frontend's fix having failed again. **Give me the
+number first and I will say whether a row exists.** One read, no writes.
+
+**The decision, which is his and not mine:** should logging in carry an
+inviter? It needs three answers — does an existing Ally user arriving through
+a link earn somebody a referral; does a link clicked today still count when
+they log in six weeks later; and the invite gate deliberately does not run on
+login, because these people are already inside. I have built nothing.
+
+### 7. `hasAccessToAlly` means „may log into the admin" — A RENAME, NOT A RISK
+
+Checked tonight because I had built a population rule on it. `adminLogin`
+reads it, `setAdminAccess` writes it, and `registerUser` sets it true for every
+Netai registrant.
+
+**It is not a hole.** Admin login requires an email; registration sets none.
+1,610 accounts hold an email and exactly **2** hold an email and the flag. No
+route lets a user set their own email or password — only an admin can.
+
+But a column named for Ally access, used as the admin gate, and set true by
+every registration is one careless read away from being believed. I made
+exactly that read at 19:00 and shipped it. Worth renaming when somebody has a
+quiet hour; it is not worth a night.
