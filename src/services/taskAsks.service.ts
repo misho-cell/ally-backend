@@ -2236,7 +2236,74 @@ const DUPLICATE_ASK_WINDOW_SECONDS = 600;
 // One polite reminder per unanswered ask, after this long.
 const ASK_REMINDER_AFTER_HOURS = 48;
 
+/**
+ * ELEVEN REAL PEOPLE HAVE HAD THIS ON A LOCK SCREEN AT NIGHT. THREE AT FIVE IN
+ * THE MORNING.
+ *
+ * Found at 02:57 Tbilisi while reading two replies the outage monitor showed
+ * with no model call behind them. Both were ask reminders, both went to test
+ * seats — and then the code said something worse than the two runs did. This
+ * function looked at NO CLOCK AT ALL, neither for the chat message nor for the
+ * push. It ran whenever the sweep ran, forty-eight hours after the question.
+ *
+ * Measured over every reminder ever sent:
+ *
+ *     reminders                                    56
+ *     to a non-test account                        46
+ *     outside 08:00-22:00 Tbilisi                  13
+ *         of those, to a REAL person               11
+ *
+ *     hours:  01 → 1 · 04 → 1 · 05 → 3 · 06 → 1 · 07 → 3 · 23 → 2
+ *
+ * The text is careful — „if you have a minute… if you do not know, tell me
+ * that too and I will not trouble you again". WHEN it arrives was not.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * IT DEFERS, IT DOES NOT DROP, and that is what makes this safe to do without
+ * waiting for a ruling. The claim and the send are one statement: if the hour
+ * is wrong, the rows are simply not claimed, and the next sweep inside the
+ * window picks them up unchanged. Nobody loses a reminder; a few of them
+ * arrive in the morning instead of at five.
+ *
+ * ONE CLOCK, TBILISI, AND THAT IS THE PART THAT IS NOT MINE TO SETTLE. Almost
+ * every user is +995 and the file above already says „that is the clock every
+ * user of this product is on" — but „almost" is not „every", and a person in
+ * another zone now gets their reminder at Tbilisi's daytime rather than their
+ * own. That is a smaller wrong than five in the morning and it is still a
+ * wrong, so the precise question — which hours, and on whose clock — is with
+ * the founder. The window is two named constants so his answer is a one-line
+ * change.
+ *
+ * Tbilisi has not observed daylight saving since 2005, so its hour needs no
+ * calendar arithmetic.
+ * ────────────────────────────────────────────────────────────────────────
+ */
+const REMINDER_QUIET_BEFORE_HOUR = 8;
+const REMINDER_QUIET_AFTER_HOUR = 22;
+
+export function tbilisiHour(now: Date = new Date()): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Tbilisi',
+      hour: '2-digit',
+      hour12: false,
+    }).format(now),
+  );
+}
+
+export function isAWakingHour(now: Date = new Date()): boolean {
+  const hour = tbilisiHour(now);
+  return hour >= REMINDER_QUIET_BEFORE_HOUR && hour < REMINDER_QUIET_AFTER_HOUR;
+}
+
 export async function sendDueAskReminders(limit: number): Promise<number> {
+  if (!isAWakingHour()) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask-reminder] ${tbilisiHour()}:00 Tbilisi — nothing claimed, nothing sent. These wait for the morning.`,
+    );
+    return 0;
+  }
   const due = await query<{ ask_thread_id: number | null; to_user_id: number }>(
     `UPDATE task_asks SET reminded_at = NOW()
      WHERE id IN (
