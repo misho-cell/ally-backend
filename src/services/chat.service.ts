@@ -391,10 +391,23 @@ export function frameServerTurn(
 
 interface AnthropicToolProperty {
   type: string;
-  description: string;
-  items?: { type: string };
+  /**
+   * Optional only for a NESTED field, whose meaning its parent's description
+   * already carries. Every top-level tool argument still has one.
+   */
+  description?: string;
+  items?: AnthropicToolProperty;
   /** A closed set of allowed values — the model sees them in the schema. */
   enum?: readonly string[];
+  /**
+   * Row 244(b): a nested shape, so an object argument can declare its fields
+   * instead of describing them in a sentence. „{ routes: [{name, status}] }"
+   * written as prose is a shape nothing can check, and the tester measured
+   * three plans in 136 refused because the model guessed „active" and
+   * „pending" for a status whose four words lived only in that prose.
+   */
+  properties?: Record<string, AnthropicToolProperty>;
+  required?: readonly string[];
 }
 
 interface AnthropicTool {
@@ -2007,6 +2020,59 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
       task_id: { type: 'number', description: 'The open goal.' },
       plan: {
         type: 'object',
+        /**
+         * ROW 244(b) — THE FOUR WORDS WERE DESCRIBED AND NEVER DECLARED.
+         *
+         * The tester measured every plan on the test seats since 22 September
+         * 13:00: 136 proposals, 6 refused, and THREE of the six were „route
+         * status must be one of running, waiting, done, dropped" — the model
+         * had written „active", „pending", „open". The four words were in this
+         * description, in prose, and nowhere in the schema, so nothing checked
+         * them until the server did and refused the whole plan.
+         *
+         * Prose in a description is the same thing as prose in a prompt, and
+         * this file says five times what that is worth. A declared enum is
+         * checked where the call is made.
+         *
+         * The shape is spelled out properly here rather than left as „object"
+         * for the same reason: „{ solved_when: string, routes: [...] }" written
+         * as a sentence is a shape nobody can validate.
+         */
+        properties: {
+          solved_when: { type: 'string' },
+          routes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                status: { type: 'string', enum: ['running', 'waiting', 'done', 'dropped'] },
+              },
+              required: ['name', 'status'],
+            },
+          },
+          people_to_involve: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                phone: { type: 'string' },
+                route: { type: 'string' },
+              },
+              required: ['name', 'phone'],
+            },
+          },
+          never_contact: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { name: { type: 'string' }, phone: { type: 'string' } },
+              required: ['name'],
+            },
+          },
+        },
+        required: ['solved_when', 'routes'],
         description:
           '{ solved_when: string, routes: [{name, status: running|waiting|done|dropped}], ' +
           'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }. ' +
@@ -8508,7 +8574,12 @@ export function toolsForRun<T extends { name: string }>(
  * could only see ALL_TOOL_DEFINITIONS, the OPTIONAL registry. Ten tools out of
  * about sixty, and not one of the ones that actually leak.
  */
-const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
+/**
+ * Exported for row 244(b)'s test, for the reason `toolsForRun` is exported two
+ * hundred lines up: „read the tool list back" is a thing a test should be able
+ * to actually do, rather than a claim about code nobody can reach.
+ */
+export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_CONTACT_FULL_PROFILE_TOOL,
   UPDATE_USER_PROFILE_TOOL,
   SAVE_PRIVATE_CONTEXT_TOOL,
