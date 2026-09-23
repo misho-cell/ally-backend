@@ -31,6 +31,22 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+**Read this first.** Eight items, and only three of them actually need a
+decision from you — the rest are mine, written here so nothing is invisible.
+
+| # | what it is | whose |
+|---|---|---|
+| 1 | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase |
+| 2 | the zero-wallet test seat refills itself | **yours** — the fix is an access change on an account |
+| 3 | the opening web search on a goal naming no trade or place | **yours** — it collides with D315 |
+| 4 | the distiller sends the goal text to a second provider | mine, measured, fix known |
+| 5 | the outage monitor is blind all night | **yours** — the fix is a probe, and a probe costs money |
+| 6 | the ask reminder pushes a real person at 5 a.m. | **yours** — which hours, in whose time zone |
+| 7 | rows 251 and 252 | mine, specced, daylight |
+| 8 | a question reaches its reader untranslated | mine — the seat found the vision already decides it (row 254) |
+
+So: **1, 2, 3, 5 and 6 wait for you. 4, 7 and 8 wait only for daylight.**
+
 ### 1. `privacy.routes.ts` takes an admin token on the erasure endpoint
 
 Found at 21:47 by a new test that asks whether the auth middleware is MOUNTED
