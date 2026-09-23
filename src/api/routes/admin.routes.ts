@@ -1,3 +1,4 @@
+import { hideGoal, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   createTestSeat,
   createdTestSeats,
@@ -1713,6 +1714,103 @@ export function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: s
  *
  * Logged with both ids, because „who acted as Test 3" must have an answer.
  */
+
+/**
+ * ROW 258 (D466) — take named CLOSED goals out of their owner's own list.
+ *
+ * `POST /admin/goals/hidden`    {"task_ids":[2839,2840],"reason":"why"}
+ * `DELETE /admin/goals/hidden`  {"task_ids":[2839]}         the undo
+ * `GET /admin/goals/hidden?user_id=501`   what is currently hidden
+ *
+ * The founder chose this over D450's stop-and-remove, which would have sent
+ * „no longer needed" to three real people who had already been asked. Not
+ * deleted, not closed, not stopped: not listed.
+ *
+ * IDS ONLY, NEVER A RULE. There is deliberately no „hide everything closed
+ * before X" here: 261 of one account's goals are closed and nobody has read
+ * them all, so a rule applied to unread rows is how one goal somebody wanted
+ * disappears. Every id in this table was named by a person.
+ *
+ * AN OPEN GOAL IS REFUSED BY THE SERVICE, not by this handler, so the seat's
+ * check — the open-goal count does not move — cannot be got round by a
+ * different caller.
+ */
+adminRouter.post(
+  '/goals/hidden',
+  body('task_ids').isArray({ min: 1, max: 500 }),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'task_ids (1-500) and reason (3-500 chars) are required.',
+      });
+      return;
+    }
+    const admin = (req as AuthenticatedRequest).user.userId;
+    const { task_ids: taskIds, reason } = req.body as { task_ids: unknown[]; reason: string };
+    try {
+      const outcomes: Record<string, string> = {};
+      for (const raw of taskIds) {
+        const id = Number(raw);
+        if (!Number.isInteger(id) || id <= 0) {
+          outcomes[String(raw)] = 'not_an_id';
+          continue;
+        }
+        outcomes[String(id)] = await hideGoal(id, `admin:${admin}`, reason);
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[hidden-goals] admin ${admin} hid ${taskIds.length} goal(s) — ${reason}`);
+      res.status(200).json({ success: true, data: outcomes });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[hidden-goals] hide failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.delete(
+  '/goals/hidden',
+  body('task_ids').isArray({ min: 1, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'task_ids (1-500) is required.' });
+      return;
+    }
+    const admin = (req as AuthenticatedRequest).user.userId;
+    const { task_ids: taskIds } = req.body as { task_ids: unknown[] };
+    try {
+      let restored = 0;
+      for (const raw of taskIds) {
+        const id = Number(raw);
+        if (Number.isInteger(id) && id > 0 && (await unhideGoal(id))) restored += 1;
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[hidden-goals] admin ${admin} restored ${restored} goal(s) to the list`);
+      res.status(200).json({ success: true, data: { restored } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[hidden-goals] restore failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get('/goals/hidden', async (req: Request, res: Response) => {
+  const userId = String(req.query.user_id ?? '').trim();
+  if (!userId) {
+    res.status(400).json({ success: false, error: 'user_id is required.' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await hiddenGoals(userId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[hidden-goals] list failed:', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 /**
  * ROW 251 — THE TESTER MAKES THEIR OWN FICTIONAL SEATS.

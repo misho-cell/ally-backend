@@ -487,8 +487,13 @@ export async function getMyTasksPage(
   const [tasks, total] = await Promise.all([
     getMyTasks(userId, status),
     query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM tasks
-       WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)`,
+      // Row 258: the SAME exclusion as the list below it. A count that
+      // includes what the list leaves out is the `due`/`held` disagreement one
+      // file over — two numbers about one thing, and the reader believes the
+      // one that is wrong.
+      `SELECT COUNT(*) AS count FROM tasks t
+       WHERE t.user_id = $1 AND ($2::text IS NULL OR t.status = $2)
+         AND NOT EXISTS (SELECT 1 FROM hidden_goals h WHERE h.task_id = t.id)`,
       [userId, status ?? null],
       QUERY_TIMEOUT_MS,
     ),
@@ -514,9 +519,14 @@ export async function getMyTasks(userId: string, status?: TaskStatus): Promise<T
     `SELECT id, title, description, task_type, status, permission_granted,
             plan, plan_proposed, plan_approved_at, plan_version,
             created_at, last_activity_at, next_wake_at, pending_question
-     FROM tasks
-     WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)
-     ORDER BY last_activity_at DESC
+     FROM tasks t
+     WHERE t.user_id = $1 AND ($2::text IS NULL OR t.status = $2)
+       -- Row 258 (D466): a closed TEST goal the founder asked to stop seeing.
+       -- Hidden from HIS list and from nowhere else — still readable by id,
+       -- still carrying its asks, still whatever it is to every other account.
+       -- Named one by one in "hidden_goals"; nothing here infers it.
+       AND NOT EXISTS (SELECT 1 FROM hidden_goals h WHERE h.task_id = t.id)
+     ORDER BY t.last_activity_at DESC
      LIMIT $3`,
     [userId, status ?? null, OPEN_TASKS_LIMIT],
     QUERY_TIMEOUT_MS,
@@ -735,4 +745,74 @@ export async function grantTaskPermission(userId: string, taskId: number): Promi
     QUERY_TIMEOUT_MS,
   );
   return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * ROW 258 (D466) — take a CLOSED goal out of its owner's own list.
+ *
+ * The founder chose this over D450's stop-and-remove, which would have sent
+ * „no longer needed" to three real people who had already been asked. Not
+ * deleted, not closed, not stopped: not listed.
+ *
+ * REFUSES AN OPEN GOAL, and that is the seat's own check made impossible to
+ * fail rather than merely tested: their done-when is that the open-goal count
+ * does not move, so an open goal cannot be hidden at all.
+ *
+ * Returns what happened rather than a boolean, because „that goal is open" and
+ * „there is no such goal" are different answers and a caller hiding a list of
+ * ids needs to know which it got.
+ */
+export type HideOutcome = 'hidden' | 'already_hidden' | 'refused_open' | 'no_such_goal';
+
+export async function hideGoal(
+  taskId: number,
+  hiddenBy: string,
+  reason: string,
+): Promise<HideOutcome> {
+  const why = reason.trim();
+  if (why === '') throw new Error('a hidden goal needs a reason');
+
+  const goal = await query<{ status: string }>(
+    `SELECT status FROM tasks WHERE id = $1 LIMIT 1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  const status = goal.rows[0]?.status;
+  if (status === undefined) return 'no_such_goal';
+  if (status !== 'closed') return 'refused_open';
+
+  const done = await query(
+    `INSERT INTO hidden_goals (task_id, hidden_by, reason)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (task_id) DO NOTHING`,
+    [taskId, hiddenBy, why],
+    QUERY_TIMEOUT_MS,
+  );
+  return (done.rowCount ?? 0) > 0 ? 'hidden' : 'already_hidden';
+}
+
+/** The undo, and it is a plain delete: the goal returns to the list unchanged. */
+export async function unhideGoal(taskId: number): Promise<boolean> {
+  const done = await query(
+    `DELETE FROM hidden_goals WHERE task_id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return (done.rowCount ?? 0) > 0;
+}
+
+/** What is hidden, for a person who wants to see what they stopped seeing. */
+export async function hiddenGoals(
+  userId: string,
+): Promise<Array<{ task_id: number; title: string | null; reason: string }>> {
+  const result = await query<{ task_id: number; title: string | null; reason: string }>(
+    `SELECT h.task_id, t.title, h.reason
+       FROM hidden_goals h
+       JOIN tasks t ON t.id = h.task_id
+      WHERE t.user_id = $1
+      ORDER BY h.task_id`,
+    [userId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
 }

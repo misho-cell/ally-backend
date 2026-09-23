@@ -2228,3 +2228,56 @@ The key was pasted into a chat, so it is in that conversation's history.
 Nothing here logs it and nothing prints it, but if he wants it clean the right
 move is to rotate it on Tavily once the web route is confirmed working — and
 then this same route sets the new one.
+
+---
+
+## `POST /admin/goals/hidden` — a closed test goal leaves its owner's list
+
+**Registered 23 September ~15:5x UTC, built, NOT YET RUN on any goal.** The
+mechanism ships first and the list of ids waits for the seat's confirmation —
+see „what is not decided" below.
+
+**D466, the founder, 23 September**, choosing between two things he was shown:
+D450's stop-and-remove, which would have sent „no longer needed" to three real
+people already asked (goals 5678, 5281, 5809 — one, two and three asks out),
+and the read-only alternative. His answer: **hide**. D450's „remove" is
+withdrawn; **D245 stands — a goal is never deleted, only closed.**
+
+### WHAT IT IS AND IS NOT
+
+Not deleted, not closed, not stopped. **Not listed**, to the one person whose
+list it clutters. A hidden goal is still readable by id, still carries its
+asks, still is whatever it is to every other account — which is the founder's
+own condition, in his words: „it must not change what any other account sees."
+
+### ROUTE / METHOD / BODY
+
+    POST   /admin/goals/hidden   {"task_ids":[2839,2840],"reason":"why"}
+    GET    /admin/goals/hidden?user_id=501
+    DELETE /admin/goals/hidden   {"task_ids":[2839]}        ← the undo
+
+### UNDO
+
+The DELETE above. It is a plain row delete and the goal returns to the list
+exactly as it was; nothing about the goal itself is ever written.
+
+### WHAT IT CANNOT DO
+
+- **Hide an OPEN goal.** Refused in the service, not in the handler, so a
+  different caller cannot get round it. The seat's own done-when is that the
+  open-goal count does not move, and this makes that impossible to fail rather
+  than merely tested.
+- **Infer anything.** There is deliberately no „hide everything closed before
+  X". 261 of account 501's goals are closed and nobody has read them all; a
+  rule applied to unread rows is how one goal somebody wanted disappears.
+  Every id was named by a person.
+- **Touch the goal.** No `UPDATE tasks` anywhere in this path.
+
+### WHAT IS NOT DECIDED, AND WHY NOTHING HAS RUN
+
+**Which ids.** The founder said hide the closed TEST goals; he did not hand me
+a list, and I am not going to produce one from a heuristic on an account whose
+history I have read a fraction of. I will post the candidate list to the seat
+with each goal's title and date, they confirm, and only then does anything run.
+Registered now so the mechanism is on the record before it is pointed at
+anything.
