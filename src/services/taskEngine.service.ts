@@ -44,6 +44,8 @@ import { checkRunAllowance } from './tokenWallet.service';
 import { beginRun, endRun, isDraining } from './inFlightRuns';
 import { scrubText } from './privacyScrub';
 import { enterThread, leaveThread, threadHolder } from './threadRunQueue';
+import { looksLikeContactInstruction } from './goalIntent';
+import { messageNamesOwnContact } from './tools/nameMatch';
 import { sweepUnansweredIntroOutcomes } from './partH.service';
 import { sendWeeklySummaries } from './weeklySummary.service';
 import {
@@ -840,6 +842,44 @@ export async function nothingToPlanYet(taskId: number): Promise<boolean> {
   const task = await getTaskById(taskId);
   if (!task || task.status !== 'open') return false;
   if (task.plan !== null || task.plan_proposed !== null) return false;
+  /**
+   * ROW 104's SECOND CAUSE, AND IT IS NOT THE CONSENT WALL AT ALL.
+   *
+   * The wall was the first cause and it is fixed. The tester then ran the same
+   * instruction on a seat with no open goal and it failed anyway: the MODEL
+   * opened a goal (`create_task`, goal 9109), a new goal has no plan, and this
+   * wake told it to draw one and ask „Want me to go ahead?" with two buttons.
+   * So the owner typed one clear instruction and was asked a second time — row
+   * 104's own words — by a different door from the one I had shut.
+   *
+   * D316: a typed instruction naming ONE PERSON and ONE ACTION is itself the
+   * yes. Such a goal does not need a plan. It needs one ask, and one line
+   * afterwards saying who it went to. Demanding a plan for it is demanding the
+   * second yes the ruling exists to abolish.
+   *
+   * THE SERVER'S OWN GOAL PATH HAS ALWAYS KNOWN THIS — `ensureGoalForRequest`
+   * refuses to open a goal from such a sentence — and `create_task`, the door
+   * the model actually used, never did. The same shape this project keeps
+   * finding: the rule is on one wire and not on the other. It is checked HERE,
+   * at the wake, rather than at `create_task`, because refusing the goal would
+   * leave the model with an instruction and nowhere to put it; letting the goal
+   * exist without demanding a plan is what D316 actually describes.
+   *
+   * The phonebook half is paid for here on purpose. This runs once per new
+   * goal, not on the hot path, and it is what keeps „ask" in an ordinary
+   * sentence from being read as an instruction to somebody.
+   */
+  const goalText = `${task.title ?? ''} ${task.brief ?? ''}`.trim();
+  if (
+    looksLikeContactInstruction(goalText) &&
+    (await messageNamesOwnContact(String(task.user_id), goalText))
+  ) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[task-engine] goal ${taskId}: no plan asked for — the goal IS an instruction naming one contact (D316)`,
+    );
+    return false;
+  }
   return !(await goalHasActedOutward(taskId));
 }
 
