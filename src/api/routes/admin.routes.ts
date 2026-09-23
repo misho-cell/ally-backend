@@ -105,6 +105,7 @@ import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
+import { pilotReport } from '../../services/pilotReport.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -2515,6 +2516,27 @@ adminRouter.post(
 // Engine T3: sent → opened → registered, for one user or the whole product
 // (?user_id= narrows it) — the three events the spec asked to see in
 // analytics.
+/**
+ * Row 256 — the pilot's results over time, in one read.
+ *
+ * `?days=` (1..120, default 28). Real people and fictional seats come back
+ * SIDE BY SIDE and never merged, with the population rule and the date
+ * closures began to be recorded travelling in the same payload — a screen
+ * cannot show these numbers without the two sentences that say what they are.
+ */
+adminRouter.get('/pilot/report', async (req: Request, res: Response) => {
+  try {
+    const raw = req.query.days;
+    const days = typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : undefined;
+    const report = await pilotReport(days);
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin pilot report]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/referral-funnel', async (req: Request, res: Response) => {
   try {
     const rawUserId = req.query.user_id;

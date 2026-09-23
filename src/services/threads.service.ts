@@ -444,7 +444,10 @@ export async function deleteThread(
     // Both wrong in the first cut: DELETE /threads returned 500 on every real
     // thread (ticket 5 item A2).
     const tasks = await client.query<{ id: number }>(
-      `UPDATE tasks SET status = 'closed', closed_reason = 'thread_deleted'
+      // Row 256: the second wire that closes a goal. `closed_at` is set here
+      // too — a rule that lives in `updateTask` is a rule this statement never
+      // sees, and this one would have left a hole in the day the report counts.
+      `UPDATE tasks SET status = 'closed', closed_reason = 'thread_deleted', closed_at = NOW()
        WHERE thread_id = $1 AND user_id = $2 AND status = 'open'
        RETURNING id`,
       [threadId, userId],

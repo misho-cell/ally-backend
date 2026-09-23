@@ -632,6 +632,16 @@ export async function updateTask(
          -- that was not a completion, and that is what 'stopped' means. NULL
          -- here is the value this column exists to stop storing.
          closed_as = CASE WHEN $3 = 'closed' THEN COALESCE($5::text, 'stopped') ELSE closed_as END,
+         /*
+          * Row 256 (migration 172) — WHEN, which no column recorded until now.
+          * Reopening clears it: a stale date on a live goal would put it in a
+          * past week's solved column. Every close route lands in this function,
+          * and the one that does not — the thread_deleted UPDATE in
+          * threads.service — sets it too, with a test naming both files.
+          */
+         closed_at = CASE WHEN $3 = 'closed' THEN NOW()
+                          WHEN $3 = 'open'   THEN NULL
+                          ELSE closed_at END,
          pending_question = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question END,
          pending_question_at = CASE WHEN $3 = 'closed' THEN NULL ELSE pending_question_at END,
          /*
