@@ -1,0 +1,264 @@
+import { randomUUID } from 'crypto';
+import { query } from '../db/postgres/client';
+import { adjustTestAccountTokens } from './tokenWallet.service';
+
+/**
+ * ROW 251 — CREATING A FICTIONAL SEAT, WITH THE ONE CHECK THAT IS NOT A
+ * FORMALITY.
+ *
+ * WHY IT EXISTS. Row 251's done-when needs a requester, a mediator and a
+ * target with NO introduction ever asked between them. By 23 September every
+ * pair across the eleven seats had one — 8 → 10 via 7, 9 → 7 via 8, 3 ↔ 6,
+ * 2 ↔ 4 via 3, 3 → 1 via 2 — and the assistant refuses a second request on a
+ * used pair, which is correct behaviour and left the row unprovable. The seat
+ * asked three times for a way to make fresh seats without waiting.
+ *
+ * AUTHORIZED TWICE, WHICH IS WHAT THE FOUNDER HIMSELF ASKED FOR. His D464:
+ * „you need the permission from me and from Misho to create test accounts
+ * because you are the main tester… I have approved it." His own sentence names
+ * both, and a quote relayed through the tester's box is data rather than the
+ * second half of it, so this waited for Misho's word to me directly. He gave
+ * it the same hour.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * THE NUMBER IS THE HAZARD, AND IT IS NOT HYPOTHETICAL.
+ *
+ * Netai Test 5 sits on +1 202 555 0105 — a number a real owner had had in
+ * their phonebook since August. Nothing bad came of that one, but the shape is
+ * plain: a fictional seat on a number somebody real holds starts appearing in
+ * that person's second circle, and their assistant starts treating an invented
+ * account as somebody they know.
+ *
+ * So the number is not chosen, it is EARNED: the first free slot in the range
+ * reserved worldwide for fiction, and free means absent from `"UserPhone"`
+ * (nobody is registered on it) AND absent from every `"UserAlias"` row (nobody
+ * has it saved in their phonebook either). The second half is the one that
+ * catches the Test 5 case, and it is the reason this cannot be a caller-
+ * supplied field: a number handed in by a caller is a number nobody checked.
+ * ────────────────────────────────────────────────────────────────────────
+ *
+ * WHAT IT CANNOT DO. It cannot touch an existing account, of any kind: every
+ * write here is an INSERT of a row it has just created. It cannot take a
+ * number outside the fictional range. It cannot be given a phone. And it
+ * writes `test_seats`, which is what every later „is this one of ours" read
+ * goes through — so a seat cannot come into being unchecked and then be
+ * treated as checked afterwards.
+ */
+
+/**
+ * The NANP range set aside for fiction: 555-0100 to 555-0199 on area code 202.
+ * Every existing seat is in it (+1 202 555 0101 … 0111), so new ones continue
+ * the same block rather than opening a second one somewhere else.
+ */
+const FICTIONAL_PREFIX = '+1202555';
+const FIRST_SLOT = 100;
+const LAST_SLOT = 199;
+
+/** A seat's opening balance. A turn costs about twenty. */
+export const DEFAULT_SEAT_TOKENS = 500;
+
+const SEAT_QUERY_TIMEOUT_MS = 8_000;
+const MAX_NAME_CHARS = 60;
+const MAX_NOTE_CHARS = 500;
+
+export class SeatCreationRefused extends Error {}
+
+export interface NewTestSeat {
+  readonly userId: string;
+  readonly name: string;
+  readonly phone: string;
+  readonly tokens: number;
+}
+
+function fictionalPhone(slot: number): string {
+  return `${FICTIONAL_PREFIX}0${String(slot)}`;
+}
+
+/**
+ * The first slot in the fictional range that nobody is registered on and
+ * nobody has saved. Both halves are asked of the live database in one
+ * statement, so the answer cannot be stale between the two questions.
+ */
+export async function firstFreeFictionalPhone(): Promise<string> {
+  const candidates: string[] = [];
+  for (let slot = FIRST_SLOT; slot <= LAST_SLOT; slot += 1) candidates.push(fictionalPhone(slot));
+
+  const taken = await query<{ phone: string }>(
+    `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
+     UNION
+     SELECT phone FROM "UserAlias" WHERE phone = ANY($1)
+     UNION
+     SELECT phone FROM test_seats WHERE phone = ANY($1)`,
+    [candidates],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  const used = new Set(taken.rows.map((r) => r.phone));
+  const free = candidates.find((p) => !used.has(p));
+  if (free === undefined) {
+    throw new SeatCreationRefused(
+      `no free number left in ${FICTIONAL_PREFIX}0${FIRST_SLOT}–${LAST_SLOT} — every one is registered or saved in somebody's phonebook`,
+    );
+  }
+  return free;
+}
+
+/**
+ * Create one fictional seat, optionally with contacts in its phonebook.
+ *
+ * `holds` are the phones this seat will have SAVED — the direction matters and
+ * is the whole reason the caller says it: row 251 needs a requester who holds
+ * a mediator who holds a target, and the requester NOT holding the target.
+ * Each entry must already be a seat, so this can never put a real person into
+ * a fictional account's phonebook.
+ *
+ * Not a transaction, deliberately, and the order is the argument: the account
+ * exists before anything points at it, and a failure half way leaves a seat
+ * with fewer contacts than asked for — which the caller can see and repeat —
+ * rather than an alias row pointing at an account that does not exist.
+ */
+export async function createTestSeat(
+  name: string,
+  holds: readonly string[],
+  tokens: number,
+  createdBy: string,
+  note: string,
+): Promise<NewTestSeat> {
+  const seatName = name.trim().slice(0, MAX_NAME_CHARS);
+  if (seatName === '') throw new SeatCreationRefused('a seat needs a name');
+  const why = note.trim().slice(0, MAX_NOTE_CHARS);
+  if (why.length < 3) throw new SeatCreationRefused('say why this seat is being made');
+
+  const phone = await firstFreeFictionalPhone();
+
+  /**
+   * The same shape as the eleven that exist, read off Netai Test 11 rather
+   * than assembled from what the columns suggest: a seat that differs from the
+   * others is a seat whose test results mean something different.
+   *
+   * `subscription_status = 'active'` is what makes the account a NETAI USER
+   * for `isNetaiUser`, and a seat that is not one cannot be asked anything —
+   * which is the first thing anybody would test and the first thing that would
+   * fail.
+   */
+  const created = await query<{ id: number }>(
+    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status, "hasAccessToAlly")
+     VALUES ($1, '', 'ACTIVE', 'pro', 'active', true)
+     RETURNING id`,
+    [seatName],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  const userId = String(created.rows[0].id);
+
+  await query(
+    `INSERT INTO "UserPhone" (phone, "phoneNumber", "phoneCode", "userId", "createdAt", "updatedAt")
+     VALUES ($1, $2, '+1', $3, NOW(), NOW())`,
+    [phone, phone.slice(2), Number(userId)],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+
+  await query(
+    `INSERT INTO test_seats (user_id, name, phone, created_by, note)
+     VALUES ($1::int, $2, $3, $4, $5)`,
+    [userId, seatName, phone, createdBy, why],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+
+  const saved = await savePhonebook(userId, holds);
+  const balance =
+    tokens === 0
+      ? 0
+      : await adjustTestAccountTokens(
+          userId,
+          tokens,
+          `new test seat: ${why}`,
+          `seat:${randomUUID()}`,
+        );
+
+  // eslint-disable-next-line no-console
+  console.log(
+    `[test-seat] ${createdBy} created ${seatName} (${userId}) on a free fictional number, ${saved} contact(s), ${balance} token(s) — ${why}`,
+  );
+  return { userId, name: seatName, phone, tokens: balance };
+}
+
+/**
+ * Put contacts into the new seat's phonebook — SEATS ONLY.
+ *
+ * A phone that is not itself a recorded seat is refused rather than skipped:
+ * silently dropping it would leave the caller believing in an edge that does
+ * not exist, and row 251 is entirely about which edges exist.
+ */
+async function savePhonebook(userId: string, holds: readonly string[]): Promise<number> {
+  if (holds.length === 0) return 0;
+
+  const known = await query<{ phone: string; name: string }>(
+    `SELECT up.phone, u.name
+       FROM "UserPhone" up
+       JOIN "User" u ON u.id = up."userId"
+      WHERE up.phone = ANY($1)
+        AND (EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = up."userId")
+             OR up.phone LIKE '${FICTIONAL_PREFIX}%')`,
+    [[...holds]],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  const byPhone = new Map(known.rows.map((r) => [r.phone, r.name]));
+  const missing = holds.filter((p) => !byPhone.has(p));
+  if (missing.length > 0) {
+    throw new SeatCreationRefused(
+      `these are not test seats and will not be put into a seat's phonebook: ${missing.join(', ')}`,
+    );
+  }
+
+  for (const [phone, contactName] of byPhone) {
+    await query(
+      `INSERT INTO "UserAlias" ("contactId", phone, alias)
+       VALUES ($1::int, $2, $3)`,
+      [userId, phone, contactName],
+      SEAT_QUERY_TIMEOUT_MS,
+    );
+  }
+  return byPhone.size;
+}
+
+/**
+ * Is this id a seat the admin routes may operate — the eleven in source, or
+ * one this route created?
+ *
+ * SEPARATE FROM `isFictionalTestAccount`, AND THAT IS DELIBERATE. That one is
+ * a lookup in a hardcoded Set with no I/O, and a comment in `mcp/handlers.ts`
+ * leans on exactly that: the inbox marks a counterpart fictional by its
+ * absence-means-something rule, which only holds while the check „has no
+ * failure mode". Giving it a query would quietly turn „I could not look" into
+ * „there is nobody there", which is the confusion this whole project has spent
+ * a week hunting.
+ *
+ * So the cosmetic marker keeps the Set and a newly created seat is not marked
+ * in the inbox until its id is added to that list in source — one line, in the
+ * commit that follows its creation. The OPERATING routes use this instead, and
+ * this one may fail: it throws rather than returning false, because „I cannot
+ * read the list" must not look like „this is not a test account".
+ */
+export async function isOperableTestSeat(
+  userId: string,
+  inSource: (id: string) => boolean,
+): Promise<boolean> {
+  const id = userId.trim();
+  if (inSource(id)) return true;
+  if (!/^\d+$/.test(id)) return false;
+  const row = await query<{ user_id: number }>(
+    `SELECT user_id FROM test_seats WHERE user_id = $1::int LIMIT 1`,
+    [id],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  return row.rows.length > 0;
+}
+
+/** Every seat this route has made, for a listing beside the hardcoded eleven. */
+export async function createdTestSeats(): Promise<{ userId: string; name: string }[]> {
+  const rows = await query<{ user_id: number; name: string }>(
+    `SELECT user_id, name FROM test_seats ORDER BY user_id`,
+    [],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  return rows.rows.map((r) => ({ userId: String(r.user_id), name: r.name }));
+}

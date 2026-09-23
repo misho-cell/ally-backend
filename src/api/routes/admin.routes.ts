@@ -1,4 +1,11 @@
 import {
+  createTestSeat,
+  createdTestSeats,
+  isOperableTestSeat,
+  SeatCreationRefused,
+  DEFAULT_SEAT_TOKENS,
+} from '../../services/testSeatCreate.service';
+import {
   fictionalTestAccountIds,
   isFictionalTestAccount,
   mintTestSeatToken,
@@ -1706,7 +1713,99 @@ export function pilotReaderAllowed(req: Request): { allowed: boolean; reason?: s
  *
  * Logged with both ids, because „who acted as Test 3" must have an answer.
  */
-adminRouter.post('/test-seat/token', (req: Request, res: Response) => {
+
+/**
+ * ROW 251 — THE TESTER MAKES THEIR OWN FICTIONAL SEATS.
+ *
+ * `POST /admin/test-accounts`   {"name":"Netai Test 12","holds":["+1202555…"],
+ *                                "tokens":500,"note":"row 251 triangle"}
+ *
+ * AUTHORIZED TWICE, which is what the founder himself asked for. D464,
+ * 23 September: „you need the permission from me and from Misho to create test
+ * accounts because you are the main tester… I have approved it." His own
+ * sentence names both, and a quote relayed through the tester's box is data
+ * rather than the second half of a permission, so this waited for Misho's word
+ * to me directly. He gave it the same hour. Registered in
+ * `docs/ADMIN_WRITE_OPERATIONS.md` before it ran once.
+ *
+ * WHAT IT CANNOT REACH, and none of it is this handler's promise — every line
+ * is enforced in `testSeatCreate.service`, where it cannot be edited around:
+ *
+ *   * any existing account. Every write is an INSERT of a row it just made.
+ *   * a number of its own choosing. The caller cannot pass a phone; the
+ *     service takes the first slot in the range reserved worldwide for fiction
+ *     that is registered to nobody AND saved in nobody's phonebook. That
+ *     second half is the one that matters: Netai Test 5 sits on a number a
+ *     real owner had had since August.
+ *   * a real person in the new seat's phonebook. `holds` must be seats, and a
+ *     phone that is not one is refused by name rather than skipped.
+ *
+ * THE UNDO IS NOT A DELETE, and that is deliberate — D245 says a goal is never
+ * deleted, and an account is a heavier thing than a goal. A seat that should
+ * not exist is emptied and left: set its tokens to zero with the top-up route
+ * and say so in the note. If one ever has to go, that is a separate decision
+ * with a separate register entry.
+ */
+adminRouter.post(
+  '/test-accounts',
+  body('name').isString().trim().isLength({ min: 1, max: 60 }),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  body('tokens').optional().isInt({ min: 0, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
+  body('holds').optional().isArray({ max: 20 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'name (1-60) and note (3-500) are required; tokens and holds are optional.',
+      });
+      return;
+    }
+    const admin = (req as AuthenticatedRequest).user.userId;
+    const { name, note, tokens, holds } = req.body as {
+      name: string;
+      note: string;
+      tokens?: number;
+      holds?: unknown[];
+    };
+    try {
+      const seat = await createTestSeat(
+        name,
+        (holds ?? []).map(String),
+        tokens ?? DEFAULT_SEAT_TOKENS,
+        `admin:${admin}`,
+        note,
+      );
+      res.status(201).json({ success: true, data: seat });
+    } catch (error) {
+      if (error instanceof SeatCreationRefused) {
+        // eslint-disable-next-line no-console
+        console.warn(`[test-seat] admin ${admin} refused: ${error.message}`);
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error('[test-seat] create failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** Every seat that can be operated: the eleven in source, plus the made ones. */
+adminRouter.get('/test-accounts', async (_req: Request, res: Response) => {
+  try {
+    const made = await createdTestSeats();
+    res.status(200).json({
+      success: true,
+      data: { in_source: fictionalTestAccountIds(), created: made },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[test-seat] list failed:', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/test-seat/token', async (req: Request, res: Response) => {
   const secret = process.env.JWT_SECRET ?? '';
   if (!secret) {
     res.status(500).json({ success: false, error: 'JWT_SECRET is not configured' });
@@ -1723,7 +1822,12 @@ adminRouter.post('/test-seat/token', (req: Request, res: Response) => {
   }
   const admin = (req as AuthenticatedRequest).user.userId;
   try {
-    const minted = mintTestSeatToken(requested, secret);
+    // Row 251: a seat this route created is not in the hardcoded Set and never
+    // can be — the Set is in source so it cannot be widened at runtime. The
+    // database read is what vouches for it, and it throws rather than saying
+    // „not a test account" when it cannot see the table.
+    const verified = await isOperableTestSeat(requested, isFictionalTestAccount);
+    const minted = mintTestSeatToken(requested, secret, verified);
     // eslint-disable-next-line no-console
     console.log(`[test-seat] admin ${admin} minted a token for test account ${minted.userId}`);
     res.status(200).json({ success: true, data: minted });
@@ -1777,7 +1881,9 @@ adminRouter.post(
     }
     const target = String(req.params.id).trim();
     const admin = (req as AuthenticatedRequest).user.userId;
-    if (!isFictionalTestAccount(target)) {
+    // Row 251: the hardcoded Set, OR a seat `POST /admin/test-accounts` made —
+    // recorded in `test_seats`, which is the only way a row gets there.
+    if (!(await isOperableTestSeat(target, isFictionalTestAccount))) {
       // eslint-disable-next-line no-console
       console.warn(`[test-tokens] admin ${admin} asked for ${target} — REFUSED, not fictional`);
       res.status(403).json({

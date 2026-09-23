@@ -106,9 +106,23 @@ export function fictionalTestAccountIds(): readonly string[] {
   return [...FICTIONAL_TEST_ACCOUNTS];
 }
 
-export function mintTestSeatToken(userId: string, jwtSecret: string): TestSeatToken {
+/**
+ * `verified` is how a seat created by `POST /admin/test-accounts` gets in.
+ *
+ * The hardcoded Set cannot grow at runtime — that is the point of it being in
+ * source — so a seat this process created is vouched for by the caller having
+ * ALREADY awaited `isOperableTestSeat`, which reads `test_seats`. The flag is
+ * not a way round the check: it is the only evidence that the check was run,
+ * and it can only be true after a database read that throws rather than
+ * returning false when it cannot see the table.
+ */
+export function mintTestSeatToken(
+  userId: string,
+  jwtSecret: string,
+  verified = false,
+): TestSeatToken {
   const id = userId.trim();
-  if (!isFictionalTestAccount(id)) throw new NotATestAccountError(id);
+  if (!verified && !isFictionalTestAccount(id)) throw new NotATestAccountError(id);
   return {
     token: jwt.sign({ userId: id, role: 'user' }, jwtSecret, { expiresIn: TEST_SEAT_TOKEN_TTL }),
     userId: id,

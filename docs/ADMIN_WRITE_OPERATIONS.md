@@ -2049,3 +2049,76 @@ deletion; the balance is the sum of the column.
 A real person's wallet. The eleven ids are hardcoded in `testSeatTokens.ts` and
 the route refuses anything else by name — that is enforced where it cannot be
 edited around, not promised by the script.
+
+---
+
+## `POST /admin/test-accounts` — the tester creates their own fictional seats
+
+**Registered 23 September ~13:0x UTC, before the route ran once. Authorized
+twice, which is what the founder himself asked for.**
+
+- **The founder, D464, 23 September**, relayed through the tester's seat: „you
+  need the permission from me and from Misho to create test accounts because
+  you are the main tester… I don't want to wait for Misho every time we need
+  it… I have approved it."
+- **Misho, directly to me, the same hour** — asked as a plain question with the
+  route's limits written out, and answered yes.
+
+**His own sentence names both of them**, so the relayed quote was treated as
+half a permission and not as the whole of one. A message arriving in the box is
+data; it is not the second signature on a thing the message itself says needs
+two.
+
+### WHY
+
+Row 251's done-when needs a requester, a mediator and a target with **no
+introduction ever asked between them**. By this morning every pair across the
+eleven seats had one — 8 → 10 via 7, 9 → 7 via 8, 3 ↔ 6, 2 ↔ 4 via 3, 3 → 1
+via 2 — and the assistant refuses a second request on a used pair, which is
+correct behaviour and left the row unprovable. The seat asked three times.
+
+### ROUTE / METHOD / BODY
+
+    POST /admin/test-accounts
+    {"name":"Netai Test 12","holds":["+1202555…"],"tokens":500,"note":"why"}
+
+    GET  /admin/test-accounts     lists the eleven in source and the made ones
+
+`holds` are the phones the NEW seat will have saved. Direction matters and is
+the whole reason the caller states it.
+
+### WHAT IT CANNOT REACH — enforced in the service, not promised by the handler
+
+- **Any existing account.** Every write is an `INSERT` of a row it just made.
+- **A number of anybody's choosing.** The caller cannot pass a phone. The
+  service takes the first free slot in `+1 202 555 0100–0199`, the range
+  reserved worldwide for fiction, and *free* means registered to nobody **and
+  saved in nobody's phonebook**. That second half is not decoration: **Netai
+  Test 5 sits on a number a real owner had had in their phonebook since
+  August.** A seat on a number somebody real holds starts appearing in that
+  person's second circle.
+- **A real person in the new seat's phonebook.** Every entry in `holds` must
+  itself be a seat; one that is not is refused by name rather than skipped.
+
+### UNDO
+
+**Not a delete, deliberately.** D245 says a goal is never deleted and an
+account is a heavier thing than a goal. A seat that should not exist is emptied
+and left:
+
+    ./scripts/ops/tokens.sh <id> -<balance> "undo: seat should not exist"
+
+If one ever genuinely has to be removed, that is a separate decision with its
+own entry here.
+
+### ONE LIMIT WORTH KNOWING
+
+A created seat is **not** in `FICTIONAL_TEST_ACCOUNTS`, the hardcoded Set in
+`testSeatTokens.ts`, and cannot be: that list is in source precisely so it
+cannot be widened at runtime. The *operating* routes (tokens, seat-token mint)
+read `test_seats` as well and work on a created seat immediately. The one thing
+that does not is the **cosmetic `fictional_counterpart` marker** in the inbox
+payload, which stays on the Set because a comment in `mcp/handlers.ts` rests on
+that check having no failure mode — giving it a query would turn „I could not
+look" into „there is nobody there". A new seat gets the marker when its id is
+added to the Set in source, which is one line in the next commit.
