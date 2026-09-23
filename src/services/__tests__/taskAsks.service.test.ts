@@ -870,11 +870,15 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     });
   }
 
+  /** Let every queued microtask run — the wake now finishes after the return. */
+  const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
   it('records the approved text and wakes the asker with EXACTLY that text', async () => {
     routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
     mockWakeTask.mockResolvedValue('woken');
 
     const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
+    await settle();
 
     expect(out).toEqual({ sent: true });
     expect(mockWakeTask).toHaveBeenCalledWith(3, expect.stringContaining('დამტკიცებული ტექსტი'), {
@@ -886,6 +890,44 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
       (sql as string).includes('wake_delivered_at = NOW()'),
     );
     expect(markCall?.[1]).toEqual([77]);
+  });
+
+  /**
+   * AND THE HELPER IS NOT MADE TO WAIT FOR IT.
+   *
+   * `wakeTask` is a whole run on the ASKER's side — model, tools, reply — and
+   * it used to be awaited inside the tool call the HELPER's phone is waiting
+   * on. Measured on `tool_call_log`: p50 30,062 ms on 23 September, 32,351 on
+   * the 22nd, worst 53,167. Half a minute of spinner after pressing „send",
+   * for the one act in this product that is pure generosity.
+   *
+   * This test fails on that version: it holds the wake unresolved and requires
+   * „sent" to have come back anyway.
+   */
+  it('returns before the asker’s run has finished', async () => {
+    routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
+    let finishTheWake: (value: 'woken') => void = () => {};
+    mockWakeTask.mockReturnValue(
+      new Promise<'woken'>((resolve) => {
+        finishTheWake = resolve;
+      }),
+    );
+
+    const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
+    await settle();
+
+    // The asker's run is still going, and the helper has already been told.
+    expect(out).toEqual({ sent: true });
+    expect(
+      mockQuery.mock.calls.find(([sql]) => (sql as string).includes('wake_delivered_at = NOW()')),
+    ).toBeUndefined();
+
+    finishTheWake('woken');
+    await settle();
+
+    expect(
+      mockQuery.mock.calls.find(([sql]) => (sql as string).includes('wake_delivered_at = NOW()')),
+    ).toBeDefined();
   });
 
   /**

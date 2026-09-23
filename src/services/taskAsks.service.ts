@@ -1307,20 +1307,51 @@ async function deliverCapturedAnswer(
     // Ticket 19 G10 / D254: whether this answer came back through a bridge
     // changes what the asker is told and means one person is owed a thank-you.
     const relay = await relayShapeOf(captured.askId);
-    try {
-      const { wakeTask } = await import('./taskEngine.service');
-      const delivered = await wakeTask(
-        captured.taskId,
-        relay
-          ? buildRelayAnswerWakeEvent(captured.answer, captured.fromName, relay.bridgeName)
-          : buildAnswerWakeEvent(captured.answer, captured.fromName),
-        { text: captured.answer, who: captured.fromName },
-      );
-      if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
-    }
+    /**
+     * THE HELPER WAS BEING MADE TO WAIT FOR A STRANGER'S ASSISTANT TO THINK.
+     *
+     * `wakeTask` is a whole run on the ASKER's side — model, tools, reply. It
+     * was awaited here, inside the tool call the HELPER's phone is waiting on,
+     * so the person who pressed „send" sat with a spinner until somebody
+     * else's conversation had finished. Measured on `tool_call_log`, all
+     * users, and it is not new — it has been like this since 17 September:
+     *
+     *     17 Sep   p50 23,454 ms
+     *     18 Sep   p50 32,800 ms      worst 51,528
+     *     22 Sep   p50 32,351 ms      worst 53,004
+     *     23 Sep   p50 30,062 ms      worst 53,167
+     *
+     * Half a minute, every time, for the one act in this product that is pure
+     * generosity: answering a stranger's question for them.
+     *
+     * NOTHING WAITS ON THE RESULT. The tool returns `{ sent: true }` and no
+     * caller reads the wake's outcome — „sent" means recorded and on its way,
+     * which is exactly what it now means.
+     *
+     * AND THE BACKSTOP IS REAL, not a hope: `sweepUnwokenAnswers` runs every
+     * five minutes over every answered ask with `wake_delivered_at IS NULL`,
+     * and marks one delivered ONLY on success. I checked that before changing
+     * this rather than trusting the comment that claimed it. So the worst case
+     * of a failed background wake is the asker hearing five minutes later —
+     * which is already the worst case today, because a failure here is caught,
+     * logged and left to the same sweep.
+     */
+    void (async () => {
+      try {
+        const { wakeTask } = await import('./taskEngine.service');
+        const delivered = await wakeTask(
+          captured.taskId,
+          relay
+            ? buildRelayAnswerWakeEvent(captured.answer, captured.fromName, relay.bridgeName)
+            : buildAnswerWakeEvent(captured.answer, captured.fromName),
+          { text: captured.answer, who: captured.fromName },
+        );
+        if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
+      }
+    })();
     if (relay) {
       await closeTheBridgesOwnAsk(relay.parentAskId);
       await thankTheBridge(relay, captured.fromName);
