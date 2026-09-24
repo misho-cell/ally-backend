@@ -114,6 +114,58 @@ if [ "$TOTAL" -eq 0 ]; then
   echo "NOTHING TO REPORT — no registration since ${SINCE}."
   echo "  The fix is UNTESTED, not working. Nobody has registered through it yet,"
   echo "  so there is nothing to read."
+
+  # ────────────────────────────────────────────────────────────────────────
+  # AND HERE IS THE HALF THIS CHECK COULD NOT SEE UNTIL 24 SEPTEMBER.
+  #
+  # „No registration" has two readings and the Routine's own text says the
+  # script cannot tell them apart: nobody came through a link at all, OR
+  # somebody came and could not be credited. They call for opposite actions —
+  # one says „send an invite", the other says „the fix did not hold".
+  #
+  # `referral_link_events` already knew. It records `issued`, `sent` and
+  # `opened`, and an OPEN is somebody standing at the door. If no link has been
+  # opened, the funnel was never entered and no conclusion about the fix is
+  # available at any price. If links WERE opened and nobody registered, that is
+  # a different and much more interesting fact.
+  #
+  # Nothing new had to be built. The table has existed all along and this file
+  # never asked it — the same shape as the three weeks of silence it was
+  # written about.
+  # ────────────────────────────────────────────────────────────────────────
+  OPENS="$(printf '%s' "SELECT COUNT(*) AS n, COALESCE(MAX(created_at)::text, '') AS newest
+     FROM referral_link_events WHERE event = 'opened' AND created_at >= '${SINCE}'" \
+    | ./scripts/ops/ro.sh 2>/dev/null \
+    | python3 -c 'import sys,json
+try:
+    r = json.load(sys.stdin)["data"]["rows"][0]
+    print(r["n"], r["newest"][:19] if r["newest"] else "-")
+except Exception: print("x -")')"
+  read -r OPEN_COUNT OPEN_NEWEST <<< "$OPENS"
+
+  if [ "$OPEN_COUNT" = "x" ]; then
+    echo "  AND I COULD NOT READ THE LINK EVENTS — so I cannot say whether anybody"
+    echo "  even opened a link. That is a third fact, not a reassurance."
+  elif [ "$OPEN_COUNT" -eq 0 ]; then
+    LAST_OPEN="$(printf '%s' "SELECT COALESCE(MAX(created_at)::text, 'never') AS newest FROM referral_link_events WHERE event = 'opened'" \
+      | ./scripts/ops/ro.sh 2>/dev/null \
+      | python3 -c 'import sys,json
+try: print(json.load(sys.stdin)["data"]["rows"][0]["newest"][:19])
+except Exception: print("unknown")')"
+    echo "  AND NOBODY HAS OPENED A LINK EITHER — zero opens in the same window."
+    echo "  The last invite link anybody opened was ${LAST_OPEN}. So this is not the"
+    echo "  fix failing quietly; the funnel has not been entered. Sending one invite"
+    echo "  to somebody who has never registered is the whole of what is missing."
+  else
+    echo "  ⚠️ BUT ${OPEN_COUNT} INVITE LINK(S) WERE OPENED IN THAT WINDOW, the last at"
+    echo "  ${OPEN_NEWEST} — somebody stood at the door and no registration followed."
+    echo "  That is NOT the same as nobody coming, and it is the more interesting of"
+    echo "  the two. Read the container log for that minute: '[register] referral code"
+    echo "  arrived under: …' tells you whether the code reached the server at all."
+    echo "  An open with no registration can also be a person who ALREADY has an"
+    echo "  account — login takes no referral code, so they log in and nothing is"
+    echo "  recorded anywhere. 62,163 accounts are in that position."
+  fi
   # „About two a day" stood here until 23 September and it was the Ally base's
   # rate, not Netai's. Netai's own: THIRTEEN people ever, the newest on
   # 9 SEPTEMBER, none in the last fourteen days. „Wait for the next one" is
