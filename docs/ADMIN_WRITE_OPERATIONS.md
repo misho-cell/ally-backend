@@ -3347,3 +3347,55 @@ Still OFF. The blocker in §42 is removed on the safe reading, but the flip
 itself remains Misho's sequencing: the tester's round on switch two is done, so
 switch three is now waiting only on it being proven against a real login on the
 legacy-shaped seat (967c9cf) — which the gate being on is required for.
+
+---
+
+## 46 · Switch three on — `netai_invite_only_login`, 24 September 18:36:57 UTC
+
+    PUT /admin/flags/netai_invite_only_login   { "enabled": true }
+
+All four, read back from the database rather than from the route:
+
+    invite_only                 true
+    invite_free_days_on         true
+    invite_personal_code_only   true
+    netai_invite_only_login     TRUE
+
+Misho's sequencing satisfied: the tester closed switch two on all legs at 18:2x
+and said so. The founder's instruction was all three; his was the order.
+
+### THE PRE-FLIP READ, ON THE WIDENED CONDITION (§45)
+
+| | |
+|---|---|
+| would be refused at their next login | 62,176 |
+| admitted | 66 |
+| …because of a thread | 65 |
+| …because of a push subscription | **1** — account 4511 |
+| **legacy-flagged accounts that USE Netai** | **35** |
+| …of those, refused | **0** |
+
+**Zero.** Not one of the 35 people carrying `hasAccessToAlly = false` who use
+the product daily — Lika Ose with 321 threads among them — is refused. That is
+the number that had to exist before the flip, not after, and it is exactly why
+keying the gate on that flag would have been a disaster.
+
+### WHY IT WENT ON AT THAT MINUTE
+
+The tester's admin login ended around 19:16. A gate that refuses people is
+better turned on while two people are watching than at a moment when neither
+is. The decision was already made; only the timing was open.
+
+### WHAT IS TRUE AND WHAT IS NOT
+
+**ON, dry-run verified against all 62,242 accounts, UNPROVEN against a live
+login.** Three facts, and the third is not a formality: every other switch today
+was proved on fictions first. This one needs a real `POST /auth/complete-login`
+with an OTP round trip, and there is no way for this session to complete one.
+
+    UNDO   PUT the same route with { "enabled": false }. The gate writes
+           nothing, so there is no state to restore — the door reopens the same
+           second. To be run without argument if anything looks wrong.
+
+Watching the logs for `[login] account … REFUSED`; the first one gets posted
+whoever it is.
