@@ -5,6 +5,8 @@ import {
   isOperableTestSeat,
   SeatCreationRefused,
   DEFAULT_SEAT_TOKENS,
+  firstFreeFictionalPhone,
+  inviterSeatPhone,
 } from '../../services/testSeatCreate.service';
 import {
   fictionalTestAccountIds,
@@ -113,7 +115,11 @@ import {
   MAX_INVITE_FREE_DAYS,
   writeSetting,
 } from '../../services/inviteReward.service';
-import { LOGIN_INVITE_ONLY_FLAG, PERSONAL_CODE_ONLY_FLAG } from '../../services/inviteGate.service';
+import {
+  checkRegistrationEligibility,
+  LOGIN_INVITE_ONLY_FLAG,
+  PERSONAL_CODE_ONLY_FLAG,
+} from '../../services/inviteGate.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -2020,6 +2026,83 @@ adminRouter.post(
       }
       // eslint-disable-next-line no-console
       console.error('[test-seat] create failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * `POST /admin/registration-gate-check`  { "invited_by": 171873 }
+ *                                        { "referral_code": "WHATEVER" }
+ *                                        { }                 ← nobody invited them
+ *
+ * ASK THE REGISTRATION GATE ITS VERDICT AND CREATE NOTHING.
+ *
+ * The tester, 24 September, on why they could not prove the REFUSAL legs of
+ * `invite_personal_code_only`:
+ *
+ *   „No code — NOT PROVABLE through the route. Netai Test 28, no invited_by →
+ *   201, active pro, no inviter. We read that as the route's plain seat path
+ *   skipping the registration gate, not as the gate letting a no-code person
+ *   in — but we cannot tell those apart from here."
+ *
+ * That is exactly right, and it is the distinction this whole month keeps
+ * turning on: **a thing that never ran and a thing that ran and allowed look
+ * identical from outside.** The seat route inserts an account; it does not
+ * register one, so a 201 there says nothing at all about the gate.
+ *
+ * So the gate is asked directly. It is a READ — `checkRegistrationEligibility`
+ * only ever SELECTs — and nothing is created, which is the point: a refusal
+ * test whose failure mode is „it made an account anyway" is not a refusal test.
+ *
+ * The phone is the first free slot in the fictional range, never a caller's:
+ * an unknown number nobody has saved, which is the shape of the person the
+ * social-proof door exists for.
+ */
+adminRouter.post(
+  '/registration-gate-check',
+  body('invited_by').optional().isInt({ min: 1 }),
+  body('referral_code').optional().isString().trim().isLength({ max: 32 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'invited_by must be a seat user id; referral_code at most 32 characters.',
+      });
+      return;
+    }
+    const { invited_by, referral_code } = req.body as {
+      invited_by?: number;
+      referral_code?: string;
+    };
+    try {
+      const phone = await firstFreeFictionalPhone();
+      const inviterPhone =
+        invited_by === undefined ? undefined : await inviterSeatPhone(String(invited_by));
+      const gate = await checkRegistrationEligibility(phone, inviterPhone, referral_code);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          // What the gate said, unedited. `eligible: false` is the refusal the
+          // real registration would turn into a message for the person.
+          eligible: gate.eligible,
+          mode: gate.mode ?? null,
+          reason: gate.reason ?? null,
+          inviter_resolved: gate.inviterUserId ?? null,
+          cohort_code: gate.cohortCode ?? null,
+          // Stated so nobody has to take it on trust.
+          created: 'nothing',
+          asked_for_phone: phone,
+        },
+      });
+    } catch (error) {
+      if (error instanceof SeatCreationRefused) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error('[gate-check] failed:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

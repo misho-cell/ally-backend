@@ -194,7 +194,7 @@ export interface SeatShape {
  * It is cheap and depends on nothing about the new account, so there is no
  * reason for it to happen late other than not having thought about it.
  */
-async function inviterSeatPhone(inviterSeatId: string): Promise<string> {
+export async function inviterSeatPhone(inviterSeatId: string): Promise<string> {
   const inviter = await query<{ phone: string }>(
     `SELECT up.phone
        FROM test_seats ts
