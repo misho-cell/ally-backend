@@ -32,6 +32,7 @@
 #   ./scripts/ops/pilot.sh [days]     the report (default 7)
 #   ./scripts/ops/pilot.sh people     who the pilot's people are
 #   ./scripts/ops/pilot.sh keys       just the field names, for the screen
+#   ./scripts/ops/pilot.sh check      the route against the database, five figures
 set -euo pipefail
 OPS="${NETAI_OPS_DIR:-$HOME/.netai-ops}"
 API="${NETAI_API:-https://api.netai.guru}"
@@ -72,6 +73,78 @@ get() {
 }
 
 case "$WHAT" in
+  check)
+    # ── THE ROUTE AGAINST THE DATABASE, IN ONE COMMAND ──────────────────────
+    #
+    # The app team's idea and a good one: when somebody opens the pilot screen,
+    # read the ROUTE and the DATABASE in the same minute. Three layers can
+    # disagree and each disagreement belongs to a different person:
+    #
+    #     database ≠ route    my service computes it wrong
+    #     route ≠ screen      their render is wrong
+    #     nobody checks       a number gets repeated for a week
+    #
+    # Nobody had ever checked the first pair. The report's own service has been
+    # trusted since the day it shipped — and it shipped with the population
+    # rule wrong, then with „paying" wrong, both found by reading the numbers
+    # rather than the code.
+    #
+    # Each figure below is recomputed from a DIFFERENT query than the service
+    # uses. A copy of the service's SQL would agree with itself and prove
+    # nothing.
+    ROUTE_JSON="$(get "$API/admin/pilot/report?days=7")"
+    DB_JSON="$(printf '%s' "WITH real AS (
+        SELECT u.id, u.subscription_status, u.\"stripeCustomerId\" AS cust
+          FROM \"User\" u
+         WHERE NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+           AND (u.\"hasAccessToAlly\" = true
+                OR EXISTS (SELECT 1 FROM threads th WHERE th.user_id = u.id))
+      )
+      SELECT (SELECT COUNT(*) FROM real)                                           AS registered,
+             (SELECT COUNT(*) FROM real WHERE subscription_status IN ('active','past_due')
+                                          AND cust IS NOT NULL)                    AS paying,
+             (SELECT COUNT(*) FROM real WHERE subscription_status IN ('active','past_due')
+                                          AND cust IS NULL)                        AS by_hand,
+             (SELECT COUNT(*) FROM tasks WHERE status = 'closed' AND closed_at IS NULL) AS undated,
+             (SELECT COUNT(*) FROM task_asks a JOIN real ON a.from_user_id = real.id
+               WHERE a.created_at >= CURRENT_DATE - 6)                             AS asks_sent" \
+      | ./scripts/ops/ro.sh 2>/dev/null)"
+
+    python3 -c '
+import sys, json
+route = json.loads(sys.argv[1]).get("data", {})
+try:
+    db = json.loads(sys.argv[2])["data"]["rows"][0]
+except Exception:
+    print("CANNOT TELL — the read-only window did not answer. Not \"they agree\".")
+    raise SystemExit(2)
+
+people = route.get("real", {}).get("people", {})
+pairs = [
+    ("registered",              people.get("registered"),             int(db["registered"])),
+    ("paying",                  people.get("paying"),                 int(db["paying"])),
+    ("access_granted_by_hand",  people.get("access_granted_by_hand"), int(db["by_hand"])),
+    ("closures_without_a_date", route.get("closures_without_a_date"), int(db["undated"])),
+    ("asks sent (7d)",          route.get("real", {}).get("asks", {}).get("sent"), int(db["asks_sent"])),
+]
+print("%-26s %10s %10s   %s" % ("figure", "route", "database", ""))
+bad = 0
+for name, r, d in pairs:
+    same = (r == d)
+    if not same: bad += 1
+    print("%-26s %10s %10s   %s" % (name, r, d, "ok" if same else "◀ DISAGREE"))
+print()
+if bad == 0:
+    print("The route and the database agree on all five. A disagreement with the")
+    print("SCREEN would then be the render, and that is the app team\x27s half.")
+else:
+    print("%d figure(s) DISAGREE. The route computes something the database does not" % bad)
+    print("say, which is MINE — not the screen\x27s. Read the service before anybody")
+    print("reports the page as broken.")
+    raise SystemExit(1)
+' "$ROUTE_JSON" "$DB_JSON"
+    exit $?
+    ;;
   people)
     get "$API/admin/pilot/people" | python3 -m json.tool
     ;;

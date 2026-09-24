@@ -162,6 +162,27 @@ export interface PilotReport {
 }
 
 /**
+ * ⚠️ THE `asks` BLOCK HAD NO DATE WINDOW AT ALL, AND SAT BESIDE ONE.
+ *
+ * Found on 24 September by a cross-check between this route and the database,
+ * within a minute of that check first existing. The payload carries `from` and
+ * `to`, the day rows are windowed, the week rows are windowed — and this block
+ * counted EVERY ask ever sent by a real person.
+ *
+ *     asks.sent, as shipped          127    all time
+ *     sum of days[].asks_sent         27    the seven days beside it
+ *
+ * So one payload carried two totals for the same thing and a screen showing
+ * „18–24 September · asks sent 127" was reporting five times the truth. Worse,
+ * I read those figures out to the tester myself as the week's, and they
+ * repeated them back in the PASS for row 256. Nobody had asked what window the
+ * number used, which is this file's third instance of exactly that.
+ *
+ * It is windowed now, with the SAME boundary expression the day rows use —
+ * copied deliberately rather than written afresh, because two date bounds that
+ * mean to agree and are typed separately are the next version of this bug.
+ */
+/**
  * ⚠️ 21:31 — THE FIRST VERSION OF THIS RULE EXCLUDED THE SECOND MOST ACTIVE
  * PERSON IN THE PRODUCT, AND I SHIPPED IT AND HAD IT VERIFIED BEFORE I NOTICED.
  *
@@ -339,8 +360,9 @@ async function sideFor(who: string, span: number): Promise<PilotSide> {
               COUNT(*) FILTER (WHERE a.status = 'cancelled')       AS cancelled
          FROM task_asks a
          JOIN "User" u ON u.id = a.from_user_id
-        WHERE ${who}`,
-      [],
+        WHERE ${who}
+          AND a.created_at::date >= (CURRENT_DATE - ($1::int - 1))::date`,
+      [span],
       PILOT_QUERY_TIMEOUT_MS,
     ),
     query<{

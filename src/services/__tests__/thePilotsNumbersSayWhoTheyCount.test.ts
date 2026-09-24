@@ -309,6 +309,43 @@ describe('every close records its day', () => {
  * failure, which is how a pilot's own numbers talk it out of a working
  * product.
  */
+/**
+ * ⚠️ THE asks BLOCK COUNTED EVERY ASK EVER, BESIDE A DATE RANGE.
+ *
+ * Found on 24 September by a cross-check between the route and the database,
+ * a minute after that check first existed. The payload carries `from` and
+ * `to`; the day rows and week rows are windowed; this block was not.
+ *
+ *     asks.sent as shipped          127    all time
+ *     sum of days[].asks_sent        27    the seven days beside it
+ *
+ * One payload, two totals for the same thing. And I read the 127 out to the
+ * tester as the week's figure and they repeated it in the PASS for row 256 —
+ * so the wrong number had already travelled twice before anything caught it.
+ */
+describe('the asks summary covers the same window as the days beside it', () => {
+  it('is bounded, and by the SAME expression the day rows use', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n---\n');
+    const asksQuery = sql.split('---').find((q) => q.includes('AS cancelled')) ?? '';
+    expect(asksQuery).toContain('FROM task_asks');
+    expect(asksQuery).toContain('(CURRENT_DATE - ($1::int - 1))::date');
+  });
+
+  /**
+   * Two date bounds that mean to agree and are typed separately are the next
+   * version of this bug, so the day rows must use the identical expression.
+   */
+  it('the day rows use that same expression, so the two cannot drift', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    const occurrences = sql.split('(CURRENT_DATE - ($1::int - 1))::date').length - 1;
+    expect(occurrences).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe('ignored, waiting and cancelled are three different things', () => {
   it('counts them apart', async () => {
     await pilotReport(7);
