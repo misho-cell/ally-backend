@@ -118,6 +118,55 @@ export async function findCohortAnyState(code: string): Promise<InviteCohort | n
   return result.rows[0] ?? null;
 }
 
+/**
+ * DOES THE LAUNCH WINDOW EXIST AT ALL — a yes/no and a count, never the ids.
+ *
+ * ⚠️ WHY THIS IS WORTH A FUNCTION. Twenty free days are promised twice and the
+ * two promises are about to disagree:
+ *
+ *   * a launch-window invitee gets the cohort's `trial_days` (D137, 20);
+ *   * an ordinary invitee now gets the `invite_free_days` setting (also 20).
+ *
+ * Today those are the same number and nothing can be seen. **The moment the
+ * founder lowers the setting to 10 or 5 — which he said on 24 September he
+ * would — they diverge.** If the launch path is not actually configured,
+ * somebody he invited personally then gets the lower number instead of the
+ * twenty he promised, silently and with no error anywhere.
+ *
+ * And it may well not be configured: measured on 24 September, **no account has
+ * ever been granted a cohort trial. Not one.** So „the launch path fires" has
+ * never once been observed.
+ *
+ * The answer lives in `LAUNCH_TRIAL_REFERRER_IDS`, an environment variable — so
+ * checking it meant asking somebody with the deployment settings open. This
+ * turns it into a read anybody can do. **The ids are the founder's own
+ * accounts and are NOT returned**; a count and the dates answer the question
+ * without naming anyone.
+ */
+export interface LaunchWindowStatus {
+  /** False means the launch cohort admits nobody and grants nothing, ever. */
+  readonly configured: boolean;
+  readonly referrer_count: number;
+  /** Whether today is inside the window, independently of the above. */
+  readonly open_today: boolean;
+  readonly trial_days: number;
+  readonly starts_at: string | null;
+  readonly ends_at: string | null;
+}
+
+export function launchWindowStatus(now = new Date()): LaunchWindowStatus {
+  const ids = launchReferrerIds();
+  const days = Number(process.env.LAUNCH_TRIAL_DAYS ?? DEFAULT_LAUNCH_TRIAL_DAYS);
+  return {
+    configured: ids.size > 0,
+    referrer_count: ids.size,
+    open_today: withinLaunchWindow(now),
+    trial_days: Number.isFinite(days) && days > 0 ? Math.floor(days) : DEFAULT_LAUNCH_TRIAL_DAYS,
+    starts_at: process.env.LAUNCH_TRIAL_STARTS_AT ?? null,
+    ends_at: process.env.LAUNCH_TRIAL_ENDS_AT ?? null,
+  };
+}
+
 /** The launch window as a cohort row for the list, whatever the date. */
 function launchCohortRow(): InviteCohort | null {
   const ids = launchReferrerIds();

@@ -155,6 +155,7 @@ import {
   findCohortAnyState,
   listCohortMembers,
   listCohorts,
+  launchWindowStatus,
 } from '../../services/inviteCohorts.service';
 import { readLabels } from '../../services/labelReader.service';
 import { planResearch, TriggerLedger } from '../../services/researchTriggers.service';
@@ -2107,6 +2108,29 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * `GET /admin/launch-window` — does the launch cohort exist at all?
+ *
+ * ⚠️ IT ANSWERS A QUESTION THAT IS ABOUT TO COST SOMEBODY THEIR FREE DAYS.
+ *
+ * Twenty days are promised twice: a launch-window invitee gets the cohort's
+ * `trial_days` (D137), an ordinary invitee now gets the `invite_free_days`
+ * setting. Both are 20 today, so nothing can be seen. **The moment the founder
+ * lowers the setting to 10 or 5 — which he said he would — they diverge**, and
+ * if the launch path is not configured, somebody he invited personally gets the
+ * lower number instead of the twenty he promised, with no error anywhere.
+ *
+ * Measured 24 September: **no account has ever been granted a cohort trial.**
+ * So „the launch path fires" has never once been observed, and the answer sat
+ * in an environment variable nobody had looked at.
+ *
+ * **The referrer ids are the founder's own accounts and are NOT returned** — a
+ * count and the dates answer the question without naming anyone.
+ */
+adminRouter.get('/launch-window', (_req: Request, res: Response) => {
+  res.status(200).json({ success: true, data: launchWindowStatus() });
+});
 
 /** Every seat that can be operated: the eleven in source, plus the made ones. */
 adminRouter.get('/test-accounts', async (_req: Request, res: Response) => {
