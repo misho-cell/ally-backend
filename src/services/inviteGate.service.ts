@@ -290,10 +290,29 @@ export async function checkRegistrationEligibility(
 
   // D137 (8 Sep): a founder's own invitation inside the launch window carries
   // the launch cohort's free period — the attribution stays with the inviter.
-  // `launchCohortFor` is a cheap synchronous lookup, so it is asked first and
-  // the flag only when it actually found something to close.
-  const launchFound = launchCohortFor(attribution);
-  const launch = launchFound && !(await personalCodeOnly()) ? launchFound : null;
+  /**
+   * ⚠️ NOT CLOSED BY „only a person's own code", AND I HAD CLOSED IT — wrongly,
+   * for about forty minutes, on a relayed list that named it as a company door.
+   *
+   * IT IS NOT A DOOR. `launchCohortFor` returns null unless there is an
+   * INVITER, and unless that inviter is one of the founder's own named
+   * accounts, inside the launch window. Its name in the code is „Axel launch
+   * window (the founders' own invitations)".
+   *
+   * So it never admits anybody who was not personally invited. What it carries
+   * is the TWENTY FREE DAYS (D137) — the reward attached to those invitations.
+   *
+   * Closing it would therefore have left the person getting IN on a member's
+   * code, exactly as the founder wants, and silently WITHOUT the twenty days
+   * he said they should get. The rule and the reward would have contradicted
+   * each other, at the Axel launch, which is the event this exists for.
+   *
+   * I refused to close social proof on an inference and then closed this one
+   * without asking what it did. The lesson is not „be more careful with
+   * lists": it is that a door and a reward can wear the same word, and the
+   * only way to tell is to read what the thing actually does.
+   */
+  const launch = launchCohortFor(attribution);
   if (launch) {
     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
   }

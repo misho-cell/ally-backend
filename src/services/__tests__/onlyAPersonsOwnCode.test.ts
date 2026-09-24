@@ -50,10 +50,6 @@ describe('what it closes when it is on', () => {
     expect(SOURCE).toMatch(/if \(cohort && !\(await personalCodeOnly\(\)\)\)/);
   });
 
-  it('the launch cohort', () => {
-    expect(SOURCE).toMatch(/launchFound && !\(await personalCodeOnly\(\)\)/);
-  });
-
   it('social proof', () => {
     expect(SOURCE).toMatch(/!\(await personalCodeOnly\(\)\) && \(await passesSocialProof/);
   });
@@ -79,6 +75,26 @@ describe('what stays open', () => {
     expect(SOURCE.slice(at, at + 260)).toContain("mode: 'referral'");
     // And it is NOT gated on the new flag — that would close every door.
     expect(SOURCE.slice(at, at + 60)).not.toContain('personalCodeOnly');
+  });
+
+  /**
+   * ⚠️ THE LAUNCH COHORT IS NOT A DOOR, AND I CLOSED IT FOR FORTY MINUTES
+   * BECAUSE A RELAYED LIST CALLED IT ONE.
+   *
+   * `launchCohortFor` returns null without an INVITER, and unless that inviter
+   * is one of the founder's own named accounts inside the launch window. It
+   * admits nobody. What it carries is the TWENTY FREE DAYS (D137) attached to
+   * those personal invitations.
+   *
+   * Closing it would have let the person in on a member's code — exactly as
+   * the founder wants — and silently withheld the twenty days he said they
+   * should get. The rule and the reward would have contradicted each other at
+   * the launch this exists for.
+   */
+  it('the launch cohort still grants its twenty days', () => {
+    expect(SOURCE).toContain('const launch = launchCohortFor(attribution);');
+    const at = SOURCE.indexOf('const launch = launchCohortFor(attribution);');
+    expect(SOURCE.slice(at, at + 120)).not.toContain('personalCodeOnly');
   });
 
   /**
