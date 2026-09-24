@@ -98,7 +98,29 @@ fi
 # asking anybody: two registrations of the SAME phone are never live on the
 # same day, because the client reports one device key at a time. Two real
 # devices overlap. That is how row 101 was settled on 23 September.
-printf '%s' "SELECT LEFT(d.endpoint, 34) AS endpoint,
+#
+# ⚠️ THE FIRST VERSION OF THIS PRINTED `LEFT(endpoint, 34)` AND THAT WAS WRONG,
+# in the one direction that makes the whole table lie. Apple endpoints differ
+# early, so they separated and looked right. EVERY FCM endpoint begins
+# `https://fcm.googleapis.com/fcm/send/…` — thirty-four characters lands inside
+# that shared prefix, so all of a person's Android and desktop registrations
+# COLLAPSED INTO ONE ROW.
+#
+# Read on 24 September it showed account 160584 with „fcm 51, apple 17, apple
+# 17" and the fcm number three times the others, which is what one row hiding
+# three endpoints looks like. This file's whole job is to count endpoints, and
+# it was under-counting them — the same fault it was written to catch, in the
+# tool that catches it.
+#
+# The label is now the push service plus eight characters of a hash, which is
+# unique per endpoint and, unlike a prefix, carries nothing (D149: an endpoint
+# and its keys are a capability to push to somebody's phone; a digest is not).
+# The GROUP BY is on the FULL endpoint, so the display can never merge two
+# again.
+printf '%s' "SELECT CASE WHEN d.endpoint LIKE '%apple%'  THEN 'apple  '
+                   WHEN d.endpoint LIKE '%fcm%'    THEN 'fcm    '
+                   WHEN d.endpoint LIKE '%mozilla%' THEN 'mozilla'
+                   ELSE 'other  ' END || LEFT(MD5(d.endpoint), 8) AS endpoint,
        d.created_at::date              AS day,
        COUNT(*) FILTER (WHERE d.status = 'sent')    AS pushed,
        COUNT(*) FILTER (WHERE d.status = 'skipped') AS was_live,
@@ -118,11 +140,26 @@ if not rows:
     print("and the app never registered them — not a delivery failure.")
     raise SystemExit(0)
 
-print("%-36s %-12s %7s %8s %7s" % ("endpoint", "day", "pushed", "was live", "failed"))
+print("%-18s %-12s %7s %8s %7s" % ("endpoint", "day", "pushed", "was live", "failed"))
+byday = {}
 for r in rows:
-    print("%-36s %-12s %7s %8s %7s"
+    print("%-18s %-12s %7s %8s %7s"
           % (r["endpoint"], str(r["day"])[:10], r["pushed"], r["was_live"], r["failed"]))
+    if int(r["pushed"]) > 0:
+        byday.setdefault(str(r["day"])[:10], []).append(r["endpoint"])
 print()
+# HOW MANY COPIES OF ONE NOTIFICATION, on the most recent day that had any.
+# The per-endpoint rows above answer "is this one phone or two"; they do not
+# answer "how many times does this person hear it", and that is the question
+# row 101 is actually about. Counting it here rather than leaving it to be
+# eyeballed - three endpoints in a column of nine rows is easy to miss.
+if byday:
+    last = max(byday)
+    live = byday[last]
+    print("ON %s THIS PERSON WAS PUSHED TO ON %d ENDPOINT(S): %s" % (last, len(live), ", ".join(live)))
+    if len(live) > 1:
+        print("That is %d copies of every notification unless those are %d real devices." % (len(live), len(live)))
+    print()
 print("TWO ENDPOINTS NEVER LIVE ON THE SAME DAY = one phone whose device_id changed,")
 print("and every notification reaches it twice. Two real devices overlap.")
 '
