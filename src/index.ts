@@ -25,6 +25,7 @@ import { checkCriticalIndexes } from './db/postgres/indexSanity';
 import { EnrichmentJob } from './services/enrichment.job';
 import { startSubscriptionCron } from './services/subscription.cron';
 import { startAiNotificationCron } from './services/aiNotification.cron';
+import { startHeartbeat } from './services/heartbeat.cron';
 import { startChorusCampaignCron } from './services/chorusCampaign.cron';
 import { startLabReportCron } from './services/labReport.cron';
 import { startIdentityScanCron } from './services/identityScan.cron';
@@ -129,6 +130,7 @@ runMigrations()
     EnrichmentJob.startCron();
     startSubscriptionCron();
     startAiNotificationCron();
+    startHeartbeat();
     startRunReaper();
     startTaskTicker();
     startChorusCampaignCron();

@@ -87,7 +87,15 @@ SQL_TEXT="SELECT
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
       AND model LIKE 'claude%'
-      AND user_id IS NOT NULL AND user_id <> '')                   AS anthropic_calls,
+      AND user_id IS NOT NULL AND user_id <> ''
+      -- A HEARTBEAT IS NOT THE PRODUCT ANSWERING. It proves the PROVIDER
+      -- answers and nothing else: a completely broken product still has one.
+      -- The user_id clause above already excludes it, because the probe
+      -- records no user — but that clause is here for another reason, and a
+      -- protection that holds by accident is one relaxation away from gone.
+      -- Counting heartbeats in this number would build a new blindness in the
+      -- act of closing an old one, so it is said out loud.
+      AND kind <> 'heartbeat')                                     AS anthropic_calls,
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
       AND model IS NOT NULL AND model NOT LIKE 'claude%')          AS other_rows"
@@ -203,6 +211,9 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
   NIGHT_SILENCE_LIMIT_MIN="${NIGHT_SILENCE_LIMIT_MIN:-240}"
   HOUR_NOW="$(date -u +%-H)"
   if [ "$HOUR_NOW" -ge 20 ] || [ "$HOUR_NOW" -lt 7 ]; then
+    # This one DOES count heartbeats, and must: the whole point of the probe
+    # is that silence here means the provider is unreachable rather than that
+    # nobody is awake. See services/heartbeat.cron.ts.
     QUIET_FOR="$(printf '%s' "SELECT COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(created_at)))/60), 99999)::int AS quiet_min FROM usage_events WHERE provider = 'anthropic'" \
       | ./scripts/ops/ro.sh 2>/dev/null \
       | python3 -c 'import sys,json
