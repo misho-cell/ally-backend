@@ -1,3 +1,54 @@
+#!/bin/bash
+# „Is this tool slow, and did the change help?" — with the one question the
+# numbers cannot answer for themselves built into the gate.
+#
+# EXIT CODES ARE THE ANSWER, and there are FOUR of them because there are four
+# answers:
+#
+#   0  READY          — enough calls, and the same people made them
+#   1  NOT YET        — not enough calls to read anything
+#   2  COULD NOT READ — the window did not answer; never „nothing is wrong"
+#   3  NOT COMPARABLE — enough calls on both sides, made BY DIFFERENT PEOPLE
+#
+# ════════ WHY THE FOURTH ONE EXISTS — 24 September, 07:20 ════════
+#
+# The last open row in TASKS.md is „confirm 9b29800 on live traffic", blocked
+# since 20 September because account 501 has not run 50 searches in a day since
+# the change. The account argument is optional, so I dropped it and asked
+# across everybody. The gate answered:
+#
+#     READY - 5 day(s) since 2026-09-13 carry 50+ calls:
+#       16 Sep    94   p50 6519   ratio 5.39x      before the change
+#       17 Sep   183   p50 6870   ratio 4.55x
+#       18 Sep   174   p50 7434   ratio 4.58x
+#       22 Sep   585   p50 1829   ratio 1.77x      after
+#       23 Sep   202   p50 2138   ratio 2.30x
+#
+# A four-fold improvement, with the control moving the right way. It is not
+# true. Broken down by account:
+#
+#     16-18 Sep   501 (Tornike, 2,464 threads) makes 68 / 126 / 154 of them
+#     22-23 Sep   ten accounts named „Netai Test 1..10", every one a test seat
+#
+# The population did not shift. It was REPLACED — the largest real network in
+# the product on one side, ten fresh seats on the other — and a second-degree
+# search costs what the network costs. The whole difference is whose contacts
+# were being walked.
+#
+# 501 alone, which IS comparable: p50 7552/7448/7593 before, 4622 on 22 Sep,
+# and calls over ten seconds 37% / 29% / 36% before against 3% after. That is a
+# real and much smaller claim, on 39 calls, and 39 is not 50.
+#
+# This is the eighth time this codebase has produced a number whose POPULATION
+# nobody asked for, and the first time the thing producing it was the gate
+# written to stop it. So the population is now printed on every row and the
+# verdict refuses to say READY when it changed.
+#
+# THE RATIO DID NOT CATCH IT, and could not have. It controls for „was the
+# whole day slow", which is a different confound; both the subject and the
+# control were the seats on 22 September, so the ratio was internally
+# consistent and externally meaningless.
+
 READY_PY='
 import os, sys, json
 
@@ -40,10 +91,47 @@ if not rows:
     emit("         change did nothing. They are different answers.")
     raise SystemExit(1)
 
-VERDICT[0] = 0
-emit("READY - %d day(s) since %s carry %s+ calls to %s%s:" % (len(rows), since, need, tool, whose))
-emit("  %-10s %7s %8s  %-20s %7s" % ("day", "calls", "p50", "rest-of-day", "ratio"))
-for r in rows:
+# ════════ WAS IT THE SAME PEOPLE ════════
+#
+# Two days can each carry a thousand calls and still not be comparable, and
+# nothing in a p50 says so. The tool under test walks a network, so its cost is
+# a property of WHOSE network - which makes „who called" part of the
+# measurement and not context around it.
+#
+# Two things are checked, and both are about the shape of the population rather
+# than its size:
+#
+#   * the biggest caller changed between the first and the last qualifying day
+#   * the share of calls made by TEST SEATS moved by more than 25 points
+#
+# The second is the one that fired on 24 September: 0% seats before the change,
+# 100% after. The threshold is deliberately loose - it is there to catch a
+# replacement, not to police a drift - and the first rule catches the narrower
+# case where one account simply hands over to another.
+SEAT_SHARE_POINTS = 25
+
+
+def share(part, whole):
+    return (100.0 * float(part) / float(whole)) if whole else 0.0
+
+
+seat_shares = [share(r["seat_calls"], r["calls"]) for r in rows]
+tops = [str(r["top_user"]) for r in rows]
+changed = []
+if len(rows) > 1:
+    if tops[0] != tops[-1]:
+        changed.append("the biggest caller changed: account %s on %s, account %s on %s"
+                       % (tops[0], str(rows[0]["day"])[:10], tops[-1], str(rows[-1]["day"])[:10]))
+    if max(seat_shares) - min(seat_shares) > SEAT_SHARE_POINTS:
+        changed.append("test seats made %.0f%% of the calls on one qualifying day and %.0f%% on another"
+                       % (min(seat_shares), max(seat_shares)))
+
+VERDICT[0] = 3 if changed else 0
+headline = "READY" if not changed else "READY BY VOLUME, NOT COMPARABLE"
+emit("%s - %d day(s) since %s carry %s+ calls to %s%s:" % (headline, len(rows), since, need, tool, whose))
+emit("  %-10s %7s %8s  %-20s %7s  %-8s %-14s %6s"
+     % ("day", "calls", "p50", "rest-of-day", "ratio", "accounts", "biggest", "seats"))
+for r, seats in zip(rows, seat_shares):
     phases = int(r["phase_rows"])
     mine = r["tool_p50"]
     rest = r["rest_p50"]
@@ -51,22 +139,57 @@ for r in rows:
     # blank is the honest print. A ratio invented from one number is the fault
     # this whole gate exists to stop.
     ratio = ("%.2fx" % (float(mine) / float(rest))) if mine and rest else "-"
-    emit("  %-10s %7s %8s  %-20s %7s%s" % (
+    emit("  %-10s %7s %8s  %-20s %7s  %-8s %-14s %5.0f%%%s" % (
         str(r["day"])[:10], r["calls"],
         mine if mine else "-",
         ("%s (%s calls)" % (rest, r["rest_calls"])) if rest else "no control",
         ratio,
+        r["accounts"],
+        "%s (%.0f%%)" % (r["top_user"], share(r["top_calls"], r["calls"])),
+        seats,
         ("   +%d phase row(s), not counted" % phases) if phases else ""))
 emit("")
+
+if changed:
+    emit("THE DAYS ARE NOT THE SAME POPULATION, so the numbers above cannot be read")
+    emit("across the change:")
+    for line in changed:
+        emit("  * " + line)
+    emit("")
+    emit("This tool walks a NETWORK, so what it costs is a property of whose network")
+    emit("it walked. Comparing a day of one large real account against a day of fresh")
+    emit("test seats measures the difference between two people, not the deploy.")
+    emit("")
+    emit("Give an account as the fifth argument and ask again. If that account has")
+    emit("no qualifying day, the honest answer is that the measurement cannot yet be")
+    emit("taken - which is what this gate is for.")
+    emit("")
+
 emit("RATIO is the tool p50 against every OTHER tool the account called that")
 emit("day. It is the column to read across days: a p50 that fell while the")
 emit("ratio held is a quiet day, not a faster tool. A control tool picked by")
 emit("hand is not a substitute - search_by_tag moved WITH the subject here,")
 emit("and a tool that shares the bottleneck is a second subject.")
 emit("")
-emit("Volume and one control. A qualifying day means the numbers are worth")
-emit("reading; it does not mean they say what you hoped. Read them with the")
-emit("tool name as the second argument.")
+emit("AND THE RATIO CANNOT SEE THE POPULATION. It controls for a slow day. When")
+emit("the subject and the control are both a different set of accounts, it stays")
+emit("internally consistent and says nothing - which is exactly how a fourfold")
+emit("improvement was read off ten test seats on 24 September.")
+emit("")
+emit("Volume, one control, and one population. A qualifying day means the numbers")
+emit("are worth reading; it does not mean they say what you hoped. Read them with")
+emit("the tool name as the second argument.")
+
+# AND THE VERDICT LEAVES WITH IT. This line is the whole point of the change
+# and it was missing on the first run: the text said NOT COMPARABLE in capital
+# letters and the script exited 0, because the READY path had always simply
+# fallen off the end. A caller that reads the exit code - which is every caller
+# this file has, by its own contract four lines into the header - would have
+# been told READY while the screen said the opposite.
+#
+# A gate whose printed answer and returned answer disagree is worse than no
+# gate. That is the same shape as `quiet.sh | tail`, found two days ago.
+raise SystemExit(VERDICT[0])
 
 '
 
@@ -82,25 +205,54 @@ if [ "${1:-}" = --ready ]; then
   [ -n "$READY_USER" ] && USER_CLAUSE="AND user_id = '$READY_USER'"
   HERE="$(cd "$(dirname "$0")" && pwd)"
   "$HERE/ro.sh" <<SQL | python3 -c "$READY_PY"
-SELECT DATE_TRUNC('day', created_at) AS day,
-       COUNT(*) FILTER (WHERE tool = '$READY_TOOL') AS calls,
-       COUNT(*) FILTER (WHERE tool LIKE '$READY_TOOL:%') AS phase_rows,
-       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)
-             FILTER (WHERE tool = '$READY_TOOL')) AS tool_p50,
-       -- The control: everything else this account ran that day. Phase rows of
-       -- the tool under test are excluded from BOTH sides — they are neither
-       -- the subject nor independent of it.
-       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)
-             FILTER (WHERE tool <> '$READY_TOOL'
-                       AND tool NOT LIKE '$READY_TOOL:%')) AS rest_p50,
-       COUNT(*) FILTER (WHERE tool <> '$READY_TOOL'
-                          AND tool NOT LIKE '$READY_TOOL:%') AS rest_calls
-FROM tool_call_log
-WHERE created_at >= '$READY_FROM'
-  AND duration_ms IS NOT NULL
-  $USER_CLAUSE
-GROUP BY 1
-HAVING COUNT(*) FILTER (WHERE tool = '$READY_TOOL') >= $READY_MIN
+WITH logged AS (
+  SELECT DATE_TRUNC('day', created_at) AS day, user_id, tool, duration_ms
+    FROM tool_call_log
+   WHERE created_at >= '$READY_FROM'
+     AND duration_ms IS NOT NULL
+     $USER_CLAUSE
+),
+-- WHO MADE THE CALLS, per day. This is not decoration: the tool under test
+-- walks a network, so its cost belongs to the caller and two days with
+-- different callers are two different measurements wearing one name.
+by_account AS (
+  SELECT day, user_id, COUNT(*) AS n,
+         EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id::text = logged.user_id) AS seat
+    FROM logged
+   WHERE tool = '$READY_TOOL'
+   GROUP BY day, user_id
+),
+population AS (
+  SELECT day,
+         COUNT(*)                                        AS accounts,
+         SUM(n)                                          AS calls,
+         MAX(n)                                          AS top_calls,
+         COALESCE(SUM(n) FILTER (WHERE seat), 0)         AS seat_calls,
+         (ARRAY_AGG(user_id ORDER BY n DESC))[1]         AS top_user
+    FROM by_account
+   GROUP BY day
+)
+SELECT p.day,
+       p.calls,
+       p.accounts,
+       p.top_user,
+       p.top_calls,
+       p.seat_calls,
+       (SELECT COUNT(*) FROM logged l
+         WHERE l.day = p.day AND l.tool LIKE '$READY_TOOL:%')          AS phase_rows,
+       (SELECT ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY l.duration_ms))
+          FROM logged l WHERE l.day = p.day AND l.tool = '$READY_TOOL') AS tool_p50,
+       -- The control: everything else that ran that day. Phase rows of the
+       -- tool under test are excluded from BOTH sides — they are neither the
+       -- subject nor independent of it.
+       (SELECT ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY l.duration_ms))
+          FROM logged l WHERE l.day = p.day AND l.tool <> '$READY_TOOL'
+                          AND l.tool NOT LIKE '$READY_TOOL:%')          AS rest_p50,
+       (SELECT COUNT(*) FROM logged l
+         WHERE l.day = p.day AND l.tool <> '$READY_TOOL'
+           AND l.tool NOT LIKE '$READY_TOOL:%')                         AS rest_calls
+FROM population p
+WHERE p.calls >= $READY_MIN
 ORDER BY 1
 LIMIT 60
 SQL
