@@ -53,8 +53,30 @@ export function isStripeConfigured(): boolean {
  * arrive at our endpoint too. Without this filter we would be reading — and
  * potentially acting on — other people's billing.
  */
-function isOurPrice(subscription: Stripe.Subscription): boolean {
+export function isOurPrice(subscription: Stripe.Subscription): boolean {
   return subscription.items.data.some((item) => item.price.id === PRICE_ID);
+}
+
+/**
+ * Stripe's truth about one subscription, in the four values this codebase
+ * stores. Exported for the read-only drift check — see
+ * `stripeReconcile.service.ts`, which compares these against the columns
+ * without writing anything.
+ */
+export interface SubscriptionFacts {
+  readonly status: string;
+  readonly cancel_at_period_end: boolean;
+  readonly cancels_at: Date | null;
+  readonly current_period_ends_at: Date | null;
+}
+
+export function subscriptionFacts(subscription: Stripe.Subscription): SubscriptionFacts {
+  return {
+    status: subscription.status,
+    cancel_at_period_end: subscription.cancel_at_period_end === true,
+    cancels_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : null,
+    current_period_ends_at: periodEnd(subscription),
+  };
 }
 
 interface UserRow {
@@ -211,8 +233,13 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
    * a stale true would tell somebody their subscription is ending when it is
    * not.
    */
-  const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
-  const cancelsAt = subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : null;
+  // Through `subscriptionFacts` and not inline, so the drift check and the
+  // writer cannot come to disagree about what these three values mean. Two
+  // readings of one fact drifting apart is this codebase's recurring bug, and
+  // a checker that disagrees with the writer reports faults that are its own.
+  const facts = subscriptionFacts(subscription);
+  const cancelAtPeriodEnd = facts.cancel_at_period_end;
+  const cancelsAt = facts.cancels_at;
 
   await query(
     // $1 is cast on both sides on purpose. The column is varchar, so the
@@ -237,11 +264,11 @@ async function applySubscription(subscription: Stripe.Subscription): Promise<voi
          "updatedAt"            = NOW()
      WHERE id = $6`,
     [
-      subscription.status,
+      facts.status,
       active,
       TIER,
       trialEnd,
-      periodEnd(subscription),
+      facts.current_period_ends_at,
       userId,
       cancelAtPeriodEnd,
       cancelsAt,

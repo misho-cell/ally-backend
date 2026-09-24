@@ -106,6 +106,7 @@ import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import { pilotPeople, pilotReport } from '../../services/pilotReport.service';
+import { subscriptionDrift } from '../../services/stripeReconcile.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -2565,6 +2566,38 @@ adminRouter.get('/pilot/report', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin pilot report]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * Row 248's missing fourth fact. The fix is built and deployed and every
+ * cancellation FROM THAT DAY is recorded correctly — and the person the row
+ * was reported for may still be seeing the bug, because the columns are only
+ * written when a Stripe event arrives and a cancel-at-period-end sends its
+ * next one on the day the subscription ends.
+ *
+ * This compares and writes NOTHING. Repairing the rows is an admin operation
+ * on live data (D44) and needs the register and a yes; how many rows are
+ * actually wrong needs neither, and it is the number that decision rests on.
+ */
+adminRouter.get('/stripe/drift', async (req: Request, res: Response) => {
+  try {
+    const raw = req.query.limit;
+    const limit = typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : undefined;
+    const report = await subscriptionDrift(limit);
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    const why = (error as Error).message;
+    // „I could not look" is not „nothing is wrong", and the two must not leave
+    // by the same door. A server with no Stripe key cannot compare anything,
+    // and saying so with 503 keeps that distinct from a comparison that ran.
+    if (why.includes('not configured')) {
+      res.status(503).json({ success: false, error: why });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.error('[admin stripe drift]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
