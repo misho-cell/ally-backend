@@ -871,11 +871,23 @@ export async function approveIdentityCandidate(
   // Reuse an existing person_id when one of the phones already belongs to a
   // person — the approval EXTENDS that person rather than inventing a rival.
   const personId = prior.rows[0]?.person_id ?? randomUUID();
-  await query(
+  /**
+   * `RETURNING phone` NAMES EXACTLY WHAT THIS APPROVAL CREATED, and that is
+   * the whole of what an undo may remove. `ON CONFLICT (phone) DO NOTHING`
+   * leaves a phone that already belonged to somebody exactly as it was, and
+   * does not return it — so a phone this approval merely joined is not in the
+   * list, and undoing will not unmap it.
+   *
+   * Row 236: without this, the only undo available deletes every phone of the
+   * person, which is right for the 465 merges that created one and wrong for
+   * the 7 that extended one.
+   */
+  const inserted = await query<{ phone: string }>(
     `INSERT INTO person_identities (person_id, phone, confidence, evidence, merged_by)
      SELECT $1::uuid, p.phone, $3, $4::jsonb, $5
      FROM UNNEST($2::text[]) AS p(phone)
-     ON CONFLICT (phone) DO NOTHING`,
+     ON CONFLICT (phone) DO NOTHING
+     RETURNING phone`,
     [personId, row.phones, NAME_MATCH_CONFIDENCE, JSON.stringify(row.evidence), actor],
     IDENTITY_QUERY_TIMEOUT_MS,
   );
@@ -886,12 +898,90 @@ export async function approveIdentityCandidate(
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   await query(
-    `UPDATE identity_candidates SET status = 'approved', decided_by = $2, decided_at = NOW()
-     WHERE id = $1`,
-    [candidateId, actor],
+    `UPDATE identity_candidates
+        SET status = 'approved', decided_by = $2, decided_at = NOW(),
+            person_id = $3::uuid, merged_phones = $4
+      WHERE id = $1`,
+    [candidateId, actor, personId, inserted.rows.map((r) => r.phone)],
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   return { ok: true, person_id: personId };
+}
+
+/**
+ * ROW 236 — UNDO THE PAIR, BY THE ONLY NAME THE SCREEN HAS.
+ *
+ * The Identity tab approves a CANDIDATE, so a candidate id is the only thing
+ * it can offer back. Lika pressed undo and got „person_id required" with no
+ * field to type one into; the route the code's own comment promised —
+ * `POST /admin/identity/candidates/:id/unmerge` — had never been written.
+ *
+ * THIS REMOVES ONLY WHAT THE APPROVAL CREATED. `merged_phones` is the
+ * `RETURNING phone` of that approval's insert, so a phone that already
+ * belonged to somebody before the approval is not in it and is not touched.
+ * `unmergePerson` cannot make that distinction: it takes the whole person,
+ * which is right for a person the approval created and wrong for one it
+ * extended.
+ *
+ * AND IT REFUSES WHERE IT CANNOT BE EXACT. Seven approvals extended an
+ * existing person before this was recorded, and the merge log says which
+ * person ids existed but not which phone carried which — so the set cannot be
+ * recovered. Those return an error naming the other route rather than a guess.
+ * Guessing here unmaps a real person's phone, and this whole table is still
+ * shadow: nothing downstream reads it, so there is no urgency that could
+ * justify being approximate.
+ *
+ * The candidate returns to `pending`, because that is what undo means to the
+ * person pressing it — the pair goes back into the queue to be decided again.
+ */
+export async function unmergeCandidate(
+  candidateId: number,
+  actor: string,
+): Promise<DecisionOutcome> {
+  const found = await query<{ person_id: string | null; merged_phones: string[] | null }>(
+    `SELECT person_id, merged_phones FROM identity_candidates
+      WHERE id = $1 AND status = 'approved' LIMIT 1`,
+    [candidateId],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  const row = found.rows[0];
+  if (!row) return { ok: false, error: 'No approved candidate with that id.' };
+  if (!row.person_id || row.merged_phones === null) {
+    return {
+      ok: false,
+      error:
+        'This approval predates the record of which phones it added, and it extended a person ' +
+        'that already existed — so an exact undo is not possible. Use POST /admin/identity/unmerge ' +
+        'with the person id, which removes the whole person, after looking at what that person holds.',
+    };
+  }
+
+  // An approval that inserted nothing — every phone already belonged to the
+  // same person — is undone by putting the pair back in the queue. There is no
+  // mapping to remove, and deleting one would be removing somebody else's.
+  if (row.merged_phones.length > 0) {
+    await query(
+      `DELETE FROM person_identities WHERE person_id = $1::uuid AND phone = ANY($2)`,
+      [row.person_id, row.merged_phones],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    );
+    await query(
+      `INSERT INTO person_merge_log (action, person_id, phones, prior_person_ids, actor)
+       VALUES ('unmerge', $1::uuid, $2, ARRAY[$1::uuid], $3)`,
+      [row.person_id, row.merged_phones, actor],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    );
+  }
+
+  await query(
+    `UPDATE identity_candidates
+        SET status = 'pending', decided_by = NULL, decided_at = NULL,
+            person_id = NULL, merged_phones = NULL
+      WHERE id = $1`,
+    [candidateId],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  return { ok: true, person_id: row.person_id };
 }
 
 export async function rejectIdentityCandidate(
@@ -910,8 +1000,20 @@ export async function rejectIdentityCandidate(
 }
 
 /**
- * Undo: remove a person's mapping rows and log the unmerge with what was
- * removed. The raw data was never touched, so nothing else needs restoring.
+ * REMOVE A WHOLE PERSON'S MAPPING. Not „undo one approval" — the docstring
+ * used to say undo, and that word is why row 236 has a data-loss path hiding
+ * behind it.
+ *
+ * This deletes EVERY phone mapped to that person id. When the approval created
+ * the person that is the same thing as undoing it, and 465 of 472 merges did.
+ * When the approval EXTENDED a person who already existed — 7 of them — this
+ * also unmaps phones that approval never touched.
+ *
+ * For undoing one decision, use `unmergeCandidate`, which removes only what
+ * that approval inserted. This stays because „take this person apart" is a
+ * real thing to want; it is just not the undo button.
+ *
+ * The raw data was never touched, so nothing else needs restoring.
  */
 export async function unmergePerson(personId: string, actor: string): Promise<DecisionOutcome> {
   const removed = await query<{ phone: string }>(

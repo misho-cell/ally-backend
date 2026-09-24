@@ -316,7 +316,17 @@ describe('approve / reject / unmerge — the human half, always logged', () => {
     const close = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes("status = 'approved'"),
     );
-    expect(close?.[1]).toEqual([5, 'admin:167250']);
+    /**
+     * Row 236 added the last two. The approval now writes down WHICH PERSON it
+     * landed on and WHICH PHONES it actually inserted, so one approval can be
+     * undone without taking the whole person apart — this case is exactly the
+     * dangerous one, an approval that EXTENDS an existing person.
+     *
+     * `merged_phones` is empty here because the mocked insert returns no rows;
+     * in production it is the `RETURNING phone` of an insert with ON CONFLICT
+     * DO NOTHING, which names only the mappings that approval created.
+     */
+    expect(close?.[1]).toEqual([5, 'admin:167250', '11111111-1111-1111-1111-111111111111', []]);
   });
 
   it('reject closes a pending candidate and refuses a missing one', async () => {

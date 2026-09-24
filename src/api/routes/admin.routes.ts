@@ -113,6 +113,7 @@ import {
   listIdentityCandidates,
   approveIdentityCandidate,
   rejectIdentityCandidate,
+  unmergeCandidate,
   unmergePerson,
   getIdentitySummary,
   getIdentityTotals,
@@ -4668,7 +4669,10 @@ adminRouter.get('/identity/export', async (req: Request, res: Response) => {
 //   body: { decisions: [{ id, decision: "yes" | "no" | anything else }] }
 // „yes" merges the pair, „no" rejects it, anything else stays PENDING — an
 // unsure pair is not a decision and must not become one. Undo per pair:
-// POST /admin/identity/candidates/:id/unmerge (existing).
+// POST /admin/identity/candidates/:id/unmerge — which, when this comment first
+// said „(existing)", did not exist. Row 236 is that sentence: the page pressed
+// the undo the comment promised and got „person_id required" with nowhere to
+// type one. It exists now, below.
 adminRouter.post('/identity/decisions', async (req: Request, res: Response) => {
   try {
     const body = req.body as { decisions?: { id?: unknown; decision?: unknown }[] };
@@ -4725,6 +4729,44 @@ adminRouter.post('/identity/candidates/:id/reject', async (req: Request, res: Re
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin identity reject]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * ROW 236 — UNDO ONE APPROVAL, NAMED BY THE CANDIDATE THE PAGE APPROVED.
+ *
+ * The Identity tab has a candidate id and nothing else; asking it for a person
+ * id was asking for something it never saw. This removes only the phones that
+ * approval inserted and puts the pair back in the queue.
+ *
+ * It is NOT the same as `/identity/unmerge`, which takes a whole person apart.
+ * That one is right when the approval created the person and wrong when it
+ * extended one — see `unmergeCandidate`.
+ *
+ * 409 rather than 400 when the approval predates the record of what it merged:
+ * the request is well formed and the server cannot be exact, which is a
+ * different fact from „you sent the wrong thing", and the body says which
+ * route to use instead.
+ */
+adminRouter.post('/identity/candidates/:id/unmerge', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'candidate id აუცილებელია' });
+      return;
+    }
+    const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
+    const outcome = await unmergeCandidate(id, actor);
+    if (outcome.ok) {
+      res.status(200).json({ success: true, data: outcome });
+      return;
+    }
+    const notFound = outcome.error?.startsWith('No approved candidate') === true;
+    res.status(notFound ? 404 : 409).json({ success: false, error: outcome.error });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin identity candidate unmerge]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -2403,3 +2403,61 @@ somebody stops receiving the product.
 One row removed. The next rotation creates another, because only the browser
 knows which endpoint it replaced. Deduping on `device_id` would not have caught
 this pair — both rows carry one and they differ.
+
+---
+
+## 32 · Undo one identity approval — `POST /admin/identity/candidates/:id/unmerge`
+
+Row 236, 24 September. Registered because it is a NEW ADMIN CAPABILITY THAT
+DELETES ROWS, not because an operation is being run today: nobody is asking for
+a person to be unmerged. The page needed a button that works.
+
+**ROUTE** `POST /admin/identity/candidates/:id/unmerge`
+**METHOD** POST, admin token, no body
+**WHAT IT CHANGES** deletes the `person_identities` rows that THAT approval
+inserted, writes an `unmerge` row to `person_merge_log`, and returns the
+candidate to `pending`
+**UNDO OF THE UNDO** approve the candidate again. It is back in the queue, and
+approving re-inserts exactly the phones that were removed. Nothing about the
+raw data was ever touched — `person_identities` is a mapping laid over it.
+
+### WHY IT EXISTS
+
+Lika approved a pair on the Identity tab, pressed undo, and got a red error
+asking for a `person_id` with no field to type one into. The page had approved
+a CANDIDATE, so a candidate id is the only name it holds. The code's own
+comment promised this exact route and called it „(existing)". It never was.
+
+### AND THE REASON IT IS NOT JUST A WRAPPER AROUND THE OLD ONE
+
+`POST /admin/identity/unmerge` takes a `person_id` and deletes EVERY phone
+mapped to that person. That is an undo only when the approval created the
+person. Approve deliberately reuses an existing `person_id` when one of the
+phones already belongs to somebody — so an approval can EXTEND a person, and
+undoing it by person id unmaps phones that approval never touched.
+
+| | merges |
+|---|---|
+| created a new person | 465 |
+| **extended an existing person** | **7** |
+
+Nobody had met it, because **no unmerge had ever succeeded**: 472 merges in the
+log and zero unmerges. A missing route was hiding a data-loss path behind an
+error message.
+
+### WHERE IT REFUSES
+
+Approvals made before migration 174 recorded what they inserted, AND which
+extended a person that already existed, cannot be undone exactly: the log says
+which person ids existed but not which phone carried which. Those answer **409
+with the other route named** — a well-formed request the server cannot satisfy
+exactly is not the same fact as a malformed one. Seven rows. Guessing there
+unmaps a real person's phone.
+
+### RISK
+
+Low, and worth saying why rather than asserting it: `person_identities` is
+still SHADOW. Nothing in the product reads it — no search, no chat, no ask. A
+wrong row here changes an admin screen and nothing a user can see, which is
+exactly why it is the right time to make the undo exact rather than after
+something starts depending on it.
