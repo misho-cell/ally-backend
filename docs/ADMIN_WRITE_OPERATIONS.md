@@ -2493,3 +2493,63 @@ field cleared, one `merge` and one `unmerge` in the log twenty-five seconds
 apart, zero phones left mapped to that person. **The first successful unmerge
 this product has ever recorded**: 472 merges in the log and, until 09:30 today,
 no unmerge at all.
+
+---
+
+## 33 · Repair one subscription row from Stripe — NOT RUN, NOT BUILT, AWAITING A DECISION
+
+Row 248, 24 September. Registered BEFORE anything exists, which is the order
+D44 asks for: the route, the body and the undo written down first, so that a
+yes is a yes to something specific rather than to an idea.
+
+**AND THE FIRST OPTION IS TO DO NOTHING**, which is why this is a decision and
+not a request.
+
+### THE FACTS, MEASURED
+
+Account 4511 cancelled on 21 September. Stripe holds `cancel_at =
+2026-09-26T11:26:51`; the column holds null. The columns are only written when
+a subscription event arrives, and for a scheduled cancellation the next one is
+the day it ends — **26 September**.
+
+Read from the live drift check, not assumed: **one account is affected, not
+eighty-two.** The first run of that check said 78 of 82 and the check was
+wrong; that is corrected and re-run.
+
+### THE THREE OPTIONS, HONESTLY WEIGHTED
+
+**A. DO NOTHING.** On 26 September Stripe sends the event, the webhook writes
+the columns, and the row becomes correct by itself. Cost: one person sees „next
+payment" for two more days on a subscription that is ending. **This is my
+recommendation** — the fault repairs itself before any sensible build-and-review
+cycle would finish, and every other option writes to a paying customer's record
+to save two days.
+
+**B. REPLAY STRIPE'S TRUTH THROUGH THE EXISTING WRITER.** A route that
+retrieves the subscription and calls the same `applySubscription` the webhook
+calls. Not a hand-written UPDATE — the point is that no second definition of
+„what Stripe says" is created, because two readings of one fact drifting apart
+is this codebase's recurring bug.
+
+    ROUTE    POST /admin/stripe/reconcile
+    BODY     { "user_id": 4511 }        one account, named, never a sweep
+    CHANGES  subscription_status, cancel_at_period_end, cancels_at,
+             current_period_ends_at, trial_ends_at — for that user only
+    UNDO     run it again after the 26th, or wait: Stripe remains the source
+             and the next event overwrites whatever this wrote. Nothing here
+             is authored by us, so there is nothing to lose.
+    RISK     it writes to a real paying customer's billing record. The write is
+             Stripe's own values and no money moves, but the row decides what
+             the person is told about their own subscription.
+
+**C. HAND-WRITE THE TWO COLUMNS IN A MIGRATION.** Rejected. It would hard-code
+a timestamp read today into a file that runs later, and it creates a second
+place that decides what a cancellation means. The drift this whole row is about
+began exactly that way.
+
+### WHAT IS NEEDED
+
+One word from Misho: **A, B, or C.** Nothing is built and nothing runs until
+then. If the answer does not come before 26 September, A happens by itself and
+the register entry closes as „overtaken by the event", which is a fine outcome
+and not a failure.
