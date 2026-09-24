@@ -1077,7 +1077,43 @@ Misho's account — one goal, the same sentence again, read the refusal, close
 both. Nothing is sent to anybody. It needs his word because it writes to a real
 account.
 
-### 2. Does Lika Ose have FIVE devices? — LIKA
+### 2. ~~Does Lika Ose have FIVE devices?~~ — ANSWERED 07:59: AN IPHONE AND A MAC
+
+**Two devices, five endpoints, so three are surplus.** The founder answered
+through the box. Read straight afterwards, oldest first:
+
+| label | service | made | identity |
+|---|---|---|---|
+| 5ded565c | apple | 30 Jul | none at all |
+| 85946620 | fcm | 30 Jul | none at all |
+| 3c99c7aa | fcm | 3 Sep | none at all |
+| fa4d5650 | apple | 15 Sep | **iPhone, iOS 18.7** |
+| 2e37b312 | fcm | 20 Sep | **Macintosh, Chrome 152** |
+
+The two that can be identified are **exactly the two devices he named**. The
+other three all predate 15 September — the day the client began sending
+`device_id` and `user_agent` at all — so they are not other devices, they are
+these devices registered before the fields existed. The likely reading, as a
+reading: the iPhone registered twice and Mac Chrome three times. The 30 July
+Apple row could be Mac Safari instead; it does not change the count.
+
+**AND THE LIVENESS TEST CANNOT SETTLE IT — now confirmed from the code rather
+than suspected.** `alreadyWatching` takes `deviceKey(device_id, user_agent)`,
+and when BOTH are absent the key is null and the check falls back to „is ANY of
+this person's streams open". So on her three anonymous rows, `skipped` is not a
+per-device signal at all. Reading it as one would be inventing the single fact
+it cannot carry — which is why migration 173 deleted a row on the other account
+and nothing on hers.
+
+The tester's ruling stands and I agree with it: **nobody deletes her rows by
+guess.** The client fix comes first. It stops new duplicates and removes none of
+the old ones — a subscription only dies when the push service answers 404 or
+410, and neither ever has — so a one-time cleanup will still be needed
+afterwards, and it will be a far safer decision then, because every device will
+have re-registered with an identity. Flagged now rather than arriving as a
+surprise on the day.
+
+### 2b. The original question, kept for the shape of it — LIKA
 
 One sentence from her closes row 101's second half.
 
