@@ -48,6 +48,12 @@ notificationsRouter.post(
   // Row 6's fix: the frontend's own stable name for this device, if it has one.
   // Same rule as above — optional, and never a reason to refuse a device.
   body('device_id').optional().isString(),
+  // Row 101: the endpoint this registration REPLACES, named by the only party
+  // that knows — the browser. Optional, and like the two above it can never be
+  // a reason to refuse a subscription: a client that sends a malformed one
+  // must still end up subscribed, because failing here would leave the person
+  // unreachable in order to tidy a duplicate.
+  body('previous_endpoint').optional().isString(),
   async (req: Request, res: Response<ApiResponse<null>>) => {
     const errors = validationResult(req);
 

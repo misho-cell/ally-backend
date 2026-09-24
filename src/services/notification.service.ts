@@ -32,6 +32,27 @@ export interface PushSubscriptionPayload {
    * Optional — the user-agent answers the same question well enough without it.
    */
   device_id?: string;
+  /**
+   * ROW 101's ACTUAL FIX, and it had to come from the browser.
+   *
+   * A subscription is only ever removed when the push service answers 404 or
+   * 410, and for these rows Apple and Google never have — so when an endpoint
+   * rotates on a reinstall, a browser update or a permission reset, the new
+   * row appears BESIDE the old one and one notification goes to both. Account
+   * 160584 reached five live endpoints for two real devices; every
+   * notification arrived five times.
+   *
+   * The server cannot work out which row was replaced. It was worth proving
+   * rather than assuming: the rule „retire the older row with the same
+   * device_id" matches nothing today, because every row that duplicates
+   * predates the device_id field itself. Only the browser knows, and this is
+   * the browser saying so.
+   *
+   * SENT ONLY WHEN IT DIFFERS from the new endpoint — and checked again here,
+   * because a client that sent the same value twice would be asking the server
+   * to delete the row it has just written.
+   */
+  previous_endpoint?: string;
 }
 
 /** Long enough for any real UA string; a guard against an absurd one. */
@@ -70,6 +91,49 @@ export async function savePushSubscription(
       bounded(subscription.device_id),
     ],
   );
+
+  await retirePreviousEndpoint(userId, subscription);
+}
+
+/**
+ * Delete the subscription this registration replaces — the one the browser
+ * named, and only that one.
+ *
+ * THREE GUARDS, AND EACH IS A WAY THIS COULD SILENCE SOMEBODY'S PHONE.
+ *
+ *   * SCOPED TO THE CALLER. `previous_endpoint` is client input and endpoints
+ *     are globally unique, so without `user_id = $1` anyone could post another
+ *     person's endpoint and stop their notifications. With it, this is exactly
+ *     the capability `DELETE /notifications/subscribe` already gives — a
+ *     person removing their own device — so it needs no new permission.
+ *
+ *   * NEVER THE ROW JUST WRITTEN. The client omits the field when the endpoint
+ *     has not changed; the server does not take its word for that. Deleting
+ *     the new row would leave the person with no subscription at all, which is
+ *     worse than the duplicate this exists to remove.
+ *
+ *   * IT RUNS AFTER THE INSERT, not before. If the insert fails, nothing has
+ *     been retired, and the person keeps the subscription they had. Fail in
+ *     the direction where the phone still rings.
+ *
+ * The endpoint is never logged (D149): an endpoint and its keys are a
+ * capability to push to somebody's phone, and a log is not where that belongs.
+ */
+async function retirePreviousEndpoint(
+  userId: string,
+  subscription: PushSubscriptionPayload,
+): Promise<void> {
+  const previous = subscription.previous_endpoint?.trim();
+  if (!previous || previous === subscription.endpoint.trim()) return;
+
+  const result = await query(
+    `DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2`,
+    [userId, previous],
+  );
+  if ((result.rowCount ?? 0) > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[push] user ${userId}: retired the endpoint this registration replaces`);
+  }
 }
 
 /** A provider message, never user content; bounded so one library can't flood the table. */
