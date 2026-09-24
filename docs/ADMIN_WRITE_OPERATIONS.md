@@ -3508,3 +3508,64 @@ They said it plainly: **`FOR_FRONTEND.md` is not read automatically. They only
 have what is actually sent to them.** This question sat in that file for hours
 after being written, while I counted it as delivered. Writing a thing down and
 telling somebody are different acts, and only one of them is communication.
+
+---
+
+## 49 · ⚠️ THE LOGIN GATE REFUSED PEOPLE WHO HAD ALREADY JOINED — off at 19:34:39
+
+The tester, an hour after §46 turned it on: three fictional seats that had
+registered through the correct invited path and been granted their free days
+came back **REFUSED**, because none had started a thread yet.
+
+**The gate was switched OFF the same minute the report was read**, before any
+diagnosis. It had been on for 57 minutes.
+
+### THE TWO REAL PEOPLE IN THAT CLASS
+
+| | |
+|---|---|
+| **Andre** (168735) | registered 14 July |
+| **Nika Abramishvili** (171408) | registered 9 September |
+
+Both registered through Netai and never opened a conversation. Both would have
+been told they need an invitation **to a product they had already joined**. Of
+the 14 accounts in the class, 12 are seats made today; these two are not.
+
+And the shape is exactly the founder's first invitee: register, look around,
+come back tomorrow, locked out before typing anything. That is row 229's whole
+purpose walking into this gate.
+
+### WHY THE EARLIER WIDENING DID NOT CATCH IT
+
+§45 widened „has a thread" to „thread or push subscription" after the dry run
+found 4511. That was right and still missed this, because **both signals ask
+what somebody has DONE**, and the question the gate needs is **whether they
+belong here**. A new joiner has done nothing yet. That is not the same as being
+a stranger, and I had built two versions of a test that could not tell those
+apart.
+
+### THE CONDITION NOW
+
+    belongs to Netai =  registered through Netai (hasAccessToAlly = true)
+                     OR has a thread
+                     OR has a push subscription
+
+OR throughout. `registerUser` writes `hasAccessToAlly` as a literal `true` on
+every path and the 62,156 legacy accounts all carry false, so in **this**
+direction the column separates the two products cleanly — it is safe as a
+reason to ADMIT and would still be a disaster as a reason to refuse, which is
+why it appears only inside an OR.
+
+### WHAT HAPPENS NEXT
+
+The gate stays OFF until the fix is deployed and `login-gate-check` reads
+ADMITTED for 172365 (an invited seat with no thread) and still REFUSED for
+172464 (the legacy-shaped fiction) — the tester's done-when, in their words.
+
+### AND THE THING TO KEEP
+
+Three switches went on today. Two were proved on fictions first and held. The
+third was proved by a **dry run against every account**, which is a stronger
+check in every way except the one that mattered: it asked the question I had,
+not the question I had missed. **The tester's round found in an hour what my
+62,242-row read could not, because they tried the case I had not thought of.**

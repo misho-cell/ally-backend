@@ -47,11 +47,14 @@ afterAll(() => {
   process.env.JWT_SECRET = JWT_BEFORE;
 });
 
-function account(hasUsedNetai: boolean): void {
+function account(belongsToNetai: boolean): void {
   dbQuery.mockImplementation((sql: string) => {
     const text = String(sql);
-    if (text.includes('has_used_netai')) {
-      return Promise.resolve({ rows: [{ id: 160584, has_used_netai: hasUsedNetai }], rowCount: 1 });
+    if (text.includes('belongs_to_netai')) {
+      return Promise.resolve({
+        rows: [{ id: 160584, belongs_to_netai: belongsToNetai }],
+        rowCount: 1,
+      });
     }
     // consumePhoneVerification's read: a fresh, consumed verification.
     if (text.includes('phone_verifications') || text.includes('UPDATE'))

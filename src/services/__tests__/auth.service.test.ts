@@ -308,7 +308,10 @@ describe('completeLogin', () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserPhone"'))
-        return Promise.resolve({ rows: [{ id: 7, has_used_netai: false }], rowCount: 1 } as never);
+        return Promise.resolve({
+          rows: [{ id: 7, belongs_to_netai: false }],
+          rowCount: 1,
+        } as never);
       return Promise.resolve({ rows: [], rowCount: 1 } as never);
     });
 
@@ -327,7 +330,7 @@ describe('completeLogin', () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserPhone"'))
-        return Promise.resolve({ rows: [{ id: 7, has_used_netai: true }], rowCount: 1 } as never);
+        return Promise.resolve({ rows: [{ id: 7, belongs_to_netai: true }], rowCount: 1 } as never);
       return Promise.resolve({ rows: [], rowCount: 1 } as never);
     });
 
@@ -346,7 +349,7 @@ describe('completeLogin', () => {
   it('does not add a query to the login path', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserPhone"'))
-        return Promise.resolve({ rows: [{ id: 7, has_used_netai: true }], rowCount: 1 } as never);
+        return Promise.resolve({ rows: [{ id: 7, belongs_to_netai: true }], rowCount: 1 } as never);
       return Promise.resolve({ rows: [], rowCount: 1 } as never);
     });
 
@@ -356,7 +359,7 @@ describe('completeLogin', () => {
       String(sql).includes('FROM "UserPhone"'),
     );
     expect(lookups).toHaveLength(1);
-    expect(String(lookups[0][0])).toContain('has_used_netai');
+    expect(String(lookups[0][0])).toContain('belongs_to_netai');
   });
 });
 

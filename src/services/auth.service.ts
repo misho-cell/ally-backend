@@ -268,40 +268,59 @@ export async function verifyOTP(
  * came through a cohort door has already been given days; this adds nothing.
  */
 /**
- * HAS THIS ACCOUNT EVER USED NETAI — the login gate's condition, written once.
+ * DOES THIS ACCOUNT BELONG TO NETAI — the login gate's condition, written once.
  *
- * ⚠️ IT IS A FRAGMENT AND NOT A FUNCTION FOR ONE REASON: `completeLogin` asks
- * it in the SAME round trip as the phone lookup, and the admin dry-run asks it
- * of an account id. A second copy of the condition is how the gate and the
- * thing that checks the gate end up disagreeing — and a checker that carries
- * its own copy of the rule will agree with itself whatever the rule does.
+ * ⚠️ IT WAS „HAS EVER USED NETAI" AND THAT REFUSED PEOPLE WHO HAD JUST JOINED.
  *
- * ANY sign of use, not one sign. It read „has a thread" until a dry run on 24
- * September found account 4511: no thread, and a live push subscription
- * registered 21 September with two notifications sent to it. A push
- * subscription cannot exist unless that browser was on the Netai site and the
- * person granted permission, so the gate would have told somebody they need an
- * invitation to a product they already have on their phone.
+ * The tester, 24 September, an hour after the gate went on: three fictional
+ * seats that had registered through the correct invited path and been granted
+ * their free days were REFUSED, because none had started a thread yet. The
+ * class is real and the live base names two people in it:
  *
- * OR and not AND: AND would refuse everybody who has a thread but never turned
- * notifications on, which is 40 of the 45 people who have used Netai.
- */
-/**
- * ⚠️ AND THE ONLY THINGS IT MAY BE GIVEN ARE LISTED HERE.
+ *     Andre (168735)              registered 14 July
+ *     Nika Abramishvili (171408)  registered 9 September
  *
- * This builds SQL by interpolation, which the house rule forbids — for user
- * data, and rightly. What goes in is a COLUMN EXPRESSION or a placeholder, and
- * neither can be a bind parameter: `$1` cannot name a column. So the safety has
- * to come from somewhere else, and „only ever called with a literal" is a
- * promise, not a guarantee. The allow-list makes it one.
+ * Both registered through Netai and never opened a conversation. **Both would
+ * have been told they need an invitation to a product they had already joined.**
+ * And the first person the founder invites is exactly this shape: they
+ * register, look around, come back tomorrow, and are locked out before they
+ * have typed anything.
+ *
+ * The gate exists for the 62,163 who have NEVER registered — not for somebody
+ * who joined this morning. So „belongs to Netai" is three signals, any one of
+ * which is enough:
+ *
+ *   1. REGISTERED THROUGH NETAI. `registerUser` writes `hasAccessToAlly` as a
+ *      literal `true` on every path, and the 62,156 legacy accounts all carry
+ *      false, so it separates the two products cleanly in this direction.
+ *   2. has a thread — has actually used it.
+ *   3. has a push subscription — found on 24 September by a dry run: account
+ *      4511 had one and no thread, and a push subscription cannot exist unless
+ *      that browser was on the Netai site and the person granted permission.
+ *
+ * OR throughout, never AND. Each signal alone admits; requiring two would
+ * refuse 40 of the 45 people who have used the product.
+ *
+ * ⚠️ IT IS A FRAGMENT AND NOT A FUNCTION because `completeLogin` asks it in the
+ * SAME round trip as the phone lookup, and the admin dry-run asks it of an
+ * account id. A checker carrying its own copy of the rule will agree with
+ * itself whatever the rule does.
+ *
+ * ⚠️ AND THE ONLY THINGS IT MAY BE GIVEN ARE LISTED HERE. This builds SQL by
+ * interpolation, which the house rule forbids — for user data, and rightly.
+ * What goes in is a COLUMN EXPRESSION or a placeholder, and neither can be a
+ * bind parameter: `$1` cannot name a column. The allow-list turns „only ever
+ * called with a literal" from a promise into a guarantee.
  */
 const ID_EXPRESSIONS = ['up."userId"', '$1::int'] as const;
 
-export function hasUsedNetaiSql(idExpr: (typeof ID_EXPRESSIONS)[number]): string {
+export function belongsToNetaiSql(idExpr: (typeof ID_EXPRESSIONS)[number]): string {
   if (!ID_EXPRESSIONS.includes(idExpr)) {
-    throw new Error('hasUsedNetaiSql: unknown id expression');
+    throw new Error('belongsToNetaiSql: unknown id expression');
   }
-  return `(EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${idExpr})
+  return `(EXISTS (SELECT 1 FROM "User" nu
+                    WHERE nu.id = ${idExpr} AND nu."hasAccessToAlly" = true)
+           OR EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${idExpr})
            OR EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = ${idExpr}))`;
 }
 
@@ -320,14 +339,14 @@ export function hasUsedNetaiSql(idExpr: (typeof ID_EXPRESSIONS)[number]): string
 export interface LoginGateVerdict {
   readonly account_exists: boolean;
   readonly gate_on: boolean;
-  readonly has_used_netai: boolean;
+  readonly belongs_to_netai: boolean;
   readonly would_be_admitted: boolean;
   readonly reason: string;
 }
 
 export async function loginGateVerdict(userId: number): Promise<LoginGateVerdict> {
-  const found = await query<{ has_used_netai: boolean }>(
-    `SELECT ${hasUsedNetaiSql('$1::int')} AS has_used_netai
+  const found = await query<{ belongs_to_netai: boolean }>(
+    `SELECT ${belongsToNetaiSql('$1::int')} AS belongs_to_netai
        FROM "User" u WHERE u.id = $1::int AND u."deletedAt" IS NULL`,
     [userId],
   );
@@ -337,30 +356,31 @@ export async function loginGateVerdict(userId: number): Promise<LoginGateVerdict
     return {
       account_exists: false,
       gate_on: gateOn,
-      has_used_netai: false,
+      belongs_to_netai: false,
       would_be_admitted: false,
       reason: 'no such account — a login would be treated as a new registration instead',
     };
   }
 
-  const hasUsed = found.rows[0].has_used_netai === true;
-  if (hasUsed) {
+  const belongs = found.rows[0].belongs_to_netai === true;
+  if (belongs) {
     return {
       account_exists: true,
       gate_on: gateOn,
-      has_used_netai: true,
+      belongs_to_netai: true,
       would_be_admitted: true,
-      reason: 'has used Netai — a thread or a push subscription; the gate never sees this account',
+      reason:
+        'belongs to Netai — registered through it, or has a thread, or has a push subscription; the gate never sees this account',
     };
   }
   return {
     account_exists: true,
     gate_on: gateOn,
-    has_used_netai: false,
+    belongs_to_netai: false,
     would_be_admitted: !gateOn,
     reason: gateOn
-      ? 'REFUSED: no Netai activity and the invitation gate is on'
-      : 'no Netai activity, but the gate is off — admitted, and a first-arrival line is logged',
+      ? 'REFUSED: never registered through Netai and never used it, and the gate is on'
+      : 'never registered through Netai and never used it, but the gate is off — admitted, and a first-arrival line is logged',
   };
 }
 
@@ -534,7 +554,7 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
    * number in it (D149): the account id is the handle, and it is enough to
    * read the row back.
    */
-  const result = await query<{ id: number; has_used_netai: boolean }>(
+  const result = await query<{ id: number; belongs_to_netai: boolean }>(
     /**
      * ⚠️ ANY SIGN OF USE, NOT ONE SIGN — and it took a dry run to find that out.
      *
@@ -558,7 +578,7 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
      * back out — but that is a decision somebody makes, not a gap nobody saw.
      */
     `SELECT up."userId" AS id,
-            ${hasUsedNetaiSql('up."userId"')} AS has_used_netai
+            ${belongsToNetaiSql('up."userId"')} AS belongs_to_netai
        FROM "UserPhone" up
       WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
     [phone],
@@ -578,7 +598,7 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
   }
 
   const userId = result.rows[0].id;
-  if (!result.rows[0].has_used_netai) {
+  if (!result.rows[0].belongs_to_netai) {
     /**
      * THE GATE. Registered as §34 of `ADMIN_WRITE_OPERATIONS.md` BEFORE it was
      * written, because it refuses real people entry to the product and the way
@@ -596,14 +616,14 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
      *
      * `hasAccessToAlly` is the ADMIN-LOGIN flag. Keying on it would refuse the
      * second most active person in the product at her next login and tell her
-     * she needs an invitation to something she has used for weeks. `has_used_netai`
+     * she needs an invitation to something she has used for weeks. `belongs_to_netai`
      * is read from `threads` two lines above, and there is no account anywhere
      * with messages or goals but no thread — so the two groups separate cleanly.
      */
     if (await isLoginInviteOnlyEnabled()) {
       // eslint-disable-next-line no-console
       console.log(
-        `[login] account ${userId} REFUSED: no Netai activity and the invitation gate is on`,
+        `[login] account ${userId} REFUSED: never registered through Netai and never used it, gate on`,
       );
       throw new Error(ERR_INVITATION_REQUIRED);
     }
