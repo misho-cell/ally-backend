@@ -2857,3 +2857,21 @@ nothing is provably deletable.** The measurement that settles it is now
 running. When a row is named STALE by the rule above, it is deleted under this
 entry without asking again — the yes is here, and the condition in it is what
 the rule checks.
+
+### ⚠️ AND THE MISTAKE THE TOOL MADE ON ITS FIRST RUN, EIGHT MINUTES OLD
+
+Migration 176 backfills `last_seen_at = created_at`, which is right — NOW()
+would have erased the difference. The consequence is that **until a browser
+actually re-posts, every value in the column is a creation date wearing a
+claim's name.** The first run of `push.sh claims` read those as claims and
+named three rows STALE, two of them on 160584, the account this row is about.
+Not one browser had said anything.
+
+Acting on it would have silenced somebody's phone on the strength of the day a
+database row was inserted. It is the same fault as every other wrong number
+this month — a column read without asking what populates it — committed by the
+tool written to prevent it.
+
+The tool now refuses to treat any value at or before 24 September as a claim,
+and prints `NO BROWSER HAS CLAIMED ANYTHING YET` rather than a verdict.
+**Nothing may be deleted under this entry until that line stops appearing.**

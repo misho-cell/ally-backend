@@ -110,6 +110,33 @@ describe('the rule that reads it cannot delete somebody’s only phone', () => {
     expect(CLAIMS).toContain('PROVES NOTHING');
   });
 
+  /**
+   * ⚠️⚠️ THE FAULT THIS TOOL COMMITTED ON ITS FIRST RUN, EIGHT MINUTES OLD.
+   *
+   * The migration backfills `last_seen_at = created_at` — correct, because
+   * NOW() would have erased the difference. The consequence is that until a
+   * browser re-posts, every value in the column IS A CREATION DATE WEARING A
+   * CLAIM'S NAME. The first run read them as claims and named three rows
+   * STALE, two of them on the account row 101 is about, with not one browser
+   * having said anything.
+   *
+   * A column read without asking what populates it — the same fault as every
+   * other wrong number this month, in a tool written to prevent it.
+   */
+  it('does not mistake the backfill for a browser turning up', () => {
+    expect(CLAIMS).toContain('def a_real_claim(');
+    expect(CLAIMS).toContain('value > began');
+    // And the two verdicts that could delete a row are both gated on it.
+    expect(CLAIMS).toMatch(/quiet = not a_real_claim\(claimed\)/);
+    expect(CLAIMS).toMatch(/person_reports = a_real_claim\(other\)/);
+  });
+
+  /** Zero real claims is its own answer, not „nothing is stale". */
+  it('refuses to conclude anything before the first real claim', () => {
+    expect(CLAIMS).toContain('NO BROWSER HAS CLAIMED ANYTHING YET');
+    expect(CLAIMS).toMatch(/if real_claims == 0:/);
+  });
+
   /** It is a read. The deletion is a migration a person decides on (D44, §36). */
   it('deletes nothing itself', () => {
     expect(CLAIMS).not.toMatch(/DELETE\s+FROM/i);

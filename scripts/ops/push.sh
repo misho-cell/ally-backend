@@ -132,8 +132,24 @@ fi
 # subscription would make every row look dead and the rule would delete
 # somebody's only phone.
 #
+# ⚠️⚠️ AND THE TRAP THIS TOOL WALKED INTO EIGHT MINUTES AFTER IT WAS WRITTEN.
+#
+# Migration 176 backfilled `last_seen_at = created_at`, because seeding from
+# NOW() would have erased the very difference the column exists to record.
+# Correct — and it means that until a browser actually re-posts, EVERY
+# `last_seen_at` IS A CREATION DATE WEARING A CLAIM'S NAME. The first run of
+# this command read those dates as claims and named three rows STALE, two of
+# them on the account the whole row exists for. Not one browser had said
+# anything. Had that reading been acted on, somebody's phone would have gone
+# quiet on the strength of the day a row was inserted.
+#
+# It is the same fault as every other wrong number this month: a column read
+# without asking what populates it. So a value at or before CLAIMS_BEGAN is not
+# a claim, and the tool says plainly when it has nothing to go on.
+#
 # IT DELETES NOTHING. A row named here is a candidate for §36 of the register,
 # decided by a person (D44).
+CLAIMS_BEGAN='2026-09-24'   # stamping started here; anything earlier is backfill
 if [ "$WHO" = claims ]; then
   DAYS="${2:-30}"
   printf '%s' "SELECT u.name,
@@ -149,7 +165,7 @@ if [ "$WHO" = claims ]; then
   FROM push_subscriptions s
   JOIN \"User\" u ON u.id = s.user_id
  ORDER BY u.name, s.created_at
- LIMIT 200" | ./scripts/ops/ro.sh 2>/dev/null | DAYS="$DAYS" python3 -c '
+ LIMIT 200" | ./scripts/ops/ro.sh 2>/dev/null | DAYS="$DAYS" BEGAN="$CLAIMS_BEGAN" python3 -c '
 import sys, json, os, datetime
 try:
     rows = json.load(sys.stdin)["data"]["rows"]
@@ -158,30 +174,46 @@ except Exception:
     raise SystemExit(2)
 
 window = int(os.environ["DAYS"])
+began = datetime.date.fromisoformat(os.environ["BEGAN"])
 today = datetime.date.today()
 
 def day(value):
     return None if not value else datetime.date.fromisoformat(str(value)[:10])
 
+def a_real_claim(value):
+    """Anything at or before the day stamping started is migration 176 backfill
+    — the creation date copied across — and saying so is the whole point."""
+    return value is not None and value > began
+
 print("%-22s %-10s %-6s %-11s %-11s %s" % ("person", "endpoint", "service", "created", "claimed", "verdict"))
-stale = 0
+stale = real_claims = 0
 for r in rows:
     claimed, other = day(r["claimed"]), day(r["other_claimed"])
-    quiet = claimed is None or (today - claimed).days >= window
-    person_reports = other is not None and (today - other).days < window
+    if a_real_claim(claimed):
+        real_claims += 1
+    quiet = not a_real_claim(claimed) or (today - claimed).days >= window
+    person_reports = a_real_claim(other) and (today - other).days < window
     if quiet and person_reports:
         verdict, stale = "STALE — the person claims another row, never this one", stale + 1
     elif quiet:
-        verdict = "quiet, but so is every row of theirs — PROVES NOTHING"
+        verdict = "not claimed yet — PROVES NOTHING"
     else:
         verdict = "claimed"
     print("%-22s %-10s %-6s %-11s %-11s %s"
           % ((r["name"] or "?")[:22], r["ep"], r["svc"],
-             str(r["created"])[:10], str(r["claimed"])[:10] if claimed else "never", verdict))
+             str(r["created"])[:10],
+             str(r["claimed"])[:10] if a_real_claim(claimed) else "(backfill)",
+             verdict))
 
 print()
-if stale == 0:
-    print("NOTHING PROVEN STALE in a %d-day window." % window)
+if real_claims == 0:
+    print("NO BROWSER HAS CLAIMED ANYTHING YET. Every date above is migration 176")
+    print("copying created_at, not a browser turning up — so this run proves")
+    print("NOTHING about any row, and none may be deleted on it.")
+    print("Come back once people have opened the app; if it still reads zero in a")
+    print("few days, the client is not re-posting and that is FOR_FRONTEND item 5.")
+elif stale == 0:
+    print("NOTHING PROVEN STALE in a %d-day window (%d real claim(s) recorded)." % (window, real_claims))
     print("Note the middle verdict: a row nobody has claimed, on an account where")
     print("NOTHING has been claimed, is not evidence. It means the client has not")
     print("re-posted for that person at all — which says nothing about the browser.")
