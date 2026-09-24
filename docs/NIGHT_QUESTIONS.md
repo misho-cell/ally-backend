@@ -1077,12 +1077,57 @@ Misho's account — one goal, the same sentence again, read the refusal, close
 both. Nothing is sent to anybody. It needs his word because it writes to a real
 account.
 
-### 2. Does Lika Ose have a second Apple device? — LIKA
+### 2. Does Lika Ose have FIVE devices? — LIKA
 
-One sentence from her closes row 101's second half. If she has one phone, her
-older subscription is a duplicate and has been delivering every notification
-twice since 17 September — **205 double deliveries in seven days**. If she has
-a Mac as well, both rows are correct and nothing should be touched.
+One sentence from her closes row 101's second half.
 
-Deleting on a guess is how somebody stops receiving the product, so it waits
-for the sentence.
+**CORRECTED AT 07:50 — IT IS FIVE ENDPOINTS, NOT TWO, AND THE TOOL WAS THE
+REASON.** `push.sh` labelled each endpoint with `LEFT(endpoint, 34)`. Apple
+endpoints diverge early so they separated and the table looked right; every FCM
+endpoint begins `https://fcm.googleapis.com/fcm/send/`, and thirty-four
+characters lands inside that shared prefix — so all of one person's FCM
+registrations collapsed into a single row.
+
+The sign was on the screen and I read past it: „fcm 51, apple 17, apple 17".
+**51 is exactly 3 × 17.** Re-measured, with the label now a digest and the
+grouping on the whole endpoint:
+
+|  | live endpoints on 24 Sep |
+|---|---|
+| 160584 (Lika Ose) | **five** — 2 Apple + 3 FCM, 17 sends each |
+| 501 (Tornike) | three, all FCM |
+
+The instrument written to count endpoints was merging them, which is this
+week's fault inside the thing that finds this week's fault. And the earlier
+figure went to the tester and into migration 173's reasoning before it was
+caught.
+
+It makes the question to her easier rather than harder: „do you have five
+devices you have opened Netai on" answers itself in a way „do you have a second
+Apple device" did not. Deleting on a guess is still how somebody stops
+receiving the product, so it still waits for the sentence — three of her five
+rows carry no `device_id` and no `user_agent` at all.
+
+### 3. ~~The server-side rule that would stop the pile growing~~ — NOT BUILT, AND IT NEVER SHOULD BE
+
+Written at 23:15 and held back overnight as „decision-ready and provably safe":
+when a registration arrives carrying a `device_id` that already has a row with
+a DIFFERENT endpoint, retire the old row. A browser holds at most one push
+subscription per service-worker registration, so the old row is definitionally
+dead whatever the push service says.
+
+**Measured before building it:**
+
+```
+device_ids in the whole table carrying more than one endpoint:   ZERO
+```
+
+The `device_id` rotates WITH the endpoint. The rule could never fire once. It
+was safe, provable and **worthless**, and it was queued as the priority-1
+contribution for the morning.
+
+So the server has no fix here and the client does. Three ways went to the
+frontend, any one sufficient: unsubscribe the old subscription before
+registering (only the browser knows which one it replaced); send the endpoint
+being replaced and the server deletes it; or keep `device_id` stable across
+re-registrations, which makes the rule above start working.
