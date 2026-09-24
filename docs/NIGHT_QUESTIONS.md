@@ -1010,18 +1010,50 @@ older row carries no `device_id` and no `user_agent`, so the never-live-on-the-
 same-day test cannot be run on it, and an iPhone plus a Mac running Safari
 would look exactly like what her table shows.
 
-### THE THRESHOLD IS NOT LOWERED YET, AND THAT IS DELIBERATE
+### THE THRESHOLD: 240 → 60, ONCE THE PROBE HAD ACTUALLY FIRED
 
-`NIGHT_SILENCE_LIMIT_MIN` stays at **240**. With a probe firing into every
-25-minute silence, no night should ever show more than about 35 minutes of it,
-and the alarm could reasonably sit near 60 — but **the probe has not fired
-once**, because the product has not been quiet for 25 minutes since it
-deployed. Measured this morning, the longest provider silences of the night of
-23→24 September were 61, 60, 58 and 46 minutes: four windows the probe would
-have filled had it existed, and none it did.
+At 07:00 this said the number would move „when a heartbeat row exists, not
+before", because „built" and „works" had been confused once already this week
+at a cost of eight hours.
 
-„Built" and „works" were confused once already on 23 September, at a cost of
-eight hours. The number moves when a heartbeat row exists, not before.
+**The row exists. 07:13:08, after 26 minutes of silence, and again at 07:20.**
+
+So `NIGHT_SILENCE_LIMIT_MIN` is **60**, and the reasoning behind the old number
+is gone rather than adjusted. 240 was justified by what is NORMAL — the longest
+silence in seven nights was 205. The probe fires at 25 minutes and looks every
+10, so the longest silence the ledger can now show, with everything working, is
+about **35 minutes**, whoever is awake. A three-hour night silence is not
+unusual any more; it is impossible unless something is broken.
+
+**And the same hole was in the fence, not only the number.** The silence test
+ran only between 20:00 and 07:00, for exactly the reason the limit was 240. The
+heartbeat does not know what time it is, so that test is evidence at any hour —
+and it showed itself immediately: at 07:25 the monitor printed NOTHING PROVEN
+over a window in which the heartbeat was the only caller, and said nothing
+about the silence, because 07 is not night. **It now runs at every hour.**
+
+The alarm text names both readings, because they are not the same fact: the
+provider refusing, and the heartbeat not running. A silent probe and a silent
+provider are indistinguishable from the monitor, which is this week's confusion
+appearing in a new place.
+
+### 1. ~~Row 242's refusing half has never fired~~ — ANSWERED BY THE TESTER
+
+Withdrawn at 07:21. I asked Misho twice for two minutes on his own account to
+prove the refusal fires; it had already fired in production and I had not read
+the rows.
+
+Message 515 reported it closed on goal 10033, and it checks out from this side,
+in the harder form than I had asked for. Thread 24157 opened the goal at
+22:01:54. The identical sentence went into a **new thread**, 24158, at 22:03:17,
+no goal was created, and the reply named the open one: „This is exactly the goal
+we already have open…". Catching it across threads is the case I was least sure
+of.
+
+**The lesson is the one about the gate, again.** I had a question standing with
+a person for eleven hours, and the evidence was in `tasks` and `conversations`
+the whole time. „No duplicate has been attempted in production" was a claim
+about the database that I never asked the database.
 
 ### 1. Row 242's refusing half has never fired — STILL MISHO
 

@@ -161,8 +161,8 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
   # positive probe — one cheap model call when the window is empty, so silence
   # becomes evidence instead of the absence of it — and a probe costs money,
   # which is Misho's to authorise. Written into docs/NIGHT_QUESTIONS.md.
-  echo "  NOTE: at night this is the NORMAL answer, so a quiet window alone cannot"
-  echo "  see an outage that starts after everyone goes to bed. See NIGHT_QUESTIONS.md."
+  echo "  This window alone still cannot tell those apart — but the silence test"
+  echo "  below can, and it runs at every hour now. Read that line, not this one."
   if [ "$OTHER" -gt 0 ]; then
     echo "  ${OTHER} other usage row(s) are NOT that proof: that column also holds"
     echo "  tool names and a second provider, neither of which touches Anthropic."
@@ -204,34 +204,89 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
   #
   # Re-measure the seven-night table if the crons move; the number is only as
   # good as the schedule it was taken from.
+  #
+  # ────────────────────────────────────────────────────────────────────────
+  # 24 SEPTEMBER, 07:25 — 240 BECOMES 60, AND THE REASON ABOVE IS NO LONGER
+  # THE REASON.
+  #
+  # Everything above justifies 240 by what is NORMAL: the longest silence in
+  # seven nights was 205, so 240 is the first number that does not cry most
+  # nights. That reasoning died at 07:13:08 this morning, when the heartbeat
+  # made its first real call after 26 minutes of quiet.
+  #
+  # The probe fires at 25 minutes of silence and looks every 10, so the LONGEST
+  # SILENCE THE LEDGER CAN NOW SHOW, with everything working, is about 35
+  # minutes — and it no longer depends on whether anybody is awake. A night
+  # silence of three hours is not normal any more; it is impossible unless
+  # something is broken.
+  #
+  # So the threshold is not „above the normal night" any more. It is „long
+  # enough that the probe must have failed", and the two numbers have nothing
+  # to do with each other. 60 minutes leaves room for a deploy — a restart puts
+  # the first check ten minutes out — and still finds an outage inside an hour
+  # instead of four.
+  #
+  # KEEPING 240 WOULD HAVE BEEN WORSE THAN LEAVING IT ALONE, because the
+  # sentence beside it would have gone on explaining a number by a fact that
+  # had stopped being true. That is the failure this whole file is written
+  # against, and it does not stop being it when the number is mine.
+  #
+  # IF THIS STARTS CRYING WRONGLY, the thing to check first is whether the
+  # heartbeat is running at all — `[heartbeat] started` in the boot log, and a
+  # `kind = 'heartbeat'` row in `usage_events`. A silent probe and a silent
+  # provider look identical from here, which is the same confusion in a new
+  # place, and it is the reason the alarm text below names both.
   # ────────────────────────────────────────────────────────────────────────
   # Overridable so the alarm branch can be PROVEN rather than assumed:
   #   NIGHT_SILENCE_LIMIT_MIN=1 ./scripts/ops/outage.sh 20
-  # should shout on any quiet night. I ran exactly that before shipping it.
-  NIGHT_SILENCE_LIMIT_MIN="${NIGHT_SILENCE_LIMIT_MIN:-240}"
-  HOUR_NOW="$(date -u +%-H)"
-  if [ "$HOUR_NOW" -ge 20 ] || [ "$HOUR_NOW" -lt 7 ]; then
-    # This one DOES count heartbeats, and must: the whole point of the probe
-    # is that silence here means the provider is unreachable rather than that
-    # nobody is awake. See services/heartbeat.cron.ts.
-    QUIET_FOR="$(printf '%s' "SELECT COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(created_at)))/60), 99999)::int AS quiet_min FROM usage_events WHERE provider = 'anthropic'" \
-      | ./scripts/ops/ro.sh 2>/dev/null \
-      | python3 -c 'import sys,json
+  # should shout on any quiet window. I ran exactly that before shipping it.
+  NIGHT_SILENCE_LIMIT_MIN="${NIGHT_SILENCE_LIMIT_MIN:-60}"
+  # ────────────────────────────────────────────────────────────────────────
+  # AND IT RUNS AT EVERY HOUR NOW. This test used to be fenced behind
+  # `HOUR_NOW >= 20 || < 7`, for the same reason the limit was 240: by day a
+  # quiet window meant people were busy elsewhere, and silence proved nothing.
+  #
+  # That fence has the same hole the number did. The heartbeat does not know
+  # what time it is — it probes after 25 minutes of quiet at noon exactly as it
+  # does at four in the morning — so a long silence is now evidence at ANY
+  # hour, and fencing it to the night would leave the daytime version of the
+  # blindness this file was written for.
+  #
+  # It was visible immediately: at 07:25, one minute after the limit changed,
+  # this script printed NOTHING PROVEN over a twenty-minute window in which the
+  # heartbeat was the only thing calling the provider — and said nothing about
+  # the silence, because 07 is not night. Half an hour outside the fence.
+  # ────────────────────────────────────────────────────────────────────────
+  # This one DOES count heartbeats, and must: the whole point of the probe
+  # is that silence here means the provider is unreachable rather than that
+  # nobody is awake. See services/heartbeat.cron.ts.
+  QUIET_FOR="$(printf '%s' "SELECT COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(created_at)))/60), 99999)::int AS quiet_min FROM usage_events WHERE provider = 'anthropic'" \
+    | ./scripts/ops/ro.sh 2>/dev/null \
+    | python3 -c 'import sys,json
 try: print(json.load(sys.stdin)["data"]["rows"][0]["quiet_min"])
 except Exception: print("x")')"
-    if [ "$QUIET_FOR" = "x" ]; then
-      echo "  AND I COULD NOT READ THE LAST CALL'S AGE — that is not reassurance either."
-    elif [ "$QUIET_FOR" -gt "$NIGHT_SILENCE_LIMIT_MIN" ]; then
-      echo ""
-      echo "SILENT LONGER THAN ANY NIGHT THIS WEEK — ${QUIET_FOR} minutes since the last"
-      echo "  Anthropic call. The longest silence inside any of the last seven nights"
-      echo "  was 205 minutes, and the crons (nightly review 02:30, notifications 05:00)"
-      echo "  call the provider on 7 of 7 nights. Something that always happens has not."
-      exit 1
-    else
-      echo "  Last Anthropic call: ${QUIET_FOR} min ago. Normal night silence here runs"
-      echo "  to 205 min, so this is not yet evidence of anything — at ${NIGHT_SILENCE_LIMIT_MIN} it would be."
-    fi
+  if [ "$QUIET_FOR" = "x" ]; then
+    echo "  AND I COULD NOT READ THE LAST CALL'S AGE — that is not reassurance either."
+  elif [ "$QUIET_FOR" -gt "$NIGHT_SILENCE_LIMIT_MIN" ]; then
+    echo ""
+    echo "SILENT LONGER THAN THE PROBE ALLOWS — ${QUIET_FOR} minutes since the last"
+    echo "  Anthropic call, against a limit of ${NIGHT_SILENCE_LIMIT_MIN}."
+    echo "  The heartbeat calls the provider after 25 minutes of silence and looks"
+    echo "  every 10, so with everything working the ledger cannot show more than"
+    echo "  about 35 minutes. This is not a quiet night; a quiet night is no longer"
+    echo "  possible."
+    echo ""
+    echo "  TWO THINGS LOOK LIKE THIS AND THEY ARE NOT THE SAME:"
+    echo "    * the provider is refusing — the outage this file exists for"
+    echo "    * the heartbeat is not running — check for '[heartbeat] started' in the"
+    echo "      boot log and a kind='heartbeat' row in usage_events"
+    echo "  Say which one you found. Do not report the first without ruling out the"
+    echo "  second: a silent probe and a silent provider are indistinguishable here."
+    exit 1
+  else
+    echo "  Last Anthropic call: ${QUIET_FOR} min ago. The heartbeat probes at 25 min"
+    echo "  and looks every 10, so up to about 35 is ordinary — at ${NIGHT_SILENCE_LIMIT_MIN} it would mean"
+    echo "  the probe itself has stopped or the provider is refusing."
   fi
   exit 0
 fi
