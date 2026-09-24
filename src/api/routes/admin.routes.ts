@@ -121,6 +121,7 @@ import {
   LOGIN_INVITE_ONLY_FLAG,
   PERSONAL_CODE_ONLY_FLAG,
 } from '../../services/inviteGate.service';
+import { loginGateVerdict } from '../../services/auth.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -2159,6 +2160,40 @@ adminRouter.post(
 adminRouter.get('/launch-window', (_req: Request, res: Response) => {
   res.status(200).json({ success: true, data: launchWindowStatus() });
 });
+
+/**
+ * `POST /admin/login-gate-check`  { "user_id": 4511 }
+ *
+ * WHAT THE LOGIN GATE WOULD DO TO ONE ACCOUNT, LOGGING NOBODY IN.
+ *
+ * The tester, minutes after the gate went on: „Real login: we cannot. It needs
+ * a login code and this seat never types one." The same wall the registration
+ * gate hit, and the same answer: **a switch that refuses people with no way to
+ * see the refusal is a switch nobody can check.**
+ *
+ * It asks the same condition `completeLogin` asks, through the same shared SQL
+ * fragment, and reads the same flag. Nothing is written and no session is
+ * minted — the OTP is what makes a login a login and it is not consulted here,
+ * so this cannot let anybody in.
+ */
+adminRouter.post(
+  '/login-gate-check',
+  body('user_id').isInt({ min: 1 }).withMessage('user_id is required'),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'user_id is required' });
+      return;
+    }
+    try {
+      const { user_id } = req.body as { user_id: number };
+      res.status(200).json({ success: true, data: await loginGateVerdict(user_id) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[login-gate-check] failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 /** Every seat that can be operated: the eleven in source, plus the made ones. */
 adminRouter.get('/test-accounts', async (_req: Request, res: Response) => {

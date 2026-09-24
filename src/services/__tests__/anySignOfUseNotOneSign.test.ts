@@ -37,13 +37,16 @@ const LOOKUP_AT = SOURCE.indexOf(
 );
 const LOOKUP = SOURCE.slice(LOOKUP_AT, SOURCE.indexOf('if (!result.rowCount', LOOKUP_AT));
 
+const FRAGMENT_AT = SOURCE.indexOf('export function hasUsedNetaiSql');
+const FRAGMENT = SOURCE.slice(FRAGMENT_AT, SOURCE.indexOf('\n}', FRAGMENT_AT));
+
 describe('what counts as having used Netai', () => {
   it('a thread still counts', () => {
-    expect(LOOKUP).toContain('FROM threads t WHERE t.user_id = up."userId"');
+    expect(FRAGMENT).toContain('FROM threads t WHERE t.user_id = ');
   });
 
   it('so does a push subscription', () => {
-    expect(LOOKUP).toContain('FROM push_subscriptions p');
+    expect(FRAGMENT).toContain('FROM push_subscriptions p');
   });
 
   /**
@@ -51,9 +54,27 @@ describe('what counts as having used Netai', () => {
    * who has a thread but never turned notifications on — which is 40 of the 45
    * people who have used the product.
    */
-  it('either one is enough, and it is asked in one round trip', () => {
-    expect(LOOKUP).toMatch(/EXISTS[\s\S]*threads[\s\S]*OR EXISTS[\s\S]*push_subscriptions/);
+  it('either one is enough', () => {
+    expect(FRAGMENT).toMatch(/EXISTS[\s\S]*threads[\s\S]*OR EXISTS[\s\S]*push_subscriptions/);
+  });
+
+  /**
+   * ⚠️ AND THE LOGIN PATH USES THAT FRAGMENT RATHER THAN A COPY OF IT.
+   *
+   * The dry-run route asks the same question of an account id, and the moment
+   * it carries its own copy of the condition it will agree with itself
+   * whatever the real gate does. One definition, two callers.
+   */
+  it('the login lookup is built from the fragment, not from its own copy', () => {
+    expect(LOOKUP).toContain('hasUsedNetaiSql(\'up."userId"\')');
+    expect(LOOKUP).not.toContain('FROM push_subscriptions');
     expect(LOOKUP.match(/await query/g)).toHaveLength(1);
+  });
+
+  /** It builds SQL by interpolation, so what may be interpolated is listed. */
+  it('only accepts the expressions on the allow-list', () => {
+    expect(SOURCE).toContain("const ID_EXPRESSIONS = ['up.\"userId\"', '$1::int']");
+    expect(FRAGMENT).toContain('unknown id expression');
   });
 });
 

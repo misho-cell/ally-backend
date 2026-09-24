@@ -267,6 +267,103 @@ export async function verifyOTP(
  * the general one and quietly shorten what somebody was promised. A person who
  * came through a cohort door has already been given days; this adds nothing.
  */
+/**
+ * HAS THIS ACCOUNT EVER USED NETAI — the login gate's condition, written once.
+ *
+ * ⚠️ IT IS A FRAGMENT AND NOT A FUNCTION FOR ONE REASON: `completeLogin` asks
+ * it in the SAME round trip as the phone lookup, and the admin dry-run asks it
+ * of an account id. A second copy of the condition is how the gate and the
+ * thing that checks the gate end up disagreeing — and a checker that carries
+ * its own copy of the rule will agree with itself whatever the rule does.
+ *
+ * ANY sign of use, not one sign. It read „has a thread" until a dry run on 24
+ * September found account 4511: no thread, and a live push subscription
+ * registered 21 September with two notifications sent to it. A push
+ * subscription cannot exist unless that browser was on the Netai site and the
+ * person granted permission, so the gate would have told somebody they need an
+ * invitation to a product they already have on their phone.
+ *
+ * OR and not AND: AND would refuse everybody who has a thread but never turned
+ * notifications on, which is 40 of the 45 people who have used Netai.
+ */
+/**
+ * ⚠️ AND THE ONLY THINGS IT MAY BE GIVEN ARE LISTED HERE.
+ *
+ * This builds SQL by interpolation, which the house rule forbids — for user
+ * data, and rightly. What goes in is a COLUMN EXPRESSION or a placeholder, and
+ * neither can be a bind parameter: `$1` cannot name a column. So the safety has
+ * to come from somewhere else, and „only ever called with a literal" is a
+ * promise, not a guarantee. The allow-list makes it one.
+ */
+const ID_EXPRESSIONS = ['up."userId"', '$1::int'] as const;
+
+export function hasUsedNetaiSql(idExpr: (typeof ID_EXPRESSIONS)[number]): string {
+  if (!ID_EXPRESSIONS.includes(idExpr)) {
+    throw new Error('hasUsedNetaiSql: unknown id expression');
+  }
+  return `(EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${idExpr})
+           OR EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = ${idExpr}))`;
+}
+
+/**
+ * WHAT THE LOGIN GATE WOULD DO TO THIS ACCOUNT, WITHOUT LOGGING ANYBODY IN.
+ *
+ * The tester, 24 September, minutes after the gate went on: „Real login: we
+ * cannot. It needs a login code and this seat never types one." True, and it
+ * is the same wall the registration gate hit — a switch that refuses people
+ * with no way to see the refusal is a switch nobody can check.
+ *
+ * It asks the SAME condition `completeLogin` asks, through the same fragment,
+ * and the same flag. Nothing is written and no session is minted: the OTP is
+ * the thing that makes a login a login, and it is not consulted here.
+ */
+export interface LoginGateVerdict {
+  readonly account_exists: boolean;
+  readonly gate_on: boolean;
+  readonly has_used_netai: boolean;
+  readonly would_be_admitted: boolean;
+  readonly reason: string;
+}
+
+export async function loginGateVerdict(userId: number): Promise<LoginGateVerdict> {
+  const found = await query<{ has_used_netai: boolean }>(
+    `SELECT ${hasUsedNetaiSql('$1::int')} AS has_used_netai
+       FROM "User" u WHERE u.id = $1::int AND u."deletedAt" IS NULL`,
+    [userId],
+  );
+  const gateOn = await isLoginInviteOnlyEnabled();
+
+  if (found.rowCount === 0) {
+    return {
+      account_exists: false,
+      gate_on: gateOn,
+      has_used_netai: false,
+      would_be_admitted: false,
+      reason: 'no such account — a login would be treated as a new registration instead',
+    };
+  }
+
+  const hasUsed = found.rows[0].has_used_netai === true;
+  if (hasUsed) {
+    return {
+      account_exists: true,
+      gate_on: gateOn,
+      has_used_netai: true,
+      would_be_admitted: true,
+      reason: 'has used Netai — a thread or a push subscription; the gate never sees this account',
+    };
+  }
+  return {
+    account_exists: true,
+    gate_on: gateOn,
+    has_used_netai: false,
+    would_be_admitted: !gateOn,
+    reason: gateOn
+      ? 'REFUSED: no Netai activity and the invitation gate is on'
+      : 'no Netai activity, but the gate is off — admitted, and a first-arrival line is logged',
+  };
+}
+
 export async function grantWhateverFreePeriodIsOwed(
   userId: number,
   cleanPhone: string,
@@ -461,9 +558,7 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
      * back out — but that is a decision somebody makes, not a gap nobody saw.
      */
     `SELECT up."userId" AS id,
-            (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = up."userId")
-             OR EXISTS (SELECT 1 FROM push_subscriptions p
-                         WHERE p.user_id = up."userId")) AS has_used_netai
+            ${hasUsedNetaiSql('up."userId"')} AS has_used_netai
        FROM "UserPhone" up
       WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
     [phone],
