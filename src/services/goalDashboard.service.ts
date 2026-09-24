@@ -288,6 +288,26 @@ function outcomeFor(row: GoalRow, stage: GoalStage): GoalOutcome {
   return {
     state,
     closed_reason: row.closed_reason,
+    /**
+     * ⚠️ THIS IS NOT `tasks.closed_at`, AND THE TWO NOW DISAGREE ON PURPOSE.
+     *
+     * This one is a GUESS: the last time the row was touched, shown when the
+     * row happens to be closed. `updated_at` moves for a title change, a
+     * summary, an ask settling — so on an old goal it can be days after the
+     * close, and on a goal closed before 23 September it is the only thing
+     * there is.
+     *
+     * The real column, added by migration 172, is written by the two paths
+     * that actually close a goal and is null when the close predates it. The
+     * pilot report counts closures by THAT column and deliberately shows
+     * nothing rather than counting a `updated_at` as a closing date — 422
+     * goals closed before it existed and cannot be dated at all.
+     *
+     * Kept as it is because this screen has shown this value for weeks and a
+     * user-facing „closed" date that suddenly empties is worse than one that
+     * is approximate. But nobody should ever read the two as the same number:
+     * one is when it closed, the other is when it was last touched.
+     */
     closed_at: row.status === 'closed' ? iso(row.updated_at) : null,
     asks_worked: Number(row.asks_worked),
     asks_did_not_work: Number(row.asks_did_not_work),
