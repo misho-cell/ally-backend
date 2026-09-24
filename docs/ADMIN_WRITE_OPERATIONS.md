@@ -2968,3 +2968,20 @@ could not already create a seat.
 person would enter that person's referral chain — and their referral earnings —
 with an invented registration. That is a write on a real person's data wearing a
 test's clothes, and it is refused by name, not skipped silently.
+
+### ⚠️ THE FIRST LIVE REFUSAL CREATED A SEAT, AND TWO STRAYS EXIST
+
+Two fictional accounts were made in the course of proving this and neither is
+what it looks like. Recorded so nobody later reads them as evidence of
+anything:
+
+| seat | what it actually is |
+|---|---|
+| **Netai Test 21** (172266, +1 202 555 0120) | created with `invited_by: 171871` against a build that **did not have this code yet** — it was still BUILDING. The old route ignored the unknown field and answered 201, which looks exactly like success. So it is an ORDINARY seat: no inviter, no cohort stamp, no trial. „Built ≠ deployed", and a 201 could not tell the two apart. |
+| **Netai Test 22** (172267, +1 202 555 0121) | created by the refusal itself. `invited_by: 501` — a real person — was correctly rejected, but the check ran AFTER the account, its phone and its `test_seats` row were written. **A refusal that has already created something has not refused.** |
+
+Both carry 0 tokens. Per the undo rule above they are emptied and left, not
+deleted.
+
+The check now runs before anything is created, and a test asserts that no
+`INSERT INTO "User"` happens on that path.

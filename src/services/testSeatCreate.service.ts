@@ -182,11 +182,19 @@ export interface SeatShape {
  * person would put a fiction into that person's referral chain and their
  * earnings, which is a write on somebody's data, not a test.
  */
-async function arriveByInvitation(
-  userId: string,
-  phone: string,
-  inviterSeatId: string,
-): Promise<void> {
+/**
+ * ⚠️ ASKED BEFORE ANYTHING IS CREATED, and it was not, first time round.
+ *
+ * The refusal used to live inside `arriveByInvitation`, which runs AFTER the
+ * account, its phone and its `test_seats` row are written. So the very first
+ * live refusal — `invited_by: 501`, a real person, correctly rejected — left
+ * Netai Test 22 (172267) behind: a seat nobody asked for, made by a call that
+ * failed. A refusal that has already created something has not refused.
+ *
+ * It is cheap and depends on nothing about the new account, so there is no
+ * reason for it to happen late other than not having thought about it.
+ */
+async function inviterSeatPhone(inviterSeatId: string): Promise<string> {
   const inviter = await query<{ phone: string }>(
     `SELECT up.phone
        FROM test_seats ts
@@ -202,7 +210,15 @@ async function arriveByInvitation(
       `the inviter ${inviterSeatId} is not a test seat — a fictional account may only be invited by another seat`,
     );
   }
+  return inviterPhone;
+}
 
+async function arriveByInvitation(
+  userId: string,
+  phone: string,
+  inviterSeatId: string,
+  inviterPhone: string,
+): Promise<void> {
   const gate = await checkRegistrationEligibility(phone, inviterPhone);
 
   /**
@@ -236,6 +252,11 @@ export async function createTestSeat(
   if (seatName === '') throw new SeatCreationRefused('a seat needs a name');
   const why = note.trim().slice(0, MAX_NOTE_CHARS);
   if (why.length < 3) throw new SeatCreationRefused('say why this seat is being made');
+
+  // Before a single row exists: an inviter that is not a seat refuses here,
+  // not after the account has been made.
+  const inviterPhone =
+    shape.invitedBy === undefined ? null : await inviterSeatPhone(shape.invitedBy);
 
   const phone = await firstFreeFictionalPhone();
 
@@ -291,7 +312,8 @@ export async function createTestSeat(
     SEAT_QUERY_TIMEOUT_MS,
   );
 
-  if (shape.invitedBy !== undefined) await arriveByInvitation(userId, phone, shape.invitedBy);
+  if (shape.invitedBy !== undefined && inviterPhone !== null)
+    await arriveByInvitation(userId, phone, shape.invitedBy, inviterPhone);
 
   const saved = await savePhonebook(userId, holds);
   const balance =

@@ -167,4 +167,23 @@ describe('who may invite a fiction', () => {
 
     await expect(make('501')).rejects.toThrow(/501/);
   });
+
+  /**
+   * ⚠️ AND IT REFUSES BEFORE IT CREATES, which it did not at first.
+   *
+   * The check used to sit inside the invitation step, which runs AFTER the
+   * account, its phone and its `test_seats` row are written. The very first
+   * live refusal — a real person as the inviter, correctly rejected — left
+   * Netai Test 22 (172267) behind: a seat nobody asked for, made by a call
+   * that failed. A refusal that has already created something has not refused.
+   */
+  it('creates nothing at all when the inviter is not a seat', async () => {
+    world({});
+
+    await expect(make('501')).rejects.toBeInstanceOf(SeatCreationRefused);
+
+    const written = dbQuery.mock.calls.map((c) => String(c[0]));
+    expect(written.some((s) => s.includes('INSERT INTO "User"'))).toBe(false);
+    expect(written.some((s) => s.includes('INSERT INTO test_seats'))).toBe(false);
+  });
 });
