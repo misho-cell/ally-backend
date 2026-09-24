@@ -2553,3 +2553,27 @@ One word from Misho: **A, B, or C.** Nothing is built and nothing runs until
 then. If the answer does not come before 26 September, A happens by itself and
 the register entry closes as „overtaken by the event", which is a fine outcome
 and not a failure.
+
+### DECIDED 24 September, 11:22 — **A. DO NOTHING.** Misho: „არაფერი გააკეთო 4511-ზე, დაელოდე 26-ს"
+
+Nothing is built, nothing runs, and options B and C are closed rather than
+deferred. If the row still reads wrong after 26 September, that is a NEW
+question with new evidence — not this one reopened, and not a licence to run B
+on the strength of a decision made today about a different situation.
+
+**WHAT HAPPENS BY ITSELF:** the subscription's period ends 2026-09-26 11:26:51.
+Stripe sends the event, the webhook writes `cancel_at_period_end`, `cancels_at`
+and the status through the ordinary path, and the profile endpoint starts
+telling that person the truth.
+
+**AND IT IS CHECKED, NOT ASSUMED.** A one-shot check is scheduled for the 26th.
+„It will fix itself" is a prediction, and this register does not close entries
+on predictions — the same rule that made me read migration 174's backfill back
+instead of trusting the number I had forecast. The tester is reading the
+profile endpoint that day too, independently.
+
+**IF IT DOES NOT CORRECT ITSELF**, that is worth more than the row: it would
+mean a scheduled cancellation produces no event at period end, and every future
+cancellation would sit wrong until somebody noticed by hand. That is a much
+larger finding than one account, and it is the reason the check is worth
+keeping rather than letting the date pass quietly.
