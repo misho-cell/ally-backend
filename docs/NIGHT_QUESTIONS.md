@@ -135,7 +135,23 @@ accounts) has a different night from a person in Tbilisi.
 that had no model call behind them, which is the one thing `outage.sh`'s
 NOTHING PROVEN branch asks a reader to do.
 
-### B. Clearing the founder's test goals off account 501
+### B. ~~Clearing the founder's test goals off account 501~~ — DONE 23 Sep 16:20, AND I ASKED FOR IT AGAIN THIS MORNING
+
+❗ **THIS ENTRY WAS SIXTEEN HOURS STALE AND IT REACHED THE FOUNDER.** At 08:00
+today I put „his test goals on 501 — hide them, or something else?" on the
+board as an open decision needing his word. He had already given that word on
+23 September, **and I had already carried it out**: `hidden_goals` holds 221
+rows, every one written between 16:20:46 and 16:21:53 on 23 September. The
+tester had to tell me (message 519), and the proof was one SELECT away.
+
+This is the fault the protocol's own point 0 measures — eight of twelve row
+claims checked on 20–21 September turned out to be stale — and the cost this
+time was the founder's attention on a question that was already answered. **A
+list that is read out without being re-checked is a list that wastes the people
+it is read to.** Before the next handover: re-verify every open item against
+the database or the code, not against this file.
+
+The original entry follows, for its reasoning.
 
 Registered in full as **§23 of `ADMIN_WRITE_OPERATIONS.md`** — route, method,
 body and undo — rather than summarised here, because it is a write against a
@@ -797,7 +813,23 @@ close both goals. Two rows on his account, nothing sent to anybody. **It needs
 his word because it writes to a real account, and „I would only close what I
 opened" is exactly the sentence a rule exists to not have to trust.**
 
-### 3. Thirty-one questions shown and unanswered — TORNIKE
+### 3. ~~Thirty-one questions shown and unanswered~~ — RULED 24 Sep 08:2x: „IT WAS ALL TEST PEOPLE"
+
+The founder's words, through the box (message 520): **„it was all test people —
+nobody was going to answer".**
+
+So it was neither the wrong question nor the wrong moment, which were the only
+two possibilities I could see. It was a third: **the people were not people who
+would ever answer.** Lika and friends, running tests.
+
+**BUILD NO NUDGE ON THIS DATA**, and the number itself is not a product signal
+until real users are being asked. That is worth more than the ruling: I had
+framed „43 shown and unanswered" as a fact about the product, and it is a fact
+about who was holding the phones. A number whose POPULATION nobody asked for —
+the same shape as the search-speed measurement read off ten test seats three
+hours earlier, on the same morning.
+
+The original entry follows.
 
 Separated from the 52 never shown (see the correction in §9 of
 `SCREEN_CHECKLIST.md`). These were put in front of real people and not
