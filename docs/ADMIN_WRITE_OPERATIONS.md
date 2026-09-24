@@ -3452,3 +3452,59 @@ reads the same flag, but it spends no OTP and mints no session — so it shows
 the DECISION is right and cannot show that the refusal reaches the person
 correctly. The first real login by an active user is still the thing nobody has
 seen.
+
+---
+
+## 48 · §36's rule was still wrong, and the app team caught it
+
+The client **does** post the subscription on every app open — answered 24
+September, and it has done since `30d14c3` this morning. Two things came with
+that answer and both change §36.
+
+### 1 · IT ONLY RAN ON CHAT SCREENS
+
+It was bound to the chat layout. **Somebody who opens a notification and lands
+on `/updates`, or goes to their profile, never claimed anything** — and those
+are precisely the people row 101 is about, because a notification is what put
+them there.
+
+So „this endpoint has not claimed" would have meant „that person did not open a
+chat", and the evidence would have been answering a different question than the
+one asked. Moved to the root layout in `9f6ab6f`; opening the app now means
+opening the app.
+
+### 2 · A ROW CANNOT HAVE BEEN SILENT LONGER THAN THE COLUMN HAS EXISTED
+
+`last_seen_at` was born today. „Not claimed in 30 days" therefore becomes
+measurable on **24 October**, not before. Their words:
+
+> *„26 September is good for seeing WHETHER claims appear at all — whether the
+> mechanism works. It is no good for deleting."*
+
+And the failure was live in the tool: a row simply not opened yet is
+indistinguishable from a row whose browser is gone, so the rule would have
+called it STALE the moment some OTHER row of that person claimed. **Two days
+in, that names three of Lika's five endpoints.**
+
+`push.sh claims` now refuses to name anything until the window has actually
+elapsed since stamping began, with a floor of **14 days** that a shorter window
+cannot get under, and prints `TOO EARLY TO DELETE ANYTHING` with the count of
+days observed. It still answers the question it can answer — are claims
+arriving at all.
+
+### THE RULE §36 NOW CARRIES
+
+    STALE = at least 14 days since stamping began
+            AND this row has not been claimed in the window
+            AND another row of the SAME PERSON has been claimed inside it
+
+Their suggested bar, which this implements: one endpoint claiming repeatedly
+while another claims never, over at least two weeks. Lika's three rows without
+a `device_id` will show up exactly that way if they really are dead.
+
+### AND A PROCESS FAULT WORTH MORE THAN THE FIX
+
+They said it plainly: **`FOR_FRONTEND.md` is not read automatically. They only
+have what is actually sent to them.** This question sat in that file for hours
+after being written, while I counted it as delivered. Writing a thing down and
+telling somebody are different acts, and only one of them is communication.

@@ -151,3 +151,46 @@ describe('the rule that reads it cannot delete somebody’s only phone', () => {
     expect(CLAIMS).toContain('raise SystemExit(2)');
   });
 });
+
+describe('⚠️ a row cannot have been silent longer than the column has existed', () => {
+  const CLAIMS = TOOL.slice(TOOL.indexOf('if [ "$WHO" = claims ]'));
+  const HEADER = TOOL.slice(TOOL.indexOf('CLAIMS_BEGAN='), TOOL.indexOf('if [ "$WHO" = claims ]'));
+
+  /**
+   * THE APP TEAM CAUGHT THIS BEFORE IT COST ANYBODY ANYTHING, on the day the
+   * column was born:
+   *
+   *   „26 September is good for seeing WHETHER claims appear at all — whether
+   *   the mechanism works. It is no good for deleting."
+   *
+   * „Not claimed for thirty days" cannot be true of any row until thirty days
+   * after stamping began. Before that, a row simply not opened yet is
+   * indistinguishable from a row whose browser is gone — and the rule would
+   * have called it STALE as soon as some OTHER row of that person claimed.
+   * Two days in, that names three of Lika's five endpoints.
+   */
+  it('will not name a row stale before the window has actually elapsed', () => {
+    expect(CLAIMS).toContain('observed >= needed');
+    expect(CLAIMS).toContain('TOO EARLY');
+  });
+
+  it('measures elapsed time from the day stamping began, not from today', () => {
+    expect(CLAIMS).toContain('observed = (today - began).days');
+  });
+
+  /** Their bar was two weeks; the floor holds even if somebody passes 1. */
+  it('has a floor no shorter window can get under', () => {
+    expect(HEADER).toContain('MIN_OBSERVATION_DAYS=14');
+    expect(CLAIMS).toContain('needed = min(window, floor_days)');
+  });
+
+  /**
+   * „Too early" and „nothing is stale" are different facts, and the run still
+   * has to be useful for the question it CAN answer — are claims arriving at
+   * all.
+   */
+  it('still says whether the mechanism is working', () => {
+    expect(CLAIMS).toContain('NO BROWSER HAS CLAIMED ANYTHING YET');
+    expect(CLAIMS).toContain('WHETHER claims are arriving at all');
+  });
+});

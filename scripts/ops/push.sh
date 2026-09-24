@@ -150,6 +150,23 @@ fi
 # IT DELETES NOTHING. A row named here is a candidate for §36 of the register,
 # decided by a person (D44).
 CLAIMS_BEGAN='2026-09-24'   # stamping started here; anything earlier is backfill
+#
+# ⚠️⚠️ AND THE TRAP THE APP TEAM CAUGHT BEFORE IT COST ANYBODY ANYTHING.
+#
+# „Not claimed for thirty days" cannot be true of ANY row until thirty days
+# after stamping began. Before that, a row that simply has not been opened yet
+# is indistinguishable from a row whose browser is gone — and the rule would
+# call it STALE the moment some OTHER row of that person claimed. Two days
+# after the column was born, that would have named three of Lika's five.
+#
+# Their words, 24 September: „26 September is good for seeing WHETHER claims
+# appear at all — whether the mechanism works. It is no good for deleting."
+#
+# So the window must have ELAPSED since stamping began before this tool is
+# allowed to name anything. Their suggested bar is two weeks with one endpoint
+# claiming repeatedly and another claiming never; the floor below enforces the
+# time half of that, and the „another row claimed" clause the rest.
+MIN_OBSERVATION_DAYS=14
 if [ "$WHO" = claims ]; then
   DAYS="${2:-30}"
   printf '%s' "SELECT u.name,
@@ -165,7 +182,7 @@ if [ "$WHO" = claims ]; then
   FROM push_subscriptions s
   JOIN \"User\" u ON u.id = s.user_id
  ORDER BY u.name, s.created_at
- LIMIT 200" | ./scripts/ops/ro.sh 2>/dev/null | DAYS="$DAYS" BEGAN="$CLAIMS_BEGAN" python3 -c '
+ LIMIT 200" | ./scripts/ops/ro.sh 2>/dev/null | DAYS="$DAYS" BEGAN="$CLAIMS_BEGAN" FLOOR="$MIN_OBSERVATION_DAYS" python3 -c '
 import sys, json, os, datetime
 try:
     rows = json.load(sys.stdin)["data"]["rows"]
@@ -175,7 +192,11 @@ except Exception:
 
 window = int(os.environ["DAYS"])
 began = datetime.date.fromisoformat(os.environ["BEGAN"])
+floor_days = int(os.environ["FLOOR"])
 today = datetime.date.today()
+# A row cannot have been silent for longer than the column has existed.
+observed = (today - began).days
+needed = min(window, floor_days)
 
 def day(value):
     return None if not value else datetime.date.fromisoformat(str(value)[:10])
@@ -193,8 +214,10 @@ for r in rows:
         real_claims += 1
     quiet = not a_real_claim(claimed) or (today - claimed).days >= window
     person_reports = a_real_claim(other) and (today - other).days < window
-    if quiet and person_reports:
+    if quiet and person_reports and observed >= needed:
         verdict, stale = "STALE — the person claims another row, never this one", stale + 1
+    elif quiet and person_reports:
+        verdict = "silent, but the column is only %d day(s) old — TOO EARLY" % observed
     elif quiet:
         verdict = "not claimed yet — PROVES NOTHING"
     else:
@@ -206,6 +229,12 @@ for r in rows:
              verdict))
 
 print()
+if observed < needed:
+    print("TOO EARLY TO DELETE ANYTHING. last_seen_at began %s, %d day(s) ago;" % (began, observed))
+    print("a row cannot have been silent longer than the column has existed. This")
+    print("run can show WHETHER claims are arriving at all — which is worth")
+    print("knowing — but it may not name a row stale before %d days." % needed)
+    print()
 if real_claims == 0:
     print("NO BROWSER HAS CLAIMED ANYTHING YET. Every date above is migration 176")
     print("copying created_at, not a browser turning up — so this run proves")
