@@ -178,8 +178,43 @@ describe('paying means somebody we bill', () => {
 
     const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
     expect(sql).toContain('AS access_granted_by_hand');
-    expect(sql).toMatch(/"stripeCustomerId" IS NULL\)\s+AS access_granted_by_hand/);
+    // Paren count is not the point — the NULL test being the one attached to
+    // THIS column is. The fragment is now shared, so it arrives wrapped in the
+    // caller's FILTER and the old literal match counted brackets instead of
+    // meaning.
+    expect(sql).toMatch(/"stripeCustomerId" IS NULL\)+\s+AS access_granted_by_hand/);
     expect(report.real.people).toHaveProperty('access_granted_by_hand');
+  });
+
+  /**
+   * ⚠️ AND THE LIST OF THE SAME PEOPLE HAS TO AGREE WITH THE SUMMARY.
+   *
+   * The first version of this fix changed the REPORT and not `pilotPeople`, so
+   * for two hours the summary said 4 paying and the list of those same people
+   * would have marked 15 of them as paying — on one screen. That is the fault
+   * the fix was for, committed by the fix, in a file whose own comment already
+   * said „one definition, not two".
+   *
+   * Both now build their SQL from one shared string, which is the only version
+   * of this that cannot drift again.
+   */
+  it('the people list uses the same definition as the summary', async () => {
+    await pilotPeople();
+
+    const sql = String(dbQuery.mock.calls[0][0]);
+    expect(sql).toContain('"stripeCustomerId" IS NOT NULL');
+    expect(sql).toContain('AS paying');
+    // And it carries the other half too, so a row can show which it is.
+    expect(sql).toContain('AS granted_by_hand');
+  });
+
+  /** The definition travels with the numbers, like the population rule does. */
+  it('carries what paying MEANS in the payload', async () => {
+    const report = await pilotReport(7);
+
+    expect(report.payment_rule).toContain('Stripe customer');
+    expect(report.payment_rule).toContain('admin grant');
+    expect(report.payment_rule).toContain('not revenue');
   });
 
   /** The 20-day cohort is the revenue question, so it takes the same rule. */

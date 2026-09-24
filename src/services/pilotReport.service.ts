@@ -147,6 +147,7 @@ export interface PilotReport {
    * „solved" column on a day in the past means NOT RECORDED, and a screen that
    * does not say so is telling the reader the pilot solved nothing.
    */
+  readonly payment_rule: string;
   readonly closures_dated_since: string | null;
   readonly real: PilotSide;
   readonly seats: PilotSide;
@@ -189,6 +190,38 @@ const REAL = `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
               AND (u."hasAccessToAlly" = true
                    OR EXISTS (SELECT 1 FROM threads th WHERE th.user_id = u.id))`;
 const SEAT = `EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)`;
+
+/**
+ * WHO WE ACTUALLY BILL, AND WHO WAS SIMPLY LET IN — as SQL fragments, for the
+ * same reason `REAL` is one: so there cannot be two readings of it.
+ *
+ * ⚠️ AND THERE WERE TWO, FOR TWO HOURS THIS MORNING, BECAUSE OF THIS FIX.
+ *
+ * At 09:20 I found that `paying` meant „the status column says active", and
+ * that column is written by the admin GRANT route as well as by Stripe — 15
+ * accounts, of which 11 have no Stripe record at all. I fixed it in the report
+ * and NOT in `pilotPeople`, so the summary said 4 and the list of the same
+ * people would have marked 15 of them as paying, on one screen.
+ *
+ * That is the exact fault the fix was for, committed by the fix, in a file
+ * whose own comment already said „one definition, not two". A shared string is
+ * the only version of this that cannot drift again.
+ */
+const PAYS_US = `(u.subscription_status = ANY($PAYING$) AND u."stripeCustomerId" IS NOT NULL)`;
+const GRANTED_BY_HAND = `(u.subscription_status = ANY($PAYING$) AND u."stripeCustomerId" IS NULL)`;
+const PAYING_STATUSES = ['active', 'past_due'];
+
+/** The fragments carry a placeholder so each query can bind its own parameter number. */
+function withParam(fragment: string, n: number): string {
+  return fragment.replace('$PAYING$', `$${n}`);
+}
+
+const PAYMENT_RULE =
+  'paying = a live subscription AND a Stripe customer — somebody we actually bill. ' +
+  'access_granted_by_hand = the status says active and there is no Stripe record at ' +
+  'all, which is an admin grant. On 24 September that was 4 and 11: reading the status ' +
+  'column alone would call all 15 paying. Both are real and they are not the same ' +
+  'fact — a hand-granted account is a person using the product, and it is not revenue.';
 
 const POPULATION_RULE =
   'real = somebody who has USED Netai (has a thread here) or registered through it ' +
@@ -331,16 +364,13 @@ async function sideFor(who: string, span: number): Promise<PilotSide> {
       `SELECT COUNT(*)                                                   AS registered,
               COUNT(*) FILTER (WHERE u."createdAt" < NOW() - INTERVAL '20 days') AS past_day_20,
               COUNT(*) FILTER (WHERE u."createdAt" < NOW() - INTERVAL '20 days'
-                                 AND u.subscription_status = ANY($1)
-                                 AND u."stripeCustomerId" IS NOT NULL)    AS past_day_20_paying,
-              COUNT(*) FILTER (WHERE u.subscription_status = ANY($1)
-                                 AND u."stripeCustomerId" IS NOT NULL)    AS paying,
-              COUNT(*) FILTER (WHERE u.subscription_status = ANY($1)
-                                 AND u."stripeCustomerId" IS NULL)        AS access_granted_by_hand,
+                                 AND ${withParam(PAYS_US, 1)})            AS past_day_20_paying,
+              COUNT(*) FILTER (WHERE ${withParam(PAYS_US, 1)})            AS paying,
+              COUNT(*) FILTER (WHERE ${withParam(GRANTED_BY_HAND, 1)})    AS access_granted_by_hand,
               MAX(u."createdAt")::text                                   AS newest
          FROM "User" u
         WHERE ${who}`,
-      [['active', 'past_due']],
+      [PAYING_STATUSES],
       PILOT_QUERY_TIMEOUT_MS,
     ),
     query<{ n: string }>(
@@ -397,6 +427,7 @@ export async function pilotReport(days = DEFAULT_DAYS): Promise<PilotReport> {
     from: real.days[0]?.day ?? '',
     to: real.days[real.days.length - 1]?.day ?? '',
     population: POPULATION_RULE,
+    payment_rule: PAYMENT_RULE,
     closures_dated_since: dated.rows[0]?.first ?? null,
     real,
     seats,
@@ -433,6 +464,8 @@ export interface PilotPerson {
   /** Days since registration — the founder's day-20 call reads this. */
   readonly day: number;
   readonly paying: boolean;
+  /** Let in by an admin, never billed. Shown beside `paying`, never inside it. */
+  readonly granted_by_hand: boolean;
   readonly threads: number;
   readonly goals: number;
   readonly last_active_at: string | null;
@@ -446,6 +479,7 @@ export async function pilotPeople(): Promise<readonly PilotPerson[]> {
     registered_at: string;
     day: string;
     paying: boolean;
+    granted_by_hand: boolean;
     threads: string;
     goals: string;
     last_active_at: string | null;
@@ -454,7 +488,8 @@ export async function pilotPeople(): Promise<readonly PilotPerson[]> {
             u.name,
             u."createdAt"::text                                         AS registered_at,
             FLOOR(EXTRACT(EPOCH FROM (NOW() - u."createdAt")) / 86400)   AS day,
-            (u.subscription_status = ANY($1))                            AS paying,
+            ${withParam(PAYS_US, 1)}                                     AS paying,
+            ${withParam(GRANTED_BY_HAND, 1)}                              AS granted_by_hand,
             (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id)            AS threads,
             (SELECT COUNT(*) FROM tasks k WHERE k.user_id = u.id::text)        AS goals,
             (SELECT MAX(c.created_at)::text FROM conversations c
@@ -463,7 +498,7 @@ export async function pilotPeople(): Promise<readonly PilotPerson[]> {
       WHERE ${REAL}
       ORDER BY u."createdAt" DESC
       LIMIT 200`,
-    [['active', 'past_due']],
+    [PAYING_STATUSES],
     PILOT_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => ({
@@ -472,6 +507,7 @@ export async function pilotPeople(): Promise<readonly PilotPerson[]> {
     registered_at: r.registered_at,
     day: Number(r.day),
     paying: r.paying,
+    granted_by_hand: r.granted_by_hand,
     threads: Number(r.threads),
     goals: Number(r.goals),
     last_active_at: r.last_active_at,
