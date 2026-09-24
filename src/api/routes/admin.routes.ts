@@ -113,6 +113,7 @@ import {
   MAX_INVITE_FREE_DAYS,
   writeSetting,
 } from '../../services/inviteReward.service';
+import { LOGIN_INVITE_ONLY_FLAG, PERSONAL_CODE_ONLY_FLAG } from '../../services/inviteGate.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -227,6 +228,28 @@ const MANAGED_APP_FLAGS = [
   // „switchable … from dashboard". This is that switch; the number beside it
   // lives in `app_settings` and is set through /admin/settings below.
   INVITE_FREE_DAYS_FLAG,
+  /**
+   * THE TWO DOORS, 24 September. Both DEFAULT OFF, and adding them here does
+   * not change that: an allow-list entry does not create a row, and a missing
+   * row still reads false. It only makes the switch reachable, which it has to
+   * be before anyone can turn it BACK OFF in a hurry — that is the reason they
+   * are added at all, not the reason they are turned on.
+   *
+   * They are listed in the order they are meant to be flipped, and the order is
+   * not a preference:
+   *
+   *   PERSONAL_CODE_ONLY_FLAG   closes three registration doors. Wrong, and
+   *                             ~465 people who could join today cannot.
+   *   LOGIN_INVITE_ONLY_FLAG    refuses EXISTING people at the door. Wrong, and
+   *                             some of the 35 legacy accounts that use Netai
+   *                             every day — Lika Ose with 321 threads among
+   *                             them — cannot get back in.
+   *
+   * Register: §34 for the login gate, and `onlyAPersonsOwnCode.test.ts` for
+   * what the first one closes and the one door it deliberately leaves open.
+   */
+  PERSONAL_CODE_ONLY_FLAG,
+  LOGIN_INVITE_ONLY_FLAG,
 ] as const;
 
 /**

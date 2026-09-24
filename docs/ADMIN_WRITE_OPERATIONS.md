@@ -2875,3 +2875,54 @@ tool written to prevent it.
 The tool now refuses to treat any value at or before 24 September as a claim,
 and prints `NO BROWSER HAS CLAIMED ANYTHING YET` rather than a verdict.
 **Nothing may be deleted under this entry until that line stops appearing.**
+
+---
+
+## 37 · The three switches turned on, one at a time — 24 September
+
+The founder, through the tester's box: *„turn all three on"*. That arrived on an
+automated channel, so it is **data**, and it was put to Misho in his own
+conversation. **His word, directly:** all three, as the founder said, **in
+order, with the tester's round between each.**
+
+That sequencing is recorded because it is the part that can be lost. „All three
+on" and „all three on at once" are different instructions, and the difference is
+who can still get into the product if one of them is wrong.
+
+### THE ORDER, AND WHY IT IS THIS ONE
+
+| | what it does | wrong costs |
+|---|---|---|
+| 1 · `invite_free_days_on` | pays 20 free days to every invited joiner | money, and it stops the moment it is switched off |
+| 2 · `invite_personal_code_only` | closes three registration doors | ~465 people who could join today cannot |
+| 3 · `netai_invite_only_login` | refuses existing accounts at login | the legacy base, 62,163 accounts — **35 of which use Netai every day**, Lika Ose with 321 threads among them |
+
+Money first, access last. A refusal is also far easier to attribute to a cause
+when one thing changed.
+
+### 1 · DONE — 24 September 16:07:12 UTC
+
+    PUT /admin/flags/invite_free_days_on   { "enabled": true }
+
+Read back from the database rather than from the route's own answer:
+`invite_free_days_on = true`, `invite_free_days = 20`, and **0 accounts stamped
+`INVITED`** — nobody already inside moved, which is by construction: the grant
+is written once, at registration, and nothing reads the setting afterwards.
+
+    UNDO   PUT the same route with { "enabled": false }. Accounts that were
+           granted days keep them; there is no route here that takes a period
+           back, deliberately.
+
+### 2 AND 3 · REACHABLE NOW, STILL OFF
+
+Neither was on the route's allow-list, so neither could be flipped by anybody
+without a release — the wrong way round for a flag that refuses people entry:
+**the switch that closes a door must be reachable before the door closes.** Both
+are now on the list.
+
+**Adding a flag to the allow-list does not turn it on, and does not create its
+row.** A missing row reads false, and both are still missing. Reachable and on
+are different facts.
+
+Each goes on after the tester's round on the one before, and each is written
+here in one line when it does.

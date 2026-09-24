@@ -54,7 +54,7 @@ function phoneVariants(phone: string): string[] {
  * A missing row reads false, so the gate is off until somebody writes it —
  * which is the right direction for a flag that refuses people entry.
  */
-const LOGIN_INVITE_ONLY_FLAG = 'netai_invite_only_login';
+export const LOGIN_INVITE_ONLY_FLAG = 'netai_invite_only_login';
 
 /**
  * „ONLY A PERSON'S OWN CODE" — the founder, 24 September, twice and explicitly.
@@ -77,7 +77,7 @@ const LOGIN_INVITE_ONLY_FLAG = 'netai_invite_only_login';
  * stops real people getting in, and a closure nobody has tested is not a
  * decision carried out, it is a decision gambled on.
  */
-const PERSONAL_CODE_ONLY_FLAG = 'invite_personal_code_only';
+export const PERSONAL_CODE_ONLY_FLAG = 'invite_personal_code_only';
 
 export async function isPersonalCodeOnlyEnabled(): Promise<boolean> {
   const result = await query<{ enabled: boolean }>(
