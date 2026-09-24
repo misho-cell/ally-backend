@@ -93,7 +93,14 @@ export interface PilotPeople {
   readonly registered: number;
   readonly past_day_20: number;
   readonly past_day_20_paying: number;
+  /** Has a live subscription AND a Stripe customer — somebody we actually bill. */
   readonly paying: number;
+  /**
+   * Status says active and there is no Stripe record at all: access given by
+   * an admin. Eleven of the fifteen on 24 September. A person using the
+   * product, and not revenue — reported beside `paying`, never inside it.
+   */
+  readonly access_granted_by_hand: number;
   readonly newest_registration: string | null;
 }
 
@@ -300,13 +307,36 @@ async function sideFor(who: string, span: number): Promise<PilotSide> {
       past_day_20: string;
       past_day_20_paying: string;
       paying: string;
+      access_granted_by_hand: string;
       newest: string | null;
     }>(
+      // ⚠️ „PAYING" USED TO MEAN „THE STATUS COLUMN SAYS ACTIVE", AND THAT
+      // COLUMN IS SET BY THE ADMIN GRANT ROUTE AS WELL AS BY STRIPE.
+      //
+      // Measured on 24 September, among the pilot's real people:
+      //
+      //     status active                              15
+      //       with a Stripe customer                    4
+      //       WITH NO STRIPE RECORD AT ALL             11   ← granted by hand
+      //
+      // So the screen that answers „who pays after 20 days" would have said
+      // FIFTEEN, and at most four of them have ever been billed. That is the
+      // sentence somebody repeats to an investor, and it is the same fault
+      // this file already carries two warnings about: a number whose
+      // DEFINITION nobody asked for.
+      //
+      // Both are real and they are not the same fact, so both are reported and
+      // neither is folded into the other. A hand-granted account is a person
+      // using the product; it is not revenue.
       `SELECT COUNT(*)                                                   AS registered,
               COUNT(*) FILTER (WHERE u."createdAt" < NOW() - INTERVAL '20 days') AS past_day_20,
               COUNT(*) FILTER (WHERE u."createdAt" < NOW() - INTERVAL '20 days'
-                                 AND u.subscription_status = ANY($1))    AS past_day_20_paying,
-              COUNT(*) FILTER (WHERE u.subscription_status = ANY($1))    AS paying,
+                                 AND u.subscription_status = ANY($1)
+                                 AND u."stripeCustomerId" IS NOT NULL)    AS past_day_20_paying,
+              COUNT(*) FILTER (WHERE u.subscription_status = ANY($1)
+                                 AND u."stripeCustomerId" IS NOT NULL)    AS paying,
+              COUNT(*) FILTER (WHERE u.subscription_status = ANY($1)
+                                 AND u."stripeCustomerId" IS NULL)        AS access_granted_by_hand,
               MAX(u."createdAt")::text                                   AS newest
          FROM "User" u
         WHERE ${who}`,
@@ -345,6 +375,7 @@ async function sideFor(who: string, span: number): Promise<PilotSide> {
       past_day_20: Number(p?.past_day_20 ?? 0),
       past_day_20_paying: Number(p?.past_day_20_paying ?? 0),
       paying: Number(p?.paying ?? 0),
+      access_granted_by_hand: Number(p?.access_granted_by_hand ?? 0),
       newest_registration: p?.newest ?? null,
     },
   };

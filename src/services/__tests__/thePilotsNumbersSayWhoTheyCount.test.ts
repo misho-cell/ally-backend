@@ -144,6 +144,54 @@ describe('how many people the movement came from', () => {
   });
 });
 
+/**
+ * „PAYING" MEANT „THE STATUS COLUMN SAYS ACTIVE", AND THAT COLUMN IS WRITTEN
+ * BY THE ADMIN GRANT ROUTE AS WELL AS BY STRIPE.
+ *
+ * Measured on 24 September, among the pilot's real people:
+ *
+ *     status active                              15
+ *       with a Stripe customer                    4
+ *       WITH NO STRIPE RECORD AT ALL             11   ← granted by hand
+ *
+ * The screen being built answers „who pays after 20 days". It would have said
+ * FIFTEEN, and at most four of those have ever been billed — on the single
+ * most quotable number the pilot produces, found the morning the frontend
+ * asked for the field names.
+ *
+ * Same shape as the two faults this file already guards: a number whose
+ * DEFINITION nobody asked for. Both facts are real, so both are reported and
+ * neither is folded into the other.
+ */
+describe('paying means somebody we bill', () => {
+  it('requires a Stripe customer, not just an active status', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    const at = sql.indexOf('AS paying');
+    expect(at).toBeGreaterThan(-1);
+    expect(sql.slice(Math.max(0, at - 200), at)).toContain('"stripeCustomerId" IS NOT NULL');
+  });
+
+  it('counts the hand-granted accounts separately rather than hiding them', async () => {
+    const report = await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(sql).toContain('AS access_granted_by_hand');
+    expect(sql).toMatch(/"stripeCustomerId" IS NULL\)\s+AS access_granted_by_hand/);
+    expect(report.real.people).toHaveProperty('access_granted_by_hand');
+  });
+
+  /** The 20-day cohort is the revenue question, so it takes the same rule. */
+  it('applies the same rule to the day-20 cohort', async () => {
+    await pilotReport(7);
+
+    const sql = dbQuery.mock.calls.map((c) => String(c[0])).join('\n');
+    const at = sql.indexOf('AS past_day_20_paying');
+    expect(sql.slice(Math.max(0, at - 220), at)).toContain('"stripeCustomerId" IS NOT NULL');
+  });
+});
+
 describe('a closed goal is dated by the column that records it', () => {
   it('counts closures by closed_at and not by updated_at', async () => {
     await pilotReport(7);
