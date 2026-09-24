@@ -6,7 +6,7 @@ import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
-import { checkRegistrationEligibility } from './inviteGate.service';
+import { checkRegistrationEligibility, isLoginInviteOnlyEnabled } from './inviteGate.service';
 import { isReviewPhone } from './reviewAccess';
 import {
   findCohortByCode,
@@ -35,6 +35,21 @@ const OTP_SENDS_PER_PHONE_PER_HOUR = 5;
 // (ticket 4 item 5.2: the most experienced tester asked "maybe it's my
 // fault"). The inviter's number never needs verifying; only the registrant's
 // own does, via the OTP step.
+/**
+ * ROW 229's GATE — what somebody sees when Netai will not let them in.
+ *
+ * Founder's rule, 24 September: „nobody, except people who are already on
+ * netai, can join netai without invitation". This is the sentence a person
+ * reads when that applies to them, and it has to do two things a generic
+ * failure cannot: say that nothing is broken, and say what would work. A
+ * person refused without a reason tries again, then concludes the product is
+ * broken and tells somebody so.
+ */
+const ERR_INVITATION_REQUIRED =
+  'Netai-ში შესვლა მოწვევით ხდება. გთხოვე ვინმეს, ვინც უკვე იყენებს Netai-ს, ' +
+  'გამოგიგზავნოს მოსაწვევი ბმული ან კოდი — შენი ანგარიში ადგილზეა და ' +
+  'მოწვევის შემდეგ პირდაპირ შემოხვალ.';
+
 const ERR_PHONE_NOT_VERIFIED =
   'შენი ნომერი ჯერ დადასტურებული არ არის: ჯერ შენს ნომერზე გამოგზავნილი კოდი შეიყვანე და მერე ' +
   'გააგრძელე. (მომწვევის ნომერს დადასტურება არ სჭირდება.)';
@@ -408,6 +423,34 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
 
   const userId = result.rows[0].id;
   if (!result.rows[0].has_used_netai) {
+    /**
+     * THE GATE. Registered as §34 of `ADMIN_WRITE_OPERATIONS.md` BEFORE it was
+     * written, because it refuses real people entry to the product and the way
+     * to switch it off has to exist before the thing it switches off.
+     *
+     * IT SHIPS OFF. `netai_invite_only_login` defaults to false and turning it
+     * back off is one UPDATE — the gate writes nothing, so there is no state
+     * to restore afterwards.
+     *
+     * ⚠️ THE CONDITION IS „HAS NEVER OPENED NETAI", NOT THE FLAG, and the
+     * difference is the whole safety of this:
+     *
+     *     hasAccessToAlly = false, never opened Netai    62,163   the target
+     *     hasAccessToAlly = false, USES NETAI TODAY          35   Lika among them
+     *
+     * `hasAccessToAlly` is the ADMIN-LOGIN flag. Keying on it would refuse the
+     * second most active person in the product at her next login and tell her
+     * she needs an invitation to something she has used for weeks. `has_used_netai`
+     * is read from `threads` two lines above, and there is no account anywhere
+     * with messages or goals but no thread — so the two groups separate cleanly.
+     */
+    if (await isLoginInviteOnlyEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[login] account ${userId} REFUSED: no Netai activity and the invitation gate is on`,
+      );
+      throw new Error(ERR_INVITATION_REQUIRED);
+    }
     // An account that existed before tonight, opening Netai for the first
     // time. If somebody invited them, that invitation cannot be credited by
     // this route — see the comment above — so at minimum it must be readable.

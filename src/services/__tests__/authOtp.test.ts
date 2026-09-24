@@ -17,6 +17,10 @@ jest.mock('../contacts.service', () => ({
 jest.mock('../inviteGate.service', () => ({
   __esModule: true,
   checkRegistrationEligibility: jest.fn().mockResolvedValue({ eligible: true, mode: 'open' }),
+  // The login gate (row 229, §34 of the write register) ships OFF, so these
+  // tests see the behaviour every real login has today. Its own file proves
+  // the ON case; here it must simply not change anything.
+  isLoginInviteOnlyEnabled: () => Promise.resolve(false),
 }));
 
 import { query } from '../../db/postgres/client';

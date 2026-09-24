@@ -42,6 +42,28 @@ function phoneVariants(phone: string): string[] {
   return [...variants];
 }
 
+/**
+ * ROW 229's LOGIN GATE, its own switch, DEFAULT OFF.
+ *
+ * Deliberately NOT the same flag as `invite_only`. That one governs
+ * REGISTRATION and has been true on the live base since 17 September; reusing
+ * it would have turned the login gate on the moment it deployed, at 62,163
+ * people, with nobody having tested it. Two different doors, two switches, and
+ * the new one starts shut.
+ *
+ * A missing row reads false, so the gate is off until somebody writes it —
+ * which is the right direction for a flag that refuses people entry.
+ */
+const LOGIN_INVITE_ONLY_FLAG = 'netai_invite_only_login';
+
+export async function isLoginInviteOnlyEnabled(): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
+    [LOGIN_INVITE_ONLY_FLAG],
+  );
+  return result.rows[0]?.enabled === true;
+}
+
 export async function isInviteOnlyEnabled(): Promise<boolean> {
   const result = await query<{ enabled: boolean }>(
     'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
