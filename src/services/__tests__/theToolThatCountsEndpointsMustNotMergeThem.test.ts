@@ -67,6 +67,48 @@ describe('the question row 101 actually asks is answered, not left to the eye', 
   });
 });
 
+/**
+ * ROW 111 ASKS A DIFFERENT QUESTION FROM ROW 101, AND THE SAME TABLE ANSWERS
+ * BOTH — so the unit has to be right or one row's measurement answers the
+ * other's question.
+ *
+ * 101 is „how many copies does this person get" and counts ENDPOINTS.
+ * 111 is „can the server reach this person at all" and counts PEOPLE.
+ *
+ * Counting rows for 111 would have read Lika's five endpoints as five people
+ * becoming reachable, on the exact morning the frontend shipped the prompt
+ * that is supposed to move that number.
+ *
+ * Baseline taken 24 September, before their prompt could have had any effect:
+ * 5 of 45 reachable, and zero rows added on the 23rd or the 24th.
+ */
+describe('reach counts people, not rows', () => {
+  it('counts distinct accounts, not subscriptions', () => {
+    const reach = push.slice(push.indexOf('if [ "$WHO" = reach ]'));
+
+    expect(reach).toContain('COUNT(DISTINCT ps.user_id)');
+    expect(reach).toContain('AS people_reachable');
+  });
+
+  /** Seats are not the pilot. The same rule the rest of this file uses. */
+  it('asks about real people only', () => {
+    const reach = push.slice(push.indexOf('if [ "$WHO" = reach ]'));
+
+    expect(reach).toContain('NOT EXISTS (SELECT 1 FROM test_seats');
+    expect(reach).toContain('EXISTS (SELECT 1 FROM threads th');
+  });
+
+  /**
+   * AND NO MOVEMENT IS A FINDING, NOT A BLANK. The frontend asked to hear
+   * immediately if the number does not move, „and not in a week as a slow
+   * suspicion" — so the script says it rather than leaving a reader to notice
+   * two equal numbers.
+   */
+  it('says so out loud when nobody new became reachable', () => {
+    expect(push).toContain('NOBODY NEW');
+  });
+});
+
 /** D149, unchanged: no phone numbers, and now no piece of a real endpoint either. */
 describe('it still carries nothing that could reach a phone', () => {
   it('names no phone column', () => {

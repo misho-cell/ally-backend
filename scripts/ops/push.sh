@@ -36,6 +36,80 @@ cd "$(dirname "$0")/../.."
 
 WHO="${1:-}"
 
+# ── „reach" — did anybody NEW become reachable? (row 111) ───────────────────
+#
+# 40 of the 45 people who have used Netai had NO push subscription at all, and
+# `push_deliveries` held not one attempt for them. The frontend found why: the
+# background pass began with `if (Notification.permission !== "granted")
+# return;`, so it could only ever register people who had ALREADY agreed — and
+# the two places that could ask were a small text button in one thread header
+# and a line on a diagnostics card. Everything else fell into `catch {}`, which
+# is why the log could not tell „refused" from „never asked".
+#
+# Their prompt shipped on 24 September. This is the before-and-after, and it is
+# a COMMAND rather than a number in somebody's memory, because the whole point
+# is to compare the same measurement on two different days.
+#
+# It counts PEOPLE, not rows. Five endpoints for one person is row 101 and it
+# is not reach; one person who can be notified at all is what row 111 asks
+# about.
+if [ "$WHO" = reach ]; then
+  printf '%s' "WITH real AS (
+    SELECT u.id FROM \"User\" u
+     WHERE NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+       AND EXISTS (SELECT 1 FROM threads th WHERE th.user_id = u.id)
+  ),
+  days AS (
+    SELECT generate_series(CURRENT_DATE - 13, CURRENT_DATE, INTERVAL '1 day')::date AS d
+  )
+  SELECT days.d AS day,
+         (SELECT COUNT(DISTINCT ps.user_id) FROM push_subscriptions ps
+           WHERE ps.user_id IN (SELECT id FROM real)
+             AND ps.created_at::date <= days.d)                       AS people_reachable,
+         (SELECT COUNT(*) FROM push_subscriptions ps
+           WHERE ps.user_id IN (SELECT id FROM real)
+             AND ps.created_at::date = days.d)                        AS rows_added,
+         (SELECT COUNT(*) FROM push_subscriptions ps
+           WHERE ps.user_id IN (SELECT id FROM real)
+             AND ps.created_at::date = days.d
+             AND ps.endpoint LIKE '%apple%')                          AS apple_added,
+         (SELECT COUNT(*) FROM push_subscriptions ps
+           WHERE ps.user_id IN (SELECT id FROM real)
+             AND ps.created_at::date = days.d
+             AND ps.endpoint LIKE '%fcm%')                            AS fcm_added,
+         (SELECT COUNT(*) FROM real)                                  AS real_people
+    FROM days ORDER BY 1 LIMIT 30" | ./scripts/ops/ro.sh 2>/dev/null | python3 -c '
+import sys, json
+try:
+    rows = json.load(sys.stdin)["data"]["rows"]
+except Exception:
+    print("CANNOT TELL — the read-only window did not answer. That is not \"nothing changed\".")
+    raise SystemExit(2)
+
+total = int(rows[-1]["real_people"]) if rows else 0
+print("%-12s %17s %10s %7s %5s" % ("day", "people reachable", "rows added", "apple", "fcm"))
+for r in rows:
+    print("%-12s %10s of %-4s %10s %7s %5s"
+          % (str(r["day"])[:10], r["people_reachable"], total,
+             r["rows_added"], r["apple_added"], r["fcm_added"]))
+print()
+if rows:
+    first, last = int(rows[0]["people_reachable"]), int(rows[-1]["people_reachable"])
+    print("Over these 14 days: %d -> %d of %d people the server can reach at all." % (first, last, total))
+    if last == first:
+        print("NOBODY NEW. If the prompt is live, that is the frontend\x27s bug to find and")
+        print("it is worth saying at once rather than as a slow suspicion.")
+    else:
+        print("%d person(s) became reachable who were not before." % (last - first))
+print()
+print("PEOPLE, not rows. One person with five endpoints is row 101, not reach.")
+print("A row appearing here means the app registered them; whether a notification")
+print("then ARRIVES is push_deliveries, which is  ./scripts/ops/push.sh <user_id>.")
+'
+  exit $?
+fi
+
+
 if [ -z "$WHO" ]; then
   # ────────────────────────────────────────────────────────────────────────
   # THE POPULATION IS „HAS USED NETAI", NOT A FLAG. `hasAccessToAlly` is the
