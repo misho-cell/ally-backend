@@ -2770,3 +2770,90 @@ This path has **never run in production** — see the table above. „Built" is 
 „works", and here the gap is wider than usual because there is no history to
 lean on. It ships with the flag **OFF**, and the first time it hands out a day
 it will be to a seat created for the purpose.
+
+---
+
+## 36 · Delete a stale push subscription — THE RULE, AND WHY IT IS NOT A GUESS
+
+Misho, 24 September, on row 101: *„ოკ თუ რამეა წასაშლელი 101 ში წაშალე"* — if
+there is anything to delete, delete it. That is the yes D44 asks for. **It is
+recorded here before anything is deleted, and the condition in his sentence —
+*if there is anything* — is the part this entry exists to answer honestly.**
+
+### WHY THE SERVER CANNOT ANSWER IT ON ITS OWN
+
+A notification goes to **every** row in `push_subscriptions` for a person, so a
+row left behind by a browser that no longer exists doubles every notification.
+Two accounts carry them: 160584 has five endpoints, 501 has three.
+
+A row only dies on a 404 or a 410 from the push service. Read on 24 September,
+fourteen days of `push_deliveries`, per endpoint, per day:
+
+    failed = 0    on every endpoint, every day
+
+including **two endpoints that had visibly stopped existing** (last seen 20 and
+21 September, then gone). Apple and Google accept a push to a dead address and
+answer „delivered". There is no signal. Deleting on a guess silences a phone
+somebody is still carrying.
+
+### WHAT WAS ALREADY KNOWN, AND WHY IT IS NOT ENOUGH
+
+`previous_endpoint` (ef5f173) covers a browser that changes its endpoint while
+it is running: it names the row it replaces and the server deletes exactly that
+one, scoped to the caller. **It cannot reach a row written before it**, because
+the browser that wrote it may never come back — an old install, a deleted
+home-screen app. Those rows will never be named by anyone.
+
+### THE RULE — a fact, with the proof inside it
+
+Migration 176 adds `push_subscriptions.last_seen_at`, stamped every time a
+browser re-posts its subscription (the upsert already backfilled `device_id`
+and `user_agent` this way; it simply never wrote down *when*).
+
+    STALE = this row has not been claimed for the window
+            AND ANOTHER ROW OF THE SAME PERSON HAS BEEN CLAIMED INSIDE IT
+
+The second clause is the whole safety, and the reason this is not the same
+guess in a new coat. It proves that claims are arriving **for that person** —
+so silence on one row means that browser is gone, not that the client never
+reports. Without it, a client that posts only on a *new* subscription would
+make every row look dead and this rule would delete somebody's only phone.
+
+    READ     ./scripts/ops/push.sh claims [days]     (default 30, read-only)
+             Prints three verdicts, and the middle one matters most:
+               claimed                        — leave alone
+               quiet, but so is every row      — PROVES NOTHING, leave alone
+               STALE                           — a candidate, named
+
+### THE WRITE
+
+    ROUTE    none. There is deliberately no admin endpoint for this.
+    METHOD   a migration, one numbered file, naming the account and the rule
+             it satisfied — the same shape as migration 173.
+    BODY     DELETE FROM push_subscriptions
+              WHERE user_id = <id> AND endpoint = <the exact endpoint>
+    UNDO     none, and none is needed: the browser re-registers the next time
+             the person opens the app, exactly as a new device would.
+
+### THE BLAST RADIUS, STATED BEFORE ANYBODY PRESSES ANYTHING
+
+If a deleted row turns out to be live, that device receives no notifications
+**until the person next opens the app**, at which point it re-registers itself.
+Bounded and self-healing. That is why this is a defensible thing to do at all —
+but it is still somebody's phone going quiet for a while, which is why the rule
+above refuses to name a row it cannot prove.
+
+### STATE ON 24 SEPTEMBER: NOTHING DELETED, AND WHY
+
+Of the twelve rows in the whole table, four carry no `device_id` and no
+`user_agent`, and all four were created before 4 September — the day the client
+began sending those fields. That is a **smell**, not a proof: it is equally
+consistent with „that browser is gone" and with „the client only posts on a new
+subscription, so no old row has ever been re-stamped". The two cannot be told
+apart until `last_seen_at` has been collecting for a while.
+
+So the honest answer to *„delete whatever needs deleting"* is: **as of today,
+nothing is provably deletable.** The measurement that settles it is now
+running. When a row is named STALE by the rule above, it is deleted under this
+entry without asking again — the yes is here, and the condition in it is what
+the rule checks.

@@ -73,15 +73,20 @@ export async function savePushSubscription(
       ? value.trim().slice(0, MAX_USER_AGENT_CHARS)
       : null;
   await query(
-    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, device_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, device_id, last_seen_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
      ON CONFLICT (endpoint) DO UPDATE
        SET user_id = EXCLUDED.user_id,
            p256dh  = EXCLUDED.p256dh,
            auth    = EXCLUDED.auth,
            -- A re-subscribe without these must not erase what we have.
            user_agent = COALESCE(EXCLUDED.user_agent, push_subscriptions.user_agent),
-           device_id  = COALESCE(EXCLUDED.device_id,  push_subscriptions.device_id)`,
+           device_id  = COALESCE(EXCLUDED.device_id,  push_subscriptions.device_id),
+           -- „This browser still exists." The ONLY thing that can say so is the
+           -- browser itself: a push service accepts a dead address and answers
+           -- „delivered", so a send proves nothing (14 days, failed = 0 on every
+           -- endpoint including two that had stopped existing). Row 101.
+           last_seen_at = NOW()`,
     [
       userId,
       subscription.endpoint,

@@ -124,3 +124,56 @@ an incident.
 Questions, or a case where one of these reads differently from your side: the
 backend session is reachable through Misho, and any of these reads can be re-run
 on request.
+
+---
+
+## 5. One question, and one small ask — the double notifications (row 101)
+
+Added 24 September by the backend session. This one is **not** a fault on your
+side. It is the one fact I cannot read from the server, and you can answer it in
+a sentence.
+
+### THE QUESTION
+
+**Does the client POST `/notifications/subscribe` every time the app opens, or
+only when the browser produces a NEW subscription?**
+
+That is the whole question. Nothing else in this section matters if the answer
+is „every open".
+
+### WHY IT DECIDES A DELETION
+
+A notification goes to every row in `push_subscriptions` for a person. Two
+accounts carry rows left behind by browsers that may not exist any more — 160584
+has five endpoints, 501 has three — and each extra row is one extra copy of
+every notification.
+
+The server cannot tell a dead row from a live one. Fourteen days of
+`push_deliveries`, read per endpoint per day on 24 September: **`failed = 0`
+everywhere**, including two endpoints that had visibly stopped existing. Apple
+and Google accept a push to a dead address and answer „delivered". A row only
+dies on a 404 or 410 and they never send one.
+
+So the only thing that can prove a browser still exists is the browser turning
+up. The upsert already backfills `device_id` and `user_agent` on a re-post; from
+today it also stamps `last_seen_at` (migration 176). If the client posts on every
+open, „not claimed in 30 days, while this person's other row was claimed
+yesterday" becomes a **fact** and the stale row can be deleted with evidence. If
+the client only posts on a new subscription, that same reading would be a lie
+that silences somebody's phone, and I will not use it.
+
+### THE ASK, IF THE ANSWER IS „ONLY ON A NEW SUBSCRIPTION"
+
+Post the existing subscription on app open too — `registration.pushManager
+.getSubscription()`, and if it returns one, send it to the same endpoint with
+the same body. It is idempotent on our side: same endpoint, same row, only the
+timestamp moves. No new field, no new route.
+
+`previous_endpoint` (which you already send when the endpoint rotates) stays
+exactly as it is and keeps doing its job. This covers the other case — the
+browser that is simply never coming back and therefore can never name anything.
+
+### WHAT WE ARE NOT ASKING FOR
+
+Nothing about the notification permission prompt, and nothing about row 111.
+This is one line in whatever code already runs on app open.

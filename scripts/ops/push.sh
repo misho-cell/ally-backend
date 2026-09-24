@@ -31,6 +31,8 @@
 # Usage:
 #   ./scripts/ops/push.sh              who can be reached, and who has doubles
 #   ./scripts/ops/push.sh <user_id>    one person, endpoint by endpoint, by day
+#   ./scripts/ops/push.sh reach        did anybody NEW become reachable (row 111)
+#   ./scripts/ops/push.sh claims [d]   which rows a browser still claims (row 101)
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -105,6 +107,87 @@ print()
 print("PEOPLE, not rows. One person with five endpoints is row 101, not reach.")
 print("A row appearing here means the app registered them; whether a notification")
 print("then ARRIVES is push_deliveries, which is  ./scripts/ops/push.sh <user_id>.")
+'
+  exit $?
+fi
+
+# ── „claims" — which rows has a browser said it still owns? (row 101) ───────
+#
+# THE FACT THAT MAKES THIS THE ONLY HONEST TEST. A push service accepts a push
+# to a dead address and answers „delivered": fourteen days of `push_deliveries`
+# read on 24 September carried `failed = 0` on every endpoint on every day,
+# INCLUDING two that had visibly stopped existing. So nothing the SERVER does
+# can tell a dead row from a live one. Only the browser can, by turning up.
+#
+# `last_seen_at` (migration 176) is stamped every time a browser re-posts its
+# subscription. The rule below is written so it cannot be wrong in the
+# direction that silences somebody:
+#
+#   STALE  = this row has not been claimed for the window
+#            AND another row of the SAME PERSON has been claimed inside it.
+#
+# The second half is the whole safety. It proves that claims are arriving for
+# that person at all — so silence on one row means that browser is gone, not
+# that the client never reports. Without it, a client that only posts on a NEW
+# subscription would make every row look dead and the rule would delete
+# somebody's only phone.
+#
+# IT DELETES NOTHING. A row named here is a candidate for §36 of the register,
+# decided by a person (D44).
+if [ "$WHO" = claims ]; then
+  DAYS="${2:-30}"
+  printf '%s' "SELECT u.name,
+       LEFT(MD5(s.endpoint), 8)                                   AS ep,
+       CASE WHEN s.endpoint LIKE '%apple%' THEN 'apple'
+            WHEN s.endpoint LIKE '%fcm%'   THEN 'fcm'
+            ELSE 'other' END                                      AS svc,
+       s.created_at::date                                         AS created,
+       s.last_seen_at::date                                       AS claimed,
+       (s.device_id IS NOT NULL)                                  AS named,
+       (SELECT MAX(o.last_seen_at)::date FROM push_subscriptions o
+         WHERE o.user_id = s.user_id AND o.id <> s.id)             AS other_claimed
+  FROM push_subscriptions s
+  JOIN \"User\" u ON u.id = s.user_id
+ ORDER BY u.name, s.created_at
+ LIMIT 200" | ./scripts/ops/ro.sh 2>/dev/null | DAYS="$DAYS" python3 -c '
+import sys, json, os, datetime
+try:
+    rows = json.load(sys.stdin)["data"]["rows"]
+except Exception:
+    print("CANNOT TELL — the read-only window did not answer. That is not \"nothing is stale\".")
+    raise SystemExit(2)
+
+window = int(os.environ["DAYS"])
+today = datetime.date.today()
+
+def day(value):
+    return None if not value else datetime.date.fromisoformat(str(value)[:10])
+
+print("%-22s %-10s %-6s %-11s %-11s %s" % ("person", "endpoint", "service", "created", "claimed", "verdict"))
+stale = 0
+for r in rows:
+    claimed, other = day(r["claimed"]), day(r["other_claimed"])
+    quiet = claimed is None or (today - claimed).days >= window
+    person_reports = other is not None and (today - other).days < window
+    if quiet and person_reports:
+        verdict, stale = "STALE — the person claims another row, never this one", stale + 1
+    elif quiet:
+        verdict = "quiet, but so is every row of theirs — PROVES NOTHING"
+    else:
+        verdict = "claimed"
+    print("%-22s %-10s %-6s %-11s %-11s %s"
+          % ((r["name"] or "?")[:22], r["ep"], r["svc"],
+             str(r["created"])[:10], str(r["claimed"])[:10] if claimed else "never", verdict))
+
+print()
+if stale == 0:
+    print("NOTHING PROVEN STALE in a %d-day window." % window)
+    print("Note the middle verdict: a row nobody has claimed, on an account where")
+    print("NOTHING has been claimed, is not evidence. It means the client has not")
+    print("re-posted for that person at all — which says nothing about the browser.")
+else:
+    print("%d row(s) PROVEN STALE. Deleting one is a write on a real person\x27s data:" % stale)
+    print("register entry first (ADMIN_WRITE_OPERATIONS.md §36), then a named yes.")
 '
   exit $?
 fi
