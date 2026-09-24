@@ -46,10 +46,31 @@ const OTP_SENDS_PER_PHONE_PER_HOUR = 5;
  * person refused without a reason tries again, then concludes the product is
  * broken and tells somebody so.
  */
+/**
+ * ⚠️ THIS TEXT GOES STRAIGHT ONTO THE PERSON'S SCREEN, WORD FOR WORD.
+ *
+ * The app team confirmed it on 24 September: the login screen prints the
+ * server's `error` verbatim. So a code — `invite_required`, `login_gated` —
+ * would appear in Latin letters on a Georgian person's phone. It has to be a
+ * finished sentence, and it is.
+ *
+ * AND IT NAMES WHY THIS PERSON IN PARTICULAR, which is the app team's other
+ * ask and the more useful half. Everybody this can reach is an old Ally
+ * account that has never registered on Netai and never used it — so the
+ * sentence says that. If it ever reaches somebody who DOES use Netai, they
+ * will read „your number is registered in the old Ally app" and know at once
+ * that it is wrong, and say so. **A wrong refusal that describes itself is a
+ * bug report; a vague one is a week of guessing whose fault it is.**
+ *
+ * It also says the account is not lost, because the first thing a person
+ * refused at a door assumes is that their account is gone.
+ */
 const ERR_INVITATION_REQUIRED =
-  'Netai-ში შესვლა მოწვევით ხდება. გთხოვე ვინმეს, ვინც უკვე იყენებს Netai-ს, ' +
+  'ეს ნომერი ძველ Ally-ის აპში არის რეგისტრირებული, Netai-ში კი ჯერ არა. ' +
+  'Netai-ში შესვლა მოწვევით ხდება: გთხოვე ვინმეს, ვინც უკვე იყენებს Netai-ს, ' +
   'გამოგიგზავნოს მოსაწვევი ბმული ან კოდი — შენი ანგარიში ადგილზეა და ' +
-  'მოწვევის შემდეგ პირდაპირ შემოხვალ.';
+  'მოწვევის შემდეგ პირდაპირ შემოხვალ. თუ Netai-ს უკვე იყენებ და მაინც ამ ' +
+  'შეტყობინებას ხედავ, ეს ჩვენი შეცდომაა — გვაცნობე.';
 
 const ERR_PHONE_NOT_VERIFIED =
   'შენი ნომერი ჯერ დადასტურებული არ არის: ჯერ შენს ნომერზე გამოგზავნილი კოდი შეიყვანე და მერე ' +

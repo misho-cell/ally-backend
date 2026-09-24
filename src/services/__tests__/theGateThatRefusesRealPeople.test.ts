@@ -112,6 +112,38 @@ describe('with the gate ON', () => {
     expect(message).toContain('მოსაწვევი');
   });
 
+  /**
+   * ⚠️ AND IT NAMES WHY THIS PERSON, which is what makes a wrong refusal
+   * report itself.
+   *
+   * The app team confirmed on 24 September that the login screen prints the
+   * server's `error` word for word. Everybody this can reach is an old Ally
+   * account that never registered on Netai — so the sentence says so. If it
+   * ever reaches somebody who DOES use Netai, they read „your number is
+   * registered in the old Ally app", know at once that it is wrong, and say
+   * so. A wrong refusal that describes itself is a bug report; a vague one is
+   * a week of guessing whose fault it is.
+   */
+  it('names the old Ally account, and invites the contradiction', async () => {
+    loginGateOn = true;
+    account(false);
+
+    const message = await completeLogin('+995555000001').catch((e: Error) => e.message);
+
+    expect(message).toContain('Ally');
+    expect(message).toContain('ჩვენი შეცდომაა');
+  });
+
+  /** A person refused at a door assumes their account is gone. It is not. */
+  it('says the account is still there', async () => {
+    loginGateOn = true;
+    account(false);
+
+    const message = await completeLogin('+995555000001').catch((e: Error) => e.message);
+
+    expect(message).toContain('ანგარიში ადგილზეა');
+  });
+
   /** It refuses. It does not write. There is nothing to undo afterwards. */
   it('changes nothing in the database when it refuses', async () => {
     loginGateOn = true;
