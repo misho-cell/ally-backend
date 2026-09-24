@@ -2577,3 +2577,34 @@ mean a scheduled cancellation produces no event at period end, and every future
 cancellation would sit wrong until somebody noticed by hand. That is a much
 larger finding than one account, and it is the reason the check is worth
 keeping rather than letting the date pass quietly.
+
+---
+
+## 32b · The old whole-person unmerge now refuses to be pressed by accident
+
+Added the same day as §32, because §32 left a known data-loss path reachable
+and a note is not a guard.
+
+`POST /admin/identity/unmerge` takes a `person_id` and removes EVERY phone
+mapped to that person. The admin page's undo button still calls it until the
+app team moves to the candidate-scoped route, and on a person built from more
+than one approval it removes phones that no single decision added.
+
+**Measured, not assumed:** 466 people in the mapping; **six** were built from
+more than one approval and one from three.
+
+**WHAT CHANGED.** The route now refuses when the merge log shows more than one
+`merge` for that person, answering **409** with the candidate route named. To
+take a whole person apart deliberately, the body carries `whole_person: true`
+and it proceeds.
+
+    ROUTE    POST /admin/identity/unmerge
+    BODY     { "person_id": "…" }                  refused on the six, 409
+             { "person_id": "…", "whole_person": true }   proceeds
+    UNDO     approve the candidates again; the raw data was never touched
+
+**WHY NOT JUST DELETE THE ROUTE.** „Take this person apart" is a real thing to
+want — a bad merge chain has to be undoable as a whole. It was never the wrong
+capability; it was the wrong DEFAULT for a button labelled „undo". 404 still
+means no such person; 409 means the server can do it and thinks you did not
+mean it, which is a different fact and the body says which route to use.

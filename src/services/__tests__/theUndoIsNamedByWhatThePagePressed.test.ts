@@ -6,7 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { unmergeCandidate } from '../identity.service';
+import { unmergeCandidate, unmergePerson } from '../identity.service';
 
 /**
  * ROW 236 — „merge two contacts, undo fails, and the page is hard to find".
@@ -137,6 +137,59 @@ describe('what it refuses to do', () => {
 
     expect(outcome.ok).toBe(false);
     expect(outcome.error).toContain('No approved candidate');
+  });
+});
+
+/**
+ * AND THE OLD ROUTE WAS LEFT LIVE, WHICH IS NOT A GUARD.
+ *
+ * `unmergeCandidate` undoes one approval exactly and the admin page is moving
+ * to it — but until it has, the undo button still calls `unmergePerson`, which
+ * takes the WHOLE person. Writing that down and leaving it reachable is
+ * relying on somebody else shipping promptly.
+ *
+ * Measured: 466 people in the mapping, SIX built from more than one approval,
+ * one from three. For those six, and only those, the old undo removes phones
+ * no single decision added.
+ *
+ * The capability stays — taking a person apart is a real thing to want. It is
+ * now a deliberate act rather than the default reading of a button labelled
+ * „undo".
+ */
+describe('the old whole-person route cannot be pressed by accident', () => {
+  it('refuses a person built from several approvals, and names the other route', async () => {
+    dbQuery.mockResolvedValueOnce({ rows: [{ merges: '3' }], rowCount: 1 });
+
+    const outcome = await unmergePerson('f0000000-0000-4000-8000-000000000001', ACTOR);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.error).toContain('3 separate approvals');
+    expect(outcome.error).toContain('/admin/identity/candidates/:id/unmerge');
+    expect(sqlCalls().some((s) => s.includes('DELETE FROM person_identities'))).toBe(false);
+  });
+
+  it('still works on a person one approval created', async () => {
+    dbQuery
+      .mockResolvedValueOnce({ rows: [{ merges: '1' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ phone: 'a' }], rowCount: 1 });
+
+    const outcome = await unmergePerson('f0000000-0000-4000-8000-000000000001', ACTOR);
+
+    expect(outcome.ok).toBe(true);
+    expect(sqlCalls().some((s) => s.includes('DELETE FROM person_identities'))).toBe(true);
+  });
+
+  /** Deliberate is allowed. It just has to be said. */
+  it('does it anyway when the caller says whole_person', async () => {
+    dbQuery.mockResolvedValueOnce({ rows: [{ phone: 'a' }, { phone: 'b' }], rowCount: 2 });
+
+    const outcome = await unmergePerson('f0000000-0000-4000-8000-000000000001', ACTOR, true);
+
+    expect(outcome.ok).toBe(true);
+    // And it did not even ask the log: the caller has already answered it.
+    expect(sqlCalls().some((s) => s.includes('person_merge_log') && s.includes('COUNT'))).toBe(
+      false,
+    );
   });
 });
 

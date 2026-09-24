@@ -1015,7 +1015,49 @@ export async function rejectIdentityCandidate(
  *
  * The raw data was never touched, so nothing else needs restoring.
  */
-export async function unmergePerson(personId: string, actor: string): Promise<DecisionOutcome> {
+export async function unmergePerson(
+  personId: string,
+  actor: string,
+  wholePerson = false,
+): Promise<DecisionOutcome> {
+  /**
+   * THE GUARD, ADDED 24 SEPTEMBER AFTER THE ROUTE BELOW WAS LEFT LIVE.
+   *
+   * `unmergeCandidate` now exists and undoes ONE approval exactly, and the
+   * admin page is moving to it. Until it has, its undo button still calls this
+   * — and on a person built from more than one approval, this takes all of
+   * them. Documenting that and leaving it reachable is relying on somebody
+   * else shipping promptly, which is not a guard.
+   *
+   * Measured rather than guessed: 466 people in the mapping, and SIX were
+   * built from more than one approval (one from three). For those six, and
+   * only those, pressing the old undo removes phones the approval never
+   * touched.
+   *
+   * So the accident becomes impossible and the capability stays: taking a
+   * whole person apart is a real thing to want, and it is now a deliberate
+   * act rather than the default reading of a button labelled „undo".
+   */
+  if (!wholePerson) {
+    const built = await query<{ merges: string }>(
+      `SELECT COUNT(*) AS merges FROM person_merge_log
+        WHERE action = 'merge' AND person_id = $1::uuid`,
+      [personId],
+      IDENTITY_QUERY_TIMEOUT_MS,
+    );
+    const merges = Number(built.rows[0]?.merges ?? 0);
+    if (merges > 1) {
+      return {
+        ok: false,
+        error:
+          `This person was built from ${merges} separate approvals, so removing them ` +
+          'removes more than any one decision did. To undo ONE approval use ' +
+          'POST /admin/identity/candidates/:id/unmerge. To take the whole person ' +
+          'apart on purpose, send whole_person: true.',
+      };
+    }
+  }
+
   const removed = await query<{ phone: string }>(
     `DELETE FROM person_identities WHERE person_id = $1::uuid RETURNING phone`,
     [personId],

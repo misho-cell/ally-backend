@@ -4779,8 +4779,21 @@ adminRouter.post('/identity/unmerge', async (req: Request, res: Response) => {
       return;
     }
     const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
-    const outcome = await unmergePerson(personId, actor);
-    res.status(outcome.ok ? 200 : 404).json({ success: outcome.ok, data: outcome });
+    // Taking a WHOLE person apart is a real thing to want and a terrible
+    // default for a button labelled „undo". Six people were built from more
+    // than one approval, and for those this removes phones no single decision
+    // added — so it now says no unless the caller means it.
+    const wholePerson = (req.body as Record<string, unknown>)?.whole_person === true;
+    const outcome = await unmergePerson(personId, actor, wholePerson);
+    if (outcome.ok) {
+      res.status(200).json({ success: true, data: outcome });
+      return;
+    }
+    // „No such person" is 404. „I can do this but you probably did not mean
+    // it" is 409 — a well-formed request the server declines, which is a
+    // different fact and the body says which route to use instead.
+    const notFound = outcome.error?.startsWith('No such person_id') === true;
+    res.status(notFound ? 404 : 409).json({ success: false, error: outcome.error });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin identity unmerge]', error);
