@@ -3250,3 +3250,60 @@ that is worth watching for rather than assuming.
 „Configured" and „open today" are returned separately on purpose: a closed
 window still has its referrers, and an open one still grants nothing if nobody
 is named. Merging them is the reading that misleads.
+
+---
+
+## 44 · Social proof, proven closed — the leg nobody could reach
+
+The last untested door of switch two, and the one that actually gets used:
+about 465 numbers qualify for it. It could not be reached because it is about a
+number OTHER people already have saved, and every seat's number is registered
+by definition.
+
+Two seats were made holding an unregistered fictional number (+1 202 555 0199,
+2 owners, both subscribed). Then the same number, asked of the gate twice,
+seconds apart:
+
+| switch two | verdict |
+|---|---|
+| **ON** | `eligible false` · `referral_required` |
+| **OFF** | `eligible true` · **`mode: social`** |
+| restored **ON** | read back from the database |
+
+### ⚠️ THE SECOND ROW IS THE POINT, NOT THE FIRST
+
+A refusal on its own proves nothing about WHY. „Refused" is the answer this
+gate gives for half a dozen reasons, and reading it as „social proof is closed"
+would be the same move as every wrong number this month — a result whose cause
+was assumed rather than shown.
+
+Flipping the switch off and getting `mode: social` back on the identical number
+is what makes the first row mean what it says. **The door is real, it is
+reachable, and the switch is what closes it.**
+
+The switch was off for about two seconds, with Netai registrations at zero for
+two and a half weeks, and the restored state was read back from the database
+rather than trusted from the route that wrote it.
+
+### WHAT MADE IT REACHABLE, AND THE PROPERTY THAT DID NOT MOVE
+
+  * a seat's phonebook may hold an **unregistered fictional** number;
+  * the gate-check may be pointed at a **named** phone — only one of the
+    hundred slots in the block reserved worldwide for fiction.
+
+`isFictionalSlot` checks exactly those hundred slots and not „starts with the
+prefix": a prefix test would accept `+1202555garbage` and write it into
+somebody's phonebook as a contact. **A real person's number still cannot be
+held by a fiction and cannot be asked about.** That is the property the
+original rule existed for, and it is unchanged.
+
+### SWITCH TWO IS NOW PROVEN ON ALL FOUR LEGS
+
+    no code            refused
+    company code       refused
+    real cohort code   refused  (LAUNCH2026, the only one in the source)
+    social proof       refused, and shown to be admitted with the switch off
+    a member's code    admitted, mode referral
+
+Nothing was created by any of the gate checks: seat count unchanged across all
+of them.
