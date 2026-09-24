@@ -7,6 +7,7 @@ import {
   DEFAULT_SEAT_TOKENS,
   firstFreeFictionalPhone,
   inviterSeatPhone,
+  inviterSeatReferralCode,
   isFictionalSlot,
 } from '../../services/testSeatCreate.service';
 import {
@@ -2066,6 +2067,11 @@ adminRouter.post(
   '/registration-gate-check',
   body('invited_by').optional().isInt({ min: 1 }),
   body('referral_code').optional().isString().trim().isLength({ max: 32 }),
+  // A seat id whose OWN referral code should be used. The code is resolved
+  // server-side and never returned: a referral code is a credential (D149),
+  // which is why no admin page prints one and why the tester could not
+  // exercise this branch at all.
+  body('invited_by_code').optional().isInt({ min: 1 }),
   // A specific fictional number instead of the next free one — the ONLY way
   // the social-proof door can be reached, because that door is about a number
   // other people already have saved and every seat's number is registered.
@@ -2080,10 +2086,12 @@ adminRouter.post(
     }
     const {
       invited_by,
+      invited_by_code,
       referral_code,
       phone: asked,
     } = req.body as {
       invited_by?: number;
+      invited_by_code?: number;
       referral_code?: string;
       phone?: string;
     };
@@ -2109,7 +2117,11 @@ adminRouter.post(
       const phone = asked ?? (await firstFreeFictionalPhone());
       const inviterPhone =
         invited_by === undefined ? undefined : await inviterSeatPhone(String(invited_by));
-      const gate = await checkRegistrationEligibility(phone, inviterPhone, referral_code);
+      const code =
+        invited_by_code === undefined
+          ? referral_code
+          : await inviterSeatReferralCode(String(invited_by_code));
+      const gate = await checkRegistrationEligibility(phone, inviterPhone, code);
 
       res.status(200).json({
         success: true,

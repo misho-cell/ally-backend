@@ -100,3 +100,42 @@ describe('the one number a caller may name', () => {
     expect(HANDLER).toContain('asked ?? (await firstFreeFictionalPhone())');
   });
 });
+
+describe('the code branch, reachable without anybody seeing a code', () => {
+  /**
+   * The tester, 24 September: „we could not repeat the code-branch pass — the
+   * admin user read shows no referral code to type in."
+   *
+   * Correct, and it should stay that way: **a referral code is a credential**
+   * (D149), and an admin page that printed them would print real people's
+   * alongside the fictions'. So the caller names a SEAT and the server
+   * resolves that seat's code — the branch gets exercised by somebody who
+   * never sees a code.
+   */
+  it('takes a seat id and resolves the code server-side', () => {
+    expect(HANDLER).toContain("body('invited_by_code').optional()");
+    expect(HANDLER).toContain('await inviterSeatReferralCode(String(invited_by_code))');
+  });
+
+  /**
+   * It is never echoed back, which is the whole point of resolving it here.
+   *
+   * Asserted against the RESOLVED variable and the caller's field, not against
+   * the string „code" — the response does carry `cohort_code`, which is a mode
+   * name and not a credential, and a blunter assertion would have failed on
+   * that and taught somebody to loosen it.
+   */
+  it('never returns the code', () => {
+    const response = HANDLER.slice(HANDLER.indexOf('res.status(200)'));
+
+    expect(response).not.toMatch(/\bcode\b\s*[,}]/);
+    expect(response).not.toContain('referral_code');
+    expect(response).toContain("created: 'nothing'");
+  });
+
+  /** A caller-supplied code still works; this is an extra door, not a swap. */
+  it('leaves the plain referral_code path alone', () => {
+    expect(HANDLER).toContain('invited_by_code === undefined');
+    expect(HANDLER).toContain('? referral_code');
+  });
+});

@@ -248,6 +248,48 @@ export async function inviterSeatPhone(inviterSeatId: string): Promise<string> {
   return inviterPhone;
 }
 
+/**
+ * A SEAT'S OWN REFERRAL CODE, RESOLVED SERVER-SIDE AND NEVER RETURNED.
+ *
+ * The tester, 24 September: „we could not repeat the code-branch pass — the
+ * admin user read shows no referral code to type in." Correct, and it should
+ * not: **a referral code is a credential** (D149), and an admin page that
+ * printed them would print real people's along with the fictions'.
+ *
+ * So the code never leaves the server. The caller names a SEAT and the gate is
+ * asked with that seat's code, which lets the code branch be exercised by
+ * somebody who never sees a code. The seat requirement is the same one as
+ * everywhere else here: only a fiction may stand in for an inviter.
+ */
+export async function inviterSeatReferralCode(inviterSeatId: string): Promise<string> {
+  const row = await query<{ referral_code: string | null }>(
+    `SELECT u.referral_code
+       FROM test_seats ts
+       JOIN "User" u ON u.id = ts.user_id
+      WHERE ts.user_id = $1::int
+      LIMIT 1`,
+    [inviterSeatId],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  if (row.rowCount === 0) {
+    throw new SeatCreationRefused(
+      `${inviterSeatId} is not a test seat — only a fiction may stand in for an inviter`,
+    );
+  }
+  const code = row.rows[0].referral_code;
+  if (!code) {
+    /**
+     * Said out loud rather than falling through. A missing code would make the
+     * gate answer „referral_required" — which looks exactly like the code
+     * branch REFUSING, when in fact nothing was ever asked of it.
+     */
+    throw new SeatCreationRefused(
+      `seat ${inviterSeatId} has no referral code yet, so the code branch cannot be tested with it — pick another seat`,
+    );
+  }
+  return code;
+}
+
 async function arriveByInvitation(
   userId: string,
   phone: string,
