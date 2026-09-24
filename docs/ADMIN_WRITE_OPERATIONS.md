@@ -2640,6 +2640,28 @@ them cleanly. And `registerUser` writes `hasAccessToAlly` as a literal `true`
 on every path, so somebody who signs up through Netai is never in the gated
 population even before they type.
 
+> ### ⚠️ THE SENTENCE ABOVE IS WRONG AND IT STAYS THERE — SEE §42, §45, §49
+>
+> „Has a thread" does NOT split them cleanly. It was a conclusion drawn from
+> the two signals that had been looked at, stated as though it covered all of
+> them, and it cost two corrections on the evening of 24 September:
+>
+> * **§42/§45** — account 4511 has a live push subscription and no thread.
+>   A push subscription cannot exist unless that browser was on the Netai site.
+> * **§49** — somebody who registered through Netai this morning has no thread
+>   either. Two real accounts, Andre (168735) and Nika Abramishvili (171408).
+>   **The gate was live and refusing them for 57 minutes.**
+>
+> The condition is now „registered through Netai **OR** a thread **OR** a push
+> subscription". The last clause of the paragraph above — about
+> `hasAccessToAlly` being true for Netai signups — turned out to be the signal
+> that fixes it, and it was sitting here in writing the whole time, described
+> as a reason the problem could not happen.
+>
+> **The paragraph is left unedited on purpose.** It is the clearest example in
+> this file of a correct measurement answering a question nobody asked, and
+> rewriting it would hide exactly the thing worth keeping.
+
 ### WHAT IT DOES
 
     ROUTE      POST /auth/complete-login
