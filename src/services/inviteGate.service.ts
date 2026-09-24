@@ -56,6 +56,37 @@ function phoneVariants(phone: string): string[] {
  */
 const LOGIN_INVITE_ONLY_FLAG = 'netai_invite_only_login';
 
+/**
+ * „ONLY A PERSON'S OWN CODE" — the founder, 24 September, twice and explicitly.
+ *
+ * On company codes: „no, because I will be one who invites them. me or our team
+ * members. so no one can invite them, except of team members."
+ *
+ * On social proof, asked with the consequence in the question — about 465
+ * people can currently join with nobody inviting them, should that close:
+ * „yes, correct."
+ *
+ * So when this is on, three doors shut: the company cohort codes, the launch
+ * cohort, and social proof. What remains is a member's own referral code, and
+ * login for people already using Netai.
+ *
+ * ⚠️ AND ONE DOOR ON THE LIST IS DELIBERATELY NOT SHUT — see `isReviewPhone`
+ * below. A store reviewer is not somebody joining Netai.
+ *
+ * DEFAULT OFF, like the login gate and for the same reason: closing a door
+ * stops real people getting in, and a closure nobody has tested is not a
+ * decision carried out, it is a decision gambled on.
+ */
+const PERSONAL_CODE_ONLY_FLAG = 'invite_personal_code_only';
+
+export async function isPersonalCodeOnlyEnabled(): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
+    [PERSONAL_CODE_ONLY_FLAG],
+  );
+  return result.rows[0]?.enabled === true;
+}
+
 export async function isLoginInviteOnlyEnabled(): Promise<boolean> {
   const result = await query<{ enabled: boolean }>(
     'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
@@ -232,13 +263,37 @@ export async function checkRegistrationEligibility(
    * weeks (none of the 25 carries a cohort either) and it is a real hole on
    * the same line.
    */
-  if (cohort) {
+  /**
+   * READ LAZILY, AND THE TEST THAT FORCED THAT WAS RIGHT TO EXIST.
+   *
+   * The first version read this flag at the top of the function. A test
+   * asserting „when the gate is off this makes exactly ONE query" went red,
+   * because every registration attempt now paid for a second flag read it
+   * almost never needed — the commonest path returns before any of the three
+   * doors below is reached.
+   *
+   * So it is read only when a door is actually about to open because of it,
+   * and memoised so two doors cannot cost two queries.
+   */
+  let personalOnly: boolean | null = null;
+  const personalCodeOnly = async (): Promise<boolean> => {
+    if (personalOnly === null) personalOnly = await isPersonalCodeOnlyEnabled();
+    return personalOnly;
+  };
+
+  // A COMPANY CODE IS NOT A PERSON INVITING SOMEBODY. The founder's own words:
+  // he and the team will invite people with THEIR OWN codes, so a cohort code
+  // stops being a way in — including the free period it used to carry (D125).
+  if (cohort && !(await personalCodeOnly())) {
     return { eligible: true, mode: 'cohort', cohortCode: cohort.code, inviterUserId: attribution };
   }
 
   // D137 (8 Sep): a founder's own invitation inside the launch window carries
   // the launch cohort's free period — the attribution stays with the inviter.
-  const launch = launchCohortFor(attribution);
+  // `launchCohortFor` is a cheap synchronous lookup, so it is asked first and
+  // the flag only when it actually found something to close.
+  const launchFound = launchCohortFor(attribution);
+  const launch = launchFound && !(await personalCodeOnly()) ? launchFound : null;
   if (launch) {
     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
   }
@@ -262,6 +317,27 @@ export async function checkRegistrationEligibility(
    * set unless BOTH env vars are set, so with them unset this branch cannot
    * fire at all.
    */
+  /**
+   * ⚠️ NOT CLOSED BY „only a person's own code", DELIBERATELY, AND THIS IS THE
+   * ONE PLACE I DID NOT DO WHAT THE LIST SAID.
+   *
+   * The relayed list of doors to shut included the review/QA numbers. The
+   * founder's words were about who may INVITE somebody; a store reviewer is not
+   * somebody joining Netai, it is the company testing its own app. Paddle and
+   * the app stores cannot receive a Georgian SMS, and this list is the only way
+   * they get in.
+   *
+   * Closing it would re-create the exact fault Misho reported on 17 September —
+   * „the test accounts do not work" — which was this gate refusing the review
+   * numbers before the OTP was even looked at. A week later it would come back
+   * as an app-store review failing.
+   *
+   * It is also already off by default: `reviewLoginDigits()` returns an empty
+   * set unless BOTH environment variables are set, so this branch cannot fire
+   * on an ordinary day. If the founder wants it shut too, it is one line — but
+   * that is a sentence he should say about reviewers, not one inferred from a
+   * sentence about invitations.
+   */
   if (isReviewPhone(phone)) {
     return { eligible: true, mode: 'open', inviterUserId: attribution };
   }
@@ -274,7 +350,10 @@ export async function checkRegistrationEligibility(
     return { eligible: true, mode: 'existing', inviterUserId: attribution };
   }
 
-  if (await passesSocialProof(phoneVariants(phone))) {
+  // SOCIAL PROOF LET SOMEBODY IN BECAUSE OTHER PEOPLE HAD THEIR NUMBER SAVED —
+  // nobody invited them. Roughly 465 numbers qualified on 24 September, and the
+  // founder was asked with that number in the question before he answered.
+  if (!(await personalCodeOnly()) && (await passesSocialProof(phoneVariants(phone)))) {
     return { eligible: true, mode: 'social', inviterUserId: attribution };
   }
 

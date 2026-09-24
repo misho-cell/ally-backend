@@ -19,15 +19,41 @@ interface GateWorld {
   attributedInviterId?: number | null;
   // An invite cohort behind the typed code (Ticket 10 Task 26).
   cohort?: { code: string; name: string; trial_days: number; tier: string; active: boolean };
+  /**
+   * „Only a person's own code" (the founder, 24 September). Default false, as
+   * it ships — so every test below still describes today's live behaviour and
+   * the new flag changes nothing unless a test asks for it.
+   */
+  personalCodeOnly?: boolean;
   // Row 229: the personal code lookup now runs even on the cohort path, so the
   // world has to be able to answer it.
   codeOwner?: { id: number; subscription_status: string } | null;
 }
 
 // Route gate queries by a distinctive SQL fragment.
-function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: number } {
+function routeGate(
+  sql: string,
+  world: GateWorld,
+  params?: readonly unknown[],
+): { rows: unknown[]; rowCount: number } {
   if (sql.includes('FROM invite_cohorts')) return world.cohort ? rows([world.cohort]) : rows([]);
-  if (sql.includes('app_flags')) return rows([{ enabled: world.flagEnabled }]);
+  /**
+   * ⚠️ TWO FLAGS SHARE ONE STATEMENT, so routing on the SQL alone answered
+   * both with the same value — and on 24 September that silently switched
+   * „only a person's own code" ON inside every test here, closing the cohort
+   * door and failing eight assertions about behaviour nobody had changed.
+   *
+   * The statements are identical by design; only the PARAMETER differs, which
+   * is exactly how they differ in production. So the mock reads the parameter
+   * too. A mock that cannot tell two rows apart is a mock that will agree with
+   * whichever one it met first.
+   */
+  if (sql.includes('app_flags')) {
+    const flag = String(params?.[0] ?? '');
+    if (flag === 'invite_personal_code_only')
+      return rows([{ enabled: world.personalCodeOnly === true }]);
+    return rows([{ enabled: world.flagEnabled }]);
+  }
   if (sql.includes('SELECT "userId" FROM "UserPhone"'))
     return world.registered ? rows([{ userId: 42 }]) : rows([]);
   if (sql.includes('FROM "UserAlias" ua'))
@@ -42,7 +68,9 @@ function routeGate(sql: string, world: GateWorld): { rows: unknown[]; rowCount: 
 }
 
 function setWorld(world: GateWorld): void {
-  mockQuery.mockImplementation((sql: string) => Promise.resolve(routeGate(sql, world) as never));
+  mockQuery.mockImplementation((sql: string, params?: readonly unknown[]) =>
+    Promise.resolve(routeGate(sql, world, params) as never),
+  );
 }
 
 const CLOSED_WORLD: GateWorld = {
