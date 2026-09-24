@@ -1972,21 +1972,24 @@ adminRouter.post(
   body('note').isString().trim().isLength({ min: 3, max: 500 }),
   body('tokens').optional().isInt({ min: 0, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
   body('holds').optional().isArray({ max: 20 }),
+  body('invited_by').optional().isInt({ min: 1 }).withMessage('invited_by must be a seat user id'),
   async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
-        error: 'name (1-60) and note (3-500) are required; tokens and holds are optional.',
+        error:
+          'name (1-60) and note (3-500) are required; tokens, holds, legacy_ally and invited_by are optional.',
       });
       return;
     }
     const admin = (req as AuthenticatedRequest).user.userId;
-    const { name, note, tokens, holds, legacy_ally } = req.body as {
+    const { name, note, tokens, holds, legacy_ally, invited_by } = req.body as {
       name: string;
       note: string;
       tokens?: number;
       holds?: unknown[];
       legacy_ally?: boolean;
+      invited_by?: number;
     };
     try {
       const seat = await createTestSeat(
@@ -1999,7 +2002,13 @@ adminRouter.post(
         // Ally accounts — no Netai activity, no subscription, the flag false —
         // so the login gate the founder asked for on 24 September can be
         // proven on a fiction. Absent or false gives the ordinary working seat.
-        { legacyAlly: legacy_ally === true },
+        // `invited_by: <seat user id>` puts the new seat through the INVITATION
+        // half of registration — the product's own gate resolves the inviter
+        // and the product's own grant decides the free period. It is the only
+        // way the free days (D485) can be observed at all: this route inserts
+        // an account, it does not register one, and the grant lives on the
+        // registration path. The inviter must itself be a seat.
+        { legacyAlly: legacy_ally === true, invitedBy: invited_by?.toString() },
       );
       res.status(201).json({ success: true, data: seat });
     } catch (error) {

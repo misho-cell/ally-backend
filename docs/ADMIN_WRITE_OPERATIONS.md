@@ -2926,3 +2926,45 @@ are different facts.
 
 Each goes on after the tester's round on the one before, and each is written
 here in one line when it does.
+
+---
+
+## 38 · `invited_by` on the test-seat route — the only way the free days can be seen
+
+The tester, 24 September, on why their round on switch one was blocked:
+
+> *„our only way to make a fictional account is POST /admin/test-accounts. It
+> writes the account directly; it does not go through registration and takes no
+> inviter. So from our side there is no invited fictional registration to make
+> — the grant path cannot be reached."*
+
+Correct, and the feature they could not reach is the one that **spends money on
+every invited joiner**, live since 16:07 UTC. A grant nobody can observe is a
+grant nobody can say works.
+
+### WHAT IT ADDS
+
+    ROUTE    POST /admin/test-accounts
+    BODY     { "name": …, "note": …, "invited_by": <a seat's user id> }
+    DOES     resolves the inviter through the product's own
+             `checkRegistrationEligibility`, writes `inviterReferralUserId` the
+             way `registerUser` writes it, and hands the gate's answer to the
+             same `grantWhateverFreePeriodIsOwed` the registration path calls.
+    UNDO     none needed — it only ever touches the account it just created.
+
+**The rules are not re-implemented.** That is the whole design: a copy of them
+here would agree with itself and prove nothing about the real path.
+
+### WHAT IS SKIPPED, AND WHAT IS NOT
+
+Only the OTP. It proves possession of a phone, and a fictional number has
+nobody to prove it. **No door is opened by this:** the route could already
+create accounts and could not before; nothing here is reachable by anyone who
+could not already create a seat.
+
+### THE ONE REFUSAL THAT MATTERS
+
+**The inviter must itself be a seat.** A fictional account invited by a real
+person would enter that person's referral chain — and their referral earnings —
+with an invented registration. That is a write on a real person's data wearing a
+test's clothes, and it is refused by name, not skipped silently.

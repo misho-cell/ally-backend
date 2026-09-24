@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { adjustTestAccountTokens } from './tokenWallet.service';
+import { checkRegistrationEligibility } from './inviteGate.service';
+import { grantWhateverFreePeriodIsOwed } from './auth.service';
 
 /**
  * ROW 251 — CREATING A FICTIONAL SEAT, WITH THE ONE CHECK THAT IS NOT A
@@ -142,6 +144,84 @@ export async function firstFreeFictionalPhone(): Promise<string> {
 export interface SeatShape {
   /** Default false: an ordinary seat is a working Netai user. */
   readonly legacyAlly?: boolean;
+  /**
+   * A SEAT THAT ARRIVED THROUGH SOMEBODY'S INVITATION — the user id of the seat
+   * that invited it.
+   *
+   * Why it exists: the free days an invitation carries (D485) fire on the
+   * REGISTRATION path, and this route does not register — it inserts an
+   * account. The tester said so plainly on 24 September: „our only way to make
+   * a fictional account writes the account directly; it does not go through
+   * registration and takes no inviter. So from our side there is no invited
+   * fictional registration to make." They were right, and a feature that spends
+   * money cannot be left unprovable.
+   *
+   * ⚠️ IT REUSES THE REAL CODE, and that is the whole point. The inviter is
+   * resolved by the product's own `checkRegistrationEligibility`, and the
+   * period is granted by the same `grantWhateverFreePeriodIsOwed` that
+   * `registerUser` calls. A copy of those rules here would agree with itself
+   * and prove nothing.
+   *
+   * What is skipped is the OTP, and only the OTP: it proves possession of a
+   * phone, which a fictional number has nobody to prove. No door is opened —
+   * this route was already able to create accounts, and could not before.
+   */
+  readonly invitedBy?: string;
+}
+
+/**
+ * Put this brand-new seat through the INVITATION half of registration: resolve
+ * the inviter with the product's own gate, record the link the way
+ * `registerUser` records it, and hand the result to the same grant function.
+ *
+ * Nothing about the rules lives here. This function's only job is to ask the
+ * real ones the same question a real registration asks, so that „an invited
+ * person gets N free days" can be observed rather than believed.
+ *
+ * The inviter must itself be a seat. A fictional account invited by a REAL
+ * person would put a fiction into that person's referral chain and their
+ * earnings, which is a write on somebody's data, not a test.
+ */
+async function arriveByInvitation(
+  userId: string,
+  phone: string,
+  inviterSeatId: string,
+): Promise<void> {
+  const inviter = await query<{ phone: string }>(
+    `SELECT up.phone
+       FROM test_seats ts
+       JOIN "UserPhone" up ON up."userId" = ts.user_id
+      WHERE ts.user_id = $1::int
+      LIMIT 1`,
+    [inviterSeatId],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  const inviterPhone = inviter.rows[0]?.phone;
+  if (inviterPhone === undefined) {
+    throw new SeatCreationRefused(
+      `the inviter ${inviterSeatId} is not a test seat — a fictional account may only be invited by another seat`,
+    );
+  }
+
+  const gate = await checkRegistrationEligibility(phone, inviterPhone);
+
+  /**
+   * The link, written exactly as `registerUser` writes it. Left out, the
+   * account would carry free days with nothing saying where they came from,
+   * and the tester's „read the inviter link" would have nothing to read.
+   */
+  await query(
+    `UPDATE "User" SET "inviterReferralUserId" = $2, "updatedAt" = NOW() WHERE id = $1::int`,
+    [userId, gate.inviterUserId ?? null],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+
+  await grantWhateverFreePeriodIsOwed(Number(userId), phone, gate);
+
+  // eslint-disable-next-line no-console
+  console.log(
+    `[test-seat] ${userId} arrived by invitation from ${inviterSeatId}; gate mode ${gate.mode ?? 'none'}, inviter ${gate.inviterUserId ?? 'not resolved'}`,
+  );
 }
 
 export async function createTestSeat(
@@ -210,6 +290,8 @@ export async function createTestSeat(
     [userId, seatName, phone, createdBy, why],
     SEAT_QUERY_TIMEOUT_MS,
   );
+
+  if (shape.invitedBy !== undefined) await arriveByInvitation(userId, phone, shape.invitedBy);
 
   const saved = await savePhonebook(userId, holds);
   const balance =

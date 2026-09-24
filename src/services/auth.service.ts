@@ -267,7 +267,7 @@ export async function verifyOTP(
  * the general one and quietly shorten what somebody was promised. A person who
  * came through a cohort door has already been given days; this adds nothing.
  */
-async function grantWhateverFreePeriodIsOwed(
+export async function grantWhateverFreePeriodIsOwed(
   userId: number,
   cleanPhone: string,
   gate: EligibilityCheck,
