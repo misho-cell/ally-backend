@@ -116,12 +116,41 @@ export async function firstFreeFictionalPhone(): Promise<string> {
  * with fewer contacts than asked for — which the caller can see and repeat —
  * rather than an alias row pointing at an account that does not exist.
  */
+/**
+ * A SEAT SHAPED LIKE AN OLD ALLY ACCOUNT, so the login gate can be proven on a
+ * fiction before it ever meets a person.
+ *
+ * The founder's rule (24 September): an old Ally account cannot enter Netai by
+ * logging in — it needs an invitation from somebody already here. That is a
+ * gate on ACCESS, and a login gate nobody has tested is the worst possible
+ * thing to release at 62,163 people.
+ *
+ * An ordinary seat cannot stand in for one: it is built to be a WORKING Netai
+ * user, with `hasAccessToAlly` true and a year of subscription. This variant is
+ * the opposite on exactly the columns the gate reads, and nothing else changes
+ * — the same fictional number range, the same `test_seats` row, the same
+ * refusals.
+ *
+ * ⚠️ AND THE COLUMN IS NOT THE DEFINITION. `hasAccessToAlly = false` matches
+ * 62,163 accounts that have never opened Netai AND 35 that use it daily,
+ * Lika Ose among them with 321 threads — it is the admin-login flag, not
+ * „did you come from Netai". The gate keys on having NO Netai activity at all.
+ * This seat therefore has no threads, which is what actually puts it in the
+ * gated population, and the flag is set false only so it resembles the real
+ * thing in every column somebody might later read.
+ */
+export interface SeatShape {
+  /** Default false: an ordinary seat is a working Netai user. */
+  readonly legacyAlly?: boolean;
+}
+
 export async function createTestSeat(
   name: string,
   holds: readonly string[],
   tokens: number,
   createdBy: string,
   note: string,
+  shape: SeatShape = {},
 ): Promise<NewTestSeat> {
   const seatName = name.trim().slice(0, MAX_NAME_CHARS);
   if (seatName === '') throw new SeatCreationRefused('a seat needs a name');
@@ -157,9 +186,13 @@ export async function createTestSeat(
   const created = await query<{ id: number }>(
     `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
                          "hasAccessToAlly", current_period_ends_at)
-     VALUES ($1, '', 'ACTIVE', 'pro', 'active', true, NOW() + INTERVAL '1 year')
+     VALUES ($1, '', 'ACTIVE',
+             CASE WHEN $2 THEN NULL      ELSE 'pro'    END,
+             CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
+             NOT $2,
+             CASE WHEN $2 THEN NULL      ELSE NOW() + INTERVAL '1 year' END)
      RETURNING id`,
-    [seatName],
+    [seatName, shape.legacyAlly === true],
     SEAT_QUERY_TIMEOUT_MS,
   );
   const userId = String(created.rows[0].id);

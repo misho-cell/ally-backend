@@ -1867,11 +1867,12 @@ adminRouter.post(
       return;
     }
     const admin = (req as AuthenticatedRequest).user.userId;
-    const { name, note, tokens, holds } = req.body as {
+    const { name, note, tokens, holds, legacy_ally } = req.body as {
       name: string;
       note: string;
       tokens?: number;
       holds?: unknown[];
+      legacy_ally?: boolean;
     };
     try {
       const seat = await createTestSeat(
@@ -1880,6 +1881,11 @@ adminRouter.post(
         tokens ?? DEFAULT_SEAT_TOKENS,
         `admin:${admin}`,
         note,
+        // `legacy_ally: true` makes a seat shaped like one of the 62,163 old
+        // Ally accounts — no Netai activity, no subscription, the flag false —
+        // so the login gate the founder asked for on 24 September can be
+        // proven on a fiction. Absent or false gives the ordinary working seat.
+        { legacyAlly: legacy_ally === true },
       );
       res.status(201).json({ success: true, data: seat });
     } catch (error) {
