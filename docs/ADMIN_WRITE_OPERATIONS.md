@@ -3196,3 +3196,57 @@ go on until one of those two has happened.**
 24 September: *„do nothing on 4511, wait for the 26th"*. Nothing here touches
 it. The account is named because the gate would refuse it, not because anything
 is being done to it.
+
+---
+
+## 43 · The launch window is configured after all — and why nobody has ever had its days
+
+`GET /admin/launch-window` (added 24 September, read-only, returns no ids)
+answered a question that had been sitting in an environment variable:
+
+    configured        TRUE
+    referrer_count    6
+    open_today        TRUE
+    trial_days        20
+    ends_at           2026-10-15 23:59:59 +04:00
+
+So the launch cohort **is** set up: six of the founder's accounts, open until 15
+October, twenty days.
+
+### THEN WHY HAS NO ACCOUNT EVER BEEN GRANTED A COHORT TRIAL?
+
+Because nobody has come through it. Netai registrations since 8 September, when
+the window opened, seats excluded:
+
+| | |
+|---|---|
+| registrations | **1** |
+| …with an inviter | **0** |
+| …stamped with a cohort | 0 |
+
+**Zero invited registrations since the window opened.** The path has never been
+exercised, which is a different fact from the path being broken — and the
+difference is the whole of this entry. „Never fired" was read this morning as
+evidence that the launch path needed replacing; it is evidence that nobody has
+joined.
+
+### WHAT THIS CHANGES ABOUT THE DIVERGENCE RISK (§ in 560)
+
+It narrows it without removing it. A launch-window invitee should get the
+cohort's 20 via the cohort branch, which returns before the general free-days
+branch — so lowering `invite_free_days` to 10 or 5 should NOT shorten what the
+founder's own invitees were promised.
+
+**Should, not does.** The branch has never run in production. The first person
+invited by one of those six accounts is the first time anyone sees it work, and
+that is worth watching for rather than assuming.
+
+### AND THE READ ITSELF
+
+    GET /admin/launch-window     no ids, ever — the referrers are the founder's
+                                 own accounts. A count and the dates answer
+                                 „does this path fire" without naming anybody.
+
+„Configured" and „open today" are returned separately on purpose: a closed
+window still has its referrers, and an open one still grants nothing if nobody
+is named. Merging them is the reading that misleads.
