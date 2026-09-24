@@ -125,3 +125,45 @@ describe('the route can ask for one', () => {
     expect(routes).toContain('legacyAlly: legacy_ally === true');
   });
 });
+
+describe('⚠️ the shape is MEASURED, not reasoned — the first version could not be created', () => {
+  beforeEach(async () => {
+    await createTestSeat('Netai Test 40', [], 0, 'admin:1', 'legacy shape', {
+      legacyAlly: true,
+    });
+  });
+
+  /**
+   * It set `subscription_tier` to NULL, on the perfectly sensible reasoning
+   * that a legacy account has no subscription. **The column is NOT NULL**, so
+   * every attempt died with a 500 — and it shipped with passing tests, because
+   * the tests mock the database and a mock has no constraints.
+   *
+   * Built, deployed, and never once run. §34 said the login gate would be
+   * proven on this seat before anybody turned it on; the gate went on at
+   * 18:36:57 and the seat could not exist.
+   *
+   * The values now match what 62,156 real legacy accounts actually carry,
+   * read from the live base: tier `free`, status `inactive`.
+   */
+  it('carries the tier the real population carries, and never NULL', () => {
+    const insert = userInsert();
+
+    expect(insert).toBeDefined();
+    expect(insert?.sql).toContain("CASE WHEN $2 THEN 'free'");
+    expect(insert?.sql).not.toMatch(/subscription_tier[\s\S]{0,80}THEN NULL/);
+  });
+
+  it('is inactive, like the 62,156', () => {
+    expect(userInsert()?.sql).toContain("CASE WHEN $2 THEN 'inactive'");
+  });
+
+  /**
+   * The one column that IS null for them, and the one the product's own
+   * subscription gate actually reads: `hasActiveSubscription` asks the PERIOD
+   * END, not the status.
+   */
+  it('has no subscription period, which is what the product checks', () => {
+    expect(userInsert()?.sql).toMatch(/THEN NULL\s+ELSE NOW\(\) \+ INTERVAL '1 year'/);
+  });
+});

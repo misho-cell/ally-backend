@@ -157,6 +157,24 @@ export async function firstFreeFictionalPhone(): Promise<string> {
  * This seat therefore has no threads, which is what actually puts it in the
  * gated population, and the flag is set false only so it resembles the real
  * thing in every column somebody might later read.
+ *
+ * ⚠️ AND THE FIRST VERSION COULD NOT BE CREATED AT ALL. It set
+ * `subscription_tier` to NULL, on the reasoning that a legacy account has no
+ * subscription — and the column is NOT NULL, so every attempt died with a 500.
+ * It shipped with tests that passed, because the tests mock the database and a
+ * mock has no constraints. **Built, deployed, and never once run**, which is
+ * the third fact this project keeps having to add to the other two: §34 said
+ * the login gate would be proven on this seat before anybody turned it on, and
+ * the seat could not exist.
+ *
+ * The values are now MEASURED rather than reasoned. What 62,156 real legacy
+ * accounts actually carry:
+ *
+ *     subscription_tier   'free'        subscription_status   'inactive'
+ *
+ * (Of the rest: 5 premium/active, 1 premium/trialing, 1 pro/active — real
+ * people with real subscriptions who have never opened Netai. They are not
+ * what this fiction imitates.)
  */
 export interface SeatShape {
   /** Default false: an ordinary seat is a working Netai user. */
@@ -305,10 +323,10 @@ export async function createTestSeat(
     `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
                          "hasAccessToAlly", current_period_ends_at)
      VALUES ($1, '', 'ACTIVE',
-             CASE WHEN $2 THEN NULL      ELSE 'pro'    END,
+             CASE WHEN $2 THEN 'free'     ELSE 'pro'    END,
              CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
              NOT $2,
-             CASE WHEN $2 THEN NULL      ELSE NOW() + INTERVAL '1 year' END)
+             CASE WHEN $2 THEN NULL       ELSE NOW() + INTERVAL '1 year' END)
      RETURNING id`,
     [seatName, shape.legacyAlly === true],
     SEAT_QUERY_TIMEOUT_MS,
