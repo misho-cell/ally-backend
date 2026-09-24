@@ -149,6 +149,14 @@ export interface PilotReport {
    */
   readonly payment_rule: string;
   readonly closures_dated_since: string | null;
+  /**
+   * Goals closed BEFORE the column existed, which can never be dated. The
+   * „solved" columns exclude them, so a screen that does not say this is
+   * reporting that the pilot solved nothing. Sent as a field rather than a
+   * number in a message: a figure typed into a page is true on the day it is
+   * typed.
+   */
+  readonly closures_without_a_date: number;
   readonly real: PilotSide;
   readonly seats: PilotSide;
 }
@@ -417,8 +425,22 @@ export async function pilotReport(days = DEFAULT_DAYS): Promise<PilotReport> {
   const [real, seats, dated] = await Promise.all([
     sideFor(REAL, span),
     sideFor(SEAT, span),
-    query<{ first: string | null }>(
-      `SELECT MIN(closed_at)::text AS first FROM tasks WHERE closed_at IS NOT NULL`,
+    /**
+     * The date closures began to be recorded, AND how many are older than it.
+     *
+     * The app team asked for the count as a field rather than taking the „422"
+     * from a message, and they were right to: a number typed into a screen is
+     * true on the day it is typed and silently wrong afterwards. It falls as
+     * nothing and rises only if closures happen while the column is absent,
+     * which cannot happen again — so it is a shrinking share of a fixed past,
+     * and a hard-coded 422 would have aged badly in exactly the quiet way this
+     * report exists to prevent.
+     */
+    query<{ first: string | null; undated: string }>(
+      `SELECT MIN(closed_at)::text                                   AS first,
+              COUNT(*) FILTER (WHERE status = 'closed'
+                                 AND closed_at IS NULL)::text        AS undated
+         FROM tasks`,
       [],
       PILOT_QUERY_TIMEOUT_MS,
     ),
@@ -429,6 +451,7 @@ export async function pilotReport(days = DEFAULT_DAYS): Promise<PilotReport> {
     population: POPULATION_RULE,
     payment_rule: PAYMENT_RULE,
     closures_dated_since: dated.rows[0]?.first ?? null,
+    closures_without_a_date: Number(dated.rows[0]?.undated ?? 0),
     real,
     seats,
   };
