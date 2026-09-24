@@ -48,7 +48,7 @@ Ordered by what else they block.
 | A | ~~the ask reminder pushes a real person at 5 a.m.~~ **CLOSED 23 Sep** — quiet window shipped, and **D472** settled the hours | ~~yours~~ — answered; per-recipient time is scoped when a real user west of Georgia registers | nothing |
 | B | clearing the founder's test goals (§23 of the write register) | **his or yours** — and D245 says a goal is never deleted | the tester's tidy-up of account 501 |
 | C | the opening web search on a goal naming no trade or place | **the founder's** — it collides with D315 | row 253's remaining half |
-| D | the outage monitor is blind all night | **half of it was free and is now built** (the crons are the heartbeat, 240-min alarm); the paid probe for the first three hours is still yours | nine hours of blindness became four |
+| D | ~~the outage monitor is blind all night~~ **CLOSED 24 Sep 06:38** — the free half (the crons are the heartbeat, 240-min alarm) and then the paid probe, delegated by Misho („შენით გადაწყვიტე") and costed at last: **0.009 USD a month** | ~~yours~~ — done | nine hours became four, then the probe took the four |
 | E | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase | nothing; the test pins today's behaviour |
 | F | the zero-wallet test seat refills itself | **yours** — the fix is an access change | any row 221 reading that needs an empty wallet |
 
@@ -981,3 +981,64 @@ it is definitionally dead, whatever the push service says.
 
 It is small, it is written, and it can go out in one step after somebody
 decides — together with, or instead of, the client change.
+
+---
+
+## 24 September, 07:00 UTC — what the night settled, and the two things it leaves
+
+### Settled overnight, needing nobody further
+
+**Item 1 — the outage probe. DECIDED AND LIVE.** Misho delegated it
+(„შენით გადაწყვიტე"), and the decision took one multiplication nobody had
+done: twelve input tokens and one output token, every thirty minutes through a
+nine-hour night, is **0.0003 USD per night — 0.009 USD per month**. „A probe
+costs money" had been true and useless for a day, and it had deferred the
+decision on a number that was never computed. `services/heartbeat.cron.ts`,
+live 06:38:42.
+
+It fires only into silence (25 minutes with no Anthropic call), so by day it
+will essentially never fire, and it is recorded under its own `kind` so that
+`outage.sh` can use it for the silence test while excluding it from the
+answered-calls count — **a heartbeat proves the provider answers and nothing
+else, and a completely broken product still has one**. Counting it as „the
+product is answering" would have built a new blindness in the act of closing an
+old one.
+
+**Item 8's safe half — one stale push endpoint retired**, on Misho's word
+(„2. წაშალე"), migration `173`, register entry written first. Not Lika's: her
+older row carries no `device_id` and no `user_agent`, so the never-live-on-the-
+same-day test cannot be run on it, and an iPhone plus a Mac running Safari
+would look exactly like what her table shows.
+
+### THE THRESHOLD IS NOT LOWERED YET, AND THAT IS DELIBERATE
+
+`NIGHT_SILENCE_LIMIT_MIN` stays at **240**. With a probe firing into every
+25-minute silence, no night should ever show more than about 35 minutes of it,
+and the alarm could reasonably sit near 60 — but **the probe has not fired
+once**, because the product has not been quiet for 25 minutes since it
+deployed. Measured this morning, the longest provider silences of the night of
+23→24 September were 61, 60, 58 and 46 minutes: four windows the probe would
+have filled had it existed, and none it did.
+
+„Built" and „works" were confused once already on 23 September, at a cost of
+eight hours. The number moves when a heartbeat row exists, not before.
+
+### 1. Row 242's refusing half has never fired — STILL MISHO
+
+Unchanged from last night and still the shortest question on the list. Asking
+for the same thing twice no longer opens a second goal; that goals still open
+normally is proved; **that a duplicate is actually caught is not**, because no
+duplicate has been attempted in production since it deployed. Two minutes on
+Misho's account — one goal, the same sentence again, read the refusal, close
+both. Nothing is sent to anybody. It needs his word because it writes to a real
+account.
+
+### 2. Does Lika Ose have a second Apple device? — LIKA
+
+One sentence from her closes row 101's second half. If she has one phone, her
+older subscription is a duplicate and has been delivering every notification
+twice since 17 September — **205 double deliveries in seven days**. If she has
+a Mac as well, both rows are correct and nothing should be touched.
+
+Deleting on a guess is how somebody stops receiving the product, so it waits
+for the sentence.
