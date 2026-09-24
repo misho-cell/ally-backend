@@ -146,6 +146,14 @@ function isoOrNull(value: Date | null): string | null {
 }
 
 /**
+ * Statuses that CLAIM ACCESS. A row holding one of these is asserting that the
+ * person may use the product, and that assertion has to be backed by a live
+ * subscription. Anything else — `inactive`, `canceled`, `unpaid`, null — is a
+ * row claiming nothing, which nothing can contradict.
+ */
+const CLAIMS_ACCESS: ReadonlySet<string> = new Set(['trialing', 'active', 'past_due']);
+
+/**
  * Which of the three values disagree.
  *
  * `current_period_ends_at` is deliberately NOT compared. It moves on every
@@ -153,10 +161,24 @@ function isoOrNull(value: Date | null): string | null {
  * drifted and bury the rows that matter — a check that cries on everything is
  * a check nobody reads, which is the lesson of the outage monitor's quiet
  * hours.
+ *
+ * ⚠️ AND THE FIRST RUN OF THIS CHECK WAS EXACTLY THAT CHECK. It called every
+ * customer with no subscription on our price a drift, and printed 78 of 82
+ * accounts as faults. Seventy-four of them are stored `inactive` — a customer
+ * record was created, the person never subscribed, and `inactive` beside no
+ * subscription is not a disagreement, it is the two sources agreeing.
+ *
+ * Having a Stripe customer id is not having a subscription. The row is only
+ * wrong when it CLAIMS ACCESS that Stripe does not back, and the paragraph
+ * above about crying on everything was written three hours before the code
+ * below did it.
  */
 function differences(stored: StoredRow, live: SubscriptionFacts | null): string[] {
   if (live === null) {
-    return stored.subscription_status === null ? [] : ['stripe has no subscription on our price'];
+    const status = stored.subscription_status ?? '';
+    return CLAIMS_ACCESS.has(status)
+      ? [`stored ${status} — but stripe has no subscription on our price`]
+      : [];
   }
   const differs: string[] = [];
   if ((stored.subscription_status ?? '') !== live.status) {

@@ -130,6 +130,64 @@ describe('another product’s billing is not our billing', () => {
   });
 });
 
+/**
+ * THE FIRST LIVE RUN PRINTED 78 OF 82 ACCOUNTS AS FAULTS, and 74 of them were
+ * correct rows. A Stripe CUSTOMER is not a Stripe SUBSCRIPTION: a customer
+ * record gets created and the person never subscribes, and `inactive` beside no
+ * subscription is the two sources agreeing.
+ *
+ * The file already carried a paragraph saying a check that cries on everything
+ * is a check nobody reads. It was written three hours before the code did it.
+ */
+describe('a customer who never subscribed is not a fault', () => {
+  it('says nothing when the row claims nothing', async () => {
+    dbQuery.mockResolvedValue({
+      rows: [storedUser({ subscription_status: 'inactive' })],
+      rowCount: 1,
+    });
+    subscriptionsList.mockResolvedValue({ data: [] });
+
+    const report = await subscriptionDrift();
+
+    expect(report.agreed).toBe(1);
+    expect(report.drifted).toHaveLength(0);
+    expect(report.not_our_price).toBe(1);
+  });
+
+  it('still reports a row that CLAIMS ACCESS Stripe does not back', async () => {
+    subscriptionsList.mockResolvedValue({ data: [] });
+
+    const report = await subscriptionDrift();
+
+    expect(report.drifted).toHaveLength(1);
+    expect(report.drifted[0].differs[0]).toContain('stored trialing');
+  });
+});
+
+/**
+ * THE CASE THAT ACTUALLY HAPPENED, AND IT IS NOT THE ONE THE FIX WAS BUILT FOR.
+ *
+ * Account 4511 on 24 September: Stripe holds `cancel_at` = the period end and
+ * `cancel_at_period_end` = FALSE. The subscription is scheduled to stop, and
+ * the flag row 248's fix keys on is not set. So the two values have to be
+ * compared independently — a checker that only watched the flag would have
+ * called that account clean.
+ */
+describe('a cancellation can arrive without the flag', () => {
+  it('reports a cancels_at that the column has not heard about, flag or no flag', async () => {
+    subscriptionsList.mockResolvedValue({
+      data: [liveSub({ cancel_at_period_end: false, cancel_at: 1790000000 })],
+    });
+
+    const report = await subscriptionDrift();
+
+    expect(report.drifted).toHaveLength(1);
+    expect(report.drifted[0].differs).toHaveLength(1);
+    expect(report.drifted[0].differs[0]).toContain('cancels_at');
+    expect(report.drifted[0].live?.cancel_at_period_end).toBe(false);
+  });
+});
+
 describe('what it refuses to call a difference', () => {
   /**
    * `current_period_ends_at` moves on every renewal with no event missed, so
