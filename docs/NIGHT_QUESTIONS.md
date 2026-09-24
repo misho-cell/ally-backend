@@ -1016,7 +1016,19 @@ At 07:00 this said the number would move „when a heartbeat row exists, not
 before", because „built" and „works" had been confused once already this week
 at a cost of eight hours.
 
-**The row exists. 07:13:08, after 26 minutes of silence, and again at 07:20.**
+**The row exists. 07:13:08, after 26 minutes of silence.**
+
+⚠️ **AND I SAID „AND AGAIN AT 07:20" IN THE SAME BREATH, WHICH IS NOT TRUE.**
+There has been exactly ONE heartbeat. I read it off the monitor's „Last
+Anthropic call: 10 min ago" at 07:26 and took it for a second firing; rounded,
+that line points back at the 07:13 row. The ledger has one heartbeat and
+nothing else since 06:46:58.
+
+It changes no decision — the mechanism is proved by the call that happened, not
+by how many — but it is a number I stated without asking for it, on the morning
+whose whole subject is numbers stated without asking for them. **In a paragraph
+about confusing „built" with „works", I invented a second data point.** The
+next real one is due whenever the product is quiet for 25 minutes again.
 
 So `NIGHT_SILENCE_LIMIT_MIN` is **60**, and the reasoning behind the old number
 is gone rather than adjusted. 240 was justified by what is NORMAL — the longest
