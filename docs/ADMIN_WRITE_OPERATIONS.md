@@ -2461,3 +2461,35 @@ still SHADOW. Nothing in the product reads it — no search, no chat, no ask. A
 wrong row here changes an admin screen and nothing a user can see, which is
 exactly why it is the right time to make the undo exact rather than after
 something starts depending on it.
+
+### VERIFIED AFTER THE DEPLOY, 09:45 — because „seven" was a prediction until it was read back
+
+The entry above was written from a measurement taken BEFORE the migration ran.
+That makes it a forecast, and this file is not a place for forecasts. Read back
+from the live table afterwards:
+
+| approved candidates | 80 |
+|---|---|
+| with `merged_phones` recorded — **undoable exactly** | **73** |
+| left NULL | **7** |
+
+And the seven are the seven that were predicted, not a different exclusion. The
+backfill had two conditions and they could each have caught different rows:
+
+| why a row was left NULL | count |
+|---|---|
+| the merge EXTENDED an existing person | **7** |
+| the merge log had more than one matching row (ambiguous) | 3 — all within the seven |
+| no merge log row at all | 0 |
+
+So nothing was excluded by the ambiguity rule alone and nothing was missing a
+log row. Every one of the seven is the case the route refuses on purpose, and
+the other seventy-three undo exactly.
+
+**And the route was proven on a real pair the same morning.** The tester ran it
+on the founder's word: candidate 232, approve → 200, undo → 200. Read back from
+the tables rather than the screen — candidate `pending` with every decision
+field cleared, one `merge` and one `unmerge` in the log twenty-five seconds
+apart, zero phones left mapped to that person. **The first successful unmerge
+this product has ever recorded**: 472 merges in the log and, until 09:30 today,
+no unmerge at all.
