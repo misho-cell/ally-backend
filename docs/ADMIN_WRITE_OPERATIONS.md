@@ -3037,3 +3037,45 @@ true number refused is one or zero, not more.
 
 Nothing here decides the flip. It replaces a guess about the cost with a
 measurement of it, which is what §34 said was missing.
+
+---
+
+## 40 · Switch one, proven on four fictions — 24 September
+
+The whole of the tester's done-when, run on the live base. Every row read back
+from the database, not from the route that wrote it.
+
+| seat | state when it registered | result |
+|---|---|---|
+| Netai Test 23 (172299) | on, 20 | `trialing`, cohort `INVITED`, **20 days** |
+| Netai Test 24 (172300) | on, 5 | `trialing`, cohort `INVITED`, **5 days** |
+| Netai Test 25 (172332) | on, **0** | no trial, **no cohort stamp** |
+| Netai Test 26 (172333) | **off**, 20 | no trial, **no cohort stamp** |
+
+All four invited by Netai Test 2 (171871).
+
+    PUT value 900   ->  400, "value must be a whole number between 0 and 90".
+                        Refused, not clamped.
+    CONTROLS        Test 2, the inviter: unchanged. Netai Test 21, a seat
+                    already inside: unchanged.
+    LIVE STATE      restored to value 20, flag true, and read back to confirm.
+
+So the number on the dashboard is the number granted — not a constant that
+happens to be 20 — and **both ways of saying „give nothing" work**: the switch
+off, and the number at zero.
+
+### THE DETAIL WORTH KEEPING
+
+`inviterReferralUserId` is written on all four, including the two that were
+granted nothing. **Who invited whom is recorded independently of whether
+anything was paid**, which is the right way round: the referral chain is a fact
+about how somebody arrived, and a switch that pays for it is a policy that
+changes.
+
+### WHAT THIS IS NOT
+
+It is not a real registration. The OTP is skipped and the phone is fictional.
+What it proves is that the grant decides correctly on the product's own gate
+and its own settings; it does not prove the app's registration screen reaches
+this path. The first real invited joiner is still the thing nobody has seen —
+and there has not been one since the week of 7 September.
