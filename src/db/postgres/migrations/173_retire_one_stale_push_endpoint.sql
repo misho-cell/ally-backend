@@ -1,0 +1,83 @@
+-- Row 101 — ONE stale push endpoint, retired. Misho's word, 24 September
+-- („2. წაშალე"), on the evidence below and after it was put to him.
+--
+-- WHY A MIGRATION AND NOT AN ADMIN ROUTE. The only existing way to delete a
+-- subscription is `DELETE /notifications/subscription`, which takes the
+-- CALLER's own id — a person can remove their own device and nobody else's.
+-- Deleting somebody else's needs either a new admin route or a migration, and
+-- a route that can silence any person's notifications is a permanent
+-- capability created for a one-row problem. This is one row, reviewed in git,
+-- run once.
+--
+-- ════════ WHAT WAS WRONG ════════
+--
+-- A notification is sent to EVERY row in `push_subscriptions` for that person.
+-- Account 116793 has two Apple Web Push endpoints, and both are alive:
+--
+--     14 Sep   Apple   iPhone OS 18_7   device_id 35413bde…
+--     21 Sep   Apple   iPhone OS 18_7   device_id b1edfbe3…
+--
+--     both received the same notification at 09:07:52 on 23 September
+--     (…715 and …716, one second), 0 failures on either, ever
+--
+-- ════════ HOW WE KNOW IT IS ONE PHONE AND NOT TWO ════════
+--
+-- `push_deliveries` records `skipped` when a device was LIVE at send time —
+-- the server saying „that device key had a stream open". By day:
+--
+--     day        14 Sep endpoint      21 Sep endpoint
+--                live  pushed         live  pushed
+--     14 Sep       6     2            — did not exist —
+--     15-20        0    25
+--     21 Sep       0     7              2     2
+--     22 Sep       0    12              8     4
+--     23 Sep       0     4              0     4
+--
+-- The older device key was live on the day it registered and NEVER AGAIN; the
+-- newer one starts the day it appears. Ten days, never both. Two real devices
+-- owned by one person overlap — account 501's three endpoints are live on the
+-- same day repeatedly, which is what that looks like.
+--
+-- AND BOTH READINGS END IN THE SAME PLACE, which is what makes this safe: if
+-- it is one phone whose `device_id` changed, the old row is a duplicate and
+-- she has been notified twice since 17 September. If it is a second iPhone she
+-- stopped using on 15 September, the row belongs to a device she does not open.
+-- Deleting it is right either way.
+--
+-- ════════ THE UNDO, STATED HONESTLY ════════
+--
+-- THERE IS NO RESTORE. The row holds `p256dh` and `auth` — the keys that make
+-- pushing to that device possible — and they are deliberately not copied into
+-- this file or anywhere else a terminal or a git history would carry them.
+--
+-- The recovery is the client's: if that device is still in use, the browser
+-- re-registers on the next visit and a fresh row appears with a live endpoint.
+-- If it is not in use, nothing happens, which is the intended outcome. The
+-- worst case is one person's second device missing notifications until she
+-- next opens the app.
+--
+-- ════════ WHAT IS NOT DONE HERE, AND WHY ════════
+--
+-- Account 160584 (Lika Ose) also has two Apple endpoints and 205 double
+-- deliveries in seven days. HER OLDER ROW CARRIES NO `device_id` AND NO
+-- `user_agent` — it predates the client sending them — so the test above
+-- cannot be run on it: a row without a device key is skipped on „is ANY of her
+-- devices live", which says nothing about that device. An iPhone plus a Mac
+-- running Safari would produce exactly what her table shows.
+--
+-- So hers is NOT deleted. It needs one sentence from her — does she have a
+-- second Apple device — and that question is in NIGHT_QUESTIONS.md item 8.
+-- Deleting on a guess is how somebody stops receiving the product.
+--
+-- ════════ AND THE REAL FIX IS STILL THE CLIENT'S ════════
+--
+-- This removes one row. It does not stop the next one: the endpoint rotates on
+-- a reinstall and the server has no way to know which row it replaced. Only
+-- the browser knows, and it can say so — either by unsubscribing the old
+-- subscription before registering, or by sending the endpoint it is replacing.
+-- Deduping on `device_id` would NOT have caught this pair: both rows carry one
+-- and they differ.
+DELETE FROM push_subscriptions
+ WHERE user_id = 116793
+   AND endpoint LIKE 'https://web.push.apple.com/%'
+   AND created_at::date = DATE '2026-09-14';

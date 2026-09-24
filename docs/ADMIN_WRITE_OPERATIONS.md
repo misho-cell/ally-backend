@@ -2332,3 +2332,74 @@ look at the two phonebook rows it produced.
 The name and number are read from the live rows rather than typed into the
 migration: a list of numbers copied by hand is a second place for them to be
 wrong.
+
+---
+
+## One stale push endpoint deleted — row 101's cause, on one account
+
+**Misho's word, 24 September, put to him with the evidence and answered in two
+characters: „2. წაშალე".** The item he was answering said what it would delete
+and what it would not.
+
+### WHY
+
+A notification goes to EVERY row in `push_subscriptions` for a person. Account
+116793 holds two Apple Web Push endpoints and both are alive — both received
+the same notification at 09:07:52 on 23 September, one second apart, with zero
+failures on either, ever. Nothing retires a subscription unless the push
+service answers 404 or 410, and Apple never has for these.
+
+**It is one phone, not two devices,** and the delivery log says so without
+anybody being asked. `skipped` means the device was LIVE at send time:
+
+    day        14 Sep endpoint      21 Sep endpoint
+               live  pushed         live  pushed
+    14 Sep       6     2            — did not exist —
+    15-20        0    25
+    21 Sep       0     7              2     2
+    22 Sep       0    12              8     4
+
+The older key was live the day it registered and never again; the newer starts
+the day it appears. Ten days, never both. Account 501's three endpoints, which
+are three real machines, are live on the same day repeatedly — that is the
+control.
+
+### ROUTE / METHOD / BODY
+
+A MIGRATION: `173_retire_one_stale_push_endpoint.sql`. One `DELETE`, matched on
+user + Apple + the registration date, verified to hit **exactly one row** before
+it was written. No new route: the only existing delete takes the CALLER's own
+id, and building an admin one would create a permanent capability to silence
+any person's notifications for a one-row problem.
+
+### UNDO
+
+**There is none, and that is stated in the migration rather than implied.** The
+row holds `p256dh` and `auth` — the keys that make pushing to that device
+possible — and copying them into a file or a terminal to enable an undo would
+be worse than the thing being fixed.
+
+The recovery belongs to the client: a device still in use re-registers on the
+next visit and a fresh row appears. A device not in use stays silent, which is
+the point. Worst case is one person's second device missing notifications until
+she opens the app.
+
+**Both readings end in the same place, which is why this is safe:** one phone
+with a changed `device_id` means the row is a duplicate; a second iPhone she
+stopped using on 15 September means the row belongs to a device she does not
+open. Delete is right either way.
+
+### WHAT IT DELIBERATELY DOES NOT TOUCH
+
+Account 160584 has the same shape and **205 double deliveries in seven days**,
+and is NOT included. Her older row carries no `device_id` and no `user_agent`,
+so the test above cannot be run on it — an iPhone plus a Mac running Safari
+would produce exactly what her table shows. That one needs one sentence from
+her, and it is in `NIGHT_QUESTIONS.md` item 8. Deleting on a guess is how
+somebody stops receiving the product.
+
+### AND IT IS NOT THE FIX
+
+One row removed. The next rotation creates another, because only the browser
+knows which endpoint it replaced. Deduping on `device_id` would not have caught
+this pair — both rows carry one and they differ.
