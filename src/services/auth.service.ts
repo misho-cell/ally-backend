@@ -438,8 +438,32 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
    * read the row back.
    */
   const result = await query<{ id: number; has_used_netai: boolean }>(
+    /**
+     * ⚠️ ANY SIGN OF USE, NOT ONE SIGN — and it took a dry run to find that out.
+     *
+     * This asked only „has a thread", and §34 said that split the population
+     * cleanly because an account with messages or goals but no thread does not
+     * exist — zero, and zero, both checked, both still true. **Push
+     * subscriptions were not among the things checked.**
+     *
+     * Run as a read against every account on 24 September, before the gate was
+     * ever switched on: 62,173 would be refused, and one of them — account
+     * 4511, an old Ally account from 2024 — has a live push subscription,
+     * registered 21 September, two notifications sent to it. A push
+     * subscription cannot exist unless that browser was on the Netai site and
+     * the person granted permission. So that is somebody who has opened the
+     * product and put it on their phone, and the gate would have told them
+     * they need an invitation to something they already have installed.
+     *
+     * Widening it admits ONE more person and refuses nobody extra, which is
+     * the direction a gate that turns people away has to fail in. If the
+     * founder decides that account should be refused after all, this comes
+     * back out — but that is a decision somebody makes, not a gap nobody saw.
+     */
     `SELECT up."userId" AS id,
-            EXISTS (SELECT 1 FROM threads t WHERE t.user_id = up."userId") AS has_used_netai
+            (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = up."userId")
+             OR EXISTS (SELECT 1 FROM push_subscriptions p
+                         WHERE p.user_id = up."userId")) AS has_used_netai
        FROM "UserPhone" up
       WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
     [phone],

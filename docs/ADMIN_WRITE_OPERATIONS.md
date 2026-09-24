@@ -3307,3 +3307,43 @@ original rule existed for, and it is unchanged.
 
 Nothing was created by any of the gate checks: seat count unchanged across all
 of them.
+
+---
+
+## 45 · The login gate now keys on ANY sign of use — §42 answered the safe way
+
+§42 found that account 4511 has a live push subscription and no thread, so the
+gate as written would refuse somebody who has the product on their phone. Two
+ways out were named: widen the condition, or refuse them deliberately.
+
+**Widened.** `completeLogin`'s lookup now reads:
+
+    has_used_netai = EXISTS (a thread)  OR  EXISTS (a push subscription)
+
+One round trip, `OR` and not `AND` — `AND` would refuse everybody who has a
+thread but never turned notifications on, which is 40 of the 45 people who have
+used the product.
+
+### WHY THIS DID NOT WAIT FOR A DECISION
+
+It **admits one more person and refuses nobody extra.** For a gate whose entire
+job is turning people away, that is the only direction a change is allowed to
+be wrong in, and the gate is still off, so nothing changes for anybody today.
+
+The founder can still choose the other way. If he decides 4511 should be
+refused, this comes out in one line — and that is **somebody choosing**, which
+is a different thing from a gap nobody saw.
+
+### WHAT IS STILL TRUE OF §34
+
+Everything except the sentence „splits them cleanly". Messages and goals were
+checked and both are still zero; `hasAccessToAlly` is still the wrong column to
+key on, and keying on it would still refuse Lika Ose and 34 others. The error
+was the scope of a conclusion, not the facts under it.
+
+### SWITCH THREE
+
+Still OFF. The blocker in §42 is removed on the safe reading, but the flip
+itself remains Misho's sequencing: the tester's round on switch two is done, so
+switch three is now waiting only on it being proven against a real login on the
+legacy-shaped seat (967c9cf) — which the gate being on is required for.
