@@ -3134,3 +3134,65 @@ minutes, and they mean opposite things:
 
 172333 and 172335 got the same outcome for two entirely different reasons. The
 route does not check names and nobody thought to.
+
+---
+
+## 42 · ⚠️ §34's CLEAN SPLIT IS NOT CLEAN — one account sits on the wrong side
+
+A read-only dry run of switch three (`netai_invite_only_login`) against every
+account on the live base, before it is flipped. It writes nothing; it asks the
+gate's own question — „has this account ever opened a thread" — of all of them.
+
+| | |
+|---|---|
+| refused at their next login | **62,173** |
+| …of those, has a goal | 0 |
+| …has a saved note | 0 |
+| …**has a live push subscription** | **1** |
+| admitted (have used Netai) | 65 |
+
+### THE ONE
+
+**Giorgi Khatiashvili, account 4511.** An old Ally account from March 2024,
+`hasAccessToAlly = false`, **no thread ever** — and **one live push
+subscription, registered 21 September, two notifications sent to it, the last
+on 23 September.**
+
+A push subscription cannot exist unless that browser was on the Netai site and
+the person granted notification permission. So this is somebody who **has
+opened the product and put it on their phone**, and has not yet started a
+conversation. The gate as written would refuse them at their next login and
+tell them they need an invitation to something they have already installed.
+
+### WHAT WAS WRONG IN §34, IN ITS OWN WORDS
+
+> *„Checked for anything that would slip between the two groups — an account
+> with messages or goals but no thread: **zero, and zero.** So „has a thread"
+> splits them cleanly."*
+
+Both halves of that check were true and both are still true. **Push
+subscriptions were not among the things checked**, and they are a stronger
+signal of having used the product than a note is. The sentence „splits them
+cleanly" was a conclusion drawn from the two signals that had been looked at,
+stated as though it covered all of them.
+
+### WHAT THIS DOES AND DOES NOT DECIDE
+
+It does **not** say the gate is wrong. The founder's rule is that an old Ally
+account needs an invitation, and whether „opened the app once and turned on
+notifications" counts as already being on Netai is **his** question, not mine.
+
+It does say the population is **62,173 minus one known exception**, not 62,173
+clean. One is a small number and it is also a real person with the product on
+their phone.
+
+Either the gate's condition widens to „no thread AND no push subscription", or
+4511 is admitted deliberately and that is written down. **Switch three does not
+go on until one of those two has happened.**
+
+### AND A COINCIDENCE WORTH NAMING
+
+4511 is the same account that is already under a separate held decision — Misho,
+24 September: *„do nothing on 4511, wait for the 26th"*. Nothing here touches
+it. The account is named because the gate would refuse it, not because anything
+is being done to it.
