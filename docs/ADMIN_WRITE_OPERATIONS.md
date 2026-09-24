@@ -2985,3 +2985,55 @@ deleted.
 
 The check now runs before anything is created, and a test asserts that no
 `INSERT INTO "User"` happens on that path.
+
+---
+
+## 39 · How many people switch two would actually refuse — measured, 24 September
+
+Before flipping `invite_personal_code_only`, the question worth asking is not
+„how many people COULD come through social proof" but „how many DO".
+
+### ⚠️ THE FIRST ANSWER WAS WRONG, AND IT WAS WRONG THE USUAL WAY
+
+The obvious query — registrations in the last 90 days — returned **136, of which
+only 11 had an inviter**. Read straight, that says the personal-code rule would
+refuse nine out of ten joiners and registration would nearly stop.
+
+It is not what the number counts. Every recent row carries `hasAccessToAlly =
+false`, has a phonebook of 25–208 contacts, and has **never opened a Netai
+thread**. Those are **OLD ALLY APP SIGNUPS** — the legacy product is still
+registering one or two people a day — and `registerUser` on this backend writes
+`hasAccessToAlly` as a literal `true` on every path. So the flag separates them
+cleanly, and it is the cross-check as well as the filter: the Ally rows are all
+false, the Netai rows all true.
+
+A count of „registrations" that does not say **which product** is the same fault
+as a count of „users" that does not say which one.
+
+### THE REAL NUMBERS — Netai registrations, seats excluded, 70 days
+
+| week | registrations | with an inviter | via a cohort code | opened Netai |
+|---|---|---|---|---|
+| 20 Jul | 1 | 1 | 0 | 1 |
+| 10 Aug | 1 | 1 | 0 | 1 |
+| 17 Aug | 4 | 4 | 0 | 4 |
+| 31 Aug | 2 | 2 | 0 | 1 |
+| 7 Sep | 1 | **0** | 0 | 0 |
+| 14 Sep → today | **0** | — | — | — |
+
+**Nine Netai registrations in seventy days. Eight of the nine were invited.**
+
+### WHAT THAT MEANS FOR THE SWITCH
+
+On this evidence `invite_personal_code_only` would have refused **one person in
+seventy days**. The „~465 numbers qualify for social proof" figure in §34 is a
+CAPACITY — who could come through that door — and it has been read as a rate.
+One person walked through it in ten weeks.
+
+**And the caveat runs in the safe direction.** Attribution was dead from 31
+August to 22 September, so „with an inviter" is UNDER-counted in that window:
+the one uninvited registration may well have been invited and not recorded. The
+true number refused is one or zero, not more.
+
+Nothing here decides the flip. It replaces a guess about the cost with a
+measurement of it, which is what §34 said was missing.
