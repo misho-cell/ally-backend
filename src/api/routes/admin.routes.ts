@@ -108,6 +108,12 @@ import { removeContactFromNetwork } from '../../services/tools/removeContactFrom
 import { pilotPeople, pilotReport } from '../../services/pilotReport.service';
 import { subscriptionDrift } from '../../services/stripeReconcile.service';
 import {
+  INVITE_FREE_DAYS_FLAG,
+  INVITE_FREE_DAYS_SETTING,
+  MAX_INVITE_FREE_DAYS,
+  writeSetting,
+} from '../../services/inviteReward.service';
+import {
   backfillCandidateNameReach,
   runIdentityScan,
   listIdentityCandidates,
@@ -214,7 +220,92 @@ adminRouter.use(authenticateJwt, requireAdminRole);
 
 // App flags an admin may flip from the console. Whitelist on purpose — a typo
 // must not mint a brand-new (fail-open-read) flag row.
-const MANAGED_APP_FLAGS = ['invite_only', 'invite_link_ready'] as const;
+const MANAGED_APP_FLAGS = [
+  'invite_only',
+  'invite_link_ready',
+  // The founder, 24 September (D485): the free days an invitation carries are
+  // „switchable … from dashboard". This is that switch; the number beside it
+  // lives in `app_settings` and is set through /admin/settings below.
+  INVITE_FREE_DAYS_FLAG,
+] as const;
+
+/**
+ * NUMBERS THE DASHBOARD MAY SET, as an allow-list for the same reason the
+ * flags have one: `app_settings` is a table, and a route that writes any key a
+ * caller names is a route that writes keys nobody designed.
+ */
+const MANAGED_SETTINGS = [INVITE_FREE_DAYS_SETTING] as const;
+
+interface AppSettingRow {
+  setting: string;
+  value: number;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+adminRouter.get('/settings', async (_req: Request, res: Response<ApiResponse<AppSettingRow[]>>) => {
+  try {
+    const result = await query<AppSettingRow>(
+      `SELECT setting, value::float8 AS value, updated_at, updated_by
+         FROM app_settings WHERE setting = ANY($1) ORDER BY setting`,
+      [[...MANAGED_SETTINGS]],
+    );
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin settings]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * ⚠️ THIS ROUTE GIVES PRODUCT AWAY. Every point of `value` is free time for
+ * everybody who joins from now on — and since nobody now joins without an
+ * invitation, that is everybody. Registered as §35.
+ *
+ * The bound is a TYPO GUARD, not a policy: the founder described twenty
+ * falling to ten or five, and a dashboard should not be able to hand out a
+ * year because somebody's finger slipped on the keyboard. It refuses rather
+ * than clamping — silently storing 90 when 900 was typed would be the same
+ * class of fault as everything else found today, a number that is not the
+ * number somebody meant.
+ */
+adminRouter.put(
+  '/settings/:setting',
+  param('setting')
+    .isIn([...MANAGED_SETTINGS])
+    .withMessage('unknown setting'),
+  body('value')
+    .isInt({ min: 0, max: MAX_INVITE_FREE_DAYS })
+    .withMessage(`value must be a whole number between 0 and ${MAX_INVITE_FREE_DAYS}`),
+  async (req: Request, res: Response<ApiResponse<{ setting: string; value: number }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const setting = String(req.params.setting);
+      const value = Number((req.body as { value: number }).value);
+      const admin = (req as AuthenticatedRequest).user.userId;
+      const saved = await writeSetting(setting, value, `admin:${admin}`);
+      // Named in the log because „who set it to that" must have an answer.
+      // eslint-disable-next-line no-console
+      console.log(`[admin-settings] admin ${admin} set ${setting} = ${saved}`);
+      res.status(200).json({ success: true, data: { setting, value: saved } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin settings write]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 interface AppFlagRow {
   flag: string;

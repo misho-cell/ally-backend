@@ -2685,3 +2685,88 @@ and whether the company counts as „somebody already on Netai" — is with him.
 **Nothing here touches them.** Closing a door that was opened on purpose,
 because a rule seems to imply it, is the inference I should not be the one to
 make.
+
+---
+
+## 35 · The free days an invitation carries — A MONEY CONTROL ON A SCREEN
+
+Founder, 24 September (D485): *„it has to be switchable and at first we will
+set it on 20 days (from dashboard) and then reduce those days to 10 or five."*
+
+This is the other half of §34, the one that half deliberately excluded: the
+half that **pays**. Registered before it can be changed, because a number on a
+dashboard that hands out free product is a spend control wearing a form field.
+
+### THE FACT THAT DECIDED HOW IT WAS BUILT
+
+Twenty free days were already written twice — a cohort's `trial_days` (D125,
+row 26) and the launch window (D137). Measured on 24 September, on the live
+base:
+
+| | |
+|---|---|
+| accounts ever granted a cohort trial | **0** |
+| rows in `invite_cohorts` | **0** |
+
+**Not one, ever.** Both paths need configuration nobody filled in: the cohort
+path matches a typed code against an empty table, the launch path reads
+`LAUNCH_TRIAL_REFERRER_IDS` from the environment. So „invite-link joiners get
+no free days" — the wording of row 229 — was never a regression. It is a
+promise that has never once been kept.
+
+The new path therefore fires on the **ordinary referral registration**, which
+is the one people actually use, and depends on no configuration that can
+silently be absent. It does NOT invent a second way to give free time: it
+builds a cohort shape and calls `grantCohortTrial`, the one function that also
+spends the person's single Stripe trial at the door (migration 104). A second
+granting path would be a second chance to offer a free trial on top of a free
+period.
+
+### WHAT CHANGES, AND WHO MAY CHANGE IT
+
+    THE SWITCH   app_flags.invite_free_days_on            DEFAULT OFF
+    THE NUMBER   app_settings.invite_free_days            SEEDED 20 (migration 175)
+
+    READ         GET /admin/settings
+    WRITE        PUT /admin/settings/invite_free_days
+    BODY         { "value": 20 }
+    BOUNDS       integer 0–90. Out of range is REFUSED (400), never clamped —
+                 a dashboard that silently turns 900 into 90 teaches the person
+                 that the field does not matter.
+    WHO          an authenticated admin; the admin id is logged with the change
+                 and written to app_settings.updated_by, so „who set it to 40"
+                 has an answer.
+    UNDO         PUT the previous value, or switch the flag off. Neither takes
+                 anything back: accounts already opened keep their period.
+                 Free days already granted are NOT recoverable by any route
+                 here, and that is deliberate — clawing back a period somebody
+                 was promised is not a thing a dashboard should be able to do.
+
+### WHAT EACH VALUE COSTS
+
+Every point of `value` is free product given to **everybody who registers
+through an invitation from the moment the switch goes on**. With registration
+invite-only and the founder closing the remaining doors (§34), „everybody
+invited" is about to mean „everybody". Twenty days at the current price is the
+first month given away per joiner.
+
+The 90 ceiling is not a policy, it is a typo guard: the founder described 20
+falling to 10 or 5, so 90 is far above anything he named and far below „a year
+by accident".
+
+### WHAT IT DELIBERATELY DOES NOT PAY FOR
+
+  * **A cohort registration.** The cohort branch returns before this one is
+    reached. Both write the same columns, so running the second after the
+    first would overwrite a promised cohort period with the general number —
+    silently, with no error anywhere.
+  * **Social proof.** A phone already in enough people's contacts can register
+    with nobody inviting it (~465 numbers today). No inviter, no payment.
+  * **Review and QA numbers.** They already get a subscription at the door.
+
+### PROVEN ON A FICTIONAL SEAT BEFORE IT IS BELIEVED
+
+This path has **never run in production** — see the table above. „Built" is not
+„works", and here the gap is wider than usual because there is no history to
+lean on. It ships with the flag **OFF**, and the first time it hands out a day
+it will be to a seat created for the purpose.

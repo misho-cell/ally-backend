@@ -14,8 +14,9 @@ import {
   launchCohortFor,
   LAUNCH_COHORT_CODE,
 } from './inviteCohorts.service';
+import { inviteFreeDays, inviteFreeDaysCohort } from './inviteReward.service';
 import { attributeCampaignJoin } from './chorusCampaign.service';
-import { AuthPayload } from '../types';
+import { AuthPayload, EligibilityCheck } from '../types';
 import { normalizePhone } from './phone';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
@@ -246,6 +247,53 @@ export async function verifyOTP(
   throw new Error('კოდი არასწორია ან ვადა გასულია');
 }
 
+/**
+ * Whatever free period this brand-new account is owed, granted once.
+ *
+ * TWO SOURCES, IN ORDER, AND NEVER BOTH:
+ *
+ *  1. A COHORT CODE (Ticket 10 Task 26, D125) opens the account already
+ *     trialing for the cohort's own number of days, no card asked. The cohort
+ *     is re-read here rather than trusted from the gate result: the door may
+ *     have been closed between the eligibility check and this write.
+ *
+ *  2. FAILING THAT, AN ORDINARY INVITATION (D485, 24 Sep): „it has to be
+ *     switchable and at first we will set it on 20 days (from dashboard) and
+ *     then reduce those days to 10 or five." Off unless the switch is on and
+ *     the number is written — see `inviteReward.service`.
+ *
+ * The order is not a preference, it is arithmetic: both write the same columns,
+ * so running the second after the first would overwrite a cohort's period with
+ * the general one and quietly shorten what somebody was promised. A person who
+ * came through a cohort door has already been given days; this adds nothing.
+ */
+async function grantWhateverFreePeriodIsOwed(
+  userId: number,
+  cleanPhone: string,
+  gate: EligibilityCheck,
+): Promise<void> {
+  if (gate.mode === 'cohort' && gate.cohortCode) {
+    const cohort =
+      gate.cohortCode === LAUNCH_COHORT_CODE
+        ? launchCohortFor(gate.inviterUserId)
+        : await findCohortByCode(gate.cohortCode);
+    if (cohort) {
+      await grantCohortTrial(userId, cleanPhone, cohort);
+      return;
+    }
+  }
+
+  // An invitation means somebody brought them: an inviter was resolved. Social
+  // proof — a phone already in somebody's contacts, nobody inviting — is NOT an
+  // invitation, and giving it free days would hand the product away to a door
+  // the founder is in the middle of closing.
+  if (gate.inviterUserId === undefined) return;
+
+  const days = await inviteFreeDays();
+  if (days === null) return;
+  await grantCohortTrial(userId, cleanPhone, inviteFreeDaysCohort(days));
+}
+
 export async function registerUser(
   phone: string,
   name: string,
@@ -331,18 +379,7 @@ export async function registerUser(
       );
     }
 
-    // A cohort code opens the account already trialing for the cohort's own
-    // number of days, no card asked (Ticket 10 Task 26, D125) — and spends the
-    // person's one trial on it, so Stripe offers no second one on day 21. The
-    // cohort is re-read here rather than trusted from the gate result: the
-    // door may have been closed between the eligibility check and this write.
-    if (gate.mode === 'cohort' && gate.cohortCode) {
-      const cohort =
-        gate.cohortCode === LAUNCH_COHORT_CODE
-          ? launchCohortFor(gate.inviterUserId)
-          : await findCohortByCode(gate.cohortCode);
-      if (cohort) await grantCohortTrial(userId, cleanPhone, cohort);
-    }
+    await grantWhateverFreePeriodIsOwed(userId, cleanPhone, gate);
 
     await createUserPhoneNode(cleanPhone);
 
