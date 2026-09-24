@@ -2608,3 +2608,80 @@ want — a bad merge chain has to be undoable as a whole. It was never the wrong
 capability; it was the wrong DEFAULT for a button labelled „undo". 404 still
 means no such person; 409 means the server can do it and thinks you did not
 mean it, which is a different fact and the body says which route to use.
+
+---
+
+## 34 · The login gate — REFUSING REAL PEOPLE ENTRY, registered before it exists
+
+Founder's rule, 24 September: *„nobody, except people who are already on netai,
+can join netai without invitation"*. Registered here even though it is not an
+admin write, because it is **larger than one**: a behaviour that turns real
+people away from the product. The way to switch a bad gate off has to exist
+before the gate does.
+
+### THE DEFINITION, AND WHY THE OBVIOUS ONE IS A DISASTER
+
+The gate refuses an account with **NO NETAI ACTIVITY AT ALL** — no thread, ever.
+
+It does NOT key on `hasAccessToAlly = false`, which is the reading a reasonable
+person reaches first and which would lock out live users:
+
+| `hasAccessToAlly = false` and… | |
+|---|---|
+| never opened Netai — **the target** | 62,163 |
+| **USES NETAI TODAY** | **35**, Lika Ose among them with 321 threads |
+
+That column is the ADMIN-LOGIN flag, not „did you arrive through Netai". It has
+already produced one wrong number this week for exactly this reason.
+
+Checked for anything that would slip between the two groups — an account with
+messages or goals but no thread: **zero, and zero.** So „has a thread" splits
+them cleanly. And `registerUser` writes `hasAccessToAlly` as a literal `true`
+on every path, so somebody who signs up through Netai is never in the gated
+population even before they type.
+
+### WHAT IT DOES
+
+    ROUTE      POST /auth/complete-login
+    TODAY      no gate whatsoever — an old Ally account walks straight in.
+               This is how 35 of the 45 real users arrived.
+    CHANGES    refuses the session when the account has no Netai activity,
+               the flag is on, and no member's code was supplied
+    THE PERSON SEES  a clear „you need an invitation from somebody already on
+               Netai" — never a generic failure. A person refused without a
+               reason will try again and conclude the product is broken.
+
+### THE SWITCH, WHICH IS THE POINT OF REGISTERING THIS
+
+`app_flags.netai_invite_only_login`, **DEFAULT OFF**. Turning it off is one
+UPDATE and restores the previous behaviour completely — no data is changed by
+the gate, so there is nothing to restore afterwards.
+
+**It ships OFF and is proven on a fictional legacy seat before anybody turns it
+on.** A login gate nobody has tested is the worst thing to release at 62,163
+people, which is why the legacy-shaped seat was built first (967c9cf).
+
+### WHAT IS NOT IN THIS ENTRY
+
+Admitting an invited person AND crediting the inviter AND starting the 20 free
+days is the other half, and it **grants money**, so it is its own decision and
+its own entry. It also cannot be tested until the client sends a code on login.
+The refusal half only ever closes a door; the admission half opens one and pays
+for it.
+
+### AND FOUR OTHER DOORS THE RULE TOUCHES, NOT CLOSED HERE
+
+Registration is invite-only today — verified from the live flag,
+`app_flags.invite_only = true`. But it admits people no member invited:
+
+  * **SOCIAL PROOF** — two subscribed owners, or twenty of any kind, having the
+    number in their phonebook. Roughly **465 numbers** qualify today. Nobody
+    invites them; the door opens because they are popular.
+  * **cohort codes**, the **launch cohort**, **review numbers** — the COMPANY
+    inviting, not a member.
+
+All four were built deliberately. Whether the founder's sentence closes them —
+and whether the company counts as „somebody already on Netai" — is with him.
+**Nothing here touches them.** Closing a door that was opened on purpose,
+because a rule seems to imply it, is the inference I should not be the one to
+make.
