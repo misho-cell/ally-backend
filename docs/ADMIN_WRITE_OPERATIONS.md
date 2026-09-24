@@ -3079,3 +3079,58 @@ What it proves is that the grant decides correctly on the product's own gate
 and its own settings; it does not prove the app's registration screen reaches
 this path. The first real invited joiner is still the thing nobody has seen —
 and there has not been one since the week of 7 September.
+
+---
+
+## 41 · Switch two on — `invite_personal_code_only`, 24 September 17:03:57 UTC
+
+    PUT /admin/flags/invite_personal_code_only   { "enabled": true }
+
+Read back from the database rather than from the route:
+
+    invite_only                 true
+    invite_free_days_on         true
+    invite_personal_code_only   TRUE      (new)
+    netai_invite_only_login     no row = OFF
+
+Misho's sequencing satisfied: the tester's round on switch one passed (their own
+run, 16:46 UTC — an invited fiction got 20 days, an uninvited control got
+none), and they wrote „no objection … go ahead".
+
+**Cost, measured rather than guessed (§39): one Netai joiner in seventy days.**
+
+    UNDO   PUT the same route with { "enabled": false }. Nothing is written by
+           the gate, so there is no state to restore — the doors reopen at once.
+
+### TWO DOORS THIS DELIBERATELY DOES NOT CLOSE
+
+  * **The launch cohort.** It is not a door: `launchCohortFor` returns null
+    without an inviter, and unless that inviter is one of the founder's own
+    named accounts inside the window. What it carries is the twenty free days
+    (D137). Closing it would admit the person on a member's code exactly as
+    intended and silently withhold the days he said they should get. It was
+    closed by mistake for forty minutes on the morning of 24 September and
+    reverted in `4e58bc0`.
+
+  * **Review and QA numbers.** A store reviewer is not joining Netai; it is the
+    company testing its own app, and Paddle and the app stores cannot receive a
+    Georgian SMS. Closing it re-creates „the test accounts do not work" from 17
+    September. Inert unless both environment variables are set.
+
+Neither is an oversight. Closing either is the founder's call and a separate
+one.
+
+### ⚠️ FOUR SEATS, TWO NAMES — READ THEM BY ID
+
+The tester and I each made a „Netai Test 25" and a „Netai Test 26" within
+minutes, and they mean opposite things:
+
+| id | who | result | why |
+|---|---|---|---|
+| 172332 | mine | nothing | switch on, **value 0** |
+| 172333 | mine | nothing | **switch off**, value 20 |
+| 172334 | tester's | **20 days** | switch on, value 20, invited |
+| 172335 | tester's | nothing | **no inviter at all** |
+
+172333 and 172335 got the same outcome for two entirely different reasons. The
+route does not check names and nobody thought to.
