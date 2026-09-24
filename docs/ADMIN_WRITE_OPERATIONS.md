@@ -3399,3 +3399,56 @@ with an OTP round trip, and there is no way for this session to complete one.
 
 Watching the logs for `[login] account … REFUSED`; the first one gets posted
 whoever it is.
+
+---
+
+## 47 · The login gate, dry-run — and the seat that could never be created
+
+### THE READ
+
+    POST /admin/login-gate-check   { "user_id": <id> }
+
+Returns `account_exists`, `gate_on`, `has_used_netai`, `would_be_admitted` and
+a reason in words. **Writes nothing and mints no session** — the OTP is what
+makes a login a login and it is not consulted, so this cannot let anybody in.
+
+Run 24 September with the gate ON:
+
+| account | | verdict |
+|---|---|---|
+| 172464 | a legacy-shaped fiction | **REFUSED** — no Netai activity, gate on |
+| 160584 | Lika Ose, uses Netai daily | admitted; the gate never sees the account |
+| 4511 | the push-only account | **admitted**, by the widening in §45 |
+| 171871 | a working seat | admitted |
+
+The condition is **one SQL fragment with two callers**: `completeLogin` asks it
+in the same round trip as the phone lookup, the dry run asks it of an account
+id. A checker carrying its own copy of the rule agrees with itself whatever the
+real rule does.
+
+### ⚠️ AND THE SEAT THE WHOLE PROOF DEPENDS ON COULD NOT BE CREATED
+
+`legacy_ally: true` has existed since `967c9cf` this morning, with passing
+tests, and **every attempt to use it died with a 500.** It set
+`subscription_tier` to NULL — on the sensible reasoning that a legacy account
+has no subscription — and the column is NOT NULL. The tests mock the database,
+and a mock has no constraints.
+
+**Built, deployed, and never once run.** §34 said the login gate would be
+proven on this seat *before anybody turned it on*. The gate went on at 18:36:57
+and the seat could not exist; it was found forty minutes later, by trying to
+use it.
+
+The values are now measured rather than reasoned — what 62,156 real legacy
+accounts carry: tier `free`, status `inactive`. (The other seven: 5
+premium/active, 1 premium/trialing, 1 pro/active — real people with real
+subscriptions who have never opened Netai, which is not what the fiction
+imitates.)
+
+### WHAT REMAINS UNPROVEN, PRECISELY
+
+A real `POST /auth/complete-login`. The dry run asks the same condition and
+reads the same flag, but it spends no OTP and mints no session — so it shows
+the DECISION is right and cannot show that the refusal reaches the person
+correctly. The first real login by an active user is still the thing nobody has
+seen.
