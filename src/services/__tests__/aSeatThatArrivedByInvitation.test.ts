@@ -187,3 +187,43 @@ describe('who may invite a fiction', () => {
     expect(written.some((s) => s.includes('INSERT INTO test_seats'))).toBe(false);
   });
 });
+
+describe('a fictional number nobody is registered on may be held', () => {
+  /**
+   * The only way the SOCIAL-PROOF door can be reached at all. That door admits
+   * a registrant whose number enough other people already have saved — so
+   * somebody has to be holding a number that is not yet an account, because
+   * the door is about the person who has NOT registered. Every seat's number
+   * is registered by definition.
+   *
+   * ⚠️ THE SAFETY PROPERTY IS UNCHANGED: a REAL person's number still cannot
+   * enter a fictional account's phonebook. It must be one of the hundred slots
+   * in the block reserved worldwide for fiction; anything else is still
+   * refused by name.
+   */
+  it('accepts an unregistered fictional slot', async () => {
+    await expect(
+      createTestSeat('Netai Test 90', ['+12025550199'], 0, 'admin:1', 'social proof leg'),
+    ).resolves.toBeDefined();
+  });
+
+  it('still refuses a number that is not fictional, by name', async () => {
+    await expect(
+      createTestSeat('Netai Test 91', ['+995599123456'], 0, 'admin:1', 'must refuse'),
+    ).rejects.toThrow(/\+995599123456/);
+  });
+
+  /** „Starts with the prefix" would accept +1202555garbage and save it. */
+  it('refuses a malformed number inside the prefix', async () => {
+    await expect(
+      createTestSeat('Netai Test 92', ['+1202555abcd'], 0, 'admin:1', 'must refuse'),
+    ).rejects.toThrow(/\+1202555abcd/);
+  });
+
+  /** And a slot outside the hundred the block actually reserves. */
+  it('refuses a slot outside the reserved block', async () => {
+    await expect(
+      createTestSeat('Netai Test 93', ['+12025550999'], 0, 'admin:1', 'must refuse'),
+    ).rejects.toThrow(/\+12025550999/);
+  });
+});

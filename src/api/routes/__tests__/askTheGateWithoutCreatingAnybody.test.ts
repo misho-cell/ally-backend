@@ -67,8 +67,36 @@ describe('it creates nobody', () => {
    * A caller-supplied phone would be a number nobody checked, and could be a
    * real person's.
    */
-  it('uses a free fictional number and never one the caller names', () => {
-    expect(HANDLER).toContain('await firstFreeFictionalPhone()');
-    expect(HANDLER).not.toMatch(/body\('phone'\)/);
+  /**
+   * ⚠️ THIS ASSERTION USED TO READ „never one the caller names", and that was
+   * the rule until the social-proof door needed testing. A caller may now name
+   * one — and ONLY one of the hundred slots in the block reserved worldwide for
+   * fiction, checked by `isFictionalSlot`. The property being protected has not
+   * moved: **a real person's number can never be asked about.** See the last
+   * describe for the guard itself.
+   */
+  it('uses a free fictional number when the caller names none', () => {
+    expect(HANDLER).toContain('firstFreeFictionalPhone()');
+  });
+});
+
+describe('the one number a caller may name', () => {
+  /**
+   * ⚠️ EVERYWHERE ELSE THE RULE IS THAT THE CALLER CANNOT PASS A PHONE, because
+   * a number handed in is a number nobody checked — Netai Test 5 sits on a
+   * number a real owner had had in their phonebook since August.
+   *
+   * The rule holds here: only the hundred slots in the block reserved
+   * worldwide for fiction are accepted. What it buys is the SOCIAL-PROOF door,
+   * which cannot be reached any other way — that door is about a number OTHER
+   * people already have saved, and the next free slot is saved by nobody.
+   */
+  it('accepts a fictional slot and refuses anything else', () => {
+    expect(HANDLER).toContain('!isFictionalSlot(asked)');
+    expect(HANDLER).toContain('a real number is never asked about');
+  });
+
+  it('still falls back to the next free slot when none is named', () => {
+    expect(HANDLER).toContain('asked ?? (await firstFreeFictionalPhone())');
   });
 });

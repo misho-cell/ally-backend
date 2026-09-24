@@ -7,6 +7,7 @@ import {
   DEFAULT_SEAT_TOKENS,
   firstFreeFictionalPhone,
   inviterSeatPhone,
+  isFictionalSlot,
 } from '../../services/testSeatCreate.service';
 import {
   fictionalTestAccountIds,
@@ -2064,6 +2065,10 @@ adminRouter.post(
   '/registration-gate-check',
   body('invited_by').optional().isInt({ min: 1 }),
   body('referral_code').optional().isString().trim().isLength({ max: 32 }),
+  // A specific fictional number instead of the next free one — the ONLY way
+  // the social-proof door can be reached, because that door is about a number
+  // other people already have saved and every seat's number is registered.
+  body('phone').optional().isString().trim().isLength({ max: 20 }),
   async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
@@ -2072,12 +2077,35 @@ adminRouter.post(
       });
       return;
     }
-    const { invited_by, referral_code } = req.body as {
+    const {
+      invited_by,
+      referral_code,
+      phone: asked,
+    } = req.body as {
       invited_by?: number;
       referral_code?: string;
+      phone?: string;
     };
     try {
-      const phone = await firstFreeFictionalPhone();
+      /**
+       * ⚠️ A CALLER MAY NAME A NUMBER HERE, AND ONLY A FICTIONAL ONE.
+       *
+       * Everywhere else in this file the rule is that the caller cannot pass a
+       * phone, because a number handed in is a number nobody checked. The rule
+       * holds here too — `isFictionalSlot` accepts exactly the hundred slots in
+       * the block reserved worldwide for fiction and nothing else, so a real
+       * person's number cannot be asked about. What it buys is the social-proof
+       * door: that door is about a number OTHER people already have saved, and
+       * the next free slot is by definition saved by nobody.
+       */
+      if (asked !== undefined && !isFictionalSlot(asked)) {
+        res.status(400).json({
+          success: false,
+          error: 'phone must be one of the fictional slots; a real number is never asked about',
+        });
+        return;
+      }
+      const phone = asked ?? (await firstFreeFictionalPhone());
       const inviterPhone =
         invited_by === undefined ? undefined : await inviterSeatPhone(String(invited_by));
       const gate = await checkRegistrationEligibility(phone, inviterPhone, referral_code);

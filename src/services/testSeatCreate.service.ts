@@ -77,6 +77,23 @@ function fictionalPhone(slot: number): string {
 }
 
 /**
+ * Exactly one of the hundred slots in the fictional block — not „starts with
+ * the prefix". A prefix test would accept `+1202555garbage` and write it into
+ * somebody's phonebook as a contact, and a range reserved for fiction stops
+ * protecting anybody the moment the check is sloppier than the range.
+ */
+export function isFictionalSlot(phone: string): boolean {
+  const slot = Number(phone.slice(FICTIONAL_PREFIX.length));
+  return (
+    phone.startsWith(FICTIONAL_PREFIX) &&
+    phone.length === FICTIONAL_PREFIX.length + 4 &&
+    /^\d{4}$/.test(phone.slice(FICTIONAL_PREFIX.length)) &&
+    slot >= FIRST_SLOT &&
+    slot <= LAST_SLOT
+  );
+}
+
+/**
  * The first slot in the fictional range that nobody is registered on and
  * nobody has saved. Both halves are asked of the live database in one
  * statement, so the answer cannot be stale between the two questions.
@@ -354,6 +371,28 @@ async function savePhonebook(userId: string, holds: readonly string[]): Promise<
     SEAT_QUERY_TIMEOUT_MS,
   );
   const byPhone = new Map(known.rows.map((r) => [r.phone, r.name]));
+
+  /**
+   * A FICTIONAL NUMBER NOBODY IS REGISTERED ON may also be held, and it is the
+   * only way one door can be tested at all.
+   *
+   * Social proof admits a registrant whose number enough OTHER people already
+   * have saved. To see it refused — or admitted — somebody has to be holding a
+   * number that is not yet an account, because the whole point of that door is
+   * the person who has NOT registered yet. Every seat's number is registered by
+   * definition, so without this the door cannot be reached from here and „we
+   * accept the unit tests" is as far as it goes.
+   *
+   * ⚠️ THE SAFETY PROPERTY IS UNCHANGED, and it is the one that matters: a
+   * REAL person's number can still never enter a fictional account's
+   * phonebook. The number must be inside the range reserved worldwide for
+   * fiction AND registered to nobody. Anything else is still refused by name.
+   */
+  const unregisteredFiction = holds.filter((p) => !byPhone.has(p) && isFictionalSlot(p));
+  for (const phone of unregisteredFiction) {
+    byPhone.set(phone, `Fiction ${phone.slice(-4)}`);
+  }
+
   const missing = holds.filter((p) => !byPhone.has(p));
   if (missing.length > 0) {
     throw new SeatCreationRefused(
