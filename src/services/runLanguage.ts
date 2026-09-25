@@ -610,16 +610,53 @@ export function isPlaceholderThreadTitle(title: string | null): boolean {
  * somebody's message hours later, unasked, could send real messages to real
  * people on a decision they have had all night to change their mind about.
  * That is a product decision and not one to take inside a 402 handler.
+ *
+ * ⚠️ ROW 270(b), 25 September — „KEPT" WAS HEARD AS „QUEUED".
+ *
+ * The tester, Test 7 thread 24852: „„I have kept what you wrote" and „send it
+ * again" contradict." They are both true and that is exactly the problem —
+ * „kept" meant „your words are still on the screen", and a person reads it as
+ * „it is in hand, it will run". Then nothing runs, and the next sentence
+ * asking them to resend reads as the software forgetting what it just said it
+ * had.
+ *
+ * So the line now says which of the two it means, and says the part that was
+ * only ever implied: NOTHING IS QUEUED AND NOTHING HAPPENS ON ITS OWN. Same
+ * fact, no promise inside it.
+ *
+ * AND WHAT IS STILL NOT SAID, ON PURPOSE: the weekly refill. Row 270(a) asks
+ * for „it will carry on at Monday's refill", and I will not write that until
+ * it is true. `waiting_topup` is DERIVED at read time from the balance — it is
+ * not a stored state and nothing wakes the goal when the balance rises. The
+ * tester is testing exactly that on 28 September. Writing the sentence first
+ * would repeat row 221's own fault: a badge promising something the code
+ * underneath it does not do.
  */
 export function messageHeldNoTokens(language: RunLanguage): string {
   switch (language) {
     case 'en':
-      return 'I have kept what you wrote, but I cannot act on it until the tokens are topped up. Once they are, send it again and I will pick it up.';
+      return (
+        'Your message is still here in the conversation, but I have not started on it — the ' +
+        'tokens ran out. Nothing is queued and nothing will happen on its own: once they are ' +
+        'topped up, send it again and I will start then.'
+      );
     case 'ru':
-      return 'Я сохранил то, что ты написал, но не могу это выполнить, пока не пополнены токены. После пополнения отправь ещё раз, и я продолжу.';
+      return (
+        'Твоё сообщение осталось здесь, в переписке, но я к нему не приступил — закончились ' +
+        'токены. Ничего не стоит в очереди и само по себе не начнётся: после пополнения ' +
+        'отправь ещё раз, и тогда я начну.'
+      );
     case 'es':
-      return 'He guardado lo que escribiste, pero no puedo actuar hasta que recargues los tokens. Cuando lo hagas, envíalo otra vez y sigo.';
+      return (
+        'Tu mensaje sigue aquí en la conversación, pero no he empezado con él: se acabaron los ' +
+        'tokens. No hay nada en cola y nada ocurrirá por sí solo; cuando recargues, envíalo ' +
+        'otra vez y entonces empiezo.'
+      );
     default:
-      return 'შენი ნაწერი შევინახე, მაგრამ ტოკენების შევსებამდე ვერ შევასრულებ. შევსების შემდეგ ხელახლა გამომიგზავნე და გავაგრძელებ.';
+      return (
+        'შენი შეტყობინება აქვე რჩება, მაგრამ საქმე არ დამიწყია — ტოკენები ამოიწურა. რიგში ' +
+        'არაფერია და თავისით არაფერი მოხდება: შევსების შემდეგ ხელახლა გამომიგზავნე და მაშინ ' +
+        'დავიწყებ.'
+      );
   }
 }

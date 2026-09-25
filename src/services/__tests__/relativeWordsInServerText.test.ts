@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { messageHeldNoTokens } from '../runLanguage';
+
 /**
  * Row 208, and the rule is the seat's: THE SERVER MUST NEVER WRITE A RELATIVE
  * TIME WORD INTO TEXT THAT PERSISTS IN A THREAD.
@@ -77,5 +79,52 @@ describe('the refusals a run reads back hours later', () => {
     const flat = REFUSALS.replace(/'\s*\+\s*\n\s*'/g, '').replace(/\s+/g, ' ');
 
     expect(flat).not.toMatch(/\$\{today\(\)\}/);
+  });
+});
+
+/**
+ * ⚠️ ROW 270 — „KEPT" WAS HEARD AS „QUEUED", AND THE FIX MUST NOT REPLACE IT
+ * WITH A PROMISE.
+ *
+ * The tester, Test 7 thread 24852: „„I have kept what you wrote" and „send it
+ * again" contradict." Both sentences were true — „kept" meant the words were
+ * still on the screen — and a person reads „kept" as „it is in hand, it will
+ * run". So the line now says which it means, and says out loud the part that
+ * was only ever implied.
+ *
+ * Row 270(a) asks for the opposite direction: tell them about Monday's refill.
+ * That sentence is DELIBERATELY ABSENT. `waiting_topup` is derived at read
+ * time from the balance; it is not a stored state and nothing wakes the goal
+ * when the balance rises. Until the 28 September test says otherwise, writing
+ * it would repeat row 221's fault — a line promising what the code under it
+ * does not do.
+ */
+describe('the out-of-tokens message promises nothing it cannot do', () => {
+  const langs = ['ka', 'en', 'ru', 'es'] as const;
+
+  it('says nothing is queued, in every language', () => {
+    const said = langs.map((l) => messageHeldNoTokens(l));
+
+    expect(said[0]).toContain('რიგში არაფერია');
+    expect(said[1]).toContain('Nothing is queued');
+    expect(said[2]).toContain('очереди');
+    expect(said[3]).toContain('en cola');
+  });
+
+  it('never claims it will carry on by itself', () => {
+    for (const lang of langs) {
+      const text = messageHeldNoTokens(lang);
+
+      expect(text).not.toMatch(/გავაგრძელებ|I will carry on|я продолжу|sigo solo/i);
+    }
+  });
+
+  /** The refill promise stays out until the 28 September test earns it. */
+  it('does not mention the weekly refill or a day of the week', () => {
+    for (const lang of langs) {
+      const text = messageHeldNoTokens(lang);
+
+      expect(text).not.toMatch(/ორშაბათ|Monday|понедельник|lunes|კვირეულ|weekly/i);
+    }
   });
 });
