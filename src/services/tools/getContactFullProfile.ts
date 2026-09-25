@@ -29,9 +29,29 @@ interface ContactFullProfile {
 
 const NUMERIC_ONLY_RE = /^\d+$/;
 const HAS_LETTER_RE = /\p{L}/u;
+/**
+ * ⚠️ AN EMAIL ADDRESS IS NOT A LABEL ABOUT A PERSON — the tester, 25 September,
+ * the leftover after the name fix.
+ *
+ * The connector search stopped SHOWING „[email hidden] L" as somebody's name,
+ * and their tag list still carried „[email hidden]" — the scrubber's output
+ * over a tag whose stored value is a real email address, contributed by
+ * somebody about that person. Nobody reads it as a name any more, but the
+ * model still sees it among the words that are supposed to describe who
+ * somebody is.
+ *
+ * Same rule as the name, one surface along: an email says how to reach a
+ * person, never what they are. A tag list is for „lawyer", „Arci", „Tbilisi".
+ */
+const LOOKS_LIKE_EMAIL_RE = /\S+@\S+/;
 
 export function isDisplayableTag(tag: string): boolean {
-  return tag.length >= 2 && !NUMERIC_ONLY_RE.test(tag) && HAS_LETTER_RE.test(tag);
+  return (
+    tag.length >= 2 &&
+    !NUMERIC_ONLY_RE.test(tag) &&
+    HAS_LETTER_RE.test(tag) &&
+    !LOOKS_LIKE_EMAIL_RE.test(tag)
+  );
 }
 
 export async function getContactFullProfile(

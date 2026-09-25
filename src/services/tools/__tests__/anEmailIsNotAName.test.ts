@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { DISPLAY_NAME } from '../searchByTag';
+import { isDisplayableTag } from '../getContactFullProfile';
 
 /**
  * ⚠️ A REGISTERED NAME THAT IS AN EMAIL ADDRESS — the tester, 25 September.
@@ -53,5 +54,46 @@ describe('an email is not a name', () => {
     for (const src of [byName, byTag]) {
       expect(src).not.toContain("COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name");
     }
+  });
+});
+
+/**
+ * ⚠️ THE LEFTOVER THE TESTER FOUND AFTER THE NAME FIX, 25 September.
+ *
+ * The search stopped SHOWING „[email hidden] L" as somebody's name, and their
+ * tag list still carried „[email hidden]" — the scrubber's output over a tag
+ * whose stored value is a real email address, contributed by somebody about
+ * that person. Nobody reads it as a name any more, but the model still saw it
+ * among the words that describe who somebody is.
+ *
+ * AND AGAIN IT WAS TWO READERS OF ONE TABLE. The profile filtered its tags
+ * through `isDisplayableTag`; the search result handed every stored tag
+ * straight through with no filter at all. Third time today that a fault lived
+ * in more than one reader of the same thing.
+ */
+describe('an email is not a label either', () => {
+  it('drops an email-shaped tag', () => {
+    expect(isDisplayableTag('name@example.com')).toBe(false);
+    expect(isDisplayableTag('  spaced@mail.ge')).toBe(false);
+  });
+
+  it('keeps the tags a person is actually described by', () => {
+    for (const tag of ['lawyer', 'იურისტი', 'Arci', 'Tbilisi', 'ex-colleague']) {
+      expect(isDisplayableTag(tag)).toBe(true);
+    }
+  });
+
+  /** The older rules are untouched: too short, digits only, no letter. */
+  it('still drops what it already dropped', () => {
+    expect(isDisplayableTag('l')).toBe(false);
+    expect(isDisplayableTag('12345')).toBe(false);
+    expect(isDisplayableTag('--')).toBe(false);
+  });
+
+  it('is the same filter on the search result, which had none', () => {
+    const byTag = readFileSync(join(__dirname, '..', 'searchByTag.ts'), 'utf8');
+
+    expect(byTag).toContain("import { isDisplayableTag } from './getContactFullProfile'");
+    expect(byTag).toContain('isDisplayableTag(t)');
   });
 });

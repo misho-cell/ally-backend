@@ -4,6 +4,7 @@ import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { isDisplayableTag } from './getContactFullProfile';
 import { collapseMergedPhones } from './mergedIdentities';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
 import {
@@ -335,7 +336,17 @@ function shape(
     {
       phone: row.phone,
       name: row.name ?? null,
-      tags: (row.all_tags || []).filter(Boolean),
+      /**
+       * ⚠️ THE SAME FILTER THE PROFILE USES, BECAUSE THIS LIST HAD NONE.
+       *
+       * 25 September: the profile drops an email-shaped tag through
+       * `isDisplayableTag`; this one handed every stored tag straight to the
+       * model, so the same „[email hidden]" the tester found on the profile
+       * was also in every search result carrying that person. Two readers of
+       * one table, one of them filtered — the same shape as the display name
+       * being fixed in three places an hour earlier.
+       */
+      tags: (row.all_tags || []).filter((t: string) => Boolean(t) && isDisplayableTag(t)),
       employer: row.employer ?? null,
       jobPosition: row.jobPosition ?? null,
       city: row.city ?? null,
