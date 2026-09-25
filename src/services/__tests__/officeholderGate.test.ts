@@ -389,3 +389,66 @@ describe('an institution is not a person holding an office', () => {
     expect(out).not.toContain('Paliskunnat Association');
   });
 });
+
+/**
+ * ⚠️ ROW 123, 25 September — THE OFFICE IN ONE SENTENCE, THE NAME IN THE NEXT.
+ *
+ * Thread 24394, „ვინ არის ახლა თბილისის მერი?". The reply, in order:
+ *
+ *   1. „…გვერდის ტექსტში მერის სახელი ვერ წავიკითხე…"    office, no name
+ *   2. „ინტერნეტში გვხვდება ვარაუდი, რომ ეს <name>-ია"    name, no office
+ *   3. „ვერ დავადასტურე, ვინ იკავებს ამჟამად ამ პოსტს"     neither
+ *
+ * The gate asked „does THIS sentence name an office" and never saw one
+ * carrying both, so a guessed name for a live officeholder went to the screen
+ * — and it was the wrong person. The rule was right; the window was one
+ * sentence too short.
+ */
+describe('an office named in the sentence before', () => {
+  const OFFICE_THEN_NAME =
+    'ორივე ოფიციალურ გვერდზე შესვლა ვცადე, მაგრამ გვერდის ტექსტში მერის სახელი ვერ წავიკითხე. ' +
+    'ინტერნეტში გვხვდება ვარაუდი, რომ ეს Beka Davituliani არის, მაგრამ ვერ დავადასტურე.';
+
+  it('catches the name the next sentence carries', async () => {
+    const out = await applyOfficeholderGate(OFFICE_THEN_NAME, RUN, 'ka');
+
+    expect(out.refused).toContain('Beka Davituliani');
+    expect(out.reply).not.toContain('Beka Davituliani');
+  });
+
+  /** And still lets it through when a page actually read carries the name. */
+  it('leaves it alone when the evidence has it', async () => {
+    recordRunEvidence(RUN, 'Tbilisi City Hall — Beka Davituliani');
+
+    const out = await applyOfficeholderGate(OFFICE_THEN_NAME, RUN, 'ka');
+
+    expect(out.refused).toEqual([]);
+    expect(out.reply).toContain('Beka Davituliani');
+  });
+
+  /**
+   * ONE SENTENCE, NOT THE WHOLE REPLY. A contact named further down, about
+   * something else, is not a claim about the office — and replacing a real
+   * contact's name is a worse failure than missing a guess.
+   */
+  it('does not reach a name two sentences later', async () => {
+    const far =
+      'ვინ არის მერი, ვერ დავადასტურე. ამაზე ვერაფერს გეტყვი. ' +
+      'სხვა საკითხზე: Nino Beridze შეიძლება დაგეხმაროს.';
+
+    const out = await applyOfficeholderGate(far, RUN, 'ka');
+
+    expect(out.refused).toEqual([]);
+    expect(out.reply).toContain('Nino Beridze');
+  });
+
+  /** A former holder stays exempt, carried over or not. */
+  it('still leaves a former holder alone', async () => {
+    const former = 'ვინ არის მერი, ვერ დავადასტურე. ყოფილი მერი იყო Giorgi Ugulava.';
+
+    const out = await applyOfficeholderGate(former, RUN, 'ka');
+
+    expect(out.refused).toEqual([]);
+    expect(out.reply).toContain('Giorgi Ugulava');
+  });
+});

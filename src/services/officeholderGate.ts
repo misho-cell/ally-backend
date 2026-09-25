@@ -418,8 +418,36 @@ export async function applyOfficeholderGate(
   // replacement below already rewrites every occurrence, so the repeat lookups
   // were buying nothing and costing a database round trip each.
   const known = new Map<string, boolean>();
+  /**
+   * ⚠️ 25 SEPTEMBER, ROW 123 — THE MODEL PUT THE OFFICE IN ONE SENTENCE AND
+   * THE NAME IN THE NEXT, AND WALKED THROUGH.
+   *
+   * Thread 24394, „ვინ არის ახლა თბილისის მერი?". The reply, in order:
+   *
+   *   1. „…გვერდის ტექსტში MERIS სახელი ვერ წავიკითხე…"   office, no name
+   *   2. „ინტერნეტში გვხვდება ვარაუდი, რომ ეს BEKA D… -ია"  name, no office
+   *   3. „ვერ დავადასტურე, ვინ იკავებს ამჟამად ამ პოსტს"    neither
+   *
+   * The gate reads one sentence at a time and asks „does THIS sentence name an
+   * office", so it never saw a sentence carrying both. The name went out —
+   * a wrong one, offered as a guess from the internet, for a live officeholder.
+   * The rule was right and the window was one sentence too short.
+   *
+   * ONE SENTENCE OF CARRY-OVER, and not the whole reply. „ეს" in sentence 2
+   * refers back to sentence 1, which is how the claim was actually made; a
+   * reply-wide rule would also reach a contact named three paragraphs later
+   * about something else, and replacing a real contact's name is a worse
+   * failure than missing a guess. A sentence that starts a new subject by
+   * naming an office resets the window anyway, because it is checked itself.
+   */
+  let officeStillInView = false;
   for (const sentence of sentences) {
-    if (!namesOffice(sentence) || FORMER_RE.test(sentence)) continue;
+    const namesAnOffice = namesOffice(sentence);
+    const inView = namesAnOffice || officeStillInView;
+    // The carry-over lasts exactly one sentence: it is set by a sentence that
+    // names an office and spent by the next one, whatever that one says.
+    officeStillInView = namesAnOffice;
+    if (!inView || FORMER_RE.test(sentence)) continue;
     for (const name of nameCandidates(sentence)) {
       if (nameInEvidence(name, evidence)) continue;
       let inPhonebook = known.get(name);
