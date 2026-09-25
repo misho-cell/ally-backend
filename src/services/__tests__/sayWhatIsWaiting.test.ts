@@ -48,6 +48,33 @@ describe('it says what is waiting', () => {
     expect(text.indexOf('2 "how')).toBeLessThan(text.indexOf('one search result'));
   });
 
+  /**
+   * The founder wrote the line out himself and put an „and" in it. A comma
+   * where he put a word is the difference between a sentence and an inventory.
+   */
+  it('joins the last one with a word, in both languages', () => {
+    const en = renderPendingMessage(
+      item({ count: 3, by_kind: { debrief: 2, chorus_ask: 1 } }),
+      'en',
+    );
+    const ka = renderPendingMessage(
+      item({ count: 3, by_kind: { debrief: 2, chorus_ask: 1 } }),
+      'ka',
+    );
+
+    expect(en?.text).toBe(
+      'Also waiting: 2 "how did it go" questions and one question about an invite.',
+    );
+    expect(ka?.text).toContain(' და ');
+  });
+
+  /** One group is a sentence on its own — no stray conjunction, no comma. */
+  it('says a single group plainly', () => {
+    const out = renderPendingMessage(item({ count: 2, by_kind: { debrief: 2 } }), 'en');
+
+    expect(out?.text).toBe('Also waiting: 2 "how did it go" questions.');
+  });
+
   it('speaks Georgian in a Georgian conversation', () => {
     const out = renderPendingMessage(item({ count: 6, by_kind: { goal_question: 6 } }), 'ka');
 

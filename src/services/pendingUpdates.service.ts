@@ -296,16 +296,96 @@ const HELD_AND_STILL_REAL = `
               WHERE ir.id::text = p.payload->>'request_id'
                 AND ir.status = 'pending'))`;
 
-/** What is waiting, by kind — so the card can name them instead of counting them. */
-export async function heldUpdatesByKind(userId: string): Promise<Record<string, number>> {
-  const result = await query<{ kind: string; count: string }>(
-    `SELECT p.kind, COUNT(*) AS count ${HELD_AND_STILL_REAL} GROUP BY p.kind`,
+/**
+ * ⚠️ AND THE LINE MUST NOT REPEAT WHAT WAS JUST SAID — the founder, 25
+ * September, ~00:30 Tbilisi, answering our 639: „SKIP, DON'T REPEAT. The 'also
+ * waiting' line counts only what was NOT already listed above it." His own
+ * example: after the six own-goal questions are listed, the line reads „Also
+ * waiting: 2 'how did it go' questions and 1 search result." If nothing is
+ * left, no line at all.
+ *
+ * WHICH IS WHY THIS RETURNS ROWS AND NOT A TALLY. A tally can be subtracted
+ * from too, and it was the obvious thing to write — six listed, six held, take
+ * six away. That arithmetic is right only if the six the inbox named and the
+ * six held here are the SAME six, and nothing in two numbers says whether they
+ * are. An id says it. The cost is a row per update instead of a row per kind,
+ * for a person who has at most a handful of either.
+ */
+export interface HeldUpdate {
+  readonly kind: string;
+  readonly task_id: number | null;
+  /** The introduction it is about, when it is about one. Text, exactly as stored. */
+  readonly request_id: string | null;
+}
+
+/**
+ * The ceiling, and one row past it on purpose: a read that comes back with
+ * MORE than this has not seen everything, and the caller must then say „N are
+ * waiting" rather than name a list it knows to be short. „I could not look at
+ * all of it" is not „I looked and this is all of it".
+ */
+export const HELD_ROWS_READ_LIMIT = 200;
+
+/** What is waiting, row by row — so the card can name them instead of counting them. */
+export async function heldUpdatesWaiting(userId: string): Promise<HeldUpdate[]> {
+  const result = await query<{ kind: string; task_id: number | null; request_id: string | null }>(
+    `SELECT p.kind, p.task_id, p.payload->>'request_id' AS request_id
+     ${HELD_AND_STILL_REAL}
+     ORDER BY p.id
+     LIMIT ${HELD_ROWS_READ_LIMIT + 1}`,
     [userId],
     QUERY_TIMEOUT_MS,
   );
-  const out: Record<string, number> = {};
-  for (const row of result.rows) out[row.kind] = Number(row.count);
-  return out;
+  return result.rows.map((row) => ({
+    kind: row.kind,
+    task_id: row.task_id,
+    request_id: row.request_id,
+  }));
+}
+
+/**
+ * ONE spelling for „this held row is the thing that was already named above".
+ *
+ * Both sides of the comparison import it. The second time an identifier is
+ * invented in two places is a choice and not an accident, and this file already
+ * carries that scar a few lines below — `upd_<id>` against a bare UUID, two
+ * identifiers with one name, a 400 every time one was handed to the other.
+ */
+export function heldUpdateKey(kind: string, id: number | string | null): string | null {
+  if (id === null) return null;
+  const text = String(id).trim();
+  return text === '' ? null : `${kind}:${text}`;
+}
+
+export const INTRO_REQUEST_KIND = 'intro_request';
+
+/** Which id on a held row is the one a reader would have named it by. */
+function identityOf(row: HeldUpdate): string | null {
+  return heldUpdateKey(row.kind, row.kind === INTRO_REQUEST_KIND ? row.request_id : row.task_id);
+}
+
+/** Nothing has been named yet — the whole of what is held, as it stands. */
+export const NOTHING_NAMED: ReadonlySet<string> = new Set<string>();
+
+/**
+ * The breakdown, minus whatever this same reply has already listed by name.
+ *
+ * A row with no id of its own is never excluded: it cannot be the thing that
+ * was named above, because nothing above could have named it.
+ */
+export function breakdownExcluding(
+  held: readonly HeldUpdate[],
+  alreadyListed: ReadonlySet<string>,
+): { readonly count: number; readonly by_kind: Record<string, number> } {
+  const by_kind: Record<string, number> = {};
+  let count = 0;
+  for (const row of held) {
+    const identity = identityOf(row);
+    if (identity !== null && alreadyListed.has(identity)) continue;
+    by_kind[row.kind] = (by_kind[row.kind] ?? 0) + 1;
+    count += 1;
+  }
+  return { count, by_kind };
 }
 
 export async function countHeldUpdates(userId: string): Promise<number> {

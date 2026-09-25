@@ -546,7 +546,13 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'are still coming. It does NOT contain requests other people have sent the user — those ' +
       'live in check_my_inbox, and "is anyone asking me something?" is answered from there, ' +
       'never from this. Call once at the start of a conversation, alongside check_my_inbox; ' +
-      'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
+      'mention what is due naturally, and say what else is waiting using more_pending_by_kind — ' +
+      // The founder on our 639, 25 September: „SKIP, DON'T REPEAT."
+      'SKIP WHAT YOU HAVE ALREADY LISTED. The "also waiting" line counts only what was NOT ' +
+      'already named above it: if you have just listed six questions on their own goals, the ' +
+      "line is about the rest (\"Also waiting: 2 'how did it go' questions and 1 search " +
+      'result"), and IF NOTHING IS LEFT THERE IS NO LINE AT ALL. Never write the bare number ' +
+      'without saying what it is made of. ' +
       'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
       'chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction: ' +
       'follow it. Pass include_seen=true only when the user asks for everything that is ' +

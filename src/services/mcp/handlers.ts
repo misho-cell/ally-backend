@@ -63,6 +63,10 @@ import {
 } from '../userNotes.service';
 import {
   countHeldUpdates,
+  heldUpdatesWaiting,
+  breakdownExcluding,
+  HELD_ROWS_READ_LIMIT,
+  NOTHING_NAMED,
   getPendingUpdates,
   listSeenUpdates,
   queueResult,
@@ -1570,6 +1574,30 @@ export async function mcpGetPendingUpdates(
   // recorded"), at most one live curiosity item appended.
   const updates = await filterStaleDebriefs(userId, await getPendingUpdates(userId));
   const morePending = await countHeldUpdates(userId);
+  /**
+   * Row 250 and the founder's „skip, don't repeat" on the same line — BOTH
+   * surfaces, because that was the whole lesson of the inbox row: a tool that
+   * is right in one reader and silent in the other is a fault, not a fix.
+   *
+   * The in-app chat writes this line itself and can strike out what it has
+   * already named by id. Here the model writes it, so it gets the same
+   * breakdown and the rule that goes with it, in the tool's own description.
+   * Best-effort: a breakdown that cannot be read leaves the count alone.
+   */
+  const heldByKind =
+    morePending > 0
+      ? await heldUpdatesWaiting(userId)
+          .then((rows) =>
+            rows.length > HELD_ROWS_READ_LIMIT
+              ? null
+              : breakdownExcluding(rows, NOTHING_NAMED).by_kind,
+          )
+          .catch((error: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('[pending] could not read what is held:', (error as Error).message);
+            return null;
+          })
+      : null;
   // Ticket 12 Task 32: on request, the rows already shown in earlier
   // conversations ride along under their own key — read, never re-released.
   const alreadyShown =
@@ -1606,6 +1634,7 @@ export async function mcpGetPendingUpdates(
   return {
     updates: items,
     more_pending: morePending,
+    ...(heldByKind !== null && { more_pending_by_kind: heldByKind }),
     ...(alreadyShown !== null && { already_shown: alreadyShown }),
   };
 }

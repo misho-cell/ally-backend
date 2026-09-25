@@ -106,13 +106,22 @@ describe('the rows already stranded, which nothing written today can reach', () 
     expect(shared.slice(0, 1200)).toContain("p.kind <> 'intro_request' OR EXISTS");
   });
 
-  /** One clause, both readers — the „due/held" disagreement cannot come back. */
-  it('counts and groups the same rows, from the same clause', () => {
+  /**
+   * One clause, both readers — the „due/held" disagreement cannot come back.
+   *
+   * ⚠️ The grouper used to be `heldUpdatesByKind`, which returned a TALLY. The
+   * founder's „skip, don't repeat" (25 September) needed the line to drop what
+   * had already been named above it, and a tally can only be subtracted from
+   * by assuming the six named and the six held are the same six. It returns
+   * ROWS now. The property this test is about did not change — both readers
+   * read the same clause — so the assertion follows it to its new name.
+   */
+  it('counts and lists the same rows, from the same clause', () => {
     const counter = updates.slice(updates.indexOf('export async function countHeldUpdates'));
-    const grouper = updates.slice(updates.indexOf('export async function heldUpdatesByKind'));
+    const lister = updates.slice(updates.indexOf('export async function heldUpdatesWaiting'));
 
     expect(counter.slice(0, 400)).toContain('${HELD_AND_STILL_REAL}');
-    expect(grouper.slice(0, 400)).toContain('${HELD_AND_STILL_REAL}');
+    expect(lister.slice(0, 600)).toContain('${HELD_AND_STILL_REAL}');
   });
 
   /**

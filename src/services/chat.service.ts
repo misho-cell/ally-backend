@@ -127,7 +127,13 @@ import {
 } from './userNotes.service';
 import {
   countHeldUpdates,
-  heldUpdatesByKind,
+  breakdownExcluding,
+  heldUpdatesWaiting,
+  heldUpdateKey,
+  HeldUpdate,
+  HELD_ROWS_READ_LIMIT,
+  INTRO_REQUEST_KIND,
+  NOTHING_NAMED,
   getPendingUpdates,
   listSeenUpdates,
   queueResult,
@@ -5156,6 +5162,38 @@ function notePendingItems(runId: string | undefined, items: readonly PendingItem
 }
 
 /**
+ * ⚠️ „SKIP, DON'T REPEAT" — the founder on our 639, 25 September ~00:30.
+ *
+ * The „also waiting" line counts only what was NOT already listed above it,
+ * and when nothing is left it does not appear at all. His own reading of that
+ * night: six own-goal questions named one by one, and then „Also waiting: 2
+ * 'how did it go' questions and 1 search result" — nine held rows, six of them
+ * already on the screen by name.
+ *
+ * WHAT `check_my_inbox` NAMED is what these two maps hold, and they have to be
+ * maps rather than a check at note time for the same reason row 237's filter
+ * does: THE ORDER OF TOOL CALLS INSIDE A RUN IS THE MODEL'S TO CHOOSE.
+ * `get_pending_updates` usually goes first, so a run that counted at note time
+ * would count six goals it was about to list a moment later. Delivery happens
+ * once, after everything, and knows the whole run.
+ */
+const runInboxNamed = new Map<string, Set<string>>();
+/** The held rows themselves, so delivery can subtract by id rather than by tally. */
+const runHeldUpdates = new Map<string, readonly HeldUpdate[]>();
+
+function noteInboxNamed(runId: string | undefined, keys: readonly (string | null)[]): void {
+  if (!runId) return;
+  const named = runInboxNamed.get(runId) ?? new Set<string>();
+  for (const key of keys) if (key !== null) named.add(key);
+  runInboxNamed.set(runId, named);
+}
+
+function noteHeldUpdates(runId: string | undefined, rows: readonly HeldUpdate[] | null): void {
+  if (!runId || rows === null) return;
+  runHeldUpdates.set(runId, rows);
+}
+
+/**
  * Ticket 20 — a message cannot be the answer to a question it predates.
  *
  * 19 September, 12:03. The owner typed „tell Tornike Abuladze I can do
@@ -5211,18 +5249,58 @@ function runNotedGoalQuestion(runId: string | undefined, taskId: number): boolea
   return itemsSurfacedGoalQuestion(runPendingItems.get(runId) ?? [], taskId);
 }
 
+const MORE_PENDING_KIND = 'more_pending';
+
+/**
+ * The „also waiting" card with what this same reply already named struck out
+ * of it — or nothing, when that leaves nothing. The founder's rule, in one
+ * function: skip, don't repeat, and if nothing is left, no line at all.
+ *
+ * The card is returned untouched when the held rows could not be read: „I
+ * could not look" is not „there is nothing to take off", and a bare count is
+ * still true where a trimmed list would be a guess.
+ */
+function morePendingAfterNaming(
+  item: PendingItemInput,
+  held: readonly HeldUpdate[] | undefined,
+  named: ReadonlySet<string>,
+): PendingItemInput | null {
+  if (held === undefined || named.size === 0) return item;
+  const { count, by_kind } = breakdownExcluding(held, named);
+  if (count === 0) return null;
+  return { ...item, payload: { ...item.payload, count, by_kind } };
+}
+
 /**
  * Row 237: the count card is filtered HERE and not where it is noted, because
  * the order of tool calls inside a run is the model's to choose.
  * `get_pending_updates` usually runs first, so a check at note time would miss
  * the very case this is for — the plan proposed later in the same run.
  * Delivery happens once, after everything, and knows the whole run.
+ *
+ * The founder's „skip, don't repeat" is filtered here for exactly the same
+ * reason, one row further on: `check_my_inbox` can be called after it too.
  */
 function takePendingItems(runId: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
+  const held = runHeldUpdates.get(runId);
+  const named = runInboxNamed.get(runId) ?? new Set<string>();
   runPendingItems.delete(runId);
-  if (!takePlanWentOnScreen(runId)) return items;
-  return items.filter((item) => item.kind !== 'more_pending');
+  runHeldUpdates.delete(runId);
+  runInboxNamed.delete(runId);
+  const planWentOnScreen = takePlanWentOnScreen(runId);
+
+  const delivered: PendingItemInput[] = [];
+  for (const item of items) {
+    if (item.kind !== MORE_PENDING_KIND) {
+      delivered.push(item);
+      continue;
+    }
+    if (planWentOnScreen) continue;
+    const trimmed = morePendingAfterNaming(item, held, named);
+    if (trimmed !== null) delivered.push(trimmed);
+  }
+  return delivered;
 }
 
 // Ticket 19 [18]. How long a delivered incoming-request message stands before
@@ -5251,7 +5329,7 @@ function introRequestInstruction(requestId: number): string {
 
 export function introRequestItems(requests: readonly PendingRequest[]): PendingItemInput[] {
   return requests.map((request) => ({
-    kind: 'intro_request',
+    kind: INTRO_REQUEST_KIND,
     task_id: null,
     payload: {
       request_id: request.id,
@@ -5745,6 +5823,8 @@ function clearRunState(runId: string): void {
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
   runPendingItems.delete(runId);
+  runInboxNamed.delete(runId);
+  runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
   // never reaches the consumer, and a flag that outlives its run is the shape
@@ -7131,6 +7211,16 @@ async function executeToolCall(
         getPendingAsksForUser(userId),
         goalsAwaitingTheOwner(userId),
       ]);
+      /**
+       * The founder's „skip, don't repeat": everything named here by name is
+       * struck off the „also waiting" card at delivery. Recorded by ID rather
+       * than by count, so six named goals take off those six goals and not
+       * whatever six rows happen to be held.
+       */
+      noteInboxNamed(runId, [
+        ...myGoals.map((g) => heldUpdateKey(GOAL_QUESTION_KIND, g.task_id)),
+        ...waiting.map((request: PendingRequest) => heldUpdateKey(INTRO_REQUEST_KIND, request.id)),
+      ]);
       return {
         // Named for what each one IS to the person, not for its table.
         questions_for_me: asks.map((ask: PendingAsk) => ({
@@ -7227,16 +7317,30 @@ async function executeToolCall(
          * count rather than dropping the line. „Something is waiting" is
          * still true and still worth saying.
          */
-        const byKind = await heldUpdatesByKind(userId).catch((error: unknown) => {
+        const held = await heldUpdatesWaiting(userId).catch((error: unknown) => {
           // eslint-disable-next-line no-console
-          console.error('[pending] could not group what is held:', (error as Error).message);
+          console.error('[pending] could not read what is held:', (error as Error).message);
           return null;
         });
+        /**
+         * More rows than the read's ceiling means the read did not see all of
+         * them, so they are counted rather than named — and nothing is struck
+         * off a list that is already incomplete.
+         */
+        const named = held !== null && held.length <= HELD_ROWS_READ_LIMIT ? held : null;
+        noteHeldUpdates(runId, named);
+        // The count comes off the same rows as the breakdown whenever there
+        // are rows, so the line and its own total cannot disagree; only a read
+        // that failed falls back to the separately-counted number.
+        const whole = named === null ? null : breakdownExcluding(named, NOTHING_NAMED);
         notePendingItems(runId, [
           {
-            kind: 'more_pending',
+            kind: MORE_PENDING_KIND,
             task_id: null,
-            payload: { count: morePending, ...(byKind !== null && { by_kind: byKind }) },
+            payload:
+              whole === null
+                ? { count: morePending }
+                : { count: whole.count, by_kind: whole.by_kind },
           },
         ]);
       }

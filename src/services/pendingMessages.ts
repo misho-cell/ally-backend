@@ -123,6 +123,18 @@ interface PendingTexts {
   morePendingKinds: (parts: readonly string[]) => string;
 }
 
+/**
+ * „a, b and c". One part is itself; two are joined by the word alone.
+ *
+ * The founder wrote the line out himself — „Also waiting: 2 'how did it go'
+ * questions and 1 search result" — and a comma where he put an „and" is the
+ * difference between a sentence and an inventory.
+ */
+function listOut(parts: readonly string[], and: string): string {
+  if (parts.length <= 1) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} ${and} ${parts[parts.length - 1]}`;
+}
+
 const TEXTS: Record<'ka' | 'en', PendingTexts> = {
   ka: {
     chorusAsk: (who: string) => `„${who}"-ის მოწვევაზე შეკითხვა გელოდება, ცალკე თემაში.`,
@@ -173,7 +185,7 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return `${count} განახლება`;
       }
     },
-    morePendingKinds: (parts) => `კიდევ გელოდება: ${parts.join(', ')}.`,
+    morePendingKinds: (parts) => `კიდევ გელოდება: ${listOut(parts, 'და')}.`,
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -226,7 +238,7 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return count === 1 ? 'one update' : `${count} updates`;
       }
     },
-    morePendingKinds: (parts) => `Also waiting: ${parts.join(', ')}.`,
+    morePendingKinds: (parts) => `Also waiting: ${listOut(parts, 'and')}.`,
   },
 };
 
