@@ -1106,7 +1106,34 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        LEFT JOIN "UserAlias" ua_t   ON ua_t.phone  = r.phone AND ua_t."contactId" = m."contactId"
        LEFT JOIN "UserPhone"  up_t  ON up_t.phone  = r.phone
        LEFT JOIN "User"       u_t   ON u_t.id      = up_t."userId"
-       LEFT JOIN "UserAlias" ua_via ON ua_via.phone = fu.via_phone AND ua_via."contactId" = $1
+       -- ⚠️ ONE SPELLING PER BRIDGE — item D, 25 September.
+       --
+       -- This was a plain LEFT JOIN, and an owner who has saved the same
+       -- person twice ("Dato" and "Dato Kapanadze", one phone, one contact
+       -- ref) matched BOTH rows. The DISTINCTs below then did their job
+       -- perfectly: two different names are two different values, and two
+       -- jsonb objects differing only in their name are two different objects.
+       -- (No backticks in this comment: the SQL lives in a template literal
+       -- and a backtick here ends the string. Third time today.)
+       -- So one bridge was offered to the user as two people to ask.
+       --
+       -- The aggregate cannot fix this — by the time it runs the duplicate is
+       -- already two rows. The fullest spelling is chosen here instead, before
+       -- anything counts it, with the alias broken alphabetically on a tie so
+       -- the same search twice never names the bridge two different ways.
+       --
+       -- It runs over the LIMITed page only, not over every bridge in the
+       -- network, which is why this lateral is nothing like the per-bridge tag
+       -- scans the notes above warn about.
+       LEFT JOIN LATERAL (
+         SELECT ua.alias
+           FROM "UserAlias" ua
+          WHERE ua.phone = fu.via_phone
+            AND ua."contactId" = $1
+            AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+          ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
+          LIMIT 1
+       ) ua_via ON TRUE
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
        -- Role data (ticket 6 close §8): the User self-profile is almost always
        -- empty, so employer/jobPosition came back null for everyone — role

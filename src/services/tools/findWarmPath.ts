@@ -23,7 +23,32 @@ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from
  */
 
 const MAX_HOPS = 3;
+/** How many routes the user is shown. */
 const MAX_PATHS = 5;
+/**
+ * ⚠️ HOW MANY ROUTES ARE RANKED BEFORE THAT CUT IS MADE — item D, 25 September.
+ *
+ * The tester's case: second-degree search listed four bridges to an
+ * electrician, ONE of them a Netai user; `find_warm_path` to the same person
+ * returned five routes, every one of them through an old-Ally account, every
+ * one `relayable: false`. The usable bridge was not ranked below the others —
+ * it was never ranked at all.
+ *
+ * `LIMIT 5` sat in the Cypher, and Neo4j applies it to a stream of equally
+ * short paths in whatever order it produces them. The sort that puts a
+ * relayable route first ran in TypeScript, AFTER that cut, so it could only
+ * reorder five survivors chosen before anything knew which bridges were on
+ * Netai — membership lives in Postgres and the graph cannot see it.
+ *
+ * Exactly the fault of the day in a third place: a reader took a slice and
+ * then concluded over it. The blocked-contact filter had it too — five paths
+ * could all run through blocked people and the tool would answer „no warm
+ * path" while an unblocked one waited just past the cut.
+ *
+ * So the graph is asked for a wider set, the ranking happens over all of it,
+ * and the cut to MAX_PATHS is the LAST thing that happens.
+ */
+const PATHS_TO_CONSIDER = 25;
 const NEO4J_TIMEOUT_MS = 8_000;
 const NAME_QUERY_TIMEOUT_MS = 8_000;
 
@@ -46,6 +71,14 @@ export type WarmPathOutcome =
       found: true;
       target: { phone: string; name: string | null };
       paths: WarmPath[];
+      /**
+       * False when the graph held at least `PATHS_TO_CONSIDER` routes at this
+       * distance, so the ones shown were ranked over a slice and not over
+       * everything. It is said out loud rather than left to be assumed,
+       * because „these are the five best" and „these are five of many" are
+       * different facts and only one of them is safe to act on.
+       */
+      ranked_every_route: boolean;
       note: string;
     }
   | {
@@ -82,6 +115,16 @@ const CONSENT_NOTE =
   'offer the user an invite for that person or the next path. ' +
   'Name the bridges to the user; never a number.';
 
+/**
+ * Served only when the cut actually bit. „These are the best routes" and
+ * „these are some of many routes" are different facts, and the tool is the
+ * only thing in the conversation that knows which one it is handing over.
+ */
+const MANY_ROUTES_NOTE =
+  `This person is reachable by MORE than the ${MAX_PATHS} routes shown — these are the best of ` +
+  `the first ${PATHS_TO_CONSIDER} the graph returned, not the best that exist. If none of them ` +
+  'suits, say there are other routes rather than telling the user these are all of them.';
+
 interface PathRow {
   keys: string[];
 }
@@ -102,7 +145,7 @@ async function shortestPaths(
       `MATCH (me:AllyNode {phoneKey: $userKey}), (t:AllyNode {phoneKey: $targetKey})
        MATCH p = allShortestPaths((me)-[:CONTACT*1..${maxHops}]->(t))
        RETURN [n IN nodes(p) | n.phoneKey] AS keys
-       LIMIT ${MAX_PATHS}`,
+       LIMIT ${PATHS_TO_CONSIDER}`,
       { userKey, targetKey },
       { timeout: NEO4J_TIMEOUT_MS },
     );
@@ -220,13 +263,18 @@ export async function findWarmPath(
       bridges,
       relayable: bridges.every((b) => b.is_member),
     }))
-    // Fewest hops first, then the paths the relay can actually carry.
-    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
+    // Fewest hops first, then the paths the relay can actually carry. Hops
+    // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
+    // is still the user's own contact, whom they can simply write to.
+    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable))
+    // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
+    .slice(0, MAX_PATHS);
 
   return {
     found: true,
     target: { phone: targetPhone, name: names.get(targetPhone) ?? null },
     paths,
-    note: CONSENT_NOTE,
+    ranked_every_route: rows.length < PATHS_TO_CONSIDER,
+    note: rows.length < PATHS_TO_CONSIDER ? CONSENT_NOTE : `${CONSENT_NOTE} ${MANY_ROUTES_NOTE}`,
   };
 }
