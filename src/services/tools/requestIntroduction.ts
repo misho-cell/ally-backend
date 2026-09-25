@@ -94,6 +94,14 @@ export type IntroAskType = 'intro' | 'share_contact';
 const ACCEPTED_STILL_COUNTS_DAYS = 30;
 
 /**
+ * After this long with no answer, „already sent" stops being the truth and
+ * starts being a dead end (item P). Fourteen days, because a mediator who has
+ * not looked in a fortnight is not about to — and it is short enough that the
+ * person hears it while the need is still theirs.
+ */
+const UNANSWERED_IS_STALE_DAYS = 14;
+
+/**
  * Ticket 20 row 210 — what this request was raised FOR.
  *
  * An options bag rather than a tenth positional parameter: nine is already
@@ -271,9 +279,11 @@ async function requestIntroductionInner(
   // have no evidence about it; a „yes" that is asked for again is simply a
   // request nobody needed. Bounded by ACCEPTED_STILL_COUNTS_DAYS so that a new
   // need next year is not refused on the strength of a long-dead introduction.
-  const dupResult = await query<{ id: number; status: string }>(
+  const dupResult = await query<{ id: number; status: string; days_waiting: number }>(
     isDirect
-      ? `SELECT id, status FROM introduction_requests
+      ? `SELECT id, status,
+                FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400)::int AS days_waiting
+           FROM introduction_requests
          WHERE requester_user_id = $1 AND mediator_user_id IS NULL AND target_user_id = $2
            AND (status = 'pending'
                 OR (status = 'accepted'
@@ -281,7 +291,9 @@ async function requestIntroductionInner(
                         > NOW() - INTERVAL '${ACCEPTED_STILL_COUNTS_DAYS} days'))
          ORDER BY (status = 'pending') DESC, COALESCE(responded_at, created_at) DESC
          LIMIT 1`
-      : `SELECT id, status FROM introduction_requests
+      : `SELECT id, status,
+                FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400)::int AS days_waiting
+           FROM introduction_requests
          WHERE requester_user_id = $1 AND mediator_user_id = $2 AND target_name = $3
            AND (status = 'pending'
                 OR (status = 'accepted'
@@ -294,15 +306,42 @@ async function requestIntroductionInner(
 
   if (dupResult.rows.length > 0) {
     const alreadyAnswered = dupResult.rows[0].status === 'accepted';
+    /**
+     * ⚠️ „ALREADY SENT" WITHOUT SAYING WHEN — item P, the same afternoon.
+     *
+     * Sixteen introduction requests on the live base are still `pending`;
+     * fourteen of them are older than thirty days and the oldest is from 19
+     * June. Nothing ever expires them, so this branch refuses today's request
+     * on the strength of one nobody answered a quarter of a year ago — and
+     * said only „already sent", which reads as „it is on its way".
+     *
+     * The requester is then stuck for good: they cannot ask again, and nothing
+     * tells them why. The age turns a dead end into something a person can act
+     * on — „you asked three months ago and never heard back".
+     *
+     * THE REFUSAL STILL STANDS. Letting a second request through would put a
+     * second card on the mediator's phone, and that is a product decision, not
+     * mine. Expiring the sixteen rows is a write across live data and is in
+     * `docs/ADMIN_WRITE_OPERATIONS.md` waiting on Misho. What changes here is
+     * only what the refusal SAYS, which needs nobody's permission.
+     */
+    const daysWaiting = Number(dupResult.rows[0].days_waiting ?? 0);
+    const longIgnored = !alreadyAnswered && daysWaiting >= UNANSWERED_IS_STALE_DAYS;
     return {
       success: false,
       reason: alreadyAnswered ? 'already_accepted' : 'already_pending',
+      days_waiting: daysWaiting,
       error: alreadyAnswered
         ? `${mediatorName} უკვე დათანხმდა ${targetName}-თან დაკავშირებას — ხელახლა თხოვნა ` +
           'მისთვის ზედმეტი შეტყობინებაა. უთხარი მომხმარებელს, რომ თანხმობა უკვე მიღებულია, ' +
           'და ჰკითხე, პირდაპირ დავუკავშირდეთ თუ რამე დასაზუსტებელია. დეტალებისთვის ' +
           'get_intro_status.'
-        : `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია`,
+        : longIgnored
+          ? `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია, ` +
+            `მაგრამ ${daysWaiting} დღეა უპასუხოდ დგას. ახალს ვერ გავგზავნი. უთხარი ` +
+            'მომხმარებელს რამდენი ხანია და ჰკითხე, სხვა შუამავალი ვცადოთ თუ პირდაპირ ' +
+            'მიწეროს — ნუ დატოვებ ისე, თითქოს პასუხი გზაშია.'
+          : `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია`,
     };
   }
 

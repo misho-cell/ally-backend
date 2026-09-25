@@ -52,10 +52,11 @@ interface Answer {
   success?: boolean;
   reason?: string;
   error?: string;
+  days_waiting?: number;
 }
 
 /** `status` is what the guard now reads; `rows: []` means „nothing on file". */
-function theRequestOnFile(rows: { id: number; status: string }[]): void {
+function theRequestOnFile(rows: { id: number; status: string; days_waiting?: number }[]): void {
   mockQuery.mockImplementation((sql: string) => {
     const text = String(sql);
     if (text.includes('"UserAlias"')) {
@@ -223,5 +224,74 @@ describe('what the guard deliberately does not catch', () => {
 
     expect(guard).toContain('COALESCE(responded_at, created_at)');
     expect(guard).not.toContain('updated_at');
+  });
+});
+
+/**
+ * ⚠️ ITEM P — NOTHING EVER EXPIRES A PENDING INTRODUCTION, and this guard is
+ * where that stops being clutter and becomes a dead end.
+ *
+ * On the live base: SIXTEEN requests still `pending`, FOURTEEN of them older
+ * than thirty days, the oldest from 19 JUNE — over three months. Seven
+ * requesters.
+ *
+ * So the branch above refuses today's request on the strength of one nobody
+ * answered a quarter of a year ago, and says only „already sent" — which reads
+ * as „it is on its way". The requester cannot ask again and is told nothing
+ * that would let them do anything else.
+ *
+ * THE REFUSAL DELIBERATELY STILL STANDS. Letting a second request through
+ * would put a second card on the mediator's phone, and that is a product
+ * decision. Expiring the sixteen rows is a write across live data and waits on
+ * Misho in docs/ADMIN_WRITE_OPERATIONS.md. What changed is only what the
+ * refusal SAYS, which needs nobody's permission — and that is the half that
+ * was costing a real person something today.
+ */
+describe('an unanswered request says how long it has been unanswered', () => {
+  it('names the wait once it is stale, and still refuses', async () => {
+    theRequestOnFile([{ id: 9, status: 'pending', days_waiting: 98 }]);
+
+    const result = await askAgain();
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe('already_pending');
+    expect(result.days_waiting).toBe(98);
+    expect(String(result.error)).toContain('98 დღეა უპასუხოდ');
+    expect(insertsAttempted()).toBe(0);
+  });
+
+  /**
+   * „Do not leave it looking as though an answer is on its way" is the whole
+   * point — a refusal the model cannot act on is how the person is left
+   * waiting on something that will never arrive.
+   */
+  it('tells the model to offer the person a way out', async () => {
+    theRequestOnFile([{ id: 9, status: 'pending', days_waiting: 40 }]);
+
+    const result = await askAgain();
+
+    expect(String(result.error)).toContain('სხვა შუამავალი');
+    expect(String(result.error)).toContain('ნუ დატოვებ');
+  });
+
+  /** A request sent this morning is not stale, and must not be described as if it were. */
+  it('says nothing about waiting when the request is fresh', async () => {
+    theRequestOnFile([{ id: 9, status: 'pending', days_waiting: 1 }]);
+
+    const result = await askAgain();
+
+    expect(result.reason).toBe('already_pending');
+    expect(String(result.error)).not.toContain('უპასუხოდ');
+    expect(String(result.error)).toContain('უკვე გაგზავნილია');
+  });
+
+  it('reads the age from the database rather than guessing it', () => {
+    const guard = source().slice(
+      source().indexOf('const dupResult'),
+      source().indexOf('const [insertResult'),
+    );
+
+    expect(guard).toContain('EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400');
+    expect(source()).toContain('const UNANSWERED_IS_STALE_DAYS = 14;');
   });
 });

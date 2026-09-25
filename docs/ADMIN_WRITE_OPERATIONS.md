@@ -3949,3 +3949,57 @@ tester was using. **Which rows to rename is going back to him** before the route
 is pointed at anything — a decision taken on my bad information is not a
 decision, and the whole reason this register exists is that the write waits for
 the word.
+
+---
+
+## 55 · SIXTEEN INTRODUCTIONS THAT HAVE BEEN „PENDING" SINCE JUNE
+
+**Nothing has been written. This is the write half of item P; the read half
+shipped without touching a row.**
+
+### WHAT IS THERE
+
+| | |
+|---|---|
+| still `pending` | **16** |
+| older than 30 days | **14** |
+| oldest | **19 June** — over three months |
+| requesters affected | **7** |
+
+Nothing in the product ever expires an introduction request. A mediator who
+never opened the card leaves it `pending` for ever.
+
+### WHY IT IS NOT MERELY UNTIDY
+
+The duplicate guard refuses a new request while one is `pending`. So a request
+nobody answered in June **permanently blocks** that requester from ever asking
+that mediator about that person again — and until today the refusal said only
+„already sent", which reads as „it is on its way".
+
+### WHAT SHIPPED WITHOUT A DECISION
+
+The refusal now says **how many days** it has gone unanswered and tells the
+assistant to offer the person another route. Derived at read time, no row
+touched, and it needed nobody: a person stuck behind a June request at least
+now learns that is what happened.
+
+### THE DECISION WAITING
+
+**Expire the stale ones, or leave them.**
+
+* **ROUTE / METHOD** — none exists. It would be
+  `UPDATE introduction_requests SET status = 'expired' WHERE status = 'pending'
+  AND created_at < NOW() - INTERVAL '<n> days'`, which is a **bulk write across
+  rows belonging to seven people, six of whom are real**.
+* **BODY** — the cut-off in days, and nothing else.
+* **UNDO** — set those ids back to `'pending'`. The ids must be captured
+  **before** the write or the undo has nothing to aim at; `responded_at` stays
+  null either way, so no answer is invented.
+* **WHAT IT CHANGES FOR A PERSON** — the requester can ask again. The mediator
+  stops being shown a card from June. Neither is notified.
+* **MY RECOMMENDATION** — do it, at 30 days, **but only after the product
+  decision underneath it**: whether an expired request should quietly vanish
+  from the mediator's inbox or be shown as „this lapsed". I have not built
+  either, because hiding a question somebody genuinely asked is the kind of
+  thing that should be chosen out loud rather than inherited from a cut-off I
+  picked.
