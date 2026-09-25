@@ -245,11 +245,16 @@ describe('an unapproved plan does not block the person who accepted', () => {
     );
   });
 
-  /** This task, this asker — the same scoping as the gate below it. */
+  /**
+   * This task, this asker — and the scoping now lives in ONE place, because
+   * two gates ask the same question (see the permission-wall describe below).
+   * The property has not moved; the assertion follows it.
+   */
   it('is scoped to the goal and the asker, not to the person alone', () => {
-    const at = asks.indexOf('const introAccepted =');
+    const at = asks.indexOf('const acceptedIntroductionToThisPerson =');
     const block = asks.slice(at, at + 420);
 
+    expect(at).toBeGreaterThan(0);
     expect(block).toContain('acceptedIntroductionPhones(taskId, fromUserId)');
     expect(block).toContain('phoneDigits(p) === phoneDigits(contactPhone)');
   });
@@ -333,5 +338,76 @@ describe('the mediator’s own book is where the number comes from', () => {
     expect(block).toContain('SELECT ua.phone FROM "UserAlias" ua');
     // readFileSync gives the SOURCE, where the escape is written twice.
     expect(block).toContain("regexp_replace(ua.phone, '\\\\D', '', 'g') = $6::text");
+  });
+});
+
+/**
+ * ⚠️ 25 SEPTEMBER — THE SAME ROW BROKE AGAIN, AT THE GATE ABOVE THIS ONE.
+ *
+ * The plan gate was opened on 23 September and the tester passed it twice.
+ * Today, thread 24397: Test 16 accepted at 10:32:57, the owner typed „write to
+ * Test 17 and ask when we could talk this week", and `ask_contact` was refused
+ * twice — by the PERMISSION wall, which sits above the plan gate and which the
+ * bypass never reached.
+ *
+ * D316 made the shape that exposes it: a goal born from a first-message
+ * introduction goes out in the same turn with NO PLAN. Task 10168 was created
+ * at 10:30:27, `request_introduction` succeeded at 10:32:04, and nothing on
+ * that path records permission — so the goal that exists ONLY to reach one
+ * person could not write to the one person who had agreed.
+ *
+ * Fixing the gate the tester happened to reach first, and not the class, is
+ * the mistake this row has now made twice.
+ */
+describe('the permission wall does not block the person who accepted either', () => {
+  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+
+  it('lets an accepted introduction past the permission wall', () => {
+    expect(asks).toContain(
+      'if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {',
+    );
+    expect(asks).toContain('permission wall bypassed for an accepted introduction (row 251)');
+  });
+
+  /** And the wall itself is untouched for everybody else. */
+  it('still refuses when there is no accepted introduction to that person', () => {
+    expect(asks).toContain('} else if (!task.permission_granted) {');
+    expect(asks).toContain('უნებართვოდ გაგზავნა შეუძლებელია');
+  });
+
+  /**
+   * ONE QUESTION, ONE PLACE. Two gates asking „did this person accept" in two
+   * copies is how the plan gate got the answer and the permission gate did
+   * not. The lookup is shared and both call it.
+   */
+  it('asks the question once and shares the answer', () => {
+    // Scoped to the consent block. There IS a second call to
+    // `acceptedIntroductionPhones` further down, and it is a different
+    // question: it runs for every ask including relays, and hands the whole
+    // phone list to `planAllows` rather than a yes/no about one person.
+    // Merging them would tie the relay path to this block for no gain — the
+    // first version of this test asserted one call in the whole file, which
+    // was stricter than the property and would have pushed somebody into
+    // exactly that.
+    const block = asks.slice(
+      asks.indexOf('const acceptedIntroductionToThisPerson ='),
+      asks.indexOf('// The recipient must be a registered member'),
+    );
+    const calls = block.match(/await acceptedIntroductionToThisPerson\(\)/g) ?? [];
+    const lookups = block.match(/acceptedIntroductionPhones\(taskId, fromUserId\)/g) ?? [];
+
+    expect(calls).toHaveLength(2);
+    expect(lookups).toHaveLength(1);
+  });
+
+  /**
+   * LAZY, because this is the hot path of every ask. The lookup runs only when
+   * a gate is about to refuse — never on a send that was going through anyway.
+   */
+  it('costs an ordinary send nothing', () => {
+    const at = asks.indexOf('const acceptedIntroductionToThisPerson =');
+    const block = asks.slice(at, at + 300);
+
+    expect(block).toContain('acceptedPhones ??=');
   });
 });

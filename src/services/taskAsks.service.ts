@@ -444,7 +444,48 @@ export async function createAsk(
     if (!task || String(task.user_id) !== fromUserId || task.status !== 'open') {
       return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
     }
-    if (!task.permission_granted) {
+    /**
+     * ROW 251, FOURTH GATE — AND IT IS THE FIRST ONE, WHICH IS WHY IT WAS MISSED.
+     *
+     * 23 September let an accepted introduction past the PLAN gate (below).
+     * The tester passed that twice and it broke again today, 25 September,
+     * thread 24397: Test 16 said yes at 10:32:57, the owner typed „write to
+     * Test 17 and ask when we could talk this week", and `ask_contact` was
+     * refused twice — not by the plan gate, by the PERMISSION gate above it,
+     * which the bypass never reached.
+     *
+     * The shape is new and D316 made it: a goal born from a first-message
+     * introduction goes out in the same turn with NO PLAN. Task 10168 was
+     * created at 10:30:27, `request_introduction` succeeded at 10:32:04, and
+     * nothing on that path ever records permission — so the goal that exists
+     * ONLY to reach one person cannot write to the one person who agreed.
+     *
+     * THE ARGUMENT IS THE ONE ALREADY MADE AND ALREADY REVIEWED, one gate
+     * down: the owner asked for this introduction, and the target THEMSELVES
+     * said yes, relayed by somebody who knows them both. Both parties have
+     * agreed about that one person — which is more than a permission flag
+     * carries, not less.
+     *
+     * NARROW IN EXACTLY THE SAME WAY: this task, this asker, and only the
+     * phones on an accepted, direct introduction. Everybody else still meets
+     * the wall, and the wall is unchanged for them.
+     *
+     * LAZY ON PURPOSE. This is the hot path of every ask, and the lookup runs
+     * only when a gate is about to refuse — never on a send that was going
+     * through anyway.
+     */
+    let acceptedPhones: string[] | null = null;
+    const acceptedIntroductionToThisPerson = async (): Promise<boolean> => {
+      acceptedPhones ??= await acceptedIntroductionPhones(taskId, fromUserId);
+      return acceptedPhones.some((p) => phoneDigits(p) === phoneDigits(contactPhone));
+    };
+
+    if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask] task ${taskId}: permission wall bypassed for an accepted introduction (row 251)`,
+      );
+    } else if (!task.permission_granted) {
       /**
        * The wording matters (ticket 3 §6.8): the old text sent the model back
        * to the user even when consent had JUST been voiced, producing three
@@ -552,9 +593,7 @@ export async function createAsk(
     const introAccepted =
       (task.plan_proposed ?? null) !== null &&
       planInForce(task) === null &&
-      (await acceptedIntroductionPhones(taskId, fromUserId)).some(
-        (p) => phoneDigits(p) === phoneDigits(contactPhone),
-      );
+      (await acceptedIntroductionToThisPerson());
     if (introAccepted) {
       // eslint-disable-next-line no-console
       console.log(
