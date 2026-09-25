@@ -175,6 +175,11 @@ export async function queueGoalFeedback(userId: string, taskId: number): Promise
   if (next === null) return;
   await queueResult(userId, taskId, 'goal_feedback', {
     question_key: next.key,
+    // ⚠️ THE QUESTION ITSELF, and it was missing. The card that shows this to
+    // a person had only the key and the model-facing instruction to work
+    // from — so there was nothing to put on the screen even once the renderer
+    // existed. The words a person reads must travel with the item.
+    prompt: next.prompt,
     // The instruction rides with the item, as every other kind's does — the
     // model reads it in the same breath as the data it applies to.
     instruction:

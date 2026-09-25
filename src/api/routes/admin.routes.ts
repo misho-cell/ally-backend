@@ -174,6 +174,7 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { referralTree, MAX_DEPTH } from '../../services/referralTree.service';
+import { goalsThisMemberMightUnblock } from '../../services/newMemberForGoal.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
@@ -1802,6 +1803,48 @@ adminRouter.get('/goal-feedback', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin goal feedback]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * Row 262, the DRY RUN the tester asked for — what a given phone WOULD match,
+ * queueing nothing and telling nobody.
+ *
+ * ⚠️ IT EXISTS BECAUSE THE FEATURE CANNOT OTHERWISE BE TESTED WITHOUT SPENDING
+ * A REAL REGISTRATION. Their words: the seat route makes a NEW seat holding an
+ * OLD one and never the reverse, so no seat has a not-yet-registered number in
+ * its phonebook, and the one trigger this feature has is somebody registering.
+ * A feature whose only proof is an irreversible event is a feature nobody
+ * checks twice.
+ *
+ * Read-only by construction: it calls the matcher and not the queue, so there
+ * is no path from here to a card on anybody's screen. The match is reported
+ * exactly as the queue would see it, including the empty case — „nothing
+ * matched" is an answer and must be distinguishable from „I could not look".
+ */
+adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
+  const phone = String(req.query.phone ?? '').trim();
+  if (phone === '') {
+    res.status(400).json({ success: false, error: 'phone is required' });
+    return;
+  }
+  try {
+    const matches = await goalsThisMemberMightUnblock(phone);
+    res.status(200).json({
+      success: true,
+      data: {
+        would_queue: matches.length,
+        matches,
+        note:
+          matches.length === 0
+            ? 'Looked, and nothing matched. Not the same as a failure to look.'
+            : 'These cards WOULD be queued on registration. Nothing was queued by this call.',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin new-member match]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -46,6 +46,7 @@ import {
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
 import { nextRenewalDay } from '../../services/renewalDay';
+import { walledOutOfTokens } from '../../services/runLanguage';
 import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
@@ -655,7 +656,7 @@ threadsRouter.post(
         ).catch(() => undefined);
         res.status(402).json({
           success: false,
-          error: `ტოკენები ამოგეწურა — შეავსე ან დაელოდე ${renewal}, როცა ლიმიტი განახლდება`,
+          error: walledOutOfTokens(refusedIn, renewal),
           renews_on: renewal,
           reason: 'insufficient_tokens',
           balance: allowance.balance,

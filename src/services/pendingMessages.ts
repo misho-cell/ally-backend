@@ -1,4 +1,5 @@
 import { geoName } from './georgianCase';
+import { GOAL_FEEDBACK_QUESTIONS, GoalFeedbackKey, feedbackWording } from './goalFeedback.service';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -143,6 +144,24 @@ interface PendingTexts {
    */
   introExpired: (who: string, days: number) => string;
   introAskAgain: string;
+  /**
+   * ⚠️ ROW 272 — THE QUESTION WAS QUEUED, RELEASED, MARKED SEEN AND NEVER SHOWN.
+   *
+   * The tester, 22:35 UTC: „the cards are released and marked SEEN but the
+   * question never reaches the person" — goals 10495, 10594, 10660. They are
+   * right, and the cause is mine from four hours earlier.
+   *
+   * I gave `goal_feedback` a table, a hook, a queue, a name in the „also
+   * waiting" breakdown and a release of its own. I never gave it a case in
+   * THIS switch — the one place that turns an item into something a person can
+   * read. It fell to `default`, which returns null, while the delivery note
+   * told the model not to mention it because it was „delivered separately".
+   * Queued by one half of the system and silently dropped by the other.
+   *
+   * The same shape as the release bug it follows: every part correct except
+   * the one that was never asked the question.
+   */
+  goalFeedbackLater: string;
   /** Nobody is written to without this being pressed. */
   someoneNew: string;
 }
@@ -222,6 +241,7 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `${geoName(who, 'dat')} გაცნობის მოთხოვნას ${days} დღეა პასუხი არ მოჰყოლია, ` +
       `ამიტომ დავხურეთ. თუ ისევ გჭირდება, თავიდან ვცადოთ.`,
     introAskAgain: 'თავიდან ვცადოთ',
+    goalFeedbackLater: 'ახლა არა',
     someoneNew: 'ახალი მომხმარებელი',
   },
   en: {
@@ -290,6 +310,7 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `Your request to be introduced to ${who} has had no answer for ${days} days, so it is ` +
       `closed. If you still need it, we can try again.`,
     introAskAgain: 'Try again',
+    goalFeedbackLater: 'Not now',
     someoneNew: 'Somebody new',
   },
 };
@@ -455,6 +476,30 @@ export function renderPendingMessage(
         text: t.introExpired(who, days),
         choices: [t.introAskAgain, t.later],
         ref: { kind: item.kind, request_id: num(p, 'request_id') },
+        instruction,
+      };
+    }
+    /**
+     * Row 272. The question is the text; there is nothing to choose FROM,
+     * because the founder asked for people's own words and a set of buttons is
+     * how you get somebody else's. The one button is a way out, not an answer.
+     *
+     * `prompt` rides in the payload, and `question_key` is the fallback for
+     * the rows queued before it did — three of them exist and they would
+     * otherwise stay unreadable for ever.
+     */
+    case 'goal_feedback': {
+      const key = str(p, 'question_key');
+      const asked =
+        str(p, 'prompt') ??
+        (key !== null && (GOAL_FEEDBACK_QUESTIONS as readonly string[]).includes(key)
+          ? feedbackWording(key as GoalFeedbackKey, language)
+          : null);
+      if (asked === null) return null;
+      return {
+        text: asked,
+        choices: [t.goalFeedbackLater],
+        ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
         instruction,
       };
     }

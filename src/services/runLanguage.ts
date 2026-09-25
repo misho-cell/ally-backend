@@ -645,6 +645,34 @@ export function isPlaceholderThreadTitle(title: string | null): boolean {
  * `renewal` is passed in rather than read here so this stays a pure text
  * function like every other in this file, and so a test can state the date.
  */
+/**
+ * ⚠️ THE 402's OWN SENTENCE, AND IT WAS GEORGIAN WITH AN ENGLISH DATE IN IT.
+ *
+ * The tester, within two hours of D494 shipping: „the Georgian 402 text
+ * carries an English date." Both halves were true and only one of them was
+ * mine to be surprised by. The sentence has always been a hardcoded Georgian
+ * string — every other line in this file has four languages and that one never
+ * did. It did not show until tonight, because until tonight it contained no
+ * words that could disagree with it: I interpolated a date built from the
+ * MESSAGE's language into a sentence fixed in Georgian, and the seam appeared
+ * the moment somebody wrote in English.
+ *
+ * So the sentence joins the rest of the file. One language decides both, which
+ * is the only arrangement in which they cannot drift.
+ */
+export function walledOutOfTokens(language: RunLanguage, renewal: string): string {
+  switch (language) {
+    case 'en':
+      return `You are out of tokens — top up, or wait until ${renewal}, when your allowance comes back.`;
+    case 'ru':
+      return `Токены закончились — пополни или подожди до ${renewal}, когда лимит обновится.`;
+    case 'es':
+      return `Te has quedado sin tokens: recarga o espera hasta ${renewal}, cuando se renueva tu asignación.`;
+    default:
+      return `ტოკენები ამოგეწურა — შეავსე ან დაელოდე ${renewal}, როცა ლიმიტი განახლდება.`;
+  }
+}
+
 export function messageHeldNoTokens(language: RunLanguage, renewal: string): string {
   switch (language) {
     case 'en':

@@ -9,6 +9,7 @@ import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
 import { queueResult } from '../pendingUpdates.service';
+import { renderPendingMessage } from '../pendingMessages';
 import {
   GOAL_FEEDBACK_QUESTIONS,
   nextFeedbackQuestion,
@@ -265,5 +266,86 @@ describe('a card queued by a close survives the close', () => {
 
     expect(list).not.toContain('debrief');
     expect(list).not.toContain('goal_question');
+  });
+});
+
+/**
+ * ⚠️ AND IT WAS RELEASED, MARKED SEEN, AND STILL NEVER SHOWN TO ANYBODY.
+ *
+ * The tester, 22:35 UTC, an hour after I reported this row fixed: „the cards
+ * are released and marked SEEN but the question never reaches the person" —
+ * goals 10495, 10594, 10660. Right again, and the cause was mine from four
+ * hours earlier.
+ *
+ * I gave `goal_feedback` a table, a hook on closing, a queue, a name in the
+ * „also waiting" breakdown, and — that evening — a release of its own. I never
+ * gave it a case in `renderPendingMessage`, which is the one place that turns
+ * a queued item into something a person can read. It fell through to
+ * `default`, which returns null by design for kinds the model still narrates.
+ * But the delivery note tells the model NOT to mention items that are
+ * „delivered separately". So the item was consumed, marked seen, and dropped
+ * between the two halves that each believed the other had it.
+ *
+ * The same shape as the release bug it follows, one layer further out: every
+ * part correct except the one nobody asked the question of.
+ *
+ * ⚠️ AND THE PAYLOAD HAD NO QUESTION IN IT. Only the key and the model-facing
+ * instruction, so even a renderer would have had nothing to print. The words a
+ * person reads have to travel with the item; `question_key` stays as the
+ * fallback for the three rows queued before they did.
+ */
+describe('the question actually reaches the person', () => {
+  const messages = readFileSync(join(__dirname, '..', 'pendingMessages.ts'), 'utf8');
+
+  it('has a case in the renderer, not just a name in the breakdown', () => {
+    const render = messages.slice(messages.indexOf('export function renderPendingMessage'));
+
+    expect(render).toContain("case 'goal_feedback': {");
+  });
+
+  it('shows the question and offers no answers of ours', () => {
+    const card = renderPendingMessage(
+      {
+        kind: 'goal_feedback',
+        task_id: 10594,
+        payload: { question_key: 'what_came_of_it', prompt: 'რა გამოვიდა საბოლოოდ?' },
+      },
+      'ka',
+    );
+
+    expect(card?.text).toBe('რა გამოვიდა საბოლოოდ?');
+    // The founder asked for people's own words. A set of buttons is how you
+    // get somebody else's; the one button is a way out, not an answer.
+    expect(card?.choices).toHaveLength(1);
+    expect(card?.ref.task_id).toBe(10594);
+  });
+
+  /** The three already queued carry no prompt and must still be readable. */
+  it('falls back to the key for a row queued before the prompt existed', () => {
+    const card = renderPendingMessage(
+      { kind: 'goal_feedback', task_id: 10495, payload: { question_key: 'what_you_wanted' } },
+      'en',
+    );
+
+    expect(card?.text).toBe('What did you want to resolve with this goal?');
+  });
+
+  it('says nothing rather than something empty when it has neither', () => {
+    expect(
+      renderPendingMessage({ kind: 'goal_feedback', task_id: 1, payload: {} }, 'ka'),
+    ).toBeNull();
+    expect(
+      renderPendingMessage(
+        { kind: 'goal_feedback', task_id: 1, payload: { question_key: 'not_a_real_key' } },
+        'ka',
+      ),
+    ).toBeNull();
+  });
+
+  it('sends the question with the item from now on', () => {
+    const service = readFileSync(join(__dirname, '..', 'goalFeedback.service.ts'), 'utf8');
+    const queue = service.slice(service.indexOf('await queueResult(userId, taskId'));
+
+    expect(queue.slice(0, 600)).toContain('prompt: next.prompt');
   });
 });
