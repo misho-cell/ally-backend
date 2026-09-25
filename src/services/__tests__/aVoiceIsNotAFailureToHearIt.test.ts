@@ -16,6 +16,7 @@ import {
   baseType,
   transcriptionIsOn,
   ensureFileGlobal,
+  languageHint,
   MAX_AUDIO_BYTES,
   MAX_SECONDS_PER_DAY,
 } from '../speech.service';
@@ -432,5 +433,132 @@ describe('the upload works on a runtime with no global File', () => {
       ensureFileGlobal();
       expect(typeof scope.File).toBe('function');
     });
+  });
+});
+
+/**
+ * ⚠️ „LANGUAGE 'ka' IS NOT SUPPORTED" — the recogniser's own 400, 21:50:40 UTC.
+ *
+ * The tester sent one clip twice on the build that fixed the upload. Without
+ * `language` it returned text. With `language=ka` it was a 400 EVERY time. So
+ * the recogniser transcribes Georgian and will not accept Georgian as the
+ * value of that parameter — two different things behind one word, and „Whisper
+ * knows Georgian" is true and was never the question. The log said which.
+ *
+ * Their standard, and it is the right one: „Georgian must not depend on a
+ * guess." Without a hint the auto-detect called their synthetic clip JAPANESE.
+ * So the hint is replaced by a `prompt` in Georgian script — the recogniser's
+ * own supported way to bias a transcription — and the refused code is
+ * remembered so the 400 is paid for once per process and never again.
+ *
+ * The accepted list is deliberately NOT hardcoded: I do not know it, and a
+ * guess at it is a 400 on somebody's voice. The refusal names the language, so
+ * the refusal IS the list.
+ */
+describe('a language the recogniser will not be told about', () => {
+  const recogniser = (): { create: jest.Mock } => {
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+    const create = jest.fn(async (body: { language?: string }) => {
+      if (body.language === 'ka') throw new Error("400 Language 'ka' is not supported.");
+      return { text: 'გამარჯობა', language: 'georgian' };
+    });
+    mockClient.mockReturnValue({ audio: { transcriptions: { create } } } as never);
+    return { create };
+  };
+
+  it('answers with the words instead of recognizer_failed', async () => {
+    const { create } = recogniser();
+
+    const out = await transcribe({
+      userId: '1',
+      audio: audio(),
+      mime: 'audio/webm',
+      language: 'ka',
+    });
+
+    expect(out).toEqual({ ok: true, text: 'გამარჯობა', language: 'georgian' });
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * The call that actually transcribes carries a Georgian primer, or the words
+   * come back in some other script.
+   *
+   * ⚠️ ASSERTED ON THE LAST CALL, NOT THE SECOND. The refusal is remembered
+   * for the life of the process — which is the entire point of it — so whether
+   * this is a retry or a first-and-only call depends on what ran before it in
+   * the suite. A test pinned to „the second call" passes alone and fails in
+   * company, and the property it is about holds either way.
+   */
+  it('steers it with Georgian script when it may not be told the language', async () => {
+    const { create } = recogniser();
+
+    await transcribe({ userId: '1', audio: audio(), mime: 'audio/webm', language: 'ka' });
+
+    const calls = create.mock.calls as [{ language?: string; prompt?: string }][];
+    const transcribing = calls[calls.length - 1][0];
+    expect(transcribing.language).toBeUndefined();
+    expect(transcribing.prompt).toMatch(/[Ⴀ-ჿ]/);
+  });
+
+  /** The 400 is paid for ONCE. A second speaker does not repeat it. */
+  it('does not ask again after it has been refused', async () => {
+    const { create } = recogniser();
+
+    await transcribe({ userId: '1', audio: audio(), mime: 'audio/webm', language: 'ka' });
+    create.mockClear();
+    await transcribe({ userId: '2', audio: audio(), mime: 'audio/webm', language: 'ka-GE' });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect((create.mock.calls[0][0] as { language?: string }).language).toBeUndefined();
+  });
+
+  /** „ka-GE" and „KA" are the same hint; region and case are the caller's to vary. */
+  it('reads a regional tag as its language', () => {
+    expect(languageHint('ka-GE')).toBe('ka');
+    expect(languageHint('KA')).toBe('ka');
+    expect(languageHint('  ')).toBeUndefined();
+    expect(languageHint(undefined)).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ IT REPORTS WHAT IT HEARD, NOT WHAT IT WAS TOLD. The field used to echo
+   * the caller's own hint, so it answered „ka" to „was this Georgian?" purely
+   * because the phone had said so — while the recogniser had decided Japanese.
+   * A field that cannot disagree with its input is not an answer.
+   */
+  it('reports the language the recogniser detected', async () => {
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+    mockClient.mockReturnValue({
+      audio: { transcriptions: { create: async () => ({ text: 'x', language: 'japanese' }) } },
+    } as never);
+
+    const out = await transcribe({
+      userId: '1',
+      audio: audio(),
+      mime: 'audio/webm',
+      language: 'en',
+    });
+
+    expect(out).toEqual({ ok: true, text: 'x', language: 'japanese' });
+  });
+
+  /** Any OTHER failure is still a named refusal — never a silent second charge. */
+  it('does not retry a failure that is not that refusal', async () => {
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+    const create = jest.fn(async () => {
+      throw new Error('429 Rate limit reached');
+    });
+    mockClient.mockReturnValue({ audio: { transcriptions: { create } } } as never);
+
+    const out = await transcribe({
+      userId: '1',
+      audio: audio(),
+      mime: 'audio/webm',
+      language: 'es',
+    });
+
+    expect(out).toEqual({ ok: false, reason: 'recognizer_failed' });
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });

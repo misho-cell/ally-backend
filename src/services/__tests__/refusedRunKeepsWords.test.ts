@@ -86,7 +86,7 @@ describe('a run refused for an empty wallet', () => {
     };
     for (const language of ['ka', 'en', 'ru', 'es'] as const) {
       expect(RUN_STRINGS[language].statusLines.needs_topup).toMatch(sendItAgain[language]);
-      expect(messageHeldNoTokens(language)).toMatch(sendItAgain[language]);
+      expect(messageHeldNoTokens(language, 'Monday 28 September')).toMatch(sendItAgain[language]);
     }
   });
 
@@ -281,7 +281,7 @@ describe('what the owner is told about the message the wall refused', () => {
       es: /env[íi]alo otra vez/i,
     };
     for (const language of ['ka', 'en', 'ru', 'es'] as const) {
-      const line = messageHeldNoTokens(language);
+      const line = messageHeldNoTokens(language, 'Monday 28 September');
       // „I kept it" on its own leaves somebody waiting for something that is
       // never coming. The instruction is the whole point.
       expect(line).toMatch(again[language]);
@@ -293,13 +293,15 @@ describe('what the owner is told about the message the wall refused', () => {
     // The badge says „top up and I will carry on" — true of the GOAL, false of
     // this message. The two must not say the same thing.
     for (const language of ['ka', 'en', 'ru', 'es'] as const) {
-      expect(messageHeldNoTokens(language)).not.toBe(RUN_STRINGS[language].statusLines.needs_topup);
+      expect(messageHeldNoTokens(language, 'Monday 28 September')).not.toBe(
+        RUN_STRINGS[language].statusLines.needs_topup,
+      );
     }
   });
 
   it('carries no Georgian in the non-Georgian lines', () => {
     for (const language of ['en', 'ru', 'es'] as const) {
-      expect(messageHeldNoTokens(language)).not.toMatch(/[Ⴀ-ჿ]/);
+      expect(messageHeldNoTokens(language, 'Monday 28 September')).not.toMatch(/[Ⴀ-ჿ]/);
     }
   });
 });

@@ -45,6 +45,7 @@ import {
 } from '../../services/threads.service';
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
+import { nextRenewalDay } from '../../services/renewalDay';
 import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
@@ -641,19 +642,21 @@ threadsRouter.post(
          * up at 21:04, and six hours later the owner was told the product was
          * still waiting for a go-ahead that was on his own screen.
          */
+        // D494: the same day in both, from one call, so the sentence in the
+        // thread and the sentence on the card cannot name different Mondays.
+        // The window in force decides it (D124): the first of next month
+        // today, the coming Monday once BUDGET_WINDOW=week.
+        const renewal = nextRenewalDay(refusedIn);
         void saveThreadMessage(
           threadId,
           Number(userId),
           'assistant',
-          messageHeldNoTokens(refusedIn),
+          messageHeldNoTokens(refusedIn, renewal),
         ).catch(() => undefined);
-        // The renewal named is the window in force (D124): monthly today,
-        // weekly once BUDGET_WINDOW=week — the text must not promise the
-        // wrong day.
-        const renewal = budgetWindow().unit === 'week' ? 'კვირის' : 'თვიურ';
         res.status(402).json({
           success: false,
-          error: `ტოკენები ამოგეწურა — შეიძინე დამატებით ან დაელოდე ${renewal} განახლებას`,
+          error: `ტოკენები ამოგეწურა — შეავსე ან დაელოდე ${renewal}, როცა ლიმიტი განახლდება`,
+          renews_on: renewal,
           reason: 'insufficient_tokens',
           balance: allowance.balance,
           window: budgetWindow().label,

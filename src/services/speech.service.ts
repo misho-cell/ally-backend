@@ -129,6 +129,64 @@ const EXTENSION: Record<string, string> = {
 /** Whisper knows Georgian; this is the hint, and the answer says what it actually heard. */
 const MODEL = 'whisper-1';
 
+/**
+ * ⚠️ „LANGUAGE 'ka' IS NOT SUPPORTED" — the API's own words, 21:50:40 UTC.
+ *
+ * The tester sent the same clip twice: without `language` it came back with
+ * text, with `language=ka` it was a 400 every time. The recogniser TRANSCRIBES
+ * Georgian perfectly well; what it will not take is Georgian as the value of
+ * that parameter. Two different things behind one word, which is why the log
+ * had to be read rather than reasoned about — „Whisper knows Georgian" is true
+ * and was not the question.
+ *
+ * ⚠️ AND I AM NOT HARDCODING THE LIST IT DOES TAKE, because I do not know it
+ * and a guess here is a 400 on somebody's voice. The refusal names the
+ * language, so the refusal is the list: send the hint, and if it comes back
+ * refused, remember that and never send it again. The first Georgian call this
+ * process serves pays for one retry; no call after it does.
+ *
+ * It is per-process and deliberately not persisted: it is a cache of something
+ * the API is free to change, and a restart asking once more is the correct
+ * behaviour on the day Georgian becomes supported.
+ */
+const languagesTheRecogniserRefused = new Set<string>();
+
+function refusedTheLanguage(message: string): boolean {
+  return /language\s+'[^']*'\s+is not supported/i.test(message);
+}
+
+/**
+ * „ka-GE" and „KA" are the same hint. Region and case are the caller's to vary
+ * and neither changes which language was spoken.
+ */
+export function languageHint(raw: string | undefined): string | undefined {
+  const code = (raw ?? '').trim().toLowerCase().split(/[-_]/)[0];
+  return code === '' ? undefined : code;
+}
+
+/**
+ * WHAT REPLACES THE HINT WHEN THE HINT IS REFUSED.
+ *
+ * Without any steer the recogniser auto-detects, and on the tester's synthetic
+ * clip it detected JAPANESE. Their sentence, and it is the right standard:
+ * „Georgian must not depend on a guess."
+ *
+ * A `prompt` is the recogniser's own supported way to bias an transcription —
+ * it is read as preceding context, so a line of Georgian script makes Georgian
+ * script the obvious continuation. It is NOT a command and it is not put in
+ * front of the user's words; it never appears in the result.
+ *
+ * One short, ordinary sentence per language the product speaks. Nothing
+ * task-specific: a prompt naming plumbers would bias the words as well as the
+ * script, and the user is the one who decides what they said.
+ */
+const SCRIPT_PRIMER: Record<string, string> = {
+  ka: 'გამარჯობა. ეს არის ჩვეულებრივი ქართული წინადადება.',
+  ru: 'Здравствуйте. Это обычное предложение на русском языке.',
+  es: 'Hola. Esta es una frase normal en español.',
+  en: 'Hello. This is an ordinary sentence in English.',
+};
+
 export function baseType(mime: string): string {
   return (mime ?? '').split(';')[0].trim().toLowerCase();
 }
@@ -188,6 +246,56 @@ export interface TranscribeInput {
   readonly durationMs?: number;
 }
 
+/** What the recogniser gives back, narrowed to the two fields this service reads. */
+interface Heard {
+  readonly text?: string;
+  readonly language?: string;
+}
+
+/**
+ * One transcription, with the language hint if the recogniser will take it and
+ * a script primer if it will not.
+ *
+ * The retry happens ONCE and only on the named refusal. Any other failure is
+ * the caller's to report — retrying a timeout or a rate limit here would spend
+ * somebody's money twice on the same second of audio.
+ */
+async function transcribeWith(
+  client: NonNullable<ReturnType<typeof openaiClient>>,
+  file: Awaited<ReturnType<typeof toFile>>,
+  hint: string | undefined,
+): Promise<Heard> {
+  const primer = hint === undefined ? undefined : SCRIPT_PRIMER[hint];
+  const sendHint = hint !== undefined && !languagesTheRecogniserRefused.has(hint);
+  const ask = (withHint: boolean): Promise<Heard> =>
+    client.audio.transcriptions.create({
+      file,
+      model: MODEL,
+      // The detected language comes back only in the verbose form, and it is
+      // the whole point of asking.
+      response_format: 'verbose_json',
+      ...(withHint && hint !== undefined ? { language: hint } : {}),
+      // Carried whether or not the hint is: it costs nothing and it is what
+      // keeps Georgian in Georgian script when no hint is allowed.
+      ...(primer === undefined ? {} : { prompt: primer }),
+    }) as unknown as Promise<Heard>;
+
+  if (!sendHint) return ask(false);
+  try {
+    return await ask(true);
+  } catch (error) {
+    const message = (error as Error).message ?? '';
+    if (!refusedTheLanguage(message) || hint === undefined) throw error;
+    languagesTheRecogniserRefused.add(hint);
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[speech] the recogniser will not take language=${hint} ("${message.slice(0, 120)}") — ` +
+        'retrying without it, and not sending it again',
+    );
+    return ask(false);
+  }
+}
+
 export async function transcribe(input: TranscribeInput): Promise<TranscriptionOutcome> {
   if (!transcriptionIsOn()) {
     return { ok: false, reason: 'not_enabled' };
@@ -235,14 +343,7 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
     // in the process sees.
     ensureFileGlobal();
     const file = await toFile(input.audio, `speech.${EXTENSION[type] ?? 'mp4'}`, { type });
-    const result = await client.audio.transcriptions.create({
-      file,
-      model: MODEL,
-      // Omitted rather than guessed: Whisper detects the language itself, and a
-      // wrong hint is worse than none — this is exactly the failure being
-      // fixed, an engine told „ka-GE" and answering in English anyway.
-      ...(input.language ? { language: input.language } : {}),
-    });
+    const result = await transcribeWith(client, file, languageHint(input.language));
     // Written to the ledger before the answer is returned, so the spend is
     // recorded whatever the caller then does with the text.
     await recordFixedUsage({
@@ -262,7 +363,14 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
       // team asked for these to be separable and they were right to.
       return { ok: false, reason: 'no_speech' };
     }
-    return { ok: true, text, language: input.language ?? null };
+    /**
+     * WHAT IT HEARD, not what it was told. This used to echo the caller's own
+     * hint straight back, so the field answered „ka" to the question „was this
+     * Georgian?" purely because the phone had said so — and on the one clip
+     * where it mattered the recogniser had decided Japanese. A field that
+     * cannot disagree with its input is not an answer.
+     */
+    return { ok: true, text, language: result.language ?? languageHint(input.language) ?? null };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[speech] transcription failed:', (error as Error).message);

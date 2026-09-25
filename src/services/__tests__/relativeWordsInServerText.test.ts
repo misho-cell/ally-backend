@@ -102,8 +102,16 @@ describe('the refusals a run reads back hours later', () => {
 describe('the out-of-tokens message promises nothing it cannot do', () => {
   const langs = ['ka', 'en', 'ru', 'es'] as const;
 
+  /** A fixed date, so the assertions below are about the words, not about today. */
+  const DAY = {
+    ka: 'ორშაბათს, 28 სექტემბერს',
+    en: 'Monday 28 September',
+    ru: 'в понедельник, 28 сентября',
+    es: 'el lunes 28 de septiembre',
+  } as const;
+
   it('says nothing is queued, in every language', () => {
-    const said = langs.map((l) => messageHeldNoTokens(l));
+    const said = langs.map((l) => messageHeldNoTokens(l, DAY[l]));
 
     expect(said[0]).toContain('რიგში არაფერია');
     expect(said[1]).toContain('Nothing is queued');
@@ -113,18 +121,51 @@ describe('the out-of-tokens message promises nothing it cannot do', () => {
 
   it('never claims it will carry on by itself', () => {
     for (const lang of langs) {
-      const text = messageHeldNoTokens(lang);
+      const text = messageHeldNoTokens(lang, DAY[lang]);
 
       expect(text).not.toMatch(/გავაგრძელებ|I will carry on|я продолжу|sigo solo/i);
     }
   });
 
-  /** The refill promise stays out until the 28 September test earns it. */
-  it('does not mention the weekly refill or a day of the week', () => {
+  /**
+   * ⚠️ THIS TEST USED TO FORBID THE DAY, and the reason was right: naming the
+   * refill implies the goal picks itself up when the balance does, and
+   * „nothing wakes the goal when the balance rises" — row 221's own fault, a
+   * badge promising what the code underneath it does not do.
+   *
+   * D494 (the founder, 25 September) requires the day: „tell the user to top
+   * up OR wait for the refill, WITH THE DAY." Both are satisfiable at once and
+   * the old assertion confused them. What must not appear is the PROMISE; the
+   * DATE was never the thing that was wrong.
+   *
+   * So the property moves to what it was always protecting: whichever way out
+   * they take, they are the one who sends the message again.
+   */
+  it('names the day without promising anything happens on its own', () => {
+    const sendAgain = {
+      ka: /გამომიგზავნე/,
+      en: /send it again/i,
+      ru: /отправь/i,
+      es: /env[íi]alo/i,
+    };
     for (const lang of langs) {
-      const text = messageHeldNoTokens(lang);
+      const text = messageHeldNoTokens(lang, DAY[lang]);
 
-      expect(text).not.toMatch(/ორშაბათ|Monday|понедельник|lunes|კვირეულ|weekly/i);
+      expect(text).toContain(DAY[lang]);
+      expect(text).toMatch(sendAgain[lang]);
+      // The old ban, kept where it belongs: on the promise, not on the date.
+      expect(text).not.toMatch(/ავტომატურად|automatically|автоматически|autom[áa]tica/i);
+    }
+  });
+
+  /**
+   * And the date is an absolute one. „Wait until Monday" written on a Monday
+   * is the relative-word trap this whole file exists for — the day of the
+   * MONTH is what makes it readable a week later in a scrollback.
+   */
+  it('gives a date, not a relative word', () => {
+    for (const lang of langs) {
+      expect(messageHeldNoTokens(lang, DAY[lang])).toMatch(/\d{1,2}/);
     }
   });
 });

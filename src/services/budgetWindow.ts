@@ -36,6 +36,38 @@ export interface BudgetWindow {
   grantPriceKey: string;
   /** What the admin read calls the window. */
   label: 'calendar_month' | 'calendar_week';
+  /**
+   * WHEN THE ALLOWANCE COMES BACK, as a date rather than as a word.
+   *
+   * D494, the founder: „tell the user to top up OR wait for the refill, WITH
+   * THE DAY." The refusal already said „wait for the monthly renewal", which
+   * is a true sentence that leaves somebody with no idea whether to wait ten
+   * minutes or three weeks — and waiting is one of the two things he is being
+   * offered. A choice between „pay" and „wait an unknown time" is not a choice.
+   *
+   * Computed here rather than read back from the database, because it is the
+   * same arithmetic `windowResetSql` already does and the refusal path should
+   * not need a query to finish a sentence. UTC on both sides, so the two
+   * cannot drift apart.
+   */
+  nextReset: (now: Date) => Date;
+}
+
+/** Midnight UTC on the first of the month after the one `now` is in. */
+function firstOfNextMonth(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+}
+
+/**
+ * Midnight UTC on the coming Monday. `date_trunc('week', …) + 1 week` in
+ * Postgres is the Monday after the one that has started, and Sunday belongs to
+ * the week that began six days earlier — which is why this is `8 - day` for
+ * Sunday rather than „tomorrow".
+ */
+function nextMonday(now: Date): Date {
+  const day = now.getUTCDay();
+  const daysAhead = day === 0 ? 1 : 8 - day;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysAhead));
 }
 
 /** The placeholder every period fragment reads its key from. */
@@ -51,6 +83,7 @@ const MONTH: BudgetWindow = {
   periodEndSql: `to_date(${PERIOD_KEY_PARAM}, 'YYYY-MM') + INTERVAL '1 month'`,
   grantPriceKey: 'tokens.monthly_grant',
   label: 'calendar_month',
+  nextReset: firstOfNextMonth,
 };
 
 /** ISO weeks, Monday to Sunday, so 'w:2026-W37' sorts and compares like 'm:2026-09'. */
@@ -64,6 +97,7 @@ const WEEK: BudgetWindow = {
   periodEndSql: `to_date(${PERIOD_KEY_PARAM}, 'IYYY-"W"IW') + INTERVAL '1 week'`,
   grantPriceKey: 'tokens.weekly_grant',
   label: 'calendar_week',
+  nextReset: nextMonday,
 };
 
 /** The window in force — read on every call so the switch needs no restart. */

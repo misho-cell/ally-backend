@@ -632,31 +632,45 @@ export function isPlaceholderThreadTitle(title: string | null): boolean {
  * would repeat row 221's own fault: a badge promising something the code
  * underneath it does not do.
  */
-export function messageHeldNoTokens(language: RunLanguage): string {
+/**
+ * ⚠️ D494 — AND THE DAY. „Tell the user to top up OR wait for the refill, WITH
+ * THE DAY", the founder, 25 September.
+ *
+ * What stood here offered two ways out and dated neither: „once they are
+ * topped up, send it again". Waiting is the free one, and somebody who cannot
+ * tell whether the wait is ten minutes or three weeks has not been offered it
+ * — they have been told to pay, politely. The day is the difference between a
+ * choice and a sales line.
+ *
+ * `renewal` is passed in rather than read here so this stays a pure text
+ * function like every other in this file, and so a test can state the date.
+ */
+export function messageHeldNoTokens(language: RunLanguage, renewal: string): string {
   switch (language) {
     case 'en':
       return (
         'Your message is still here in the conversation, but I have not started on it — the ' +
-        'tokens ran out. Nothing is queued and nothing will happen on its own: once they are ' +
-        'topped up, send it again and I will start then.'
+        'tokens ran out. Nothing is queued and nothing will happen on its own: top up and send ' +
+        `it again, or wait until ${renewal}, when your allowance comes back — then send it ` +
+        'again and I will start.'
       );
     case 'ru':
       return (
         'Твоё сообщение осталось здесь, в переписке, но я к нему не приступил — закончились ' +
-        'токены. Ничего не стоит в очереди и само по себе не начнётся: после пополнения ' +
-        'отправь ещё раз, и тогда я начну.'
+        'токены. Ничего не стоит в очереди и само по себе не начнётся: пополни и отправь ещё ' +
+        `раз — или подожди до ${renewal}, когда лимит обновится, и тогда отправь снова.`
       );
     case 'es':
       return (
         'Tu mensaje sigue aquí en la conversación, pero no he empezado con él: se acabaron los ' +
-        'tokens. No hay nada en cola y nada ocurrirá por sí solo; cuando recargues, envíalo ' +
-        'otra vez y entonces empiezo.'
+        'tokens. No hay nada en cola y nada ocurrirá por sí solo: recarga y envíalo otra vez, ' +
+        `o espera hasta ${renewal}, cuando se renueva tu asignación, y entonces envíalo de nuevo.`
       );
     default:
       return (
         'შენი შეტყობინება აქვე რჩება, მაგრამ საქმე არ დამიწყია — ტოკენები ამოიწურა. რიგში ' +
-        'არაფერია და თავისით არაფერი მოხდება: შევსების შემდეგ ხელახლა გამომიგზავნე და მაშინ ' +
-        'დავიწყებ.'
+        'არაფერია და თავისით არაფერი მოხდება: შეავსე და ხელახლა გამომიგზავნე, ან დაელოდე ' +
+        `${renewal}, როცა ლიმიტი განახლდება — და მაშინ გამომიგზავნე ხელახლა.`
       );
   }
 }
