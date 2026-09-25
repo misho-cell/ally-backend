@@ -131,11 +131,43 @@ async function flagGoal(
         task_id: taskId,
         goal_title: task.title,
         question: carried,
+        /**
+         * ⚠️ IT USED TO SAY „ASK THEM THE QUESTION VERBATIM", AND THIS ITEM IS
+         * ALREADY A CARD THAT ASKS IT — item E, the founder, thread 24487.
+         *
+         * He typed „რა მელოდება? ვინმე რამეს მეკითხება?" at 10:36:22 and got
+         * the same question TWICE, one second apart:
+         *
+         *   10:36:44  the model's own reply: „…Tiko and Likuna haven't
+         *             answered. Want me to add Nodar Baghishvili, or keep
+         *             waiting? (I am waiting for the answer to the question
+         *             above.)"
+         *   10:36:45  the server's card: „The goal … is waiting for your
+         *             answer: Tiko and Likuna still haven't answered. Want me
+         *             to add Nodar Baghishvili, or keep waiting?"
+         *             …with „Answer now" and „Later" under it.
+         *
+         * Both were doing as they were told. The card exists because a
+         * question the model merely narrated used to vanish into a `step` row
+         * the thread view filters out — buttons with no question above them.
+         * The instruction then asked the model to narrate it as well.
+         *
+         * AND THE STRAY LINE IS THE SAME FAULT. „(I am waiting for the answer
+         * to the question above.)" is the model explaining why it stopped —
+         * a stage direction that only makes sense because it had just asked.
+         * Take the asking away and the sentence has nothing to explain.
+         *
+         * So the card asks and the reply introduces. One question, once.
+         */
         instruction:
-          `The goal "${task.title}" is blocked on the owner's answer. Ask them the question ` +
-          'verbatim (translate if the conversation is in another language), get a real answer, ' +
-          'then call answer_goal_question with task_id and what they said — that is what ' +
-          'un-blocks the goal. If they defer, accept it and move on.',
+          `The goal "${task.title}" is blocked on the owner's answer, and THE QUESTION IS ` +
+          'ALREADY GOING TO THEM as its own card with its own buttons, right after your reply. ' +
+          'DO NOT ASK IT AGAIN and do not restate it — they would read the same question twice, ' +
+          'one second apart. Your reply says in ONE line that this goal is waiting on them, and ' +
+          'nothing more about it. Do not write that you are waiting for their answer either; ' +
+          'the card says so and the buttons show it. When they answer, call answer_goal_question ' +
+          'with task_id and what they said — that is what un-blocks the goal. If they defer, ' +
+          'accept it and move on.',
       },
       0,
     );

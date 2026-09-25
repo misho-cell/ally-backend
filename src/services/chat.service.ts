@@ -2422,7 +2422,15 @@ const ASK_OWNER_DECISION_TOOL: AnthropicTool = {
       task_id: { type: 'number', description: 'The blocked goal (task_id)' },
       question: {
         type: 'string',
-        description: 'The exact question, one or two sentences, ready to show the owner',
+        description:
+          'The exact question, one or two sentences, ready to show the owner — IN THE LANGUAGE ' +
+          'THEY WRITE TO YOU IN, not the language the goal happens to be worded in. This text ' +
+          'is shown to them verbatim on a card; nothing translates it later. Item E, thread ' +
+          '24487: a Georgian conversation was handed a card reading „მიზანი «I need a reliable ' +
+          'web designer…» შენს პასუხს ელოდება: Tiko and Likuna still haven\u2019t answered…" — ' +
+          'a Georgian sentence wrapped around an English one, because the question was filed in ' +
+          'the goal\u2019s language. The goal TITLE stays as the owner wrote it; the question ' +
+          'is yours and belongs in their language.',
       },
     },
     required: ['task_id', 'question'],
