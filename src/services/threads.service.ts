@@ -202,6 +202,43 @@ const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
        ELSE t.status_line
      END`;
 
+/**
+ * ⚠️ AN ANSWERED REQUEST KEPT ITS BUTTONS — the tester, seat Netai Test 4,
+ * 25 September.
+ *
+ * Two introduction cards from 23 September, both already answered — their own
+ * text says „I have given … contact" — still showing Connect / Keep it /
+ * Decline / Remind me later. Pressing „Remind me later" answered 409
+ * „ამ მოთხოვნაზე უკვე გაქვს პასუხი". The founder's standing rule is that after
+ * an answer, zero buttons remain.
+ *
+ * THIS COLUMN IS WHY. The client draws those buttons when a thread carries a
+ * `request_ref`, and this list handed one out for EVERY thread linked to a
+ * request, answered or not. Read live on Test 4: seven such threads, all seven
+ * `accepted`, all seven still carrying the ref — including exactly the two the
+ * tester named.
+ *
+ * DERIVED AT READ TIME, like `STATUS_HONEST_ABOUT_OPEN_GOALS` directly below
+ * and for the same reason, which that comment already puts better than I can:
+ * correcting the stored rows would be a write across live data and somebody
+ * else's decision to authorise, while deriving the answer needs nobody and
+ * fixes every existing thread at once.
+ *
+ * The thread stays, with its whole conversation. What goes is the ONE field
+ * that means „there is something here for you to decide".
+ *
+ * ⚠️ AND I HAD THE WRONG CULPRIT FIRST. I told the tester the cards came from
+ * a `pending_updates` row of kind `intro_request` and shipped a fix for that
+ * before checking — Test 4 has NOT ONE such row, and never did. That other fix
+ * is right and worth keeping (an answered request should not sit in the queue
+ * or pad the „N more updates" count), but it was never what they were looking
+ * at. Two places can both be wrong, and being right about one of them is not
+ * the same as having found the bug.
+ */
+const REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER = `CASE
+         WHEN ir.status = 'pending' THEN ir.request_ref
+       END`;
+
 // The list's columns, shared by the page query and the open-goals query so the
 // two can never drift into returning differently-shaped rows.
 const THREAD_LIST_COLUMNS = `t.id,
@@ -214,7 +251,7 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${STATUS_LINE_HONEST_ABOUT_OPEN_GOALS} AS status_line,
        t.created_at,
        t.updated_at,
-       ir.request_ref,
+       ${REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER} AS request_ref,
        LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
        lm.created_at AS last_message_at,
        ${GOAL_WAS_STOPPED} AS goal_stopped`;

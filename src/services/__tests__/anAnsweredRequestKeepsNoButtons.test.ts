@@ -118,3 +118,56 @@ describe('the rows already stranded, which nothing written today can reach', () 
     expect(sql).not.toContain('`');
   });
 });
+
+/**
+ * ⚠️ AND THE FIX ABOVE WAS NOT THE ONE THE TESTER WAS LOOKING AT.
+ *
+ * I read „answered card still has buttons", found the `intro_request` row in
+ * `pending_updates`, and shipped for it before checking. Test 4 has NOT ONE
+ * such row and never did. What it has is SEVEN threads linked to an
+ * introduction request, all seven `accepted`, all seven still handed a
+ * `request_ref` by the thread list — including exactly the two the tester
+ * named, „Netai Test 3 → Netai Test 6" and „Netai Test 6 → Netai Test 3".
+ *
+ * The client draws Connect / Keep it / Decline / Remind me later when a thread
+ * carries that ref. It is the ref, not the queue.
+ *
+ * The other fix stands on its own — an answered request has no business in the
+ * update queue or in the „N more updates" count — but two places can both be
+ * wrong, and being right about one of them is not the same as having found the
+ * bug. That is the whole of what went wrong here, and it went wrong fast
+ * because the diagnosis felt finished.
+ */
+describe('the ref the client draws buttons from', () => {
+  const threads = src('threads.service.ts');
+
+  it('is withheld once the request has been answered', () => {
+    expect(threads).toContain('REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER');
+    expect(threads).toContain("WHEN ir.status = 'pending' THEN ir.request_ref");
+    expect(threads).toContain('${REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER} AS request_ref');
+  });
+
+  /**
+   * The bare column would hand the ref out again, and this list is shared by
+   * the page query and the open-goals query so one leak covers both.
+   */
+  it('no longer selects the bare column anywhere', () => {
+    expect(threads).not.toContain('       ir.request_ref,');
+  });
+
+  /**
+   * Derived at read time rather than written back, exactly as the status
+   * columns beside it are: correcting the stored rows would be a write across
+   * live data and somebody else's to authorise, while deriving it needs nobody
+   * and fixes every existing thread at once — including the two from 23
+   * September that no forward-only fix could ever reach.
+   */
+  it('leaves the thread and its conversation alone', () => {
+    const column = threads.slice(
+      threads.indexOf('const REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER'),
+      threads.indexOf('const THREAD_LIST_COLUMNS'),
+    );
+
+    expect(column).not.toMatch(/UPDATE|DELETE/);
+  });
+});
