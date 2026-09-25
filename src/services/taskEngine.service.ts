@@ -941,13 +941,95 @@ export function startIntroOutcome(taskId: number, eventText: EventText): void {
   );
 }
 
-export function startPlanProposal(taskId: number): void {
+/**
+ * ⚠️ ROW 267 — IT ASKED THE OWNER A QUESTION AND THEN DID NOT WAIT FOR IT.
+ *
+ * Thread 24391, by the clock:
+ *
+ *   10:26:23  „I'm moving to Argentina next year for business. Who could help?"
+ *   10:26:46  „What kind of business is this, and what would help most: local
+ *              partners and clients, legal or visa …?"
+ *   10:26:55  a goal is saved and the plan wake fires — NINE SECONDS LATER
+ *   10:27:19  „Plan v1 (awaiting your approval)" with two buttons
+ *
+ * The person is asked something, and before they can type a word they are
+ * handed a plan built without their answer, ending in the same question again.
+ *
+ * The engine could not see it. `nothingToPlanYet` asks whether the goal has a
+ * plan, whether it is a one-person instruction, and whether it has acted
+ * outward. None of those is „the owner is mid-sentence". The question was
+ * asked in ORDINARY PROSE, not through `ask_owner_decision`, so
+ * `pending_question_at` is null and the one flag that exists says nothing.
+ *
+ * ⚠️ IT POSTPONES AND DOES NOT CANCEL, and that distinction is the whole
+ * design. `getGoalsSilentForDays` requires `plan IS NOT NULL`, so a goal with
+ * NO plan is not picked up by the method-change sweep — dropping the wake
+ * outright would leave a goal nobody ever plans if the owner never answers.
+ * I checked that query before choosing; cancelling would have been the tidier
+ * code and the worse product.
+ */
+const PLAN_POSTPONE_MS = 15 * 60_000;
+const PLAN_POSTPONE_ATTEMPTS = 3;
+
+/**
+ * Has the owner been asked something on this goal's thread and not answered?
+ *
+ * A question mark is the signal, and it is the same mark in all four languages
+ * this product speaks — Spanish opens with „¿" and still closes with „?". That
+ * is a deliberately dumb test: anything cleverer would be a sentence
+ * classifier tuned on the handful of cases I happen to have read.
+ */
+export async function ownerWasAskedAndHasNotAnswered(taskId: number): Promise<boolean> {
+  const result = await query<{ waiting: boolean }>(
+    `WITH t AS (SELECT thread_id FROM tasks WHERE id = $1),
+          spoke AS (
+            SELECT role, content, created_at
+              FROM conversations c, t
+             WHERE c.thread_id = t.thread_id
+               AND c.kind = 'message'
+               AND TRIM(c.content) <> ''
+               AND c.role IN ('user', 'assistant')
+             ORDER BY c.created_at DESC
+             LIMIT 1
+          )
+     SELECT (role = 'assistant' AND TRIM(content) LIKE '%?') AS waiting FROM spoke`,
+    [taskId],
+    OWNER_QUIET_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.waiting === true;
+}
+
+export function startPlanProposal(taskId: number, attempt = 1): void {
   wakeWhenFree(
     taskId,
     PLAN_PROPOSAL_EVENT,
-    () => nothingToPlanYet(taskId),
+    async () => {
+      if (!(await nothingToPlanYet(taskId))) return false;
+      if (await ownerWasAskedAndHasNotAnswered(taskId)) {
+        if (attempt < PLAN_POSTPONE_ATTEMPTS) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[task-engine] goal ${taskId}: the owner was asked something and has not answered — ` +
+              `plan held, attempt ${attempt}`,
+          );
+          startPlanProposal(taskId, attempt + 1);
+        } else {
+          // Bounded on purpose: after three holds the goal gets its plan
+          // anyway, because a goal nobody ever plans is worse than a plan
+          // proposed while a question is still open.
+          // eslint-disable-next-line no-console
+          console.log(
+            `[task-engine] goal ${taskId}: held ${attempt} times for an unanswered question — ` +
+              'planning anyway',
+          );
+          return true;
+        }
+        return false;
+      }
+      return true;
+    },
     () => Promise.resolve(),
-    PLAN_PROPOSAL_DELAY_MS,
+    attempt === 1 ? PLAN_PROPOSAL_DELAY_MS : PLAN_POSTPONE_MS,
   );
   /**
    * ROW 104 — AND THE OTHER HALF, because taking the plan away is only half an
