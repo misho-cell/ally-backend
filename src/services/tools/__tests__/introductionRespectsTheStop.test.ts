@@ -74,7 +74,14 @@ function aReachableMediator(): void {
     }
     // The duplicate guard: „already sent" must be NO, or the happy path is
     // refused for a reason that has nothing to do with the stop.
-    if (text.includes('SELECT id FROM introduction_requests')) {
+    //
+    // Matched on the FROM clause rather than the full SELECT list. It was
+    // pinned to „SELECT id FROM introduction_requests" until 25 September,
+    // when item I added `status` to that list — the matcher stopped matching,
+    // the guard fell through to the default row, and this file's control test
+    // failed. Which is the control doing exactly its job: the assertion moves
+    // with the property instead of being deleted.
+    if (text.includes('FROM introduction_requests')) {
       return Promise.resolve({ rows: [], rowCount: 0 } as never);
     }
     if (text.includes('INSERT INTO introduction_requests')) {

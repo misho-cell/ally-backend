@@ -83,6 +83,17 @@ async function findMediatorPhoneByPhone(
 export type IntroAskType = 'intro' | 'share_contact';
 
 /**
+ * How long a „yes" keeps a second identical request from going out (item I).
+ *
+ * Not forever: a year from now the same two people and the same name can be a
+ * genuinely new need, and refusing that on the strength of a long-dead
+ * introduction would be a worse bug than the one this closes. Thirty days is
+ * the span over which asking the same mediator the same thing again is
+ * somebody forgetting rather than somebody needing.
+ */
+const ACCEPTED_STILL_COUNTS_DAYS = 30;
+
+/**
  * Ticket 20 row 210 — what this request was raised FOR.
  *
  * An options bag rather than a tenth positional parameter: nine is already
@@ -243,22 +254,55 @@ async function requestIntroductionInner(
 
   // For a direct request the ANSWERER is the target; the duplicate check and
   // the insert both key on whoever will answer.
-  const dupResult = await query<{ id: number }>(
+  //
+  // ⚠️ IT USED TO READ `status = 'pending'` AND NOTHING ELSE — item I, 25
+  // September. The moment the mediator ANSWERED, the row stopped being pending
+  // and the identical request went out again to somebody who had already said
+  // yes. The tester's Test 15 asked Test 16 about Test 17 three times in one
+  // day; three separate requests reached Test 16, while `get_intro_status`
+  // showed the earlier acceptance the whole time.
+  //
+  // A guard that only knows „a question is in flight" cannot see „this was
+  // already answered", and the second is the one that puts a message on a real
+  // person's phone for no reason.
+  //
+  // An ACCEPT is what is caught here, not a decline. Re-asking after a „no" is
+  // a judgement call that can be legitimate when something has changed, and I
+  // have no evidence about it; a „yes" that is asked for again is simply a
+  // request nobody needed. Bounded by ACCEPTED_STILL_COUNTS_DAYS so that a new
+  // need next year is not refused on the strength of a long-dead introduction.
+  const dupResult = await query<{ id: number; status: string }>(
     isDirect
-      ? `SELECT id FROM introduction_requests
+      ? `SELECT id, status FROM introduction_requests
          WHERE requester_user_id = $1 AND mediator_user_id IS NULL AND target_user_id = $2
-           AND status = 'pending'
+           AND (status = 'pending'
+                OR (status = 'accepted'
+                    AND COALESCE(responded_at, created_at)
+                        > NOW() - INTERVAL '${ACCEPTED_STILL_COUNTS_DAYS} days'))
+         ORDER BY (status = 'pending') DESC, COALESCE(responded_at, created_at) DESC
          LIMIT 1`
-      : `SELECT id FROM introduction_requests
-         WHERE requester_user_id = $1 AND mediator_user_id = $2 AND target_name = $3 AND status = 'pending'
+      : `SELECT id, status FROM introduction_requests
+         WHERE requester_user_id = $1 AND mediator_user_id = $2 AND target_name = $3
+           AND (status = 'pending'
+                OR (status = 'accepted'
+                    AND COALESCE(responded_at, created_at)
+                        > NOW() - INTERVAL '${ACCEPTED_STILL_COUNTS_DAYS} days'))
+         ORDER BY (status = 'pending') DESC, COALESCE(responded_at, created_at) DESC
          LIMIT 1`,
     isDirect ? [requesterUserId, mediatorUserId] : [requesterUserId, mediatorUserId, targetName],
   );
 
   if (dupResult.rows.length > 0) {
+    const alreadyAnswered = dupResult.rows[0].status === 'accepted';
     return {
       success: false,
-      error: `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია`,
+      reason: alreadyAnswered ? 'already_accepted' : 'already_pending',
+      error: alreadyAnswered
+        ? `${mediatorName} უკვე დათანხმდა ${targetName}-თან დაკავშირებას — ხელახლა თხოვნა ` +
+          'მისთვის ზედმეტი შეტყობინებაა. უთხარი მომხმარებელს, რომ თანხმობა უკვე მიღებულია, ' +
+          'და ჰკითხე, პირდაპირ დავუკავშირდეთ თუ რამე დასაზუსტებელია. დეტალებისთვის ' +
+          'get_intro_status.'
+        : `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია`,
     };
   }
 
