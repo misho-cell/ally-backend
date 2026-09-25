@@ -189,3 +189,84 @@ describe('fetchPage', () => {
     expect(result.error).toEqual(expect.stringContaining('TAVILY_API_KEY'));
   });
 });
+
+/**
+ * ⚠️ 25 SEPTEMBER — THE MODEL WAS SHOWN PART OF A PAGE AND TOLD TO CONCLUDE
+ * FROM IT.
+ *
+ * „ვინ არის ახლა თბილისის მერი?" The run fetched tbilisi.gov.ge/government/2
+ * twice, got 8,471 characters back both times, and answered that the mayor's
+ * name „is not readable in the page's text, only menu links". The tester then
+ * opened the same page in a real browser: it carries the name.
+ *
+ * The content is cut at the character limit and NOTHING SAID SO. Over every
+ * page this product has ever fetched, 44 of 96 hit the cap — forty-six per
+ * cent — and on every one of them the guidance said „if the page does not
+ * state it, say so" to a model that had been shown only the beginning.
+ *
+ * „I was not shown it" coming out as „the page does not say it" is the same
+ * confusion as `push_deliveries` reporting failed = 0, and as `ok = false`
+ * meaning both a refusal and a fault — this time inside the tool D151 leans on.
+ */
+describe('a page that was cut says so', () => {
+  async function loadFetchPage(): Promise<typeof import('../webSearch').fetchPage> {
+    jest.resetModules();
+    process.env.TAVILY_API_KEY = 'test-key';
+    const mod = await import('../webSearch');
+    return mod.fetchPage;
+  }
+
+  const pageOf = (chars: number): MockResponse => ({
+    ok: true,
+    json: async () => ({ results: [{ raw_content: 'x'.repeat(chars) }] }),
+  });
+
+  it('tells the model it has only the first part, and what that is worth', async () => {
+    mockFetch(pageOf(40_000));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://tbilisi.gov.ge/government/2')) as Record<string, unknown>;
+
+    expect(out.read).toBe('partial');
+    expect(out.characters_available).toBe(40_000);
+    expect(String(out.guidance)).toContain('FIRST PART');
+    expect(String(out.guidance)).toContain('you have NOT established that the page lacks it');
+  });
+
+  /** A whole page keeps the original wording and says nothing about cutting. */
+  it('says nothing when the whole page fits', async () => {
+    mockFetch(pageOf(1_200));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a')) as Record<string, unknown>;
+
+    expect(out.read).toBeUndefined();
+    expect(out.characters_available).toBeUndefined();
+    expect(String(out.guidance)).toContain("This is the page's own text");
+    expect(String(out.guidance)).not.toContain('FIRST PART');
+  });
+
+  /** The text itself is still capped — this changes what is SAID, not the size. */
+  it('still sends only the capped text', async () => {
+    mockFetch(pageOf(40_000));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a')) as Record<string, unknown>;
+
+    expect(String(out.content)).toHaveLength(8000);
+  });
+
+  /**
+   * The counts are in the result so a PERSON reading the log can see it too.
+   * „Why did it say the page does not mention him" is answerable now.
+   */
+  it('records the numbers, not only the sentence', async () => {
+    mockFetch(pageOf(12_345));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a')) as Record<string, unknown>;
+
+    expect(out.characters_shown).toBe(8000);
+    expect(out.characters_available).toBe(12_345);
+  });
+});

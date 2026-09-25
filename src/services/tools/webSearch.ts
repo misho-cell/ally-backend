@@ -48,6 +48,40 @@ const PAGE_GUIDANCE =
   'titles); if the page does not state it, say so — do not guess or fall back to a ' +
   'name not on the page.';
 
+/**
+ * ⚠️ 25 SEPTEMBER — THE MODEL WAS SHOWN PART OF A PAGE AND TOLD TO CONCLUDE
+ * FROM IT.
+ *
+ * „ვინ არის ახლა თბილისის მერი?" The run fetched tbilisi.gov.ge/government/2
+ * twice, got 8,471 characters back both times, and answered that the mayor's
+ * name „is not readable in the page's text, only menu links". The tester then
+ * opened the same page in a real browser: 3,055 characters of visible text,
+ * and it carries the name.
+ *
+ * The content is cut at PAGE_CHARS and NOTHING SAID SO. Measured over every
+ * page this product has ever fetched:
+ *
+ *     at the 8,000 cap   44        4,000-7,999    7
+ *     500-3,999          27        under 500     18
+ *
+ * FORTY-SIX PER CENT OF PAGE READS ARE TRUNCATED, and on every one of them the
+ * guidance above says „if the page does not state it, say so" to a model that
+ * has been shown the beginning of the page. „I was not shown it" comes out as
+ * „the page does not say it" — the same confusion this codebase has had to
+ * undo in `push_deliveries`, in `ok = false`, and in `usage_events`, now
+ * inside the tool that D151 leans on.
+ *
+ * Misho's decision, 25 September, asked in plain words: the reader should
+ * ADMIT it could not read the page. So a truncated read says so, and says what
+ * absence is worth.
+ */
+const PAGE_GUIDANCE_PARTIAL =
+  'This is only the FIRST PART of the page — it was cut at ' +
+  'the character limit. Read the answer off what is here, verbatim. But if ' +
+  'what you are looking for is NOT here, you have NOT established that the ' +
+  'page lacks it: you were not shown the rest. Say you could not confirm it ' +
+  'from the page, and do not fall back to a name from anywhere else.';
+
 interface TavilyResult {
   title: string;
   url: string;
@@ -253,6 +287,25 @@ export async function webSearch(query: string): Promise<object> {
  * so the assistant can read an official roster/page directly rather than relying
  * on search snippets. URL must be http(s); content is truncated.
  */
+/**
+ * One page result, which says whether it is the whole page.
+ *
+ * `read: 'partial'` and the two counts are there so a person reading the log
+ * can see it too — the model gets the sentence, and whoever asks „why did it
+ * say the page does not mention him" gets the numbers.
+ */
+function pageResult(url: string, text: string): object {
+  const whole = text.length <= PAGE_CHARS;
+  return {
+    url,
+    guidance: whole ? PAGE_GUIDANCE : PAGE_GUIDANCE_PARTIAL,
+    content: text.slice(0, PAGE_CHARS),
+    ...(whole
+      ? {}
+      : { read: 'partial', characters_shown: PAGE_CHARS, characters_available: text.length }),
+  };
+}
+
 export async function fetchPage(url: string): Promise<object> {
   if (!TAVILY_API_KEY) {
     return { error: 'Web fetch not configured (TAVILY_API_KEY missing)' };
@@ -290,12 +343,10 @@ export async function fetchPage(url: string): Promise<object> {
     if (!content.trim()) {
       // Extractor came back empty — try a plain fetch before giving up.
       const fallback = await fetchRawPageText(target);
-      if (fallback) {
-        return { url: target, guidance: PAGE_GUIDANCE, content: fallback.slice(0, PAGE_CHARS) };
-      }
+      if (fallback) return pageResult(target, fallback);
       return { url: target, content: null, note: NO_TEXT_NOTE };
     }
-    return { url: target, guidance: PAGE_GUIDANCE, content: content.slice(0, PAGE_CHARS) };
+    return pageResult(target, content);
   } catch (err) {
     return { error: (err as Error).message };
   } finally {
