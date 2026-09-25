@@ -257,7 +257,7 @@ import {
   alreadyStoppedLine,
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
-import { getGoalOnThread } from './taskStore.service';
+import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -7117,10 +7117,18 @@ async function executeToolCall(
     case 'check_my_inbox': {
       // Row 266. The three reads the connector's check_my_inbox makes, in
       // parallel, so the app answers the same question from the same sources.
-      const [waiting, answered, asks] = await Promise.all([
+      //
+      // ⚠️ AND A FOURTH, ADDED AN HOUR AFTER THE OTHER THREE. The tester:
+      // 501 has SIX goals with a question outstanding, asked „რა მელოდება?"
+      // and was told about the five questions from OTHER PEOPLE and nothing
+      // about his own six. This morning the same question surfaced one of
+      // them — because a card happened to be DUE, and tonight none was.
+      // „Which of MY goals are stuck on ME" was being answered by luck.
+      const [waiting, answered, asks, myGoals] = await Promise.all([
         getPendingRequestsForMediator(userId),
         getRecentResponsesForRequester(userId),
         getPendingAsksForUser(userId),
+        goalsAwaitingTheOwner(userId),
       ]);
       return {
         // Named for what each one IS to the person, not for its table.
@@ -7138,12 +7146,29 @@ async function executeToolCall(
           why: request.message === null ? null : scrubText(request.message),
           asked_at: request.created_at,
         })),
+        /**
+         * The owner's own goals, stuck on the owner. Named apart from the
+         * others because they are a different kind of waiting: nobody else is
+         * held up by these, and the answer goes back to their own goal rather
+         * than to a person.
+         */
+        my_goals_waiting_on_me: myGoals.map((g) => ({
+          task_id: g.task_id,
+          goal: g.title,
+          // Null when the engine recorded the wait without the text. Reported
+          // as waiting anyway — a goal stuck on an unnamed question is stuck.
+          question: g.question === null ? null : scrubText(g.question),
+          waiting_since: g.waiting_since,
+        })),
         replies_to_what_i_asked: answered,
         // „Nothing is waiting" must be sayable. An empty object read as „the
         // tool had nothing to add" is exactly how five questions stayed
         // invisible in thread 24751.
         nothing_is_waiting:
-          asks.length === 0 && waiting.length === 0 && (answered?.length ?? 0) === 0,
+          asks.length === 0 &&
+          waiting.length === 0 &&
+          myGoals.length === 0 &&
+          (answered?.length ?? 0) === 0,
       };
     }
 

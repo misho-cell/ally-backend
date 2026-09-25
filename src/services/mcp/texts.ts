@@ -161,8 +161,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   check_my_inbox: {
     title: 'Check waiting requests',
     description:
-      'Returns two things: incoming requests (people asking to be connected to the user) and ' +
-      'replies to the requests the user sent. Call it once at the start of a conversation. ' +
+      'Returns THREE things: incoming requests (people asking to be connected to the user), ' +
+      'replies to the requests the user sent, and THE USER’S OWN GOALS THAT ARE WAITING ON ' +
+      'THEM — a question their own goal asked and they have not answered. Those last are a ' +
+      'different kind of waiting: nobody else is held up by them, and the answer goes back to ' +
+      'the goal through answer_goal_question, not to a person. Say them too; „what is waiting ' +
+      'for me" means both. Call it once at the start of a conversation. ' +
       'ALSO CALL IT, ALWAYS, WHEN THE INBOX IS THE QUESTION — "is anyone asking me something?", ' +
       '"does anybody want anything from me?", "anything waiting for me?", "did anyone reply?". ' +
       'get_pending_updates does NOT hold incoming requests and cannot answer those; answering ' +

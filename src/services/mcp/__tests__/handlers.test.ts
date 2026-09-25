@@ -45,6 +45,10 @@ jest.mock('../../taskStore.service', () => ({
   createTask: jest.fn(),
   getMyTasks: jest.fn(),
   getTaskById: jest.fn(),
+  // The fourth read check_my_inbox makes, added 25 September: the owner's own
+  // goals that are stuck on the owner. Default empty, so every test here keeps
+  // meaning what it meant — the one test that cares sets it.
+  goalsAwaitingTheOwner: jest.fn().mockResolvedValue([]),
   grantTaskPermission: jest.fn(),
   isTaskStatus: jest.requireActual('../../taskStore.service').isTaskStatus,
   setTaskBrief: jest.fn(),

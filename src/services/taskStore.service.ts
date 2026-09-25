@@ -947,3 +947,52 @@ export async function clearPlanChangeRequest(taskId: number): Promise<void> {
     QUERY_TIMEOUT_MS,
   );
 }
+
+/**
+ * ⚠️ THE OWNER'S OWN GOALS THAT ARE WAITING ON THE OWNER — the gap the tester
+ * found at 19:12, an hour after I closed item E.
+ *
+ * 501 has SIX goals with a question outstanding (5974, 6964, 5281, 5809, 3763,
+ * 5677, set between 20 and 25 September). He asked „რა მელოდება? ვინმე რამეს
+ * მეკითხება?" at 19:11 and was told about the five questions from OTHER
+ * PEOPLE — and nothing about his own six. This morning the same question did
+ * surface 5281.
+ *
+ * WHY IT VANISHED, and it is not the instruction change it looks like. „What
+ * is waiting for me" was being answered from two places: `check_my_inbox`,
+ * which holds what OTHERS ask, and `get_pending_updates`, which holds cards
+ * that are DUE. A goal question becomes a card once, when it is flagged. Those
+ * six were flagged days ago, their cards have been and gone, and nothing due
+ * remains — so this morning it was visible because a card happened to be due,
+ * and tonight it was invisible because none was.
+ *
+ * Neither surface owns the question „which of MY goals are stuck on ME". It
+ * was answered by luck.
+ *
+ * `pending_question_at` and not `pending_question`, the same choice as
+ * `threadAwaitsOwner` above: the engine's fallback carries the wait without
+ * the text, and a goal waiting with an unnamed question is still waiting — it
+ * is reported with a null question rather than left out.
+ */
+export interface GoalAwaitingOwner {
+  readonly task_id: number;
+  readonly title: string | null;
+  readonly question: string | null;
+  readonly waiting_since: string;
+}
+
+export async function goalsAwaitingTheOwner(userId: string): Promise<GoalAwaitingOwner[]> {
+  const result = await query<GoalAwaitingOwner>(
+    `SELECT t.id AS task_id, t.title, t.pending_question AS question,
+            t.pending_question_at AS waiting_since
+       FROM tasks t
+      WHERE t.user_id = $1 AND t.status = 'open'
+        AND t.pending_question_at IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM hidden_goals h WHERE h.task_id = t.id)
+      ORDER BY t.pending_question_at ASC
+      LIMIT 10`,
+    [userId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}

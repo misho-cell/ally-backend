@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { goalsAwaitingTheOwner } from '../taskStore.service';
 import {
   recordGoalFeedback,
   queueGoalFeedback,
@@ -503,10 +504,15 @@ export async function mcpSaveGoalFeedback(
 }
 
 export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
-  const [pending, answered, pendingAsks] = await Promise.all([
+  // The fourth read is the owner's own goals, stuck on the owner — added an
+  // hour after the app's, because a fault living in one surface and not the
+  // other is the shape this codebase keeps finding. See
+  // `goalsAwaitingTheOwner` for what went invisible and why.
+  const [pending, answered, pendingAsks, myGoals] = await Promise.all([
     getPendingRequestsForMediator(userId),
     getRecentResponsesForRequester(userId),
     getPendingAsksForUser(userId),
+    goalsAwaitingTheOwner(userId),
   ]);
   const payload: McpToolPayload = {
     waiting_for_me: pending.map((request) => ({
@@ -560,6 +566,12 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
     // A different flow entirely (task_asks, not introduction_requests) — a
     // question relayed by another member, not a request to meet someone.
     // Live-caught (25 Aug): this category never appeared here at all.
+    my_goals_waiting_on_me: myGoals.map((g) => ({
+      task_ref: 'task_' + String(g.task_id),
+      goal: g.title,
+      question: g.question === null ? null : scrubText(g.question),
+      waiting_since: scrubDeep(g.waiting_since),
+    })),
     questions_for_me: pendingAsks.map((ask) => ({
       ask_id: String(ask.ask_id),
       from: ask.from_name,

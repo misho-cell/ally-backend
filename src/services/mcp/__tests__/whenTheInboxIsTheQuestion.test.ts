@@ -100,8 +100,8 @@ describe('the app answers it too, and the claim that it need not is retracted', 
     expect(chat).toContain("name: 'check_my_inbox'");
   });
 
-  /** The same three reads as the connector's, so one fault cannot live in two. */
-  it('reads the same three sources the connector reads', () => {
+  /** The same reads as the connector's, so one fault cannot live in two. */
+  it('reads the same sources the connector reads', () => {
     const handler = chat.slice(
       chat.indexOf("case 'check_my_inbox': {"),
       chat.indexOf("case 'get_pending_updates': {"),
@@ -110,6 +110,7 @@ describe('the app answers it too, and the claim that it need not is retracted', 
     expect(handler).toContain('getPendingRequestsForMediator(userId)');
     expect(handler).toContain('getRecentResponsesForRequester(userId)');
     expect(handler).toContain('getPendingAsksForUser(userId)');
+    expect(handler).toContain('goalsAwaitingTheOwner(userId)');
   });
 
   /**
@@ -129,5 +130,67 @@ describe('the app answers it too, and the claim that it need not is retracted', 
   it('points at the thread where the question can be answered', () => {
     expect(chat).toContain('thread_id: ask.ask_thread_id ?? null');
     expect(chat).toContain("name: 'send_answer_to_asker'");
+  });
+});
+
+/**
+ * ⚠️ AND AN HOUR AFTER I CLOSED THIS ROW, THE TESTER FOUND WHAT IT STILL DID
+ * NOT ANSWER.
+ *
+ * 501 has SIX goals with a question outstanding — 5974, 6964, 5281, 5809,
+ * 3763, 5677, set between 20 and 25 September. He asked „რა მელოდება? ვინმე
+ * რამეს მეკითხება?" at 19:11 and was told about the five questions from OTHER
+ * PEOPLE and nothing about his own six. This morning the same question DID
+ * surface 5281.
+ *
+ * IT LOOKED LIKE MY OWN REGRESSION AND IT WAS NOT. „What is waiting for me"
+ * was being answered from two places — `check_my_inbox`, which holds what
+ * others ask, and `get_pending_updates`, which holds cards that are DUE. A
+ * goal question becomes a card ONCE, when it is flagged. Those six were
+ * flagged days ago and their cards have been and gone. So this morning it was
+ * visible because a card happened to be due, and tonight invisible because
+ * none was.
+ *
+ * Neither surface owned „which of MY goals are stuck on ME". It was answered
+ * by luck, and luck ran out in front of the founder.
+ */
+describe('the owner’s own goals, stuck on the owner', () => {
+  const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+  const handlers = readFileSync(join(__dirname, '..', 'handlers.ts'), 'utf8');
+
+  it('is a named part of the answer, not folded into the others', () => {
+    expect(chat).toContain('my_goals_waiting_on_me:');
+    expect(handlers).toContain('my_goals_waiting_on_me:');
+  });
+
+  it('is on BOTH surfaces, because that was this row’s whole lesson', () => {
+    expect(chat).toContain('goalsAwaitingTheOwner(userId)');
+    expect(handlers).toContain('goalsAwaitingTheOwner(userId)');
+  });
+
+  /** A goal whose wait was recorded without the text is still waiting. */
+  it('reports a goal whose question was never written down', () => {
+    const store = readFileSync(join(__dirname, '..', '..', 'taskStore.service.ts'), 'utf8');
+    const fn = store.slice(store.indexOf('export async function goalsAwaitingTheOwner'));
+
+    expect(fn.slice(0, 900)).toContain('pending_question_at IS NOT NULL');
+    expect(fn.slice(0, 900)).not.toContain('pending_question IS NOT NULL');
+  });
+
+  /** „Nothing is waiting" must not be said while six of their goals are. */
+  it('counts them before saying nothing is waiting', () => {
+    const handler = chat.slice(
+      chat.indexOf("case 'check_my_inbox': {"),
+      chat.indexOf("case 'get_pending_updates': {"),
+    );
+
+    expect(handler).toContain('myGoals.length === 0');
+  });
+
+  it('tells the connector to say them too', () => {
+    const texts = readFileSync(join(__dirname, '..', 'texts.ts'), 'utf8');
+
+    expect(texts).toContain('OWN GOALS THAT ARE WAITING ON');
+    expect(texts).toContain('means both');
   });
 });
