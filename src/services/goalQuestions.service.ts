@@ -161,10 +161,14 @@ async function flagGoal(
          */
         instruction:
           `The goal "${task.title}" is blocked on the owner's answer, and THE QUESTION IS ` +
-          'ALREADY GOING TO THEM as its own card with its own buttons, right after your reply. ' +
-          'DO NOT ASK IT AGAIN and do not restate it — they would read the same question twice, ' +
-          'one second apart. Your reply says in ONE line that this goal is waiting on them, and ' +
-          'nothing more about it. Do not write that you are waiting for their answer either; ' +
+          'ALREADY GOING TO THEM as its own card with its own buttons, IN THAT GOAL’S OWN ' +
+          'CONVERSATION (the founder\u2019s ruling, 250.1: a card belongs on the updates list ' +
+          'and in its own goal\u2019s thread, never inside another goal\u2019s). ' +
+          'DO NOT ASK IT AGAIN and do not restate it — they would read the same question twice. ' +
+          'Your reply says in ONE line that this goal is waiting on them, and nothing more ' +
+          'about it. If this conversation IS that goal\u2019s, the card is just below you; if ' +
+          'it is not, say which goal is waiting and leave it there — do not promise a card they ' +
+          'cannot see from here. Do not write that you are waiting for their answer either; ' +
           'the card says so and the buttons show it. When they answer, call answer_goal_question ' +
           'with task_id and what they said — that is what un-blocks the goal. If they defer, ' +
           'accept it and move on.',

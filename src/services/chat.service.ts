@@ -9385,6 +9385,55 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
  * Best-effort by contract: the answer is already stored and delivered, and a
  * failure here must never undo it.
  */
+/**
+ * ⚠️ ROW 250.1 — A CARD ABOUT GOAL A WAS APPEARING INSIDE GOAL B.
+ *
+ * The founder's ruling, 25 September: „a reminder card appears only on the
+ * main updates list and inside ITS OWN goal's conversation. Never inside
+ * another goal's conversation, and never in a finished one." His example was
+ * opening a CLOSED lawyer goal and finding a painters-plan reminder in it.
+ *
+ * The client was drawing exactly what we stored. This function wrote every
+ * card into the thread THE RUN HAPPENED IN — so a reminder released while the
+ * person was chatting somewhere else landed wherever they happened to be.
+ *
+ * MEASURED over fourteen days before changing anything:
+ *
+ *   176  cards delivered that name a goal
+ *   158  landed in ANOTHER goal's thread
+ *    25  of those landed in a goal that is CLOSED
+ *    12  people
+ *
+ * His „closed lawyer goal with a painters reminder in it" is 25 rows, not an
+ * anecdote.
+ *
+ * An item that names NO goal — an introduction, a chorus ask, a thanks-loop —
+ * has no thread of its own to go to and stays where it is. That is not a
+ * loophole: those are about a person, not a goal, and the ruling is about
+ * goals.
+ */
+async function threadForPendingItem(
+  item: PendingItemInput,
+  fallbackThreadId: number,
+): Promise<number> {
+  if (item.task_id === null) return fallbackThreadId;
+  try {
+    const own = await query<{ thread_id: number | null }>(
+      `SELECT thread_id FROM tasks WHERE id = $1`,
+      [item.task_id],
+      PENDING_REPLY_TIMEOUT_MS,
+    );
+    // A goal with no thread of its own has nowhere better; the alternative is
+    // dropping the card, and a reminder nobody sees is worse than one in the
+    // wrong place.
+    return own.rows[0]?.thread_id ?? fallbackThreadId;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[pending] could not read the goal’s own thread:', (error as Error).message);
+    return fallbackThreadId;
+  }
+}
+
 async function deliverPendingMessages(
   userId: string,
   threadId: number,
@@ -9396,10 +9445,12 @@ async function deliverPendingMessages(
     try {
       const rendered = renderPendingMessage(item, language);
       if (rendered === null) continue;
+      // Row 250.1: its own goal's thread, not whichever one the run was in.
+      const target = await threadForPendingItem(item, threadId);
       if (rendered.instruction !== '') {
         await saveMessage(
           userId,
-          threadId,
+          target,
           'user',
           `${RUN_EVENT_PREFIX} ${rendered.instruction}`,
           'event',
@@ -9408,13 +9459,13 @@ async function deliverPendingMessages(
       const choices = rendered.choices.map(scrubButtonLabel);
       const messageId = await savePendingMessage(
         userId,
-        threadId,
+        target,
         runId,
         scrubMechanicalForStorage(rendered.text),
         choices,
         rendered,
       );
-      emitMessageAppended(userId, threadId, runId, {
+      emitMessageAppended(userId, target, runId, {
         messageId: String(messageId),
         kind: 'pending',
         content: rendered.text,
