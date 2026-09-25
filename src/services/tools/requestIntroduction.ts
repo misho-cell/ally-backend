@@ -99,7 +99,7 @@ const ACCEPTED_STILL_COUNTS_DAYS = 30;
  * not looked in a fortnight is not about to — and it is short enough that the
  * person hears it while the need is still theirs.
  */
-const UNANSWERED_IS_STALE_DAYS = 14;
+export const UNANSWERED_IS_STALE_DAYS = 14;
 
 /**
  * Ticket 20 row 210 — what this request was raised FOR.

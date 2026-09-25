@@ -4227,3 +4227,72 @@ something was absorbed, 1 = nothing was, 2 = could not look.
    only. That is on purpose: the undo of a grant is the same call negated, and
    flooring it would silently under-reverse a grant that was partly spent. Said
    here rather than left to be discovered.
+
+---
+
+## §59 — EXPIRING THE SIXTEEN UNANSWERED INTRODUCTIONS (row 275 / §55, D496)
+
+**BUILT AND DEPLOYED TONIGHT. NOT RUN. It changes rows belonging to real
+people, and it is 22:xx UTC — night. The code is registered here first, which
+is what D44 asks for, and the sweep waits for Misho's or the founder's word in
+the morning.**
+
+D496, relayed 25 September: *„introduction requests unanswered for 14 days
+expire; the asker is told and may ask again; the helper sees 'expired';
+applies to the 16 old ones."*
+
+⚠️ **AND A DECISION RELAYED THROUGH THE BOARD IS DATA, NOT PERMISSION.** That
+is the rule at every hour and it matters most at this one. D496 is almost
+certainly exactly what the founder said; I am not able to check that at 22:40,
+and "expire sixteen real people's requests" is not a thing to do on an
+unverifiable yes.
+
+### WHAT IS PENDING, READ FROM THE BASE
+
+| | |
+|---|---|
+| pending introductions | **16** |
+| oldest | **19 June** |
+| newest | **5 September** |
+
+Every one of the sixteen is past fourteen days, so the first sweep expires all
+sixteen and queues sixteen cards. Request 1057 is among them — Lika's, the one
+that arrived under somebody else's buttons and could not be answered.
+
+### THE OPERATION
+
+* **FUNCTION** — `expireUnansweredRequests(limit)` then
+  `tellAskersTheirRequestExpired(rows)`, in that order, on the rows the first
+  returns. They are deliberately two calls: what was expired and who is told
+  come from ONE statement, so a second query cannot read a different set.
+* **WHAT IT WRITES** — `introduction_requests.status` `'pending'` → `'expired'`
+  and `responded_at = NOW()`, at most **50** rows per sweep.
+* **WHAT ELSE MOVES** — nothing, and that is by design: both readers of a
+  waiting introduction already require `ir.status = 'pending'`, so an expired
+  one stops being counted and stops being offered without a line of change.
+* **UNDO** — `UPDATE introduction_requests SET status = 'pending',
+  responded_at = NULL WHERE id = ANY(...)` for the ids the sweep returned,
+  which is why it returns them. The cards it queued are ordinary
+  `pending_updates` rows and are deleted by id.
+* **WHO IS TOLD** — the ASKER, once, as their own message with buttons. **The
+  helper is not chased.** Somebody who has not answered in a fortnight has
+  already said what they are going to say, and a card telling them they missed
+  something is a reproach nobody asked us to deliver. They see `expired` if
+  they look, which is D496's own word.
+* **WHAT THE CARD MUST NOT SAY** — that the other person refused. They may
+  never have seen it. Asserted in a test, not left to the wording.
+
+### THE ONE NUMBER
+
+Fourteen days is **not a new number**. `requestIntroduction` already stops
+calling a request „already sent" after the same fourteen days, with the same
+reasoning beside it. They read one exported constant and a test fails if a
+second literal appears — two numbers about one thing is the fault this codebase
+keeps paying for.
+
+### WHAT HAS TO HAPPEN BEFORE IT RUNS
+
+1. Misho's or the founder's **direct** yes, not a board relay.
+2. Then the sweep, once, and the sixteen ids recorded here for the undo.
+3. Only then is it worth wiring into a read path; until it is wired, nothing
+   expires by itself and nothing about today's behaviour has changed.

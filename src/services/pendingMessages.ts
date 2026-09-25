@@ -133,6 +133,16 @@ interface PendingTexts {
    */
   newMemberFits: (who: string, organisation: string, goal: string) => string;
   newMemberAsk: string;
+  /**
+   * Row 275 / D496 — an introduction nobody answered in a fortnight.
+   *
+   * It says the request is CLOSED and that they may ask again, because both
+   * halves matter: „no answer yet" leaves somebody waiting on a thing that is
+   * over, and „it expired" without the second half reads as a door shutting.
+   * It does NOT say the other person refused — they may never have seen it.
+   */
+  introExpired: (who: string, days: number) => string;
+  introAskAgain: string;
   /** Nobody is written to without this being pressed. */
   someoneNew: string;
 }
@@ -195,6 +205,8 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return `${count} შეკითხვა დასრულებულ მიზანზე`;
         case 'new_member_for_goal':
           return `${count} ახალი წევრი შენს მიზნებზე`;
+        case 'intro_expired':
+          return `${count} დახურული გაცნობის მოთხოვნა`;
         case 'weekly_summary':
           return 'კვირის შეჯამება';
         default:
@@ -206,6 +218,10 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `${who} ახლახან შემოვიდა Netai-ზე — შენთან ${organisation}-ით არის მონიშნული, ` +
       `და მიზანი „${goal}" სწორედ ${organisation}-ს ეხება. ვკითხოთ?`,
     newMemberAsk: 'კი, ვკითხოთ',
+    introExpired: (who, days) =>
+      `${geoName(who, 'dat')} გაცნობის მოთხოვნას ${days} დღეა პასუხი არ მოჰყოლია, ` +
+      `ამიტომ დავხურეთ. თუ ისევ გჭირდება, თავიდან ვცადოთ.`,
+    introAskAgain: 'თავიდან ვცადოთ',
     someoneNew: 'ახალი მომხმარებელი',
   },
   en: {
@@ -255,6 +271,10 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
             : `${count} questions about finished goals`;
         case 'new_member_for_goal':
           return count === 1 ? 'one new member for a goal' : `${count} new members for your goals`;
+        case 'intro_expired':
+          return count === 1
+            ? 'one introduction request that expired'
+            : `${count} introduction requests that expired`;
         case 'weekly_summary':
           return 'the weekly summary';
         default:
@@ -266,6 +286,10 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `${who} has just opened Netai — you have them down as ${organisation}, and your goal ` +
       `„${goal}" is about ${organisation}. Shall we ask them?`,
     newMemberAsk: 'Yes, ask them',
+    introExpired: (who, days) =>
+      `Your request to be introduced to ${who} has had no answer for ${days} days, so it is ` +
+      `closed. If you still need it, we can try again.`,
+    introAskAgain: 'Try again',
     someoneNew: 'Somebody new',
   },
 };
@@ -416,6 +440,21 @@ export function renderPendingMessage(
         text: t.newMemberFits(who ?? t.someoneNew, organisation, goal),
         choices: [t.newMemberAsk, t.introDecline, t.later],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
+        instruction,
+      };
+    }
+    /**
+     * Row 275 / D496. Skipped when the payload cannot name who it was about:
+     * „an introduction expired" with no name is a sentence somebody has to go
+     * and research, which is the opposite of what a closing note is for.
+     */
+    case 'intro_expired': {
+      const days = num(p, 'days_waiting');
+      if (who === null || days === undefined) return null;
+      return {
+        text: t.introExpired(who, days),
+        choices: [t.introAskAgain, t.later],
+        ref: { kind: item.kind, request_id: num(p, 'request_id') },
         instruction,
       };
     }
