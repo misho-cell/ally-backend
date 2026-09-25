@@ -3591,3 +3591,100 @@ third was proved by a **dry run against every account**, which is a stronger
 check in every way except the one that mattered: it asked the question I had,
 not the question I had missed. **The tester's round found in an hour what my
 62,242-row read could not, because they tried the case I had not thought of.**
+
+---
+
+## 50 · The column called `failed` was mostly the product working — and the fix I wrote for it was wrong too
+
+**25 September. No live data was changed. This is a reading fault and a
+tooling fix, registered here because the register is where the wrong numbers
+live.**
+
+### WHAT THE NUMBER WAS
+
+`slow.sh` has printed a column called `failed` since it was written:
+
+    COUNT(*) FILTER (WHERE NOT ok)
+
+`ok` is written by `outcomeOf` in `toolCallLog.service.ts` and means **the call
+did the thing**. A guard declining on purpose did not do the thing. A real
+fault did not do the thing. One boolean, two meanings.
+
+The biggest number in that column:
+
+| tool | calls, 7 days | „failed" |
+|---|---|---|
+| `ask_contact` | 300 | 122 |
+
+All eight of the top reasons behind those 122 are guards working exactly as
+designed — the person was already asked today, the plan was approved in this
+same turn so day one is already writing, the recipient opted out, the goal is
+closed. **76 of the 122 were test seats hammering the product on purpose.**
+
+### AND IT ONLY MISLEADS IN ONE DIRECTION
+
+A tool that **throws** writes no row at all: `runOneToolBlock` calls
+`logToolCall` after the await, so an exception leaves nothing behind. Every
+`ok = false` row is therefore a result object some tool CHOSE to return. The
+column named `failed` cannot see a crash and is mostly counting the product
+working.
+
+### WHAT WAS FOUND ONCE THE REASONS WERE READ
+
+| | |
+|---|---|
+| `web_search` Tavily **error 432** (plan usage limit) | 14 calls, **23 September only**, none before or since, all test seats |
+| `propose_task_plan` malformed arguments | ongoing, ~5% — but 47 of 56 runs re-sent and it worked |
+| `ask_contact` „ნებართვა არ არის: grant_task_permission ჯერ არ გამოძახებულა" | **13 runs asked again and were refused again** |
+| `search_by_name` | „Unknown tool" — the model called a name we do not have, once |
+| `search_second_degree:opening` | one `canceling statement due to statement timeout` |
+
+The web-search plan has a ceiling and it was reached once. That is the
+founder's or Misho's decision to make and not mine, so it is written down and
+nothing has been bought.
+
+### ⚠️ AND THE FIRST FIX WAS THE SAME MISTAKE AGAIN
+
+`why.sh` was written to print the reasons instead of a count, with a column
+called `lost` — „the run never came back". I believed it until I ran it:
+**148 of 271**. The biggest single contributor:
+
+> „Nothing sent, and nothing is needed from you: you approved the plan in this
+> same turn, and day one is already starting behind your reply"
+
+— a refusal whose **entire purpose** is to make the run stop calling that
+tool. 21 runs obeyed it, and my column called all 21 a loss.
+
+**The measurement was right and the question was different**, for the sixth
+time this month, inside the script written to stop it. `lost` is gone. Three
+outcomes are printed side by side — `->ok`, `->no`, `stop` — and none of them
+is a verdict. For a guard, `stop` is the correct outcome. For „route.name is
+required", `stop` is a run that gave up. The reason is on the same line.
+
+### WHAT SHIPPED
+
+* `scripts/ops/why.sh` — every `ok = false` row grouped by tool and by the
+  reason **as the product wrote it**, with the three outcomes, the day span,
+  the seat share, and a closing list of the runs that asked twice and were
+  refused twice. Exit 0 read it / 1 nothing said no / 2 could not look.
+* `slow.sh` — the column is `said no`, and both tables carry the sentence
+  saying what that is not.
+* `errors.sh` — its pointer now names `why.sh` as well as `slow.sh`.
+* `aRefusalIsNotAFailure.test.ts` — pins all of the above, including that
+  `why.sh` must never sort reasons into refusals and faults. **A classifier
+  would have to decide from the error TEXT, and „is the message in Georgian"
+  is a fact about who the sentence was written for, not about whether anything
+  is wrong** — several of the English ones are guards too.
+
+### THE TEST THAT CAME OUT OF A SECOND, SMALLER FAULT
+
+Twice in one hour a read was refused with „one SELECT/WITH statement only",
+once in `why.sh` and once in `slow.sh`. Both times the cause was a **semicolon
+inside a `--` comment** — prose, explaining the query. `isReadOnlySql` rejects
+an interior semicolon by plain text search and cannot tell a comment from a
+second statement, which is the right guard.
+
+So every SQL statement in `scripts/ops/` is now checked against **the real
+`isReadOnlySql`**, imported from the route, before anybody runs it against
+production. It found no other offenders, and it will catch the next one before
+a person does.

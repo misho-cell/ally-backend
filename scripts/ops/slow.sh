@@ -48,6 +48,25 @@
 # whole day slow", which is a different confound; both the subject and the
 # control were the seats on 22 September, so the ratio was internally
 # consistent and externally meaningless.
+#
+# ════════ AND THE COLUMN CALLED `failed` WAS NEVER FAILURES — 25 September ════
+#
+# It is `COUNT(*) FILTER (WHERE NOT ok)`, and `ok` is written by `outcomeOf` to
+# mean „the call did the thing". A guard declining on purpose did not do the
+# thing. A real fault did not do the thing. One boolean, two meanings, and I
+# spent a day reading the bigger of the two as the smaller.
+#
+#     ask_contact    300 calls    122 „failed"
+#
+# All eight of the top reasons behind that number are guards working — the
+# person was already asked today, the plan was approved in this same turn, the
+# recipient opted out — and 76 of the 122 were test seats hammering it on
+# purpose. The column is renamed `said no` here and the reasons live in why.sh,
+# which prints them as sentences instead of a count.
+#
+# Worse than the ambiguity: the confusion only runs ONE WAY. A tool that THROWS
+# writes no row at all — `runOneToolBlock` logs after the await — so this
+# column cannot see a crash, and what it CAN see is mostly the product working.
 
 READY_PY='
 import os, sys, json
@@ -278,20 +297,31 @@ rows = d["data"]["rows"]
 if not rows:
     print("no calls to that tool in that window"); raise SystemExit
 print("%-12s %-30s %6s %7s %8s %8s %8s" % (
-    "day", "tool", "calls", "failed", "p50", "p90", "max"))
+    "day", "tool", "calls", "said no", "p50", "p90", "max"))
 for r in rows:
     print("%-12s %-30s %6s %7s %7sms %7sms %7sms" % (
-        str(r["day"])[:10], r["tool"], r["calls"], r["failed"],
+        str(r["day"])[:10], r["tool"], r["calls"], r["said_no"],
         r["p50"], r["p90"], r["max_ms"]))
 print()
 print("A change is judged against the days either side of it, on days with")
 print("COMPARABLE VOLUME. Calls that fell to a handful explain a p50 on their")
 print("own, and no deploy is needed to produce one.")
+print()
+print("SAID NO IS NOT FAILED, and this column was called `failed` until")
+print("25 September. It is COUNT(*) FILTER (WHERE NOT ok), and `ok` means")
+print("it did the thing, so a guard refusing on purpose lands in it")
+print("beside a real fault. Run why.sh to read the REASONS; a count here")
+print("says nothing about which kind they were.")
 '
 SELECT DATE_TRUNC('day', created_at) AS day,
        tool,
        COUNT(*) AS calls,
-       COUNT(*) FILTER (WHERE NOT ok) AS failed,
+       -- NOT failed, which is what this column was called until 25 September.
+       -- The ok flag means the call did the thing, so a guard declining on
+       -- purpose is counted here beside a genuine fault. why.sh has reasons.
+       -- (No semicolon in here, comments included: isReadOnlySql rejects an
+       -- interior one by plain text search, comment or not.)
+       COUNT(*) FILTER (WHERE NOT ok) AS said_no,
        percentile_disc(0.5) WITHIN GROUP (ORDER BY duration_ms) AS p50,
        percentile_disc(0.9) WITHIN GROUP (ORDER BY duration_ms) AS p90,
        MAX(duration_ms) AS max_ms
@@ -314,22 +344,29 @@ if not d.get("success"):
 rows = d["data"]["rows"]
 if not rows:
     print("no tool calls in that window"); raise SystemExit
-print("%-32s %6s %8s %8s %8s %7s" % ("tool", "calls", "p50", "p90", "max", "failed"))
+print("%-32s %6s %8s %8s %8s %8s" % ("tool", "calls", "p50", "p90", "max", "said no"))
 for r in rows:
-    print("%-32s %6s %7sms %7sms %7sms %7s" % (
-        r["tool"], r["calls"], r["p50"], r["p90"], r["max_ms"], r["failed"]))
+    print("%-32s %6s %7sms %7sms %7sms %8s" % (
+        r["tool"], r["calls"], r["p50"], r["p90"], r["max_ms"], r["said_no"]))
 print()
 print("Compare against the header of this file. A p90 that has not moved after")
 print("a change made on a bench means the bench measured the wrong thing — and")
 print("one that HAS moved means nothing until you re-run with the tool name as")
 print("the second argument and check the volume moved with it.")
+print()
+print("SAID NO IS NOT FAILED. This column was called `failed` until 25 September")
+print("and I read it as breakage all day. ask_contact carried 122 of them in a")
+print("week and every one of the top eight reasons is a guard doing its job.")
+print("Run why.sh for the reasons — this number cannot tell you which kind.")
 '
 SELECT tool,
        COUNT(*) AS calls,
        percentile_disc(0.5) WITHIN GROUP (ORDER BY duration_ms) AS p50,
        percentile_disc(0.9) WITHIN GROUP (ORDER BY duration_ms) AS p90,
        MAX(duration_ms) AS max_ms,
-       COUNT(*) FILTER (WHERE NOT ok) AS failed
+       -- See the note under the per-tool table: this is did-not-do-the-thing,
+       -- which a deliberate refusal also satisfies.
+       COUNT(*) FILTER (WHERE NOT ok) AS said_no
 FROM tool_call_log
 WHERE created_at > NOW() - INTERVAL '$SINCE'
   AND duration_ms IS NOT NULL

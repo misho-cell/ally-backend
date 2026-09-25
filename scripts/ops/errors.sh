@@ -38,7 +38,9 @@
 #
 # WHAT COUNTS AS OWNER-FACING: a row with `kind='error'`, which is the client's
 # system-styled failure with a retry. A tool that failed inside a run is not
-# here; `slow.sh` has those.
+# here. `slow.sh` COUNTS those — in a column that was called `failed` until
+# 25 September and is mostly guards working — and `why.sh` prints their
+# reasons, which is the only form in which that number means anything.
 #
 # Usage:  ./scripts/ops/errors.sh ['7 days']
 set -euo pipefail
