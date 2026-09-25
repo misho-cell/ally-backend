@@ -1602,10 +1602,38 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * ⚠️ A DETAIL FROM ONE GOAL ENDED UP ON ANOTHER — item E, the founder,
+ * thread 24487, and the tester found it for me.
+ *
+ * He was told his web-designer goal was „for Vake's landing page". Goal 5281
+ * says nothing about Vake — its title and brief are „a reliable web designer
+ * in Tbilisi for a small landing page". Vake comes from two OTHER open goals
+ * of his, 5974 (painters in Vake) and 5975 (movers in Vake).
+ *
+ * Nothing was invented. Everything in that sentence is true of HIM. It is
+ * simply attached to the wrong goal, which is worse than untidy: he is being
+ * told something about his own goal that is not in it, and he has no way to
+ * know which half to trust.
+ *
+ * ⚠️ AND THIS RULE IS A MITIGATION, NOT A GUARANTEE, which I would rather say
+ * here than let a green suite imply otherwise. The goals arrive as SEPARATE
+ * records with their own titles and briefs — the data was never ambiguous, so
+ * no server-side check can tell „the model mixed two of them" from „the model
+ * wrote a sentence". Catching it properly would be a cross-goal hallucination
+ * detector, which is the class of cleverness that made two of my outputs worse
+ * today. The rule lives here, where the model is holding the goals, because
+ * that is the moment it can act on it.
+ */
 const GET_MY_TASKS_TOOL: AnthropicTool = {
   name: 'get_my_tasks',
   description:
     "List the user's saved goals with status. Call at the START of a conversation to read their saved goals. Optional status filter (open/paused/closed)." +
+    ' EVERY DETAIL YOU SAY ABOUT A GOAL MUST COME FROM THAT GOAL’S OWN RECORD. When several are' +
+    ' open they will share a person, a place and a subject, and a detail carried from one to' +
+    ' another is not a small slip — the owner is told something about their goal that is not in' +
+    ' it. If a place or a name is not in THIS goal’s title or brief, do not put it in the' +
+    ' sentence about this goal, however certain you are that it is true of them.' +
     ' WHEN: for their open goals.',
   input_schema: {
     type: 'object',

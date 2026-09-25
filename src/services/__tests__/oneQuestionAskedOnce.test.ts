@@ -97,3 +97,49 @@ describe('the question is filed in the language it will be read in', () => {
     expect(tool.slice(0, 2500)).toContain('The goal TITLE stays as the owner wrote it');
   });
 });
+
+/**
+ * ⚠️ E-1 — A DETAIL FROM ONE GOAL ENDED UP ON ANOTHER. The tester found this
+ * one for me after I looked and could not.
+ *
+ * The founder was told his web-designer goal was „for Vake's landing page".
+ * Goal 5281 says nothing about Vake — it is „a reliable web designer in
+ * Tbilisi for a small landing page". Vake comes from goals 5974 (painters in
+ * Vake) and 5975 (movers in Vake), both his and both open.
+ *
+ * NOTHING WAS INVENTED. Every word of that sentence is true of him. It is
+ * attached to the wrong goal, which is worse than untidy: he is told something
+ * about his own goal that is not in it, and cannot tell which half to trust.
+ *
+ * ⚠️ AND THE FIX IS A MITIGATION, NOT A GUARANTEE — said here so a green suite
+ * cannot imply otherwise. The goals reach the model as SEPARATE records with
+ * their own titles and briefs; the data was never ambiguous. So no server-side
+ * check can tell „it mixed two goals" from „it wrote a sentence" without a
+ * cross-goal hallucination detector, which is the class of cleverness that
+ * made two of my outputs worse today. Only a re-run proves this one.
+ */
+describe('a detail belongs to the goal it came from', () => {
+  const tool = chat.slice(chat.indexOf('const GET_MY_TASKS_TOOL'));
+
+  it('says every detail must come from that goal’s own record', () => {
+    expect(tool.slice(0, 1600)).toContain('MUST COME FROM THAT GOAL');
+  });
+
+  /**
+   * „However certain you are that it is true of them" is the load-bearing
+   * clause: the blended detail WAS true of him, which is exactly why a rule
+   * about accuracy alone would not have caught it.
+   */
+  it('forbids it even when the detail is true of the person', () => {
+    expect(tool.slice(0, 1600)).toContain('however certain you are that it is true of them');
+  });
+
+  it('names why several open goals are the risk', () => {
+    expect(tool.slice(0, 1600)).toContain('share a person, a place and a subject');
+  });
+
+  /** The limits of the fix are written where the fix is. */
+  it('records that this is a mitigation and not a guarantee', () => {
+    expect(chat).toContain('A MITIGATION, NOT A GUARANTEE');
+  });
+});
