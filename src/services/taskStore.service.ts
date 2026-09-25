@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { queueGoalFeedback } from './goalFeedback.service';
 import { setThreadStatus } from './threadStatus.service';
 import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { userLanguage } from './threads.service';
@@ -734,6 +735,29 @@ export async function updateTask(
   // DROPPED — the outcome ladder's evidence for pressure_response.
   if (updated && status === 'closed') {
     void recordDroppedIfNeverAsked(userId, taskId);
+  }
+  /**
+   * ROW 272 — the short feedback questions, asked when a goal is FINISHED.
+   *
+   * ⚠️ ONLY `finished`, and that is a decision rather than an oversight. The
+   * six questions are „what came of it?", „would you use it again and pay?",
+   * „whom would you recommend it to?". Asking those about a goal somebody
+   * ABANDONED is worse than not asking — it reads as the software not having
+   * noticed. `stopped` is the majority of closes and it gets nothing.
+   *
+   * Queued rather than asked here: this function returns into a run that is
+   * mid-sentence, and the place that decides what a person is shown next is
+   * the update queue. Fire-and-forget for the same reason every other hook on
+   * this line is — a goal must close even if the queue is unreachable.
+   */
+  if (updated && status === 'closed' && closedAs === 'finished') {
+    void queueGoalFeedback(userId, taskId).catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[goal-feedback] could not queue for goal ${taskId}:`,
+        (error as Error).message,
+      );
+    });
   }
   return updated;
 }

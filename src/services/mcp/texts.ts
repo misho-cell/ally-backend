@@ -526,6 +526,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'detail-free thank-you note to their inviter; consented=false sends nothing, silently, and ' +
       'it is never offered again for this result.',
   },
+  save_goal_feedback: {
+    title: "Save the user's own words about a finished goal",
+    description:
+      'Saves the user’s answer to ONE short feedback question about a goal they have just ' +
+      'finished. WHEN: only right after they answer a kind="goal_feedback" item from ' +
+      'get_pending_updates. Save what they ACTUALLY SAID — do not summarise, tidy, translate ' +
+      'or score it; the point is their own words. If they declined, do not call this at all. ' +
+      'task_ref and question_key both come from that item.',
+  },
   get_pending_updates: {
     title: 'Updates due for the user',
     description:

@@ -34,6 +34,7 @@ import {
   mcpCreateTask,
   mcpGetMyTasks,
   mcpUpdateTask,
+  mcpSaveGoalFeedback,
   mcpGrantTaskPermission,
   mcpProposeTaskPlan,
   mcpApproveTaskPlan,
@@ -515,6 +516,20 @@ function registerGoalTools(server: McpServer, userId: string): void {
       annotations: WRITE,
     },
     (args) => runTool(userId, 'update_task', args, () => mcpUpdateTask(userId, args)),
+  );
+  server.registerTool(
+    'save_goal_feedback',
+    {
+      title: TOOL_TEXTS.save_goal_feedback.title,
+      description: TOOL_TEXTS.save_goal_feedback.description,
+      inputSchema: {
+        task_ref: z.string().describe(PARAM_TEXTS.taskRef),
+        question_key: z.string().describe('From the goal_feedback item.'),
+        answer: z.string().describe('What the owner said, word for word.'),
+      },
+      annotations: WRITE,
+    },
+    (args) => runTool(userId, 'save_goal_feedback', args, () => mcpSaveGoalFeedback(userId, args)),
   );
   server.registerTool(
     'grant_task_permission',

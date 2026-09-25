@@ -221,6 +221,12 @@ import {
   needsNoOpeningSearch,
 } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
+import {
+  recordGoalFeedback,
+  queueGoalFeedback,
+  GOAL_FEEDBACK_QUESTIONS,
+  GoalFeedbackKey,
+} from './goalFeedback.service';
 
 // A mode is a SITUATION — who is in the conversation and what state the
 // account is in — detected from hard facts, never from message content (the
@@ -2359,6 +2365,32 @@ const CHECK_MY_INBOX_TOOL: AnthropicTool = {
     'silent. Name people, never a phone number. Each question carries the thread it lives in; ' +
     'the user answers it there, so point them at it rather than trying to answer it here.',
   input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+/**
+ * ROW 272 — the owner's own words about a goal they finished.
+ *
+ * Verbatim and nothing else: the founder asked what people would SAY, and a
+ * tag vector would answer a question he did not ask while making the words
+ * unrecoverable.
+ */
+const SAVE_GOAL_FEEDBACK_TOOL: AnthropicTool = {
+  name: 'save_goal_feedback',
+  description:
+    'Save the owner’s answer to ONE short feedback question about a goal they have just ' +
+    'finished. WHEN: only right after they answer a kind="goal_feedback" item from ' +
+    'get_pending_updates, and only with what they actually said. Save it in THEIR OWN WORDS — ' +
+    'do not summarise, tidy, translate or score it. If they declined to answer, do not call ' +
+    'this at all. task_id and question_key both come from that item.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'number', description: 'From the goal_feedback item.' },
+      question_key: { type: 'string', description: 'From the goal_feedback item.' },
+      answer: { type: 'string', description: 'What the owner said, word for word.' },
+    },
+    required: ['task_id', 'question_key', 'answer'],
+  },
 };
 
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
@@ -7026,6 +7058,26 @@ async function executeToolCall(
       }
       return answerGoalQuestion(userId, questionTaskId, answer);
     }
+    case 'save_goal_feedback': {
+      const key = String(input['question_key'] ?? '');
+      if (!(GOAL_FEEDBACK_QUESTIONS as readonly string[]).includes(key)) {
+        return { success: false, error: `Unknown question_key. Take it from the item.` };
+      }
+      const saved = await recordGoalFeedback(
+        Number(input['task_id']),
+        userId,
+        key as GoalFeedbackKey,
+        String(input['answer'] ?? ''),
+      );
+      if (saved === 'empty') {
+        return { success: false, error: 'Nothing was said — do not save an empty answer.' };
+      }
+      // The next one is queued only now: one question at a time, and only to
+      // somebody who has shown they are willing to answer.
+      await queueGoalFeedback(userId, Number(input['task_id'])).catch(() => undefined);
+      return { success: true };
+    }
+
     case 'check_my_inbox': {
       // Row 266. The three reads the connector's check_my_inbox makes, in
       // parallel, so the app answers the same question from the same sources.
@@ -8978,6 +9030,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   FORGET_CONTACT_RELATIONSHIP_TOOL,
   GET_CONTACT_RELATIONSHIPS_TOOL,
   GET_PENDING_UPDATES_TOOL,
+  SAVE_GOAL_FEEDBACK_TOOL,
   CHECK_MY_INBOX_TOOL,
   ASK_OWNER_DECISION_TOOL,
   ANSWER_GOAL_QUESTION_TOOL,

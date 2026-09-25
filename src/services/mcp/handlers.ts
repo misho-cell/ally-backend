@@ -1,4 +1,10 @@
 import { query } from '../../db/postgres/client';
+import {
+  recordGoalFeedback,
+  queueGoalFeedback,
+  GOAL_FEEDBACK_QUESTIONS,
+  GoalFeedbackKey,
+} from '../goalFeedback.service';
 import { searchByTag } from '../tools/searchByTag';
 import { searchContactByName } from '../tools/searchContactByName';
 import { searchByInsight } from '../tools/searchByInsight';
@@ -463,6 +469,37 @@ export async function mcpRequestIntroduction(
     askType,
   );
   return mapIntroOutcome(userId, raw);
+}
+
+/**
+ * Row 272 on the connector, because the connector can CLOSE a goal
+ * (`update_task`) — so a person who finishes one there would otherwise be
+ * asked a question they had no way to answer. The registry-parity test caught
+ * that the moment the in-app tool existed, which is exactly what it is for.
+ */
+export async function mcpSaveGoalFeedback(
+  userId: string,
+  args: { task_ref?: string; question_key?: string; answer?: string },
+): Promise<McpToolPayload> {
+  const taskId = parseTaskRef(String(args.task_ref ?? ''));
+  if (taskId === null) {
+    return { success: false, error: 'Unknown task_ref — take it from the goal_feedback item.' };
+  }
+  const key = String(args.question_key ?? '');
+  if (!(GOAL_FEEDBACK_QUESTIONS as readonly string[]).includes(key)) {
+    return { success: false, error: 'Unknown question_key — take it from the item.' };
+  }
+  const saved = await recordGoalFeedback(
+    taskId,
+    userId,
+    key as GoalFeedbackKey,
+    String(args.answer ?? ''),
+  );
+  if (saved === 'empty') {
+    return { success: false, error: 'Nothing was said — do not save an empty answer.' };
+  }
+  await queueGoalFeedback(userId, taskId).catch(() => undefined);
+  return { success: true };
 }
 
 export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {

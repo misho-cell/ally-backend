@@ -173,6 +173,7 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { referralTree, MAX_DEPTH } from '../../services/referralTree.service';
+import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import {
@@ -1758,6 +1759,25 @@ adminRouter.post(
  * reward goes six levels, so a shallower tree cannot be checked against it).
  * Names only; no phone number appears anywhere in this.
  */
+/**
+ * ROW 272 — „answers saved with that goal and readable in the admin."
+ *
+ * Named by PERSON and by the goal's own title, because a page of answers keyed
+ * by two integers is a page nobody reads twice. Verbatim, in the order they
+ * were given.
+ */
+adminRouter.get('/goal-feedback', async (req: Request, res: Response) => {
+  const limit = Number(String(req.query.limit ?? '200'));
+  try {
+    const rows = await readGoalFeedback(Number.isFinite(limit) ? limit : 200);
+    res.status(200).json({ success: true, data: { answers: rows, count: rows.length } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin goal feedback]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/referrals/tree', async (req: Request, res: Response) => {
   const rootRaw = String(req.query.root ?? '').trim();
   const root = rootRaw === '' ? undefined : Number(rootRaw);
