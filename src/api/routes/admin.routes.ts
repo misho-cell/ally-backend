@@ -19,6 +19,7 @@ import {
 } from '../../services/testSeatTokens';
 import {
   adjustTestAccountTokens,
+  getBalance,
   MAX_ADMIN_TOKEN_ADJUSTMENT,
   TokenAdjustmentOutOfRange,
 } from '../../services/tokenWallet.service';
@@ -2436,6 +2437,98 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[test-rename]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §57 — TOP UP A REAL PERSON'S WALLET. Registered before it was written, as
+ * D44 requires, and authorised by Misho on 25 September: „ნინიას საფულე
+ * შეავსე."
+ *
+ * ⚠️ THIS IS THE THING §19 WAS WRITTEN TO AVOID. That route is guarded by
+ * `isOperableTestSeat` and CANNOT reach a real person — which is the whole
+ * reason it was allowed to exist. Ninia Abramishvili is a real account, so §19
+ * refuses her, and it is right to.
+ *
+ * So this capability is new, and it is narrow on purpose: one signed amount,
+ * a written reason, the same ±50,000 ceiling §19 uses (the July hand-typed
+ * rows were 999,999 and 100,000, which is what that ceiling exists to make
+ * impossible), and a log line naming the PERSON and the before and after.
+ *
+ * A TEST SEAT IS REFUSED HERE and pointed at §19. One door each, so what each
+ * route can reach is a sentence rather than a guess.
+ *
+ * THE UNDO IS THE SAME CALL WITH THE NUMBER NEGATED, which is why the amount
+ * is signed: a reversal is a row beside the grant, never a deletion. `was`
+ * comes back in the reply so the undo does not depend on reading a log.
+ */
+adminRouter.post(
+  '/users/:id/tokens',
+  param('id').isString().trim().notEmpty(),
+  body('tokens').isInt({ min: -MAX_ADMIN_TOKEN_ADJUSTMENT, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error:
+          `tokens must be a non-zero integer within ±${MAX_ADMIN_TOKEN_ADJUSTMENT}, ` +
+          'and note must say why (3-500 chars).',
+      });
+      return;
+    }
+    const target = String(req.params.id).trim();
+    const admin = (req as AuthenticatedRequest).user.userId;
+    const { tokens, note } = req.body as { tokens: number; note: string };
+    if (Number(tokens) === 0) {
+      res.status(400).json({ success: false, error: 'tokens must not be zero.' });
+      return;
+    }
+    try {
+      const who = await query<{ name: string | null; seat: boolean }>(
+        `SELECT NULLIF(TRIM(u.name), '') AS name,
+                EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id) AS seat
+           FROM "User" u
+          WHERE u.id = $1::int AND u."deletedAt" IS NULL`,
+        [target],
+      );
+      const person = who.rows[0];
+      if (!person) {
+        res.status(404).json({ success: false, error: 'No such account.' });
+        return;
+      }
+      if (person.seat) {
+        // eslint-disable-next-line no-console
+        console.warn(`[user-tokens] admin ${admin} aimed at test seat ${target} — REFUSED`);
+        res.status(400).json({
+          success: false,
+          error: 'That is a fictional test seat — use POST /admin/test-accounts/:id/tokens.',
+        });
+        return;
+      }
+      const was = await getBalance(target);
+      const balance = await adjustTestAccountTokens(
+        target,
+        Number(tokens),
+        String(note).trim(),
+        `admin:${randomUUID()}`,
+      );
+      // The person is NAMED and both balances are printed: a wallet that moved
+      // must be traceable to a call and a reason without a database read.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[user-tokens] admin ${admin} adjusted ${person.name ?? target} (${target}) ` +
+          `by ${tokens}: ${was} -> ${balance} — ${String(note).trim()}`,
+      );
+      res.status(200).json({
+        success: true,
+        data: { user_id: target, person: person.name, was, tokens: Number(tokens), balance },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[user-tokens]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

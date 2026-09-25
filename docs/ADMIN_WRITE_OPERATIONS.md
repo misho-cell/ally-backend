@@ -4075,3 +4075,63 @@ missing Georgian die together.
 * **The app team can build and test the entire path against `not_enabled`**
   without one paid call, which is why this shipped before the decision rather
   than waiting on it.
+
+---
+
+## 57 · TOP UP A REAL PERSON'S WALLET
+
+**Registered before it was built, as D44 requires. Authorised by Misho,
+25 September: „ნინიას საფულე შეავსე."**
+
+### WHY A NEW ROUTE AND NOT §19
+
+§19 (`POST /admin/test-accounts/:id/tokens`) is guarded by `isOperableTestSeat`
+and **cannot reach a real person** — that guard is the whole reason it was
+allowed to exist. Ninia Abramishvili is a real account, so §19 refuses her, and
+it is right to.
+
+This is therefore a genuinely new capability: **an admin can change a real
+person's balance.** It is the thing §19 was written to avoid, so it is narrow,
+loud, and reversible.
+
+### THE ACCOUNT, AND WHY IT NEEDED THIS
+
+| | |
+|---|---|
+| Ninia Abramishvili | balance **−3** |
+| open goals | **24** |
+| last wallet movement | **21 September** |
+| goals moved since | **none** |
+
+Her allowance is **weekly, 250** (`w:2026-W37`, `W38`, `W39`). The last was
+250 on 21 September; she spent it and went three over. The next weekly grant
+falls on Monday 28 September, so without this she waits three more days having
+already waited four.
+
+### THE ROUTE
+
+* **ROUTE** — `POST /admin/users/:id/tokens`
+* **METHOD** — `POST`
+* **BODY** — `{ "tokens": <signed int, ±50,000>, "note": "<3-500, why>" }`
+* **REPLY** — `{ success: true, data: { user_id, person, was, tokens, balance } }`.
+  `was` is the balance before, returned so the undo needs no log.
+* **UNDO** — **the same call with the number negated.** A reversal is a row
+  beside the grant, never a deletion, which is why the amount is signed.
+* **AMOUNT CHOSEN** — **250**, one weekly allowance. It is the product's own
+  unit for her and not a figure I invented; it is what Monday would have given
+  her. She lands on 247.
+* **IT SURVIVES MONDAY** — `admin_adjust` carries no period key, and
+  `expireStaleGrants` burns only the unused part of a period grant: „spending
+  counts against the grant first, so purchased/top-up/admin tokens survive
+  rollover."
+
+### WHAT IT CANNOT DO
+
+* **A test seat is REFUSED** and pointed at §19. One door each, so each
+  route's reach is a sentence rather than a guess.
+* A deleted or unknown account is refused.
+* Zero is refused; a note is required; ±50,000 is the ceiling, the same
+  constant §19 uses — the July hand-typed rows were 999,999 and 100,000, which
+  is what that ceiling exists to make impossible.
+* The log line names **the person and the before and after**, so a balance
+  that moved can always be traced to a call and a reason.
