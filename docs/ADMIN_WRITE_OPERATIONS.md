@@ -4003,3 +4003,59 @@ now learns that is what happened.
   either, because hiding a question somebody genuinely asked is the kind of
   thing that should be chosen out loud rather than inherited from a cut-off I
   picked.
+
+---
+
+## 56 · SPEECH TO TEXT — BUILT, AND OFF UNTIL THE SPEND IS APPROVED
+
+**Not a write across live data, and registered here anyway, because it is the
+other thing this file is for: something that costs money and is therefore not
+mine to switch on.**
+
+### WHY IT EXISTS
+
+Row 226. iOS `SpeechRecognition` uses Apple's dictation, **which has no
+Georgian**. Asking it for `ka-GE` is ignored and it answers in English — Salome
+spoke Georgian and the box wrote „Dermatology Archive archive". Android works
+only because Chrome ships the audio to Google. **The product has never had
+Georgian voice on an iPhone, in any build.** It is not a regression, and no
+client-side fix can reach it.
+
+The app team's second finding makes it one job instead of two: in the
+Home-Screen app iOS refuses web speech outright and never even asks for the
+microphone, because `SpeechRecognition` does not go through `getUserMedia`.
+Recording the audio ourselves does, and works there. The dead button and the
+missing Georgian die together.
+
+### WHAT IS BUILT
+
+* **ROUTE** — `POST /speech/transcribe`, multipart, behind the JWT and
+  `requireUserRole`, rate limited to 20/minute.
+* **BODY** — `audio` (blob), `mime` (the exact `mimeType` MediaRecorder gave,
+  trusted over any extension), `language` (a hint), `duration_ms` (optional),
+  `thread_id` (optional).
+* **LIMITS** — 5 MB hard; 60 s enforced **only when the client sends
+  `duration_ms`**, because the server does not decode the audio to measure it.
+  Said out loud rather than implied.
+* **ANSWERS** — `{ text, language }`, or a **named** refusal: `not_enabled`,
+  `too_long`, `too_large`, `unsupported_format`, `no_speech`,
+  `recognizer_failed`. The app team asked for these by name and their reason is
+  ours: „I heard nothing" and „I could not try" are different facts.
+* **`GET /speech/limits`** — so neither side hardcodes the other's numbers.
+* **UNDO** — set `SPEECH_TO_TEXT_ENABLED` back to unset. Nothing is stored:
+  the audio lives in memory for one request and is dropped, and the text is
+  never written to a log.
+
+### WHAT IS NOT DONE, AND WAITS ON MISHO OR THE FOUNDER
+
+**Turning it on.** `SPEECH_TO_TEXT_ENABLED` is unset, so every call answers
+`not_enabled` today.
+
+* **NO NEW PROVIDER AND NO NEW ACCOUNT.** It uses the OpenAI client the product
+  already has — the one that returns null without a key. Nothing was signed up
+  for.
+* **IT SPENDS PER MINUTE OF AUDIO.** That is the whole reason it is off. Spend
+  is not mine.
+* **The app team can build and test the entire path against `not_enabled`**
+  without one paid call, which is why this shipped before the decision rather
+  than waiting on it.

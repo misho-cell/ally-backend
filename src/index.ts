@@ -11,6 +11,7 @@ import requestsRouter from './api/routes/requests.routes';
 import updatesRouter from './api/routes/updates.routes';
 import tasksRouter from './api/routes/tasks.routes';
 import privacyRouter from './api/routes/privacy.routes';
+import speechRouter from './api/routes/speech.routes';
 import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
 import profileRouter from './api/routes/profile.routes';
@@ -75,6 +76,8 @@ app.use('/requests', requestsRouter);
 app.use('/updates', updatesRouter);
 app.use('/tasks', tasksRouter);
 app.use('/privacy', privacyRouter);
+// Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
+app.use('/speech', speechRouter);
 app.use('/billing', billingRouter);
 app.use('/profile', profileRouter);
 app.use('/mcp', mcpRouter);

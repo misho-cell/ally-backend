@@ -47,6 +47,9 @@ const GUARDED_AT_THE_ROUTER = [
   'notifications.routes.ts',
   'privacy.routes.ts',
   'requests.routes.ts',
+  // Row 226. Audio is somebody's voice and every call costs money, so this one
+  // carries a tighter rate limit on top of the JWT.
+  'speech.routes.ts',
   'tasks.routes.ts',
   'threads.routes.ts',
   'updates.routes.ts',
