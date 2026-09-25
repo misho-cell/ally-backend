@@ -3029,6 +3029,69 @@ async function deleteMessage(rowId: number): Promise<void> {
 }
 
 /**
+ * A step long enough that finding it inside the reply is repetition rather
+ * than coincidence. „ვეძებ…" appearing in a final sentence means nothing; nine
+ * characters were the shortest such overlap on the live base.
+ */
+const STEP_LONG_ENOUGH_TO_BE_A_REPEAT = 200;
+/** Every query here has one; this one runs after the reply is already saved. */
+const STEP_TIDY_TIMEOUT_MS = 5_000;
+
+/**
+ * ⚠️ THE SAME ANSWER ON THE SCREEN TWICE — item H, the tester, 25 September,
+ * threads 24398, 24523 and 24534: a step and a message carrying the same text.
+ *
+ * The buried-answer rescue above already deletes the step it promotes, and it
+ * is the reason this looked handled. But it only fires when the buried
+ * narration is LONGER than the final — so the one case its arithmetic cannot
+ * see is the text being THE SAME. Equal length is not greater length, nothing
+ * is promoted, nothing is deleted, and both rows go to the screen.
+ *
+ * MEASURED BEFORE WRITING THIS, over fourteen days: 32 runs in 26 threads
+ * where a step's text exactly equalled the final message. TWENTY of them
+ * belonged to real people — six of them. It is not a test-seat artefact.
+ *
+ * Containment is handled too, but only for a step long enough that the overlap
+ * cannot be chance: 12 more runs are contained-but-not-equal and the shortest
+ * is nine characters, which is a stage whisper appearing in a sentence and not
+ * a repeat.
+ *
+ * Best-effort on purpose. The answer is already saved and already correct; a
+ * tidy-up that could fail the reply would be a worse bug than the one it
+ * closes.
+ */
+async function dropStepsTheReplyRepeats(
+  threadId: number,
+  runId: string | null,
+  reply: string,
+): Promise<void> {
+  const text = (reply ?? '').trim();
+  if (!runId || text.length === 0) return;
+  try {
+    const removed = await query<{ id: number }>(
+      `DELETE FROM conversations
+        WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
+          AND LENGTH(TRIM(content)) > 0
+          AND (TRIM(content) = $3
+               OR (LENGTH(TRIM(content)) >= $4 AND POSITION(TRIM(content) IN $3) > 0))
+        RETURNING id`,
+      [threadId, runId, text, STEP_LONG_ENOUGH_TO_BE_A_REPEAT],
+      STEP_TIDY_TIMEOUT_MS,
+    );
+    if (removed.rows.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[chat] run ${runId} thread ${threadId}: dropped ${removed.rows.length} step(s) ` +
+          'the reply already said',
+      );
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[chat] could not drop repeated steps:', (error as Error).message);
+  }
+}
+
+/**
  * The user's OWN direct contact's number, on explicit request only. Guards:
  * the phone must be in THEIR phonebook (UserAlias under their contactId) and
  * not blocked/deceased/self. The number is wrapped in allow-span markers that
@@ -10251,6 +10314,8 @@ export async function processChat(
     // Row 132: the reply the user reads, stamped with who wrote it.
     answeredBy,
   );
+  // The same answer must not be on the screen twice (item H).
+  await dropStepsTheReplyRepeats(threadId, runId, storedReply);
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.
