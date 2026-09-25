@@ -3836,3 +3836,64 @@ The provider account. Until it is active, **every person without WhatsApp is
 locked out and the invitation campaign cannot start.** The founder will resend
 Valeri's link when it is back, and the tester tests the invitation the same
 hour: right inviter credited, 20 free days, no entry without a code.
+
+---
+
+## 53 · ⚠️ A REFUSAL CREATED TWO ACCOUNTS, AND §47 SAID I HAD FIXED THAT
+
+**25 September. Two live rows exist that nobody asked for. Nothing has been
+deleted — that needs Misho's word.**
+
+### WHAT EXISTS THAT SHOULD NOT
+
+| id | name | created |
+|---|---|---|
+| 172531 | Netai Test 42 | 10:27:17 |
+| 172532 | Netai Test 42 | 10:27:23 |
+
+Both carry a `User` row, a `UserPhone` row and a `test_seats` row. Both were
+made by a call the route **refused**, six seconds apart, while the tester was
+trying to build a chain for row 232.
+
+### WHY IT IS IN THIS REGISTER AND NOT JUST A BUG
+
+Yesterday, §47's sibling: `POST /admin/test-accounts` correctly refused
+`invited_by: 501` **after** writing the same three rows, leaving Netai Test 22
+(172267). I moved that check above the INSERT, **verified thirty seats before
+and thirty after**, and wrote it up as closed.
+
+**It was the instance closed and the class left open.** `savePhonebook` sat
+below the same three writes and threw from there. One refusal path fixed, one
+refusal path in the same function untouched, in the file I was editing for
+exactly that reason.
+
+The test that should have caught it asserted only that the call **threw**.
+„It threw" is not „it refused" — a refusal that has already created something
+has not refused. That is the identical blind spot as the redaction test this
+morning, which asserted an account id was ABSENT and would have passed on a
+half-eaten one.
+
+### WHAT SHIPPED
+
+The phonebook is **resolved** before anything is written and **written** after;
+the writing half takes an already-decided map and cannot refuse. Both checks
+now run before the first INSERT. Tests assert no `User`, `UserPhone`,
+`test_seats` or `UserAlias` row is written on a refusal, **and pin the order**,
+so a check added below that point fails instead of shipping this a third time.
+
+### THE DECISION WAITING ON MISHO
+
+**Delete 172531 and 172532, or leave them.** They are fictional seats on
+fictional numbers, so nothing is at risk while they sit, and they are visible
+in every seat listing as two accounts with the same name. I have not touched
+them: removing a live row is his word, not mine, and „they are only test seats"
+is exactly the reasoning that would make the next deletion easy.
+
+* **ROUTE / METHOD** — no admin route deletes a seat. It would be two
+  `DELETE`s per id across `test_seats`, `UserPhone`, `UserAlias` and `User`.
+* **UNDO** — none. `createTestSeat` would make a NEW id on a NEW slot; the
+  originals cannot come back. Two of the hundred fictional slots stay spent
+  either way.
+* **THE CHEAPER OPTION, AND MY RECOMMENDATION** — leave them and rename one, so
+  two rows with one name stop being a trap for whoever reads the list next.
+  That is still a write and still needs his word.
