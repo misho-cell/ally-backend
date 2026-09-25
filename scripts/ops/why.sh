@@ -5,6 +5,10 @@
 # 2 = could not look. „I could not look" is never reported as „nothing is
 # wrong".
 #
+# `why.sh --new [days]` asks a NARROWER question that a Routine can act on:
+# which reasons are being said for the FIRST TIME. Same three codes, and 0
+# there means „something new, go and read it".
+#
 # ════════ WHY THIS EXISTS — 25 September ════════
 #
 # `slow.sh` has printed a column called `failed` since it was written. It is
@@ -78,9 +82,130 @@
 # smaller set. This one is in between: the calls that did not go through,
 # in the product's own words, whether or not anybody ever noticed.
 #
+# ════════ AND WHY `--new` EXISTS, THE SAME AFTERNOON ════════
+#
+# The first thing this script found, over 30 days, was 51 rows of
+# „canceling statement due to statement timeout" on the opening second-circle
+# search, 16-18 September. **59% of the founder's opening searches died on a
+# database timeout for three days and nothing anywhere said so.** The rows had
+# been sitting in `slow.sh`'s `failed` column the whole time.
+#
+# Printing everything every run does not fix that: it hands a person 12 tools
+# and 40 wordings and asks them to notice which one is new. So `--new` asks the
+# one question a Routine can act on — **which reasons are being said for the
+# first time** — and says nothing when the answer is none.
+#
+# IT ANSWERS FIRST APPEARANCE AND NOTHING ELSE. A reason that has been there
+# all week and doubled today is invisible to it, deliberately: that is a
+# different measurement and pretending one number does both is how this month
+# went wrong. And „first ever" is bounded by the table's own oldest row, which
+# is printed every run — a reason older than the table cannot be told from a
+# new one, and that is a limit, not a result.
+#
 # Usage:  ./scripts/ops/why.sh [days] [tool]
+#         ./scripts/ops/why.sh --new [days]
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+if [ "${1:-}" = --new ]; then
+  NEW_DAYS="${2:-1}"
+  case "$NEW_DAYS" in
+    ''|*[!0-9]*) echo "usage: why.sh --new [days]" >&2; exit 2 ;;
+  esac
+  export NEW_DAYS
+
+  NEW_PY='
+import os, sys, json
+
+VERDICT = [2]
+
+
+def emit(line):
+    try:
+        print(line)
+    except BrokenPipeError:
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        os._exit(VERDICT[0])
+
+
+d = json.load(sys.stdin)
+days = os.environ["NEW_DAYS"]
+
+if not d.get("success"):
+    emit("could not read: " + str(d.get("error", ""))[:160])
+    raise SystemExit(2)
+
+rows = d["data"]["rows"]
+if not rows:
+    VERDICT[0] = 1
+    # Nothing is printed on this path beyond the one line, because a Routine
+    # runs this and „nothing new" written out every hour is the noise that
+    # makes a real line unreadable.
+    emit("No reason has been said for the first time in the last %s day(s)." % days)
+    raise SystemExit(1)
+
+VERDICT[0] = 0
+
+# HOW FAR BACK „FIRST EVER" CAN SEE. The table starts where it starts, and a
+# reason older than its oldest row is indistinguishable from a new one. Printed
+# every run, never inferred away — the same treatment errors.sh gives Railway
+# handing back only a hundred deployments.
+horizon = str(rows[0]["table_starts"])[:10]
+
+emit("%d reason(s) said for the FIRST TIME in the last %s day(s)." % (len(rows), days))
+emit("")
+emit("First-ever is bounded by the oldest row in tool_call_log, %s. A reason older" % horizon)
+emit("than that cannot be told from a new one. This asks about FIRST APPEARANCE and")
+emit("nothing else: a reason that has been there all week and doubled today does not")
+emit("appear here, and that is a different measurement, not a quiet one.")
+emit("")
+
+for r in rows:
+    seats = int(r["seat_calls"])
+    emit("%s  %s" % (str(r["first_seen"])[:19].replace("T", " "), str(r["tool"])[:40]))
+    emit("   %s call(s) since, %s account(s), %d from test seats%s"
+         % (r["calls_ever"], r["accounts"], seats,
+            "  <- ALL of them" if seats == int(r["calls_ever"]) else ""))
+    emit("   %s" % str(r["reason"]).replace("\n", " ")[:200])
+    emit("")
+
+emit("-" * 78)
+emit("A NEW REASON IS NOT A NEW FAULT. Most of these will be a guard meeting a case")
+emit("it had not met yet, which is the guard working. Read the sentence: the product")
+emit("wrote it to be read. Then why.sh <days> <tool> for what the runs did about it.")
+
+raise SystemExit(VERDICT[0])
+'
+
+  "$HERE/ro.sh" <<SQL | python3 -c "$NEW_PY"
+WITH said_no AS (
+  SELECT tool, user_id, created_at,
+         COALESCE(NULLIF(TRIM(error_text), ''),
+                  '(no reason recorded - the row predates migration 148)') AS reason
+    FROM tool_call_log
+   WHERE ok IS FALSE
+)
+SELECT s.tool,
+       LEFT(s.reason, 300)       AS reason,
+       MIN(s.created_at)         AS first_seen,
+       MAX(s.created_at)         AS last_seen,
+       COUNT(*)                  AS calls_ever,
+       COUNT(DISTINCT s.user_id) AS accounts,
+       COUNT(*) FILTER (
+         WHERE EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id::text = s.user_id)
+       )                         AS seat_calls,
+       (SELECT MIN(created_at) FROM tool_call_log) AS table_starts
+  FROM said_no s
+ GROUP BY 1, 2
+HAVING MIN(s.created_at) > NOW() - INTERVAL '$NEW_DAYS days'
+ ORDER BY 3 DESC
+ LIMIT 100
+SQL
+  exit "${PIPESTATUS[1]}"
+fi
 
 DAYS="${1:-7}"
 TOOL="${2:-}"

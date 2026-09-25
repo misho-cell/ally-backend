@@ -112,7 +112,7 @@ describe('what the run did next, and what that does not mean', () => {
   it('prints three outcomes and names none of them a loss', () => {
     // The HEADER says the word, at length, because the mistake is the point of
     // the file. What must not carry it is the part that prints.
-    const printed = why.slice(why.indexOf("WHY_PY='"), why.indexOf('"$HERE/ro.sh"'));
+    const printed = why.slice(why.indexOf("WHY_PY='"), why.lastIndexOf('"$HERE/ro.sh"'));
 
     for (const outcome of ['->ok', '->no', 'stop']) {
       expect(printed).toContain(outcome);
@@ -144,6 +144,57 @@ describe('what the run did next, and what that does not mean', () => {
   it('counts connector calls apart instead of answering for them', () => {
     expect(why).toContain('no_run_calls');
     expect(why).toContain('cannot be asked of them and they are in none of the three counts');
+  });
+});
+
+/**
+ * THE FIRST THING `why.sh` FOUND WAS THREE DAYS OLD AND HAD NEVER BEEN SEEN.
+ *
+ * 51 rows of „canceling statement due to statement timeout" on the opening
+ * second-circle search, 16–18 September: 59% of the founder's opening searches
+ * died on a database timeout and nothing anywhere said so. They had been in
+ * `slow.sh`'s `failed` column the whole time.
+ *
+ * Printing everything every run does not fix that — it hands a person twelve
+ * tools and forty wordings and asks them to notice which one is new. `--new`
+ * asks the one question a Routine can act on and says nothing otherwise.
+ */
+describe('why.sh --new, the mode a routine can run', () => {
+  const mode = why.slice(why.indexOf('if [ "${1:-}" = --new ]'), why.indexOf('DAYS="${1:-7}"'));
+
+  it('asks for a reason’s FIRST appearance, not its volume', () => {
+    expect(mode).toContain('HAVING MIN(s.created_at) > NOW()');
+    expect(mode).toContain('FIRST APPEARANCE');
+  });
+
+  /**
+   * The table starts on 15 September. A reason older than its oldest row is
+   * indistinguishable from a new one, and that is a limit rather than a
+   * result — the same treatment `errors.sh` gives Railway's hundred-deployment
+   * horizon. It is printed every run, never inferred away.
+   */
+  it('prints how far back first-ever can see', () => {
+    expect(mode).toContain('(SELECT MIN(created_at) FROM tool_call_log) AS table_starts');
+    expect(mode).toContain('bounded by the oldest row');
+  });
+
+  /** A routine runs this. „Nothing new", written hourly, is the noise. */
+  it('says one line and leaves with 1 when there is nothing new', () => {
+    expect(mode).toContain('No reason has been said for the first time');
+    expect(mode).toContain('raise SystemExit(1)');
+  });
+
+  /**
+   * Most first appearances are a guard meeting a case it had not met yet. A
+   * mode that shouted „new fault" would train its reader to stop looking.
+   */
+  it('does not call a new reason a new fault', () => {
+    expect(mode).toContain('A NEW REASON IS NOT A NEW FAULT');
+  });
+
+  /** Its own pipeline, its own verdict — the trap is per-heredoc, not per-file. */
+  it('leaves with python’s status here too', () => {
+    expect(mode).toContain('exit "${PIPESTATUS[1]}"');
   });
 });
 
