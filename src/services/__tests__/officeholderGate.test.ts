@@ -452,3 +452,55 @@ describe('an office named in the sentence before', () => {
     expect(out.reply).toContain('Giorgi Ugulava');
   });
 });
+
+/**
+ * ⚠️ THE QUESTION I COULD NOT ANSWER, 25 September.
+ *
+ * The tester asked whether the fetched page carried the name — if it did, the
+ * gate was wrong to strip it; if it did not, the model wrote it from memory
+ * and the gate was right. The run had fetched 8,471 characters and NOTHING
+ * recorded whether the name was among them, and the site refuses this
+ * container, so I could not read it either. „Could not look", on the only
+ * fact that decided whose fault it was.
+ */
+describe('the gate says what it had when it refused', () => {
+  const line = (): string =>
+    spy.mock.calls.map((c) => String(c[0])).find((c) => c.includes('[officeholder-gate]')) ?? '';
+
+  let spy: jest.SpyInstance;
+  beforeEach(() => {
+    spy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+  afterEach(() => spy.mockRestore());
+
+  it('reports how much evidence it was checking against', async () => {
+    recordRunEvidence(RUN, 'x'.repeat(500));
+
+    await applyOfficeholderGate('The mayor is Nino Beridze.', RUN, 'en');
+
+    expect(line()).toContain('1 name(s) unverified');
+    expect(line()).toContain('chars of evidence');
+    expect(line()).toContain('500');
+  });
+
+  /**
+   * NOT THE NAMES. The gate fires on names the model produced from nowhere,
+   * and some of those are real private people — a refusal is no reason to
+   * write somebody into a log that gets pasted into tickets.
+   */
+  it('never writes the refused name into the log', async () => {
+    await applyOfficeholderGate('The mayor is Nino Beridze.', RUN, 'en');
+
+    expect(line()).not.toContain('Nino');
+    expect(line()).not.toContain('Beridze');
+  });
+
+  /** Silent when it refuses nothing, so the line stays worth reading. */
+  it('says nothing when every name checks out', async () => {
+    recordRunEvidence(RUN, 'Nino Beridze');
+
+    await applyOfficeholderGate('The mayor is Nino Beridze.', RUN, 'en');
+
+    expect(line()).toBe('');
+  });
+});

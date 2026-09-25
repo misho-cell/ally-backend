@@ -468,5 +468,34 @@ export async function applyOfficeholderGate(
       out = replaceNameWithPlaceholder(out, name, RUN_STRINGS[language].nameNotVerified);
     }
   }
+  /**
+   * ⚠️ 25 SEPTEMBER — I COULD NOT ANSWER THE ONE QUESTION THAT DECIDED WHOSE
+   * FAULT IT WAS.
+   *
+   * The tester asked: the reply carried a biography, so did the fetched page
+   * carry the name? If it did, this gate was wrong to strip it. If it did not,
+   * the model wrote it from memory and the gate was right. The run fetched
+   * 8,471 characters; nothing recorded whether the name was among them, and
+   * tbilisi.gov.ge refuses this container, so I could not read it either.
+   * „Could not look" on the only fact that mattered.
+   *
+   * So the gate says what it had when it refused. NOT THE NAMES — the gate
+   * fires on names the model produced from nowhere, and some of those are
+   * real private people; a refusal is no reason to write somebody into a log.
+   * The COUNT and the SIZE OF THE EVIDENCE are what separate the two
+   * explanations, and neither identifies anybody:
+   *
+   *   evidence 0 chars     — nothing was recorded, so the gate could not have
+   *                          passed any name; look at what the run collected.
+   *   evidence 8,000+ chars — pages were read and the name was not in them.
+   *
+   * That is the whole diagnosis I was missing today, and it costs one line.
+   */
+  if (refused.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[officeholder-gate] run ${runId ?? '-'}: ${refused.length} name(s) unverified against ${evidence.length} chars of evidence`,
+    );
+  }
   return { reply: out, refused };
 }
