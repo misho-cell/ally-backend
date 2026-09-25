@@ -17,6 +17,8 @@ jest.mock('../auth.service', () => ({
   grantWhateverFreePeriodIsOwed: (...args: unknown[]) => grantWhateverFreePeriodIsOwed(...args),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { createTestSeat, SeatCreationRefused } from '../testSeatCreate.service';
 
 /**
@@ -211,6 +213,60 @@ describe('a fictional number nobody is registered on may be held', () => {
     await expect(
       createTestSeat('Netai Test 91', ['+995599123456'], 0, 'admin:1', 'must refuse'),
     ).rejects.toThrow(/\+995599123456/);
+  });
+
+  /**
+   * ⚠️ 25 SEPTEMBER — AND THIS ONE CREATED TWO ACCOUNTS WHILE REFUSING.
+   *
+   * The test above asserted the refusal and never that nothing was made, and
+   * that is exactly the gap it fell through: the tester passed `holds` the
+   * route would not accept and got **Netai Test 42 twice**, 172531 and 172532,
+   * six seconds apart, because `savePhonebook` ran AFTER the account, the
+   * phone and the `test_seats` row.
+   *
+   * Yesterday the same fault was found and fixed for `invited_by`, and the
+   * test for it — „creates nothing at all when the inviter is not a seat" —
+   * is thirty lines above this one. I fixed the instance and left the class,
+   * in the file I was editing for exactly this.
+   *
+   * „It threw" is not „it refused". A refusal that has already created
+   * something has not refused.
+   */
+  it('creates nothing at all when a held number is not acceptable', async () => {
+    dbQuery.mockClear();
+
+    await expect(
+      createTestSeat('Netai Test 92', ['+995599123456'], 0, 'admin:1', 'must refuse'),
+    ).rejects.toBeInstanceOf(SeatCreationRefused);
+
+    const written = dbQuery.mock.calls.map((c) => String(c[0]));
+    expect(written.some((q) => q.includes('INSERT INTO "User"'))).toBe(false);
+    expect(written.some((q) => q.includes('INSERT INTO "UserPhone"'))).toBe(false);
+    expect(written.some((q) => q.includes('INSERT INTO test_seats'))).toBe(false);
+    expect(written.some((q) => q.includes('INSERT INTO "UserAlias"'))).toBe(false);
+  });
+
+  /**
+   * THE RULE IS THE BLOCK, NOT THE LINE. Both refusals are now asked before
+   * the first INSERT, and the writing half cannot say no to anything. A new
+   * check added below that point would be this bug for the third time.
+   */
+  it('asks everything that can refuse before it writes anything', () => {
+    const service = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');
+    const body = service.slice(service.indexOf('export async function createTestSeat'));
+
+    const resolved = body.indexOf('await resolvePhonebook(holds)');
+    const inviter = body.indexOf('await inviterSeatPhone(shape.invitedBy)');
+    const firstInsert = body.indexOf('INSERT INTO "User"');
+
+    expect(resolved).toBeGreaterThan(0);
+    expect(inviter).toBeGreaterThan(0);
+    expect(resolved).toBeLessThan(firstInsert);
+    expect(inviter).toBeLessThan(firstInsert);
+    // The writing half takes the already-resolved map and cannot refuse.
+    expect(service).toContain(
+      'async function savePhonebook(\n  userId: string,\n  resolved: ReadonlyMap<string, string>,\n)',
+    );
   });
 
   /** „Starts with the prefix" would accept +1202555garbage and save it. */

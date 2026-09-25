@@ -330,10 +330,23 @@ export async function createTestSeat(
   const why = note.trim().slice(0, MAX_NOTE_CHARS);
   if (why.length < 3) throw new SeatCreationRefused('say why this seat is being made');
 
-  // Before a single row exists: an inviter that is not a seat refuses here,
-  // not after the account has been made.
+  /**
+   * BEFORE A SINGLE ROW EXISTS. Everything that can refuse is asked here, and
+   * the writing below cannot say no to anything.
+   *
+   * The inviter moved up yesterday, after a correct refusal of `invited_by`
+   * left Netai Test 22 behind. THE PHONEBOOK DID NOT, and the tester found
+   * that today: `holds` the route would not accept produced Netai Test 42
+   * twice — 172531 and 172532, six seconds apart — because the check lived
+   * after the same three INSERTs.
+   *
+   * One fixed, one missed, in a file I had just edited for exactly this. The
+   * rule is the block, not the line: a refusal that can still be reached below
+   * this point is the same bug again.
+   */
   const inviterPhone =
     shape.invitedBy === undefined ? null : await inviterSeatPhone(shape.invitedBy);
+  const phonebook = await resolvePhonebook(holds);
 
   const phone = await firstFreeFictionalPhone();
 
@@ -392,7 +405,7 @@ export async function createTestSeat(
   if (shape.invitedBy !== undefined && inviterPhone !== null)
     await arriveByInvitation(userId, phone, shape.invitedBy, inviterPhone);
 
-  const saved = await savePhonebook(userId, holds);
+  const saved = await savePhonebook(userId, phonebook);
   const balance =
     tokens === 0
       ? 0
@@ -417,8 +430,26 @@ export async function createTestSeat(
  * silently dropping it would leave the caller believing in an edge that does
  * not exist, and row 251 is entirely about which edges exist.
  */
-async function savePhonebook(userId: string, holds: readonly string[]): Promise<number> {
-  if (holds.length === 0) return 0;
+/**
+ * ⚠️ 25 SEPTEMBER — A REFUSAL CREATED TWO ACCOUNTS, AND I HAD ALREADY FIXED
+ * THIS ONCE.
+ *
+ * Yesterday a seat route refused `invited_by: 501` correctly and AFTER writing
+ * the account, the phone and the `test_seats` row — leaving Netai Test 22
+ * behind. I moved that check above the INSERT, verified thirty seats before
+ * and thirty after, and wrote it up as fixed.
+ *
+ * It was not fixed. It was the INSTANCE fixed, and the class left standing.
+ * Today the tester passed `holds` the route would not accept and got
+ * **Netai Test 42 twice**, ids 172531 and 172532, six seconds apart — because
+ * `savePhonebook` ran after the same three writes and threw from there.
+ *
+ * So the phonebook is RESOLVED first and WRITTEN second, and the resolve is
+ * pure: it reads, it decides, it refuses, and it touches nothing. The caller
+ * runs it before any INSERT.
+ */
+async function resolvePhonebook(holds: readonly string[]): Promise<ReadonlyMap<string, string>> {
+  if (holds.length === 0) return new Map();
 
   const known = await query<{ phone: string; name: string }>(
     `SELECT up.phone, u.name
@@ -460,7 +491,15 @@ async function savePhonebook(userId: string, holds: readonly string[]): Promise<
     );
   }
 
-  for (const [phone, contactName] of byPhone) {
+  return byPhone;
+}
+
+/** The writing half. Nothing here can refuse — every decision is already made. */
+async function savePhonebook(
+  userId: string,
+  resolved: ReadonlyMap<string, string>,
+): Promise<number> {
+  for (const [phone, contactName] of resolved) {
     await query(
       `INSERT INTO "UserAlias" ("contactId", phone, alias)
        VALUES ($1::int, $2, $3)`,
@@ -468,7 +507,7 @@ async function savePhonebook(userId: string, holds: readonly string[]): Promise<
       SEAT_QUERY_TIMEOUT_MS,
     );
   }
-  return byPhone.size;
+  return resolved.size;
 }
 
 /**
