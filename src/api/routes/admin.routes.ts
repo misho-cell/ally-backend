@@ -174,6 +174,7 @@ import {
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { referralTree, MAX_DEPTH } from '../../services/referralTree.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
+import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import {
@@ -1766,6 +1767,32 @@ adminRouter.post(
  * by two integers is a page nobody reads twice. Verbatim, in the order they
  * were given.
  */
+/**
+ * ROW 274 — the pilot outcomes the founder reads on one page, for any range.
+ *
+ * Beside `/admin/pilot/report` rather than inside it: that one is ACTIVITY per
+ * day, this is OUTCOMES per person, and one object whose fields mean different
+ * things depending on which half you are reading is the trap that report was
+ * written against.
+ *
+ * It carries what it CANNOT measure in `not_measurable`, so a screen cannot
+ * show the numbers without the gap.
+ */
+adminRouter.get('/pilot/outcomes', async (req: Request, res: Response) => {
+  const days = Number(String(req.query.days ?? '28'));
+  if (!Number.isFinite(days) || days < 1 || days > 365) {
+    res.status(400).json({ success: false, error: 'days must be 1-365.' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await pilotOutcomes(days) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin pilot outcomes]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/goal-feedback', async (req: Request, res: Response) => {
   const limit = Number(String(req.query.limit ?? '200'));
   try {
