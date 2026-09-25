@@ -4056,6 +4056,21 @@ missing Georgian die together.
   for.
 * **IT SPENDS PER MINUTE OF AUDIO.** That is the whole reason it is off. Spend
   is not mine.
+* ✅ **APPROVED BY MISHO, 25 September, 20:4x: „ხმის ჩართვა დაამტკიცე."**
+  `SPEECH_TO_TEXT_ENABLED` set to `true` through `scripts/ops/env.sh`, which
+  writes and cannot list. **THE UNDO IS `env.sh unset SPEECH_TO_TEXT_ENABLED`
+  — and removing a variable does NOT redeploy**, so the running container
+  keeps it until something restarts the service. Whoever turns it off must
+  cause that restart and confirm the new deployment is SUCCESS before
+  believing it is off.
+* ⚠️ **WHAT TURNING IT ON DOES NOT PROVE.** `openaiClient()` returns null when
+  `OPENAI_API_KEY` is unset, and this route answers `not_enabled` in that case
+  too — deliberately, so a caller learns nothing about our configuration. I
+  never read Railway variables, so I cannot see whether that key exists. The
+  log line `[speech] SPEECH_TO_TEXT_ENABLED is true but no OPENAI_API_KEY is
+  set` is the only thing that tells them apart, and it is written on the first
+  real call. **„The flag is on" and „transcription works" are different facts
+  and the second needs one real request.**
 * **THE MAXIMUM IS NOW A NUMBER AND NOT A HOPE — added after the app team
   raised it against their own work.** `duration_ms` is sent by the CLIENT; the
   server does not decode the audio, so that bound holds only while their code
