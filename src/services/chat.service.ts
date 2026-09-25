@@ -3068,14 +3068,32 @@ async function deleteMessage(rowId: number): Promise<void> {
   await query('DELETE FROM conversations WHERE id = $1', [rowId]);
 }
 
-/**
- * A step long enough that finding it inside the reply is repetition rather
- * than coincidence. „ვეძებ…" appearing in a final sentence means nothing; nine
- * characters were the shortest such overlap on the live base.
- */
-const STEP_LONG_ENOUGH_TO_BE_A_REPEAT = 200;
 /** Every query here has one; this one runs after the reply is already saved. */
 const STEP_TIDY_TIMEOUT_MS = 5_000;
+/**
+ * ⚠️ THE SAME SENTENCE, TYPESET DIFFERENTLY, IS THE SAME SENTENCE.
+ *
+ * Thread 24883, and a real person saw both:
+ *
+ *   15:50:17  step     „… from mid-October — could you send me the floor plan …"
+ *   15:50:22  message  „… from mid-October, could you send me the floor plan …"
+ *
+ * One run, one relayed answer, an em-dash against a comma. Exact equality
+ * cannot see that. Stripping everything that is not a letter or a digit
+ * compares what was SAID rather than how it was typeset — dashes, quotes,
+ * stray spaces, a trailing question mark — and nothing else. Two genuinely
+ * different sentences do not collapse into one under it.
+ */
+const SAME_WORDS = (expr: string): string =>
+  `LOWER(REGEXP_REPLACE(TRIM(${expr}), '[^[:alnum:]ა-ჿ]+', '', 'g'))`;
+
+/**
+ * Long enough that finding the step's words inside the reply is repetition
+ * rather than coincidence, counted AFTER the stripping above. „ვეძებ" turning
+ * up in a sentence means nothing; the shortest real overlap on the live base
+ * was nine characters.
+ */
+const SAME_WORDS_LONG_ENOUGH = 60;
 
 /**
  * ⚠️ THE SAME ANSWER ON THE SCREEN TWICE — item H, the tester, 25 September,
@@ -3113,9 +3131,11 @@ async function dropStepsTheReplyRepeats(
         WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
           AND LENGTH(TRIM(content)) > 0
           AND (TRIM(content) = $3
-               OR (LENGTH(TRIM(content)) >= $4 AND POSITION(TRIM(content) IN $3) > 0))
+               OR ${SAME_WORDS('content')} = ${SAME_WORDS('$3')}
+               OR (LENGTH(${SAME_WORDS('content')}) >= $4
+                   AND POSITION(${SAME_WORDS('content')} IN ${SAME_WORDS('$3')}) > 0))
         RETURNING id`,
-      [threadId, runId, text, STEP_LONG_ENOUGH_TO_BE_A_REPEAT],
+      [threadId, runId, text, SAME_WORDS_LONG_ENOUGH],
       STEP_TIDY_TIMEOUT_MS,
     );
     if (removed.rows.length > 0) {

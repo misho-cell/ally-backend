@@ -41,9 +41,50 @@ describe('a step the reply already said is removed', () => {
     expect(fn).toContain('TRIM(content) = $3');
   });
 
+  /**
+   * ⚠️ AND THE FIRST VERSION OF THIS COMPARED RAW TEXT, WHICH MISSED THE ONE
+   * CASE A PERSON ACTUALLY SAW.
+   *
+   * Thread 24883: step at 15:50:17, message at 15:50:22, same run, same
+   * relayed answer — „mid-October — could you" against „mid-October, could
+   * you". An em-dash. Not equal, not contained, not caught, and I had already
+   * told the tester it was „not my H shape" from their description without
+   * reading the rows.
+   *
+   * Comparison is now on what was SAID: everything that is not a letter or a
+   * digit is stripped from both sides first. Measured over fourteen days,
+   * that takes the tidy from 32 to 42 and leaves 564 genuinely different
+   * steps alone.
+   */
+  it('compares the words, not the typesetting', () => {
+    expect(src).toContain("REGEXP_REPLACE(TRIM(${expr}), '[^[:alnum:]ა-ჿ]+', '', 'g')");
+    expect(fn).toContain("${SAME_WORDS('content')} = ${SAME_WORDS('$3')}");
+  });
+
   it('catches containment only when the step is long enough to mean something', () => {
-    expect(fn).toContain('LENGTH(TRIM(content)) >= $4 AND POSITION(TRIM(content) IN $3) > 0');
-    expect(src).toContain('const STEP_LONG_ENOUGH_TO_BE_A_REPEAT = 200;');
+    expect(fn).toContain("POSITION(${SAME_WORDS('content')} IN ${SAME_WORDS('$3')}) > 0");
+    expect(src).toContain('const SAME_WORDS_LONG_ENOUGH = 60;');
+  });
+
+  /**
+   * ⚠️ WHAT IT STILL DOES NOT CATCH, ON PURPOSE AND WITH THE NUMBERS.
+   *
+   * The tester's own 24883 case is NOT fixed by this. Its step is not merely
+   * typeset differently — the model REWROTE a clause („that's" became „since
+   * that's"), so the step's words are not inside the reply.
+   *
+   * Catching that needs a rule that deletes a step whose tail I cannot prove
+   * the reply reproduces. Measured: 13 such pairs in fourteen days, and when I
+   * read them they are plan cards where the step is sometimes LONGER than the
+   * reply — two of the three I sampled were. Deleting those loses a line
+   * nobody can get back.
+   *
+   * So the loss-free half shipped and the judgement call went to the tester
+   * and the founder with these numbers, rather than being taken here.
+   */
+  it('does not delete a step whose words the reply does not contain', () => {
+    expect(fn).not.toMatch(/LEFT\(/);
+    expect(fn).not.toContain('similarity');
   });
 
   /** One run, one thread, steps only. Never a message, never another run's. */
