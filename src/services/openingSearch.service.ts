@@ -981,29 +981,42 @@ const FROM_THE_WEB_MAX = 4;
 interface WebBlockWords {
   readonly heading: string;
   readonly wayIn: (name: string, who: string) => string;
-  readonly pathless: (names: string) => string;
+  /** How many results were checked and led to nobody — a count, never their titles (row 265). */
+  readonly pathless: (checked: number) => string;
 }
 
 const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   ka: {
     heading: 'ვებში ეს ვიპოვე:',
     wayIn: (name, who) => `• ${name} — შენი კონტაქტი იქ: ${who}.`,
-    pathless: (names) => `გზა ჯერ ვერ ვნახე: ${names}.`,
+    pathless: (n) =>
+      n === 1
+        ? 'კიდევ ერთი შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.'
+        : `კიდევ ${n} შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.`,
   },
   en: {
     heading: 'Found on the web:',
     wayIn: (name, who) => `• ${name} — your contact there: ${who}.`,
-    pathless: (names) => `No way in yet: ${names}.`,
+    pathless: (n) =>
+      n === 1
+        ? 'I checked one more result and found nobody in your contacts for it.'
+        : `I checked ${n} more results and found nobody in your contacts for them.`,
   },
   ru: {
     heading: 'Нашёл в интернете:',
     wayIn: (name, who) => `• ${name} — твой контакт там: ${who}.`,
-    pathless: (names) => `Пути пока не нашёл: ${names}.`,
+    pathless: (n) =>
+      n === 1
+        ? 'Проверил ещё один результат — в твоих контактах связи нет.'
+        : `Проверил ещё ${n} результата(ов) — в твоих контактах связи нет.`,
   },
   es: {
     heading: 'Encontré esto en la web:',
     wayIn: (name, who) => `• ${name} — tu contacto allí: ${who}.`,
-    pathless: (names) => `Todavía no veo una vía: ${names}.`,
+    pathless: (n) =>
+      n === 1
+        ? 'Revisé un resultado más y no encontré a nadie en tus contactos.'
+        : `Revisé ${n} resultados más y no encontré a nadie en tus contactos.`,
   },
 };
 
@@ -1020,10 +1033,43 @@ export function buildFromTheWebMessage(
         entry[1].kind === 'first_circle',
     )
     .map(([name, wayIn]) => words.wayIn(name, wayIn.who));
-  const pathless = entries
-    .filter(([, wayIn]) => wayIn.kind !== 'first_circle')
-    .map(([name]) => name);
-  if (pathless.length > 0) lines.push(words.pathless(pathless.join(', ')));
+  /**
+   * ⚠️ ROW 265 — THIS LINE PRINTED PAGE TITLES AND CALLED THEM PEOPLE.
+   *
+   * „გზა ჯერ ვერ ვნახე: თბილისს ახალი ვიცე-მერი ჰყავს, ხელისუფლება, …" — 4 of
+   * 4 web threads on 25 September. Read back over every way-in lookup since
+   * the bare-host fix landed, what this line was naming:
+   *
+   *   headlines        „ოპოზიციის თქმით, თბილისის მერია ახალ …",
+   *                    „თბილისის 9 მერი 90-იანებიდან დღემდე",
+   *                    „Plumbing Cake Topper, Plumber Cake …"
+   *   section labels   „Projects", „Real Estate", „Tax Planning & Compliance"
+   *   bare nouns       „ხელისუფლება", „თბილისი", „LTA"
+   *   and a few real   „Nini Elisashvili", „თბილისის მერია / Tbilisi City Hall"
+   *
+   * I DID NOT WRITE A CLASSIFIER TO TELL THOSE APART. In two languages, with
+   * no capitalisation to lean on in one of them, „Real Estate" and „Nini
+   * Elisashvili" are the same shape, and a rule tuned on the two dozen strings
+   * above is a rule tuned on two dozen strings. Twice today a fix of mine made
+   * an output worse before I reverted it; this is the same temptation.
+   *
+   * WHAT THIS LIST IS, BY CONSTRUCTION: the names for which the server looked
+   * through the owner's own contacts and found NOBODY. It is the failure half
+   * of the card. The half that has ever led anywhere is the `first_circle`
+   * lines above, and they are untouched — a name that finds somebody was never
+   * printed here.
+   *
+   * So the titles go and the FACT stays. „I looked and found nothing" is not
+   * „I did not look", and dropping the line entirely would have thrown that
+   * distinction away to fix a cosmetic one. The count keeps it.
+   *
+   * The names are not lost to the run: the model still receives every one of
+   * them in `ways_in` with its verdict (see WAY_IN_TOOL_NOTE) and can name a
+   * real one in its own answer, where it has the context to know which it is.
+   * That is the extraction this needs, done where the judgement lives.
+   */
+  const pathless = entries.filter(([, wayIn]) => wayIn.kind !== 'first_circle').length;
+  if (pathless > 0) lines.push(words.pathless(pathless));
   return `${words.heading}\n${lines.join('\n')}`;
 }
 

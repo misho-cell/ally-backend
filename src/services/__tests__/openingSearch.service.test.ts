@@ -590,7 +590,30 @@ describe('buildFromTheWebMessage', () => {
    * Both hold if the pathless names share ONE line. Every name is there; the
    * sentence that taught people to skim is written once.
    */
-  it('keeps the names when none of them has a way in, under one honest line', () => {
+  /**
+   * ⚠️ THIS TEST USED TO ASSERT THE OPPOSITE, ON THE FOUNDER'S OWN WORD, AND
+   * THE CONFLICT IS DELIBERATELY LEFT VISIBLE RATHER THAN TIDIED AWAY.
+   *
+   * 17 September, the founder, having seen the result: „the names STAY. He
+   * wants to see them and chase them himself, as long as the message says
+   * plainly that no path is visible yet."
+   *
+   * 25 September, row 265, the founder again through the tester: the card
+   * „shows junk page titles, repeated (4 of 4 web threads today). Done when:
+   * real names or places, OR NO CARD."
+   *
+   * Both are his. The second explicitly sanctions dropping them, so it wins
+   * over the first — but only because he said so, not because the newer
+   * measurement is mine. What he actually wants is the FIRST branch of that
+   * done-when: real names he can chase. A count is the fallback, and it is
+   * where this landed because the names on offer were headlines, section
+   * labels and bare nouns, and telling those from „Nini Elisashvili" in two
+   * languages is a classifier I was not willing to guess at today.
+   *
+   * IF HE WANTS THE NAMES BACK, the answer is extraction, and it needs his
+   * word rather than my judgement. That is in front of Misho.
+   */
+  it('counts the ones with no way in instead of printing their titles', () => {
     const message = String(
       buildFromTheWebMessage(
         new Map([
@@ -600,10 +623,23 @@ describe('buildFromTheWebMessage', () => {
       ),
     );
 
-    expect(message).toContain('Acme');
-    expect(message).toContain('Beta');
-    // One line for both, not one each.
-    expect(message.split('\n').filter((l) => l.includes('გზა ჯერ ვერ'))).toHaveLength(1);
+    expect(message).not.toContain('Acme');
+    expect(message).not.toContain('Beta');
+    expect(message).toContain('2');
+    // Still one line for all of them, not one each.
+    expect(message.split('\n').filter((l) => l.includes('შევამოწმე'))).toHaveLength(1);
+  });
+
+  /**
+   * „I looked and found nothing" is not „I did not look", and dropping the
+   * line altogether would have thrown that distinction away to fix a cosmetic
+   * one. It is the distinction the whole ops toolchain is built on.
+   */
+  it('still says that it looked', () => {
+    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
+
+    expect(message).toContain('შევამოწმე');
+    expect(message).toContain('კავშირი ვერ ვიპოვე');
   });
 
   it('never renders „could not check" as „nobody" (G7)', () => {
@@ -631,9 +667,10 @@ describe('buildFromTheWebMessage', () => {
     expect(bullets).toHaveLength(1);
     expect(bullets[0]).toContain('Infinity Solutions');
     expect(bullets[0]).toContain('დათო');
-    // …and the other two are named together, with no way-in claim.
-    expect(message).toContain('Acme');
-    expect(message).toContain('Beta');
+    // …and the other two are COUNTED, not named (row 265).
+    expect(message).not.toContain('Acme');
+    expect(message).not.toContain('Beta');
+    expect(message).toContain('2');
   });
 
   it('still writes nothing when the web returned no names at all', () => {
@@ -734,7 +771,8 @@ describe('the web block follows the conversation’s language', () => {
 
     expect(message).toContain('Found on the web:');
     expect(message).toContain('your contact there: Dato');
-    expect(message).toContain('No way in yet: Acme');
+    expect(message).toContain('I checked');
+    expect(message).not.toContain('Acme');
     expect(message).not.toMatch(/[ა-ჿ]/);
   });
 
@@ -742,11 +780,16 @@ describe('the web block follows the conversation’s language', () => {
     expect(buildFromTheWebMessage(found)).toBe(buildFromTheWebMessage(found, 'ka'));
   });
 
-  it('says the same thing in each of the four, with the names untouched', () => {
+  it('says the same thing in each of the four: the found name kept, the rest counted', () => {
     for (const lang of ['ka', 'en', 'ru', 'es'] as const) {
       const message = String(buildFromTheWebMessage(found, lang));
+      // The name with a person behind it is the half that ever led anywhere,
+      // and row 265 did not touch it.
       expect(message).toContain('Infinity Solutions');
-      expect(message).toContain('Acme');
+      expect(message).not.toContain('Acme');
+      // A count line is still there — „1" is spelled as a word in some of
+      // these languages, so the assertion is its presence, not a digit.
+      expect(message.split('\n')).toHaveLength(3);
       // Still no link and still no „ring them yourself" — the seat's done-when
       // does not move because the language did.
       expect(message).not.toMatch(/https?:|დაურეკ|call them|ring them/i);
