@@ -240,9 +240,12 @@ describe('an unapproved plan does not block the person who accepted', () => {
 
   it('checks the acceptance before refusing for an unapproved plan', () => {
     expect(asks).toContain('const introAccepted =');
-    expect(asks).toContain(
-      'if (!introAccepted && (task.plan_proposed ?? null) !== null && planInForce(task) === null) {',
-    );
+    // The draft test is named once and shared by both bypasses (row 251's
+    // last piece added the owner's own instruction beside the acceptance).
+    // The property is unchanged: the refusal reads the bypasses, not the raw
+    // condition.
+    expect(asks).toContain('const draftIsWaiting =');
+    expect(asks).toContain('if (!introAccepted && !ownerNamedThem && draftIsWaiting) {');
   });
 
   /**
@@ -266,11 +269,14 @@ describe('an unapproved plan does not block the person who accepted', () => {
    * bypass cannot reach a case the wall was not already refusing.
    */
   it('costs a goal with no unapproved draft nothing', () => {
-    const at = asks.indexOf('const introAccepted =');
-    const block = asks.slice(at, at + 420);
-
-    expect(block).toContain('(task.plan_proposed ?? null) !== null &&');
-    expect(block).toContain('planInForce(task) === null &&');
+    // `draftIsWaiting` is the whole of the old condition, and BOTH bypasses
+    // are gated on it — so a goal with no draft still asks neither question
+    // and pays for neither.
+    expect(asks).toContain(
+      'const draftIsWaiting = (task.plan_proposed ?? null) !== null && planInForce(task) === null;',
+    );
+    expect(asks).toContain('const introAccepted = draftIsWaiting &&');
+    expect(asks).toContain('draftIsWaiting && (await ownerJustNamedThisPerson())');
   });
 
   /** It says so in the log, or the next person cannot tell why an ask went. */
@@ -409,5 +415,96 @@ describe('the permission wall does not block the person who accepted either', ()
     const block = asks.slice(at, at + 300);
 
     expect(block).toContain('acceptedPhones ??=');
+  });
+});
+
+/**
+ * ⚠️ ROW 251, THE LAST PIECE — THE OWNER NAMED SOMEBODY AND WAS ASKED TO
+ * APPROVE A PLAN TO DO IT.
+ *
+ * Thread 24534. Plan v1 said „Who I will ask: nobody". The owner typed „Ask
+ * Netai Test 14 if they know a good accountant." The approve refusal now sends
+ * the model to `grant_task_permission`, which grants it — and the ask still
+ * died at the unapproved-plan gate, because `grantTaskPermission` does not
+ * clear the draft.
+ *
+ * Misho, asked in plain words on 25 September: „ask X about Y" IS consent to
+ * write to X. So the draft does not outrank the owner's own sentence for the
+ * one person it names. Everybody else in the draft still waits.
+ *
+ * THIS DECIDES WHO RECEIVES A MESSAGE, so the tests that matter most here are
+ * the ones where it must REFUSE.
+ */
+describe('the owner naming somebody outranks the draft, for that person only', () => {
+  const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const matcher = service.slice(
+    service.indexOf('const ownerJustNamedThisPerson'),
+    service.indexOf('const draftIsWaiting'),
+  );
+
+  it('reads the owner’s own latest message, not the model’s and not an event', () => {
+    expect(matcher).toContain("role = 'user'");
+    expect(matcher).toContain("COALESCE(kind, '') <> 'event'");
+    expect(matcher).toContain('ORDER BY created_at DESC LIMIT 1');
+  });
+
+  /** „Nino already knows about this" names Nino and instructs nothing. */
+  it('requires an instruction, by the predicate D316 already uses', () => {
+    expect(matcher).toContain('looksLikeContactInstruction(line)');
+  });
+
+  /**
+   * WHOLE-LABEL CONTAINMENT, NOT WORD STEMS. „Netai Test 14" and „Netai Test
+   * 15" share every word once „14" and „15" are dropped as too short — which
+   * is exactly how a stem matcher sends the question to the wrong seat.
+   */
+  it('matches the whole label inside the sentence, not its words', () => {
+    expect(matcher).toContain('POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0');
+    expect(matcher).not.toMatch(/sameWord|stem|goalNamedIn/);
+  });
+
+  /**
+   * THE LONGEST LABEL WINS AND A TIE REFUSES. „Nino" sits inside „ask Nino
+   * Beridze", so without this a sentence about Nino Beridze would open the
+   * gate for a different Nino.
+   */
+  it('lets the longest label decide, and refuses a tie', () => {
+    expect(matcher).toContain('ORDER BY LENGTH(TRIM(ua.alias)) DESC');
+    expect(matcher).toContain('LIMIT 2');
+    expect(matcher).toContain('runnerUp.alias.trim().length === best.alias.trim().length');
+  });
+
+  /** And the winner has to be the person we are about to write to. */
+  it('opens only for the person the sentence actually named', () => {
+    expect(matcher).toContain('phoneDigits(best.phone) === phoneDigits(contactPhone)');
+  });
+
+  /** Short labels are where a wrong recipient comes from: „ana" inside „Anano". */
+  it('ignores a label too short to be evidence', () => {
+    expect(service).toContain('const MIN_NAMED_LABEL_CHARS = 4;');
+    expect(matcher).toContain('LENGTH(TRIM(ua.alias)) >= $3');
+  });
+
+  /** A read that fails refuses, like every other gate in this file. */
+  it('fails towards refusing', () => {
+    expect(matcher).toContain('could not read who the owner named');
+    expect(matcher.slice(matcher.indexOf('catch'))).toContain('return false');
+  });
+
+  /**
+   * THE PERMISSION WALL IS UNTOUCHED. This opens the DRAFT gate only — the
+   * owner's instruction still has to become permission through the tool that
+   * records it, and every other gate in this function runs as it did.
+   */
+  it('does not open the permission wall', () => {
+    expect(service).toContain(
+      'if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {',
+    );
+    expect(service).not.toContain('permission_granted && (await ownerJustNamedThisPerson())');
+  });
+
+  /** It says so in the log, or nobody can tell later why an ask went. */
+  it('leaves a line saying why the draft was bypassed', () => {
+    expect(service).toContain('the owner named this person (row 251)');
   });
 });

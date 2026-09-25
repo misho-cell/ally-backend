@@ -4,6 +4,7 @@ import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from '.
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { phoneDigits } from './phone';
+import { looksLikeContactInstruction } from './goalIntent';
 import { questionForReader } from './askTranslation.service';
 import {
   createThread,
@@ -45,6 +46,15 @@ import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
+/**
+ * How long a phonebook label has to be before the owner naming it counts.
+ *
+ * Short labels are where a wrong recipient comes from: „ana" sits inside
+ * „Anano", „ia" inside half the language. Four characters is not a rule about
+ * names, it is a floor under how much evidence a substring match is allowed to
+ * be — and a label shorter than this simply falls back to the plan's yes.
+ */
+const MIN_NAMED_LABEL_CHARS = 4;
 // The recipient's chat list must distinguish eight questions from the same
 // sender — the title carries the question itself, not a generic "კითხვა".
 const ASK_TITLE_SNIPPET_CHARS = 48;
@@ -480,6 +490,90 @@ export async function createAsk(
       return acceptedPhones.some((p) => phoneDigits(p) === phoneDigits(contactPhone));
     };
 
+    /**
+     * ⚠️ ROW 251, THE LAST PIECE — THE OWNER NAMED SOMEBODY AND WAS ASKED TO
+     * APPROVE A PLAN TO DO IT.
+     *
+     * Thread 24534. Plan v1 said „Who I will ask: nobody". The owner typed
+     * „Ask Netai Test 14 if they know a good accountant." The refusal above
+     * now sends the model to `grant_task_permission`, which is the right door
+     * and grants the permission — AND THE ASK STILL DIES HERE, because a plan
+     * is proposed and unapproved and `grantTaskPermission` does not clear it.
+     *
+     * Misho, asked in plain words on 25 September: „ask X about Y" IS consent
+     * to write to X. So the draft does not get to outrank the owner's own
+     * sentence for the one person that sentence names. Everybody else in the
+     * draft still waits for the yes.
+     *
+     * ════════ WHY IT MATCHES THE WAY IT DOES ════════
+     *
+     * This decides who receives a message, so a wrong match is a message to
+     * the wrong person — the one failure this whole file is shaped around.
+     *
+     *   * WHOLE-LABEL CONTAINMENT, not word stems. „Netai Test 14" and „Netai
+     *     Test 15" share every word once „14" and „15" are dropped as too
+     *     short, which is exactly how a stem matcher would send the founder's
+     *     question to the wrong seat. A missed match is safe — the ask is
+     *     refused, as it is today — so the strict test is the right one and
+     *     under-matching an inflected Georgian name is a cost worth paying.
+     *
+     *   * THE LONGEST LABEL WINS, AND A TIE REFUSES. „Nino" is contained in
+     *     „ask Nino Beridze", so without this a message about Nino Beridze
+     *     would open the gate for a different Nino. The query asks the
+     *     owner's own phonebook which label is the longest one inside the
+     *     sentence, and that label has to be this person's.
+     *
+     *   * THE OWNER'S LATEST OWN MESSAGE ONLY. Not the model's text, not an
+     *     engine event, and not a line from three turns ago.
+     *
+     *   * AND IT IS AN INSTRUCTION, by the same predicate D316 already uses.
+     *     „Nino already knows about this" names Nino and instructs nothing.
+     *
+     * Lazy, like the one above: it runs only when a gate is about to refuse.
+     */
+    const ownerJustNamedThisPerson = async (): Promise<boolean> => {
+      if (threadId === undefined) return false;
+      try {
+        const said = await query<{ content: string }>(
+          `SELECT content FROM conversations
+            WHERE thread_id = $1 AND role = 'user'
+              AND COALESCE(kind, '') <> 'event' AND content <> ''
+            ORDER BY created_at DESC LIMIT 1`,
+          [threadId],
+          ASK_QUERY_TIMEOUT_MS,
+        );
+        const line = said.rows[0]?.content ?? '';
+        if (!looksLikeContactInstruction(line)) return false;
+
+        // The owner's own phonebook decides which person that sentence names,
+        // and only an unambiguous answer counts.
+        const labels = await query<{ phone: string; alias: string }>(
+          `SELECT ua.phone, ua.alias
+             FROM "UserAlias" ua
+            WHERE ua."contactId" = $1::int
+              AND LENGTH(TRIM(ua.alias)) >= $3
+              AND POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
+            ORDER BY LENGTH(TRIM(ua.alias)) DESC
+            LIMIT 2`,
+          [fromUserId, line, MIN_NAMED_LABEL_CHARS],
+          ASK_QUERY_TIMEOUT_MS,
+        );
+        const best = labels.rows[0];
+        if (best === undefined) return false;
+        const runnerUp = labels.rows[1];
+        // Two labels of the same length both inside the sentence name nobody.
+        if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
+          return false;
+        }
+        return phoneDigits(best.phone) === phoneDigits(contactPhone);
+      } catch (error) {
+        // Fails towards refusing, which is the direction this gate exists for.
+        // eslint-disable-next-line no-console
+        console.error(`[ask] task ${taskId}: could not read who the owner named:`, error);
+        return false;
+      }
+    };
+
     if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {
       // eslint-disable-next-line no-console
       console.log(
@@ -590,17 +684,24 @@ export async function createAsk(
      * asker only, and only the phones on an accepted, direct introduction.
      * Everyone else still waits for the plan.
      */
-    const introAccepted =
-      (task.plan_proposed ?? null) !== null &&
-      planInForce(task) === null &&
-      (await acceptedIntroductionToThisPerson());
+    const draftIsWaiting = (task.plan_proposed ?? null) !== null && planInForce(task) === null;
+    const introAccepted = draftIsWaiting && (await acceptedIntroductionToThisPerson());
     if (introAccepted) {
       // eslint-disable-next-line no-console
       console.log(
         `[ask] task ${taskId}: unapproved plan bypassed for an accepted introduction (row 251)`,
       );
     }
-    if (!introAccepted && (task.plan_proposed ?? null) !== null && planInForce(task) === null) {
+    // The owner's own sentence, for the one person it names. See
+    // `ownerJustNamedThisPerson` above for why the matching is this strict.
+    const ownerNamedThem = !introAccepted && draftIsWaiting && (await ownerJustNamedThisPerson());
+    if (ownerNamedThem) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask] task ${taskId}: unapproved plan bypassed — the owner named this person (row 251)`,
+      );
+    }
+    if (!introAccepted && !ownerNamedThem && draftIsWaiting) {
       return {
         sent: false,
         reason: 'consent_pending',
