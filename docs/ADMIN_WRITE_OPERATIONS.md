@@ -4056,6 +4056,22 @@ missing Georgian die together.
   for.
 * **IT SPENDS PER MINUTE OF AUDIO.** That is the whole reason it is off. Spend
   is not mine.
+* **THE MAXIMUM IS NOW A NUMBER AND NOT A HOPE — added after the app team
+  raised it against their own work.** `duration_ms` is sent by the CLIENT; the
+  server does not decode the audio, so that bound holds only while their code
+  is the only caller and is working. Their words: „if the cost ever rises
+  unexpectedly, suspect this first." That left 5 MB per call as the only real
+  guard, which is not a figure anybody can be asked to approve.
+  So there is a **per-account ceiling of 20 minutes of audio a day**, counted
+  from `usage_events` — the same ledger the spend is written to, so the guard
+  and the bill can never disagree. A call with no `duration_ms` is charged the
+  full allowance rather than becoming free, and a ledger read that FAILS
+  refuses: „I could not look" is not „nothing has been used" when what is being
+  guarded is somebody else's money.
+  **Worst case per account per day: 20 minutes of Whisper.** Each call is also
+  written to the ledger as `kind = 'speech'`, priced by
+  `openai.whisper.minute`, so the actual cost is visible beside every other
+  spend rather than off the books.
 * **The app team can build and test the entire path against `not_enabled`**
   without one paid call, which is why this shipped before the decision rather
   than waiting on it.

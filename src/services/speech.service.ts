@@ -1,5 +1,7 @@
 import { toFile } from 'openai';
 
+import { query } from '../db/postgres/client';
+import { recordFixedUsage } from './costLedger.service';
 import { openaiClient } from '../config/openai';
 
 /**
@@ -42,7 +44,8 @@ export type TranscriptionOutcome =
         | 'too_large'
         | 'unsupported_format'
         | 'no_speech'
-        | 'recognizer_failed';
+        | 'recognizer_failed'
+        | 'daily_limit';
       detail?: string;
     };
 
@@ -52,6 +55,47 @@ export type TranscriptionOutcome =
  */
 export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 export const MAX_AUDIO_MS = 60_000;
+
+/**
+ * ⚠️ A CEILING THE SERVER ENFORCES, BECAUSE THE OTHER ONE IT DOES NOT.
+ *
+ * The app team said this about their own work, unprompted, and they were
+ * right: `duration_ms` is sent BY THE CLIENT. The server does not decode the
+ * audio, so the 60-second bound holds only while their code is the only
+ * caller and is working. Their words — „if the cost ever rises unexpectedly,
+ * suspect this first."
+ *
+ * That leaves 5 MB per call as the only real guard, and 5 MB times a rate
+ * limit is not a number anybody can put in front of Misho. He is being asked
+ * to approve a spend; he should be able to be told its MAXIMUM, and a maximum
+ * that depends on somebody else's code being correct is not one.
+ *
+ * So: a per-account daily ceiling, counted from the ledger the spend is
+ * written to. Twenty minutes of audio a day is far more than a person
+ * dictating sentences into a chat, and it makes the worst case a sentence
+ * instead of a hope.
+ */
+export const MAX_SECONDS_PER_DAY = 20 * 60;
+/** Whisper is billed by audio minute; this is the key the ledger prices it by. */
+const PRICE_KEY = 'openai.whisper.minute';
+const LEDGER_TIMEOUT_MS = 4_000;
+
+/**
+ * How much audio this account has had transcribed today, from `usage_events` —
+ * the same ledger the cost is written to, so the guard and the bill can never
+ * disagree about what happened.
+ */
+export async function secondsUsedToday(userId: string): Promise<number> {
+  const result = await query<{ seconds: string | null }>(
+    `SELECT COALESCE(SUM(units), 0) * 60 AS seconds
+       FROM usage_events
+      WHERE user_id = $1 AND kind = 'speech'
+        AND created_at >= DATE_TRUNC('day', NOW())`,
+    [userId],
+    LEDGER_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.seconds ?? 0);
+}
 
 /**
  * The three the browsers actually produce, which the app team listed and asked
@@ -92,6 +136,8 @@ export function transcriptionIsOn(): boolean {
 }
 
 export interface TranscribeInput {
+  /** Whose ceiling and whose bill. */
+  readonly userId: string;
   readonly audio: Buffer;
   readonly mime: string;
   /** The caller's best guess at the language. A hint, never a command. */
@@ -118,6 +164,24 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
   if (!ACCEPTED_TYPES.has(type)) {
     return { ok: false, reason: 'unsupported_format', detail: type };
   }
+  /**
+   * Checked before a byte is sent, and it uses the client's own duration when
+   * it has one. With no duration the call still counts — at a minimum charge —
+   * because a caller that stops sending `duration_ms` must not thereby become
+   * free.
+   */
+  const seconds = Math.max(1, Math.round((input.durationMs ?? MAX_AUDIO_MS) / 1000));
+  const alreadyUsed = await secondsUsedToday(input.userId).catch((error: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[speech] could not read today usage:', (error as Error).message);
+    // Could not look is not „nothing used". Refusing is the safe direction
+    // when the thing being guarded is somebody else's money.
+    return Number.POSITIVE_INFINITY;
+  });
+  if (alreadyUsed + seconds > MAX_SECONDS_PER_DAY) {
+    return { ok: false, reason: 'daily_limit' };
+  }
+
   const client = openaiClient();
   if (client === null) {
     // The flag is on and the key is not, which is somebody's mistake and not a
@@ -136,6 +200,19 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
       // wrong hint is worse than none — this is exactly the failure being
       // fixed, an engine told „ka-GE" and answering in English anyway.
       ...(input.language ? { language: input.language } : {}),
+    });
+    // Written to the ledger before the answer is returned, so the spend is
+    // recorded whatever the caller then does with the text.
+    await recordFixedUsage({
+      userId: input.userId,
+      kind: 'speech',
+      provider: 'openai',
+      priceKey: PRICE_KEY,
+      units: seconds / 60,
+      label: MODEL,
+    }).catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[speech] could not record the spend:', (error as Error).message);
     });
     const text = (result.text ?? '').trim();
     if (text === '') {

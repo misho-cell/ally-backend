@@ -58,6 +58,9 @@ const upload = multer({
 /** One place, so the route and the docs cannot drift apart. */
 const REFUSAL_STATUS: Record<string, number> = {
   not_enabled: 503,
+  // A ceiling reached, not a fault: 429 so a client can tell „come back
+  // tomorrow" apart from „this is broken".
+  daily_limit: 429,
   too_long: 413,
   too_large: 413,
   unsupported_format: 415,
@@ -111,6 +114,7 @@ speechRouter.post(
 
     try {
       const outcome = await transcribe({
+        userId: String(userId),
         audio: file.buffer,
         mime,
         language: (body.language ?? '').trim() || undefined,
