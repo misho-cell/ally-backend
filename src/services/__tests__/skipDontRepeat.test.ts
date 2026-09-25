@@ -8,6 +8,7 @@ import {
   NOTHING_NAMED,
 } from '../pendingUpdates.service';
 import { renderPendingMessage } from '../pendingMessages';
+import { claimsTheReplyMade } from '../chat.service';
 
 /**
  * ⚠️ „SKIP, DON'T REPEAT" — the founder, 25 September ~00:30 Tbilisi, on our
@@ -176,7 +177,10 @@ describe('both surfaces, and in any order', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
   it('strikes out what was named at DELIVERY, not when the count is read', () => {
-    const take = chat.slice(chat.indexOf('function takePendingItems(runId: string)'));
+    // Anchored on the NAME, not the signature: it grew a `reply` parameter the
+    // same night, and an assertion pinned to an argument list is an assertion
+    // about how the code is written rather than what it does.
+    const take = chat.slice(chat.indexOf('function takePendingItems('));
 
     expect(take.slice(0, 1200)).toContain('runInboxNamed.get(runId)');
     expect(take.slice(0, 1200)).toContain('morePendingAfterNaming');
@@ -212,5 +216,100 @@ describe('both surfaces, and in any order', () => {
     expect(handlers).toContain('more_pending_by_kind');
     expect(texts).toContain('SKIP WHAT YOU HAVE ALREADY LISTED');
     expect(texts).toContain('IF NOTHING IS LEFT THERE IS NO LINE AT ALL');
+  });
+});
+
+/**
+ * ⚠️ THE FAULT THE RULE ITSELF INTRODUCED, FOUND BY THE TESTER FORTY MINUTES
+ * AFTER IT SHIPPED — on the founder's own account.
+ *
+ * Thread 25215, 25 September 21:22 UTC. Six goals were waiting on him. I read
+ * all six from the base before believing it: still open, still flagged, each
+ * holding a card. `check_my_inbox` returned all six. THE REPLY NAMED FIVE. And
+ * the „also waiting" card, struck clean of all six by the rule above, named
+ * none — so 6964, his message to Lika, was on no screen at all, having been on
+ * one at 19:33.
+ *
+ * I HAD WRITTEN THE RISK DOWN IN THE MESSAGE THAT ANNOUNCED THE FIX, and
+ * guarded the wrong half of it. „A goal named above but not held would cancel
+ * a DIFFERENT goal's card" — that is the two sets differing by ID, and it was
+ * handled. The half I did not guard is the two sets differing because THE
+ * MODEL CHOSE TO SAY LESS, which is not an edge case: it is what anything does
+ * with a list of six.
+ *
+ * So a claim is now „the tool handed it over AND the reply contains it". The
+ * check is built to fail the cheap way: not matching costs a repeated line,
+ * matching wrongly costs somebody a question they never hear about.
+ */
+describe('only what the reply actually said is struck off', () => {
+  const claim = (key: string, mustAppear: string | null) => ({ key, mustAppear });
+
+  it("keeps the card for a goal the reply left out — the founder's sixth", () => {
+    const claims = [
+      claim('goal_question:5974', 'I need two painters for a flat in Vake'),
+      claim('goal_question:6964', 'i need to send the screenshots to Lika'),
+    ];
+    const reply = 'You have one goal waiting: „I need two painters for a flat in Vake".';
+
+    const said = claimsTheReplyMade(claims, reply);
+
+    expect(said.has('goal_question:5974')).toBe(true);
+    expect(said.has('goal_question:6964')).toBe(false);
+  });
+
+  /** And the one that WAS said still goes, or the founder's rule does nothing. */
+  it('strikes off the ones it can find, so the rule still works', () => {
+    const claims = [
+      claim('goal_question:5677', 'I need a good roofer in Tbilisi for a small job'),
+      claim('goal_question:5281', 'I need a reliable web designer in Tbilisi'),
+    ];
+    const reply =
+      'Two of your goals are waiting on you: „I need a good roofer in Tbilisi for a small ' +
+      'job", and „I need a reliable web designer in Tbilisi".';
+
+    expect(claimsTheReplyMade(claims, reply).size).toBe(2);
+  });
+
+  /** Quotes, dashes and capitals are what a model rearranges when it quotes. */
+  it('does not care about punctuation, quoting or case', () => {
+    const claims = [claim('goal_question:1', 'I need a good roofer in Tbilisi')];
+
+    expect(claimsTheReplyMade(claims, '— "i need a GOOD roofer, in Tbilisi" …').size).toBe(1);
+  });
+
+  /**
+   * „I need" is the opening of half the goals in the base. A prefix short
+   * enough to match six different goals would strike off five of them on the
+   * strength of the sixth being mentioned.
+   */
+  it('will not let one goal answer for another that merely starts the same', () => {
+    const claims = [claim('goal_question:9', 'I need a notary in Batumi before Friday')];
+    const reply = 'Your goal „I need two painters for a flat in Vake" is waiting.';
+
+    expect(claimsTheReplyMade(claims, reply).size).toBe(0);
+  });
+
+  /** A goal whose title was never recorded cannot be proved said, so it stays. */
+  it('never strikes off an item with nothing to match on', () => {
+    expect(claimsTheReplyMade([claim('goal_question:3', null)], 'anything at all').size).toBe(0);
+    expect(claimsTheReplyMade([claim('goal_question:4', '   ')], 'anything at all').size).toBe(0);
+  });
+
+  it('is what delivery uses, and it is given the finished reply', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const take = chat.slice(chat.indexOf('function takePendingItems(runId: string'));
+
+    expect(take.slice(0, 900)).toContain(
+      'claimsTheReplyMade(runInboxNamed.get(runId) ?? [], reply)',
+    );
+    expect(chat).toContain('takePendingItems(runId, reply)');
+  });
+
+  /** And the model is told to name them all, so a repeat is rare as well as cheap. */
+  it('asks for every item by name rather than a summary', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+    expect(chat).toContain('Name EVERY item above');
+    expect(chat).toContain('fewer words per item, never fewer items');
   });
 });

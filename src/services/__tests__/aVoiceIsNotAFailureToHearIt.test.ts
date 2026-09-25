@@ -15,6 +15,7 @@ import {
   transcribe,
   baseType,
   transcriptionIsOn,
+  ensureFileGlobal,
   MAX_AUDIO_BYTES,
   MAX_SECONDS_PER_DAY,
 } from '../speech.service';
@@ -355,5 +356,81 @@ describe('the day has a ceiling and the server is the one holding it', () => {
     const out = await transcribe({ userId: '1', audio: audio(), mime: 'audio/mp4' });
 
     expect(out).toMatchObject({ ok: true, text: 'hello' });
+  });
+});
+
+/**
+ * ⚠️ THE FIRST REAL CALL FAILED, AND NOT FOR ANY REASON THIS FILE HAD A NAME
+ * FOR.
+ *
+ * I told the tester and the app team that ONE attempt would settle row 226,
+ * and I listed the three answers it could give: Georgian text, „not switched
+ * on" (the key is missing), or no permission dialog (their diagnosis was
+ * wrong). The tester ran it from their own seat — 172101, 25 September
+ * 21:23 UTC, a three-second Georgian clip, twice, webm and mp3 — and both
+ * returned `recognizer_failed`. The log said why:
+ *
+ *   „`File` is not defined as a global, which is required for file uploads."
+ *
+ * A FOURTH ANSWER I HAD NOT LISTED, and the shape of it is this week's own
+ * lesson pointed at a place I had not looked. „The flag is set" and
+ * „transcription works" are different facts and I wrote three paragraphs
+ * saying so. „The key is present" and „the runtime can send a file" are also
+ * different facts. `File` became a Node global in 20; production runs older;
+ * `toFile` is the SDK's own supported way to send a Buffer and it builds one.
+ * It typechecks and every test above passes, because not one of them lets the
+ * upload path run.
+ *
+ * SO THIS TEST TAKES THE GLOBAL AWAY. It is the only way to have the suite see
+ * from Node 22 what the service saw from an older runtime — a mock of `toFile`
+ * would assert that we call it, which was never in doubt and is exactly the
+ * kind of test that passed while this was broken.
+ */
+describe('the upload works on a runtime with no global File', () => {
+  const withRecogniser = (): jest.Mock => {
+    const create = jest.fn(async () => ({ text: 'გამარჯობა' }));
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+    mockClient.mockReturnValue({ audio: { transcriptions: { create } } } as never);
+    return create;
+  };
+
+  /** Restored whatever the assertions do, so no later test inherits a gap. */
+  const withoutGlobalFile = async <T>(body: () => Promise<T>): Promise<T> => {
+    const scope = globalThis as { File?: unknown };
+    const had = Object.prototype.hasOwnProperty.call(scope, 'File');
+    const original = scope.File;
+    delete scope.File;
+    try {
+      return await body();
+    } finally {
+      if (had) scope.File = original;
+      else delete scope.File;
+    }
+  };
+
+  it('transcribes rather than answering recognizer_failed', async () => {
+    const create = withRecogniser();
+
+    const out = await withoutGlobalFile(() =>
+      transcribe({ userId: '1', audio: audio(), mime: 'audio/webm;codecs=opus' }),
+    );
+
+    expect(out).toEqual({ ok: true, text: 'გამარჯობა', language: null });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  /** The shim fills the gap and leaves a runtime that has it alone. */
+  it('installs File only when it is missing', async () => {
+    const scope = globalThis as { File?: unknown };
+    const here = scope.File;
+
+    ensureFileGlobal();
+    expect(scope.File).toBe(here);
+
+    await withoutGlobalFile(async () => {
+      expect(scope.File).toBeUndefined();
+      ensureFileGlobal();
+      expect(typeof scope.File).toBe('function');
+    });
   });
 });

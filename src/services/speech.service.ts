@@ -1,3 +1,5 @@
+import { File as NodeFile } from 'node:buffer';
+
 import { toFile } from 'openai';
 
 import { query } from '../db/postgres/client';
@@ -131,6 +133,42 @@ export function baseType(mime: string): string {
   return (mime ?? '').split(';')[0].trim().toLowerCase();
 }
 
+/**
+ * ⚠️ WHAT THE FIRST REAL CALL RETURNED, AND IT WAS NEITHER OF THE TWO THINGS
+ * I HAD PREDICTED.
+ *
+ * I told the tester and the app team that one attempt would settle it, and
+ * named the three answers it could give: Georgian text (done), „not switched
+ * on" (the key is missing), or no permission dialog (their diagnosis was
+ * wrong). The tester ran it from their own seat at 21:23 UTC on 25 September —
+ * 172101, a three-second Georgian clip, twice, webm and mp3 — and got a fourth
+ * answer I had not listed:
+ *
+ *   „`File` is not defined as a global, which is required for file uploads."
+ *
+ * `File` became a Node global in version 20. This service runs on older, so
+ * `toFile` — the SDK's OWN supported way to send a Buffer, which is why it was
+ * used — builds a `File` that does not exist there. It typechecks. It passes
+ * every test that does not make a real upload. It fails on the first paid call.
+ *
+ * MY OWN DISTINCTION, APPLIED TO A THIRD THING I HAD NOT LISTED. „The flag is
+ * set" and „transcription works" are different facts and I said so at length.
+ * „The key is present" and „the runtime can send a file" are also different
+ * facts, and I did not think to separate them — so the one attempt I asked for
+ * proved something I was not even asking about, which is the best argument
+ * there is for asking for it.
+ *
+ * `node:buffer` has carried `File` since 18.13, so the class is there; only the
+ * global binding is missing. This is a no-op on any runtime that already has
+ * it, including the one the tests run on.
+ */
+export function ensureFileGlobal(): void {
+  const scope = globalThis as { File?: unknown };
+  if (typeof scope.File === 'undefined') {
+    scope.File = NodeFile;
+  }
+}
+
 export function transcriptionIsOn(): boolean {
   return process.env.SPEECH_TO_TEXT_ENABLED?.trim() === 'true';
 }
@@ -192,6 +230,10 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
   }
 
   try {
+    // Before the upload and not at import time: a module that mutates a global
+    // the moment it is required is a module that changes what every other test
+    // in the process sees.
+    ensureFileGlobal();
     const file = await toFile(input.audio, `speech.${EXTENSION[type] ?? 'mp4'}`, { type });
     const result = await client.audio.transcriptions.create({
       file,

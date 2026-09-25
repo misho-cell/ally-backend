@@ -5177,15 +5177,77 @@ function notePendingItems(runId: string | undefined, items: readonly PendingItem
  * would count six goals it was about to list a moment later. Delivery happens
  * once, after everything, and knows the whole run.
  */
-const runInboxNamed = new Map<string, Set<string>>();
+const runInboxNamed = new Map<string, InboxClaim[]>();
 /** The held rows themselves, so delivery can subtract by id rather than by tally. */
 const runHeldUpdates = new Map<string, readonly HeldUpdate[]>();
 
-function noteInboxNamed(runId: string | undefined, keys: readonly (string | null)[]): void {
+/**
+ * ⚠️ AND „THE TOOL RETURNED IT" IS NOT „THE REPLY SAID IT" — the tester, an
+ * hour after the rule shipped, on the founder's own account.
+ *
+ * Thread 25215, 21:22 UTC. Six goals were waiting on him, all six still
+ * flagged, all six holding a card — I read every one of them from the base
+ * before believing it. `check_my_inbox` returned all six. THE REPLY NAMED
+ * FIVE. And the card, struck clean of all six by the rule I had shipped forty
+ * minutes earlier, named none. So 6964 — his message to Lika — was on no
+ * screen at all, having been on one at 19:33.
+ *
+ * I WROTE THE RISK DOWN IN THE SAME MESSAGE THAT ANNOUNCED THE FIX. „A goal
+ * named above but not held would have cancelled a DIFFERENT goal's card."
+ * I guarded the half where the two sets differ by ID and left the half where
+ * they differ because THE MODEL CHOSE TO SAY LESS — and the second is not an
+ * edge case, it is what a model does with a list of six.
+ *
+ * So a claim is no longer „the tool handed this over". It is „the tool handed
+ * this over AND the reply contains it", checked against the finished text at
+ * delivery. Failing to match costs a repeat, which is the founder's rule
+ * weakened for one item; matching wrongly costs somebody a question they never
+ * hear about. Those are not the same price and the check is built to fail the
+ * cheap way.
+ */
+interface InboxClaim {
+  readonly key: string;
+  /** The words the reply must contain for this to count as said out loud. */
+  readonly mustAppear: string | null;
+}
+
+function noteInboxNamed(runId: string | undefined, claims: readonly InboxClaim[]): void {
   if (!runId) return;
-  const named = runInboxNamed.get(runId) ?? new Set<string>();
-  for (const key of keys) if (key !== null) named.add(key);
-  runInboxNamed.set(runId, named);
+  runInboxNamed.set(runId, [...(runInboxNamed.get(runId) ?? []), ...claims]);
+}
+
+/**
+ * Letters and digits only, in any alphabet, lowercased. Punctuation, quotes
+ * and spacing are exactly what a model rearranges when it quotes something,
+ * and none of them change whether it quoted it.
+ */
+function bareWords(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/**
+ * How much of a title has to turn up before we believe it was read out.
+ *
+ * Long enough that „I need" cannot match six different goals, short enough
+ * that a model quoting a title and stopping early still counts. A title
+ * shorter than this must appear whole.
+ */
+const ENOUGH_OF_A_TITLE = 24;
+
+/** The claims whose words are actually in the finished reply. */
+export function claimsTheReplyMade(
+  claims: readonly InboxClaim[],
+  reply: string,
+): ReadonlySet<string> {
+  const said = bareWords(reply);
+  const made = new Set<string>();
+  for (const claim of claims) {
+    if (claim.mustAppear === null) continue;
+    const wanted = bareWords(claim.mustAppear);
+    if (wanted === '') continue;
+    if (said.includes(wanted.slice(0, ENOUGH_OF_A_TITLE))) made.add(claim.key);
+  }
+  return made;
 }
 
 function noteHeldUpdates(runId: string | undefined, rows: readonly HeldUpdate[] | null): void {
@@ -5281,10 +5343,13 @@ function morePendingAfterNaming(
  * The founder's „skip, don't repeat" is filtered here for exactly the same
  * reason, one row further on: `check_my_inbox` can be called after it too.
  */
-function takePendingItems(runId: string): PendingItemInput[] {
+function takePendingItems(runId: string, reply: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
   const held = runHeldUpdates.get(runId);
-  const named = runInboxNamed.get(runId) ?? new Set<string>();
+  // Only what the reply actually says. The tool handing something over is not
+  // the same fact as the model reading it out — thread 25215 cost one of the
+  // founder's six goals to that difference.
+  const named = claimsTheReplyMade(runInboxNamed.get(runId) ?? [], reply);
   runPendingItems.delete(runId);
   runHeldUpdates.delete(runId);
   runInboxNamed.delete(runId);
@@ -7218,8 +7283,14 @@ async function executeToolCall(
        * whatever six rows happen to be held.
        */
       noteInboxNamed(runId, [
-        ...myGoals.map((g) => heldUpdateKey(GOAL_QUESTION_KIND, g.task_id)),
-        ...waiting.map((request: PendingRequest) => heldUpdateKey(INTRO_REQUEST_KIND, request.id)),
+        ...myGoals.map((g) => ({
+          key: String(heldUpdateKey(GOAL_QUESTION_KIND, g.task_id)),
+          mustAppear: g.title,
+        })),
+        ...waiting.map((request: PendingRequest) => ({
+          key: String(heldUpdateKey(INTRO_REQUEST_KIND, request.id)),
+          mustAppear: request.requester_name,
+        })),
       ]);
       return {
         // Named for what each one IS to the person, not for its table.
@@ -7252,6 +7323,21 @@ async function executeToolCall(
           waiting_since: g.waiting_since,
         })),
         replies_to_what_i_asked: answered,
+        /**
+         * ⚠️ NAME EVERY ONE. Thread 25215: six goals came back from here and
+         * five reached the screen. Nothing refused the sixth and nothing was
+         * broken — a list of six simply invites a summary, and a summary of
+         * things waiting on somebody is a list with one of them missing.
+         *
+         * The server strikes an item off the „also waiting" card only when it
+         * can find it in the finished reply, so dropping one now costs nothing
+         * but a repeat. This is here so it costs nothing at all.
+         */
+        how_to_report:
+          'Name EVERY item above, each one, by its own goal or person. Do not summarise them, ' +
+          'do not say "and others", do not pick the important ones — the user cannot act on a ' +
+          'question they are not told about. If there are many, a short line each is right; ' +
+          'fewer words per item, never fewer items.',
         // „Nothing is waiting" must be sayable. An empty object read as „the
         // tool had nothing to add" is exactly how five questions stayed
         // invisible in thread 24751.
@@ -10530,7 +10616,7 @@ export async function processChat(
   );
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
-  const pendingItems = takePendingItems(runId);
+  const pendingItems = takePendingItems(runId, reply);
   // Read before clearRunState drops it — the share button needs the text the
   // tool wrote, not whatever the model quoted (Task 39).
   //
