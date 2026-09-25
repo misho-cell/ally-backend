@@ -80,8 +80,40 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
 // (protocol task 42); the raw label always rides in saved_as. Empty strings
 // count as missing (task 43). UserTags is LEFT-joined so a tagless
 // (alias-only) contact isn't dropped.
+/**
+ * ⚠️ A REGISTERED NAME THAT IS AN EMAIL ADDRESS — the tester, 25 September.
+ *
+ * `search_contacts` with tag „lawyer" on 501 returned a person whose name read
+ *
+ *     „[email hidden] L"
+ *
+ * — a bracket where a person should be. `saved_as` carried their real name and
+ * the app chat showed it correctly the same morning.
+ *
+ * NOT A TAG AND NOT THE SCRUBBER. Both the tester and I guessed wrong before
+ * looking: the tester thought the connector assembles the name from tags, I
+ * thought another contributor had saved an email as one. The truth is in
+ * `"User".name` — account 551, employer Arci, job Lawyer, whose REGISTERED
+ * NAME is their email address followed by „ L". One member in the whole base
+ * has an „@" in their name. The scrubber then hides the address, correctly,
+ * and what is left is the bracket.
+ *
+ * The rule above is right and stays: a registered name outranks a phonebook
+ * label, because junk labels were being read as people. AN EMAIL IS NOT A NAME
+ * EITHER, so it does not get to outrank anything — it falls through to the
+ * label, which is the real name here and is what the app already shows.
+ *
+ * FIXED IN THE READER, NOT IN THE ROW. Editing a real person's name is a write
+ * to their record and somebody else's to authorise; this needs nobody, works
+ * for the next one, and leaves `saved_as` exactly as it was.
+ */
+export const DISPLAY_NAME = `COALESCE(
+          CASE WHEN TRIM(MAX(u.name)) LIKE '%@%' THEN NULL
+               ELSE NULLIF(TRIM(MAX(u.name)), '') END,
+          MAX(ua.alias))`;
+
 const AGG_SELECT = `h.phone,
-        COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
+        ${DISPLAY_NAME} AS name,
         MAX(ua.alias)                        AS saved_as,
         array_agg(DISTINCT ut.tag)           AS all_tags,
         MAX(NULLIF(TRIM(u.employer), ''))    AS employer,

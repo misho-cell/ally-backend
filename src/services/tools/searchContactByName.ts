@@ -23,6 +23,7 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { collapseMergedPhones } from './mergedIdentities';
 import { searchDidNotFinish } from './searchDidNotFinish';
+import { DISPLAY_NAME } from './searchByTag';
 
 const FUZZY_THRESHOLD = 0.45;
 // The first letters a fuzzy neighbour must share with the term (see the
@@ -139,7 +140,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               MAX(h.word_hits)                     AS word_hits,
               (${nameHits})                        AS name_hits,
               MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
-              COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
+              ${DISPLAY_NAME} AS name,
               MAX(ua.alias)                        AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
@@ -208,7 +209,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
                AND a.phone != ALL($${fuzzyBlockParamIdx})
            )
            SELECT h.phone,
-                  COALESCE(NULLIF(TRIM(MAX(u.name)), ''), MAX(ua.alias)) AS name,
+                  ${DISPLAY_NAME} AS name,
                   MAX(ua.alias)                        AS saved_as,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
