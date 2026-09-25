@@ -184,3 +184,82 @@ describe('and the handler actually asks', () => {
     );
   });
 });
+
+/**
+ * ⚠️ ROW 251, 25 September — THE REFUSAL SENT THE MODEL TO REDRAW THE PLAN
+ * WHEN THE OWNER HAD ALREADY SAID WHAT TO DO.
+ *
+ * Thread 24534. Plan v1 said „Who I will ask: nobody". The owner then typed:
+ *
+ *     „Ask Netai Test 14 if they know a good accountant."
+ *
+ * `approve_task_plan` was called, this wall refused it — correctly, that
+ * sentence is not a yes to the plan — and the model did the only thing the
+ * refusal offered: plan v2, and „confirm before I send". The owner was asked
+ * to approve what they had just instructed. 2 of 2 on the tester's run.
+ *
+ * The door beside it was already open: `ownerWordsGrantPermission` has
+ * implemented D316 since 23 September. The founder confirmed the rule again on
+ * 25 September in these words — „ask X about Y" is consent to write to X.
+ *
+ * THE VERDICT IS UNCHANGED. Still refused, still `yes_was_about_something_else`,
+ * the plan still unapproved. Only the sentence changes, and only when the
+ * owner's own words already grant permission under the existing predicate.
+ */
+describe('a refusal that names the door the owner already opened', () => {
+  const instruction = 'Ask Netai Test 14 if they know a good accountant.';
+  const screenWithInstruction = {
+    lastOwnerMessage: instruction,
+    newestOfferedChoices: ['დამტკიცებულია', 'შეცვალე'],
+    ownerSaidSinceCard: [instruction],
+    labelsDealtAfterTheCard: [],
+  };
+
+  it('still refuses, and for the same reason', () => {
+    const out = planApprovalRefusal(true, screenWithInstruction);
+
+    expect(out?.approved).toBe(false);
+    expect(out?.reason).toBe('yes_was_about_something_else');
+  });
+
+  it('names grant_task_permission and forbids redrawing the plan', () => {
+    const out = planApprovalRefusal(true, screenWithInstruction);
+
+    expect(out?.error).toContain('grant_task_permission');
+    expect(out?.error).toContain('DO NOT REDRAW THE PLAN');
+  });
+
+  /**
+   * ⚠️ THE CASE THAT CAUGHT MY FIRST VERSION, AND IT IS TICKET 19 G2.
+   *
+   * I first asked `ownerWordsGrantPermission`, which also answers true for a
+   * BARE YES. So a „კი, გააგზავნე" belonging to a DRAFT card's button — the tap
+   * that was once recorded as approving a three-person plan, after which day
+   * one wrote to two people the founder had not chosen — would have been met
+   * with „call grant_task_permission". The wall would have refused and then
+   * explained the way around itself.
+   *
+   * D316 is about an INSTRUCTION. A yes that belonged to somebody else's
+   * buttons is not one, and still goes back to the plan.
+   */
+  it('keeps the original wording for a yes that belonged to another card', () => {
+    const out = planApprovalRefusal(true, {
+      lastOwnerMessage: 'კი, გააგზავნე',
+      newestOfferedChoices: ['კი, გააგზავნე', 'შეცვალე ტექსტი'],
+      ownerSaidSinceCard: ['კი, გააგზავნე'],
+      labelsDealtAfterTheCard: ['კი, გააგზავნე'],
+    });
+
+    expect(out?.reason).toBe('yes_was_about_something_else');
+    expect(out?.error).not.toContain('grant_task_permission');
+    expect(out?.error).toContain('Show the plan again');
+  });
+
+  /** Layer 1 is untouched: no confirmation is still no confirmation. */
+  it('does not reach the instruction branch without confirmed', () => {
+    const out = planApprovalRefusal(false, screenWithInstruction);
+
+    expect(out?.reason).toBe('not_confirmed');
+    expect(out?.error).not.toContain('grant_task_permission');
+  });
+});

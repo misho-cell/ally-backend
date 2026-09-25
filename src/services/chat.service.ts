@@ -4726,13 +4726,67 @@ export function planApprovalRefusal(
       screen.labelsDealtAfterTheCard,
     )
   ) {
+    /**
+     * ⚠️ 25 SEPTEMBER, ROW 251 — THE REFUSAL SENT THE MODEL TO REDRAW THE PLAN
+     * WHEN THE OWNER HAD ALREADY SAID WHAT TO DO.
+     *
+     * Thread 24534. Plan v1 said „Who I will ask: nobody". The owner then
+     * typed, in their own words:
+     *
+     *     „Ask Netai Test 14 if they know a good accountant."
+     *
+     * The model called `approve_task_plan`, this wall refused it — correctly,
+     * because that sentence is not a yes to the plan — and the model did the
+     * only thing the refusal suggested: it drew plan v2 and asked again. The
+     * owner was asked to approve the thing they had just instructed.
+     *
+     * THE WALL IS RIGHT AND THE DOOR BESIDE IT WAS ALREADY OPEN.
+     * `ownerWordsGrantPermission` has implemented D316 since 23 September: a
+     * one-line instruction naming one person and one action is the owner's
+     * yes. It belongs to `grant_task_permission`, not to this tool, and
+     * nothing here said so — so the model never knocked on it.
+     *
+     * The founder's decision, 25 September, asked in these words and answered
+     * „yes, that is consent": the owner writing „ask X about Y" is consent to
+     * write to X. This does not grant it — it stops sending the model the
+     * other way, and names the tool that already implements the rule.
+     *
+     * NOT A WIDENING. The verdict is unchanged, the plan is still unapproved,
+     * and nothing new may be written to anybody: `grant_task_permission` keeps
+     * its own wall, which asks the same predicate again.
+     */
+    /**
+     * ⚠️ AN INSTRUCTION, NOT `ownerWordsGrantPermission` — AND THE TEST IS WHY.
+     *
+     * The first version asked that predicate, which also answers true for a
+     * BARE YES. So on a „კი, გააგზავნე" that belonged to a DRAFT card's button
+     * — ticket 19 G2, where exactly that tap was recorded as approving a
+     * three-person plan and day one wrote to two people the founder had not
+     * chosen — this refusal would have pointed the model at the other door and
+     * told it to grant permission anyway. The wall would have refused and then
+     * explained the way around itself.
+     *
+     * D316 is about an INSTRUCTION: one person, one action, in the owner's own
+     * words. That is the only thing this branch may recognise. A yes that
+     * belonged to somebody else's buttons still gets the original sentence and
+     * still goes back to the plan.
+     */
+    const ownersWordsAlreadyAllowIt = [
+      ...screen.ownerSaidSinceCard,
+      screen.lastOwnerMessage ?? '',
+    ].some((line) => looksLikeContactInstruction(line));
     return {
       approved: false,
       reason: 'yes_was_about_something_else',
-      error:
-        "Not recorded: the user's last yes was about something else — the newest buttons " +
-        "on their screen were not a plan's. Show the plan again with its own approve " +
-        'button and call this only after they answer THAT.',
+      error: ownersWordsAlreadyAllowIt
+        ? "Not recorded, and DO NOT REDRAW THE PLAN. The user's own words are not a yes to " +
+          'the plan — but they are an instruction, and an instruction naming one person and ' +
+          'one action is their permission for exactly that (D316). Call ' +
+          'grant_task_permission, then do the one thing they asked. Proposing a new plan ' +
+          'here asks them to approve what they have just told you to do.'
+        : "Not recorded: the user's last yes was about something else — the newest buttons " +
+          "on their screen were not a plan's. Show the plan again with its own approve " +
+          'button and call this only after they answer THAT.',
     };
   }
   return null;
