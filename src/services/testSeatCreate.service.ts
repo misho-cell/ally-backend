@@ -585,3 +585,48 @@ export async function createdTestSeats(): Promise<{ userId: string; name: string
 export function notATestSeat(userIdColumn: string): string {
   return `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ${userIdColumn})`;
 }
+
+/**
+ * ⚠️ RENAME A FICTIONAL SEAT — §54, and it exists because a refusal made two
+ * rows nobody asked for.
+ *
+ * 25 September: a call the route REFUSED had already written the account, its
+ * phone and its `test_seats` row, twice, six seconds apart — 172531 and
+ * 172532, both „Netai Test 42". The creating bug is fixed (§53). These two
+ * are what it left behind, and a seat list with the same name on several rows
+ * is a trap for whoever reads it next.
+ *
+ * Misho chose renaming over deleting, and he was right: a delete here has NO
+ * UNDO — `createTestSeat` would make a new id on a new slot and the original
+ * could not come back — while a name can be set again in a second.
+ *
+ * IT CAN ONLY TOUCH A SEAT. The caller passes an id, and the ROUTE checks it
+ * against `test_seats` before calling this; the write itself is scoped to
+ * `test_seats` and `"User"` rows that have a `test_seats` row, so a real
+ * person's name cannot be changed through here even if the guard above were
+ * wrong. Two locks, because this is somebody's name.
+ */
+export async function renameTestSeat(userId: string, name: string): Promise<string | null> {
+  const seatName = name.trim().slice(0, MAX_NAME_CHARS);
+  if (seatName === '') throw new SeatCreationRefused('a seat needs a name');
+
+  const updated = await query<{ user_id: number }>(
+    `UPDATE test_seats SET name = $2
+      WHERE user_id = $1::int
+      RETURNING user_id`,
+    [userId, seatName],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  if (updated.rowCount === 0) return null;
+
+  // The account row too, or the list and the product would disagree. Scoped by
+  // the seat table a second time on purpose.
+  await query(
+    `UPDATE "User" SET name = $2
+      WHERE id = $1::int
+        AND EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = "User".id)`,
+    [userId, seatName],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  return seatName;
+}

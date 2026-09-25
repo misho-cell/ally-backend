@@ -9,6 +9,7 @@ import {
   inviterSeatPhone,
   inviterSeatReferralCode,
   isFictionalSlot,
+  renameTestSeat,
 } from '../../services/testSeatCreate.service';
 import {
   fictionalTestAccountIds,
@@ -2281,6 +2282,76 @@ adminRouter.post('/test-seat/token', async (req: Request, res: Response) => {
  * THE UNDO IS THE SAME CALL WITH THE NUMBER NEGATED, which is why the amount
  * is signed. A reversal is a row beside the grant rather than a deletion.
  */
+/**
+ * §54 — RENAME A FICTIONAL SEAT. Registered before it was run, as D44 requires.
+ *
+ * It exists because a refusal made rows nobody asked for: on 25 September a
+ * call the route REFUSED had already written the account, its phone and its
+ * `test_seats` row, twice — 172531 and 172532, both „Netai Test 42". The
+ * creating bug is fixed (§53); these are what it left.
+ *
+ * Misho chose renaming over deleting. A delete here has NO UNDO — a new seat
+ * would take a new id on a new slot — and a name can be set again in a second.
+ *
+ * THE SAME GUARD AS THE TOKENS ROUTE, and for the same reason: only an id that
+ * `test_seats` knows may be touched, so a real person is refused by name
+ * before anything is written. `renameTestSeat` then scopes its own writes to
+ * seats a second time.
+ */
+adminRouter.post(
+  '/test-accounts/:id/name',
+  param('id').isString().trim().notEmpty(),
+  body('name').isString().trim().isLength({ min: 1, max: 60 }),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'name (1-60) is required, and note must say why (3-500 chars).',
+      });
+      return;
+    }
+    const target = String(req.params.id).trim();
+    const admin = (req as AuthenticatedRequest).user.userId;
+    if (!(await isOperableTestSeat(target, isFictionalTestAccount))) {
+      // eslint-disable-next-line no-console
+      console.warn(`[test-rename] admin ${admin} asked for ${target} — REFUSED, not fictional`);
+      res.status(403).json({
+        success: false,
+        error: new NotATestAccountError(target).message,
+        available: fictionalTestAccountIds(),
+      });
+      return;
+    }
+    const { name, note } = req.body as { name: string; note: string };
+    try {
+      const was = await query<{ name: string }>(
+        `SELECT name FROM test_seats WHERE user_id = $1::int`,
+        [target],
+      );
+      const renamed = await renameTestSeat(target, name);
+      if (renamed === null) {
+        res.status(404).json({ success: false, error: 'No such seat.' });
+        return;
+      }
+      // The old name is printed so the undo is in the log beside the change.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[test-rename] admin ${admin} renamed seat ${target}: ` +
+          `"${was.rows[0]?.name ?? '?'}" -> "${renamed}" — ${String(note).trim()}`,
+      );
+      res.status(200).json({
+        success: true,
+        data: { user_id: target, was: was.rows[0]?.name ?? null, name: renamed },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[test-rename]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 adminRouter.post(
   '/test-accounts/:id/tokens',
   param('id').isString().trim().notEmpty(),

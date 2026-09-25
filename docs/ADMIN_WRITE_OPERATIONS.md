@@ -3897,3 +3897,55 @@ is exactly the reasoning that would make the next deletion easy.
 * **THE CHEAPER OPTION, AND MY RECOMMENDATION** — leave them and rename one, so
   two rows with one name stop being a trap for whoever reads the list next.
   That is still a write and still needs his word.
+
+---
+
+## 54 · RENAME A FICTIONAL SEAT
+
+**Registered before it was run, as D44 requires. Nothing has been renamed yet —
+the route exists, the data is untouched.**
+
+### WHY A RENAME AND NOT A DELETE
+
+§53 left rows nobody asked for: a call the route REFUSED had already written the
+account, its phone and its `test_seats` row. Misho's word on 25 September was
+**„ერთს სახელი გადავარქვა"** — rename, not delete.
+
+A delete here has **no undo**: `createTestSeat` would make a NEW id on a NEW
+slot, and the original cannot come back. A name can be set again in a second,
+and the old one is printed in the log line beside the change.
+
+### THE ROUTE
+
+* **ROUTE** — `POST /admin/test-accounts/:id/name`
+* **METHOD** — `POST`
+* **BODY** — `{ "name": "<1-60 chars>", "note": "<3-500 chars, why>" }`
+* **REPLY** — `{ success: true, data: { user_id, was, name } }`. `was` is the
+  name it had, returned to the caller so the undo does not depend on the log.
+* **UNDO** — the same call with `was` as `name`. Nothing else is touched: no
+  phone, no alias, no token row, no thread.
+
+### WHAT IT CANNOT REACH
+
+`isOperableTestSeat` — the same guard as the tokens route — refuses any id that
+`test_seats` does not know, before a single write. `renameTestSeat` then scopes
+its own two writes a second time: `test_seats` by `user_id`, and `"User"` by
+`EXISTS (SELECT 1 FROM test_seats …)`. A real person's name is not reachable
+through this route, and two independent locks say so rather than one.
+
+### ⚠️ MY COUNT WAS WRONG WHEN MISHO DECIDED
+
+I told him there were **two** rows named „Netai Test 42". Reading `test_seats`
+while building the route, there are **three**:
+
+| id | created | what it is |
+|---|---|---|
+| 172531 | 10:27:18 | stray — the refusal made it |
+| 172532 | 10:27:24 | stray — the refusal made it |
+| 172563 | 11:13:41 | **the working seat**, built later and actually used |
+
+„Rename one" was decided against two rows, and one of the three is the seat the
+tester was using. **Which rows to rename is going back to him** before the route
+is pointed at anything — a decision taken on my bad information is not a
+decision, and the whole reason this register exists is that the write waits for
+the word.
