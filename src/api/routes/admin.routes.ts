@@ -129,7 +129,7 @@ import {
   listIdentityCandidates,
   approveIdentityCandidate,
   rejectIdentityCandidate,
-  unmergeCandidate,
+  undoCandidateDecision,
   unmergePerson,
   getIdentitySummary,
   getIdentityTotals,
@@ -5045,21 +5045,38 @@ adminRouter.post('/identity/candidates/:id/reject', async (req: Request, res: Re
 });
 
 /**
- * ROW 236 — UNDO ONE APPROVAL, NAMED BY THE CANDIDATE THE PAGE APPROVED.
+ * ROW 236 — UNDO THE DECISION ON ONE CANDIDATE, WHICHEVER DECISION IT WAS.
  *
  * The Identity tab has a candidate id and nothing else; asking it for a person
- * id was asking for something it never saw. This removes only the phones that
- * approval inserted and puts the pair back in the queue.
+ * id was asking for something it never saw. For an APPROVAL this removes only
+ * the phones that approval inserted and puts the pair back in the queue.
+ *
+ * ⚠️ 25 SEPTEMBER — AND FOR A REJECTION IT DID NOTHING AT ALL. The founder
+ * pressed „უარყოფა" on candidate #232, the bar offered „უკან წაღება", and
+ * pressing it answered „No approved candidate with that id." One undo button,
+ * two decisions, and only one of them had a server behind it. The page is not
+ * asked to pick a route: which decision is being taken back is a fact the
+ * server holds, and `undoCandidateDecision` reads it.
  *
  * It is NOT the same as `/identity/unmerge`, which takes a whole person apart.
  * That one is right when the approval created the person and wrong when it
  * extended one — see `unmergeCandidate`.
  *
- * 409 rather than 400 when the approval predates the record of what it merged:
- * the request is well formed and the server cannot be exact, which is a
- * different fact from „you sent the wrong thing", and the body says which
- * route to use instead.
+ * THE STATUS CODE COMES FROM A WORD, NOT FROM THE SENTENCE. It used to be
+ * `outcome.error?.startsWith('No approved candidate')` — a route reading prose,
+ * which turns into a wrong status the day somebody improves the wording and
+ * says nothing while it does.
+ *
+ * 409 when the approval predates the record of what it merged: the request is
+ * well formed and the server cannot be exact, which is a different fact from
+ * „you sent the wrong thing", and the body names the route to use instead.
  */
+const UNMERGE_STATUS: Record<string, number> = {
+  not_found: 404,
+  nothing_to_undo: 409,
+  cannot_be_exact: 409,
+};
+
 adminRouter.post('/identity/candidates/:id/unmerge', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -5068,13 +5085,14 @@ adminRouter.post('/identity/candidates/:id/unmerge', async (req: Request, res: R
       return;
     }
     const actor = `admin:${(req as AuthenticatedRequest).user?.userId ?? 'unknown'}`;
-    const outcome = await unmergeCandidate(id, actor);
+    const outcome = await undoCandidateDecision(id, actor);
     if (outcome.ok) {
       res.status(200).json({ success: true, data: outcome });
       return;
     }
-    const notFound = outcome.error?.startsWith('No approved candidate') === true;
-    res.status(notFound ? 404 : 409).json({ success: false, error: outcome.error });
+    res
+      .status(UNMERGE_STATUS[outcome.reason ?? ''] ?? 409)
+      .json({ success: false, error: outcome.error });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin identity candidate unmerge]', error);

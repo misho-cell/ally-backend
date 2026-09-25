@@ -842,6 +842,16 @@ export interface DecisionOutcome {
   ok: boolean;
   person_id?: string;
   error?: string;
+  /**
+   * WHY IT FAILED, AS A WORD AND NOT AS A SENTENCE.
+   *
+   * The undo route used to choose its status code with
+   * `outcome.error?.startsWith('No approved candidate')` — a route reading
+   * prose, which breaks silently the day somebody improves the wording. It is
+   * the same shape as a stale pointer: nothing complains, the reader is
+   * calmly taken somewhere wrong.
+   */
+  reason?: 'not_found' | 'nothing_to_undo' | 'cannot_be_exact';
 }
 
 /**
@@ -861,7 +871,7 @@ export async function approveIdentityCandidate(
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   const row = candidate.rows[0];
-  if (!row) return { ok: false, error: 'No pending candidate with that id.' };
+  if (!row) return { ok: false, reason: 'not_found', error: 'No pending candidate with that id.' };
 
   const prior = await query<{ phone: string; person_id: string }>(
     `SELECT phone, person_id FROM person_identities WHERE phone = ANY($1)`,
@@ -945,10 +955,11 @@ export async function unmergeCandidate(
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   const row = found.rows[0];
-  if (!row) return { ok: false, error: 'No approved candidate with that id.' };
+  if (!row) return { ok: false, reason: 'not_found', error: 'No approved candidate with that id.' };
   if (!row.person_id || row.merged_phones === null) {
     return {
       ok: false,
+      reason: 'cannot_be_exact',
       error:
         'This approval predates the record of which phones it added, and it extended a person ' +
         'that already existed — so an exact undo is not possible. Use POST /admin/identity/unmerge ' +
@@ -984,6 +995,73 @@ export async function unmergeCandidate(
   return { ok: true, person_id: row.person_id };
 }
 
+/**
+ * ⚠️ ROW 236, SECOND HALF — THE UNDO BUTTON APPEARS AFTER A REJECT TOO, AND
+ * THERE WAS NOTHING BEHIND IT.
+ *
+ * The founder, on /admin/identity at 12:53 on 25 September. He pressed
+ * „უარყოფა" on candidate #232, the green bar offered „უკან წაღება", he pressed
+ * it, and the red bar said **„No approved candidate with that id."** #232 is
+ * still rejected. The undo after a REJECT was calling the undo for an
+ * APPROVAL, and the approval path only ever looked at `status = 'approved'`.
+ *
+ * The screen has ONE undo button, so the server needs one undo. Which decision
+ * is being taken back is a fact the server already holds; making the page
+ * choose between two routes would be asking it to know something it has no
+ * reason to know, which is exactly the mistake the first half of row 236 was
+ * (`person_id required`, with nowhere to type one).
+ *
+ * A REJECTION CREATED NOTHING, so taking it back is one column. No phone
+ * moves, no person is touched, and nothing goes in `person_merge_log` —
+ * that log is for merges, and writing „unmerge" for a rejection would put a
+ * row in it describing something that never happened.
+ */
+export async function undoCandidateDecision(
+  candidateId: number,
+  actor: string,
+): Promise<DecisionOutcome> {
+  const found = await query<{ status: string }>(
+    `SELECT status FROM identity_candidates WHERE id = $1 LIMIT 1`,
+    [candidateId],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  const status = found.rows[0]?.status;
+
+  if (status === undefined) {
+    return { ok: false, reason: 'not_found', error: 'No candidate with that id.' };
+  }
+  if (status === 'approved') return unmergeCandidate(candidateId, actor);
+  if (status !== 'rejected') {
+    // „Nothing to undo" and „no such candidate" are different facts, and the
+    // 404 that used to cover both is how a working queue looks like a missing
+    // row. The pair is in the queue; that IS the undone state.
+    return {
+      ok: false,
+      reason: 'nothing_to_undo',
+      error: `Candidate ${candidateId} is ${status} — there is no decision on it to take back.`,
+    };
+  }
+
+  const reopened = await query(
+    `UPDATE identity_candidates
+        SET status = 'pending', decided_by = NULL, decided_at = NULL
+      WHERE id = $1 AND status = 'rejected'`,
+    [candidateId],
+    IDENTITY_QUERY_TIMEOUT_MS,
+  );
+  if ((reopened.rowCount ?? 0) === 0) {
+    // Somebody decided it between the read and the write. Never reported as
+    // done: „I could not" and „I did" are the two this codebase keeps having
+    // to keep apart.
+    return {
+      ok: false,
+      reason: 'nothing_to_undo',
+      error: `Candidate ${candidateId} was decided again while this was in flight — read it and try once more.`,
+    };
+  }
+  return { ok: true };
+}
+
 export async function rejectIdentityCandidate(
   candidateId: number,
   actor: string,
@@ -995,7 +1073,7 @@ export async function rejectIdentityCandidate(
     IDENTITY_QUERY_TIMEOUT_MS,
   );
   if ((updated.rowCount ?? 0) === 0)
-    return { ok: false, error: 'No pending candidate with that id.' };
+    return { ok: false, reason: 'not_found', error: 'No pending candidate with that id.' };
   return { ok: true };
 }
 

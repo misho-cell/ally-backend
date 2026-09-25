@@ -6,7 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { unmergeCandidate, unmergePerson } from '../identity.service';
+import { unmergeCandidate, undoCandidateDecision, unmergePerson } from '../identity.service';
 
 /**
  * ROW 236 — „merge two contacts, undo fails, and the page is hard to find".
@@ -260,5 +260,144 @@ describe('the route exists now', () => {
     const at = routes.indexOf("adminRouter.post('/identity/candidates/:id/unmerge'");
 
     expect(routes.slice(at, at + 900)).toContain('409');
+  });
+});
+
+/**
+ * ⚠️ 25 SEPTEMBER — THE SAME BUTTON, THE OTHER DECISION, AND NOTHING BEHIND IT.
+ *
+ * The founder on /admin/identity at 12:53. He pressed „უარყოფა" on candidate
+ * #232, the green bar offered „უკან წაღება", he pressed it, and the red bar
+ * said **„No approved candidate with that id."** #232 is still rejected.
+ *
+ * The screen has ONE undo. The undo after a REJECT was calling the undo for an
+ * APPROVAL, and that path only ever looked at `status = 'approved'` — so the
+ * button was live, the request was well formed, and the answer was a 404 about
+ * a decision nobody had made. Row 236's first half was the same shape: the
+ * page asked for something, and the server answered about something else.
+ *
+ * Which decision is being taken back is a fact the SERVER holds. Making the
+ * page choose between two routes would be asking it to know what it has no
+ * way of knowing.
+ */
+describe('undo after a reject, which had no server behind it', () => {
+  function statusIs(status: string): void {
+    dbQuery.mockResolvedValueOnce({ rows: [{ status }], rowCount: 1 });
+  }
+
+  it('puts a rejected candidate back in the queue', async () => {
+    statusIs('rejected');
+    dbQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+
+    const outcome = await undoCandidateDecision(232, ACTOR);
+
+    expect(outcome.ok).toBe(true);
+    const update = dbQuery.mock.calls.find((c) =>
+      String(c[0]).includes('UPDATE identity_candidates'),
+    );
+    expect(String(update?.[0])).toContain("SET status = 'pending'");
+    expect(String(update?.[0])).toContain("AND status = 'rejected'");
+    expect(update?.[1]).toEqual([232]);
+  });
+
+  /**
+   * A rejection created nothing, so taking it back is one column. A row in
+   * `person_merge_log` saying „unmerge" would describe something that never
+   * happened, and that log is read to answer what was merged.
+   */
+  it('touches no phone and writes nothing to the merge log', async () => {
+    statusIs('rejected');
+    dbQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+
+    await undoCandidateDecision(232, ACTOR);
+
+    expect(sqlCalls().some((s) => s.includes('DELETE FROM person_identities'))).toBe(false);
+    expect(sqlCalls().some((s) => s.includes('person_merge_log'))).toBe(false);
+  });
+
+  /** The approval path is unchanged and still reached through the same door. */
+  it('still unmerges when the decision was an approval', async () => {
+    statusIs('approved');
+    dbQuery.mockResolvedValueOnce({ rows: [approved()], rowCount: 1 });
+
+    const outcome = await undoCandidateDecision(7, ACTOR);
+
+    expect(outcome.ok).toBe(true);
+    expect(sqlCalls().some((s) => s.includes('DELETE FROM person_identities'))).toBe(true);
+  });
+
+  /**
+   * „Nothing to undo" and „no such candidate" are different facts, and one 404
+   * over both is how a working queue looks like a missing row.
+   */
+  it('separates a pending candidate from one that does not exist', async () => {
+    statusIs('pending');
+    const nothing = await undoCandidateDecision(232, ACTOR);
+
+    expect(nothing).toMatchObject({ ok: false, reason: 'nothing_to_undo' });
+    expect(nothing.error).toContain('232');
+
+    jest.clearAllMocks();
+    dbQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+    const missing = await undoCandidateDecision(999999, ACTOR);
+
+    expect(missing).toMatchObject({ ok: false, reason: 'not_found' });
+  });
+
+  /**
+   * Decided again between the read and the write. Never reported as done —
+   * „I could not" and „I did" are the two this codebase keeps having to keep
+   * apart, and an undo that claims success on zero rows is the worst version
+   * of it, because the screen then shows the queue as it was not.
+   */
+  it('does not report success when the write changed nothing', async () => {
+    statusIs('rejected');
+    dbQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const outcome = await undoCandidateDecision(232, ACTOR);
+
+    expect(outcome).toMatchObject({ ok: false, reason: 'nothing_to_undo' });
+  });
+});
+
+/**
+ * THE ROUTE PICKS ITS STATUS CODE FROM A WORD, NOT FROM THE SENTENCE.
+ *
+ * It used to be `outcome.error?.startsWith('No approved candidate')`. A route
+ * reading prose is a stale pointer waiting to happen: improve the wording and
+ * the status silently becomes the wrong one, with nothing to notice it.
+ */
+describe('the status code is not read out of the error text', () => {
+  const routes = readFileSync(
+    join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+    'utf8',
+  );
+
+  it('maps the reason word to the code', () => {
+    expect(routes).toContain('const UNMERGE_STATUS');
+    expect(routes).toContain('not_found: 404');
+    expect(routes).toContain('nothing_to_undo: 409');
+    expect(routes).toContain('cannot_be_exact: 409');
+  });
+
+  /**
+   * Only the CODE. The comment above the route quotes the old line on purpose
+   * — the mistake is the reason the map exists, and deleting the evidence with
+   * the bug is how a fix stops teaching anything.
+   */
+  it('no longer matches on the sentence', () => {
+    const code = routes
+      .split('\n')
+      .filter((line) => {
+        const t = line.trim();
+        return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
+      })
+      .join('\n');
+
+    expect(code).not.toContain("startsWith('No approved candidate')");
+  });
+
+  it('sends the page through the one undo that knows both decisions', () => {
+    expect(routes).toContain('await undoCandidateDecision(id, actor)');
   });
 });
