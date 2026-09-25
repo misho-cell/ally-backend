@@ -1,4 +1,4 @@
-import { query } from '../db/postgres/client';
+import { query, withTransaction } from '../db/postgres/client';
 import { getPrice } from './costLedger.service';
 import { budgetWindow } from './budgetWindow';
 
@@ -161,12 +161,65 @@ export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
 }
 
 /**
- * Debit the actual cost of a finished run: sum of the run's ledger events,
- * plus the infra overhead percentage, converted to tokens (ceil — partial
- * cents round up so the budget is never undercharged).
+ * What a settled run did to the wallet.
+ *
+ * `charged` is what the person paid and `absorbed` is what the house paid
+ * instead of letting the balance go below zero. They are separate numbers
+ * because they are separate facts, and a single „cost" would have to be one of
+ * them — which is the shape of every reporting fault in this file's history.
  */
-export async function debitRun(userId: string, runId: string): Promise<number> {
-  if (!(await isWalletEnabled())) return 0;
+export interface RunDebit {
+  readonly charged: number;
+  readonly absorbed: number;
+}
+
+const NOTHING_DEBITED: RunDebit = { charged: 0, absorbed: 0 };
+
+/**
+ * ⚠️ ROW 271 (B) — THE WALLET COULD GO BELOW ZERO, AND TWICE AT ONCE.
+ *
+ * Misho, 25 September: „so that it can NOT exceed the token count under any
+ * circumstance." What follows is that sentence made true.
+ *
+ * THE TWO LEAKS, BOTH MEASURED RATHER THAN REASONED ABOUT:
+ *
+ *   * A RUN'S COST IS NOT BOUNDED BY WHAT IS LEFT. `checkRunAllowance` asks
+ *     `balance > 0` when the run STARTS; this function charges the whole
+ *     actual cost when it ENDS. Seat 171873, 21 September: 15 left, one
+ *     question cost 31, balance -16.
+ *   * TWO RUNS COULD BOTH BE TOLD YES. Nothing was reserved in between, so two
+ *     messages a few seconds apart each saw the same positive balance and each
+ *     charged in full. Seat 171874, 25 September: 17 -> -6 -> -35. The
+ *     founder's D348 allows ONE crossing — „at zero the person's next message
+ *     is still accepted and answered once". Two at once nobody decided.
+ *
+ * SO THE CHARGE IS FLOORED AT THE BALANCE, UNDER A LOCK. The read of the
+ * balance and the write of the debit are one transaction over a locked "User"
+ * row, which is what makes the second leak impossible rather than unlikely: a
+ * SELECT followed by an INSERT would hand out the same tokens twice under
+ * exactly the load that makes somebody run out.
+ *
+ * ⚠️ AND THE COST DOES NOT VANISH WHEN THE CHARGE IS CAPPED. Somebody pays it,
+ * and from today that somebody is the house, so it is WRITTEN DOWN — in
+ * `absorbed`, beside the charge, not left to be inferred from two tables later.
+ * Measured over 30 days before building: 394 tokens in all, 26 of them for
+ * real people. `usage_events` is untouched either way; the business's own books
+ * still hold what the provider charged us.
+ *
+ * DELIBERATELY NOT A RESERVATION AND NOT A MID-RUN STOP. A reservation only
+ * moves the guess earlier — the true cost is known when the run ends and not
+ * before — and stopping a run mid-sentence would cut somebody's answer in half
+ * to save a fraction of a cent. The floor costs the house a measured twenty-six
+ * cents a month and changes nothing a person sees.
+ *
+ * D348 SURVIVES INTACT, and it is worth saying which part does the surviving:
+ * the grace is a rule about the NEXT message, granted by `takeGraceAnswer` when
+ * the allowance is refused. The floor does not refuse anything and does not
+ * touch that stamp. What changes is only the depth of the hole the crossing run
+ * leaves — zero instead of minus thirty-five.
+ */
+export async function debitRun(userId: string, runId: string): Promise<RunDebit> {
+  if (!(await isWalletEnabled())) return NOTHING_DEBITED;
 
   const [costResult, usdPerToken, overheadPct] = await Promise.all([
     query<{ total: string | null }>(
@@ -178,20 +231,66 @@ export async function debitRun(userId: string, runId: string): Promise<number> {
   ]);
 
   const costUsd = Number(costResult.rows[0]?.total ?? 0);
-  if (costUsd <= 0 || usdPerToken <= 0) return 0;
+  if (costUsd <= 0 || usdPerToken <= 0) return NOTHING_DEBITED;
 
   const tokens = Math.ceil((costUsd * (1 + overheadPct / PERCENT)) / usdPerToken);
-  if (tokens <= 0) return 0;
+  if (tokens <= 0) return NOTHING_DEBITED;
 
-  // One debit per run (Task 25 (e), migration 126): a retried settle is a
-  // no-op, never a second charge. Zero rows written = nothing debited now.
-  const result = await query(
-    `INSERT INTO token_transactions (user_id, amount, reason, run_id)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (run_id) WHERE reason = 'chat_debit' AND run_id IS NOT NULL DO NOTHING`,
-    [userId, -tokens, CHAT_DEBIT_REASON, runId],
-  );
-  return (result.rowCount ?? 0) > 0 ? tokens : 0;
+  return settleRunAgainstTheBalance(userId, runId, tokens);
+}
+
+/**
+ * The locked half: read the balance and write the debit as one atomic act.
+ *
+ * The prices and the run's cost are read OUTSIDE this, because the lock is
+ * held for as long as the transaction is and nothing in here needs to wait on
+ * a price lookup.
+ */
+async function settleRunAgainstTheBalance(
+  userId: string,
+  runId: string,
+  tokens: number,
+): Promise<RunDebit> {
+  return withTransaction(async (client) => {
+    // One row, this user's. Two settles for the SAME person queue; two for
+    // different people do not wait on each other at all.
+    // The same lock, spelled the same way, as the referral spend a few files
+    // over — two places that serialise one person's wallet should look alike.
+    await client.query('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', [userId]);
+
+    const balanceResult = await client.query<{ balance: string | null }>(
+      'SELECT SUM(amount) AS balance FROM token_transactions WHERE user_id = $1',
+      [userId],
+    );
+    const balance = Number(balanceResult.rows[0]?.balance ?? 0);
+
+    // An already-negative balance (there are eight of them today, from before
+    // this floor existed) charges nothing rather than digging further.
+    const charged = Math.min(tokens, Math.max(0, balance));
+    const absorbed = tokens - charged;
+    // `-0` is what negating a zero charge produces, and it reads as a minus
+    // sign in every log line and test failure it ever appears in.
+    const amount = charged > 0 ? -charged : 0;
+
+    // One debit per run (Task 25 (e), migration 126): a retried settle is a
+    // no-op, never a second charge. Zero rows written = nothing debited now.
+    const result = await client.query(
+      `INSERT INTO token_transactions (user_id, amount, reason, run_id, absorbed)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (run_id) WHERE reason = 'chat_debit' AND run_id IS NOT NULL DO NOTHING`,
+      [userId, amount, CHAT_DEBIT_REASON, runId, absorbed],
+    );
+    if ((result.rowCount ?? 0) === 0) return NOTHING_DEBITED;
+
+    if (absorbed > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[wallet] run ${runId}: cost ${tokens}, charged ${charged}, absorbed ${absorbed} — ` +
+          `balance was ${balance} and the floor held`,
+      );
+    }
+    return { charged, absorbed };
+  });
 }
 
 export interface TopupPackage {

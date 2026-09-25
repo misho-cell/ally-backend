@@ -10751,8 +10751,12 @@ export async function processChat(
           'moderation and the owner never saw it',
       );
     } else if (payerId !== null) {
-      const debited = await debitRun(payerId, runId);
-      if (debited > 0) emitTokensDebited(payerId, threadId, runId, debited);
+      // Row 271 (B): the person is told what THEY paid. `absorbed` is the
+      // house's number and belongs in the books and the log, not in a balance
+      // ticker on somebody's screen — a person who sees „0 debited" on a run
+      // that cost 29 has been told something about our accounts, not theirs.
+      const { charged } = await debitRun(payerId, runId);
+      if (charged > 0) emitTokensDebited(payerId, threadId, runId, charged);
     }
   } catch (err) {
     // eslint-disable-next-line no-console

@@ -4150,3 +4150,80 @@ already waited four.
   is what that ceiling exists to make impossible.
 * The log line names **the person and the before and after**, so a balance
   that moved can always be traced to a call and a reason.
+
+---
+
+## §58 — THE WALLET STOPS AT ZERO (row 271, item B)
+
+**Not an admin write. Recorded here because it is a MONEY RULE, and this file
+is where money rules are written down before they run.**
+
+Misho, 25 September, in his own words: *„so that it can NOT exceed the token
+count under any circumstance."* That is the instruction this implements, and
+it is his to give — I put three options to him earlier the same day and said
+plainly that a money rule is his or the founder's call.
+
+### WHAT WAS WRONG
+
+`checkRunAllowance` asks `balance > 0` when a run **starts**; `debitRun`
+charges the whole actual cost when it **ends**; nothing was reserved between
+them. Two separate leaks, both read off the live ledger rather than reasoned
+about:
+
+| | |
+|---|---|
+| a run costing more than is left | seat 171873, 21 Sep: 15 left, one question cost 31, **−16** |
+| two runs both told yes | seat 171874, 25 Sep: 17 → 15:59:59 charge 23 → **−6** → 16:00:22 charge 29 → **−35** |
+
+The founder's **D348** allows exactly ONE crossing — „at zero the person's next
+message is still accepted and answered once". Two at once nobody decided, and
+thirty-five deep nobody decided either.
+
+### WHAT RUNS NOW
+
+The debit is floored at the balance, **inside a transaction over a locked
+`"User"` row**, so the read of the balance and the write of the debit are one
+act. A `SELECT` then an `INSERT` would hand the same tokens out twice under
+exactly the load that makes somebody run out.
+
+* **charged** = `min(cost, max(0, balance))` — what the person pays.
+* **absorbed** = `cost − charged` — what the **house** pays, stored in a new
+  column (`token_transactions.absorbed`, migration 178) rather than inferred
+  later from two tables.
+* `usage_events` is untouched. The business's books still hold what the
+  provider charged us; only the wallet is floored.
+
+### WHAT IT COSTS, MEASURED BEFORE BUILDING
+
+Reconstructed from the running balance over the whole ledger: **447 tokens**
+would have been absorbed in all, **79 of them for real people** — Lika 53,
+Ninia 20, Madina 5, Giorgi 1. Over the last 30 days the real-people figure is
+**26 tokens**, about **twenty-six cents** at `tokens.usd_per_token`. That is
+what makes the floor an easy trade rather than a policy argument.
+
+Read it any time: `./scripts/ops/absorbed.sh` (last 30 days, from the column)
+or `./scripts/ops/absorbed.sh --before` (the reconstruction above). Exit 0 =
+something was absorbed, 1 = nothing was, 2 = could not look.
+
+### WHAT IT DELIBERATELY IS NOT
+
+* **Not a reservation.** A reservation only moves the guess earlier — a run's
+  true cost is known when it ends and not before.
+* **Not a mid-run stop.** Cutting somebody's answer in half to save a fraction
+  of a cent is a worse product and a decision nobody asked for.
+* **D348 is untouched.** The grace is a rule about the NEXT message, granted by
+  `takeGraceAnswer` when the allowance is refused. The floor refuses nothing
+  and never touches that stamp. What changes is only how deep the hole is that
+  the crossing run leaves: **zero instead of minus thirty-five.**
+
+### TWO THINGS STILL OPEN, AND BOTH ARE SOMEBODY ELSE'S CALL
+
+1. **Eight accounts are below zero right now**, 101 tokens in all, from before
+   the floor. They stop getting deeper and they stay blocked until a top-up or
+   the next grant. Zeroing them is a write against real people and needs
+   Misho's or the founder's explicit word plus a §-entry of its own; it is
+   **not** done.
+2. **`adjustTestAccountTokens` can still go negative**, on fictional seats
+   only. That is on purpose: the undo of a grant is the same call negated, and
+   flooring it would silently under-reverse a grant that was partly spent. Said
+   here rather than left to be discovered.

@@ -1,6 +1,20 @@
-jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../../db/postgres/client', () => ({
+  query: jest.fn(),
+  /**
+   * The settle runs inside a transaction so the balance read and the debit
+   * write are one atomic act (row 271 B). The fake hands the callback a client
+   * whose `query` IS the mock, so the world below answers every statement
+   * inside the transaction exactly as it answers one outside — a transaction
+   * the mock quietly emptied would let an unfloored debit pass.
+   */
+  withTransaction: jest.fn((callback: (client: { query: unknown }) => unknown) =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-var-requires
+    callback({ query: jest.requireMock('../../db/postgres/client').query }),
+  ),
+  __esModule: true,
+}));
 
-import { query } from '../../db/postgres/client';
+import { query, withTransaction } from '../../db/postgres/client';
 import { clearPriceCache } from '../costLedger.service';
 import {
   checkRunAllowance,
@@ -59,6 +73,8 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
               },
             ])) as never,
       );
+    // The wallet lock the settle takes before it reads the balance.
+    if (sql.includes('FOR UPDATE')) return Promise.resolve(rows([{ '?column?': 1 }]) as never);
     if (sql.includes('INSERT INTO token_transactions')) {
       inserts.push(params ?? []);
       // One row written — the ordinary case. A test of the one-debit-per-run
@@ -181,11 +197,11 @@ describe('debitRun', () => {
       runCostUsd: 0.253,
     });
 
-    const tokens = await debitRun('7', 'run-1');
+    const debit = await debitRun('7', 'run-1');
 
     // 0.253 × 1.10 = 0.2783 → / 0.01 = 27.83 → ceil = 28
-    expect(tokens).toBe(28);
-    expect(inserts()[0]).toEqual(['7', -28, 'chat_debit', 'run-1']);
+    expect(debit).toEqual({ charged: 28, absorbed: 0 });
+    expect(inserts()[0]).toEqual(['7', -28, 'chat_debit', 'run-1', 0]);
   });
 
   it('a retried settle of the same run charges nothing — one debit per run (Task 25 e)', async () => {
@@ -197,7 +213,7 @@ describe('debitRun', () => {
       debitConflict: true,
     });
 
-    expect(await debitRun('7', 'run-1')).toBe(0);
+    expect(await debitRun('7', 'run-1')).toEqual({ charged: 0, absorbed: 0 });
     const [sql] = mockQuery.mock.calls.find(([s]) =>
       String(s).includes('INSERT INTO token_transactions'),
     ) as [string];
@@ -206,7 +222,7 @@ describe('debitRun', () => {
 
   it('debits nothing when the wallet is off or the run cost is zero', async () => {
     setWorld({ walletEnabled: false, subscriptionStatus: 'active', balance: 100, runCostUsd: 5 });
-    expect(await debitRun('7', 'run-1')).toBe(0);
+    expect(await debitRun('7', 'run-1')).toEqual({ charged: 0, absorbed: 0 });
 
     const { inserts } = setWorld({
       walletEnabled: true,
@@ -214,8 +230,131 @@ describe('debitRun', () => {
       balance: 100,
       runCostUsd: 0,
     });
-    expect(await debitRun('7', 'run-1')).toBe(0);
+    expect(await debitRun('7', 'run-1')).toEqual({ charged: 0, absorbed: 0 });
     expect(inserts()).toHaveLength(0);
+  });
+});
+
+/**
+ * ⚠️ ROW 271 (B) — THE BALANCE COULD GO BELOW ZERO, AND TWICE AT ONCE.
+ *
+ * Misho, 25 September: „so that it can NOT exceed the token count under any
+ * circumstance."
+ *
+ * The two leaks, both from the live ledger rather than from reasoning:
+ *
+ *   * Seat 171873, 21 September: 15 tokens left, one question cost 31, balance
+ *     -16. A run's cost is simply not bounded by what is left.
+ *   * Seat 171874, 25 September: balance 17, a run at 15:59:59 charged 23 and
+ *     a second at 16:00:22 charged 29 — 17 -> -6 -> -35. Nothing was reserved
+ *     between the check and the charge, so both runs were told yes.
+ *
+ * D348 allows ONE crossing. Two at once nobody decided, and thirty-five deep
+ * nobody decided either.
+ */
+describe('the wallet stops at zero', () => {
+  it('charges only what is left and records the rest as absorbed', async () => {
+    // The seat's own numbers: 15 left, a run that cost 31.
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 15,
+      runCostUsd: 0.282,
+    });
+
+    // 0.282 × 1.10 = 0.3102 → / 0.01 = 31.02 → ceil = 32
+    expect(await debitRun('7', 'run-1')).toEqual({ charged: 15, absorbed: 17 });
+    expect(inserts()[0]).toEqual(['7', -15, 'chat_debit', 'run-1', 17]);
+  });
+
+  /**
+   * The second of two runs that started together. It charges nothing and the
+   * balance stays at zero instead of reaching -35 — and a row is still
+   * written, because „this run cost 29 and the house paid it" is a fact the
+   * books must hold. Returning silently is how the old behaviour would have
+   * looked identical from outside.
+   */
+  it('charges nothing at zero, and still writes down what the house paid', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0.2636,
+    });
+
+    expect(await debitRun('7', 'run-2')).toEqual({ charged: 0, absorbed: 29 });
+    expect(inserts()[0]).toEqual(['7', 0, 'chat_debit', 'run-2', 29]);
+  });
+
+  /** Eight accounts are already below zero from before the floor. None deeper. */
+  it('does not dig an already-negative balance any deeper', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: -35,
+      runCostUsd: 0.09,
+    });
+
+    expect(await debitRun('7', 'run-3')).toEqual({ charged: 0, absorbed: 10 });
+    expect(inserts()[0]).toEqual(['7', 0, 'chat_debit', 'run-3', 10]);
+  });
+
+  /** A run that fits is untouched — the floor is a floor, not a tax. */
+  it('changes nothing for a run the balance covers', async () => {
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 1000,
+      runCostUsd: 0.09,
+    });
+
+    expect(await debitRun('7', 'run-4')).toEqual({ charged: 10, absorbed: 0 });
+    expect(inserts()[0]).toEqual(['7', -10, 'chat_debit', 'run-4', 0]);
+  });
+
+  /**
+   * ⚠️ THE CONCURRENCY HALF, AND IT IS THE HALF THAT ACTUALLY PRODUCED -35.
+   *
+   * A floor computed from a balance read outside a lock is not a floor: two
+   * settles landing together would both read 17 and both charge 17. So the
+   * lock is taken FIRST, the balance is read INSIDE the same transaction, and
+   * the insert follows — in that order, on one connection.
+   */
+  it('locks the wallet, then reads the balance, then writes — in one transaction', async () => {
+    setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 17,
+      runCostUsd: 0.209,
+    });
+
+    await debitRun('7', 'run-5');
+
+    const statements = mockQuery.mock.calls.map(([sql]) => String(sql));
+    const lock = statements.findIndex((s) => s.includes('FOR UPDATE'));
+    const read = statements.findIndex((s) => s.includes('SUM(amount) AS balance'));
+    const write = statements.findIndex((s) => s.includes('INSERT INTO token_transactions'));
+
+    expect(lock).toBeGreaterThanOrEqual(0);
+    expect(lock).toBeLessThan(read);
+    expect(read).toBeLessThan(write);
+    expect(withTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  /** The prices are read before the lock, so nothing waits on a price lookup. */
+  it('holds the lock for the write alone, not for the price reads', async () => {
+    setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 17,
+      runCostUsd: 0.209,
+    });
+
+    await debitRun('7', 'run-6');
+
+    const statements = mockQuery.mock.calls.map(([sql]) => String(sql));
+    const lastPrice = statements.map((s) => s.includes('FROM provider_prices')).lastIndexOf(true);
+    expect(lastPrice).toBeLessThan(statements.findIndex((s) => s.includes('FOR UPDATE')));
   });
 });
 
