@@ -60,7 +60,47 @@ case "${1:-read}" in
     call -X POST -H 'Content-Type: application/json' --data-binary "@$2" "$API/admin/handoff"
     ;;
   mark)
+    # ⚠️ IT REFUSES TO MARK OVER SOMEBODY ELSE'S UNREAD MESSAGE — 25 September.
+    #
+    # The header above warns that `post` and `mark` on one line is how a
+    # message gets lost. It happened again today in a way the warning did not
+    # name: I posted, then marked MY OWN new id. My id is the highest in the
+    # box, so that one call marked read everything that had arrived from the
+    # tester while I was working — SEVEN messages, including a new plate row,
+    # two iPhone findings and a question waiting on my answer. Nothing failed.
+    # Nothing was displayed. The box simply said „unread: 0" afterwards.
+    #
+    # The warning was right about the shape and I walked into it anyway,
+    # because „mark what I just wrote" does not feel like „skip what I have not
+    # read". It is the same thing.
+    #
+    # So the check is no longer a sentence in a comment. If anything between
+    # the last-seen id and the one being marked was written by someone else,
+    # this refuses and prints those ids. Marking your own post is still fine —
+    # that is the common case — but only when it skips nobody.
     [ -n "${2:-}" ] || die "usage: box.sh mark <last_seen_id>"
+    skipped="$(
+      call "$API/admin/handoff?reader=$ME&limit=200" |
+        python3 -c '
+import sys, json
+target = int(sys.argv[1]); me = sys.argv[2]
+d = json.load(sys.stdin)["data"]
+seen = d["last_seen_id"] or 0
+missed = [
+    m for m in d["messages"]
+    if seen < m["id"] <= target and m["author"] != me
+]
+# Shown short, and SAYS it is short. A list long enough to scroll past is a
+# list that gets scrolled past, which is the failure this whole guard is for.
+head = " ".join(str(m["id"]) for m in missed[-20:])
+print(f"{head} ({len(missed)} in all, newest 20 shown)" if len(missed) > 20 else head)
+' "$2" "$ME"
+    )"
+    if [ -n "$skipped" ]; then
+      die "REFUSED — marking $2 would skip unread message(s) from someone else: $skipped
+        Read them first (box.sh read <id-before> <n>), then mark.
+        This is the 25 September fault: marking your own post buried seven."
+    fi
     call -X POST -H 'Content-Type: application/json' \
       -d "{\"reader\":\"$ME\",\"last_seen_id\":$2}" "$API/admin/handoff/read"
     ;;

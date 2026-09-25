@@ -602,16 +602,15 @@ describe('buildFromTheWebMessage', () => {
    * „shows junk page titles, repeated (4 of 4 web threads today). Done when:
    * real names or places, OR NO CARD."
    *
-   * Both are his. The second explicitly sanctions dropping them, so it wins
-   * over the first — but only because he said so, not because the newer
-   * measurement is mine. What he actually wants is the FIRST branch of that
-   * done-when: real names he can chase. A count is the fallback, and it is
-   * where this landed because the names on offer were headlines, section
-   * labels and bare nouns, and telling those from „Nini Elisashvili" in two
-   * languages is a classifier I was not willing to guess at today.
+   * ✅ SETTLED BY HIM, 25 September ~20:30 Tbilisi, after seeing this shipped:
+   * KEEP THE COUNT. „The card says how many web results were checked with
+   * nobody found in his contacts; real names stay in the answer below. No name
+   * extraction to build." He asked for the 17 September line to be marked
+   * superseded here, and this is that mark.
    *
-   * IF HE WANTS THE NAMES BACK, the answer is extraction, and it needs his
-   * word rather than my judgement. That is in front of Misho.
+   * So the 17 September instruction is DEAD for this card and live nowhere
+   * else. It is left above rather than deleted because the next person to read
+   * a count where names used to be will otherwise re-derive it as a bug.
    */
   it('counts the ones with no way in instead of printing their titles', () => {
     const message = String(
