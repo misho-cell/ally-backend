@@ -121,6 +121,20 @@ interface PendingTexts {
    */
   kindName: (kind: string, count: number) => string;
   morePendingKinds: (parts: readonly string[]) => string;
+  /**
+   * Row 262 — somebody the owner tagged with an organisation has just opened
+   * Netai, and one of their open goals names that organisation.
+   *
+   * It says WHY it is on the screen. „Nino has joined" is a notification;
+   * „Nino, who you have down as Arci, has joined, and your tiler goal is
+   * waiting on Arci's contractor network" is a reason — and the owner can tell
+   * at a glance whether the match is any good, which on a matched card is the
+   * only defence they have.
+   */
+  newMemberFits: (who: string, organisation: string, goal: string) => string;
+  newMemberAsk: string;
+  /** Nobody is written to without this being pressed. */
+  someoneNew: string;
 }
 
 /**
@@ -179,6 +193,8 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return `${count} გაცნობის მოთხოვნა`;
         case 'goal_feedback':
           return `${count} შეკითხვა დასრულებულ მიზანზე`;
+        case 'new_member_for_goal':
+          return `${count} ახალი წევრი შენს მიზნებზე`;
         case 'weekly_summary':
           return 'კვირის შეჯამება';
         default:
@@ -186,6 +202,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       }
     },
     morePendingKinds: (parts) => `კიდევ გელოდება: ${listOut(parts, 'და')}.`,
+    newMemberFits: (who, organisation, goal) =>
+      `${who} ახლახან შემოვიდა Netai-ზე — შენთან ${organisation}-ით არის მონიშნული, ` +
+      `და მიზანი „${goal}" სწორედ ${organisation}-ს ეხება. ვკითხოთ?`,
+    newMemberAsk: 'კი, ვკითხოთ',
+    someoneNew: 'ახალი მომხმარებელი',
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -232,6 +253,8 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return count === 1
             ? 'one question about a finished goal'
             : `${count} questions about finished goals`;
+        case 'new_member_for_goal':
+          return count === 1 ? 'one new member for a goal' : `${count} new members for your goals`;
         case 'weekly_summary':
           return 'the weekly summary';
         default:
@@ -239,6 +262,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       }
     },
     morePendingKinds: (parts) => `Also waiting: ${listOut(parts, 'and')}.`,
+    newMemberFits: (who, organisation, goal) =>
+      `${who} has just opened Netai — you have them down as ${organisation}, and your goal ` +
+      `„${goal}" is about ${organisation}. Shall we ask them?`,
+    newMemberAsk: 'Yes, ask them',
+    someoneNew: 'Somebody new',
   },
 };
 
@@ -371,6 +399,23 @@ export function renderPendingMessage(
         text: t.introMediated(who, target) + tail,
         choices: [t.introAcceptMediated(target), t.introDecline, t.later],
         ref: { kind: item.kind, request_id: requestId },
+        instruction,
+      };
+    }
+    /**
+     * Row 262 (D498 option B). Skipped rather than guessed at when the goal or
+     * the organisation is missing from the payload: a card that cannot say
+     * WHICH goal and WHICH organisation is a card the owner cannot judge, and
+     * being able to judge it is the whole safeguard on a matched suggestion.
+     */
+    case 'new_member_for_goal': {
+      const organisation = str(p, 'organisation');
+      const goal = str(p, 'goal_title');
+      if (organisation === null || goal === null) return null;
+      return {
+        text: t.newMemberFits(who ?? t.someoneNew, organisation, goal),
+        choices: [t.newMemberAsk, t.introDecline, t.later],
+        ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
         instruction,
       };
     }

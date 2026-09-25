@@ -16,6 +16,7 @@ import {
 } from './inviteCohorts.service';
 import { inviteFreeDays, inviteFreeDaysCohort } from './inviteReward.service';
 import { attributeCampaignJoin } from './chorusCampaign.service';
+import { tellOwnersANewMemberFitsAGoal } from './newMemberForGoal.service';
 import { AuthPayload, EligibilityCheck } from '../types';
 import { normalizePhone } from './phone';
 
@@ -526,6 +527,30 @@ export async function registerUser(
       // eslint-disable-next-line no-console
       console.error(`[welcome-study] user ${userId} failed to start:`, (err as Error).message),
     );
+
+    /**
+     * Row 262 (D498 option B). The one moment this can be noticed: somebody
+     * has just become reachable, and an owner may have an open goal about the
+     * organisation they are tagged with.
+     *
+     * Fire-and-forget beside the other two, and for the same reason — a
+     * registration must not fail because a card could not be queued. It writes
+     * to nobody: it puts a card in front of the OWNER, and the owner's yes is
+     * what would ever reach this new person.
+     */
+    void tellOwnersANewMemberFitsAGoal(cleanPhone)
+      .then((told) => {
+        if (told > 0) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[new-member] user ${userId}: ${told} owner goal(s) named their organisation`,
+          );
+        }
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(`[new-member] match failed for user ${userId}:`, (err as Error).message),
+      );
 
     // Engine T8: the moment T3's own attribution (inviterUserId) lands on a
     // real registration — did it complete a live Chorus campaign?
