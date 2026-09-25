@@ -304,6 +304,51 @@ describe('createAsk', () => {
       expect(text).toContain('ახალ ტექსტს ნუ');
     });
 
+    /**
+     * ⚠️ THIS REFUSAL USED TO SEND THE MODEL INTO A SECOND ONE THAT FORBIDS
+     * WHAT THIS ONE ASKS FOR.
+     *
+     * Found by `scripts/ops/why.sh`, 25 September, which prints what a run did
+     * after each no. Of 27 runs refused here in a week, 19 went and called the
+     * consent tool and it worked in all 19 — and only 5 ever sent anything.
+     * Thirteen were refused again on the retry, eleven of them by
+     * `runApprovedAPlan` in chat.service.ts:
+     *
+     *   „Nothing sent, and nothing is needed from you: you approved the plan
+     *    in this same turn, and day one is already starting behind your reply
+     *    … Calling this here sends each of them the same question twice."
+     *
+     * Both guards are right. „Call approve_task_plan and repeat ask_contact"
+     * is correct for a GRANT and is the double-send for an APPROVAL, and the
+     * old text gave one instruction for both.
+     */
+    it('does not tell it to repeat the ask after a plan approval', async () => {
+      const text = await refusal();
+      const approval = text.indexOf('გამოიძახე approve_task_plan — ask_contact აღარ გაიმეორო');
+
+      expect(approval).toBeGreaterThan(0);
+      // The grant still DOES want the repeat — that path was never broken, and
+      // collapsing the two into „never repeat" would strand every no-plan goal.
+      expect(text).toContain('გამოიძახე grant_task_permission — ეს უარი მას გაუსწრო');
+      expect(text).toContain('გაიმეორე ask_contact');
+    });
+
+    /**
+     * The other half of the same fault: the model was told to send, and then
+     * told by the next guard not to say it had sent. Saying so here means the
+     * run does not have to be refused twice to learn it.
+     */
+    it('supplies the sentence to write instead, and forbids the past tense', async () => {
+      const text = await refusal();
+
+      // „პირველ რაუნდს" and not „პირველ დღეს": the product's name for the
+      // plan's first round is also the Georgian for „today", and a refusal is
+      // re-read hours later by a run that has no clock (row 208).
+      expect(text).toContain('გეგმის პირველ რაუნდს');
+      expect(text).not.toContain('დღეს');
+      expect(text).toContain('არ თქვა');
+    });
+
     /** And none of the wording moves the wall itself. */
     it('still refuses, and still sends nothing', async () => {
       routeAskQueries({ member: { userId: 7, name: 'გია' } });

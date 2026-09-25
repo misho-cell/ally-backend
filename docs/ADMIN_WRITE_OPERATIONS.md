@@ -3688,3 +3688,67 @@ So every SQL statement in `scripts/ops/` is now checked against **the real
 `isReadOnlySql`**, imported from the route, before anybody runs it against
 production. It found no other offenders, and it will catch the next one before
 a person does.
+
+---
+
+## 51 · Two guards that contradicted each other — the first thing `why.sh` found
+
+**25 September. A refusal's wording, changed in the server. No live data
+touched, no access opened, nothing spent.**
+
+### WHAT THE NEW TOOL SHOWED
+
+`why.sh` prints what a run did after each no. The permission wall in
+`taskAsks.service.ts`:
+
+| | runs |
+|---|---|
+| refused here in 7 days | **27** |
+| went and called the consent tool | 19 |
+| …and the consent tool **worked** | **19 of 19** |
+| ever sent anything in the end | **5** |
+
+Nineteen runs did exactly what the refusal told them to do, it worked, and
+fourteen of them still sent nothing. Thirteen were refused a **second** time on
+the retry, and eleven of those thirteen by this, in `chat.service.ts`:
+
+> „Nothing sent, and nothing is needed from you: you approved the plan in this
+> same turn, and day one is already starting behind your reply … Calling this
+> here sends each of them the same question twice."
+
+### THE CONTRADICTION
+
+The permission refusal said, for both consent tools at once:
+
+> „call `approve_task_plan` **or** `grant_task_permission` … and repeat
+> `ask_contact`"
+
+That is right for a **grant** and is the double-send for an **approval**,
+because an approval starts the plan's first round by itself. **One guard told
+the model to do the thing the next guard refuses it for** — and the second one
+then tells it not to say anything was sent, one sentence after it was told to
+send.
+
+### WHAT CHANGED
+
+The two are no longer given one instruction. `grant_task_permission` still
+wants the repeat, because that path was never broken and collapsing them into
+„never repeat" would strand every goal without a plan. `approve_task_plan` now
+says plainly: do not repeat, the first round writes to those people itself,
+tell the owner you are on it, **and do not say it has been sent**.
+
+### WHAT IT DID AND DID NOT COST
+
+**Nobody lost a message.** The plan's first round wrote to them. What it cost
+was a wasted turn on each of those runs, and a model caught between two correct
+rules — which is how the past-tense slip in §: „I've sent the ask to…" gets
+written.
+
+### AND A SMALL ONE ON THE WAY OUT
+
+The new sentence first read „…იწყებს **პირველ დღეს**" — the product's own name
+for the plan's first round, and also the Georgian word for **today**.
+`relativeWordsInServerText.test.ts` (row 208: the server never writes a
+relative time word into text a run re-reads hours later, with no clock) caught
+it before it shipped. It is „გეგმის პირველ რაუნდს" now. **The guard was
+written for three strings in September and it earned itself back today.**

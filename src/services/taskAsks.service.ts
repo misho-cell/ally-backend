@@ -476,20 +476,52 @@ export async function createAsk(
        * THE ORDERING ITSELF IS THE REAL FIX and it is not made here. It is a
        * change to the hot path of every run, next to the consent wall, and it
        * is written up rather than done in the dark.
+       *
+       * ⚠️ 25 SEPTEMBER — AND THE ADVICE ABOVE SENT THE MODEL INTO A SECOND
+       * REFUSAL THAT FORBIDS EXACTLY WHAT THIS ONE ASKS FOR.
+       *
+       * Found by `why.sh`, which prints what a run did after each no. Of the
+       * 27 runs refused here in a week, 19 went and called the consent tool
+       * and it worked in all 19 — and only 5 ever sent anything. THIRTEEN were
+       * refused again on the retry, and eleven of those thirteen hit
+       * `runApprovedAPlan` in chat.service.ts:
+       *
+       *   „Nothing sent, and nothing is needed from you: you approved the plan
+       *    in this same turn, and day one is already starting behind your
+       *    reply … Calling this here sends each of them the same question
+       *    twice."
+       *
+       * Both guards are right. The instruction joining them was not: „call
+       * approve_task_plan and repeat ask_contact" is correct for a GRANT and
+       * wrong for an APPROVAL, because an approval starts day one by itself
+       * and the repeat is the double-send. So the two are no longer told to do
+       * the same thing.
+       *
+       * Nobody lost a message — day one wrote to them. What it cost was a
+       * wasted turn per run and a model that had just been told to say nothing
+       * had been sent, one sentence after being told to send it.
        */
       return {
         sent: false,
         reason: 'consent_pending',
         error:
           'ნებართვა არ არის: ამ დავალებაზე ნებართვა ჯერ ჩაწერილი არ არის. (1) თუ ამავე ' +
-          'სვლაში უკვე გამოიძახე approve_task_plan ან grant_task_permission — ეს უარი მათ ' +
-          'გაუსწრო და არაფერი გიშლის ხელს: გამოიძახე ის ერთი ცალკე და გაიმეორე ' +
-          'ask_contact. (2) თუ მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი აქვს ' +
-          '(„კი, გაუგზავნე", „დამტკიცებულია") — ხელახლა ნუ ჰკითხავ და ახალ ტექსტს ნუ ' +
-          'აჩვენებ: გეგმაზე გამოიძახე approve_task_plan, გეგმის გარეშე ' +
-          'grant_task_permission, და გაიმეორე ask_contact. (3) მხოლოდ მაშინ, თუ თანხმობა ' +
-          'ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ტექსტს. ' +
-          'უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
+          'სვლაში უკვე გამოიძახე grant_task_permission — ეს უარი მას გაუსწრო და არაფერი ' +
+          'გიშლის ხელს: გამოიძახე ის ცალკე და გაიმეორე ask_contact. (2) თუ ამავე სვლაში ' +
+          // NOT „პირველ დღეს". That is the product's name for the plan's first
+          // round and it is also the Georgian for „today" — and this text is
+          // re-read hours later by a run with no clock. See
+          // relativeWordsInServerText.test.ts, whose grep caught it here.
+          'გამოიძახე approve_task_plan — ask_contact აღარ გაიმეორო: დამტკიცება თვითონ ' +
+          'უშვებს გეგმის პირველ რაუნდს და ის თვითონ მისწერს გეგმაში დასახელებულ ' +
+          'ადამიანებს, შენი გამეორება კი იმავე კითხვას ორჯერ გააგზავნიდა. ერთი-ორი ' +
+          'წინადადებით უთხარი მფლობელს, რომ იწყებ და როდის დაუბრუნდები — და არ თქვა, ' +
+          'რომ უკვე გააგზავნე. (3) თუ მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი ' +
+          'აქვს („კი, გაუგზავნე", „დამტკიცებულია") — ხელახლა ნუ ჰკითხავ და ახალ ტექსტს ' +
+          'ნუ აჩვენებ: გეგმაზე გამოიძახე approve_task_plan და გაჩერდი (2), გეგმის ' +
+          'გარეშე grant_task_permission და გაიმეორე ask_contact. (4) მხოლოდ მაშინ, თუ ' +
+          'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
+          'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
     }
     /**
