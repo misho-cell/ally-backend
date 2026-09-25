@@ -126,6 +126,32 @@ const STICKY_COOLDOWN_HOURS = 24;
  */
 const MAX_BLOCKING_QUESTIONS_PER_READ = 1;
 
+/**
+ * ⚠️ THE ONE KIND THAT EXISTS BECAUSE A GOAL CLOSED — row 272, and it could
+ * never have been shown to anybody.
+ *
+ * Every other rule in this file rests on a true sentence: an update belongs to
+ * a goal, and a closed goal's updates are stale. So both the release query and
+ * the held count carry `t.status <> 'closed'`, and they are right about news,
+ * questions, debriefs and introductions.
+ *
+ * `goal_feedback` is queued BY the close. „What came of it? Would you use it
+ * again?" are questions you can only ask about something finished. So it was
+ * written into a queue that then refused to let it out, for the exact reason
+ * it had been written.
+ *
+ * WHAT THE TESTER SAW, and what I would have concluded without reading: goal
+ * 10594 closed 21:25:08, feedback card queued 21:25:09, nothing on screen. It
+ * reads like „the hook never fired" — I built that hook today and it was the
+ * first thing I suspected. The hook fired. BOTH CARDS ARE THERE, held, due
+ * since the second they were made, and they would have sat there for ever.
+ * The measurement was right and the question was different, again.
+ *
+ * Also why `/admin/goal-feedback` reading 0 proved nothing either way: that is
+ * the ANSWERS table, and nobody can answer a question they were never asked.
+ */
+const KINDS_THAT_OUTLIVE_THEIR_GOAL = ['goal_feedback'];
+
 export async function queueFollowUp(
   userId: string,
   taskId: number | null,
@@ -176,7 +202,10 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
        FROM pending_updates p
        LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
        WHERE p.user_id = $1 AND p.status = 'held' AND p.release_at <= NOW()
-         AND (p.task_id IS NULL OR t.status <> 'closed')
+         -- $7: the kinds a closed goal is the REASON for, not a reason to
+         -- drop. Without it goal_feedback is queued by the close and then
+         -- refused by the close. (No backtick in here -- see the note below.)
+         AND (p.task_id IS NULL OR t.status <> 'closed' OR p.kind = ANY($7::text[]))
          -- A sticky item survives only while its goal is still waiting.
          AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
          -- ⚠️ AN ANSWERED REQUEST KEEPS NO CARD (tester, seat Test 4,
@@ -229,6 +258,7 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
       STICKY_COOLDOWN_HOURS,
       MAX_BLOCKING_QUESTIONS_PER_READ,
       UNSPENT_KINDS,
+      KINDS_THAT_OUTLIVE_THEIR_GOAL,
     ],
     QUERY_TIMEOUT_MS,
   );
@@ -286,7 +316,10 @@ const HELD_AND_STILL_REAL = `
      FROM pending_updates p
      LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
      WHERE p.user_id = $1 AND p.status = 'held'
-       AND (p.task_id IS NULL OR t.status <> 'closed')
+       -- The same exception as the release query, from the same constant: a
+       -- card that CAN be shown must be counted, or the two disagree about
+       -- what is waiting.
+       AND (p.task_id IS NULL OR t.status <> 'closed' OR p.kind = ANY($2::text[]))
        -- An answered introduction is not something still waiting on you, and
        -- this count is the „N more updates are waiting" line a real person
        -- read on her phone and could not make sense of. Same guard as the
@@ -333,7 +366,7 @@ export async function heldUpdatesWaiting(userId: string): Promise<HeldUpdate[]> 
      ${HELD_AND_STILL_REAL}
      ORDER BY p.id
      LIMIT ${HELD_ROWS_READ_LIMIT + 1}`,
-    [userId],
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map((row) => ({
@@ -391,7 +424,7 @@ export function breakdownExcluding(
 export async function countHeldUpdates(userId: string): Promise<number> {
   const result = await query<{ count: string }>(
     `SELECT COUNT(*) AS count ${HELD_AND_STILL_REAL}`,
-    [userId],
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL],
     QUERY_TIMEOUT_MS,
   );
   return Number(result.rows[0]?.count ?? 0);

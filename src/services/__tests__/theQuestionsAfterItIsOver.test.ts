@@ -186,3 +186,84 @@ describe('when it fires, and when it deliberately does not', () => {
     expect(hook.slice(0, 400)).toContain('catch');
   });
 });
+
+/**
+ * ⚠️ AND IT FIRED, AND THE QUEUE WOULD NEVER HAVE LET IT OUT.
+ *
+ * The tester, 25 September 21:27 UTC, on the build that shipped this: Test 17
+ * closed goal 10594 on „Resolved — a neighbour fixed the tap" at 21:25:01, the
+ * goal went closed/finished at 21:25:12, and NO question appeared — not in the
+ * thread, not in the updates. Goal 10495, finished at 17:54, still had none
+ * three and a half hours later.
+ *
+ * IT READS EXACTLY LIKE „THE HOOK NEVER FIRED", which is what I built the same
+ * afternoon and the first thing I suspected of myself. I read the base before
+ * touching anything: BOTH CARDS ARE THERE. Queued one second after each close,
+ * held, `release_at` already in the past. Due since the moment they were made
+ * and due for ever.
+ *
+ * THE RELEASE QUERY DROPS UPDATES WHOSE GOAL IS CLOSED — rightly, for news, for
+ * blocking questions, for debriefs and introductions, all of which go stale
+ * when a goal ends. `goal_feedback` is the one kind a close CREATES. „What came
+ * of it? Would you use it again?" cannot be asked about anything else. So it
+ * was written into a queue that refused to release it for the very reason it
+ * had been written.
+ *
+ * Not a hook, not a flag, not the six questions, not the table: a true sentence
+ * about every other kind, applied to the one it is false about. The measurement
+ * was right and the question was different, which is this week's whole refrain.
+ *
+ * ⚠️ AND `/admin/goal-feedback` READING 0 PROVED NOTHING EITHER WAY, which is
+ * worth its own line because it was offered as evidence and I nearly took it:
+ * that endpoint reads the ANSWERS table. Nobody can answer a question they were
+ * never asked, so 0 is what it says whether the fault is here or in the asking.
+ */
+describe('a card queued by a close survives the close', () => {
+  const updates = readFileSync(join(__dirname, '..', 'pendingUpdates.service.ts'), 'utf8');
+
+  it('names the kinds a closed goal is the reason for, not a reason to drop', () => {
+    expect(updates).toContain("const KINDS_THAT_OUTLIVE_THEIR_GOAL = ['goal_feedback'];");
+  });
+
+  /**
+   * BOTH READERS, from the one constant. A card that can be shown but is not
+   * counted, or counted but never shown, is the „due/held" disagreement this
+   * file already carries a scar from.
+   */
+  it('excepts it in the release query AND in the held count', () => {
+    // Prose stripped first: the paragraph above the constant QUOTES the clause
+    // to explain it, and a test that counts prose counts the wrong thing.
+    const sql = updates.replace(/\/\*[\s\S]*?\*\//g, '');
+    const closedGoalClauses = sql.match(/t\.status <> 'closed'[^\n]*/g) ?? [];
+
+    expect(closedGoalClauses).toHaveLength(2);
+    for (const clause of closedGoalClauses) {
+      expect(clause).toMatch(/OR p\.kind = ANY\(\$\d::text\[\]\)/);
+    }
+  });
+
+  /** The array reaches both queries as a parameter, never spliced into the SQL. */
+  it('passes the kinds as a bound parameter, never spliced into the SQL', () => {
+    const sql = updates.replace(/\/\*[\s\S]*?\*\//g, '');
+    const uses = sql.match(/KINDS_THAT_OUTLIVE_THEIR_GOAL/g) ?? [];
+
+    // The declaration plus three call sites: release, count, and the row list.
+    expect(uses).toHaveLength(4);
+    expect(sql).not.toMatch(/\$\{KINDS_THAT_OUTLIVE_THEIR_GOAL/);
+  });
+
+  /**
+   * The exception is deliberately NARROW. A debrief or a blocking question on
+   * a closed goal is stale and must still be dropped — widening this to every
+   * kind would bring back the stale cards of ticket 9.
+   */
+  it('excepts that one kind and no others', () => {
+    const list = updates.slice(
+      updates.indexOf('const KINDS_THAT_OUTLIVE_THEIR_GOAL'),
+      updates.indexOf('const KINDS_THAT_OUTLIVE_THEIR_GOAL') + 120,
+    );
+
+    expect(list).not.toContain('debrief');
+    expect(list).not.toContain('goal_question');
+  });
+});
