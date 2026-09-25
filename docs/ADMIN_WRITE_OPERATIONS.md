@@ -3752,3 +3752,87 @@ for the plan's first round, and also the Georgian word for **today**.
 relative time word into text a run re-reads hours later, with no clock) caught
 it before it shipped. It is „გეგმის პირველ რაუნდს" now. **The guard was
 written for three strings in September and it earned itself back today.**
+
+---
+
+## 52 · 🔴 The SMS code does not send, and the provider's sentence went to the person locked out
+
+**25 September, 12:43 Tbilisi (08:43 UTC). The first real invitation the
+founder has ever sent. No live data changed here — the code fix is a refusal
+text and a log line; the provider account itself is not mine to touch.**
+
+### WHAT HAPPENED
+
+The founder sent his invite link by SMS to **Valeri Chalabashvili**, a real new
+person with no WhatsApp. On the code screen he pressed „didn't get the code —
+send via SMS" and read this:
+
+> authentication failed, account AC……… with status 4 is
+> not active
+
+That is the SMS provider saying **our sending account is not active**. No SMS
+code goes out at all. He did not get in — the admin shows no new account after
+Netai Test 40 (24 Sep 19:07).
+
+### WHOSE IT IS
+
+**The account itself is the founder's or Misho's** — billing, suspension or a
+wrong key. I name it and do not touch it, and nothing has been bought.
+
+**WhatsApp is a DIFFERENT provider and is unaffected.** `whatsapp.service.ts`
+uses Meta's Cloud API (`WHATSAPP_PHONE_ID`, `WHATSAPP_TOKEN`);
+`twilio.service.ts` is the SMS path alone. The tester asked whether the code
+channel is down too — it is not. **Anybody with WhatsApp can still get in;
+anybody without it cannot.**
+
+### THE TWO FAULTS THAT ARE MINE
+
+**1. The provider's sentence reached a user, with our account id in it.**
+`/auth/resend-otp` answers with `error.message` and nothing between the
+provider and that line rewrote it. CLAUDE.md forbids exactly this by name for
+database errors; nobody had applied it to a third party's errors.
+
+**2. Nothing was written down.** Not one line in the container log, not a row
+anywhere. `usage_events` records `otp_sms` only **after** a send succeeds, so
+**a total SMS outage and a quiet afternoon leave identical evidence.** The
+first anybody knew was a person who could not get in. That is this week's
+recurring fault in a new place, and it is the reason this one is in the
+register: the evidence did not exist, so no amount of looking would have found
+it.
+
+### WHAT SHIPPED
+
+* The user is told, in Georgian, that the SMS could not be sent, that **it is
+  our side and not their number**, and that WhatsApp still works — a refusal
+  that only forbids leaves the reader nothing to do, which this codebase has
+  had to learn three times already in the model's own refusals.
+* One greppable line per failure: `[otp-sms] PROVIDER REFUSED code=… status=…`,
+  with the provider's own code, because „the account is not active" and „that
+  number is unreachable" are different problems with different owners.
+  Diagnosis is now `logs.sh logs <id> 400 "[otp-sms]"`.
+* The account id is logged as its **last four** and the phone as its last four
+  (D149's rule, applied where it had not been), so a log line can be pasted
+  into a ticket unread.
+* `checkTwilioCode` still returns **false** on a provider error — a provider we
+  cannot reach must never admit anybody — but it no longer does so silently.
+  „The code was wrong" and „the provider is down" were the same quiet false,
+  which is the same conflation as `ok = false` in §50.
+
+### ⚠️ AND A BUG INSIDE THE FIX, CAUGHT BY THE TEST
+
+The redaction ran phones first and the account id second. An account SID is
+„AC" and thirty-two hex characters, and **its leading run of digits looks
+exactly like a phone number** — so the phone redactor ate the middle of the id
+and left its tail, and the id pattern then no longer matched what it was
+written to catch.
+
+It was caught only because the test asserts the **last four are present**, not
+merely that the whole id is absent. „It is not there" passes on a half-eaten
+id. The narrower pattern runs first now.
+
+### WHAT IS STILL OPEN
+
+The provider account. Until it is active, **every person without WhatsApp is
+locked out and the invitation campaign cannot start.** The founder will resend
+Valeri's link when it is back, and the tester tests the invitation the same
+hour: right inviter credited, 20 free days, no entry without a code.
