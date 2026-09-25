@@ -78,6 +78,8 @@ import {
   createAsk,
   createRelayAsk,
   cancelAsksForTask,
+  getPendingAsksForUser,
+  PendingAsk,
   getAsksForTask,
   getAskByThread,
   sendApprovedAskAnswer,
@@ -2319,6 +2321,44 @@ const GET_CURIOSITY_QUEUE_TOOL: AnthropicTool = {
     },
     required: [],
   },
+};
+
+/**
+ * ⚠️ ROW 266 — „IS ANYONE ASKING ME SOMETHING?" GOT NOTHING IN THE APP.
+ *
+ * The founder, thread 24751, 15:03 today: FIVE questions were waiting on him
+ * in `task_asks` and the answer mentioned none of them.
+ *
+ * I FIXED THIS FOR THE CONNECTOR THIS AFTERNOON AND SAID THE APP NEEDED
+ * NOTHING. My reasoning was that an incoming ask opens its OWN THREAD here, so
+ * the person meets it there and no listing tool is required. The mechanism is
+ * real and I checked it. It is also not an answer to the question: somebody who
+ * asks this in a DIFFERENT thread gets a model that cannot see other threads
+ * and has no tool that enumerates them, so it says nothing and the five
+ * questions stay invisible.
+ *
+ * I confirmed a surface EXISTED rather than that the question could be
+ * ANSWERED, which is the same mistake as reading „the measurement was right"
+ * off a different question — and this time I had already told two people it was
+ * closed.
+ *
+ * Same three reads as the connector's `check_my_inbox`, which is the point:
+ * one fault, two surfaces, and now one set of sources feeding both.
+ */
+const CHECK_MY_INBOX_TOOL: AnthropicTool = {
+  name: 'check_my_inbox',
+  description:
+    'What OTHER PEOPLE are waiting on from this user: questions they have been asked, ' +
+    'introduction requests where they are the mediator, and replies to what they themselves ' +
+    'asked. WHEN: always, the moment the user asks anything of the shape "is anyone asking me ' +
+    'something?", "does anybody need anything from me?", "anything waiting for me?", "did ' +
+    'anyone reply?" — get_pending_updates does NOT hold these and cannot answer it. ' +
+    'Also once at the start of a conversation, and there DO NOT lead with it: answer what the ' +
+    'user came to say first, then add it at the end. When they asked, it goes first instead. ' +
+    'An empty result is an answer — say plainly that nothing is waiting rather than staying ' +
+    'silent. Name people, never a phone number. Each question carries the thread it lives in; ' +
+    'the user answers it there, so point them at it rather than trying to answer it here.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 const GET_PENDING_UPDATES_TOOL: AnthropicTool = {
@@ -6966,6 +7006,39 @@ async function executeToolCall(
       }
       return answerGoalQuestion(userId, questionTaskId, answer);
     }
+    case 'check_my_inbox': {
+      // Row 266. The three reads the connector's check_my_inbox makes, in
+      // parallel, so the app answers the same question from the same sources.
+      const [waiting, answered, asks] = await Promise.all([
+        getPendingRequestsForMediator(userId),
+        getRecentResponsesForRequester(userId),
+        getPendingAsksForUser(userId),
+      ]);
+      return {
+        // Named for what each one IS to the person, not for its table.
+        questions_for_me: asks.map((ask: PendingAsk) => ({
+          from: ask.from_name,
+          question: scrubText(ask.question ?? ''),
+          asked_at: ask.created_at,
+          // Where it can actually be answered. The ask has its own thread and
+          // the reply belongs there, not in whatever conversation this is.
+          thread_id: ask.ask_thread_id ?? null,
+        })),
+        introductions_waiting_on_me: waiting.map((request: PendingRequest) => ({
+          from: request.requester_name,
+          wants_to_meet: request.target_name,
+          why: request.message === null ? null : scrubText(request.message),
+          asked_at: request.created_at,
+        })),
+        replies_to_what_i_asked: answered,
+        // „Nothing is waiting" must be sayable. An empty object read as „the
+        // tool had nothing to add" is exactly how five questions stayed
+        // invisible in thread 24751.
+        nothing_is_waiting:
+          asks.length === 0 && waiting.length === 0 && (answered?.length ?? 0) === 0,
+      };
+    }
+
     case 'get_pending_updates': {
       // Release first, then count, so more_pending excludes the just-shown burst.
       // A debrief item whose subject moved on is dropped (D49: "with no outcome
@@ -8885,6 +8958,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   FORGET_CONTACT_RELATIONSHIP_TOOL,
   GET_CONTACT_RELATIONSHIPS_TOOL,
   GET_PENDING_UPDATES_TOOL,
+  CHECK_MY_INBOX_TOOL,
   ASK_OWNER_DECISION_TOOL,
   ANSWER_GOAL_QUESTION_TOOL,
   FETCH_PAGE_TOOL,

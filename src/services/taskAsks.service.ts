@@ -1813,6 +1813,14 @@ export interface PendingAsk {
   from_name: string | null;
   question: string;
   created_at: string;
+  /**
+   * The conversation this question lives in. Row 266: the app's answer to „is
+   * anyone asking me something?" has to point at somewhere the person can
+   * actually reply, and the reply belongs in the ask's own thread rather than
+   * in whichever conversation they happened to ask the question from. Null
+   * for an ask whose thread was never created.
+   */
+  ask_thread_id: number | null;
 }
 
 /**
@@ -1826,7 +1834,8 @@ export interface PendingAsk {
  */
 export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[]> {
   const result = await query<PendingAsk>(
-    `SELECT ta.id AS ask_id, u.name AS from_name, ta.question, ta.created_at
+    `SELECT ta.id AS ask_id, u.name AS from_name, ta.question, ta.created_at,
+            ta.ask_thread_id
      FROM task_asks ta
      LEFT JOIN "User" u ON u.id = ta.from_user_id
      WHERE ta.to_user_id = $1::int AND ta.status = 'sent'

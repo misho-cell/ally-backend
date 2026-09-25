@@ -70,27 +70,64 @@ describe('the inbox is called when the inbox is the question', () => {
 });
 
 /**
- * WHAT I CHECKED AND DID NOT CHANGE, so that this is not read as wider than it
- * is: the in-app chat has no `check_my_inbox` and does not need one. An
- * incoming ask arrives there as its OWN thread, where the reply goes back
- * through `send_answer_to_asker`, and introduction requests arrive as
- * `intro_request` cards in the update queue. The gap is the connector's,
- * because the connector has neither of those surfaces — only this tool.
+ * ⚠️ THIS SECTION SAID THE APP NEEDED NOTHING. IT WAS WRONG, AND THE TEST
+ * BELOW ENCODED THE MISTAKE SO THAT A GREEN SUITE WOULD KEEP IT.
+ *
+ * What stood here, written the same afternoon: „the in-app chat has no
+ * `check_my_inbox` and does not need one. An incoming ask arrives there as its
+ * OWN thread … The gap is the connector's." The test asserted the app had no
+ * such tool, and the comment above it said a failure would mean the app had
+ * grown one — as though that could only be somebody else's doing.
+ *
+ * Row 266, from the tester an hour later: the founder asked exactly that
+ * question in APP thread 24751 at 15:03 and heard nothing, while FIVE
+ * questions sat in `task_asks` addressed to him. I checked that count myself
+ * before believing it: five.
+ *
+ * The thread-per-ask mechanism is real and I did read it. It is simply not an
+ * answer to the question. Somebody who asks this in a DIFFERENT thread gets a
+ * model that cannot see other threads and had no tool that enumerates them.
+ *
+ * I CONFIRMED A SURFACE EXISTED AND CALLED THAT THE QUESTION BEING ANSWERABLE
+ * — and I had already told the tester and Misho it was closed. The reason it
+ * is worth this many lines is that the day's other faults were the same shape
+ * from further away: measuring the right thing about a different question.
  */
-describe('the surfaces that were checked and left alone', () => {
+describe('the app answers it too, and the claim that it need not is retracted', () => {
   const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
 
-  /**
-   * If this ever fails, the app has grown an inbox tool and the reasoning
-   * above is stale — the description fixed here would then need the same
-   * treatment in a second place, which is the shape of fault that has cost
-   * most this month.
-   */
-  it('the in-app chat still has no check_my_inbox', () => {
-    expect(chat).not.toContain("name: 'check_my_inbox'");
+  it('the in-app chat HAS an inbox tool now', () => {
+    expect(chat).toContain("name: 'check_my_inbox'");
   });
 
-  it('answers an incoming ask through its own thread instead', () => {
+  /** The same three reads as the connector's, so one fault cannot live in two. */
+  it('reads the same three sources the connector reads', () => {
+    const handler = chat.slice(
+      chat.indexOf("case 'check_my_inbox': {"),
+      chat.indexOf("case 'get_pending_updates': {"),
+    );
+
+    expect(handler).toContain('getPendingRequestsForMediator(userId)');
+    expect(handler).toContain('getRecentResponsesForRequester(userId)');
+    expect(handler).toContain('getPendingAsksForUser(userId)');
+  });
+
+  /**
+   * An empty result must be sayable out loud. „The tool returned nothing" read
+   * as „the tool had nothing to add" is precisely how five questions stayed
+   * invisible.
+   */
+  it('can say that nothing is waiting', () => {
+    expect(chat).toContain('nothing_is_waiting:');
+  });
+
+  /**
+   * The reply belongs in the ask's own thread, not in whatever conversation
+   * the person happened to ask from — so the answer carries somewhere to go.
+   * The thread-per-ask design was never wrong; it was only never reachable.
+   */
+  it('points at the thread where the question can be answered', () => {
+    expect(chat).toContain('thread_id: ask.ask_thread_id ?? null');
     expect(chat).toContain("name: 'send_answer_to_asker'");
   });
 });
