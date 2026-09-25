@@ -698,6 +698,30 @@ const MAX_NAME_WORDS = 6;
  */
 const DESCRIPTION_SHAPE = /\s(in|from|for|near|at)\s/i;
 
+/**
+ * ⚠️ A TITLE THAT IS ITSELF A WEB ADDRESS — the tester, 25 September.
+ *
+ * „გზა ჯერ ვერ ვნახე: My.Tbilisi.Gov.Ge, …" — a government website address
+ * offered to the owner as somebody to chase. The host FALLBACK was removed in
+ * September on exactly this evidence, and it did not close the door: when the
+ * page's own TITLE is a host, it arrives here as an ordinary segment and
+ * passes every test below.
+ *
+ * MEASURED OVER EVERY WAY-IN LOOKUP THE PRODUCT HAS EVER MADE — 819 of them:
+ *
+ *   titles that are a bare host      123 looked      0 found
+ *   everything else                  694 looked     70 found
+ *
+ * Not one. The same answer the fallback got, in the half nobody had checked.
+ *
+ * ⚠️ AND THREE OTHER SHAPES IN THE TESTER'S LIST SURVIVED THE SAME TEST, which
+ * is why they are not here: „contains digits" 12 looked / 2 found, „handle or
+ * email" 6 / 1, „a date" 4 / 1. Every one of them reads like junk and every
+ * one has found a real contact. I would have filtered all three on how they
+ * look.
+ */
+const BARE_HOST_SEGMENT = /^[a-z0-9][a-z0-9._-]*\.(ge|com|org|net|gov|edu|io|ru|info|biz)$/i;
+
 function nameFromResult(row: Record<string, unknown>): string {
   const title = typeof row.title === 'string' ? row.title : '';
   const segments = title
@@ -709,6 +733,7 @@ function nameFromResult(row: Record<string, unknown>): string {
     if (PAGINATION_SEGMENT.test(segment)) continue;
     if (PLATFORM_SEGMENTS.has(segment.toLowerCase())) continue;
     if (DESCRIPTION_SHAPE.test(segment)) continue;
+    if (BARE_HOST_SEGMENT.test(segment)) continue;
     if (segment.split(/\s+/).length > MAX_NAME_WORDS) continue;
     return cutAtAWord(segment);
   }

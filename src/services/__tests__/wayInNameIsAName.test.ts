@@ -176,3 +176,51 @@ describe('a way-in name is a name, not a page', () => {
     ]);
   });
 });
+
+/**
+ * ⚠️ A TITLE THAT IS ITSELF A WEB ADDRESS — the tester, 25 September.
+ *
+ * „გზა ჯერ ვერ ვნახე: My.Tbilisi.Gov.Ge, …" — a government website address
+ * offered to the owner as somebody to chase. The host FALLBACK was removed in
+ * September on exactly this evidence, and it did not close the door: when the
+ * page's own TITLE is a host, it arrives as an ordinary segment and passes
+ * every other test.
+ *
+ * MEASURED OVER EVERY WAY-IN LOOKUP THE PRODUCT HAS EVER MADE — 819:
+ *
+ *   titles that are a bare host      123 looked      0 found
+ *   everything else                  694 looked     70 found
+ */
+describe('a web address is not somebody to chase', () => {
+  const resultsWith = (title: string): unknown => ({ results: [{ title, url: 'https://x.test' }] });
+
+  it('drops a title that is just a host', () => {
+    for (const host of ['My.Tbilisi.Gov.Ge', 'electrik.ge', 'whatclinic.com', 'preply.com']) {
+      expect(webResultNames(resultsWith(host))).toEqual([]);
+    }
+  });
+
+  it('keeps a real name that merely contains a dot', () => {
+    expect(webResultNames(resultsWith('Dr. Nino Beridze'))).toEqual(['Dr. Nino Beridze']);
+  });
+
+  /** A host inside a longer title is not the whole segment, and stays. */
+  it('does not drop a name because a host sits beside it', () => {
+    expect(webResultNames(resultsWith('Astra Dental Clinic | astra.ge'))).toEqual([
+      'Astra Dental Clinic',
+    ]);
+  });
+
+  /**
+   * ⚠️ THE THREE SHAPES THAT LOOK LIKE JUNK AND ARE NOT, kept because the same
+   * measurement refuted them: „contains digits" 12 looked / 2 found, „handle
+   * or email" 6 / 1, „a date" 4 / 1. I would have filtered all three on how
+   * they read. A test, so the next person does not.
+   */
+  it('keeps the shapes that read like junk and have found real contacts', () => {
+    expect(webResultNames(resultsWith('Elektrik 24/7'))).toEqual(['Elektrik 24/7']);
+    expect(webResultNames(resultsWith('Kakha Kaladze (@kakhakaladze)'))).toEqual([
+      'Kakha Kaladze (@kakhakaladze)',
+    ]);
+  });
+});
