@@ -163,8 +163,15 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     description:
       'Returns two things: incoming requests (people asking to be connected to the user) and ' +
       'replies to the requests the user sent. Call it once at the start of a conversation. ' +
-      "Don't lead with either — answer the user's message first, then add these as the last " +
-      'line(s) only. Each reply carries context: from_mediator (who responded), the target, ' +
+      'ALSO CALL IT, ALWAYS, WHEN THE INBOX IS THE QUESTION — "is anyone asking me something?", ' +
+      '"does anybody want anything from me?", "anything waiting for me?", "did anyone reply?". ' +
+      'get_pending_updates does NOT hold incoming requests and cannot answer those; answering ' +
+      'from it alone tells the user nobody is waiting while people are. ' +
+      "Don't lead with either WHEN THE USER DID NOT ASK — then answer their message first and " +
+      'add these as the last line(s) only. When they DID ask, this result is the answer and ' +
+      'goes first; a count of nothing is still an answer, so say plainly that nothing is ' +
+      'waiting rather than leaving it out. Each reply carries context: from_mediator (who ' +
+      'responded), the target, ' +
       "the user's original_reason, ask_type, and timestamps — show it with that context, " +
       'never a bare "accepted" ("[Mediator] agreed to introduce you to [Target] — about ' +
       '[reason]"). Incoming requests: asker name + one line + why. A phone number never appears. ' +
@@ -523,7 +530,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
     title: 'Updates due for the user',
     description:
       'Returns the results due to be shown today (drip-released) plus a count of how many more ' +
-      'are still coming. Call once at the start of a conversation, alongside check_my_inbox; ' +
+      'are still coming. It does NOT contain requests other people have sent the user — those ' +
+      'live in check_my_inbox, and "is anyone asking me something?" is answered from there, ' +
+      'never from this. Call once at the start of a conversation, alongside check_my_inbox; ' +
       'mention what is due naturally, and say more are coming when more_pending is above zero. ' +
       'Each item is reported only once. Items are typed by kind — search_followup, thanks_loop, ' +
       'chorus_ask, debrief, curiosity, goal_question — and each carries its own instruction: ' +
