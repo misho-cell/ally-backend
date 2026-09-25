@@ -127,6 +127,7 @@ import {
 } from './userNotes.service';
 import {
   countHeldUpdates,
+  heldUpdatesByKind,
   getPendingUpdates,
   listSeenUpdates,
   queueResult,
@@ -7216,8 +7217,27 @@ async function executeToolCall(
        * it no longer appends.
        */
       if (!PENDING_AS_MESSAGES_OFF && morePending > 0) {
+        /**
+         * Row 250 — the count now carries WHAT it is counting. The founder:
+         * say what they are, or do not appear. Read from the same rows and
+         * the same WHERE clause as the count itself, so the line and its own
+         * total can never disagree.
+         *
+         * Best-effort: a breakdown that cannot be read falls back to the bare
+         * count rather than dropping the line. „Something is waiting" is
+         * still true and still worth saying.
+         */
+        const byKind = await heldUpdatesByKind(userId).catch((error: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[pending] could not group what is held:', (error as Error).message);
+          return null;
+        });
         notePendingItems(runId, [
-          { kind: 'more_pending', task_id: null, payload: { count: morePending } },
+          {
+            kind: 'more_pending',
+            task_id: null,
+            payload: { count: morePending, ...(byKind !== null && { by_kind: byKind }) },
+          },
         ]);
       }
       const deliveredSeparately =

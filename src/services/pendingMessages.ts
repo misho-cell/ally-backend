@@ -105,6 +105,22 @@ interface PendingTexts {
    */
   morePending: (count: number) => string;
   morePendingOpen: string;
+  /**
+   * ⚠️ ROW 250 — „N MORE UPDATES ARE WAITING" WITHOUT SAYING WHAT THEY ARE.
+   * The tester raised it THREE times on 25 September before I took it.
+   *
+   * The founder's rule: say what they are, or do not appear. A bare number is
+   * a demand on somebody's attention with nothing to weigh it against — „9
+   * more updates" could be nine search results or nine people waiting on an
+   * answer, and those deserve very different amounts of worry. His own nine,
+   * read from the base: six questions on his own goals, two debriefs, one
+   * search result.
+   *
+   * A kind with no name here falls back to „განახლება" rather than vanishing:
+   * a new kind must make the line vaguer, never shorter than the truth.
+   */
+  kindName: (kind: string, count: number) => string;
+  morePendingKinds: (parts: readonly string[]) => string;
 }
 
 const TEXTS: Record<'ka' | 'en', PendingTexts> = {
@@ -137,6 +153,27 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     morePending: (count: number) =>
       count === 1 ? 'კიდევ ერთი განახლება გელოდება.' : `კიდევ ${count} განახლება გელოდება.`,
     morePendingOpen: 'ვნახოთ',
+    kindName: (kind: string, count: number) => {
+      switch (kind) {
+        case 'goal_question':
+          return `${count} კითხვა შენს მიზნებზე`;
+        case 'debrief':
+          return `${count} შეკითხვა — როგორ ჩაიარა`;
+        case 'search_followup':
+          return `${count} ძებნის შედეგი`;
+        case 'chorus_ask':
+          return `${count} შეკითხვა მოწვევაზე`;
+        case 'intro_request':
+          return `${count} გაცნობის მოთხოვნა`;
+        case 'goal_feedback':
+          return `${count} შეკითხვა დასრულებულ მიზანზე`;
+        case 'weekly_summary':
+          return 'კვირის შეჯამება';
+        default:
+          return `${count} განახლება`;
+      }
+    },
+    morePendingKinds: (parts) => `კიდევ გელოდება: ${parts.join(', ')}.`,
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -167,6 +204,29 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
     morePending: (count: number) =>
       count === 1 ? 'One more update is waiting for you.' : `${count} more updates are waiting.`,
     morePendingOpen: 'Show them',
+    kindName: (kind: string, count: number) => {
+      switch (kind) {
+        case 'goal_question':
+          return count === 1 ? 'one question on your goals' : `${count} questions on your goals`;
+        case 'debrief':
+          return count === 1 ? 'one "how did it go"' : `${count} "how did it go" questions`;
+        case 'search_followup':
+          return count === 1 ? 'one search result' : `${count} search results`;
+        case 'chorus_ask':
+          return count === 1 ? 'one question about an invite' : `${count} questions about invites`;
+        case 'intro_request':
+          return count === 1 ? 'one introduction request' : `${count} introduction requests`;
+        case 'goal_feedback':
+          return count === 1
+            ? 'one question about a finished goal'
+            : `${count} questions about finished goals`;
+        case 'weekly_summary':
+          return 'the weekly summary';
+        default:
+          return count === 1 ? 'one update' : `${count} updates`;
+      }
+    },
+    morePendingKinds: (parts) => `Also waiting: ${parts.join(', ')}.`,
   },
 };
 
@@ -200,8 +260,25 @@ export function renderPendingMessage(
     case 'more_pending': {
       const count = num(p, 'count') ?? 0;
       if (count <= 0) return null;
+      /**
+       * Row 250: named when we know what they are, counted when we do not.
+       * The breakdown is sent with the item; an older queued row without one
+       * still renders, as the count it always was.
+       */
+      const byKind = (p.by_kind ?? null) as Record<string, number> | null;
+      const named =
+        byKind === null
+          ? null
+          : Object.entries(byKind)
+              .filter(([, n]) => n > 0)
+              // Most of them first: „6 questions on your goals" is the part
+              // somebody decides on, and a list that opens with the single
+              // stray item buries it.
+              .sort((a, b) => b[1] - a[1])
+              .map(([kind, n]) => t.kindName(kind, n));
       return {
-        text: t.morePending(count),
+        text:
+          named === null || named.length === 0 ? t.morePending(count) : t.morePendingKinds(named),
         choices: [t.morePendingOpen, t.later],
         ref: { kind: item.kind },
         instruction,

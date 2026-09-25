@@ -86,11 +86,33 @@ describe('the rows already stranded, which nothing written today can reach', () 
     expect(release).toContain("ir.status = 'pending'");
   });
 
-  /** „N more updates are waiting" must not count something already answered. */
+  /**
+   * „N more updates are waiting" must not count something already answered.
+   *
+   * ⚠️ This used to slice from `countHeldUpdates` and look for the clause
+   * inside it. On 25 September row 250 gave that line a BREAKDOWN by kind,
+   * and the two queries were made to share their WHERE clause literally so a
+   * count and its own breakdown could never disagree — which moved the clause
+   * above the function and failed this test.
+   *
+   * The property did not change; the assertion had to follow it, and it is
+   * stronger now: the guard is asserted once, and BOTH readers are asserted
+   * to use the same constant.
+   */
   it('does not count one in the more-coming line either', () => {
-    const counter = updates.slice(updates.indexOf('export async function countHeldUpdates'));
+    expect(updates).toContain('const HELD_AND_STILL_REAL = `');
+    const shared = updates.slice(updates.indexOf('const HELD_AND_STILL_REAL = `'));
 
-    expect(counter.slice(0, 1200)).toContain("p.kind <> 'intro_request' OR EXISTS");
+    expect(shared.slice(0, 1200)).toContain("p.kind <> 'intro_request' OR EXISTS");
+  });
+
+  /** One clause, both readers — the „due/held" disagreement cannot come back. */
+  it('counts and groups the same rows, from the same clause', () => {
+    const counter = updates.slice(updates.indexOf('export async function countHeldUpdates'));
+    const grouper = updates.slice(updates.indexOf('export async function heldUpdatesByKind'));
+
+    expect(counter.slice(0, 400)).toContain('${HELD_AND_STILL_REAL}');
+    expect(grouper.slice(0, 400)).toContain('${HELD_AND_STILL_REAL}');
   });
 
   /**

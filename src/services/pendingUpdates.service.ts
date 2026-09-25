@@ -268,9 +268,21 @@ export async function listSeenUpdates(
  * read AFTER getPendingUpdates in the same turn so the just-released ones are
  * already 'seen' and not counted.
  */
-export async function countHeldUpdates(userId: string): Promise<number> {
-  const result = await query<{ count: string }>(
-    `SELECT COUNT(*) AS count
+/**
+ * ⚠️ „N MORE UPDATES ARE WAITING" WITHOUT SAYING WHAT THEY ARE — row 250, and
+ * the tester raised it THREE times on 25 September before I took it.
+ *
+ * The founder's rule: it should say what they are, or not appear. A bare
+ * number is a demand on somebody's attention with nothing to weigh it
+ * against — „9 more updates" could be nine search results or nine people
+ * waiting on an answer, and those deserve very different amounts of worry.
+ *
+ * So the same rows, grouped. The two queries share their WHERE clause
+ * literally, through the constant below, because a count that disagrees with
+ * its own breakdown is the „due/held" fault this file already carries a scar
+ * from — two numbers about one thing, and the reader believes the wrong one.
+ */
+const HELD_AND_STILL_REAL = `
      FROM pending_updates p
      LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
      WHERE p.user_id = $1 AND p.status = 'held'
@@ -282,7 +294,23 @@ export async function countHeldUpdates(userId: string): Promise<number> {
        AND (p.kind <> 'intro_request' OR EXISTS (
              SELECT 1 FROM introduction_requests ir
               WHERE ir.id::text = p.payload->>'request_id'
-                AND ir.status = 'pending'))`,
+                AND ir.status = 'pending'))`;
+
+/** What is waiting, by kind — so the card can name them instead of counting them. */
+export async function heldUpdatesByKind(userId: string): Promise<Record<string, number>> {
+  const result = await query<{ kind: string; count: string }>(
+    `SELECT p.kind, COUNT(*) AS count ${HELD_AND_STILL_REAL} GROUP BY p.kind`,
+    [userId],
+    QUERY_TIMEOUT_MS,
+  );
+  const out: Record<string, number> = {};
+  for (const row of result.rows) out[row.kind] = Number(row.count);
+  return out;
+}
+
+export async function countHeldUpdates(userId: string): Promise<number> {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count ${HELD_AND_STILL_REAL}`,
     [userId],
     QUERY_TIMEOUT_MS,
   );
