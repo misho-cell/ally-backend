@@ -179,6 +179,27 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
          AND (p.task_id IS NULL OR t.status <> 'closed')
          -- A sticky item survives only while its goal is still waiting.
          AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
+         -- ⚠️ AN ANSWERED REQUEST KEEPS NO CARD (tester, seat Test 4,
+         -- 25 September). Two intro cards from 23 September were still
+         -- offering Connect / Decline / Remind me later on requests that had
+         -- been answered; „Remind me later" came back 409 „you already
+         -- answered this one". The founder's rule is that after an answer,
+         -- zero buttons remain.
+         --
+         -- resolveIntroductionRequest now retires the row when it answers.
+         -- THIS IS THE HALF THAT REACHES THE ROWS ALREADY STRANDED, which
+         -- nothing written at answer time can ever go back and collect — and
+         -- it is also the guard for the next surface that answers a request
+         -- without knowing this row exists.
+         --
+         -- Compared as TEXT, not cast to int: the payload is ours today and a
+         -- cast is a query that throws on the day it stops being. And no
+         -- backtick in here either: this SQL lives in a template literal, and
+         -- the first version of this comment ended the string with one.
+         AND (p.kind <> 'intro_request' OR EXISTS (
+               SELECT 1 FROM introduction_requests ir
+                WHERE ir.id::text = p.payload->>'request_id'
+                  AND ir.status = 'pending'))
      ), chosen AS (
        SELECT id FROM due
        WHERE NOT sticky OR rank_in_class <= $5
@@ -253,7 +274,15 @@ export async function countHeldUpdates(userId: string): Promise<number> {
      FROM pending_updates p
      LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
      WHERE p.user_id = $1 AND p.status = 'held'
-       AND (p.task_id IS NULL OR t.status <> 'closed')`,
+       AND (p.task_id IS NULL OR t.status <> 'closed')
+       -- An answered introduction is not something still waiting on you, and
+       -- this count is the „N more updates are waiting" line a real person
+       -- read on her phone and could not make sense of. Same guard as the
+       -- release query above.
+       AND (p.kind <> 'intro_request' OR EXISTS (
+             SELECT 1 FROM introduction_requests ir
+              WHERE ir.id::text = p.payload->>'request_id'
+                AND ir.status = 'pending'))`,
     [userId],
     QUERY_TIMEOUT_MS,
   );

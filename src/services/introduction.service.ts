@@ -961,6 +961,48 @@ async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void
  * regardless of where the decision was made. Idempotent: repeating an already-
  * applied answer succeeds; a CONFLICTING answer is refused.
  */
+/**
+ * ⚠️ AN ANSWERED REQUEST KEPT ITS BUTTONS — the tester, seat Test 4,
+ * 25 September.
+ *
+ * Two introduction cards from 23 September, both already answered — their own
+ * text says „I have given … contact" — still showing Connect / Keep it /
+ * Decline / Remind me later. Pressing „Remind me later" answered 409
+ * „ამ მოთხოვნაზე უკვე გაქვს პასუხი". The founder's standing rule is that after
+ * an answer, zero buttons remain.
+ *
+ * `GET /requests` was never the problem: it filters `status = 'pending'` and
+ * always did. The card comes from a `pending_updates` row of kind
+ * `intro_request`, and NOTHING retired that row when the request was answered.
+ * Every other kind here has that path — the comment on the release query says
+ * it out loud about a goal's question: „both paths delete the held row" —
+ * and this kind was simply never given one.
+ *
+ * AND IT WAS NOT ONLY BUTTONS. A held row is counted by `countHeldUpdates`,
+ * which is the „კიდევ 6 განახლება გელოდება" line a real person read on her own
+ * phone this morning and could not make sense of. An answered request was
+ * padding that number.
+ *
+ * Best-effort by deliberate choice: an introduction that was accepted must not
+ * fail because a card could not be tidied away. The stale card is the smaller
+ * harm, and the read-side guard in `pendingUpdates.service` catches whatever
+ * this misses — including the rows already stranded, which this can never
+ * reach.
+ */
+async function dropIntroCard(mediatorUserId: string, requestId: number): Promise<void> {
+  try {
+    await query(
+      `DELETE FROM pending_updates
+        WHERE user_id = $1 AND kind = 'intro_request'
+          AND payload->>'request_id' = $2::text`,
+      [mediatorUserId, String(requestId)],
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`[intro] request ${requestId}: could not retire its card:`, error);
+  }
+}
+
 export async function resolveIntroductionRequest(
   mediatorUserId: string,
   target: { requestId?: number; requestRef?: string },
@@ -1117,6 +1159,8 @@ export async function resolveIntroductionRequest(
     source: opts.source,
     request_ref: req.request_ref,
   });
+  // The answer spends the card. See `dropIntroCard`.
+  await dropIntroCard(mediatorUserId, req.id);
   // C9.7: the outcome as evidence — declined/accepted land at resolve time.
   void recordIntroOutcome(
     req.requester_user_id,
