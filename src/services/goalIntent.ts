@@ -245,13 +245,49 @@ const TITLE_NOISE_RE =
 const LEADING_GREETING_RE =
   /^\s*(გამარჯობა|სალამი|hello|hi|hey|здравствуй(те)?|привет|hola|buenas)(?![\p{L}\p{N}])[\s,!.—-]*(?=\S)/iu;
 
+/**
+ * ⚠️ A WALL OF ONE REPEATED WORD IS NOT A TITLE — the founder's own account.
+ *
+ * Android's Chrome does not UPDATE one dictation entry as a sentence grows; it
+ * ADDS one per update, each holding a longer prefix of the same words. Read
+ * faithfully and joined, that builds
+ *
+ *   „პოლიტიკური პოლიტიკური პოლიტიკური პოლიტიკური …" (goal 10133)
+ *   „ინტერნეტის ინტერნეტის ინტერნეტის ინტერნეტის …" (goal 10132)
+ *
+ * The app team has fixed the microphone, and that closes the SOURCE. It does
+ * not close this: the server took a forty-word repetition, wrote it into the
+ * column the sidebar shows and the stop line quotes back, and asked nothing.
+ * Any other client, or a paste, does it again.
+ *
+ * Three such titles exist on the live base, all on one account, 16 to
+ * 25 September — small, and the point is that nothing was watching rather
+ * than how many got through.
+ *
+ * Collapsed to the word itself, which is what the person said once. Requires
+ * a LONG title made of at most two distinct words, so a real „ძალიან ძალიან
+ * მჭირდება" is untouched.
+ */
+const WALL_MIN_CHARS = 60;
+const WALL_MAX_DISTINCT_WORDS = 2;
+
+export function collapseARepeatedWall(text: string): string {
+  if (text.length < WALL_MIN_CHARS) return text;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 4) return text;
+  const distinct = [...new Set(words.map((w) => w.toLowerCase()))];
+  if (distinct.length > WALL_MAX_DISTINCT_WORDS) return text;
+  // The longest distinct word: „X X X X" collapses to X, and „need need need
+  // a a a" keeps the word that carries the meaning rather than the article.
+  const kept = words.reduce((a, b) => (b.length > a.length ? b : a));
+  return kept;
+}
+
 /** The goal's title from the message: the first sentence, without the instructions, capped. */
 export function goalTitleFrom(message: string): string {
-  const cleaned = message
-    .replace(TITLE_NOISE_RE, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(LEADING_GREETING_RE, '');
+  const cleaned = collapseARepeatedWall(
+    message.replace(TITLE_NOISE_RE, ' ').replace(/\s+/g, ' ').trim(),
+  ).replace(LEADING_GREETING_RE, '');
   const firstSentence = cleaned.split(/(?<=[.!?…])\s+/)[0] ?? cleaned;
   const base = (firstSentence.trim() || cleaned || message.trim()).replace(/[.!…]+$/, '');
   if (base.length <= MAX_TITLE_CHARS) return base;
