@@ -106,32 +106,53 @@ describe('the same-language case spends nothing — the control', () => {
 });
 
 describe('a question in another language is translated for its reader', () => {
-  it('puts the translation in front and keeps the original, labelled', async () => {
+  /**
+   * ⚠️ THIS TEST ASSERTED THE OPPOSITE UNTIL ROW 260, and the instruction it
+   * encoded was a real one — „(original: …)" was deliberate, and the test
+   * below it existed to make sure even the LABEL was in the reader's language.
+   *
+   * The founder's done-when, 25 September: „the recipient sees the meaning
+   * only, never the sender's original words."
+   *
+   * Which is right, and the old shape was worse than untidy. Somebody who
+   * cannot read Georgian was handed a paragraph of it under every message and
+   * had to work out which half was theirs; somebody who could read both was
+   * quietly given the job of checking our translation, a job nobody offered
+   * them. The label being readable never fixed either.
+   */
+  it('gives the reader the meaning, not the words it was written in', async () => {
     const out = await questionForReader('Do you know a reliable electrician?', 'ka');
 
     expect(out.text.startsWith('თარგმანი')).toBe(true);
-    expect(out.text).toContain('ორიგინალი');
-    expect(out.text).toContain('Do you know a reliable electrician?');
-    expect(out.original).toBe('Do you know a reliable electrician?');
+    expect(out.text).not.toContain('ორიგინალი');
+    expect(out.text).not.toContain('Do you know a reliable electrician?');
   });
 
   /**
-   * THE LABEL IS IN THE READER'S LANGUAGE TOO. „(original: …)" in English above
-   * a Georgian translation is the same fault one layer down.
+   * The words are still CARRIED, just not shown — that is what the log line
+   * reads to say a translation happened. Keeping them and displaying them are
+   * two decisions and only the second one was reversed.
    */
+  it('still carries the original for the log, out of sight', async () => {
+    const out = await questionForReader('Do you know a reliable electrician?', 'ka');
+
+    expect(out.original).toBe('Do you know a reliable electrician?');
+  });
+
   it.each([
     // Each answer is written in ITS OWN target's script, because since the
     // third cut one that is not is refused — and a fixture that could not
     // happen in production is how the first cut passed eleven tests.
-    ['en', 'оригинал', 'original', 'Do you know a good electrician?'],
-    ['ru', 'original', 'оригинал', 'Знаешь хорошего электрика?'],
-  ])('labels it in %s', async (language, absent, present, answer) => {
+    ['en', 'Do you know a good electrician?'],
+    ['ru', 'Знаешь хорошего электрика?'],
+  ])('hands %s the translation alone', async (language, answer) => {
     create.mockResolvedValue({ content: [{ type: 'text', text: answer }], usage: {} });
 
     const out = await questionForReader('იცნობ კარგ ელექტრიკოსს?', language as 'en' | 'ru');
 
-    expect(out.text).toContain(present);
-    expect(out.text).not.toContain(absent);
+    expect(out.text).toBe(answer);
+    // No label in any language, since there is nothing left to label.
+    expect(out.text).not.toMatch(/original|оригинал|ორიგინალი/i);
   });
 
   /** Meaning exact, tone free — the vision's own division, in the brief. */
@@ -292,7 +313,8 @@ describe('a mangled translation is worse than no translation', () => {
     const out = await questionForReader('Do you know a good electrician? Nino recommends.', 'ka');
 
     expect(out.skipped).toBeUndefined();
-    expect(out.text).toContain('ორიგინალი');
+    expect(out.text).toBe('იცნობ კარგ ელექტრიკოსს? Nino გვირჩევს.');
+    expect(out.text).not.toContain('ორიგინალი');
   });
 
   /**

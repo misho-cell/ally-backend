@@ -264,20 +264,6 @@ export interface RelayedQuestion {
   readonly skipped?: 'same_language' | 'too_long' | 'failed';
 }
 
-/** „(original: …)" in the reader's own language, so the label is readable too. */
-function labelled(translation: string, original: string, to: RunLanguage): string {
-  switch (to) {
-    case 'en':
-      return `${translation}\n\n(original: ${original})`;
-    case 'ru':
-      return `${translation}\n\n(оригинал: ${original})`;
-    case 'es':
-      return `${translation}\n\n(original: ${original})`;
-    default:
-      return `${translation}\n\n(ორიგინალი: ${original})`;
-  }
-}
-
 /**
  * A CROSSED LANGUAGE LINE THAT WAS NOT TRANSLATED IS AN EVENT, NOT A NON-EVENT.
  *
@@ -352,7 +338,26 @@ export async function relayedForReader(
       untranslated(asked, readerLanguage, what, `rejected — ${sane.why}`);
       return { text: question, skipped: 'failed' };
     }
-    return { text: labelled(translated, text, readerLanguage), original: text };
+    /**
+     * ⚠️ ROW 260 — THE READER GETS THE MEANING, NOT BOTH.
+     *
+     * This used to return the translation with „(original: …)" bolted under
+     * it, in the reader's own language so at least the label was readable.
+     * The founder's done-when, 25 September: „the recipient sees the meaning
+     * only, never the sender's original words."
+     *
+     * He is right, and the old shape was worse than untidy. Somebody who
+     * cannot read Georgian was handed a paragraph of it under every message
+     * and had to work out which half was for them; somebody who CAN read both
+     * was quietly invited to check our translation, which is a job we gave
+     * them and never asked about.
+     *
+     * `original` stays on the returned object and is NOT displayed — it is
+     * what the log line reads to say a translation happened at all. Keeping
+     * the words and not showing them are different decisions, and only the
+     * second one was made here.
+     */
+    return { text: translated, original: text };
   } catch (error) {
     untranslated(
       asked,
