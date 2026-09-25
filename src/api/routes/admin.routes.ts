@@ -172,6 +172,7 @@ import {
   reprocessSavedOccupationFacts,
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
+import { referralTree, MAX_DEPTH } from '../../services/referralTree.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
 import { backfillHumanRelationshipTiers } from '../../services/tools/relationshipScores';
 import {
@@ -1738,6 +1739,47 @@ adminRouter.post(
 // each; two of the six accounts never opened the invite screen, so none was
 // ever minted. Same function the app uses; idempotent.
 //   POST /admin/users/:id/referral-code
+/**
+ * ROW 264, the founder: „the admin does not show who invited whom. Done when:
+ * the admin shows the invitation/referral tree."
+ *
+ * ⚠️ AND IT SAYS WHICH POPULATION EVERY NODE IS, which is the difference
+ * between useful and misleading. Read from the live base while building this:
+ *
+ *   805  accounts carry an inviter
+ *     8  of them have ever opened Netai
+ *     6  of them are fictional test seats
+ *
+ * „805 people were invited" is true and would have told him something false —
+ * almost all of them are legacy Ally rows imported before Netai existed. The
+ * number he actually needs is the eight.
+ *
+ * `?root=<id>` for one person's tree, `?depth=N` up to six (the invitation
+ * reward goes six levels, so a shallower tree cannot be checked against it).
+ * Names only; no phone number appears anywhere in this.
+ */
+adminRouter.get('/referrals/tree', async (req: Request, res: Response) => {
+  const rootRaw = String(req.query.root ?? '').trim();
+  const root = rootRaw === '' ? undefined : Number(rootRaw);
+  if (root !== undefined && !Number.isInteger(root)) {
+    res.status(400).json({ success: false, error: 'root must be a user id.' });
+    return;
+  }
+  const depthRaw = Number(String(req.query.depth ?? '3'));
+  if (!Number.isFinite(depthRaw) || depthRaw < 1 || depthRaw > MAX_DEPTH) {
+    res.status(400).json({ success: false, error: `depth must be 1-${MAX_DEPTH}.` });
+    return;
+  }
+  try {
+    const tree = await referralTree(root, depthRaw);
+    res.status(200).json({ success: true, data: tree });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin referral tree]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.post('/users/:id/referral-code', async (req: Request, res: Response) => {
   try {
     const userId = Number(req.params.id);
