@@ -130,3 +130,54 @@ describe('the number it produces says how young it is', () => {
     expect(sql.slice(0, 600)).not.toContain("'cancelled'");
   });
 });
+
+/**
+ * ⚠️ THE FIRST BUILD OF THIS BUTTON WOULD HAVE RECORDED ALMOST NOTHING, and
+ * the test suite would have been green the whole time.
+ *
+ * The check lived in `recordAskAnswer`, which sounds like "where an answer is
+ * recorded" and is not where a person's words arrive. A recipient's reply
+ * starts a run; the model composes an answer, asks them to confirm it, and
+ * calls `send_answer_to_asker` with `answer_text` OF ITS OWN CHOOSING. So the
+ * text reaching that function is the model's wording after a confirmation
+ * round — and an exact match against our button would have missed nearly every
+ * real decline, leaving a zero that reads as "nobody refuses".
+ *
+ * The tap is read where the person's own message lands instead. Same fault
+ * shape as everything else this week: the measurement was right and the
+ * question was different.
+ */
+describe('the refusal is read from the tap, not from what is sent later', () => {
+  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('hooks where the person’s own message is stored', () => {
+    const keep = chat.slice(chat.indexOf('export async function keepUserMessage'));
+    expect(keep.slice(0, 900)).toContain('noteDeclineIfButtonPressed(threadId, message)');
+  });
+
+  /** It must not be able to fail somebody's message. */
+  it('is fire-and-forget and swallows nothing silently', () => {
+    const keep = chat.slice(chat.indexOf('export async function keepUserMessage'));
+    expect(keep.slice(0, 900)).toContain('void noteDeclineIfButtonPressed');
+    const note = asks.slice(asks.indexOf('export async function noteDeclineIfButtonPressed'));
+    expect(note).toContain('console.error');
+  });
+
+  /** Every message in every thread passes through: the compare comes first. */
+  it('touches the database only when the button was actually pressed', () => {
+    const note = asks.slice(asks.indexOf('export async function noteDeclineIfButtonPressed'));
+    const guard = note.indexOf('if (!isDeclineChoice(message)) return;');
+    const firstQuery = note.indexOf('await query(');
+    expect(guard).toBeGreaterThan(-1);
+    expect(firstQuery).toBeGreaterThan(guard);
+  });
+
+  /** The newest live ask on that thread, because a thread carries rounds. */
+  it('marks the latest live ask on the thread and no other', () => {
+    const note = asks.slice(asks.indexOf('export async function noteDeclineIfButtonPressed'));
+    expect(note).toContain("WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')");
+    expect(note).toContain('ORDER BY id DESC LIMIT 1');
+    expect(note).toContain('COALESCE(declined_at, NOW())');
+  });
+});

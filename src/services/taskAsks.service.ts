@@ -2634,3 +2634,48 @@ async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<bool
     return false;
   }
 }
+
+/**
+ * ROW 274 — THE DECLINE IS RECORDED FROM THE TAP, NOT FROM WHAT IS SENT LATER.
+ *
+ * ⚠️ AND THIS IS THE FIX FOR A BUTTON THAT WOULD HAVE RECORDED ALMOST NOTHING.
+ *
+ * The first build put the check in `recordAskAnswer`, which looked right and
+ * was nearly useless. Answers do not reach that function as the person typed
+ * them: a recipient's words start a run, the model composes an answer, asks
+ * them to confirm it, and only then calls `send_answer_to_asker` with
+ * `answer_text` OF ITS OWN CHOOSING. So the stored answer is the model's
+ * wording after a confirmation round — and an exact string match against our
+ * button would have failed on almost every real decline, leaving a count of
+ * zero that read as "nobody refuses".
+ *
+ * Reading it from `keepUserMessage` instead records what the PERSON DID — they
+ * pressed our button — independently of anything the model writes afterwards.
+ * The relay is unchanged: their answer still goes to the asker the ordinary
+ * way, in whatever words the turn settles on.
+ *
+ * Best-effort by construction. A recipient's message must never fail because a
+ * diagnostic column could not be written.
+ */
+export async function noteDeclineIfButtonPressed(threadId: number, message: string): Promise<void> {
+  // A string compare, and it is false for every ordinary message before
+  // anything touches the database — this runs on every message in every
+  // thread.
+  if (!isDeclineChoice(message)) return;
+  try {
+    await query(
+      `UPDATE task_asks
+          SET declined_at = COALESCE(declined_at, NOW())
+        WHERE id = (
+          SELECT id FROM task_asks
+           WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
+           ORDER BY id DESC LIMIT 1
+        )`,
+      [threadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[decline] could not record a refusal:', (err as Error).message);
+  }
+}

@@ -88,6 +88,7 @@ import {
   EnsureQuoted,
   TaskAsk,
   IncomingAsk,
+  noteDeclineIfButtonPressed,
 } from './taskAsks.service';
 import {
   approveTaskPlan,
@@ -3089,6 +3090,11 @@ export async function keepUserMessage(
 ): Promise<boolean> {
   try {
     await saveMessage(userId, threadId, 'user', message);
+    // ROW 274: if this message IS our decline button's own sentence, the
+    // refusal is recorded here — from the tap — and not from whatever the run
+    // later settles on as the answer's wording. Fire-and-forget: a person's
+    // message must not fail because a diagnostic column could not be written.
+    void noteDeclineIfButtonPressed(threadId, message);
     return true;
   } catch (err) {
     // eslint-disable-next-line no-console
