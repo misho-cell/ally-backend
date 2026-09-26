@@ -313,3 +313,100 @@ describe('only what the reply actually said is struck off', () => {
     expect(chat).toContain('fewer words per item, never fewer items');
   });
 });
+
+/**
+ * ⚠️ D500 OPTION A — THE FOUNDER'S CHOICE, APPROVED BY MISHO, AND THE END OF
+ * TWO BUILDS' WORTH OF GUESSING.
+ *
+ * „The also-waiting line counts only what was NOT already listed above it."
+ * Making that true needs the server to KNOW what was listed. It guessed twice:
+ *
+ *   1. It assumed the model repeated everything it was handed. The model
+ *      dropped one of the founder's six goals and that goal vanished from both
+ *      the reply and the card.
+ *   2. It looked for the goal's own words in the reply. The model TRANSLATES
+ *      them — „I need two painters for a flat in Vake" came back as „ვაკეში
+ *      მღებავების გეგმაზე" — so nothing ever matched and everything repeated.
+ *
+ * Both failures have one cause: the list was the model's to write. Now it is
+ * ours. „I wrote it" and „I think the reply mentioned it" are different facts,
+ * and the claim carries which one it is.
+ */
+describe('the server writes the list, so it knows what was said', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('delivers the goals as its own card', () => {
+    const handler = chat.slice(
+      chat.indexOf("case 'check_my_inbox': {"),
+      chat.indexOf("case 'get_pending_updates': {"),
+    );
+
+    expect(handler).toContain('MY_GOALS_WAITING_KIND');
+    expect(handler).toContain('goals: myGoals.map(');
+  });
+
+  it('marks them named by US, not by the reply', () => {
+    const handler = chat.slice(
+      chat.indexOf("case 'check_my_inbox': {"),
+      chat.indexOf("case 'get_pending_updates': {"),
+    );
+
+    expect(handler).toContain('named: !PENDING_AS_MESSAGES_OFF');
+  });
+
+  /** And a claim written by us needs nothing found in the reply. */
+  it('counts a self-written claim without reading anything', () => {
+    const said = claimsTheReplyMade(
+      [{ key: 'goal_question:6964', mustAppear: null, named: true }],
+      'a reply that says nothing about it at all',
+    );
+
+    expect(said.has('goal_question:6964')).toBe(true);
+  });
+
+  /** The text-evidence path survives for the things a model still narrates. */
+  it('still requires evidence for a claim nobody wrote a card for', () => {
+    const said = claimsTheReplyMade(
+      [{ key: 'intro_request:1057', mustAppear: 'Nino Abramishvili' }],
+      'a reply that says nothing about it at all',
+    );
+
+    expect(said.size).toBe(0);
+  });
+
+  it('tells the model this one list is not its to write', () => {
+    expect(chat).toContain('THE EXCEPTION IS my_goals_waiting_on_me');
+    expect(chat).toContain('Do NOT list them');
+  });
+
+  /** The card names each goal, and says the question when there is one. */
+  it('writes a line per goal, with its question where there is one', () => {
+    const card = renderPendingMessage(
+      {
+        kind: 'my_goals_waiting',
+        task_id: null,
+        payload: {
+          goals: [
+            { task_id: 5974, goal: 'Painters for the Vake flat', question: 'Approve the list?' },
+            { task_id: 6964, goal: 'The message to Lika', question: null },
+          ],
+        },
+      },
+      'en',
+    );
+
+    expect(card?.text).toContain('2 of your goals are waiting on your answer:');
+    expect(card?.text).toContain('• Painters for the Vake flat — Approve the list?');
+    // A goal whose question was never written down is still named.
+    expect(card?.text).toContain('• The message to Lika');
+  });
+
+  it('says nothing rather than printing a blank bullet', () => {
+    expect(
+      renderPendingMessage(
+        { kind: 'my_goals_waiting', task_id: null, payload: { goals: [{ task_id: 1 }] } },
+        'en',
+      ),
+    ).toBeNull();
+  });
+});

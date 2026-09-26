@@ -5209,6 +5209,14 @@ interface InboxClaim {
   readonly key: string;
   /** The words the reply must contain for this to count as said out loud. */
   readonly mustAppear: string | null;
+  /**
+   * ⚠️ TRUE WHEN THE SERVER ITSELF SAID IT (D500 option A). Then nothing has
+   * to be found in the reply: we wrote the card, so we know. `mustAppear` is
+   * the fallback for the things a model still narrates, and the two must never
+   * be confused — „I wrote it" and „I think it mentioned it" are exactly the
+   * two facts this row has already conflated twice.
+   */
+  readonly named?: boolean;
 }
 
 function noteInboxNamed(runId: string | undefined, claims: readonly InboxClaim[]): void {
@@ -5242,6 +5250,11 @@ export function claimsTheReplyMade(
   const said = bareWords(reply);
   const made = new Set<string>();
   for (const claim of claims) {
+    // Written by us — no reading required.
+    if (claim.named === true) {
+      made.add(claim.key);
+      continue;
+    }
     if (claim.mustAppear === null) continue;
     const wanted = bareWords(claim.mustAppear);
     if (wanted === '') continue;
@@ -5312,6 +5325,8 @@ function runNotedGoalQuestion(runId: string | undefined, taskId: number): boolea
 }
 
 const MORE_PENDING_KIND = 'more_pending';
+/** D500 option A: the owner's own waiting goals, listed by the server. */
+const MY_GOALS_WAITING_KIND = 'my_goals_waiting';
 
 /**
  * The „also waiting" card with what this same reply already named struck out
@@ -7282,10 +7297,48 @@ async function executeToolCall(
        * than by count, so six named goals take off those six goals and not
        * whatever six rows happen to be held.
        */
+      /**
+       * ⚠️ D500 OPTION A — the founder's choice, approved by Misho on
+       * 26 September. The list of the owner's waiting goals stops being
+       * something the model narrates and becomes a card the SERVER writes.
+       *
+       * Two builds guessed at what the reply had said, and both were wrong in
+       * the way that loses somebody a question: the first assumed the model
+       * repeated everything it was handed (it dropped one of the founder's
+       * six), the second looked for the goal's words in the reply (the model
+       * TRANSLATES them, so nothing ever matched and everything repeated).
+       *
+       * Neither guess is needed once we write the list. `mustAppear: null`
+       * below says exactly that — these are named because WE name them, not
+       * because the reply might.
+       */
+      if (!PENDING_AS_MESSAGES_OFF && myGoals.length > 0) {
+        notePendingItems(runId, [
+          {
+            kind: MY_GOALS_WAITING_KIND,
+            task_id: null,
+            payload: {
+              goals: myGoals.map((g) => ({
+                task_id: g.task_id,
+                goal: g.title,
+                question: g.question === null ? null : scrubText(g.question),
+              })),
+              instruction:
+                'The user is being shown a list of their OWN goals that are waiting on them, ' +
+                'as its own message written by the server. Do NOT list them in your answer and ' +
+                'do not summarise them — they are already on the screen. If the user answers one ' +
+                'of them, answer_goal_question is how that reaches the goal.',
+            },
+          },
+        ]);
+      }
       noteInboxNamed(runId, [
         ...myGoals.map((g) => ({
           key: String(heldUpdateKey(GOAL_QUESTION_KIND, g.task_id)),
-          mustAppear: g.title,
+          // Named by US, on the card above — so nothing has to be found in the
+          // reply for this to count as said.
+          mustAppear: PENDING_AS_MESSAGES_OFF ? g.title : null,
+          named: !PENDING_AS_MESSAGES_OFF,
         })),
         ...waiting.map((request: PendingRequest) => ({
           key: String(heldUpdateKey(INTRO_REQUEST_KIND, request.id)),
@@ -7337,7 +7390,12 @@ async function executeToolCall(
           'Name EVERY item above, each one, by its own goal or person. Do not summarise them, ' +
           'do not say "and others", do not pick the important ones — the user cannot act on a ' +
           'question they are not told about. If there are many, a short line each is right; ' +
-          'fewer words per item, never fewer items.',
+          'fewer words per item, never fewer items. ' +
+          // D500 option A: the one list that is NOT yours to write.
+          'THE EXCEPTION IS my_goals_waiting_on_me: those are delivered to the user as their ' +
+          'own message, written by the server, immediately after your answer. Do NOT list them ' +
+          'and do not summarise them — they are already on the screen. They are given to you so ' +
+          'you know what the user is about to see and can act on their reply.',
         // „Nothing is waiting" must be sayable. An empty object read as „the
         // tool had nothing to add" is exactly how five questions stayed
         // invisible in thread 24751.

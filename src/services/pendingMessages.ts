@@ -162,6 +162,22 @@ interface PendingTexts {
    * the one that was never asked the question.
    */
   goalFeedbackLater: string;
+  /**
+   * ⚠️ ROW 250 / D500, OPTION A — the founder's choice, and Misho approved it.
+   *
+   * „The also-waiting line counts only what was NOT already listed above it."
+   * Making that true needs the server to KNOW what was listed, and for two
+   * builds it only guessed: first by assuming the model said everything it was
+   * handed (it dropped one of the founder's six), then by looking for the
+   * goal's words in the reply (the model TRANSLATES them, so nothing matched
+   * and everything was repeated).
+   *
+   * Both failures come from one place: the list was the model's to write. So
+   * now it is ours. What was listed is exactly what this card says, and the
+   * strike-off stops being an inference.
+   */
+  myGoalsWaiting: (count: number) => string;
+  myGoalsLater: string;
   /** Nobody is written to without this being pressed. */
   someoneNew: string;
 }
@@ -242,6 +258,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `ამიტომ დავხურეთ. თუ ისევ გჭირდება, თავიდან ვცადოთ.`,
     introAskAgain: 'თავიდან ვცადოთ',
     goalFeedbackLater: 'ახლა არა',
+    myGoalsWaiting: (count) =>
+      count === 1
+        ? 'ერთი შენი მიზანი შენს პასუხს ელოდება:'
+        : `${count} შენი მიზანი შენს პასუხს ელოდება:`,
+    myGoalsLater: 'მოგვიანებით',
     someoneNew: 'ახალი მომხმარებელი',
   },
   en: {
@@ -311,6 +332,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `closed. If you still need it, we can try again.`,
     introAskAgain: 'Try again',
     goalFeedbackLater: 'Not now',
+    myGoalsWaiting: (count) =>
+      count === 1
+        ? 'One of your goals is waiting on your answer:'
+        : `${count} of your goals are waiting on your answer:`,
+    myGoalsLater: 'Later',
     someoneNew: 'Somebody new',
   },
 };
@@ -512,6 +538,28 @@ export function renderPendingMessage(
         text: asked,
         choices: [t.goalFeedbackLater],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
+        instruction,
+      };
+    }
+    /**
+     * Row 250 / D500 option A. The list is written HERE, from the rows, so
+     * „what was already listed" is a fact and not a reading of the reply.
+     *
+     * A goal whose question was never written down is still named — it is
+     * still waiting — and a goal with no title at all is skipped rather than
+     * printed as a blank bullet.
+     */
+    case 'my_goals_waiting': {
+      const goals = Array.isArray(p.goals) ? (p.goals as Record<string, unknown>[]) : [];
+      const lines = goals
+        .map((g) => ({ title: str(g, 'goal'), question: str(g, 'question') }))
+        .filter((g): g is { title: string; question: string | null } => g.title !== null)
+        .map((g) => (g.question === null ? `• ${g.title}` : `• ${g.title} — ${g.question}`));
+      if (lines.length === 0) return null;
+      return {
+        text: `${t.myGoalsWaiting(lines.length)}\n${lines.join('\n')}`,
+        choices: [t.myGoalsLater],
+        ref: { kind: item.kind },
         instruction,
       };
     }
