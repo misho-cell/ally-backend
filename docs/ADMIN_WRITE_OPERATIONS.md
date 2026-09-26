@@ -4735,3 +4735,102 @@ changed between „0" and „1" is that a goal now names the organisation.
 
 And the card carries **the owner's own label**, which is the other fix from
 this morning arriving in the place it was built for.
+
+## §63 — ZEROING THE EIGHT WALLETS THAT WENT NEGATIVE BEFORE THE FLOOR
+
+**Authorised by Misho, 26 September, directly:** *„ყველა შენი რეკომენდაციით
+გააკეთე"*, answering a list on which this was item 1 with the recommendation
+„yes — nobody's fault, a leftover of a bug, and −1 reads wrongly on a real
+person's account."
+
+### WHY THEY EXIST AND WHY THEY CANNOT GROW
+
+D501's floor landed in `685242a` on **25 September 21:32 UTC**. Before it, a
+single charge could overshoot the balance. Measured across every wallet:
+
+* **8** are below zero, lowest **−35**;
+* **0** of them have had ANY movement since the floor went live;
+* the floor is not merely deployed — since 06:18 today, **19** chat debits, of
+  which **2** recorded `absorbed > 0`, the house paying the overshoot.
+
+So this is a fixed set that cannot grow, not an ongoing leak.
+
+### THE OPERATION — an existing route, no new power
+
+* **ROUTE** — `POST /admin/users/:id/tokens`
+* **BODY** — `{ "tokens": <+the amount owed>, "note": "<3-500 chars>" }`
+* **CEILING** — the route itself refuses anything outside ±50,000.
+* **UNDO** — the same route with the negative of the same number; every
+  adjustment is a ledger row with its note, so both directions are on the
+  record.
+
+### THE EIGHT
+
+| who | balance | adjustment |
+|---|---|---|
+| Netai Test 5 | −35 | +35 |
+| Netai Test 3 | −25 | +25 |
+| Netai Test 1 | −13 | +13 |
+| Netai Test 2 | −12 | +12 |
+| Netai Test 4 | −11 | +11 |
+| Netai Test 6 | −2 | +2 |
+| Netai Test 8 | −2 | +2 |
+| **Giorgi Mepharishvili** | **−1** | **+1** |
+
+Seven are test seats. The eighth is a real person, named rather than numbered
+(D159(3)). He is not walled — his newest grant carries period `w:2026-W38` and
+we are in W39, so his next run takes a fresh grant before the balance is
+checked — but **−1 is a wrong number on a real person's account**, and that is
+the whole reason this is worth doing at all.
+
+### WHAT IT DOES NOT DO
+
+It grants nobody anything. Every adjustment is exactly the amount that wallet
+was overdrawn by, so each one lands on **zero** and not a token above it.
+
+## §64 — CLOSING ONE NAMED GOAL (#2740)
+
+**Authorised by Misho, 26 September, directly:** *„ყველა შენი რეკომენდაციით
+გააკეთე"*, on a list where item 3 was „goals #2740 / #2773 — delete or close?"
+with the recommendation **close**.
+
+Checked before acting: **#2773 is already closed.** Only #2740 is open, and it
+belongs to **Misho himself** — so the goal's own owner is the person asking.
+
+### WHY NOT DELETE
+
+**Deleting a goal does not exist in this product** — there is no
+`DELETE FROM tasks` anywhere in the codebase. Building it for two rows would
+create a capability that then works on EVERY goal anybody has. The value of
+not having that button is much larger than the value of two tidy rows.
+
+### THE OPERATION
+
+* **ROUTE** — `POST /admin/goals/:id/close`
+* **BODY** — `{ "reason": "<3-500 chars>" }`
+* **REPLY** — `{ task_id, owner, title, closed_as, reason, note }`
+* **UNDO** — `POST /admin/tasks/:id/wake` does not reopen; reopening is done
+  the ordinary way, by the owner, from their own goal list.
+
+### ⚠️ IT CLOSES AS `stopped`, AND THAT IS THE WHOLE CARE IN IT
+
+`updateTask` queues row 272's feedback questions when a goal closes as
+`finished`: *„what came of it?", „would you use it again and pay?"*. An
+administrative tidy-up closed as `finished` would therefore ask its owner what
+came of a goal that came to nothing — the software not having noticed, which
+is the exact failure row 272 was written to avoid. `stopped` queues nothing.
+
+### WHAT IT REFUSES
+
+* **A GOAL THAT IS ALREADY CLOSED** — so a second call cannot rewrite the
+  reason a goal was first closed for.
+* **A GOAL THAT DOES NOT EXIST.**
+* **A REASON UNDER THREE CHARACTERS** — a close with no reason is how a
+  closed goal becomes unreadable later.
+* **ONE ID, NEVER A RULE** — the same principle `/admin/goals/hidden` carries.
+  There is deliberately no „close everything older than X": a rule applied to
+  rows nobody has read is how a goal somebody still wanted disappears.
+
+It goes through `updateTask`, not its own `UPDATE`, because every close in
+this codebase lands in that one function — which is what stops the thread
+status, the dropped ladder and the feedback rule drifting apart per caller.

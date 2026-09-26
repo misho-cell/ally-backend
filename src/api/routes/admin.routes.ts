@@ -178,7 +178,12 @@ import {
   canonicalPhone,
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
-import { addSeatContact, addSeatGoal, repairSeat } from '../../services/seatContacts.service';
+import {
+  addSeatContact,
+  addSeatGoal,
+  closeOneGoal,
+  repairSeat,
+} from '../../services/seatContacts.service';
 import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
 import {
   expireUnansweredRequests,
@@ -1989,6 +1994,57 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §64 — CLOSE ONE NAMED GOAL, at its own owner's request.
+ *
+ * Misho, 26 September, on #2740 / #2773: close them rather than delete them.
+ * Deleting a goal does not exist in this product — there is no
+ * `DELETE FROM tasks` anywhere — and building it for two rows would make a
+ * button that then works on every goal.
+ *
+ * ⚠️ IT CLOSES AS `stopped`, NEVER `finished`, because `finished` queues row
+ * 272's feedback questions: an administrative tidy-up would otherwise ask its
+ * owner „what came of it?" about a goal that came to nothing.
+ *
+ * ONE ID, NEVER A RULE — the same principle `/admin/goals/hidden` carries.
+ */
+adminRouter.post(
+  '/goals/:id/close',
+  param('id').isInt({ min: 1 }),
+  body('reason').isString(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'goal id და reason საჭიროა' });
+      return;
+    }
+    const taskId = Number(req.params.id);
+    const { reason } = req.body as { reason: string };
+    try {
+      const result = await closeOneGoal(taskId, reason);
+      if (!result.ok) {
+        res.status(400).json({ success: false, error: result.refusal });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[goal-close] admin ${(req as AuthenticatedRequest).user.userId} closed goal ` +
+          `${taskId} (owner ${result.goal.owner}) as stopped`,
+      );
+      res.status(200).json({
+        success: true,
+        data: {
+          ...result.goal,
+          note: 'Closed as stopped, so no feedback question was queued about it.',
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[goal-close]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

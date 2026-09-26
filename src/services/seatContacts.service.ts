@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { updateTask } from './taskStore.service';
 
 /**
  * §60 — PUT A MADE-UP, TAGGED CONTACT INTO A TEST SEAT'S PHONEBOOK.
@@ -356,5 +357,76 @@ export async function addSeatGoal(
   return {
     ok: true,
     goal: { seat: seatUserId, task_id: taskId, title: cleanTitle, brief: cleanBrief },
+  };
+}
+
+/**
+ * §64 — CLOSING ONE NAMED GOAL, at its own owner's request.
+ *
+ * Goals #2740 / #2773 sat open on the „blocked on a decision" list for days:
+ * delete them, or close them? Misho answered on 26 September, and the answer
+ * was close — because DELETING A GOAL DOES NOT EXIST IN THIS PRODUCT (there is
+ * no `DELETE FROM tasks` anywhere), and building it for two rows would create
+ * a button that then works on EVERY goal.
+ *
+ * ⚠️ `stopped`, NEVER `finished`, and that is not a detail. `updateTask`
+ * queues row 272's feedback questions when a goal closes as `finished` —
+ * „what came of it?", „would you pay for it?" — so closing a tidy-up goal as
+ * finished would ask its owner what came of a goal that came to nothing. An
+ * administrative close is by definition not a completion.
+ *
+ * ⚠️ ONE ID, NEVER A RULE — the same principle `/admin/goals/hidden` is built
+ * on, and for the same reason: a rule applied to rows nobody has read is how
+ * a goal somebody still wanted disappears. There is deliberately no „close
+ * everything older than X" here.
+ *
+ * WHAT IT REFUSES: a goal that is already closed (so a second call cannot
+ * rewrite the reason a goal was closed for the first time), and a reason too
+ * short to say anything.
+ */
+const MIN_CLOSE_REASON = 3;
+const MAX_CLOSE_REASON = 500;
+
+export interface ClosedGoal {
+  readonly task_id: number;
+  readonly owner: string;
+  readonly title: string;
+  readonly closed_as: 'stopped';
+  readonly reason: string;
+}
+
+export async function closeOneGoal(
+  taskId: number,
+  reason: string,
+): Promise<{ ok: true; goal: ClosedGoal } | { ok: false; refusal: string }> {
+  const cleanReason = (reason ?? '').trim();
+  if (cleanReason.length < MIN_CLOSE_REASON || cleanReason.length > MAX_CLOSE_REASON) {
+    return { ok: false, refusal: 'bad_reason' };
+  }
+
+  const goal = await query<{ user_id: string; title: string; status: string }>(
+    `SELECT user_id, title, status FROM tasks WHERE id = $1 LIMIT 1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  const found = goal.rows[0];
+  if (found === undefined) return { ok: false, refusal: 'no_such_goal' };
+  if (found.status === 'closed') return { ok: false, refusal: 'already_closed' };
+
+  // Through `updateTask`, not a raw UPDATE: every close in this codebase lands
+  // in that one function, which is what keeps the thread status, the dropped
+  // ladder and the feedback rule from drifting apart between callers.
+  const updated = await updateTask(found.user_id, taskId, 'closed', cleanReason, 'stopped');
+  if (!updated) return { ok: false, refusal: 'goal_not_closed' };
+
+  return {
+    ok: true,
+    goal: {
+      task_id: taskId,
+      owner: found.user_id,
+      title: found.title,
+      closed_as: 'stopped',
+      reason: cleanReason,
+    },
   };
 }
