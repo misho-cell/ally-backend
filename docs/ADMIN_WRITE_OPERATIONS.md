@@ -4592,3 +4592,22 @@ Two things arrived between asking Misho and running it:
 So regenerating them would re-create cards the founder's rule excludes. The
 delete stands, the replay does not run, and Misho is told why rather than the
 approval being stretched to cover a thing that changed under it.
+
+#### §61 RUN — 26 September, 10:18 UTC
+
+Dry run first; the ids it named were exactly the four written up above, and
+only then was `confirm` sent.
+
+| what | ids | after |
+|---|---|---|
+| `"UserTags"` rows in the wrong column | 42532360, 42532361 | gone |
+| held `new_member_for_goal` cards | 10067, 10068 | gone |
+
+**READ BACK:** both pairs return 0. The correctly written rows are untouched —
+seat 171938 still has its 6 tag rows on `"contactId"` and its 4 aliases — and
+no `new_member_for_goal` card exists anywhere in the table.
+
+**The replay was NOT run**, for the reason in the section above: the tester
+said they do not need it, and after `4228ceb` those two matches are correctly
+`would_queue 0`. Re-queuing them would have re-created exactly the loose match
+D498 rules out.
