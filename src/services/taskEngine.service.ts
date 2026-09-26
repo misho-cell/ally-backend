@@ -17,6 +17,7 @@ import {
   markQuestionDefaulted,
   getSilentGoals,
   markSilentDayWoken,
+  unmarkSilentDayWoken,
   getGoalsSilentForDays,
   markMethodChangeWoken,
   ensureNextWake,
@@ -65,6 +66,25 @@ const REMINDER_INTERVAL_MINUTES = 60;
 const REMINDER_INTERVAL_MS = REMINDER_INTERVAL_MINUTES * 60_000;
 /** Long enough for the pool and migrations to settle, short enough to matter. */
 const BOOT_SWEEP_DELAY_MS = 45_000;
+/**
+ * ⚠️ THE CLAIM WINDOW IS SHORTER THAN THE TIMER, AND IT HAS TO BE.
+ *
+ * The timer runs from BOOT. The boot sweep runs at boot + 45 s and is what
+ * actually claims the slot, so the slot's clock sits 45 seconds AHEAD of the
+ * timer's. An hourly window then refuses the tick at boot + 60 min for being
+ * 45 seconds early — and because the refusal leaves the slot untouched, the
+ * next tick an hour later is the first that passes. **Hourly work runs every
+ * two hours**, and nothing anywhere reports an error.
+ *
+ * Measured, not reasoned: the slot was claimed 16:53:13 and 17:54:37 — 61
+ * minutes apart, because a deploy happened to boot in between and its boot
+ * sweep claimed. On a container that simply keeps running, the same phase
+ * makes it two hours.
+ *
+ * Five minutes of slack is enough for any tick to land inside its own hour,
+ * and far too little for two ticks of the same hour to both claim.
+ */
+const CLAIM_WINDOW_MINUTES = REMINDER_INTERVAL_MINUTES - 5;
 const MAX_REMINDERS_PER_SWEEP = 10;
 // Answer-wake backstop (ticket 4 blocker 1): re-deliver any answered ask whose
 // task never woke — a deploy-window failure is late by minutes, not by a day.
@@ -1145,6 +1165,10 @@ export async function sweepSilentGoals(): Promise<number> {
         'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
     );
     if (ok === 'woken') woken++;
+    // The stamp said this goal had been widened. A busy thread means nobody
+    // was written to, and the next sweep must be allowed to try again rather
+    // than treat it as done for a day — see `unmarkSilentDayWoken`.
+    else if (ok === 'busy') await unmarkSilentDayWoken(task.id);
   }
   return woken;
 }
@@ -1228,14 +1252,14 @@ export function startTaskTicker(): void {
    * the answer comes from a timestamp that outlives the container.
    */
   const runHourlySweeps = (): void => {
-    void claimSweep(SWEEP_ASK_REMINDERS, REMINDER_INTERVAL_MINUTES).then((due) => {
+    void claimSweep(SWEEP_ASK_REMINDERS, CLAIM_WINDOW_MINUTES).then((due) => {
       if (!due) return;
       void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
         // eslint-disable-next-line no-console
         console.error('[task-engine] reminder sweep failed:', (err as Error).message),
       );
     });
-    void claimSweep(SWEEP_SILENT_GOALS, REMINDER_INTERVAL_MINUTES).then((due) => {
+    void claimSweep(SWEEP_SILENT_GOALS, CLAIM_WINDOW_MINUTES).then((due) => {
       if (!due) return;
       void sweepSilentGoals()
         .then((n) => {
@@ -1247,7 +1271,7 @@ export function startTaskTicker(): void {
           console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
         );
     });
-    void claimSweep(SWEEP_METHOD_CHANGES, REMINDER_INTERVAL_MINUTES).then((due) => {
+    void claimSweep(SWEEP_METHOD_CHANGES, CLAIM_WINDOW_MINUTES).then((due) => {
       if (!due) return;
       void sweepMethodChanges()
         .then((n) => {

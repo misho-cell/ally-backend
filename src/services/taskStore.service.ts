@@ -459,6 +459,32 @@ export async function markSilentDayWoken(taskId: number): Promise<void> {
   );
 }
 
+/**
+ * Give the stamp back when the widening did not happen after all.
+ *
+ * ⚠️ THE STAMP IS SET BEFORE THE WAKE ON PURPOSE — a run that dies must not
+ * let the sweep fire again on its next pass. But the stamp also says „this
+ * goal has had its silent-day widening", and the candidate query believes it
+ * for twenty-four hours. So a wake REFUSED because the thread was busy leaves
+ * a goal marked as widened when nothing was written to anybody.
+ *
+ * The tester found it on goal 6833: stamped 17:55:53, and its activity never
+ * moved. The log says the sweep woke four of the five it stamped. Four is the
+ * number that matters and „five stamps" was, again, not the same fact.
+ *
+ * Only a temporary refusal is given back. „Stopped" means nothing a retry
+ * could change, and clearing that would hand one of the five slots to a goal
+ * that will refuse again every hour — the starvation in row 278, rebuilt by
+ * hand.
+ */
+export async function unmarkSilentDayWoken(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET silent_day_woken_at = NULL WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 /** The default was taken for the question currently open — once per question. */
 export async function markQuestionDefaulted(taskId: number): Promise<void> {
   await query(

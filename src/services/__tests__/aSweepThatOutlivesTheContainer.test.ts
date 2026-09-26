@@ -76,7 +76,7 @@ describe('the engine asks before it sweeps', () => {
 
   it('gates all three starved sweeps on a claim', () => {
     for (const slot of ['SWEEP_ASK_REMINDERS', 'SWEEP_SILENT_GOALS', 'SWEEP_METHOD_CHANGES']) {
-      expect(engine).toContain(`claimSweep(${slot}, REMINDER_INTERVAL_MINUTES)`);
+      expect(engine).toContain(`claimSweep(${slot}, CLAIM_WINDOW_MINUTES)`);
     }
   });
 
@@ -104,5 +104,106 @@ describe('the engine asks before it sweeps', () => {
     );
     expect(migration).toContain("NOW() - INTERVAL '1 day'");
     expect(migration).not.toMatch(/VALUES\s*\('ask_reminders',\s*NOW\(\)\)/);
+  });
+});
+
+/**
+ * ⚠️ A STAMP THAT SAYS „WIDENED" WHEN NOBODY WAS WRITTEN TO.
+ *
+ * The silent-day sweep stamps a goal BEFORE waking it, so a run that dies
+ * cannot make the sweep fire again on its next pass. That is right. But the
+ * same stamp is what the candidate query reads to mean „this goal has had its
+ * widening", and it believes it for twenty-four hours.
+ *
+ * So a wake REFUSED — the thread busy, a live run holding it — left a goal
+ * marked as widened when nothing had happened. The tester found it on goal
+ * 6833: stamped 17:55:53 on 26 September, activity never moved, and the log
+ * said the sweep woke FOUR of the five it had stamped. Four was the number
+ * that mattered; „five stamps" was, again, not the same fact as „five
+ * widenings".
+ *
+ * Only a temporary refusal is given back. 'stopped' means nothing a retry can
+ * change, and clearing that would hand one of the five slots, every hour, to a
+ * goal that will refuse again — row 278's starvation, rebuilt by hand.
+ */
+describe('a refused wake gives the stamp back', () => {
+  const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
+  const sweep = engine.slice(
+    engine.indexOf('export async function sweepSilentGoals'),
+    engine.indexOf('async function nightlyReview'),
+  );
+
+  it('clears the stamp when the thread was busy', () => {
+    expect(sweep).toContain("else if (ok === 'busy') await unmarkSilentDayWoken(task.id)");
+  });
+
+  it('keeps it on a stop, so a goal that cannot run does not eat a slot hourly', () => {
+    expect(sweep).not.toContain("'stopped'");
+  });
+
+  it('still stamps before the wake, not after it', () => {
+    expect(sweep.indexOf('markSilentDayWoken')).toBeLessThan(sweep.indexOf('await wakeTask'));
+  });
+
+  it('writes NULL and nothing else', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    const { unmarkSilentDayWoken } = await import('../taskStore.service');
+
+    await unmarkSilentDayWoken(6833);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('SET silent_day_woken_at = NULL');
+    expect(sql).toContain('WHERE id = $1');
+    expect(params[0]).toBe(6833);
+  });
+});
+
+/**
+ * And the stamp is readable from outside, because the tester could not see it.
+ * Their test of „did the widening reach my goal" was being run against
+ * `last_activity_at`, which every ordinary wake also moves — two facts under
+ * one column, which is this week's whole story.
+ */
+describe('the widening stamp can be read without the database', () => {
+  const dashboard = readFileSync(join(__dirname, '..', 'goalDashboard.service.ts'), 'utf8');
+
+  it('is selected, typed and returned by the goal read', () => {
+    expect(dashboard).toContain('t.silent_day_woken_at');
+    expect(dashboard).toContain('silent_day_woken_at: iso(row.silent_day_woken_at)');
+    expect(dashboard).toContain('silent_day_woken_at: string | null;');
+  });
+});
+
+/**
+ * ⚠️ AN HOURLY JOB THAT RAN EVERY TWO HOURS, AND NOTHING REPORTED IT.
+ *
+ * The timer runs from boot; the boot sweep at boot + 45 s is what claims the
+ * slot. So the slot's clock is 45 seconds ahead of the timer's, and an hourly
+ * claim window refuses the tick at boot + 60 min for being 45 seconds early.
+ * A refusal leaves the slot untouched, so the FOLLOWING tick is the first that
+ * passes — hourly work every two hours, with no error anywhere.
+ *
+ * The window is the fix and this is what keeps it a window.
+ */
+describe('the claim window is shorter than the timer that opens it', () => {
+  const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
+  const literal = (name: string): number => {
+    const m = engine.match(new RegExp(`const ${name} = ([0-9_]+);`));
+    if (!m) throw new Error(`${name} is no longer a plain number`);
+    return Number(m[1].replace(/_/g, ''));
+  };
+
+  it('is defined as the timer minus real slack, not as its own number', () => {
+    expect(engine).toContain('const CLAIM_WINDOW_MINUTES = REMINDER_INTERVAL_MINUTES - 5;');
+  });
+
+  /** The slack must cover the boot delay, which is where the drift comes from. */
+  it('covers the boot delay it exists for', () => {
+    expect(5 * 60_000).toBeGreaterThan(literal('BOOT_SWEEP_DELAY_MS'));
+  });
+
+  /** And not so much slack that two ticks of one hour could both claim. */
+  it('is still most of an hour', () => {
+    expect(literal('REMINDER_INTERVAL_MINUTES') - 5).toBeGreaterThan(30);
   });
 });

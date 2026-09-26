@@ -80,6 +80,17 @@ export interface GoalDetail {
    * instead of presenting a time that cannot happen.
    */
   wake_held_at: string | null;
+  /**
+   * When the silent-day widening last took this goal. Null means it has never
+   * been widened, which is a different fact from „widened long ago" and the
+   * one row 268 turns on.
+   *
+   * It is here because the tester asked for it and could not read it any other
+   * way: the stamp lives only in `tasks`, and a test of „did the sweep reach
+   * my goal" was being run against `last_activity_at`, which any ordinary wake
+   * also moves. Two facts under one column again.
+   */
+  silent_day_woken_at: string | null;
   thread_id: number | null;
   plan: TaskPlan | null;
   plan_proposed: TaskPlan | null;
@@ -104,6 +115,7 @@ interface GoalRow {
   updated_at: Date | string;
   last_activity_at: Date | string;
   next_wake_at: Date | string | null;
+  silent_day_woken_at: Date | string | null;
   thread_id: number | null;
   plan: TaskPlan | null;
   plan_proposed: TaskPlan | null;
@@ -143,7 +155,7 @@ async function goalRow(userId: string | null, taskId: number): Promise<GoalRow |
             -- activity even when a write path forgot to touch the goal.
             GREATEST(t.last_activity_at,
                      (SELECT MAX(c.created_at) FROM conversations c WHERE c.thread_id = t.thread_id))
-              AS last_activity_at, t.next_wake_at, t.thread_id, t.plan,
+              AS last_activity_at, t.next_wake_at, t.silent_day_woken_at, t.thread_id, t.plan,
             t.plan_proposed, t.plan_version, t.plan_approved_at, t.pending_question,
             t.pending_question_at,
             ${GOAL_STAGE_SQL} AS stage,
@@ -453,6 +465,7 @@ export async function adminGoalDetail(
     // the READ, which is where the claim was being made.
     next_wake_at: row.status === 'open' ? iso(row.next_wake_at) : null,
     wake_held_at: row.status === 'open' ? null : iso(row.next_wake_at),
+    silent_day_woken_at: iso(row.silent_day_woken_at),
     thread_id: row.thread_id,
     plan: row.plan,
     plan_proposed: row.plan_proposed,
