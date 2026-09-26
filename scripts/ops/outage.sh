@@ -125,6 +125,44 @@ fi
 echo "last ${WINDOW_MIN}m: ${ERRORS} error(s), ${REPLIES} reply(ies), ${CALLS} anthropic call(s)" \
   "(+${OTHER} other usage row(s), not evidence either way)"
 
+# ────────────────────────────────────────────────────────────────────────────
+# 26 SEPTEMBER, 21:05 — THE PROBE'S SUCCESS HAS TO BE SAYABLE TOO.
+#
+# `CALLS` excludes heartbeats on purpose: a probe that kept the number non-zero
+# would hide a product that cannot answer anybody, which is the blindness this
+# file exists against. That exclusion is right and it stays.
+#
+# But at 21:01, FOUR MINUTES after the probe got through and ended an
+# 89-minute outage, this script printed „NO Anthropic call reached the provider
+# at all." The verdict was defensible — no real run had gone through, because
+# nobody had written — and the sentence was simply untrue.
+#
+# So the probe is read separately and NAMED, never merged into `CALLS`. It
+# answers a different question, and the difference is the useful part:
+#
+#   probe through, runs failing  → the provider is fine and WE are broken
+#   probe refused                → the provider is refusing everybody
+#
+# A heartbeat row exists only when the call SUCCEEDED — a refusal never becomes
+# a row — so this number cannot be faked by a failing probe.
+PROBE_OK_MIN="$(printf '%s' "SELECT COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(created_at)))/60), 99999)::int AS m FROM usage_events WHERE kind = 'heartbeat'" \
+  | ./scripts/ops/ro.sh 2>/dev/null \
+  | python3 -c 'import sys,json
+try: print(json.load(sys.stdin)["data"]["rows"][0]["m"])
+except Exception: print("x")')"
+# The probe fires after 25 minutes of silence and looks every 10, so a success
+# inside 20 minutes is recent enough to be about NOW rather than about earlier.
+probe_line() {
+  if [ "${PROBE_OK_MIN:-x}" = "x" ]; then
+    echo "  (could not read the probe — that is not reassurance either)"
+  elif [ "$PROBE_OK_MIN" -le 20 ]; then
+    echo "  BUT THE PROBE GOT THROUGH ${PROBE_OK_MIN} minute(s) ago, and a heartbeat row"
+    echo "  exists only when the call succeeded. The provider is reachable. What is"
+    echo "  failing is on our side, or nothing has been asked of it yet."
+  fi
+}
+# ────────────────────────────────────────────────────────────────────────────
+
 # NOTHING HAPPENED AT ALL — and „no errors" is not „working".
 #
 # Caught on this script's FIRST firing, 13:12, during the outage it was written
@@ -383,6 +421,7 @@ if [ "$ERRORS" -ge 3 ] && [ "$REPLIES" -eq 0 ]; then
   if [ "$CALLS" -eq 0 ]; then
     echo "  NO Anthropic call reached the provider in that window — refused before"
     echo "  inference, which is an account or key problem and not load."
+    probe_line
     if [ "$OTHER" -gt 0 ]; then
       echo "  The ${OTHER} other usage row(s) do not soften that: today's outage had a"
       echo "  gpt-5.6-terra call succeed at 12:13:47 while Anthropic refused everything."
@@ -396,7 +435,9 @@ if [ "$ERRORS" -ge 3 ] && [ "$REPLIES" -eq 0 ]; then
 fi
 
 if [ "$CALLS" -eq 0 ] && [ "$ERRORS" -ge 1 ]; then
-  echo "NOT ANSWERING — ${ERRORS} error(s) and NO Anthropic call reached the provider at all."
+  echo "NOT ANSWERING — ${ERRORS} error(s) and no Anthropic call of the product's own"
+  echo "  reached the provider in ${WINDOW_MIN} minutes (heartbeats are not counted here)."
+  probe_line
   exit 1
 fi
 
