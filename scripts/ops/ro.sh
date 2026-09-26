@@ -82,7 +82,38 @@ case "$SQL" in
         echo '        used this product do not carry it, including the second most active' >&2
         echo '        account. For USE, ask for a row in `threads`.' >&2
         ;;
-      *test_seats*) ;;
+      # ⚠️ 26 SEPTEMBER — THIS BRANCH WENT SILENT ON THE WORST QUERY OF THE
+      # DAY, AND IT IS THE SECOND TIME THIS GUARD HAS DONE THAT.
+      #
+      # It treated „mentions test_seats" as evidence that the asker had thought
+      # about populations. They are not the same thought. `User` holds THREE
+      # populations and excluding the seats settles only ONE of them.
+      #
+      # What I ran: seven real people, seats excluded, filtered by
+      # `lastLoginAt` — and SIX OF THEM HAD NEVER OPENED NETAI. Two registered
+      # in 2024. 62,163 legacy Ally accounts are still signing in and their
+      # logins write that same column, so „who came in since the fix" was
+      # mostly the other product. I sent that number to two teams.
+      #
+      # So excluding seats no longer buys silence. The note stays unless the
+      # query also separates a Netai user from a legacy account — which means
+      # naming the evidence of USE: a row in `threads`, in `search_activity`,
+      # or a live `subscription_status`. That is `joinedNetai()`'s own rule in
+      # `netaiMembership.ts`, and it is the only one that does not drift.
+      *test_seats*)
+        case "$SQL" in
+          *threads*|*search_activity*|*subscription_status*) ;;
+          *)
+            echo 'ro.sh: NOTE — the seats are excluded, and that settles ONE of the three' >&2
+            echo '        populations. 62,163 LEGACY ALLY accounts are still signing in and' >&2
+            echo '        have never opened Netai; nothing in this query separates them from' >&2
+            echo '        the 45 people who have. On 26 September that cost six of seven rows' >&2
+            echo '        in an answer that went to two teams.' >&2
+            echo '        For USE, name the evidence: a row in `threads` or `search_activity`,' >&2
+            echo '        or a live `subscription_status`.' >&2
+            ;;
+        esac
+        ;;
       *)
         echo 'ro.sh: NOTE — "User" holds THREE populations and this query names none:' >&2
         echo '        62,164 legacy ALLY accounts who have never opened Netai and are' >&2
