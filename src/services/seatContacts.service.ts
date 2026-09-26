@@ -281,8 +281,8 @@ export async function repairSeat(
 const PARKED_UNTIL = '2099-01-01';
 const MAX_GOAL_TITLE = 200;
 const MAX_GOAL_BRIEF = 2_000;
-/** A fixture seat needs a handful of goals, not a hundred. */
-const MOST_GOALS_PER_SEAT = 20;
+/** A fixture seat needs a handful of OPEN goals, not a hundred. */
+const MOST_OPEN_GOALS_PER_SEAT = 20;
 
 export interface SeatGoal {
   readonly seat: number;
@@ -322,12 +322,19 @@ export async function addSeatGoal(
   );
   if (seat.rows.length === 0) return { ok: false, refusal: 'not_a_test_seat' };
 
+  /**
+   * ⚠️ OPEN GOALS, NOT ALL GOALS. Counting every row refused the very first
+   * real use: seat 171938 has 8 open goals and 21 CLOSED ones left over from
+   * months of testing, so the ceiling was already spent on history. A closed
+   * goal is inert — no sweep reads it and row 262 cannot match it — so it is
+   * not what the ceiling is protecting anything from.
+   */
   const existing = await query<{ n: string }>(
-    `SELECT COUNT(*)::text AS n FROM tasks WHERE user_id = $1::text`,
+    `SELECT COUNT(*)::text AS n FROM tasks WHERE user_id = $1::text AND status = 'open'`,
     [String(seatUserId)],
     QUERY_TIMEOUT_MS,
   );
-  if (Number(existing.rows[0]?.n ?? 0) >= MOST_GOALS_PER_SEAT) {
+  if (Number(existing.rows[0]?.n ?? 0) >= MOST_OPEN_GOALS_PER_SEAT) {
     return { ok: false, refusal: 'seat_has_enough_goals' };
   }
 

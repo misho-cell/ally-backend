@@ -370,7 +370,26 @@ describe('a seat goal costs nothing to exist', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  /** A fixture seat needs a handful of goals, not a hundred. */
+  /**
+   * ⚠️ OPEN GOALS ONLY, and the first real use is what found it: seat 171938
+   * has 8 open goals and 21 CLOSED ones from months of testing, so a ceiling
+   * over every row was already spent on history and refused the goal this
+   * route was built for. A closed goal is inert — no sweep reads it and row
+   * 262 cannot match it.
+   */
+  it('counts only the open goals against the ceiling', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 171938 }]) as never)
+      .mockResolvedValueOnce(rows([{ n: '8' }]) as never)
+      .mockResolvedValueOnce(rows([{ id: 77 }]) as never);
+
+    await addSeatGoal(171938, 'a tiler', 'ask around Arci');
+
+    const count = mockQuery.mock.calls.find(([sql]) => String(sql).includes('COUNT(*)'));
+    expect(String((count as [string])[0])).toContain("status = 'open'");
+  });
+
+  /** A fixture seat needs a handful of open goals, not a hundred. */
   it('stops once the seat has enough goals', async () => {
     mockQuery
       .mockResolvedValueOnce(rows([{ user_id: 171938 }]) as never)

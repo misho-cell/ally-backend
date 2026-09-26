@@ -4697,7 +4697,13 @@ goals in `taskStore` was READ before the shape was chosen:
 
 * **A TARGET THAT IS NOT A TEST SEAT** — a `test_seats` row is required.
 * **A TITLE OR BRIEF THAT IS EMPTY, OVER-LONG, OR CARRIES CONTROL CHARACTERS.**
-* **A SEAT THAT ALREADY HAS 20 GOALS.** A fixture needs a handful.
+* **A SEAT THAT ALREADY HAS 20 OPEN GOALS.** A fixture needs a handful.
+
+  ⚠️ **OPEN, not all** — and the first real use is what found it. Seat 171938
+  has 8 open goals and **21 closed** ones left from months of testing, so a
+  ceiling over every row was already spent on history and refused the very
+  goal this route was built for. A closed goal is inert: no sweep reads it and
+  row 262 cannot match it.
 
 ### WHAT IT CANNOT DO, and this one matters
 
