@@ -112,7 +112,8 @@ import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
 import { pilotPeople, pilotReport } from '../../services/pilotReport.service';
-import { subscriptionDrift } from '../../services/stripeReconcile.service';
+import { pricesForUser, subscriptionDrift } from '../../services/stripeReconcile.service';
+import { isStripeConfigured } from '../../services/stripe.service';
 import {
   INVITE_FREE_DAYS_FLAG,
   INVITE_FREE_DAYS_SETTING,
@@ -3608,6 +3609,43 @@ adminRouter.get('/pilot/report', async (req: Request, res: Response) => {
  * on live data (D44) and needs the register and a yes; how many rows are
  * actually wrong needs neither, and it is the number that decision rests on.
  */
+/**
+ * WHICH PRICE IS THIS PERSON ON — read-only, and it exists because the drift
+ * check cannot answer it.
+ *
+ * The drift check reads ONLY our own price id, because the Stripe account is
+ * shared with a different product. So „stored active, but no subscription on
+ * our price" is compatible with two different facts: not subscribed at all, or
+ * subscribed on ANOTHER price. Calling the first one from a check that cannot
+ * separate them would be a right measurement answering a different question.
+ *
+ * Writes nothing. The repair it informs is a separate act and still needs a
+ * yes (D44).
+ */
+adminRouter.get('/stripe/prices/:id', async (req: Request, res: Response) => {
+  const userId = Number(req.params.id);
+  if (!Number.isInteger(userId) || userId < 1) {
+    res.status(400).json({ success: false, error: 'a numeric account id is required' });
+    return;
+  }
+  if (!isStripeConfigured()) {
+    res.status(503).json({ success: false, error: 'this server has no Stripe key to read with' });
+    return;
+  }
+  try {
+    const reading = await pricesForUser(userId);
+    if (reading === null) {
+      res.status(404).json({ success: false, error: 'no such account' });
+      return;
+    }
+    res.status(200).json({ success: true, data: reading });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[stripe-prices]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/stripe/drift', async (req: Request, res: Response) => {
   try {
     const raw = req.query.limit;

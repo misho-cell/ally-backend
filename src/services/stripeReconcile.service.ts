@@ -264,3 +264,98 @@ export async function subscriptionDrift(limit = DEFAULT_ACCOUNTS): Promise<Drift
     note: NOTE,
   };
 }
+
+/**
+ * WHICH PRICE IS THIS PERSON ACTUALLY ON — every subscription Stripe holds for
+ * them, not only the ones on ours.
+ *
+ * ⚠️ WHY THIS EXISTS AT ALL. The drift check reads ONLY our own price id,
+ * because the Stripe account is shared with a different product. So its verdict
+ * for three accounts — „stored active, but stripe has no subscription on our
+ * price" — is compatible with two completely different facts:
+ *
+ *   * they are not subscribed to anything, and the column is wrong; or
+ *   * they are subscribed on ANOTHER price, and the column is right about
+ *     access while the drift check simply cannot see the subscription.
+ *
+ * Reporting the first from a check that cannot tell them apart is the same
+ * mistake as this morning's tag measurement: a right measurement answering a
+ * different question. Misho asked for the price, so this reads the price.
+ *
+ * ⚠️ IT WRITES NOTHING AND CHANGES NOTHING. It is a read, and the repair it
+ * informs is a separate act that still needs a yes (D44).
+ *
+ * The price NICKNAME is included where Stripe has one, because „price_1abc…"
+ * tells a person nothing and „Netai monthly" tells them everything. No customer
+ * id is returned: it identifies a billing record and nothing here needs it.
+ */
+export interface PriceReading {
+  readonly person: string;
+  readonly stored_status: string | null;
+  readonly subscriptions: ReadonlyArray<{
+    readonly status: string;
+    readonly price_id: string;
+    readonly price_nickname: string | null;
+    readonly product: string | null;
+    readonly is_our_price: boolean;
+    readonly created: string;
+  }>;
+  /** Said out loud, so a caller cannot read an empty list as „not paying". */
+  readonly note: string;
+}
+
+const NOTHING_AT_ALL =
+  'Stripe holds no subscription of ANY price for this customer. The stored status is not ' +
+  'backed by anything in Stripe.';
+const ANOTHER_PRODUCT =
+  'Stripe holds a subscription on a price that is NOT ours. The stored status may be right ' +
+  'about access; the drift check simply cannot see this subscription, because it reads only ' +
+  'our own price id on a shared Stripe account.';
+const NO_CUSTOMER =
+  'This account has no Stripe customer id, so there is nothing to read. That is not the same ' +
+  'as "not paying".';
+
+export async function pricesForUser(userId: number): Promise<PriceReading | null> {
+  const row = await query<{
+    name: string | null;
+    status: string | null;
+    customer_id: string | null;
+  }>(
+    `SELECT u.name, u.subscription_status AS status, u."stripeCustomerId" AS customer_id
+       FROM "User" u WHERE u.id = $1 LIMIT 1`,
+    [userId],
+    RECONCILE_QUERY_TIMEOUT_MS,
+  );
+  const found = row.rows[0];
+  if (found === undefined) return null;
+
+  const person = found.name ?? `account ${userId}`;
+  if (found.customer_id === null) {
+    return { person, stored_status: found.status, subscriptions: [], note: NO_CUSTOMER };
+  }
+
+  const list = await stripeClient().subscriptions.list({
+    customer: found.customer_id,
+    status: 'all',
+    limit: 20,
+    expand: ['data.items.data.price'],
+  });
+
+  const subscriptions = list.data.flatMap((subscription) =>
+    subscription.items.data.map((item) => ({
+      status: subscription.status,
+      price_id: item.price.id,
+      price_nickname: item.price.nickname,
+      product: typeof item.price.product === 'string' ? item.price.product : null,
+      is_our_price: isOurPrice(subscription),
+      created: new Date(subscription.created * 1000).toISOString(),
+    })),
+  );
+
+  return {
+    person,
+    stored_status: found.status,
+    subscriptions,
+    note: subscriptions.length === 0 ? NOTHING_AT_ALL : ANOTHER_PRODUCT,
+  };
+}
