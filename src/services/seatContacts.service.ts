@@ -119,10 +119,19 @@ export async function addSeatContact(
    * which is also the plainest evidence of which column owns a row.
    */
   await query(
+    /**
+     * ⚠️ THE CASTS ARE LOAD-BEARING. Without them the server refused the whole
+     * statement with „inconsistent types deduced for parameter $2": a bare
+     * `SELECT $1, $2, $3` gives the planner nothing to type the parameters
+     * from, while the comparison below types them from the columns, and the
+     * two deductions disagree. It typechecked, and it threw on every call —
+     * the same shape as the column that did not exist, one day later.
+     */
     `INSERT INTO "UserAlias" ("contactId", phone, alias)
-     SELECT $1, $2, $3
+     SELECT $1::int, $2::varchar, $3::varchar
       WHERE NOT EXISTS (
-        SELECT 1 FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2 AND alias = $3
+        SELECT 1 FROM "UserAlias"
+         WHERE "contactId" = $1::int AND phone = $2::varchar AND alias = $3::varchar
       )`,
     [seatUserId, phone, cleanName],
     QUERY_TIMEOUT_MS,

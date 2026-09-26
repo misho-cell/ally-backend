@@ -198,6 +198,19 @@ describe('adding the same contact twice adds them once', () => {
   });
 
   it('matches on owner, phone and the label together', () => {
-    expect(aliasWrite.slice(0, 400)).toContain('"contactId" = $1 AND phone = $2 AND alias = $3');
+    expect(aliasWrite.slice(0, 600)).toContain(
+      '"contactId" = $1::int AND phone = $2::varchar AND alias = $3::varchar',
+    );
+  });
+
+  /**
+   * ⚠️ AND THE CASTS ARE PART OF THE GUARD, not tidiness. Without them the
+   * server refused the statement outright — „inconsistent types deduced for
+   * parameter $2" — because a bare `SELECT $1, $2, $3` types the parameters
+   * from nothing while the comparison types them from the columns. It
+   * typechecked and it threw on every call.
+   */
+  it('types every parameter on both sides of the guard', () => {
+    expect(aliasWrite.slice(0, 600)).toContain('SELECT $1::int, $2::varchar, $3::varchar');
   });
 });
