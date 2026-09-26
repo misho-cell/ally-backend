@@ -265,6 +265,64 @@ if [ "$ERRORS" -eq 0 ] && [ "$CALLS" -eq 0 ]; then
     | python3 -c 'import sys,json
 try: print(json.load(sys.stdin)["data"]["rows"][0]["quiet_min"])
 except Exception: print("x")')"
+  # ────────────────────────────────────────────────────────────────────────
+  # 26 SEPTEMBER, 20:05 — AND THE PROBE'S OWN VERDICT WAS NOT BEING READ.
+  #
+  # At 19:54:06 the heartbeat called the provider and was refused: „credit
+  # balance is too low". That is the exact sentence this whole block exists to
+  # obtain — it proves the probe is alive AND the provider is refusing, which
+  # is the one distinction the text below says it cannot make.
+  #
+  # This script printed NOTHING PROVEN at 19:52, 20:03 and 20:07 anyway, and
+  # returned 0 each time. Not because the silence test is wrong, but because
+  # the silence test is a PROXY: it waits for 60 minutes of quiet to infer what
+  # the log already said in plain words after 26.
+  #
+  # A REFUSED CALL NEVER BECOMES A `usage_events` ROW. That is why the database
+  # cannot see it and why every number in this file was honestly zero. The
+  # answer was in the deployment log the whole time, and this script — the one
+  # thing whose job is to go and ask — was not asking.
+  #
+  # The same shape as the day's other five: the measurement was right and the
+  # question was different. „Has a call succeeded lately" is not „has a call
+  # been refused".
+  #
+  # It is checked FIRST because it is evidence rather than inference, and it
+  # only counts when the refusal is NEWER than the last call that worked —
+  # otherwise a recovered outage would cry forever.
+  HEARTBEAT_REFUSAL=""
+  if [ "$QUIET_FOR" != "x" ]; then
+    DEPLOY_ID="$(./scripts/ops/logs.sh deployments 1 2>/dev/null | awk 'NR==2 {print $1}')"
+    if [ -n "${DEPLOY_ID:-}" ]; then
+      HEARTBEAT_REFUSAL="$(./scripts/ops/logs.sh logs "$DEPLOY_ID" 400 "PROVIDER DID NOT ANSWER" 2>/dev/null \
+        | python3 -c 'import sys,json
+from datetime import datetime,timezone
+try:
+    rows = json.load(sys.stdin)["data"]["deploymentLogs"]
+except Exception:
+    rows = []
+if rows:
+    newest = rows[-1]
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(newest["timestamp"].replace("Z","+00:00").split(".")[0] + "+00:00")).total_seconds() / 60
+    print(f"{int(age)}")
+' 2>/dev/null)"
+    fi
+  fi
+  if [ -n "${HEARTBEAT_REFUSAL:-}" ] && [ "$QUIET_FOR" != "x" ] \
+     && [ "$HEARTBEAT_REFUSAL" -lt "$QUIET_FOR" ]; then
+    echo ""
+    echo "THE PROBE ASKED AND WAS REFUSED — ${HEARTBEAT_REFUSAL} minutes ago, against"
+    echo "  ${QUIET_FOR} minutes since the last call that worked."
+    echo "  This is NOT the silence test and NOT an inference. The heartbeat made a"
+    echo "  real call to the provider and the provider said no, which settles both"
+    echo "  questions at once: the probe is running, and the product cannot answer."
+    echo ""
+    echo "  The refusal's own words are in the deployment log:"
+    echo "    ./scripts/ops/logs.sh logs ${DEPLOY_ID} 400 \"PROVIDER DID NOT ANSWER\""
+    echo "  Read them before reporting a cause — a balance, a key and a rate limit"
+    echo "  are three different problems and only one of them is money."
+    exit 1
+  fi
   if [ "$QUIET_FOR" = "x" ]; then
     echo "  AND I COULD NOT READ THE LAST CALL'S AGE — that is not reassurance either."
   elif [ "$QUIET_FOR" -gt "$NIGHT_SILENCE_LIMIT_MIN" ]; then
