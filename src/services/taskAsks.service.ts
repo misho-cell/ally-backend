@@ -29,6 +29,8 @@ import {
   askCancelledNote,
   bridgeThanks,
   buildAskOpening,
+  declineChoice,
+  isDeclineChoice,
   unknownSenderName,
 } from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
@@ -1158,7 +1160,18 @@ export async function createAsk(
     // eslint-disable-next-line no-console
     console.log(`[ask-relay] ask thread ${askThreadId}: question translated for the reader`);
   }
-  await saveThreadMessage(askThreadId, toUserId, 'assistant', opening);
+  /**
+   * ROW 274 — the decline arrives with the question, not after it.
+   *
+   * One button, and only one: there is no „yes" here because saying yes is
+   * answering, and the reader can already do that by typing. What they had no
+   * way to do was say NO in a form the product could record — so of 92 answers
+   * on the live base, about 8 READ as refusals and none of them counted as
+   * one. „About" was the whole problem.
+   */
+  await saveThreadMessage(askThreadId, toUserId, 'assistant', opening, 'message', null, [
+    declineChoice(language),
+  ]);
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
   // last one. The old comment here said „their last reply closed the previous
@@ -1325,14 +1338,28 @@ export async function recordAskAnswer(
            ELSE answer
          END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,
-         answered_at = COALESCE(answered_at, NOW())
+         answered_at = COALESCE(answered_at, NOW()),
+         -- ROW 274: the button's own sentence, compared exactly ($3 is decided
+         -- in TypeScript by string equality, never by judging the words). A
+         -- decline stays ANSWERED on purpose — the asker's question IS
+         -- resolved and their goal must wake — so all six readers of status go
+         -- on being right; this column is the part they could not see.
+         --
+         -- (No backtick anywhere in here: this SQL lives in a template literal
+         -- and one ends the string. Seventh time this week.)
+         --
+         -- COALESCE, so a later line in the same round cannot un-decline it:
+         -- if somebody taps the button and then types a name after all, the
+         -- name is appended to the answer and the asker gets it, and the
+         -- refusal that WAS said stays said.
+         declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW()) ELSE declined_at END
      WHERE id = (
        SELECT id FROM task_asks
        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer`,
-    [askThreadId, safe],
+    [askThreadId, safe, isDeclineChoice(safe)],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];

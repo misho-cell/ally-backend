@@ -102,19 +102,23 @@ describe('the numbers that are choices, and say so', () => {
   });
 
   /**
-   * His fourth number is „asks: answered, declined, never answered — kept
-   * apart". THERE IS NO DECLINE IN THE DATA: task_asks.status holds only sent,
-   * answered and cancelled, and somebody who says „no, I don't know anybody"
-   * is stored as answered. That is a fact the product never captured, not a
-   * number being withheld — and guessing it from the text would put a figure
-   * on his page that nobody could defend.
+   * His fourth number — „asks: answered, declined, never answered — kept
+   * apart" — WAS the one that could not be built, and row 274 built it on
+   * 26 September: a button whose text is ours, and a column beside the status.
+   *
+   * ⚠️ THE CAVEAT DID NOT GO AWAY, IT CHANGED. Every ask answered before that
+   * day carries no decline either way — „nobody recorded it", not „this was
+   * not a refusal" — so a small number here means few people have been asked
+   * since the button existed, NOT that few people say no. That sentence has to
+   * travel on the same object as the count, which is what this pins.
    */
-  it('names the one he asked for that cannot be built', async () => {
+  it('ships the count with the date recording started, not on its own', async () => {
     rows(...ALL());
     const out = await pilotOutcomes(28);
 
-    expect(out.not_measurable.join(' ')).toContain('declined: NOT RECORDED');
-    expect(out.not_measurable.join(' ')).toContain('stored as answered');
+    expect(out.asks.declines_recorded_since).toBe('2026-09-26');
+    expect(out.not_measurable.join(' ')).toContain('recorded only since 2026-09-26');
+    expect(out.not_measurable.join(' ')).toContain('not that few people say no');
   });
 
   it('says when a helper was last charged, so a zero is not read as always', async () => {

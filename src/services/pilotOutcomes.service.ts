@@ -150,19 +150,50 @@ export interface PilotOutcomes {
     /** When a helper was last billed for a chain — null once nothing ever has been. */
     readonly helper_last_charged: string | null;
   };
+  /**
+   * 4 — THE ASKS, SPLIT, which is the number that was missing until today.
+   *
+   * ⚠️ `declined` COUNTS ONLY WHAT WAS RECORDED, AND RECORDING STARTED ON
+   * 26 SEPTEMBER. Every ask answered before that carries no decline either
+   * way, because there was nothing to carry it in — so a small number here
+   * does NOT mean few people said no, it means few people have been asked
+   * since the button existed. `declines_recorded_since` is on the object so a
+   * reader cannot see the count without seeing that.
+   */
+  readonly asks: {
+    readonly answered: number;
+    readonly declined: number;
+    readonly never_answered: number;
+    readonly declines_recorded_since: string;
+  };
   /** Named here too, so a screen cannot show the eight without the missing one. */
   readonly not_measurable: readonly string[];
 }
 
-const DECLINE_IS_NOT_RECORDED =
-  'asks declined: NOT RECORDED. task_asks.status holds only sent, answered and cancelled — ' +
-  'somebody who says "no, I don\'t know anybody" is stored as answered. Separating a refusal ' +
-  'from a help needs a column and a path that do not exist yet.';
+/**
+ * ⚠️ THIS WAS „NOT MEASURABLE" UNTIL 26 SEPTEMBER, and the replacement note
+ * has to be as careful as the old one was.
+ *
+ * The old text said a refusal could not be told from a help, which was true:
+ * `task_asks.status` held three values and somebody saying „no, I don't know
+ * anybody" was stored as ANSWERED. Row 274 gave it a column and a button.
+ *
+ * What it did NOT do is go back. Every ask answered before today carries no
+ * decline either way — not „was not a decline", but „nobody recorded it" —
+ * and a count that omitted to say so would read as „almost nobody refuses",
+ * which is a claim about people rather than about the data.
+ */
+const DECLINES_RECORDED_SINCE = '2026-09-26';
+
+const DECLINE_COUNT_IS_YOUNG =
+  `asks declined: recorded only since ${DECLINES_RECORDED_SINCE}, when the decline button ` +
+  'shipped (row 274). Asks answered before that carry no record either way, so a small ' +
+  'number here means few people have been asked since — not that few people say no.';
 
 export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
   const span = Math.min(Math.max(1, Math.floor(days)), 365);
 
-  const [people, goals, firstAnswer, paid, brought, cost] = await Promise.all([
+  const [people, goals, firstAnswer, paid, brought, cost, asks] = await Promise.all([
     query<{ joined: string; started: string; helped_only: string; people_with_goals: string }>(
       `WITH joined AS (
          SELECT u.id FROM "User" u
@@ -281,9 +312,27 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
       [span],
       OUTCOMES_TIMEOUT_MS,
     ),
+    /**
+     * 4 — THE ASKS, SPLIT THREE WAYS. Seats excluded like every other number
+     * here, and `cancelled` deliberately absent: an ask the ASKER withdrew is
+     * not something the recipient did, and putting it beside their answers
+     * would read as a third thing they chose.
+     */
+    query<{ answered: string; declined: string; never_answered: string }>(
+      `SELECT COUNT(*) FILTER (WHERE ta.status = 'answered')::text AS answered,
+              COUNT(*) FILTER (WHERE ta.declined_at IS NOT NULL)::text AS declined,
+              COUNT(*) FILTER (WHERE ta.status = 'sent')::text AS never_answered
+         FROM task_asks ta
+         JOIN "User" u ON u.id = ta.to_user_id
+        WHERE ta.created_at >= NOW() - ($1 || ' days')::interval
+          AND u."deletedAt" IS NULL AND ${NOT_A_SEAT}`,
+      [span],
+      OUTCOMES_TIMEOUT_MS,
+    ),
   ]);
 
   const p = people.rows[0];
+  const a = asks.rows[0];
   const g = goals.rows[0];
   const f = firstAnswer.rows[0];
   const m = paid.rows[0];
@@ -338,6 +387,12 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
       helpers_charged: Number(c?.helpers ?? 0),
       helper_last_charged: (c?.last_charged as string | null) ?? null,
     },
-    not_measurable: [DECLINE_IS_NOT_RECORDED],
+    asks: {
+      answered: Number(a?.answered ?? 0),
+      declined: Number(a?.declined ?? 0),
+      never_answered: Number(a?.never_answered ?? 0),
+      declines_recorded_since: DECLINES_RECORDED_SINCE,
+    },
+    not_measurable: [DECLINE_COUNT_IS_YOUNG],
   };
 }

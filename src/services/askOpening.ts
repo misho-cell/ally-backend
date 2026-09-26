@@ -218,3 +218,51 @@ export function bridgeThanks(language: RunLanguage, namedName: string | null): s
       );
   }
 }
+
+/**
+ * ROW 274 — THE BUTTON THAT MAKES A NO A RECORDED FACT.
+ *
+ * The founder's two options were: (A) a real decline button, or (B) let the
+ * model decide from the words whether an answer was a refusal. Misho chose A
+ * on 26 September, and A is the safer one for a reason worth writing down:
+ * under B, „not right now, maybe next week" can be filed as a permanent no,
+ * and that decision gets made ON SOMEBODY'S BEHALF. Under A a refusal exists
+ * only when the person said so themselves.
+ *
+ * ⚠️ AND THE TEXT BEING OURS IS THE WHOLE MECHANISM. The button sends this
+ * exact sentence as the person's answer, so the server recognises a decline by
+ * COMPARING STRINGS — not by judging words. That comparison is the difference
+ * between option A and option B; the moment it becomes a guess, it is B.
+ *
+ * So every language's sentence is listed here and matched exactly. A reader
+ * who types something that merely means no is NOT a decline by this rule: they
+ * answered, and their words go to the asker as words. That is the honest
+ * outcome, and it is the one that makes the count mean something.
+ */
+const DECLINE_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "I can't help with this one",
+  ru: 'С этим помочь не смогу',
+  es: 'Con esto no puedo ayudar',
+  ka: 'ამაში ვერ დაგეხმარები',
+};
+
+/** The tappable refusal offered under an incoming ask, in the reader's language. */
+export function declineChoice(language: RunLanguage): string {
+  return DECLINE_CHOICE[language] ?? DECLINE_CHOICE.ka;
+}
+
+/**
+ * Is this answer the button, in ANY language?
+ *
+ * ⚠️ ALL OF THEM, not just the thread's own. A person's language is decided
+ * from the evidence available at the time, and it can be decided differently
+ * on the day the ask arrives and the day they answer — `userLanguage` reads
+ * their words, and there are more of them later. Matching only the language we
+ * think they have would drop a refusal for the one reader whose language we
+ * revised, which is the reader we were least sure about to begin with.
+ */
+export function isDeclineChoice(answer: string): boolean {
+  const said = (answer ?? '').trim();
+  if (said === '') return false;
+  return Object.values(DECLINE_CHOICE).some((choice) => choice === said);
+}

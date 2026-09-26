@@ -1012,6 +1012,17 @@ export async function saveThreadMessage(
    * honest about that rather than borrowing an id.
    */
   runId: string | null = null,
+  /**
+   * ROW 274 — tappable options saved WITH the message, the same column
+   * `present_choices` writes, so the client renders them as buttons.
+   *
+   * A run offers choices through its tool; the engine's own sentences had no
+   * way to, and an ask's opening is one of those — written here by the server
+   * rather than by a model. Without this parameter, „a real decline button"
+   * would have had to be a second card about a question the reader can already
+   * see, which is the one answer on the screen twice that row H was about.
+   */
+  choices: readonly string[] | null = null,
 ): Promise<void> {
   // The engine's own sentences (an ask's opening, a campaign invite, a wake
   // note) are assistant text too — the mechanical scrub applies to them as to
@@ -1019,9 +1030,25 @@ export async function saveThreadMessage(
   // still carried an em dash, all three written here).
   const stored = role === 'assistant' ? scrubMechanicalForStorage(content) : content;
   await query(
-    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id)
-     VALUES ($1, $2, $3, $4, NULL, $5, $6)`,
-    [threadId, userId, role, stored, kind, runId],
+    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id, choices)
+     VALUES ($1, $2, $3, $4, NULL, $5, $6, $7::jsonb)`,
+    // ⚠️ JSON.stringify AND ::jsonb, because the column is JSONB and not a
+    // text array. Handed a JS array, the driver writes a Postgres array
+    // literal — `{a,b}` — which is not the shape anything here reads. Checked
+    // against the live schema rather than assumed, and matched to how
+    // `present_choices` writes the same column.
+    //
+    // NULL rather than an empty list when there are none: the column means
+    // "no buttons here", and `[]` is a claim that there were some.
+    [
+      threadId,
+      userId,
+      role,
+      stored,
+      kind,
+      runId,
+      choices === null ? null : JSON.stringify(choices),
+    ],
   );
   await touchThread(threadId);
 }
