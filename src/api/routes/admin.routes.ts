@@ -174,7 +174,10 @@ import {
 } from '../../services/labelParser.service';
 import { getReferralFunnel } from '../../services/referralLink.service';
 import { referralTree, MAX_DEPTH } from '../../services/referralTree.service';
-import { goalsThisMemberMightUnblock } from '../../services/newMemberForGoal.service';
+import {
+  canonicalPhone,
+  goalsThisMemberMightUnblock,
+} from '../../services/newMemberForGoal.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
@@ -1831,11 +1834,38 @@ adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
   }
   try {
     const matches = await goalsThisMemberMightUnblock(phone);
+    /**
+     * ⚠️ I TOLD THE TESTER THIS ROUTE WOULD SAY WHEN IT COULD NOT READ A
+     * NUMBER, AND IT DID NOT. They typed „500000001", got „Looked, and nothing
+     * matched", and pointed out — correctly — that this is a confident nothing
+     * about a number we never understood.
+     *
+     * AND I CANNOT TELL THE TWO APART BY LENGTH ALONE. E.164 allows from about
+     * seven digits to fifteen, so a nine-digit string is a legal international
+     * number somewhere and a local Georgian one here. Claiming to know which
+     * would be the same overreach again, one layer down.
+     *
+     * So the route says WHAT IT LOOKED FOR. „+500000001" next to the answer is
+     * immediately recognisable as a misread to the person who typed it, which
+     * no adjective of mine could be. The warning is added only where the guess
+     * is weakest: no leading plus, and too few digits to carry a country code
+     * and a subscriber number (a full Georgian number is twelve).
+     */
+    const lookedFor = canonicalPhone(phone);
+    const digits = phone.replace(/\D+/g, '');
+    const mayLackCountryCode = !phone.trim().startsWith('+') && digits.length < 11;
     res.status(200).json({
       success: true,
       data: {
         would_queue: matches.length,
         matches,
+        looked_for: lookedFor,
+        ...(mayLackCountryCode && {
+          warning:
+            `Read as "${lookedFor}". That is ${digits.length} digits with no leading +, which ` +
+            'is probably a local number missing its country code — in which case this matched ' +
+            'nothing because it never found the number, not because the number has no matches.',
+        }),
         note:
           matches.length === 0
             ? 'Looked, and nothing matched. Not the same as a failure to look.'
