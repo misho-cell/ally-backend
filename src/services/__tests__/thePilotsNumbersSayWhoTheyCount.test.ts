@@ -398,3 +398,51 @@ describe('the list of people to read', () => {
     expect(routes.slice(at, at + 400)).toContain('pilotReaderAllowed(req)');
   });
 });
+
+/**
+ * ⚠️ ROW 274 — „started_a_goal 0 is impossible (93 goals open)."
+ *
+ * The tester was right to disbelieve it and it is not a bug. The two numbers
+ * are scoped differently and nothing on the page said so:
+ *
+ *   started_a_goal   the people who JOINED IN THIS WINDOW
+ *   goals            every real person's goals, whenever they joined
+ *
+ * Measured while fixing it: the 93 open goals belong to **12 real people**,
+ * the earliest of whom joined in November 2023, and of the 32 who joined in
+ * the last 28 days **none** has started a goal.
+ *
+ * So the honest reading is not „the number is broken" — it is that a month of
+ * arrivals produced no goals at all. That is the founder's central question
+ * and the answer is zero. Naming the scope is what lets it be read as an
+ * answer instead of an error, which is the same fault as row 264 one page
+ * over: a true number that nobody could interpret.
+ */
+describe('a number says who it counts', () => {
+  const source = readFileSync(join(__dirname, '..', 'pilotOutcomes.service.ts'), 'utf8');
+
+  it('says started_a_goal is about this window only', () => {
+    expect(source).toContain('JOINED IN THIS WINDOW only');
+  });
+
+  it('says the goals block is not scoped to the window', () => {
+    // Asserted on the words, not on where prettier decided to wrap them.
+    const flat = source.replace(/\s+/g, ' ');
+
+    expect(flat).toContain('whenever they joined');
+    expect(flat).toContain('is why this can be large while started_a_goal is zero');
+  });
+
+  /** The fact that makes the gap readable: who the 93 actually belong to. */
+  it('reports how many real people have a goal at all', () => {
+    expect(source).toContain('people_with_any_goal');
+    expect(source).toContain('COUNT(DISTINCT t.user_id)');
+  });
+
+  /** Seats stay excluded — the founder is asking about people. */
+  it('still counts people and not seats', () => {
+    const block = source.slice(source.indexOf('people_with_goals'));
+
+    expect(block.slice(0, 300)).toContain('${NOT_A_SEAT}');
+  });
+});

@@ -46,6 +46,30 @@ export interface PilotOutcomes {
   readonly started_a_goal: number;
   readonly only_ever_helped: number;
   /**
+   * ⚠️ WHAT THESE THREE ARE ABOUT, in the payload, because leaving it implicit
+   * made a true number look impossible.
+   *
+   * The tester: „started_a_goal 0 is impossible (93 goals open)." It is not
+   * impossible and it is not a bug — the two numbers are scoped differently
+   * and nothing on the page said so. `started_a_goal` is about the people who
+   * JOINED IN THIS WINDOW; `goals` below is about every real person's goals,
+   * whenever they joined.
+   *
+   * Measured while fixing this: the 93 open goals belong to **12 real people**,
+   * the earliest of whom joined in November 2023. Of the 32 who joined in the
+   * last 28 days, **none** has started a goal.
+   *
+   * So the honest reading is not „the number is broken". It is that a month of
+   * arrivals produced no goals, which is the founder's central question and the
+   * answer is zero. Naming the scope is what lets that be read at all.
+   */
+  readonly scope: {
+    readonly started_a_goal: string;
+    readonly goals: string;
+    /** Every real person with a goal, whenever they joined. The 93's owners. */
+    readonly people_with_any_goal: number;
+  };
+  /**
    * 2 — SOLVED, beside the states it could have been in instead. Current
    * state, not per day: „how many are solved" is a question about now.
    */
@@ -139,7 +163,7 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
   const span = Math.min(Math.max(1, Math.floor(days)), 365);
 
   const [people, goals, firstAnswer, paid, brought, cost] = await Promise.all([
-    query<{ joined: string; started: string; helped_only: string }>(
+    query<{ joined: string; started: string; helped_only: string; people_with_goals: string }>(
       `WITH joined AS (
          SELECT u.id FROM "User" u
           WHERE u."deletedAt" IS NULL AND ${NOT_A_SEAT}
@@ -153,6 +177,10 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
                 WHERE NOT EXISTS (SELECT 1 FROM tasks t WHERE t.user_id = j.id::text)
                   AND EXISTS (SELECT 1 FROM task_asks a WHERE a.to_user_id = j.id)
               )::text AS helped_only
+              ,
+              (SELECT COUNT(DISTINCT t.user_id)
+                 FROM tasks t JOIN "User" u ON u.id::text = t.user_id
+                WHERE ${NOT_A_SEAT})::text AS people_with_goals
          FROM joined j`,
       [span],
       OUTCOMES_TIMEOUT_MS,
@@ -268,6 +296,15 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
     joined: Number(p?.joined ?? 0),
     started_a_goal: Number(p?.started ?? 0),
     only_ever_helped: Number(p?.helped_only ?? 0),
+    scope: {
+      started_a_goal:
+        'Of the people who JOINED IN THIS WINDOW only. Somebody who joined earlier and ' +
+        'started a goal this week is not counted here — see goals and people_with_any_goal.',
+      goals:
+        "Every real person's goals, whenever they joined. Not scoped to this window, which " +
+        'is why this can be large while started_a_goal is zero.',
+      people_with_any_goal: Number(p?.people_with_goals ?? 0),
+    },
     goals: {
       resolved: Number(g?.resolved ?? 0),
       stopped: Number(g?.stopped ?? 0),
