@@ -4712,3 +4712,26 @@ fixtures — „the plumber goal must stay 0" is a result that only means anythi
 while that goal is untouched. A route that could rewrite a brief could quietly
 turn a failing case into a passing one, which is the one thing a test fixture
 must never allow. There is no UPDATE and no DELETE in it.
+
+### §62 RUN — 26 September, 10:57 UTC, and row 262 finally reads both ways
+
+Goal **10759** created on seat 171938: *„I need a trusted tiler for the
+bathroom"*, brief naming Arci construction.
+
+**PARKED, verified on the row itself** — `next_wake_at 2099-01-01`, no plan, no
+pending question, no thread. Nothing reaches it, so nothing is spent on it.
+
+**THE FOUR READS, one variable moved between them:**
+
+| case | read |
+|---|---|
+| employer tag `arci`, goal NAMES it | **would_queue 1** — task 10759, who „Nika Arcieli" |
+| same contact, the 8 goals that do NOT name it | 0 |
+| industry-only tag `logistics` (…0142, …0143) | 0 |
+| the SAME contact and tag, before the goal existed | 0 |
+
+The last two rows are what make the first mean anything: the only thing that
+changed between „0" and „1" is that a goal now names the organisation.
+
+And the card carries **the owner's own label**, which is the other fix from
+this morning arriving in the place it was built for.
