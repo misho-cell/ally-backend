@@ -77,3 +77,38 @@ describe('the list spends what it shows, like the assistant does', () => {
     expect(source).toContain('status(404)');
   });
 });
+
+/**
+ * ⚠️ THE SAME CARD IN BOTH LISTS OF ONE REPLY — found by the tester on 26
+ * September, reading a snoozed row that had come back due and asking whether
+ * appearing in `seen` as well was expected.
+ *
+ * It was not a snooze bug and it was not new. `due` is read first because
+ * releasing marks rows seen; `seen` is read after, so every row just released
+ * is already in it. Every due row has been in both lists since the endpoint
+ * was written, and a screen that draws both draws each new card twice.
+ *
+ * The rows belong in `seen` on the NEXT read — that is what `seen` is for, a
+ * reload is not a blank page. Only in the reply that is showing them as due
+ * are they not also history.
+ */
+describe('a card is due or it is history, not both in one reply', () => {
+  const source = readFileSync(join(__dirname, '..', 'updates.routes.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+
+  it('subtracts what is due from what is seen', () => {
+    expect(source).toContain('const dueNow = new Set(due.map((u) => u.id));');
+    expect(source).toContain('seen.filter((u) => !dueNow.has(u.id))');
+  });
+
+  /** By id — a ref is a rendering of an id and comparing renderings is how they drift. */
+  it('compares ids, not refs', () => {
+    expect(source).not.toMatch(/dueNow\.has\(toUpdateRef/);
+  });
+
+  /** `held` is still counted after the release, which is a different agreement. */
+  it('leaves the held count where it was', () => {
+    expect(source).toMatch(/listSeenUpdates\(userId\), countHeldUpdates\(userId\)/);
+  });
+});

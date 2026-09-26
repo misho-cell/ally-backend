@@ -81,15 +81,31 @@ interface UpdatesView {
  *
  * `due` is read FIRST and `held` after it, because releasing marks rows seen
  * and the two counts have to agree on the same moment.
+ *
+ * ⚠️ WHICH IS ALSO WHY `seen` HAS TO SUBTRACT `due`, and the tester found it:
+ * a snoozed row came back due and appeared in BOTH lists of the same reply.
+ * Not a snooze bug — releasing marks a row seen, so by the time `seen` is read
+ * every row just released is in it, and this has been true of every due row
+ * since the endpoint was written. A screen that draws both lists draws each
+ * new card twice.
+ *
+ * The rows stay in `seen` on the NEXT read, which is what `seen` is for: a
+ * reload is not a blank page. It is only this reply, where they are already
+ * being shown as due, that they are not also history.
  */
 updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesView>>) => {
   const userId = String((req as AuthenticatedRequest).user.userId);
   try {
     const due = await getPendingUpdates(userId);
     const [seen, held] = await Promise.all([listSeenUpdates(userId), countHeldUpdates(userId)]);
+    const dueNow = new Set(due.map((u) => u.id));
     res.status(200).json({
       success: true,
-      data: { due: due.map(updatePayload), seen: seen.map(updatePayload), held },
+      data: {
+        due: due.map(updatePayload),
+        seen: seen.filter((u) => !dueNow.has(u.id)).map(updatePayload),
+        held,
+      },
     });
   } catch (error) {
     // eslint-disable-next-line no-console
