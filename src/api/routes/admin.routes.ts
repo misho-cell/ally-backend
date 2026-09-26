@@ -178,6 +178,11 @@ import {
   canonicalPhone,
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
+import {
+  expireUnansweredRequests,
+  introductionsThatWouldExpire,
+  tellAskersTheirRequestExpired,
+} from '../../services/introductionExpiry.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
@@ -1878,6 +1883,68 @@ adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * §59 — EXPIRE THE INTRODUCTIONS NOBODY ANSWERED (row 275, D496).
+ *
+ * ⚠️ THE DRY RUN IS THE DEFAULT, and that is the whole shape of this route.
+ * It changes rows belonging to real people and it sends each of them a card,
+ * so „show me what you would do" must be the thing that happens when somebody
+ * forgets a parameter. `confirm: true` is the only way to write.
+ *
+ * The two calls are deliberately one route: what gets expired and who gets
+ * told come from ONE statement, so a second query cannot read a different set.
+ * The ids are returned because they are the undo.
+ */
+adminRouter.post(
+  '/introductions/expire',
+  body('confirm').optional().isBoolean(),
+  async (req: Request, res: Response) => {
+    const confirm = (req.body as { confirm?: boolean }).confirm === true;
+    const adminId = (req as AuthenticatedRequest).user.userId;
+    try {
+      if (!confirm) {
+        const waiting = await introductionsThatWouldExpire();
+        res.status(200).json({
+          success: true,
+          data: {
+            dry_run: true,
+            would_expire: waiting.length,
+            requests: waiting,
+            note:
+              waiting.length === 0
+                ? 'Looked, and none are past the deadline. Nothing to do.'
+                : 'Nothing was changed. Send {"confirm":true} to expire these and tell each asker.',
+          },
+        });
+        return;
+      }
+
+      const expired = await expireUnansweredRequests();
+      const told = await tellAskersTheirRequestExpired(expired);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[intro-expiry] admin ${adminId} expired ${expired.length} request(s), told ${told} asker(s): ` +
+          expired.map((e) => e.id).join(', '),
+      );
+      res.status(200).json({
+        success: true,
+        data: {
+          dry_run: false,
+          expired: expired.length,
+          askers_told: told,
+          // The undo needs these and nothing else.
+          ids: expired.map((e) => e.id),
+          undo: "UPDATE introduction_requests SET status = 'pending', responded_at = NULL WHERE id = ANY(<ids>)",
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[intro-expiry]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.get('/referrals/tree', async (req: Request, res: Response) => {
   const rootRaw = String(req.query.root ?? '').trim();

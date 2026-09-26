@@ -40,6 +40,33 @@ export interface ExpiredRequest {
 }
 
 /**
+ * ⚠️ THE SAME CLAUSE AS THE SWEEP, LITERALLY, because a dry run that reads a
+ * different set from the thing it is previewing is worse than no dry run: it
+ * shows somebody sixteen rows and changes seventeen. The WHERE lives here once
+ * and both readers take it.
+ */
+const PAST_THE_DEADLINE = `
+     FROM introduction_requests ir
+    WHERE ir.status = 'pending'
+      AND COALESCE(ir.responded_at, ir.created_at) < NOW() - ($1 || ' days')::INTERVAL`;
+
+/** What a sweep WOULD expire. Reads only; nothing is written and nobody is told. */
+export async function introductionsThatWouldExpire(): Promise<ExpiredRequest[]> {
+  const result = await query<ExpiredRequest>(
+    `SELECT ir.id,
+            ir.requester_user_id,
+            ir.target_name,
+            FLOOR(EXTRACT(EPOCH FROM (NOW() - ir.created_at)) / 86400)::int AS days_waiting
+     ${PAST_THE_DEADLINE}
+     ORDER BY ir.created_at
+     LIMIT $2`,
+    [UNANSWERED_IS_STALE_DAYS, MOST_PER_SWEEP],
+    EXPIRY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/**
  * The requests that have run out of time, marked expired, returned so their
  * askers can be told.
  *

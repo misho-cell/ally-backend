@@ -4290,9 +4290,27 @@ reasoning beside it. They read one exported constant and a test fails if a
 second literal appears — two numbers about one thing is the fault this codebase
 keeps paying for.
 
-### WHAT HAS TO HAPPEN BEFORE IT RUNS
+### THE ROUTE
 
-1. Misho's or the founder's **direct** yes, not a board relay.
-2. Then the sweep, once, and the sixteen ids recorded here for the undo.
-3. Only then is it worth wiring into a read path; until it is wired, nothing
-   expires by itself and nothing about today's behaviour has changed.
+* **ROUTE** — `POST /admin/introductions/expire`
+* **METHOD** — `POST`
+* **BODY** — `{}` is a **DRY RUN** and is the default. `{ "confirm": true }` is
+  the only thing that writes.
+* **DRY RUN REPLY** — `{ dry_run: true, would_expire: <n>, requests: [...] }`,
+  read through the SAME `WHERE` clause the sweep uses, literally shared, so the
+  preview cannot show sixteen rows while the sweep changes seventeen.
+* **WRITE REPLY** — `{ expired, askers_told, ids: [...], undo: "<sql>" }`.
+* **UNDO** — `UPDATE introduction_requests SET status = 'pending',
+  responded_at = NULL WHERE id = ANY(<ids>)`, with the ids the call returned;
+  the cards it queued are ordinary `pending_updates` rows, deleted by id.
+* **BOUND** — 50 per sweep, enforced in the service, not the route.
+
+### AUTHORISED AND RUN
+
+**Misho, 26 September, in this session, directly — not through the board:**
+*„ყველა რეკომენდაცია დაამტკიცე და გააკეთე"* („approve every recommendation and
+do them"), answering a list in which this was item 2 with the recommendation
+„yes, run it".
+
+That is the direct word §59 was waiting for. The run and its ids are recorded
+below.

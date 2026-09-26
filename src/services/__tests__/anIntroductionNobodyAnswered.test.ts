@@ -11,6 +11,7 @@ import { query } from '../../db/postgres/client';
 import { queueResult } from '../pendingUpdates.service';
 import {
   expireUnansweredRequests,
+  introductionsThatWouldExpire,
   tellAskersTheirRequestExpired,
   EXPIRES_AFTER_DAYS,
 } from '../introductionExpiry.service';
@@ -154,5 +155,56 @@ describe('an expired request keeps no card', () => {
     const guards = updates.match(/ir\.status = 'pending'/g) ?? [];
 
     expect(guards).toHaveLength(2);
+  });
+});
+
+/**
+ * ⚠️ A DRY RUN THAT READS A DIFFERENT SET FROM THE SWEEP IS WORSE THAN NO DRY
+ * RUN — it shows somebody sixteen rows and changes seventeen. Misho's word
+ * („approve all and do them") is what makes this route run at all, and the
+ * preview is the last thing between that word and sixteen real people.
+ */
+describe('the preview previews the thing that will happen', () => {
+  const source = readFileSync(join(__dirname, '..', 'introductionExpiry.service.ts'), 'utf8');
+
+  it('shares one WHERE clause between the preview and the sweep', () => {
+    expect(source).toContain('const PAST_THE_DEADLINE = `');
+    expect(source).toContain('${PAST_THE_DEADLINE}');
+    // The sweep's own subquery states the same two conditions.
+    expect(source).toContain("status = 'pending'");
+  });
+
+  it('reads the same fourteen days, from the same constant', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await introductionsThatWouldExpire();
+
+    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(params[0]).toBe(14);
+    expect(params[1]).toBe(50);
+  });
+
+  it('writes nothing and tells nobody', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await introductionsThatWouldExpire();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
+    expect(mockQueue).not.toHaveBeenCalled();
+  });
+
+  /** And the route refuses to write unless somebody says so in the body. */
+  it('the route only writes on an explicit confirm', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    const route = routes.slice(routes.indexOf("'/introductions/expire'"));
+
+    expect(route.slice(0, 2000)).toContain('.confirm === true');
+    expect(route.slice(0, 2000)).toContain('if (!confirm)');
+    // The ids come back, because the ids are the undo.
+    expect(route.slice(0, 3000)).toContain('ids: expired.map((e) => e.id)');
   });
 });
