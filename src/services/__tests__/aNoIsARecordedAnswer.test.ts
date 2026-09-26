@@ -204,3 +204,26 @@ describe('the refusal is read from the tap, not from what is sent later', () => 
     expect(note).toContain('COALESCE(declined_at, NOW())');
   });
 });
+
+/**
+ * ⚠️ FOUND BY RUNNING IT, NOT BY READING IT.
+ *
+ * Typing the decline sentence on a live seat recorded `declined_at` — and left
+ * the ask at `status = 'sent'`, because the run that would have relayed it was
+ * refused after the message was stored. That is correct: the refusal of a
+ * later step must not unsay a no.
+ *
+ * But it put one row in two of the report's three columns, so adding them
+ * double-counted it. Somebody who declined has not „never answered".
+ */
+describe('the three ask columns do not overlap', () => {
+  const report = readFileSync(join(__dirname, '..', 'pilotOutcomes.service.ts'), 'utf8');
+
+  it('excludes a recorded refusal from never_answered', () => {
+    expect(report).toContain("ta.status = 'sent' AND ta.declined_at IS NULL");
+  });
+
+  it('still counts the refusal itself', () => {
+    expect(report).toContain('ta.declined_at IS NOT NULL');
+  });
+});

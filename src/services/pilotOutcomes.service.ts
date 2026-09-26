@@ -319,9 +319,25 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
      * would read as a third thing they chose.
      */
     query<{ answered: string; declined: string; never_answered: string }>(
+      /**
+       * ⚠️ THE THREE COLUMNS MUST NOT OVERLAP, and they did until a live test
+       * produced the row that proves it.
+       *
+       * A decline is recorded when the person's own message ARRIVES, which is
+       * before the run that would relay it. If that run is then refused — a
+       * walled wallet, a rate limit, a crash — the ask keeps `status = 'sent'`
+       * and carries `declined_at` anyway. That is the right outcome: they said
+       * no, and the refusal of a later step must not unsay it.
+       *
+       * But it meant such a row was counted in BOTH `declined` and
+       * `never_answered`, so adding the three numbers double-counted it.
+       * Somebody who declined has not „never answered" — they answered with a
+       * no. `never_answered` now means exactly that: no answer and no refusal.
+       */
       `SELECT COUNT(*) FILTER (WHERE ta.status = 'answered')::text AS answered,
               COUNT(*) FILTER (WHERE ta.declined_at IS NOT NULL)::text AS declined,
-              COUNT(*) FILTER (WHERE ta.status = 'sent')::text AS never_answered
+              COUNT(*) FILTER (WHERE ta.status = 'sent' AND ta.declined_at IS NULL)::text
+                AS never_answered
          FROM task_asks ta
          JOIN "User" u ON u.id = ta.to_user_id
         WHERE ta.created_at >= NOW() - ($1 || ' days')::interval
