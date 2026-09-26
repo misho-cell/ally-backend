@@ -4428,3 +4428,76 @@ DELETE FROM "UserAlias" WHERE "contactId" = 171938 AND phone IN ('+12025550142',
 Neither number is registered and neither opens a way in; they stay
 unregistered until somebody goes through the ordinary door, which is the
 tester's half of 262(b).
+
+## §61 — TAKING BACK TWO ROWS §60 WROTE IN THE WRONG COLUMN (row 262)
+
+**NOT AUTHORISED YET. Nothing below has been run.** It is written first
+because D44 says the writing comes first, and because the rows it proposes to
+remove are ones I created.
+
+### WHAT HAPPENED
+
+`"UserTags"` has two id columns. `"contactId"` is the person whose phonebook
+the row is in. `"userId"` is the account that owns the TAGGED number, when
+that person has an account. The names suggest the opposite of both.
+
+Measured on the live base: of the 526,348 rows carrying both, `"userId"` is
+the tagged phone's own account **526,348 times** — every one — and 411,506
+rows have the two columns pointing at different people. The table's own unique
+key is `("contactId", tag, phone, source)`.
+
+§60 wrote the seat into `"userId"`. So the two rows it created say *account
+171938 owns those made-up numbers*, which is false — §60 refuses any number
+somebody is registered on, so by its own rule nobody owns them. They are also
+invisible to every ordinary read (search-by-tag, the profile, the erasure
+sweep), all of which look in `"contactId"`.
+
+⚠️ **AND THE VERIFICATION IN §60 ABOVE IS WRONG BECAUSE OF IT.** „would_queue
+2" was true only because row 262's matcher was reading the same wrong column,
+so the two faults agreed with each other on the one path I was testing and on
+no other path in the system. Corrected, the matcher now returns real owners
+with real names on the live `arci` case, where it returned nothing before —
+but the §60 run's own proof has to be redone, not carried over.
+
+### THE TWO OPERATIONS
+
+**(1) Re-add the two contacts through §60's route, unchanged.** Same seat,
+same two numbers, same labels; the route now writes `"contactId"` in both
+tables. This is §60 being run again, under §60's approval, not a new power.
+
+* **ROUTE** — `POST /admin/test-accounts/171938/contacts`
+* **BODY** — `{ "phone": "+12025550142", "name": "Nino Logistika", "tag": "logistics" }`
+  and `{ "phone": "+12025550143", "name": "Dato Logistika", "tag": "logistics" }`
+* **UNDO** —
+  `DELETE FROM "UserTags"  WHERE "contactId" = 171938 AND phone IN ('+12025550142', '+12025550143');`
+  `DELETE FROM "UserAlias" WHERE "contactId" = 171938 AND phone IN ('+12025550142', '+12025550143');`
+
+**(2) Delete the two rows written in the wrong column.** This one needs a yes.
+
+* **STATEMENT** —
+  `DELETE FROM "UserTags" WHERE id IN (42532360, 42532361);`
+* **BY ID, not by a WHERE that describes them.** The two ids were read out
+  first and are the whole target; a predicate could match something I have not
+  looked at.
+* **WHAT THEY ARE** — `"userId" = 171938`, `"contactId" = NULL`, tag
+  `logistics`, on the two made-up numbers above. Both written by me at 08:32
+  UTC today. Nobody else has ever written a `"UserTags"` row through
+  `"userId"`: the ordinary ingest path in `contacts.service` writes
+  `"contactId"`.
+* **UNDO** — re-insert:
+  `INSERT INTO "UserTags" ("userId", phone, tag, "weightCount", source) VALUES (171938, '+12025550142', 'logistics', 1, 'USER_CREATED'), (171938, '+12025550143', 'logistics', 1, 'USER_CREATED');`
+  The ids would differ; nothing reads these rows, so nothing depends on them.
+* **WHY NOT UPDATE THEM INTO SHAPE** — an `UPDATE` would have to set
+  `"contactId"` and null `"userId"` in one statement on rows whose unique key
+  is the column being set, and (1) already produces correct rows. Two clean
+  inserts and two deletes are easier to check than one clever statement.
+* **WHY IT MATTERS AT ALL, given they are invisible** — they are a false
+  statement about who owns a phone number, sitting in the table the matcher
+  reads. The next person to measure „how many tag rows carry a `userId`" gets
+  two rows of mine in the answer.
+
+### WHAT IS NOT PROPOSED
+
+Nothing touches a real person's phonebook, no real number, no registration, no
+access. If (2) is refused the only cost is two dead rows; the feature works
+either way once (1) has run.
