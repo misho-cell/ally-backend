@@ -4396,3 +4396,35 @@ It does not register anybody and it opens no way in. The number stays
 unregistered until somebody registers it through the ordinary door, which is
 what the tester will do to prove 262 — and that registration is theirs, not
 mine.
+
+### RUN — 26 September, 08:30 UTC
+
+Two contacts added to **seat 171938**, chosen because its two open goals name
+`logistics` in their briefs and `logistics` is in the employer/industry
+vocabulary — so the match is real and not arranged.
+
+| phone | name | tag |
+|---|---|---|
+| `+12025550142` | Nino Logistika | logistics |
+| `+12025550143` | Dato Logistika | logistics |
+
+**VERIFIED, not assumed:** `GET /admin/new-member-match` against each returns
+**would_queue 2** — tasks 9872 („a good plumber for my flat in Tbilisi") and
+9934 („a reliable driver for airport pickups"). That is the first time row 262
+has been shown to match anything at all.
+
+⚠️ **TWO CARDS, NOT ONE.** The tester's 645 expected „exactly one card". The
+rule is one card per GOAL and this seat has two goals naming that
+organisation, so two is correct here. Said on the board before they could read
+a pass as a fail.
+
+**UNDO:**
+
+```sql
+DELETE FROM "UserTags"  WHERE "userId" = 171938 AND phone IN ('+12025550142', '+12025550143');
+DELETE FROM "UserAlias" WHERE "contactId" = 171938 AND phone IN ('+12025550142', '+12025550143');
+```
+
+Neither number is registered and neither opens a way in; they stay
+unregistered until somebody goes through the ordinary door, which is the
+tester's half of 262(b).
