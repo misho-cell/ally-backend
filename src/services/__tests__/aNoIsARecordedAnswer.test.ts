@@ -71,8 +71,31 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** One button. Saying yes is answering, which they can already do by typing. */
   it('offers the decline with the question itself', () => {
-    expect(asks).toContain("await saveThreadMessage(askThreadId, toUserId, 'assistant', opening");
     expect(asks).toContain('declineChoice(language)');
+    expect(asks).toContain('saveThreadMessage(');
+  });
+
+  /**
+   * ⚠️ TEST SEATS ONLY UNTIL SOMEBODY HAS SEEN IT. If the client treats
+   * choices as „these are the only options", a button turns a question into a
+   * multiple-choice form and the reader cannot type at all — worse than no
+   * button. Measured what waiting costs: real asks run 1-5 a day and none at
+   * all on three of the last four days, so the exposure is a handful of
+   * people and the failure is somebody unable to answer a friend.
+   *
+   * Removing this is one line, and it should go the moment the button has
+   * been seen on a screen.
+   */
+  it('sends the button to a seat and null to anybody else', () => {
+    expect(asks).toContain('const seatOnlyChoices = (await recipientIsATestSeat(toUserId))');
+    expect(asks).toMatch(/\? \[declineChoice\(language\)\]\s*:\s*null/);
+  });
+
+  /** The safe direction is „no button": a database hiccup must not expose it. */
+  it('answers false when it cannot tell', () => {
+    const guard = asks.slice(asks.indexOf('async function recipientIsATestSeat'));
+    expect(guard).toContain('catch {');
+    expect(guard).toContain('return false;');
   });
 
   /**
