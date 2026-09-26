@@ -35,8 +35,27 @@ import { queueResult } from './pendingUpdates.service';
 
 /** Shorter than this and a tag matches things it has nothing to do with. */
 const SHORTEST_USEFUL_TAG = 4;
-/** What counts as „an organisation" — the vocabulary people have actually used. */
-const ORGANISATION_FIELDS = ['employer', 'industry'];
+/**
+ * What counts as „an organisation".
+ *
+ * ⚠️ `industry` USED TO BE IN HERE AND IT SHOULD NOT HAVE BEEN. D498 is one
+ * sentence — „only sure matches (member's tag = an organisation the goal
+ * names)" — and an industry is a SECTOR, not an organisation. I widened it to
+ * „the vocabulary people have actually used", which is a different rule from
+ * the one the founder gave.
+ *
+ * The tester found it on the two seat goals within an hour of the fix: „a good
+ * plumber for my flat" matched the tag `logistics` because the brief happens to
+ * say a network member works in logistics. The goal does not name that
+ * organisation — it does not name an organisation at all.
+ *
+ * Measured across every open goal on the base before removing it: `employer`
+ * gives 4 goal/tag pairs over 2 owners, `industry` gives 2 pairs over 1 owner —
+ * and those 2 are exactly the false pair the tester read. So the narrowing
+ * costs nothing that was ever right. The split is clean in the data too: `arci`
+ * is recorded as an employer, `logistics` only as an industry.
+ */
+const ORGANISATION_FIELDS = ['employer'];
 /** A person has a handful of goals, not a hundred. A ceiling, not an expectation. */
 const MOST_CARDS_PER_JOIN = 5;
 const MATCH_TIMEOUT_MS = 8_000;

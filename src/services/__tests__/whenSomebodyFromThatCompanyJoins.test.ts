@@ -78,7 +78,31 @@ describe('the match is an organisation, whole-word, in the goal’s own text', (
 
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('JOIN organisations o ON o.name = tg.tag');
-    expect(params[2]).toEqual(['employer', 'industry']);
+    expect(params[2]).toEqual(['employer']);
+  });
+
+  /**
+   * ⚠️ AN INDUSTRY IS NOT AN ORGANISATION, and `industry` was in this list
+   * until the tester read the two cards it produced.
+   *
+   * D498 is one sentence — „only sure matches (member's tag = an organisation
+   * the goal names)". „a good plumber for my flat" matched the tag `logistics`
+   * because the brief happens to mention that a network member works in
+   * logistics. That goal names no organisation at all; it was exactly the
+   * loose match the founder ruled out, and I had widened the rule to „the
+   * vocabulary people have actually used" without noticing it was a different
+   * rule.
+   *
+   * Measured over every open goal before removing it: `employer` gives 4
+   * goal/tag pairs over 2 owners, `industry` gives 2 over 1 — and those 2 are
+   * the false pair. The narrowing costs nothing that was ever right.
+   */
+  it('refuses a sector, and asks only for a place somebody works', () => {
+    const source = readFileSync(join(__dirname, '..', 'newMemberForGoal.service.ts'), 'utf8');
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    expect(code).toContain("const ORGANISATION_FIELDS = ['employer']");
+    expect(code).not.toMatch(/ORGANISATION_FIELDS = \[[^\]]*'industry'/);
   });
 
   it('only looks at goals that are still open', async () => {
