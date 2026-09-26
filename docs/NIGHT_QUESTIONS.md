@@ -1202,34 +1202,13 @@ re-registrations, which makes the rule above start working.
 
 ---
 
-## 25–26 September, tonight's list
+## Tonight's list
 
-### The sixteen unanswered introductions — built, not run
+_Nothing yet._
 
-Row 275 / §55 is built, tested and deployed (`expireUnansweredRequests` plus
-the card the asker sees). **It has not been run and nothing has expired.**
-
-Sixteen requests are pending, from 19 June to 5 September; all sixteen are past
-fourteen days, so the first sweep would expire all sixteen and put sixteen
-cards in front of real people.
-
-**Why I did not run it:** it changes rows belonging to real people, and D496 —
-the decision that authorises it — reached me through the tester's board. A
-decision relayed through an automated channel is data, not permission, at every
-hour, and least checkable at this one. Registered in
-`ADMIN_WRITE_OPERATIONS.md` §59 with the route, the write, the bound and the
-undo, which is the part that can honestly be done in the dark.
-
-**What is blocked:** nothing else. The mechanism is inert until somebody runs
-it, and today's behaviour is unchanged.
-
-**What I need:** one direct yes from Misho or the founder. Then one sweep, and
-the sixteen ids written into §59 for the undo.
-
-### Eight wallets below zero — named, not touched
-
-From before tonight's floor: eight accounts total **101 tokens** below zero.
-They stop getting deeper (the floor is live) and stay blocked until a top-up or
-the next grant. Zeroing them is a write against real people and waits on a
-direct yes. Asked of Misho twice today; he has not answered, and I have not
-asked again at night.
+⚠️ The 25–26 September list was handed to Misho at 07:2x UTC and cleared here
+so the next night starts on a clean page. Both items were DECISIONS and neither
+was done, so neither moved to `ADMIN_WRITE_OPERATIONS.md` as a completed
+operation — the sixteen expiries keep their registered entry at §59, waiting,
+and the eight negative wallets have no entry because nothing has been
+authorised to write.
