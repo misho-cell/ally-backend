@@ -49,6 +49,41 @@ export async function claimSweep(name: string, everyMinutes: number): Promise<bo
 
 const CLAIM_TIMEOUT_MS = 8_000;
 
+export interface SweepSlot {
+  readonly name: string;
+  readonly last_run_at: string;
+  readonly minutes_ago: number;
+}
+
+/**
+ * The slots, read and never touched.
+ *
+ * ⚠️ IT EXISTS BECAUSE THE TESTER COULD NOT SEE THE ONE NUMBER THE WHOLE
+ * QUESTION TURNS ON. They were judging „did the sweep run" from goal stamps,
+ * which is a downstream shadow of it: a sweep that runs and wakes nobody
+ * leaves no stamp at all, and reads exactly like a sweep that never ran.
+ *
+ * `claimSweep` writes this table and this does not, deliberately — the reader
+ * must not be able to consume a slot by looking at it. Same reason `GET
+ * /admin/introductions/expiring` is its own route rather than a flag on the
+ * expire one.
+ */
+export async function readSweepSlots(): Promise<SweepSlot[]> {
+  const result = await query<{ name: string; last_run_at: Date; minutes_ago: string }>(
+    `SELECT name, last_run_at,
+            ROUND(EXTRACT(EPOCH FROM (NOW() - last_run_at)) / 60)::text AS minutes_ago
+       FROM sweep_runs
+      ORDER BY name`,
+    [],
+    CLAIM_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({
+    name: r.name,
+    last_run_at: new Date(r.last_run_at).toISOString(),
+    minutes_ago: Number(r.minutes_ago),
+  }));
+}
+
 /** The names, written once so a caller cannot invent a slot by mistyping one. */
 export const SWEEP_ASK_REMINDERS = 'ask_reminders';
 export const SWEEP_SILENT_GOALS = 'silent_goals';

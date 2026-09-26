@@ -193,6 +193,7 @@ import {
   tellAskersTheirRequestExpired,
   EXPIRES_AFTER_DAYS,
 } from '../../services/introductionExpiry.service';
+import { readSweepSlots } from '../../services/sweepClaim';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
@@ -1890,6 +1891,25 @@ adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin new-member match]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * WHEN EACH HOURLY SWEEP LAST RAN. Read only; it cannot claim a slot.
+ *
+ * The tester was judging „did the sweep run" from the stamps it leaves on
+ * goals, which is a shadow of the answer and not the answer: a sweep that runs
+ * and wakes nobody leaves no stamp at all, and reads exactly like a sweep that
+ * never ran. Two states under one observation, which is this week's whole
+ * story.
+ */
+adminRouter.get('/sweeps', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: { sweeps: await readSweepSlots() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin sweeps] read failed:', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -207,3 +207,60 @@ describe('the claim window is shorter than the timer that opens it', () => {
     expect(literal('REMINDER_INTERVAL_MINUTES') - 5).toBeGreaterThan(30);
   });
 });
+
+/**
+ * ⚠️ AND THE SLOT ITSELF IS READABLE, BECAUSE ITS SHADOW IS NOT ENOUGH.
+ *
+ * The tester was judging „did the sweep run" from the stamps it leaves on
+ * goals. A sweep that runs and wakes nobody leaves no stamp at all, and reads
+ * exactly like a sweep that never ran — two states under one observation.
+ *
+ * The reader must not be able to consume a slot by looking at it, which is why
+ * it is its own function beside `claimSweep` rather than a flag inside it.
+ */
+describe('reading a slot cannot claim it', () => {
+  it('selects and does not write', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    const { readSweepSlots } = await import('../sweepClaim');
+
+    await readSweepSlots();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain('FROM sweep_runs');
+    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
+  });
+
+  it('says how long ago, so "did it run" needs no arithmetic', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        {
+          name: SWEEP_SILENT_GOALS,
+          last_run_at: new Date('2026-09-26T17:54:37.000Z'),
+          minutes_ago: '31',
+        },
+      ]) as never,
+    );
+    const { readSweepSlots } = await import('../sweepClaim');
+
+    expect(await readSweepSlots()).toEqual([
+      {
+        name: SWEEP_SILENT_GOALS,
+        last_run_at: '2026-09-26T17:54:37.000Z',
+        minutes_ago: 31,
+      },
+    ]);
+  });
+
+  it('is served by a GET that touches nothing', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    const start = routes.indexOf("adminRouter.get('/sweeps'");
+    const route = routes.slice(start, routes.indexOf('adminRouter.', start + 10));
+
+    expect(start).toBeGreaterThan(-1);
+    expect(route).toContain('readSweepSlots()');
+    expect(route).not.toContain('claimSweep');
+  });
+});
