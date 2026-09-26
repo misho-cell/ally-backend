@@ -9014,15 +9014,25 @@ async function runToolLoop(
    * against a threshold written for the model's own last sentence is measuring
    * the wrong string.
    *
-   * WHAT THIS DELIBERATELY IS NOT is the change I went looking for. I measured
-   * 500 real finals from the last week: the guard fires four times, and all
-   * four are promises to check again at a named time, not cliffhangers. The
-   * obvious fix — exempt a tail that names a later time — spares all four.
-   * That is exactly why it is not here: in a sample with no true positives,
-   * „the exemption is precise" and „the guard has nothing left to catch" look
-   * identical, and shipping it would be indistinguishable from deleting a
-   * guard that was built from five real cases. This cut is narrower and rests
-   * on what the code did rather than on a week with nothing in it.
+   * WHAT THIS DELIBERATELY IS NOT is the change I went looking for. The cut
+   * here is narrow and rests on what this function did — it promoted the
+   * narration — rather than on how often the guard fires.
+   *
+   * ⚠️ AND THE SENTENCE THAT USED TO STAND HERE WAS WRONG. It said: „I
+   * measured 500 real finals from the last week: the guard fires four times."
+   * The count was real and the population was not. A run whose guard fires
+   * stores the CONTINUATION as its final — the short announcement that
+   * tripped the guard is never the message that gets saved — so a sample of
+   * stored finals is precisely the sample that cannot contain them.
+   *
+   * Counted properly, from the nudge turns the run persists as `kind =
+   * 'event'`: 153 firings in the eight days to 26 September, across 142
+   * threads, peaking at 43 in one day. Row 273 is that much bigger than the
+   * note it replaced. What is still NOT measured is how many of those 153
+   * repeated themselves rather than carrying real work forward — the nudge
+   * row is written at the END of a run, with every other pending turn, so its
+   * timestamp cannot separate „did more work" from „wrote more words". That
+   * needs the run log, and until it exists the fix stays unmade.
    */
   if (!promoted && isCliffhangerReply(finalText)) {
     try {
