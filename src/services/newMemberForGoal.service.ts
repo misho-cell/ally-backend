@@ -78,14 +78,42 @@ export function canonicalPhone(raw: string): string {
   return digits === '' ? '' : `+${digits}`;
 }
 
+/**
+ * ⚠️ WHOSE PHONEBOOK IS IT. `"UserTags"` HAS TWO ID COLUMNS AND THIS READ THE
+ * WRONG ONE — for as long as it has existed.
+ *
+ * `"contactId"` is the PERSON WHOSE PHONEBOOK THE ROW IS IN. `"userId"` is the
+ * account that owns the TAGGED NUMBER, when the tagged person happens to have
+ * one. The names suggest the opposite of both.
+ *
+ * Measured on the live base rather than argued: of the 526,348 rows where both
+ * are set, `"userId"` equals the tagged phone's own account 526,348 times —
+ * every single one — and `"contactId"` equals it 115,281 times, which is just
+ * the people who keep their own number in their own contacts. 411,506 rows
+ * have the two columns pointing at different people.
+ *
+ * So what this query called „the goal's owner" was the NEW MEMBER'S OWN
+ * ACCOUNT. On the live base the row could not fire at all: an unregistered
+ * contact — the ordinary case this feature is for — has no `"userId"`, so the
+ * CTE returned nothing, and a registered one was then struck out by the „not
+ * the owner about themselves" guard, which was comparing a person to
+ * themselves. Zero cards, for the right-looking reason.
+ *
+ * ⚠️ AND THE REPLAY DID NOT CATCH IT — it CAUSED it to look healthy. The test
+ * contacts were written by §60, which put the seat's id in `"userId"`, so the
+ * two ids lined up by accident on exactly the rows I was testing with, and
+ * nowhere else. Same fault as everything else this week: the measurement was
+ * right and the question was different.
+ */
 export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTheyMightUnblock[]> {
   const wanted = canonicalPhone(phone);
   if (wanted === '') return [];
   const result = await query<GoalTheyMightUnblock>(
     `WITH tagged AS (
-       SELECT DISTINCT ut."userId"::text AS user_id, LOWER(TRIM(ut.tag)) AS tag
+       SELECT DISTINCT ut."contactId"::text AS user_id, LOWER(TRIM(ut.tag)) AS tag
          FROM "UserTags" ut
         WHERE ut.phone = $1
+          AND ut."contactId" IS NOT NULL
           AND LENGTH(TRIM(ut.tag)) >= $2
           -- Letters, digits and spaces only: anything else is not an
           -- organisation's name and must not reach a pattern of any kind.
@@ -101,7 +129,19 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
             t.user_id,
             t.title                                AS goal,
             tg.tag                                 AS organisation,
-            NULLIF(TRIM(u.name), '')               AS who
+            /**
+             * ⚠️ THE NAME THE OWNER KNOWS THEM BY, first.
+             *
+             * This read the REGISTERED account's name, and on a replay — and
+             * for anybody whose account carries no name — it came back null,
+             * so the card said „Somebody new" about a person the owner has
+             * had in their phonebook for months.
+             *
+             * The owner's own label is the better answer even when both
+             * exist: the card is telling THEM that somebody THEY know has
+             * arrived, and they know them as whatever they wrote down.
+             */
+            COALESCE(NULLIF(TRIM(own_label.alias), ''), NULLIF(TRIM(u.name), '')) AS who
        FROM tagged tg
        JOIN organisations o ON o.name = tg.tag
        JOIN tasks t ON t.user_id = tg.user_id AND t.status = 'open'
@@ -112,8 +152,20 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
        -- today: nothing but reading the live schema, or running it, finds it.
        LEFT JOIN "UserPhone" up ON up.phone = $1
        LEFT JOIN "User" u ON u.id = up."userId"
-      -- ⚠️ NOT THE OWNER ABOUT THEMSELVES. Found by running the dry run on
-      -- goal 5678's real case: it came back naming the goal's OWN owner,
+       LEFT JOIN LATERAL (
+         SELECT ua.alias
+           FROM "UserAlias" ua
+          WHERE ua."contactId"::text = tg.user_id AND ua.phone = $1
+          ORDER BY LENGTH(TRIM(ua.alias)) DESC
+          LIMIT 1
+       ) own_label ON TRUE
+      -- ⚠️ NOT THE OWNER ABOUT THEMSELVES, and this guard only started doing
+      -- that once the CTE above was reading the phonebook's owner. While
+      -- tg.user_id was the tagged number's own account, this line compared a
+      -- person to themselves and silently threw away every registered match.
+      --
+      -- Found by running the dry run on goal 5678's real case: it came back
+      -- naming the goal's OWN owner,
       -- because the number tagged arci in his phonebook is his own. People
       -- keep their own number in their own contacts and tag it with where
       -- they work, and without this the card reads "Tornike Abuladze has just

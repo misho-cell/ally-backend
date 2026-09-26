@@ -334,3 +334,74 @@ describe('the seat route is not a registration', () => {
     expect(auth).toContain('void tellOwnersANewMemberFitsAGoal(cleanPhone)');
   });
 });
+
+/**
+ * ⚠️ WHOSE PHONEBOOK IS IT — the fault that made every test above pass while
+ * the row could not fire once on the live base.
+ *
+ * `"UserTags"` carries two ids. `"contactId"` is the person whose phonebook
+ * the row is in; `"userId"` is the account that owns the TAGGED number, when
+ * the tagged person has one. The names suggest the opposite of both, and this
+ * query read `"userId"` and called it the goal's owner.
+ *
+ * Measured rather than argued: of the 526,348 rows where both are set,
+ * `"userId"` equals the tagged phone's own account 526,348 times — all of
+ * them — and 411,506 rows have the two columns pointing at different people.
+ *
+ * So on real data an unregistered contact (the ordinary case) has no
+ * `"userId"` and never entered the CTE, and a registered one was then struck
+ * out by the „not about themselves" guard, which was comparing one person to
+ * themselves. The replay looked healthy only because §60 was writing the seat
+ * into the same wrong column: two mistakes that agreed with each other on the
+ * one path I was testing.
+ */
+describe('the owner is the phonebook’s owner', () => {
+  const source = readFileSync(join(__dirname, '..', 'newMemberForGoal.service.ts'), 'utf8');
+  const sql = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
+
+  it('takes the goal owner from "contactId", never from "userId"', () => {
+    expect(sql).toContain('ut."contactId"::text AS user_id');
+    expect(sql).not.toContain('ut."userId"');
+  });
+
+  it('skips a tag row with no phonebook owner on it', () => {
+    expect(sql).toContain('ut."contactId" IS NOT NULL');
+  });
+
+  it('still joins the goal to that owner', () => {
+    expect(sql).toContain('JOIN tasks t ON t.user_id = tg.user_id');
+  });
+});
+
+/**
+ * ⚠️ „SOMEBODY NEW" ABOUT SOMEBODY THEY HAVE HAD FOR MONTHS.
+ *
+ * The card read the name off the REGISTERED account, which for an unregistered
+ * contact — again, the ordinary case — does not exist, so `who` came back null
+ * and the message called a long-standing contact a stranger.
+ *
+ * The owner's own label is the better answer even where both exist: the card
+ * is telling THEM that somebody THEY know has arrived, and they know that
+ * person as whatever they wrote in their phone.
+ */
+describe('it calls them what the owner calls them', () => {
+  const source = readFileSync(join(__dirname, '..', 'newMemberForGoal.service.ts'), 'utf8');
+  const sql = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
+
+  it('prefers the owner’s own label over the registered name', () => {
+    expect(sql).toMatch(
+      /COALESCE\(NULLIF\(TRIM\(own_label\.alias\), ''\), NULLIF\(TRIM\(u\.name\), ''\)\) AS who/,
+    );
+  });
+
+  /** The alias belongs to the OWNER and is about THIS number — both, or it is somebody else's label. */
+  it('reads the alias by owner and phone together', () => {
+    expect(sql).toContain('ua."contactId"::text = tg.user_id AND ua.phone = $1');
+  });
+
+  /** An owner with no label and a contact with no account still gets a card. */
+  it('never turns the label into a filter', () => {
+    expect(sql).toContain(') own_label ON TRUE');
+    expect(sql).toMatch(/LEFT JOIN LATERAL/);
+  });
+});

@@ -108,15 +108,40 @@ export async function addSeatContact(
     return { ok: false, refusal: 'somebody_is_registered_on_it' };
   }
 
+  /**
+   * ⚠️ `ON CONFLICT DO NOTHING` DOES NOTHING HERE, and that is not a figure of
+   * speech: `"UserAlias"` carries no unique index but its primary key, so
+   * there is no conflict to detect and every re-run of this route would have
+   * added the same person to the same phonebook again. The clause READ like a
+   * guard, which is the only reason it survived review.
+   *
+   * `"UserTags"` genuinely has one — `("contactId", tag, phone, source)` —
+   * which is also the plainest evidence of which column owns a row.
+   */
   await query(
     `INSERT INTO "UserAlias" ("contactId", phone, alias)
-     VALUES ($1, $2, $3)
-     ON CONFLICT DO NOTHING`,
+     SELECT $1, $2, $3
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2 AND alias = $3
+      )`,
     [seatUserId, phone, cleanName],
     QUERY_TIMEOUT_MS,
   );
+  /**
+   * ⚠️ THE OWNER COLUMN IS `"contactId"`, IN BOTH TABLES, AND THIS WROTE
+   * `"userId"` — which is where an account id for the TAGGED NUMBER goes.
+   *
+   * Two rows of nonsense came out of it: they said the seat's account owns a
+   * made-up number that by this function's own refusal above has no account at
+   * all, and they were invisible to every ordinary read, all of which look in
+   * `"contactId"` — search-by-tag, the profile, the erasure sweep.
+   *
+   * Worse than invisible: they were the only rows row 262's matcher could see,
+   * because it was reading the same wrong column. Two mistakes that cancelled
+   * each other out on the one path I was testing, and on no other path at all.
+   */
   await query(
-    `INSERT INTO "UserTags" ("userId", phone, tag, "weightCount", source)
+    `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
      VALUES ($1, $2, $3, 1, 'USER_CREATED')
      ON CONFLICT DO NOTHING`,
     [seatUserId, phone, cleanTag],

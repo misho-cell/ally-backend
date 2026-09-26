@@ -147,4 +147,57 @@ describe('what it writes when it accepts', () => {
       'arci',
     ]);
   });
+
+  /**
+   * ⚠️ AND THE TEST ABOVE PASSED WHILE THE COLUMN WAS WRONG, which is the
+   * whole reason this one exists. It pinned the three VALUES and never looked
+   * at what they were called, so `INSERT INTO "UserTags" ("userId", …)` — the
+   * account column for the TAGGED number, not the phonebook's owner — sailed
+   * through it and through the replay.
+   *
+   * Measured on the live base: of the 526,348 rows carrying both ids,
+   * `"userId"` is the tagged phone's own account every single time, and
+   * `"contactId"` is the phonebook's owner. A mock cannot check a column name;
+   * only reading the column names can.
+   */
+  it('names the phonebook owner column in both writes, and never "userId"', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 172101 }]) as never)
+      .mockResolvedValueOnce(rows([]) as never)
+      .mockResolvedValue(rows([]) as never);
+
+    await addSeatContact(172101, '+12025550150', 'Tinatin R', 'arci');
+
+    const inserts = mockQuery.mock.calls
+      .map(([sql]) => String(sql))
+      .filter((s) => s.includes('INSERT'));
+    for (const statement of inserts) {
+      expect(statement).toContain('"contactId"');
+      expect(statement).not.toContain('"userId"');
+    }
+  });
+});
+
+/**
+ * ⚠️ A GUARD THAT READS LIKE A GUARD AND IS NOT ONE.
+ *
+ * The alias write carried `ON CONFLICT DO NOTHING`, and `"UserAlias"` has no
+ * unique index but its primary key — so there was nothing to conflict with and
+ * every re-run added the same person to the same phonebook again. `"UserTags"`
+ * does have one, `("contactId", tag, phone, source)`, which is also the
+ * plainest statement in the schema of which column owns a row.
+ */
+describe('adding the same contact twice adds them once', () => {
+  const source = readFileSync(join(__dirname, '..', 'seatContacts.service.ts'), 'utf8');
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
+  const aliasWrite = code.slice(code.indexOf('INSERT INTO "UserAlias"'));
+
+  it('guards the alias with NOT EXISTS, not with a conflict that cannot happen', () => {
+    expect(aliasWrite.slice(0, 400)).toContain('WHERE NOT EXISTS');
+    expect(aliasWrite.slice(0, 400)).not.toContain('ON CONFLICT');
+  });
+
+  it('matches on owner, phone and the label together', () => {
+    expect(aliasWrite.slice(0, 400)).toContain('"contactId" = $1 AND phone = $2 AND alias = $3');
+  });
 });
