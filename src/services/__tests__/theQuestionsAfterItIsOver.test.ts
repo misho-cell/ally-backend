@@ -349,3 +349,45 @@ describe('the question actually reaches the person', () => {
     expect(queue.slice(0, 600)).toContain('prompt: next.prompt');
   });
 });
+
+/**
+ * ⚠️ „THE PROMPT IS GEORGIAN FOR AN ENGLISH-WRITING SEAT" — the tester, within
+ * an hour of the card being drawn at all.
+ *
+ * The question is chosen when the goal CLOSES and read when the person next
+ * opens a conversation. Those are two moments and they can be in two
+ * languages. It did not matter while the model narrated the question, because
+ * a model translates what it is handed. Now that the SERVER draws this card,
+ * nothing downstream can.
+ *
+ * So the key decides the words and the CONVERSATION decides the language. The
+ * stored `prompt` stays as the fallback for a key a later build does not know:
+ * a question already asked must stay readable even if it is renamed.
+ */
+describe('the card speaks the language of the conversation it is in', () => {
+  const card = (payload: Record<string, unknown>, language: 'ka' | 'en') =>
+    renderPendingMessage({ kind: 'goal_feedback', task_id: 10693, payload }, language);
+
+  it('reads English to an English conversation even though it was stored in Georgian', () => {
+    const out = card(
+      { question_key: 'what_you_wanted', prompt: 'რისი გადაჭრა გინდოდა ამ მიზნით?' },
+      'en',
+    );
+
+    expect(out?.text).toBe('What did you want to resolve with this goal?');
+    expect(out?.text).not.toMatch(/[Ⴀ-ჿ]/);
+  });
+
+  it('still reads Georgian to a Georgian conversation', () => {
+    const out = card({ question_key: 'what_you_wanted', prompt: 'ignored' }, 'ka');
+
+    expect(out?.text).toBe('რისი გადაჭრა გინდოდა ამ მიზნით?');
+  });
+
+  /** A key this build does not know still has words, because it was stored. */
+  it('falls back to the stored words for a key it does not recognise', () => {
+    const out = card({ question_key: 'renamed_later', prompt: 'Whatever was asked' }, 'en');
+
+    expect(out?.text).toBe('Whatever was asked');
+  });
+});

@@ -490,11 +490,23 @@ export function renderPendingMessage(
      */
     case 'goal_feedback': {
       const key = str(p, 'question_key');
+      /**
+       * ⚠️ THE KEY WINS OVER THE STORED WORDS, and the tester found why within
+       * an hour: „the prompt is Georgian for an English-writing seat". The
+       * question is chosen when the goal CLOSES and read when the person next
+       * opens a conversation, and those are two different moments that can be
+       * in two different languages. Now that the SERVER draws this card rather
+       * than the model, nothing downstream can translate it.
+       *
+       * So the card is built from the key in the language of the conversation
+       * it appears in, and the stored `prompt` is the fallback for a key this
+       * build does not know — a question already asked must stay readable even
+       * if it is later renamed.
+       */
       const asked =
-        str(p, 'prompt') ??
-        (key !== null && (GOAL_FEEDBACK_QUESTIONS as readonly string[]).includes(key)
+        key !== null && (GOAL_FEEDBACK_QUESTIONS as readonly string[]).includes(key)
           ? feedbackWording(key as GoalFeedbackKey, language)
-          : null);
+          : str(p, 'prompt');
       if (asked === null) return null;
       return {
         text: asked,

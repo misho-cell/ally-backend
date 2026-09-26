@@ -10,6 +10,7 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { queueResult } from '../pendingUpdates.service';
 import {
+  canonicalPhone,
   goalsThisMemberMightUnblock,
   tellOwnersANewMemberFitsAGoal,
 } from '../newMemberForGoal.service';
@@ -189,5 +190,66 @@ describe('what the owner is shown, and what it does not do', () => {
 
     expect(hook.slice(0, 500)).toContain('.catch(');
     expect(auth).toContain('void tellOwnersANewMemberFitsAGoal(cleanPhone)');
+  });
+});
+
+/**
+ * ⚠️ IT THREW ON EVERY CALL, AND NO TEST HERE COULD SEE IT.
+ *
+ * The tester's first use of the dry run, 23:24 UTC: four inputs, four 500s.
+ * The log said `column u.phone does not exist`. `"User"` has no phone — a
+ * phone lives in `"UserPhone"` — and `LEFT JOIN "User" u ON u.phone = $1`
+ * typechecks, because SQL is a string, and threw the moment it ran. The live
+ * registration hook was broken too, not only the dry run; nobody had
+ * registered since, so nothing had said so.
+ *
+ * Exactly the shape of `updated_at` on `introduction_requests` earlier the
+ * same day. Every test in this file mocks `query`, so every one of them passed
+ * against a statement the database refuses. A mock cannot check a column name.
+ * What a test CAN do is pin the join to the table that actually holds the
+ * column, which is what these do.
+ */
+describe('the columns it reads exist', () => {
+  const source = readFileSync(join(__dirname, '..', 'newMemberForGoal.service.ts'), 'utf8');
+
+  it('reads a phone from UserPhone, never from User', () => {
+    // SQL comments stripped first: the note above the join QUOTES the broken
+    // line to explain it, and a test that reads prose tests the wrong thing.
+    const sql = source.replace(/^\s*--.*$/gm, '');
+
+    expect(sql).toContain('LEFT JOIN "UserPhone" up ON up.phone = $1');
+    expect(sql).toContain('LEFT JOIN "User" u ON u.id = up."userId"');
+    expect(sql).not.toMatch(/\bu\.phone\b/);
+  });
+});
+
+/**
+ * ⚠️ ONE SPELLING OF A NUMBER. `auth.service` says in capitals why: an exact
+ * string compare on a phone „created a DUPLICATE user on re-login when the
+ * client sent a different format", and the old account silently disappeared
+ * for its owner. The tester tried four spellings of the same number.
+ */
+describe('a number typed four ways is one number', () => {
+  it('brings any spelling to the shape the labels are stored in', () => {
+    expect(canonicalPhone('+995500000001')).toBe('+995500000001');
+    expect(canonicalPhone('995500000001')).toBe('+995500000001');
+    expect(canonicalPhone(' 995 500 00-00-01 ')).toBe('+995500000001');
+    expect(canonicalPhone('')).toBe('');
+    expect(canonicalPhone('   ')).toBe('');
+  });
+
+  it('asks the database nothing when there is no number to ask about', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await goalsThisMemberMightUnblock('  ')).toEqual([]);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('matches on the canonical form, not on what was typed', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await goalsThisMemberMightUnblock('995500000001');
+
+    expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][0]).toBe('+995500000001');
   });
 });

@@ -61,7 +61,26 @@ export interface GoalTheyMightUnblock {
  * The tag is additionally required to be letters, digits and spaces, so a
  * LIKE wildcard typed into a label cannot widen the match either.
  */
+/**
+ * ⚠️ ONE SPELLING OF A NUMBER, and the reason is in `auth.service` in capital
+ * letters: an exact string compare on a phone „created a DUPLICATE user on
+ * re-login when the client sent a different format", and the old account
+ * silently disappeared for its owner. The stored labels are all E.164 with a
+ * leading plus — measured, 19,960 of 20,000 — so the INPUT is brought to that
+ * shape rather than the column being rewritten, which keeps the index.
+ *
+ * A number with no country code cannot be canonicalised and simply will not
+ * match. That is the honest outcome for an ambiguous input, and the route that
+ * calls this says so out loud rather than reporting a confident nothing.
+ */
+export function canonicalPhone(raw: string): string {
+  const digits = (raw ?? '').replace(/\D+/g, '');
+  return digits === '' ? '' : `+${digits}`;
+}
+
 export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTheyMightUnblock[]> {
+  const wanted = canonicalPhone(phone);
+  if (wanted === '') return [];
   const result = await query<GoalTheyMightUnblock>(
     `WITH tagged AS (
        SELECT DISTINCT ut."userId"::text AS user_id, LOWER(TRIM(ut.tag)) AS tag
@@ -86,14 +105,20 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
        FROM tagged tg
        JOIN organisations o ON o.name = tg.tag
        JOIN tasks t ON t.user_id = tg.user_id AND t.status = 'open'
-       LEFT JOIN "User" u ON u.phone = $1
+       -- ⚠️ "User" HAS NO PHONE COLUMN. A phone lives in "UserPhone", and this
+       -- read said u.phone = $1 — which typechecks, because SQL is a string,
+       -- and threw on every single call. The tester's first use of the dry run
+       -- was four 500s in a row. Same shape as the updated_at column earlier
+       -- today: nothing but reading the live schema, or running it, finds it.
+       LEFT JOIN "UserPhone" up ON up.phone = $1
+       LEFT JOIN "User" u ON u.id = up."userId"
       WHERE ' ' || REGEXP_REPLACE(
                      LOWER(COALESCE(t.title, '') || ' ' || COALESCE(t.brief, '')),
                      '[^[:alnum:]]+', ' ', 'g') || ' '
             LIKE '% ' || tg.tag || ' %'
       ORDER BY t.id
       LIMIT $4`,
-    [phone, SHORTEST_USEFUL_TAG, ORGANISATION_FIELDS, MOST_CARDS_PER_JOIN],
+    [wanted, SHORTEST_USEFUL_TAG, ORGANISATION_FIELDS, MOST_CARDS_PER_JOIN],
     MATCH_TIMEOUT_MS,
   );
   return result.rows;
