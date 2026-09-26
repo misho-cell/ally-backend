@@ -4655,3 +4655,54 @@ Cargo". There are **0** such rows in `contact_facts`. The vocabulary is built
 from employer values people have actually recorded, so a wholly invented
 company is not in it and the positive case would have returned 0 — a setup
 failure wearing the costume of a rule failure.
+
+## §62 — A GOAL ON A TEST SEAT THAT NAMES AN ORGANISATION (row 262)
+
+**Authorised by Misho, 26 September, directly:** *„ა გააკეთე"* — choosing
+option (a) from the two I put to him, after the tester asked for a case that
+proves D498 in the direction that produces a card.
+
+### WHY A ROUTE AND NOT A CONVERSATION
+
+The other way was a conversation as the seat through the ordinary doors, which
+needs no new power — **but it spends model tokens, and spend is not mine to
+decide.** Misho chose this option *for that reason*.
+
+### ⚠️ WHICH IS ALSO THE ONE THING THAT NEARLY UNDID IT
+
+`getStaleOpenTasks` is the nightly review's worklist and it selects
+`status = 'open' AND next_wake_at IS NULL` — **exactly the shape a plainly
+inserted goal has.** The model would have picked the goal up, re-checked the
+network for matches and charged for it. The spend would have come back in
+through the implementation of the choice made to avoid it.
+
+So the goal is **PARKED** with a far-future wake, and every sweep over open
+goals in `taskStore` was READ before the shape was chosen:
+
+| sweep | what it wants | this goal |
+|---|---|---|
+| `getTasksDueForWake` | `next_wake_at <= NOW()` | parked in 2099 |
+| `getStaleOpenTasks` | `next_wake_at IS NULL` | not null |
+| unanswered-question | `pending_question_at IS NOT NULL` | never asked |
+| the two plan sweeps | `plan IS NOT NULL` | no plan |
+
+### THE OPERATION
+
+* **ROUTE** — `POST /admin/test-accounts/:id/goal`
+* **BODY** — `{ "title": "<1-200>", "brief": "<1-2000>" }`
+* **REPLY** — `{ seat, task_id, title, brief, note }`
+* **UNDO** — `DELETE FROM tasks WHERE id = <task_id>;` (one row, by id)
+
+### WHAT IT REFUSES
+
+* **A TARGET THAT IS NOT A TEST SEAT** — a `test_seats` row is required.
+* **A TITLE OR BRIEF THAT IS EMPTY, OVER-LONG, OR CARRIES CONTROL CHARACTERS.**
+* **A SEAT THAT ALREADY HAS 20 GOALS.** A fixture needs a handful.
+
+### WHAT IT CANNOT DO, and this one matters
+
+**IT CREATES AND NEVER EDITS.** The seat's existing goals are the NEGATIVE
+fixtures — „the plumber goal must stay 0" is a result that only means anything
+while that goal is untouched. A route that could rewrite a brief could quietly
+turn a failing case into a passing one, which is the one thing a test fixture
+must never allow. There is no UPDATE and no DELETE in it.

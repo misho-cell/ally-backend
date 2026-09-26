@@ -252,3 +252,102 @@ export async function repairSeat(
     repair: { seat: seatUserId, tag_rows: tagIds, held_cards: cardIds, deleted: true },
   };
 }
+
+/**
+ * §62 — A GOAL ON A TEST SEAT THAT NAMES AN ORGANISATION, so row 262 can be
+ * proved in the direction that produces a card and not only in the three
+ * directions that produce none.
+ *
+ * ⚠️ THE WHOLE REASON THIS ROUTE EXISTS RATHER THAN A CONVERSATION is that a
+ * conversation spends model tokens, and spend is not mine to decide. Misho
+ * chose this option for that reason — so a goal this route creates MUST NOT
+ * start the engine, or it would spend the money by the back door and the
+ * choice would have been undone by its own implementation.
+ *
+ * ⚠️ AND IT NEARLY DID. `getStaleOpenTasks` is the nightly review's worklist
+ * and it selects `status = 'open' AND next_wake_at IS NULL` — which is exactly
+ * the shape a plainly inserted goal has. The model would have picked it up,
+ * re-checked the network for matches and charged for it, on a seat created to
+ * avoid charging for anything.
+ *
+ * So the goal is PARKED: a wake far enough out that nothing reaches it.
+ *   * `getTasksDueForWake` wants `next_wake_at <= NOW()` — no.
+ *   * `getStaleOpenTasks` wants `next_wake_at IS NULL` — no.
+ *   * the unanswered-question sweep wants `pending_question_at IS NOT NULL` —
+ *     this goal has never asked anything.
+ *   * the two plan sweeps want `plan IS NOT NULL` — it has no plan.
+ * Read, not assumed: every sweep over open goals in `taskStore` was checked.
+ */
+const PARKED_UNTIL = '2099-01-01';
+const MAX_GOAL_TITLE = 200;
+const MAX_GOAL_BRIEF = 2_000;
+/** A fixture seat needs a handful of goals, not a hundred. */
+const MOST_GOALS_PER_SEAT = 20;
+
+export interface SeatGoal {
+  readonly seat: number;
+  readonly task_id: number;
+  readonly title: string;
+  readonly brief: string;
+}
+
+/** Readable text, so a brief cannot carry something the matcher must not read. */
+function isReadableLine(text: string, limit: number): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 1 || trimmed.length > limit) return false;
+  // By code point, not by a pattern: a regex over the control range is itself
+  // a lint error (`no-control-regex`), and this reads as what it means.
+  for (const character of trimmed) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f) return false;
+  }
+  return true;
+}
+
+export async function addSeatGoal(
+  seatUserId: number,
+  title: string,
+  brief: string,
+): Promise<{ ok: true; goal: SeatGoal } | { ok: false; refusal: string }> {
+  const cleanTitle = (title ?? '').trim();
+  const cleanBrief = (brief ?? '').trim();
+
+  if (!isReadableLine(cleanTitle, MAX_GOAL_TITLE)) return { ok: false, refusal: 'bad_title' };
+  if (!isReadableLine(cleanBrief, MAX_GOAL_BRIEF)) return { ok: false, refusal: 'bad_brief' };
+
+  const seat = await query<{ user_id: number }>(
+    `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,
+    [seatUserId],
+    QUERY_TIMEOUT_MS,
+  );
+  if (seat.rows.length === 0) return { ok: false, refusal: 'not_a_test_seat' };
+
+  const existing = await query<{ n: string }>(
+    `SELECT COUNT(*)::text AS n FROM tasks WHERE user_id = $1::text`,
+    [String(seatUserId)],
+    QUERY_TIMEOUT_MS,
+  );
+  if (Number(existing.rows[0]?.n ?? 0) >= MOST_GOALS_PER_SEAT) {
+    return { ok: false, refusal: 'seat_has_enough_goals' };
+  }
+
+  /**
+   * ⚠️ IT CREATES; IT NEVER EDITS. The seat's existing goals are the NEGATIVE
+   * fixtures — „the plumber goal must stay 0" — and a route that could rewrite
+   * a brief could quietly turn a failing case into a passing one. Insert only.
+   */
+  const created = await query<{ id: number }>(
+    `INSERT INTO tasks (user_id, title, brief, status, next_wake_at)
+     VALUES ($1::text, $2::text, $3::text, 'open', $4::timestamp)
+     RETURNING id`,
+    [String(seatUserId), cleanTitle, cleanBrief, PARKED_UNTIL],
+    QUERY_TIMEOUT_MS,
+  );
+  const taskId = created.rows[0]?.id;
+  if (taskId === undefined) return { ok: false, refusal: 'goal_not_created' };
+
+  return {
+    ok: true,
+    goal: { seat: seatUserId, task_id: taskId, title: cleanTitle, brief: cleanBrief },
+  };
+}

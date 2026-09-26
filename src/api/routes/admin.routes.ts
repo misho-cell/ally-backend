@@ -178,7 +178,7 @@ import {
   canonicalPhone,
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
-import { addSeatContact, repairSeat } from '../../services/seatContacts.service';
+import { addSeatContact, addSeatGoal, repairSeat } from '../../services/seatContacts.service';
 import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
 import {
   expireUnansweredRequests,
@@ -1989,6 +1989,63 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §62 — A GOAL ON A TEST SEAT THAT NAMES AN ORGANISATION.
+ *
+ * Row 262 is provable in three directions that produce NO card and, on the
+ * product's own path, in none that produces one — because that needs an open
+ * goal whose brief names an organisation, and nothing here wrote goals.
+ *
+ * ⚠️ THE POINT OF THIS ROUTE IS THAT IT DOES NOT SPEND. The alternative was a
+ * conversation as the seat, which costs model tokens; Misho chose this for
+ * that reason. So the goal it creates is PARKED with a far-future wake — an
+ * ordinary insert would have `next_wake_at IS NULL`, which is exactly what
+ * the nightly review's worklist selects, and the model would have started
+ * working on it and charging for it. Every sweep over open goals was read
+ * before choosing the shape, not assumed.
+ *
+ * It CREATES and never edits: the seat's existing goals are the negative
+ * fixtures, and a route that could rewrite a brief could quietly turn a
+ * failing case into a passing one.
+ */
+adminRouter.post(
+  '/test-accounts/:id/goal',
+  param('id').isInt({ min: 1 }),
+  body('title').isString(),
+  body('brief').isString(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'title და brief საჭიროა' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { title, brief } = req.body as { title: string; brief: string };
+    try {
+      const result = await addSeatGoal(seatId, title, brief);
+      if (!result.ok) {
+        res.status(400).json({ success: false, error: result.refusal });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-goal] admin ${(req as AuthenticatedRequest).user.userId} created goal ` +
+          `${result.goal.task_id} on seat ${seatId}, parked so no sweep takes it`,
+      );
+      res.status(201).json({
+        success: true,
+        data: {
+          ...result.goal,
+          note: 'Parked with a far-future wake. No sweep reaches it, so nothing is spent on it.',
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-goal]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

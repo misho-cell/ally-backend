@@ -6,6 +6,7 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import {
   addSeatContact,
+  addSeatGoal,
   repairSeat,
   isFictionalNumber,
   isReadableTag,
@@ -231,7 +232,16 @@ describe('adding the same contact twice adds them once', () => {
 describe('the repair cannot touch anybody real', () => {
   const source = readFileSync(join(__dirname, '..', 'seatContacts.service.ts'), 'utf8');
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
-  const repair = code.slice(code.indexOf('export async function repairSeat'));
+  /**
+   * ⚠️ BOUNDED TO THE FUNCTION, not sliced to the end of the file. Written the
+   * lazy way it passed until §62 was appended below `repairSeat`, and then the
+   * „queues nothing" assertion read §62's `INSERT INTO tasks` and failed — a
+   * test breaking on code it was never about. A slice that runs to end-of-file
+   * grows every time somebody adds a function.
+   */
+  const fromRepair = code.slice(code.indexOf('export async function repairSeat'));
+  const nextExport = fromRepair.indexOf('export ', 1);
+  const repair = nextExport === -1 ? fromRepair : fromRepair.slice(0, nextExport);
 
   it('refuses a target that is not a test seat, before reading anything', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
@@ -282,5 +292,93 @@ describe('the repair cannot touch anybody real', () => {
   it('queues nothing in place of what it removed', () => {
     expect(repair).not.toContain('queueResult');
     expect(repair).not.toContain('INSERT');
+  });
+});
+
+/**
+ * §62 — a goal on a test seat, and the one thing that would have undone the
+ * reason for building it.
+ *
+ * The alternative was a conversation as the seat, which spends model tokens.
+ * Misho chose this route because it does not spend. But `getStaleOpenTasks` —
+ * the nightly review's worklist — selects `status = 'open' AND next_wake_at IS
+ * NULL`, which is exactly the shape a plainly inserted goal has. The model
+ * would have picked it up, re-checked the network and charged for it: the
+ * spend would have come back in through the implementation of the choice made
+ * to avoid it.
+ *
+ * So the goal is parked with a far-future wake, and this is pinned, because a
+ * future edit that "tidies" the wake away would restore the charge silently.
+ */
+describe('a seat goal costs nothing to exist', () => {
+  const source = readFileSync(join(__dirname, '..', 'seatContacts.service.ts'), 'utf8');
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
+
+  it('parks the goal instead of leaving the wake null', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 171938 }]) as never)
+      .mockResolvedValueOnce(rows([{ n: '2' }]) as never)
+      .mockResolvedValueOnce(rows([{ id: 4242 }]) as never);
+
+    const out = await addSeatGoal(171938, 'a tiler', 'ask around Arci');
+
+    expect(out).toEqual({
+      ok: true,
+      goal: { seat: 171938, task_id: 4242, title: 'a tiler', brief: 'ask around Arci' },
+    });
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO tasks'));
+    const [sql, params] = insert as [string, unknown[]];
+    expect(sql).toContain('next_wake_at');
+    // The parked date is the fourth parameter and it is far in the future.
+    expect(new Date(String(params[3])).getFullYear()).toBeGreaterThan(2090);
+  });
+
+  /** The nightly worklist's exact predicate is what this avoids. */
+  it('never inserts a goal the stale-open sweep would take', () => {
+    expect(code).not.toMatch(/INSERT INTO tasks[^`]*next_wake_at[^`]*NULL/);
+    expect(code).toContain("VALUES ($1::text, $2::text, $3::text, 'open', $4::timestamp)");
+  });
+
+  /**
+   * ⚠️ IT CREATES AND NEVER EDITS. The seat's existing goals are the NEGATIVE
+   * fixtures — „the plumber goal must stay 0" — and a route that could rewrite
+   * a brief could quietly turn a failing case into a passing one.
+   */
+  it('cannot rewrite a goal that already exists', () => {
+    const goalPart = code.slice(code.indexOf('export async function addSeatGoal'));
+    expect(goalPart).not.toContain('UPDATE tasks');
+    expect(goalPart).not.toContain('DELETE FROM tasks');
+  });
+
+  it('refuses a target that is not a test seat', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await addSeatGoal(999999, 'x', 'y')).toEqual({ ok: false, refusal: 'not_a_test_seat' });
+    expect(mockQuery.mock.calls.map(([sql]) => String(sql)).join(' ')).not.toContain(
+      'INSERT INTO tasks',
+    );
+  });
+
+  it.each([
+    ['', 'a brief', 'bad_title'],
+    ['a title', '', 'bad_brief'],
+    ['a\u0000title', 'a brief', 'bad_title'],
+  ])('refuses (%s / %s) before reading anything', async (title, brief, refusal) => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await addSeatGoal(171938, title, brief)).toEqual({ ok: false, refusal });
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  /** A fixture seat needs a handful of goals, not a hundred. */
+  it('stops once the seat has enough goals', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 171938 }]) as never)
+      .mockResolvedValueOnce(rows([{ n: '20' }]) as never);
+
+    expect(await addSeatGoal(171938, 'one more', 'and another')).toEqual({
+      ok: false,
+      refusal: 'seat_has_enough_goals',
+    });
   });
 });
