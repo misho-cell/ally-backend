@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { query } from '../db/postgres/client';
+import { joinedNetai, NETAI_LIVE_STATUSES } from './netaiMembership';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeyForUser } from './neo4j.keys';
 import {
@@ -677,17 +678,20 @@ async function runBlock<T>(
  * against the other. Old-Ally paid is read from the premium-map stamps — the
  * old app sold one thing and left two timestamps behind.
  */
-const NETAI_LIVE_STATUSES = ['active', 'trialing', 'past_due'];
-
+/**
+ * ⚠️ THE SAME LIST AND THE SAME TEST AS EVERY OTHER READER NOW. This page and
+ * the referral tree disagreed about Sofo (172497) because each had written its
+ * own rule honestly; `netaiMembership` is the one both read, so the next
+ * person to add a third screen inherits the definition instead of inventing
+ * one.
+ */
 async function getStates(userId: number): Promise<UserAccountStates> {
   const result = await query<{
     netai_user: boolean;
     netai_subscriber: boolean | null;
     old_ally_paid: boolean | null;
   }>(
-    `SELECT (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
-             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-             OR u.subscription_status = ANY($2::text[])) AS netai_user,
+    `SELECT ${joinedNetai('u')} AS netai_user,
             (u.subscription_status = ANY($2::text[])) AS netai_subscriber,
             (u."boughtPremiumMapAt" IS NOT NULL AND u."cancelledPremiumMapAt" IS NULL)
               AS old_ally_paid

@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { joinedNetai, usedNetai } from './netaiMembership';
 
 /**
  * WHO INVITED WHOM — row 264, the founder: „the admin does not show who
@@ -53,14 +54,25 @@ interface Row {
   inviter: number | null;
   is_seat: boolean;
   opened_netai: boolean;
+  joined_netai: boolean;
 }
 
 /**
- * „Opened Netai" is having a thread. It is the same test the login gate uses
- * for „this account belongs here", minus the two halves that answer a
- * different question: `hasAccessToAlly` is carried by only ten of the real
- * people, and a push subscription can exist without anybody ever writing
- * anything.
+ * ⚠️ THIS USED TO SAY „opened Netai is having a thread", and the tester found
+ * what that cost by comparing two screens: `/admin/users` called Sofo
+ * (172497) a `netai_user` and this called her an `ally_account`, because she
+ * had registered through the founder's invite that morning and had not yet
+ * opened a conversation.
+ *
+ * The connector's instructions say an `ally_account` „has never opened Netai —
+ * it is a target, not a member", so this was about to have the product pitch
+ * Netai to somebody who had just joined it. Across the 805 invitees the two
+ * rules gave 8 and 15.
+ *
+ * So both facts are read, under two names, from ONE shared definition that
+ * every other reader uses too (`netaiMembership`). The part of the old
+ * reasoning that was right is kept there: `hasAccessToAlly` still cannot tell
+ * the populations apart, because `registerUser` writes it for everybody.
  */
 const ROWS = `
   SELECT u.id                                   AS user_id,
@@ -68,14 +80,17 @@ const ROWS = `
          u."createdAt"                          AS joined,
          u."inviterReferralUserId"              AS inviter,
          EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)         AS is_seat,
-         EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)              AS opened_netai
+         ${joinedNetai('u')}                                                  AS joined_netai,
+         ${usedNetai('u')}                                                    AS opened_netai
     FROM "User" u
    WHERE u."deletedAt" IS NULL
      AND (u."inviterReferralUserId" IS NOT NULL OR u.id = ANY($1::int[]))`;
 
 function populationOf(row: Row): Population {
   if (row.is_seat) return 'test_seat';
-  return row.opened_netai ? 'netai_user' : 'ally_account';
+  // JOINED, not used: the opposite of this label is „never heard of us", and
+  // that is who a pitch is for. Somebody who registered this morning is not.
+  return row.joined_netai ? 'netai_user' : 'ally_account';
 }
 
 export interface ReferralTree {

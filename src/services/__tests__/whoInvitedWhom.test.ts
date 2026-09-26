@@ -26,6 +26,18 @@ interface Row {
   joined: string | null;
   inviter: number | null;
   is_seat: boolean;
+  /**
+   * ⚠️ TWO FIELDS NOW, AND ROW 264 IS WHY. „Opened Netai" meant a thread here
+   * and a thread-or-search-or-subscription on `/admin/users`, so Sofo — who
+   * registered through the founder's invite that morning — was a `netai_user`
+   * on one screen and an `ally_account` on the other. The label is not
+   * cosmetic: an `ally_account` is somebody the product is told to PITCH to.
+   *
+   * JOINED is „they arrived" and carries the population; USED is „they opened
+   * a conversation" and carries the growth number. The fixture states both
+   * because the product now distinguishes them.
+   */
+  joined_netai: boolean;
   opened_netai: boolean;
 }
 
@@ -35,6 +47,7 @@ const person = (user_id: number, inviter: number | null, extra: Partial<Row> = {
   joined: '2026-09-01',
   inviter,
   is_seat: false,
+  joined_netai: false,
   opened_netai: false,
   ...extra,
 });
@@ -49,9 +62,9 @@ describe('the tree says which population each person is', () => {
   it('separates a Netai user, a legacy Ally account and a test seat', async () => {
     given([
       person(1, null),
-      person(2, 1, { opened_netai: true }),
+      person(2, 1, { joined_netai: true, opened_netai: true }),
       person(3, 1),
-      person(4, 1, { is_seat: true, opened_netai: true }),
+      person(4, 1, { is_seat: true, joined_netai: true, opened_netai: true }),
     ]);
 
     const tree = await referralTree(1, 2);
@@ -157,5 +170,33 @@ describe('what it must never hand back', () => {
     const tree = await referralTree(1, 2);
 
     expect(tree.roots[0].invited[0].name).toBe('P2');
+  });
+});
+
+/**
+ * ⚠️ THE CASE THE TESTER FOUND, AS A TEST: somebody who registered through a
+ * Netai invite this morning and has not opened a conversation yet.
+ *
+ * Sofo (172497). She is a MEMBER, not a target — and the connector's own
+ * instructions turn that label into behaviour: an `ally_account` „has never
+ * opened Netai — it is a target, not a member". Calling her an ally_account
+ * was about to have the product pitch Netai to somebody who had just joined.
+ */
+describe('somebody who joined today but has not written anything yet', () => {
+  it('is a member, not a target', async () => {
+    given([person(1, null), person(2, 1, { joined_netai: true, opened_netai: false })]);
+
+    const tree = await referralTree(1, 2);
+
+    expect(tree.roots[0].invited[0].population).toBe('netai_user');
+  });
+
+  /** And somebody who genuinely never arrived is still a target. */
+  it('and somebody who never arrived is still an ally_account', async () => {
+    given([person(1, null), person(2, 1, { joined_netai: false, opened_netai: false })]);
+
+    const tree = await referralTree(1, 2);
+
+    expect(tree.roots[0].invited[0].population).toBe('ally_account');
   });
 });

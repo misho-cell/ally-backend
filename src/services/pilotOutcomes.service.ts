@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { usedNetai } from './netaiMembership';
 
 /**
  * ROW 274 — THE PILOT NUMBERS THE FOUNDER READS ON ONE PAGE.
@@ -214,7 +215,7 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
        SELECT COUNT(DISTINCT inviter)::text AS inviters,
               COUNT(*)::text                AS invitees,
               COUNT(*) FILTER (
-                WHERE EXISTS (SELECT 1 FROM threads th WHERE th.user_id = invitee.id)
+                WHERE ${usedNetai('invitee')}
               )::text AS opened,
               COUNT(*) FILTER (
                 WHERE EXISTS (SELECT 1 FROM tasks t WHERE t.user_id = invitee.id::text)
