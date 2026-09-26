@@ -4611,3 +4611,47 @@ no `new_member_for_goal` card exists anywhere in the table.
 said they do not need it, and after `4228ceb` those two matches are correctly
 `would_queue 0`. Re-queuing them would have re-created exactly the loose match
 D498 rules out.
+
+### §60 RUN — 26 September, 10:40 UTC, one more contact
+
+The tester (658) asked for a case that proves D498 **both** ways. One more
+made-up contact added through the same route, on the same seat:
+
+| phone | name | tag |
+|---|---|---|
+| `+12025550144` | Nika Arcieli | arci |
+
+`arci` is chosen deliberately: it IS recorded as an employer in the fact
+vocabulary, so the tag passes the organisation test and the match still has to
+fail — which it does, because neither of that seat's goals names it.
+
+**READ:** `GET /admin/new-member-match?phone=…0144` → **would_queue 0**.
+
+That is a stronger negative than the industry one: it isolates „the goal names
+it" from „the tag is an organisation".
+
+⚠️ **THIS ONE CANNOT BE TAKEN BACK WITH WHAT EXISTS.** §60 has no delete, and
+§61's repair reaches only rows written in the wrong column — by design, so
+that a second run can never empty a phonebook. The contact stays unless a
+removal is written up and approved.
+
+#### WHAT THE POSITIVE CASE STILL NEEDS, and why it is not done
+
+An open goal on 171938 whose brief NAMES the organisation. Checked, not
+assumed: that seat has **0** goals naming `arci`, and **no admin route in this
+codebase writes a goal or a brief** — every admin write path was read.
+
+Two ways, neither of them mine to choose:
+
+* **(a)** a narrow admin route to set a TEST SEAT's goal brief — a new write,
+  so it needs writing up and Misho's yes before it exists;
+* **(b)** a conversation as the seat through the ordinary doors — no new power
+  (the seat-token route already exists) but it spends model tokens, and spend
+  is Misho's call.
+
+⚠️ **AND A CORRECTION TO THE TESTER'S OWN DESIGN**, recorded because it would
+have looked like the rule failing: they proposed a made-up employer, „Kavkaz
+Cargo". There are **0** such rows in `contact_facts`. The vocabulary is built
+from employer values people have actually recorded, so a wholly invented
+company is not in it and the positive case would have returned 0 — a setup
+failure wearing the costume of a rule failure.
