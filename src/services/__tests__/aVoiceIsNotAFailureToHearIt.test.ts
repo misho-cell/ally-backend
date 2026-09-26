@@ -230,6 +230,21 @@ describe('what the route promises the phone', () => {
     expect(route).toContain("error: tooBig ? 'too_large' : 'bad_upload'");
   });
 
+  /**
+   * ⚠️ THE TWO SILENT REFUSALS. Every other path through the handler writes a
+   * `[speech]` line, and a success also writes a usage row — but `bad_upload`
+   * and `unsupported_format` returned 400 with no trace at all. So „the
+   * recording never reached the server" and „it arrived empty" looked
+   * identical from the outside, which is what row 226 kept running into.
+   *
+   * And the line must still not carry what was said: a size and a reason, and
+   * nothing from the audio.
+   */
+  it('leaves a trace on the two refusals that used to be silent', () => {
+    expect(route).toContain('[speech] user ${userId}: bad_upload');
+    expect(route).toContain('[speech] user ${userId}: unsupported_format');
+  });
+
   it('gives each refusal its own status', () => {
     for (const reason of [
       'not_enabled',

@@ -97,7 +97,25 @@ speechRouter.post(
     const file = (req as Request & { file?: { buffer: Buffer; mimetype?: string } }).file;
     const body = req.body as TranscribeBody;
 
+    /**
+     * ⚠️ THESE TWO REFUSALS USED TO LEAVE NO TRACE AT ALL, and they are the
+     * two most likely ways a phone fails.
+     *
+     * Every other path through this handler writes a `[speech]` line, and a
+     * successful transcription also writes a `usage_events` row. These two
+     * returned 400 in silence — so „the recording never reached the server"
+     * and „it arrived empty" looked identical from here, and row 226 spent
+     * a week unable to tell them apart.
+     *
+     * 26 September: the tester asked whether any voice upload reached the
+     * server between 20:45 and 21:00. I could answer „no successful
+     * transcription and no handled failure", and NOT „nothing arrived" —
+     * because an empty upload would have been exactly this silence. One log
+     * line makes the next answer a fact instead of an absence.
+     */
     if (!file || file.buffer.byteLength === 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[speech] user ${userId}: bad_upload — ${file ? '0 bytes' : 'no file part'}`);
       res.status(400).json({ success: false, error: 'bad_upload' });
       return;
     }
@@ -106,6 +124,11 @@ speechRouter.post(
     // first choice.
     const mime = (body.mime ?? file.mimetype ?? '').trim();
     if (mime === '') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[speech] user ${userId}: unsupported_format — no mime sent and none on the part, ` +
+          `${file.buffer.byteLength} bytes`,
+      );
       res.status(400).json({ success: false, error: 'unsupported_format' });
       return;
     }
