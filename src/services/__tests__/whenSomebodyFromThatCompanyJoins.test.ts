@@ -288,3 +288,49 @@ describe('it does not tell somebody they have joined', () => {
     expect(sql).toContain('up."userId" IS NULL OR');
   });
 });
+
+/**
+ * ⚠️ THE OBVIOUS WAY TO TEST THIS WOULD HAVE PROVED NOTHING.
+ *
+ * The tester offered: „you register the two numbers through the test-accounts
+ * route." I went to do it and read that route first. `testSeatCreate` does
+ * `INSERT INTO "User"` DIRECTLY and never calls `registerUser` — which is
+ * where this row's hook lives. Creating a seat on those numbers would have
+ * produced no card at all, and reporting that either way would have been a
+ * statement about a path nobody had walked.
+ *
+ * That is the same fault as reading a null constraint as „no constraint", one
+ * step earlier: believing a route does what its name suggests.
+ */
+describe('the seat route is not a registration', () => {
+  const seatRoute = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');
+
+  it('creates its account directly and never calls registerUser', () => {
+    const code = seatRoute.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+    expect(code).toContain('INSERT INTO "User"');
+    // If this ever starts calling registerUser, the replay route below stops
+    // being the only way to exercise row 262 and this test should be revisited.
+    expect(code).not.toMatch(/\bregisterUser\s*\(/);
+  });
+
+  /** So the replay route exists, and it says what it cannot show. */
+  it('has a replay that runs the hook and admits its limit', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    const route = routes.slice(routes.indexOf("'/new-member-match/replay'"));
+
+    expect(route.slice(0, 2500)).toContain('tellOwnersANewMemberFitsAGoal(phone)');
+    expect(route.slice(0, 2500)).toContain('does_not_prove');
+    expect(route.slice(0, 2500)).toContain('That registerUser calls this hook');
+  });
+
+  /** And the one line the replay cannot show is asserted here instead. */
+  it('registerUser does call the hook', () => {
+    const auth = readFileSync(join(__dirname, '..', 'auth.service.ts'), 'utf8');
+
+    expect(auth).toContain('void tellOwnersANewMemberFitsAGoal(cleanPhone)');
+  });
+});

@@ -179,6 +179,7 @@ import {
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
 import { addSeatContact } from '../../services/seatContacts.service';
+import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
 import {
   expireUnansweredRequests,
   introductionsThatWouldExpire,
@@ -2040,6 +2041,60 @@ adminRouter.get('/introductions/expiry-status', async (_req: Request, res: Respo
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * ROW 262(b) — REPLAY THE NEW-MEMBER CHECK FOR A NUMBER, as registration runs
+ * it. It queues the real cards; it registers nobody.
+ *
+ * ⚠️ IT EXISTS BECAUSE THE OBVIOUS WAY WOULD HAVE PROVED NOTHING. The tester
+ * offered: „you register the two numbers through the test-accounts route." I
+ * went to do it and read that route first — `testSeatCreate` does
+ * `INSERT INTO "User"` directly and NEVER CALLS `registerUser`, which is where
+ * row 262's hook lives. Creating a seat on those numbers would have produced
+ * no card, and reporting that as a pass or a fail would have been a statement
+ * about a path nobody had walked.
+ *
+ * ⚠️ AND SAY WHAT THIS DOES NOT PROVE. It runs the hook, so it proves the
+ * match, the card, the wording and the once-only guard. It does NOT prove that
+ * `registerUser` calls the hook — that one line is asserted by a test and by
+ * nothing else until a real person registers.
+ */
+adminRouter.post(
+  '/new-member-match/replay',
+  body('phone').isString(),
+  async (req: Request, res: Response) => {
+    const phone = String((req.body as { phone?: string }).phone ?? '').trim();
+    if (phone === '') {
+      res.status(400).json({ success: false, error: 'phone is required' });
+      return;
+    }
+    try {
+      const queued = await tellOwnersANewMemberFitsAGoal(phone);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[new-member replay] admin ${(req as AuthenticatedRequest).user.userId}: ` +
+          `${queued} card(s) queued`,
+      );
+      res.status(200).json({
+        success: true,
+        data: {
+          cards_queued: queued,
+          note:
+            queued === 0
+              ? 'Nothing matched, or every match had already been raised once. Both are correct outcomes.'
+              : 'Real cards, queued exactly as a registration would. Nobody was registered and nothing was sent to this number.',
+          does_not_prove:
+            'That registerUser calls this hook. Only a real registration shows that; here it is ' +
+            'asserted by a test.',
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[new-member replay]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.get('/referrals/tree', async (req: Request, res: Response) => {
   const rootRaw = String(req.query.root ?? '').trim();
