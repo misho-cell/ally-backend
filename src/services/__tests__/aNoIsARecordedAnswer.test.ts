@@ -76,26 +76,26 @@ describe('what the ask carries, and what the answer records', () => {
   });
 
   /**
-   * ⚠️ TEST SEATS ONLY UNTIL SOMEBODY HAS SEEN IT. If the client treats
-   * choices as „these are the only options", a button turns a question into a
-   * multiple-choice form and the reader cannot type at all — worse than no
-   * button. Measured what waiting costs: real asks run 1-5 a day and none at
-   * all on three of the last four days, so the exposure is a handful of
-   * people and the failure is somebody unable to answer a friend.
+   * ⚠️ IT WENT TO TEST SEATS ONLY FOR HALF A DAY, and the reason it stopped is
+   * worth keeping. I shipped it live and then realised I had no idea whether
+   * the client treats choices as „these are the only options" — which would
+   * turn a question into a multiple-choice form, worse than no button. So it
+   * went to seats while I asked.
    *
-   * Removing this is one line, and it should go the moment the button has
-   * been seen on a screen.
+   * The front-end answered by READING THEIR OWN CODE, not by guessing: buttons
+   * draw under the bubble, the text field lives in the composer, and `choices`
+   * does not touch it — only a token or rate limit disables it. So the guard
+   * came off the same hour.
+   *
+   * What this pins is that the button now goes to EVERY recipient, because the
+   * guard silently returning false for a real person is how a shipped feature
+   * would quietly reach nobody.
    */
-  it('sends the button to a seat and null to anybody else', () => {
-    expect(asks).toContain('const seatOnlyChoices = (await recipientIsATestSeat(toUserId))');
-    expect(asks).toMatch(/\? \[declineChoice\(language\)\]\s*:\s*null/);
-  });
-
-  /** The safe direction is „no button": a database hiccup must not expose it. */
-  it('answers false when it cannot tell', () => {
-    const guard = asks.slice(asks.indexOf('async function recipientIsATestSeat'));
-    expect(guard).toContain('catch {');
-    expect(guard).toContain('return false;');
+  it('goes to every recipient, not only to seats', () => {
+    expect(asks).not.toContain('recipientIsATestSeat');
+    expect(asks).toContain(
+      "await saveThreadMessage(askThreadId, toUserId, 'assistant', opening, 'message', null, [",
+    );
   });
 
   /**

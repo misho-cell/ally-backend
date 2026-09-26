@@ -1169,36 +1169,25 @@ export async function createAsk(
    * on the live base, about 8 READ as refusals and none of them counted as
    * one. „About" was the whole problem.
    *
-   * ⚠️ TEST SEATS ONLY UNTIL SOMEBODY HAS SEEN IT, and this is not timidity.
+   * ⚠️ IT WENT TO TEST SEATS ONLY FOR HALF A DAY, and the reason it stopped
+   * is worth keeping. I shipped it live, then realised I had no idea whether
+   * the client treats choices as „these are the only options" — which would
+   * turn a question into a multiple-choice form and leave the reader unable to
+   * type at all, worse than no button. So it went to seats while I asked.
    *
-   * I raised the risk myself when I shipped it: if the client treats choices
-   * as „these are the only options", a button turns a question into a
-   * multiple-choice form and the reader cannot type an answer at all. That is
-   * worse than having no button. The precedent is encouraging — live rows
-   * show ["I will answer now", "Later"] on goal-question messages, where
-   * typing is plainly expected too — but a different card is not proof, and
-   * the screen is the half I cannot check.
+   * The front-end answered by READING THEIR OWN CODE rather than guessing:
+   * buttons draw under the bubble, the text field lives in the composer at the
+   * foot of the screen, and `choices` does not touch it — it is disabled only
+   * by a token limit or a rate limit. One button behaves exactly like two.
    *
-   * The tester cannot test it until Monday's token refill. Measured what that
-   * costs to wait: real asks to real people run 1-5 a day, and none at all on
-   * three of the last four days — so the exposure is a handful of people, and
-   * the failure would be somebody unable to answer a question from a friend.
-   *
-   * Small odds of a bad failure, against two days of waiting. So the button
-   * goes to seats — where it will be tested — and to nobody else until it has
-   * been seen once. Removing this check is one line, and the moment (1) and
-   * (2) pass it should go.
+   * They added one thing I had not thought of: a button disappears when the
+   * next message matches an offered label EXACTLY. So somebody who TYPES the
+   * sentence instead of tapping it lands in the same place — and the string
+   * compare on this side catches both. The two paths agree by construction.
    */
-  const seatOnlyChoices = (await recipientIsATestSeat(toUserId)) ? [declineChoice(language)] : null;
-  await saveThreadMessage(
-    askThreadId,
-    toUserId,
-    'assistant',
-    opening,
-    'message',
-    null,
-    seatOnlyChoices,
-  );
+  await saveThreadMessage(askThreadId, toUserId, 'assistant', opening, 'message', null, [
+    declineChoice(language),
+  ]);
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
   // last one. The old comment here said „their last reply closed the previous
@@ -2704,25 +2693,5 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[decline] could not record a refusal:', (err as Error).message);
-  }
-}
-
-/**
- * ROW 274, the staging guard: is this recipient a fictional test seat?
- *
- * Best-effort and FALSE ON FAILURE — the safe direction is „no button". A
- * database hiccup must not be the reason a real person gets an unproven
- * surface.
- */
-async function recipientIsATestSeat(userId: number): Promise<boolean> {
-  try {
-    const seat = await query<{ user_id: number }>(
-      `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,
-      [userId],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    return seat.rows.length > 0;
-  } catch {
-    return false;
   }
 }
