@@ -4312,5 +4312,33 @@ keeps paying for.
 do them"), answering a list in which this was item 2 with the recommendation
 „yes, run it".
 
-That is the direct word §59 was waiting for. The run and its ids are recorded
-below.
+That is the direct word §59 was waiting for.
+
+### RUN — 26 September, 08:13 UTC
+
+`POST /admin/introductions/expire {"confirm": true}` → **16 expired, 16 askers
+told.**
+
+**THE IDS, WHICH ARE THE UNDO:**
+
+```
+3, 34, 298, 331, 364, 397, 430, 529, 530, 694, 893, 894, 895, 896, 991, 1057
+```
+
+**UNDO:** `UPDATE introduction_requests SET status = 'pending',
+responded_at = NULL WHERE id = ANY(ARRAY[3,34,298,331,364,397,430,529,530,694,893,894,895,896,991,1057]);`
+then delete the `pending_updates` rows of kind `intro_expired`.
+
+**VERIFIED FROM THE DATABASE, NOT FROM THE REPLY:** `expired` 16, `pending` 0,
+`intro_expired` cards 16, across **7 distinct askers** — several people had
+asked more than once. Request **1057 is Lika's**, the one that arrived under
+somebody else's buttons on 5 September and could not be answered; it had waited
+21 days. The oldest two had waited **98**.
+
+⚠️ **THE FIRST ATTEMPT FAILED AND CHANGED NOTHING**, which is worth keeping
+next to the record: `introduction_requests_status_check` did not admit
+`expired`. I had checked for that constraint before building and read a NULL
+from `information_schema` as „there is no constraint" — „could not look" as
+„looked and found nothing". Migration 179 fixed the table; the failed attempt
+left all sixteen rows `pending` and told nobody, which is the only direction
+this write was ever allowed to fail in.
