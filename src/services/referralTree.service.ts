@@ -33,6 +33,8 @@ export interface ReferralNode {
   /** People this person invited, at every depth below — not just the ones shown. */
   readonly invited_total: number;
   /** Of those, the ones who have actually opened Netai. */
+  /** Arrived. See `counted` — one number alone hides which half is failing. */
+  readonly invited_who_joined_netai: number;
   readonly invited_who_opened_netai: number;
   readonly invited: ReferralNode[];
 }
@@ -84,7 +86,18 @@ const ROWS = `
          ${usedNetai('u')}                                                    AS opened_netai
     FROM "User" u
    WHERE u."deletedAt" IS NULL
-     AND (u."inviterReferralUserId" IS NOT NULL OR u.id = ANY($1::int[]))`;
+     AND (u."inviterReferralUserId" IS NOT NULL
+          OR u.id = ANY($1::int[])
+          -- ⚠️ WITHOUT THIS LINE THE FOREST IS ALWAYS EMPTY, and the tester
+          -- reported exactly that: no root named, counted says 805, roots
+          -- says []. A top of the forest is BY DEFINITION somebody nobody
+          -- invited, and the first clause selects only people who WERE
+          -- invited — so the rows the walk needs as roots were the one group
+          -- the read could not return. It looked like a walk that found
+          -- nothing; it was a read that never fetched them.
+          OR EXISTS (SELECT 1 FROM "User" inv
+                      WHERE inv."inviterReferralUserId" = u.id
+                        AND inv."deletedAt" IS NULL))`;
 
 function populationOf(row: Row): Population {
   if (row.is_seat) return 'test_seat';
@@ -99,6 +112,14 @@ export interface ReferralTree {
   readonly truncated: boolean;
   readonly counted: {
     readonly invited_rows_in_all: number;
+    /**
+     * ⚠️ TWO NUMBERS, BECAUSE THE FUNNEL IS THE POINT. The tester: „the
+     * founder still sees 8 of 805 and not the funnel." Joined is who arrived
+     * (15); opened is who then wrote something (8). One number alone answers
+     * neither „is the invite working" nor „is the product working", and which
+     * of those is failing is the whole question.
+     */
+    readonly of_them_joined_netai: number;
     readonly of_them_opened_netai: number;
     readonly of_them_test_seats: number;
   };
@@ -131,22 +152,30 @@ export async function referralTree(rootUserId?: number, depth = 3): Promise<Refe
   }
 
   /** Everyone below this person at any depth, which is not the same as the ones shown. */
-  const totalsCache = new Map<number, { all: number; opened: number }>();
-  function totals(id: number, seen: Set<number>): { all: number; opened: number } {
+  interface Below {
+    all: number;
+    joined: number;
+    opened: number;
+  }
+  const totalsCache = new Map<number, Below>();
+  function totals(id: number, seen: Set<number>): Below {
     const cached = totalsCache.get(id);
     if (cached) return cached;
-    if (seen.has(id)) return { all: 0, opened: 0 };
+    if (seen.has(id)) return { all: 0, joined: 0, opened: 0 };
     seen.add(id);
     let all = 0;
+    let joined = 0;
     let opened = 0;
     for (const child of children.get(id) ?? []) {
       all += 1;
-      if (child.opened_netai && !child.is_seat) opened += 1;
+      if (!child.is_seat && child.joined_netai) joined += 1;
+      if (!child.is_seat && child.opened_netai) opened += 1;
       const below = totals(Number(child.user_id), seen);
       all += below.all;
+      joined += below.joined;
       opened += below.opened;
     }
-    const out = { all, opened };
+    const out = { all, joined, opened };
     totalsCache.set(id, out);
     return out;
   }
@@ -161,6 +190,7 @@ export async function referralTree(rootUserId?: number, depth = 3): Promise<Refe
       joined: row.joined,
       population: populationOf(row),
       invited_total: below.all,
+      invited_who_joined_netai: below.joined,
       invited_who_opened_netai: below.opened,
       invited: [],
     };
@@ -190,6 +220,8 @@ export async function referralTree(rootUserId?: number, depth = 3): Promise<Refe
     truncated: budget <= 0,
     counted: {
       invited_rows_in_all: rows.filter((r) => r.inviter !== null).length,
+      of_them_joined_netai: rows.filter((r) => r.inviter !== null && r.joined_netai && !r.is_seat)
+        .length,
       of_them_opened_netai: rows.filter((r) => r.inviter !== null && r.opened_netai && !r.is_seat)
         .length,
       of_them_test_seats: rows.filter((r) => r.inviter !== null && r.is_seat).length,

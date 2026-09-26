@@ -1,5 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import { query } from '../../db/postgres/client';
 import { referralTree, MAX_NODES } from '../referralTree.service';
 
@@ -84,21 +87,64 @@ describe('the tree says which population each person is', () => {
     expect(tree.counted.of_them_test_seats).toBe(1);
   });
 
-  it('reports the whole base split three ways, not one total', async () => {
+  /**
+   * ⚠️ FOUR NUMBERS NOW, AND THE FOURTH IS THE FUNNEL. The tester: „the founder
+   * still sees 8 of 805 and not the funnel." Somebody who ARRIVED and somebody
+   * who then WROTE something are different people, and which of those two
+   * steps is failing is the entire question a growth number is asked.
+   *
+   * Person 2 joined and wrote. Person 3 joined and has not written — that is
+   * Sofo's case, and under the old shape she was invisible.
+   */
+  it('reports the whole base split four ways, not one total', async () => {
     given([
       person(1, null),
-      person(2, 1, { opened_netai: true }),
-      person(3, 1),
-      person(4, 1, { is_seat: true }),
+      person(2, 1, { joined_netai: true, opened_netai: true }),
+      person(3, 1, { joined_netai: true }),
+      person(4, 1, { is_seat: true, joined_netai: true, opened_netai: true }),
     ]);
 
     const tree = await referralTree(1, 1);
 
     expect(tree.counted).toEqual({
       invited_rows_in_all: 3,
+      of_them_joined_netai: 2,
       of_them_opened_netai: 1,
       of_them_test_seats: 1,
     });
+    // And the node carries the same split, so the page can show both.
+    expect(tree.roots[0].invited_who_joined_netai).toBe(2);
+    expect(tree.roots[0].invited_who_opened_netai).toBe(1);
+  });
+
+  /**
+   * ⚠️ THE FOREST WAS ALWAYS EMPTY — the tester, reading the page with no root
+   * named: `counted` said 805 invitees and `roots` said [].
+   *
+   * A top of the forest is BY DEFINITION somebody nobody invited, and the read
+   * selected only people who WERE invited. The rows the walk needed as roots
+   * were the one group it could not fetch. It looked like a walk that found
+   * nothing; it was a read that never asked for them.
+   */
+  it('returns the tops of the forest when no root is named', async () => {
+    given([
+      person(1, null),
+      person(2, 1, { joined_netai: true }),
+      person(10, null),
+      person(11, 10),
+    ]);
+
+    const tree = await referralTree(undefined, 2);
+
+    expect(tree.roots.map((r) => r.user_id).sort((a, b) => a - b)).toEqual([1, 10]);
+    expect(tree.roots[0].invited).toHaveLength(1);
+  });
+
+  it('asks the database for the inviters too, or there are no roots to walk', () => {
+    const source = readFileSync(join(__dirname, '..', 'referralTree.service.ts'), 'utf8');
+
+    expect(source).toContain('EXISTS (SELECT 1 FROM "User" inv');
+    expect(source).toContain('inv."inviterReferralUserId" = u.id');
   });
 });
 
