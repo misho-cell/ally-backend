@@ -208,3 +208,53 @@ describe('the preview previews the thing that will happen', () => {
     expect(route.slice(0, 3000)).toContain('ids: expired.map((e) => e.id)');
   });
 });
+
+/**
+ * ⚠️ THE STATUS THE TABLE WOULD NOT HOLD, AND HOW I MISSED IT.
+ *
+ * Before building any of this I asked `information_schema` whether `status`
+ * carried a check constraint. It answered NULL and I read null as „there is no
+ * constraint". Null meant the query could not see one — the join I wrote
+ * through `constraint_column_usage` does not reach a CHECK the way I assumed.
+ *
+ * „I could not look" read as „I looked and found nothing", by the person who
+ * put those exit codes into the ops scripts. `pg_get_constraintdef` says it in
+ * one line, and the real constraint listed four statuses and not five.
+ *
+ * The cost was one refused write: the sweep threw, the transaction rolled
+ * back, all sixteen rows stayed `pending`, and not one of the sixteen askers
+ * was told anything. That is the one direction this write is allowed to fail
+ * in, and it is why `confirm` and a dry run exist at all.
+ */
+describe('the database will hold the status we invented', () => {
+  it('has a migration that admits expired', () => {
+    const migration = readFileSync(
+      join(
+        __dirname,
+        '..',
+        '..',
+        'db',
+        'postgres',
+        'migrations',
+        '179_an_introduction_can_expire.sql',
+      ),
+      'utf8',
+    );
+
+    expect(migration).toContain('introduction_requests_status_check');
+    expect(migration).toContain("'expired'");
+    // The four that were always allowed are still allowed.
+    for (const kept of ['pending', 'accepted', 'declined', 'cancelled']) {
+      expect(migration).toContain(`'${kept}'`);
+    }
+  });
+
+  /** The sweep writes exactly the word the constraint now admits. */
+  it('writes the same word the constraint allows', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await expireUnansweredRequests();
+
+    expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][0]).toBe('expired');
+  });
+});
