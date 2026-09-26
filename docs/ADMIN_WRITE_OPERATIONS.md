@@ -4549,3 +4549,46 @@ phonebook a stranger.
 * **IF REFUSED** — leave them. The tester reads „Somebody new" on two cards and
   knows why; the mechanism is proved either way, and the naming is proved by
   the dry run above instead.
+
+### §61 — THE ROUTE, and Misho's approval
+
+**Authorised by Misho, 26 September, directly:** *„ორივე შენი რეკომენდაციით
+გააკეთე"* — answering operations (2) and (3) above as written.
+
+`ro.sh` cannot write and must never be able to, so the deletes need a route.
+Rather than a way to run a DELETE — which is the capability this whole file
+exists to avoid — the route does these two things only, for a test seat only.
+
+* **ROUTE** — `POST /admin/test-accounts/:id/repair`
+* **BODY** — nothing, or `{ "confirm": true }`
+* **DRY RUN IS THE DEFAULT.** Without `confirm` it names the exact ids and
+  deletes nothing.
+* **REPLY** — `{ seat, tag_rows: [...], held_cards: [...], deleted }`
+* **WHAT IT CAN REACH, and this is what makes it safe rather than the caller:**
+  * the target must have a `test_seats` row;
+  * `"UserTags"` rows with `"contactId" IS NULL` only — a correctly written
+    row is never matched, so running it twice cannot empty a phonebook;
+  * `new_member_for_goal` cards with `status = 'held'` only — `held` means
+    never shown, so a card a person has seen or answered is out of reach;
+  * it deletes by THE IDS IT JUST READ, not by the predicate that found them.
+* **IT QUEUES NOTHING.** Whatever should exist afterwards is made by the
+  matcher, not by this route.
+* **UNDO** — the tag rows: re-run §60's contact route, which writes correct
+  ones. The cards: `POST /admin/new-member-match/replay`, which re-queues
+  whatever the matcher currently finds.
+
+#### ⚠️ (3) IS BEING DONE ONLY AS A DELETE — the regeneration is dropped
+
+Two things arrived between asking Misho and running it:
+
+1. **The tester answered:** *„From the test side we do not need (3) — the dry
+   run above proves the mechanism; do not regenerate cards for us."*
+2. **Those two cards should never have existed.** The tester's own D498
+   question turned out to be right: the matcher was counting an INDUSTRY as an
+   organisation, so „a good plumber for my flat" matched the tag `logistics`.
+   After the narrowing (`4228ceb`) the same dry run returns **would_queue 0**
+   on both seat contacts.
+
+So regenerating them would re-create cards the founder's rule excludes. The
+delete stands, the replay does not run, and Misho is told why rather than the
+approval being stretched to cover a thing that changed under it.

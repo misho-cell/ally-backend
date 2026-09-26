@@ -178,7 +178,7 @@ import {
   canonicalPhone,
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
-import { addSeatContact } from '../../services/seatContacts.service';
+import { addSeatContact, repairSeat } from '../../services/seatContacts.service';
 import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
 import {
   expireUnansweredRequests,
@@ -1989,6 +1989,65 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §61 — UNDOING WHAT THIS MORNING PUT IN A TEST SEAT WRONGLY.
+ *
+ * Two kinds of wreckage, both mine: `"UserTags"` rows written through the
+ * wrong id column, and `new_member_for_goal` cards queued by a matcher that
+ * was reading that column and treating an INDUSTRY as an organisation.
+ *
+ * ⚠️ A DRY RUN BY DEFAULT, and the plan names the exact ids. `confirm: true`
+ * is the only thing that deletes, and it deletes the ids the same call just
+ * read — the predicate is how they were found, the ids are what is agreed to.
+ *
+ * What makes it safe is not the caller's care: the target must be a test
+ * seat, only `"contactId" IS NULL` tag rows are in reach (a correct row is
+ * never matched, so running it twice cannot empty a phonebook), and only
+ * `held` cards are — `held` means never shown to anybody, so a card somebody
+ * has seen or answered cannot be taken from them. It queues nothing: whatever
+ * should exist afterwards is made by the matcher, not by this.
+ */
+adminRouter.post(
+  '/test-accounts/:id/repair',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'seat id საჭიროა' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const confirm = (req.body as { confirm?: unknown })?.confirm === true;
+    try {
+      const result = await repairSeat(seatId, confirm);
+      if (!result.ok) {
+        res.status(400).json({ success: false, error: result.refusal });
+        return;
+      }
+      if (result.repair.deleted) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[seat-repair] admin ${(req as AuthenticatedRequest).user.userId} removed ` +
+            `${result.repair.tag_rows.length} misplaced tag row(s) and ` +
+            `${result.repair.held_cards.length} held card(s) from seat ${seatId}`,
+        );
+      }
+      res.status(200).json({
+        success: true,
+        data: {
+          ...result.repair,
+          note: result.repair.deleted
+            ? 'Deleted the ids listed. Nothing was queued in their place.'
+            : 'Nothing was deleted. Send { "confirm": true } to remove exactly these ids.',
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-repair]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

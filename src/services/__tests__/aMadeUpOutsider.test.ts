@@ -4,7 +4,12 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
-import { addSeatContact, isFictionalNumber, isReadableTag } from '../seatContacts.service';
+import {
+  addSeatContact,
+  repairSeat,
+  isFictionalNumber,
+  isReadableTag,
+} from '../seatContacts.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const rows = (data: unknown[]) => ({ rows: data, rowCount: data.length });
@@ -212,5 +217,70 @@ describe('adding the same contact twice adds them once', () => {
    */
   it('types every parameter on both sides of the guard', () => {
     expect(aliasWrite.slice(0, 600)).toContain('SELECT $1::int, $2::varchar, $3::varchar');
+  });
+});
+
+/**
+ * §61 — the repair, and what it is structurally unable to reach.
+ *
+ * It exists to take back two kinds of row written this morning by mistake:
+ * `"UserTags"` rows carrying the seat in the wrong id column, and
+ * `new_member_for_goal` cards a wrong matcher queued. What makes it safe is
+ * not the caller's care — it is that a real person is out of its reach.
+ */
+describe('the repair cannot touch anybody real', () => {
+  const source = readFileSync(join(__dirname, '..', 'seatContacts.service.ts'), 'utf8');
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
+  const repair = code.slice(code.indexOf('export async function repairSeat'));
+
+  it('refuses a target that is not a test seat, before reading anything', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await repairSeat(999999, true)).toEqual({ ok: false, refusal: 'not_a_test_seat' });
+    const statements = mockQuery.mock.calls.map(([sql]) => String(sql));
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toContain('test_seats');
+  });
+
+  /** A correctly written tag row is not in reach, so a second run is not a sweep. */
+  it('can only see tag rows with no phonebook owner on them', () => {
+    expect(code).toContain('WHERE "userId" = $1 AND "contactId" IS NULL');
+  });
+
+  /** `held` means never shown. A card somebody has read cannot be taken from them. */
+  it('can only see cards that have never been shown', () => {
+    expect(code).toContain("kind = 'new_member_for_goal' AND status = 'held'");
+  });
+
+  it('plans without deleting unless the caller confirms', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 171938 }]) as never)
+      .mockResolvedValueOnce(rows([{ id: 1 }]) as never)
+      .mockResolvedValueOnce(rows([{ id: 2 }]) as never);
+
+    const out = await repairSeat(171938, false);
+
+    expect(out).toEqual({
+      ok: true,
+      repair: { seat: 171938, tag_rows: [1], held_cards: [2], deleted: false },
+    });
+    expect(mockQuery.mock.calls.map(([sql]) => String(sql)).join(' ')).not.toContain('DELETE');
+  });
+
+  /**
+   * ⚠️ BY THE IDS JUST READ, not by the predicate that found them. The
+   * predicate is how the rows were chosen; the ids are what was agreed to,
+   * and between the plan and the confirmation the predicate can match more.
+   */
+  it('deletes the ids it read, not the condition it read them by', () => {
+    expect(repair).toContain('DELETE FROM "UserTags" WHERE id = ANY($1::int[])');
+    expect(repair).toContain('DELETE FROM pending_updates WHERE id = ANY($1::int[])');
+    expect(repair).not.toMatch(/DELETE FROM "UserTags"[^;]*"contactId" IS NULL/);
+  });
+
+  /** It removes; it never puts anything back. The matcher makes what should exist. */
+  it('queues nothing in place of what it removed', () => {
+    expect(repair).not.toContain('queueResult');
+    expect(repair).not.toContain('INSERT');
   });
 });
