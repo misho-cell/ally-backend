@@ -5324,6 +5324,28 @@ function runNotedGoalQuestion(runId: string | undefined, taskId: number): boolea
   return itemsSurfacedGoalQuestion(runPendingItems.get(runId) ?? [], taskId);
 }
 
+/**
+ * ⚠️ D348's FREE ANSWER HAS TO SAY IT WAS FREE — the tester, watching the path
+ * end to end for the first time. The answer arrived and said nothing, so the
+ * person learned their tokens were gone on the NEXT message, from a refusal.
+ *
+ * The route decides it (it is the one that takes the grace) and the line is
+ * emitted HERE, after the answer is stored, because a note that arrives before
+ * the reply it is about is a different message. Read-and-forget, like every
+ * other per-run fact in this file.
+ */
+const runGraceNote = new Map<string, string>();
+
+export function noteGraceAnswer(runId: string, line: string): void {
+  runGraceNote.set(runId, line);
+}
+
+function takeGraceNote(runId: string): string | null {
+  const line = runGraceNote.get(runId) ?? null;
+  runGraceNote.delete(runId);
+  return line;
+}
+
 const MORE_PENDING_KIND = 'more_pending';
 /** D500 option A: the owner's own waiting goals, listed by the server. */
 const MY_GOALS_WAITING_KIND = 'my_goals_waiting';
@@ -5903,6 +5925,7 @@ function clearRunState(runId: string): void {
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
   runPendingItems.delete(runId);
+  runGraceNote.delete(runId);
   runInboxNamed.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
@@ -10843,6 +10866,16 @@ export async function processChat(
   );
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
+  // D348: the free answer says it was free, immediately after it and before
+  // anything else the run has to deliver.
+  const graceNote = takeGraceNote(runId);
+  if (graceNote !== null) {
+    await saveMessage(userId, threadId, 'assistant', graceNote, 'message', runId).catch(
+      // Never fails the answer it follows: a missing note is a worse day than
+      // a lost reply, not the other way round.
+      () => undefined,
+    );
+  }
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.

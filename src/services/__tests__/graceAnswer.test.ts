@@ -1,3 +1,4 @@
+import { thisOneWasOnUs } from '../runLanguage';
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { readFileSync } from 'fs';
@@ -97,5 +98,75 @@ describe('the send path takes it before it refuses', () => {
     const at = code.indexOf('takeGraceAnswer(userId)');
     const branch = code.slice(at, at + 500);
     expect(branch).toContain('needs_topup');
+  });
+});
+
+/**
+ * ⚠️ THE FREE ANSWER HAS TO SAY IT WAS FREE — the tester, watching D348 end to
+ * end for the first time, 26 September.
+ *
+ * The grace works: at zero the message was accepted and answered in full. The
+ * answer said NOTHING about it, so the person learns their tokens are gone on
+ * the NEXT message, from a refusal.
+ *
+ * ⚠️ AND I HAD TOLD THEM IT ALREADY SAID SO. I read the status BADGE being set
+ * and called that the person being told. A badge on a thread and a sentence in
+ * the conversation are not the same thing — which is exactly what row 221 was
+ * opened about, and I made its mistake while reporting its fix.
+ */
+describe('the answer that was free says so', () => {
+  const routes = readFileSync(
+    join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
+    'utf8',
+  );
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('says it in all four languages, with the day', () => {
+    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+      const line = thisOneWasOnUs(language, 'Monday 28 September');
+
+      expect(line).toContain('Monday 28 September');
+      expect(line.length).toBeGreaterThan(30);
+    }
+    expect(thisOneWasOnUs('en', 'Monday 28 September')).toMatch(/on us/i);
+    expect(thisOneWasOnUs('ka', 'ორშაბათს')).toContain('ჩვენზეა');
+  });
+
+  /** Only the Georgian one is in Georgian — the seam D494 already had once. */
+  it('does not leak Georgian into the other three', () => {
+    for (const language of ['en', 'ru', 'es'] as const) {
+      expect(thisOneWasOnUs(language, 'Monday 28 September')).not.toMatch(/[Ⴀ-ჿ]/);
+    }
+  });
+
+  /**
+   * ⚠️ AFTER THE ANSWER, NOT BEFORE IT. The route takes the grace before the
+   * run starts, so writing the note there would put it above the reply it is
+   * about — a different message. It is held until the run has an id and
+   * emitted where the answer already is.
+   */
+  it('is emitted after the reply, not at the gate', () => {
+    expect(routes).toContain('graceNote = thisOneWasOnUs(');
+    expect(routes).toContain('if (graceNote !== null) noteGraceAnswer(runId, graceNote);');
+
+    const afterReply = chat.slice(chat.indexOf('const graceNote = takeGraceNote(runId);'));
+    expect(afterReply.slice(0, 600)).toContain("'assistant', graceNote");
+    // It comes before the other cards, and after the answer.
+    expect(chat.indexOf('const graceNote = takeGraceNote(runId);')).toBeGreaterThan(
+      chat.indexOf('await dropStepsTheReplyRepeats('),
+    );
+  });
+
+  /** A missing note must never cost somebody the answer it follows. */
+  it('cannot fail the reply it is about', () => {
+    const block = chat.slice(chat.indexOf('const graceNote = takeGraceNote(runId);'));
+
+    expect(block.slice(0, 600)).toContain('() => undefined');
+  });
+
+  it('is forgotten with the rest of the run', () => {
+    const clear = chat.slice(chat.indexOf('function clearRunState'));
+
+    expect(clear.slice(0, 600)).toContain('runGraceNote.delete(runId)');
   });
 });

@@ -660,6 +660,37 @@ export function isPlaceholderThreadTitle(title: string | null): boolean {
  * So the sentence joins the rest of the file. One language decides both, which
  * is the only arrangement in which they cannot drift.
  */
+/**
+ * ⚠️ THE FREE ANSWER HAS TO SAY THAT IT WAS FREE — the tester, watching D348
+ * end to end for the first time on 26 September.
+ *
+ * The grace works: at zero the message was accepted and answered in full. But
+ * the answer said NOTHING about it, so the person learns their tokens are gone
+ * only on the NEXT message, from a refusal. Their words: „the grace reply had
+ * no word that this was the last free answer".
+ *
+ * ⚠️ AND I HAD TOLD THEM IT DID. My own message said the grace answer comes
+ * „with the top-up line". It never did — I read the status BADGE being set and
+ * called that the person being told. A badge on a thread and a sentence in the
+ * conversation are not the same thing, which is the distinction this row (221)
+ * was opened about in the first place.
+ *
+ * So it is said, in the conversation, by the server — one short line after the
+ * answer, naming the day the allowance returns, in the language the run used.
+ */
+export function thisOneWasOnUs(language: RunLanguage, renewal: string): string {
+  switch (language) {
+    case 'en':
+      return `(This one was on us — your tokens are at zero. Top up, or wait until ${renewal}, when your allowance comes back.)`;
+    case 'ru':
+      return `(Этот ответ за наш счёт — токены на нуле. Пополни или подожди до ${renewal}, когда лимит обновится.)`;
+    case 'es':
+      return `(Esta ha corrido de nuestra cuenta: te has quedado sin tokens. Recarga o espera hasta ${renewal}, cuando se renueva tu asignación.)`;
+    default:
+      return `(ეს პასუხი ჩვენზეა — ტოკენები ნულზეა. შეავსე, ან დაელოდე ${renewal}, როცა ლიმიტი განახლდება.)`;
+  }
+}
+
 export function walledOutOfTokens(language: RunLanguage, renewal: string): string {
   switch (language) {
     case 'en':

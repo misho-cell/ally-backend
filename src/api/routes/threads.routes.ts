@@ -18,7 +18,12 @@ import {
   saveThreadMessage,
   getLongestRunStep,
 } from '../../services/threads.service';
-import { processChat, ChatResult, keepUserMessage } from '../../services/chat.service';
+import {
+  processChat,
+  ChatResult,
+  keepUserMessage,
+  noteGraceAnswer,
+} from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
 import {
@@ -46,7 +51,7 @@ import {
 import { query } from '../../db/postgres/client';
 import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
 import { nextRenewalDay } from '../../services/renewalDay';
-import { walledOutOfTokens } from '../../services/runLanguage';
+import { thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
 import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
@@ -576,6 +581,8 @@ threadsRouter.post(
       // Row 150: null means nobody pays — a campaign invite, which the
       // platform started and nobody asked for. There is no wallet to check,
       // and checking the helper's would be the charge this rule removes.
+      /** Set when D348's one free answer is being given, emitted after it. */
+      let graceNote: string | null = null;
       const payerId = await runPayerFor(userId, threadId, thread.type);
       const allowance =
         payerId === null ? { allowed: true as const } : await checkRunAllowance(payerId);
@@ -604,9 +611,26 @@ threadsRouter.post(
           `[wallet] user ${userId}: balance ${allowance.balance} — answering once (D348), ` +
             'the wall comes on the next message',
         );
+        const graceIn = detectRunLanguage(message);
         void setThreadStatus(userId, threadId, 'needs_you', {
-          statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.needs_topup,
+          statusLine: RUN_STRINGS[graceIn].statusLines.needs_topup,
         });
+        /**
+         * ⚠️ AND IT MUST SAY SO IN THE CONVERSATION, not only on the badge.
+         *
+         * The tester watched D348 end to end and found the answer arrived with
+         * no word that it was the last free one — the person learns it on the
+         * NEXT message, from a refusal. I had told them it already said so,
+         * because I read the status badge above being set and called that
+         * „telling somebody". A badge on a thread and a sentence in the
+         * conversation are not the same thing, which is precisely what row 221
+         * was opened about.
+         *
+         * Held until the run has an id and emitted AFTER the answer, because a
+         * note that arrives before the reply it is about is a different
+         * message. Nothing here is left to the model: this one has to be true.
+         */
+        graceNote = thisOneWasOnUs(graceIn, nextRenewalDay(graceIn));
       } else if (!allowance.allowed && payerId === userId) {
         /**
          * P0, 18 September — the refusal must not take the owner's words with
@@ -683,6 +707,7 @@ threadsRouter.post(
       }
 
       const runId = randomUUID();
+      if (graceNote !== null) noteGraceAnswer(runId, graceNote);
 
       // Ticket 20 row 115. Ninia's „კი" arrived five times in six seconds and
       // started five runs. An identical message from the same person on the

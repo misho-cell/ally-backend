@@ -1993,6 +1993,54 @@ adminRouter.post(
   },
 );
 
+/**
+ * §59's READ-ONLY HALF — the tester asked for it and the reason is good.
+ *
+ * ⚠️ THEIR SAFETY CHECK REFUSES ANY WRITE ROUTE, INCLUDING A DRY RUN. So the
+ * only way for them to confirm sixteen expiries was to ask me for the numbers
+ * — which makes their check a report of MY report, and „I looked" and „he told
+ * me he looked" are not the same fact. That is the distinction this whole box
+ * runs on, and it was pointing at me.
+ *
+ * A GET, so their rule and their verification stop being in conflict.
+ */
+adminRouter.get('/introductions/expiry-status', async (_req: Request, res: Response) => {
+  try {
+    const [counts, expired] = await Promise.all([
+      query<{ status: string; n: string }>(
+        `SELECT status, COUNT(*)::text AS n FROM introduction_requests GROUP BY status`,
+      ),
+      query<{ id: number; responded_at: string; target_name: string | null }>(
+        `SELECT id, responded_at, target_name
+           FROM introduction_requests
+          WHERE status = 'expired'
+          ORDER BY id
+          LIMIT 200`,
+      ),
+    ]);
+    const byStatus: Record<string, number> = {};
+    for (const row of counts.rows) byStatus[row.status] = Number(row.n);
+    res.status(200).json({
+      success: true,
+      data: {
+        by_status: byStatus,
+        expired_ids: expired.rows.map((r) => r.id),
+        expired: expired.rows,
+        cards_queued: (
+          await query<{ n: string }>(
+            `SELECT COUNT(*)::text AS n FROM pending_updates WHERE kind = 'intro_expired'`,
+          )
+        ).rows[0]?.n,
+        note: 'Read only. Nothing here changes anything; the sweep is POST /admin/introductions/expire.',
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[intro-expiry status]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/referrals/tree', async (req: Request, res: Response) => {
   const rootRaw = String(req.query.root ?? '').trim();
   const root = rootRaw === '' ? undefined : Number(rootRaw);
