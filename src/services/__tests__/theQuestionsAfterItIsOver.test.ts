@@ -391,3 +391,50 @@ describe('the card speaks the language of the conversation it is in', () => {
     expect(out?.text).toBe('Whatever was asked');
   });
 });
+
+/**
+ * ⚠️ THE MODEL IS NOT TOLD THE QUESTION, AND THAT IS THE POINT.
+ *
+ * The tester, after both cards worked: „the event text carries the Georgian
+ * question for an English seat; the model translated it correctly this time."
+ * Correctly, this time — which is the whole problem. The card is drawn by the
+ * SERVER in the reader's own language; only the model-facing event still
+ * carried words chosen at close time, in Georgian.
+ *
+ * Handing it the owner's language would have fixed the symptom and kept the
+ * shape: a question written at one moment and read at another, in a language
+ * that may have changed between them. The words do not belong in the event at
+ * all. The model's job is not to ask — the question is already on the screen —
+ * it is to notice the answer and save it. Saying less removes the dependency;
+ * saying it in four languages would only spread it.
+ */
+describe('the event does not hand the model the question to re-ask', () => {
+  const service = readFileSync(join(__dirname, '..', 'goalFeedback.service.ts'), 'utf8');
+  const instruction = service.slice(
+    service.indexOf('instruction:'),
+    service.indexOf('});', service.indexOf('instruction:')),
+  );
+
+  it('does not interpolate the question text into the event', () => {
+    expect(instruction).not.toContain('next.prompt');
+  });
+
+  it('tells the model the question is already on screen', () => {
+    expect(instruction).toContain('ALREADY ON THEIR');
+    expect(instruction).toContain('do not ask it again');
+    expect(instruction).toContain('do not translate it');
+  });
+
+  /** It still has to know WHICH answer it is saving. */
+  it('still names the key to save the answer under', () => {
+    expect(instruction).toContain('question_key="${next.key}"');
+    expect(instruction).toContain('VERBATIM');
+  });
+
+  /** And the card — which a person reads — still carries the words. */
+  it('leaves the words where the person reads them', () => {
+    const queue = service.slice(service.indexOf('await queueResult(userId, taskId'));
+
+    expect(queue.slice(0, 900)).toContain('prompt: next.prompt');
+  });
+});

@@ -180,13 +180,32 @@ export async function queueGoalFeedback(userId: string, taskId: number): Promise
     // from — so there was nothing to put on the screen even once the renderer
     // existed. The words a person reads must travel with the item.
     prompt: next.prompt,
-    // The instruction rides with the item, as every other kind's does — the
-    // model reads it in the same breath as the data it applies to.
+    /**
+     * ⚠️ THE INSTRUCTION NO LONGER CARRIES THE QUESTION'S WORDS, and the
+     * tester's note is why.
+     *
+     * It used to say „ask them exactly this one question … '<prompt>'", with
+     * the prompt chosen at CLOSE time — which is Georgian, because that is
+     * what this function asked for. An English-writing seat therefore got an
+     * English card (the server draws that) and a GEORGIAN instruction, and it
+     * read correctly only because the model translated it. Twice. Their words:
+     * „worth handing the seat's own language in the event".
+     *
+     * Passing the owner's language would fix the symptom and keep the shape:
+     * a question written at one moment, read at another, in a language that
+     * may have changed in between. THE WORDS DO NOT BELONG HERE AT ALL. The
+     * card is on the screen, in the reader's own language, drawn by the
+     * server — so the model's job is not to ask anything. It is to notice the
+     * answer and save it. Saying less is what removes the dependency; saying
+     * it in four languages would only spread it.
+     */
     instruction:
-      `The owner has just finished this goal. Ask them exactly this one question, in their ` +
-      `own language, and nothing else: "${next.prompt}". It is feedback on how Netai did, not ` +
-      `work on the goal — do not search, do not write to anybody, do not reopen it. When they ` +
-      `answer, save it verbatim with save_goal_feedback (task_id, question_key="${next.key}"). ` +
-      `If they do not want to answer, let it go and do not ask again.`,
+      `The owner has just finished this goal and is being shown ONE short feedback question ` +
+      `about it, as its own message with its own button. THE QUESTION IS ALREADY ON THEIR ` +
+      `SCREEN — do not ask it again, do not rephrase it, do not translate it. It is feedback ` +
+      `on how Netai did, not work on the goal: do not search, do not write to anybody, do not ` +
+      `reopen it. When they answer, save what they said VERBATIM with save_goal_feedback ` +
+      `(task_id, question_key="${next.key}"). If they say nothing about it or would rather ` +
+      `not, let it go and never raise it again.`,
   });
 }
