@@ -178,6 +178,7 @@ import {
   canonicalPhone,
   goalsThisMemberMightUnblock,
 } from '../../services/newMemberForGoal.service';
+import { addSeatContact } from '../../services/seatContacts.service';
 import {
   expireUnansweredRequests,
   introductionsThatWouldExpire,
@@ -1941,6 +1942,52 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[intro-expiry]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §60 — a made-up, tagged contact in a test seat's phonebook (rows 269, 262b).
+ *
+ * Every refusal is in the service, above every write, because this file's own
+ * history is refusals that fired after the INSERT and left seats behind.
+ */
+adminRouter.post(
+  '/test-accounts/:id/contacts',
+  param('id').isInt({ min: 1 }),
+  body('phone').isString(),
+  body('name').isString(),
+  body('tag').isString(),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'phone, name და tag საჭიროა' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { phone, name, tag } = req.body as { phone: string; name: string; tag: string };
+    try {
+      const result = await addSeatContact(seatId, phone, name, tag);
+      if (!result.ok) {
+        // The refusal is NAMED, so a caller learns which rule stopped them
+        // rather than being told the request was simply bad.
+        res.status(400).json({
+          success: false,
+          error: result.refusal,
+          ...(result.detail !== undefined && { detail: result.detail }),
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-contact] admin ${(req as AuthenticatedRequest).user.userId} added ` +
+          `"${result.contact.name}" (${result.contact.tag}) to seat ${seatId}`,
+      );
+      res.status(201).json({ success: true, data: result.contact });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-contact]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

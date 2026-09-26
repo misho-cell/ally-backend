@@ -4342,3 +4342,57 @@ from `information_schema` as „there is no constraint" — „could not look" a
 „looked and found nothing". Migration 179 fixed the table; the failed attempt
 left all sixteen rows `pending` and told nobody, which is the only direction
 this write was ever allowed to fail in.
+
+---
+
+## §60 — A MADE-UP CONTACT, TAGGED, IN A TEST SEAT'S PHONEBOOK (rows 269, 262(b))
+
+**Authorised by Misho, 26 September, in this session and directly:** *„ყველა
+რეკომენდაცია დაამტკიცე და გააკეთე"*, answering a list in which this was item 1
+with the recommendation „yes — nothing touches real people, and it is the only
+way 262 can be proved at all."
+
+D495 is the founder's own rule for it: *„row 269 uses a made-up outsider on one
+test seat (not on Netai, number reaches nobody). Not a real phone."*
+
+### WHY A NEW ROUTE AND NOT THE ONE THAT EXISTS
+
+`POST /admin/test-accounts` takes `holds`, and `resolvePhonebook` already
+admits a fictional number nobody is registered on — so the OUTSIDER half is
+solved. What it writes is a `UserAlias`: the contact's NAME.
+
+Row 262 matches on `UserTags`, which is the contact's TAG, and nothing writes
+one. Without it the feature cannot be exercised at all, which is exactly the
+tester's point: its only trigger is a real registration.
+
+### THE OPERATION
+
+* **ROUTE** — `POST /admin/test-accounts/:id/contacts`
+* **METHOD** — `POST`
+* **BODY** — `{ "phone": "+120255501xx", "name": "<1-80>", "tag": "<1-40>" }`
+* **REPLY** — `{ seat, phone, name, tag, alias_written, tag_written }`
+* **UNDO** —
+  `DELETE FROM "UserTags" WHERE "userId" = <seat> AND phone = <phone>;`
+  `DELETE FROM "UserAlias" WHERE "contactId" = <seat> AND phone = <phone>;`
+  Two rows, both by (seat, phone); nothing else is touched.
+
+### WHAT IT REFUSES, and each refusal is the reason it is safe
+
+* **A NUMBER OUTSIDE THE FICTION RANGE.** Only `+1202555` 0100–0199, the same
+  block every seat already lives in. This is the line that keeps a real
+  person's number out of a test phonebook — the failure D495 names.
+* **A NUMBER SOMEBODY IS REGISTERED ON**, even inside the range. A made-up
+  outsider is by definition nobody; a number with an account behind it is not
+  one, and putting it in a seat's phonebook would be putting a person there.
+* **A TARGET THAT IS NOT A TEST SEAT.** The `:id` must have a `test_seats` row.
+  A real person's phonebook is never written by this route.
+* **A TAG THAT IS NOT LETTERS, DIGITS AND SPACES**, 1–40 characters — the same
+  shape `newMemberForGoal` will accept, so a tag this route writes cannot be
+  one that matcher refuses to read.
+
+### WHAT IT DOES NOT DO
+
+It does not register anybody and it opens no way in. The number stays
+unregistered until somebody registers it through the ordinary door, which is
+what the tester will do to prove 262 — and that registration is theirs, not
+mine.
