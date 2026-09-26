@@ -290,11 +290,20 @@ except Exception: print("x")')"
   # It is checked FIRST because it is evidence rather than inference, and it
   # only counts when the refusal is NEWER than the last call that worked —
   # otherwise a recovered outage would cry forever.
+  # ⚠️ THREE DEPLOYMENTS, NOT ONE — AND I SHIPPED THE ONE-DEPLOYMENT VERSION
+  # FIRST. It exited 1 correctly at 20:09, I pushed it, the push replaced the
+  # container, and at 20:12 — with the provider still refusing — it exited 0
+  # again. A deploy cuts the log, so the refusal it had just found now lived in
+  # a deployment this check no longer looked at.
+  #
+  # Which means the check would have gone quiet EXACTLY when somebody deploys a
+  # fix and wants to know whether it worked. Found in three minutes only
+  # because I ran it twice instead of trusting the run that agreed with me.
   HEARTBEAT_REFUSAL=""
+  DEPLOY_ID=""
   if [ "$QUIET_FOR" != "x" ]; then
-    DEPLOY_ID="$(./scripts/ops/logs.sh deployments 1 2>/dev/null | awk 'NR==2 {print $1}')"
-    if [ -n "${DEPLOY_ID:-}" ]; then
-      HEARTBEAT_REFUSAL="$(./scripts/ops/logs.sh logs "$DEPLOY_ID" 400 "PROVIDER DID NOT ANSWER" 2>/dev/null \
+    for candidate in $(./scripts/ops/logs.sh deployments 3 2>/dev/null | awk 'NR>1 {print $1}'); do
+      found="$(./scripts/ops/logs.sh logs "$candidate" 400 "PROVIDER DID NOT ANSWER" 2>/dev/null \
         | python3 -c 'import sys,json
 from datetime import datetime,timezone
 try:
@@ -302,11 +311,18 @@ try:
 except Exception:
     rows = []
 if rows:
-    newest = rows[-1]
-    age = (datetime.now(timezone.utc) - datetime.fromisoformat(newest["timestamp"].replace("Z","+00:00").split(".")[0] + "+00:00")).total_seconds() / 60
-    print(f"{int(age)}")
+    stamp = rows[-1]["timestamp"].replace("Z", "+00:00").split(".")[0] + "+00:00"
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(stamp)).total_seconds() / 60
+    print(int(age))
 ' 2>/dev/null)"
-    fi
+      # The newest refusal across the three is the smallest age.
+      if [ -n "$found" ]; then
+        if [ -z "$HEARTBEAT_REFUSAL" ] || [ "$found" -lt "$HEARTBEAT_REFUSAL" ]; then
+          HEARTBEAT_REFUSAL="$found"
+          DEPLOY_ID="$candidate"
+        fi
+      fi
+    done
   fi
   if [ -n "${HEARTBEAT_REFUSAL:-}" ] && [ "$QUIET_FOR" != "x" ] \
      && [ "$HEARTBEAT_REFUSAL" -lt "$QUIET_FOR" ]; then
