@@ -112,7 +112,20 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
        -- today: nothing but reading the live schema, or running it, finds it.
        LEFT JOIN "UserPhone" up ON up.phone = $1
        LEFT JOIN "User" u ON u.id = up."userId"
-      WHERE ' ' || REGEXP_REPLACE(
+      -- ⚠️ NOT THE OWNER ABOUT THEMSELVES. Found by running the dry run on
+      -- goal 5678's real case: it came back naming the goal's OWN owner,
+      -- because the number tagged arci in his phonebook is his own. People
+      -- keep their own number in their own contacts and tag it with where
+      -- they work, and without this the card reads "Tornike Abuladze has just
+      -- opened Netai" to Tornike. (No backtick in here: this SQL lives in a
+      -- template literal and one ends the string.)
+      --
+      -- PARENTHESISED, because OR binds looser than AND: written flat, this
+      -- reads as "(not the owner) OR (registered AND the tag matches)", so an
+      -- unregistered number would have skipped the tag test altogether and
+      -- matched every open goal the person has.
+      WHERE (up."userId" IS NULL OR up."userId"::text <> tg.user_id)
+        AND ' ' || REGEXP_REPLACE(
                      LOWER(COALESCE(t.title, '') || ' ' || COALESCE(t.brief, '')),
                      '[^[:alnum:]]+', ' ', 'g') || ' '
             LIKE '% ' || tg.tag || ' %'

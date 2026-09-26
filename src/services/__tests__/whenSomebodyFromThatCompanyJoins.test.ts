@@ -253,3 +253,38 @@ describe('a number typed four ways is one number', () => {
     expect((mockQuery.mock.calls[0] as [string, unknown[]])[1][0]).toBe('+995500000001');
   });
 });
+
+/**
+ * ⚠️ TWO THINGS THE DRY RUN FOUND THE MOMENT IT WAS POINTED AT REAL DATA.
+ *
+ * Run against goal 5678's actual case, it came back naming TORNIKE — the
+ * goal's own owner. Not a join bug: the number tagged `arci` in his phonebook
+ * is his own. People keep their own number in their own contacts and tag it
+ * with where they work. Without a guard the card reads „Tornike Abuladze has
+ * just opened Netai" to Tornike.
+ *
+ * And the guard itself was wrong on its first writing. `WHERE A OR B AND C`
+ * binds as `A OR (B AND C)`, so an unregistered number — the ordinary case for
+ * this feature — would have skipped the tag test and matched EVERY open goal
+ * the person had. Parentheses are the whole fix and the reason is worth a test
+ * of its own, because the flat version reads correctly in English.
+ */
+describe('it does not tell somebody they have joined', () => {
+  const source = readFileSync(join(__dirname, '..', 'newMemberForGoal.service.ts'), 'utf8');
+  const sql = source.replace(/^\s*--.*$/gm, '');
+
+  it('skips a phone that belongs to the goal owner', () => {
+    expect(sql).toContain('up."userId"::text <> tg.user_id');
+  });
+
+  /** The condition is bracketed, so OR cannot swallow the tag match. */
+  it('brackets the owner test so it cannot widen the match', () => {
+    expect(sql).toContain('WHERE (up."userId" IS NULL OR up."userId"::text <> tg.user_id)');
+    expect(sql).toMatch(/\)\s*AND ' ' \|\| REGEXP_REPLACE/);
+  });
+
+  /** An unregistered number is the ORDINARY case and must still be matched. */
+  it('still matches a number with no account yet', () => {
+    expect(sql).toContain('up."userId" IS NULL OR');
+  });
+});
