@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
+import {
+  claimSweep,
+  SWEEP_ASK_REMINDERS,
+  SWEEP_METHOD_CHANGES,
+  SWEEP_SILENT_GOALS,
+} from './sweepClaim';
 import { DAY_ONE_WAKE, finishWake, recordWake, wakeDoneSince } from './engineWakes.service';
 import { processChat } from './chat.service';
 import {
@@ -55,7 +61,10 @@ import {
 } from '../config/runBudgets';
 
 const TICK_INTERVAL_MS = 60_000;
-const REMINDER_INTERVAL_MS = 60 * 60_000;
+const REMINDER_INTERVAL_MINUTES = 60;
+const REMINDER_INTERVAL_MS = REMINDER_INTERVAL_MINUTES * 60_000;
+/** Long enough for the pool and migrations to settle, short enough to matter. */
+const BOOT_SWEEP_DELAY_MS = 45_000;
 const MAX_REMINDERS_PER_SWEEP = 10;
 // Answer-wake backstop (ticket 4 blocker 1): re-deliver any answered ask whose
 // task never woke — a deploy-window failure is late by minutes, not by a day.
@@ -1203,29 +1212,66 @@ export function startTaskTicker(): void {
     );
   }, TICK_INTERVAL_MS).unref();
 
+  /**
+   * ⚠️ THESE THREE ASK THE DATABASE WHETHER THEY ARE DUE, and that is the
+   * whole point of `claimSweep`.
+   *
+   * They used to hang off the interval alone, which meant the clock lived in
+   * this process — and a deploy replaces the process. On 26 September the
+   * longest gap between deploys all afternoon was twenty-five minutes, so the
+   * hour never elapsed and none of the three ran at all: nobody waiting on an
+   * ask was reminded, no goal widened after a silent day, no method change
+   * fired. No error, no row, nothing to notice.
+   *
+   * With the claim, a restart costs nothing: the tick after boot sees the slot
+   * is overdue and takes it. The interval is now only how OFTEN we ask, and
+   * the answer comes from a timestamp that outlives the container.
+   */
+  const runHourlySweeps = (): void => {
+    void claimSweep(SWEEP_ASK_REMINDERS, REMINDER_INTERVAL_MINUTES).then((due) => {
+      if (!due) return;
+      void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] reminder sweep failed:', (err as Error).message),
+      );
+    });
+    void claimSweep(SWEEP_SILENT_GOALS, REMINDER_INTERVAL_MINUTES).then((due) => {
+      if (!due) return;
+      void sweepSilentGoals()
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          if (n > 0) console.log(`[task-engine] silent-day widening woke ${n} goal(s)`);
+        })
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
+        );
+    });
+    void claimSweep(SWEEP_METHOD_CHANGES, REMINDER_INTERVAL_MINUTES).then((due) => {
+      if (!due) return;
+      void sweepMethodChanges()
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          if (n > 0) console.log(`[task-engine] method-change proposal woke ${n} goal(s)`);
+        })
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] method-change sweep failed:', (err as Error).message),
+        );
+    });
+  };
+
+  /**
+   * ⚠️ ONCE SHORTLY AFTER BOOT, NOT ONLY ON THE HOUR. Without this a container
+   * that replaces one which died mid-hour still waits a full interval before
+   * asking, which is the same starvation in a smaller form. The delay lets the
+   * pool and the migrations settle first; the claim decides whether anything
+   * actually runs.
+   */
+  setTimeout(runHourlySweeps, BOOT_SWEEP_DELAY_MS).unref();
+
   setInterval(() => {
-    void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
-      // eslint-disable-next-line no-console
-      console.error('[task-engine] reminder sweep failed:', (err as Error).message),
-    );
-    void sweepSilentGoals()
-      .then((n) => {
-        // eslint-disable-next-line no-console
-        if (n > 0) console.log(`[task-engine] silent-day widening woke ${n} goal(s)`);
-      })
-      .catch((err) =>
-        // eslint-disable-next-line no-console
-        console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
-      );
-    void sweepMethodChanges()
-      .then((n) => {
-        // eslint-disable-next-line no-console
-        if (n > 0) console.log(`[task-engine] method-change proposal woke ${n} goal(s)`);
-      })
-      .catch((err) =>
-        // eslint-disable-next-line no-console
-        console.error('[task-engine] method-change sweep failed:', (err as Error).message),
-      );
+    runHourlySweeps();
     // C9.7's timer half: silence IS an outcome — a week-old unanswered intro
     // produces a no_reply row without anyone touching the app.
     void sweepUnansweredIntroOutcomes()
