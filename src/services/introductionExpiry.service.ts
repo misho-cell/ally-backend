@@ -66,6 +66,35 @@ export async function introductionsThatWouldExpire(): Promise<ExpiredRequest[]> 
   return result.rows;
 }
 
+export interface ExpiryCounts {
+  readonly pending_past_deadline: number;
+  readonly already_expired: number;
+}
+
+/**
+ * The two numbers, with no way to write either of them.
+ *
+ * ⚠️ THIS EXISTS BECAUSE A DRY RUN IS NOT A READ, and the tester's seat was
+ * right to say so. `POST /admin/introductions/expire` without `confirm`
+ * changes nothing — but their safety check reads the METHOD, not the body,
+ * and refused it. A guard that has to inspect a payload to decide whether
+ * something is safe is not a guard; so the honest answer is a route that
+ * cannot write whatever is sent to it.
+ *
+ * The first count takes the sweep's own WHERE clause rather than a copy, for
+ * the reason written above `PAST_THE_DEADLINE`.
+ */
+export async function introductionExpiryCounts(): Promise<ExpiryCounts> {
+  const result = await query<ExpiryCounts>(
+    `SELECT (SELECT COUNT(*) ${PAST_THE_DEADLINE})::int AS pending_past_deadline,
+            (SELECT COUNT(*) FROM introduction_requests
+              WHERE status = $2)::int AS already_expired`,
+    [UNANSWERED_IS_STALE_DAYS, EXPIRED_STATUS],
+    EXPIRY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? { pending_past_deadline: 0, already_expired: 0 };
+}
+
 /**
  * The requests that have run out of time, marked expired, returned so their
  * askers can be told.

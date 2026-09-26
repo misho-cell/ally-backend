@@ -12,6 +12,7 @@ import { queueResult } from '../pendingUpdates.service';
 import {
   expireUnansweredRequests,
   introductionsThatWouldExpire,
+  introductionExpiryCounts,
   tellAskersTheirRequestExpired,
   EXPIRES_AFTER_DAYS,
 } from '../introductionExpiry.service';
@@ -206,6 +207,70 @@ describe('the preview previews the thing that will happen', () => {
     expect(route.slice(0, 2000)).toContain('if (!confirm)');
     // The ids come back, because the ids are the undo.
     expect(route.slice(0, 3000)).toContain('ids: expired.map((e) => e.id)');
+  });
+});
+
+/**
+ * ⚠️ A DRY RUN IS NOT A READ, AND THE TESTER'S SEAT WAS RIGHT TO SAY SO.
+ *
+ * `POST /admin/introductions/expire` without `confirm` writes nothing — but
+ * their safety check reads the METHOD, not the body, and refused it. A guard
+ * that has to open a payload to decide whether something is safe is not a
+ * guard, and „it is only a write if you send the wrong field" is a promise in
+ * prose. So row 275 stayed unreadable from the one seat whose job is to read
+ * it, and the answer is a route that cannot write whatever is sent to it.
+ */
+describe('the half of row 275 that can only read', () => {
+  const routes = readFileSync(
+    join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+    'utf8',
+  );
+  // Bounded at the next route, so an edit further down the file cannot make
+  // this pass or fail for a reason that has nothing to do with it.
+  const readRoute = (() => {
+    const start = routes.indexOf("adminRouter.get('/introductions/expiring'");
+    return routes.slice(start, routes.indexOf('adminRouter.post(', start));
+  })();
+
+  it('is a GET, so the method alone settles whether it can write', () => {
+    expect(readRoute).toContain("adminRouter.get('/introductions/expiring'");
+    expect(readRoute).not.toMatch(/expireUnansweredRequests|tellAskersTheirRequestExpired/);
+  });
+
+  it('returns the ids, because the ids are what makes the count checkable', () => {
+    expect(readRoute).toContain('ids: waiting.map((r) => r.id)');
+    expect(readRoute).toContain('pending_past_deadline');
+    expect(readRoute).toContain('already_expired');
+    expect(readRoute).toContain('expires_after_days: EXPIRES_AFTER_DAYS');
+  });
+
+  it('counts with the sweep’s own clause and writes nothing', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [{ pending_past_deadline: 16, already_expired: 0 }],
+      rowCount: 1,
+    } as never);
+
+    const counts = await introductionExpiryCounts();
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
+    expect(sql).toContain(
+      "COALESCE(ir.responded_at, ir.created_at) < NOW() - ($1 || ' days')::INTERVAL",
+    );
+    expect(params[0]).toBe(14);
+    expect(params[1]).toBe('expired');
+    expect(counts).toEqual({ pending_past_deadline: 16, already_expired: 0 });
+    expect(mockQueue).not.toHaveBeenCalled();
+  });
+
+  /** An empty result is zero, not a crash and not an undefined read further up. */
+  it('says zero when the table answers with nothing', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    expect(await introductionExpiryCounts()).toEqual({
+      pending_past_deadline: 0,
+      already_expired: 0,
+    });
   });
 });
 

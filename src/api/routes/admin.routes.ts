@@ -189,7 +189,9 @@ import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.s
 import {
   expireUnansweredRequests,
   introductionsThatWouldExpire,
+  introductionExpiryCounts,
   tellAskersTheirRequestExpired,
+  EXPIRES_AFTER_DAYS,
 } from '../../services/introductionExpiry.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
@@ -1888,6 +1890,45 @@ adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin new-member match]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * ROW 275, THE HALF THAT ONLY READS — and it exists because of what the
+ * tester's seat could not do.
+ *
+ * `POST /admin/introductions/expire` without `confirm` writes nothing; it was
+ * built dry-run-first precisely so a forgotten parameter changes nobody's row.
+ * Their safety check still refused it, because that check reads the method and
+ * not the body — and it was right to. „It is only a write if you send the
+ * wrong field" is a promise in prose, and prose is not a gate. So row 275 sat
+ * unreadable from the one seat whose job is to read it.
+ *
+ * This route cannot write whatever is sent to it. That is the whole point of
+ * it being a separate route rather than a flag on the other one.
+ *
+ * It returns the ids, because the ids are what makes the count checkable.
+ */
+adminRouter.get('/introductions/expiring', async (_req: Request, res: Response) => {
+  try {
+    const [counts, waiting] = await Promise.all([
+      introductionExpiryCounts(),
+      introductionsThatWouldExpire(),
+    ]);
+    res.status(200).json({
+      success: true,
+      data: {
+        expires_after_days: EXPIRES_AFTER_DAYS,
+        pending_past_deadline: counts.pending_past_deadline,
+        already_expired: counts.already_expired,
+        requests: waiting,
+        ids: waiting.map((r) => r.id),
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[intro-expiry] read failed:', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
