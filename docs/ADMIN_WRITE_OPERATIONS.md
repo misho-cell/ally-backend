@@ -4501,3 +4501,51 @@ tables. This is §60 being run again, under §60's approval, not a new power.
 Nothing touches a real person's phonebook, no real number, no registration, no
 access. If (2) is refused the only cost is two dead rows; the feature works
 either way once (1) has run.
+
+### §61 — RUN, and a third operation that follows from it
+
+**(1) HAS RUN, 26 September 09:33 UTC**, under §60's approval. The route now
+writes `"contactId"`; both contacts went in again and were read back:
+
+| what | id | `"contactId"` | `"userId"` | label |
+|---|---|---|---|---|
+| tag | 42532393 | 171938 | — | logistics |
+| tag | 42532394 | 171938 | — | logistics |
+| alias | 9513579 | 171938 | — | Nino Logistika |
+| alias | 9513580 | 171938 | — | Dato Logistika |
+
+Only two alias rows exist for those numbers, not four: the `NOT EXISTS` guard
+held, which is the first time that line has ever done anything.
+
+**VERIFIED on the corrected matcher** — `GET /admin/new-member-match` returns
+`would_queue 2`, tasks 9872 and 9934, and `who: "Nino Logistika"`. Before
+today's fix the same call returned the same two tasks with `who: null`,
+because it read the name off a registered account that a made-up outsider does
+not have.
+
+**(2) STILL NOT AUTHORISED.** The two rows in the wrong column are untouched.
+
+**(3) NEW, AND ALSO NOT AUTHORISED — two cards that would call her a stranger.**
+
+The replay on 26 September at 09:14 queued `pending_updates` **10067** and
+**10068** (goals 9872 and 9934, seat 171938). Both are `status = 'held'` and
+neither has ever been shown to anybody. Their payload carries `who: null`, and
+`pendingMessages` renders a null name as **„Somebody new"** — so as they
+stand, the seat's first sight of row 262 is a card calling a contact in its own
+phonebook a stranger.
+
+* **STATEMENT** — `DELETE FROM pending_updates WHERE id IN (10067, 10068);`
+* **THEN** — `POST /admin/new-member-match/replay` re-queues them, and the
+  matcher now puts „Nino Logistika" in the payload.
+* **WHY A DELETE AND NOT AN UPDATE OF THE PAYLOAD** — the payload is what the
+  matcher produces, and re-running the matcher is the thing being tested. An
+  UPDATE would hand the tester a card I typed rather than one the code made.
+* **WHY IT IS NARROW** — both rows are on a test seat, both are about made-up
+  numbers, both were written by me twenty minutes ago, and neither has been
+  delivered. Nobody loses a message they were waiting for.
+* **UNDO** — none needed in the ordinary sense: the replay regenerates them.
+  If the replay were then to fail, the seat is left with no card, which is
+  where it stood this morning.
+* **IF REFUSED** — leave them. The tester reads „Somebody new" on two cards and
+  knows why; the mechanism is proved either way, and the naming is proved by
+  the dry run above instead.
