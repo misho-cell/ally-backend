@@ -4838,3 +4838,50 @@ is the exact failure row 272 was written to avoid. `stopped` queues nothing.
 It goes through `updateTask`, not its own `UPDATE`, because every close in
 this codebase lands in that one function — which is what stops the thread
 status, the dropped ladder and the feedback rule drifting apart per caller.
+
+---
+
+## Turning the automatic research runner on
+
+**Asked by Misho, 27 September, in these words: „RESEARCH_RUNNER=on გააკეთე"**
+— after reading what it does, what it costs and what the risk is. The decision
+is his because it is a spend and because it means searching for real people on
+the web; this records what the act does and how to take it back.
+
+|        |                                                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------------------ |
+| Route  | none — one Railway environment variable, set with `scripts/ops/env.sh`                                       |
+| Method | `printf %s 'on' \| ./scripts/ops/env.sh set RESEARCH_RUNNER`                                                 |
+| Body   | the literal string `on`. Any other value, including empty, leaves the runner OFF (`=== 'on'`, not truthiness) |
+| Undo   | `printf %s 'off' \| ./scripts/ops/env.sh set RESEARCH_RUNNER` — or delete it in the Railway dashboard. It is read at CALL time, so the next tick (within 15 minutes) stops. No deploy is needed to stop it |
+
+**What it starts.** Every 15 minutes it takes up to 10 people from the target
+list who have not been researched in 30 days, plans up to 3 steps each, and
+runs each step as a paid Tavily search. It records the search and what the page
+said, in the page's own words, with the URL.
+
+**What it will not do, and this is the part that makes it safe to turn on.** It
+writes no claim about any person. „He is the director of X" is a judgement
+about a real named human being, and this job never makes one. Evidence here;
+attribution stays somewhere a person can see it.
+
+**The cost, measured on 27 September rather than estimated.** A Tavily search
+is `0.008` USD (`provider_prices`). There are **183 people** on the list and
+**47 steps have ever been run**. So:
+
+- first pass over the backlog: at most 549 searches, about **4.40 USD, once**
+- steady state at a 30-day refresh: roughly 18 searches a day, about **4 USD a month**
+- the ceiling in force is `RESEARCH_DAILY_SEARCHES` (default 200 = 1.60 USD a
+  day). That is the worst case, not the expected one, and the runner counts
+  against it from searches ACTUALLY RUN, so a restart does not reset it
+
+**The dials, all read at call time — changing any of them needs no deploy.**
+`RESEARCH_DAILY_SEARCHES` (200), `RESEARCH_PEOPLE_PER_TICK` (10),
+`RESEARCH_REFRESH_DAYS` (30), `RESEARCH_MAX_STEPS` (3).
+
+**The risk, stated plainly.** It spends money unattended — the only job here
+that does. It searches for 183 real people by name. And money spent on useless
+searches does not come back. Misho was told all three before he said yes.
+
+**Setting a variable restarts the service**, so it follows the same rule as any
+deploy: between runs, never across one. `quiet.sh` is asked first.
