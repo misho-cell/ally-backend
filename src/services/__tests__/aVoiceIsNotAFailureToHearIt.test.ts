@@ -577,3 +577,71 @@ describe('a language the recogniser will not be told about', () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * ⚠️ 27 SEPTEMBER — THE MODEL IS A NAME NOW, AND THAT IS NOT A FIX.
+ *
+ * The first real iPhone press reached this service today: two recordings from
+ * Lika on Salome's account, `audio/mp4`, recorded and uploaded and
+ * transcribed. What came back was Georgian-looking nonsense —
+ * „კიშტენბა დამვის ბინივედადა…" for a sentence asking to put a question to a
+ * named person about a doctor. The tester reproduced it from a seat with a
+ * 21-second voice note, with and without the `ka` hint: 200 both times, and
+ * partly LATIN transliteration.
+ *
+ * So the script primer is doing its job and its job is not enough. That is a
+ * model question and I cannot answer it from here — no key of my own, no
+ * audio, no way to put one clip through two recognisers.
+ *
+ * These two tests hold the only thing I CAN promise about it: the name is
+ * overridable, and the default is exactly what shipped before, so the deploy
+ * that carries it changes nothing. The second test is the one that matters —
+ * a „configurable model" that quietly changed the model on deploy would be a
+ * worse bug than the one it is meant to help with.
+ */
+describe('the recogniser is a name somebody can correct', () => {
+  const loadWithModel = async (
+    name: string | undefined,
+  ): Promise<typeof import('../speech.service')> => {
+    if (name === undefined) delete process.env.SPEECH_MODEL;
+    else process.env.SPEECH_MODEL = name;
+    jest.resetModules();
+    return import('../speech.service');
+  };
+
+  afterEach(() => {
+    delete process.env.SPEECH_MODEL;
+    jest.resetModules();
+  });
+
+  it('uses the name it is given', async () => {
+    const mod = await loadWithModel('gpt-4o-transcribe');
+    const openai = (await import('../../config/openai')).openaiClient as jest.Mock;
+    const create = jest.fn().mockResolvedValue({ text: 'გამარჯობა', language: 'georgian' });
+    openai.mockReturnValue({ audio: { transcriptions: { create } } });
+    const db = (await import('../../db/postgres/client')).query as jest.Mock;
+    db.mockResolvedValue({ rows: [{ seconds: '0' }], rowCount: 1 });
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+
+    await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+
+    expect(create.mock.calls[0][0].model).toBe('gpt-4o-transcribe');
+    delete process.env.SPEECH_TO_TEXT_ENABLED;
+  });
+
+  /** Unset means exactly what shipped before. A default that drifts is a release nobody asked for. */
+  it('is whisper-1 when nothing is set', async () => {
+    const mod = await loadWithModel(undefined);
+    const openai = (await import('../../config/openai')).openaiClient as jest.Mock;
+    const create = jest.fn().mockResolvedValue({ text: 'გამარჯობა', language: 'georgian' });
+    openai.mockReturnValue({ audio: { transcriptions: { create } } });
+    const db = (await import('../../db/postgres/client')).query as jest.Mock;
+    db.mockResolvedValue({ rows: [{ seconds: '0' }], rowCount: 1 });
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+
+    await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+
+    expect(create.mock.calls[0][0].model).toBe('whisper-1');
+    delete process.env.SPEECH_TO_TEXT_ENABLED;
+  });
+});

@@ -126,8 +126,42 @@ const EXTENSION: Record<string, string> = {
   'audio/mpeg': 'mp3',
 };
 
-/** Whisper knows Georgian; this is the hint, and the answer says what it actually heard. */
-const MODEL = 'whisper-1';
+/**
+ * The recogniser, overridable by name.
+ *
+ * ⚠️ 27 SEPTEMBER — GEORGIAN COMES BACK IN LATIN LETTERS, AND THE PRIMER DOES
+ * NOT FIX IT.
+ *
+ * The first real iPhone press reached this service today. Two recordings from
+ * Lika, on Salome's account, `audio/mp4` — they recorded, uploaded and
+ * transcribed. And what came back was Georgian-looking nonsense:
+ *
+ *   „კიშტენბა დამვის ბინივედადა დადების დადების ბინმედაგრავის."
+ *
+ * for a sentence that asked to put a question to a named person about a
+ * doctor. The tester then reproduced it from a seat with her own 21-second
+ * voice note, WITH and WITHOUT the `ka` hint — 200 both times, and the text
+ * came back partly in LATIN TRANSLITERATION („...da otkhove, rom torni kabula
+ * dzestu sekitxa kargi ekimi...").
+ *
+ * So the script primer below is doing its job and its job is not enough: the
+ * hint is refused by the API, the primer biases the script, and the model's
+ * Georgian is still poor. That is a MODEL question, and I cannot answer it
+ * from here — I have no key of my own, no audio, and no way to compare two
+ * recognisers on one clip.
+ *
+ * WHAT THIS CONSTANT IS NOW, AND WHAT IT IS NOT. It is a name somebody can
+ * change without a release, with a default that is exactly what shipped
+ * before, so this line changes NOTHING on the deploy that carries it. It is
+ * not a fix and I am not going to describe it as one: whoever can put the same
+ * clip through two models is the person who fixes this, and my part is to make
+ * the second model reachable without waiting for me.
+ *
+ * ⚠️ AND IT IS NOT A FLAG THAT TURNS THE FEATURE OFF. An unknown name here
+ * would be a 400 on somebody's voice, which is why the house shape is „a name
+ * to correct the model with", never „a switch to disable it".
+ */
+const MODEL = process.env.SPEECH_MODEL?.trim() || 'whisper-1';
 
 /**
  * ⚠️ „LANGUAGE 'ka' IS NOT SUPPORTED" — the API's own words, 21:50:40 UTC.
