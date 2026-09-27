@@ -264,3 +264,52 @@ describe('reading a slot cannot claim it', () => {
     expect(route).not.toContain('claimSweep');
   });
 });
+
+/**
+ * ⚠️ HOW MANY REAL PEOPLE HEAR FROM US IN AN HOUR — and that is what this
+ * number is, not a performance setting.
+ *
+ * A widening wake tells a goal to write to the next people its plan names,
+ * several at a time. So the per-sweep limit multiplied by the hourly cadence
+ * IS the ceiling on how much the product does in somebody's name per hour.
+ *
+ * It went 5 → 10 on 27 September on Misho's explicit word, after he was told
+ * that plainly. The test asserts the CEILING and the reason, so anybody may
+ * retune it deliberately and nobody can raise it by accident while tidying
+ * something else.
+ */
+describe('the widening ceiling is a decision, not a tuning knob', () => {
+  const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
+  const literal = (name: string): number => {
+    const m = engine.match(new RegExp(`const ${name} = ([0-9_]+);`));
+    if (!m) throw new Error(`${name} is no longer a plain number`);
+    return Number(m[1].replace(/_/g, ''));
+  };
+
+  it('wakes at most ten goals an hour, which is the number that was approved', () => {
+    expect(literal('MAX_SILENT_WAKES_PER_SWEEP')).toBe(10);
+    expect(literal('REMINDER_INTERVAL_MINUTES')).toBe(60);
+  });
+
+  /** 47 goals were eligible on 26 September; ten an hour clears that in five. */
+  it('clears the measured backlog inside a working day', () => {
+    const perDay = literal('MAX_SILENT_WAKES_PER_SWEEP') * 24;
+
+    expect(perDay).toBeGreaterThanOrEqual(47);
+  });
+
+  /**
+   * The two other sweeps were NOT raised. Only the widening was asked about
+   * and only the widening was changed — a limit nobody discussed must not
+   * drift upward beside one that was.
+   */
+  it('leaves the defaults and method-change sweeps where they were', () => {
+    expect(literal('MAX_DEFAULTS_PER_SWEEP')).toBe(5);
+    expect(literal('MAX_METHOD_CHANGE_WAKES_PER_SWEEP')).toBe(5);
+  });
+
+  it('keeps the price written next to the number', () => {
+    expect(engine).toContain('not a performance setting');
+    expect(engine).toContain('WHAT IT COSTS, PLAINLY');
+  });
+});

@@ -1149,7 +1149,30 @@ export async function sweepUnansweredOwnerQuestions(): Promise<number> {
  * next people the plan names — several, not one. Stamped before the wake.
  */
 const SILENT_DAY_HOURS = 24;
-const MAX_SILENT_WAKES_PER_SWEEP = 5;
+/**
+ * ⚠️ FIVE BECAME TEN ON 27 SEPTEMBER, ON MISHO'S EXPLICIT WORD, AND THE PRICE
+ * IS NAMED HERE SO NOBODY HAS TO GUESS IT LATER.
+ *
+ * WHAT IT BUYS. Row 278: the widening queue is ordered by `last_activity_at`,
+ * so a goal people touch often keeps falling to the back. The obvious fix was
+ * to order by how long the question has waited — and measuring it showed that
+ * fix would have put the tester's own goal LAST of forty-seven, because it is
+ * the newest. Each ordering has its own victim; the depth does not. Measured
+ * 26 September: 47 goals eligible against 120 sweeps a day, so ten an hour
+ * clears the backlog in about five hours instead of ten and stops the
+ * ordering from deciding who waits.
+ *
+ * WHAT IT COSTS, PLAINLY. A widening wake tells a goal to write to the next
+ * people its plan names — several, not one. Twice the goals an hour is twice
+ * the real people written to in that hour. That is why this number was never
+ * mine to change: it is not a performance setting, it is how much the product
+ * does in somebody's name per hour. Misho was told exactly this and said to
+ * raise it.
+ *
+ * IF IT IS EVER RAISED AGAIN, the question to ask is not „can the server take
+ * it" — it can — but „how many people should hear from us in one hour".
+ */
+const MAX_SILENT_WAKES_PER_SWEEP = 10;
 
 export async function sweepSilentGoals(): Promise<number> {
   const silent = await getSilentGoals(SILENT_DAY_HOURS, MAX_SILENT_WAKES_PER_SWEEP);
