@@ -10664,12 +10664,33 @@ export async function processChat(
   // event is persisted as kind 'event': the model sees it, the user does not.
   if (replyContext !== null) await saveMessage(userId, threadId, 'user', replyContext, 'event');
   if (!storedAhead) {
+    /**
+     * THE ROW THAT STARTS A RUN NOW CARRIES THE RUN IT STARTED.
+     *
+     * ⚠️ 27 SEPTEMBER, and the number is the argument: 118 silent-day wake
+     * events in ten days, `run_id NULL` on every single one. So „which wake
+     * fired" and „what the run then did" could not be joined by id at all —
+     * the only way to ask was thread plus a time window, which is why nobody
+     * had ever asked it. Row 268 was read by hand, one goal at a time, for
+     * exactly this reason.
+     *
+     * The first thing that join answered, once it existed: 84 of those 118
+     * wakes made no outward act at all. Seven in ten. That number could not
+     * have been produced from this table the day before.
+     *
+     * `runId` was in scope the whole time and sits three lines below in the
+     * `runToolLoop` call. It was simply never passed.
+     *
+     * Safe to add: the two places that read `run_id` off `conversations` both
+     * filter `kind = 'step'`, so a user row carrying one cannot reach either.
+     */
     await saveMessage(
       userId,
       threadId,
       'user',
       userMessage,
       userMessage.startsWith(RUN_EVENT_PREFIX) ? 'event' : 'message',
+      runId,
     );
   }
 
