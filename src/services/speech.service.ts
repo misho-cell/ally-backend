@@ -190,6 +190,36 @@ function refusedTheLanguage(message: string): boolean {
 }
 
 /**
+ * ⚠️ 27 SEPTEMBER — THE VARIABLE I SHIPPED THIS AFTERNOON WOULD HAVE BROKEN
+ * TRANSCRIPTION THE MOMENT SOMEBODY USED IT.
+ *
+ * `SPEECH_MODEL` exists so that whoever can compare two recognisers does not
+ * wait for a release. The tester named two candidates within the hour. Then I
+ * read my own call: `response_format: 'verbose_json'` was sent unconditionally,
+ * and the newer transcription models do not all take it. Flipping the variable
+ * would have turned a BAD transcription into NO transcription — every voice
+ * note a 400 — and the change would have looked like the new model being
+ * broken rather than like my request being wrong.
+ *
+ * This is the same shape as the language hint one line above, and it gets the
+ * same answer, because that one was learned the expensive way: DO NOT GUESS
+ * THE LIST. The refusal names the thing it refuses, so the refusal is the
+ * list — ask for the verbose form, and if this model will not give it, drop to
+ * plain json, remember that for this model, and never ask again in this
+ * process.
+ *
+ * What is lost when it drops is `language` — the recogniser's own reading of
+ * WHICH language it heard. The caller already survives that: it falls back to
+ * the hint it was given and then to null. So the concession costs a field we
+ * can live without, and it buys the one thing that matters, which is text.
+ */
+const formatsRefusedByModel = new Set<string>();
+
+function refusedTheFormat(message: string): boolean {
+  return /response_format/i.test(message) && /not supported|unsupported|invalid/i.test(message);
+}
+
+/**
  * „ka-GE" and „KA" are the same hint. Region and case are the caller's to vary
  * and neither changes which language was spoken.
  */
@@ -300,34 +330,56 @@ async function transcribeWith(
   hint: string | undefined,
 ): Promise<Heard> {
   const primer = hint === undefined ? undefined : SCRIPT_PRIMER[hint];
-  const sendHint = hint !== undefined && !languagesTheRecogniserRefused.has(hint);
-  const ask = (withHint: boolean): Promise<Heard> =>
+  const ask = (withHint: boolean, verbose: boolean): Promise<Heard> =>
     client.audio.transcriptions.create({
       file,
       model: MODEL,
-      // The detected language comes back only in the verbose form, and it is
-      // the whole point of asking.
-      response_format: 'verbose_json',
+      // The detected language comes back only in the verbose form, and that is
+      // why it is asked for — but it is not worth the call, which is what the
+      // fallback below is about.
+      response_format: verbose ? 'verbose_json' : 'json',
       ...(withHint && hint !== undefined ? { language: hint } : {}),
       // Carried whether or not the hint is: it costs nothing and it is what
       // keeps Georgian in Georgian script when no hint is allowed.
       ...(primer === undefined ? {} : { prompt: primer }),
     }) as unknown as Promise<Heard>;
 
-  if (!sendHint) return ask(false);
-  try {
-    return await ask(true);
-  } catch (error) {
-    const message = (error as Error).message ?? '';
-    if (!refusedTheLanguage(message) || hint === undefined) throw error;
-    languagesTheRecogniserRefused.add(hint);
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[speech] the recogniser will not take language=${hint} ("${message.slice(0, 120)}") — ` +
-        'retrying without it, and not sending it again',
-    );
-    return ask(false);
-  }
+  /**
+   * Each concession is made ONCE and only on the refusal that names it. Any
+   * other failure is the caller's to report — retrying a timeout or a rate
+   * limit here would spend somebody's money twice on the same second of audio.
+   */
+  const attempt = async (withHint: boolean, verbose: boolean): Promise<Heard> => {
+    try {
+      return await ask(withHint, verbose);
+    } catch (error) {
+      const message = (error as Error).message ?? '';
+      if (verbose && refusedTheFormat(message)) {
+        formatsRefusedByModel.add(MODEL);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[speech] ${MODEL} will not take response_format=verbose_json ` +
+            `("${message.slice(0, 120)}") — retrying as json, and not asking again`,
+        );
+        return attempt(withHint, false);
+      }
+      if (withHint && hint !== undefined && refusedTheLanguage(message)) {
+        languagesTheRecogniserRefused.add(hint);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[speech] the recogniser will not take language=${hint} ("${message.slice(0, 120)}") — ` +
+            'retrying without it, and not sending it again',
+        );
+        return attempt(false, verbose);
+      }
+      throw error;
+    }
+  };
+
+  return attempt(
+    hint !== undefined && !languagesTheRecogniserRefused.has(hint),
+    !formatsRefusedByModel.has(MODEL),
+  );
 }
 
 export async function transcribe(input: TranscribeInput): Promise<TranscriptionOutcome> {

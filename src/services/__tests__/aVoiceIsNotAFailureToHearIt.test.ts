@@ -645,3 +645,97 @@ describe('the recogniser is a name somebody can correct', () => {
     delete process.env.SPEECH_TO_TEXT_ENABLED;
   });
 });
+
+/**
+ * ⚠️ THE VARIABLE SHIPPED AT 13:2x WOULD HAVE BROKEN TRANSCRIPTION AT 13:4x.
+ *
+ * `SPEECH_MODEL` exists so somebody can try a second recogniser without
+ * waiting for a release, and the tester named two candidates within the hour.
+ * Then I read my own call: `response_format: 'verbose_json'` went out
+ * unconditionally, and the newer transcription models do not all take it.
+ * Flipping the variable would have turned a BAD transcription into NO
+ * transcription — every voice note a 400 — and it would have looked like the
+ * new model being broken rather than like my request being wrong.
+ *
+ * Same shape as the `language` refusal, same answer, because that one was
+ * learned expensively: do not guess the list. The refusal names what it
+ * refuses, so ask for the verbose form, and if this model will not give it,
+ * drop to plain json once and remember.
+ */
+describe('a model that will not give the verbose form still gives text', () => {
+  const load = async (): Promise<typeof import('../speech.service')> => {
+    jest.resetModules();
+    return import('../speech.service');
+  };
+
+  const clientThatRefusesVerbose = (): jest.Mock => {
+    const create = jest.fn().mockImplementation((args: { response_format?: string }) => {
+      if (args.response_format === 'verbose_json') {
+        return Promise.reject(
+          new Error("400 response_format 'verbose_json' is not supported with this model"),
+        );
+      }
+      return Promise.resolve({ text: 'გამარჯობა' });
+    });
+    return create;
+  };
+
+  afterEach(() => {
+    delete process.env.SPEECH_TO_TEXT_ENABLED;
+    jest.resetModules();
+  });
+
+  it('retries as json and returns the text', async () => {
+    const mod = await load();
+    const openai = (await import('../../config/openai')).openaiClient as jest.Mock;
+    const create = clientThatRefusesVerbose();
+    openai.mockReturnValue({ audio: { transcriptions: { create } } });
+    const db = (await import('../../db/postgres/client')).query as jest.Mock;
+    db.mockResolvedValue({ rows: [{ seconds: '0' }], rowCount: 1 });
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+
+    const out = await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+
+    expect(out).toEqual(expect.objectContaining({ ok: true, text: 'გამარჯობა' }));
+    expect(create.mock.calls[0][0].response_format).toBe('verbose_json');
+    expect(create.mock.calls[1][0].response_format).toBe('json');
+  });
+
+  /**
+   * AND IT ASKS ONCE. A model that refuses the verbose form refuses it every
+   * time, and paying for a rejected call before every real one is the cost
+   * this set exists to avoid.
+   */
+  it('does not ask for the verbose form again in the same process', async () => {
+    const mod = await load();
+    const openai = (await import('../../config/openai')).openaiClient as jest.Mock;
+    const create = clientThatRefusesVerbose();
+    openai.mockReturnValue({ audio: { transcriptions: { create } } });
+    const db = (await import('../../db/postgres/client')).query as jest.Mock;
+    db.mockResolvedValue({ rows: [{ seconds: '0' }], rowCount: 1 });
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+
+    await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+    create.mockClear();
+    await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][0].response_format).toBe('json');
+  });
+
+  /** Anything that is not that refusal is still the caller's to report. */
+  it('does not retry a timeout', async () => {
+    const mod = await load();
+    const openai = (await import('../../config/openai')).openaiClient as jest.Mock;
+    const create = jest.fn().mockRejectedValue(new Error('socket hang up'));
+    openai.mockReturnValue({ audio: { transcriptions: { create } } });
+    const db = (await import('../../db/postgres/client')).query as jest.Mock;
+    db.mockResolvedValue({ rows: [{ seconds: '0' }], rowCount: 1 });
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+
+    const out = await mod.transcribe({ userId: '1', audio: Buffer.from('x'), mime: 'audio/mp4' });
+
+    expect(out).toEqual(expect.objectContaining({ ok: false }));
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
