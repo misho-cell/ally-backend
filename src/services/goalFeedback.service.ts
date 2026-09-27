@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { isARealId } from './goalId';
 import { RunLanguage } from './runLanguage';
 import { queueResult } from './pendingUpdates.service';
 
@@ -106,7 +107,14 @@ export async function recordGoalFeedback(
   userId: string,
   key: GoalFeedbackKey,
   answer: string,
-): Promise<'saved' | 'empty'> {
+): Promise<'saved' | 'empty' | 'no_goal'> {
+  // A GOAL ID THAT IS NOT A GOAL ID IDENTIFIES NO GOAL — see isARealId. The
+  // door hands over `Number(input['task_id'])` and `goal_feedback.task_id` is
+  // INTEGER NOT NULL, so `NaN` reaches Postgres as the string „NaN" and
+  // raises. It is a THIRD outcome and not `'empty'`: „nothing was said" and
+  // „that is not a goal" are different facts, and the caller says a different
+  // sentence about each.
+  if (!isARealId(taskId)) return 'no_goal';
   const text = (answer ?? '').trim();
   if (text === '') return 'empty';
   await query(
@@ -163,6 +171,10 @@ export async function readGoalFeedback(limit = 200): Promise<GoalFeedbackRow[]> 
  * right outcome and not a gap.
  */
 export async function queueGoalFeedback(userId: string, taskId: number): Promise<void> {
+  // Same rule, and this one is quieter still: its only caller wraps it in
+  // `.catch(() => undefined)`, so the raise was swallowed entirely and the
+  // next question simply never got queued. Nothing anywhere would have said so.
+  if (!isARealId(taskId)) return;
   const already = await query<{ id: number }>(
     `SELECT id FROM pending_updates
       WHERE task_id = $1 AND kind = 'goal_feedback' AND status IN ('held', 'released')

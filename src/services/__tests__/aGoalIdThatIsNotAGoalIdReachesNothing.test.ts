@@ -1,6 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
+import { queueGoalFeedback, recordGoalFeedback } from '../goalFeedback.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -103,5 +104,54 @@ describe('a goal id that is not a goal id reaches no plan', () => {
 
     expect(mockQuery).toHaveBeenCalled();
     expect(out.ok).toBe(true);
+  });
+});
+
+/**
+ * THE SAME ID, TWO MORE DOORS, AND THE QUIETEST PAIR OF THE FOUR.
+ *
+ * `recordGoalFeedback` puts it into `goal_feedback.task_id`, which is INTEGER
+ * NOT NULL. `queueGoalFeedback` is worse: its only caller wraps it in
+ * `.catch(() => undefined)`, so the raise was swallowed whole — nothing
+ * failed, nothing was logged, and the next feedback question simply never got
+ * queued. A thing that does not happen, reported by nobody.
+ *
+ * ⚠️ „no_goal" IS A THIRD OUTCOME AND NOT „empty". „Nothing was said" and
+ * „that is not a goal" are different facts about different mistakes: the first
+ * is fixed by asking the person again, the second by passing the id from the
+ * item. Collapsing them would have the model apologise to somebody for a
+ * silence that never happened.
+ */
+describe('a goal id that is not a goal id reaches no feedback row', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it.each([
+    ['a missing field', Number(undefined)],
+    ['a word', Number('the vet one')],
+    ['zero', 0],
+  ])('recordGoalFeedback asks the database nothing for %s', async (_what, id) => {
+    await expect(recordGoalFeedback(id, 'owner', 'what_came_of_it', 'it went well')).resolves.toBe(
+      'no_goal',
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('keeps no_goal apart from empty', async () => {
+    await expect(recordGoalFeedback(42, 'owner', 'what_came_of_it', '   ')).resolves.toBe('empty');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('queues nothing rather than raising into a swallowed catch', async () => {
+    await expect(queueGoalFeedback('owner', Number(undefined))).resolves.toBeUndefined();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('still reaches the database for a real goal id', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
+
+    await expect(recordGoalFeedback(42, 'owner', 'what_came_of_it', 'it went well')).resolves.toBe(
+      'saved',
+    );
+    expect(mockQuery).toHaveBeenCalled();
   });
 });

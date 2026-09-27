@@ -155,16 +155,25 @@ describe('their own words, or nothing', () => {
    * the file — and failed on my OWN COMMENT saying „do not summarise". It was
    * reading prose and calling it code. This reads what the function does.
    */
+  /**
+   * ⚠️ AND THE WINDOW IS THE FUNCTION, NOT 900 CHARACTERS. That is the same
+   * fault as the paragraph above wearing different clothes: on 27 September a
+   * six-line guard comment was added to the top of this function and pushed
+   * `text.slice(0, 2000)` past the count, so a test about what gets STORED
+   * failed because of prose again. A source test that measures a character
+   * offset measures the comments above the code.
+   */
   it('does not summarise or score anything', () => {
     const src = readFileSync(join(__dirname, '..', 'goalFeedback.service.ts'), 'utf8');
     const imports = src.slice(0, src.indexOf('export const'));
-    const fn = src.slice(src.indexOf('export async function recordGoalFeedback'));
+    const at = src.indexOf('export async function recordGoalFeedback');
+    const fn = src.slice(at, src.indexOf('\nexport ', at + 1));
 
     // Nothing that could rewrite an answer is even in scope.
     expect(imports).not.toMatch(/normaliz|score|classif|summari/i);
     // And what is stored is the text itself, bounded, and nothing derived.
-    expect(fn.slice(0, 900)).toContain('text.slice(0, 2000)');
-    expect(fn.slice(0, 900)).not.toMatch(/normalized_tags|score_vector/);
+    expect(fn).toContain('text.slice(0, 2000)');
+    expect(fn).not.toMatch(/normalized_tags|score_vector/);
   });
 });
 

@@ -38,6 +38,7 @@
  */
 import pool, { query } from '../../db/postgres/client';
 import { FactRefusedError, submitContactFact } from '../contactFacts.service';
+import { queueGoalFeedback, recordGoalFeedback } from '../goalFeedback.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { createRelayAsk } from '../taskAsks.service';
 import { getTaskById, grantTaskPermission, setTaskBrief, setTaskWake } from '../taskStore.service';
@@ -177,6 +178,44 @@ maybeDescribe('a missing field cannot reach the database', () => {
 
       const approved = await approveTaskPlan(OWNER, taskId);
       expect(approved.ok).toBe(true);
+    });
+  });
+
+  /**
+   * ⚠️ ALSO NOT ON THE LIST, AND THE QUIETEST OF THE FOUR. `recordGoalFeedback`
+   * puts the same id into `goal_feedback.task_id`, which is INTEGER NOT NULL.
+   *
+   * `queueGoalFeedback` is worse: its only caller wraps it in
+   * `.catch(() => undefined)`, so the raise was swallowed whole. Nothing
+   * failed, nothing was logged, and the next feedback question simply never
+   * got queued — a thing that does not happen, reported by nobody, for as long
+   * as it took somebody to read this line.
+   */
+  describe('the feedback doors — the same id again', () => {
+    it('says "no_goal", which is not the same as "empty"', async () => {
+      await expect(
+        recordGoalFeedback(Number(undefined), OWNER, 'what_came_of_it', 'it went well'),
+      ).resolves.toBe('no_goal');
+
+      await expect(recordGoalFeedback(taskId, OWNER, 'what_came_of_it', '  ')).resolves.toBe(
+        'empty',
+      );
+    });
+
+    it('queues nothing rather than raising into a swallowed catch', async () => {
+      await expect(queueGoalFeedback(OWNER, Number('the vet one'))).resolves.toBeUndefined();
+    });
+
+    it('still records an answer against a goal that exists', async () => {
+      await expect(
+        recordGoalFeedback(taskId, OWNER, 'what_came_of_it', 'the vet was found in a day'),
+      ).resolves.toBe('saved');
+
+      const back = await query<{ answer: string }>(
+        `SELECT answer FROM goal_feedback WHERE task_id = $1 AND question_key = 'what_came_of_it'`,
+        [taskId],
+      );
+      expect(back.rows[0]?.answer).toBe('the vet was found in a day');
     });
   });
 

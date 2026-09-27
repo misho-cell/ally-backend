@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { isARealId } from './goalId';
 import { queueGoalFeedback } from './goalFeedback.service';
 import { setThreadStatus } from './threadStatus.service';
 import { RunLanguage, RUN_STRINGS } from './runLanguage';
@@ -261,40 +262,6 @@ export async function goalHasActedOutward(taskId: number): Promise<boolean> {
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0]?.acted === true;
-}
-
-/**
- * A GOAL ID THAT IS NOT A NUMBER IDENTIFIES NO GOAL — AND USED TO END THE RUN.
- *
- * Every task id a model supplies arrives as `Number(input['task_id'])`, and
- * `Number(undefined)` is `NaN`. `pg` serializes that as the STRING „NaN", so
- * Postgres raises `invalid input syntax for type integer: "NaN"` — a throw, and
- * nothing catches a tool that throws: `processToolBlocks` runs the calls in a
- * bare `Promise.all`, so one bad id ends the person's whole run with a database
- * error instead of the model being told to pass the id.
- *
- * `chat.service.ts` already guards ONE of its ten task-id doors —
- * `Number.isFinite(taskId) ? await getTaskById(taskId) : null` — so this was
- * known at one site and missing at the rest. The check belongs here, where
- * every door meets, and the answers stay the ones these functions already give
- * for an id that matches nothing: `null`, and `false`.
- *
- * ⚠️ AND „WHERE EVERY DOOR MEETS" WAS NOT TRUE WHEN I WROTE IT — 27 September,
- * four hours later. `chat.service.ts` hands the same `Number(input['task_id'])`
- * to `proposeTaskPlan` and `approveTaskPlan` in `taskPlans.service.ts`, and
- * neither of those goes through this file at all. Both put it straight into
- * `WHERE id = $1`, so the same missing field reached Postgres as the string
- * „NaN" and raised — measured against a real database, not argued.
- *
- * The approve door checks `confirmed` and checks the screen and never checked
- * the id, which is the day's own shape: the measurement was right and the
- * question was different. So this is EXPORTED now, and its comment no longer
- * claims a completeness it does not have. It is the rule for a goal id
- * wherever one arrives from a model; it is not a proof that every such place
- * has been found.
- */
-export function isARealId(id: number): boolean {
-  return Number.isInteger(id) && id > 0;
 }
 
 export async function getTaskById(taskId: number): Promise<(Task & { user_id: string }) | null> {

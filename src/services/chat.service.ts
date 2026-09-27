@@ -7322,6 +7322,12 @@ async function executeToolCall(
         key as GoalFeedbackKey,
         String(input['answer'] ?? ''),
       );
+      // „That is not a goal" and „nothing was said" are different facts and
+      // the model needs to be told which — the first is fixed by passing the
+      // id from the item, the second by asking the person again.
+      if (saved === 'no_goal') {
+        return { success: false, error: 'Pass the task_id from the feedback item itself.' };
+      }
       if (saved === 'empty') {
         return { success: false, error: 'Nothing was said — do not save an empty answer.' };
       }

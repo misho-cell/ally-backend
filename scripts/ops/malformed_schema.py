@@ -34,7 +34,7 @@ MIGRATIONS = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'db', 'p
 
 # The tables the malformed-input guards actually touch. Anything wider drags in
 # the legacy schema and stops being reproducible.
-WANTED = re.compile(r'\b(tasks|task_asks|user_profile_kv|contact_facts)\b')
+WANTED = re.compile(r'\b(tasks|task_asks|user_profile_kv|contact_facts|goal_feedback|pending_updates)\b')
 DDL = re.compile(r'^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)', re.IGNORECASE)
 
 

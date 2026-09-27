@@ -1,7 +1,8 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { georgianStem } from './tools/georgianStem';
-import { isARealId, Task } from './taskStore.service';
+import { isARealId } from './goalId';
+import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
 import { withoutAskBoundaries } from './askBoundary.service';
