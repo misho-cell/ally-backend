@@ -507,4 +507,22 @@ describe('the owner naming somebody outranks the draft, for that person only', (
   it('leaves a line saying why the draft was bypassed', () => {
     expect(service).toContain('the owner named this person (row 251)');
   });
+
+  /**
+   * ⚠️ AND THE BRANCH THAT REACHES THAT LINE, which the assertion above does
+   * not hold. Block-mode sabotage, 27 September: `if (ownerNamedThem) {`
+   * falsified, and the test above stayed green — the sentence is still in the
+   * file, inside a block that can no longer run.
+   *
+   * The gate itself is held separately (the `!introAccepted && !ownerNamedThem
+   * && draftIsWaiting` assertion above), so this is NOT a hole in the consent
+   * wall: it is the loss of the RECORD that the wall was crossed for a named
+   * person. On row 251 that record is the only evidence a bypass ever
+   * happened, and a bypass nobody can see afterwards is the shape this project
+   * has paid for repeatedly.
+   */
+  it('holds the branch, not only the sentence inside it', () => {
+    expect(service).toContain('if (ownerNamedThem) {');
+    expect(service).toContain('if (introAccepted) {');
+  });
 });
