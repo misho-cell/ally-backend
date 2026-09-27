@@ -1,9 +1,13 @@
 import {
+  informalGeorgianForDisplay,
   labelCramsTwoThings,
   looksLikeTypedChoice,
   mtavruliToMkhedruli,
   scrubButtonLabel,
   scrubMechanicalForStorage,
+  stripAllowedSpans,
+  stripEmDashesForDisplay,
+  stripRedactionArtifactsForDisplay,
 } from '../privacyScrub';
 
 // Ticket 11 Task 1: the mechanical classes the prompt could not hold.
@@ -143,5 +147,55 @@ describe('row 201 — Mtavruli never reaches a stored message', () => {
 
   it('a button label carries none either', () => {
     expect(scrubButtonLabel(`${MTAVRULI_D}იახ`)).toBe('დიახ');
+  });
+});
+
+/**
+ * A CARD THAT ASKS A QUESTION STILL ASKS IT AFTER THE DISPLAY PASS.
+ *
+ * ⚠️ 27 SEPTEMBER, thread 25741. The tester read two cards as truncated:
+ *
+ *     „Netai Test 6-თან გაცნობა დადასტურდა. გამოდგა "
+ *
+ * — „გამოდგა" with nothing after it, which in Georgian reads as „it turned
+ * out…" and stops. The sentence is `t.introHow(who)` and ends `გამოდგა?` —
+ * „did it work out?". Drop the question mark and a QUESTION becomes a
+ * STATEMENT MISSING ITS OBJECT. Nothing is cut; one character is.
+ *
+ * Measured rather than argued: `conversations` holds both rows complete,
+ * question mark and all three choices, and the four display transforms return
+ * the string unchanged. The loss is past this boundary.
+ *
+ * This test exists because the loss is easy to introduce HERE next. The
+ * tester's own Q-166 asks for a scrubber that strips „a comma or a question
+ * mark inside a LABEL" — a rule that is right for a button and wrong for the
+ * sentence above it. The three-line pending card is the one place where both
+ * live side by side.
+ */
+describe('the display pass leaves a question a question', () => {
+  const CARD = 'Netai Test 6-თან გაცნობა დადასტურდა. გამოდგა?';
+
+  function asDisplayed(text: string): string {
+    return informalGeorgianForDisplay(
+      stripEmDashesForDisplay(stripRedactionArtifactsForDisplay(stripAllowedSpans(text))),
+    );
+  }
+
+  it('keeps the question mark on an intro debrief card', () => {
+    expect(asDisplayed(CARD)).toBe(CARD);
+  });
+
+  it('keeps it on the English one too', () => {
+    const english = 'The introduction to Netai Test 6 was accepted. Did it work out?';
+
+    expect(asDisplayed(english)).toBe(english);
+  });
+
+  /**
+   * And the em-dash rule, which DOES rewrite, still leaves the question mark
+   * where it is — so this is not passing merely because nothing ran.
+   */
+  it('rewrites an em dash without touching the question mark', () => {
+    expect(asDisplayed('გამოვიდა — გამოდგა?')).toBe('გამოვიდა, გამოდგა?');
   });
 });
