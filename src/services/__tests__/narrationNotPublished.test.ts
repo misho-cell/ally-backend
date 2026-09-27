@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 /**
  * THE LAST PLACE THE PRODUCT STILL PROMISED SOMETHING IT CANNOT KEEP.
  *
@@ -67,5 +70,63 @@ describe('narration from a round that only saves a note is not published', () =>
    */
   it('is a list of tools, not a list of phrases', () => {
     expect(narrationIsSafeToPublish(['tool_that_does_not_exist'])).toBe(true);
+  });
+});
+
+/**
+ * ⚠️ SIX TESTS ON THE PREDICATE, NONE ON EITHER LINE THAT CALLS IT.
+ *
+ * Block-mode sabotage, 27 September: `if (narration && narrationIsSafeToPublish(roundTools)) {`
+ * falsified in `chat.service.ts` — twice, because the same line appears at two
+ * points in the model loop — and every test above stayed green. They hold the
+ * function from six angles and ask nothing about whether anybody consults it.
+ * That is the shape the sweep's own header promises it will keep finding, and
+ * it is the third instance today.
+ *
+ * WHAT A DEAD WIRE COSTS: the step panel publishes „შენახულია" for a round
+ * that only called `save_user_note` — a sentence promising something that has
+ * not happened yet, on a screen somebody is watching. The header above this
+ * function calls it „the last place the product still promises something it
+ * cannot keep". A guard nobody calls puts that promise back.
+ *
+ * TWO CALL SITES, ANCHORED BY POSITION AND NOT BY TEXT. That distinction was
+ * learned an hour earlier on `runWasStopped`, where the same sentence appears
+ * twice, one copy was held and the other was not, and every assertion used
+ * `indexOf` — which finds the first and cannot see the second die.
+ */
+describe('both call sites actually consult it', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const GUARD = 'if (narration && narrationIsSafeToPublish(roundTools)) {';
+
+  const FIRST = chat.indexOf(GUARD);
+  const SECOND = chat.indexOf(GUARD, FIRST + 1);
+
+  it('has both of them', () => {
+    expect(FIRST).toBeGreaterThan(0);
+    expect(SECOND).toBeGreaterThan(FIRST);
+  });
+
+  it.each([
+    ['the first', () => FIRST],
+    ['the second', () => SECOND],
+  ])('%s publishes and persists only inside the guard', (_name, at) => {
+    const block = chat.slice(at(), at() + 420);
+
+    expect(block).toContain('emitStepSummary(userId, threadId, runId, narration);');
+    expect(block).toContain("saveMessage(userId, threadId, 'assistant', narration, 'step', runId)");
+  });
+
+  /**
+   * AND THE RESCUE IS INSIDE IT TOO. A suppressed narration that still fed
+   * `bestNarration` would be promoted into the FINAL message by the
+   * buried-answer rescue — which is the promise arriving somewhere worse.
+   */
+  it.each([
+    ['the first', () => FIRST],
+    ['the second', () => SECOND],
+  ])('%s keeps a withheld line out of the buried-answer rescue', (_name, at) => {
+    const block = chat.slice(at(), at() + 420);
+
+    expect(block).toContain('bestNarration = narration;');
   });
 });
