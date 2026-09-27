@@ -85,6 +85,26 @@ SUITE_TIMEOUT_S = int(os.environ.get('SABOTAGE_TIMEOUT', '300'))
 # was in this list. A filter that cannot see the guard behind the worst
 # outbound duplicate we have had is a filter with a hole in it.
 #
+# ⚠️ AND AGAIN ON 27 SEPTEMBER, OVER THE ONLY JOB THAT SPENDS MONEY UNATTENDED.
+# `researchRunner.service.ts` was swept twenty minutes after it was switched on
+# and block mode offered ZERO of its EIGHT guards — which reads as „nothing is
+# unheld" and means „nothing was examined". The four that matter:
+#
+#     if (running) {                    two ticks overlapping = double spend
+#     if (!runnerOn()) {                THE SWITCH ITSELF
+#     if (remaining <= 0) {             the daily ceiling
+#     if (!webSearchConfigured()) {     „would spend its whole daily allowance
+#                                        writing the same error row 200 times"
+#
+# The filter HAS money words — budget, cap, limit — and not one of them appears
+# on those lines. The words that mean money there are `running`, `remaining`,
+# `runnerOn`, `configured`. So: a reentrancy guard, a feature switch, a
+# remainder and a capability check, none of which sounds like money and all of
+# which are.
+#
+# `cost` and `paid` widen this into costLedger and billing, which is exactly
+# where it should be looking.
+#
 # `owner` -> `\bown` on 27 September, and the hole it left is the same shape.
 # `debrief.service.ts:379` is
 #
@@ -97,7 +117,8 @@ SUITE_TIMEOUT_S = int(os.environ.get('SABOTAGE_TIMEOUT', '300'))
 HARM = re.compile(
     r'block|opt_?out|optOut|deceased|consent|permission|approved|approv|'
     r'\bcap\b|budget|limit|redact|phone|token|safe|moderat|\bown|drain|'
-    r'exclud|stop|member|allow|denied|forbid|busy|holder|lock',
+    r'exclud|stop|member|allow|denied|forbid|busy|holder|lock|'
+    r'remaining|configured|\brunning\b|runner|spend|spent|charge|paid|\bcost',
     re.I,
 )
 
