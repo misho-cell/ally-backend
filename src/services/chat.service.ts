@@ -9878,18 +9878,33 @@ async function deliverPendingMessages(
         );
       }
       const choices = rendered.choices.map(scrubButtonLabel);
-      const messageId = await savePendingMessage(
-        userId,
-        target,
-        runId,
-        scrubMechanicalForStorage(rendered.text),
-        choices,
-        rendered,
-      );
+      /**
+       * ONE TEXT, BOTH DOORS — AND IT USED TO BE TWO.
+       *
+       * The store was given `scrubMechanicalForStorage(rendered.text)` and the
+       * live stream was given `rendered.text` RAW, so the person who was
+       * present and the same card re-read a minute later could differ. That
+       * breaks an invariant this codebase states in `scrubMechanicalForStorage`'s
+       * own comment: „applied BEFORE the reply is stored, so
+       * `/threads/:id/messages`, the list's `last_message` and the SSE stream
+       * all read the same clean text."
+       *
+       * What actually diverged: MTAVRULI in a contact's name (the scrub folds
+       * it to mkhedruli, and plenty of names in this database are stored in
+       * caps), bold markers, a colon before a list, an em dash. A card that
+       * says „GIORGI-თან" live and „გიორგი-თან" on reload is one message in
+       * two versions.
+       *
+       * ⚠️ IT DOES NOT EXPLAIN THE MISSING QUESTION MARK, and I am not going
+       * to let it look as though it does. `scrubMechanicalForStorage` does not
+       * touch „?" — found while looking for that and it is a different fault.
+       */
+      const text = scrubMechanicalForStorage(rendered.text);
+      const messageId = await savePendingMessage(userId, target, runId, text, choices, rendered);
       emitMessageAppended(userId, target, runId, {
         messageId: String(messageId),
         kind: 'pending',
-        content: rendered.text,
+        content: text,
         choices,
         ref: rendered.ref,
       });
