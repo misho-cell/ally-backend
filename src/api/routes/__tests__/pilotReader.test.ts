@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 // The gate on reading other people's conversations. Ticket 19 [16]: the founder
 // opened it for the one shared admin login and said it switches off on the last
 // day of the 14-day pilot. A date alone does not keep that promise — nothing
@@ -71,5 +74,75 @@ describe('the pilot conversation reader', () => {
     process.env.PILOT_CONVERSATION_READER_UNTIL = 'soon';
 
     expect(pilotReaderAllowed(asAdmin(READER)).allowed).toBe(false);
+  });
+});
+
+/**
+ * ⚠️ SIX TESTS ON THE GATE, NONE ON ANY OF THE THREE DOORS IT GUARDS.
+ *
+ * Block-mode sabotage of `admin.routes.ts`, 27 September: each of the three
+ * `if (!gate.allowed) {` blocks falsified in turn, and every test above stayed
+ * green. They hold `pilotReaderAllowed` from six angles and ask nothing about
+ * whether any route consults it.
+ *
+ * WHAT A DEAD WIRE OPENS. These three routes are the pilot reader — the
+ * founder's window into thirteen real people's conversations, deliberately
+ * narrowed by D224 to ONE shared login and by D225 to a date that closes
+ * itself. With the check dead, every admin token reads them, and the gate's
+ * own tests still pass. That is not a worse error message; it is the door
+ * standing open while the lock is certified.
+ *
+ *   GET /pilot/people              the pilot's members by name
+ *   GET /pilot/threads             their conversations
+ *   GET /pilot/threads/:id/messages  one conversation, in full
+ *
+ * THE LIST IS BEHIND THE SAME DOOR AS THE READING, on purpose — the file's own
+ * comment says a list that names the pilot's members is not a lesser
+ * capability. So all three are held here, separately, and by POSITION rather
+ * than by text: the same sentence appears three times, and a test using
+ * `indexOf` would only ever see the first one die.
+ */
+describe('all three pilot routes actually ask the gate', () => {
+  const routes = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
+
+  const sites = (): number[] => {
+    const found: number[] = [];
+    let at = routes.indexOf('const gate = pilotReaderAllowed(req);');
+    while (at !== -1) {
+      found.push(at);
+      at = routes.indexOf('const gate = pilotReaderAllowed(req);', at + 1);
+    }
+    return found;
+  };
+
+  it('has exactly three of them, one per route', () => {
+    expect(sites()).toHaveLength(3);
+  });
+
+  it.each([0, 1, 2])('site %i refuses with 403 and the gate’s own reason', (i) => {
+    const at = sites()[i];
+    const block = routes.slice(at, at + 260);
+
+    expect(block).toContain('if (!gate.allowed) {');
+    expect(block).toContain('res.status(403).json({ success: false, error: gate.reason });');
+    expect(block).toContain('return;');
+  });
+
+  /**
+   * AND THE REFUSAL COMES BEFORE THE READ. A gate consulted after the rows are
+   * fetched is a gate on the response, not on the data — and on this door the
+   * data is thirteen people's conversations.
+   */
+  it.each([
+    ['people', 'await pilotPeople()'],
+    ['threads', 'await getThreadsForUser(String(userId))'],
+    ['messages', 'await getThreadMessages(threadId)'],
+  ])('the %s route refuses before it reads', (_name, call) => {
+    const readAt = routes.indexOf(call);
+    const gateBefore = routes.lastIndexOf('if (!gate.allowed) {', readAt);
+
+    expect(readAt).toBeGreaterThan(0);
+    expect(gateBefore).toBeGreaterThan(0);
+    expect(gateBefore).toBeLessThan(readAt);
   });
 });
