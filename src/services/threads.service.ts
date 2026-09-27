@@ -885,6 +885,54 @@ export async function ownerMessages(threadId: number): Promise<string[]> {
  * is a genuinely new member and nothing here can do better; what it must not
  * do is guess from the sender.
  */
+/** Georgia's dialling code, and the only one this rule names. */
+const GEORGIAN_DIALLING_CODE = '995';
+
+/**
+ * ROW 260 / D505 — WHICH LANGUAGE A PERSON WHO HAS NEVER WRITTEN A WORD READS.
+ *
+ * Until 27 September this was „Georgian", full stop, and that is not a small
+ * default: the first ask a stranger ever receives is written before they have
+ * typed anything, so this line — not the translator — decides what they are
+ * handed. An English reader was sent Georgian and the translator never ran,
+ * because the two languages matched. No model call, no ledger row, no log:
+ * the row I fixed in the translation wall this morning cannot even see this
+ * case.
+ *
+ * I did not change it on my own, and would not have: sending English at a
+ * Georgian reader is the same harm pointing the other way. Tornike's answer,
+ * 27 September, in his words:
+ *
+ *   „Keep georgian if it is georgian county code +995, if it's another country
+ *    code switch to English, and continue in language he responds"
+ *
+ * MEASURED BEFORE BUILDING IT, because a rule about a stored format is only as
+ * good as the format: of 62,645 stored numbers, 61,442 begin 995 and 1,203
+ * carry some other country code. NOT ONE is stored bare, without a code — so
+ * „no 995" really does mean „not a Georgian number" here, rather than „stored
+ * locally". Had there been bare local numbers this rule would have read them
+ * as foreign and sent English to Georgians.
+ *
+ * ⚠️ THE NUMBER ITSELF NEVER LEAVES THE DATABASE (D149). The query returns a
+ * BOOLEAN — whether any of this person's numbers begins with the code — so
+ * there is no phone number in this function, in its callers, or in anything
+ * either of them can log.
+ *
+ * A person with NO number at all keeps Georgian. The ruling names two cases,
+ * +995 and another country code, and „no number" is neither; guessing English
+ * there would be reading a rule past what it says.
+ */
+async function languageOfAStrangersNumber(userId: string): Promise<RunLanguage> {
+  const result = await query<{ georgian: boolean | null }>(
+    `SELECT BOOL_OR(regexp_replace(phone, '[^0-9]', '', 'g') LIKE $2 || '%') AS georgian
+     FROM "UserPhone" WHERE "userId" = $1::int`,
+    [userId, GEORGIAN_DIALLING_CODE],
+  );
+  const georgian = result.rows[0]?.georgian;
+  // NULL is „this person has no number", not „not Georgian".
+  return georgian === false ? 'en' : 'ka';
+}
+
 export async function userLanguage(userId: string): Promise<RunLanguage> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
@@ -894,7 +942,10 @@ export async function userLanguage(userId: string): Promise<RunLanguage> {
     [userId, LANGUAGE_SAMPLE_MESSAGES],
   );
   const [latest, ...earlier] = result.rows.map((r) => r.content);
-  if (latest === undefined) return 'ka';
+  // „Continue in the language he responds" is the rest of D505, and it is
+  // already what happens: the moment there is one message, it decides, and the
+  // number is never consulted again.
+  if (latest === undefined) return languageOfAStrangersNumber(userId).catch(() => 'ka');
   return languageOfConversation(latest, earlier);
 }
 
