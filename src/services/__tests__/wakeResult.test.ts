@@ -184,6 +184,32 @@ describe('wakeTask says WHY it did not wake', () => {
     expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
   });
 
+  /**
+   * ⚠️ AND THE GOAL CAN BE OPEN WHILE ITS THREAD IS GONE. The test above holds
+   * the goal's own columns — closed, or no `thread_id` at all. This holds the
+   * row one join away: `thread_id` points somewhere and nothing is there.
+   *
+   * It is not hypothetical. D245 made deleting a thread the way an owner
+   * CLOSES a conversation, and the tester's item 12 closed sixty-four of them
+   * that way. A goal left open behind one of those is exactly this shape.
+   *
+   * Found on 27 September by `sabotage.py`: `if (!thread) return 'stopped'`
+   * could be commented out with the whole suite still green — the only
+   * survivor of seven in this file. Without it the next line reads
+   * `thread.status` on nothing and the wake throws instead of answering, and a
+   * throw is not one of the three words the retry loop knows. „Stopped" is the
+   * right answer and the load-bearing one: `busy` would send the loop back
+   * fifteen times at a thread that is never coming back, which is row 157's
+   * fault exactly.
+   */
+  it('stops when the goal is open but its thread row is gone', async () => {
+    mockThread.mockResolvedValue(null);
+
+    expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
+    // Nothing was written into a conversation that no longer exists.
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
   it('calls the owner still talking BUSY, not stopped', async () => {
     mockThread.mockResolvedValue(thread());
     mockQuery.mockResolvedValue({ rows: [{ recent: true }], rowCount: 1 } as never);
