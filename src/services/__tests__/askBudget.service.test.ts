@@ -317,3 +317,83 @@ describe('BUDGET_WINDOW=week', () => {
     expect(monthly[0]).toContain("date_trunc('week', NOW())");
   });
 });
+
+/**
+ * ⚠️ THE FLOOR IS OFF BY DEFAULT (D134) — AND THE ON PATH HAD NOTHING HOLDING
+ * IT, WHICH IS A DIFFERENT SENTENCE.
+ *
+ * The tests above hold the OFF behaviour, deliberately and correctly. But
+ * `PER_CONVERSATION_GROWTH_ASK_LIMIT` is read once at module load and defaults
+ * to 0, so in the whole suite that block never executes — which is why the
+ * sabotage sweep of 27 September could delete BOTH of its lines with 4,936
+ * tests green. A switch nobody has flipped is still a switch somebody will
+ * flip, and the day it is flipped is the wrong day to find out it was never
+ * run.
+ *
+ * MEASURED THE SAME DAY, so this is not theory about which state we are in:
+ * conversations carry three and four growth asks from one sender today, on
+ * real accounts as well as seats. The floor is not in force, exactly as D134
+ * says it should not be. These tests describe what turning it on would do.
+ */
+describe('the per-conversation floor when it is turned ON', () => {
+  const freshWithLimit = async (
+    limit: number,
+  ): Promise<{
+    q: jest.Mock;
+    check: (from: string, thread: number | undefined) => Promise<unknown>;
+  }> => {
+    process.env.PER_CONVERSATION_GROWTH_ASK_LIMIT = String(limit);
+    jest.resetModules();
+    const db = (await import('../../db/postgres/client')) as unknown as { query: jest.Mock };
+    const svc = await import('../askBudget.service');
+    return { q: db.query, check: svc.checkAskBudget };
+  };
+
+  const route = (q: jest.Mock, inConversation: number): void => {
+    q.mockImplementation((sql: string) => {
+      if (sql.includes('JOIN tasks t'))
+        return Promise.resolve(rows([{ count: String(inConversation) }]) as never);
+      if (sql.includes('ask_optout_events'))
+        return Promise.resolve(rows([{ opt_outs: '0', ignored: '0' }]) as never);
+      return Promise.resolve(rows([{ count: '0' }]) as never);
+    });
+  };
+
+  afterEach(() => {
+    delete process.env.PER_CONVERSATION_GROWTH_ASK_LIMIT;
+    jest.resetModules();
+  });
+
+  it('refuses the ask that would pass the limit, and names why', async () => {
+    const { q, check } = await freshWithLimit(1);
+    route(q, 1);
+
+    expect(await check('42', 555)).toEqual({
+      allowed: false,
+      reason: 'conversation_limit_reached',
+    });
+  });
+
+  /**
+   * AND THE CONTROL: one under the limit still goes, through to the monthly
+   * budget. Without this, „refuses" would also be satisfied by a gate that
+   * refused everything — which is the same broken cap read from the other side.
+   */
+  it('lets the ask under the limit through to the monthly budget', async () => {
+    const { q, check } = await freshWithLimit(2);
+    route(q, 1);
+
+    expect(await check('42', 555)).toEqual({ allowed: true });
+  });
+
+  /** The conversation is what is counted — no thread, no floor, whatever the limit. */
+  it('still skips the floor for a surface with no conversation', async () => {
+    const { q, check } = await freshWithLimit(1);
+    route(q, 99);
+
+    expect(await check('42', undefined)).toEqual({ allowed: true });
+    expect(q.mock.calls.some(([sql]: [string]) => String(sql).includes('JOIN tasks t'))).toBe(
+      false,
+    );
+  });
+});
