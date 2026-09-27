@@ -65,6 +65,10 @@ const REFUSAL_STATUS: Record<string, number> = {
   too_large: 413,
   unsupported_format: 415,
   no_speech: 422,
+  // Heard, and written in the wrong alphabet (row 226). 422 like `no_speech`:
+  // the audio arrived and was processed, and what came back cannot be used —
+  // which is a different sentence from „we never tried".
+  wrong_script: 422,
   recognizer_failed: 502,
 };
 

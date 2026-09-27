@@ -47,6 +47,7 @@ export type TranscriptionOutcome =
         | 'unsupported_format'
         | 'no_speech'
         | 'recognizer_failed'
+        | 'wrong_script'
         | 'daily_limit';
       detail?: string;
     };
@@ -382,6 +383,24 @@ async function transcribeWith(
   );
 }
 
+/** Georgian and Latin letters, for the one comparison in `transcribe`. */
+const GEORGIAN_LETTERS = /[Ⴀ-ჿ]/u;
+const LATIN_LETTERS = /[A-Za-z]/u;
+
+/** What the RECOGNISER called it — „ka" on some formats, „georgian" on others. */
+function recogniserSaidGeorgian(reported: string | undefined): boolean {
+  const said = (reported ?? '').trim().toLowerCase();
+  return said === 'ka' || said === 'georgian' || said.startsWith('ka-');
+}
+
+export function heardGeorgianButWroteLatin(text: string, reported: string | undefined): boolean {
+  if (!recogniserSaidGeorgian(reported)) return false;
+  const letters = [...text];
+  const georgian = letters.filter((ch) => GEORGIAN_LETTERS.test(ch)).length;
+  const latin = letters.filter((ch) => LATIN_LETTERS.test(ch)).length;
+  return latin > georgian;
+}
+
 export async function transcribe(input: TranscribeInput): Promise<TranscriptionOutcome> {
   if (!transcriptionIsOn()) {
     return { ok: false, reason: 'not_enabled' };
@@ -448,6 +467,31 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
       // „I listened and heard no words" is not „I could not listen". The app
       // team asked for these to be separable and they were right to.
       return { ok: false, reason: 'no_speech' };
+    }
+    /**
+     * ROW 226 — IT HEARD GEORGIAN AND WROTE IT IN THE LATIN ALPHABET.
+     *
+     * The tester's 21-second clip came back as Latin transliteration, partly
+     * distorted. That text is not an answer and it is not a failure either: it
+     * goes into a run as if it were the person's words, and what reaches them
+     * is nonsense built on nonsense. „I could not hear you" is a sentence
+     * somebody can act on; a garbled transliteration is not.
+     *
+     * ⚠️ THE TEST IS THE RECOGNISER'S OWN ANSWER, NEVER THE PHONE'S CLAIM.
+     * `result.language` is what it decided it heard; `languageHint` is what
+     * the handset said. Judging by the hint would make this exactly the field
+     * described a few lines below — one that cannot disagree with its input —
+     * and it would refuse a person who simply spoke English on a Georgian
+     * phone. If the recogniser did not say, nothing is refused.
+     *
+     * A majority, not a presence, and the same rule row 260's translation wall
+     * uses: a Georgian sentence carrying a Latin name still passes.
+     *
+     * This does NOT fix 226. The model still has to be chosen, and that is not
+     * mine. It stops the broken half reaching a person in the meantime.
+     */
+    if (heardGeorgianButWroteLatin(text, result.language)) {
+      return { ok: false, reason: 'wrong_script' };
     }
     /**
      * WHAT IT HEARD, not what it was told. This used to echo the caller's own
