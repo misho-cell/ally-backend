@@ -123,16 +123,46 @@ export async function beatOnce(): Promise<'sent' | 'not_needed' | 'failed'> {
   }
 }
 
+/** One sweep, never allowed to throw into whatever called it. */
+function sweep(): void {
+  void beatOnce().catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[heartbeat] sweep failed:', (err as Error).message),
+  );
+}
+
 export function startHeartbeat(): void {
   // eslint-disable-next-line no-console
   console.log(
     `[heartbeat] started — one ${HEARTBEAT_MODEL} call when the provider has been ` +
       `silent ${SILENCE_BEFORE_PROBE_MIN}+ min, checked every ${CHECK_INTERVAL_MS / 60_000} min`,
   );
-  setInterval(() => {
-    void beatOnce().catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.error('[heartbeat] sweep failed:', (err as Error).message),
-    );
-  }, CHECK_INTERVAL_MS).unref();
+  /**
+   * ⚠️ ONCE AT STARTUP, AND THAT LINE IS THE WHOLE POINT OF IT — 27 September.
+   *
+   * `setInterval` first fires a full interval AFTER the process starts, and a
+   * deploy replaces the container. So every deploy sets this clock back to
+   * zero, and a container that lives less than ten minutes NEVER CHECKS ONCE.
+   *
+   * MEASURED, not reasoned about: five containers between 22:18 and 23:00 on
+   * 27 September, lifetimes 16, 10, 7, 6 and 3 minutes. Every one of them
+   * logged „[heartbeat] started". NOT ONE logged a check, a probe or a result.
+   * `outage.sh` said „NOTHING PROVEN — last Anthropic call 50 min ago", and it
+   * was right: the one thing that turns silence into evidence had been dead for
+   * forty-two minutes, on the night the tester was about to run a full pass.
+   *
+   * An evening of frequent deploys is EXACTLY when the product is most likely
+   * to be broken and exactly when this was guaranteed not to look. The watcher
+   * was disabled by the act of shipping, which is the same shape as the thrown
+   * -tool wrapper making a loud failure quiet: I broke the watching while
+   * improving the thing being watched.
+   *
+   * Looking is free — `beatOnce` reads the ledger and returns `not_needed`
+   * without spending anything unless the provider has genuinely been silent
+   * twenty-five minutes. So the cost of this line is one Haiku call per deploy
+   * on a night when nothing else has called the provider in half an hour, which
+   * is precisely the call worth making.
+   */
+  sweep();
+  setInterval(sweep, CHECK_INTERVAL_MS).unref();
 }

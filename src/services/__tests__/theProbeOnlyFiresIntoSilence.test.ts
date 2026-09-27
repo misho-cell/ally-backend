@@ -202,3 +202,62 @@ describe('it is actually started', () => {
     expect(index).toContain('startHeartbeat();');
   });
 });
+
+/**
+ * ⚠️ AND IT MUST LOOK ONCE AT STARTUP, WHICH IT DID NOT UNTIL 27 SEPTEMBER.
+ *
+ * `setInterval` first fires a whole interval AFTER the process starts, and a
+ * deploy replaces the container. So every deploy set this clock back to zero,
+ * and a container that lived less than ten minutes never checked once.
+ *
+ * MEASURED, not reasoned about: five containers between 22:18 and 23:00 that
+ * evening, lifetimes 16, 10, 7, 6 and 3 minutes. Every one logged
+ * „[heartbeat] started". NOT ONE logged a check, a probe, or a result.
+ * `outage.sh` said „NOTHING PROVEN — last Anthropic call 50 min ago", and it
+ * was right: the only thing that turns silence into evidence had been dead for
+ * forty-two minutes — on the night a full test pass was about to start.
+ *
+ * An evening of frequent deploys is exactly when the product is most likely to
+ * be broken and exactly when this was guaranteed not to look. THE WATCHER WAS
+ * DISABLED BY THE ACT OF SHIPPING. Same shape as the thrown-tool wrapper of
+ * the same day, which made a loud failure quiet: the watching broke while the
+ * watched thing was being improved.
+ *
+ * This is a source test and I would rather it were not — driving it properly
+ * means faking timers around a module that starts an unref'd interval, and
+ * what is at stake is one call ordering. What it holds is that the call stays.
+ */
+describe('it looks once at startup, not only an interval later', () => {
+  const src = readFileSync(join(__dirname, '..', 'heartbeat.cron.ts'), 'utf8');
+  const fn = src.slice(src.indexOf('export function startHeartbeat'));
+
+  it('sweeps before it schedules', () => {
+    const sweepsNow = fn.indexOf('\n  sweep();');
+    const schedules = fn.indexOf('setInterval(');
+
+    expect(sweepsNow).toBeGreaterThan(-1);
+    expect(sweepsNow).toBeLessThan(schedules);
+  });
+
+  /**
+   * The startup look must go through the SAME function as the interval's, or
+   * the two drift and only one of them keeps the catch that stops a rejected
+   * probe reaching an unhandled handler.
+   */
+  it('uses the same swept-and-caught path as the interval', () => {
+    expect(fn).toContain('setInterval(sweep, CHECK_INTERVAL_MS)');
+    expect(src).toContain("console.error('[heartbeat] sweep failed:'");
+  });
+
+  /**
+   * And it stays free by default. `beatOnce` reads the ledger first, so a
+   * startup look on a busy container spends nothing at all — the whole reason
+   * this is safe to do on every deploy.
+   */
+  it('costs nothing unless the provider has genuinely been silent', async () => {
+    dbQuery.mockResolvedValue({ rows: [{ quiet_min: 3 }] });
+
+    await expect(beatOnce()).resolves.toBe('not_needed');
+    expect(messagesCreate).not.toHaveBeenCalled();
+  });
+});
