@@ -72,11 +72,27 @@ describe('getAllInsightFields', () => {
   });
 });
 
+/**
+ * ⚠️ THE FIXTURES HERE USED TO BE NODE IDS — „contact-node-1", „missing-node" —
+ * and `neo4j_contact_id` is a PHONE: the service normalizes it with
+ * `normalizePhone` and the dispatcher passes `input['phone']`. Measured on the
+ * live table before changing them: all 14 rows are `+digits`, none under the
+ * empty key. The names are a leftover from the Neo4j era and described a shape
+ * the column has never held.
+ *
+ * It mattered mechanically too. Once the read refuses a phone with no digits,
+ * „missing-node" returns null WITHOUT a query — leaving its
+ * `mockResolvedValueOnce` in the queue for the next test, which is what made
+ * nine unrelated tests in this file fail at once.
+ */
+const A_CONTACT = '+995599112233';
+const A_CONTACT_WITH_NOTHING_SAVED = '+995599445566';
+
 describe('getContactInsight', () => {
   it('returns insight when found', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockInsight], rowCount: 1 } as never);
 
-    const result = await getContactInsight('user-uuid-1', 'contact-node-1');
+    const result = await getContactInsight('user-uuid-1', A_CONTACT);
 
     expect(result).toEqual(mockInsight);
   });
@@ -84,7 +100,7 @@ describe('getContactInsight', () => {
   it('returns null when not found', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
 
-    const result = await getContactInsight('user-uuid-1', 'missing-node');
+    const result = await getContactInsight('user-uuid-1', A_CONTACT_WITH_NOTHING_SAVED);
 
     expect(result).toBeNull();
   });
@@ -94,7 +110,7 @@ describe('saveContactInsight', () => {
   it('upserts and returns the saved insight', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockInsight], rowCount: 1 } as never);
 
-    const result = await saveContactInsight('user-uuid-1', 'contact-node-1', 'გიორგი', {
+    const result = await saveContactInsight('user-uuid-1', A_CONTACT, 'გიორგი', {
       mood: 'happy',
     });
 
@@ -105,7 +121,7 @@ describe('saveContactInsight', () => {
   it('throws when DB returns no rows', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
 
-    await expect(saveContactInsight('user-uuid-1', 'contact-node-1', 'გიორგი', {})).rejects.toThrow(
+    await expect(saveContactInsight('user-uuid-1', A_CONTACT, 'გიორგი', {})).rejects.toThrow(
       'Unable to save contact insight',
     );
   });

@@ -1,5 +1,4 @@
 import { saveContactInsight } from '../insights.service';
-import { normalizePhone } from '../phone';
 import { ChatToolDefinition, ContactInsight } from '../../types';
 
 export interface SaveContactInsightParams {
@@ -32,22 +31,15 @@ export function createSaveContactInsightTool(
         description: 'The collected contact insight data as a JSON object',
       },
     },
-    execute: async (params: SaveContactInsightParams): Promise<ContactInsight> => {
-      const { phone, contact_name, collected_data } = params;
-
-      // THE IDENTIFIER, NOT THE TYPING — and here it is a write. The row is
-      // keyed `(user_id, normalizePhone(phone))` with
-      // `ON CONFLICT … DO UPDATE SET data = contact_insights.data || EXCLUDED.data`,
-      // so every save whose phone holds no digits lands on the ONE row keyed
-      // `''` and merges into whatever the last such save left there. Two
-      // different people's notes in a single record, under the later name.
-      // `phone.trim()` does not see that: "unknown" passes it and normalizes
-      // to `''` just the same.
-      if (!normalizePhone(phone) || !contact_name.trim()) {
-        throw new Error('phone and contact_name are required');
-      }
-
-      return saveContactInsight(userId, phone, contact_name, collected_data);
-    },
+    /**
+     * ⚠️ THIS CLOSURE DOES NOT RUN. `getContactInsightTools` is consumed only
+     * by `toAnthropicTool`, which reads `name`, `description` and `parameters`
+     * — the live call goes through `chat.service.ts`'s dispatcher straight to
+     * `saveContactInsight`. A guard written here on 27 September was a guard
+     * on nothing, with passing tests; the rule now lives in the service, once,
+     * where both this and the dispatcher meet.
+     */
+    execute: async (params: SaveContactInsightParams): Promise<ContactInsight> =>
+      saveContactInsight(userId, params.phone, params.contact_name, params.collected_data),
   };
 }

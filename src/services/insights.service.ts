@@ -13,6 +13,9 @@ const INSIGHT_FIELD_SELECT = `
   FROM insight_fields
 `;
 
+/** A refusal the doors turn into an answer, never a raw failure. */
+export class InsightRefusedError extends Error {}
+
 export async function getInsightFields(): Promise<InsightField[]> {
   const result = await query<InsightField>(
     `${INSIGHT_FIELD_SELECT} WHERE is_active = true ORDER BY created_at ASC`,
@@ -25,10 +28,31 @@ export async function getAllInsightFields(): Promise<InsightField[]> {
   return result.rows;
 }
 
+/**
+ * ⚠️ THE LIVE DOOR IS `chat.service.ts`'s DISPATCHER, NOT THE TOOL WRAPPER.
+ *
+ * `tools/save_contact_insight.ts` and `tools/get_contact_insight.ts` look like
+ * the entry points and are not: `getContactInsightTools` is consumed only by
+ * `toAnthropicTool`, which reads `name`, `description` and `parameters` and
+ * never touches `execute`. Those closures do not run. The dispatcher calls
+ * THESE functions directly.
+ *
+ * This is written down because guarding the wrappers instead of these is a
+ * mistake already made once, on 27 September — the tests passed, the guard was
+ * real, and it sat in a function nothing invokes.
+ */
+export const INSIGHT_NEEDS_A_CONTACT = 'Pass the phone id from a search result.';
+export const INSIGHT_NEEDS_A_NAME = 'Pass the contact name.';
+export const INSIGHT_NEEDS_DATA = 'Pass collected_data as an object.';
+
 export async function getContactInsight(
   userId: string,
   neo4jContactId: string,
 ): Promise<ContactInsight | null> {
+  // No insight is ever stored under a phone with no digits in it, so asking
+  // for one is answered without a query. See the note on the save below for
+  // why that matters rather than being a tidy-up.
+  if (!normalizePhone(neo4jContactId)) return null;
   const result = await query<ContactInsight>(
     `SELECT id, user_id AS "userId", neo4j_contact_id AS "neo4jContactId", neo4j_contact_name AS "neo4jContactName", data, created_at AS "createdAt", updated_at AS "updatedAt" FROM contact_insights WHERE user_id = $1 AND neo4j_contact_id = $2`,
     [userId, normalizePhone(neo4jContactId)],
@@ -43,6 +67,17 @@ export async function saveContactInsight(
   contactName: string,
   newData: Record<string, unknown>,
 ): Promise<ContactInsight> {
+  // The row is keyed `(user_id, normalizePhone(neo4jContactId))` and merged
+  // with `data = contact_insights.data || EXCLUDED.data`, so every save whose
+  // phone holds no digits lands on the ONE row keyed `''` and mixes two
+  // people's notes together under the later name. `neo4j_contact_name` and
+  // `data` are both NOT NULL, so an omitted field is a database error rather
+  // than a refusal the model can act on.
+  if (!normalizePhone(neo4jContactId)) throw new InsightRefusedError(INSIGHT_NEEDS_A_CONTACT);
+  if (contactName.trim() === '') throw new InsightRefusedError(INSIGHT_NEEDS_A_NAME);
+  if (newData === null || typeof newData !== 'object' || Array.isArray(newData)) {
+    throw new InsightRefusedError(INSIGHT_NEEDS_DATA);
+  }
   const result = await query<ContactInsight>(
     `INSERT INTO contact_insights (user_id, neo4j_contact_id, neo4j_contact_name, data)
      VALUES ($1, $2, $3, $4)

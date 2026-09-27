@@ -13,36 +13,40 @@
  * written. The read then hands that mixture back. One person's facts served as
  * another's, inside the owner's own store.
  *
- * ⚠️ FOUND BY `sabotage.py` ON 27 SEPTEMBER, in block mode, in BOTH tools:
+ * ⚠️ AND THE FIRST VERSION OF THIS TEST GUARDED A FUNCTION THAT DOES NOT RUN.
  *
- *     if (!phone.trim()) { ... }                        ->  if (false) {
- *     if (!phone.trim() || !contact_name.trim()) { ... } ->  if (false) {
+ * It held `createSaveContactInsightTool(...).execute`, which looks like the
+ * entry point and is not: `getContactInsightTools` is consumed only by
+ * `toAnthropicTool`, which reads `name`, `description` and `parameters` and
+ * never touches `execute`. The live call goes through `chat.service.ts`'s
+ * dispatcher STRAIGHT to `insights.service`. Eleven tests passed, the guard was
+ * real, and the path a person actually reaches was untouched — and it was
+ * reported as fixed, here and to the tester.
  *
- * and the whole suite stayed green. Nothing downstream looks: `insights.service`
- * normalizes and queries, `normalizePhone` answers `''` for a string with no
- * digits, and the SQL is happy to key a row on it.
+ * So the rule now lives in `insights.service`, once, where the dispatcher and
+ * the (unused) wrapper both arrive, and this file holds it there.
  *
- * READING THE TWO GUARDS TO WRITE THIS FOUND THE SECOND HALF. `.trim()` is the
- * wrong question. It asks whether the model typed SOMETHING; the row is keyed
- * by what that something normalizes to. "unknown" and "the number from before"
- * are not blank and normalize to `''` exactly like "   " does — they reached
- * the shared row through a guard that was standing right there. Both tools now
- * ask `normalizePhone(phone)`, which is the value the query actually uses, and
- * these tests hold that distinction rather than the old one: a digitless WORD
- * is the case that proves the guard is asking the right question.
+ * `.trim()` was also the wrong question, and that half stands: it asks whether
+ * the model typed SOMETHING; the row is keyed by what that something
+ * normalizes to. "unknown" is not blank and normalizes to `''` exactly like
+ * "   " does. A digitless WORD is the case that proves the guard asks the
+ * right question, so it is in every list below.
  */
-jest.mock('../../insights.service', () => ({
-  __esModule: true,
-  getContactInsight: jest.fn().mockResolvedValue(null),
-  saveContactInsight: jest.fn().mockResolvedValue({ id: 1 }),
-}));
+jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
-import { getContactInsight, saveContactInsight } from '../../insights.service';
-import { createGetContactInsightTool } from '../get_contact_insight';
-import { createSaveContactInsightTool } from '../save_contact_insight';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { query } from '../../../db/postgres/client';
+import {
+  getContactInsight,
+  saveContactInsight,
+  InsightRefusedError,
+  INSIGHT_NEEDS_A_CONTACT,
+  INSIGHT_NEEDS_A_NAME,
+  INSIGHT_NEEDS_DATA,
+} from '../../insights.service';
 
-const mockGet = getContactInsight as jest.MockedFunction<typeof getContactInsight>;
-const mockSave = saveContactInsight as jest.MockedFunction<typeof saveContactInsight>;
+const mockQuery = query as jest.MockedFunction<typeof query>;
 
 const OWNER = '501';
 const A_REAL_PHONE = '+995599112233';
@@ -55,54 +59,92 @@ const SOME_NOTES = { relationship: 'ახლო მეგობარი' };
  */
 const NOT_A_PHONE = ['', '   ', 'unknown', 'the number from the search above'];
 
-const get = createGetContactInsightTool(OWNER);
-const save = createSaveContactInsightTool(OWNER);
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockQuery.mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 } as never);
+});
 
-beforeEach(() => jest.clearAllMocks());
-
-describe('a save without a phone never reaches the store', () => {
+describe('a save without a contact never reaches the store', () => {
   it.each(NOT_A_PHONE)('refuses %p', async (phone) => {
-    await expect(
-      save.execute({ phone, contact_name: A_NAME, collected_data: SOME_NOTES }),
-    ).rejects.toThrow('phone and contact_name are required');
-
-    expect(mockSave).not.toHaveBeenCalled();
+    await expect(saveContactInsight(OWNER, phone, A_NAME, SOME_NOTES)).rejects.toThrow(
+      INSIGHT_NEEDS_A_CONTACT,
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('refuses a real phone with no name — the row carries the name too', async () => {
-    await expect(
-      save.execute({ phone: A_REAL_PHONE, contact_name: '  ', collected_data: SOME_NOTES }),
-    ).rejects.toThrow('phone and contact_name are required');
-
-    expect(mockSave).not.toHaveBeenCalled();
+    await expect(saveContactInsight(OWNER, A_REAL_PHONE, '  ', SOME_NOTES)).rejects.toThrow(
+      INSIGHT_NEEDS_A_NAME,
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   /**
-   * And it does let a real one through. Without this the three above would pass
-   * on a tool that refused everything, which is the same store broken from the
+   * `data` is `JSONB NOT NULL`, and an explicit `undefined` parameter is NULL
+   * on the wire — the column DEFAULT does not apply to a value that was
+   * supplied. So an omitted `collected_data` was a not-null violation.
+   */
+  it.each([undefined, null, 'notes', ['a']])('refuses collected_data of %p', async (data) => {
+    await expect(
+      saveContactInsight(OWNER, A_REAL_PHONE, A_NAME, data as Record<string, unknown>),
+    ).rejects.toThrow(INSIGHT_NEEDS_DATA);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('refuses through a typed error the doors can answer with', async () => {
+    await expect(saveContactInsight(OWNER, '', A_NAME, SOME_NOTES)).rejects.toBeInstanceOf(
+      InsightRefusedError,
+    );
+  });
+
+  /**
+   * And it does let a real one through. Without this the block above would pass
+   * on a store that refused everything, which is the same store broken from the
    * other side.
    */
   it('saves when the phone is a phone', async () => {
-    await save.execute({
-      phone: A_REAL_PHONE,
-      contact_name: A_NAME,
-      collected_data: SOME_NOTES,
-    });
+    await saveContactInsight(OWNER, A_REAL_PHONE, A_NAME, SOME_NOTES);
 
-    expect(mockSave).toHaveBeenCalledWith(OWNER, A_REAL_PHONE, A_NAME, SOME_NOTES);
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[1]).toBe(A_REAL_PHONE);
+    expect(params[2]).toBe(A_NAME);
   });
 });
 
-describe('a read without a phone never reaches the store', () => {
-  it.each(NOT_A_PHONE)('refuses %p', async (phone) => {
-    await expect(get.execute({ phone })).rejects.toThrow('phone is required');
-
-    expect(mockGet).not.toHaveBeenCalled();
+describe('a read without a contact never reaches the store', () => {
+  it.each(NOT_A_PHONE)('answers null for %p', async (phone) => {
+    expect(await getContactInsight(OWNER, phone)).toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('reads when the phone is a phone', async () => {
-    await get.execute({ phone: A_REAL_PHONE });
+    await getContactInsight(OWNER, A_REAL_PHONE);
 
-    expect(mockGet).toHaveBeenCalledWith(OWNER, A_REAL_PHONE);
+    expect(mockQuery.mock.calls[0][1]).toEqual([OWNER, A_REAL_PHONE]);
+  });
+});
+
+/**
+ * THE LIVE DOOR, which is the whole reason this file was rewritten. The service
+ * can refuse perfectly and the person still loses their run if the dispatcher
+ * lets the throw through instead of answering with it.
+ */
+describe('the chat dispatcher answers the refusal instead of throwing it', () => {
+  const dispatcher = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+
+  it('coerces both doors rather than casting', () => {
+    expect(dispatcher).toContain("return getContactInsight(userId, String(input['phone'] ?? ''));");
+    expect(dispatcher).toContain(
+      '        return await saveContactInsight(\n' +
+        '          userId,\n' +
+        "          String(input['phone'] ?? ''),\n" +
+        "          String(input['contact_name'] ?? ''),",
+    );
+  });
+
+  it('turns the refusal into an answer', () => {
+    expect(dispatcher).toContain(
+      'if (err instanceof InsightRefusedError) return { saved: false, error: err.message };',
+    );
   });
 });

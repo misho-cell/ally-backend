@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getContactInsight, saveContactInsight } from './insights.service';
+import { getContactInsight, saveContactInsight, InsightRefusedError } from './insights.service';
 import { createGetContactInsightTool, GetContactInsightParams } from './tools/get_contact_insight';
 import {
   createSaveContactInsightTool,
@@ -6050,7 +6050,7 @@ async function executeToolCall(
     case 'lookup_contact_by_phone':
       return lookupContactByPhone(input['phone_number'] as string);
     case 'get_contact_insight':
-      return getContactInsight(userId, input['phone'] as string);
+      return getContactInsight(userId, String(input['phone'] ?? ''));
     case 'search_contact_by_name':
       return runLoggedSearch(
         userId,
@@ -6137,12 +6137,20 @@ async function executeToolCall(
       }).catch(() => {});
       return fetchPage(input['url'] as string, Number(input['from_character'] ?? 0));
     case 'save_contact_insight':
-      return saveContactInsight(
-        userId,
-        input['phone'] as string,
-        input['contact_name'] as string,
-        input['collected_data'] as Record<string, unknown>,
-      );
+      // ⚠️ THIS is the live door — `tools/save_contact_insight.ts`'s `execute`
+      // never runs; only its schema is read. The service refuses a call it
+      // cannot file, and the refusal is answered here rather than thrown.
+      try {
+        return await saveContactInsight(
+          userId,
+          String(input['phone'] ?? ''),
+          String(input['contact_name'] ?? ''),
+          input['collected_data'] as Record<string, unknown>,
+        );
+      } catch (err) {
+        if (err instanceof InsightRefusedError) return { saved: false, error: err.message };
+        throw err;
+      }
     // Coerced, not cast. `key` and `value` are both `TEXT NOT NULL`, and
     // `savePrivateContext` calls `.replace` on the value before the query even
     // runs — so an omitted field was a TypeError or a not-null violation, and
