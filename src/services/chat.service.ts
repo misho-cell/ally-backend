@@ -7608,9 +7608,16 @@ async function executeToolCall(
       // Source 2 of warmth (ticket 9 task 13.1): the user's own word for who
       // they are close to. One answer does two jobs — it records a warm tie
       // AND, when they say so, names someone worth inviting.
-      const phone = String(input['phone'] ?? '');
-      if (!phone) return { saved: false, error: 'Pass the contact phone from a search result.' };
-      await recordWarmth(userId, phone, 'stated_close', 'chat');
+      // The service answers whether it wrote — `if (!phone)` here only caught
+      // the empty string, and „unknown" went through it into a no-op that was
+      // reported as saved.
+      const recorded = await recordWarmth(
+        userId,
+        String(input['phone'] ?? ''),
+        'stated_close',
+        'chat',
+      );
+      if (!recorded) return { saved: false, error: 'Pass the contact phone from a search result.' };
       return {
         saved: true,
         could_use_netai: input['could_use_netai'] === true,

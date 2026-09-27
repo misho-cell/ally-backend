@@ -1687,7 +1687,8 @@ export async function mcpSaveCloseContact(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { saved: false, error: UNKNOWN_REF_ERROR };
-  await recordWarmth(userId, phone, 'stated_close', 'connector');
+  const recorded = await recordWarmth(userId, phone, 'stated_close', 'connector');
+  if (!recorded) return { saved: false, error: UNKNOWN_REF_ERROR };
   return {
     saved: true,
     could_use_netai: args.could_use_netai === true,

@@ -4,6 +4,8 @@ jest.mock('../pendingUpdates.service', () => ({
   queueFollowUp: jest.fn().mockResolvedValue({ id: 1 }),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { queueFollowUp } from '../pendingUpdates.service';
 import {
@@ -48,9 +50,58 @@ describe('recordWarmth — the ledger of what actually happened', () => {
   });
 
   it('refuses a phone that is not a phone rather than writing a junk row', async () => {
-    await recordWarmth('501', 'not a number', 'stated_close');
+    expect(await recordWarmth('501', 'not a number', 'stated_close')).toBe(false);
 
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  /**
+   * AND IT SAYS SO. The refusal above was already here and already right; what
+   * was missing is that nobody could hear it. `Promise<void>` left both doors
+   * — `save_close_contact` in chat and in the connector — answering
+   * `saved: true` over a write that never happened.
+   */
+  it('answers that it wrote when it wrote', async () => {
+    expect(await recordWarmth('501', '+995599111111', 'stated_close')).toBe(true);
+  });
+
+  /**
+   * AND IT STORES THE CANONICAL NUMBER. Every read is an exact
+   * `contact_phone = ANY(...)` against phones taken from the tables — a row
+   * stored the way a person types it would sit there matching nothing. All 113
+   * rows in the live table are `+digits`; this is the one writer whose phone
+   * comes from a model rather than a table.
+   */
+  it('stores the canonical number, not what was typed', async () => {
+    await recordWarmth('501', '599 11 11 11', 'stated_close');
+
+    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(params[1]).toBe('+995599111111');
+  });
+});
+
+/**
+ * THE TWO DOORS. A service that refuses perfectly changes nothing if the door
+ * discards the answer — which is exactly what both of these did. Neither is
+ * callable in isolation (one is a `switch` arm inside a long closure, the
+ * other resolves a contact_ref first), so they are held on the source, whole
+ * lines rather than fragments.
+ */
+describe('save_close_contact reports what the ledger actually did', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const connector = readFileSync(join(__dirname, '..', 'mcp', 'handlers.ts'), 'utf8');
+
+  it('the chat door returns the service’s answer', () => {
+    expect(chat).toContain(
+      "if (!recorded) return { saved: false, error: 'Pass the contact phone from a search result.' };",
+    );
+  });
+
+  it('the connector door returns the service’s answer', () => {
+    expect(connector).toContain(
+      "const recorded = await recordWarmth(userId, phone, 'stated_close', 'connector');\n" +
+        '  if (!recorded) return { saved: false, error: UNKNOWN_REF_ERROR };',
+    );
   });
 });
 

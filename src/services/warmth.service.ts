@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { notATestSeat } from './testSeatCreate.service';
-import { phoneDigits } from './phone';
+import { normalizePhone } from './phone';
 import { queueFollowUp } from './pendingUpdates.service';
 
 const WARMTH_QUERY_TIMEOUT_MS = 8_000;
@@ -58,9 +58,20 @@ export async function recordWarmth(
   contactPhone: string,
   kind: WarmthKind,
   ref?: string,
-): Promise<void> {
-  const phone = contactPhone.trim();
-  if (!phone || !phoneDigits(phone)) return;
+): Promise<boolean> {
+  // IT ANSWERS WHETHER IT WROTE, because the two doors a person reaches
+  // through — `save_close_contact` in chat and in the connector — both said
+  // `saved: true` over a `Promise<void>` and could not have said anything
+  // else. „He's a close friend" was recorded as done and, for a phone with no
+  // digits in it, not recorded at all.
+  const phone = normalizePhone(contactPhone);
+  // AND IT STORES THE CANONICAL NUMBER. Every read here is an exact
+  // `contact_phone = ANY(...)` against phones that come from the tables, not
+  // from a person's typing — a row stored as „599 11 22 33" would sit there
+  // matching nothing. Measured before changing it: all 113 rows in
+  // `warmth_events` are already `+digits`, so this settles the one writer that
+  // took its phone from a model instead of a table.
+  if (!phone) return false;
   await query(
     `INSERT INTO warmth_events (user_id, contact_phone, kind, weight, ref)
      VALUES ($1::int, $2, $3, $4, $5)
@@ -68,6 +79,7 @@ export async function recordWarmth(
     [userId, phone, kind, WARMTH_WEIGHTS[kind], ref ?? null],
     WARMTH_QUERY_TIMEOUT_MS,
   );
+  return true;
 }
 
 /**
