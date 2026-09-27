@@ -33,6 +33,15 @@
 #   ./scripts/ops/pilot.sh people     who the pilot's people are
 #   ./scripts/ops/pilot.sh keys       just the field names, for the screen
 #   ./scripts/ops/pilot.sh check      the route against the database, five figures
+#   ./scripts/ops/pilot.sh outcomes [days]   row 274's eight numbers
+#
+# ⚠️ `outcomes` IS A DIFFERENT ROUTE AND A DIFFERENT QUESTION. `report` is
+# ACTIVITY PER DAY; `/admin/pilot/outcomes` is OUTCOMES PER PERSON. They were
+# deliberately not merged — one object whose fields mean different things
+# depending on which half you read is the trap `report` was written against —
+# and this command exists because 274 shipped with no way to read it from here
+# at all. On 27 September the page went out with four English explanations on
+# a Georgian screen and the only reader was the tester's eyes.
 set -euo pipefail
 OPS="${NETAI_OPS_DIR:-$HOME/.netai-ops}"
 API="${NETAI_API:-https://api.netai.guru}"
@@ -147,6 +156,16 @@ else:
     ;;
   people)
     get "$API/admin/pilot/people" | python3 -m json.tool
+    ;;
+  outcomes)
+    # ⚠️ `ensure_ascii=False`, AND THAT IS THE WHOLE POINT OF THIS BRANCH.
+    # `json.tool` escapes non-ASCII by default, so the Georgian sentences that
+    # travel with these numbers would print as \uXXXX and a reader checking
+    # whether the page reads in Georgian would learn nothing either way.
+    get "$API/admin/pilot/outcomes?days=${2:-28}" | python3 -c '
+import sys, json
+print(json.dumps(json.load(sys.stdin)["data"], indent=2, ensure_ascii=False))
+'
     ;;
   keys)
     # The field names and the TYPE of each, which is what somebody drawing a
