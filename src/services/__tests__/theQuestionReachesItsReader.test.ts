@@ -342,6 +342,58 @@ describe('a mangled translation is worse than no translation', () => {
    * the strong model and the labelled original are what stand behind meaning,
    * and pretending otherwise is how the next one gets missed.
    */
+  /**
+   * ⚠️ ROW 260 — KA→EN WAS NOT TRANSLATED AT ALL, AND THIS WALL CALLED IT A
+   * TRANSLATION.
+   *
+   * The tester, 25 September (their 628): „EN->KA meaning only PASS; KA->EN not
+   * translated at all." Both halves are one bug, and it is here rather than in
+   * the model.
+   *
+   * The brief ends „if you cannot translate it, answer with the original text
+   * unchanged" — so the original coming back is an EXPECTED answer, and the
+   * wall is the only thing that can tell it from a translation. For a Georgian
+   * question going to an English reader it could not:
+   *
+   *   - stray letters: none, because the asker's own script is allowed for names
+   *   - „not one letter of the target": SKIPPED, because the target is Latin
+   *   - length ratio: 1.0
+   *
+   * So the raw Georgian passed as an English translation, went in front of a
+   * reader who cannot read it, and — the part that kept it hidden — wrote NO
+   * `sent UNTRANSLATED` line, because from here it had succeeded.
+   */
+  it('refuses the original Georgian handed back as an English translation', () => {
+    const georgian = 'იცნობთ კარგ ნოტარიუსს თბილისში?';
+
+    const verdict = looksLikeATranslation(georgian, georgian, 'ka', 'en');
+
+    expect(verdict.ok).toBe(false);
+  });
+
+  /**
+   * AND THE NAME CASE, because the fix must not be „no Georgian letters in an
+   * English translation" — a name left in its own script is not a failure.
+   */
+  it('lets an English translation through when a name stays Georgian', () => {
+    expect(
+      looksLikeATranslation(
+        'Do you know a good notary in Tbilisi? ნინო recommends one.',
+        'იცნობთ კარგ ნოტარიუსს თბილისში? ნინო გვირჩევს ერთს.',
+        'ka',
+        'en',
+      ),
+    ).toEqual({ ok: true });
+  });
+
+  /** The Latin-frame case the seat found, from the other direction. */
+  it('still refuses a Latin-only answer where Georgian was asked for', () => {
+    expect(
+      looksLikeATranslation('I cannot translate this.', 'Do you know an electrician?', 'en', 'ka')
+        .ok,
+    ).toBe(false);
+  });
+
   it('cannot catch an inverted meaning, and the test says so', () => {
     const inverted = 'არ დაგვიწერთ პასუხი, თუ ვინმე გაახსენდება.';
 

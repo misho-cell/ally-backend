@@ -235,19 +235,55 @@ export function looksLikeATranslation(
    * AND THE HOLE THE SEAT NAMED IN THE SAME HOUR (their 505): „reject the
    * model's own voice — „I cannot", „you've specified"".
    *
-   * They are right and the two rules above do not cover it. Latin letters are
-   * ALLOWED inside a Georgian translation, because names stay as they are — so
-   * „I cannot translate this." is Latin, short, and would have gone straight to
-   * the reader. Tonight's example was long enough for the ratio to catch; a
-   * shorter refusal would not have been.
+   * They are right and the stray-letter rule does not cover it. Latin letters
+   * are ALLOWED inside a Georgian translation, because names stay as they are
+   * — so „I cannot translate this." is Latin, short, and would have gone
+   * straight to the reader. That night's example was long enough for the ratio
+   * to catch; a shorter refusal would not have been.
    *
    * The rule is not a phrase list, which would need the next refusal to be
-   * worded like the last one. A translation INTO a non-Latin script must
-   * contain some of that script. Nothing written entirely in Latin is a
-   * Georgian or Russian sentence, whatever it says.
+   * worded like the last one. It asks WHICH SCRIPT THE ANSWER IS MOSTLY IN.
+   *
+   * ⚠️ ROW 260, 27 SEPTEMBER — AND THE FIRST VERSION OF THIS RULE WAS HALF A
+   * RULE, WHICH IS WHY KA→EN WENT OUT UNTRANSLATED FOR TWO DAYS.
+   *
+   * It read `SCRIPTS[to] !== SCRIPTS.en && !SCRIPTS[to].test(translated)`: a
+   * translation INTO a non-Latin script must contain some of that script.
+   * Going the other way it checked NOTHING, and the brief's own last line is
+   * „if you cannot translate it, answer with the original text unchanged" — so
+   * the original coming back is an expected answer and this was the only thing
+   * that could recognise it. For Georgian → English it could not:
+   *
+   *     stray letters     none — the asker's script is allowed, for names
+   *     target script     skipped, because the target is Latin
+   *     length ratio      1.0
+   *
+   * The raw Georgian passed as an English translation, reached a reader who
+   * cannot read it, and wrote NO „sent UNTRANSLATED" line — because from in
+   * here it had succeeded. The tester found it from the reader's side (their
+   * 628): „EN->KA meaning only PASS; KA->EN not translated at all."
+   *
+   * SO THE RULE IS NOW SYMMETRIC AND IS A MAJORITY, NOT A PRESENCE: when the
+   * two languages are written in different scripts, the answer must carry MORE
+   * letters of the reader's script than of the asker's. That subsumes the old
+   * rule (a Latin-only answer where Georgian was asked for has zero against
+   * many) and closes the direction it never looked at. A name left in its own
+   * script is a handful of letters against a sentence, so it still passes —
+   * which is the case the second test below holds.
+   *
+   * Same-script pairs (en↔es) are skipped, because letters cannot tell them
+   * apart and a rule that guesses is worse than no rule.
    */
-  if (SCRIPTS[to] !== SCRIPTS.en && !SCRIPTS[to].test(translated)) {
-    return { ok: false, why: `not one letter of ${to} in it` };
+  if (SCRIPTS[from] !== SCRIPTS[to]) {
+    const letters = [...translated];
+    const inTarget = letters.filter((ch) => SCRIPTS[to].test(ch)).length;
+    const inSource = letters.filter((ch) => SCRIPTS[from].test(ch)).length;
+    if (inTarget <= inSource) {
+      return {
+        ok: false,
+        why: `${inSource} letters of ${from} against ${inTarget} of ${to} — still the original`,
+      };
+    }
   }
   if (translated.length > original.length * MAX_LENGTH_RATIO) {
     return { ok: false, why: `${translated.length} chars for an original of ${original.length}` };
