@@ -197,6 +197,7 @@ import {
 import { writeFinalAnswer, unusableReason } from './finalAnswer.service';
 import { splitOpeningLine } from './goalSplit';
 import {
+  describeCliffhangerOutcome,
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
@@ -9035,6 +9036,11 @@ async function runToolLoop(
    * needs the run log, and until it exists the fix stays unmade.
    */
   if (!promoted && isCliffhangerReply(finalText)) {
+    // Row 273's missing half — see `describeCliffhangerOutcome`. The
+    // announcement is kept because the log line compares the two texts, and
+    // by the end of this block `finalText` is both of them joined.
+    const announcement = finalText;
+    const toolCallsBeforeNudge = toolCallCount;
     try {
       const cliffhangerTurn = {
         role: 'assistant' as const,
@@ -9105,6 +9111,15 @@ async function runToolLoop(
 
       const continuationText = scrubText(extractText(continuation.content));
       if (continuationText) finalText = `${finalText}\n\n${continuationText}`;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[cliffhanger] run ${runId}: ` +
+          describeCliffhangerOutcome(
+            announcement,
+            continuationText,
+            toolCallCount - toolCallsBeforeNudge,
+          ),
+      );
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[chat] cliffhanger continuation failed:', (err as Error).message);

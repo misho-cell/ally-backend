@@ -63,3 +63,54 @@ export function claimsNothingFound(text: string): boolean {
   if (trimmed.length === 0 || trimmed.length > MAX_NOT_FOUND_CLAIM_CHARS) return false;
   return NOT_FOUND_CLAIM_RE.test(trimmed);
 }
+
+/**
+ * ROW 273's MISSING HALF — what the nudge actually bought, in one line.
+ *
+ * ⚠️ WHY THIS EXISTS. The guard fires 153 times a week (measured 26 September,
+ * from the nudge turns the run persists). What is NOT known is how many of
+ * those carried real work forward and how many only said the same thing twice,
+ * and until that is known the fix cannot be chosen: exempting the wrong tails
+ * would delete a guard built from five real cases.
+ *
+ * ⚠️ AND THE OBVIOUS MEASUREMENT DOES NOT WORK. The nudge row is written to
+ * the database at the END of a run together with every other pending turn, so
+ * its timestamp sits after the last tool call by construction — „tool calls
+ * after this moment" can only ever be zero. I ran that query, got a confident
+ * 141 of 153, and threw it away. The facts have to be recorded while the run
+ * still has them, which is here.
+ *
+ * WHAT IS RECORDED, and each one is a fact rather than a verdict:
+ *
+ *   tools   tool calls made DURING the continuation. Zero means the nudge
+ *           produced words only — which is not yet proof of repetition.
+ *   said    characters of the announcement that tripped the guard.
+ *   then    characters the continuation added.
+ *   echo    the share of the continuation's words that were already in the
+ *           announcement. NOT a similarity score and not a verdict: a high
+ *           echo on two short lines can be innocent, and this number exists
+ *           to be read beside the other three, never alone.
+ *
+ * NOTHING OF WHAT WAS SAID IS LOGGED — lengths and a ratio, no text. A
+ * person's sentence in a log is the same mistake as their phone number in one.
+ */
+export function describeCliffhangerOutcome(
+  announcement: string,
+  continuation: string,
+  toolCallsDuring: number,
+): string {
+  const words = (text: string): string[] =>
+    text
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length > 2);
+  const before = new Set(words(announcement));
+  const after = words(continuation);
+  const echoed = after.filter((w) => before.has(w)).length;
+  // No words is not a zero echo, it is nothing to measure.
+  const echo = after.length === 0 ? 'n/a' : `${Math.round((echoed / after.length) * 100)}%`;
+  return (
+    `tools=${toolCallsDuring} said=${announcement.trim().length} ` +
+    `then=${continuation.trim().length} echo=${echo}`
+  );
+}
