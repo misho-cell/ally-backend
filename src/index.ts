@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
+import { rateLimit } from './api/middleware/rateLimit.middleware';
 import authRouter from './api/routes/auth.routes';
 import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
@@ -60,6 +61,28 @@ app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After'] }));
 
 app.get('/favicon.ico', (req: Request, res: Response) => {
   res.redirect(FAVICON_URL);
+});
+
+/**
+ * IS THE SERVER UP — THE ONE QUESTION NOTHING COULD ANSWER.
+ *
+ * `outage.sh` reads `usage_events`, so it distinguishes „people are being
+ * served" from „people are seeing errors" honestly. What it CANNOT tell apart
+ * is „nobody used it in twenty minutes" from „the server is not there", and it
+ * says so: `NOTHING PROVEN`. On a quiet Sunday evening that line is ordinary;
+ * on 22 September the same shape was an outage nobody noticed for fifty
+ * minutes.
+ *
+ * Until now the only way to ask was to guess a path and read the 404, which
+ * answers the question by accident and stops answering the moment a real route
+ * is added at that path.
+ *
+ * It says nothing but that it is alive — no version, no commit, no counts. A
+ * liveness probe that leaks what is deployed is an unauthenticated inventory of
+ * the estate, and it is reachable by anyone.
+ */
+app.get('/health', rateLimit({ windowMs: 60_000, max: 60 }), (req: Request, res: Response) => {
+  res.json({ success: true, data: { alive: true } });
 });
 
 // Webhook route must use raw body BEFORE express.json() to allow signature verification
