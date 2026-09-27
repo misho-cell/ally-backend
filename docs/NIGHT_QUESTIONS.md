@@ -1204,7 +1204,36 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-_Nothing yet._
+### 1. Can a goal's autonomy still be changed after it is created? (27 Sep, 22:55 UTC)
+
+**For Tornike, and it is a product question, not a bug report.**
+
+While sweeping the goal-id doors I found `setTaskAutonomy` in
+`taskStore.service.ts`: exported, and called by **nothing at all** — no route,
+no tool, no connector handler, not even a test. `tasks.autonomy` is written
+once, when the goal is created, and after that there is no way to change it
+from anywhere in the product.
+
+I deleted the function, because the project rule is that unused code goes
+immediately and an unreachable door that takes a model-supplied id is exactly
+the kind of thing that gets wired up later and quietly reintroduces the bug
+class this whole evening was about. **Deleting it changed no behaviour** —
+nothing called it, and the typecheck proves that.
+
+But deleting the function is not the same as answering the question, and the
+question is his:
+
+> If a goal is created as `ask_first` and its owner later says „just get on
+> with it" — or the reverse, „stop and check with me each time" — should that
+> change the goal's autonomy? Today it cannot, and nothing tells the owner so.
+
+If the answer is yes, it is a small piece of work and wants a door with the
+owner's consent on it, like the plan-approval gate. If the answer is no —
+autonomy is decided when the goal is born and that is deliberate — then nothing
+more is needed and this line is the record of having asked.
+
+I am not deciding it, and there was nothing to decide tonight: the code that
+could not be reached is gone either way.
 
 ⚠️ The 25–26 September list was handed to Misho at 07:2x UTC and cleared here
 so the next night starts on a clean page. Both items were DECISIONS and neither

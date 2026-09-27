@@ -290,19 +290,6 @@ export async function setTaskBrief(
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function setTaskAutonomy(
-  userId: string,
-  taskId: number,
-  autonomy: TaskAutonomy,
-): Promise<boolean> {
-  const result = await query(
-    `UPDATE tasks SET autonomy = $3, updated_at = NOW() WHERE id = $1 AND user_id = $2`,
-    [taskId, userId, autonomy],
-    QUERY_TIMEOUT_MS,
-  );
-  return (result.rowCount ?? 0) > 0;
-}
-
 /** Schedule the task's next self-wake (revisit, reminder, summary deadline). */
 export async function setTaskWake(userId: string, taskId: number, hours: number): Promise<boolean> {
   if (!isARealId(taskId)) return false;
@@ -655,6 +642,13 @@ export async function updateTask(
   note?: string,
   closedAs?: ClosedAs,
 ): Promise<boolean> {
+  // ⚠️ THE ONE THIS FILE MISSED. The morning's pass guarded getTaskById,
+  // setTaskBrief, setTaskWake and grantTaskPermission and stopped there, and
+  // `update_task`'s pause and resume branch comes straight here with
+  // `Number(input['task_id'])` — only its CLOSING branch loads the task first.
+  // See isARealId; `false` is what this already answers for a goal it did not
+  // update.
+  if (!isARealId(taskId)) return false;
   const result = await query<{ thread_id: number | null }>(
     `UPDATE tasks
      SET status = $3,

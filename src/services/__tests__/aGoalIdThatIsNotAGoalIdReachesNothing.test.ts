@@ -3,6 +3,7 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 import { query } from '../../db/postgres/client';
 import { queueGoalFeedback, recordGoalFeedback } from '../goalFeedback.service';
 import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
+import { updateTask } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -152,6 +153,40 @@ describe('a goal id that is not a goal id reaches no feedback row', () => {
     await expect(recordGoalFeedback(42, 'owner', 'what_came_of_it', 'it went well')).resolves.toBe(
       'saved',
     );
+    expect(mockQuery).toHaveBeenCalled();
+  });
+});
+
+/**
+ * AND THE ONE THE MORNING'S PASS MISSED IN ITS OWN FILE.
+ *
+ * `taskStore.service.ts` guarded `getTaskById`, `setTaskBrief`, `setTaskWake`
+ * and `grantTaskPermission` — and not `updateTask`, which sits fifty lines
+ * below them and takes the same model-supplied id.
+ *
+ * ⚠️ THE CLOSING BRANCH IS SAFE AND THAT IS WHY IT LOOKED SAFE. `update_task`
+ * loads the goal with `getTaskById` before a CLOSE, so anybody reading that
+ * door sees a lookup and moves on. A PAUSE or a RESUME skips it entirely and
+ * goes straight here. Reading the interesting branch and assuming the dull one
+ * is the same is how this survived a deliberate sweep of the same file, four
+ * hours earlier, by me.
+ */
+describe('a goal id that is not a goal id updates no goal', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it.each([
+    ['a missing field', Number(undefined)],
+    ['a word', Number('the vet one')],
+    ['zero', 0],
+  ])('updateTask asks the database nothing for %s', async (_what, id) => {
+    await expect(updateTask('owner', id, 'paused')).resolves.toBe(false);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('still reaches the database for a real goal id', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ thread_id: null }], rowCount: 1 } as never);
+
+    await expect(updateTask('owner', 42, 'paused')).resolves.toBe(true);
     expect(mockQuery).toHaveBeenCalled();
   });
 });
