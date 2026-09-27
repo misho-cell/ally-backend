@@ -1033,6 +1033,14 @@ describe('memory tools', () => {
 });
 
 describe('blocking tools', () => {
+  // The handler passes the service's own answer straight back — the service is
+  // the one that knows whether a row was written, and saying `blocked: true`
+  // over the top of it is the failure these tools had.
+  beforeEach(() => {
+    mockBlock.mockResolvedValue({ blocked: true });
+    mockUnblock.mockResolvedValue({ unblocked: true });
+  });
+
   it('blocks and unblocks by contact_ref', async () => {
     const ref = encodeContactRef(USER, PHONE);
 

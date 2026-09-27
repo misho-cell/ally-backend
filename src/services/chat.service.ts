@@ -6282,15 +6282,17 @@ async function executeToolCall(
         await clearUserDistress(userId);
       }
       return { ok: true };
+    // Each of these three answers what it actually did. They used to `await`
+    // a `Promise<void>` and return `{ ok: true }` regardless — so a call whose
+    // phone held no digits stored a row no read would ever match and reported
+    // success, and the person was told somebody was blocked, unblocked or
+    // marked when nothing of the sort had happened.
     case 'mark_contact_deceased':
-      await markContactDeceased(userId, input['phone'] as string);
-      return { ok: true };
+      return markContactDeceased(userId, String(input['phone'] ?? ''));
     case 'block_contact':
-      await blockContact(userId, input['phone'] as string);
-      return { ok: true };
+      return blockContact(userId, String(input['phone'] ?? ''));
     case 'unblock_contact':
-      await unblockContact(userId, input['phone'] as string);
-      return { ok: true };
+      return unblockContact(userId, String(input['phone'] ?? ''));
     case 'list_blocked_contacts': {
       // The ask opt-out lives in a SEPARATE store from per-contact blocks —
       // an empty block list read as "receiving is on" while an ask_optouts

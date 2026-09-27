@@ -2,22 +2,50 @@ import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
 import { boundaryExclusionsFor } from './askBoundary.service';
 
-export async function blockContact(userId: string, phone: string): Promise<void> {
+/**
+ * „Pass the phone id from a search result." — the same words the other tools
+ * that write against a contact use, because it is the same mistake.
+ */
+export const NO_CONTACT_IN_THE_CALL = 'Pass the phone id from a search result.';
+
+/**
+ * A BLOCK KEYED ON NOTHING BLOCKS NOBODY, AND SAYS IT WORKED.
+ *
+ * `normalizePhone` answers `''` for anything with no digits in it — an absent
+ * argument, a name, „the one above". The insert then stores a row under `''`
+ * that every read compares against real phones and never matches, and the
+ * caller used to be told nothing at all (`Promise<void>` -> `{ ok: true }`).
+ * A person asks for somebody to be blocked, is told they were, and they were
+ * not. So the answer now carries what happened.
+ */
+export async function blockContact(
+  userId: string,
+  phone: string,
+): Promise<{ blocked: boolean; error?: string }> {
+  const canonical = normalizePhone(phone);
+  if (!canonical) return { blocked: false, error: NO_CONTACT_IN_THE_CALL };
   await query(
     `INSERT INTO "UserBlock" ("blockerId", "blockedPhone", "createdAt", "updatedAt")
      VALUES ($1, $2, NOW(), NOW())
      ON CONFLICT ("blockerId", "blockedPhone") DO NOTHING`,
-    [userId, normalizePhone(phone)],
+    [userId, canonical],
   );
+  return { blocked: true };
 }
 
-export async function unblockContact(userId: string, phone: string): Promise<void> {
+export async function unblockContact(
+  userId: string,
+  phone: string,
+): Promise<{ unblocked: boolean; error?: string }> {
+  const canonical = normalizePhone(phone);
+  if (!canonical) return { unblocked: false, error: NO_CONTACT_IN_THE_CALL };
   // Delete both the canonical row and any legacy raw-format row.
   await query(`DELETE FROM "UserBlock" WHERE "blockerId" = $1 AND "blockedPhone" IN ($2, $3)`, [
     userId,
-    normalizePhone(phone),
+    canonical,
     phone,
   ]);
+  return { unblocked: true };
 }
 
 export interface BlockedContact {

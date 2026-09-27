@@ -807,8 +807,7 @@ export async function mcpBlockContact(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { blocked: false, error: UNKNOWN_REF_ERROR };
-  await blockContact(userId, phone);
-  return { blocked: true };
+  return blockContact(userId, phone);
 }
 
 export async function mcpUnblockContact(
@@ -817,8 +816,7 @@ export async function mcpUnblockContact(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { unblocked: false, error: UNKNOWN_REF_ERROR };
-  await unblockContact(userId, phone);
-  return { unblocked: true };
+  return unblockContact(userId, phone);
 }
 
 export async function mcpListBlocked(userId: string): Promise<McpToolPayload> {
@@ -1391,8 +1389,7 @@ export async function mcpMarkContactDeceased(
 ): Promise<McpToolPayload> {
   const phone = decodeContactRef(userId, args.contact_ref ?? '');
   if (!phone) return { marked: false, error: UNKNOWN_CONTACT_REF };
-  await markContactDeceased(userId, phone);
-  return { marked: true };
+  return markContactDeceased(userId, phone);
 }
 
 export async function mcpSaveUserNote(
