@@ -553,6 +553,15 @@ async function loadRequestForMediator(
   target: { requestId?: number; requestRef?: string },
 ): Promise<RequestRow | null> {
   const byRef = target.requestRef !== undefined;
+  // AN ID THAT IS NOT AN ID IS „NOT FOUND", NOT A CRASH. `respond_to_introduction`
+  // hands `input['request_id']` over as a CAST, not a conversion — a missing
+  // field arrives as `undefined` (harmless, it becomes NULL and matches
+  // nothing) but a word arrives as a word, and `ir.id = 'abc'` makes Postgres
+  // raise `invalid input syntax for type integer`. Nothing catches a tool that
+  // throws, so that ends the mediator's whole run instead of telling them the
+  // request was not found — which is what this function already says.
+  const id = target.requestId;
+  if (!byRef && !(Number.isInteger(id) && (id as number) > 0)) return null;
   const result = await query<RequestRow>(
     `SELECT ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
             ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,

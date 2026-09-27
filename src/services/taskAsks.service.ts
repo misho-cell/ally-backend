@@ -2428,6 +2428,13 @@ async function relayAskInner(
   contact: string,
   question?: string,
 ): Promise<CreateAskOutcome> {
+  // The same rule as every other id from a model: `Number(input['ask_id'])` is
+  // `NaN` when the field is missing, `pg` sends that as the string „NaN", and
+  // Postgres raises rather than returning no rows. „Ask not found." is the
+  // answer this function already has for an id that matches nothing.
+  if (!Number.isInteger(parentAskId) || parentAskId <= 0) {
+    return { sent: false, error: 'Ask not found.' };
+  }
   const parent = await query<{
     id: number;
     task_id: number;
