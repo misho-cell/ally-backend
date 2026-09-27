@@ -135,9 +135,21 @@ export function provisionalTitle(message: string): string {
 // Short, phone-safe preview for the push body. Scrub first (the reply is already
 // scrubbed for SSE, but this path is independent), collapse whitespace, truncate.
 const PUSH_PREVIEW_MAX_CHARS = 120;
-function buildPushPreview(reply: string): string {
+/**
+ * „Your answer is ready" — what the lock screen says when the preview would
+ * otherwise be EMPTY, and without it the push goes out with a blank body.
+ *
+ * Measured rather than assumed: `scrubText` SUBSTITUTES (a phone-only reply
+ * comes back as „[hidden]", not as nothing), so the empty case is an empty or
+ * whitespace-only reply, not a scrubbed-away one.
+ *
+ * Exported for the same reason `provisionalTitle` is: the route it lives in
+ * cannot be called from a test without standing up the whole run.
+ */
+export const PUSH_PREVIEW_WHEN_NOTHING_IS_SAFE = 'შენი პასუხი მზადაა';
+export function buildPushPreview(reply: string): string {
   const safe = scrubText(reply).replace(/\s+/g, ' ').trim();
-  if (safe.length === 0) return 'შენი პასუხი მზადაა';
+  if (safe.length === 0) return PUSH_PREVIEW_WHEN_NOTHING_IS_SAFE;
   return safe.length > PUSH_PREVIEW_MAX_CHARS
     ? safe.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
     : safe;
