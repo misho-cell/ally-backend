@@ -57,13 +57,33 @@ describe('a tool that throws', () => {
   });
 
   it('leaves the real exception in the log, with the run it belongs to', () => {
-    expect(WRAPPER).toContain(
-      'console.error(`[tool] ${block.name} threw in run ${runId}:`, (err as Error).message);',
-    );
+    expect(WRAPPER).toContain('console.error(`[tool] ${block.name} threw in run ${runId}:`, why);');
   });
 
   it('marks the result as an error', () => {
     expect(WRAPPER).toContain('is_error: true');
+  });
+
+  /**
+   * AND IT REACHES THE TABLE, not only the console. A deploy takes the
+   * container's log with it, and `why.sh` — the routine whose whole job is to
+   * notice a failure reason said for the first time — reads `tool_call_log`.
+   * A thrown tool was invisible to it: the one class of failure nobody had to
+   * explain away, because nobody could see it.
+   */
+  it('writes the failure into the table why.sh reads', () => {
+    expect(WRAPPER).toContain('void logToolCall({');
+    expect(WRAPPER).toContain('tool: block.name,');
+  });
+
+  /**
+   * With the REAL message. That table is ours — `why.sh` and the admin window
+   * read it, no person does — so it is the exact opposite of the note sent to
+   * the model, and a generic string there would make the row worthless.
+   */
+  it('files the real exception there, not the generic note', () => {
+    expect(WRAPPER).toContain('result: { failed: true, error: why },');
+    expect(WRAPPER).not.toContain('result: { failed: true, error: TOOL_FAILED_NOTE }');
   });
 
   /**

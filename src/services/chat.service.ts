@@ -7885,11 +7885,39 @@ async function runOneToolBlockOrSayWhy(
   block: Anthropic.ToolUseBlock,
   ownerAbsent: boolean,
 ): Promise<Anthropic.ToolResultBlockParam> {
+  const startedAt = Date.now();
   try {
     return await runOneToolBlock(userId, threadId, runId, block, ownerAbsent);
   } catch (err) {
+    const why = (err as Error).message;
     // eslint-disable-next-line no-console
-    console.error(`[tool] ${block.name} threw in run ${runId}:`, (err as Error).message);
+    console.error(`[tool] ${block.name} threw in run ${runId}:`, why);
+    /**
+     * AND INTO THE TABLE, NOT ONLY THE CONSOLE — because a deploy takes the
+     * container's log with it, and `why.sh` exists precisely to notice a
+     * failure reason said for the first time. A thrown tool was invisible to
+     * it: the one class of failure nobody had to explain away, because nobody
+     * could see it.
+     *
+     * The REAL message goes here. This table is ours — `why.sh` and the admin
+     * window read it, no person does — and it is the opposite of the note sent
+     * to the model, which is deliberately generic. `outcomeOf` reads the
+     * `error` key and files the row as `ok: false` on its own.
+     *
+     * A throw means `runOneToolBlock` never reached its own `logToolCall`, so
+     * this cannot double-count. Fire-and-forget, like the call it replaces: a
+     * debugging record that can break somebody's answer is worse than none.
+     */
+    void logToolCall({
+      threadId,
+      surface: 'chat',
+      runId,
+      userId,
+      tool: block.name,
+      input: block.input as Record<string, unknown>,
+      result: { failed: true, error: why },
+      durationMs: Date.now() - startedAt,
+    });
     return {
       type: 'tool_result',
       tool_use_id: block.id,
