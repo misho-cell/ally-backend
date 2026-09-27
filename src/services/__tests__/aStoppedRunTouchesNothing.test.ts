@@ -113,3 +113,60 @@ describe('the chat route refuses to start a run into a shutdown', () => {
     expect(runIdAt).toBeGreaterThan(guardAt);
   });
 });
+
+/**
+ * ⚠️ AND THE SECOND SITE, WHICH IS THE ONE THAT WRITES.
+ *
+ * The same sentence — `if (runWasStopped(threadId, runId)) {` — appears TWICE
+ * in `chat.service.ts`: once in the tool loop, held by the tests above, and
+ * once at the very end of the run. The block-mode sweep falsified the second
+ * on 27 September with 4,972 tests green, and the reason it could is exactly
+ * why this addendum exists: every assertion above uses `indexOf`, which finds
+ * the FIRST occurrence, so the text is still there when the second is dead.
+ *
+ * That is the „asserting around the guard" fault in a new coat — two guards,
+ * one string, and a test that cannot tell them apart.
+ *
+ * WHAT THE SECOND ONE STOPS, in the file's own words: „The route never stores
+ * the reply; this does." The final answer is written AFTER the model loop
+ * ends, and on goal 4623 that write alone took twenty-six seconds. A stop
+ * during it has nowhere else to be noticed. Without this line the owner
+ * presses stop, the run is over, and the answer lands in the thread and on
+ * their lock screen anyway — which is row 113, the most visible broken promise
+ * this product has.
+ */
+describe('a run stopped while the last answer was being written writes nothing', () => {
+  const FIRST = chat.indexOf('if (runWasStopped(threadId, runId)) {');
+  const SECOND = chat.indexOf('if (runWasStopped(threadId, runId)) {', FIRST + 1);
+
+  it('exists as a second, separate guard', () => {
+    expect(FIRST).toBeGreaterThan(0);
+    expect(SECOND).toBeGreaterThan(FIRST);
+  });
+
+  it('drops the reply rather than returning it', () => {
+    const block = chat.slice(SECOND, SECOND + 500);
+
+    expect(block).toContain('clearRunState(runId);');
+    expect(block).toContain("reply: ''");
+    expect(block).toContain('stopped: true');
+  });
+
+  /**
+   * BEFORE THE WRITE. The assistant rows are saved further down the same
+   * function; a check that ran after them would be a check on a message the
+   * person has already been sent.
+   */
+  it('returns before any assistant message is saved', () => {
+    const nextSave = chat.indexOf("saveMessage(userId, threadId, 'assistant'", SECOND);
+
+    expect(nextSave).toBeGreaterThan(SECOND);
+  });
+
+  /** It says which run and why, because „the reply vanished" is not a record. */
+  it('says in the log that the owner stopped it', () => {
+    const block = chat.slice(SECOND, SECOND + 500);
+
+    expect(block).toContain('reply dropped — the owner stopped the goal');
+  });
+});
