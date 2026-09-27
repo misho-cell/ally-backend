@@ -99,3 +99,70 @@ describe('a tool keyed on a phone never surfaces an excluded contact', () => {
     expect(map).not.toContain('block_contact');
   });
 });
+
+/**
+ * ⚠️ AND THE ONE TOOL THAT HANDS OVER A REAL PHONE NUMBER IS NOT IN THAT MAP.
+ *
+ * `get_own_contact_number` is the only tool that returns a number to the owner
+ * rather than a fact about somebody. It is absent from
+ * `PHONE_KEYED_TOOL_FIELD` — correctly, because it is not a lookup that could
+ * be answered „unavailable" without telling the owner something about their
+ * own phonebook — so the pre-dispatch gate above never runs for it.
+ *
+ * ITS ONLY PROTECTION IS ONE LINE INSIDE `getOwnContactNumber`, and on 27
+ * September the block-mode sweep could falsify that line with 4,964 tests
+ * green. Without it the product hands over the number of somebody the owner
+ * has BLOCKED, or somebody recorded as DECEASED — which is the one category
+ * this codebase has been most careful about everywhere else.
+ *
+ * ⚠️ THESE ASSERT THE WHOLE `if (...) {`, NOT THE CONDITION ALONE, and that is
+ * not a style choice. The sweep's own mutation used to echo the condition into
+ * a comment, so a test asserting `excluded.has(normalizePhone(phone))` passed
+ * under mutation and the guard looked untested when it was not. Fixed in the
+ * sweep the same day; the rule it leaves behind is this one.
+ */
+describe('the number tool refuses a blocked or deceased contact by itself', () => {
+  const AT = chat.indexOf('async function getOwnContactNumber(');
+
+  it('is not covered by the pre-dispatch gate, so it must guard itself', () => {
+    const map = chat.slice(
+      chat.indexOf('const PHONE_KEYED_TOOL_FIELD'),
+      chat.indexOf('const PHONE_KEYED_TOOL_FIELD') + 300,
+    );
+
+    expect(AT).toBeGreaterThan(0);
+    expect(map).not.toContain('get_own_contact_number');
+  });
+
+  it('holds the condition itself', () => {
+    const fn = chat.slice(AT, AT + 1_600);
+
+    expect(fn).toContain('if (excluded.has(normalizePhone(phone))) {');
+    expect(fn).toContain("return { error: 'This contact is unavailable.' };");
+  });
+
+  /**
+   * BEFORE THE NUMBER IS BUILT, not after. A refusal that happens once the
+   * number is in the reply is not a refusal, and the ordering is the only
+   * thing that makes this line a gate rather than a comment.
+   */
+  it('refuses before the number is assembled', () => {
+    const fn = chat.slice(AT, AT + 1_600);
+    const guardAt = fn.indexOf('if (excluded.has(normalizePhone(phone))) {');
+    const numberAt = fn.indexOf('number: `${ALLOW_OPEN}');
+
+    expect(guardAt).toBeGreaterThan(0);
+    expect(numberAt).toBeGreaterThan(guardAt);
+  });
+
+  /** „Unavailable", not „blocked" and not „deceased" — the same restraint as above. */
+  it('says nothing about why', () => {
+    const fn = chat.slice(AT, AT + 1_600);
+    const line = fn.slice(
+      fn.indexOf('if (excluded.has(normalizePhone(phone))) {'),
+      fn.indexOf('if (excluded.has(normalizePhone(phone))) {') + 200,
+    );
+
+    expect(line).not.toMatch(/blocked|deceased|died/i);
+  });
+});
