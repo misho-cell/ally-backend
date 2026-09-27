@@ -111,7 +111,27 @@ def mutate(line: str) -> str:
         return '// SABOTAGE ' + line
     m = BLOCK_OPEN.match(line.rstrip('\n'))
     assert m is not None
-    return f'{m.group(1)}if (false) {{ // SABOTAGE was: {m.group(2)[:70]}\n'
+    # ⚠️ THE CONDITION IS NOT ECHOED INTO THE COMMENT, AND THAT IS THE WHOLE
+    # DIFFERENCE BETWEEN THIS SWEEP AND A SWEEP THAT LIES ABOUT SOURCE TESTS.
+    #
+    # It used to read `if (false) { // SABOTAGE was: <the condition>`. This
+    # codebase holds a lot of wires with SOURCE assertions — the handler is a
+    # closure, there is no supertest, and `theTypedStopIsReadFirst` and
+    # `anExcludedContactIsNotLookedUp` both say so in their own headers. Such a
+    # test asserts that the file CONTAINS the condition. With the condition
+    # echoed into the comment it still does, so the test passed under mutation
+    # and the sweep reported „nothing holds it" about a guard that a real
+    # deletion would have caught immediately.
+    #
+    # Found 27 September on `anExcludedContactIsNotLookedUp`, whose own header
+    # is about asserting AROUND a guard instead of ON it — and which does
+    # exactly that one level in, on the inner `excluded.has(...)`. Two of
+    # today's eleven „survivors" in chat.service.ts were of this kind.
+    #
+    # The file is restored either way; the marker exists for the crash that
+    # leaves one behind, and a line number serves that as well as a copy of the
+    # code. The per-candidate output already prints the original.
+    return f'{m.group(1)}if (false) {{ // SABOTAGE\n'
 
 
 def candidates():
