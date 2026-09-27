@@ -18,6 +18,7 @@ import {
   retractFactsFromForeignSync,
   hardDeleteOwnFact,
   isNearDuplicateFact,
+  FactRefusedError,
 } from '../contactFacts.service';
 import { normalizePhone } from '../phone';
 
@@ -694,5 +695,47 @@ describe('row 252 — a core fact from one member can be matched on', () => {
     const at = src.indexOf('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)');
 
     expect(src.slice(at, at + 400)).toContain('is_matchable = $7');
+  });
+});
+
+/**
+ * A FACT ABOUT NOBODY IS NOT A FACT.
+ *
+ * The row is keyed on `normalizePhone(neo4jContactIdRaw)`, and that is `''` for
+ * anything with no digits in it — an absent argument, a name, „the one above".
+ * Every digitless save therefore landed in ONE bucket, where facts about
+ * different people accumulate on top of each other and no read for a real
+ * person ever reaches them. The answer that came back said the fact was saved.
+ *
+ * Found by auditing every write keyed on a phone, after `sabotage.py` showed
+ * the same shape twice in one day at `contact_insights` and
+ * `contact_exclusions`. This is the fourth table.
+ *
+ * It refuses the way this function already refuses a guess — `FactRefusedError`
+ * — because both doors that a person can reach already turn that into
+ * `{ saved: false, error }`, and a refusal nobody sees is the thing being fixed.
+ */
+describe('a fact carrying no contact', () => {
+  it.each(['', '   ', 'unknown', 'the one above', 'გიორგი'])(
+    'is refused, not filed under the empty key — %p',
+    async (phone) => {
+      mockQuery.mockResolvedValue(rows([]) as never);
+
+      await expect(submitContactFact(USER, phone, 'occupation', 'architect')).rejects.toThrow(
+        FactRefusedError,
+      );
+      expect(mockQuery).not.toHaveBeenCalled();
+    },
+  );
+
+  it('files it under the canonical number when the phone is a phone', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await submitContactFact(USER, RAW_PHONE, 'occupation', 'architect');
+
+    const upsert = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)'),
+    );
+    expect((upsert?.[1] as unknown[])[0]).toBe(PHONE);
   });
 });

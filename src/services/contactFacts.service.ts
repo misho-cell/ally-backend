@@ -582,6 +582,19 @@ export async function submitContactFact(
   confidence: FactConfidence | null = 'stated',
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+  // A FACT ABOUT NOBODY IS NOT A FACT. `normalizePhone` answers `''` for
+  // anything with no digits in it, and the row is keyed by that value — so
+  // every digitless save landed in ONE bucket, where facts about different
+  // people accumulate together and no read for a real person ever reaches
+  // them. The MCP door resolves a contact_ref first; the chat door passes
+  // `input['phone']` through untouched, so the refusal belongs here. Both
+  // doors already turn `FactRefusedError` into `{ saved: false, error }`.
+  if (!neo4jContactId) {
+    throw new FactRefusedError(
+      'Nothing was saved: a fact is filed under a contact, and this call carried no phone. ' +
+        'Pass the phone id from a search result.',
+    );
+  }
   const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
   if (isGuessValue(value)) {
     throw new FactRefusedError(
