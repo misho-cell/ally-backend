@@ -148,6 +148,13 @@ def candidates():
     found = []
     for target in sys.argv[1:] or DEFAULT_TARGETS:
         base = ROOT / target
+        # A PATH THAT IS NOT THERE IS „I COULD NOT LOOK", NOT A CRASH. A file
+        # named from memory — `src/services/tools/officeholderGate.ts`, which
+        # lives one directory up — used to raise FileNotFoundError from inside
+        # the loop, AFTER the other eleven targets had been collected and with
+        # nothing said about which name was wrong.
+        if not base.exists():
+            sys.exit(f'sabotage: no such path: {target} (under {ROOT})')
         files = sorted(base.rglob('*.ts')) if base.is_dir() else [base]
         for f in files:
             if '__tests__' in str(f) or f.name.endswith('.test.ts'):

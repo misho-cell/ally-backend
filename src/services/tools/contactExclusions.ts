@@ -22,6 +22,15 @@ export async function saveContactExclusion(
   reason: string,
   revisitIf?: string,
 ): Promise<{ saved: boolean; error?: string }> {
+  // THE ROW IS KEYED BY THE PHONE, AND `fetchExclusionsForPhones` DROPS THE
+  // EMPTY ONE (`.filter(Boolean)`). So a save whose phone holds no digits is
+  // not a failed save — it is a row nothing will ever read, reported back as
+  // `saved: true`. The person is told their decision was recorded and it never
+  // takes effect, for good. The MCP door checks the phone (`decodeContactRef`
+  // -> UNKNOWN_CONTACT_REF); the chat door passes `String(input['phone'] ?? '')`
+  // straight through, so the check belongs here, where both doors meet.
+  const digits = phoneDigits(contactPhone);
+  if (!digits) return { saved: false, error: 'Pass the phone id from a search result.' };
   const scope = excludedFor.trim().slice(0, MAX_FIELD_CHARS);
   const why = reason.trim().slice(0, MAX_FIELD_CHARS);
   if (!scope || !why) return { saved: false, error: 'Pass excluded_for and reason.' };
@@ -30,13 +39,7 @@ export async function saveContactExclusion(
      VALUES ($1::int, $2, $3, $4, $5)
      ON CONFLICT (user_id, contact_phone, excluded_for)
      DO UPDATE SET reason = $4, revisit_if = $5, created_at = NOW()`,
-    [
-      userId,
-      phoneDigits(contactPhone),
-      scope,
-      why,
-      revisitIf?.trim().slice(0, MAX_FIELD_CHARS) ?? null,
-    ],
+    [userId, digits, scope, why, revisitIf?.trim().slice(0, MAX_FIELD_CHARS) ?? null],
     EXCLUSION_TIMEOUT_MS,
   );
   return { saved: true };
