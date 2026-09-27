@@ -55,17 +55,44 @@ const SIGNAL = /[ა-ჿ]|[а-яё]|[áéíóúñ¿¡]/i;
  */
 const MIN_LATIN_CHARS_TO_SWITCH = 25;
 
+/**
+ * ⚠️ NO EVIDENCE IS NOT EVIDENCE OF ENGLISH, and until 27 September it was.
+ *
+ * `detectRunLanguage` ends in `return 'en'`, which is right for a sentence
+ * written in Latin letters and wrong for an empty string. So a thread where
+ * the owner has never carried a signal — because every message of theirs is a
+ * button press, a two-word Latin line, or a tool turn stored with no display
+ * text — came back English no matter what the rest of the thread was.
+ *
+ * Found on goal 10430, thread 24884, 26 September 19:27. The run began
+ * Georgian, correctly: an engine wake's own text is Georgian and that is what
+ * it started from. Then this function looked behind the wake for the OWNER's
+ * language — which is the right rule, an engine event is not the owner — found
+ * their last typed line to be ten Latin characters and nothing else in the
+ * thread carrying a signal, and answered 'en'. The run's server-written block
+ * posted as „Found on the web:" into a thread that is Georgian everywhere
+ * else, and the tester was right to call it out.
+ *
+ * The caller had a better answer the whole time and was not asked for it. So
+ * the fallback is now the language the run already had: silence keeps what it
+ * found, and only real evidence moves it.
+ */
 export function languageOfConversation(
   latest: string,
   /** The thread's earlier messages, newest first. */
   earlier: readonly string[] = [],
+  /** What to keep when nothing in the conversation says otherwise. */
+  fallback: RunLanguage = 'en',
 ): RunLanguage {
   const trimmed = latest.trim();
   if (SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) {
     return detectRunLanguage(trimmed);
   }
   const spoken = earlier.find((text) => SIGNAL.test(text));
-  return detectRunLanguage(spoken ?? trimmed);
+  if (spoken !== undefined) return detectRunLanguage(spoken);
+  // Enough Latin to be a sentence is evidence; a word or an empty turn is not.
+  if (trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) return detectRunLanguage(trimmed);
+  return fallback;
 }
 
 interface RunStrings {

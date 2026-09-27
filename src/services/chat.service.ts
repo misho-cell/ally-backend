@@ -10421,6 +10421,10 @@ export async function processChat(
   const conversationLanguage = languageOfConversation(
     decidesLanguage,
     ownerAbsent ? spokenBefore.slice(1) : spokenBefore,
+    // Silence keeps what the run already found — for an engine wake that is
+    // the event's own language, which is the thread's. See the note above
+    // `languageOfConversation`: goal 10430 went English on no evidence at all.
+    language,
   );
   if (conversationLanguage !== language) {
     // eslint-disable-next-line no-console

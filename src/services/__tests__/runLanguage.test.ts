@@ -151,4 +151,36 @@ describe('what the owner has said, and only the owner', () => {
       ]),
     ).toBe('en');
   });
+
+  /**
+   * ⚠️ NO EVIDENCE IS NOT EVIDENCE OF ENGLISH.
+   *
+   * Goal 10430, thread 24884, 26 September. The run began Georgian — an engine
+   * wake's own text is Georgian — and then this function was asked what the
+   * OWNER speaks, which is the right question. Their last typed line was ten
+   * Latin characters and nothing else in the thread carried a signal, so the
+   * answer was 'en' and the server's own block posted as „Found on the web:"
+   * into a thread Georgian everywhere else.
+   *
+   * The caller knew better and was never asked. Silence now keeps what the run
+   * already had.
+   */
+  it('keeps the caller\u2019s language when nothing in the conversation says otherwise', () => {
+    expect(languageOfConversation('', [], 'ka')).toBe('ka');
+    expect(languageOfConversation('ok', [''], 'ka')).toBe('ka');
+    // The ten Latin characters of 24884, with no signal anywhere behind them.
+    expect(languageOfConversation('thanks all', ['', ''], 'ka')).toBe('ka');
+  });
+
+  it('still moves on real evidence, in either direction', () => {
+    // A sentence long enough to be a sentence beats the fallback.
+    expect(languageOfConversation('Please answer in English from now on', [], 'ka')).toBe('en');
+    // And a signal behind a short word beats it too.
+    expect(languageOfConversation('ok', ['გამარჯობა'], 'en')).toBe('ka');
+  });
+
+  /** Unchanged for every caller that does not pass one: English stays. */
+  it('falls back to English when the caller names no language', () => {
+    expect(languageOfConversation('ok', [])).toBe('en');
+  });
 });
