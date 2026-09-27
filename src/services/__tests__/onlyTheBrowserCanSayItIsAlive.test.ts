@@ -194,3 +194,48 @@ describe('⚠️ a row cannot have been silent longer than the column has existe
     expect(CLAIMS).toContain('WHETHER claims are arriving at all');
   });
 });
+
+/**
+ * ⚠️ THE WARNING THAT HAS TO OUTLIVE THE CONVERSATION IT CAME FROM.
+ *
+ * On 27 September the frontend found, in their own code, that the client
+ * reported only on a FULL PAGE LOAD — not on return. And an installed app is
+ * not loaded: somebody leaves it open and comes back to it.
+ *
+ * That breaks the safety half of this column's whole rule. „Another row for
+ * the same person was claimed recently" was written to prove that claims are
+ * arriving at all, so silence means the browser is gone. It proves something
+ * weaker: that at least ONE of their surfaces does full page loads. Somebody
+ * with a browser tab AND a home-screen app satisfies both halves — and the row
+ * the rule would then retire is the phone they actually live in.
+ *
+ * The retirement is a human act in the register (D44) and is pencilled for
+ * 8 October. Whoever presses it will read the migration, which is why the
+ * paragraph is there — and this test is here so the paragraph cannot be
+ * deleted quietly by somebody tidying up comments in six months.
+ *
+ * A test on prose is a weak thing and I would rather have a guard. There is
+ * nothing to guard: no code retires anything, by design. The danger is that a
+ * person reads a number and believes the wrong sentence about it, and the only
+ * defence against that is the sentence being there.
+ */
+describe('the migration carries the warning about what silence means', () => {
+  /**
+   * Read with the comment wrapping flattened. The sentences matter; where a
+   * line happens to break does not, and a test that pins the wrap turns every
+   * later reflow into a failure that teaches nobody anything.
+   */
+  const PROSE = MIGRATION.replace(/^\s*--\s?/gm, '').replace(/\s+/g, ' ');
+
+  it('says the timestamps before the client fix are not evidence of absence', () => {
+    expect(PROSE).toContain('is not evidence of absence');
+  });
+
+  it('names the case the safety half selects instead of protecting', () => {
+    expect(PROSE).toContain('THE ROW IT WOULD RETIRE IS THE PHONE THEY ACTUALLY USE');
+  });
+
+  it('tells whoever runs the 8 October retirement what not to read', () => {
+    expect(PROSE).toContain('8 October must not read anything recorded before 27 September');
+  });
+});

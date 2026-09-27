@@ -56,3 +56,56 @@ ALTER TABLE push_subscriptions
 UPDATE push_subscriptions
    SET last_seen_at = created_at
  WHERE last_seen_at IS NULL;
+
+-- ════════ ⚠️ 27 SEPTEMBER — THE SAFETY HALF HAS A HOLE, AND IT IS THE
+--          DANGEROUS DIRECTION. READ THIS BEFORE ANY RETIREMENT RUNS. ════════
+--
+-- The rule above is:
+--
+--     retire a row only when it has not been claimed for a long time
+--     AND ANOTHER ROW FOR THE SAME PERSON HAS BEEN CLAIMED RECENTLY.
+--
+-- The second half was written to prove „claims are arriving for this person,
+-- so silence means the browser is gone". THE FRONTEND FOUND THAT THIS IS NOT
+-- WHAT IT PROVES, and they found it in their own code rather than in mine.
+--
+-- Until 619c2ec (27 September) the client reported ONLY ON A FULL PAGE LOAD.
+-- Not on SPA navigation, not periodically, not on return. And an INSTALLED APP
+-- IS NOT LOADED — somebody leaves it open and comes back to it, which is
+-- `visibilitychange`, not a load.
+--
+-- So a claim arriving for a person does NOT mean their client reports for
+-- every surface they own. It means at least one of their surfaces does full
+-- page loads. Take somebody with two: a browser tab that loads pages and
+-- claims its row, and a home-screen app they live in and never reload.
+--
+--     the browser row      claimed recently      ✓ the rule's evidence
+--     the installed row    silent for a month    ✓ the rule's target
+--
+-- Both halves are satisfied and THE ROW IT WOULD RETIRE IS THE PHONE THEY
+-- ACTUALLY USE. The comparative test does not protect that case; it is what
+-- selects it. „This endpoint has not asked for a month" could mean „this
+-- person has not closed the app in a month", and the two are opposite facts
+-- about whether the device matters to them.
+--
+-- ════════ WHAT THIS MEANS FOR THE DATE ════════
+--
+-- `last_seen_at` written BEFORE 27 September 19:13 UTC is not evidence of
+-- absence. It is evidence about how somebody opens the app. The column did not
+-- lie; it answered a question nobody had asked it.
+--
+-- The frontend now reports on RETURN as well as on load (five-minute floor),
+-- so the timestamps become what this rule assumed they already were. But:
+--
+--   1. A session opened before their fix runs the OLD bundle until the person
+--      reloads once. Those rows stay silent through no fault of the device.
+--   2. The timestamps only start meaning „this device is gone" after a full
+--      quiet window has passed WITH the new client in the field.
+--
+-- So the retirement planned for 8 October must not read anything recorded
+-- before 27 September, and the quiet window has to be counted from the day the
+-- new client actually reached people — not from the day this column shipped.
+--
+-- Nothing here deletes anything; it never did. The decision is a person's, in
+-- the register (D44). This paragraph exists so that person is not deciding
+-- from a number that means something other than it appears to.
