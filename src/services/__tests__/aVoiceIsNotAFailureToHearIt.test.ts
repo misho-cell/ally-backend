@@ -739,3 +739,60 @@ describe('a model that will not give the verbose form still gives text', () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * THE PRIMER IS THE ONLY LEVER WE HOLD, AND IT WAS BEING USED AT A FIFTH SIZE.
+ *
+ * What the live failure looks like, measured on the tester's clip at 18:31:49
+ * on 27 September: the recogniser reports the language as „georgian" and then
+ * writes 218 Latin characters and not one Georgian. It is not failing to hear
+ * the language — it is ROMANISING it.
+ *
+ * The `language` hint is refused by the API in its own words („language 'ka'
+ * is not supported") and the model is somebody else's decision. That leaves
+ * the prompt: read as preceding context, so Georgian script becomes the
+ * obvious continuation. It takes roughly 224 tokens. Georgian had 48
+ * characters of it.
+ *
+ * ⚠️ AND THE ONE THING THAT WOULD QUIETLY UNDO IT is a Latin word inside the
+ * primer — a product name, a placeholder, a stray „ok". The primer is
+ * preceding context, so Latin in it argues FOR the exact thing being fought.
+ * That is the assertion worth keeping here; the length is only the reason it
+ * now matters.
+ */
+describe('the Georgian primer', () => {
+  /** The prompt actually sent for a language, read off the last call made. */
+  async function primerFor(language: string): Promise<string> {
+    process.env.SPEECH_TO_TEXT_ENABLED = 'true';
+    const create = jest.fn(async () => ({ text: 'გამარჯობა' }));
+    mockClient.mockReturnValue({ audio: { transcriptions: { create } } } as never);
+
+    await transcribe({ userId: '1', audio: audio(), mime: 'audio/webm', language });
+
+    const sent = create.mock.calls as unknown as [{ prompt?: string }][];
+    return sent[sent.length - 1][0].prompt ?? '';
+  }
+
+  const georgianPrimer = (): Promise<string> => primerFor('ka');
+
+  it('carries no Latin letter at all', async () => {
+    expect(await georgianPrimer()).not.toMatch(/[A-Za-z]/);
+  });
+
+  it('is more than the one sentence it used to be', async () => {
+    expect((await georgianPrimer()).length).toBeGreaterThan(150);
+  });
+
+  /**
+   * And still well inside what the parameter takes, so this cannot grow into
+   * a silently truncated prompt that nobody notices is being cut.
+   */
+  it('stays well inside the prompt budget', async () => {
+    expect((await georgianPrimer()).length).toBeLessThan(600);
+  });
+
+  /** Untouched, because they are not failing. */
+  it('leaves the other languages as they were', async () => {
+    expect(await primerFor('en')).toBe('Hello. This is an ordinary sentence in English.');
+  });
+});

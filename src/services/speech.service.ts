@@ -245,8 +245,44 @@ export function languageHint(raw: string | undefined): string | undefined {
  * task-specific: a prompt naming plumbers would bias the words as well as the
  * script, and the user is the one who decides what they said.
  */
+/**
+ * ⚠️ 27 SEPTEMBER — THE GEORGIAN PRIMER WAS ONE SENTENCE, AND THE ONE THING
+ * WE CONTROL WAS BEING USED AT A FIFTH OF ITS SIZE.
+ *
+ * What the live failure actually looks like, measured on the tester's clip at
+ * 18:31:49: the recogniser reports the language as „georgian" and then writes
+ * 218 LATIN characters and not one Georgian one. It is not failing to hear the
+ * language. It is romanising it.
+ *
+ * The hint is refused by the API („language 'ka' is not supported", its own
+ * words) and the model is somebody else's decision. That leaves the prompt —
+ * the recogniser's own supported way to bias a transcription, read as
+ * PRECEDING CONTEXT, so Georgian script is the obvious continuation. It takes
+ * roughly 224 tokens. Georgian had 48 characters of it.
+ *
+ * So the primer is longer, and every added line is deliberately about NOTHING:
+ * weather, time, an ordinary errand with no trade, no place and no name in it.
+ * The rule the short version was written under still holds and matters more
+ * now that there is more of it — „a prompt naming plumbers would bias the
+ * words as well as the script, and the user is the one who decides what they
+ * said."
+ *
+ * ONLY GEORGIAN IS LENGTHENED. The other three are not failing, and widening a
+ * fix past its evidence is how a small true finding turns into three untested
+ * changes.
+ *
+ * AND THIS IS A TRY, NOT A FIX. If the next clip still comes back romanised,
+ * the answer is the model and this cost nothing to find out. `wrong_script`
+ * stands underneath either way, so a romanised transcript is refused rather
+ * than handed to somebody as their own words.
+ */
 const SCRIPT_PRIMER: Record<string, string> = {
-  ka: 'გამარჯობა. ეს არის ჩვეულებრივი ქართული წინადადება.',
+  ka:
+    'გამარჯობა. ეს არის ჩვეულებრივი ქართული წინადადება. ' +
+    'დღეს ამინდი კარგია და ცოტა ხნით გარეთ გავდივარ. ' +
+    'ხვალ დილით ადრე უნდა ავდგე, რადგან საქმე მაქვს. ' +
+    'ერთი წუთით მოიცადე, ახლავე გეტყვი. ' +
+    'დიდი მადლობა, ყველაფერი რიგზეა.',
   ru: 'Здравствуйте. Это обычное предложение на русском языке.',
   es: 'Hola. Esta es una frase normal en español.',
   en: 'Hello. This is an ordinary sentence in English.',
