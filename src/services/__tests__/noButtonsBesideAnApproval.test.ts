@@ -47,7 +47,15 @@ describe('no buttons in the same step as an approval', () => {
     expect(dispatch).toContain("block.name === 'present_choices'");
     expect(dispatch).toContain('choicesRefusedBesideAnApproval(block, userId, threadId, runId)');
     // The other branch is the ordinary path, untouched.
-    expect(dispatch).toContain('runOneToolBlock(userId, threadId, runId, block, ownerAbsent)');
+    //
+    // ⚠️ RENAMED 27 SEPTEMBER, and this line noticing is the test doing its
+    // job. The ordinary path is now `runOneToolBlockOrSayWhy`, which wraps
+    // `runOneToolBlock` so a throwing tool returns an error result to the
+    // model instead of rejecting the whole turn. What this assertion is about
+    // is unchanged: a refused card never reaches the dispatch at all.
+    expect(dispatch).toContain(
+      'runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent)',
+    );
   });
 
   /**

@@ -7833,6 +7833,72 @@ async function runOneToolBlock(
   return { type: 'tool_result', tool_use_id: block.id, content: safeContent };
 }
 
+/**
+ * What the MODEL is told when a tool throws. Deliberately not the exception's
+ * own message: that is frequently a database error, and a raw one carries
+ * table and column names — and sometimes values — to a place they have no
+ * business being. The real message goes to the log, with the run id.
+ *
+ * It says what to do, because a tool result that only says „error" invites the
+ * model to shrug and answer anyway, which is the failure this whole change is
+ * about.
+ */
+const TOOL_FAILED_NOTE =
+  'This tool did not run. Do NOT tell the person it worked and do not invent ' +
+  'what it would have returned. If an argument could have been wrong — a ' +
+  'missing id, a phone that is not a phone — correct it and call it once more. ' +
+  'If it fails again, say plainly that this step could not be completed.';
+
+/**
+ * A TOOL THAT THROWS USED TO END THE PERSON'S RUN.
+ *
+ * `processToolBlocks` runs a turn's calls in a bare `Promise.all`, and there
+ * was no `catch` anywhere between it and `executeToolCall`. So ONE tool
+ * throwing rejected the whole turn: the model call failed mid-run and the
+ * person got a salvage artifact instead of the answer they asked for.
+ *
+ * ⚠️ 27 SEPTEMBER, and this is not hypothetical — SIX ways in were found and
+ * fixed in a single day, all of them the model omitting one field:
+ * `Number(input['task_id'])` is `NaN` and `pg` sends that as the string „NaN";
+ * the same for `ask_id` and `request_id`; `.trim()` on an omitted
+ * `field_type`; `.replace()` on an omitted private-context value; two
+ * `TEXT NOT NULL` columns handed `undefined`. Each is now refused at its own
+ * door. This is the floor under all six and under the seventh nobody has found.
+ *
+ * IT IS NOT A CATCH-ALL THAT CARRIES ON REGARDLESS, which would be a worse
+ * bug than the one it replaces. The failure is LOUD in three places: the real
+ * exception is logged with the run id, the result is marked `is_error`, and
+ * the note tells the model in words that it must not pretend the step
+ * happened. What changes is only who absorbs it — the model, which can correct
+ * an argument and try again, instead of the person, who could do nothing.
+ *
+ * Misho's yes, 27 September. The pattern was already in the repo:
+ * `requestIntroduction` wraps itself for exactly this reason and says so in a
+ * comment („a thrown tool kills the whole model call … and the user gets a
+ * salvage artifact instead of an answer"). This is that decision, applied once
+ * rather than per tool.
+ */
+async function runOneToolBlockOrSayWhy(
+  userId: string,
+  threadId: number,
+  runId: string,
+  block: Anthropic.ToolUseBlock,
+  ownerAbsent: boolean,
+): Promise<Anthropic.ToolResultBlockParam> {
+  try {
+    return await runOneToolBlock(userId, threadId, runId, block, ownerAbsent);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[tool] ${block.name} threw in run ${runId}:`, (err as Error).message);
+    return {
+      type: 'tool_result',
+      tool_use_id: block.id,
+      is_error: true,
+      content: JSON.stringify({ failed: true, tool: block.name, error: TOOL_FAILED_NOTE }),
+    };
+  }
+}
+
 async function processToolBlocks(
   userId: string,
   threadId: number,
@@ -7888,7 +7954,7 @@ async function processToolBlocks(
     toolBlocks.map((block) =>
       approvingThisTurn && block.name === 'present_choices'
         ? Promise.resolve(choicesRefusedBesideAnApproval(block, userId, threadId, runId))
-        : runOneToolBlock(userId, threadId, runId, block, ownerAbsent),
+        : runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent),
     ),
   );
 }
