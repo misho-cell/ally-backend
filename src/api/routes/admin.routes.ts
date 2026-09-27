@@ -194,6 +194,7 @@ import {
   EXPIRES_AFTER_DAYS,
 } from '../../services/introductionExpiry.service';
 import { readSweepSlots } from '../../services/sweepClaim';
+import { notificationStateCounts } from '../../services/notificationState.service';
 import { readGoalFeedback } from '../../services/goalFeedback.service';
 import { pilotOutcomes } from '../../services/pilotOutcomes.service';
 import { addRosterMember, removeRosterMember } from '../../services/roster.service';
@@ -1891,6 +1892,30 @@ adminRouter.get('/new-member-match', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin new-member match]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * ROW 276, THE READING HALF. What the browsers have told us, in counts.
+ *
+ * Each row pairs a state with how many of those accounts actually carry a push
+ * subscription, because the pairing is the whole answer:
+ *
+ *   granted  without a subscription  → they said yes and WE lost it
+ *   denied   with    a subscription  → a stale row we should stop sending to
+ *   unasked  anything                → the front end never asked
+ *   needs_pwa                        → not a fault; push cannot work in a tab
+ *
+ * Without this the four are one number — „no subscription" — and row 111 could
+ * not be called open or nearly closed.
+ */
+adminRouter.get('/notifications/state', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: { states: await notificationStateCounts() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin notification state] read failed:', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

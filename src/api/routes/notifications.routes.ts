@@ -12,11 +12,69 @@ import {
   getVapidPublicKey,
   PushSubscriptionPayload,
 } from '../../services/notification.service';
+import {
+  recordNotificationState,
+  isNotificationState,
+  NOTIFICATION_STATES,
+} from '../../services/notificationState.service';
 import { ApiResponse } from '../../types';
 
 const notificationsRouter = Router();
 
 notificationsRouter.use(authenticateJwt, requireUserRole);
+
+/**
+ * ROW 276 — the browser tells us the one thing only it knows.
+ *
+ * ⚠️ REGISTERED ABOVE `requireSubscription`, AND THAT IS THE POINT. Express
+ * applies middleware in the order it is added, so this route is outside the
+ * payment gate while everything below stays inside it.
+ *
+ * A lapsed account is exactly the account whose silence we most need
+ * explained, and a 402 here would throw away the report instead of the person
+ * — we would keep not knowing whether they were never asked, said no, or said
+ * yes into a registration that failed. Nothing is spent by listening, and the
+ * row carries no new power: five words and a boolean.
+ *
+ * It is a POST because it writes, and it writes one row per account which the
+ * next report overwrites. There is no reading of anybody else's state here;
+ * the summary lives on the admin side, in counts.
+ */
+notificationsRouter.post(
+  '/state',
+  body('state').isString().trim().notEmpty(),
+  body('standalone').optional().isBoolean(),
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ state: string; standalone: boolean | null; state_since: string }>>,
+  ) => {
+    const { state, standalone } = req.body as { state?: unknown; standalone?: unknown };
+    if (!isNotificationState(state)) {
+      res.status(400).json({
+        success: false,
+        error: `state must be one of: ${NOTIFICATION_STATES.join(', ')}`,
+      });
+      return;
+    }
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      // Absent is stored as NULL rather than false: a browser that did not say
+      // is not a browser that said no, and this table exists to stop exactly
+      // that kind of collapse.
+      const stored = await recordNotificationState(
+        userId,
+        state,
+        typeof standalone === 'boolean' ? standalone : null,
+      );
+      res.status(200).json({ success: true, data: stored });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[notifications] could not record state:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 notificationsRouter.use(requireSubscription);
 
 notificationsRouter.get(
