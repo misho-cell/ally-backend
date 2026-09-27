@@ -1,10 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getContactInsight, saveContactInsight, InsightRefusedError } from './insights.service';
-import { createGetContactInsightTool, GetContactInsightParams } from './tools/get_contact_insight';
-import {
-  createSaveContactInsightTool,
-  SaveContactInsightParams,
-} from './tools/save_contact_insight';
+import { createGetContactInsightTool } from './tools/get_contact_insight';
+import { createSaveContactInsightTool } from './tools/save_contact_insight';
 import { noteIntroductionSentAsAQuestion } from './introductionShaped';
 import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
@@ -2832,7 +2829,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   },
 };
 
-function toAnthropicTool(tool: ChatToolDefinition<never, unknown>): AnthropicTool {
+function toAnthropicTool(tool: ChatToolDefinition): AnthropicTool {
   const properties: Record<string, AnthropicToolProperty> = {};
   const required: string[] = [];
 
@@ -9491,7 +9488,7 @@ export function toolDescription(name: string): string {
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
   const [enabledKeys, insightTools] = await Promise.all([
     getEnabledToolKeys(),
-    Promise.resolve(getContactInsightTools(userId).map(toAnthropicTool)),
+    Promise.resolve(getContactInsightTools().map(toAnthropicTool)),
   ]);
   const all: AnthropicTool[] = [
     ...insightTools,
@@ -11024,13 +11021,9 @@ export async function processChat(
 
 export { getOrCreateDefaultThread };
 
-export function getContactInsightTools(
-  userId: string,
-): Array<
-  | ChatToolDefinition<SaveContactInsightParams, unknown>
-  | ChatToolDefinition<GetContactInsightParams, unknown>
-> {
-  return [createSaveContactInsightTool(userId), createGetContactInsightTool(userId)];
+/** The two insight tools' SCHEMAS. Their dispatch lives in the switch above. */
+export function getContactInsightTools(): ChatToolDefinition[] {
+  return [createSaveContactInsightTool(), createGetContactInsightTool()];
 }
 
 export async function buildContactInsightSystemPrompt(): Promise<string> {

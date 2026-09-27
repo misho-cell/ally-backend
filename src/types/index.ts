@@ -77,11 +77,21 @@ export interface ChatToolParameter {
   description: string;
 }
 
-export interface ChatToolDefinition<TRequest, TResponse> {
+/**
+ * A tool AS THE MODEL SEES IT — a name, a description, its parameters. That is
+ * the whole of it, and `toAnthropicTool` reads exactly these three fields.
+ *
+ * ⚠️ IT USED TO CARRY `execute`, AND NOTHING EVER CALLED IT. The live dispatch
+ * is a `switch` in `chat.service.ts`; the closures were a shape that looked
+ * like the implementation. On 27 September a guard was written into one of
+ * them, with eleven passing tests, and the path a person actually reaches was
+ * untouched for five hours and reported as fixed. The field is gone so the
+ * same reading cannot be made again.
+ */
+export interface ChatToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, ChatToolParameter>;
-  execute: (params: TRequest) => Promise<TResponse>;
 }
 
 export interface DailyCount {

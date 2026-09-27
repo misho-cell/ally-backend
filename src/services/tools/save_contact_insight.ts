@@ -1,15 +1,7 @@
-import { saveContactInsight } from '../insights.service';
-import { ChatToolDefinition, ContactInsight } from '../../types';
+import { ChatToolDefinition } from '../../types';
 
-export interface SaveContactInsightParams {
-  phone: string;
-  contact_name: string;
-  collected_data: Record<string, unknown>;
-}
-
-export function createSaveContactInsightTool(
-  userId: string,
-): ChatToolDefinition<SaveContactInsightParams, ContactInsight> {
+/** ⚠️ SCHEMA ONLY — see the note in `get_contact_insight.ts`. */
+export function createSaveContactInsightTool(): ChatToolDefinition {
   return {
     name: 'save_contact_insight',
     description: 'Save collected information about a contact for future reference.',
@@ -31,15 +23,5 @@ export function createSaveContactInsightTool(
         description: 'The collected contact insight data as a JSON object',
       },
     },
-    /**
-     * ⚠️ THIS CLOSURE DOES NOT RUN. `getContactInsightTools` is consumed only
-     * by `toAnthropicTool`, which reads `name`, `description` and `parameters`
-     * — the live call goes through `chat.service.ts`'s dispatcher straight to
-     * `saveContactInsight`. A guard written here on 27 September was a guard
-     * on nothing, with passing tests; the rule now lives in the service, once,
-     * where both this and the dispatcher meet.
-     */
-    execute: async (params: SaveContactInsightParams): Promise<ContactInsight> =>
-      saveContactInsight(userId, params.phone, params.contact_name, params.collected_data),
   };
 }
