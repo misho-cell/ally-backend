@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { PROFILE_LINE_NEEDS_BOTH } from './userProfile.service';
 
 export async function getPrivateContext(userId: string): Promise<Record<string, string>> {
   const result = await query<{ key: string; value: string }>(
@@ -8,12 +9,20 @@ export async function getPrivateContext(userId: string): Promise<Record<string, 
   return Object.fromEntries(result.rows.map((r) => [r.key, r.value]));
 }
 
+/**
+ * The same rule as the public profile, and here `stripPhoneNumbers` reaches the
+ * value with `.replace` BEFORE the query runs — so an omitted field was a
+ * TypeError, not even a database error.
+ */
 export async function savePrivateContext(
   userId: string,
   key: string,
   rawValue: string,
   mode: 'set' | 'append',
-): Promise<void> {
+): Promise<{ saved: boolean; error?: string }> {
+  if (key.trim() === '' || rawValue.trim() === '') {
+    return { saved: false, error: PROFILE_LINE_NEEDS_BOTH };
+  }
   const value = stripPhoneNumbers(rawValue);
   if (mode === 'append') {
     await query(
@@ -34,6 +43,7 @@ export async function savePrivateContext(
       [userId, key, value],
     );
   }
+  return { saved: true };
 }
 
 // A phone number must never be stored here (Ticket 9 Task 19.3: the founder's

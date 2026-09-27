@@ -8,12 +8,27 @@ export async function getUserProfile(userId: string): Promise<Record<string, str
   return Object.fromEntries(result.rows.map((r) => [r.key, r.value]));
 }
 
+/**
+ * A PROFILE LINE UNDER AN EMPTY KEY IS A LINE NOBODY WILL EVER READ BACK.
+ *
+ * `key` and `value` are both `TEXT NOT NULL`, so an omitted field used to be a
+ * not-null violation — a thrown tool, and nothing catches one. Coercing the
+ * door turns that into `''`, which is worse in the quiet way: the row stores,
+ * `ON CONFLICT (user_id, key)` collapses every such save onto the SAME row,
+ * and no read for a real key finds it. So the refusal lives here, and the
+ * answer says which it was rather than nothing at all.
+ */
+export const PROFILE_LINE_NEEDS_BOTH = 'Pass both a key and a value.';
+
 export async function setUserProfileField(
   userId: string,
   key: string,
   value: string,
   mode: 'set' | 'append' = 'set',
-): Promise<void> {
+): Promise<{ saved: boolean; error?: string }> {
+  if (key.trim() === '' || value.trim() === '') {
+    return { saved: false, error: PROFILE_LINE_NEEDS_BOTH };
+  }
   if (mode === 'append') {
     await query(
       `INSERT INTO user_profile_kv (user_id, key, value)
@@ -33,6 +48,7 @@ export async function setUserProfileField(
       [userId, key, value],
     );
   }
+  return { saved: true };
 }
 
 /**

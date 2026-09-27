@@ -6088,7 +6088,10 @@ async function executeToolCall(
         threadId,
       );
     case 'search_contacts_by_country':
-      return searchContactsByCountry(userId, input['country'] as string);
+      // `resolvePrefix` lowercases the country before anything else; an omitted
+      // field was a TypeError, where the honest answer `unknown_country` was
+      // already one line away.
+      return searchContactsByCountry(userId, String(input['country'] ?? ''));
     case 'get_contact_count':
       return getContactCount(userId);
     case 'web_search': {
@@ -6140,19 +6143,23 @@ async function executeToolCall(
         input['contact_name'] as string,
         input['collected_data'] as Record<string, unknown>,
       );
+    // Coerced, not cast. `key` and `value` are both `TEXT NOT NULL`, and
+    // `savePrivateContext` calls `.replace` on the value before the query even
+    // runs — so an omitted field was a TypeError or a not-null violation, and
+    // either way a thrown tool rather than an answer.
     case 'update_user_profile':
       return setUserProfileField(
         userId,
-        input['key'] as string,
-        input['value'] as string,
+        String(input['key'] ?? ''),
+        String(input['value'] ?? ''),
         (input['mode'] as 'set' | 'append' | undefined) ?? 'set',
       );
     case 'save_private_context':
       return savePrivateContext(
         userId,
-        input['key'] as string,
-        input['value'] as string,
-        input['mode'] as 'set' | 'append',
+        String(input['key'] ?? ''),
+        String(input['value'] ?? ''),
+        input['mode'] === 'append' ? 'append' : 'set',
       );
     case 'request_introduction': {
       /**
