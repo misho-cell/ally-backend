@@ -263,7 +263,28 @@ export async function goalHasActedOutward(taskId: number): Promise<boolean> {
   return result.rows[0]?.acted === true;
 }
 
+/**
+ * A GOAL ID THAT IS NOT A NUMBER IDENTIFIES NO GOAL — AND USED TO END THE RUN.
+ *
+ * Every task id a model supplies arrives as `Number(input['task_id'])`, and
+ * `Number(undefined)` is `NaN`. `pg` serializes that as the STRING „NaN", so
+ * Postgres raises `invalid input syntax for type integer: "NaN"` — a throw, and
+ * nothing catches a tool that throws: `processToolBlocks` runs the calls in a
+ * bare `Promise.all`, so one bad id ends the person's whole run with a database
+ * error instead of the model being told to pass the id.
+ *
+ * `chat.service.ts` already guards ONE of its ten task-id doors —
+ * `Number.isFinite(taskId) ? await getTaskById(taskId) : null` — so this was
+ * known at one site and missing at the rest. The check belongs here, where
+ * every door meets, and the answers stay the ones these functions already give
+ * for an id that matches nothing: `null`, and `false`.
+ */
+function isARealId(id: number): boolean {
+  return Number.isInteger(id) && id > 0;
+}
+
 export async function getTaskById(taskId: number): Promise<(Task & { user_id: string }) | null> {
+  if (!isARealId(taskId)) return null;
   const result = await query<Task & { user_id: string }>(
     `SELECT user_id, ${TASK_COLUMNS} FROM tasks WHERE id = $1 LIMIT 1`,
     [taskId],
@@ -278,6 +299,7 @@ export async function setTaskBrief(
   taskId: number,
   brief: string,
 ): Promise<boolean> {
+  if (!isARealId(taskId)) return false;
   const result = await query(
     `UPDATE tasks SET brief = $3, updated_at = NOW(), last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'`,
@@ -302,6 +324,7 @@ export async function setTaskAutonomy(
 
 /** Schedule the task's next self-wake (revisit, reminder, summary deadline). */
 export async function setTaskWake(userId: string, taskId: number, hours: number): Promise<boolean> {
+  if (!isARealId(taskId)) return false;
   const result = await query(
     `UPDATE tasks SET next_wake_at = NOW() + ($3 || ' hours')::interval, updated_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'`,
@@ -810,6 +833,7 @@ async function recordDroppedIfNeverAsked(userId: string, taskId: number): Promis
 
 /** Record the one blanket "ok to ask around" consent for a task. */
 export async function grantTaskPermission(userId: string, taskId: number): Promise<boolean> {
+  if (!isARealId(taskId)) return false;
   const result = await query(
     `UPDATE tasks
      SET permission_granted = true, updated_at = NOW(), last_activity_at = NOW()
