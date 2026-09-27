@@ -1115,6 +1115,39 @@ describe('recordAskAnswer', () => {
 
     expect(await recordAskAnswer(55, 'hello')).toBeNull();
   });
+
+  /**
+   * ⚠️ `if (!safe) return null` — AND IT IS THE LINE THAT ACTUALLY STOPS AN
+   * EMPTY ANSWER REACHING THE ASKER.
+   *
+   * 27 September: `send_answer_to_asker` has its own check, and when the
+   * sabotage sweep reported that check as untested I said in writing — to the
+   * tester — that it could not matter, because „recordAskAnswer refuses an
+   * empty text and the send fails there". Then I swept THIS file, and the one
+   * survivor was that refusal. The layer I had just pointed at as the thing
+   * holding the line had nothing holding it.
+   *
+   * Without it the UPDATE runs with an empty string, the ask is marked
+   * answered, and the asker's goal is woken with nothing in it — the answer a
+   * real person waited for, replaced by silence that reads as a reply.
+   *
+   * ⚠️ AND IT IS AN EMPTY-TEXT CHECK, NOT A SCRUB CHECK. `scrubText` replaces a
+   * phone-like run with a REDACTED marker rather than deleting it, so an
+   * answer that is nothing but a number still arrives non-empty and is stored.
+   * Worth writing down: the natural reading of `!safe` after a scrub is „the
+   * scrub emptied it", and that is not a state this code can reach.
+   */
+  it.each([
+    ['empty', ''],
+    ['spaces', '   '],
+    ['newlines', '\n\n'],
+  ])('writes nothing at all when the answer is %s', async (_name, text) => {
+    mockQuery.mockResolvedValue(rows([{ id: 77, task_id: 3, answer: '' }]) as never);
+
+    expect(await recordAskAnswer(55, text)).toBeNull();
+    // Not „returned null after writing" — nothing was asked of the database.
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
 });
 
 describe('buildAnswerWakeEvent', () => {
