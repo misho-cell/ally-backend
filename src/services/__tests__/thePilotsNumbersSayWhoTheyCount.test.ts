@@ -421,16 +421,42 @@ describe('the list of people to read', () => {
 describe('a number says who it counts', () => {
   const source = readFileSync(join(__dirname, '..', 'pilotOutcomes.service.ts'), 'utf8');
 
+  /**
+   * ⚠️ FLATTEN THE CONCATENATION, NOT ONLY THE WHITESPACE. These sentences are
+   * written as several quoted pieces joined with `+`, and prettier decides
+   * where the seam falls. Collapsing whitespace alone leaves `' + '` sitting
+   * in the middle of a phrase, so an assertion on the phrase fails for a
+   * reason that has nothing to do with the phrase — which is what happened the
+   * first time this was rewritten. What reaches the reader is the joined
+   * string, so that is what is matched.
+   */
+  const said = source.replace(/'\s*\+\s*'/g, '').replace(/\s+/g, ' ');
+
+  /**
+   * ⚠️ THESE WERE ENGLISH UNTIL 27 SEPTEMBER AND THE PAGE IS GEORGIAN. The
+   * sentences ship inside the payload and are printed beside the numbers, so
+   * the screen came out half Georgian header and half English paragraph — the
+   * tester read it and said so. The assertions moved with the strings, because
+   * what they are for is that the scope is STATED, not that it is stated in
+   * the language I happened to write first.
+   */
   it('says started_a_goal is about this window only', () => {
-    expect(source).toContain('JOINED IN THIS WINDOW only');
+    expect(said).toContain('მხოლოდ იმ ადამიანებზე, ვინც სწორედ ამ პერიოდში დარეგისტრირდა');
   });
 
   it('says the goals block is not scoped to the window', () => {
-    // Asserted on the words, not on where prettier decided to wrap them.
-    const flat = source.replace(/\s+/g, ' ');
+    expect(said).toContain('როდესაც არ უნდა დარეგისტრირებულიყო');
+    expect(said).toContain('ამ პერიოდით შემოსაზღვრული არ არის');
+    expect(said).toContain('მაშინ როცა started_a_goal ნულია');
+  });
 
-    expect(flat).toContain('whenever they joined');
-    expect(flat).toContain('is why this can be large while started_a_goal is zero');
+  /**
+   * The keys are NOT translated and must not be: they are what the reader sees
+   * printed on the same screen, so a Georgian rendering of them would point at
+   * nothing. This is the half of the fix that is easy to undo by being helpful.
+   */
+  it('leaves the field names the reader can see in Latin', () => {
+    expect(said).toContain('იხილეთ goals და people_with_any_goal');
   });
 
   /** The fact that makes the gap readable: who the 93 actually belong to. */

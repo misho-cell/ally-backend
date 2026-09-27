@@ -97,8 +97,11 @@ describe('the numbers that are choices, and say so', () => {
     const out = await pilotOutcomes(28);
 
     expect(out.first_answer.median_minutes).toBe(3);
-    expect(out.first_answer.definition).toContain('does not know what was useful');
-    expect(out.first_answer.definition).toContain('absent from this number');
+    // In Georgian since 27 September — the sentence is printed on the page and
+    // the page is read by Tornike and Misho. What is pinned is that the proxy
+    // is stated, not which language it was first written in.
+    expect(out.first_answer.definition).toContain('ბაზამ არ იცის, რომელი პასუხი იყო სასარგებლო');
+    expect(out.first_answer.definition).toContain('ამ რიცხვში საერთოდ არ ხვდება');
   });
 
   /**
@@ -117,8 +120,10 @@ describe('the numbers that are choices, and say so', () => {
     const out = await pilotOutcomes(28);
 
     expect(out.asks.declines_recorded_since).toBe('2026-09-26');
-    expect(out.not_measurable.join(' ')).toContain('recorded only since 2026-09-26');
-    expect(out.not_measurable.join(' ')).toContain('not that few people say no');
+    // The date has to appear in the sentence and not only in the field beside
+    // it, so a screen that prints one cannot omit the other.
+    expect(out.not_measurable.join(' ')).toContain('მხოლოდ 2026-09-26-დან');
+    expect(out.not_measurable.join(' ')).toContain('არა იმას, რომ ცოტა ამბობს უარს');
   });
 
   it('says when a helper was last charged, so a zero is not read as always', async () => {

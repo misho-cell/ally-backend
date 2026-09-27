@@ -185,10 +185,26 @@ export interface PilotOutcomes {
  */
 const DECLINES_RECORDED_SINCE = '2026-09-26';
 
+/**
+ * ⚠️ THE EXPLANATIONS ARE IN GEORGIAN AND THE FIELD NAMES ARE NOT, ON PURPOSE.
+ *
+ * Everything in `scope`, `not_measurable` and `first_answer.definition` is
+ * printed on the screen beside the numbers, and that screen is read by Tornike
+ * and Misho. It was written in English and shipped that way on 26 September,
+ * so the page came out half Georgian header and half English paragraph — the
+ * tester read it on screen and said so. A sentence nobody can read is the same
+ * as no sentence, and these sentences are the only reason the numbers can be
+ * interpreted rather than guessed at.
+ *
+ * The identifiers inside them — `goals`, `started_a_goal`, `people_with_any_goal`
+ * — stay in Latin because they are the JSON keys the reader can see printed on
+ * the same screen. Translating those would point at nothing.
+ */
 const DECLINE_COUNT_IS_YOUNG =
-  `asks declined: recorded only since ${DECLINES_RECORDED_SINCE}, when the decline button ` +
-  'shipped (row 274). Asks answered before that carry no record either way, so a small ' +
-  'number here means few people have been asked since — not that few people say no.';
+  `უარი თქმული თხოვნები: ჩაწერა მხოლოდ ${DECLINES_RECORDED_SINCE}-დან მიმდინარეობს, ` +
+  'როცა უარის ღილაკი გამოვიდა (სტრიქონი 274). მანამდე პასუხგაცემულ თხოვნებზე ვერც ერთი ' +
+  'და ვერც მეორე მხარე ჩაიწერა, ამიტომ აქ მცირე რიცხვი ნიშნავს, რომ მას შემდეგ ცოტა ' +
+  'ადამიანს სთხოვეს — და არა იმას, რომ ცოტა ამბობს უარს.';
 
 export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
   const span = Math.min(Math.max(1, Math.floor(days)), 365);
@@ -363,11 +379,13 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
     only_ever_helped: Number(p?.helped_only ?? 0),
     scope: {
       started_a_goal:
-        'Of the people who JOINED IN THIS WINDOW only. Somebody who joined earlier and ' +
-        'started a goal this week is not counted here — see goals and people_with_any_goal.',
+        'მხოლოდ იმ ადამიანებზე, ვინც სწორედ ამ პერიოდში დარეგისტრირდა. ვინც ადრე ' +
+        'დარეგისტრირდა და მიზანი ამ კვირას დაიწყო, აქ არ ითვლება — იხილეთ goals და ' +
+        'people_with_any_goal.',
       goals:
-        "Every real person's goals, whenever they joined. Not scoped to this window, which " +
-        'is why this can be large while started_a_goal is zero.',
+        'ყველა რეალური ადამიანის მიზნები, როდესაც არ უნდა დარეგისტრირებულიყო. ეს რიცხვი ' +
+        'ამ პერიოდით შემოსაზღვრული არ არის — სწორედ ამიტომ შეიძლება აქ დიდი რიცხვი ' +
+        'ეწეროს, მაშინ როცა started_a_goal ნულია.',
       people_with_any_goal: Number(p?.people_with_goals ?? 0),
     },
     goals: {
@@ -379,9 +397,10 @@ export async function pilotOutcomes(days = 28): Promise<PilotOutcomes> {
     },
     first_answer: {
       definition:
-        'minutes from a goal opening to the FIRST question asked on its behalf coming back ' +
-        'answered. Not "the first useful answer" — the database does not know what was useful. ' +
-        'Goals solved by a search rather than by a person are absent from this number.',
+        'წუთები მიზნის გახსნიდან იმ მომენტამდე, როცა მის გამო დასმულ პირველივე კითხვას ' +
+        'პასუხი დაუბრუნდა. ეს არ არის „პირველი სასარგებლო პასუხი" — ბაზამ არ იცის, რომელი ' +
+        'პასუხი იყო სასარგებლო. ის მიზნები, რომლებიც ძიებამ გადაწყვიტა და არა ადამიანმა, ' +
+        'ამ რიცხვში საერთოდ არ ხვდება.',
       goals_measured: Number(f?.measured ?? 0),
       median_minutes: f?.median == null ? null : Math.round(Number(f.median)),
     },
