@@ -20,7 +20,15 @@ TWO MUTATIONS, because the single-line sweep cannot reach a block:
     line    `if (cond) return x;`   ->  commented out entirely
     block   `if (cond) {`           ->  `if (false) {`
 
-Both always compile, and both mean exactly „this guard never fires".
+Both mean exactly „this guard never fires".
+
+⚠️ AND BOTH DO NOT ALWAYS COMPILE, which this file claimed until 27 September.
+A guard that narrows a discriminated union — `if (!outcome.ok) return …` — is
+enforced by the COMPILER, so removing it is a type error rather than a silent
+behaviour change. The sweep ran `jest` only, so it reported such a guard as
+„nothing holds it" and would have sent somebody to test a state the language
+has made unreachable. `tsc --noEmit` now runs first on every mutation and its
+failure counts as `held-type`. See `types_pass`.
 
 THE HARM FILTER IS NOT OPTIONAL. Without it the sweep returns a hundred
 defensive null checks that need no test and drowns the two that matter. A guard
@@ -132,6 +140,40 @@ def suite_passes() -> bool:
         return False
 
 
+def types_pass() -> bool:
+    """Does the mutated tree still compile?
+
+    ⚠️ ADDED 27 SEPTEMBER, AND THE SWEEP WAS LYING WITHOUT IT — in its own
+    favourite way, by answering a different question from the one it printed.
+
+    It ran `jest` and printed „GUARDS NOTHING HOLDS". Those are not the same
+    claim. `if (!outcome.ok) return { approved: false, error: outcome.error };`
+    in `chat.service.ts` came back UNNOTICED, and `PlanOutcome` is a
+    discriminated union — `{ ok: true; value: T } | { ok: false; error: string }`
+    — so removing that line does not compile at all:
+
+        error TS2339: Property 'value' does not exist on type
+          '{ ok: false; error: string; }'   (three times)
+
+    A guard the compiler enforces IS held. Reporting it as a gap sends somebody
+    to write a test for a state the language has already made unreachable —
+    and, worse, spends the credibility of the ten real findings beside it.
+
+    It runs FIRST because it is the cheaper question: about seven seconds
+    against the suite's fifteen, and a mutation the compiler rejects never
+    needs the suite at all. Adding it made the sweep more truthful AND, on
+    type-held candidates, faster.
+    """
+    try:
+        r = subprocess.run(
+            ['npx', 'tsc', '--noEmit'],
+            cwd=ROOT, capture_output=True, text=True, timeout=SUITE_TIMEOUT_S,
+        )
+        return r.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+
+
 def dirty_files() -> list[str]:
     """Anything modified in the worktree, node_modules aside."""
     r = subprocess.run(
@@ -232,15 +274,20 @@ def sweep() -> None:
         lines[i] = mutate(lines[i])
         f.write_text(''.join(lines))
         try:
-            unnoticed = suite_passes()
+            # The compiler first — see `types_pass`. A guard the types enforce
+            # is held, and saying otherwise is the sweep making this project's
+            # own mistake: answering „no test noticed" under a heading that
+            # claims „nothing holds it".
+            compiles = types_pass()
+            unnoticed = compiles and suite_passes()
         finally:
             # ALWAYS, including on a crash in the line above. A sabotaged file
             # left behind is worse than no sweep.
             f.write_text(original)
         rel = f.relative_to(ROOT)
+        verdict = 'UNNOTICED' if unnoticed else ('held    ' if compiles else 'held-type')
         print(
-            f'[{n}/{len(cands)}] {"UNNOTICED" if unnoticed else "held    "} '
-            f'{rel}:{i + 1}  {line.strip()[:110]}',
+            f'[{n}/{len(cands)}] {verdict} {rel}:{i + 1}  {line.strip()[:110]}',
             flush=True,
         )
         if unnoticed:
@@ -252,6 +299,19 @@ def sweep() -> None:
     print(
         '\nMost of these are empty-collection checks that need no test. Read for '
         'the ones whose absence reaches a person.',
+    )
+    # ⚠️ AND A SURVIVOR IS NOT AUTOMATICALLY A GAP. The line above is only
+    # about this file; the guard may be held one layer down. On 27 September
+    # `if (!answerText) return …` in `send_answer_to_asker` looked like „an
+    # empty message could go to a real person", and it could not:
+    # `recordAskAnswer` refuses an empty text and the send fails there. What
+    # removing it actually costs is the RIGHT ERROR — the user would be told
+    # „could not record, try again" instead of „pass the text" — which is worth
+    # knowing and is not worth the test somebody would have written for the
+    # first reading.
+    print(
+        'Before writing a test for one, follow the value down a layer: a guard '
+        'the next function repeats is a worse error message, not a hole.',
     )
 
 
