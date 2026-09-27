@@ -3809,7 +3809,11 @@ it.
 * One greppable line per failure: `[otp-sms] PROVIDER REFUSED code=… status=…`,
   with the provider's own code, because „the account is not active" and „that
   number is unreachable" are different problems with different owners.
-  Diagnosis is now `logs.sh logs <id> 400 "[otp-sms]"`.
+  Diagnosis is now `logs.sh logs <id> 400 "otp-sms"` — **without the brackets**,
+  because Railway's log filter reads a `[` as its own syntax and a bracketed
+  filter matches nothing while looking exactly like „no refusals". The line
+  above, written on 25 September, carried the brackets until 27 September;
+  `logs.sh` now refuses a bracketed filter rather than returning an empty list.
 * The account id is logged as its **last four** and the phone as its last four
   (D149's rule, applied where it had not been), so a log line can be pasted
   into a ticket unread.

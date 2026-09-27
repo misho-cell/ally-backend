@@ -57,7 +57,15 @@ if [ -z "$DEPLOY" ]; then
   exit 2
 fi
 
-REFUSALS="$("$HERE/logs.sh" logs "$DEPLOY" 200 "[otp-sms]" "$SINCE" 2>/dev/null)"
+# ⚠️ NO SQUARE BRACKETS IN THE FILTER. The tag in the code is `[otp-sms]`
+# (twilio.service.ts), so `"[otp-sms]"` is the filter anybody would write — and
+# it is what stood here from 25 September until 27 September, matching NOTHING.
+# Railway's log filter reads a bracket as its own syntax; the reply is an empty
+# list, which this script then reads as „no refusals". That is the exact fault
+# this file was written against, reintroduced one line above the words warning
+# about it. logs.sh now refuses a bracketed filter outright; this stays
+# unbracketed, and the `PROVIDER REFUSED` test below is what narrows it.
+REFUSALS="$("$HERE/logs.sh" logs "$DEPLOY" 200 "otp-sms" "$SINCE" 2>/dev/null)"
 
 SENT="$("$HERE/ro.sh" <<SQL
 SELECT COUNT(*) AS sent

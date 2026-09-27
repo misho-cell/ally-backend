@@ -49,6 +49,42 @@ for e in edges:
     # them a busy hour does not fit in one page and the line you need is the
     # one that fell off the end.
     [ -n "${2:-}" ] || { echo "usage: logs.sh logs <deploymentId> [limit] [filter] [start] [end]" >&2; exit 1; }
+    # ────────────────────────────────────────────────────────────────────────
+    # ⚠️ A SQUARE BRACKET IN THE FILTER RETURNS NOTHING, AND IT RETURNS IT
+    # QUIETLY. This refuses instead.
+    #
+    # Every log tag in this codebase is written `[cliffhanger]`, `[login]`,
+    # `[speech]`, so the obvious filter is the tag itself — and Railway's
+    # filter has its own query syntax in which a bracket means something else.
+    # The result is an empty list that reads exactly like „that never happened".
+    #
+    # MEASURED, 27 September, on one deployment, one minute apart:
+    #
+    #   filter "[cliffhanger]"  →  0 lines
+    #   filter "cliffhanger"    →  2 lines
+    #   filter "[task-engine]"  →  0 lines
+    #   filter "task-engine"    →  2 lines
+    #
+    # The two cliffhanger lines were mine, deployed ninety minutes earlier to
+    # settle row 273, and my first check said they were not there. Had I
+    # believed it I would have gone looking for a bug in working code; had the
+    # 4 October routine run as written it would have reported „the guard never
+    # fired" from a filter that cannot match.
+    #
+    # ⚠️ AND STRIPPING THE BRACKETS WOULD BE WORSE. `cliffhanger] run` also
+    # returns nothing, so a tidied-up filter can still miss while looking like
+    # it searched — a tool quietly answering a different question, which is the
+    # fault this whole directory exists against. Exit 2 is „I could not look",
+    # and that is the honest answer here.
+    case "${4:-}" in
+      *'['*|*']'*)
+        echo "logs.sh: the filter contains a square bracket, and Railway's log" >&2
+        echo "  filter reads brackets as its own syntax — it would match NOTHING" >&2
+        echo "  and look exactly like „that never happened\"." >&2
+        echo "  Drop them: use 'cliffhanger', not '[cliffhanger]'." >&2
+        exit 2 ;;
+    esac
+    # ────────────────────────────────────────────────────────────────────────
     ask "$(python3 - "$2" "${3:-500}" "${4:-}" "${5:-}" "${6:-}" <<'PY'
 import json,sys
 d,n,f,start,end = sys.argv[1:6]
