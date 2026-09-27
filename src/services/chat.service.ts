@@ -2648,10 +2648,18 @@ const FETCH_PAGE_TOOL: AnthropicTool = {
   name: 'fetch_page',
   description:
     "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page." +
+    ' A long page comes back in parts: when the result carries `next_from_character`, you have NOT seen the whole page — call this again with the same url and `from_character` set to that number until you find the answer or the page ends.' +
     " WHEN: open an institution's own page whenever a current officeholder is involved.",
   input_schema: {
     type: 'object',
-    properties: { url: { type: 'string', description: 'Full http(s) URL of the page to read' } },
+    properties: {
+      url: { type: 'string', description: 'Full http(s) URL of the page to read' },
+      from_character: {
+        type: 'number',
+        description:
+          'Start reading here. Pass the `next_from_character` from a partial read to continue the same page. Omit for the beginning.',
+      },
+    },
     required: ['url'],
   },
 };
@@ -6124,7 +6132,7 @@ async function executeToolCall(
         priceKey: 'tavily.search',
         runId,
       }).catch(() => {});
-      return fetchPage(input['url'] as string);
+      return fetchPage(input['url'] as string, Number(input['from_character'] ?? 0));
     case 'save_contact_insight':
       return saveContactInsight(
         userId,

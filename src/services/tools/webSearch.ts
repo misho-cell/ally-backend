@@ -75,12 +75,48 @@ const PAGE_GUIDANCE =
  * ADMIT it could not read the page. So a truncated read says so, and says what
  * absence is worth.
  */
+const PAGE_GUIDANCE_ENDED =
+  'The page ends before this point — there is nothing more to read. If what ' +
+  'you were looking for was not in the parts you read, the page does not ' +
+  'state it, and you may say so.';
 const PAGE_GUIDANCE_PARTIAL =
-  'This is only the FIRST PART of the page — it was cut at ' +
-  'the character limit. Read the answer off what is here, verbatim. But if ' +
-  'what you are looking for is NOT here, you have NOT established that the ' +
-  'page lacks it: you were not shown the rest. Say you could not confirm it ' +
-  'from the page, and do not fall back to a name from anywhere else.';
+  'This is only PART of the page — it was cut at the character limit. Read ' +
+  'the answer off what is here, verbatim. If what you are looking for is NOT ' +
+  'here, you have NOT established that the page lacks it: you were not shown ' +
+  'the rest. Call fetch_page again on the same url with from_character set to ' +
+  'next_from_character to read on. Only after the page runs out may you say ' +
+  'it is not there, and never fall back to a name from anywhere else.';
+
+/**
+ * ⚠️ 27 SEPTEMBER, ROW 123(b) — ADMITTING THE CUT WAS HALF THE ANSWER.
+ *
+ * The 25 September note below this one ends with Misho's decision: a truncated
+ * read should ADMIT it could not read the page. It does, and the tester's run
+ * that evening is that sentence working exactly as designed — „on the official
+ * page it says the mayor is currently (name could not be confirmed on the
+ * page)". Honest, and useless to the person who asked who the mayor is.
+ *
+ * The numbers say why it will not fix itself. The page was fetched TWICE and
+ * returned 8,471 characters both times against a cap of 8,000; the tester
+ * opened the same page in a browser and read 3,055 characters of visible text,
+ * WITH the name in them. So the model was shown 8,000 characters of which most
+ * is not what a reader sees, and the 471 it was not shown are where the answer
+ * lived.
+ *
+ * TWO THINGS I DID NOT DO, and they are why this is the third attempt rather
+ * than a fourth guess. I did not raise the cap to fit one example — 44 of the
+ * 96 page reads this product has ever made hit it, and a number chosen to pass
+ * tbilisi.gov.ge says nothing about the next page. I did not touch the prompt:
+ * two attempts at this row were prompt changes, both made the output worse and
+ * both were reverted.
+ *
+ * What was missing is a WAY TO READ ON. „You were not shown the rest" was a
+ * dead end — the model could not ask for the rest, because nothing accepted
+ * the request. Now it can, one page-length at a time, and it pays for each
+ * part exactly as it pays for each fetch. A page whose answer is at character
+ * 8,100 costs one more call; a page with no answer in it still ends with „not
+ * there", but only after the page has actually run out.
+ */
 
 interface TavilyResult {
   title: string;
@@ -294,19 +330,40 @@ export async function webSearch(query: string): Promise<object> {
  * can see it too — the model gets the sentence, and whoever asks „why did it
  * say the page does not mention him" gets the numbers.
  */
-function pageResult(url: string, text: string): object {
-  const whole = text.length <= PAGE_CHARS;
+function pageResult(url: string, text: string, from = 0): object {
+  const start = Number.isFinite(from) && from > 0 ? Math.floor(from) : 0;
+  // Past the end is not an error and must not read as „the page says nothing":
+  // it is the page having run out, which is the one case where „not there" is
+  // established rather than assumed.
+  if (start >= text.length) {
+    return {
+      url,
+      guidance: PAGE_GUIDANCE_ENDED,
+      content: '',
+      read: 'past_the_end',
+      characters_available: text.length,
+    };
+  }
+  const content = text.slice(start, start + PAGE_CHARS);
+  const nextFrom = start + content.length;
+  const whole = start === 0 && nextFrom >= text.length;
   return {
     url,
     guidance: whole ? PAGE_GUIDANCE : PAGE_GUIDANCE_PARTIAL,
-    content: text.slice(0, PAGE_CHARS),
+    content,
     ...(whole
       ? {}
-      : { read: 'partial', characters_shown: PAGE_CHARS, characters_available: text.length }),
+      : {
+          read: 'partial',
+          characters_shown: content.length,
+          characters_available: text.length,
+          read_from_character: start,
+          ...(nextFrom < text.length ? { next_from_character: nextFrom } : {}),
+        }),
   };
 }
 
-export async function fetchPage(url: string): Promise<object> {
+export async function fetchPage(url: string, fromCharacter = 0): Promise<object> {
   if (!TAVILY_API_KEY) {
     return { error: 'Web fetch not configured (TAVILY_API_KEY missing)' };
   }
@@ -343,10 +400,10 @@ export async function fetchPage(url: string): Promise<object> {
     if (!content.trim()) {
       // Extractor came back empty — try a plain fetch before giving up.
       const fallback = await fetchRawPageText(target);
-      if (fallback) return pageResult(target, fallback);
+      if (fallback) return pageResult(target, fallback, fromCharacter);
       return { url: target, content: null, note: NO_TEXT_NOTE };
     }
-    return pageResult(target, content);
+    return pageResult(target, content, fromCharacter);
   } catch (err) {
     return { error: (err as Error).message };
   } finally {

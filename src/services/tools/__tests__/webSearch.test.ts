@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 // webSearch reads TAVILY_API_KEY at module load, so each test resets the module
 // registry and re-imports it with the env var set to the value under test.
 type WebSearch = typeof import('../webSearch').webSearch;
@@ -221,7 +224,7 @@ describe('a page that was cut says so', () => {
     json: async () => ({ results: [{ raw_content: 'x'.repeat(chars) }] }),
   });
 
-  it('tells the model it has only the first part, and what that is worth', async () => {
+  it('tells the model it has only part, and what that is worth', async () => {
     mockFetch(pageOf(40_000));
     const fetchPage = await loadFetchPage();
 
@@ -229,8 +232,81 @@ describe('a page that was cut says so', () => {
 
     expect(out.read).toBe('partial');
     expect(out.characters_available).toBe(40_000);
-    expect(String(out.guidance)).toContain('FIRST PART');
+    expect(String(out.guidance)).toContain('only PART of the page');
     expect(String(out.guidance)).toContain('you have NOT established that the page lacks it');
+  });
+
+  /**
+   * ⚠️ ROW 123(b), 27 SEPTEMBER — AND THE ADMISSION WAS A DEAD END UNTIL NOW.
+   *
+   * The tester's run of 25 September is the sentence above working exactly as
+   * designed: „on the official page it says the mayor is currently (name could
+   * not be confirmed on the page)". Honest, and useless to the person who
+   * asked who the mayor is.
+   *
+   * The page came back at 8,471 characters against a cap of 8,000, twice; the
+   * tester read the same page in a browser — 3,055 characters of visible text,
+   * WITH the name. So the model was shown 8,000 characters of mostly chrome
+   * and the 471 it was not shown held the answer.
+   *
+   * „You were not shown the rest" had nowhere to go, because nothing accepted
+   * a request for the rest. These four tests hold the way through. Two things
+   * they deliberately do NOT do: raise the cap (44 of 96 page reads ever made
+   * hit it — a number chosen to pass one government page says nothing about
+   * the next one), and touch the prompt (two attempts at this row were prompt
+   * changes; both made the output worse and both were reverted).
+   */
+  it('hands back a place to continue from', async () => {
+    mockFetch(pageOf(20_000));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a')) as Record<string, unknown>;
+
+    expect(out.next_from_character).toBe(8_000);
+    expect(String(out.guidance)).toContain('from_character');
+  });
+
+  it('reads on from where it was cut, and says where it started', async () => {
+    mockFetch({
+      ok: true,
+      json: async () => ({ results: [{ raw_content: 'a'.repeat(8_000) + 'THE NAME' }] }),
+    });
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a', 8_000)) as Record<string, unknown>;
+
+    expect(out.content).toBe('THE NAME');
+    expect(out.read_from_character).toBe(8_000);
+    // Nothing left after this part, so there is nowhere further to send it.
+    expect(out.next_from_character).toBeUndefined();
+  });
+
+  /**
+   * AND THE END OF THE PAGE IS ITS OWN ANSWER. „Past the end" is the one case
+   * where „it is not there" is established rather than assumed, so it says so
+   * in those words — an empty content with the partial guidance would send the
+   * model round the same page for ever.
+   */
+  it('says the page has run out rather than returning an empty part', async () => {
+    mockFetch(pageOf(9_000));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a', 9_000)) as Record<string, unknown>;
+
+    expect(out.read).toBe('past_the_end');
+    expect(out.content).toBe('');
+    expect(String(out.guidance)).toContain('the page does not');
+  });
+
+  /** A first read that fits is still a whole page, and says nothing extra. */
+  it('keeps the whole-page wording when the first read covers it', async () => {
+    mockFetch(pageOf(500));
+    const fetchPage = await loadFetchPage();
+
+    const out = (await fetchPage('https://example.com/a')) as Record<string, unknown>;
+
+    expect(out.read).toBeUndefined();
+    expect(out.next_from_character).toBeUndefined();
   });
 
   /** A whole page keeps the original wording and says nothing about cutting. */
@@ -268,5 +344,34 @@ describe('a page that was cut says so', () => {
 
     expect(out.characters_shown).toBe(8000);
     expect(out.characters_available).toBe(12_345);
+  });
+});
+
+/**
+ * THE WIRE. A reader that can continue is worth nothing if the tool the model
+ * sees does not offer the argument, or if the dispatcher drops it. This
+ * project keeps finding that the piece is tested from every angle and the line
+ * that calls it is not — twice today alone.
+ *
+ * These read the source, which is weaker than running it, and they are here
+ * because `executeToolCall` is module-private. They catch the two ways this
+ * particular wire breaks: the argument disappearing from the schema the model
+ * is shown, and the dispatcher calling `fetchPage(url)` with one argument.
+ */
+describe('the model is actually offered the way through', () => {
+  const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+
+  it('declares from_character on the tool the model sees', () => {
+    const at = chat.indexOf('const FETCH_PAGE_TOOL');
+    const def = chat.slice(at, at + 1_600);
+
+    expect(def).toContain('from_character');
+    expect(def).toContain('next_from_character');
+  });
+
+  it('passes it through the dispatcher rather than dropping it', () => {
+    expect(chat).toContain(
+      "fetchPage(input['url'] as string, Number(input['from_character'] ?? 0))",
+    );
   });
 });
