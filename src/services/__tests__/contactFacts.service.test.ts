@@ -728,6 +728,34 @@ describe('a fact carrying no contact', () => {
     },
   );
 
+  it.each(['', '   '])('refuses a fact with no value — %p', async (value) => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await expect(submitContactFact(USER, RAW_PHONE, 'occupation', value)).rejects.toThrow(
+      FactRefusedError,
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  /**
+   * AND THE WIRE, which is where the value could arrive as `undefined` at all.
+   * `input['value'] as string` is a CAST: it converts nothing, so an omitted
+   * field reached `value.trim()` and threw a TypeError that ended the run —
+   * `processToolBlocks` has no catch for a tool that throws. The connector's
+   * door coerced and checked both fields; this one did neither.
+   */
+  it('the chat door coerces rather than casting', () => {
+    const dispatcher = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+    expect(dispatcher).toContain(
+      'return await submitContactFact(\n' +
+        '          userId,\n' +
+        "          String(input['phone'] ?? ''),\n" +
+        "          String(input['field_type'] ?? ''),\n" +
+        "          String(input['value'] ?? ''),",
+    );
+  });
+
   it('files it under the canonical number when the phone is a phone', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 

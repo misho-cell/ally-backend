@@ -6258,11 +6258,15 @@ async function executeToolCall(
       // Only 'debrief' may be claimed by the model; 'sweep' and 'label' are
       // server-side pipelines and stay unreachable from here (fail-closed).
       try {
+        // `as string` is a CAST, not a conversion: a field the model omits
+        // arrives as `undefined` and `fieldTypeRaw.trim()` throws a TypeError
+        // that ends the whole run. The connector's door coerces and checks
+        // both; this one did neither.
         return await submitContactFact(
           userId,
-          input['phone'] as string,
-          input['field_type'] as string,
-          input['value'] as string,
+          String(input['phone'] ?? ''),
+          String(input['field_type'] ?? ''),
+          String(input['value'] ?? ''),
           input['source'] === 'debrief' ? 'debrief' : 'chat',
           input['confidence'] === 'mentioned' ? 'mentioned' : 'stated',
         );

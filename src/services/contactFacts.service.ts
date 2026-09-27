@@ -595,6 +595,15 @@ export async function submitContactFact(
         'Pass the phone id from a search result.',
     );
   }
+  // AND A FACT WITH NO VALUE IS NOT A FACT EITHER. The connector's door checks
+  // this (`Pass a non-empty value.`); the chat door did not, so an omitted
+  // value reached `value.trim()` as `undefined` and ended the run with a
+  // TypeError — and an empty string got as far as storing a blank fact against
+  // a real person. Refused the way this function refuses a guess, so both
+  // doors turn it into `{ saved: false, error }` as they already do.
+  if (value.trim() === '') {
+    throw new FactRefusedError('Nothing was saved: pass a non-empty value.');
+  }
   const fieldType = (fieldTypeRaw.trim().toLowerCase() || 'note').slice(0, MAX_FIELD_TYPE_LEN);
   if (isGuessValue(value)) {
     throw new FactRefusedError(
