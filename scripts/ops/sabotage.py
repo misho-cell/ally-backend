@@ -84,9 +84,19 @@ SUITE_TIMEOUT_S = int(os.environ.get('SABOTAGE_TIMEOUT', '300'))
 # neither word in `if (threadHolder(thread.id) !== undefined) return 'busy';`
 # was in this list. A filter that cannot see the guard behind the worst
 # outbound duplicate we have had is a filter with a hole in it.
+#
+# `owner` -> `\bown` on 27 September, and the hole it left is the same shape.
+# `debrief.service.ts:379` is
+#
+#     if (!(await ownsDebriefSubject(userId, subject, refId))) {
+#
+# — the one line standing between a caller and writing an outcome against
+# ANOTHER person's introduction. The sweep offered 0 of debrief.service.ts's
+# twelve blocks, because an ownership check spelled `owns…` contains no
+# `owner`. `\bown` reaches own/owns/owned/owner and not known/downstream.
 HARM = re.compile(
     r'block|opt_?out|optOut|deceased|consent|permission|approved|approv|'
-    r'\bcap\b|budget|limit|redact|phone|token|safe|moderat|owner|drain|'
+    r'\bcap\b|budget|limit|redact|phone|token|safe|moderat|\bown|drain|'
     r'exclud|stop|member|allow|denied|forbid|busy|holder|lock',
     re.I,
 )
