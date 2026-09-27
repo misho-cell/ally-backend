@@ -38,6 +38,7 @@
  */
 import pool, { query } from '../../db/postgres/client';
 import { FactRefusedError, submitContactFact } from '../contactFacts.service';
+import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
 import { createRelayAsk } from '../taskAsks.service';
 import { getTaskById, grantTaskPermission, setTaskBrief, setTaskWake } from '../taskStore.service';
 import { PROFILE_LINE_NEEDS_BOTH, setUserProfileField } from '../userProfile.service';
@@ -125,6 +126,60 @@ maybeDescribe('a missing field cannot reach the database', () => {
    * not equal to it — which is how the item is written on the tester's list,
    * and it is worth pinning that the reminder is still attached to a failure.
    */
+  /**
+   * ⚠️ NOT ON THE LIST — FOUND BY SWEEPING FOR THE REST OF THE DOOR, 22:45.
+   *
+   * Tonight's fix put `isARealId` where „every door meets" for the four
+   * `taskStore` functions. It is not where every door meets. `chat.service.ts`
+   * hands `Number(input['task_id'])` to `proposeTaskPlan` and `approveTaskPlan`
+   * as well, and NEITHER guards it — both go straight into
+   * `WHERE id = $1 AND user_id = $2`, so the same missing field reaches
+   * Postgres as the string „NaN" and raises.
+   *
+   * The approve door checks `confirmed` and checks the screen and never checks
+   * the id at all, which is the shape of the whole day: the measurement was
+   * right and the question was different. What made it invisible is also
+   * tonight's doing — since the thrown-tool wrapper, this no longer kills the
+   * run. The model gets a failure, apologises, and the owner sees a plan that
+   * silently did not get approved.
+   *
+   * These two run BEFORE the fix and are the reason for it.
+   */
+  describe('the plan doors — the same id, unguarded until tonight', () => {
+    it('answers instead of throwing when the goal id is missing', async () => {
+      await expect(proposeTaskPlan(OWNER, Number(undefined), { steps: [] })).resolves.toMatchObject(
+        { ok: false },
+      );
+
+      await expect(approveTaskPlan(OWNER, Number(undefined))).resolves.toMatchObject({
+        ok: false,
+      });
+    });
+
+    it('answers instead of throwing when the goal id is a word', async () => {
+      await expect(approveTaskPlan(OWNER, Number('the vet one'))).resolves.toMatchObject({
+        ok: false,
+      });
+    });
+
+    /**
+     * The other side, and on these two doors it is the side that matters: a
+     * guard that refused every id would mean no plan could ever be proposed
+     * or approved again, which is row 1 — the wall — from the opposite
+     * direction.
+     */
+    it('still proposes and approves a plan on a goal that exists', async () => {
+      const proposed = await proposeTaskPlan(OWNER, taskId, {
+        solved_when: 'a vet is found',
+        routes: [{ name: 'ask two people', status: 'running' }],
+      });
+      expect(proposed.ok).toBe(true);
+
+      const approved = await approveTaskPlan(OWNER, taskId);
+      expect(approved.ok).toBe(true);
+    });
+  });
+
   describe('item 8 — an ask id that is not an ask id', () => {
     it('answers "Ask not found." for a missing id', async () => {
       const outcome = await createRelayAsk(OWNER, Number(undefined), 'somebody');

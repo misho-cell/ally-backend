@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { georgianStem } from './tools/georgianStem';
-import { Task } from './taskStore.service';
+import { isARealId, Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
 import { withoutAskBoundaries } from './askBoundary.service';
@@ -355,6 +355,11 @@ export async function proposeTaskPlan(
   /** The conversation's language — the card is read by the owner, not by us. */
   language: RunLanguage = 'ka',
 ): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
+  // A GOAL ID THAT IS NOT A GOAL ID IDENTIFIES NO GOAL. See isARealId: the
+  // door hands over `Number(input['task_id'])`, `Number(undefined)` is `NaN`,
+  // and `pg` sends that to `WHERE id = $1` as the STRING „NaN". The answer is
+  // the one this function already gives for an id that matches nothing.
+  if (!isARealId(taskId)) return { ok: false, error: 'No such open goal of yours.' };
   const parsed = parsePlan(raw);
   if (!parsed.ok) return parsed;
   // Ticket 20 row 146: decided HERE, while the plan is being written, so the
@@ -523,6 +528,13 @@ export async function approveTaskPlan(
   via: ApprovalRoute = 'chat',
   language: RunLanguage = 'ka',
 ): Promise<PlanOutcome<PlanApproval>> {
+  // The same rule, and this is the door it was missing from most visibly: the
+  // approval gate checks `confirmed` and checks the screen and never checked
+  // the id. „No proposed plan is waiting on this goal." is what it already
+  // says about a goal it cannot find.
+  if (!isARealId(taskId)) {
+    return { ok: false, error: 'No proposed plan is waiting on this goal.' };
+  }
   const result = await query<{ plan: TaskPlan; plan_version: number; plan_approved_at: string }>(
     `UPDATE tasks
      SET plan = plan_proposed,

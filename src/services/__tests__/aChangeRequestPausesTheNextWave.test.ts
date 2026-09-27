@@ -108,12 +108,27 @@ describe('what ends the hold', () => {
    * IN THE SAME STATEMENT THAT RECORDS THE APPROVAL, so there is no instant in
    * which a goal is approved and still held.
    */
+  /**
+   * ⚠️ THE WINDOW IS THE STATEMENT, NOT A CHARACTER COUNT. This read
+   * `slice(at, at + 1400)` until 27 September, and adding a seven-line comment
+   * to the top of that function pushed `RETURNING` outside it — so `indexOf`
+   * answered -1, „is before" was trivially false, and a test about the ORDER
+   * of two clauses failed for a reason that had nothing to do with either.
+   * A magic number in a source test measures the prose above the code.
+   */
   it('the new yes clears it where it is written', () => {
     const at = plans.indexOf('export async function approveTaskPlan');
-    const fn = plans.slice(at, at + 1400);
+    // Anchored on the SQL and not on the first backtick after the function:
+    // the guard's comment above it quotes an identifier, and prose is not the
+    // statement.
+    const opens = plans.indexOf('UPDATE tasks', at);
+    const sql = plans.slice(opens, plans.indexOf('`', opens));
 
-    expect(fn).toContain('plan_change_requested_at = NULL');
-    expect(fn.indexOf('plan_change_requested_at = NULL')).toBeLessThan(fn.indexOf('RETURNING'));
+    expect(sql).toContain('plan_change_requested_at = NULL');
+    expect(sql.indexOf('plan_change_requested_at = NULL')).toBeLessThan(sql.indexOf('RETURNING'));
+    // Both clauses are in the SAME statement, which is the property the two
+    // offsets above only imply.
+    expect(sql).toContain('UPDATE tasks');
   });
 });
 

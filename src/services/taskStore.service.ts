@@ -278,8 +278,22 @@ export async function goalHasActedOutward(taskId: number): Promise<boolean> {
  * known at one site and missing at the rest. The check belongs here, where
  * every door meets, and the answers stay the ones these functions already give
  * for an id that matches nothing: `null`, and `false`.
+ *
+ * ⚠️ AND „WHERE EVERY DOOR MEETS" WAS NOT TRUE WHEN I WROTE IT — 27 September,
+ * four hours later. `chat.service.ts` hands the same `Number(input['task_id'])`
+ * to `proposeTaskPlan` and `approveTaskPlan` in `taskPlans.service.ts`, and
+ * neither of those goes through this file at all. Both put it straight into
+ * `WHERE id = $1`, so the same missing field reached Postgres as the string
+ * „NaN" and raised — measured against a real database, not argued.
+ *
+ * The approve door checks `confirmed` and checks the screen and never checked
+ * the id, which is the day's own shape: the measurement was right and the
+ * question was different. So this is EXPORTED now, and its comment no longer
+ * claims a completeness it does not have. It is the rule for a goal id
+ * wherever one arrives from a model; it is not a proof that every such place
+ * has been found.
  */
-function isARealId(id: number): boolean {
+export function isARealId(id: number): boolean {
   return Number.isInteger(id) && id > 0;
 }
 
