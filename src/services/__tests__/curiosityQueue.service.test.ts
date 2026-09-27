@@ -134,6 +134,35 @@ describe('buildCuriosityQueue', () => {
     expect(out).toHaveLength(2);
   });
 
+  /**
+   * ⚠️ A LIMIT THAT IS NOT A NUMBER USED TO EMPTY THE QUEUE — 27 September.
+   *
+   * The chat door passes `input['limit'] as number | undefined`, and `as` is a
+   * CAST, not a conversion: a model that writes „ten" hands the string
+   * straight through. `items.slice(0, NaN)` is not a crash — it is an EMPTY
+   * ARRAY, so the queue came back with nothing in it and nothing anywhere
+   * saying why.
+   *
+   * That is the day's fault in its quietest disguise. „0 candidates" means
+   * „nothing was examined", never „there is nobody to ask", and this is a tool
+   * whose whole purpose is to answer „who should I learn about next".
+   */
+  it.each([
+    ['a word the model wrote out', 'ten'],
+    ['a missing field', undefined],
+    ['zero', 0],
+    ['a negative', -1],
+  ])('falls back to the default rather than emptying the queue for %s', async (_what, limit) => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000011' }, { contact_phone: '+995500000012' }],
+      presence: [],
+    });
+
+    const out = await buildCuriosityQueue('42', limit as unknown as number);
+
+    expect(out).toHaveLength(2);
+  });
+
   it('a bridge-position (Neo4j) failure degrades that tier to empty without breaking the queue', async () => {
     mockGetTopConnectors.mockRejectedValue(new Error('neo4j down'));
     routeQueueQueries({

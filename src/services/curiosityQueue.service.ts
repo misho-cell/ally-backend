@@ -279,7 +279,22 @@ export async function buildCuriosityQueue(
     });
   }
   items.sort((a, b) => a.priority - b.priority);
-  const finalItems = items.slice(0, limit);
+  /**
+   * ⚠️ `slice(0, NaN)` IS AN EMPTY ARRAY, NOT A CRASH, AND THAT IS WHY IT IS
+   * WORTH A LINE. The chat door passes `input['limit'] as number | undefined`
+   * — a CAST, not a conversion — so a model that writes „ten" hands a string
+   * through, and the queue comes back EMPTY with nothing anywhere saying why.
+   *
+   * „0 candidates" means „nothing was examined", never „all safe". Every other
+   * limit door in this codebase clamps (see clampLimit in graphAnalytics);
+   * this one silently answered a different question, which is the fault this
+   * whole evening is about wearing its quietest disguise.
+   */
+  const howMany =
+    Number.isFinite(Number(limit)) && Number(limit) > 0
+      ? Math.floor(Number(limit))
+      : QUEUE_LIMIT_DEFAULT;
+  const finalItems = items.slice(0, howMany);
 
   // Fire-and-forget: T16's "curiosity_answer_rate" needs a record of what
   // was ever shown, but logging that must never slow down or break handing
