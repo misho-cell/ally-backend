@@ -98,18 +98,36 @@ SQL_TEXT="SELECT
       AND kind <> 'heartbeat')                                     AS anthropic_calls,
   (SELECT COUNT(*) FROM usage_events
     WHERE created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes'
-      AND model IS NOT NULL AND model NOT LIKE 'claude%')          AS other_rows"
+      AND model IS NOT NULL AND model NOT LIKE 'claude%')          AS other_rows,
+  -- ⚠️ WHEN, not only HOW MANY — see the answered-then-stopped branch.
+  -- A window that holds both replies and errors says nothing until you know
+  -- which came LAST. Seconds since the epoch, 0 for none, so bash can compare
+  -- them without parsing a timestamp.
+  (SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0)
+     FROM conversations
+    WHERE role = 'assistant' AND kind = 'error'
+      AND created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS last_error,
+  (SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0)
+     FROM conversations
+    WHERE role = 'assistant' AND kind = 'message' AND content <> ''
+      AND created_at >= NOW() - INTERVAL '${WINDOW_MIN} minutes')  AS last_reply,
+  (SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0)
+     FROM usage_events
+    WHERE model LIKE 'claude%'
+      AND user_id IS NOT NULL AND user_id <> ''
+      AND kind <> 'heartbeat')                                     AS last_call"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
 
-read -r ERRORS REPLIES CALLS OTHER <<< "$(
+read -r ERRORS REPLIES CALLS OTHER LAST_ERROR LAST_REPLY LAST_CALL <<< "$(
   python3 -c '
 import sys, json
 try:
     row = json.load(sys.stdin)["data"]["rows"][0]
 except Exception:
-    print("x x x x"); raise SystemExit
-print(row["errors"], row["replies"], row["anthropic_calls"], row["other_rows"])
+    print("x x x x x x x"); raise SystemExit
+print(row["errors"], row["replies"], row["anthropic_calls"], row["other_rows"],
+      row["last_error"], row["last_reply"], row["last_call"])
 ' <<< "$OUT"
 )"
 
@@ -441,5 +459,50 @@ if [ "$CALLS" -eq 0 ] && [ "$ERRORS" -ge 1 ]; then
   exit 1
 fi
 
+# ════════ IT ANSWERED, AND THEN IT STOPPED — 28 SEPTEMBER, 02:34 ════════
+#
+# ⚠️ THIS FILE SAID „OK" THROUGH A TOTAL OUTAGE FOR TWENTY MINUTES, and the
+# line it said it on is the one directly below.
+#
+# At 02:34:01 the provider began refusing every request: „You have reached your
+# specified API usage limits." Not one call reached inference afterwards. But
+# the twenty-minute window still contained the replies written at 02:34:03 by
+# runs that had ALREADY got their model output — so `REPLIES` was 4, the test
+# below was „are there any replies at all", and this script answered
+# „the product is answering" while every goal wake in the product was dying.
+#
+# The count was right and the question was wrong. The question is not whether
+# the window holds a reply. It is whether anything has succeeded SINCE the
+# errors started. Twenty-seven errors, every one of them newer than the newest
+# reply, is not a product that is answering — it is a product that answered and
+# then stopped, which is the only shape an outage has while it is beginning.
+#
+# Found by reading the error rows because the exit code was not believable.
+# That is not a method; it is luck, and this branch is what replaces it.
+if [ "$ERRORS" -ge 3 ] && [ "$LAST_ERROR" -gt "$LAST_REPLY" ]; then
+  echo "NOT ANSWERING ANY MORE — ${ERRORS} error(s), and not one reply since the"
+  echo "  first of them. It was answering earlier in this window and has stopped."
+  if [ "$LAST_REPLY" -gt 0 ]; then
+    echo "  Last reply:         $(date -u -d "@${LAST_REPLY}" '+%H:%M:%S UTC' 2>/dev/null || echo "@${LAST_REPLY}")"
+  else
+    echo "  Last reply:         none in this window at all."
+  fi
+  echo "  Last error:         $(date -u -d "@${LAST_ERROR}" '+%H:%M:%S UTC' 2>/dev/null || echo "@${LAST_ERROR}")"
+  if [ "$LAST_CALL" -gt "$LAST_ERROR" ]; then
+    echo "  One of the product's own calls DID reach the provider after the last error,"
+    echo "  so it is not refusing everything — read the cause before concluding."
+  else
+    echo "  Last call to reach the provider: $(date -u -d "@${LAST_CALL}" '+%H:%M:%S UTC' 2>/dev/null || echo "@${LAST_CALL}")"
+    echo "  Nothing has reached inference since the errors began, which is an"
+    echo "  account or key problem and not load."
+  fi
+  probe_line
+  echo "  Read the cause, do not guess it: [provider] lines in the container log name the"
+  echo "  status and say ACCOUNT (no retry will pass) or LOAD (it may clear by itself)."
+  exit 1
+fi
+
+# Errors beside replies that are NEWER than them: something failed and the
+# product kept working. That is an ordinary failure and belongs to why.sh.
 echo "OK — errors are present but the product is answering (${REPLIES} reply(ies))."
 exit 0
