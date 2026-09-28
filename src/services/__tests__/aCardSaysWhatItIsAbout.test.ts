@@ -182,3 +182,57 @@ describe('the weekly summary is written for the person reading it', () => {
     expect(text).not.toContain('quantum');
   });
 });
+
+import { normalisedPayload } from '../updateCard';
+
+/**
+ * ⚠️ A FIX TO THE COMPOSER REACHES NOT ONE CARD ALREADY QUEUED.
+ *
+ * Row 230 was fixed where the summary is composed. Measured immediately after:
+ * forty-nine summaries exist, THIRTY still unshown, and not one carries the new
+ * shape — every one still has „ხარჯი ამ კვირაში: … ტოკენი" in its text. A
+ * summary is made once a week, so the card the tester is about to open is an
+ * old row and would have stayed broken for days while the fix sat in the
+ * repository looking done.
+ *
+ * The lesson was already written at the top of updateCard.ts, about `title`,
+ * two hours earlier. It was then not applied to the card next to it.
+ */
+describe('an old card is fixed on the way out, not left for the next week', () => {
+  const OLD = {
+    text: 'კვირის შეჯამება (2026-09-21-დან)\n\nაქტიური მიზნები: 2\nხარჯი ამ კვირაში: 275 ტოკენი.\nშენი წესებით ავტომატურად გაცემული პასუხები: 0.',
+    goals: [{ pending_question: 'x' }, {}],
+    tokens_spent: 275,
+  };
+
+  it('takes the cost sentence out of a summary queued before the fix', () => {
+    const fixed = normalisedPayload('weekly_summary', OLD);
+
+    expect(String(fixed.text)).not.toContain('ტოკენი');
+    expect(String(fixed.text)).not.toContain('275 ');
+  });
+
+  /** The figure is for the admin and the ledger; only the sentence goes. */
+  it('keeps the figure on the payload for whoever legitimately wants it', () => {
+    expect(normalisedPayload('weekly_summary', OLD).tokens_spent).toBe(275);
+  });
+
+  it('keeps the rest of the summary intact', () => {
+    const fixed = String(normalisedPayload('weekly_summary', OLD).text);
+
+    expect(fixed).toContain('კვირის შეჯამება');
+    expect(fixed).toContain('აქტიური მიზნები: 2');
+    expect(fixed).toContain('ავტომატურად გაცემული პასუხები: 0.');
+  });
+
+  /** An old row and a new row must reach the app identical. */
+  it('names the authoritative source on a row that never carried one', () => {
+    expect(normalisedPayload('weekly_summary', OLD).card_source).toBe('goals');
+  });
+
+  it('leaves every other kind exactly as it was', () => {
+    const debrief = { who: 'Lika Ose', why: 'no answer for 3 days' };
+
+    expect(normalisedPayload('debrief', debrief)).toBe(debrief);
+  });
+});

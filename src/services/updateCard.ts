@@ -181,6 +181,51 @@ function weekLine(payload: Record<string, unknown>, language: RunLanguage): stri
 }
 
 /**
+ * The cost sentence, as it was written into every summary made before the fix.
+ *
+ * Matched on its own line and by shape rather than by an exact string, because
+ * the number differs per person and the wording could gain a space.
+ */
+const COST_LINE = /^\s*ხარჯი ამ კვირაში:.*$\n?/m;
+
+/**
+ * ⚠️ THE FIX TO THE COMPOSER DID NOT REACH ONE SINGLE CARD ALREADY QUEUED —
+ * 28 September, and I had written the lesson for this two hours earlier.
+ *
+ * Row 230 was fixed where the summary is COMPOSED, so every summary from now
+ * on carries no cost line and names its authoritative source. Measured
+ * immediately afterwards: forty-nine summaries exist, THIRTY of them still
+ * unshown, and not one carries `card_source` — every one still has
+ * „ხარჯი ამ კვირაში: … ტოკენი" in its text. A summary is made once a week, so
+ * the card Ninia is about to open is an old row and would have stayed broken
+ * for days while the fix sat in the repository looking done.
+ *
+ * The comment at the top of this file already says it: computed when read, not
+ * when queued, because a field written at queue time leaves every existing row
+ * blank. I wrote that about `title`, shipped it, and then fixed the adjacent
+ * card the other way within the hour.
+ *
+ * So the payload is normalised HERE, on the way out. An old row and a new row
+ * reach the app identical, and nothing has to be rewritten in the database —
+ * which would be a write against thirty real people's rows to correct a
+ * sentence.
+ */
+export function normalisedPayload(
+  kind: string,
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  if (kind !== 'weekly_summary') return payload;
+  const text =
+    typeof payload.text === 'string' ? payload.text.replace(COST_LINE, '') : payload.text;
+  return {
+    ...payload,
+    ...(typeof text === 'string' && { text }),
+    // Old rows never carried it; the answer is the same for both.
+    card_source: 'goals',
+  };
+}
+
+/**
  * What a card shows before it is opened.
  *
  * The goal's own title wins whenever there is one: „Find an architect" tells a

@@ -20,7 +20,7 @@ import {
   DEFAULT_SNOOZE_DAYS,
 } from '../../services/pendingUpdates.service';
 import { goalTitlesFor } from '../../services/pendingUpdates.service';
-import { cardHeading } from '../../services/updateCard';
+import { cardHeading, normalisedPayload } from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
 import type { RunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
@@ -80,16 +80,17 @@ function updatePayload(
   titles: ReadonlyMap<number, string>,
   language: RunLanguage,
 ): UpdateRow {
+  const payload = normalisedPayload(u.kind, u.payload);
   const heading = cardHeading(
     u.kind,
-    u.payload,
+    payload,
     u.task_id === null ? null : (titles.get(u.task_id) ?? null),
     language,
   );
   return {
     update_ref: toUpdateRef(u.id),
     kind: u.kind,
-    payload: u.payload,
+    payload,
     task_id: u.task_id ?? null,
     title: heading.title,
     detail: heading.detail,
