@@ -46,17 +46,36 @@ import { query } from '../db/postgres/client';
  * The four the founder named — „me, misho, giorgi and lika. to all of us" —
  * and Misho named the same four directly to me the same morning.
  *
- * ⚠️ TWO OF THESE ARE NOT CONFIRMED AND ARE DELIBERATELY ABSENT. Searching by
- * name found exactly one Tornike Abuladze (501) and exactly one Giorgi
- * Turashvili (118509) who uses Netai. „Lika" matched fifteen accounts and
- * „Misho" three, and an outage alarm sent to a stranger is a write to a real
- * person that cannot be taken back. They go in when Misho names the ids, and
- * not before — a list that is three-quarters right is not a list.
+ * ⚠️ ONLY THREE ARE HERE, AND THE MISSING ONE IS THE REASON THIS COMMENT IS
+ * LONG. The tester gave me all four ids from the admin: 501, 118509, 160584
+ * and 167250. I checked each against `UserPhone` before adding it, and
+ *
+ *     account 167250 („Misho", admin, allyapp email) HAS NO PHONE ROW AT ALL.
+ *
+ * Adding it would have put a name on this list that can never be reached —
+ * `recipientPhones` would skip it silently, every alarm would go to three
+ * people while appearing to go to four, and nobody would find out until
+ * somebody asked why Misho never gets them. A recipient who cannot be
+ * reached is worse than an absent one, because the list itself becomes the
+ * lie.
+ *
+ * It is also almost certainly not his personal account: 167250 is the SHARED
+ * pilot login the tester seat reads from, it carries the allyapp email, and
+ * it has never recorded a `lastLoginAt`. The two „Misho Tchokhonelidze"
+ * accounts that DO carry a phone are 26954 (last login 17 June) and 144942
+ * (11 March). I am not guessing between them: an outage alarm to the wrong
+ * phone is a write to a real person that cannot be taken back.
+ *
+ * So Misho goes in when Misho says which account is his.
  */
-export const ALARM_RECIPIENT_IDS: readonly number[] = [501, 118509];
+export const ALARM_RECIPIENT_IDS: readonly number[] = [
+  501, // Tornike Abuladze — the founder
+  118509, // Giorgi Turashvili
+  160584, // Lika Ose (Osepashvili)
+];
 
-/** Named so a reader of the constant above knows what is missing and why. */
-export const ALARM_RECIPIENTS_PENDING = 'Misho and Lika — account ids not yet confirmed';
+export const ALARM_RECIPIENTS_PENDING =
+  'Misho — 167250 has no phone on record and is the shared pilot login; he must say which account is his';
 
 export type SendOutcome = 'sent' | 'no_template' | 'no_recipients' | 'failed';
 
@@ -74,11 +93,23 @@ async function recipientPhones(): Promise<Array<{ userId: number; phone: string 
        FROM "UserPhone"
       WHERE "userId" = ANY($1::int[])
         AND phone IS NOT NULL AND phone <> ''
-      ORDER BY "userId"`,
+      ORDER BY "userId", id`,
     [[...ALARM_RECIPIENT_IDS]],
     8_000,
   );
-  return rows.rows.map((r) => ({ userId: r.user_id, phone: r.phone }));
+  /**
+   * ⚠️ ONE MESSAGE PER PERSON, NOT PER NUMBER. The founder has TWO `UserPhone`
+   * rows, so the obvious mapping would send him every alarm twice — and „the
+   * alarm is noisy" is how an alarm gets muted, which is the failure this
+   * whole file exists to avoid. The first number per account wins; the rows
+   * are ordered so that choice is stable rather than whatever the planner
+   * returned that day.
+   */
+  const firstPerPerson = new Map<number, string>();
+  for (const row of rows.rows) {
+    if (!firstPerPerson.has(row.user_id)) firstPerPerson.set(row.user_id, row.phone);
+  }
+  return [...firstPerPerson].map(([userId, phone]) => ({ userId, phone }));
 }
 
 /**

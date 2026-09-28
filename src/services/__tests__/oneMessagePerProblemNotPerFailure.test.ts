@@ -239,6 +239,48 @@ describe('it refuses rather than sending the wrong template', () => {
    */
   it('ships only the recipients that were actually confirmed', () => {
     expect(SEND).toContain('ALARM_RECIPIENTS_PENDING');
-    expect(SEND).toContain('an outage alarm sent to a stranger');
+    expect(SEND).toContain('cannot be taken back');
+  });
+});
+
+/**
+ * ⚠️ A RECIPIENT WHO CANNOT BE REACHED IS WORSE THAN AN ABSENT ONE.
+ *
+ * The tester handed me all four account ids from the admin. I checked each
+ * against `UserPhone` before adding it, and 167250 — „Misho", admin, allyapp
+ * email — HAS NO PHONE ROW. Adding it would have made every alarm go to three
+ * people while the list said four, silently, until somebody asked why Misho
+ * never gets them. The list itself would have been the lie.
+ *
+ * And the founder has TWO phone rows, so the obvious mapping sends him
+ * everything twice. „The alarm is noisy" is how an alarm gets muted, which is
+ * the one failure this whole file exists to prevent.
+ */
+describe('the list says only what it can actually do', () => {
+  const SEND = readFileSync(join(__dirname, '..', 'outageAlarm.send.ts'), 'utf8');
+
+  it('leaves out the account with no phone rather than listing it', () => {
+    expect(SEND).toContain('167250');
+    expect(SEND).toContain('HAS NO PHONE ROW AT ALL');
+    const list = SEND.slice(
+      SEND.indexOf('export const ALARM_RECIPIENT_IDS'),
+      SEND.indexOf('export const ALARM_RECIPIENTS_PENDING'),
+    );
+    expect(list).toContain('501');
+    expect(list).toContain('118509');
+    expect(list).toContain('160584');
+    // The one that cannot be reached is named in the prose above, never in the list.
+    expect(list).not.toContain('167250');
+  });
+
+  /** One message per PERSON. The founder has two numbers. */
+  it('sends one message per person even when they have two numbers', () => {
+    expect(SEND).toContain('ONE MESSAGE PER PERSON, NOT PER NUMBER');
+    expect(SEND).toContain('firstPerPerson');
+  });
+
+  /** A stable choice, not whatever the planner returned that day. */
+  it('picks the same number every time', () => {
+    expect(SEND).toContain('ORDER BY "userId", id');
   });
 });
