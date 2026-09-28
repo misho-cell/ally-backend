@@ -1204,6 +1204,47 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
+### ⚠️ 0. THE ANTHROPIC ACCOUNT HAS HIT ITS SPEND LIMIT — 02:34:01 UTC, 28 September
+
+**READ THIS FIRST. It is not a decision I can take and it is not one that can wait.**
+
+The provider's own words, from the container log:
+
+> `400 invalid_request_error — "You have reached your specified API usage limits.
+> You will regain access on 2026-10-01 at 00:00 UTC."`
+
+**Measured at 02:41, eight minutes in:**
+
+- first refusal **02:34:01**
+- **`usage_events` last row 02:34:00** — nothing has reached inference since. The
+  request is refused BEFORE inference, so no usage row is written at all. That is the
+  22 September signature precisely.
+- eleven goal wakes dead in the first seven minutes and still going: tasks 8089, 8094,
+  4098, 6139, 3534, 4099, 3202, 6172, 4324, 4126 …
+- **four people** have had „დავალების ნაბიჯი ვერ დასრულდა" written into their thread,
+  and not all of them are test seats — at least one is a real person's goal.
+
+**IT WILL NOT CLEAR ON ITS OWN.** This is the ACCOUNT class, not the LOAD class: a
+retry cannot pass it. The date the provider gives is **1 October**, three days away.
+Until the limit is raised, every goal wake for every real person fails.
+
+**WHY IT IS HERE AND NOT DONE.** Money is Misho's or the founder's, night or day —
+and Misho's own word on 27 September was that the Anthropic top-up is Tornike and
+Lika's, closed on my side. So I name it and they decide. That rule does not move
+because the hour is bad; the night is exactly when it is least checkable, which is why
+it is written down instead of acted on.
+
+**What I have done:** told the tester at 02:42 to stop and to not file anything after
+02:34 as a bug against last night's fixes; their 04:30 and 05:30 runs cannot work.
+Nothing else is safe for me to do.
+
+**And one fault of my own, recorded beside it:** `outage.sh` returned **0 — OK** on
+the window containing this, because the same twenty minutes also held 33 calls that
+went through before 02:34. The exit code said healthy while the product was dead. I
+found it only by reading the error rows rather than trusting the code. That monitor
+needs the „errors arriving while usage_events has stopped" test it already has for the
+total-silence case — it is the same 22 September lesson, half-learned.
+
 ### 1. Can a goal's autonomy still be changed after it is created? (27 Sep, 22:55 UTC)
 
 **For Tornike, and it is a product question, not a bug report.**
