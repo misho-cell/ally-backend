@@ -284,3 +284,61 @@ describe('the list says only what it can actually do', () => {
     expect(SEND).toContain('ORDER BY "userId", id');
   });
 });
+
+/**
+ * ⚠️ THE PROBE SPEAKS AND NOTHING ELSE DOES, AND THAT IS THE WHOLE DESIGN.
+ *
+ * On 28 September silence and death looked identical from outside. `outage.sh`
+ * has a verdict called NOTHING PROVEN for exactly that: no errors and no calls
+ * could mean the provider is down, or could mean it is four in the morning and
+ * nobody is using the product.
+ *
+ * Every detector built on counting is an inference from absence, and the whole
+ * lesson of that night is that an inference from absence is not evidence. The
+ * heartbeat makes a REAL call and gets a REAL answer — so it detects, and the
+ * three causes without a probe are honestly not detected at all rather than
+ * guessed at.
+ */
+describe('only the probe is allowed to say the provider is down', () => {
+  const DETECT = readFileSync(join(__dirname, '..', 'outageDetect.service.ts'), 'utf8');
+  const HEARTBEAT = readFileSync(join(__dirname, '..', 'heartbeat.cron.ts'), 'utf8');
+
+  it('is wired to the probe that actually calls the provider', () => {
+    expect(HEARTBEAT).toContain('noticeProviderRefusing');
+    expect(HEARTBEAT).toContain('noticeProviderAnswering');
+  });
+
+  /**
+   * The provider's own sentence, carried through rather than summarised.
+   * "usage limits", "invalid key" and "overloaded" are three problems with
+   * three owners and only one of them is money — "the provider refused" and
+   * nothing more sends somebody to look in the wrong place at 3 a.m.
+   */
+  it('passes the provider its own words', () => {
+    expect(HEARTBEAT).toContain('noticeProviderRefusing((err as Error).message)');
+  });
+
+  /**
+   * ⚠️ PEOPLE, NOT FAILURES. That night thirty-four goals died across SEVEN
+   * people, and "34" in a three-in-the-morning message reads as thirty-four
+   * humans. The number that decides whether somebody gets out of bed is how
+   * many people, and here the two differ by a factor of five.
+   */
+  it('counts people and not failures', () => {
+    expect(DETECT).toContain('COUNT(DISTINCT user_id)');
+    expect(DETECT).toContain('A COUNT OF PEOPLE, NOT OF FAILURES');
+  });
+
+  /** A count that cannot be read must not swallow the alarm. */
+  it('still alerts when the count cannot be read', () => {
+    expect(DETECT).toContain('return 0;');
+    expect(DETECT).toContain('must not stop the alarm');
+  });
+
+  /** Says nothing about the three causes it cannot honestly see. */
+  it('does not pretend to detect the other three causes', () => {
+    expect(DETECT).not.toContain("'api_down'");
+    expect(DETECT).not.toContain("'login_codes'");
+    expect(DETECT).toContain('are NOT detected here and are not pretended to be');
+  });
+});

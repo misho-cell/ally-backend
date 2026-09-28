@@ -1,6 +1,7 @@
 import anthropic from '../config/anthropic';
 import { query } from '../db/postgres/client';
 import { recordClaudeUsage } from './costLedger.service';
+import { noticeProviderRefusing, noticeProviderAnswering } from './outageDetect.service';
 
 /**
  * THE POSITIVE PROBE — silence becomes evidence instead of the absence of it.
@@ -113,12 +114,28 @@ export async function beatOnce(): Promise<'sent' | 'not_needed' | 'failed'> {
     }).catch(() => {});
     // eslint-disable-next-line no-console
     console.log(`[heartbeat] provider answered after ${quiet} min of silence`);
+    /**
+     * ⚠️ THE PROBE IS THE ONLY HONEST DETECTOR THERE IS, so it is the one that
+     * speaks. It made a REAL call and got a REAL answer — every other way of
+     * deciding „is the provider up" is an inference from absence, and absence
+     * is exactly what could not be told apart on 28 September.
+     */
+    void noticeProviderAnswering().catch(() => undefined);
     return 'sent';
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(
       `[heartbeat] PROVIDER DID NOT ANSWER after ${quiet} min of silence: ${(err as Error).message}`,
     );
+    /**
+     * The provider's OWN sentence, carried through rather than summarised.
+     * „You have reached your specified API usage limits", „the key is
+     * invalid" and „overloaded" are three different problems with three
+     * different owners, and only one of them is money — a message that says
+     * „the provider refused" and nothing more sends somebody to look in the
+     * wrong place at three in the morning.
+     */
+    void noticeProviderRefusing((err as Error).message).catch(() => undefined);
     return 'failed';
   }
 }
