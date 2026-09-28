@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { foldedLower } from './georgianCase';
 import { buildSearchTerms, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
@@ -176,7 +177,7 @@ async function sweepAllChannels(
   const regexesIdx = keysIdx + 1;
   const blockIdx = regexesIdx + 1;
   const countryChain = countryRegexes
-    .map((_, i) => `(LOWER(label) || '') ~ $${countryStart + i}`)
+    .map((_, i) => `(${foldedLower('label')} || '') ~ $${countryStart + i}`)
     .join(' OR ');
 
   const result = await query<{ key: string; phone: string; name: string | null }>(
@@ -189,16 +190,16 @@ async function sweepAllChannels(
        SELECT m.phone, lt.label
        FROM mine m
        CROSS JOIN LATERAL (
-         SELECT LOWER(t.tag) AS label FROM "UserTags" t WHERE t.phone = m.phone
+         SELECT ${foldedLower('t.tag')} AS label FROM "UserTags" t WHERE t.phone = m.phone
          UNION ALL
-         SELECT LOWER(a.alias) FROM "UserAlias" a WHERE a.phone = m.phone
+         SELECT ${foldedLower('a.alias')} FROM "UserAlias" a WHERE a.phone = m.phone
        ) lt
        UNION ALL
-       SELECT cf.neo4j_contact_id, LOWER(cf.value)
+       SELECT cf.neo4j_contact_id, ${foldedLower('cf.value')}
        FROM contact_facts cf
        WHERE cf.submitted_by_user_id = $${factsUserIdx} AND cf.retracted_at IS NULL
        UNION ALL
-       SELECT ci.neo4j_contact_id, LOWER(ci.data::text)
+       SELECT ci.neo4j_contact_id, ${foldedLower('ci.data::text')}
        FROM contact_insights ci
        WHERE ci.user_id = $${insightsUserIdx}
      ),
@@ -229,7 +230,7 @@ async function sweepAllChannels(
        SELECT DISTINCT c.key, l.phone
        FROM labels l
        JOIN country_hits co ON co.phone = l.phone
-       JOIN chan c ON (LOWER(l.label) || '') ~ c.rx
+       JOIN chan c ON (${foldedLower('l.label')} || '') ~ c.rx
      )
      SELECT h.key, h.phone, MAX(ua.alias) AS name
      FROM channel_hits h

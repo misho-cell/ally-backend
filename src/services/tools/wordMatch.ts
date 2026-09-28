@@ -5,6 +5,7 @@
 // rare one (Dachi) in a two-word query (search Bug 2).
 
 import { toWordStartPattern } from './transliterate';
+import { foldedLower } from './georgianCase';
 
 export interface ExactMatchSql {
   /** `matched AS (…)` — every branch driven FROM mine, one placeholder per pattern. */
@@ -90,9 +91,16 @@ export function buildExactMatchSql(
   const factsUserIdx = regexStart + allRegex.length;
   const blockIdx = factsUserIdx + 1;
 
-  // The || '' wrapper is THE point — see the function comment (KA trigram gap).
+  /**
+   * The || '' wrapper is THE point — see the function comment (KA trigram gap).
+   *
+   * ⚠️ AND THE FOLD IS THE OTHER POINT — row 277. `LOWER` alone leaves Georgian
+   * CAPITALS (Mtavruli) exactly as they are in PostgreSQL, while the query side
+   * has already folded them to ordinary letters in JavaScript. A contact saved
+   * in capitals was unfindable by name in either casing until this line.
+   */
   const regexOr = (col: string): string => {
-    const expr = `(LOWER(${col}) || '')`;
+    const expr = `(${foldedLower(col)} || '')`;
     const parts = Array.from({ length: allRegex.length }, (_, i) => `${expr} ~ $${regexStart + i}`);
     return `(${parts.join(' OR ')})`;
   };
@@ -120,7 +128,7 @@ export function buildExactMatchSql(
      SELECT lt.phone, lt.label, 1 AS priority
      FROM mine m
      CROSS JOIN LATERAL (
-       SELECT t.phone, LOWER(t.tag) AS label
+       SELECT t.phone, ${foldedLower('t.tag')} AS label
        FROM "UserTags" t
        WHERE t.phone = m.phone AND ${regexOr('t.tag')}
      ) lt
@@ -128,19 +136,19 @@ export function buildExactMatchSql(
      SELECT la.phone, la.label, 1 AS priority
      FROM mine m
      CROSS JOIN LATERAL (
-       SELECT a.phone, LOWER(a.alias) AS label
+       SELECT a.phone, ${foldedLower('a.alias')} AS label
        FROM "UserAlias" a
        WHERE a.phone = m.phone AND ${regexOr('a.alias')}
      ) la
      UNION ALL
-     SELECT up2.phone, LOWER(u2.name) AS label, 1 AS priority
+     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority
      FROM "UserPhone" up2
      JOIN "User" u2 ON u2.id = up2."userId"
      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
        AND ${regexOr('u2.name')}
      UNION ALL
      SELECT up3.phone,
-            LOWER(COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')) AS label,
+            ${foldedLower(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)} AS label,
             2 AS priority
      FROM "UserPhone" up3
      JOIN "User" u3 ON u3.id = up3."userId"
@@ -148,7 +156,7 @@ export function buildExactMatchSql(
        AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
        AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
      UNION ALL
-     SELECT cf.neo4j_contact_id AS phone, LOWER(cf.value) AS label, 2 AS priority
+     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.field_type IN ('occupation', 'employer', 'industry')
@@ -161,7 +169,7 @@ export function buildExactMatchSql(
      -- for an investor. Safe by construction, not by prompt: label lives only
      -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
      -- so the text can reach the ranking and never the reply.
-     SELECT cf.neo4j_contact_id AS phone, LOWER(cf.value) AS label, 2 AS priority
+     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.retracted_at IS NULL

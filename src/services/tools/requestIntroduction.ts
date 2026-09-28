@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
 import { createIncomingRequestThread, createOutgoingRequestThread } from '../threads.service';
@@ -24,7 +25,10 @@ async function findMediatorPhone(
 ): Promise<PhoneResult> {
   const terms = buildSearchTerms(mediatorName).map((t) => '%' + t + '%');
   const nameCond = terms
-    .map((_, i) => `LOWER(ua.alias) LIKE $${i + 2} OR LOWER(u.name) LIKE $${i + 2}`)
+    .map(
+      (_, i) =>
+        `${foldedLower('ua.alias')} LIKE $${i + 2} OR ${foldedLower('u.name')} LIKE $${i + 2}`,
+    )
     .join(' OR ');
 
   const result = await query<{ phone: string; display_name: string | null }>(

@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { foldedLower } from './georgianCase';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
@@ -87,7 +88,7 @@ interface FactRow {
  * value, both scripts, whole words; nothing from the query is interpolated.
  */
 const NEGATED_VALUE_SQL =
-  `(' ' || LOWER(COALESCE(cf.canonical_value, cf.value)) || ' ') ~ ` +
+  `(' ' || ${foldedLower('COALESCE(cf.canonical_value, cf.value)')} || ' ') ~ ` +
   `'( not | never | no longer | former | ex-| stopped | left | quit | retired | აღარ | არ | ყოფილი | დატოვა | წამოვიდა | შეწყვიტა )'`;
 
 // Every fact query anchors on a single column per bound parameter.
@@ -353,7 +354,7 @@ async function searchOwnFacts(
   likes: string[],
   groupSizes: readonly number[],
 ): Promise<FactRow[]> {
-  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const matchExpr = foldedLower('COALESCE(cf.canonical_value, cf.value)');
   const orClause = likeOrClause(matchExpr, likes.length, 3);
   const result = await query<FactRow>(
     // Third fallback for the name: a fact can be saved about someone the owner
@@ -397,7 +398,7 @@ async function searchPublicFacts(
   likes: string[],
   groupSizes: readonly number[],
 ): Promise<FactRow[]> {
-  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const matchExpr = foldedLower('COALESCE(cf.canonical_value, cf.value)');
   const orClause = likeOrClause(matchExpr, likes.length, 2);
   const result = await query<FactRow>(
     `SELECT cf.neo4j_contact_id AS phone,
@@ -446,7 +447,8 @@ async function searchInsights(
 > {
   const perWord = Array.from(
     { length: likes.length },
-    (_, i) => `(LOWER(neo4j_contact_name) LIKE $${i + 2} OR LOWER(data::text) LIKE $${i + 2})`,
+    (_, i) =>
+      `(${foldedLower('neo4j_contact_name')} LIKE $${i + 2} OR ${foldedLower('data::text')} LIKE $${i + 2})`,
   ).join(' OR ');
   const result = await query<{
     neo4j_contact_id: string;
@@ -509,7 +511,7 @@ async function searchSingleSourcePointers(
   // answer to "who is a thief" IS the accusation, whatever stays unquoted.
   if (isUnsafeQuery(words)) return [];
 
-  const matchExpr = 'LOWER(COALESCE(cf.canonical_value, cf.value))';
+  const matchExpr = foldedLower('COALESCE(cf.canonical_value, cf.value)');
   const orClause = likeOrClause(matchExpr, likes.length, 4);
   const candidates = await query<{ phone: string; name: string | null; matched_text: string }>(
     // matched_text is read only to be judged by the content guard below and is

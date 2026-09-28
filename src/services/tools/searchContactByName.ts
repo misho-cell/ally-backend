@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms, buildRawWordGroups } from './transliterate';
 import { buildExactMatchSql } from './wordMatch';
+import { foldedLower } from './georgianCase';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -135,7 +136,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // Ticket 20 row 137: how many query words the person's OWN registered name
     // matched, counted apart from what other people saved them as. See
     // `contradicted` below for what it is for.
-    const nameHits = m.scalarHits(`LOWER(COALESCE(MAX(NULLIF(TRIM(u.name), '')), ''))`);
+    const nameHits = m.scalarHits(foldedLower(`COALESCE(MAX(NULLIF(TRIM(u.name), '')), '')`));
     const aggSelect = `SELECT h.phone,
               MAX(h.word_hits)                     AS word_hits,
               (${nameHits})                        AS name_hits,
@@ -185,8 +186,8 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
             const term = `$${i + 2}`;
             const head = `('\\m' || LEFT(${term}, ${FUZZY_HEAD_CHARS}))`;
             return (
-              `(word_similarity(${term}, LOWER(a.alias)) > ${FUZZY_THRESHOLD} AND LOWER(a.alias) ~ ${head})` +
-              ` OR (word_similarity(${term}, LOWER(u2.name)) > ${FUZZY_THRESHOLD} AND LOWER(u2.name) ~ ${head})`
+              `(word_similarity(${term}, ${foldedLower('a.alias')}) > ${FUZZY_THRESHOLD} AND ${foldedLower('a.alias')} ~ ${head})` +
+              ` OR (word_similarity(${term}, ${foldedLower('u2.name')}) > ${FUZZY_THRESHOLD} AND ${foldedLower('u2.name')} ~ ${head})`
             );
           })
           .join(' OR ');

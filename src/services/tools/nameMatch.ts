@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { foldedLower } from './georgianCase';
 import { buildRawWordGroups, toWordStartPattern } from './transliterate';
 
 const NAME_MATCH_TIMEOUT_MS = 8_000;
@@ -26,7 +27,7 @@ export async function findContactPhonesByName(
   const conds = groups
     .map((group) => {
       const alternatives = group
-        .map((_, i) => `(LOWER(label) || '') ~ $${cursor + i}`)
+        .map((_, i) => `(${foldedLower('label')} || '') ~ $${cursor + i}`)
         .join(' OR ');
       cursor += group.length;
       return `(${alternatives})`;
@@ -79,7 +80,9 @@ export async function messageNamesOwnContact(userId: string, message: string): P
   const terms = groups.flat().filter((term) => term.length >= 3);
   if (terms.length === 0) return false;
 
-  const alternatives = terms.map((_, i) => `(LOWER(label) || '') ~ $${i + 2}`).join(' OR ');
+  const alternatives = terms
+    .map((_, i) => `(${foldedLower('label')} || '') ~ $${i + 2}`)
+    .join(' OR ');
   try {
     const found = await query<{ hit: number }>(
       `SELECT 1 AS hit

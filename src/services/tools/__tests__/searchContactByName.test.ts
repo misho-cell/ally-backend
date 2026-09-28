@@ -171,8 +171,17 @@ describe('searchContactByName', () => {
     );
     expect(fuzzyCall).toBeDefined();
     const sql = (fuzzyCall as [string])[0];
-    expect(sql).toContain("LOWER(a.alias) ~ ('\\m' || LEFT($2, 2))");
-    expect(sql).toContain("LOWER(u2.name) ~ ('\\m' || LEFT($2, 2))");
+    /**
+     * Row 277: the fuzzy fallback folds Georgian capitals too. It is the LAST
+     * chance a search has to find somebody, so leaving it unfolded would mean a
+     * capitalised name failed the exact match and then failed the forgiving one
+     * as well — the worst place of the two to leave the hole.
+     */
+    // Both halves of the fallback fold, and both still anchor at a word start.
+    expect(sql).toContain('TRANSLATE(a.alias');
+    expect(sql).toContain('TRANSLATE(u2.name');
+    expect(sql).toContain("~ ('\\m' || LEFT($2, 2))");
+    expect(sql).not.toMatch(/LOWER\((a\.alias|u2\.name)\)/);
   });
 
   it('returns found: false when no matches', async () => {
@@ -245,10 +254,17 @@ describe('searchContactByName', () => {
     // ...and matches alias, registered name, AND tag with the index-defeating
     // (LOWER(x) || '') wrapper — the trigram GIN must never be chosen (KA
     // scripts extract ~no trigrams on prod → GIN scan → statement timeout).
-    expect(mainSql).toContain('LOWER(a.alias) AS label');
-    expect(mainSql).toContain('LOWER(t.tag) AS label');
-    expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
-    expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
+    /**
+     * ⚠️ ROW 277 — the lowercasing now folds Georgian capitals too. PostgreSQL's
+     * `lower()` leaves Mtavruli exactly as it is while the query side has
+     * already folded it in JavaScript, so a name saved in capitals could never
+     * match. The expression still differs from any indexed one, so what this
+     * test really guards — the trigram GIN never being chosen — is unchanged.
+     */
+    expect(mainSql).toContain('TRANSLATE(a.alias');
+    expect(mainSql).toContain('TRANSLATE(t.tag');
+    expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(a\.alias[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(t\.tag[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).not.toContain('ANY(');
   });
 

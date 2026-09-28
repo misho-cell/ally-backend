@@ -274,10 +274,20 @@ describe('searchByTag', () => {
     // ...and matches tag AND alias with the index-defeating (LOWER(x) || '')
     // wrapper — the trigram GIN must never be chosen (KA scripts extract ~no
     // trigrams on prod, exploding a GIN scan into a statement timeout).
-    expect(mainSql).toContain('LOWER(t.tag) AS label');
-    expect(mainSql).toContain('LOWER(a.alias) AS label');
-    expect(mainSql).toMatch(/\(LOWER\(a\.alias\) \|\| ''\) ~ \$\d+/);
-    expect(mainSql).toMatch(/\(LOWER\(t\.tag\) \|\| ''\) ~ \$\d+/);
+    /**
+     * ⚠️ ROW 277 — THE LOWERCASING NOW FOLDS GEORGIAN CAPITALS TOO.
+     *
+     * PostgreSQL's `lower()` leaves Mtavruli (U+1C90–U+1CBF) exactly as it is,
+     * while the query side has already folded it in JavaScript, so a tag or an
+     * alias saved in capitals could never be matched. `TRANSLATE` inside the
+     * `LOWER` closes that, and it does not weaken what this test is really
+     * guarding: the expression still differs from any indexed one, so the
+     * trigram GIN still cannot be chosen.
+     */
+    expect(mainSql).toContain('TRANSLATE(t.tag');
+    expect(mainSql).toContain('TRANSLATE(a.alias');
+    expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(a\.alias[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
+    expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(t\.tag[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
     expect(mainSql).not.toContain('ut."contactId" = $1');
     expect(mainSql).not.toContain('ANY(');
