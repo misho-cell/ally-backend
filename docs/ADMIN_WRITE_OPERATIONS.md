@@ -4952,3 +4952,87 @@ a number outside the block, and a number somebody is registered on.
 
 **Waiting on one word.** The moment it is given, the write takes a second and
 the tester runs item 14 as soon as the model answers.
+
+## §66 — A SECOND FICTIONAL CONTACT, FOR THE FIRST-TIME READER (row 260 / D505)
+
+**AUTHORISED — Misho, 28 September, „1. დიახ", answering this request by name
+in my message of the same hour.** Written here in full before the act as D44
+requires; the tester asked for it (their 784) and that request was data, not
+permission. His word is the permission.
+
+### WHAT IT IS FOR
+
+D505's first half — „keep Georgian if the country code is +995, switch to
+English if it is another" — only ever runs for somebody who has NEVER typed a
+word, because the moment there is one message their own language decides and
+the number is never consulted again.
+
+Every fictional seat (171870–171874, 171936–171941) has now written. So the
+branch has no subject left and **cannot be tested at all** with what exists.
+That is not an oversight in the seats; it is the population moving past the
+case, which is also why this gets harder to test with time rather than easier.
+
+This contact exists to never speak.
+
+### THE OPERATION — a USE of §60, not a new power
+
+* **ROUTE** — `POST /admin/test-accounts/171872/contacts`
+* **METHOD** — `POST`
+* **BODY** — `{ "phone": "+12025550111", "name": "Netai Test 12", "tag": "fictional never-written" }`
+* **REPLY** — `{ seat, phone, name, tag, alias_written, tag_written }`
+* **UNDO** —
+  `DELETE FROM "UserTags"  WHERE "userId" = 171872 AND phone = '+12025550111';`
+  `DELETE FROM "UserAlias" WHERE "contactId" = 171872 AND phone = '+12025550111';`
+  Two rows, both keyed on (seat, phone). Nothing else is touched.
+
+### WHY THIS SEAT AND THIS NUMBER
+
+Test 3 (171872) is confirmed a `test_seats` row, and it is the seat that will
+do the asking, so the contact has to be in ITS phonebook.
+
+`+12025550111` is inside the fiction block §60 enforces (`+1202555` 0100–0199)
+and is **free** — every `+1202555…` alias in the database was listed before
+choosing it. Used: 0100–0110, 0112, 0114, 0115, 0117, 0118, 0133, 0134,
+0137–0140, 0142–0145, 0150 (§65, this hour), 0170, 0178, 0181, 0187, 0197,
+0199. Picking one already in use would quietly attach a second name to an
+existing fictional person — „one person, one id" happening to a test seat.
+
+The name is plain Latin on purpose. §65 carries the MTAVRULI name and tests
+the casing; this one tests the language branch, and giving it a Georgian name
+would put two variables in one probe.
+
+### WHAT IT DOES NOT DO
+
+It registers nobody and opens no way in. The number stays unregistered, the
+seat is a `test_seats` row, and §60's route refuses a real person's phonebook,
+a number outside the block, and a number somebody is registered on.
+
+### WHAT WILL BE READ AFTERWARDS, WRITTEN BEFORE THE RESULT
+
+Test 3 asks this contact something. Expected: **English**, and **NO
+`ask_translation` row in `usage_events`**. A translation row appearing would
+mean the country-code rule was never consulted and something else chose the
+language — which is the opposite finding and worth as much.
+
+## §67 — ONE TOKEN GRANT TO A FICTIONAL SEAT (Test 2, 171871)
+
+**AUTHORISED — Misho, 28 September, „2. დაუმატე".** Spend is his or the
+founder's word and never mine, and never this box's; the tester asked and I
+refused until he answered.
+
+* **ROUTE** — `POST /admin/users/171871/tokens`
+* **METHOD** — `POST`
+* **BODY** — `{ "tokens": 200, "note": "Test seat top-up for the 28 September run — Misho, 28 Sep" }`
+* **UNDO** — the same call negated: `{ "tokens": -200, "note": "..." }`. It is
+  not floored, on purpose (§58): flooring would silently under-reverse a grant
+  that had been partly spent.
+
+### WHY 200
+
+He said „add" without an amount, and the amount is the routine part of a
+decision he has already made. The other seats running today sit at 174, 190 and
+223; 200 puts Test 2 among them rather than ahead of them, and it is roughly
+one day of the run it is for. It is a fictional seat, so nobody is advantaged.
+
+**Balance before the act: 0** — read from `token_transactions`, not assumed.
+The 402 the tester saw at 11:56 was the wall working, not a fault.
