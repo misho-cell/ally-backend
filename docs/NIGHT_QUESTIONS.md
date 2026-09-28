@@ -1204,6 +1204,20 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
+_Nothing yet._
+
+⚠️ The 27–28 September list was handed to Misho at 07:1x UTC and moved below,
+NOT deleted. Both items are still open: nobody has raised the spend limit and
+nobody has ruled on the autonomy question. A list emptied while its questions
+are unanswered is a list that loses them, so they are in **Waiting from the
+night of 27–28 September** underneath.
+
+---
+
+## Waiting from the night of 27–28 September
+
+Handed over at 07:1x UTC on 28 September. Neither is decided.
+
 ### ⚠️ 0. THE ANTHROPIC ACCOUNT HAS HIT ITS SPEND LIMIT — 02:34:01 UTC, 28 September
 
 **READ THIS FIRST. It is not a decision I can take and it is not one that can wait.**
