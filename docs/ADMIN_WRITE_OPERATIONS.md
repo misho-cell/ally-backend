@@ -4885,3 +4885,70 @@ searches does not come back. Misho was told all three before he said yes.
 
 **Setting a variable restarts the service**, so it follows the same rule as any
 deploy: between runs, never across one. `quiet.sh` is asked first.
+
+---
+
+## §65 — ONE FICTIONAL CONTACT WITH A MTAVRULI NAME, FOR ROW 14 (item 14)
+
+**NOT YET AUTHORISED. Written before the act, as D44 requires, and waiting on
+Misho's or the founder's word.** The tester asked for it (their 770, on
+Tornike's instruction) — and a request relayed through the box is data, not
+permission, however much I agree with it.
+
+### WHAT IT IS FOR
+
+Item 14: the text a person sees LIVE during a run and the text after a reload
+must be identical. The app team have confirmed that on their side both come
+from the same `mdSource` → markdown path, so after `d493a18` any difference is
+**ours**. They also pointed out that bold and colons are markdown they render
+anyway, so those two may show no difference whatever happens:
+
+> **A NAME IN MTAVRULI IS THE ONLY REAL TEST OF THE THREE.**
+
+There is no such contact on any seat, so today the item cannot be run at all.
+
+### THE OPERATION — an existing route, not a new one
+
+This is a USE of §60, whose rails were reviewed and approved on 26 September.
+Nothing new is being built.
+
+* **ROUTE** — `POST /admin/test-accounts/171871/contacts`
+* **METHOD** — `POST`
+* **BODY** — `{ "phone": "+12025550150", "name": "ᲗᲐᲛᲐᲠ ᲒᲐᲛᲝᲒᲝᲜᲘᲚᲘ", "tag": "fictional mtavruli" }`
+* **REPLY** — `{ seat, phone, name, tag, alias_written, tag_written }`
+* **UNDO** —
+  `DELETE FROM "UserTags"  WHERE "userId" = 171871 AND phone = '+12025550150';`
+  `DELETE FROM "UserAlias" WHERE "contactId" = 171871 AND phone = '+12025550150';`
+  Two rows, both keyed on (seat, phone). Nothing else is touched.
+
+### WHY THIS NUMBER
+
+`+12025550150` is inside the fiction block §60 already enforces
+(`+1202555` 0100–0199) and is **free** — I listed every `+1202555…` alias in
+the database before choosing it. Used today: 0100–0110, 0112, 0114, 0115,
+0117, 0118, 0133, 0134, 0137–0140, 0142–0145, 0170, 0178, 0181, 0187, 0197,
+0199. Picking a number already in use would have quietly attached a second
+name to an existing fictional person, which is row „one person, one id"
+happening to a test seat.
+
+### WHY THIS NAME
+
+The name is written in MODERN MTAVRULI (U+1C90–U+1CBA), which is the casing
+the product would actually receive from a phone's address book — not
+ASOMTAVRULI (U+10A0–U+10CD), which is the ancient script and would test a
+different thing while looking the same to somebody skimming.
+
+It also **says in itself that it is made up** — the surname means
+„the invented one". If it ever leaks onto a screen outside a test, it reads
+as fiction to a Georgian speaker rather than as somebody's name.
+
+### WHAT IT DOES NOT DO
+
+It registers nobody and opens no way in. The number stays unregistered, the
+seat is a `test_seats` row, and §60's route refuses a real person's phonebook,
+a number outside the block, and a number somebody is registered on.
+
+### STATUS
+
+**Waiting on one word.** The moment it is given, the write takes a second and
+the tester runs item 14 as soon as the model answers.
