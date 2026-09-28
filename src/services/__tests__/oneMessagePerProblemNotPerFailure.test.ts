@@ -387,3 +387,42 @@ describe('only the probe is allowed to say the provider is down', () => {
     expect(DETECT).toContain('are NOT detected here and are not pretended to be');
   });
 });
+
+/**
+ * ⚠️ THE ALARM MUST BE ABLE TO RE-ARM, AND FOR EIGHT HOURS IT COULD NOT.
+ *
+ * 28 September: the provider came back at 11:20 after eight hours forty-six,
+ * and the incident stayed open. Recovery was announced only from the probe's
+ * own successful call — and the probe does not fire while the product is busy.
+ * So a recovery could be noticed only if it left the product idle, which is
+ * the one case that hardly matters.
+ *
+ * And an open incident is not cosmetic. `noticeProviderRefusing` returns early
+ * when one is already open and alerted, so an incident that can never clear
+ * leaves the alarm dead for that cause for good — silent through every outage
+ * after the first.
+ */
+describe('the alarm can tell that it is over', () => {
+  const HEARTBEAT = readFileSync(join(__dirname, '..', 'heartbeat.cron.ts'), 'utf8');
+  const CODE = HEARTBEAT.split('\n')
+    .filter((line) => !/^\s*(\*|\/\*|\/\/)/.test(line))
+    .join('\n');
+
+  it('treats a busy product as proof the provider answers', () => {
+    // The branch that returns early because somebody else called recently must
+    // clear, not just return: that call succeeded, which is the same evidence
+    // the probe pays for.
+    const busyBranch = CODE.slice(CODE.indexOf('quiet < SILENCE_BEFORE_PROBE_MIN'));
+    expect(busyBranch.slice(0, busyBranch.indexOf('try {'))).toContain('noticeProviderAnswering');
+  });
+
+  /**
+   * „I could not look" is not „it is fixed". A ledger that will not answer
+   * must leave the incident exactly where it is.
+   */
+  it('does not clear anything when the ledger cannot be read', () => {
+    const unreadable = CODE.slice(CODE.indexOf('quiet === null'));
+    const untilNextBranch = unreadable.slice(0, unreadable.indexOf('quiet <'));
+    expect(untilNextBranch).not.toContain('noticeProviderAnswering');
+  });
+});

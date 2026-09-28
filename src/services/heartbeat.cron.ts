@@ -91,9 +91,37 @@ async function minutesSinceLastAnthropicCall(): Promise<number | null> {
  */
 export async function beatOnce(): Promise<'sent' | 'not_needed' | 'failed'> {
   const quiet = await minutesSinceLastAnthropicCall();
-  // A ledger that will not answer is not a reason to spend: the monitor has
-  // its own „CANNOT TELL" for that, and it is the honest verdict there too.
-  if (quiet === null || quiet < SILENCE_BEFORE_PROBE_MIN) return 'not_needed';
+  // A ledger that will not answer is not a reason to spend, and it is not
+  // evidence of anything either: the monitor has its own „CANNOT TELL" for
+  // that, and it is the honest verdict here too. In particular it must NOT
+  // clear an incident — „I could not look" is not „it is fixed".
+  if (quiet === null) return 'not_needed';
+
+  if (quiet < SILENCE_BEFORE_PROBE_MIN) {
+    /**
+     * ⚠️ A BUSY PRODUCT IS PROOF, AND WITHOUT THIS LINE THE ALARM NEVER
+     * RE-ARMS — 28 September, 11:20.
+     *
+     * The provider came back after eight hours and forty-six minutes, and the
+     * incident stayed open. The reason is this branch: recovery was announced
+     * only from the probe's own success, and the probe does not fire while the
+     * product is busy. So the alarm could notice a recovery ONLY if the
+     * recovery left the product idle — which is the one case that barely
+     * matters.
+     *
+     * An open incident is not merely untidy. `noticeProviderRefusing` returns
+     * early when one is already open and alerted, so a `provider_refusing`
+     * incident that can never clear leaves the alarm DEAD FOR THAT CAUSE
+     * FOREVER. The watcher I built yesterday would have sat silently through
+     * every outage after this one.
+     *
+     * `usage_events` is written on success, so a row younger than the silence
+     * threshold IS the provider answering — the same evidence the probe pays
+     * for, already bought by somebody else. Reading it costs nothing.
+     */
+    void noticeProviderAnswering().catch(() => undefined);
+    return 'not_needed';
+  }
 
   try {
     const response = await anthropic.messages.create(
