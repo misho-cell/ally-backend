@@ -152,6 +152,37 @@ const MAX_BLOCKING_QUESTIONS_PER_READ = 1;
  */
 const KINDS_THAT_OUTLIVE_THEIR_GOAL = ['goal_feedback'];
 
+/**
+ * The goals' own titles for a screen's worth of cards, in ONE query.
+ *
+ * ROW 73: a card headed „debrief · მიზანი #3995" tells a person nothing, and
+ * the goal's own words are the only thing that does. Read here rather than
+ * stored on the card, because six hundred cards are already queued and a field
+ * written at queue time would leave every one of them blank.
+ *
+ * ⚠️ ONE QUERY FOR THE WHOLE SCREEN, not one per card. The updates screen can
+ * hold ten due and ten seen, and twenty round trips to name twenty goals is
+ * how a screen that used to be fast stops being fast — quietly, and only for
+ * the people with the most going on.
+ */
+export async function goalTitlesFor(
+  taskIds: readonly (number | null)[],
+): Promise<Map<number, string>> {
+  const wanted = [...new Set(taskIds.filter((id): id is number => typeof id === 'number'))];
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: number; title: string | null }>(
+    `SELECT id, title FROM tasks WHERE id = ANY($1::int[])`,
+    [wanted],
+    QUERY_TIMEOUT_MS,
+  );
+  const titles = new Map<number, string>();
+  for (const row of rows.rows) {
+    const title = (row.title ?? '').trim();
+    if (title !== '') titles.set(row.id, title);
+  }
+  return titles;
+}
+
 export async function queueFollowUp(
   userId: string,
   taskId: number | null,

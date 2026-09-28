@@ -19,6 +19,10 @@ import {
   MAX_SNOOZE_DAYS,
   DEFAULT_SNOOZE_DAYS,
 } from '../../services/pendingUpdates.service';
+import { goalTitlesFor } from '../../services/pendingUpdates.service';
+import { cardHeading } from '../../services/updateCard';
+import { userLanguage } from '../../services/threads.service';
+import type { RunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
 
 /**
@@ -57,14 +61,38 @@ interface UpdateRow {
   readonly kind: string;
   readonly payload: unknown;
   readonly task_id: number | null;
+  /**
+   * ROW 73 — what the card says before anybody taps it. Always present,
+   * whatever the kind, so one renderer can draw all ten.
+   */
+  readonly title: string;
+  readonly detail: string;
 }
 
-function updatePayload(u: PendingUpdate): UpdateRow {
+/**
+ * ⚠️ THE PAYLOAD IS STILL SENT WHOLE. `title` and `detail` are ADDED beside
+ * it, never instead of it: the app reads fields out of the payload today and
+ * replacing it would break their screen to fix their screen. Nothing existing
+ * moves; there is simply now a pair of fields that every card has.
+ */
+function updatePayload(
+  u: PendingUpdate,
+  titles: ReadonlyMap<number, string>,
+  language: RunLanguage,
+): UpdateRow {
+  const heading = cardHeading(
+    u.kind,
+    u.payload,
+    u.task_id === null ? null : (titles.get(u.task_id) ?? null),
+    language,
+  );
   return {
     update_ref: toUpdateRef(u.id),
     kind: u.kind,
     payload: u.payload,
     task_id: u.task_id ?? null,
+    title: heading.title,
+    detail: heading.detail,
   };
 }
 
@@ -99,11 +127,24 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     const due = await getPendingUpdates(userId);
     const [seen, held] = await Promise.all([listSeenUpdates(userId), countHeldUpdates(userId)]);
     const dueNow = new Set(due.map((u) => u.id));
+    const shown = seen.filter((u) => !dueNow.has(u.id));
+    /**
+     * The goals' own titles and the reader's own language, both fetched once
+     * for the whole screen rather than per card — and both best-effort: a
+     * heading is worth having in a fallback language, and no heading at all is
+     * what row 73 is about.
+     */
+    const [titles, language] = await Promise.all([
+      goalTitlesFor([...due, ...shown].map((u) => u.task_id)).catch(
+        () => new Map<number, string>(),
+      ),
+      userLanguage(userId).catch(() => 'ka' as RunLanguage),
+    ]);
     res.status(200).json({
       success: true,
       data: {
-        due: due.map(updatePayload),
-        seen: seen.filter((u) => !dueNow.has(u.id)).map(updatePayload),
+        due: due.map((u) => updatePayload(u, titles, language)),
+        seen: shown.map((u) => updatePayload(u, titles, language)),
         held,
       },
     });
