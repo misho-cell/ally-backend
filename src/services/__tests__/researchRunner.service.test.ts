@@ -314,3 +314,52 @@ describe('it records evidence and never a claim about a person', () => {
     expect(webSearch).toHaveBeenCalledWith(expect.stringContaining('site:linkedin.com'));
   });
 });
+
+/**
+ * ⚠️ A PASS THAT DID NOTHING MUST SAY WHICH DOOR THE PEOPLE LEFT BY.
+ *
+ * 27 September, two passes in a row: „0 searches, 0 findings, 0 steps not
+ * attempted". Ten people were selected each time, all with a name and tags,
+ * and the line was identical for three different causes — labels not read
+ * back, no readable name, or a plan with no steps. Which one could not be
+ * answered from the log at all, and the only other way to answer it was to run
+ * the label reader against the live database from outside the sanctioned
+ * read-only path, which is not a thing to do out of curiosity.
+ *
+ * The runner already knew; the sentence was being thrown away.
+ */
+describe('a pass that did nothing says why', () => {
+  it('names the people whose labels never came back', async () => {
+    readLabels.mockResolvedValue(new Map());
+    withDatabase();
+
+    const result = await runResearchOnce();
+
+    expect(result.searches).toBe(0);
+    expect(result.verdict).toContain('1 had no labels read back');
+  });
+
+  it('names an unreadable name rather than reporting a quiet zero', async () => {
+    readLabels.mockResolvedValue(new Map([[PHONE, { ...oneCompanyWord(), name_tokens: [] }]]));
+    withDatabase();
+
+    const result = await runResearchOnce();
+
+    expect(result.verdict).toContain('no readable name');
+  });
+
+  /**
+   * The opposite case, and it is the one that keeps this honest: a pass that
+   * searched explains itself by its own numbers, and a tally bolted onto it
+   * every quarter of an hour is noise. Silence is what has no other
+   * explanation, so silence is what gets one.
+   */
+  it('stays quiet about doors when the pass actually searched', async () => {
+    withDatabase();
+
+    const result = await runResearchOnce();
+
+    expect(result.searches).toBeGreaterThan(0);
+    expect(result.verdict).not.toContain('Nothing ran');
+  });
+});

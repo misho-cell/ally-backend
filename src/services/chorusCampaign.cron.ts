@@ -79,14 +79,32 @@ export function startChorusCampaignCron(): void {
 
   setInterval(() => {
     void runResearchOnce()
-      .then(({ ran, searches, findings, not_attempted }) => {
+      .then(({ ran, searches, findings, not_attempted, verdict }) => {
         // Silent while switched off — a timer nobody turned on must not write a
         // line every quarter of an hour for the rest of the year.
         if (!ran) return;
+        /**
+         * ⚠️ THE VERDICT IS PRINTED, NOT JUST RETURNED — 27 September.
+         *
+         * This line used to carry three numbers and nothing else, and two
+         * passes in a row printed „0 searches, 0 findings, 0 steps not
+         * attempted". Ten people were selected each time, every one of them
+         * with a name and tags. The runner KNEW why — it builds a verdict
+         * sentence for exactly this — and the sentence was thrown away at the
+         * call site while the numbers that cannot distinguish the causes were
+         * kept.
+         *
+         * So a pass that did nothing now says why it did nothing, in the same
+         * line. A pass that worked keeps the short form: the whole point of
+         * the quiet-by-default rule above is that a job running all night must
+         * not bury the log.
+         */
+        const nothingHappened = searches === 0 && findings === 0 && not_attempted === 0;
         // eslint-disable-next-line no-console
         console.log(
           `[research] ${searches} searches, ${findings} findings, ` +
-            `${not_attempted} steps not attempted`,
+            `${not_attempted} steps not attempted` +
+            (nothingHappened ? ` — ${verdict}` : ''),
         );
       })
       .catch((err: unknown) =>

@@ -232,6 +232,46 @@ export async function runResearchOnce(): Promise<ResearchTickResult> {
 /** True while a tick is in flight. Per process, which is where the timer is. */
 let running = false;
 
+/**
+ * The three ways a selected person can produce no step at all.
+ *
+ * ⚠️ ALL THREE USED TO BE A `continue` WITH NOTHING WRITTEN DOWN — 27
+ * September. Two passes in a row reported „0 searches, 0 findings, 0 steps not
+ * attempted" over ten people who all had a name and tags, and the report was
+ * identical for three completely different causes: the label reader returned
+ * nothing for that phone, the name came back empty, or the plan came back with
+ * no steps. „Which one" could not be answered from the log at all.
+ *
+ * I wrote then that the right fix is instrumentation rather than guessing,
+ * because the alternative — running `readLabels` against the live database from
+ * my own container — walks around `ro.sh`, and curiosity is not a reason to
+ * cross that line. This is that instrumentation.
+ */
+interface SkipTally {
+  no_signals: number;
+  no_name: number;
+  no_steps: number;
+}
+
+/**
+ * One sentence naming which door the people left by, and only when the pass
+ * did nothing at all.
+ *
+ * A pass that searched is explained by its own numbers; adding a tally to it
+ * would be noise every quarter of an hour. Silence is the case that has no
+ * other explanation, so silence is the case that gets one.
+ */
+function whyNobodyWasSearched(skipped: SkipTally, searches: number, notAttempted: number): string {
+  if (searches > 0 || notAttempted > 0) return '';
+  const doors = [
+    skipped.no_signals > 0 ? `${skipped.no_signals} had no labels read back` : null,
+    skipped.no_name > 0 ? `${skipped.no_name} had no readable name` : null,
+    skipped.no_steps > 0 ? `${skipped.no_steps} produced a plan with no steps` : null,
+  ].filter((door): door is string => door !== null);
+  if (doors.length === 0) return ' Nothing ran and no person was skipped — look at the budget.';
+  return ` Nothing ran: ${doors.join(', ')}.`;
+}
+
 async function tick(idle: (verdict: string) => ResearchTickResult): Promise<ResearchTickResult> {
   if (!runnerOn()) {
     return idle(
@@ -270,15 +310,21 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
   let notAttempted = 0;
   let findings = 0;
   let budget = remaining;
+  const skipped: SkipTally = { no_signals: 0, no_name: 0, no_steps: 0 };
 
   for (const phone of phones) {
     const forPhone = signals.get(phone);
-    if (forPhone === undefined) continue;
+    if (forPhone === undefined) {
+      skipped.no_signals += 1;
+      continue;
+    }
     // The NAME, not the label: the label carries the company word glued on, and
     // the first live run searched the register for „Levan Shalamberidze Axel
     // Member".
     const name = forPhone.name_tokens.slice(0, 2).join(' ');
+    if (name === '') skipped.no_name += 1;
     const plan = ledger.record(planResearch(phone, name, forPhone));
+    if (plan.steps.length === 0) skipped.no_steps += 1;
 
     for (const step of plan.steps.slice(0, maxSteps)) {
       if (NOT_INTEGRATED.has(step.source)) {
@@ -323,7 +369,8 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
       (notAttempted > 0
         ? `${notAttempted} steps were NOT run (register and roster have no integration here) ` +
           'and are recorded as not attempted, not as nothing found.'
-        : 'Every planned step was run.'),
+        : 'Every planned step was run.') +
+      whyNobodyWasSearched(skipped, searches, notAttempted),
   };
 }
 
