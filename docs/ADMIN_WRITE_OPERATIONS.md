@@ -4978,12 +4978,32 @@ This contact exists to never speak.
 
 * **ROUTE** — `POST /admin/test-accounts/171872/contacts`
 * **METHOD** — `POST`
-* **BODY** — `{ "phone": "+12025550111", "name": "Netai Test 12", "tag": "fictional never-written" }`
-* **REPLY** — `{ seat, phone, name, tag, alias_written, tag_written }`
+* **BODY** — `{ "phone": "+12025550151", "name": "Netai Test 12", "tag": "fictional never written" }`
+* **REPLY** — `{ seat, phone, name, tag }`
 * **UNDO** —
-  `DELETE FROM "UserTags"  WHERE "userId" = 171872 AND phone = '+12025550111';`
-  `DELETE FROM "UserAlias" WHERE "contactId" = 171872 AND phone = '+12025550111';`
+  `DELETE FROM "UserTags"  WHERE "userId" = 171872 AND phone = '+12025550151';`
+  `DELETE FROM "UserAlias" WHERE "contactId" = 171872 AND phone = '+12025550151';`
   Two rows, both keyed on (seat, phone). Nothing else is touched.
+
+### ⚠️ THIS ENTRY WAS WRONG TWICE AND THE ROUTE CAUGHT BOTH
+
+Corrected here rather than quietly fixed, because a register that records the
+intention instead of the act is worth nothing.
+
+**1. `bad_tag`.** The tag was written `fictional never-written`. Tags are
+letters, digits and spaces only, so the HYPHEN was refused — before anything
+was written. Now `fictional never written`.
+
+**2. `somebody_is_registered_on_it`.** The number was written `+12025550111`,
+chosen after listing every `+1202555…` alias in the database and finding 0111
+absent. **That was the wrong question.** `UserAlias` holds contacts; the guard
+checks REGISTRATIONS, which live in `UserPhone` — and somebody is registered on
+0111. I measured one table and drew a conclusion about another, which is the
+same fault this week has been made of, this time with the guard catching it
+instead of a person.
+
+Read across BOTH tables, 53 of the hundred fiction slots are taken. `+12025550151`
+is free in both and is the one written.
 
 ### WHY THIS SEAT AND THIS NUMBER
 
@@ -5020,8 +5040,14 @@ language — which is the opposite finding and worth as much.
 founder's word and never mine, and never this box's; the tester asked and I
 refused until he answered.
 
-* **ROUTE** — `POST /admin/users/171871/tokens`
+* **ROUTE** — `POST /admin/test-accounts/171871/tokens`
 * **METHOD** — `POST`
+
+  ⚠️ **NOT `/admin/users/:id/tokens`, which this entry named first.** That route
+  refuses a fictional seat by name — „That is a fictional test seat — use
+  POST /admin/test-accounts/:id/tokens." A seat's wallet and a person's wallet
+  are deliberately different doors, and being told which one rather than simply
+  „no" is why the correction took a second.
 * **BODY** — `{ "tokens": 200, "note": "Test seat top-up for the 28 September run — Misho, 28 Sep" }`
 * **UNDO** — the same call negated: `{ "tokens": -200, "note": "..." }`. It is
   not floored, on purpose (§58): flooring would silently under-reverse a grant
@@ -5036,3 +5062,10 @@ one day of the run it is for. It is a fictional seat, so nobody is advantaged.
 
 **Balance before the act: 0** — read from `token_transactions`, not assumed.
 The 402 the tester saw at 11:56 was the wall working, not a fault.
+
+
+### DONE — 28 September 2026
+
+* **§65** 12:24 UTC — `{"seat":171871,"phone":"+12025550150","name":"ᲗᲐᲛᲐᲠ ᲒᲐᲛᲝᲒᲝᲜᲘᲚᲘ","tag":"fictional mtavruli"}`. First attempt, no refusal.
+* **§66** 12:28 UTC — `{"seat":171872,"phone":"+12025550151","name":"Netai Test 12","tag":"fictional never written"}`. Third attempt; the two refusals are written up above.
+* **§67** 12:27 UTC — `{"user_id":"171871","adjusted_by":200,"balance":200}`. Second attempt, after the route correction above. Balance was 0 before and is 200 after, read back from the reply rather than assumed.
