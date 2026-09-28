@@ -32,7 +32,16 @@ const MIGRATIONS = join(__dirname, '..', '..', 'db', 'postgres', 'migrations');
 
 /** The newest definition of the status CHECK, as the database will hold it. */
 function allowedStatuses(): string[] {
-  const files = readdirSync(MIGRATIONS).sort();
+  /**
+   * ⚠️ `.sql` ONLY, exactly like the runner. This read the whole directory and
+   * broke the day a `pending/` folder was added beside the migrations —
+   * `readFileSync` on a directory throws, so a test about status constraints
+   * failed for a reason that had nothing to do with statuses. The runner
+   * itself has always filtered; this did not.
+   */
+  const files = readdirSync(MIGRATIONS)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
   let allowed: string[] = [];
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
