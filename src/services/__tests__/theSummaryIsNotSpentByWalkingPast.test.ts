@@ -103,8 +103,22 @@ describe('and the tap is what spends it', () => {
  */
 describe('the weekly summary payload keeps the names the screen reads', () => {
   const summary = readFileSync(join(__dirname, '..', 'weeklySummary.service.ts'), 'utf8');
+  /**
+   * ⚠️ THE WHOLE FUNCTION, NOT A COUNT OF CHARACTERS FROM ITS NAME.
+   *
+   * This read `slice(at, at + 1400)` and broke the moment a comment was
+   * written inside the function — the FOURTH fixed character window to fail
+   * that way in this repository today, after two in the goal-feedback tests
+   * and one in the alarm's.
+   *
+   * A window measured in characters is a guess about formatting dressed up as
+   * an assertion about behaviour: it passes until somebody explains their
+   * code, and then it fails for the one reason that is never the bug. Both
+   * ends here are named — the function's first line and its last — so only
+   * changing what is actually asserted about can move them.
+   */
   const at = summary.indexOf('export async function sendWeeklySummary');
-  const queued = summary.slice(at, at + 1400);
+  const queued = summary.slice(at, summary.indexOf('return summary;', at));
 
   it.each([['goals'], ['week_start'], ['text']])('carries %s', (field) => {
     expect(queued).toContain(`${field}:`);

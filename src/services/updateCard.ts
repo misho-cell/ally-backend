@@ -156,6 +156,30 @@ function detailOf(kind: string, payload: Record<string, unknown>, language: RunL
   return oneLine(words);
 }
 
+/** „2 active goals · 1 waiting on you" — the whole week in one line. */
+const WEEK_LINE: Readonly<Record<RunLanguage, (goals: number, waiting: number) => string>> = {
+  ka: (g, w) => (w > 0 ? `${g} აქტიური მიზანი · ${w} გელოდება შენს პასუხს` : `${g} აქტიური მიზანი`),
+  en: (g, w) => (w > 0 ? `${g} active goals · ${w} waiting on you` : `${g} active goals`),
+  ru: (g, w) => (w > 0 ? `${g} активных целей · ${w} ждут вашего ответа` : `${g} активных целей`),
+  es: (g, w) =>
+    w > 0 ? `${g} objetivos activos · ${w} esperan tu respuesta` : `${g} objetivos activos`,
+};
+
+/**
+ * The summary's one line, counted from the card's own structured goals.
+ *
+ * Read from `goals` and not from `text`: `goals` is the authoritative list for
+ * the screen (the payload says so in `card_source`), and counting sentences in
+ * a composed paragraph would be guessing at our own output.
+ */
+function weekLine(payload: Record<string, unknown>, language: RunLanguage): string {
+  const goals = Array.isArray(payload.goals) ? payload.goals : [];
+  const waiting = goals.filter(
+    (g) => typeof (g as { pending_question?: unknown }).pending_question === 'string',
+  ).length;
+  return (WEEK_LINE[language] ?? WEEK_LINE.en)(goals.length, waiting);
+}
+
 /**
  * What a card shows before it is opened.
  *
@@ -174,12 +198,18 @@ export function cardHeading(
   const fallback = labels[kind] ?? text(payload.goal_title) ?? '';
   const goal = text(goalTitle) || text(payload.goal_title);
   /**
-   * ⚠️ THE WEEKLY SUMMARY KEEPS ITS OWN LABEL EVEN THOUGH IT HAS A `text`.
-   * That text is the whole card — eight screens of it on Ninia's phone — and
-   * putting its first line in the title would repeat the body in the header of
-   * the body. „Your week" is what the card is.
+   * ⚠️ THE WEEKLY SUMMARY GETS A COUNT, NOT ITS OWN FIRST LINE.
+   *
+   * Its `text` is the whole report — eight screen-heights on Ninia's phone,
+   * and her words were „very stretched, there should be a shorter version".
+   * Putting its opening line in the title would repeat the body inside the
+   * body's own header and make the card longer, not shorter.
+   *
+   * What a person wants before tapping is whether it concerns them: how many
+   * goals, and how many are waiting on THEM. Two numbers, one line.
    */
-  if (kind === 'weekly_summary') return { title: labels[kind], detail: '' };
+  if (kind === 'weekly_summary')
+    return { title: labels[kind], detail: weekLine(payload, language) };
   const title = goal !== '' ? goal : fallback !== '' ? fallback : UNTITLED[language];
   return { title: oneLine(title), detail: detailOf(kind, payload, language) };
 }

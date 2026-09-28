@@ -48,9 +48,18 @@ describe('the words of the weekly summary', () => {
 
     expect(text).toContain('აქტიური მიზნები: 1');
     expect(text).toContain('0 კითხვა გაიგზავნა, 0 პასუხი მოვიდა, 3 ავტომატური ნაბიჯი');
-    expect(text).toContain('ქსელში კითხვა [running]');
+    /**
+     * ⚠️ ROW 230, 28 September — this line used to assert „ქსელში კითხვა
+     * [running]" and „ხარჯი ამ კვირაში: 42 ტოკენი", and both were on Ninia's
+     * real screen. A bracketed English schema word looks deliberate, and a
+     * token count is an internal accounting unit that is not money she pays.
+     * The figure still travels on the payload for the admin; it is no longer a
+     * sentence in what a person reads on a Sunday.
+     */
+    expect(text).toContain('ქსელში კითხვა — მიმდინარეობს');
+    expect(text).not.toContain('[running]');
     expect(text).toContain('2026-09-09-ს ვუბრუნდები');
-    expect(text).toContain('ხარჯი ამ კვირაში: 42 ტოკენი');
+    expect(text).not.toContain('ტოკენი');
     expect(text).toContain('შენი წესებით ავტომატურად გაცემული პასუხები: 0.');
   });
 

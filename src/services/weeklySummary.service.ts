@@ -127,6 +127,28 @@ function dateOnly(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 10);
 }
 
+/**
+ * A route's state in words a person reads, not the word the schema stores.
+ *
+ * ⚠️ „[waiting]" WAS ON A REAL SCREEN — row 230, and it is the same fault as
+ * ticket 19 item 3 („[waiting]", „- (არავინ)") in a second place. A status is
+ * an English token from our own plan format; square brackets around it make it
+ * look deliberate, which is worse than leaving it out.
+ *
+ * An unknown status falls back to the plainest true thing rather than to the
+ * raw word: a format that gains a fifth status must not put it on somebody's
+ * phone before anybody has chosen how to say it.
+ */
+function routeWord(status: string): string {
+  const words: Readonly<Record<string, string>> = {
+    running: 'მიმდინარეობს',
+    waiting: 'პასუხს ველოდები',
+    done: 'დასრულდა',
+    dropped: 'შევწყვიტე',
+  };
+  return words[status] ?? 'მიმდინარეობს';
+}
+
 /** The summary as one message. Pure: everything it says was passed in. */
 export function renderWeeklySummary(
   goals: GoalSummary[],
@@ -146,7 +168,9 @@ export function renderWeeklySummary(
           `${g.wakes} ავტომატური ნაბიჯი.`,
       );
       if (g.routes.length > 0) {
-        lines.push(`  გზები: ${g.routes.map((r) => `${r.name} [${r.status}]`).join(' · ')}`);
+        lines.push(
+          `  გზები: ${g.routes.map((r) => `${r.name} — ${routeWord(r.status)}`).join(' · ')}`,
+        );
       }
       lines.push(
         g.pending_question
@@ -155,8 +179,21 @@ export function renderWeeklySummary(
       );
     }
   }
-  lines.push('', `ხარჯი ამ კვირაში: ${tokensSpentThisWeek} ტოკენი.`);
+  /**
+   * ⚠️ THE TOKEN LINE IS GONE FROM WHAT A PERSON READS — row 230, 28 September.
+   *
+   * It said „ხარჯი ამ კვირაში: 275 ტოკენი." on Ninia's screen. A token is an
+   * internal accounting unit; it is not money she pays, not work she asked
+   * for, and not a number she can do anything with. It was on her weekly
+   * summary because it was easy to add, which is the whole reason it should
+   * not have been.
+   *
+   * The figure is NOT lost: `tokens_spent` is still on the payload for the
+   * admin and the ledger. It is simply no longer a sentence in the thing a
+   * person reads on a Sunday.
+   */
   lines.push(
+    '',
     automaticAnswers > 0
       ? `შენი წესებით ავტომატურად გაცემული პასუხები: ${automaticAnswers}.`
       : 'შენი წესებით ავტომატურად გაცემული პასუხები: 0.',
@@ -218,11 +255,32 @@ async function summarisedRecently(userId: string): Promise<boolean> {
  */
 export async function sendWeeklySummary(userId: string): Promise<WeeklySummary> {
   const summary = await composeWeeklySummary(userId);
+  /**
+   * ⚠️ ONE PAYLOAD, TWO READERS, AND NOBODY SAID WHICH WAS WHICH — row 230.
+   *
+   * Ninia saw all twenty-four of her goals listed TWICE, about eight
+   * screen-heights of it: once as the composed bullet text and once as the
+   * structured list. The app was not rendering it wrong. WE SENT THE SAME
+   * THING TWICE and left them to guess which was authoritative, so they
+   * reasonably drew both.
+   *
+   * Both fields have a real reader and neither can simply go:
+   *   `text`  is the MODEL's script — the sentences it reads out at the start
+   *           of a conversation.
+   *   `goals` is the SCREEN's data — structured, for a card that can be
+   *           opened.
+   *
+   * So the payload now SAYS so, in a field the app can read rather than in a
+   * message I send them once and they have to remember. `card_source` names
+   * the authoritative one for rendering; „the app should pick" is not an
+   * answer when we handed them two.
+   */
   await queueFollowUp(
     userId,
     null,
     WEEKLY_SUMMARY_KIND,
     {
+      card_source: 'goals',
       text: summary.text,
       week_start: summary.week_start,
       goals: summary.goals.map((g) => ({
@@ -234,10 +292,17 @@ export async function sendWeeklySummary(userId: string): Promise<WeeklySummary> 
       })),
       tokens_spent: summary.tokens_spent,
       automatic_answers: summary.automatic_answers,
+      /**
+       * ⚠️ „IN FULL" IS GONE. Read aloud, twenty-four goals is the same eight
+       * screens in a different medium — and a person who opens a chat has not
+       * asked to be read a report. The card carries the detail; the opening
+       * line says what is in it.
+       */
       instruction:
-        'This is the weekly summary of the user’s goals. Give it to them in their language, ' +
-        'in full, at the start of the conversation — whatever the news. Then ask nothing unless ' +
-        'a goal is waiting on them.',
+        'This is the weekly summary of the user’s goals, and it is ALREADY ON THEIR SCREEN as ' +
+        'its own card. Do not read it out goal by goal. Say in one or two sentences how the ' +
+        'week went and name only what is waiting on them; if nothing is, say that. They can ' +
+        'open the card for the rest.',
     },
     0,
   );
