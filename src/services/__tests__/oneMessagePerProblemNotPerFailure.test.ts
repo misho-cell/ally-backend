@@ -75,10 +75,10 @@ describe('one message per problem, not per failure', () => {
   it('claims the first alert atomically, in the UPDATE itself', async () => {
     mockQuery.mockResolvedValue({ rows: [{ id: 7 }], rowCount: 1 } as never);
 
-    await expect(claimFirstAlert(7)).resolves.toBe(true);
+    await expect(claimFirstAlert(7, 15)).resolves.toBe(true);
 
     const sql = String(mockQuery.mock.calls[0][0]);
-    expect(sql).toContain('SET alerted_at = NOW()');
+    expect(sql).toContain('alerted_at = NOW()');
     expect(sql).toContain('alerted_at IS NULL');
     expect(sql).toContain('RETURNING id');
   });
@@ -86,7 +86,24 @@ describe('one message per problem, not per failure', () => {
   it('says no to the loser of that race rather than sending twice', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
-    await expect(claimFirstAlert(7)).resolves.toBe(false);
+    await expect(claimFirstAlert(7, 15)).resolves.toBe(false);
+  });
+
+  /**
+   * ⚠️ THE ROW AND THE MESSAGE MUST NOT DISAGREE. The incident is opened
+   * before anybody is counted, so its row starts at zero and the count arrives
+   * a moment later. A separate UPDATE could fail on its own and leave a row
+   * reading „0 people" beside a message that told four phones „15" — and the
+   * row is what somebody opens afterwards to check whether the alarm was
+   * honest. The claim carries the number.
+   */
+  it('writes the headcount in the same statement as the claim', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 7 }], rowCount: 1 } as never);
+
+    await claimFirstAlert(7, 15);
+
+    expect(String(mockQuery.mock.calls[0][0])).toContain('people_affected = $2');
+    expect(mockQuery.mock.calls[0][1]).toEqual([7, 15]);
   });
 
   /**
@@ -327,6 +344,34 @@ describe('only the probe is allowed to say the provider is down', () => {
   it('counts people and not failures', () => {
     expect(DETECT).toContain('COUNT(DISTINCT user_id)');
     expect(DETECT).toContain('A COUNT OF PEOPLE, NOT OF FAILURES');
+  });
+
+  /**
+   * ⚠️ THE WINDOW STARTS WHERE THE OUTAGE DID, NOT WHERE THE ALARM WOKE UP.
+   *
+   * The first version counted errors after the incident's `started_at`. That
+   * is the moment the PROBE NOTICED — taken one second before the count — so
+   * the window was a second wide and the answer was always zero. On 28
+   * September the provider stopped at 02:34:00 and the alarm opened at
+   * 09:10:40 saying „nobody affected yet", while fifteen people had eighty-four
+   * failures in their threads.
+   *
+   * `usage_events` is written on success, so its newest Anthropic row is the
+   * last second the provider actually answered us. That, and not the last
+   * assistant reply: the connector kept answering on a different key through
+   * that outage, and anchoring on replies would have said nine instead of
+   * fifteen.
+   */
+  it('counts from the provider rather than from the incident', () => {
+    expect(DETECT).toContain('FROM usage_events');
+    expect(DETECT).toContain("WHERE provider = 'anthropic'");
+    expect(DETECT).not.toContain('peopleHitSince(incident.started_at)');
+  });
+
+  /** A scan with no floor gets slower every day the table grows. */
+  it('bounds how far back it is willing to look', () => {
+    expect(DETECT).toContain('make_interval(hours => $1::int)');
+    expect(DETECT).toContain('const LOOK_BACK_HOURS = 48');
   });
 
   /** A count that cannot be read must not swallow the alarm. */

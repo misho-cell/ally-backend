@@ -38,24 +38,57 @@ import { sendOutageAlarm } from './outageAlarm.send';
 const PROVIDER = 'provider_refusing' as const;
 
 /**
+ * How far back this is willing to look for the start of an outage. A bound
+ * rather than a belief: a scan with no floor gets slower every day the table
+ * grows, and no alarm needs to reach further back than two days.
+ */
+const LOOK_BACK_HOURS = 48;
+
+/**
  * How many people this outage has actually reached, counted rather than
  * guessed: distinct owners who have had a failure written into their thread
- * since the provider went quiet.
+ * since the provider last answered us.
  *
  * ⚠️ IT IS A COUNT OF PEOPLE, NOT OF FAILURES. On the night this was written
  * thirty-four goals died across seven people, and „34" in a message at three
  * in the morning reads as thirty-four humans. The number that decides whether
  * somebody gets out of bed is how many PEOPLE, and the two differ by a factor
  * of five here.
+ *
+ * ════════ ⚠️ AND IT COUNTS FROM THE PROVIDER, NOT FROM THE INCIDENT ════════
+ *
+ * The first version of this took the incident's `started_at` and counted
+ * errors after it. That timestamp is not when the outage started — it is when
+ * the PROBE NOTICED, and the probe notices at most ten minutes after it next
+ * runs and at least one second before this count is taken. So the window was
+ * always about a second wide and the answer was always zero.
+ *
+ * MEASURED: on 28 September the provider stopped at 02:34:00 and the alarm
+ * opened at 09:10:40. It went out saying „nobody affected yet". By then
+ * FIFTEEN PEOPLE had eighty-four failures written into their threads, four of
+ * them from lines they had typed themselves. The number was not wrong by a
+ * little; it was the only number in the message that decides whether somebody
+ * gets out of bed, and it said nobody.
+ *
+ * The honest anchor is the last moment the provider actually answered us —
+ * `usage_events` is written on success, so its newest Anthropic row IS that
+ * moment, to the second (02:34:00.375, twelve seconds before the first
+ * failure). Not the last time the product replied to somebody: the connector
+ * kept answering through that outage on a different key, and anchoring there
+ * would have said nine people instead of fifteen.
  */
-async function peopleHitSince(since: string): Promise<number> {
+async function peopleHitByThisOutage(): Promise<number> {
   try {
     const rows = await query<{ n: string }>(
       `SELECT COUNT(DISTINCT user_id)::text AS n
          FROM conversations
-        WHERE role = 'assistant' AND kind = 'error'
-          AND created_at >= $1::timestamptz`,
-      [since],
+        WHERE role = 'assistant'
+          AND kind = 'error'
+          AND created_at > GREATEST(
+                NOW() - make_interval(hours => $1::int),
+                COALESCE((SELECT MAX(created_at) FROM usage_events
+                           WHERE provider = 'anthropic'), to_timestamp(0)))`,
+      [LOOK_BACK_HOURS],
       8_000,
     );
     return Number(rows.rows[0]?.n ?? 0);
@@ -78,8 +111,8 @@ export async function noticeProviderRefusing(providerSentence: string): Promise<
   const incident = await openIncident(PROVIDER, providerSentence, 0);
   if (incident === null || incident.alerted_at !== null) return;
 
-  const people = await peopleHitSince(incident.started_at);
-  if (!(await claimFirstAlert(incident.id))) return;
+  const people = await peopleHitByThisOutage();
+  if (!(await claimFirstAlert(incident.id, people))) return;
 
   const outcome = await sendOutageAlarm(
     alarmText({ ...incident, people_affected: people }, new Date()),

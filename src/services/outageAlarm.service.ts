@@ -92,14 +92,24 @@ export async function openIncident(
  * `RETURNING` names the winner; the loser gets false and says nothing.
  *
  * Same shape as `claimSweep`, for the same reason and against the same fault.
+ *
+ * ⚠️ IT WRITES THE HEADCOUNT IN THE SAME STATEMENT, and that is not tidiness.
+ * The incident is opened before anybody has been counted, so its row starts at
+ * zero; the message is built from a count taken a moment later. Two writes
+ * would let the row say „0 people" while the message four phones received said
+ * „15", and the row is what somebody reads afterwards to check whether the
+ * alarm told the truth. One statement, one story.
  */
-export async function claimFirstAlert(incidentId: number): Promise<boolean> {
+export async function claimFirstAlert(
+  incidentId: number,
+  peopleAffected: number,
+): Promise<boolean> {
   const won = await query<{ id: number }>(
     `UPDATE outage_incidents
-        SET alerted_at = NOW()
+        SET alerted_at = NOW(), people_affected = $2
       WHERE id = $1 AND alerted_at IS NULL
       RETURNING id`,
-    [incidentId],
+    [incidentId, Math.max(0, Math.floor(peopleAffected))],
     ALARM_TIMEOUT_MS,
   );
   return won.rows.length > 0;
