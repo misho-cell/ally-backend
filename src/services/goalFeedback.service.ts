@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { isARealId } from './goalId';
 import { RunLanguage } from './runLanguage';
-import { queueResult } from './pendingUpdates.service';
+import { queueFollowUp } from './pendingUpdates.service';
 
 /**
  * SHORT FEEDBACK QUESTIONS AFTER A GOAL IS CLOSED — row 272.
@@ -68,6 +68,9 @@ const WORDING: Record<RunLanguage, Record<GoalFeedbackKey, string>> = {
 };
 
 const FEEDBACK_TIMEOUT_MS = 4_000;
+
+/** No wait at all: the card is worth having while the goal is still in mind. */
+const RELEASE_NOW_DAYS = 0;
 
 export function feedbackWording(key: GoalFeedbackKey, language: RunLanguage): string {
   return WORDING[language][key];
@@ -185,39 +188,72 @@ export async function queueGoalFeedback(userId: string, taskId: number): Promise
   if (already.rows.length > 0) return;
   const next = await nextFeedbackQuestion(taskId, 'ka');
   if (next === null) return;
-  await queueResult(userId, taskId, 'goal_feedback', {
-    question_key: next.key,
-    // ⚠️ THE QUESTION ITSELF, and it was missing. The card that shows this to
-    // a person had only the key and the model-facing instruction to work
-    // from — so there was nothing to put on the screen even once the renderer
-    // existed. The words a person reads must travel with the item.
-    prompt: next.prompt,
-    /**
-     * ⚠️ THE INSTRUCTION NO LONGER CARRIES THE QUESTION'S WORDS, and the
-     * tester's note is why.
-     *
-     * It used to say „ask them exactly this one question … '<prompt>'", with
-     * the prompt chosen at CLOSE time — which is Georgian, because that is
-     * what this function asked for. An English-writing seat therefore got an
-     * English card (the server draws that) and a GEORGIAN instruction, and it
-     * read correctly only because the model translated it. Twice. Their words:
-     * „worth handing the seat's own language in the event".
-     *
-     * Passing the owner's language would fix the symptom and keep the shape:
-     * a question written at one moment, read at another, in a language that
-     * may have changed in between. THE WORDS DO NOT BELONG HERE AT ALL. The
-     * card is on the screen, in the reader's own language, drawn by the
-     * server — so the model's job is not to ask anything. It is to notice the
-     * answer and save it. Saying less is what removes the dependency; saying
-     * it in four languages would only spread it.
-     */
-    instruction:
-      `The owner has just finished this goal and is being shown ONE short feedback question ` +
-      `about it, as its own message with its own button. THE QUESTION IS ALREADY ON THEIR ` +
-      `SCREEN — do not ask it again, do not rephrase it, do not translate it. It is feedback ` +
-      `on how Netai did, not work on the goal: do not search, do not write to anybody, do not ` +
-      `reopen it. When they answer, save what they said VERBATIM with save_goal_feedback ` +
-      `(task_id, question_key="${next.key}"). If they say nothing about it or would rather ` +
-      `not, let it go and never raise it again.`,
-  });
+  /**
+   * ⚠️ NOT THROUGH THE DRIP, AND THE FIRST BUILD PUT IT THERE — 28 September.
+   *
+   * `queueResult` staggers a card by how many are already held: the Nth waiting
+   * update is delayed N-2 days. That is right for found results, which are news
+   * and can trickle. It is wrong here in a way that makes the card pointless.
+   *
+   * MEASURED: a goal was finished at 11:58 on 28 September by an account with
+   * twenty-eight held updates, and its feedback card was given a release date
+   * of 23 OCTOBER — twenty-five days later. „What came of it? Would you use it
+   * again?" is a question about something the person has just done, and asked
+   * three and a half weeks afterwards it is not a softer version of the same
+   * question, it is noise they cannot answer. Eleven of these are queued across
+   * the base and the furthest sits in late October.
+   *
+   * The drip protects people from a wall of news. A person who has just closed
+   * a goal is not being interrupted — they are already here, and this is the
+   * one moment the answer is worth having. So it goes out on a fixed clock at
+   * zero delay, which is what `queueFollowUp` is for: „ask in exactly N days",
+   * not „whenever the queue gets to it".
+   *
+   * It stays ONE item (see above), so releasing it now cannot produce a wall
+   * either: the next question is queued only when this one is answered.
+   */
+  await queueFollowUp(
+    userId,
+    taskId,
+    'goal_feedback',
+    {
+      question_key: next.key,
+      // ⚠️ THE QUESTION ITSELF, and it was missing. The card that shows this to
+      // a person had only the key and the model-facing instruction to work
+      // from — so there was nothing to put on the screen even once the renderer
+      // existed. The words a person reads must travel with the item.
+      prompt: next.prompt,
+      /**
+       * ⚠️ THE INSTRUCTION NO LONGER CARRIES THE QUESTION'S WORDS, and the
+       * tester's note is why.
+       *
+       * It used to say „ask them exactly this one question … '<prompt>'", with
+       * the prompt chosen at CLOSE time — which is Georgian, because that is
+       * what this function asked for. An English-writing seat therefore got an
+       * English card (the server draws that) and a GEORGIAN instruction, and it
+       * read correctly only because the model translated it. Twice. Their words:
+       * „worth handing the seat's own language in the event".
+       *
+       * Passing the owner's language would fix the symptom and keep the shape:
+       * a question written at one moment, read at another, in a language that
+       * may have changed in between. THE WORDS DO NOT BELONG HERE AT ALL. The
+       * card is on the screen, in the reader's own language, drawn by the
+       * server — so the model's job is not to ask anything. It is to notice the
+       * answer and save it. Saying less is what removes the dependency; saying
+       * it in four languages would only spread it.
+       */
+      instruction:
+        `The owner has just finished this goal and is being shown ONE short feedback question ` +
+        `about it, as its own message with its own button. THE QUESTION IS ALREADY ON THEIR ` +
+        `SCREEN — do not ask it again, do not rephrase it, do not translate it. It is feedback ` +
+        `on how Netai did, not work on the goal: do not search, do not write to anybody, do not ` +
+        `reopen it. When they answer, save what they said VERBATIM with save_goal_feedback ` +
+        `(task_id, question_key="${next.key}"). If they say nothing about it or would rather ` +
+        `not, let it go and never raise it again.`,
+    },
+    // Now, on a fixed clock — see above. Zero rather than a small number of days
+    // on purpose: the value of the question is its nearness to the thing it asks
+    // about, and any delay at all is a smaller version of the same mistake.
+    RELEASE_NOW_DAYS,
+  );
 }

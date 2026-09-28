@@ -2,13 +2,14 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 jest.mock('../pendingUpdates.service', () => ({
   __esModule: true,
   queueResult: jest.fn().mockResolvedValue({ id: 1 }),
+  queueFollowUp: jest.fn().mockResolvedValue({ id: 1 }),
 }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
-import { queueResult } from '../pendingUpdates.service';
+import { queueFollowUp, queueResult } from '../pendingUpdates.service';
 import { renderPendingMessage } from '../pendingMessages';
 import {
   GOAL_FEEDBACK_QUESTIONS,
@@ -18,8 +19,31 @@ import {
   feedbackWording,
 } from '../goalFeedback.service';
 
+/**
+ * The payload literal handed to the queue, read from the source.
+ *
+ * ⚠️ NEITHER A FIXED WINDOW NOR A FIXED LAYOUT. Two tests here used
+ * `slice(0, 600)` and `slice(0, 900)` from the call and broke the moment a
+ * comment was written above it — the third time a character window has failed
+ * on a comment in this repository. The first replacement then broke on
+ * PRETTIER, which split the arguments across lines and moved the brace.
+ *
+ * So both ends are named things rather than positions: it runs from the kind
+ * this card is queued under to the delay argument that closes the call. Only
+ * changing what is actually asserted about can move them.
+ */
+function payloadPassedToTheQueue(source: string): string {
+  const call = source.indexOf('queueFollowUp(');
+  if (call === -1) throw new Error('the feedback card is no longer queued here');
+  const from = source.indexOf("'goal_feedback'", call);
+  const to = source.indexOf('RELEASE_NOW_DAYS', from);
+  if (from === -1 || to === -1) throw new Error('the feedback card is queued differently now');
+  return source.slice(from, to);
+}
+
 const mockQuery = query as jest.MockedFunction<typeof query>;
-const mockQueue = queueResult as jest.MockedFunction<typeof queueResult>;
+const mockQueue = queueFollowUp as jest.MockedFunction<typeof queueFollowUp>;
+const mockDrip = queueResult as jest.MockedFunction<typeof queueResult>;
 
 /**
  * ROW 272 — SHORT FEEDBACK QUESTIONS AFTER A GOAL IS CLOSED.
@@ -109,6 +133,7 @@ describe('one question at a time', () => {
       42,
       'goal_feedback',
       expect.objectContaining({ question_key: 'what_you_wanted' }),
+      0,
     );
   });
 
@@ -353,9 +378,9 @@ describe('the question actually reaches the person', () => {
 
   it('sends the question with the item from now on', () => {
     const service = readFileSync(join(__dirname, '..', 'goalFeedback.service.ts'), 'utf8');
-    const queue = service.slice(service.indexOf('await queueResult(userId, taskId'));
+    const queue = payloadPassedToTheQueue(service);
 
-    expect(queue.slice(0, 600)).toContain('prompt: next.prompt');
+    expect(queue).toContain('prompt: next.prompt');
   });
 });
 
@@ -442,8 +467,49 @@ describe('the event does not hand the model the question to re-ask', () => {
 
   /** And the card — which a person reads — still carries the words. */
   it('leaves the words where the person reads them', () => {
-    const queue = service.slice(service.indexOf('await queueResult(userId, taskId'));
+    const queue = payloadPassedToTheQueue(service);
 
-    expect(queue.slice(0, 900)).toContain('prompt: next.prompt');
+    expect(queue).toContain('prompt: next.prompt');
+  });
+});
+
+/**
+ * ⚠️ THE CARD IS WORTHLESS LATE, AND THE DRIP MADE IT LATE — 28 September.
+ *
+ * `queueResult` staggers by how many updates are already held: the Nth waiting
+ * one is delayed N-2 days. Measured on the live base, a goal finished at 11:58
+ * on an account with twenty-eight held updates had its feedback card dated
+ * 23 OCTOBER — twenty-five days out. Eleven of these were queued across the
+ * base, the furthest in late October.
+ *
+ * „What came of it? Would you use it again?" asked three and a half weeks
+ * afterwards is not a gentler version of the question; it is one nobody can
+ * answer. The drip exists to protect people from a wall of news, and somebody
+ * who has just closed a goal is not being interrupted — they are already here.
+ */
+describe('the question is asked while it can still be answered', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockQueue.mockClear();
+    mockDrip.mockClear();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+  });
+
+  it('never puts the feedback card through the drip queue', async () => {
+    await queueGoalFeedback('7', 42);
+
+    expect(mockDrip).not.toHaveBeenCalled();
+    expect(mockQueue).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Zero, not a small number of days: any delay at all is a smaller version of
+   * the same mistake, and there is nothing to protect the reader from — the
+   * next question is queued only once this one is answered.
+   */
+  it('releases it with no delay at all', async () => {
+    await queueGoalFeedback('7', 42);
+
+    expect(mockQueue.mock.calls[0][4]).toBe(0);
   });
 });
