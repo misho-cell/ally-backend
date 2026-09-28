@@ -1238,6 +1238,31 @@ it is written down instead of acted on.
 02:34 as a bug against last night's fixes; their 04:30 and 05:30 runs cannot work.
 Nothing else is safe for me to do.
 
+**⚠️ RAISING THE LIMIT IS ONLY HALF THE REPAIR — added 03:05.**
+
+Every goal whose wake failed has had `next_wake_at` pushed a FULL DAY. Measured from
+the sixteen „wake failed" lines in the container log:
+
+- **16 goals, 4 owners, and 11 of the 16 are NOT test seats** — real people's goals
+- all sixteen pushed beyond twelve hours; **earliest retry 29 September 02:34:10**
+
+So when the limit is lifted, **these goals do not resume.** They sit until tomorrow,
+their owners see nothing for a day after the fix, and nothing anywhere says why. It
+compounds: if the limit is still on at 02:34 tomorrow they are pushed to the 30th, one
+silent day at a time.
+
+**The repair is therefore two things:** raise the limit, AND re-arm those sixteen
+goals. I have not done the second. It is an admin write on live data, so it needs its
+ROUTE / METHOD / BODY / UNDO in `ADMIN_WRITE_OPERATIONS.md` first and then a yes from
+Misho or the founder. It is written here so that whoever raises the limit does not
+think they have finished.
+
+⚠️ I nearly missed this. I filtered `tasks` on `updated_at` since 02:34, got zero, and
+was about to report that the wakes had not moved — but the reschedule writes
+`next_wake_at` and never touches `updated_at`. The tester's reading was right and my
+query asked a different question from the one I meant. It was caught only by reading
+four goals by id instead of trusting my own aggregate.
+
 **And one fault of my own, recorded beside it:** `outage.sh` returned **0 — OK** on
 the window containing this, because the same twenty minutes also held 33 calls that
 went through before 02:34. The exit code said healthy while the product was dead. I
