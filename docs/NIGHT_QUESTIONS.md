@@ -1240,11 +1240,24 @@ Nothing else is safe for me to do.
 
 **⚠️ RAISING THE LIMIT IS ONLY HALF THE REPAIR — added 03:05.**
 
-Every goal whose wake failed has had `next_wake_at` pushed a FULL DAY. Measured from
-the sixteen „wake failed" lines in the container log:
+Every goal whose wake failed has had `next_wake_at` pushed a FULL DAY.
 
-- **16 goals, 4 owners, and 11 of the 16 are NOT test seats** — real people's goals
-- all sixteen pushed beyond twelve hours; **earliest retry 29 September 02:34:10**
+⚠️ **CORRECTED AT 03:10, AND THE FIRST FIGURE WAS TOO SMALL.** I first wrote „16 goals,
+4 owners, 11 not seats" from the „wake failed" lines in the container log — and I read
+a BOUNDED LOG QUERY AS THE POPULATION. The log returned everything up to 02:45:47 and
+I took the absence of later lines for the absence of later failures. The database was
+the population and it was available the whole time.
+
+Measured from `conversations` at 03:10:
+
+- **34 goals, in 34 distinct threads** — each told once, so the engine's no-repeat
+  guard is working; eighteen messages to one person is eighteen goals, not one goal
+  shouting
+- **7 people, of whom 5 are NOT test seats**
+- **the founder's own account is one of them**, at 02:57
+- one person has **eighteen** goals stalled
+- newest failure **03:02:16 — still going**, not stopped at 02:45
+- all of them pushed beyond twelve hours; **earliest retry 29 September 02:34:10**
 
 So when the limit is lifted, **these goals do not resume.** They sit until tomorrow,
 their owners see nothing for a day after the fix, and nothing anywhere says why. It
