@@ -1264,8 +1264,33 @@ their owners see nothing for a day after the fix, and nothing anywhere says why.
 compounds: if the limit is still on at 02:34 tomorrow they are pushed to the 30th, one
 silent day at a time.
 
-**The repair is therefore two things:** raise the limit, AND re-arm those sixteen
-goals. I have not done the second. It is an admin write on live data, so it needs its
+**⚠️ AND THERE IS NO WAY TO RE-ARM THEM — checked at 03:25, not assumed.**
+
+I went to write the D44 register entry for the re-arm so it would be ready for a yes in
+the morning, and found there is nothing to register. Every route on `adminRouter` that
+touches a goal was listed: the only one is `POST /admin/wake-up/preview`, which
+previews and does not write. `next_wake_at` can be set from exactly two places —
+`setTaskWake`, reachable only through the chat tool or the connector, both of which
+need a conversation with the owner and therefore need the model; and `ensureNextWake`,
+which only the engine calls from inside a wake that is itself failing.
+
+So the second half of the repair has **no mechanism at all**. `ro.sh` is read-only by
+construction and I would not bypass it.
+
+**That leaves a choice, and it is Misho's or the founder's, not mine:**
+
+- **(a) a small admin route to re-arm named goals.** It is an hour of work with its
+  tests, and then a D44 entry and a yes before it is ever called. I have NOT written it:
+  nobody asked for it, and building new product surface unprompted at half past three
+  during an outage is how a fix becomes a second incident.
+- **(b) let them wake on their own on 29 September.** Free, and it costs those five real
+  people a silent day. ⚠️ It also has a trap: if the limit is still on at 02:34 on the
+  29th, the same goals are pushed to the 30th, and so on — one silent day at a time,
+  indefinitely, with nothing anywhere saying why.
+
+Say which and I will do it. (a) is ready to start the moment there is a yes.
+
+**The repair is therefore two things:** raise the limit, AND re-arm those goals. I have not done the second. It is an admin write on live data, so it needs its
 ROUTE / METHOD / BODY / UNDO in `ADMIN_WRITE_OPERATIONS.md` first and then a yes from
 Misho or the founder. It is written here so that whoever raises the limit does not
 think they have finished.
