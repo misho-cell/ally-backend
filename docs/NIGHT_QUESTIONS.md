@@ -1253,6 +1253,19 @@ over in the morning instead of tonight.
   directory; the bare `LOWER` that broke this introduction sat one directory up.
   Eight more files still have the hole and are now named in a test. They are
   not fixed, for row 278's reason — each wraps an indexed column.
+- **Row 295 on the plate is Pr1 and its premise does not hold — measured, and
+  I misread the same field first.** „Giorgi's search found up to five lawyers
+  in his own phonebook, yet the reply said none were there." There are no five.
+  The two `search_by_tag` calls returned a dedup guard
+  (`already_searched_and_empty`), not results; the „2 rows / 3 rows" is the
+  length of the already-tried list, which reads exactly like a successful
+  search unless you pull `result_keys`. And the underlying claim measured
+  directly: of Giorgi's **1,174 contacts**, with **2,254 tags on 987 people**,
+  **zero** carry a lawyer tag and **zero** carry a lawyer fact. The reply was
+  true. Told the tester (842) and suggested taking it off Pr1 — a fix aimed at
+  it would change code that is behaving correctly. The real question underneath
+  is better: 987 labelled people and not one profession label matching a need
+  he has.
 - **Still waiting on his word, unchanged:** row 278's index rebuild
   (recommend off-peak), the Netai Test 12 seat, his own account id for the
   alarm, the Meta WhatsApp template, and the 34 stalled goals.
