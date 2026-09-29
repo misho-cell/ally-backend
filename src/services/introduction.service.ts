@@ -532,7 +532,32 @@ export interface ResolveOutcome {
 const DEFAULT_SNOOZE_DAYS = 3;
 const MIN_SNOOZE_DAYS = 1;
 const MAX_SNOOZE_DAYS = 30;
-const ERR_NOT_FOUND = 'მოთხოვნა ვერ მოიძებნა';
+/**
+ * ⚠️ THE MODEL GUESSED AN ID, AND „NOT FOUND" DID NOT TELL IT TO STOP.
+ *
+ * 29 September, measured on `tool_call_log`: four calls to
+ * `respond_to_introduction` from two REAL accounts (no test seats), and the
+ * ids passed were `request_id=1`, `0`, `1`, `1`. Those are ordinal positions —
+ * „the first request" — not ids; a real one is a number like 1981. Neither
+ * account had a pending request at all: each has exactly one in its whole
+ * history and both were answered weeks earlier (595 on 31 July, 531 on
+ * 8 September).
+ *
+ * SO THE REFUSAL WAS RIGHT, and this is not a bug in the lookup. What it did
+ * not do is say what to do instead: `why.sh` recorded ->ok 0 across all four,
+ * with one run answering the refusal by inventing a SECOND id. A guard that
+ * only says „no" leaves the next actor guessing, which is the same shape as
+ * the three faults fixed above — a message that does not carry enough for the
+ * reader to act correctly.
+ *
+ * It is written for the model, because the model is who reads a tool error.
+ */
+const ERR_NOT_FOUND =
+  'მოთხოვნა ვერ მოიძებნა. ნუ გამოიცნობ id-ს და ნუ სცდი სხვა რიცხვს — ' +
+  'request_id არის კონკრეტული ნომერი შენი შემოსული მოთხოვნებიდან (მაგ. 1981), ' +
+  'და არა რიგითობა სიაში (0, 1, 2). თუ ხელთ არ გაქვს, ჯერ გადაამოწმე შემოსული ' +
+  'მოთხოვნები; თუ იქ არაფერია, უთხარი მომხმარებელს, რომ პასუხის მოლოდინში ' +
+  'მოთხოვნა არ არის.';
 const ERR_ALREADY_ANSWERED = 'ამ მოთხოვნაზე უკვე გაქვს პასუხი';
 
 interface RequestRow {

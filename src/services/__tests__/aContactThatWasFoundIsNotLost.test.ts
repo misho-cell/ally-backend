@@ -191,3 +191,30 @@ describe('every place that still lowercases a stored label without folding is na
     expect(BARE_LOWER.test(code(SERVICE))).toBe(false);
   });
 });
+
+/**
+ * ⚠️ A GUARD THAT ONLY SAYS „NO" LEAVES THE NEXT ACTOR GUESSING.
+ *
+ * 29 September, from `tool_call_log`: four `respond_to_introduction` calls
+ * from two REAL accounts passing `request_id` 1, 0, 1, 1 — ordinal positions,
+ * not ids. Neither account had a pending request at all, so the refusal was
+ * CORRECT. But it said only „request not found", and one run answered it by
+ * inventing a second id; `why.sh` recorded ->ok 0 on all four.
+ *
+ * Same shape as the three faults this file is about: the reader was not given
+ * enough to act correctly.
+ */
+describe('a refusal says what to do instead of it', () => {
+  const BODY = code(SERVICE);
+
+  it('tells the model not to guess, and where a real id comes from', () => {
+    const at = BODY.indexOf('const ERR_NOT_FOUND');
+    const message = BODY.slice(at, at + 500);
+
+    // It names the mistake that was actually made — an ordinal, not an id.
+    expect(message).toContain('request_id');
+    // And it gives the reader somewhere to go instead of another guess.
+    expect(message).toMatch(/შემოსული/);
+    expect(message.length).toBeGreaterThan('მოთხოვნა ვერ მოიძებნა'.length + 80);
+  });
+});
