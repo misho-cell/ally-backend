@@ -33,8 +33,25 @@ describe('the match shape a search log may carry', () => {
     expect(matchShapeOf({ results: [{ name: 'A' }, { name: 'B' }] })).toBe('2 rows, 0 approximate');
   });
 
-  it('answers nothing for a result that is not a row list', () => {
-    expect(matchShapeOf({ found: false, reason: 'no_matches' })).toBeNull();
+  /**
+   * ⚠️ THIS CASE CHANGED ON 29 SEPTEMBER, AND THE CHANGE IS THE POINT.
+   *
+   * It used to assert that anything without a row list answers NOTHING. That
+   * contract is what let two people misread Giorgi's run: the two
+   * `search_by_tag` calls returned the dedup guard, logged
+   * `result_count=2 / result_empty=true` with an empty sample, and both the
+   * tester and I read that as two lawyers found and hidden. It was the length
+   * of the already-searched list. See `aGuardShapeLooksLikeAFindShape`.
+   *
+   * So a result with no rows now says WHY it has none, when it knows. Silence
+   * was never neutral here — the other two fields fill it in, wrongly.
+   */
+  it('says why there are no rows, instead of saying nothing', () => {
+    expect(matchShapeOf({ found: false, reason: 'no_matches' })).toBe('no rows — no_matches');
+    expect(matchShapeOf({ found: false, query: 'x' })).toBe('found nobody');
+  });
+
+  it('still answers nothing when there is nothing to say', () => {
     expect(matchShapeOf({ results: [] })).toBeNull();
     expect(matchShapeOf(null)).toBeNull();
     expect(matchShapeOf('a string')).toBeNull();
