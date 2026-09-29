@@ -111,14 +111,50 @@ async function moderationVote(text: string, userId: string | null): Promise<Mode
  * shows the user a refusal instead of a delivered answer (14 Aug P0,
  * threads 8944/8954). Blocking requires a second independent vote to agree.
  */
+/**
+ * ⚠️ OUR OWN LINKS ARE NOT CONTENT, AND THE CLASSIFIER KEPT BLOCKING THEM.
+ *
+ * 29 September, 19:31–19:33 UTC. The founder asked his assistant for his own
+ * invite link to send a friend. Two replies in a row came back as
+ * „პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა"; only the third gave the link, and
+ * three paid runs bought one URL. The log names both blocks:
+ *
+ *     19:32:14  reply blocked by content filter (len=364, category=harassment)
+ *     19:32:41  reply blocked by content filter (len=298, category=dangerous)
+ *
+ * Both votes agreed each time, so this was not the classifier's usual
+ * intermittent misfire that the two-vote rule absorbs. An opaque URL with a
+ * code in it, framed as „send this to your friend", reads to a safety model
+ * like a phishing or spam link — and it would read that way every time.
+ *
+ * A link on our own domain was minted BY THE SERVER. It is not text the model
+ * wrote and it cannot be the unsafe part of a reply, so classifying it can only
+ * ever produce false blocks. It is replaced by a neutral placeholder for the
+ * vote alone; the reply the person receives keeps the real link untouched.
+ *
+ * NARROW ON PURPOSE: only netai.guru. The model's own prose around the link is
+ * still classified in full, and any other URL still reaches the classifier as
+ * written — a link to somewhere else is exactly the thing it should look at.
+ */
+// Anchored at the start of a URL: „evil.example/netai.guru/x" must not have
+// its tail masked, so the domain cannot follow a word character, dot, slash
+// or hyphen.
+const OWN_LINK_RE = /(?<![\w./-])(?:https?:\/\/)?(?:www\.)?netai\.guru\/\S*/gi;
+const OWN_LINK_PLACEHOLDER = '[netai link]';
+
+export function withoutOwnLinks(text: string): string {
+  return text.replace(OWN_LINK_RE, OWN_LINK_PLACEHOLDER);
+}
+
 export async function moderateReply(
   text: string,
   userId: string | null = null,
 ): Promise<ModerationVerdict> {
   if (!text.trim()) return { safe: true };
-  const first = await moderationVote(text, userId);
+  const judged = withoutOwnLinks(text);
+  const first = await moderationVote(judged, userId);
   if (first.safe) return first;
-  const second = await moderationVote(text, userId);
+  const second = await moderationVote(judged, userId);
   if (second.safe) return second;
   // Both refused. The SECOND category is reported beside the first, because
   // two votes that block for different reasons is itself a sign the
