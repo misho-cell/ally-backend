@@ -74,11 +74,11 @@ describe('after a yes, every language offers Netai first', () => {
    * exists.
    */
   it.each(LANGUAGES)('%s — the model-facing handover points through Netai', (language) => {
-    expect(introOutcomeEvent('Nino', true, true)[language]).toMatch(/Netai/);
+    expect(introOutcomeEvent('Nino', true, 'handed_over')[language]).toMatch(/Netai/);
   });
 
   it('the model-facing one no longer says they can write themselves', () => {
-    expect(introOutcomeEvent('Nino', true, true).en).not.toContain('write themselves');
+    expect(introOutcomeEvent('Nino', true, 'handed_over').en).not.toContain('write themselves');
   });
 });
 

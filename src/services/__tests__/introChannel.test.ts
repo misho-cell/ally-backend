@@ -219,20 +219,23 @@ describe('the requester’s goal wake is told what actually happened', () => {
     // it cost — deleting the quote would delete the evidence, which is the
     // same reason introNumberDisclosure scopes its assertion rather than the
     // whole file.
-    const built = introOutcomeEvent('Dato', true, true).en;
+    const built = introOutcomeEvent('Dato', true, 'handed_over').en;
     expect(built).not.toContain('if the contact has already been handed over');
-    expect(EVENTS).toContain('contactHandedOver');
+    expect(EVENTS).toContain('IntroContactOutcome');
   });
 
-  it.each(['ka', 'en', 'ru', 'es'] as const)('%s says which of the two it was', (language) => {
-    const handed = introOutcomeEvent('Dato', true, true)[language];
-    const withheld = introOutcomeEvent('Dato', true, false)[language];
-    expect(handed).not.toBe(withheld);
+  it.each(['ka', 'en', 'ru', 'es'] as const)('%s says which of the three it was', (language) => {
+    const handed = introOutcomeEvent('Dato', true, 'handed_over')[language];
+    const withheld = introOutcomeEvent('Dato', true, 'kept_by_mediator')[language];
+    const missing = introOutcomeEvent('Dato', true, 'not_found')[language];
+    expect(new Set([handed, withheld, missing]).size).toBe(3);
   });
 
   it('forbids the sentence that was actually written, when nothing moved', () => {
-    expect(introOutcomeEvent('Dato', true, false).en).toContain('NO contact was handed over');
-    expect(introOutcomeEvent('Dato', true, false).en).toContain(
+    expect(introOutcomeEvent('Dato', true, 'kept_by_mediator').en).toContain(
+      'NO contact was handed over',
+    );
+    expect(introOutcomeEvent('Dato', true, 'kept_by_mediator').en).toContain(
       'Do NOT tell the owner they have the number',
     );
   });
@@ -252,7 +255,7 @@ describe('the requester’s goal wake is told what actually happened', () => {
    * changed is where the owner is pointed: through Netai, not out of it.
    */
   it('and says plainly that it HAS moved, when it has', () => {
-    const built = introOutcomeEvent('Dato', true, true).en;
+    const built = introOutcomeEvent('Dato', true, 'handed_over').en;
 
     expect(built).toContain('direct channel to Dato is open');
     expect(built).toContain('directly through Netai');
@@ -266,18 +269,59 @@ describe('the requester’s goal wake is told what actually happened', () => {
    * three that are not English were the ones most likely to be left behind.
    */
   it.each(['ka', 'en', 'ru', 'es'] as const)('%s points through Netai, not out of it', (lang) => {
-    expect(introOutcomeEvent('Dato', true, true)[lang]).toMatch(/Netai/);
+    expect(introOutcomeEvent('Dato', true, 'handed_over')[lang]).toMatch(/Netai/);
   });
 
   /**
    * The fact comes from the SAME branch the other two messages come from.
    * Deriving it a second way is how three accounts of one event drift apart —
    * which is the whole of this bug.
+   *
+   * ⚠️ ASSERTED ON THE SHAPE, NOT ON THE SOURCE TEXT. This test used to read
+   * four exact spellings out of `introduction.service.ts`, and every one of
+   * them broke the moment the boolean became three states — a test that fails
+   * because the thing it guards got BETTER teaches the next person to delete
+   * it. Four source-window tests broke on me in one day on 28 September for
+   * exactly this reason. What matters is that one value carries the fact and
+   * that every state is a distinct instruction; both are checked by calling.
    */
-  it('is carried on the outcome, beside the two texts it must agree with', () => {
-    expect(SERVICE).toContain('contactHandedOver: boolean');
-    expect(SERVICE).toContain('contactHandedOver: targetPhone !== null');
-    expect(SERVICE).toContain('contactHandedOver: false');
-    expect(SERVICE).toContain('outcome?.contactHandedOver === true');
+  it('carries one value for the fact, with a distinct instruction per state', () => {
+    const states = ['handed_over', 'kept_by_mediator', 'not_found'] as const;
+    const built = states.map((s) => introOutcomeEvent('Dato', true, s).en);
+
+    expect(new Set(built).size).toBe(states.length);
+    for (const text of built) expect(text.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * ROW 309 — THE THIRD STATE, AND WHY A BOOLEAN COULD NOT CARRY IT.
+   *
+   * 29 September, the founder's own account: he accepted Giorgi's introduction
+   * and chose `direct`. The contact lookup read a stale row and came back
+   * empty, so the one false branch fired and Giorgi was told the founder „chose
+   * to keep the connection through himself" — the opposite of his choice, put
+   * in his mouth by us.
+   *
+   * „We could not find it" and „they decided to stay in the middle" are not
+   * the same sentence and must never share one.
+   */
+  it('never reports our own lookup failing as the mediator’s decision', () => {
+    const missing = introOutcomeEvent('Dato', true, 'not_found').en;
+    const chosen = introOutcomeEvent('Dato', true, 'kept_by_mediator').en;
+
+    expect(missing).not.toBe(chosen);
+    expect(missing).not.toContain('the mediator chose');
+    // It still must not promise a number nobody has.
+    expect(missing).toContain('Do NOT tell the owner they have the number');
+    // And it says whose failure it is, rather than sending them back to ask again.
+    expect(missing).toContain('our failure');
+  });
+
+  /** The Georgian reader gets the same three-way distinction, not a fallback. */
+  it('keeps the three apart in Georgian too', () => {
+    const missing = introOutcomeEvent('Dato', true, 'not_found').ka;
+
+    expect(missing).toContain('ჩვენი ხარვეზია');
+    expect(missing).not.toContain('შუამავალმა აირჩია');
   });
 });

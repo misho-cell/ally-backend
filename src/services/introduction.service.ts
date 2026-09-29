@@ -1,4 +1,7 @@
 import { query } from '../db/postgres/client';
+// Type only, on purpose: `taskEngine.events` is imported dynamically below to
+// keep the module cycle broken, and a type import is erased before runtime.
+import type { IntroContactOutcome } from './taskEngine.events';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
@@ -618,12 +621,16 @@ interface AcceptOutcome {
   /** Closing line for the mediator's own thread — what happens next. */
   mediatorFollowUp: string;
   /**
-   * Did a number actually move? The requester's GOAL wake needs this, and
+   * What became of the number. The requester's GOAL wake needs this, and
    * before request 1123 it was not given it — so the model guessed, and told
    * the asker the opposite of what the target had just been told. One fact,
    * one branch, three accounts that agree.
+   *
+   * ⚠️ THREE STATES, NOT TWO — row 309. It was a boolean until 29 September,
+   * and „no number moved" collapsed a person's decision together with our own
+   * lookup failing. See `IntroContactOutcome`.
    */
-  contactHandedOver: boolean;
+  contactOutcome: IntroContactOutcome;
 }
 
 /**
@@ -644,18 +651,34 @@ async function deliverAcceptOutcome(
   mediatorName: string,
   channel: IntroChannel,
 ): Promise<AcceptOutcome> {
-  // The target's phone: the stored one, or the single match in the MEDIATOR's
-  // own phonebook (it is their contact to give).
-  let targetPhone = req.target_phone;
-  if (!targetPhone && req.mediator_user_id !== null) {
-    const found = await query<{ phone: string }>(
-      `SELECT ua.phone FROM "UserAlias" ua
-       WHERE ua."contactId" = $1 AND LOWER(ua.alias) = LOWER($2)
-       LIMIT 2`,
-      [req.mediator_user_id, req.target_name],
-    );
-    if (found.rows.length === 1) targetPhone = found.rows[0].phone;
-  }
+  /**
+   * ⚠️ THE NUMBER IS READ FROM THE ROW, AND NOTHING LOOKS IT UP A SECOND TIME —
+   * 29 September, and one stale read was three Pr1 faults at once.
+   *
+   * A second lookup used to stand here, `LOWER(alias) = LOWER(target_name)`,
+   * because `req` kept arriving without a number. It arrived without one
+   * because it is read BEFORE the accept's own UPDATE — not because none had
+   * been found. `findContactPhonesByName` (both alphabets, spelling variants,
+   * the mediator's tags) had already resolved the contact and stored it a few
+   * lines earlier. This function then threw that away and re-derived the same
+   * answer with the weakest rule in the file, which could not match a name
+   * saved in Latin letters against a request written in Georgian.
+   *
+   * MEASURED ON THE FOUNDER'S OWN, request 1981: `intro_channel = 'direct'`
+   * and `target_phone` SET — and he was told „კონტაქტი ვერ ვიპოვე შენს
+   * წიგნაკში" (308); the requester was told he had chosen to stay in the
+   * middle, the opposite of what he chose (309); and the target, who IS a
+   * Netai member, was never linked, so nobody ever asked him (316). Across
+   * every accepted direct introduction: 14, of which 9 carry a number, 8 of
+   * those were never linked to a member, and all 8 of those numbers belong to
+   * Netai members who were never told.
+   *
+   * THE FIX IS NOT A BETTER LADDER HERE. It is that the caller now hands over
+   * the row the UPDATE returned, so the one lookup that ran is the one that
+   * counts. Two rules for one question is what produced a false sentence about
+   * a real person's decision.
+   */
+  const targetPhone = req.target_phone;
 
   // A registered target learns what happens next (their own thread + push).
   let targetUserId = req.target_user_id;
@@ -758,7 +781,9 @@ async function deliverAcceptOutcome(
         true,
         false,
       ),
-      contactHandedOver: false,
+      // A decision, not a failure: this is the `via_mediator` branch, where
+      // the mediator chose to stay in the middle.
+      contactOutcome: 'kept_by_mediator',
     };
   }
 
@@ -780,9 +805,17 @@ async function deliverAcceptOutcome(
       false,
       targetWasTold,
     ),
-    // The same branch the other two messages came from — targetPhone is what
-    // actually decides whether anything moved.
-    contactHandedOver: targetPhone !== null,
+    /**
+     * The same branch the other two messages came from — `targetPhone` is what
+     * actually decides whether anything moved.
+     *
+     * ⚠️ AND THE EMPTY CASE IS `not_found`, NOT `kept_by_mediator`. This is the
+     * `direct` branch: the mediator asked for the two to be connected. If there
+     * is no number here, that is our lookup coming back empty, and saying they
+     * „chose to keep the connection" reports our failure as their decision —
+     * row 309, and it happened to the founder on his own account.
+     */
+    contactOutcome: targetPhone !== null ? 'handed_over' : 'not_found',
   };
 }
 
@@ -930,7 +963,7 @@ async function tellTheChatItWasAskedIn(
 async function wakeRequestersGoal(
   req: RequestRow,
   accepted: boolean,
-  contactHandedOver: boolean,
+  contactOutcome: IntroContactOutcome,
 ): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
@@ -940,7 +973,7 @@ async function wakeRequestersGoal(
     ]);
     startIntroOutcome(
       req.requester_task_id,
-      introOutcomeEvent(req.target_name, accepted, contactHandedOver),
+      introOutcomeEvent(req.target_name, accepted, contactOutcome),
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -1132,7 +1165,7 @@ export async function resolveIntroductionRequest(
     }
   }
 
-  const updated = await query(
+  const updated = await query<{ target_phone: string | null }>(
     `UPDATE introduction_requests
      SET status = $1, mediator_response = $2, responded_at = NOW(), snoozed_until = NULL,
          responded_by_user_id = $4::int,
@@ -1149,7 +1182,8 @@ export async function resolveIntroductionRequest(
                AND regexp_replace(ua.phone, '\\D', '', 'g') = $6::text
              LIMIT 1)
          )
-     WHERE id = $3 AND status = 'pending'`,
+     WHERE id = $3 AND status = 'pending'
+     RETURNING target_phone`,
     [
       newStatus,
       opts.response ?? null,
@@ -1162,6 +1196,23 @@ export async function resolveIntroductionRequest(
   if ((updated.rowCount ?? 0) === 0) {
     return { ok: false, code: 'conflict', error: ERR_ALREADY_ANSWERED };
   }
+
+  /**
+   * ⚠️ `req` IS NOW STALE, and everything downstream reads it.
+   *
+   * It was loaded before the lookup above and before this UPDATE, so its
+   * `target_phone` is null in precisely the case the lookup just solved. The
+   * delivery path used to paper over that with a second, weaker lookup of its
+   * own and get the answer wrong — see `deliverAcceptOutcome`.
+   *
+   * `RETURNING` rather than a re-read: the value comes from the same statement
+   * that wrote it, so no other writer can land between the two and no second
+   * query can disagree with the first.
+   */
+  const answered: RequestRow = {
+    ...req,
+    target_phone: updated.rows[0]?.target_phone ?? req.target_phone,
+  };
 
   void recordProductEvent(mediatorUserId, 'request_resolved', {
     action,
@@ -1233,7 +1284,11 @@ export async function resolveIntroductionRequest(
       );
     }
     outcome = await deliverAcceptOutcome(
-      req,
+      // `answered`, not `req` — the row as the UPDATE left it. This is the
+      // whole of rows 308, 309 and 316: `req.target_phone` is the value from
+      // before the lookup, and reading it here told the mediator their own
+      // contact could not be found.
+      answered,
       mediatorName.rows[0]?.name?.trim() || 'შუამავალმა',
       // A request answered before the question existed carries NULL, and the
       // behaviour it actually got was `direct`. Reading it as anything else
@@ -1252,7 +1307,12 @@ export async function resolveIntroductionRequest(
   }
   await syncRequestThreads(req, action, opts.response, outcome);
   // The wake is told what the other two messages were told — see AcceptOutcome.
-  await wakeRequestersGoal(req, action === 'accept', outcome?.contactHandedOver === true);
+  /**
+   * A decline, or an accept whose outcome delivery failed, has no contact
+   * state of its own. `kept_by_mediator` is the honest default for both: it is
+   * the one branch that promises the owner nothing and sends them nowhere.
+   */
+  await wakeRequestersGoal(req, action === 'accept', outcome?.contactOutcome ?? 'kept_by_mediator');
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
   return { ok: true, status: newStatus };

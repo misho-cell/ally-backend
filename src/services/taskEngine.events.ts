@@ -107,14 +107,37 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
  * was told it had not. One of them acts on a false belief about where a phone
  * number is.
  *
- * So the fact is stated rather than offered. `contactHandedOver` comes from
- * the same branch that decides what the other two are told, which is the only
- * way three accounts of one event can be made to agree.
+ * So the fact is stated rather than offered. `contact` comes from the same
+ * branch that decides what the other two are told, which is the only way three
+ * accounts of one event can be made to agree.
  */
+/**
+ * What became of the contact — THREE states, because two of them produce the
+ * same silence and mean opposite things.
+ *
+ * ⚠️ ROW 309 — IT WAS A BOOLEAN, AND THE MISSING THIRD STATE PUT A DECISION
+ * THE FOUNDER NEVER MADE INTO HIS MOUTH. 29 September: he accepted Giorgi's
+ * introduction and chose `direct`. The contact lookup then read a stale row and
+ * came back empty, so `contactHandedOver` was false — and false had only one
+ * sentence attached to it, „the mediator chose to keep the connection going
+ * through them". Giorgi was told the opposite of what the founder chose, and
+ * the founder was told his own contact was not in his phonebook.
+ *
+ * „No number moved" is not a decision. Whether it was a choice or a failure is
+ * exactly the thing the reader needs, and a boolean cannot carry it.
+ */
+export type IntroContactOutcome =
+  /** The mediator chose direct and the contact was resolved: the number moved. */
+  | 'handed_over'
+  /** The mediator chose to stay in the middle. No number moved, and that is the point. */
+  | 'kept_by_mediator'
+  /** The mediator chose direct and we could not resolve the contact. Ours to fix, not theirs. */
+  | 'not_found';
+
 export function introOutcomeEvent(
   targetName: string,
   accepted: boolean,
-  contactHandedOver = false,
+  contact: IntroContactOutcome = 'kept_by_mediator',
 ): Readonly<Record<RunLanguage, string>> {
   /**
    * ROW 251 / D438 — THIS SENTENCE WAS THE FIRST CAUSE, AND I WROTE IT.
@@ -134,28 +157,90 @@ export function introOutcomeEvent(
    *
    * The OTHER branch is untouched. When the mediator kept the connection, no
    * number was handed over and the owner must not be told they have one.
+   *
+   * ⚠️ AND THE THIRD BRANCH SAYS WHOSE FAULT IT IS. „Not found" must never
+   * borrow „kept_by_mediator"'s sentence: one is a person's decision and the
+   * other is our lookup failing, and reporting ours as theirs is what row 309
+   * is. It also tells the model NOT to send the owner back to the mediator —
+   * the mediator already said yes, and being asked again for something they
+   * already granted is how a yes gets worn out.
    */
-  const handover = {
-    ka: contactHandedOver
-      ? `${targetName}-თან პირდაპირი არხი გახსნილია — ახლა შეგიძლია მას პირდაპირ მისწერო ` +
-        'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ.'
-      : `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
+  const byLanguage: Readonly<Record<RunLanguage, Readonly<Record<IntroContactOutcome, string>>>> = {
+    ka: {
+      handed_over:
+        `${targetName}-თან პირდაპირი არხი გახსნილია — ახლა შეგიძლია მას პირდაპირ მისწერო ` +
+        'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ.',
+      kept_by_mediator:
+        `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
         'ნუ ეტყვი, რომ ნომერი აქვს.',
-    en: contactHandedOver
-      ? `The direct channel to ${targetName} is open — you may now write to them directly ` +
-        'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it.'
-      : 'NO contact was handed over — the mediator chose to keep the connection going through ' +
+      not_found:
+        'შუამავალმა დათანხმდა პირდაპირ დაკავშირებაზე, მაგრამ კონტაქტი ჩვენ ვერ მოვძებნეთ — ' +
+        'ეს ჩვენი ხარვეზია და არა მისი გადაწყვეტილება. უთხარი მფლობელს ზუსტად ასე: თანხმობა ' +
+        'არის, კონტაქტი ჯერ არ მოსულა და ამას ჩვენ ვასწორებთ. ნუ ეტყვი, რომ ნომერი აქვს, და ' +
+        'ნუ გაგზავნი შუამავალთან თავიდან სათხოვნელად.',
+    },
+    en: {
+      handed_over:
+        `The direct channel to ${targetName} is open — you may now write to them directly ` +
+        'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it.',
+      kept_by_mediator:
+        'NO contact was handed over — the mediator chose to keep the connection going through ' +
         'them. Do NOT tell the owner they have the number.',
-    ru: contactHandedOver
-      ? `Прямой канал к ${targetName} открыт — теперь можно написать напрямую через Netai, ` +
-        'без посредника. Скажи, что передать, и я передам.'
-      : 'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
+      not_found:
+        'The mediator agreed to connect them DIRECTLY, but we could not resolve the contact — ' +
+        'this is our failure, not their decision. Tell the owner exactly that: the yes is real, ' +
+        'the contact has not come through yet, and we are fixing it. Do NOT tell the owner they ' +
+        'have the number, and do NOT send them back to the mediator to ask again.',
+    },
+    ru: {
+      handed_over:
+        `Прямой канал к ${targetName} открыт — теперь можно написать напрямую через Netai, ` +
+        'без посредника. Скажи, что передать, и я передам.',
+      kept_by_mediator:
+        'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
         'что номер у него есть.',
-    es: contactHandedOver
-      ? `El canal directo con ${targetName} está abierto — ya puedes escribirle directamente ` +
-        'por Netai, sin el intermediario. Dime qué decir y yo lo llevo.'
-      : 'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
+      not_found:
+        'Посредник согласился связать их НАПРЯМУЮ, но контакт мы найти не смогли — это наша ' +
+        'ошибка, а не его решение. Так и скажи владельцу: согласие есть, контакт ещё не дошёл, ' +
+        'и мы это исправляем. Не говори, что номер у него есть, и не отправляй его просить ' +
+        'посредника снова.',
+    },
+    es: {
+      handed_over:
+        `El canal directo con ${targetName} está abierto — ya puedes escribirle directamente ` +
+        'por Netai, sin el intermediario. Dime qué decir y yo lo llevo.',
+      kept_by_mediator:
+        'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
         'él. No le digas al propietario que tiene el número.',
+      not_found:
+        'El intermediario aceptó conectarlos DIRECTAMENTE, pero no hemos podido resolver el ' +
+        'contacto — es un fallo nuestro, no una decisión suya. Dilo así al propietario: el sí ' +
+        'es real, el contacto aún no ha llegado y lo estamos arreglando. No le digas que tiene ' +
+        'el número, ni le mandes a pedírselo otra vez al intermediario.',
+    },
+  };
+  /**
+   * ⚠️ AN UNKNOWN STATE FALLS BACK; IT DOES NOT RENDER `undefined`.
+   *
+   * This map is indexed by a value, where the boolean it replaced was indexed
+   * by a branch — so a value outside the three now reaches a template instead
+   * of simply being falsy. Caught while fixing the callers: a stale `true`
+   * from a test produced „…es sí. undefined Luego comprueba…", a literal
+   * „undefined" in a sentence a person reads. Test files are excluded from
+   * `tsconfig`, so the compiler cannot be the only guard here.
+   *
+   * The fallback is `kept_by_mediator` because it is the one branch that
+   * promises the owner nothing and sends them nowhere: wrong but harmless,
+   * where „handed_over" would tell somebody they have a number they do not.
+   */
+  const state: IntroContactOutcome = contact in byLanguage.en ? contact : 'kept_by_mediator';
+  // One state chosen once, then read per language — so the four sentences can
+  // never drift onto different branches of the same fact.
+  const handover: Readonly<Record<RunLanguage, string>> = {
+    ka: byLanguage.ka[state],
+    en: byLanguage.en[state],
+    ru: byLanguage.ru[state],
+    es: byLanguage.es[state],
   };
   return accepted
     ? {

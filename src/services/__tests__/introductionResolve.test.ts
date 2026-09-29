@@ -74,12 +74,23 @@ function rows(data: unknown[], rowCount = data.length): { rows: unknown[]; rowCo
   return { rows: data, rowCount };
 }
 
-// Route mocked query calls by SQL fragment so call order never matters.
+/**
+ * Route mocked query calls by SQL fragment so call order never matters.
+ *
+ * ⚠️ `resolvedPhone` IS WHAT THE ACCEPT'S OWN UPDATE GIVES BACK, and modelling
+ * it is the whole of rows 308/309/316. `deliverAcceptOutcome` used to run a
+ * second `LOWER(alias) = LOWER(name)` lookup of its own, so this mock could
+ * hand it a number through `aliasPhones` and the test passed while the live
+ * path was telling the founder his own contact was not in his phonebook. The
+ * number now reaches delivery only by the route it really takes — resolved by
+ * the name ladder, stored by the UPDATE, read back from `RETURNING`.
+ */
 function setup(opts: {
   request?: Record<string, unknown> | null;
   updateCount?: number;
   aliasPhones?: unknown[];
   memberRows?: unknown[];
+  resolvedPhone?: string | null;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('UPDATE introduction_requests')) {
@@ -89,7 +100,9 @@ function setup(opts: {
           rows(count > 0 ? [{ snoozed_until: '2026-08-01T00:00:00Z' }] : [], count) as never,
         );
       }
-      return Promise.resolve(rows([], count) as never);
+      return Promise.resolve(
+        rows(count > 0 ? [{ target_phone: opts.resolvedPhone ?? null }] : [], count) as never,
+      );
     }
     if (sql.includes('FROM "UserAlias"'))
       return Promise.resolve(rows(opts.aliasPhones ?? []) as never);
@@ -331,7 +344,10 @@ describe('accept outcome (tasks 16/18)', () => {
   it('a mediated accept hands the requester the contact and tells a registered target', async () => {
     setup({
       request: REQUEST_ROW,
-      aliasPhones: [{ phone: '+995555000005' }],
+      aliasPhones: [{ digits: '995555000005' }],
+      // The ladder resolved it and the UPDATE stored it — this is the number
+      // coming back out of the write, which is the only way delivery sees one.
+      resolvedPhone: '+995555000005',
       memberRows: [{ userId: 170750 }],
     });
     mockThreads.mockResolvedValue([INCOMING, OUTGOING] as never);
