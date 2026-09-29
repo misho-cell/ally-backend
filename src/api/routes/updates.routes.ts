@@ -22,7 +22,7 @@ import {
 import { goalTitlesFor } from '../../services/pendingUpdates.service';
 import { cardHeading, normalisedPayload } from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
-import type { RunLanguage } from '../../services/runLanguage';
+import { asRunLanguage, type RunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
 
 /**
@@ -135,11 +135,29 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
      * heading is worth having in a fallback language, and no heading at all is
      * what row 73 is about.
      */
+    /**
+     * ⚠️ THE LANGUAGE THEY CHOSE BEATS THE ONE WE INFER — and only when they
+     * chose one.
+     *
+     * `detail` is written here for every kind, while the screen around it is
+     * drawn by the app. Ours followed the person's own writing, theirs follows
+     * the profile setting, so for anybody whose two disagree EVERY card split
+     * down the middle: their chrome English, our line Georgian. Both answers
+     * were right, which is why it would never have been filed as a bug — it
+     * would just have looked strange for ever.
+     *
+     * `X-Locale` arrives only when a choice exists (frontend build 1953859).
+     * Missing means „nobody has said", NOT English, so the fallback is the
+     * inference we already had — see `asRunLanguage`.
+     */
+    const chosen = asRunLanguage(req.get('X-Locale'));
     const [titles, language] = await Promise.all([
       goalTitlesFor([...due, ...shown].map((u) => u.task_id)).catch(
         () => new Map<number, string>(),
       ),
-      userLanguage(userId).catch(() => 'ka' as RunLanguage),
+      chosen !== null
+        ? Promise.resolve(chosen)
+        : userLanguage(userId).catch(() => 'ka' as RunLanguage),
     ]);
     res.status(200).json({
       success: true,

@@ -760,3 +760,31 @@ export function messageHeldNoTokens(language: RunLanguage, renewal: string): str
       );
   }
 }
+
+/**
+ * THE LANGUAGE THE PERSON CHOSE, when they chose one.
+ *
+ * The frontend sends `X-Locale` on every authorised request (their build
+ * 1953859), and sends it ONLY when the person has actually picked a language
+ * on their profile. An absent header is not English — it is „nobody has said",
+ * and the caller falls back to what this module infers from their own words.
+ *
+ * ⚠️ WHICH IS THE RULE THIS FILE ALREADY ARGUES FOR, one screen up: „NO
+ * EVIDENCE IS NOT EVIDENCE OF ENGLISH". Defaulting a missing header to `en`
+ * would reintroduce exactly that, at the HTTP layer instead of the text layer.
+ *
+ * WHY IT EXISTS AT ALL. `detail` on an update card is written here, from the
+ * language inferred from the person's writing; the surrounding screen is drawn
+ * by the app, from the language they chose on their profile. For anybody whose
+ * two disagree — profile English, writes Georgian — EVERY card split down the
+ * middle: their chrome in one language, our line in the other. The frontend
+ * found it while we were both looking at the weekly summary, and was right
+ * that it was never about that one card.
+ *
+ * Both answers were correct, which is why nobody would ever have filed it as a
+ * bug. It would just have looked strange, permanently. One fact, one source.
+ */
+export function asRunLanguage(value: unknown): RunLanguage | null {
+  const code = typeof value === 'string' ? value.trim().slice(0, 2).toLowerCase() : '';
+  return code === 'ka' || code === 'en' || code === 'ru' || code === 'es' ? code : null;
+}
