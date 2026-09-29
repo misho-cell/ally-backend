@@ -1266,6 +1266,18 @@ over in the morning instead of tonight.
   it would change code that is behaving correctly. The real question underneath
   is better: 987 labelled people and not one profession label matching a need
   he has.
+- **Every card was coming out in two languages, and neither side was wrong**
+  — fixed with the frontend, both halves live (`6abe650`, their build 1953859).
+  Our `detail` followed the language inferred from what a person writes; their
+  screen follows the language he picked on his profile. For anybody whose two
+  disagree — profile English, writes Georgian — every card split down the
+  middle. Both answers were correct by their own source, so it would never have
+  been reported as a bug; it would only have looked strange for ever. They now
+  send `X-Locale` and we prefer it — but ONLY when it is there, because the
+  header is sent only when a person actually chose, and a missing one means
+  „nobody has said", not English. **My own write-up of this was too narrow:** I
+  filed it as a weekly-summary fault and they correctly pointed out `detail` is
+  ours on all ten kinds.
 - **Still waiting on his word, unchanged:** row 278's index rebuild
   (recommend off-peak), the Netai Test 12 seat, his own account id for the
   alarm, the Meta WhatsApp template, and the 34 stalled goals.
