@@ -1,5 +1,32 @@
 # The night list — what waits for Misho or Tornike
 
+> ## ⚠️ QUIET UNTIL 08:00 SPANISH TIME ON 30 SEPTEMBER — MISHO'S OWN WORDS
+>
+> **„ხვალ დილის 8 საათამდე ნუ მიგზავნი შეტყობინებებს"** — 29 September, evening.
+> Send him nothing until **08:00 Spain = 06:00 UTC, 30 September**.
+>
+> **This is wider than the ordinary night rule below.** That one starts at
+> 22:00 UTC; this one starts the moment he said it, so the evening box checks
+> at 19:00, 19:15, 19:30, 19:45, 20:00, 20:15… and the login-gate check at
+> 20:17 and 22:17 must not write to him either, however interesting what they
+> find. It ends BEFORE the 07:05 UTC morning handover, so that Routine runs
+> exactly as it always does.
+>
+> **Work does not stop — only the messages to him do.** Reading, measuring,
+> fixing, testing, deploying between runs and answering the tester are all
+> ordinary night work and need nobody's permission. What waits is his
+> attention, not the queue.
+>
+> **The one exception is the one his own monitor defines:** a genuine
+> production outage (`outage.sh` exit 1 or 2), where the Routine's standing
+> instruction is „მიშოს დაუყოვნებლივ". An outage is why that guard exists —
+> on 22 September the product was dead for fifty minutes and he found out from
+> his own screenshot. Nothing else qualifies. A new bug, a tester ticket, a
+> good result and a finished deploy all wait for 06:00 UTC.
+>
+> Anything that would otherwise have gone to him goes in **Tonight's list**
+> below and is handed over in the morning.
+
 Misho's rule, 17 September: between **00:00 and 09:00 Spanish time** the two of
 them are asleep. In that window the tester and I work only on what the two of
 us can finish between ourselves. Anything that needs a decision from Misho or
@@ -1204,7 +1231,31 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-_Nothing yet._
+### Night of 29–30 September — held back by his own quiet window, not blocked
+
+Nothing here needs a decision. It is here because he asked for no messages
+before 08:00 Spain (see the banner at the top of this file), so it is handed
+over in the morning instead of tonight.
+
+- **Rows 308, 309 and 316 were one bug. Fixed, verified and on `main`**
+  (`374f97c`). The founder's own introduction, request 1981: he accepted
+  Giorgi's request and chose „direct", and all three people were then told
+  something untrue — he was told his own contact was not in his phonebook,
+  Giorgi was told he had chosen to stay in the middle, and the lawyer, who is
+  a Netai member, was never told anything. One cause: the accept resolved the
+  contact correctly and wrote it, then handed the DELIVERY the copy of the row
+  read before that write, which re-derived the answer with a weaker rule.
+  Measured, not assumed — the row carried the number while the message said it
+  did not. Across all accepted direct introductions: 14, of which 9 carry a
+  number, 8 were never linked, and all 8 of those belong to members never told.
+- **A correction he should hear from me rather than from the tester:** I
+  reported row 277 fixed and it was narrower than I said. Its sweep guarded one
+  directory; the bare `LOWER` that broke this introduction sat one directory up.
+  Eight more files still have the hole and are now named in a test. They are
+  not fixed, for row 278's reason — each wraps an indexed column.
+- **Still waiting on his word, unchanged:** row 278's index rebuild
+  (recommend off-peak), the Netai Test 12 seat, his own account id for the
+  alarm, the Meta WhatsApp template, and the 34 stalled goals.
 
 ⚠️ The 27–28 September list was handed to Misho at 07:1x UTC and moved below,
 NOT deleted. Both items are still open: nobody has raised the spend limit and
