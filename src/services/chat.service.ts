@@ -5237,6 +5237,70 @@ async function planConsentOnScreen(threadId: number): Promise<PlanConsentScreen>
   );
 }
 
+/**
+ * ⚠️ ROW 323 — THE OWNER PRESSED „I APPROVE" AND THE PLAN WAS NOT APPROVED.
+ *
+ * The seat's goal 11155, 30 September. Plan v2 on screen, „I approve" tapped at
+ * 06:36:36. The run did not call approve_task_plan. It showed the question text
+ * and asked „Shall I send this to all six now?", then on „Yes" fired
+ * ask_contact ×6 (refused, no consent), grant_task_permission, ask_contact ×6
+ * again (refused), and only then approve_task_plan — twelve refused calls and a
+ * second tap for a consent the owner had already given. D119: the approved
+ * plan IS the consent; no texts are shown for it.
+ *
+ * Ticket 19 item 0 said where the plan's state belongs: „changes only from the
+ * owner's button (or /admin)". So the button now does it. When the owner's
+ * line is EXACTLY an approve label, the server runs the very check
+ * approve_task_plan runs (planApprovalRefusal over the thread) and, if it
+ * passes, records the approval and starts day one before the model has a turn.
+ * The run is then told what happened and has nothing left to decide.
+ *
+ * NARROW ON PURPOSE. Only the button's own text, in any language, and the old
+ * „დამტკიცებულია" — never a typed „yes", which stays the model's to read under
+ * the same gate as before. Failing to act costs the old path; acting wrongly
+ * writes to real people.
+ */
+const APPROVE_TAP_TEXTS: readonly string[] = [...Object.values(APPROVE_LABEL), 'დამტკიცებულია'];
+
+export function isApproveTap(message: string): boolean {
+  return APPROVE_TAP_TEXTS.includes(message.trim());
+}
+
+const APPROVED_BY_TAP_NOTE =
+  "[შიდა მოვლენა] The owner's tap on the approve button has just approved the plan — the " +
+  'server recorded it. That approval IS the consent (D119): day one has started by itself and ' +
+  'writes to the people on the plan. Do NOT call approve_task_plan, do NOT ask again, do NOT ' +
+  'show any message text, and do NOT write to anyone yourself. Reply in ONE short line in the ' +
+  "owner's language: you are on it and will come back as soon as someone answers.";
+
+export async function approvePlanOnTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+): Promise<string | null> {
+  if (!isApproveTap(userMessage)) return null;
+  const goal = await getOpenTaskByThread(threadId);
+  if (goal === null) return null;
+  const screen = await planConsentOnScreen(threadId);
+  // Stricter than the tool's gate, which accepts an explicit approve label
+  // with no card: acting without the model, the server also wants the plan
+  // card to be what was on screen. A real tap always comes from one.
+  const planCardOnScreen = (screen.newestOfferedChoices ?? []).some(isApproveChoice);
+  if (!planCardOnScreen || planApprovalRefusal(true, screen) !== null) return null;
+  const outcome = await approveTaskPlan(userId, goal.id, 'chat', runLang(runId));
+  if (!outcome.ok || outcome.value.alreadyInForce) return null;
+  const engine = await import('./taskEngine.service');
+  const said = approvalResult(outcome.value, new Date(), engine.DAY_ONE_WINDOW_MS);
+  engine.startDayOne(goal.id);
+  if (said.dayOneStillComing) noteApprovedAPlan(runId);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[plan-consent] run ${runId} thread ${threadId}: plan v${outcome.value.version} of goal ${goal.id} approved by the owner's tap`,
+  );
+  return APPROVED_BY_TAP_NOTE;
+}
+
 // Ticket 16 Task 98: what a run pulled out of the pending list. The items are
 // consumed by the tool call, so they are held here and delivered afterwards as
 // their own messages — the answer answers the question, and nothing else.
@@ -10775,7 +10839,19 @@ export async function processChat(
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
-  const replyContext = await pendingReplyContext(threadId, intent?.inReplyToMessageId);
+  const tappedContext = await pendingReplyContext(threadId, intent?.inReplyToMessageId);
+  // Row 323: best-effort — if the tap cannot be recorded here, the model still
+  // has approve_task_plan behind the same gate, exactly as before.
+  const approvedByTap = ownerAbsent
+    ? null
+    : await approvePlanOnTap(userId, threadId, userMessage, runId).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[plan-consent] approve-on-tap failed:', (err as Error).message);
+        return null;
+      });
+  const replyContext =
+    [tappedContext, approvedByTap].filter((part): part is string => part !== null).join('\n\n') ||
+    null;
   /**
    * Row 209's queue — the row is already written, the PROMPT still needs it.
    *
