@@ -5,7 +5,7 @@ import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { distilSearchQuery, distilIntroductionLocally } from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
-import { classifyToken, labelTokens, TokenKind } from './labelReader.service';
+import { classifyToken, isCertainNameToken, labelTokens, TokenKind } from './labelReader.service';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -1046,10 +1046,26 @@ const NOT_A_LEAD_KINDS: ReadonlySet<TokenKind> = new Set([
 ]);
 const MIN_LEAD_WORDS = 2;
 
+/**
+ * Second pass, the seat's 876 (27292): „სისხლის სამართლის ადვოკატი" still
+ * passed — „სისხლის" is in no dictionary, so it counted as a non-profession
+ * word. The seat's rule is the better one: a real person or firm carries a
+ * PROPER NAME — a first name the lists hold or a distinctive surname, or a Latin
+ * word written with a capital (a brand: „BLC Law Office"). A page heading
+ * rarely does. So a lead needs one of those, and still not only profession
+ * words.
+ */
+function isProperName(token: { raw: string; lower: string }, first: boolean): boolean {
+  return isCertainNameToken(token.lower, first) || /^[A-Z]/.test(token.raw);
+}
+
 export function looksLikeAPersonOrFirm(name: string): boolean {
   const tokens = labelTokens(name);
   if (tokens.length < MIN_LEAD_WORDS) return false;
-  return tokens.some((token, i) => !NOT_A_LEAD_KINDS.has(classifyToken(token.lower, i === 0)));
+  const notOnlyProfessions = tokens.some(
+    (token, i) => !NOT_A_LEAD_KINDS.has(classifyToken(token.lower, i === 0)),
+  );
+  return notOnlyProfessions && tokens.some((token, i) => isProperName(token, i === 0));
 }
 
 export function buildFromTheWebMessage(

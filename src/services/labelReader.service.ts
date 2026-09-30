@@ -339,6 +339,22 @@ export function isNameToken(token: string, firstInLabel: boolean): boolean {
 }
 
 /**
+ * Row 281, the seat's 876: the surname-ending guess is right for a phonebook
+ * label, where nearly every word is somebody's name, and wrong for a web page
+ * heading — „კონსულტაცია" ends in „ია". Where a wrong „yes" prints a heading as
+ * a person, only the certain signals count: a first name the lists hold, or an
+ * ending no ordinary word carries.
+ */
+const DISTINCTIVE_SURNAME_ENDINGS: readonly string[] = ['შვილი', 'ძე', ...LATIN_SURNAME_ENDINGS];
+
+export function isCertainNameToken(token: string, firstInLabel: boolean): boolean {
+  const forms = spellings(token);
+  if (forms.some((t) => GEORGIAN_FIRST_NAMES.has(t))) return true;
+  if (firstInLabel && forms.some((t) => AMBIGUOUS_FIRST_NAMES.has(t))) return true;
+  return DISTINCTIVE_SURNAME_ENDINGS.some((ending) => forms.some((t) => t.endsWith(ending)));
+}
+
+/**
  * ⚠️ ROW 296 — HOW SOMEBODY ELSE SAVED A PERSON IS NOT THEIRS TO SHOW.
  *
  * A second-circle person who is not a member has no name of their own in our

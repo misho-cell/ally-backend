@@ -1,6 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
 import { buildFromTheWebMessage, looksLikeAPersonOrFirm } from '../openingSearch.service';
+import { isCertainNameToken } from '../labelReader.service';
 
 /**
  * Row 281, the seat's 873: „• ადვოკატი — შენი კონტაქტი იქ: ნინო ადვოკატი".
@@ -8,9 +9,15 @@ import { buildFromTheWebMessage, looksLikeAPersonOrFirm } from '../openingSearch
  * whoever is labelled with it.
  */
 describe('a heading is not a way in', () => {
-  it("refuses the seat's two headings", () => {
+  it("refuses the seat's headings", () => {
     expect(looksLikeAPersonOrFirm('ადვოკატი')).toBe(false);
     expect(looksLikeAPersonOrFirm('ადვოკატი / იურისტი')).toBe(false);
+    // Second pass, 27292: a heading with an undictionaried word still passed.
+    expect(looksLikeAPersonOrFirm('სისხლის სამართლის ადვოკატი')).toBe(false);
+    expect(looksLikeAPersonOrFirm('სისხლის ადვოკატი')).toBe(false);
+    expect(looksLikeAPersonOrFirm('ადვოკატი და უფასო იურიდიული კონსულტაცია მომსახურება')).toBe(
+      false,
+    );
   });
 
   it('keeps leads shaped like a person or a firm', () => {
@@ -34,5 +41,15 @@ describe('a heading is not a way in', () => {
     const card = buildFromTheWebMessage(real, 'en') ?? '';
     expect(card).toContain('• Nini Elisashvili — your contact there: Nini E.');
     expect(card).not.toContain('ადვოკატი');
+  });
+});
+
+describe('isCertainNameToken', () => {
+  it('trusts the name lists and the distinctive endings only', () => {
+    expect(isCertainNameToken('ნინო', true)).toBe(true);
+    expect(isCertainNameToken('ბერიძე', false)).toBe(true);
+    expect(isCertainNameToken('kikvidze', false)).toBe(true);
+    expect(isCertainNameToken('კონსულტაცია', false)).toBe(false);
+    expect(isCertainNameToken('იურიდიული', false)).toBe(false);
   });
 });
