@@ -12,6 +12,7 @@ import { normalizePhone } from '../phone';
 import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
 import { nameOnlyFromLabel } from '../labelReader.service';
+import { foldedLower, toMtavruli } from './georgianCase';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -863,13 +864,33 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     const TRIGRAM_MIN_CHARS = 3;
     const words = groups.flat();
     const prefilterIsUseful = words.every((w) => w.length >= TRIGRAM_MIN_CHARS);
-    const prefilterTerms = words.map((w) =>
+    /**
+     * ⚠️ ROW 278, SECOND CIRCLE — A NAME SAVED IN GEORGIAN CAPITALS WAS NEVER
+     * FOUND THROUGH ANOTHER PERSON.
+     *
+     * The seat's 864: of four lawyers held by a bridge, the one saved as
+     * „ᲜᲘᲙᲐ ᲐᲓᲕᲝᲙᲐᲢᲘ" (Mtavruli) was missing. Postgres's LOWER() leaves
+     * Mtavruli untouched — measured, LOWER('ᲜᲘᲙᲐ') = 'ᲜᲘᲙᲐ' — so a Mkhedruli
+     * pattern could never meet it. The direct search fixed this with
+     * foldedLower; this one was parked because wrapping the column in
+     * TRANSLATE would lose the trigram index the prefilter below stands on.
+     *
+     * So the index-backed prefilter stays on LOWER(col) and is simply ALSO
+     * given each Georgian word in Mtavruli — a capitalised label now passes
+     * the index. The precise regex and the returned label then use the full
+     * fold, and they run only on the rows that survived.
+     */
+    const prefilterWords = words.flatMap((w) => {
+      const caps = toMtavruli(w);
+      return caps === w ? [w] : [w, caps];
+    });
+    const prefilterTerms = prefilterWords.map((w) =>
       prefilterIsUseful ? `%${w.replace(/[\\%_]/g, '\\$&')}%` : '%',
     );
     const likeAny = (column: string): string =>
       '(' + prefilterTerms.map((_, i) => `${column} LIKE $${likeIdx + i}`).join(' OR ') + ')';
-    const tagConds = `${likeAny('LOWER(ut.tag)')} AND LOWER(ut.tag) ~ $${filterIdx}`;
-    const aliasConds = `${likeAny('LOWER(ua_m.alias)')} AND LOWER(ua_m.alias) ~ $${filterIdx}`;
+    const tagConds = `${likeAny('LOWER(ut.tag)')} AND ${foldedLower('ut.tag')} ~ $${filterIdx}`;
+    const aliasConds = `${likeAny('LOWER(ua_m.alias)')} AND ${foldedLower('ua_m.alias')} ~ $${filterIdx}`;
     // bool_or per GROUP, summed: one point for each query word this person
     // matched anywhere, exactly the shape wordMatch.ts uses for the tag search.
     // These stay per-word — word_hits must know WHICH word matched, and it runs
@@ -960,13 +981,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- filter parameter carries — see the measurement above the query.
        bridges AS (SELECT ARRAY(SELECT DISTINCT "userId" FROM friend_users) AS ids),
        tag_hits AS (
-         SELECT ut.phone, ut."contactId", LOWER(ut.tag) AS label
+         SELECT ut.phone, ut."contactId", ${foldedLower('ut.tag')} AS label
          FROM "UserTags" ut, bridges b
          WHERE ut."contactId" = ANY(b.ids)
            AND (${tagConds})
        ),
        alias_hits AS (
-         SELECT ua_m.phone, ua_m."contactId", LOWER(ua_m.alias) AS label
+         SELECT ua_m.phone, ua_m."contactId", ${foldedLower('ua_m.alias')} AS label
          FROM "UserAlias" ua_m, bridges b
          WHERE ua_m."contactId" = ANY(b.ids)
            AND (${aliasConds})

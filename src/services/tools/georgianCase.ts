@@ -57,6 +57,20 @@ export function foldedLower(expr: string): string {
 }
 
 /**
+ * The other direction: Mkhedruli → Mtavruli, for a query word that must also
+ * be looked up in its capital form (row 278 — the second circle's trigram
+ * prefilter reads LOWER(col), which leaves stored capitals as they are).
+ */
+export function toMtavruli(text: string): string {
+  let out = '';
+  for (const char of text) {
+    const at = MKHEDRULI.indexOf(char);
+    out += at === -1 ? char : [...MTAVRULI][at];
+  }
+  return out;
+}
+
+/**
  * The same fold in JavaScript, for anywhere a value is compared in memory
  * rather than in SQL.
  *

@@ -68,8 +68,9 @@ describe('searchSecondDegree tag matching', () => {
     // $4 and word_hits ORs the three together. The SHAPE is what matters and
     // it is unchanged — one filter condition per column, the words still
     // counted as one group.
-    expect(sql).toContain(`LOWER(ut.tag) ~ $6`);
-    expect(sql).toContain(`LOWER(ua_m.alias) ~ $6`);
+    // Row 278: the regex reads the Georgian-case fold (LOWER leaves Mtavruli).
+    expect(sql).toMatch(/LOWER\(TRANSLATE\(ut\.tag, '[^']+', '[^']+'\)\) ~ \$6/);
+    expect(sql).toMatch(/LOWER\(TRANSLATE\(ua_m\.alias, '[^']+', '[^']+'\)\) ~ \$6/);
     expect(sql).toContain(`bool_or(label ~ $3 OR label ~ $4 OR label ~ $5)`);
     expect(sql).not.toContain(`|| '') ~`);
     expect(sql).not.toContain('normalize_search_token');
@@ -102,7 +103,9 @@ describe('searchSecondDegree tag matching', () => {
       '\\mburalter|\\mბურალთერ|\\mბურალტერ',
       '%buralter%',
       '%ბურალთერ%',
+      '%ᲑᲣᲠᲐᲚᲗᲔᲠ%',
       '%ბურალტერ%',
+      '%ᲑᲣᲠᲐᲚᲢᲔᲠ%',
       [],
       '42',
       ['role', 'occupation'],
@@ -135,24 +138,32 @@ describe('searchSecondDegree tag matching', () => {
     expect(filter).toBe(words.join('|'));
     expect(words.length).toBeGreaterThan(1);
     // One REGEX condition per column, not one per word.
-    expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);
-    expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/TRANSLATE\(ut\.tag, '[^']+', '[^']+'\)\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/TRANSLATE\(ua_m\.alias, '[^']+', '[^']+'\)\) ~ \$/g)).toHaveLength(1);
     // And one pre-filter pattern per word, in front of it. They are a strict
     // superset of the regex, so they can only remove rows it would reject too.
     // Row 222 widened this: each word's Georgian readings are pre-filtered too,
     // and „marketing" is the case that justifies the four-combination rule —
     // მარკეტინგი needs თ→ტ and ქ→კ at once, and trying each singly would have
     // spent the budget without ever reaching the word that exists.
+    // Row 278: each Georgian word also in Mtavruli, right after it — the
+    // prefilter reads LOWER(col), which leaves stored capitals as they are.
     expect(prefilter).toEqual([
       '%buralter%',
       '%ბურალთერ%',
+      '%ᲑᲣᲠᲐᲚᲗᲔᲠ%',
       '%ბურალტერ%',
+      '%ᲑᲣᲠᲐᲚᲢᲔᲠ%',
       '%marketing%',
       '%marqeting%',
       '%მარქეთინგ%',
+      '%ᲛᲐᲠᲥᲔᲗᲘᲜᲒ%',
       '%მარქეტინგ%',
+      '%ᲛᲐᲠᲥᲔᲢᲘᲜᲒ%',
       '%მარკეთინგ%',
+      '%ᲛᲐᲠᲙᲔᲗᲘᲜᲒ%',
       '%მარკეტინგ%',
+      '%ᲛᲐᲠᲙᲔᲢᲘᲜᲒ%',
     ]);
     expect(sql).toContain('LIKE $');
     // And the words are still counted separately, which is what the ranking
@@ -552,18 +563,24 @@ describe('the pre-filter in front of the regex', () => {
     expect(prefilter).toEqual([
       '%buralter%',
       '%ბურალთერ%',
+      '%ᲑᲣᲠᲐᲚᲗᲔᲠ%',
       '%ბურალტერ%',
+      '%ᲑᲣᲠᲐᲚᲢᲔᲠ%',
       '%marketing%',
       '%marqeting%',
       '%მარქეთინგ%',
+      '%ᲛᲐᲠᲥᲔᲗᲘᲜᲒ%',
       '%მარქეტინგ%',
+      '%ᲛᲐᲠᲥᲔᲢᲘᲜᲒ%',
       '%მარკეთინგ%',
+      '%ᲛᲐᲠᲙᲔᲗᲘᲜᲒ%',
       '%მარკეტინგ%',
+      '%ᲛᲐᲠᲙᲔᲢᲘᲜᲒ%',
     ]);
     // The regex is still there and still one per column: the LIKE narrows the
     // rows the index has to read, it does not decide what matches.
-    expect(sql.match(/LOWER\(ut\.tag\) ~ \$/g)).toHaveLength(1);
-    expect(sql.match(/LOWER\(ua_m\.alias\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/TRANSLATE\(ut\.tag, '[^']+', '[^']+'\)\) ~ \$/g)).toHaveLength(1);
+    expect(sql.match(/TRANSLATE\(ua_m\.alias, '[^']+', '[^']+'\)\) ~ \$/g)).toHaveLength(1);
     expect(sql).toMatch(/LIKE \$\d+ OR LOWER\(ut\.tag\) LIKE \$\d+/);
   });
 
