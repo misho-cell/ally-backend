@@ -81,8 +81,8 @@ import {
   getAskByThread,
   sendApprovedAskAnswer,
   runPayerFor,
-  ensureVerbatimQuote,
-  EnsureQuoted,
+  ensureEveryQuote,
+  QuoteGuarantee,
   TaskAsk,
   IncomingAsk,
   noteDeclineIfButtonPressed,
@@ -10326,7 +10326,7 @@ export async function processChat(
   runId: string,
   // Answer-wake runs pass the verbatim answer so the reply provably carries
   // it (see ensureVerbatimQuote) — the model alone dropped it live (N-01).
-  ensureQuoted?: EnsureQuoted,
+  ensureQuoted?: QuoteGuarantee,
   intent?: RunIntent,
 ): Promise<ChatResult> {
   // Row 113 fourth pass: registered before anything else, so a stop pressed
@@ -10911,7 +10911,7 @@ export async function processChat(
   // could not unlearn the habit. Before persistence, so stored text is clean.
   let cleanedFinal = stripProcessOpener(effectiveFinal, threadId);
   if (ensureQuoted) {
-    cleanedFinal = ensureVerbatimQuote(cleanedFinal, ensureQuoted);
+    cleanedFinal = ensureEveryQuote(cleanedFinal, ensureQuoted);
   }
   cleanedFinal = scrubInternalToolNames(cleanedFinal, threadId);
   // „კი" / „არა" / „უთხარი" typed into an invite thread must reach the

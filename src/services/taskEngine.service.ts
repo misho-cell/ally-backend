@@ -30,9 +30,11 @@ import {
   listUnwokenAnswers,
   markAskWakeDelivered,
   answerIsTheirOwnWords,
-  buildAnswerWakeEvent,
+  buildAnswersWakeEvent,
+  guaranteesOf,
   hasPendingAskForThread,
-  EnsureQuoted,
+  listUnwokenAnswersForTask,
+  QuoteGuarantee,
 } from './taskAsks.service';
 import {
   getThread,
@@ -177,7 +179,7 @@ export async function wakeTask(
   taskId: number,
   eventText: EventText,
   // Answer wakes carry the verbatim answer; the run's reply provably quotes it.
-  ensureQuoted?: EnsureQuoted,
+  ensureQuoted?: QuoteGuarantee,
 ): Promise<WakeResult> {
   if (runningTasks.has(taskId)) return 'busy';
   /**
@@ -313,7 +315,7 @@ export async function wakeTask(
        * once there is an allowance. „Held" and „nothing happened" are
        * different facts and the person is owed the first.
        */
-      const who = ensureQuoted?.who?.trim();
+      const who = guaranteesOf(ensureQuoted)[0]?.who?.trim();
       const line =
         who === undefined || who === ''
           ? RUN_STRINGS[language].goalPausedNoTokens
@@ -514,6 +516,60 @@ export async function wakeTask(
   }
 }
 
+/** The most answers one wake carries; the rest follow in the next. */
+const MAX_ANSWERS_PER_WAKE = 10;
+
+/**
+ * Row 322: every answer a goal is still owed, in ONE wake. Returns how many
+ * were delivered — 0 when there was nothing, or the thread was busy (they stay
+ * unmarked, so a retry or the sweep picks them up whole).
+ */
+async function deliverPendingAnswers(taskId: number): Promise<number> {
+  const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
+  if (owed.length === 0) return 0;
+  const arrived = await Promise.all(
+    owed.map(async (ask) => ({
+      answer: ask.answer ?? '',
+      fromName: ask.from_name,
+      verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
+    })),
+  );
+  const woken = await wakeTask(
+    taskId,
+    buildAnswersWakeEvent(arrived),
+    arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
+  );
+  if (woken !== 'woken') return 0;
+  for (const ask of owed) await markAskWakeDelivered(ask.id);
+  return owed.length;
+}
+
+/**
+ * Row 322: an answer whose live wake found the thread busy — almost always the
+ * wake of the answer that came a second before it. Retried on the same
+ * six-second rhythm as every other wake; each attempt re-reads what is owed,
+ * so five answers that all land here produce one run, and the four timers
+ * behind it find nothing left and stop.
+ */
+export function deliverAnswersWhenFree(taskId: number, attempt = 1): void {
+  setTimeout(() => {
+    void (async () => {
+      const owed = await listUnwokenAnswersForTask(taskId, 1);
+      if (owed.length === 0 || owed[0].task_status !== 'open') return;
+      const delivered = await deliverPendingAnswers(taskId);
+      if (delivered === 0 && attempt < WAKE_RETRY_ATTEMPTS) {
+        deliverAnswersWhenFree(taskId, attempt + 1);
+      }
+    })().catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(
+        `[task-engine] task ${taskId}: answer retry failed (the sweep will retry):`,
+        (err as Error).message,
+      ),
+    );
+  }, WAKE_RETRY_DELAY_MS).unref();
+}
+
 /**
  * Deliver wakes that the live capture path dropped (crash, deploy window,
  * busy thread). A closed task gets marked without a wake — there is nothing
@@ -521,6 +577,7 @@ export async function wakeTask(
  */
 async function sweepUnwokenAnswers(): Promise<void> {
   const due = await listUnwokenAnswers(MAX_UNWOKEN_PER_SWEEP);
+  const sweptTasks = new Set<number>();
   let delivered = 0;
   for (const ask of due) {
     if (ask.task_status !== 'open') {
@@ -540,20 +597,11 @@ async function sweepUnwokenAnswers(): Promise<void> {
       await markAskWakeDelivered(ask.id);
       continue;
     }
-    const verbatim = await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? '');
-    const woken = await wakeTask(
-      ask.task_id,
-      buildAnswerWakeEvent(ask.answer ?? '', ask.from_name, verbatim),
-      {
-        text: ask.answer ?? '',
-        who: ask.from_name,
-        verbatim,
-      },
-    );
-    if (woken === 'woken') {
-      await markAskWakeDelivered(ask.id);
-      delivered += 1;
-    }
+    // Row 322: one wake per GOAL, carrying every answer it is owed — not one
+    // run per answer, ten minutes apart.
+    if (sweptTasks.has(ask.task_id)) continue;
+    sweptTasks.add(ask.task_id);
+    delivered += await deliverPendingAnswers(ask.task_id);
   }
   if (delivered > 0) {
     // eslint-disable-next-line no-console

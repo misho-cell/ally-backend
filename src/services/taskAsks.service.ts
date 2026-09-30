@@ -1553,7 +1553,7 @@ async function deliverCapturedAnswer(
      */
     void (async () => {
       try {
-        const { wakeTask } = await import('./taskEngine.service');
+        const { wakeTask, deliverAnswersWhenFree } = await import('./taskEngine.service');
         const verbatim = await answerIsTheirOwnWords(captured.askThreadId, captured.answer);
         const delivered = await wakeTask(
           captured.taskId,
@@ -1568,6 +1568,9 @@ async function deliverCapturedAnswer(
           { text: captured.answer, who: captured.fromName, verbatim },
         );
         if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
+        // Row 322: a busy thread is usually the previous answer's own wake.
+        // Come back as soon as it is free, with every answer still waiting.
+        if (delivered === 'busy') deliverAnswersWhenFree(captured.taskId);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[ask-wake] failed (sweep will retry):', (err as Error).message);
@@ -1806,6 +1809,52 @@ export function buildAnswerWakeEvent(
   );
 }
 
+/** One answer inside a batched wake (row 322). */
+export interface ArrivedAnswer {
+  readonly answer: string;
+  readonly fromName: string | null;
+  readonly verbatim: boolean;
+}
+
+/**
+ * ⚠️ ROW 322 — SIX ANSWERS IN EIGHT SECONDS, AND FIVE OF THEM WAITED UP TO
+ * EIGHTEEN MINUTES.
+ *
+ * The seat's goal 11155, 30 September. Six recipients answered between
+ * 06:39:25 and 06:39:33. The first answer's wake took the thread; the other
+ * five live wakes found it busy and returned — and nothing retried them but
+ * the five-minute sweep, which then relayed them ONE RUN EACH, 06:44 to 06:57.
+ * Meanwhile the first run told the owner „nobody else has answered yet".
+ *
+ * So answers that are waiting together are delivered together: one event,
+ * every answer in it with its own name and its own quoting rule, and the
+ * instructions once.
+ */
+export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string {
+  if (answers.length === 1) {
+    const only = answers[0];
+    return buildAnswerWakeEvent(only.answer, only.fromName, only.verbatim);
+  }
+  const blocks = answers
+    .map((a) => {
+      const who = a.fromName?.trim() || 'ადამიანი, ვისაც კითხვა გაეგზავნა';
+      const how = a.verbatim
+        ? 'მისი ზუსტი სიტყვები — ციტატად'
+        : 'მისი ასისტენტის ჩამოყალიბება — აზრით, ბრჭყალების გარეშე';
+      return `<answer from="${who}" (${how})>\n${a.answer}\n</answer>`;
+    })
+    .join('\n');
+  return (
+    `${answers.length} ადამიანმა გიპასუხა შენს გაგზავნილ კითხვებზე — ყველა პასუხი აქაა, ` +
+    'თითოეული თავისი ტეგით:\n' +
+    `${blocks}\n` +
+    'მფლობელს ყველა გადაეცი ერთ პასუხში, თითოეულს დაასახელე ვინ უპასუხა; ციტატად მხოლოდ ის, ' +
+    'რაც ზუსტი სიტყვებადაა მონიშნული, დანარჩენი აზრით. თუ სხვა ენაზეა, მფლობელის ენაზე ' +
+    'გადმოეცი. არ თქვა, რომ დანარჩენებს ჯერ არ უპასუხიათ — აქ ყველა მოსული პასუხია. ' +
+    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+  );
+}
+
 /** What an answer-wake run's final reply MUST contain, verbatim. */
 export interface EnsureQuoted {
   readonly text: string;
@@ -1879,6 +1928,21 @@ const QUOTE_NORM_RE = /\s+/g;
  * contain the answer text, the quote is prepended — same philosophy as
  * wrapAllowedNumbers: the model is asked, the server makes it true.
  */
+/** One answer's guarantee, or several when a wake carries a batch (row 322). */
+export type QuoteGuarantee = EnsureQuoted | readonly EnsureQuoted[];
+
+export function guaranteesOf(guarantee: QuoteGuarantee | undefined): readonly EnsureQuoted[] {
+  if (guarantee === undefined) return [];
+  return Array.isArray(guarantee) ? guarantee : [guarantee as EnsureQuoted];
+}
+
+/** Every answer in the wake reaches the reply — applied last-first so they read in order. */
+export function ensureEveryQuote(reply: string, guarantee: QuoteGuarantee): string {
+  return [...guaranteesOf(guarantee)]
+    .reverse()
+    .reduce((out, ensure) => ensureVerbatimQuote(out, ensure), reply);
+}
+
 export function ensureVerbatimQuote(reply: string, ensure: EnsureQuoted): string {
   const norm = (s: string): string => s.replace(QUOTE_NORM_RE, ' ').trim();
   const answer = ensure.text.trim();
@@ -1941,6 +2005,29 @@ export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]
      ORDER BY ta.answered_at ASC
      LIMIT $1`,
     [limit],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** One goal's answers still owed to its owner, oldest first (row 322). */
+export async function listUnwokenAnswersForTask(
+  taskId: number,
+  limit: number,
+): Promise<UnwokenAnswer[]> {
+  const result = await query<UnwokenAnswer>(
+    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
+            t.thread_id AS task_thread_id, ta.ask_thread_id
+     FROM task_asks ta
+     LEFT JOIN tasks t ON t.id = ta.task_id
+     LEFT JOIN "User" u ON u.id = ta.to_user_id
+     WHERE ta.task_id = $1
+       AND ta.status = 'answered'
+       AND ta.answered_at IS NOT NULL
+       AND ta.wake_delivered_at IS NULL
+     ORDER BY ta.answered_at ASC
+     LIMIT $2`,
+    [taskId, limit],
     ASK_QUERY_TIMEOUT_MS,
   );
   return result.rows;
