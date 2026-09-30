@@ -713,3 +713,20 @@ describe('searchSecondDegree true total', () => {
     expect(result.total_note).toBeUndefined();
   });
 });
+
+/** Row 288, the seat's 878: „or by invitation" for people the owner does not hold. */
+describe('searchSecondDegree is never a way to invite', () => {
+  it('marks every row as outside the phonebook and says the bridge is the only way in', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { phone: '+995500000301', target_user_id: null, name: 'Avto', via_names: ['Gio'] },
+      ]) as never,
+    );
+
+    const result = (await searchSecondDegree('42', 'advokati')) as Record<string, unknown>;
+
+    const row = (result.results as Array<Record<string, unknown>>)[0];
+    expect(row.in_your_contacts).toBe(false);
+    expect(String(result.presentation)).toContain('Never offer to invite them');
+  });
+});

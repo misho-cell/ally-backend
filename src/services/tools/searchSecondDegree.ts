@@ -34,7 +34,12 @@ export const SECOND_CIRCLE_PRESENTATION =
   'allow), and who knows them — a bridge holding several of them says so („knows 3 of the people ' +
   'found", from `bridges`). A nameless row is described, not named. Never mention how anyone ' +
   'saved them. Rank by the field of the need (row 297): for a land sale a real-estate lawyer ' +
-  'comes before a telecom company’s lawyer; anyone from another field comes later, and you say so.';
+  'comes before a telecom company’s lawyer; anyone from another field comes later, and you say so. ' +
+  // Row 288, the seat's 878: a reply offered „or by invitation" for 36 people
+  // the owner does not hold. Nobody here is in the owner's phonebook — the
+  // query drops everyone who is — so the bridge is the only way in.
+  'Nobody here is in the owner’s phonebook (in_your_contacts false): the ONLY way to them is ' +
+  'through their bridge. Never offer to invite them and never offer to ask them directly.';
 
 interface BridgeCount {
   readonly name: string | null;
@@ -1446,6 +1451,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          */
         ...(sources !== null ? { role_sources: sources } : {}),
         ownership: OWNERSHIP.SECOND_DEGREE,
+        // By construction: the ranking drops every number the owner holds.
+        in_your_contacts: false,
         // Consistent with the direct-search tools: every person-shaped result
         // carries is_member — and since Rule 13 (founder D102, 3 Sep) that
         // means a NETAI user, not merely an account. A resolved "UserPhone"
