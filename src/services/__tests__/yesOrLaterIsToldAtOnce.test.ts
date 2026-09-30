@@ -172,4 +172,25 @@ describe('the reminder and the reader’s own run', () => {
       expect(section).toContain(`„${choice}"`);
     }
   });
+
+  /** 903: Test 65's „my cousin is an accountant, but busy" was held and framed as a decline. */
+  it('tells the reader’s run that a lead with a caveat is an answer, sent as typed', () => {
+    const section = buildIncomingAskSection({
+      id: 1,
+      question: 'ბუღალტერს იცნობ?',
+      from_name: 'Netai Test 68',
+    } as Parameters<typeof buildIncomingAskSection>[0]);
+    expect(section).toContain('პასუხია, არა უარი');
+    expect(section).toContain('არასდროს შესთავაზო „სხვა მოვძებნო შენს კონტაქტებში"');
+  });
+
+  /** 903: Test 62's assistant called its owner „დათო", a name found nowhere. */
+  it('never lets the reader’s run invent the reader’s name', () => {
+    const section = buildIncomingAskSection({
+      id: 1,
+      question: 'ბუღალტერს იცნობ?',
+      from_name: 'Netai Test 68',
+    } as Parameters<typeof buildIncomingAskSection>[0]);
+    expect(section).toContain('სახელს არასდროს მოიგონებ');
+  });
 });

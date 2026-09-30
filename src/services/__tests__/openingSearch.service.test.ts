@@ -645,6 +645,14 @@ describe('buildFromTheWebMessage', () => {
     expect(message).toContain('კავშირი ვერ ვიპოვე');
   });
 
+  /** 903: „found on the web:" over nothing read as an empty card. */
+  it('puts no „found on the web" heading over a card with no way in', () => {
+    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
+
+    expect(message).not.toContain('ვებში ეს ვიპოვე:');
+    expect(message).toContain('ვებში ერთი შედეგი შევამოწმე');
+  });
+
   it('never renders „could not check" as „nobody" (G7)', () => {
     const message = String(
       buildFromTheWebMessage(new Map([['Beta', { kind: 'unchecked' as const }]])),

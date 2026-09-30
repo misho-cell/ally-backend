@@ -993,6 +993,8 @@ interface WebBlockWords {
   readonly wayIn: (name: string, who: string) => string;
   /** How many results were checked and led to nobody — a count, never their titles (row 265). */
   readonly pathless: (checked: number) => string;
+  /** The same fact when it is ALL there is: no „found on the web" heading over nothing (903). */
+  readonly nothingFound: (checked: number) => string;
 }
 
 const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
@@ -1003,6 +1005,10 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
       n === 1
         ? 'კიდევ ერთი შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.'
         : `კიდევ ${n} შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.`,
+    nothingFound: (n) =>
+      n === 1
+        ? 'ვებში ერთი შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.'
+        : `ვებში ${n} შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.`,
   },
   en: {
     heading: 'Found on the web:',
@@ -1011,6 +1017,10 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
       n === 1
         ? 'I checked one more result and found nobody in your contacts for it.'
         : `I checked ${n} more results and found nobody in your contacts for them.`,
+    nothingFound: (n) =>
+      n === 1
+        ? 'I checked one web result; it leads to nobody in your contacts.'
+        : `I checked ${n} web results; none of them leads to anybody in your contacts.`,
   },
   ru: {
     heading: 'Нашёл в интернете:',
@@ -1019,6 +1029,10 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
       n === 1
         ? 'Проверил ещё один результат — в твоих контактах связи нет.'
         : `Проверил ещё ${n} результата(ов) — в твоих контактах связи нет.`,
+    nothingFound: (n) =>
+      n === 1
+        ? 'Проверил один результат в интернете — он не ведёт ни к кому из твоих контактов.'
+        : `Проверил ${n} результата(ов) в интернете — ни один не ведёт к твоим контактам.`,
   },
   es: {
     heading: 'Encontré esto en la web:',
@@ -1027,6 +1041,10 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
       n === 1
         ? 'Revisé un resultado más y no encontré a nadie en tus contactos.'
         : `Revisé ${n} resultados más y no encontré a nadie en tus contactos.`,
+    nothingFound: (n) =>
+      n === 1
+        ? 'Revisé un resultado en la web; no lleva a nadie de tus contactos.'
+        : `Revisé ${n} resultados en la web; ninguno lleva a nadie de tus contactos.`,
   },
 };
 
@@ -1126,6 +1144,9 @@ export function buildFromTheWebMessage(
    * That is the extraction this needs, done where the judgement lives.
    */
   const pathless = entries.filter(([, wayIn]) => wayIn.kind !== 'first_circle').length;
+  // 903: with no way in at all, „found on the web:" heads nothing — the seat
+  // read it as an empty card. The fact stays, without the heading.
+  if (lines.length === 0 && pathless > 0) return words.nothingFound(pathless);
   if (pathless > 0) lines.push(words.pathless(pathless));
   // Row 281: with every way-in dropped as a heading and nothing checked, the
   // card has nothing true to say, so it is not sent.

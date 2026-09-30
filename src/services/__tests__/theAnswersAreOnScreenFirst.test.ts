@@ -129,6 +129,16 @@ describe('the reply that follows the card', () => {
     expect(event).toContain('ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა');
   });
 
+  /** 903: the older rule's „tell exactly who agreed and with whom" is a retelling under a card. */
+  it('does not carry the rule that asks for who agreed with whom', () => {
+    const event = buildShownAnswersWakeEvent([
+      { answer: 'კი, ვიცნობ, ნინო ბერიძე.', fromName: 'Netai Test 64', verbatim: true },
+    ]);
+    expect(event).not.toContain('მფლობელს ზუსტად ეს უთხარი');
+    expect(event).toContain('ბარათზე უკვე წერია, ნუ გაიმეორებ');
+    expect(event).toContain('request_introduction');
+  });
+
   /** A quote guarantee under the card would print the answer a second time. */
   it('carries no quote guarantee when the card is on screen', () => {
     const deliver = engine.slice(engine.indexOf('async function deliverOwedAnswers'));

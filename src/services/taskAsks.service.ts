@@ -1790,6 +1790,24 @@ const AGREED_IS_NOT_CONNECTED =
   'იტყვის, რომ ისაუბრეს.';
 
 /**
+ * ⚠️ THE SAME RULE UNDER A CARD — AND WHY IT HAD TO BE A SECOND ONE (903).
+ *
+ * The rule above says „tell the owner exactly who agreed and with whom". Under
+ * a card that sentence IS the retelling the card exists to remove, and the
+ * seat's first count caught it: 19:45:16, „Netai Test 64 agreed to connect you
+ * with Nino Beridze, an accountant…", directly under the card showing Test
+ * 64's own words. Both rules were in one event and the model obeyed the older.
+ * So the card's event carries this one: the same stage, the same next step,
+ * and nothing that asks for who-said-what again.
+ */
+const AGREED_UNDER_CARD =
+  'თუ ბარათზე რომელიმე პასუხი დათანხმებაა დაკავშირებაზე — ეს ეტაპია „დათანხმდა", არა ' +
+  '„დაკავშირდნენ": არასდროს თქვა „დაგაკავშირეთ", „შედგა" ან „დაკავშირდით", და ნუ ჰკითხავ, ' +
+  'მოგვარდა თუ არა. ვინ დათანხმდა და ვისთან — ბარათზე უკვე წერია, ნუ გაიმეორებ. შენი ერთი ' +
+  'წინადადება შემდეგი ნაბიჯია: ერთი ღილაკით შესთავაზე, რომ დათანხმებულს გაცნობა სთხოვო ' +
+  '(request_introduction, შუამავალი — ის, ვინც დათანხმდა). შემდეგ set_task_wake 24 საათზე.';
+
+/**
  * The wake event when the answer came back through a bridge (D254).
  *
  * Three people are in this, and the owner knows only one of them: they asked
@@ -1922,7 +1940,7 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
     'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
     'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
-    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD} შემდეგ გააგრძელე დავალება.`
   );
 }
 
