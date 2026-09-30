@@ -2762,6 +2762,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     description:
       'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.' +
       " RANK BY THE FIELD OF THE NEED (row 297): for a land sale a real-estate lawyer comes before a telecom company's lawyer; anyone from another field comes later, and you say so." +
+      ' A row with `name: null` and `saved_as` is a contact saved only as that label (an emoji, a symbol) — say „your contact saved as 💙", never present the label as a name (row 283).' +
       ' WHEN: for trade, company and nickname words, in both scripts, across several related words and not just one.',
     input_schema: {
       type: 'object',
@@ -5864,6 +5865,31 @@ function foundNobody(raw: unknown): boolean {
   return Array.isArray(r.results) && r.results.length === 0;
 }
 
+/**
+ * ⚠️ ROW 283 — A CONTACT SAVED AS „💙" WAS SHOWN AS A PERSON NAMED „💙".
+ *
+ * The owner's own label is theirs to see, so it is not hidden — but a label
+ * with no letter in it is not a name, and presenting it as one reads like a
+ * fault in the product. The DONE WHEN: „a real name with the saved label
+ * beside it, or ‚your contact saved as 💙'". Such a row now carries no name
+ * and says what the label is, so the reply can say exactly that.
+ */
+const HAS_A_LETTER = /\p{L}/u;
+
+function sayNamelessLabel(row: unknown): unknown {
+  if (row === null || typeof row !== 'object') return row;
+  const r = row as { name?: unknown };
+  if (typeof r.name !== 'string' || r.name.trim() === '' || HAS_A_LETTER.test(r.name)) return row;
+  return { ...(row as Record<string, unknown>), name: null, saved_as: r.name.trim() };
+}
+
+export function withNamelessLabelsSaid(tool: string, raw: unknown): unknown {
+  if (!SEARCH_TOOLS.has(tool) || raw === null || typeof raw !== 'object') return raw;
+  const r = raw as { results?: unknown };
+  if (!Array.isArray(r.results)) return raw;
+  return { ...(raw as Record<string, unknown>), results: r.results.map(sayNamelessLabel) };
+}
+
 export function withEmptySearchHistory(
   tool: string,
   input: Record<string, unknown>,
@@ -7945,7 +7971,10 @@ async function runOneToolBlock(
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each
   // attempt arrives with no memory of the last one.
-  const raw = withEmptySearchHistory(block.name, input, runId, rawResult);
+  const raw = withNamelessLabelsSaid(
+    block.name,
+    withEmptySearchHistory(block.name, input, runId, rawResult),
+  );
   // Ticket 19 G7: the step caption is written BEFORE the call and says what the
   // run INTENDS. On 15346 three of them contradicted each other inside eight
   // minutes and nobody could tell which was true, because what actually
