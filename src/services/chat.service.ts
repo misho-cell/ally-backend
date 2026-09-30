@@ -265,6 +265,7 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices } from './askOpening';
+import { joinSystemPrompt, plainSystemPrompt, systemBlocks } from './systemPromptParts';
 import { listMyContacts } from './tools/listMyContacts';
 import {
   RULE_273_EACH_ANSWER_ONCE,
@@ -3738,6 +3739,10 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
 
 interface AgentPromptResult {
   prompt: string;
+  /** The prompt without its per-minute tail — the part the cache can reuse. */
+  stablePrompt: string;
+  /** The tail that changes every run (the clock). Sent after the cache breakpoint. */
+  volatilePrompt: string;
   runMode: RunMode;
   blockNames: string[];
   /** `name@ISO` per block — the exact revision that ran (ticket 9 task 34). */
@@ -3968,7 +3973,7 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
-  const prompt =
+  const stablePrompt =
     // Global — identical for every account, every run.
     base +
     INJECTION_DEFENSE_PROMPT +
@@ -3989,12 +3994,15 @@ async function buildAgentSystemPrompt(
     (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
     buildTasksSection(tasks) +
     buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
-    buildRespondedRequestsSection(recentResponses) +
-    // Last, because it changes every minute and everything after it in the
-    // string is uncacheable. Row 119's content is untouched; only its place is.
-    buildTodaySection(new Date());
+    buildRespondedRequestsSection(recentResponses);
+  // Last, because it changes every minute and everything after it in the
+  // string is uncacheable. Row 119's content is untouched; only its place is —
+  // and since 30 Sep it also sits AFTER the cache breakpoint (systemPromptParts).
+  const volatilePrompt = buildTodaySection(new Date());
   return {
-    prompt,
+    prompt: stablePrompt + volatilePrompt,
+    stablePrompt,
+    volatilePrompt,
     runMode,
     blockNames: modeBlocks.names,
     blockVersions: modeBlocks.versions,
@@ -8558,7 +8566,7 @@ async function callClaude(
     {
       model,
       max_tokens: MAX_TOKENS,
-      system: [{ type: 'text', text: systemPrompt, cache_control: CACHE_EPHEMERAL }],
+      system: systemBlocks(systemPrompt),
       tools: toCachedTools(tools),
       messages: markLastMessageForCache(messages),
       ...(opts.forceText ? { tool_choice: { type: 'none' as const } } : {}),
@@ -9286,7 +9294,7 @@ async function runToolLoop(
     let openAiStarted = false;
     const rewritten = await writeFinalAnswer(
       messages,
-      systemPrompt,
+      plainSystemPrompt(systemPrompt),
       (delta) => {
         if (!openAiStarted) {
           openAiStarted = true;
@@ -10936,12 +10944,15 @@ export async function processChat(
         `and do not ask them again for what the goal already knows. Tell them where that goal ` +
         `stands in a sentence or two. If what they want now is genuinely DIFFERENT from it, ` +
         `say what you think the difference is and ask them.`;
-  const systemPrompt =
-    agentPrompt.prompt +
-    sameRequestAgain +
-    // Rows 284 and 273: the seat's rule texts, in every run.
-    `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}` +
-    buildReplyLanguageDirective(language);
+  // The cache breakpoint sits between these two (systemPromptParts): what is
+  // the same from one run to the next first, what changes every run after it.
+  const systemPrompt = joinSystemPrompt(
+    agentPrompt.stablePrompt +
+      // Rows 284 and 273: the seat's rule texts, in every run.
+      `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}` +
+      buildReplyLanguageDirective(language),
+    sameRequestAgain + agentPrompt.volatilePrompt,
+  );
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.
