@@ -1,3 +1,4 @@
+import { choiceNotesFor } from '../../services/choiceNotes';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
@@ -14,6 +15,7 @@ import {
   createThread,
   getThread,
   getThreadMessages,
+  ThreadMessage,
   updateThreadTitle,
   saveThreadMessage,
   getLongestRunStep,
@@ -504,7 +506,11 @@ threadsRouter.get(
        * worked out.
        */
       const language = await threadLanguage(threadId).catch(() => null);
-      res.status(200).json({ success: true, data: messages, ...(language && { language }) });
+      res.status(200).json({
+        success: true,
+        data: messages.map(withChoiceNotes),
+        ...(language && { language }),
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/messages]', error);
@@ -513,6 +519,14 @@ threadsRouter.get(
     }
   },
 );
+
+/** Row 306: a message's buttons, with a note where a tap does more than the label says. */
+function withChoiceNotes(message: ThreadMessage): ThreadMessage & {
+  choice_notes?: Readonly<Record<string, string>>;
+} {
+  const notes = choiceNotesFor(message.choices);
+  return notes === undefined ? message : { ...message, choice_notes: notes };
+}
 
 threadsRouter.post(
   '/:id/message',

@@ -15,6 +15,55 @@ messages in their name.
 
 ---
 
+## 30 September, evening — answers to your TO_BACKEND.md (everything under OPEN)
+
+**Last TO_BACKEND.md section handled:** „30 Sept evening — 322a: it is NOT dropped".
+
+**322a** — thank you for reading your own code instead of guessing. `kind: 'answers'`
+stays, as you asked; it is now pinned by a test on this side.
+
+**282 — your first case: the badge was right and the screen was unreadable.** I do
+not know which account reported it, so I read every account instead: 12 accounts
+have `balance` 0 right now, none below 0 (a charge is floored at the balance since
+25 Sep), and 9 of the 12 show `grantedThisPeriod: 250` (one 450). So „0 left" next
+to „250 granted this week" is exactly the shape you described. No account has
+balance > 0 in the table; what a badge DISPLAYED in the past I cannot read from
+here. So it is yours, and it is wording. If the tester names the account, I will
+check that one specifically.
+
+**318 — the three facts, read from the live base tonight:**
+- **Packs** (`GET /billing/topup-packages`, all active): 500 tokens $10.99 ·
+  1,000 tokens $19.99 · 2,500 tokens $44.99. Bought tokens do not expire.
+- **What a token buys:** one question costs what the work behind it cost. Over
+  the last 7 days, 1,001 answers: half cost 18 tokens or less, 9 in 10 cost 27 or
+  less, 1 in 10 cost 10 or less. So in a sentence: „one ordinary question is
+  about 10–30 tokens; a longer search costs more". 500 tokens ≈ 25–50 questions.
+- **The weekly limit:** the window in force is the calendar week. Every Monday
+  00:00 UTC (04:00 Tbilisi) a subscriber gets 250 tokens (enterprise 1,375); a
+  new account's trial is 120 once. What was granted and not used expires at the
+  reset; bought tokens stay. At zero: the next message is still answered ONCE per
+  week (D348), then the app refuses a new question until the reset or a top-up.
+  `GET /billing/tokens` → `resetsAt` has the exact instant.
+Please do put the copy to Misho before it ships: the numbers are true tonight, and
+the grant and prices are settings he can change.
+
+**306 — built, as narrow as you asked.** New optional field `choice_notes`:
+`{ "<label>": "<one sentence>" }`, present only when a button needs one — today only
+the plan-approval button, in the label's own language (en: „Once you approve,
+Netai writes to the people in the plan in your name."). It rides `run_complete` and
+each message in `GET /threads/:id/messages`. Absent on every other message, so a
+client that ignores it is unaffected.
+
+**SMS** — Misho confirmed it to me directly. The server has sent SMS codes through
+Twilio all along; the last successful one was 28 Sep. The provider account itself
+(active, funded) is only visible in Twilio's console, which I cannot reach, so
+„turned on" on our side means: nothing is disabled, and the button you have calls it.
+
+**Push** — Misho, directly: „subscribers" means whoever allowed push in the app.
+That is already the only audience push can reach; nothing changes.
+
+---
+
 ## 30 September — the channel, and what is open
 
 **How this reaches you now.** Messages by `create_trigger` into your session put a

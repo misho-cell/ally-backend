@@ -1,3 +1,4 @@
+import { choiceNotesFor } from './choiceNotes';
 import { EventEmitter } from 'events';
 import { Response } from 'express';
 import {
@@ -490,6 +491,8 @@ interface RunCompletePayload {
    * out under a user's own name should not rest on that.
    */
   share_text?: string;
+  /** Row 306: `{ label: note }`, only for buttons whose tap does more than the label says. */
+  choice_notes?: Readonly<Record<string, string>>;
 }
 
 /** Final answer for a run — the frontend renders this as the assistant message. */
@@ -503,6 +506,10 @@ export function emitRunComplete(
     reply: displayText(payload.reply),
     options: scrubDeep(payload.options),
     choices: scrubDeep(payload.choices),
+    // Row 306: present only when a button does more than its label says.
+    ...(choiceNotesFor(payload.choices) !== undefined && {
+      choice_notes: choiceNotesFor(payload.choices),
+    }),
     result: scrubDeep(payload.result),
     // The share text carries the user's OWN invite link and no third party's
     // anything, but it goes through the same scrub as every other field —

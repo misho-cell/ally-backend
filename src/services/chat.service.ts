@@ -266,6 +266,7 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices } from './askOpening';
+import { APPROVE_LABEL } from './choiceNotes';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
   joinStablePrompt,
@@ -4318,12 +4319,6 @@ async function writeSentOutcome(searchId: number, userId: string, reason: string
  * the new wordings are the display labels themselves plus the obvious way each
  * is typed, nothing looser.
  */
-const APPROVE_LABEL: Record<RunLanguage, string> = {
-  ka: 'ვამტკიცებ',
-  en: 'I approve',
-  ru: 'Подтверждаю',
-  es: 'Lo apruebo',
-};
 const CHANGE_LABEL: Record<RunLanguage, string> = {
   ka: 'შევცვალოთ',
   en: 'Change it',
