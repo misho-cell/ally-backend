@@ -1295,6 +1295,19 @@ over in the morning instead of tonight.
   card, or the goal reopening — is a product decision I would be inventing. So
   it is not built. D532 is quoted by the tester and is not in this repository;
   if it already says what „go on" does, one line from him settles it.
+- **The plan card — rows 279 and 287, one decision.** 279 asks for the plan
+  to appear ONCE, in the assistant's own first-person words. Tornike's ruling
+  on row 101 says the opposite: the saved plan card is the only plan text on
+  screen. And Ticket 18 [101] requires the approved text to carry the routes,
+  while 287 says searches (which is what the routes mostly are) must not be
+  offered for approval. I changed the prompt so searches run first and are
+  never asked about (live, `4240f3f`). The card itself I left alone. Which
+  way the card goes is his: keep it, drop the routes from the unapproved
+  card, or drop the card for the assistant's own words.
+- **Row 293 — turning Pro on by hand gives no tokens.** Making that switch
+  grant Pro's allowance at once is a grant of spendable credit, so it waits
+  for his word: should an admin-set Pro grant the same tokens a paid
+  subscription does (the plate says 1,000), and from which date?
 - **Still waiting on his word, unchanged:** row 278's index rebuild
   (recommend off-peak), the Netai Test 12 seat, his own account id for the
   alarm, the Meta WhatsApp template, and the 34 stalled goals.
