@@ -46,8 +46,24 @@ export interface PlanPerson {
    * Absent on plans stored before the column existed, which renders as
    * nothing rather than as a claim either way.
    */
-  reach?: AskReach;
+  reach?: PlanReach;
 }
+
+/**
+ * ⚠️ ROW 288 — A STRANGER WAS PROPOSED FOR AN INVITATION.
+ *
+ * Ninia's plan offered to invite somebody off the Axel list; she is not an
+ * Axel member and does not know them. invite_contact already refuses a number
+ * outside the owner's own phonebook, so nothing could be sent — but the card
+ * said „not on Netai — will need an invitation", which is a proposal the
+ * product can never carry out, about a person the owner never met.
+ *
+ * So a person who is not a member AND is not in the owner's own phonebook has
+ * their own reach: they can only be reached through somebody who knows them,
+ * and no invitation is ever offered for them (peopleToInvite reads only
+ * not_member).
+ */
+export type PlanReach = AskReach | 'not_owners_contact';
 
 export interface PlanExclusion {
   name: string;
@@ -389,7 +405,7 @@ export async function proposeTaskPlan(
     boundarySubject,
     taskId,
   );
-  const withReach = await withReachability(allowed);
+  const withReach = await withReachability(userId, allowed);
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
   // an approved plan decides whether a route may claim to be under way. The
@@ -448,11 +464,33 @@ async function goalSubject(taskId: number): Promise<string> {
  * nothing, so a failure costs a warning the owner did not get — it never
  * invents one about a person.
  */
-async function withReachability(people: readonly PlanPerson[]): Promise<PlanPerson[]> {
+const PLAN_REACH_TIMEOUT_MS = 5_000;
+
+async function inOwnersPhonebook(userId: string, phone: string): Promise<boolean> {
+  const digits = phone.replace(/\D/g, '');
+  if (digits === '') return false;
+  const result = await query<{ one: number }>(
+    `SELECT 1 AS one FROM "UserAlias"
+      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2
+      LIMIT 1`,
+    [userId, digits],
+    PLAN_REACH_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
+async function withReachability(
+  userId: string,
+  people: readonly PlanPerson[],
+): Promise<PlanPerson[]> {
   return Promise.all(
     people.map(async (person) => {
       try {
-        const reach: AskReach = await canBeAsked(person.phone);
+        const asked: AskReach = await canBeAsked(person.phone);
+        const reach: PlanReach =
+          asked === 'not_member' && !(await inOwnersPhonebook(userId, person.phone))
+            ? 'not_owners_contact'
+            : asked;
         return { ...person, reach };
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -817,20 +855,24 @@ const PLAN_TITLE: Record<RunLanguage, string> = {
  * opt-out list is deliberately not consulted at plan time, because a refusal
  * to be contacted is private to the person who made it.
  */
-const REACH_NOTE: Record<RunLanguage, Record<Exclude<AskReach, 'ok'>, string>> = {
+const REACH_NOTE: Record<RunLanguage, Record<Exclude<PlanReach, 'ok'>, string>> = {
   ka: {
+    not_owners_contact: '(შენი კონტაქტი არ არის — მხოლოდ მისი ნაცნობის გავლით)',
     not_member: '(Netai-ზე არ არის — მოწვევა დასჭირდება)',
     never_opened: '(ანგარიში აქვს, Netai ჯერ არ გაუხსნია — კითხვა უპასუხოდ დარჩებოდა)',
   },
   en: {
+    not_owners_contact: '(not your contact — only through someone who knows them)',
     not_member: '(not on Netai — will need an invitation)',
     never_opened: '(has an account but has never opened Netai — a question would go unanswered)',
   },
   ru: {
+    not_owners_contact: '(не ваш контакт — только через того, кто его знает)',
     not_member: '(нет в Netai — понадобится приглашение)',
     never_opened: '(аккаунт есть, но Netai ни разу не открывал — вопрос остался бы без ответа)',
   },
   es: {
+    not_owners_contact: '(no es tu contacto — solo a través de alguien que lo conozca)',
     not_member: '(no está en Netai — hará falta una invitación)',
     never_opened: '(tiene cuenta pero nunca abrió Netai — la pregunta quedaría sin respuesta)',
   },

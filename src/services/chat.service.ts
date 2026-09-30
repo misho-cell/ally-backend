@@ -10948,8 +10948,10 @@ export async function processChat(
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(
     agentPrompt.stablePrompt +
-      // Rows 284 and 273: the seat's rule texts, in every run.
-      `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}` +
+      // Rows 284 and 273: the seat's rule texts, in every run. Row 280 too —
+      // the seat's 870: in the web_search description alone it was not
+      // followed (listing pages were never opened), so it is a gate item here.
+      `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}\n${RULE_280_WEB_LEADS_ARE_PEOPLE}` +
       buildReplyLanguageDirective(language),
     sameRequestAgain + agentPrompt.volatilePrompt,
   );
