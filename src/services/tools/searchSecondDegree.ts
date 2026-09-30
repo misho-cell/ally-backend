@@ -27,12 +27,13 @@ import { nameOnlyFromLabel } from '../labelReader.service';
  */
 const MAX_BRIDGES_SUMMARISED = 10;
 
-const SECOND_CIRCLE_PRESENTATION =
+export const SECOND_CIRCLE_PRESENTATION =
   'Name EVERY fitting person here with their OWN bridge, one line each — never collapse them ' +
   'into „through X". Give each one plain reason from this result: their role (as the rules above ' +
   'allow), and who knows them — a bridge holding several of them says so („knows 3 of the people ' +
   'found", from `bridges`). A nameless row is described, not named. Never mention how anyone ' +
-  'saved them.';
+  'saved them. Rank by the field of the need (row 297): for a land sale a real-estate lawyer ' +
+  'comes before a telecom company’s lawyer; anyone from another field comes later, and you say so.';
 
 interface BridgeCount {
   readonly name: string | null;

@@ -1,6 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
+jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
-import { bridgesSummary } from '../tools/searchSecondDegree';
+import { bridgesSummary, SECOND_CIRCLE_PRESENTATION } from '../tools/searchSecondDegree';
+import { toolDescription } from '../chat.service';
 
 /**
  * Rows 285/286: eight second-circle lawyers found, and the plan said only
@@ -32,5 +34,14 @@ describe('the second circle says which bridge knows how many of the people found
       via_contacts: [{ name: `B${i}`, phone: `+9955000001${String(i).padStart(2, '0')}` }],
     }));
     expect(bridgesSummary(rows)).toHaveLength(10);
+  });
+});
+
+/** Row 297: a telecom company's lawyer was offered first for a land sale. */
+describe('results are ranked by the field of the need', () => {
+  it('says so in the tag search and the second circle', () => {
+    expect(toolDescription('search_by_tag')).toMatch(/RANK BY THE FIELD OF THE NEED/);
+    expect(SECOND_CIRCLE_PRESENTATION).toMatch(/Rank by the field of the need/);
+    expect(SECOND_CIRCLE_PRESENTATION).toMatch(/another field comes later, and you say so/);
   });
 });
