@@ -5889,10 +5889,29 @@ function searchTermOf(input: Record<string, unknown>): string {
  * through that surface.
  */
 
+/**
+ * ⚠️ ROW 321 — A SEARCH THAT TIMED OUT WAS TOLD TO THE MODEL AS „FOUND NOBODY".
+ *
+ * Giorgi, 29 September 08:47:01: both lawyer searches on his 1,174-contact
+ * phonebook hit a statement timeout, and searchDidNotFinish answered
+ * {found: false, reason: 'search_timed_out', note: 'DID NOT FINISH — not an
+ * empty network'}. This function read found:false as empty, attached the
+ * empty-search history AND OVERWROTE THAT NOTE with „found nobody" — so the
+ * model told him he had no lawyers while nine sat in his phonebook. A result
+ * that carries a reason other than no_matches did not find nobody; it did not
+ * finish, and it is passed through as it came.
+ */
+const DID_NOT_FINISH_REASONS: ReadonlySet<string> = new Set([
+  'search_timed_out',
+  'search_failed',
+  'neo4j_unavailable',
+]);
+
 /** Did this search find anybody? Empty and „not found" are the same answer. */
 function foundNobody(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false;
-  const r = raw as { found?: unknown; results?: unknown; count?: unknown };
+  const r = raw as { found?: unknown; results?: unknown; count?: unknown; reason?: unknown };
+  if (typeof r.reason === 'string' && DID_NOT_FINISH_REASONS.has(r.reason)) return false;
   if (r.found === false) return true;
   return Array.isArray(r.results) && r.results.length === 0;
 }
@@ -9923,6 +9942,11 @@ export function matchShapeOf(result: unknown): string | null {
         (row as { approximate?: unknown }).approximate === true,
     ).length;
     return `${rows.length} rows, ${approximate} approximate`;
+  }
+  // Row 321: a search that did not finish says so first — it is never
+  // „found nobody", whatever history rides with it.
+  if (typeof record.reason === 'string' && DID_NOT_FINISH_REASONS.has(record.reason)) {
+    return `no rows — ${record.reason}`;
   }
   // The list includes THIS search: it is pushed before it is returned.
   const emptySoFar = record.already_searched_and_empty;

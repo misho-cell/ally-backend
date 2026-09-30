@@ -134,6 +134,19 @@ const AGG_JOINS = `FROM hits h
  * materialized mine set (see buildExactMatchSql) so the plan stays index-backed
  * at prod scale.
  */
+/**
+ * ⚠️ ROW 321 — THE LAWYER SEARCH NEVER FINISHED ON A REAL PHONEBOOK.
+ *
+ * Giorgi, 29 September 08:47:01: „searchByTag error: canceling statement due
+ * to statement timeout", four times, on 1,174 contacts — nine of them saved as
+ * „advokati", „iuristi", „iuridiuli", which this query matches in a direct
+ * read today. It ran on the pool default of 8 s. A search that finishes in
+ * twelve seconds is worth more than one that never finishes, and a timeout
+ * above the default also moves it to the long-query pool, where it cannot
+ * hold up the short queries a conversation is waiting on.
+ */
+const EXACT_SEARCH_TIMEOUT_MS = 20_000;
+
 async function runExactSearch(
   userId: string,
   rawGroups: string[][],
@@ -156,8 +169,13 @@ async function runExactSearch(
                 MAX(ut."weightCount") DESC NULLS LAST
        LIMIT ${RESULT_LIMIT}`,
       m.params,
+      EXACT_SEARCH_TIMEOUT_MS,
     ),
-    query<{ total: string }>(`WITH ${MY_CONTACTS_CTE}, ${m.matchedCte} ${m.totalSql}`, m.params),
+    query<{ total: string }>(
+      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte} ${m.totalSql}`,
+      m.params,
+      EXACT_SEARCH_TIMEOUT_MS,
+    ),
   ]);
   return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
 }
