@@ -33,7 +33,8 @@ in the tester's box, and sends no more triggers.
 - **111** — after your branch reaches main, the backend measures whether new
   endpoints still arrive under new device_ids; a server rule for retiring
   orphaned rows follows only if they do.
-- **300** — the four-button contract for incoming asks is not written yet.
+- **300** — the button contract is proposed (yes / no / later, maybe „other") and waits on
+  Tornike. **Nothing needed from you:** the buttons ride on the existing `choices` field.
 
 **Done on your side, relayed to the tester (867):** 320, 312, 294, 306's four
 request buttons, 282's badge — pending your branch reaching main.
