@@ -1,0 +1,11 @@
+-- ROW 322(a) — AN ANSWER IS ON THE OWNER'S SCREEN BEFORE THE MODEL SPEAKS.
+--
+-- Measured on the seat's goal 11155: the server hands an answer over in about
+-- five seconds, and the owner then waited for a whole model turn — 59 seconds
+-- on that run — before reading words somebody had already sent. The server now
+-- writes the answers into the goal thread itself, the moment it reads them.
+--
+-- answer_shown_at  the card carrying this answer was written. NULL is the
+--                  guard: a busy thread retries its wake every six seconds,
+--                  and without it every retry would show the card again.
+ALTER TABLE task_asks ADD COLUMN IF NOT EXISTS answer_shown_at TIMESTAMPTZ;

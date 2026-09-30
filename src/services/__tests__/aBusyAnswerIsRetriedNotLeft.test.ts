@@ -4,6 +4,11 @@ jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
 }));
 jest.mock('../chat.service', () => ({ __esModule: true, processChat: jest.fn() }));
+// Row 322(a): the card translates an answer; no model call in a unit test.
+jest.mock('../askTranslation.service', () => ({
+  __esModule: true,
+  relayedForReader: jest.fn(async (text: string) => ({ text, skipped: 'same_language' })),
+}));
 jest.mock('../taskStore.service', () => ({
   __esModule: true,
   ...jest.requireActual('../taskStore.service'),
@@ -80,6 +85,43 @@ describe('an answer whose wake found the thread busy is retried, not left', () =
     expect(marked).toHaveLength(0);
     await fire();
     expect(mockTask).toHaveBeenCalledTimes(2);
+  });
+
+  /** Row 322(a): the card goes up on the first attempt, busy thread or not. */
+  it('puts the answers on the owner’s screen before any wake runs', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      const text = String(sql);
+      if (text.includes('ta.task_id = $1')) {
+        return Promise.resolve({
+          rows: [{ ...OWED, owner_user_id: '171937', shown: false }],
+          rowCount: 1,
+        } as never);
+      }
+      if (text.includes('INSERT INTO conversations')) {
+        return Promise.resolve({ rows: [{ id: 90001 }], rowCount: 1 } as never);
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 } as never);
+    });
+    mockTask.mockResolvedValue(null);
+    deliverAnswersWhenFree(11155);
+    await fire();
+    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    const card = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO conversations'),
+    );
+    expect(card?.[1]).toEqual([26700, 171937, expect.stringContaining(OWED.answer)]);
+  });
+
+  it('writes no second card for an answer an earlier attempt showed', async () => {
+    owedRows([{ ...OWED, owner_user_id: '171937', shown: true }]);
+    mockTask.mockResolvedValue(null);
+    deliverAnswersWhenFree(11155);
+    await fire();
+    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    const cards = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO conversations'),
+    );
+    expect(cards).toHaveLength(0);
   });
 
   it('reads what is owed with a limit and a timeout', async () => {

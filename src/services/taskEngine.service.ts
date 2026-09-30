@@ -30,12 +30,16 @@ import {
   listUnwokenAnswers,
   markAskWakeDelivered,
   answerIsTheirOwnWords,
+  ArrivedAnswer,
   buildAnswersWakeEvent,
+  buildShownAnswersWakeEvent,
   guaranteesOf,
   hasPendingAskForThread,
   listUnwokenAnswersForTask,
   QuoteGuarantee,
+  UnwokenAnswer,
 } from './taskAsks.service';
+import { showAnswersToOwner } from './answerCard.service';
 import {
   getThread,
   lastAssistantMessageIs,
@@ -559,14 +563,40 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
       verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
     })),
   );
-  const woken = await wakeTask(
-    taskId,
-    buildAnswersWakeEvent(arrived),
-    arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
-  );
+  // Row 322(a): on the owner's screen first; the model's turn comes after.
+  const woken = (await answersAreOnScreen(owed, arrived))
+    ? await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))
+    : await wakeTask(
+        taskId,
+        buildAnswersWakeEvent(arrived),
+        arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
+      );
   if (woken !== 'woken') return 0;
   for (const ask of owed) await markAskWakeDelivered(ask.id);
   return owed.length;
+}
+
+/**
+ * Row 322(a): the card for every owed answer not yet shown. False when it
+ * could not be written — then the reply itself must carry them, as before.
+ */
+async function answersAreOnScreen(
+  owed: readonly UnwokenAnswer[],
+  arrived: readonly ArrivedAnswer[],
+): Promise<boolean> {
+  const threadId = owed[0].task_thread_id;
+  const ownerId = Number(owed[0].owner_user_id);
+  if (threadId === null || !Number.isInteger(ownerId) || ownerId <= 0) return false;
+  const unshown = owed
+    .map((ask, i) => ({ ask, arrived: arrived[i] }))
+    .filter(({ ask }) => ask.shown !== true)
+    .map(({ ask, arrived: a }) => ({
+      askId: ask.id,
+      answer: a.answer,
+      fromName: a.fromName,
+      verbatim: a.verbatim,
+    }));
+  return showAnswersToOwner({ threadId, ownerId }, unshown);
 }
 
 /**

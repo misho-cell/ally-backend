@@ -1104,6 +1104,34 @@ export async function saveThreadMessage(
   await touchThread(threadId);
 }
 
+/** A server-written assistant line whose id the caller needs, to push it live. */
+export interface SavedServerLine {
+  readonly id: number;
+  /** The text as stored, after the same scrub every assistant line gets. */
+  readonly content: string;
+}
+
+/**
+ * ROW 322(a) — `saveThreadMessage` for a line that is also pushed live: the
+ * live event must carry the row's own id, so a reload shows the same message
+ * rather than a second copy of it.
+ */
+export async function saveServerLine(
+  threadId: number,
+  userId: number,
+  content: string,
+): Promise<SavedServerLine> {
+  const stored = scrubMechanicalForStorage(content);
+  const result = await query<{ id: number }>(
+    `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id, choices)
+     VALUES ($1, $2, 'assistant', $3, NULL, 'message', NULL, NULL)
+     RETURNING id`,
+    [threadId, userId, stored],
+  );
+  await touchThread(threadId);
+  return { id: result.rows[0].id, content: stored };
+}
+
 export async function createIncomingRequestThread(
   mediatorUserId: number,
   introRequestId: number,

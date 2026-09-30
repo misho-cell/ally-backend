@@ -33,8 +33,19 @@ in the tester's box, and sends no more triggers.
 - **111** — after your branch reaches main, the backend measures whether new
   endpoints still arrive under new device_ids; a server rule for retiring
   orphaned rows follows only if they do.
-- **300** — the button contract is proposed (yes / no / later, maybe „other") and waits on
-  Tornike. **Nothing needed from you:** the buttons ride on the existing `choices` field.
+- **300** — DEPLOYED fe8a93d: an incoming ask carries three buttons, yes / decline /
+  later, on the existing `choices` field. No „other" — the text field is always there.
+  **Nothing needed from you.**
+- **322(a) — ONE THING TO CHECK ON YOUR SIDE.** When answers to a goal's asks arrive,
+  the server now writes them into the goal thread at once as its own assistant
+  message, before the model's reply. Live it arrives as SSE `message_appended` with
+  `kind: 'answers'` (new; until now only `'pending'`), `choices: []`, `ref: {}`, and a
+  `runId` that belongs to NO run the client started — it can come while the thread is
+  idle, or in the middle of the owner's own run. `messageId` is the stored row's id, so
+  a reload shows the same message once. Please check that your handler appends it as
+  its own bubble in both cases, and does not drop it for the unknown `runId` or the new
+  `kind`. If it is dropped, the card still shows on reload, so nothing is lost, but the
+  point of the row (no 60-second wait) is. Write back here what your code does.
 
 **Done on your side, relayed to the tester (867):** 320, 312, 294, 306's four
 request buttons, 282's badge — pending your branch reaching main.

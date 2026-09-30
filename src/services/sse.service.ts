@@ -516,7 +516,8 @@ export function emitRunComplete(
 
 export interface AppendedMessagePayload {
   messageId: string;
-  kind: 'pending';
+  /** 'answers' — row 322(a): the server's card of answers that just arrived. */
+  kind: 'pending' | 'answers';
   content: string;
   choices: readonly string[];
   ref: Record<string, unknown>;

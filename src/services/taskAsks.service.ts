@@ -1899,6 +1899,30 @@ export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string
   );
 }
 
+/**
+ * ROW 322(a) — the event when the server has ALREADY put the answers on the
+ * owner's screen (`answerCard.service`). The answers ride along so the run
+ * knows them; what changes is the job: not to read them out again, but to say
+ * what they mean for the goal and take the next step.
+ */
+export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string {
+  const blocks = answers
+    .map((a) => {
+      const who = a.fromName?.trim() || 'ადამიანი, ვისაც კითხვა გაეგზავნა';
+      return `<answer from="${who}">\n${a.answer}\n</answer>`;
+    })
+    .join('\n');
+  return (
+    `${answers.length === 1 ? 'მოვიდა პასუხი' : `მოვიდა ${answers.length} პასუხი`} შენს ` +
+    'გაგზავნილ კითხვებზე:\n' +
+    `${blocks}\n` +
+    'სერვერმა ეს პასუხები მფლობელს უკვე აჩვენა — ბარათად, შენი პასუხის ზემოთ, ვინ რა ' +
+    'უპასუხა. ხელახლა არ ჩამოთვალო, არ დააციტირო და არ გადმოსცე. ერთ-სამ წინადადებაში ' +
+    'თქვი, რას ნიშნავს ეს დავალებისთვის; თუ რომელიმე პასუხი კითხვაა, უთხარი, რომ ადამიანი ' +
+    `პასუხს ელოდება. ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+  );
+}
+
 /** What an answer-wake run's final reply MUST contain, verbatim. */
 export interface EnsureQuoted {
   readonly text: string;
@@ -2033,6 +2057,10 @@ export interface UnwokenAnswer {
   task_thread_id: number | null;
   /** The recipient's own thread — where their own words can be checked (row 303). */
   ask_thread_id: number | null;
+  /** Row 322(a): the goal's owner, whose thread the answers card goes into. */
+  owner_user_id?: string | null;
+  /** Row 322(a): the card carrying this answer was already written. */
+  shown?: boolean;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
@@ -2061,7 +2089,8 @@ export async function listUnwokenAnswersForTask(
 ): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
     `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
-            t.thread_id AS task_thread_id, ta.ask_thread_id
+            t.thread_id AS task_thread_id, ta.ask_thread_id,
+            t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
      LEFT JOIN "User" u ON u.id = ta.to_user_id
