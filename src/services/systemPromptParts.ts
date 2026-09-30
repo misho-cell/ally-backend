@@ -21,10 +21,48 @@
  */
 export const VOLATILE_MARKER = '\n\n<<<volatile-system-tail>>>\n\n';
 
+/**
+ * ⚠️ AND THE STABLE PART WAS NOT STABLE — measured the afternoon the split
+ * above shipped, from usage_events.
+ *
+ * The first call of a run still read exactly the tool definitions (25,296
+ * tokens) and WROTE 22,000–66,000; the average write per call was 15,400
+ * before f34ea7e and 15,600–18,200 after it. The clock was never the main
+ * cost. The „stable" part holds the owner's goals, notes and pending
+ * requests, which change between one run and the next, and a change anywhere
+ * in it threw away the part in front of it too: the base prompt, the
+ * injection defence and the mode blocks, which are the same for every
+ * account.
+ *
+ * So the stable part carries a second breakpoint, after that global head.
+ * Four is the API's limit and this makes four: the tools, the global head,
+ * the per-account part, and the last message.
+ */
+export const GLOBAL_MARKER = '\n\n<<<global-system-head>>>\n\n';
+
 interface TextBlock {
   type: 'text';
   text: string;
   cache_control?: { type: 'ephemeral' };
+}
+
+/** The stable part: what every account shares, then what is this account's. */
+export function joinStablePrompt(globalHead: string, perAccount: string): string {
+  return `${globalHead}${GLOBAL_MARKER}${perAccount}`;
+}
+
+/** Cached blocks for the stable part, split at the global head when it is marked. */
+function stableBlocks(stable: string): TextBlock[] {
+  const at = stable.indexOf(GLOBAL_MARKER);
+  if (at === -1) return [{ type: 'text', text: stable, cache_control: { type: 'ephemeral' } }];
+  return [
+    { type: 'text', text: stable.slice(0, at), cache_control: { type: 'ephemeral' } },
+    {
+      type: 'text',
+      text: stable.slice(at + GLOBAL_MARKER.length),
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
 }
 
 export function joinSystemPrompt(stable: string, volatile: string): string {
@@ -34,18 +72,13 @@ export function joinSystemPrompt(stable: string, volatile: string): string {
 /** Anthropic system blocks: the breakpoint on the stable part, the tail after it. */
 export function systemBlocks(systemPrompt: string): TextBlock[] {
   const at = systemPrompt.indexOf(VOLATILE_MARKER);
-  if (at === -1) {
-    return [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
-  }
+  if (at === -1) return stableBlocks(systemPrompt);
   const stable = systemPrompt.slice(0, at);
   const volatile = systemPrompt.slice(at + VOLATILE_MARKER.length);
-  return [
-    { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: volatile },
-  ];
+  return [...stableBlocks(stable), { type: 'text', text: volatile }];
 }
 
 /** The same prompt as one plain text, for a provider that caches prefixes on its own. */
 export function plainSystemPrompt(systemPrompt: string): string {
-  return systemPrompt.split(VOLATILE_MARKER).join('\n\n');
+  return systemPrompt.split(VOLATILE_MARKER).join('\n\n').split(GLOBAL_MARKER).join('\n\n');
 }

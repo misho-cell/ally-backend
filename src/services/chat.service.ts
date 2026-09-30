@@ -266,7 +266,12 @@ import {
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices } from './askOpening';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
-import { joinSystemPrompt, plainSystemPrompt, systemBlocks } from './systemPromptParts';
+import {
+  joinStablePrompt,
+  joinSystemPrompt,
+  plainSystemPrompt,
+  systemBlocks,
+} from './systemPromptParts';
 import { listMyContacts } from './tools/listMyContacts';
 import {
   RULE_273_EACH_ANSWER_ONCE,
@@ -3974,28 +3979,29 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
-  const stablePrompt =
-    // Global — identical for every account, every run.
-    base +
-    INJECTION_DEFENSE_PROMPT +
-    modeBlocks.text +
+  const stablePrompt = joinStablePrompt(
+    // Global — identical for every account, every run. Its own cache
+    // breakpoint follows it (systemPromptParts), so a change further down
+    // no longer throws it away.
+    base + INJECTION_DEFENSE_PROMPT + modeBlocks.text,
     // Per-account — the same across this person's runs until they edit it.
     nameSection +
-    buildProfileSection(profile) +
-    buildMissingUserProfileSection(profile) +
-    buildUserNotesSection(userNotes) +
-    buildPrivateContextSection(privateContext) +
-    buildInsightFieldsSection(fieldsResult.rows) +
-    // Per-situation — changes when the work does.
-    (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
-    (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
-    // Row 211: beside the ask section and for the same reason — what this
-    // conversation IS, said by the server rather than inferred from the text.
-    (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
-    (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
-    buildTasksSection(tasks) +
-    buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
-    buildRespondedRequestsSection(recentResponses);
+      buildProfileSection(profile) +
+      buildMissingUserProfileSection(profile) +
+      buildUserNotesSection(userNotes) +
+      buildPrivateContextSection(privateContext) +
+      buildInsightFieldsSection(fieldsResult.rows) +
+      // Per-situation — changes when the work does.
+      (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
+      (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+      // Row 211: beside the ask section and for the same reason — what this
+      // conversation IS, said by the server rather than inferred from the text.
+      (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
+      (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
+      buildTasksSection(tasks) +
+      buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
+      buildRespondedRequestsSection(recentResponses),
+  );
   // Last, because it changes every minute and everything after it in the
   // string is uncacheable. Row 119's content is untouched; only its place is —
   // and since 30 Sep it also sits AFTER the cache breakpoint (systemPromptParts).
