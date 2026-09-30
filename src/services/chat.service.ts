@@ -3516,6 +3516,17 @@ function buildPendingRequestsSection(
   return `\n\n${header}\n${lines}`;
 }
 
+/**
+ * ⚠️ TESTER 909/910 — THIS HEADER WAS ROW 284'S SOURCE, NOT THE MODEL.
+ *
+ * It said „answer the user's question first, then share this at the END of the
+ * reply". Test 68 asked for a list of contacts three times on 30 Sep and got
+ * „… Netai Test 65 agreed to your introduction request" glued onto it twice
+ * (28089, 28085) — the model was obeying the server, and rule 284's text could
+ * not outvote an instruction sitting in the same prompt. The owner is already
+ * told each answer in the request's own thread; here it is context, mentioned
+ * only when the owner asks about it.
+ */
 function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
   if (responses.length === 0) return '';
   const lines = responses
@@ -3528,7 +3539,7 @@ function buildRespondedRequestsSection(responses: RespondedRequest[]): string {
       return `- ${r.target_name}: ${responder} ${statusText}.${info}`;
     })
     .join('\n');
-  return `\n\n## გაცნობის მოთხოვნების პასუხები [ჯერ მომხმარებლის შეკითხვას უპასუხე, ეს პასუხის ბოლოს გაუზიარე]\n${lines}`;
+  return `\n\n## გაცნობის მოთხოვნების პასუხები [მხოლოდ კონტექსტი: მფლობელს ეს უკვე ეცნობა თავად მოთხოვნის თრედში. ახსენე მხოლოდ მაშინ, თუ ამაზე თვითონ იკითხავს — სხვა პასუხს ბოლოში არასდროს მიაწერო]\n${lines}`;
 }
 
 function buildInsightFieldsSection(

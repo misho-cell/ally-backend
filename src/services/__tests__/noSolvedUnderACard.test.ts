@@ -87,3 +87,22 @@ describe('a later tap is not nudged into a second reply', () => {
     );
   });
 });
+
+/**
+ * Tester 910: the glued „Netai Test 65 agreed…" was the server's own
+ * instruction — the responded-requests section said to share it at the end
+ * of the reply.
+ */
+describe('introduction answers in the prompt are context, not a footnote', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const section = chat.slice(chat.indexOf('function buildRespondedRequestsSection'));
+
+  it('no longer tells the run to add them at the end of the reply', () => {
+    expect(section.slice(0, 1500)).not.toContain('ეს პასუხის ბოლოს გაუზიარე');
+  });
+
+  it('says they are context, mentioned only when the owner asks', () => {
+    expect(section.slice(0, 1500)).toContain('მხოლოდ კონტექსტი');
+    expect(section.slice(0, 1500)).toContain('სხვა პასუხს ბოლოში არასდროს მიაწერო');
+  });
+});
