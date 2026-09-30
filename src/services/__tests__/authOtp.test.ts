@@ -311,6 +311,8 @@ describe('completeLogin requires a consumed verification', () => {
       if (sql.includes('FROM "UserPhone"')) return Promise.resolve(rows([{ id: 42 }]) as never);
       if (sql.includes('DELETE FROM phone_verifications'))
         return Promise.resolve(rows([], 1) as never);
+      if (sql.includes('SELECT 1 FROM phone_verifications'))
+        return Promise.resolve(rows([{ one: 1 }]) as never);
       return Promise.resolve(rows([]) as never);
     });
 

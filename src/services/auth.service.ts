@@ -73,6 +73,22 @@ const ERR_INVITATION_REQUIRED =
   'მოწვევის შემდეგ პირდაპირ შემოხვალ. თუ Netai-ს უკვე იყენებ და მაინც ამ ' +
   'შეტყობინებას ხედავ, ეს ჩვენი შეცდომაა — გვაცნობე.';
 
+/**
+ * The refusal carries a code as well as the sentence, so the app can open the
+ * invite-code field instead of only printing the text (row 319: „with no link,
+ * it sees the invite-code field, never a dead end").
+ */
+export const INVITATION_REQUIRED_CODE = 'invitation_required';
+
+export class InvitationRequiredError extends Error {
+  readonly code = INVITATION_REQUIRED_CODE;
+
+  constructor() {
+    super(ERR_INVITATION_REQUIRED);
+    this.name = 'InvitationRequiredError';
+  }
+}
+
 const ERR_PHONE_NOT_VERIFIED =
   'შენი ნომერი ჯერ დადასტურებული არ არის: ჯერ შენს ნომერზე გამოგზავნილი კოდი შეიყვანე და მერე ' +
   'გააგრძელე. (მომწვევის ნომერს დადასტურება არ სჭირდება.)';
@@ -116,6 +132,24 @@ async function markPhoneVerified(phone: string, actionType: string): Promise<voi
      ON CONFLICT (phone_digits, action_type) DO UPDATE SET verified_at = NOW()`,
     [phoneDigits(phone), actionType],
   );
+}
+
+/**
+ * Row 319: is there a fresh verification, WITHOUT spending it. The login gate
+ * asks this first, so a refusal leaves the code valid for its ten minutes and
+ * the person can add an invite code and try again instead of waiting out the
+ * hourly send cap.
+ */
+async function hasPhoneVerification(phone: string, actionTypes: string[]): Promise<boolean> {
+  const result = await query(
+    `SELECT 1 FROM phone_verifications
+     WHERE phone_digits = $1
+       AND action_type = ANY($2)
+       AND verified_at > NOW() - INTERVAL '${VERIFICATION_TTL_MINUTES} minutes'
+     LIMIT 1`,
+    [phoneDigits(phone), actionTypes],
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 async function consumePhoneVerification(phone: string, actionTypes: string[]): Promise<boolean> {
@@ -574,7 +608,68 @@ export async function registerUser(
   }
 }
 
-export async function completeLogin(phone: string): Promise<{ token: string; isNewUser: boolean }> {
+/** What an invite link or typed code carried to the login screen (row 319). */
+export interface LoginInvitation {
+  readonly referralCode?: string;
+  readonly referralPhone?: string;
+}
+
+const LOGIN_VERIFICATION_TYPES = ['AUTH', 'RECOVER', 'REGISTER'];
+const INVITE_QUERY_TIMEOUT_MS = 5_000;
+
+/**
+ * ROW 319 — AN OLD ALLY NUMBER ARRIVING WITH AN INVITATION.
+ *
+ * 62,163 old Ally accounts hold a phone number. Registration refuses them
+ * („already registered") and sends them here, and until today this route took
+ * no invite code at all — so the gate told a person holding an invitation that
+ * they needed one. Misho, 30 September: the invitation counts, credited to the
+ * person who sent it, with the same twenty free days as any other invitation.
+ *
+ * Only a PERSON's invitation opens it: the same resolution registration uses,
+ * and nothing that resolves no inviter.
+ */
+async function resolveLoginInvitation(
+  userId: number,
+  phone: string,
+  invite: LoginInvitation,
+): Promise<EligibilityCheck | null> {
+  if (!invite.referralCode?.trim() && !invite.referralPhone?.trim()) return null;
+  const gate = await checkRegistrationEligibility(phone, invite.referralPhone, invite.referralCode);
+  if (!gate.eligible || gate.inviterUserId === undefined) return null;
+  if (String(gate.inviterUserId) === String(userId)) return null;
+  return gate;
+}
+
+/** Records the inviter once and grants the invitation's free days once. */
+async function creditLoginInvitation(
+  userId: number,
+  phone: string,
+  gate: EligibilityCheck,
+): Promise<void> {
+  const updated = await query<{ invite_cohort: string | null }>(
+    `UPDATE "User"
+        SET "inviterReferralUserId" = COALESCE("inviterReferralUserId", $2), "updatedAt" = NOW()
+      WHERE id = $1
+      RETURNING invite_cohort`,
+    [userId, gate.inviterUserId],
+    INVITE_QUERY_TIMEOUT_MS,
+  );
+  // A second login through the same link must not grant the days twice.
+  if (updated.rows[0]?.invite_cohort == null) {
+    await grantWhateverFreePeriodIsOwed(userId, normalizePhone(phone), gate);
+  }
+  // No phone and no code in the line (D149): the two account ids are enough.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[login] account ${userId} admitted by invitation from account ${gate.inviterUserId} (row 319)`,
+  );
+}
+
+export async function completeLogin(
+  phone: string,
+  invite: LoginInvitation = {},
+): Promise<{ token: string; isNewUser: boolean }> {
   // Same format-independent compare as registration — a login with a different
   // phone format must find the EXISTING user, never mint a new one.
   /**
@@ -639,40 +734,48 @@ export async function completeLogin(phone: string): Promise<{ token: string; isN
   // possession of this phone within the TTL — so none of them may strand a
   // real person on the wrong screen (the register/login mirror of the 13 Aug
   // registration bounce).
-  if (!(await consumePhoneVerification(phone, ['AUTH', 'RECOVER', 'REGISTER']))) {
+  if (!(await hasPhoneVerification(phone, LOGIN_VERIFICATION_TYPES))) {
     throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
 
   const userId = result.rows[0].id;
-  if (!result.rows[0].belongs_to_netai) {
-    /**
-     * THE GATE. Registered as §34 of `ADMIN_WRITE_OPERATIONS.md` BEFORE it was
-     * written, because it refuses real people entry to the product and the way
-     * to switch it off has to exist before the thing it switches off.
-     *
-     * IT SHIPS OFF. `netai_invite_only_login` defaults to false and turning it
-     * back off is one UPDATE — the gate writes nothing, so there is no state
-     * to restore afterwards.
-     *
-     * ⚠️ THE CONDITION IS „HAS NEVER OPENED NETAI", NOT THE FLAG, and the
-     * difference is the whole safety of this:
-     *
-     *     hasAccessToAlly = false, never opened Netai    62,163   the target
-     *     hasAccessToAlly = false, USES NETAI TODAY          35   Lika among them
-     *
-     * `hasAccessToAlly` is the ADMIN-LOGIN flag. Keying on it would refuse the
-     * second most active person in the product at her next login and tell her
-     * she needs an invitation to something she has used for weeks. `belongs_to_netai`
-     * is read from `threads` two lines above, and there is no account anywhere
-     * with messages or goals but no thread — so the two groups separate cleanly.
-     */
-    if (await isLoginInviteOnlyEnabled()) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[login] account ${userId} REFUSED: never registered through Netai and never used it, gate on`,
-      );
-      throw new Error(ERR_INVITATION_REQUIRED);
-    }
+  /**
+   * THE GATE. Registered as §34 of `ADMIN_WRITE_OPERATIONS.md` BEFORE it was
+   * written, because it refuses real people entry to the product and the way
+   * to switch it off has to exist before the thing it switches off.
+   *
+   * IT SHIPS OFF. `netai_invite_only_login` defaults to false and turning it
+   * back off is one UPDATE — the gate writes nothing, so there is no state
+   * to restore afterwards.
+   *
+   * ⚠️ THE CONDITION IS „HAS NEVER OPENED NETAI", NOT THE FLAG, and the
+   * difference is the whole safety of this:
+   *
+   *     hasAccessToAlly = false, never opened Netai    62,163   the target
+   *     hasAccessToAlly = false, USES NETAI TODAY          35   Lika among them
+   *
+   * `hasAccessToAlly` is the ADMIN-LOGIN flag. Keying on it would refuse the
+   * second most active person in the product at her next login and tell her
+   * she needs an invitation to something she has used for weeks. `belongs_to_netai`
+   * is read from `threads` two lines above, and there is no account anywhere
+   * with messages or goals but no thread — so the two groups separate cleanly.
+   */
+  const gateOn = !result.rows[0].belongs_to_netai && (await isLoginInviteOnlyEnabled());
+  const invitation = gateOn ? await resolveLoginInvitation(userId, phone, invite) : null;
+  if (gateOn && invitation === null) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[login] account ${userId} REFUSED: never registered through Netai and never used it, gate on`,
+    );
+    // Row 319: the verification is NOT spent, so adding a code needs no new SMS.
+    throw new InvitationRequiredError();
+  }
+  if (!(await consumePhoneVerification(phone, LOGIN_VERIFICATION_TYPES))) {
+    throw new Error(ERR_PHONE_NOT_VERIFIED);
+  }
+  if (invitation !== null) await creditLoginInvitation(userId, phone, invitation);
+
+  if (!result.rows[0].belongs_to_netai && !gateOn) {
     // An account that existed before tonight, opening Netai for the first
     // time. If somebody invited them, that invitation cannot be credited by
     // this route — see the comment above — so at minimum it must be readable.

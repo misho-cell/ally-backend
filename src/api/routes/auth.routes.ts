@@ -7,6 +7,7 @@ import {
   registerUser,
   adminLogin,
   completeLogin,
+  InvitationRequiredError,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
 import { recordLinkOpened, recordLinkShared } from '../../services/referralLink.service';
@@ -202,10 +203,21 @@ authRouter.post(
     }
 
     try {
-      const { phone } = req.body as { phone: string };
-      const result = await completeLogin(phone);
+      const { phone, referralPhone } = req.body as { phone: string; referralPhone?: unknown };
+      // Row 319: an invite link reaches the LOGIN screen too, because an old
+      // Ally number is sent here by registration. Same keys as /register.
+      const result = await completeLogin(phone, {
+        referralCode: referralCodeFrom(req.body).code,
+        referralPhone: typeof referralPhone === 'string' ? referralPhone : undefined,
+      });
       res.status(200).json({ success: true, data: result });
     } catch (error) {
+      if (error instanceof InvitationRequiredError) {
+        // The code lets the app open the invite-code field; the sentence is
+        // still what it prints.
+        res.status(400).json({ success: false, error: error.message, reason: error.code });
+        return;
+      }
       const message = error instanceof Error ? error.message : 'შესვლა ვერ მოხერხდა';
       res.status(400).json({ success: false, error: message });
     }

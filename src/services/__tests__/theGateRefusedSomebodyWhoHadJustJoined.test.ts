@@ -106,9 +106,12 @@ describe('one definition, two callers', () => {
 
 describe('the gate itself', () => {
   it('still refuses only when the flag is on', () => {
-    const gate = SOURCE.slice(SOURCE.indexOf('if (!result.rows[0].belongs_to_netai)'));
-
-    expect(gate.slice(0, 2600)).toContain('if (await isLoginInviteOnlyEnabled())');
+    // Row 319 reshaped it: the flag is read once, and a refusal needs both the
+    // flag and no invitation.
+    expect(SOURCE).toContain(
+      'const gateOn = !result.rows[0].belongs_to_netai && (await isLoginInviteOnlyEnabled());',
+    );
+    expect(SOURCE).toContain('if (gateOn && invitation === null) {');
   });
 
   /** A refused person should be able to tell what happened from the log line. */

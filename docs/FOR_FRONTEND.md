@@ -202,3 +202,31 @@ browser that is simply never coming back and therefore can never name anything.
 
 Nothing about the notification permission prompt, and nothing about row 111.
 This is one line in whatever code already runs on app open.
+
+## 30 September, afternoon — row 319: an invite link on the LOGIN screen
+
+An old Ally number that opens a member's invite link is sent to login by
+registration („already registered"), and until today `/auth/complete-login`
+took no invite code — so the gate told a person holding an invitation that
+they needed one, and the code they had just typed was spent, so the retry hit
+the hourly SMS cap. Misho's decision: the invitation counts, credited to the
+person who sent it, with the same 20 free days.
+
+**Backend, live with this note:**
+
+- `POST /auth/complete-login` now accepts the SAME invite keys as `/register`:
+  `referralCode` (also `code` or `ref`) and `referralPhone`. Send whatever the
+  `/join?ref=…` link carried — on login exactly as on register.
+- A refusal is `400 { success: false, error: "<Georgian sentence>", reason:
+  "invitation_required" }`. Branch on `reason`, not on the text.
+- **The refusal no longer spends the verification.** Within its 10 minutes the
+  person can type an invite code and call `/auth/complete-login` again with
+  `referralCode` — no new SMS.
+
+**The ask:**
+
+1. On the login path, pass the link's code in the `/auth/complete-login` body,
+   the way `/register` already gets it.
+2. On `reason: "invitation_required"`, show the invite-code field under the
+   message and resend `/auth/complete-login` with `{ phone, referralCode }`.
+   Never a dead end.
