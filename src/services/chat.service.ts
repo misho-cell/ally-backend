@@ -265,6 +265,7 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices } from './askOpening';
+import { listMyContacts } from './tools/listMyContacts';
 import {
   RULE_273_EACH_ANSWER_ONCE,
   RULE_280_WEB_LEADS_ARE_PEOPLE,
@@ -2710,6 +2711,29 @@ const GET_GROUP_CONNECTORS_TOOL: AnthropicTool = {
       limit: { type: 'number', description: 'How many to return (default 10)' },
     },
     required: ['group_tag'],
+  },
+};
+
+// The seat's 864, item 7: „ask all my contacts" had no way to see them.
+const LIST_MY_CONTACTS_TOOL: AnthropicTool = {
+  name: 'list_my_contacts',
+  description:
+    "The owner's OWN saved contacts — use when they say „ask all my contacts“, „everyone I " +
+    'have“, or name nobody, instead of asking them to type the names. Netai members come ' +
+    'first: only a member can be asked (ask_contact takes the phone from here). Returns the ' +
+    'true `total` and `members_total` beside the page shown, so never call a phonebook small ' +
+    'because one page is. A row with `name: null` and `saved_as` is a contact saved only as ' +
+    'that label — say „your contact saved as 💙".',
+  input_schema: {
+    type: 'object',
+    properties: {
+      members_only: {
+        type: 'boolean',
+        description: 'true to list only contacts who are on Netai (the ones an ask can reach).',
+      },
+      limit: { type: 'number', description: 'How many to show, up to 100 (default 50).' },
+    },
+    required: [],
   },
 };
 
@@ -6848,6 +6872,11 @@ async function executeToolCall(
             share_note: invite.kind === 'wake' ? WAKE_SHARE_NOTE : INVITE_SHARE_NOTE,
           };
     }
+    case 'list_my_contacts':
+      return listMyContacts(userId, {
+        limit: input['limit'],
+        membersOnly: input['members_only'] === true,
+      });
     case 'get_invite_link': {
       const invite = await getInviteLink(userId);
       // Ticket 17 Task 39: the sendable text rides the run to run_complete, so
@@ -9680,6 +9709,7 @@ export function toolsForRun<T extends { name: string }>(
  * to actually do, rather than a claim about code nobody can reach.
  */
 export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
+  LIST_MY_CONTACTS_TOOL,
   GET_CONTACT_FULL_PROFILE_TOOL,
   UPDATE_USER_PROFILE_TOOL,
   SAVE_PRIVATE_CONTEXT_TOOL,

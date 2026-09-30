@@ -25,6 +25,8 @@ import * as path from 'path';
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
   present_choices: 'renders tappable UI buttons — meaningless outside the app',
+  list_my_contacts:
+    'lists a whole phonebook page; exposing that to external connectors is a separate privacy decision (30 Sep)',
   web_search: 'the MCP caller (Claude itself) already has its own web search',
   fetch_page: 'the MCP caller (Claude itself) already has its own page-fetch',
   get_contact_count: 'merged into get_network_stats on the connector',
