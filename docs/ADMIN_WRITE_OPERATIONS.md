@@ -5069,3 +5069,23 @@ The 402 the tester saw at 11:56 was the wall working, not a fault.
 * **§65** 12:24 UTC — `{"seat":171871,"phone":"+12025550150","name":"ᲗᲐᲛᲐᲠ ᲒᲐᲛᲝᲒᲝᲜᲘᲚᲘ","tag":"fictional mtavruli"}`. First attempt, no refusal.
 * **§66** 12:28 UTC — `{"seat":171872,"phone":"+12025550151","name":"Netai Test 12","tag":"fictional never written"}`. Third attempt; the two refusals are written up above.
 * **§67** 12:27 UTC — `{"user_id":"171871","adjusted_by":200,"balance":200}`. Second attempt, after the route correction above. Balance was 0 before and is 200 after, read back from the reply rather than assumed.
+
+## §68 — 1,000 TOKENS TO ACCOUNT 172662 (Ninia's brother)
+
+**Authorised by Misho, 30 September, directly in the session:** „… ამ ნომერს
+1000 ტოკენი დაუმატე რა" (the number is the one on account 172662; not written
+here, D149).
+
+**Why:** the account ran through its 120-token trial grant and a 250-token
+admin top-up in 20 messages on 30 Sep (analysis in the session: most of the
+cost was the system-prompt cache being re-written on every message, fixed in
+`f34ea7e`).
+
+```
+ROUTE   POST /admin/users/172662/tokens        (§57, requireAdminRole)
+BODY    { "tokens": 1000, "note": "Misho, 30 Sep: 1000 tokens for 172662" }
+UNDO    POST /admin/users/172662/tokens
+        { "tokens": -1000, "note": "undo §68" }
+```
+
+The reply carries `was` and `balance`; both are recorded below once run.
