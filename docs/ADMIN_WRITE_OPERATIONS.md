@@ -5155,3 +5155,20 @@ UNDO    the function: CREATE OR REPLACE FUNCTION normalize_search_token with
 `idx_user_name_norm_trgm` 3,961 ms, `idx_user_alias_norm_trgm` 185,193 ms,
 `idx_user_tags_norm_trgm` 223,796 ms, done 14:23:35. All three `indisvalid =
 true`. No deploy ran during it (a restart would have aborted it).
+
+## §71 — §60 IN BULK: A SEAT'S PHONEBOOK IN ONE CALL (row 321 on a seat)
+
+**Why:** row 321 (Giorgi's lawyer search timing out on 1,177 contacts) can only
+be proven on a phonebook that size, and §60 adds one contact per call. Nothing
+new reaches anybody: the same rules as §60 — test seats only, reserved
+fictional numbers only, a batch refused WHOLE if any number belongs to an
+account — asked before anything is written, then one transaction.
+
+```
+ROUTE   POST /admin/test-accounts/:id/contacts/bulk   (requireAdminRole)
+BODY    { "contacts": [ { "phone": "+447700900000", "name": "…", "tag": "…" }, … ] }
+        at most 1,100 — every reserved number there is
+UNDO    DELETE FROM "UserTags"  WHERE "contactId" = <seat> AND source = 'USER_CREATED'
+          AND phone = ANY(<the batch's phones>);
+        DELETE FROM "UserAlias" WHERE "contactId" = <seat> AND phone = ANY(<the batch's phones>);
+```

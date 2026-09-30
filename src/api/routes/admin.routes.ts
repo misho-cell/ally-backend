@@ -109,6 +109,7 @@ import {
 } from '../../services/threads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
+import { addSeatContactsBulk, BulkContactIn } from '../../services/seatContactsBulk.service';
 import {
   previewRedelivery,
   redeliverAcceptedIntroduction,
@@ -2177,6 +2178,46 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §60 in bulk (row 321 on a seat): up to every reserved fictional number in one
+ * call, all-or-nothing, the same refusals as the single route above.
+ */
+adminRouter.post(
+  '/test-accounts/:id/contacts/bulk',
+  param('id').isInt({ min: 1 }),
+  body('contacts').isArray({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'contacts must be a non-empty array' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { contacts } = req.body as { contacts: BulkContactIn[] };
+    try {
+      const result = await addSeatContactsBulk(seatId, contacts);
+      if (!result.ok) {
+        res.status(400).json({
+          success: false,
+          error: result.refusal,
+          ...(result.index !== undefined && { index: result.index }),
+          ...(result.detail !== undefined && { detail: result.detail }),
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-contact] admin ${(req as AuthenticatedRequest).user.userId} added ` +
+          `${result.added} contacts to seat ${seatId} in bulk`,
+      );
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-contact-bulk]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
