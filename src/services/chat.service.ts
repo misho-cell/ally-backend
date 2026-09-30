@@ -86,6 +86,7 @@ import {
   QuoteGuarantee,
   TaskAsk,
   IncomingAsk,
+  answerAskTapAtOnce,
   noteDeclineIfButtonPressed,
 } from './taskAsks.service';
 import {
@@ -264,7 +265,7 @@ import {
   alreadyStoppedLine,
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
-import { allDeclineChoices } from './askOpening';
+import { allDeclineChoices, allLaterChoices, allYesChoices } from './askOpening';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
   joinStablePrompt,
@@ -3207,6 +3208,8 @@ export async function keepUserMessage(
     // later settles on as the answer's wording. Fire-and-forget: a person's
     // message must not fail because a diagnostic column could not be written.
     void noteDeclineIfButtonPressed(threadId, message);
+    // ROW 300: a „yes" or „later" tap is told to the asker at once, once.
+    void answerAskTapAtOnce(threadId, message);
     return true;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -3618,6 +3621,11 @@ function resolvePendingRequests(
 //
 // The remember offer (D120) moves into the line that says it went, as the
 // tool already says: the answer is never held back to ask about it.
+/** A button's sentence in every language, as the prompt quotes it. */
+function quotedChoices(choices: readonly string[]): string {
+  return choices.map((c) => `„${c}"`).join(' / ');
+}
+
 export function buildIncomingAskSection(ask: IncomingAsk): string {
   const from = ask.from_name ?? 'Netai-ს მომხმარებელი';
   return (
@@ -3625,11 +3633,9 @@ export function buildIncomingAskSection(ask: IncomingAsk): string {
     `${from} გეკითხება: "${ask.question}"\n` +
     `- ეს საუბარი მხოლოდ შენსა და მომხმარებელს შორისაა. **ვერაფერი გადადის კითხვის ავტორთან ავტომატურად** — არც პირველი შეტყობინება, არც სხვა. გადაცემა ხდება მხოლოდ send_answer_to_asker-ით, შენ რომ გამოიძახებ.\n` +
     `- ნათელი პასუხი — სახელი, „კი", დრო, ადგილი, რეკომენდაცია, დაკავშირების შეთავაზება („ჩემი კონტაქტია, დაგაკავშირებ"), უარი მისივე სიტყვებით („სამწუხაროდ არავის ვიცნობ"), ან შეკითხვა კითხვის ავტორისთვის — გაგზავნე ახლავე send_answer_to_asker-ით confirmed=true, ზუსტად ისე, როგორც დაწერა — მხოლოდ აშკარა შეცდომა გაასწორე (D255, D256): დრაფტის ჩვენების, „გავუგზავნო?"-ს, ღილაკების და მის მიერ არმოთხოვნილი relay_ask-ის გარეშე. მერე ერთი ხაზით უთხარი, რომ გადაეცა.\n` +
-    `- უარის ღილაკი (${allDeclineChoices()
-      .map((c) => `„${c}"`)
-      .join(
-        ' / ',
-      )}) მისი საკუთარი დაჭერაა და თავისთავად საბოლოო პასუხია: გაგზავნე ახლავე ზუსტად ეს ტექსტი confirmed=true-ით, „ვაცნობო?"-ს გარეშე, და ერთი თბილი ხაზით უთხარი, რომ გადაეცა.\n` +
+    `- უარის ღილაკი (${quotedChoices(allDeclineChoices())}) მისი საკუთარი დაჭერაა და თავისთავად საბოლოო პასუხია: გაგზავნე ახლავე ზუსტად ეს ტექსტი confirmed=true-ით, „ვაცნობო?"-ს გარეშე, და ერთი თბილი ხაზით უთხარი, რომ გადაეცა.\n` +
+    `- „კი" ღილაკი (${quotedChoices(allYesChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ დაეხმარება. ჯერ არაფერი გაგზავნო — ერთი მოკლე ხაზით ჰკითხე, რა გადავცე (სახელი, დეტალი), და მხოლოდ მისი პასუხის შემდეგ გამოიძახე send_answer_to_asker.\n` +
+    `- „მოგვიანებით" ღილაკი (${quotedChoices(allLaterChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ მოგვიანებით უპასუხებს, და ერთ შეხსენებას 24 საათში თვითონ გაუგზავნის. არაფერი გაგზავნო, არაფერი ჰკითხო — ერთი მოკლე თბილი ხაზით დაუდასტურე.\n` +
     `- ჯერ ერთი ხაზით აზრი აჩვენე ერთი ღილაკით და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მხოლოდ მაშინ, როცა პასუხი მესამე ადამიანის პირად დეტალებს ამხელს (ჯანმრთელობა, ოჯახი, ფული — არა უბრალოდ ვინ არის ან რას საქმიანობს), ან საკითხი ნაზია.\n` +
     `- მსგავს კითხვებზე მომავალში მის მაგივრად პასუხის შეთავაზება (D120) იმავე ხაზში გააკეთე, რომელიც ამბობს რომ გადაეცა — პასუხს ამის გამო არასდროს დააყოვნო. მისი „კი" = შემდეგ ასეთ პასუხზე send_answer_to_asker remember_for_similar=true და kind (ერთი სტრიქონი, რა კითხვებს ფარავს). list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
     `- გასაგზავნ ტექსტში არასდროს ჩასვა სახელი ან დეტალი, რომელიც მომხმარებელს არ უთქვამს.\n` +

@@ -29,7 +29,10 @@ import {
   askCancelledNote,
   bridgeThanks,
   buildAskOpening,
-  declineChoice,
+  askChoices,
+  AskTap,
+  askTapLineForAsker,
+  askTapOf,
   isDeclineChoice,
   unknownSenderName,
 } from './askOpening';
@@ -1163,8 +1166,8 @@ export async function createAsk(
   /**
    * ROW 274 — the decline arrives with the question, not after it.
    *
-   * One button, and only one: there is no „yes" here because saying yes is
-   * answering, and the reader can already do that by typing. What they had no
+   * ROW 300 made it three: yes / decline / later (see `askChoices`). What
+   * follows is why the decline came first. What they had no
    * way to do was say NO in a form the product could record — so of 92 answers
    * on the live base, about 8 READ as refusals and none of them counted as
    * one. „About" was the whole problem.
@@ -1185,9 +1188,15 @@ export async function createAsk(
    * sentence instead of tapping it lands in the same place — and the string
    * compare on this side catches both. The two paths agree by construction.
    */
-  await saveThreadMessage(askThreadId, toUserId, 'assistant', opening, 'message', null, [
-    declineChoice(language),
-  ]);
+  await saveThreadMessage(
+    askThreadId,
+    toUserId,
+    'assistant',
+    opening,
+    'message',
+    null,
+    askChoices(language),
+  );
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
   // last one. The old comment here said „their last reply closed the previous
@@ -2737,6 +2746,8 @@ const DUPLICATE_ASK_WINDOW_SECONDS = 600;
 
 // One polite reminder per unanswered ask, after this long.
 const ASK_REMINDER_AFTER_HOURS = 48;
+// Row 300: after a „later" tap, the one reminder comes this long after the tap.
+const LATER_REMINDER_AFTER_HOURS = 24;
 
 /**
  * ELEVEN REAL PEOPLE HAVE HAD THIS ON A LOCK SCREEN AT NIGHT. THREE AT FIVE IN
@@ -2825,7 +2836,12 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
      WHERE id IN (
        SELECT id FROM task_asks
        WHERE status = 'sent' AND reminded_at IS NULL
-         AND created_at < NOW() - INTERVAL '${ASK_REMINDER_AFTER_HOURS} hours'
+         -- ROW 300: a „later" tap moves the one reminder to 24 hours after
+         -- the tap; an ask nobody tapped keeps its 48 hours from the question.
+         AND ((later_at IS NULL
+               AND created_at < NOW() - INTERVAL '${ASK_REMINDER_AFTER_HOURS} hours')
+           OR (later_at IS NOT NULL
+               AND later_at < NOW() - INTERVAL '${LATER_REMINDER_AFTER_HOURS} hours'))
        ORDER BY created_at
        LIMIT $1
      )
@@ -2941,4 +2957,77 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
     // eslint-disable-next-line no-console
     console.error('[decline] could not record a refusal:', (err as Error).message);
   }
+}
+
+/**
+ * ROW 300 — „YES" AND „LATER" ARE TOLD TO THE ASKER AT ONCE, FROM THE TAP.
+ *
+ * Same reasoning as the decline above: the tap is what the person did, and the
+ * model's later wording is not. Before this, a reader who pressed nothing but
+ * meant „yes, give me a day" left the asker looking at silence.
+ *
+ * ONCE PER ASK. The claim and the stamp are one statement guarded by the
+ * column being NULL, so a second tap — or the same tap on two devices — finds
+ * nothing to claim and writes nothing.
+ *
+ * „Later" also re-times the one reminder: it clears `reminded_at` so the
+ * sweep sends a single reminder 24 hours after the tap (see
+ * `sendDueAskReminders`). Because `later_at` is stamped only once, that can
+ * happen only once.
+ */
+export async function answerAskTapAtOnce(threadId: number, message: string): Promise<void> {
+  const tap = askTapOf(message);
+  if (tap !== AskTap.Yes && tap !== AskTap.Later) return;
+  try {
+    const claimed = await claimAskTap(threadId, tap);
+    if (claimed === null || claimed.task_thread_id === null) return;
+    const language = await userLanguage(String(claimed.from_user_id));
+    const readerName = claimed.reader_name?.trim() || unknownSenderName(language);
+    await saveThreadMessage(
+      claimed.task_thread_id,
+      claimed.from_user_id,
+      'assistant',
+      askTapLineForAsker(tap, language, readerName),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ask-tap] could not tell the asker about a „${tap}" tap:`,
+      (err as Error).message,
+    );
+  }
+}
+
+interface ClaimedTap {
+  readonly from_user_id: number;
+  readonly task_thread_id: number | null;
+  readonly reader_name: string | null;
+}
+
+/** The latest unanswered ask on the thread — the one a tap is about. */
+const LIVE_ASK_ON_THREAD = `(SELECT id FROM task_asks
+                              WHERE ask_thread_id = $1 AND status = 'sent'
+                              ORDER BY id DESC LIMIT 1)`;
+
+const CLAIMED_TAP_COLUMNS = `ta.from_user_id,
+  (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
+  (SELECT u.name FROM "User" u WHERE u.id = ta.to_user_id) AS reader_name`;
+
+/** One fixed statement per tap; the column being NULL is the once-only guard. */
+const CLAIM_TAP_SQL: Readonly<Record<AskTap.Yes | AskTap.Later, string>> = {
+  [AskTap.Yes]: `UPDATE task_asks ta SET offered_help_at = NOW()
+                  WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.offered_help_at IS NULL
+                  RETURNING ${CLAIMED_TAP_COLUMNS}`,
+  [AskTap.Later]: `UPDATE task_asks ta SET later_at = NOW(), reminded_at = NULL
+                    WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.later_at IS NULL
+                    RETURNING ${CLAIMED_TAP_COLUMNS}`,
+};
+
+/** Stamps the tap on the latest unanswered ask of this thread, if it was not stamped already. */
+async function claimAskTap(
+  threadId: number,
+  tap: AskTap.Yes | AskTap.Later,
+): Promise<ClaimedTap | null> {
+  const result = await query<ClaimedTap>(CLAIM_TAP_SQL[tap], [threadId], ASK_QUERY_TIMEOUT_MS);
+  return result.rows[0] ?? null;
 }

@@ -69,9 +69,9 @@ describe('what the ask carries, and what the answer records', () => {
   const recordAnswer = asks.slice(asks.indexOf('export async function recordAskAnswer'));
   const answerSql = recordAnswer.slice(recordAnswer.indexOf('UPDATE task_asks'));
 
-  /** One button. Saying yes is answering, which they can already do by typing. */
+  /** Row 300: the decline is one of three buttons, all offered with the question. */
   it('offers the decline with the question itself', () => {
-    expect(asks).toContain('declineChoice(language)');
+    expect(asks).toContain('askChoices(language)');
     expect(asks).toContain('saveThreadMessage(');
   });
 
@@ -93,9 +93,8 @@ describe('what the ask carries, and what the answer records', () => {
    */
   it('goes to every recipient, not only to seats', () => {
     expect(asks).not.toContain('recipientIsATestSeat');
-    expect(asks).toContain(
-      "await saveThreadMessage(askThreadId, toUserId, 'assistant', opening, 'message', null, [",
-    );
+    const offer = asks.slice(asks.indexOf('await saveThreadMessage(\n    askThreadId,'));
+    expect(offer.slice(0, 200)).toContain('askChoices(language)');
   });
 
   /**

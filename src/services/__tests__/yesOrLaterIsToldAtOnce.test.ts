@@ -1,0 +1,175 @@
+jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../threads.service', () => ({
+  __esModule: true,
+  saveThreadMessage: jest.fn().mockResolvedValue(undefined),
+  createThread: jest.fn().mockResolvedValue({ id: 1 }),
+  userLanguage: jest.fn().mockResolvedValue('ka'),
+  threadLanguage: jest.fn().mockResolvedValue('ka'),
+}));
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { query } from '../../db/postgres/client';
+import { saveThreadMessage, userLanguage } from '../threads.service';
+import { answerAskTapAtOnce } from '../taskAsks.service';
+import { buildIncomingAskSection } from '../chat.service';
+import {
+  allLaterChoices,
+  allYesChoices,
+  askChoices,
+  AskTap,
+  askTapLineForAsker,
+  askTapOf,
+  declineChoice,
+  isDeclineChoice,
+} from '../askOpening';
+import { RunLanguage } from '../runLanguage';
+
+const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
+const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
+
+const LANGUAGES: readonly RunLanguage[] = ['en', 'ru', 'es', 'ka'];
+const ASK_THREAD = 27001;
+const GOAL_THREAD = 21504;
+const ASKER = 171937;
+
+const claims = (rows: unknown[]): void => {
+  mockQuery.mockResolvedValue({ rows, rowCount: rows.length } as never);
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockLanguage.mockResolvedValue('ka');
+});
+
+/**
+ * ROW 300 — THREE BUTTONS UNDER AN INCOMING ASK: YES / NO / LATER.
+ *
+ * The tester's case: a reader who could help but needed a day left the asker
+ * looking at silence that meant yes. Each tap is an exact string, like the
+ * decline, so the server acts on what the person pressed and never on a guess.
+ */
+describe('the three buttons', () => {
+  it('draws yes, decline, later — in that order, in every language', () => {
+    for (const language of LANGUAGES) {
+      const [yes, no, later] = askChoices(language);
+      expect(askTapOf(yes)).toBe(AskTap.Yes);
+      expect(no).toBe(declineChoice(language));
+      expect(askTapOf(later)).toBe(AskTap.Later);
+    }
+  });
+
+  it('keeps each label distinct, so no tap can be read as another', () => {
+    for (const choice of [...allYesChoices(), ...allLaterChoices()]) {
+      expect(isDeclineChoice(choice)).toBe(false);
+    }
+    expect(new Set([...allYesChoices(), ...allLaterChoices()]).size).toBe(LANGUAGES.length * 2);
+  });
+
+  it('reads nothing into words the person typed', () => {
+    for (const said of ['კი', 'yes', 'later', 'მოგვიანებით', '', '   ']) {
+      expect(askTapOf(said)).toBeNull();
+    }
+  });
+
+  it('matches a tap with stray spaces around it', () => {
+    expect(askTapOf(`  ${askChoices('ka')[2]} `)).toBe(AskTap.Later);
+  });
+});
+
+describe('the asker is told at once, once', () => {
+  it('writes „can help" into the goal thread, in the asker’s language', async () => {
+    claims([{ from_user_id: ASKER, task_thread_id: GOAL_THREAD, reader_name: 'Nino' }]);
+    mockLanguage.mockResolvedValue('en');
+
+    await answerAskTapAtOnce(ASK_THREAD, askChoices('ka')[0]);
+
+    expect(mockQuery.mock.calls[0][1]).toEqual([ASK_THREAD]);
+    expect(String(mockQuery.mock.calls[0][0])).toContain('offered_help_at IS NULL');
+    expect(mockSave).toHaveBeenCalledWith(
+      GOAL_THREAD,
+      ASKER,
+      'assistant',
+      askTapLineForAsker(AskTap.Yes, 'en', 'Nino'),
+    );
+  });
+
+  it('re-times the one reminder on „later"', async () => {
+    claims([{ from_user_id: ASKER, task_thread_id: GOAL_THREAD, reader_name: 'Nino' }]);
+
+    await answerAskTapAtOnce(ASK_THREAD, askChoices('en')[2]);
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('later_at = NOW(), reminded_at = NULL');
+    expect(sql).toContain('later_at IS NULL');
+    expect(mockSave).toHaveBeenCalledWith(
+      GOAL_THREAD,
+      ASKER,
+      'assistant',
+      askTapLineForAsker(AskTap.Later, 'ka', 'Nino'),
+    );
+  });
+
+  it('writes nothing when the tap was already recorded', async () => {
+    claims([]);
+
+    await answerAskTapAtOnce(ASK_THREAD, askChoices('ka')[0]);
+
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('names an unnamed reader the way the opening does', async () => {
+    claims([{ from_user_id: ASKER, task_thread_id: GOAL_THREAD, reader_name: null }]);
+    mockLanguage.mockResolvedValue('en');
+
+    await answerAskTapAtOnce(ASK_THREAD, askChoices('en')[0]);
+
+    expect(String(mockSave.mock.calls[0][3])).toContain('A Netai member');
+  });
+
+  it('never touches the database for an ordinary message or a decline', async () => {
+    await answerAskTapAtOnce(ASK_THREAD, 'ვიცნობ ერთ ადვოკატს');
+    await answerAskTapAtOnce(ASK_THREAD, declineChoice('ka'));
+
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('cannot fail the person’s message, and says so when it fails', async () => {
+    mockQuery.mockRejectedValue(new Error('timeout'));
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(answerAskTapAtOnce(ASK_THREAD, askChoices('ka')[2])).resolves.toBeUndefined();
+
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
+
+describe('the reminder and the reader’s own run', () => {
+  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('sends the one reminder 24 hours after a „later" tap, 48 after an untapped ask', () => {
+    const sweep = asks.slice(asks.indexOf('export async function sendDueAskReminders'));
+    expect(sweep.slice(0, 1600)).toContain('later_at IS NULL');
+    expect(sweep.slice(0, 1600)).toContain('LATER_REMINDER_AFTER_HOURS');
+    expect(asks).toContain('const LATER_REMINDER_AFTER_HOURS = 24;');
+  });
+
+  it('is hooked where the person’s own message is stored', () => {
+    const keep = chat.slice(chat.indexOf('export async function keepUserMessage'));
+    expect(keep.slice(0, 1100)).toContain('void answerAskTapAtOnce(threadId, message)');
+  });
+
+  it('tells the reader’s run what each tap already did', () => {
+    const section = buildIncomingAskSection({
+      id: 1,
+      question: 'ადვოკატს ხომ არ იცნობ?',
+      from_name: 'Giorgi',
+    } as Parameters<typeof buildIncomingAskSection>[0]);
+    for (const choice of [...allYesChoices(), ...allLaterChoices()]) {
+      expect(section).toContain(`„${choice}"`);
+    }
+  });
+});

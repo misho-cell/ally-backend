@@ -267,7 +267,97 @@ export function allDeclineChoices(): readonly string[] {
  * revised, which is the reader we were least sure about to begin with.
  */
 export function isDeclineChoice(answer: string): boolean {
+  return matchesAnyLanguage(DECLINE_CHOICE, answer);
+}
+
+/**
+ * ROW 300 — TWO MORE BUTTONS: „YES, I CAN HELP" AND „LATER".
+ *
+ * Row 274 said one button was enough because saying yes is answering. The
+ * tester showed the gap that left: a reader who CAN help but needs a day to
+ * find the number had no way to say so, and the asker sat looking at silence
+ * that meant yes. Both new taps are exact strings for the same reason the
+ * decline is — the server acts on what the person pressed, never on a guess
+ * about what their words meant.
+ *
+ * There is no „other" button: the text field is always there.
+ */
+const YES_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: 'Yes, I can help',
+  ru: 'Да, помогу',
+  es: 'Sí, puedo ayudar',
+  ka: 'კი, დაგეხმარები',
+};
+
+const LATER_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "I'll answer later",
+  ru: 'Отвечу позже',
+  es: 'Responderé más tarde',
+  ka: 'მოგვიანებით გიპასუხებ',
+};
+
+/** What a tap of one of our buttons means; `null` for anything the person typed. */
+export enum AskTap {
+  Yes = 'yes',
+  Decline = 'decline',
+  Later = 'later',
+}
+
+/** The three buttons under an incoming ask, in the order they are drawn. */
+export function askChoices(language: RunLanguage): readonly string[] {
+  return [YES_CHOICE, DECLINE_CHOICE, LATER_CHOICE].map((labels) => labels[language] ?? labels.ka);
+}
+
+/** Every language's „yes" button, for the prompt that must recognise a tap of it. */
+export function allYesChoices(): readonly string[] {
+  return Object.values(YES_CHOICE);
+}
+
+/** Every language's „later" button, for the prompt that must recognise a tap of it. */
+export function allLaterChoices(): readonly string[] {
+  return Object.values(LATER_CHOICE);
+}
+
+/** Which of our buttons this message is, in ANY language (see `isDeclineChoice`). */
+export function askTapOf(message: string): AskTap | null {
+  if (matchesAnyLanguage(YES_CHOICE, message)) return AskTap.Yes;
+  if (matchesAnyLanguage(DECLINE_CHOICE, message)) return AskTap.Decline;
+  if (matchesAnyLanguage(LATER_CHOICE, message)) return AskTap.Later;
+  return null;
+}
+
+/**
+ * The one line the ASKER gets the moment the reader taps „yes" or „later",
+ * in the asker's language. The answer itself still arrives the ordinary way;
+ * this only replaces silence with what the reader actually said.
+ */
+export function askTapLineForAsker(
+  tap: AskTap.Yes | AskTap.Later,
+  language: RunLanguage,
+  readerName: string,
+): string {
+  const lines: Readonly<Record<RunLanguage, string>> =
+    tap === AskTap.Yes
+      ? {
+          en: `${readerName} says they can help — the details are on their way.`,
+          ru: `${readerName} говорит, что может помочь — подробности скоро будут.`,
+          es: `${readerName} dice que puede ayudar — los detalles llegarán pronto.`,
+          ka: `${readerName} ამბობს, რომ დაგეხმარება — დეტალებს მალე მოგწერს.`,
+        }
+      : {
+          en: `${readerName} will answer later.`,
+          ru: `${readerName} ответит позже.`,
+          es: `${readerName} responderá más tarde.`,
+          ka: `${readerName} მოგვიანებით გიპასუხებს.`,
+        };
+  return lines[language] ?? lines.ka;
+}
+
+function matchesAnyLanguage(
+  labels: Readonly<Record<RunLanguage, string>>,
+  answer: string,
+): boolean {
   const said = (answer ?? '').trim();
   if (said === '') return false;
-  return Object.values(DECLINE_CHOICE).some((choice) => choice === said);
+  return Object.values(labels).some((choice) => choice === said);
 }
