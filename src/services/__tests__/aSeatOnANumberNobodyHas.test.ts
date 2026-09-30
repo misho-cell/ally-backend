@@ -67,10 +67,18 @@ describe('the number is earned, not chosen', () => {
     expect(await firstFreeFictionalPhone()).toBe('+12025550102');
   });
 
-  it('refuses rather than wandering outside the range when it is full', async () => {
+  /** Seat's 873: the first block filled up; the second reserved block follows it. */
+  it('moves on to the second reserved block when the first is full', async () => {
     const all = [];
     for (let slot = 100; slot <= 199; slot += 1) all.push({ phone: `+12025550${slot}` });
     mockQuery.mockResolvedValue(rows(all) as never);
+
+    expect(await firstFreeFictionalPhone()).toBe('+447700900000');
+  });
+
+  it('refuses rather than wandering outside the reserved ranges when both are full', async () => {
+    const { allFictionalNumbers } = await import('../fictionalNumbers');
+    mockQuery.mockResolvedValue(rows(allFictionalNumbers().map((phone) => ({ phone }))) as never);
 
     await expect(firstFreeFictionalPhone()).rejects.toBeInstanceOf(SeatCreationRefused);
   });

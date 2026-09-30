@@ -1,3 +1,4 @@
+import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { query } from '../db/postgres/client';
 import { updateTask } from './taskStore.service';
 
@@ -21,10 +22,6 @@ import { updateTask } from './taskStore.service';
  * reason nobody would find. The same shape is required here.
  */
 
-/** The same block every seat already lives in: 202-555-0100 … 0199. */
-const FICTIONAL_PREFIX = '+1202555';
-const FIRST_SLOT = 100;
-const LAST_SLOT = 199;
 const QUERY_TIMEOUT_MS = 8_000;
 const MAX_NAME = 80;
 const MAX_TAG = 40;
@@ -52,13 +49,7 @@ export type AddContactResult =
  * rather than a prefix test: „+1202555" alone would admit +12025551234, which
  * is somebody's number somewhere. The slot has to be in 100–199.
  */
-export function isFictionalNumber(phone: string): boolean {
-  if (!phone.startsWith(FICTIONAL_PREFIX)) return false;
-  const slot = phone.slice(FICTIONAL_PREFIX.length);
-  if (!/^\d{4}$/.test(slot)) return false;
-  const n = Number(slot);
-  return n >= FIRST_SLOT && n <= LAST_SLOT;
-}
+export { isFictionalNumber };
 
 /** Letters, digits and spaces — the shape `newMemberForGoal` will actually read. */
 export function isReadableTag(tag: string): boolean {
@@ -83,7 +74,7 @@ export async function addSeatContact(
   const cleanTag = (tag ?? '').trim();
 
   if (!isFictionalNumber(phone)) {
-    return { ok: false, refusal: 'not_a_fictional_number', detail: `${FICTIONAL_PREFIX}0100-0199` };
+    return { ok: false, refusal: 'not_a_fictional_number', detail: FICTIONAL_RANGES_TEXT };
   }
   if (cleanName === '' || cleanName.length > MAX_NAME) return { ok: false, refusal: 'bad_name' };
   if (!isReadableTag(cleanTag)) return { ok: false, refusal: 'bad_tag' };

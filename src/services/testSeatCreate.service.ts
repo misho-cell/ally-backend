@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
+import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { getCompositeKeysForPhones, getCompositeKeysForUsers } from './neo4j.keys';
 import { adjustTestAccountTokens } from './tokenWallet.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
@@ -49,15 +50,6 @@ import { grantWhateverFreePeriodIsOwed } from './auth.service';
  * treated as checked afterwards.
  */
 
-/**
- * The NANP range set aside for fiction: 555-0100 to 555-0199 on area code 202.
- * Every existing seat is in it (+1 202 555 0101 … 0111), so new ones continue
- * the same block rather than opening a second one somewhere else.
- */
-const FICTIONAL_PREFIX = '+1202555';
-const FIRST_SLOT = 100;
-const LAST_SLOT = 199;
-
 /** A seat's opening balance. A turn costs about twenty. */
 export const DEFAULT_SEAT_TOKENS = 500;
 
@@ -77,25 +69,12 @@ export interface NewTestSeat {
   readonly graph_edges: number;
 }
 
-function fictionalPhone(slot: number): string {
-  return `${FICTIONAL_PREFIX}0${String(slot)}`;
-}
-
 /**
- * Exactly one of the hundred slots in the fictional block — not „starts with
- * the prefix". A prefix test would accept `+1202555garbage` and write it into
- * somebody's phonebook as a contact, and a range reserved for fiction stops
- * protecting anybody the moment the check is sloppier than the range.
+ * Exactly one of the reserved fictional numbers — see fictionalNumbers.ts for
+ * the ranges and why the check is exact rather than a prefix test.
  */
 export function isFictionalSlot(phone: string): boolean {
-  const slot = Number(phone.slice(FICTIONAL_PREFIX.length));
-  return (
-    phone.startsWith(FICTIONAL_PREFIX) &&
-    phone.length === FICTIONAL_PREFIX.length + 4 &&
-    /^\d{4}$/.test(phone.slice(FICTIONAL_PREFIX.length)) &&
-    slot >= FIRST_SLOT &&
-    slot <= LAST_SLOT
-  );
+  return isFictionalNumber(phone);
 }
 
 /**
@@ -104,8 +83,7 @@ export function isFictionalSlot(phone: string): boolean {
  * statement, so the answer cannot be stale between the two questions.
  */
 export async function firstFreeFictionalPhone(): Promise<string> {
-  const candidates: string[] = [];
-  for (let slot = FIRST_SLOT; slot <= LAST_SLOT; slot += 1) candidates.push(fictionalPhone(slot));
+  const candidates = allFictionalNumbers();
 
   const taken = await query<{ phone: string }>(
     `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
@@ -120,7 +98,7 @@ export async function firstFreeFictionalPhone(): Promise<string> {
   const free = candidates.find((p) => !used.has(p));
   if (free === undefined) {
     throw new SeatCreationRefused(
-      `no free number left in ${FICTIONAL_PREFIX}0${FIRST_SLOT}–${LAST_SLOT} — every one is registered or saved in somebody's phonebook`,
+      `no free number left in ${FICTIONAL_RANGES_TEXT} — every one is registered or saved in somebody's phonebook`,
     );
   }
   return free;
@@ -468,8 +446,8 @@ async function resolvePhonebook(holds: readonly string[]): Promise<ReadonlyMap<s
        JOIN "User" u ON u.id = up."userId"
       WHERE up.phone = ANY($1)
         AND (EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = up."userId")
-             OR up.phone LIKE '${FICTIONAL_PREFIX}%')`,
-    [[...holds]],
+             OR up.phone = ANY($2))`,
+    [[...holds], [...holds].filter(isFictionalNumber)],
     SEAT_QUERY_TIMEOUT_MS,
   );
   const byPhone = new Map(known.rows.map((r) => [r.phone, r.name]));
