@@ -560,7 +560,7 @@ const ERR_NOT_FOUND =
   'მოთხოვნა არ არის.';
 const ERR_ALREADY_ANSWERED = 'ამ მოთხოვნაზე უკვე გაქვს პასუხი';
 
-interface RequestRow {
+export interface RequestRow {
   id: number;
   request_ref: string;
   requester_user_id: number;
@@ -615,7 +615,7 @@ async function loadRequestForMediator(
  * buttons in the channel refusal. The target's side had been localised that
  * morning; this side and the mediator's had not.
  */
-async function outcomeMessage(
+export async function outcomeMessage(
   req: RequestRow,
   action: IntroductionAction,
   response?: string,
@@ -640,7 +640,7 @@ async function outcomeMessage(
   );
 }
 
-interface AcceptOutcome {
+export interface AcceptOutcome {
   /** Extra lines appended to the requester's outcome message. */
   requesterExtra: string;
   /** Closing line for the mediator's own thread — what happens next. */
@@ -671,7 +671,7 @@ interface AcceptOutcome {
  * Degrades honestly when the target cannot be resolved: the requester is told
  * to get the contact from the mediator directly.
  */
-async function deliverAcceptOutcome(
+export async function deliverAcceptOutcome(
   req: RequestRow,
   mediatorName: string,
   channel: IntroChannel,

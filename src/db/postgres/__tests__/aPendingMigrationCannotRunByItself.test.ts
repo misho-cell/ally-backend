@@ -43,7 +43,7 @@ describe('a migration parked in pending/ cannot run by itself', () => {
   it('every parked migration names the commands that must run with it', () => {
     const parked = readdirSync(join(dir, 'pending')).filter((f) => f.endsWith('.sql'));
 
-    expect(parked.length).toBeGreaterThan(0);
+    // Empty is allowed: 184 was scheduled on 30 September and nothing else waits.
     for (const file of parked) {
       const sql = readFileSync(join(dir, 'pending', file), 'utf8');
       expect(sql).toMatch(/REINDEX INDEX CONCURRENTLY/);

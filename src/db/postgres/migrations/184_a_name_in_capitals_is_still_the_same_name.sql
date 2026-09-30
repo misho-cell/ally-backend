@@ -85,6 +85,14 @@
 --   REINDEX INDEX CONCURRENTLY idx_user_alias_norm_trgm;
 --   REINDEX INDEX CONCURRENTLY idx_user_tags_norm_trgm;
 --
+-- ⚠️ AND A THIRD, found when this was scheduled on 30 September: the function
+-- also backs idx_user_name_norm_trgm on "User".name. All three are rebuilt by
+-- POST /admin/maintenance/search-index-rebuild (searchIndexRebuild.service),
+-- which refuses to start until the live function folds capitals.
+--
+-- SCHEDULED 30 September on the founder's word (§70): moved out of pending/,
+-- so the next boot applies the function, and the rebuild follows it.
+--
 -- After BOTH have finished, and not before, the second-degree and by-country
 -- searches can be moved onto the normalized expression. Moving them first would
 -- close a casing hole by making every second-degree search slow, which is

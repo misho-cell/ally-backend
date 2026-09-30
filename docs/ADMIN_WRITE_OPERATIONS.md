@@ -5091,3 +5091,54 @@ UNDO    POST /admin/users/172662/tokens
 The reply carries `was` and `balance`; both are recorded below once run.
 
 **RUN, 30 September:** `{"user_id":"172662","was":0,"tokens":1000,"balance":1000}`.
+
+⚠️ Correction to §68's „Why": `f34ea7e` did not measurably lower the cache
+writes (15.4k per call before, 15.6–18.2k after, measured 30 Sep from
+`usage_events`). The main cost was the per-account part of the prompt
+throwing away the global head; that is `af738d6`, still being measured.
+
+## §69 — RE-DELIVER INTRODUCTION 1981 (row 316)
+
+**Authorised by Misho, 30 September, directly in the session:** „5 — კი"
+(to „Giorgi's introduction request 1981 never reached the lawyer — should I
+send it again by hand?").
+
+**Why:** request 1981 was accepted as „direct" on 29 Sep. The stale-row bug
+(fixed in `374f97c`) told the mediator his contact was not in his phonebook,
+told Giorgi the mediator had chosen to stay in the middle, and told the lawyer,
+a Netai member, nothing. This runs the same `deliverAcceptOutcome` a live
+accept uses, once, from the row as it stands. The lawyer gets his thread and
+push; Giorgi and the mediator each get the correct line, labelled „შესწორება".
+
+```
+ROUTE   POST /admin/introductions/1981/redeliver   (requireAdminRole)
+BODY    {}                    → dry run: what would happen, no number, no write
+BODY    { "confirm": true }   → delivers
+UNDO    none possible — messages to people cannot be unsent. The rows it
+        writes are three `conversations` rows and one `threads` row, listed
+        in the RUN line below so they can be hidden if ever needed.
+```
+
+## §70 — REBUILD THE THREE normalize_search_token INDEXES (row 278)
+
+**Authorised by Misho, 30 September, directly in the session:** „3 — გაუშვი
+ახლავე" (to „the index rebuild — when may I run it?").
+
+**Why:** migration 184 (moved out of `pending/` in the same commit) makes
+`normalize_search_token` fold Georgian capitals. PostgreSQL does not rebuild
+an expression index when its function changes, so each index on the function
+must be rebuilt right after the deploy. Measured before running: THREE indexes
+use it, not the two 184 named — `idx_user_name_norm_trgm` (on "User".name),
+`idx_user_alias_norm_trgm` (228 MB), `idx_user_tags_norm_trgm` (304 MB).
+Database 22 GB. Runs on the background pool, one at a time, CONCURRENTLY
+(no write lock).
+
+```
+ROUTE   POST /admin/maintenance/search-index-rebuild   (requireAdminRole)
+BODY    { "confirm": true }
+        → 409 until the live function folds capitals (i.e. until 184 booted)
+UNDO    the function: CREATE OR REPLACE FUNCTION normalize_search_token with
+        the pre-184 body (no inner translate), then the same three REINDEX.
+        A failed CONCURRENTLY leaves `<name>_ccnew` INVALID: DROP INDEX
+        CONCURRENTLY it, then retry.
+```

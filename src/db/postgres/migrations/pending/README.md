@@ -27,9 +27,14 @@ folder is where the first half waits until the second can follow it.
 ## How to run one
 
 1. Read the file. Every one in here states which indexes it invalidates and the
-   exact commands, in order.
-2. Run the `REINDEX INDEX CONCURRENTLY` commands it names, one at a time, and
-   wait for each.
-3. `git mv` the file up one level. The next deploy applies it.
+   exact commands, in order. Check `pg_indexes` for EVERY index built on the
+   function — 184 named two and there were three.
+2. `git mv` the file up one level. The next deploy applies the function.
+3. Right after that deploy, run the `REINDEX INDEX CONCURRENTLY` commands, one
+   at a time, and wait for each.
 
-Steps 2 and 3 in the other order is the failure this folder exists to prevent.
+⚠️ Corrected 30 September: this list used to put the REINDEX first. An index
+can only be rebuilt from what the function returns at that moment, so a
+rebuild before the function changes rebuilds the old output — 184's own text
+says so. The window between steps 2 and 3 is the one unavoidable gap: keep it
+to minutes.

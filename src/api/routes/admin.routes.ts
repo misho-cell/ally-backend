@@ -109,6 +109,12 @@ import {
 } from '../../services/threads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
+import {
+  previewRedelivery,
+  redeliverAcceptedIntroduction,
+  RedeliveryRefusal,
+} from '../../services/introRedelivery.service';
+import { RebuildRefusal, startSearchIndexRebuild } from '../../services/searchIndexRebuild.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
@@ -2043,6 +2049,88 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[intro-expiry]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §70 — rebuild the three indexes built on normalize_search_token (row 278),
+ * after migration 184 reached the live function. Answers at once; each index's
+ * duration, or the failure, is in the log.
+ */
+const REBUILD_REFUSALS: Readonly<Record<RebuildRefusal, string>> = {
+  already_running: 'a rebuild is already running',
+  function_not_folding: 'migration 184 is not live yet — the rebuild would keep the old output',
+};
+
+adminRouter.post(
+  '/maintenance/search-index-rebuild',
+  body('confirm').isBoolean(),
+  async (req: Request, res: Response) => {
+    if ((req.body as { confirm?: boolean }).confirm !== true) {
+      res.status(400).json({ success: false, error: 'send {"confirm":true} to start the rebuild' });
+      return;
+    }
+    const adminId = (req as AuthenticatedRequest).user.userId;
+    try {
+      const outcome = await startSearchIndexRebuild();
+      if (typeof outcome === 'string') {
+        res.status(409).json({ success: false, error: REBUILD_REFUSALS[outcome] });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[search-index] admin ${adminId} started the rebuild`);
+      res.status(202).json({ success: true, data: outcome });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[search-index]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §69 — re-deliver an accepted introduction that was told wrong (row 316).
+ * Without {"confirm":true} it only reads what would happen, and never returns
+ * a phone number.
+ */
+const REDELIVERY_REFUSALS: Readonly<Record<RedeliveryRefusal, { status: number; error: string }>> =
+  {
+    not_found: { status: 404, error: 'request not found' },
+    not_accepted: { status: 400, error: 'only an accepted request can be re-delivered' },
+    no_mediator: { status: 400, error: 'a direct request has no mediator side to re-deliver' },
+  };
+
+adminRouter.post(
+  '/introductions/:id/redeliver',
+  param('id').isInt({ min: 1 }),
+  body('confirm').optional().isBoolean(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    const requestId = Number(req.params.id);
+    const confirm = (req.body as { confirm?: boolean }).confirm === true;
+    const adminId = (req as AuthenticatedRequest).user.userId;
+    try {
+      const outcome = confirm
+        ? await redeliverAcceptedIntroduction(requestId)
+        : await previewRedelivery(requestId);
+      if (typeof outcome === 'string') {
+        const refusal = REDELIVERY_REFUSALS[outcome];
+        res.status(refusal.status).json({ success: false, error: refusal.error });
+        return;
+      }
+      if (confirm) {
+        // eslint-disable-next-line no-console
+        console.log(`[intro-redeliver] admin ${adminId} re-delivered request ${requestId}`);
+      }
+      res.status(200).json({ success: true, data: { dry_run: !confirm, ...outcome } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[intro-redeliver]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
