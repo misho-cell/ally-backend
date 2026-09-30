@@ -23,10 +23,18 @@ describe('the shared head of the system prompt is cached on its own', () => {
   it('sends three system blocks: head and account part cached, the clock after them', () => {
     const blocks = systemBlocks(joinSystemPrompt(joinStablePrompt(head, perAccount), clock));
     expect(blocks).toEqual([
-      { type: 'text', text: head, cache_control: { type: 'ephemeral' } },
+      // Misho, 30 Sep: the shared head lives an hour; the account part five minutes.
+      { type: 'text', text: head, cache_control: { type: 'ephemeral', ttl: '1h' } },
       { type: 'text', text: perAccount, cache_control: { type: 'ephemeral' } },
       { type: 'text', text: clock },
     ]);
+  });
+
+  /** The API refuses a longer-lived entry after a shorter one: the tools in front must match. */
+  it('gives the tools in front of the head the same hour', () => {
+    const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const tools = CHAT.slice(CHAT.indexOf('function toCachedTools'));
+    expect(tools.slice(0, 600)).toContain('cache_control: CACHE_ONE_HOUR');
   });
 
   it('keeps both breakpoints when there is no clock', () => {

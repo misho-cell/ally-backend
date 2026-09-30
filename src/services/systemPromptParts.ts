@@ -40,10 +40,27 @@ export const VOLATILE_MARKER = '\n\n<<<volatile-system-tail>>>\n\n';
  */
 export const GLOBAL_MARKER = '\n\n<<<global-system-head>>>\n\n';
 
+/**
+ * THE SHARED HEAD IS KEPT FOR AN HOUR — Misho's word, 30 September.
+ *
+ * Measured after af738d6: when another account's run began under five minutes
+ * earlier, the first call read the shared head 44% of the time (1% before),
+ * and was about 8% cheaper. But most runs start more than five minutes after
+ * the last one, and on those the five-minute entry had already expired. An
+ * hour-long entry costs twice the input rate to write instead of 1.25×, and is
+ * read at the same tenth — so it pays as soon as one run in an hour reads it.
+ *
+ * The API requires longer-lived entries BEFORE shorter ones, so the tools
+ * (in front of the system prompt) carry the hour too; the per-account part and
+ * the last message stay at five minutes.
+ */
+export const CACHE_ONE_HOUR = { type: 'ephemeral', ttl: '1h' } as const;
+const CACHE_FIVE_MINUTES = { type: 'ephemeral' } as const;
+
 interface TextBlock {
   type: 'text';
   text: string;
-  cache_control?: { type: 'ephemeral' };
+  cache_control?: typeof CACHE_ONE_HOUR | typeof CACHE_FIVE_MINUTES;
 }
 
 /** The stable part: what every account shares, then what is this account's. */
@@ -54,13 +71,13 @@ export function joinStablePrompt(globalHead: string, perAccount: string): string
 /** Cached blocks for the stable part, split at the global head when it is marked. */
 function stableBlocks(stable: string): TextBlock[] {
   const at = stable.indexOf(GLOBAL_MARKER);
-  if (at === -1) return [{ type: 'text', text: stable, cache_control: { type: 'ephemeral' } }];
+  if (at === -1) return [{ type: 'text', text: stable, cache_control: CACHE_FIVE_MINUTES }];
   return [
-    { type: 'text', text: stable.slice(0, at), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: stable.slice(0, at), cache_control: CACHE_ONE_HOUR },
     {
       type: 'text',
       text: stable.slice(at + GLOBAL_MARKER.length),
-      cache_control: { type: 'ephemeral' },
+      cache_control: CACHE_FIVE_MINUTES,
     },
   ];
 }

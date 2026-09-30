@@ -47,6 +47,26 @@ export interface ClaudeUsage {
   output_tokens: number;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
+  /** The write split by lifetime; absent on providers and SDKs that do not send it. */
+  cache_creation?: {
+    ephemeral_5m_input_tokens?: number | null;
+    ephemeral_1h_input_tokens?: number | null;
+  } | null;
+}
+
+/**
+ * An hour-long cache write is billed at twice the input rate; a five-minute
+ * one at `cache_write_mtok` (1.25×). Since the shared head moved to an hour
+ * (30 Sep), billing every write at 1.25× would undercount both the books and
+ * the tokens a person is charged.
+ */
+const ONE_HOUR_WRITE_INPUT_MULTIPLIER = 2;
+
+/** The cost of a call's cache writes, each part at its own lifetime's rate. */
+function cacheWriteCost(usage: ClaudeUsage, inRate: number, fiveMinuteRate: number): number {
+  const total = usage.cache_creation_input_tokens ?? 0;
+  const oneHour = Math.min(total, usage.cache_creation?.ephemeral_1h_input_tokens ?? 0);
+  return oneHour * inRate * ONE_HOUR_WRITE_INPUT_MULTIPLIER + (total - oneHour) * fiveMinuteRate;
 }
 
 export interface ClaudeUsageEvent {
@@ -91,7 +111,10 @@ export async function recordClaudeUsage(event: ClaudeUsageEvent): Promise<void> 
   const cacheRead = event.usage.cache_read_input_tokens ?? 0;
 
   const cost = round(
-    (input * inRate + output * outRate + cacheWrite * cacheWriteRate + cacheRead * cacheReadRate) /
+    (input * inRate +
+      output * outRate +
+      cacheWriteCost(event.usage, inRate, cacheWriteRate) +
+      cacheRead * cacheReadRate) /
       TOKENS_PER_MTOK,
   );
 

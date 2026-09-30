@@ -129,6 +129,28 @@ describe('recordClaudeUsage', () => {
     // 1k×3/M + 100k×3.75/M + 1M×0.30/M = 0.003 + 0.375 + 0.30 = 0.678
     expect(params[7]).toBe(0.678);
   });
+
+  /** 30 Sep: the shared head is cached for an hour, and that write is 2× input, not 1.25×. */
+  it('bills an hour-long cache write at twice the input rate', async () => {
+    const { insertCalls } = routeQueries();
+
+    await recordClaudeUsage({
+      userId: '7',
+      kind: 'chat',
+      model: 'claude-sonnet-4-6',
+      usage: {
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_creation_input_tokens: 100_000,
+        cache_read_input_tokens: 0,
+        cache_creation: { ephemeral_5m_input_tokens: 60_000, ephemeral_1h_input_tokens: 40_000 },
+      },
+    });
+
+    const params = insertCalls()[0];
+    // 40k×3×2/M + 60k×3.75/M = 0.24 + 0.225 = 0.465
+    expect(params[7]).toBe(0.465);
+  });
 });
 
 describe('recordFixedUsage', () => {

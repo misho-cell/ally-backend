@@ -269,6 +269,7 @@ import { allDeclineChoices, allLaterChoices, allYesChoices } from './askOpening'
 import { APPROVE_LABEL } from './choiceNotes';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
+  CACHE_ONE_HOUR,
   joinStablePrompt,
   joinSystemPrompt,
   plainSystemPrompt,
@@ -8482,7 +8483,9 @@ const CACHE_EPHEMERAL = { type: 'ephemeral' as const };
 function toCachedTools(tools: AnthropicTool[]): Anthropic.Tool[] {
   const apiTools = tools as unknown as Anthropic.Tool[];
   if (apiTools.length === 0) return apiTools;
-  const last = { ...apiTools[apiTools.length - 1], cache_control: CACHE_EPHEMERAL };
+  // An hour, like the shared head behind it: a longer-lived entry may not
+  // follow a shorter one (systemPromptParts, CACHE_ONE_HOUR).
+  const last = { ...apiTools[apiTools.length - 1], cache_control: CACHE_ONE_HOUR };
   return [...apiTools.slice(0, -1), last];
 }
 
