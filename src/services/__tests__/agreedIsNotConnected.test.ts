@@ -1,6 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
 import { buildAnswerWakeEvent, buildRelayAnswerWakeEvent } from '../taskAsks.service';
+import { introOutcomeEvent } from '../taskEngine.events';
 
 /**
  * Rows 314, 315, 317. Giorgi was told his introduction „took place" when the
@@ -45,5 +46,29 @@ describe('an agreement to connect is a stage, not a result', () => {
     expect(events.direct).toContain(
       '<answer>\nკი, ბახვა კარგი ბუღალტერია. დავაკავშირებ, თუ გინდა.\n</answer>',
     );
+  });
+});
+
+/**
+ * Row 315, the acceptance half — the seat's 855: after an introduction was
+ * ACCEPTED (and the contact could not be passed), the owner was asked at once
+ * „მიზანი შენთვის მოგვარებულად ითვლება?". The acceptance event itself said
+ * „then check whether this solves the goal".
+ */
+describe('an accepted introduction does not ask „solved?" either', () => {
+  const states = ['handed_over', 'kept_by_mediator', 'not_found'] as const;
+
+  it.each(states)('%s: no longer invites the solved question, in any language', (state) => {
+    const event = introOutcomeEvent('Baxva', true, state);
+    expect(event.en).not.toMatch(/check whether this solves the goal/);
+    expect(event.en).toMatch(/Do NOT ask whether the goal is solved yet/);
+    expect(event.ka).toMatch(/ახლა ნუ ჰკითხავ, მოგვარდა თუ არა/);
+    expect(event.ru).toMatch(/НЕ спрашивай пока, решена ли цель/);
+    expect(event.es).toMatch(/NO preguntes todavía si la meta está resuelta/);
+  });
+
+  it.each(states)('%s: sets the 24-hour check that they spoke', (state) => {
+    for (const text of Object.values(introOutcomeEvent('Baxva', true, state)))
+      expect(text).toMatch(/set_task_wake/);
   });
 });

@@ -242,24 +242,36 @@ export function introOutcomeEvent(
     ru: byLanguage.ru[state],
     es: byLanguage.es[state],
   };
+  // ⚠️ ROW 315, THE ACCEPTANCE HALF (seat's 855, 30 Sep): this used to end
+  // „then check whether this solves the goal", and the model did exactly that —
+  // „მოგვარებულად ითვლება?" with no contact passed and nobody having spoken.
+  // The answer events stopped it in 0799665; this is the same rule here.
   return accepted
     ? {
         ka:
           `${targetName}-თან გაცნობაზე თანხმობა მოვიდა. უთხარი მფლობელს ერთი წინადადებით, რომ ` +
           `პასუხი დადებითია. ${handover.ka} ` +
-          'მერე შეამოწმე, მიზანი ამით მოგვარდა თუ კიდევ რჩება გასაკეთებელი.',
+          'ახლა ნუ ჰკითხავ, მოგვარდა თუ არა — მიზანი მოგვარებულია მხოლოდ მაშინ, როცა ისინი ' +
+          'ნამდვილად დაუკავშირდნენ ერთმანეთს ან კონტაქტი გამოიყენეს. set_task_wake 24 საათზე ' +
+          'დააყენე, რომ მაშინ შეამოწმო, ისაუბრეს თუ არა.',
         en:
           `The introduction to ${targetName} has been agreed. Tell the owner in one sentence that ` +
           `the answer is yes. ${handover.en} ` +
-          'Then check whether this solves the goal or whether something is still open.',
+          'Do NOT ask whether the goal is solved yet — it is solved only once the two have ' +
+          'actually spoken or the contact has been used. Set set_task_wake for 24 hours to check ' +
+          'then whether they spoke.',
         ru:
           `На знакомство с ${targetName} получено согласие. Скажи владельцу одним предложением, ` +
           `что ответ положительный. ${handover.ru} ` +
-          'Затем проверь, закрывает ли это цель или осталось что-то ещё.',
+          'НЕ спрашивай пока, решена ли цель — она решена, только когда они действительно ' +
+          'поговорили или контакт использован. Поставь set_task_wake на 24 часа, чтобы тогда ' +
+          'проверить, поговорили ли они.',
         es:
           `La presentación a ${targetName} ha sido aceptada. Dile al propietario en una frase que ` +
           `la respuesta es sí. ${handover.es} ` +
-          'Luego comprueba si esto resuelve la meta o si queda algo abierto.',
+          'NO preguntes todavía si la meta está resuelta: lo está solo cuando los dos hayan ' +
+          'hablado de verdad o se haya usado el contacto. Pon set_task_wake a 24 horas para ' +
+          'comprobar entonces si hablaron.',
       }
     : {
         ka:

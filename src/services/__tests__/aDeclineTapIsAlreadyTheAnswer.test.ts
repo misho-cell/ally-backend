@@ -60,3 +60,35 @@ describe('an answer that is already clear goes at once', () => {
     expect(NEEDS_CONFIRMATION_NOTE).toMatch(/უარის ღილაკის ტექსტი/);
   });
 });
+
+/**
+ * Row 302's residue, the seat's 855: Test 27 typed „…ჩემი კონტაქტია.
+ * დავაკავშირებ, თუ გინდა." and his assistant tried relay_ask, then showed a
+ * rewritten draft with [გაუგზავნე]. The „third person beyond a name" check
+ * caught an offer to connect. A recommendation or an offer to connect is a
+ * clear answer; the check stays only for a third person's PRIVATE details.
+ */
+describe('a recommendation or an offer to connect goes at once, as typed', () => {
+  const section = buildIncomingAskSection(ASK);
+  const tool = toolDescription('send_answer_to_asker');
+
+  it('names them as clear answers in the prompt, the tool and the server note', () => {
+    expect(section).toMatch(/რეკომენდაცია, დაკავშირების შეთავაზება/);
+    expect(tool).toMatch(/a recommendation, an offer to connect/);
+    expect(NEEDS_CONFIRMATION_NOTE).toMatch(/რეკომენდაცია, ან დაკავშირების შეთავაზება/);
+  });
+
+  it('sends their words as typed and forbids a relay they did not ask for', () => {
+    expect(section).toMatch(/ზუსტად ისე, როგორც დაწერა/);
+    expect(section).toMatch(/არმოთხოვნილი relay_ask/);
+    expect(tool).toMatch(/exactly as they typed it/);
+    expect(tool).toMatch(/no relay_ask they did not ask for/);
+  });
+
+  it('keeps the check only for private details about a third person', () => {
+    expect(section).not.toMatch(/სახელს მიღმა/);
+    expect(tool).not.toMatch(/beyond a name/);
+    expect(section).toMatch(/პირად დეტალებს ამხელს \(ჯანმრთელობა, ოჯახი, ფული/);
+    expect(tool).toMatch(/private details \(health, family, money/);
+  });
+});
