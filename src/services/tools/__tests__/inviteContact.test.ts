@@ -103,6 +103,9 @@ describe('invite_contact knows the three states apart', () => {
     const out = await inviteContact('501', PHONE, 'ka');
 
     expect(out.already_invited).toBe(true);
+    // Tester 909: a prepared text was reported as „sent yesterday". The result says what it is.
+    expect(out.note).toContain('PREPARED');
+    expect(out.note).toContain('never „it was sent"');
     expect(out.kind).toBe('wake');
     expect(out.invite_text).not.toContain('ABC123');
   });

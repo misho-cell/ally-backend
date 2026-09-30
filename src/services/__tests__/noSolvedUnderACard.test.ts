@@ -68,3 +68,22 @@ describe('the next step under a relayed card', () => {
     expect(event).not.toContain('პირველი შეტყობინება თავად');
   });
 });
+
+/** Tester 909: a contact list ended on „Test 65 agreed to the introduction" — another thread's news. */
+describe('one reply, one subject, in a thread without a goal too', () => {
+  it('extends the 284 rule to threads that belong to no goal', () => {
+    const rules = readFileSync(join(__dirname, '..', 'testerRules.ts'), 'utf8');
+    expect(rules).toContain('in a thread that belongs to no goal');
+  });
+});
+
+/** Tester 909: the reply to „later" is „I will check back in a day" — not a cliffhanger to nudge. */
+describe('a later tap is not nudged into a second reply', () => {
+  it('skips the cliffhanger guard when the person pressed „later"', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('askTapOf(lastUserText(messages)) === AskTap.Later');
+    expect(chat).toContain(
+      'if (!promoted && !answeringALaterTap && isCliffhangerReply(finalText))',
+    );
+  });
+});

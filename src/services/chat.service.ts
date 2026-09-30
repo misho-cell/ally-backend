@@ -265,7 +265,7 @@ import {
   alreadyStoppedLine,
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
-import { allDeclineChoices, allLaterChoices, allYesChoices } from './askOpening';
+import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
@@ -8913,6 +8913,19 @@ export function createTaskFollowUp(movedTo: number | undefined): Record<string, 
   };
 }
 
+/** The newest plain-text line the person sent in this run's history, or ''. */
+function lastUserText(messages: readonly Anthropic.MessageParam[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== 'user') continue;
+    if (typeof message.content === 'string') return message.content;
+    // A tool result travels as a user message too; it is not the person.
+    const text = message.content.find((block) => block.type === 'text');
+    if (text !== undefined && text.type === 'text') return text.text;
+  }
+  return '';
+}
+
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -9409,7 +9422,11 @@ async function runToolLoop(
    * timestamp cannot separate „did more work" from „wrote more words". That
    * needs the run log, and until it exists the fix stays unmade.
    */
-  if (!promoted && isCliffhangerReply(finalText)) {
+  // Tester 909: a reply to our „later" button says „I'll check back in a day"
+  // — which is exactly what it should say, and exactly what the cliffhanger
+  // guard hears as an announcement. Nudged, it wrote a second reply on top.
+  const answeringALaterTap = askTapOf(lastUserText(messages)) === AskTap.Later;
+  if (!promoted && !answeringALaterTap && isCliffhangerReply(finalText)) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
     // announcement is kept because the log line compares the two texts, and
     // by the end of this block `finalText` is both of them joined.

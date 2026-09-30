@@ -24,7 +24,8 @@ export const RULE_284_ONE_REPLY_ONE_GOAL =
   'as a footnote, not as „by the way". News about another goal reaches the owner only as that ' +
   "goal's own card or event, in that goal's thread. If one event carries news about several " +
   'goals, answer each in its own thread; if you can write only in this thread, write about this ' +
-  'goal alone.';
+  'goal alone. The same holds in a thread that belongs to no goal: answer the question asked, ' +
+  "and never append an introduction's or another goal's news to it.";
 
 /** Row 273 — read in every run. */
 export const RULE_273_EACH_ANSWER_ONCE =

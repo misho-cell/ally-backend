@@ -15,6 +15,8 @@ export interface InviteResult {
   success: boolean;
   already_invited?: boolean;
   invited_at?: string;
+  /** Tester 909: what `already_invited` does and does not mean, for the model. */
+  note?: string;
   invite_text?: string;
   code?: string;
   error?: string;
@@ -28,6 +30,20 @@ export interface InviteResult {
    */
   kind?: 'invite' | 'wake';
 }
+
+/**
+ * ⚠️ TESTER 909 — „THE INVITATIONS WERE ALREADY SENT YESTERDAY".
+ *
+ * Test 59's reply said so on 30 Sep at 21:36. Nothing had been sent: at 10:53
+ * the same day this tool had PREPARED two texts for the owner to send
+ * themselves, and Netai never sends them. Both halves of the sentence were
+ * made up — „sent" and „yesterday" — from a boolean and a timestamp. So the
+ * result now says in words what the row records and what it does not.
+ */
+const ALREADY_INVITED_NOTE =
+  'A text for this person was PREPARED for the user at invited_at. Netai never sends it, and ' +
+  'whether the user sent it is not known. Say „I prepared an invitation for them earlier" — ' +
+  'never „it was sent" — and name the day from invited_at against today, not by guessing.';
 
 export async function inviteContact(
   userId: string,
@@ -90,6 +106,7 @@ export async function inviteContact(
         success: true,
         already_invited: true,
         invited_at: prior.rows[0].created_at,
+        note: ALREADY_INVITED_NOTE,
         code,
         kind,
         invite_text: messageText(kind, code, language),
