@@ -5119,6 +5119,13 @@ UNDO    none possible — messages to people cannot be unsent. The rows it
         in the RUN line below so they can be hidden if ever needed.
 ```
 
+**RUN, 30 September 14:17 UTC.** Dry run first:
+`{"dry_run":true,"request_id":1981,"status":"accepted","channel":"direct","has_number":true,"target_is_member":true,"threads":[26435 incoming, 26434 outgoing]}`.
+Checked before confirming that the lawyer had no thread since 29 Sep 09:00
+(none). Then `{"dry_run":false,"target_is_member":true,"requester_corrected":true,"mediator_corrected":true}`.
+Written: the lawyer's thread 27556 (1 message, 14:17:12), a correction in
+26435 (14:17:13) and in 26434 (14:17:14). No target-side failure in the log.
+
 ## §70 — REBUILD THE THREE normalize_search_token INDEXES (row 278)
 
 **Authorised by Misho, 30 September, directly in the session:** „3 — გაუშვი
@@ -5142,3 +5149,9 @@ UNDO    the function: CREATE OR REPLACE FUNCTION normalize_search_token with
         A failed CONCURRENTLY leaves `<name>_ccnew` INVALID: DROP INDEX
         CONCURRENTLY it, then retry.
 ```
+
+**RUN, 30 September.** `fe29283` live 14:14:21; the function folds
+(`normalize_search_token('ᲗᲐᲛᲐᲠ')` = `tamar`). Rebuild started 14:16:42:
+`idx_user_name_norm_trgm` 3,961 ms, `idx_user_alias_norm_trgm` 185,193 ms,
+`idx_user_tags_norm_trgm` 223,796 ms, done 14:23:35. All three `indisvalid =
+true`. No deploy ran during it (a restart would have aborted it).
