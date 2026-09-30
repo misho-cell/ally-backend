@@ -1308,6 +1308,16 @@ over in the morning instead of tonight.
   grant Pro's allowance at once is a grant of spendable credit, so it waits
   for his word: should an admin-set Pro grant the same tokens a paid
   subscription does (the plate says 1,000), and from which date?
+- **A web person's e-mail in a chat reply (the seat's 876, not a row).** On
+  thread 27292 the reply printed a lawyer's personal e-mail address, taken
+  from the Bar Association's public page by a web search. It is public, but
+  it is contact data about somebody outside the network. Should a reply carry
+  public contact details (e-mail, phone) of web people, or only their name and
+  where they are listed? Nothing is changed until he says.
+- **The 47 facts under Ninia's account about 8 people she does not know (row
+  288).** Saved on 20 August, most likely from the Axel list. Since `d3deddb`
+  they can no longer be read as her contacts. Whether they stay on her account
+  at all is his call — 6 accounts hold such facts, 54 people in all.
 - **Still waiting on his word, unchanged:** row 278's index rebuild
   (recommend off-peak), the Netai Test 12 seat, his own account id for the
   alarm, the Meta WhatsApp template, and the 34 stalled goals.

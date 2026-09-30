@@ -302,6 +302,29 @@ const MAX_FRIEND_PHONES = 3000;
 // rank by that and cap at a real limit, so the right connection isn't lost in an
 // arbitrary unordered slice (was an unranked LIMIT 20).
 const SECOND_DEGREE_RESULT_LIMIT = 30;
+
+/**
+ * ROW 298, the seat's 875: Test 70's bridge holds 36 lawyers, the second
+ * circle returned 30, and the reply said „about 30" — the direct search tells
+ * its true total and this one did not. The ranking now counts every match
+ * before the LIMIT, and the result says both numbers.
+ */
+function trueTotal(
+  sqlRows: readonly { total_matches: string | number | null }[],
+  excluded: number,
+  merged: { readonly rows: readonly unknown[]; readonly collapsed: number },
+): number {
+  const counted = Number(sqlRows[0]?.total_matches ?? 0);
+  const total = counted - excluded - merged.collapsed;
+  return Math.max(total, merged.rows.length);
+}
+
+function cappedTotalNote(total: number, shown: number): string {
+  return (
+    `${total} people matched in the second circle; the best ${shown} are shown. Tell the owner ` +
+    `the true total („${total}, showing ${shown}"), never „about ${shown}".`
+  );
+}
 const WEAK_TIE_SIGNAL_CAP = 3;
 
 /**
@@ -935,6 +958,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       employer_sources: string | number | null;
       jobPositionSources: string | number | null;
       warmth: number | null;
+      total_matches: string | number | null;
     }>(
       `WITH friend_users AS (
          SELECT up."userId", up.phone AS via_phone
@@ -1113,7 +1137,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          SELECT m.phone,
                 (${wordHits})                                             AS word_hits,
                 (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) AS bridge_rank,
-                MAX(crs.strength_score)                                   AS warmth
+                MAX(crs.strength_score)                                   AS warmth,
+                -- Row 298: how many matched before the LIMIT, so a capped
+                -- page can say „30 of 36" as the direct search does.
+                COUNT(*) OVER ()                                          AS total_matches
          FROM matches m
          JOIN friend_users fu         ON fu."userId" = m."contactId"
          LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
@@ -1177,7 +1204,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                           AND ((ta.from_user_id = fu."userId" AND ta.to_user_id = up_t."userId")
                             OR (ta.from_user_id = up_t."userId" AND ta.to_user_id = fu."userId")))
                        THEN 0.2 ELSE 0 END
-              )))                                                              AS warmth
+              )))                                                              AS warmth,
+              r.total_matches                                                  AS total_matches
        FROM ranked r
        JOIN matches m               ON m.phone     = r.phone
        JOIN friend_users fu         ON fu."userId" = m."contactId"
@@ -1259,7 +1287,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                   cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fj ON TRUE
-       GROUP BY r.phone, r.word_hits, r.bridge_rank, r.warmth
+       GROUP BY r.phone, r.word_hits, r.bridge_rank, r.warmth, r.total_matches
        ORDER BY r.word_hits DESC, r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
@@ -1459,9 +1487,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     });
     // Ticket 16 Task 23: one person, one row, in the second circle too.
     const merged = await collapseMergedPhones(shaped);
+    const total = trueTotal(result.rows, result.rows.length - rows.length, merged);
     return {
       found: true,
       count: merged.rows.length,
+      total,
+      ...(total > merged.rows.length && { total_note: cappedTotalNote(total, merged.rows.length) }),
       results: merged.rows,
       bridges: bridgesSummary(merged.rows),
       presentation: SECOND_CIRCLE_PRESENTATION,

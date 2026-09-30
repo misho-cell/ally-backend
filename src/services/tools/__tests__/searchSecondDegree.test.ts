@@ -679,3 +679,37 @@ describe('a search that did not finish', () => {
     expect(JSON.stringify(out)).not.toContain('connection terminated');
   });
 });
+
+/** Row 298, the seat's 875: 30 of 36 was told as „about 30". */
+describe('searchSecondDegree true total', () => {
+  const person = (n: number, total: string): Record<string, unknown> => ({
+    phone: `+99550000020${n}`,
+    target_user_id: null,
+    name: `Lawyer ${n}`,
+    via_names: ['Gio'],
+    total_matches: total,
+  });
+
+  it('counts every match before the LIMIT and tells both numbers', async () => {
+    mockQuery.mockResolvedValue(rows([person(1, '36'), person(2, '36')]) as never);
+
+    const result = (await searchSecondDegree('42', 'advokati')) as Record<string, unknown>;
+
+    const mainSql = String(
+      mockQuery.mock.calls.find((c) => String(c[0]).includes('tag_hits'))?.[0] ?? '',
+    );
+    expect(mainSql).toContain('COUNT(*) OVER ()');
+    expect(result.count).toBe(2);
+    expect(result.total).toBe(36);
+    expect(String(result.total_note)).toContain('„36, showing 2"');
+  });
+
+  it('adds no note when everything that matched is shown', async () => {
+    mockQuery.mockResolvedValue(rows([person(1, '2'), person(2, '2')]) as never);
+
+    const result = (await searchSecondDegree('42', 'advokati')) as Record<string, unknown>;
+
+    expect(result.total).toBe(2);
+    expect(result.total_note).toBeUndefined();
+  });
+});
