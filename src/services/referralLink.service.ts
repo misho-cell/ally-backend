@@ -1,5 +1,7 @@
 import { query } from '../db/postgres/client';
 import { getOrCreateReferralCode, findUserByReferralCode } from './referralCode.service';
+import { RunLanguage } from './runLanguage';
+import { userLanguage } from './threads.service';
 
 // Engine T3 (ticket 6, 20 Aug spec): a personal invite LINK, unlimited, no
 // caps — distinct from engine T11's invite_contact, which is a pre-filled
@@ -35,15 +37,33 @@ export interface InviteLink {
  *
  * First draft — the wording is the founder's to change, and one line does it.
  */
-function shareText(link: string): string {
+/**
+ * Row 320, the seat's 870: „the share text is Georgian even for an English
+ * user". The message goes out under the SENDER's name, so it is written in the
+ * sender's language — the one they picked in the app when it says, else the
+ * one they write in.
+ */
+const SHARE_TEXT: Readonly<Record<RunLanguage, (link: string) => string>> = {
+  ka: (link) =>
+    'Netai-ს ვიყენებ: ეხმარება ნაცნობებში იპოვო ის ადამიანი, ვინც მართლა გჭირდება. ' +
+    `თუ დაგაინტერესებს, აქ არის: ${link}`,
+  en: (link) =>
+    'I use Netai: it helps you find the person you really need through the people you ' +
+    `know. If you are curious, here it is: ${link}`,
+  ru: (link) =>
+    'Я пользуюсь Netai: он помогает найти через знакомых именно того человека, который ' +
+    `нужен. Если интересно, вот: ${link}`,
+  es: (link) =>
+    'Uso Netai: te ayuda a encontrar, a través de tus conocidos, a la persona que de ' +
+    `verdad necesitas. Si te interesa, aquí está: ${link}`,
+};
+
+function shareText(link: string, language: RunLanguage): string {
   // No em dash. The display scrubber (Ticket 11 Task 1) rewrites one into a
   // comma on the way out, so a dash here would mean the message that reaches
   // the share sheet is not the message this function wrote. Caught by the
   // run_complete test, which compared the two.
-  return (
-    'Netai-ს ვიყენებ: ეხმარება ნაცნობებში იპოვო ის ადამიანი, ვინც მართლა გჭირდება. ' +
-    `თუ დაგაინტერესებს, აქ არის: ${link}`
-  );
+  return SHARE_TEXT[language](link);
 }
 
 const INVITE_LINK_READY_FLAG = 'invite_link_ready';
@@ -59,7 +79,10 @@ const INVITE_LINK_READY_FLAG = 'invite_link_ready';
  * or by the MCP connector at all (every registerTool call there is
  * unconditional, regardless of enabled_tools).
  */
-export async function getInviteLink(userId: string): Promise<InviteLink> {
+export async function getInviteLink(
+  userId: string,
+  language?: RunLanguage | null,
+): Promise<InviteLink> {
   const flag = await query<{ enabled: boolean }>(
     `SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1`,
     [INVITE_LINK_READY_FLAG],
@@ -82,7 +105,8 @@ export async function getInviteLink(userId: string): Promise<InviteLink> {
     LINK_TIMEOUT_MS,
   );
   const link = `${APP_URL}/join?ref=${code}`;
-  return { link, code, share_text: shareText(link) };
+  const lang = language ?? (await userLanguage(userId));
+  return { link, code, share_text: shareText(link, lang) };
 }
 
 /**
@@ -108,8 +132,11 @@ export type InviteLinkForScreen =
 
 export const INVITE_LINK_NOT_READY = 'The invite link is not available yet.';
 
-export async function inviteLinkForScreen(userId: string): Promise<InviteLinkForScreen> {
-  const invite = await getInviteLink(userId);
+export async function inviteLinkForScreen(
+  userId: string,
+  language?: RunLanguage | null,
+): Promise<InviteLinkForScreen> {
+  const invite = await getInviteLink(userId, language);
   if (invite.link === undefined || invite.code === undefined || invite.share_text === undefined) {
     return { status: 404, error: INVITE_LINK_NOT_READY };
   }

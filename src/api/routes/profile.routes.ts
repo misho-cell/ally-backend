@@ -16,6 +16,7 @@ import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
+import { asRunLanguage } from '../../services/runLanguage';
 import {
   getOnboardingStatus,
   markOnboardingSkipped,
@@ -105,7 +106,8 @@ profileRouter.get(
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     try {
       const userId = String((req as AuthenticatedRequest).user.userId);
-      const out = await inviteLinkForScreen(userId);
+      // The language the person picked in the app, when it says (row 320).
+      const out = await inviteLinkForScreen(userId, asRunLanguage(req.get('X-Locale')));
       if (out.status === 404) {
         res.status(404).json({ success: false, error: out.error });
         return;
