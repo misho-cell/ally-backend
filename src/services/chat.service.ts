@@ -265,6 +265,7 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices } from './askOpening';
+import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import { joinSystemPrompt, plainSystemPrompt, systemBlocks } from './systemPromptParts';
 import { listMyContacts } from './tools/listMyContacts';
 import {
@@ -5897,24 +5898,6 @@ function searchTermOf(input: Record<string, unknown>): string {
  * through that surface.
  */
 
-/**
- * ⚠️ ROW 321 — A SEARCH THAT TIMED OUT WAS TOLD TO THE MODEL AS „FOUND NOBODY".
- *
- * Giorgi, 29 September 08:47:01: both lawyer searches on his 1,174-contact
- * phonebook hit a statement timeout, and searchDidNotFinish answered
- * {found: false, reason: 'search_timed_out', note: 'DID NOT FINISH — not an
- * empty network'}. This function read found:false as empty, attached the
- * empty-search history AND OVERWROTE THAT NOTE with „found nobody" — so the
- * model told him he had no lawyers while nine sat in his phonebook. A result
- * that carries a reason other than no_matches did not find nobody; it did not
- * finish, and it is passed through as it came.
- */
-const DID_NOT_FINISH_REASONS: ReadonlySet<string> = new Set([
-  'search_timed_out',
-  'search_failed',
-  'neo4j_unavailable',
-]);
-
 /** Did this search find anybody? Empty and „not found" are the same answer. */
 function foundNobody(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false;
@@ -9894,97 +9877,6 @@ const INTERNAL_TOOL_NAMES = [
 // The optional trailing group is the Georgian case ending — see the comment on
 // internalNameReplacement. It is part of the match so that it LEAVES with the
 // name; without it the ending stayed behind on a phrase that cannot carry one.
-/**
- * How many of a search's rows were exact and how many were approximate — and
- * NOT which people they were.
- *
- * The seat, #4262 on row 137: „the full-name search puts the exact person
- * first — that half holds. The other half is invisible to us because
- * result_sample is empty; put a few result rows in it and we can prove the
- * approximate flag too."
- *
- * The rows are the owner's own contacts, and result_sample's rule is that it
- * carries public web material only — a search over somebody's phonebook must
- * not leave a sample of their friends in a debugging table. That rule is
- * right and it stays.
- *
- * So this gives them the SHAPE instead of the people: „20 rows, 3 approximate"
- * answers exactly the question they asked, and names nobody. If the flag ever
- * stops being set, the line reads „20 rows, 0 approximate" and says so.
- */
-/**
- * ⚠️ AND THE SHAPES THAT CARRY NO `results` AT ALL — the ones that cost two
- * readers a whole evening on 29 September.
- *
- * Until tonight this returned `null` for anything without a non-empty
- * `results` array, so a search that never ran logged no sample whatever. What
- * the reader was left with, on Giorgi's run:
- *
- *     search_by_tag  ადვოკატი   result_count=2  result_empty=true  sample=(null)
- *     search_by_tag  იურისტი    result_count=3  result_empty=true  sample=(null)
- *
- * The tester read that as two and three lawyers found and hidden, filed it Pr1
- * (row 295), and I read it the same way and nearly filed it as a server bug.
- * Neither number meant that. Those searches RAN and found nobody, and
- * `withEmptySearchHistory` attached the run's list of empty searches so far —
- * and `result_count` was the length of THAT list. On this shape the two fields
- * together read exactly like a successful search with rows.
- *
- * ⚠️ CORRECTED 30 SEPTEMBER. The first version of this comment, and of the
- * sample below, called that shape a „dedup guard" and said „no search ran".
- * That was my misreading, shipped: `withEmptySearchHistory` is applied AFTER
- * the search, to an empty result, and skips nothing. The seat caught it from
- * the timings — second-circle calls of 2.4–3.3 s are searches, not a guard.
- *
- * Only `result_keys` said otherwise, and nobody thinks to ask for it.
- *
- * So the sample now says which shape it was, in words. Still counts and never
- * people: a search over somebody's phonebook must not leave a list of their
- * friends in a debugging table (D149), and that rule does not bend for
- * convenience. „Found nobody — N empty searches in this run" names nobody and
- * would have ended that evening in one line.
- *
- * A search that DID NOT FINISH gets a line too. `searchDidNotFinish` exists
- * because a timeout and an empty network used to be the same sentence to the
- * model; they were still the same silence to a reader.
- */
-export function matchShapeOf(result: unknown): string | null {
-  if (result === null || typeof result !== 'object') return null;
-  const record = result as {
-    results?: unknown;
-    already_searched_and_empty?: unknown;
-    reason?: unknown;
-    found?: unknown;
-  };
-  const rows = record.results;
-  if (Array.isArray(rows) && rows.length > 0) {
-    const approximate = rows.filter(
-      (row) =>
-        row !== null &&
-        typeof row === 'object' &&
-        (row as { approximate?: unknown }).approximate === true,
-    ).length;
-    return `${rows.length} rows, ${approximate} approximate`;
-  }
-  // Row 321: a search that did not finish says so first — it is never
-  // „found nobody", whatever history rides with it.
-  if (typeof record.reason === 'string' && DID_NOT_FINISH_REASONS.has(record.reason)) {
-    return `no rows — ${record.reason}`;
-  }
-  // The list includes THIS search: it is pushed before it is returned.
-  const emptySoFar = record.already_searched_and_empty;
-  if (Array.isArray(emptySoFar)) {
-    return `found nobody — ${emptySoFar.length} empty ${
-      emptySoFar.length === 1 ? 'search' : 'searches'
-    } in this run, this one included`;
-  }
-  if (typeof record.reason === 'string' && record.reason !== '') {
-    return `no rows — ${record.reason}`;
-  }
-  if (record.found === false) return 'found nobody';
-  return null;
-}
-
 const INTERNAL_TOOL_NAME_RE = new RegExp(
   `\\b(${INTERNAL_TOOL_NAMES.join('|')})\\b(?:-([ა-ჿ]{1,6}))?`,
   'g',

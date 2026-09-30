@@ -3,7 +3,8 @@ jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { matchShapeOf, withEmptySearchHistory } from '../chat.service';
+import { withEmptySearchHistory } from '../chat.service';
+import { matchShapeOf } from '../resultShape';
 import { searchDidNotFinish } from '../tools/searchDidNotFinish';
 
 /**

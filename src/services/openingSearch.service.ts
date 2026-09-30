@@ -3,9 +3,16 @@ import { searchByTagExactOnly } from './tools/searchByTag';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
+import { matchShapeOf } from './resultShape';
 import { distilSearchQuery, distilIntroductionLocally } from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
 import { classifyToken, isCertainNameToken, labelTokens, TokenKind } from './labelReader.service';
+
+/** A phonebook search's sample: counts only, or nothing when there is no shape to tell. */
+function shapeSample(result: unknown): { resultSample?: string } {
+  const shape = matchShapeOf(result);
+  return shape === null ? {} : { resultSample: shape };
+}
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -236,7 +243,8 @@ export async function runOpeningSearches(
       // Ticket 20 row 126, third pass. Only for the WEB, whose results are
       // public pages. The second circle's results are the owner's own network
       // and must not leave a sample of real people in a debugging table.
-      ...(publicResult && { resultSample: webTitles(result) }),
+      // Row 291: the phonebook searches log their SHAPE, never the people (D149).
+      ...(publicResult ? { resultSample: webTitles(result) } : shapeSample(result)),
     });
     return JSON.stringify(result);
   };
@@ -860,6 +868,7 @@ export async function findWaysIn(
       tool: 'search_by_tag:way_in',
       input: { tag_query: name },
       result,
+      ...shapeSample(result),
       durationMs: Date.now() - startedAt,
     });
   };

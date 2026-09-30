@@ -108,6 +108,7 @@ import {
   threadIdsCreatedOn,
 } from '../../services/threads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
+import { getRunCostsForThread } from '../../services/runCost.service';
 import { getOrCreateReferralCode } from '../../services/referralCode.service';
 import { query } from '../../db/postgres/client';
 import { removeContactFromNetwork } from '../../services/tools/removeContactFromNetwork';
@@ -1397,13 +1398,20 @@ adminRouter.get(
       // and there was no way to tell which was true; tool_calls is the record
       // the captions were being mistaken for. Grouped by run_id on the reader's
       // side — each row carries the run it belongs to.
-      const [messages, toolCalls] = await Promise.all([
+      // Row 291: and what each run COST, keyed by the same run_id.
+      const [messages, toolCalls, runCosts] = await Promise.all([
         getThreadMessages(threadId, { includeSteps: true }),
         getToolCallsForThread(threadId),
+        getRunCostsForThread(threadId),
       ]);
       res.status(200).json({
         success: true,
-        data: { thread: threadResult.rows[0], messages, tool_calls: toolCalls },
+        data: {
+          thread: threadResult.rows[0],
+          messages,
+          tool_calls: toolCalls,
+          run_costs: runCosts,
+        },
       });
     } catch (error) {
       // eslint-disable-next-line no-console

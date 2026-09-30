@@ -56,7 +56,8 @@ describe('a way-in lookup is written down', () => {
     expect(mockLog.mock.calls[0][0].runId).toBe('r-1');
   });
 
-  it('never samples the result, because these are the owner s own contacts', async () => {
+  // Row 291: a count, never a contact — these are the owner's own people.
+  it('never samples the people, because these are the owner s own contacts', async () => {
     mockTag.mockResolvedValue({
       found: true,
       results: [{ name: 'Nino Beridze', phone: '+995...' }],
@@ -65,7 +66,10 @@ describe('a way-in lookup is written down', () => {
     await findWaysIn('501', ['Some Clinic'], { threadId: 77 });
 
     expect(mockLog).toHaveBeenCalledTimes(1);
-    expect(mockLog.mock.calls[0][0].resultSample).toBeUndefined();
+    const sample = String(mockLog.mock.calls[0][0].resultSample);
+    expect(sample).toBe('1 rows, 0 approximate');
+    expect(sample).not.toContain('Nino');
+    expect(sample).not.toContain('+995');
   });
 
   it('records a lookup the budget cut off, and marks it as cut off', async () => {

@@ -1,4 +1,4 @@
-import { matchShapeOf } from '../chat.service';
+import { matchShapeOf } from '../resultShape';
 
 /**
  * ⚠️ TWO READERS, ONE EVENING, AND THE FIELD THAT WOULD HAVE ENDED IT.

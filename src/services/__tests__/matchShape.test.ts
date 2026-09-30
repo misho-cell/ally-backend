@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
-import { matchShapeOf } from '../chat.service';
+import { matchShapeOf } from '../resultShape';
 
 /**
  * Row 137's second half, and the seat could not see it: „result_sample is

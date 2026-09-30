@@ -363,7 +363,9 @@ describe('row 126 third pass — the web sample, and only the web', () => {
    * owner's own network — real people — and must not leave a sample of
    * themselves in a debugging table.
    */
-  it('stores NO sample for the second circle, whatever it found', async () => {
+  // Row 291: the shape only — the same count-only line the model's own
+  // searches log — and still not one person in it.
+  it('stores no PEOPLE for the second circle, only how many it found', async () => {
     mockSecond.mockResolvedValue({
       found: true,
       count: 2,
@@ -375,7 +377,9 @@ describe('row 126 third pass — the web sample, and only the web', () => {
     const second = (logToolCall as jest.Mock).mock.calls.find(
       (c) => c[0].tool === 'search_second_degree:opening',
     )[0];
-    expect(second.resultSample).toBeUndefined();
+    expect(second.resultSample).toBe('2 rows, 0 approximate');
+    expect(second.resultSample).not.toContain('Giorgi');
+    expect(second.resultSample).not.toContain('Nika');
   });
 
   it('an unrecognised shape produces no sample rather than a wrong one', async () => {
@@ -907,5 +911,17 @@ describe('the name taken out of a web result', () => {
     expect(
       names([{ title: 'GARDENING AND LANDSCAPE ARCHITECTURE', url: 'https://yell.ge/x' }]),
     ).toEqual(['GARDENING AND LANDSCAPE ARCHITECTURE']);
+  });
+});
+
+/** Row 291: a phonebook search in the opening logs its shape, never its people. */
+describe('row 291 — the opening searches leave a sample', () => {
+  it('gives the second circle a count-only sample and the web its titles', async () => {
+    await runOpeningSearches('501', 'სანტექნიკოსი ბათუმში', 'run-9', 15940);
+
+    const calls = (logToolCall as jest.Mock).mock.calls.map((c) => c[0]);
+    const second = calls.find((c) => c.tool === 'search_second_degree:opening');
+    expect(second.resultSample).toMatch(/^\d+ rows, \d+ approximate$/);
+    expect(second.resultSample).not.toContain('Gega');
   });
 });
