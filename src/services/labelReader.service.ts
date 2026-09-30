@@ -339,6 +339,47 @@ export function isNameToken(token: string, firstInLabel: boolean): boolean {
 }
 
 /**
+ * ⚠️ ROW 296 — HOW SOMEBODY ELSE SAVED A PERSON IS NOT THEIRS TO SHOW.
+ *
+ * A second-circle person who is not a member has no name of their own in our
+ * base, only the label a bridge typed into their own phone — „Nino Giorgis
+ * advokati", „Levani gizhi", „deda Ninos". The search returned that label
+ * whole as the person's name, and a reply repeated „saved as …'s lawyer" to
+ * the owner. Such a label can be private or insulting, and it was written for
+ * nobody but the bridge.
+ *
+ * So only the words the dictionaries recognise as a NAME are kept, in the
+ * order and spelling they were typed. A trade or profession is already
+ * returned separately as the role; a relation, a place, a company word or
+ * anything unrecognised is dropped, because an unrecognised word is exactly
+ * where an insult lives. Null when no name word is left — the person is then
+ * described by who knows them and what they do.
+ */
+/**
+ * „Giorgis", „მამუკას" — a first name in the genitive, which in a label means
+ * WHOSE: „Nino Giorgis advokati" is Giorgi's lawyer, „Levani Mamukas dzma" is
+ * Mamuka's brother. It reads as a name to the surname-ending guess, and keeping
+ * it would still tell the owner how the bridge placed this person.
+ */
+const GENITIVE_ENDINGS: readonly string[] = ['s', 'ს'];
+
+function isPossessiveFirstName(token: string): boolean {
+  const ending = GENITIVE_ENDINGS.find((e) => token.endsWith(e));
+  if (ending === undefined) return false;
+  const stem = token.slice(0, -ending.length);
+  return spellings(stem).some((form) => GEORGIAN_FIRST_NAMES.has(form));
+}
+
+export function nameOnlyFromLabel(label: string | null): string | null {
+  if (label === null) return null;
+  const kept = labelTokens(label)
+    .filter((token, i) => classifyToken(token.lower, i === 0) === 'name')
+    .filter((token) => !isPossessiveFirstName(token.lower))
+    .map((token) => token.raw);
+  return kept.length === 0 ? null : kept.join(' ');
+}
+
+/**
  * L2: which dictionary claims this token.
  *
  * The last line is the one that matters, and it is the founder's own rule:

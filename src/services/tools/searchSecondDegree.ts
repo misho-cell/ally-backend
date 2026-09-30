@@ -11,6 +11,12 @@ import { phoneDigits } from '../phone';
 import { normalizePhone } from '../phone';
 import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
+import { nameOnlyFromLabel } from '../labelReader.service';
+
+/** Row 296: said once per nameless row, so the model neither invents a name nor quotes the label. */
+const NAME_WITHHELD_NOTE =
+  'No name to show: how the bridge saved this person is private. Describe them by who knows ' +
+  'them and what they do; for an introduction pass target_phone.';
 import {
   applyRelationshipWarmth,
   relationshipTouchedPhones,
@@ -852,6 +858,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       phone: string;
       target_user_id: number | null;
       name: string | null;
+      own_name: string | null;
       via_names: string[] | null;
       via_contacts: { name: string | null; phone: string }[] | null;
       employer: string | null;
@@ -1056,6 +1063,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        SELECT r.phone,
               MAX(up_t."userId")                                               AS target_user_id,
               COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
+              -- Row 296: the member's OWN name, told apart from a bridge's label.
+              MAX(u_t.name)                                                    AS own_name,
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
               -- Ticket 14 [30]: the bridge as an askable person, not just a name.
@@ -1301,7 +1310,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       const sources = fewestSources(row.jobPositionSources, row.employer_sources);
       return {
         phone: row.phone,
-        name: row.name ?? null,
+        // Row 296: a member's own name as they gave it; for anybody else only
+        // the name words of a bridge's label, never the label itself.
+        name: row.own_name ?? nameOnlyFromLabel(row.name),
+        ...(row.own_name === null && nameOnlyFromLabel(row.name) === null
+          ? { name_note: NAME_WITHHELD_NOTE }
+          : {}),
         employer,
         jobPosition,
         // The model must not read a label word as a confirmed fact: it is what
