@@ -267,6 +267,7 @@ import {
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
+import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
   CACHE_ONE_HOUR,
@@ -11102,6 +11103,17 @@ export async function processChat(
         `(len=${cleanedFinal.length}, category=${verdict.reason ?? 'unnamed'})`,
     );
   }
+  // Tester 907 / D531: a run started from an answers card is the moment an
+  // answer arrived, so no connection has happened yet — no finish card.
+  const earlySolved = isAnswerCardEvent(userMessage)
+    ? withoutEarlySolvedCard(cleanedFinal, choices, language, isSolvedLabel)
+    : null;
+  if (earlySolved !== null) {
+    // eslint-disable-next-line no-console
+    console.log(`[answer-card] run ${runId}: finish card removed — nobody has been connected yet`);
+    cleanedFinal = earlySolved.text;
+  }
+  const offeredChoices = earlySolved !== null ? earlySolved.choices : choices;
   const reply = wrapAllowedNumbers(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
@@ -11127,7 +11139,10 @@ export async function processChat(
     // ignore is not a guarantee. „შევცვალოთ" stays: changing a plan that
     // reaches nobody is precisely the next thing the owner should be able to
     // do.
-    choices: takeNothingToSendToday(runId) && choices ? choicesWithoutApproval(choices) : choices,
+    choices:
+      takeNothingToSendToday(runId) && offeredChoices
+        ? choicesWithoutApproval(offeredChoices)
+        : offeredChoices,
     options,
   });
   // The run is over: forget that it approved a plan, so the flag can never
