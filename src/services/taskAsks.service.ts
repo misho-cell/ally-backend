@@ -1704,6 +1704,33 @@ async function thankTheBridge(relay: RelayShape, namedName: string | null): Prom
 }
 
 /**
+ * ⚠️ ROWS 314, 315 AND 317 — „AGREED" WAS BEING REPORTED AS „CONNECTED",
+ * AND THE NEXT QUESTION WAS „IS IT SOLVED?".
+ *
+ * Giorgi, 29 September: a bridge agreed to introduce him to a lawyer, and
+ * Netai told him the connection „took place". No contact reached him and
+ * nobody had spoken. The seat reproduced it on fictional seats the same
+ * night: Test 44 typed „…დავაკავშირებ, თუ გინდა" and the owner's very next
+ * reply was „ეს გითვლი მოგვარებულად? [მოგვარებულია / ჯერ არა]" — and nothing
+ * was done to make the connection happen.
+ *
+ * Both answer events ended with „then continue the task" and nothing else, so
+ * the model had to decide for itself what a yes-to-connect means, and it
+ * decided it was the end. It is the middle. Three stages exist — agreed,
+ * contact passed, they spoke — and only the last is a result.
+ */
+const AGREED_IS_NOT_CONNECTED =
+  'თუ პასუხი დათანხმებაა ვინმესთან დაკავშირებაზე („დაგაკავშირებ", „ვიცნობ, გაგაცნობ") — ეს ' +
+  'ეტაპია „დათანხმდა", არა „დაკავშირდნენ". მფლობელს ზუსტად ეს უთხარი: ვინ დათანხმდა, ვისთან ' +
+  'დასაკავშირებლად, და რომ კონტაქტი ჯერ არ გადაცემულა. არასდროს თქვა „დაგაკავშირეთ", „შედგა" ' +
+  'ან „დაკავშირდით", და ამ ეტაპზე ნუ ჰკითხავ, მოგვარდა თუ არა. შენი შემდეგი ნაბიჯი ' +
+  'დაკავშირების ბოლომდე მიყვანაა: ერთი ღილაკით შესთავაზე, რომ დათანხმებულს გაცნობა სთხოვო ' +
+  '(request_introduction, შუამავალი — ის, ვინც დათანხმდა), და ერთი ხაზით თქვი, რა დარჩა. ' +
+  'შემდეგ set_task_wake 24 საათზე, რომ მაშინ შეამოწმო, ისაუბრეს თუ არა. „მოგვარდა?" ' +
+  'მხოლოდ მაშინ იკითხე, როცა კონტაქტი გადაცემულია და გამოყენებული, ან მფლობელი თავად ' +
+  'იტყვის, რომ ისაუბრეს.';
+
+/**
  * The wake event when the answer came back through a bridge (D254).
  *
  * Three people are in this, and the owner knows only one of them: they asked
@@ -1733,8 +1760,8 @@ export function buildRelayAnswerWakeEvent(
     'მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, დაასახელე ვინ უპასუხა და ვისი მეშვეობით — თუ ' +
     'სხვა ენაზეა, თარგმანიც დაურთე. თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
     'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
-    'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. შემდეგ გააგრძელე ' +
-    'დავალება.'
+    'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. ' +
+    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
 
@@ -1752,7 +1779,7 @@ export function buildAnswerWakeEvent(answer: string, fromName?: string | null): 
     `<answer>\n${answer}\n</answer>\n` +
     `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ სხვა ენაზეა, ` +
     'თარგმანიც დაურთე. თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
-    'შემდეგ გააგრძელე დავალება.'
+    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
 
