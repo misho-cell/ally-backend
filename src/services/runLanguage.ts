@@ -88,7 +88,16 @@ export function languageOfConversation(
   if (SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) {
     return detectRunLanguage(trimmed);
   }
-  const spoken = earlier.find((text) => SIGNAL.test(text));
+  // ⚠️ ROW 260, THE OWNER'S SIDE (seat's 853, goal 11155). This used to accept
+  // only a line with a SCRIPT signal — and English has none. An all-English
+  // owner whose newest line was short („Yes, send to all six", 20 characters)
+  // therefore had no evidence anywhere, fell back to the engine event's
+  // Georgian, and got every relay in Georgian with a Georgian „translation".
+  // The comment above promised „Ok in an English thread finds English behind
+  // it"; now it does. Newest evidence first, whichever kind it is.
+  const spoken = earlier.find(
+    (text) => SIGNAL.test(text) || text.trim().length >= MIN_LATIN_CHARS_TO_SWITCH,
+  );
   if (spoken !== undefined) return detectRunLanguage(spoken);
   // Enough Latin to be a sentence is evidence; a word or an empty turn is not.
   if (trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) return detectRunLanguage(trimmed);

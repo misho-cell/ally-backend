@@ -1728,6 +1728,15 @@ async function thankTheBridge(relay: RelayShape, namedName: string | null): Prom
  * decided it was the end. It is the middle. Three stages exist — agreed,
  * contact passed, they spoke — and only the last is a result.
  */
+/**
+ * Row 260, the owner's side: „if it is in another language, add a translation"
+ * never said INTO WHAT, and on an English owner's goal the model translated an
+ * English answer into Georgian — the language of this event, not of the owner.
+ */
+const INTO_OWNERS_LANGUAGE =
+  'თარგმანი დაურთე მფლობელის ენაზე — იმ ენაზე, რომლითაც ის წერს, და არა ამ შეტყობინების ' +
+  'ენაზე. მთელი პასუხიც მფლობელის ენაზე დაწერე.';
+
 /** Row 303: what the owner's run is told when the text is not the answerer's own words. */
 const REWORDED_ANSWER =
   'ეს მისი ზუსტი სიტყვები არ არის — ტექსტი მისმა ასისტენტმა ჩამოაყალიბა. მფლობელს გადაეცი ' +
@@ -1775,7 +1784,7 @@ export function buildRelayAnswerWakeEvent(
     `<answer>\n${answer}\n</answer>\n` +
     (verbatim
       ? 'მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, დაასახელე ვინ უპასუხა და ვისი მეშვეობით — თუ ' +
-        'სხვა ენაზეა, თარგმანიც დაურთე. '
+        `პასუხი მფლობელის ენაზე არ არის, ${INTO_OWNERS_LANGUAGE} `
       : `${REWORDED_ANSWER} დაასახელე ვისი მეშვეობით. `) +
     'თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
     'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
@@ -1801,8 +1810,8 @@ export function buildAnswerWakeEvent(
     `${who} გიპასუხა შენს გაგზავნილ კითხვაზე. პასუხის ტექსტი <answer> ტეგებს შორისაა:\n` +
     `<answer>\n${answer}\n</answer>\n` +
     (verbatim
-      ? `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ სხვა ` +
-        'ენაზეა, თარგმანიც დაურთე. '
+      ? `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ ` +
+        `პასუხი მფლობელის ენაზე არ არის, ${INTO_OWNERS_LANGUAGE} `
       : `${REWORDED_ANSWER} `) +
     'თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
     `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
