@@ -13,6 +13,53 @@ import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
 import { nameOnlyFromLabel } from '../labelReader.service';
 
+/**
+ * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
+ *
+ * Giorgi's run: eight second-circle lawyers came back, and the plan said only
+ * „through the founder" — no names, no other bridges, and nowhere a reason
+ * why this bridge rather than another. The rows held all of it; nothing said
+ * which bridge holds how many of them, and nothing asked for the names.
+ *
+ * So the result carries both: each bridge with how many of these people it
+ * knows (the founder's own example of a reason: „knows 5 of the lawyers
+ * found"), and one rule for presenting them.
+ */
+const MAX_BRIDGES_SUMMARISED = 10;
+
+const SECOND_CIRCLE_PRESENTATION =
+  'Name EVERY fitting person here with their OWN bridge, one line each — never collapse them ' +
+  'into „through X". Give each one plain reason from this result: their role (as the rules above ' +
+  'allow), and who knows them — a bridge holding several of them says so („knows 3 of the people ' +
+  'found", from `bridges`). A nameless row is described, not named. Never mention how anyone ' +
+  'saved them.';
+
+interface BridgeCount {
+  readonly name: string | null;
+  readonly phone: string;
+  readonly knows: number;
+}
+
+export function bridgesSummary(
+  rows: readonly { via_contacts: readonly { name: string | null; phone: string }[] }[],
+): BridgeCount[] {
+  const byPhone = new Map<string, { name: string | null; knows: number }>();
+  for (const row of rows) {
+    const seen = new Set<string>();
+    for (const bridge of row.via_contacts) {
+      if (seen.has(bridge.phone)) continue;
+      seen.add(bridge.phone);
+      const entry = byPhone.get(bridge.phone) ?? { name: bridge.name, knows: 0 };
+      entry.knows += 1;
+      byPhone.set(bridge.phone, entry);
+    }
+  }
+  return [...byPhone.entries()]
+    .map(([phone, e]) => ({ name: e.name, phone, knows: e.knows }))
+    .sort((a, b) => b.knows - a.knows)
+    .slice(0, MAX_BRIDGES_SUMMARISED);
+}
+
 /** Row 296: said once per nameless row, so the model neither invents a name nor quotes the label. */
 const NAME_WITHHELD_NOTE =
   'No name to show: how the bridge saved this person is private. Describe them by who knows ' +
@@ -1390,7 +1437,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     });
     // Ticket 16 Task 23: one person, one row, in the second circle too.
     const merged = await collapseMergedPhones(shaped);
-    return { found: true, count: merged.rows.length, results: merged.rows };
+    return {
+      found: true,
+      count: merged.rows.length,
+      results: merged.rows,
+      bridges: bridgesSummary(merged.rows),
+      presentation: SECOND_CIRCLE_PRESENTATION,
+    };
   } catch (err) {
     /**
      * A SEARCH THAT COULD NOT FINISH IS NOT AN EMPTY NETWORK, and until today
