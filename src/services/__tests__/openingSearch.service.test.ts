@@ -696,7 +696,14 @@ describe('buildFromTheWebMessage', () => {
 
   it('shows at most four ways in', () => {
     const many = new Map(
-      ['a', 'b', 'c', 'd', 'e'].map((n) => [n, { kind: 'first_circle' as const, who: 'ლიკა' }]),
+      // Row 281: a way in is printed only for a lead shaped like a person or firm.
+      [
+        'Ana Beridze',
+        'Nino Kapanadze',
+        'Levan Gelashvili',
+        'Giorgi Maisuradze',
+        'Tamar Lomidze',
+      ].map((n) => [n, { kind: 'first_circle' as const, who: 'ლიკა' }]),
     );
 
     expect(

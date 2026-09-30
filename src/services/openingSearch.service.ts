@@ -5,6 +5,7 @@ import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { distilSearchQuery, distilIntroductionLocally } from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
+import { classifyToken, labelTokens, TokenKind } from './labelReader.service';
 
 /**
  * Ticket 20 row 126 — a named problem starts the web and the second circle at
@@ -1020,6 +1021,37 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   },
 };
 
+/**
+ * ⚠️ ROW 281 — THE CARD TIED A CONTACT TO A HEADING.
+ *
+ * The seat, 30 Sep (27128, 27193): „• ადვოკატი — შენი კონტაქტი იქ: ნინო
+ * ადვოკატი" and „• ადვოკატი / იურისტი — შენი კონტაქტი იქ: ლადო …". The web
+ * „name" was a page heading — a profession — and looking it up in the owner's
+ * phonebook found whoever is LABELLED with that profession, so the card
+ * claimed a contact „there" at a place that is not a place.
+ *
+ * A way in is only printed for a lead that is shaped like a person or a firm:
+ * at least two words, and not every one of them a profession, trade, role,
+ * place or relation word (the label reader's own dictionaries). Anything else
+ * is left to the model, which still receives every lead with its verdict and
+ * can name a real one where it has the context to know.
+ */
+const NOT_A_LEAD_KINDS: ReadonlySet<TokenKind> = new Set([
+  'trade',
+  'profession_with_clients',
+  'role',
+  'place',
+  'relation',
+  'not_a_word',
+]);
+const MIN_LEAD_WORDS = 2;
+
+export function looksLikeAPersonOrFirm(name: string): boolean {
+  const tokens = labelTokens(name);
+  if (tokens.length < MIN_LEAD_WORDS) return false;
+  return tokens.some((token, i) => !NOT_A_LEAD_KINDS.has(classifyToken(token.lower, i === 0)));
+}
+
 export function buildFromTheWebMessage(
   waysIn: ReadonlyMap<string, WayIn>,
   language: RunLanguage = 'ka',
@@ -1030,7 +1062,7 @@ export function buildFromTheWebMessage(
   const lines = entries
     .filter(
       (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
-        entry[1].kind === 'first_circle',
+        entry[1].kind === 'first_circle' && looksLikeAPersonOrFirm(entry[0]),
     )
     .map(([name, wayIn]) => words.wayIn(name, wayIn.who));
   /**
@@ -1070,6 +1102,9 @@ export function buildFromTheWebMessage(
    */
   const pathless = entries.filter(([, wayIn]) => wayIn.kind !== 'first_circle').length;
   if (pathless > 0) lines.push(words.pathless(pathless));
+  // Row 281: with every way-in dropped as a heading and nothing checked, the
+  // card has nothing true to say, so it is not sent.
+  if (lines.length === 0) return null;
   return `${words.heading}\n${lines.join('\n')}`;
 }
 
