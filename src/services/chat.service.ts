@@ -265,6 +265,11 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices } from './askOpening';
+import {
+  RULE_273_EACH_ANSWER_ONCE,
+  RULE_280_WEB_LEADS_ARE_PEOPLE,
+  RULE_284_ONE_REPLY_ONE_GOAL,
+} from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -2839,7 +2844,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     name: 'web_search',
     description:
       'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.' +
-      ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive.',
+      ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
+      RULE_280_WEB_LEADS_ARE_PEOPLE,
     input_schema: {
       type: 'object',
       properties: {
@@ -10877,7 +10883,11 @@ export async function processChat(
         `stands in a sentence or two. If what they want now is genuinely DIFFERENT from it, ` +
         `say what you think the difference is and ask them.`;
   const systemPrompt =
-    agentPrompt.prompt + sameRequestAgain + buildReplyLanguageDirective(language);
+    agentPrompt.prompt +
+    sameRequestAgain +
+    // Rows 284 and 273: the seat's rule texts, in every run.
+    `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}` +
+    buildReplyLanguageDirective(language);
 
   // Ticket 16 Task 98: a tap on a pending message's button says what it is
   // answering, so the model never has to guess between two of them.

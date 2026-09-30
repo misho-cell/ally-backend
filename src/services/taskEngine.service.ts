@@ -44,6 +44,7 @@ import {
 } from './threads.service';
 import { RunLanguage, RUN_STRINGS, answerHeldNoTokens } from './runLanguage';
 import { DAY_ONE_EVENT, INSTRUCTION_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
+import { RULE_268_QUIET_DAY_ONE, RULE_268_QUIET_DAY_THREE } from './testerRules';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { markRunFailed } from './runFailure.service';
@@ -1177,7 +1178,8 @@ export async function sweepMethodChanges(): Promise<number> {
         'ჩუმი დღე = მეთოდი შეცვალე, არა მეტი ლოდინი. propose_task_plan-ით შესთავაზე მფლობელს ' +
         'ახალი გზა ან ახალი წრე (სხვა ადამიანები, ვებ-ძიება, პირდაპირი მიმართვა მისი სახელით) — ' +
         'ეს გეგმის ცვლილებაა და მისი „კი" სჭირდება; დამტკიცებული გზები კი უწყვეტად გრძელდება. ' +
-        'ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
+        'ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები. ' +
+        RULE_268_QUIET_DAY_THREE,
     );
     if (ok === 'woken') woken++;
   }
@@ -1260,7 +1262,8 @@ export async function sweepSilentGoals(): Promise<number> {
         'მეტ ადამიანს ჰკითხე. გეგმის „ვის ვკითხავ" სიიდან, ვისაც ჯერ არ მისწერია, ახლა მისწერე — ' +
         'რამდენიმეს ერთდროულად, არა თითო-თითოდ. ეს გეგმის ფარგლებშია და ცალკე თანხმობა არ სჭირდება. ' +
         'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
-        'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
+        'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები. ' +
+        RULE_268_QUIET_DAY_ONE,
     );
     if (ok === 'woken') woken++;
     // The stamp said this goal had been widened. A busy thread means nobody
