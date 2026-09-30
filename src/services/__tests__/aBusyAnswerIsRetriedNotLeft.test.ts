@@ -92,3 +92,31 @@ describe('an answer whose wake found the thread busy is retried, not left', () =
     expect(timeout).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Row 322, second pass (seat's 856): the batch went out twice, six seconds
+ * apart — the next timer found the thread free before the first delivery had
+ * written its marks. A delivery in progress now holds the goal.
+ */
+describe('a batch already being delivered is not delivered again', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('a second timer backs off while the first is still delivering', async () => {
+    owedRows([OWED]);
+    // The first delivery's wake never finishes during this test.
+    mockTask.mockReturnValue(new Promise(() => undefined));
+    deliverAnswersWhenFree(11155);
+    deliverAnswersWhenFree(11155);
+    await fire();
+    // Only ONE batch read (limit 10) — the second timer stood down.
+    const batchReads = mockQuery.mock.calls.filter(
+      ([sql, params]) => String(sql).includes('ta.task_id = $1') && (params as unknown[])[1] === 10,
+    );
+    expect(batchReads).toHaveLength(1);
+    expect(mockTask).toHaveBeenCalledTimes(1);
+  });
+});

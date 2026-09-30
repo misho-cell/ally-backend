@@ -1,6 +1,11 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
-import { buildAnswerWakeEvent, buildAnswersWakeEvent, ensureEveryQuote } from '../taskAsks.service';
+import {
+  buildAnswerWakeEvent,
+  buildAnswersWakeEvent,
+  buildRelayAnswerWakeEvent,
+  ensureEveryQuote,
+} from '../taskAsks.service';
 
 /**
  * Row 322, goal 11155: six answers in eight seconds; the first took the
@@ -60,5 +65,17 @@ describe('answers that are waiting together are delivered together', () => {
         { text: 'B says no', who: 'B', verbatim: true },
       ]),
     ).toBe(reply);
+  });
+});
+
+/** Row 322, seat's 856: the first, single relay said „the other five have not answered yet". */
+describe('a single answer event does not claim the others are silent', () => {
+  it('forbids it in the direct and the relayed event', () => {
+    for (const event of [
+      buildAnswerWakeEvent('Dr. Baxva.', 'Netai Test 49', true),
+      buildRelayAnswerWakeEvent('Dr. Baxva.', 'Netai Test 49', 'Netai Test 44', true),
+    ]) {
+      expect(event).toMatch(/არასდროს უთხრა, რომ დანარჩენებს ჯერ არ უპასუხიათ/);
+    }
   });
 });

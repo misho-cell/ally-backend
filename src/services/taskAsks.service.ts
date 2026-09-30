@@ -1737,6 +1737,15 @@ const INTO_OWNERS_LANGUAGE =
   'თარგმანი დაურთე მფლობელის ენაზე — იმ ენაზე, რომლითაც ის წერს, და არა ამ შეტყობინების ' +
   'ენაზე. მთელი პასუხიც მფლობელის ენაზე დაწერე.';
 
+/**
+ * Row 322, seat's 856: the FIRST relay of six near-simultaneous answers told
+ * the owner „the other five have not answered yet" — they all had, within
+ * seconds. The batched event already forbade that; the single one did not.
+ */
+const OTHERS_MAY_HAVE_ANSWERED =
+  'სხვებმაც შეიძლება ახლახან უპასუხეს — მათი პასუხები ცალკე მოვა. მფლობელს არასდროს უთხრა, ' +
+  'რომ დანარჩენებს ჯერ არ უპასუხიათ; თქვი მხოლოდ, ვინ უპასუხა.';
+
 /** Row 303: what the owner's run is told when the text is not the answerer's own words. */
 const REWORDED_ANSWER =
   'ეს მისი ზუსტი სიტყვები არ არის — ტექსტი მისმა ასისტენტმა ჩამოაყალიბა. მფლობელს გადაეცი ' +
@@ -1789,7 +1798,7 @@ export function buildRelayAnswerWakeEvent(
     'თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
     'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
     'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. ' +
-    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+    `${OTHERS_MAY_HAVE_ANSWERED} ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
 
@@ -1814,7 +1823,7 @@ export function buildAnswerWakeEvent(
         `პასუხი მფლობელის ენაზე არ არის, ${INTO_OWNERS_LANGUAGE} `
       : `${REWORDED_ANSWER} `) +
     'თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
-    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+    `${OTHERS_MAY_HAVE_ANSWERED} ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
 

@@ -524,7 +524,31 @@ const MAX_ANSWERS_PER_WAKE = 10;
  * were delivered — 0 when there was nothing, or the thread was busy (they stay
  * unmarked, so a retry or the sweep picks them up whole).
  */
+/**
+ * ⚠️ ROW 322, SECOND PASS — THE SAME BATCH WENT OUT TWICE (seat's 856).
+ *
+ * Goal 11221, 30 Sep: the batched event reached the owner at 07:34:49 and
+ * again, byte-identical, at 07:34:55 — six seconds later, one retry tick. The
+ * wake's lock (`runningTasks`) is released in wakeTask's `finally`, BEFORE this
+ * function writes the delivered marks, so the next timer found the thread free
+ * and the answers still unmarked, and delivered them again.
+ *
+ * So the goal is held here from the read until the marks are written. A timer
+ * that meets it backs off and comes back, and by then finds nothing owed.
+ */
+const deliveringAnswersFor = new Set<number>();
+
 async function deliverPendingAnswers(taskId: number): Promise<number> {
+  if (deliveringAnswersFor.has(taskId)) return 0;
+  deliveringAnswersFor.add(taskId);
+  try {
+    return await deliverOwedAnswers(taskId);
+  } finally {
+    deliveringAnswersFor.delete(taskId);
+  }
+}
+
+async function deliverOwedAnswers(taskId: number): Promise<number> {
   const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
   if (owed.length === 0) return 0;
   const arrived = await Promise.all(
