@@ -19,6 +19,7 @@ import {
   detectRunLanguage,
   languageOfConversation,
   toolStepCaption,
+  namedStepCaption,
   RUN_STRINGS,
   RunLanguage,
 } from './runLanguage';
@@ -8098,8 +8099,11 @@ async function processToolBlocks(
   for (const block of toolBlocks) {
     // Step captions follow the conversation's language (task 22 g/h) — the
     // Georgian map is the base, toolStepCaption overrides for en/ru/es.
+    // Row 304: a call that carries a name or a query says it.
     const progressMsg =
-      toolStepCaption(block.name, runLang(runId)) ?? TOOL_PROGRESS_MESSAGES[block.name];
+      namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
+      toolStepCaption(block.name, runLang(runId)) ??
+      TOOL_PROGRESS_MESSAGES[block.name];
     if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
   }
   /**
