@@ -132,10 +132,12 @@ describe('what the owner has said, and only the owner', () => {
     // list again, this is what it would do.
     const assistantQuotingAName = 'I found two: „ბათუმი ფლაზა" and one more nearby.';
 
-    expect(languageOfConversation('I approve', [assistantQuotingAName])).toBe('ka');
-    // ^ Still ka, deliberately: this function cannot tell a quote from prose,
-    // and it should not try. The caller must not hand it the assistant's words
-    // — which is the fix, and this test records why the fix is at the caller.
+    expect(languageOfConversation('I approve', [assistantQuotingAName])).toBe('en');
+    // ^ Was ka until 30 Sep: one Georgian letter used to decide. Row 260 counts
+    // WORDS, so a quoted two-word name no longer outvotes the English around
+    // it. The caller-side rule still stands — the assistant's words are not
+    // the owner's and must not be handed in — but this case no longer depends
+    // on it.
   });
 
   it('still lets a real Georgian message behind a short yes decide', () => {

@@ -8,9 +8,37 @@ import { geoName } from './georgianCase';
 
 export type RunLanguage = 'ka' | 'en' | 'ru' | 'es';
 
+/**
+ * ⚠️ ROW 260, QUICK ANSWERS — A QUOTED NAME DECIDED THE LANGUAGE.
+ *
+ * The seat's 859, thread 26930: an English-writing owner asked „Do I know
+ * anyone who knows თამარ გამოგონილი?" and was answered in Georgian. One
+ * Georgian letter anywhere made the whole message Georgian, so the person's
+ * NAME outvoted the sentence around it.
+ *
+ * So the WORDS are counted, not letters — a two-word Georgian name has as many
+ * letters as a short English clause. A word with Georgian or Cyrillic letters
+ * counts for that script, a Latin-only word for Latin, and the script wins
+ * ties: „მჭირდება TBC Capital-ში ვინმე" is three Georgian words to two Latin
+ * and stays Georgian; the seat's question is six English words to two.
+ */
+function scriptWords(text: string): { georgian: number; cyrillic: number; latin: number } {
+  const out = { georgian: 0, cyrillic: 0, latin: 0 };
+  for (const word of text.split(/[^\p{L}]+/u)) {
+    if (word === '') continue;
+    if (/[ა-ჿ]/.test(word)) out.georgian += 1;
+    else if (/[а-яё]/i.test(word)) out.cyrillic += 1;
+    else if (/[a-záéíóúñ]/i.test(word)) out.latin += 1;
+  }
+  return out;
+}
+
 export function detectRunLanguage(text: string): RunLanguage {
-  if (/[ა-ჿ]/.test(text)) return 'ka';
-  if (/[а-яё]/i.test(text)) return 'ru';
+  const words = scriptWords(text);
+  const script = Math.max(words.georgian, words.cyrillic);
+  if (script > 0 && script >= words.latin) {
+    return words.georgian >= words.cyrillic ? 'ka' : 'ru';
+  }
   if (/[áéíóúñ¿¡]/i.test(text)) return 'es';
   return 'en';
 }

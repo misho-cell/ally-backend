@@ -56,3 +56,22 @@ describe('the answer event says which way a translation goes', () => {
     }
   });
 });
+
+describe('a quoted Georgian name does not make an English sentence Georgian', () => {
+  it("reads the seat's quick answer as English", async () => {
+    const { detectRunLanguage } = await import('../runLanguage');
+    expect(detectRunLanguage('Do I know anyone who knows თამარ გამოგონილი?')).toBe('en');
+  });
+
+  it('keeps a Georgian sentence with a company name Georgian', async () => {
+    const { detectRunLanguage } = await import('../runLanguage');
+    expect(detectRunLanguage('მჭირდება TBC Capital-ში ვინმე')).toBe('ka');
+    expect(detectRunLanguage('კი')).toBe('ka');
+  });
+
+  it('still reads Russian and Spanish', async () => {
+    const { detectRunLanguage } = await import('../runLanguage');
+    expect(detectRunLanguage('Нужен хороший юрист')).toBe('ru');
+    expect(detectRunLanguage('¿Conoces a un abogado?')).toBe('es');
+  });
+});
