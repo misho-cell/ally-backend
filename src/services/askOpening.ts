@@ -251,6 +251,11 @@ export function declineChoice(language: RunLanguage): string {
   return DECLINE_CHOICE[language] ?? DECLINE_CHOICE.ka;
 }
 
+/** Every language's decline button, for the prompt that must recognise a tap of it. */
+export function allDeclineChoices(): readonly string[] {
+  return Object.values(DECLINE_CHOICE);
+}
+
 /**
  * Is this answer the button, in ANY language?
  *

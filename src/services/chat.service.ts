@@ -263,6 +263,7 @@ import {
   alreadyStoppedLine,
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
+import { allDeclineChoices } from './askOpening';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -1168,9 +1169,11 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'reaches them automatically — this call is the only channel. A CLEAR answer (a name, a ' +
     'yes, a time, a place, a question back for the asker) goes AT ONCE with confirmed=true, ' +
     'their words tidied at most (D255, D256): no preview, no “გავუგზავნო ეს?”, no buttons — ' +
-    'the answer is already theirs and you know how they speak. Show the meaning first, in ONE ' +
-    'line with one button, and send only on their yes, when the answer is a no, describes a ' +
-    'third person beyond a name, or touches anything delicate. confirmed=true says the words ' +
+    'the answer is already theirs and you know how they speak. Our decline button is the same: ' +
+    'a message that is exactly its text is their own tap, so send it AT ONCE, never ask ' +
+    '“shall I tell them?”. Show the meaning first, in ONE line with one button, and send only ' +
+    'on their yes, when the answer is a no in their own words, describes a third person beyond ' +
+    'a name, or touches anything delicate. confirmed=true says the words ' +
     'are the USER’S answer, not one you composed for them; without it nothing is sent. Never ' +
     'include a name or detail the user did not give you. A standing rule (D120) is recorded ' +
     'BY THIS CALL and only by it: pass remember_for_similar=true with kind, your one-line ' +
@@ -1217,7 +1220,8 @@ export const NEEDS_CONFIRMATION_NOTE =
   'არაფერი გაგზავნილა. confirmed=true ნიშნავს, რომ იგზავნება მომხმარებლის საკუთარი პასუხი და ' +
   'არა შენ მიერ შედგენილი ტექსტი. თუ პასუხი ნათელია — სახელი, „კი", დრო, ადგილი, ან შეკითხვა ' +
   'კითხვის ავტორისთვის — გამოიძახე ახლავე confirmed=true-თი, მისივე სიტყვებით, დრაფტის ჩვენების ' +
-  'გარეშე. ჯერ ერთი ხაზით აზრი აჩვენე და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მაშინ, როცა პასუხი ' +
+  'გარეშე. უარის ღილაკის ტექსტი მისი საკუთარი დაჭერაა — ისიც ახლავე გაგზავნე. ჯერ ერთი ხაზით ' +
+  'აზრი აჩვენე და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მაშინ, როცა პასუხი მისივე სიტყვებით ' +
   'უარია, მოხსენიებულია მესამე ადამიანი სახელს მიღმა, ან საკითხი ნაზია.';
 
 // The user's standing answers (Ticket 10 Task 22): theirs to see and delete.
@@ -3495,19 +3499,38 @@ function resolvePendingRequests(
 // The recipient's side of an ask: the question, who asked, and the outbound
 // mechanics. Ticket 7 Task 1(c), founder's ruling D48: NOTHING crosses to the
 // asker on its own — the old auto-capture (the user's raw reply becoming the
-// answer before the assistant even ran) is gone. The assistant discusses,
-// composes the outbound text, shows it verbatim, and only an explicit yes +
-// send_answer_to_asker moves it. Engine-owned gates (ticket 3 §1) stand: no
-// "contact them directly", no invented delivery talk.
-function buildIncomingAskSection(ask: IncomingAsk): string {
+// answer before the assistant even ran) is gone. Only send_answer_to_asker
+// moves it. Engine-owned gates (ticket 3 §1) stand: no "contact them
+// directly", no invented delivery talk.
+//
+// ⚠️ ROW 302 — THIS SECTION STILL ASKED FOR THE DRAFT D255/D256 ABOLISHED.
+//
+// Ticket 19 G3 rewrote the tool description and the server's own
+// needs-confirmation note to „a clear answer goes at once, no preview". This
+// block was missed, and it said the opposite in the loudest place: show the
+// text verbatim, ask „გავუგზავნო?", offer „გაუგზავნე / გაუგზავნე და
+// დაიმახსოვრე". The seat's test round of 29 Sep saw exactly that on both
+// typed answers (26671, 26675), and on the decline BUTTON a second
+// „გავუგზავნო…? [გაუგზავნე]" (26668, 26676) — two taps and a paid run for a
+// no the person had already given by pressing our own button.
+//
+// The remember offer (D120) moves into the line that says it went, as the
+// tool already says: the answer is never held back to ask about it.
+export function buildIncomingAskSection(ask: IncomingAsk): string {
   const from = ask.from_name ?? 'Netai-ს მომხმარებელი';
   return (
     `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ ინსტრუმენტებისთვის, პასუხში არასდროს ახსენო]\n` +
     `${from} გეკითხება: "${ask.question}"\n` +
     `- ეს საუბარი მხოლოდ შენსა და მომხმარებელს შორისაა. **ვერაფერი გადადის კითხვის ავტორთან ავტომატურად** — არც პირველი შეტყობინება, არც სხვა. გადაცემა ხდება მხოლოდ send_answer_to_asker-ით, შენ რომ გამოიძახებ.\n` +
-    `- როცა მომხმარებელთან ერთად პასუხი ჩამოყალიბდა: შეადგინე გასაგზავნი ტექსტი, აჩვენე სიტყვასიტყვით („გავუგზავნო ეს ტექსტი? …"), და მხოლოდ მისი აშკარა თანხმობის შემდეგ გამოიძახე send_answer_to_asker ზუსტად იმ ტექსტით, რომელიც დაამტკიცა. თანხმობამდე გაგზავნა შეუძლებელია — ეს სერვერის წესია.\n` +
-    `- ტექსტის ჩვენებისას ერთდროულად ორი რამ ჰკითხე (D120): „გავუგზავნო?" და „მსგავს კითხვებზე მომავალშიც ასე ვუპასუხო შენს მაგივრად?" — ორი ღილაკი present_choices-ით: „გაუგზავნე" / „გაუგზავნე და დაიმახსოვრე". მეორეზე „კი" = send_answer_to_asker remember_for_similar=true და kind (ერთი სტრიქონი, რა კითხვებს ფარავს). შემდეგ ჯერზე ასეთ კითხვას სისტემა თავად უპასუხებს და მას შეატყობინებს. list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
-    `- გასაგზავნ ტექსტში მხოლოდ ის უნდა იყოს, რისი გაზიარებაც მომხმარებელმა დაამტკიცა — სახელი ან დეტალი მისი „კი"-ს გარეშე ტექსტში ვერ მოხვდება.\n` +
+    `- ნათელი პასუხი — სახელი, „კი", დრო, ადგილი, ან შეკითხვა კითხვის ავტორისთვის — გაგზავნე ახლავე send_answer_to_asker-ით confirmed=true, მისივე სიტყვებით, მაქსიმუმ გასწორებული (D255, D256): დრაფტის ჩვენების, „გავუგზავნო?"-ს და ღილაკების გარეშე. მერე ერთი ხაზით უთხარი, რომ გადაეცა.\n` +
+    `- უარის ღილაკი (${allDeclineChoices()
+      .map((c) => `„${c}"`)
+      .join(
+        ' / ',
+      )}) მისი საკუთარი დაჭერაა და თავისთავად საბოლოო პასუხია: გაგზავნე ახლავე ზუსტად ეს ტექსტი confirmed=true-ით, „ვაცნობო?"-ს გარეშე, და ერთი თბილი ხაზით უთხარი, რომ გადაეცა.\n` +
+    `- ჯერ ერთი ხაზით აზრი აჩვენე ერთი ღილაკით და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მაშინ, როცა უარი მისივე სიტყვებითაა დაწერილი, ახსენა მესამე ადამიანი სახელს მიღმა, ან საკითხი ნაზია.\n` +
+    `- მსგავს კითხვებზე მომავალში მის მაგივრად პასუხის შეთავაზება (D120) იმავე ხაზში გააკეთე, რომელიც ამბობს რომ გადაეცა — პასუხს ამის გამო არასდროს დააყოვნო. მისი „კი" = შემდეგ ასეთ პასუხზე send_answer_to_asker remember_for_similar=true და kind (ერთი სტრიქონი, რა კითხვებს ფარავს). list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
+    `- გასაგზავნ ტექსტში არასდროს ჩასვა სახელი ან დეტალი, რომელიც მომხმარებელს არ უთქვამს.\n` +
     `- relay_ask ცალკე მოქმედებაა — კითხვის მესამე ადამიანთან გადაგზავნა. მხოლოდ მაშინ, როცა მომხმარებელი ამას პირდაპირ ითხოვს („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის. თუ კონტაქტი ვერ მოიძებნა: ორთოგრაფია არ ჰკითხო, ბოდიში არ მოიხადო, „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან პირდაპირ დაკავშირება.\n` +
     `- თუ მომხმარებელი იტყვის, რომ მსგავსი შეტყობინებები აღარ სურს („აღარ მომწერო") — გამოიძახე stop_contacting_me. ეს ნამდვილად აჩერებს ყველა მომავალ კითხვას ყველა ადამიანისგან. დაპირება მხოლოდ სიტყვით არასოდეს მისცე — ჯერ ინსტრუმენტი, მერე დადასტურება.\n` +
     `- შენ მომხმარებლის საკუთარი ასისტენტი ხარ, მისი სრული კონტექსტით და ინსტრუმენტებით. თუ ის იტყვის „ნახე ჩემს კონტაქტებში" — ეძებე ნამდვილად, მის ქსელში, და უთხარი რეალური სახელები ამ საუბარშივე. ეს მონაცემები მხოლოდ მისია: კითხვის ავტორთან მათგან გადადის მხოლოდ ის, რასაც ის send_answer_to_asker-ის ტექსტში ცალსახად დაამტკიცებს.`
