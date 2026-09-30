@@ -75,3 +75,21 @@ describe('a quoted Georgian name does not make an English sentence Georgian', ()
     expect(detectRunLanguage('¿Conoces a un abogado?')).toBe('es');
   });
 });
+
+describe('Latin contact names inside a Georgian sentence do not make it English', () => {
+  it("reads the seat's Test 53 sentence as Georgian", async () => {
+    const { detectRunLanguage } = await import('../runLanguage');
+    expect(
+      detectRunLanguage(
+        'მჭირდება კარგი ელექტრიკოსი ბინაში. ჰკითხე ჩემს კონტაქტებს — Netai Test 27, Netai Test 28, ' +
+          'Netai Test 48, Netai Test 49, Netai Test 50, Netai Test 51 — ექვსივეს ერთდროულად.',
+      ),
+    ).toBe('ka');
+  });
+
+  it('still reads an English sentence with a Georgian name as English', async () => {
+    const { detectRunLanguage } = await import('../runLanguage');
+    expect(detectRunLanguage('Do I know anyone who knows ბახვა გამოგონილი?')).toBe('en');
+    expect(detectRunLanguage('Please ask Netai Test 27')).toBe('en');
+  });
+});

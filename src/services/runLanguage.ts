@@ -22,13 +22,25 @@ export type RunLanguage = 'ka' | 'en' | 'ru' | 'es';
  * ties: „მჭირდება TBC Capital-ში ვინმე" is three Georgian words to two Latin
  * and stays Georgian; the seat's question is six English words to two.
  */
+/**
+ * Row 260, the seat's 864 — and names are not language. A Georgian owner wrote
+ * „…ჰკითხე ჩემს კონტაქტებს — Netai Test 27, … Netai Test 51 — ექვსივეს" and the
+ * twelve Latin NAME words outvoted ten Georgian ones, so the plan came back in
+ * English. Georgian has no capital letters in ordinary writing, so a Latin word
+ * that starts with one is, in these conversations, a name or a brand — and it
+ * is not counted as Latin. Neither is a word carrying a digit („Test27").
+ */
+function looksLikeAName(word: string): boolean {
+  return /^[A-ZÁÉÍÓÚÑ]/.test(word) || /\d/.test(word);
+}
+
 function scriptWords(text: string): { georgian: number; cyrillic: number; latin: number } {
   const out = { georgian: 0, cyrillic: 0, latin: 0 };
   for (const word of text.split(/[^\p{L}]+/u)) {
     if (word === '') continue;
     if (/[ა-ჿ]/.test(word)) out.georgian += 1;
     else if (/[а-яё]/i.test(word)) out.cyrillic += 1;
-    else if (/[a-záéíóúñ]/i.test(word)) out.latin += 1;
+    else if (/[a-záéíóúñ]/i.test(word) && !looksLikeAName(word)) out.latin += 1;
   }
   return out;
 }
