@@ -1554,6 +1554,23 @@ async function deliverCapturedAnswer(
     void (async () => {
       try {
         const { wakeTask, deliverAnswersWhenFree } = await import('./taskEngine.service');
+        /**
+         * ⚠️ ROW 322, THIRD PASS — A LINE IN THE EVENT DID NOT BIND THE MODEL.
+         *
+         * The seat's 859: the single live event carried „never say the others
+         * have not answered", and the reply still said „Still waiting on Test
+         * 54 and Test 56" — Test 54's answer was already in the table when the
+         * run started. So the server no longer relies on the sentence: a
+         * direct answer is delivered through the batch, after the same short
+         * settle every retry uses, and that event carries EVERY answer the
+         * goal is owed. An answer already in the table cannot be missing from
+         * it. A relayed answer keeps its own event — it names the bridge and
+         * thanks them, which the batch does not.
+         */
+        if (!relay) {
+          deliverAnswersWhenFree(captured.taskId);
+          return;
+        }
         const verbatim = await answerIsTheirOwnWords(captured.askThreadId, captured.answer);
         const delivered = await wakeTask(
           captured.taskId,

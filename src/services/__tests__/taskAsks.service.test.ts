@@ -51,6 +51,7 @@ jest.mock('../threadStatus.service', () => ({
 jest.mock('../taskEngine.service', () => ({
   __esModule: true,
   wakeTask: jest.fn().mockResolvedValue('woken'),
+  deliverAnswersWhenFree: jest.fn(),
 }));
 jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
 jest.mock('../notification.service', () => ({
@@ -86,7 +87,7 @@ import { isPhoneOptedOut } from '../privacyRights.service';
 import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { createThread, saveThreadMessage } from '../threads.service';
-import { wakeTask } from '../taskEngine.service';
+import { deliverAnswersWhenFree, wakeTask } from '../taskEngine.service';
 import {
   createAsk,
   createRelayAsk,
@@ -929,16 +930,10 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     await settle();
 
     expect(out).toEqual({ sent: true });
-    expect(mockWakeTask).toHaveBeenCalledWith(3, expect.stringContaining('დამტკიცებული ტექსტი'), {
-      text: 'დამტკიცებული ტექსტი',
-      who: 'გია',
-      verbatim: true,
-    });
-    // Delivered wake gets its marker so the sweep does not re-deliver.
-    const markCall = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('wake_delivered_at = NOW()'),
-    );
-    expect(markCall?.[1]).toEqual([77]);
+    // Row 322, third pass: a direct answer goes through the batch, which reads
+    // every answer the goal is owed and marks them (tested in the engine).
+    expect(deliverAnswersWhenFree).toHaveBeenCalledWith(3);
+    expect(mockWakeTask).not.toHaveBeenCalled();
   });
 
   /**
@@ -955,28 +950,14 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
    */
   it('returns before the asker’s run has finished', async () => {
     routeApprovedAnswerQueries({ ask: { to_user_id: 7, status: 'sent' } });
-    let finishTheWake: (value: 'woken') => void = () => {};
-    mockWakeTask.mockReturnValue(
-      new Promise<'woken'>((resolve) => {
-        finishTheWake = resolve;
-      }),
-    );
 
     const out = await sendApprovedAskAnswer('7', 55, 'დამტკიცებული ტექსტი');
-    await settle();
 
-    // The asker's run is still going, and the helper has already been told.
+    // The helper is told at once; the asker's wake is handed to a timer and
+    // nothing here waits for it.
     expect(out).toEqual({ sent: true });
-    expect(
-      mockQuery.mock.calls.find(([sql]) => (sql as string).includes('wake_delivered_at = NOW()')),
-    ).toBeUndefined();
-
-    finishTheWake('woken');
     await settle();
-
-    expect(
-      mockQuery.mock.calls.find(([sql]) => (sql as string).includes('wake_delivered_at = NOW()')),
-    ).toBeDefined();
+    expect(deliverAnswersWhenFree).toHaveBeenCalledWith(3);
   });
 
   /**
@@ -1291,9 +1272,9 @@ describe('the answer rule approved once', () => {
     expect(told.some((t) => t.includes('ავტომატურად ვუპასუხე') && t.includes(RULE.answer))).toBe(
       true,
     );
-    // The wake runs after the return (row 303 added a read before it).
+    // The wake is handed to the batched delivery (row 322).
     await new Promise((resolve) => setImmediate(resolve));
-    expect(wakeTask).toHaveBeenCalled();
+    expect(deliverAnswersWhenFree).toHaveBeenCalledWith(3);
   });
 
   it('a follow-up inside a live conversation is never automatic', async () => {
