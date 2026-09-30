@@ -6,6 +6,7 @@ import { createIncomingRequestThread, createOutgoingRequestThread } from '../thr
 import { emitThreadCreated } from '../sse.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { isPhoneOptedOut } from '../privacyRights.service';
+import { linkRequestToEarlierAsk, RequestPointerInput } from '../threadBackPointer.service';
 
 const CONTACT_SEARCH_LIMIT = 3;
 
@@ -122,6 +123,27 @@ export interface IntroRequestContext {
    * go to. Absent over the connector, which has no conversation.
    */
   originThreadId?: number;
+}
+
+/**
+ * Row 305 (a): a request raised from a goal that already asked this reader
+ * something says so in both threads. A failure here costs a line, never the
+ * request, which is already stored and on its way.
+ */
+async function pointBackToTheEarlierAsk(
+  taskId: number | undefined,
+  pointer: Omit<RequestPointerInput, 'taskId'>,
+): Promise<void> {
+  if (taskId === undefined) return;
+  try {
+    await linkRequestToEarlierAsk({ ...pointer, taskId });
+  } catch (err) {
+    console.warn('request_introduction: back-pointer lines not written', {
+      taskId,
+      requestThreadId: pointer.requestThreadId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function requestIntroduction(
@@ -406,6 +428,15 @@ async function requestIntroductionInner(
       isDirect,
     ),
   ]);
+
+  await pointBackToTheEarlierAsk(context.requesterTaskId, {
+    requesterUserId: Number(requesterUserId),
+    readerUserId: mediatorUserId,
+    requestThreadId: incomingThread.id,
+    requestThreadTitle: incomingThread.title,
+    requesterName,
+    targetName,
+  });
 
   emitThreadCreated(String(mediatorUserId), {
     id: incomingThread.id,
