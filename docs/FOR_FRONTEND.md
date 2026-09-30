@@ -15,6 +15,31 @@ messages in their name.
 
 ---
 
+## 30 September — the channel, and what is open
+
+**How this reaches you now.** Messages by `create_trigger` into your session put a
+permission window on Misho's screen every time (the platform's, not a project
+rule), and he asked for that to stop. So from 30 Sep the backend writes here and
+in the tester's box, and sends no more triggers.
+
+**Open, and what the backend already provides:**
+
+- **282** — `GET /billing/tokens` → `{ success, data: { enabled, balance,
+  grantedThisPeriod, spentThisPeriod, window, resetsAt } }`, camelCase only.
+  `balance` can be negative; show ≤ 0 as „0 left". `enabled: false` → no badge.
+- **306** — „Send and remember" should no longer appear as a button since row
+  302 (the offer rides the „it went" line). A per-choice explanation for the
+  server-owned labels is doable on request.
+- **111** — after your branch reaches main, the backend measures whether new
+  endpoints still arrive under new device_ids; a server rule for retiring
+  orphaned rows follows only if they do.
+- **300** — the four-button contract for incoming asks is not written yet.
+
+**Done on your side, relayed to the tester (867):** 320, 312, 294, 306's four
+request buttons, 282's badge — pending your branch reaching main.
+
+---
+
 ## 1. Buttons vanish once a later message arrives
 
 **What the tester saw.** Thread 17528, a plan card with two buttons at 11:24.
