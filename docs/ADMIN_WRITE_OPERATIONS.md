@@ -5089,3 +5089,5 @@ UNDO    POST /admin/users/172662/tokens
 ```
 
 The reply carries `was` and `balance`; both are recorded below once run.
+
+**RUN, 30 September:** `{"user_id":"172662","was":0,"tokens":1000,"balance":1000}`.
