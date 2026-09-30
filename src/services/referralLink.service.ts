@@ -86,6 +86,37 @@ export async function getInviteLink(userId: string): Promise<InviteLink> {
 }
 
 /**
+ * ⚠️ ROW 320, THE OTHER HALF — THE LINK WITHOUT A MODEL RUN.
+ *
+ * The founder asked his assistant for his own invite link: two replies were
+ * stopped by the safety check, the third gave it, and the request became a
+ * task — three paid runs for one URL the server mints itself. The masking fix
+ * stopped the blocks; this removes the run. The screen asks the server
+ * directly, and a button can hand the link to the share sheet in one tap.
+ *
+ * The same function the tool calls, so the flag, the code and the funnel's
+ * 'issued' event are one path whichever surface asked.
+ */
+export type InviteLinkForScreen =
+  | {
+      readonly status: 200;
+      readonly link: string;
+      readonly code: string;
+      readonly share_text: string;
+    }
+  | { readonly status: 404; readonly error: string };
+
+export const INVITE_LINK_NOT_READY = 'The invite link is not available yet.';
+
+export async function inviteLinkForScreen(userId: string): Promise<InviteLinkForScreen> {
+  const invite = await getInviteLink(userId);
+  if (invite.link === undefined || invite.code === undefined || invite.share_text === undefined) {
+    return { status: 404, error: INVITE_LINK_NOT_READY };
+  }
+  return { status: 200, link: invite.link, code: invite.code, share_text: invite.share_text };
+}
+
+/**
  * The REAL 'sent': the app calls this when the user actually takes the share
  * action (the share-sheet opens / the copy button on the share box) — the
  * closest observable event to "attached to a message" a backend can have.

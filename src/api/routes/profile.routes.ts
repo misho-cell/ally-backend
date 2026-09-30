@@ -15,6 +15,7 @@ import {
 import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
+import { inviteLinkForScreen } from '../../services/referralLink.service';
 import {
   getOnboardingStatus,
   markOnboardingSkipped,
@@ -91,6 +92,36 @@ const profileRouter = Router();
 //   GET    /profile/tone           → { tone: string | null, note_id }
 //   PUT    /profile/tone { tone }  → saves (replaces) it
 //   DELETE /profile/tone           → back to the default voice
+const INVITE_LINK_PER_MINUTE = 20;
+
+// Row 320: the invite link straight from the server — no model run, no task.
+// For a one-tap share button on the screen.
+//   GET /profile/invite-link → { link, code, share_text }
+profileRouter.get(
+  '/invite-link',
+  authenticateJwt,
+  requireUserRole,
+  rateLimit({ windowMs: 60_000, max: INVITE_LINK_PER_MINUTE }),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const out = await inviteLinkForScreen(userId);
+      if (out.status === 404) {
+        res.status(404).json({ success: false, error: out.error });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        data: { link: out.link, code: out.code, share_text: out.share_text },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/invite-link]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 profileRouter.get(
   '/tone',
   authenticateJwt,
