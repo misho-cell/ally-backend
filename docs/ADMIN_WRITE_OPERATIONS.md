@@ -5201,3 +5201,10 @@ UNDO    §71 with the same phones (POST …/contacts/bulk), names and tags as th
 
 **Which numbers:** the 100 highest of Test 73's own numbers that no other account
 has saved and nobody is registered on — the only ones a removal actually frees.
+
+**§72 RUN, 30 September 20:51 UTC:** seat 172959 (Netai Test 73). 100 numbers
+(the highest of its own that nobody else had saved or registered on) →
+`{"ok":true,"seat":172959,"removed":100}`. The seat keeps 932 contacts. The
+list of the 100 with their names and tags, for the §71 undo, was read from the
+base before the run and kept in the session's scratchpad (fictional numbers
+only; not pasted anywhere else).
