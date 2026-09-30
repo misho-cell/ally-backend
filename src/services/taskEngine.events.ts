@@ -350,43 +350,64 @@ export const INSTRUCTION_EVENT: Readonly<Record<RunLanguage, string>> = {
     'sabes A QUIÉN se refería.',
 };
 
+/**
+ * ⚠️ ROW 287 — SEARCHES WERE BEING OFFERED FOR APPROVAL.
+ *
+ * The plan asked the owner's yes for „your contacts" and „the second circle",
+ * because this event said „start nothing until the plan is approved" — and a
+ * search is something. The founder's order is the other way round: every
+ * search runs by itself BEFORE the plan, and the yes is asked only for what
+ * goes out to people.
+ */
 export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
   ka:
-    'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. შეადგინე გეგმა და დადე propose_task_plan-ით: ' +
+    'მიზანი ახლახან შეინახა და გეგმა ჯერ არ არსებობს. ჯერ მოძებნე — მფლობელის კონტაქტები, მეორე ' +
+    'წრე, ვები — ახლავე, თანხმობის გარეშე: ძებნა არავის სწერს და დასტურს არ საჭიროებს. მერე ' +
+    'შეადგინე გეგმა ნაპოვნით და დადე propose_task_plan-ით: ' +
     'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
     'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური — ' +
     'ბოლოს present_choices-ით ორი ღილაკი: „ვამტკიცებ" და „შევცვალოთ". ' +
-    'არავის არ მისწერო და არაფერი გაუშვა, სანამ გეგმა არ დამტკიცდება. ' +
+    'დასტური მხოლოდ იმაზეა, რაც გადის: ვის მივწერთ, ვის გავაცნობთ, ვის მოვიწვევთ — ძებნა მას ' +
+    'არ სთხოვო. არავის არ მისწერო, სანამ გეგმა არ დამტკიცდება. ' +
     'თუ მფლობელმა თავად თქვა, რომ არავის არ მივწეროთ („არავის არ მისწერო", „მე თვითონ ' +
     'მივწერ/დავურეკ") — people_to_involve ცარიელი რჩება პირველივე გეგმაში. ნაპოვნი ადამიანები ' +
     'მხოლოდ შეტყობინებაში ჩამოთვალე, როგორც ლიდები მისთვის. „ვის ვკითხავთ" ამ შემთხვევაში ' +
     'ნიშნავს „არავის".',
   en:
-    'A goal has just been saved and there is no plan yet. Draw one up and submit it with ' +
+    'A goal has just been saved and there is no plan yet. SEARCH FIRST — the owner’s contacts, ' +
+    'the second circle, the web — now, with no approval: searching writes to nobody and needs no ' +
+    'yes. Then draw up the plan from what you found and submit it with ' +
     'propose_task_plan: who decides this (if several — all of them), which paths we take (the ' +
     'owner’s network, the second circle, the web), whom we will ask by name, and the sign that it ' +
     'is done. Then show the owner briefly and ask for confirmation — end with present_choices and ' +
-    'two buttons: "I approve" and "Change it". Write to nobody and start nothing until the plan is ' +
-    'approved. If the owner said themselves that we are to write to nobody ("do not contact ' +
+    'two buttons: "I approve" and "Change it". The yes is ONLY for what goes out — whom we write ' +
+    'to, introduce or invite; never offer a search for approval. Write to nobody until the plan ' +
+    'is approved. If the owner said themselves that we are to write to nobody ("do not contact ' +
     'anyone", "I will call them myself") — people_to_involve stays empty in the very first plan. ' +
     'List the people you found in your message only, as leads for them. "Whom we will ask" means ' +
     '"nobody" in that case.',
   ru:
-    'Цель только что сохранена, плана ещё нет. Составь план и отправь его через propose_task_plan: ' +
+    'Цель только что сохранена, плана ещё нет. СНАЧАЛА ИЩИ — контакты владельца, второй круг, ' +
+    'веб — сейчас, без согласия: поиск никому не пишет и подтверждения не требует. Потом составь ' +
+    'план из найденного и отправь его через propose_task_plan: ' +
     'кто это решает (если несколько — все), какими путями идём (сеть владельца, второй круг, веб), ' +
     'кого спросим поимённо, признак завершения. Затем коротко покажи владельцу и попроси ' +
-    'подтверждение — в конце present_choices с двумя кнопками: «Подтверждаю» и «Изменить». Никому ' +
-    'не пиши и ничего не запускай, пока план не утверждён. Если владелец сам сказал никому не ' +
+    'подтверждение — в конце present_choices с двумя кнопками: «Подтверждаю» и «Изменить». ' +
+    'Подтверждение нужно ТОЛЬКО для того, что уходит наружу — кому пишем, кого знакомим, кого ' +
+    'приглашаем; поиск на подтверждение не предлагай. Никому не пиши, пока план не утверждён. Если владелец сам сказал никому не ' +
     'писать («никому не пиши», «я сам напишу/позвоню») — people_to_involve остаётся пустым в самом ' +
     'первом плане. Найденных людей перечисли только в сообщении, как зацепки для него. «Кого ' +
     'спросим» в этом случае значит «никого».',
   es:
-    'Se acaba de guardar una meta y todavía no hay plan. Redacta uno y envíalo con ' +
+    'Se acaba de guardar una meta y todavía no hay plan. BUSCA PRIMERO — los contactos del ' +
+    'propietario, el segundo círculo, la web — ahora, sin aprobación: buscar no escribe a nadie ' +
+    'ni necesita un sí. Luego redacta el plan con lo encontrado y envíalo con ' +
     'propose_task_plan: quién decide esto (si son varios — todos), por qué caminos vamos (la red ' +
     'del propietario, el segundo círculo, la web), a quién preguntaremos por nombre, y la señal de ' +
     'que está resuelto. Luego muéstraselo brevemente al propietario y pide confirmación — termina ' +
-    'con present_choices y dos botones: «Lo apruebo» y «Cambiarlo». No escribas a nadie ni pongas ' +
-    'nada en marcha hasta que el plan esté aprobado. Si el propietario dijo él mismo que no ' +
+    'con present_choices y dos botones: «Lo apruebo» y «Cambiarlo». El sí es SOLO para lo que ' +
+    'sale — a quién escribimos, presentamos o invitamos; nunca ofrezcas una búsqueda para ' +
+    'aprobar. No escribas a nadie hasta que el plan esté aprobado. Si el propietario dijo él mismo que no ' +
     'escribamos a nadie («no contactes a nadie», «yo mismo les escribo/llamo») — people_to_involve ' +
     'queda vacío en el primer plan. Enumera a las personas encontradas solo en tu mensaje, como ' +
     'pistas para él. «A quién preguntaremos» significa «a nadie» en ese caso.',
