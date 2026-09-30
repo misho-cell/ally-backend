@@ -1022,6 +1022,12 @@ const STOP_LABEL = 'შევაჩეროთ';
 const SOLVED_WORDS: readonly string[] = [
   'გადაწყდა',
   'მოგვარდა',
+  // Row 310: the forms the model actually writes on its own finish buttons —
+  // „მოგვარებულია" (Test 47, 30 Sep 20:48), and the malformed „მოგვარდებულია"
+  // row 313 caught it using.
+  'მოგვარებულია',
+  'მოგვარდებულია',
+  'გადაწყვეტილია',
   'solved',
   'resolved',
   'done',
@@ -1036,20 +1042,70 @@ function isSolvedLabel(label: string): boolean {
   return SOLVED_WORDS.some((w) => words.includes(w));
 }
 
+/**
+ * ⚠️ ROW 310 — THE OWNER TAPPED NETAI'S OWN „SOLVED" BUTTON AND WAS REFUSED.
+ *
+ * Giorgi on 29 September, and the seat repeated it exactly on 30 September:
+ * Test 47 tapped „მოგვარებულია" on a card the model had drawn itself
+ * (present_choices 20:48:05), finish_task was refused 52 seconds later with
+ * „their last message was about something else", and a second card had to be
+ * shown before „გადაწყდა" closed it. The model is told to use SOLVED_LABEL,
+ * but it writes its own buttons in its own words, and the guard knew exact
+ * words only.
+ *
+ * So a TAP is read against the card it came from: when the owner's message is
+ * exactly one of the labels on the newest card, a solved STEM on that label is
+ * enough. Stems are safe here and nowhere else — the text is the model's own
+ * button, not free typing, so „გადაწყდარა რამე" (row 131's trap) cannot reach
+ * this branch, and „გადაწყვიტე" (you decide) has no stem in the list.
+ */
+const SOLVED_BUTTON_STEMS: readonly string[] = [
+  'მოგვარ',
+  'გადაწყდ',
+  'გადაწყვეტილ',
+  'solved',
+  'resolved',
+  'done',
+  'решен',
+  'решён',
+  'resuelt',
+];
+
+/**
+ * A no in front of the solved word. TAKES_IT_BACK is Georgian-first and has no
+ * English „not", so „Not solved yet" used to read as solved.
+ */
+const NEGATES_SOLVED = /(?:^|[^\p{L}])(?:not|no|не|нет)(?=[^\p{L}]|$)/iu;
+
+function isSolvedButton(label: string): boolean {
+  return (
+    !NEGATES_SOLVED.test(label) &&
+    wordsOf(label).some((w) => SOLVED_BUTTON_STEMS.some((stem) => w.startsWith(stem)))
+  );
+}
+
+function tappedASolvedButton(said: string, offered: readonly string[] | null): boolean {
+  const tapped = (offered ?? []).find((label) => label.trim() === said);
+  return tapped !== undefined && isSolvedButton(tapped);
+}
+
 export function ownerSaysSolved(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
 ): boolean {
   const said = (lastOwnerMessage ?? '').trim();
   if (said === '') return false;
-  if (TAKES_IT_BACK.test(said)) return false;
+  if (TAKES_IT_BACK.test(said) || NEGATES_SOLVED.test(said)) return false;
   // The button itself, whatever else the sentence carries, in any of the
   // languages the product offers it in.
   if (isSolvedLabel(said)) return true;
+  if (tappedASolvedButton(said, newestOfferedChoices)) return true;
   // A bare yes counts only while a finish card is the newest thing on screen —
   // the same condition a plan's bare yes has to meet, and now recognised
   // whatever language the card was drawn in.
-  const finishCardOnScreen = (newestOfferedChoices ?? []).some((label) => isSolvedLabel(label));
+  const finishCardOnScreen = (newestOfferedChoices ?? []).some(
+    (label) => isSolvedLabel(label) || isSolvedButton(label),
+  );
   return finishCardOnScreen && PLAN_YES.test(said);
 }
 
