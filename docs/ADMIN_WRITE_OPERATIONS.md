@@ -5172,3 +5172,8 @@ UNDO    DELETE FROM "UserTags"  WHERE "contactId" = <seat> AND source = 'USER_CR
           AND phone = ANY(<the batch's phones>);
         DELETE FROM "UserAlias" WHERE "contactId" = <seat> AND phone = ANY(<the batch's phones>);
 ```
+
+**§71 RUN, 30 September ~17:40 UTC:** seat 172959 (Netai Test 73, the tester's
+seat for row 321). 1,031 contacts in one call → `{"ok":true,"seat":172959,"added":1031}`;
+the seat holds 1,032 aliases and 1,032 tags with the tester's own first one. 68
+numbers of the two blocks belong to other seats' accounts and were left out.
