@@ -113,3 +113,55 @@ export async function addSeatContactsBulk(
   });
   return { ok: true, seat: seatUserId, added: clean.length };
 }
+
+/**
+ * §72 — THE UNDO OF §71, IN PART: SEAT CONTACTS REMOVED IN BULK.
+ *
+ * §71 filled Test 73 with 1,031 contacts for row 321 — and because a new seat
+ * may only be made on a fictional number NOBODY has saved, it also used up
+ * every free number there was. Row 321 passed and came off the plate; the
+ * seats that test everything else were then at their daily cap with no way
+ * to make another. This gives numbers back.
+ *
+ * The same fences as §71: test seats only, reserved fictional numbers only.
+ * One statement per table in one transaction, so a half-removed batch cannot
+ * exist.
+ */
+export type BulkRemoveResult =
+  | { ok: true; seat: number; removed: number }
+  | { ok: false; refusal: BulkRefusal; index?: number; detail?: string };
+
+function validatePhones(
+  phones: readonly string[],
+): string[] | Exclude<BulkRemoveResult, { ok: true }> {
+  if (phones.length === 0) return { ok: false, refusal: 'empty' };
+  if (phones.length > MAX_BULK_CONTACTS) return { ok: false, refusal: 'too_many' };
+  for (const [index, phone] of phones.entries()) {
+    if (!isFictionalNumber(String(phone ?? ''))) {
+      return { ok: false, refusal: 'not_a_fictional_number', index, detail: FICTIONAL_RANGES_TEXT };
+    }
+  }
+  return [...new Set(phones.map(String))];
+}
+
+/** Removes these numbers from a seat's phonebook; refuses the whole batch on any bad entry. */
+export async function removeSeatContactsBulk(
+  seatUserId: number,
+  phones: readonly string[],
+): Promise<BulkRemoveResult> {
+  const clean = validatePhones(phones);
+  if (!Array.isArray(clean)) return clean;
+  if (!(await isTestSeat(seatUserId))) return { ok: false, refusal: 'not_a_test_seat' };
+  const removed = await withTransaction(async (client) => {
+    await client.query(
+      `DELETE FROM "UserTags" WHERE "contactId" = $1 AND phone = ANY($2::varchar[])`,
+      [seatUserId, clean],
+    );
+    const aliases = await client.query(
+      `DELETE FROM "UserAlias" WHERE "contactId" = $1 AND phone = ANY($2::varchar[])`,
+      [seatUserId, clean],
+    );
+    return aliases.rowCount ?? 0;
+  });
+  return { ok: true, seat: seatUserId, removed };
+}

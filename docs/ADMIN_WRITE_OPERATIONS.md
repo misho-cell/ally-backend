@@ -5177,3 +5177,27 @@ UNDO    DELETE FROM "UserTags"  WHERE "contactId" = <seat> AND source = 'USER_CR
 seat for row 321). 1,031 contacts in one call → `{"ok":true,"seat":172959,"added":1031}`;
 the seat holds 1,032 aliases and 1,032 tags with the tester's own first one. 68
 numbers of the two blocks belong to other seats' accounts and were left out.
+
+## §72 — §71 PARTLY UNDONE: A SEAT GIVES FICTIONAL NUMBERS BACK
+
+**Why:** §71 filled Test 73 (seat 172959) with 1,031 contacts for row 321, and a
+new seat may only be made on a reserved number that NOBODY has saved — so it
+also used up every free number there was. Row 321 passed and came off the plate
+(tester 902); on 30 Sep 20:08 the tester reported that the other seats were at
+their daily cap and no new seat could be made. Freeing a slice of Test 73's
+phonebook gives numbers back and leaves it large (~930) for any later
+phonebook-size test. Nothing reaches a person: test seats only, reserved
+fictional numbers only, and only that seat's own rows are touched.
+
+```
+ROUTE   POST /admin/test-accounts/:id/contacts/bulk-remove   (requireAdminRole)
+BODY    { "phones": [ "+447700900931", … ] }   at most 1,100, all fictional
+DOES    DELETE FROM "UserTags"  WHERE "contactId" = <seat> AND phone = ANY(<phones>);
+        DELETE FROM "UserAlias" WHERE "contactId" = <seat> AND phone = ANY(<phones>);
+        (one transaction)
+UNDO    §71 with the same phones (POST …/contacts/bulk), names and tags as they
+        were: read them BEFORE the run and keep the list in the RUN line.
+```
+
+**Which numbers:** the 100 highest of Test 73's own numbers that no other account
+has saved and nobody is registered on — the only ones a removal actually frees.

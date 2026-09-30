@@ -109,7 +109,11 @@ import {
 } from '../../services/threads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
-import { addSeatContactsBulk, BulkContactIn } from '../../services/seatContactsBulk.service';
+import {
+  addSeatContactsBulk,
+  removeSeatContactsBulk,
+  BulkContactIn,
+} from '../../services/seatContactsBulk.service';
 import {
   previewRedelivery,
   redeliverAcceptedIntroduction,
@@ -2218,6 +2222,47 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact-bulk]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §72 — the partial undo of §71: numbers removed from a seat's phonebook in
+ * one call, so new seats can be made on them again. Test seats and reserved
+ * fictional numbers only; all-or-nothing.
+ */
+adminRouter.post(
+  '/test-accounts/:id/contacts/bulk-remove',
+  param('id').isInt({ min: 1 }),
+  body('phones').isArray({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'phones must be a non-empty array' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { phones } = req.body as { phones: string[] };
+    try {
+      const result = await removeSeatContactsBulk(seatId, phones);
+      if (!result.ok) {
+        res.status(400).json({
+          success: false,
+          error: result.refusal,
+          ...(result.index !== undefined && { index: result.index }),
+          ...(result.detail !== undefined && { detail: result.detail }),
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-contact] admin ${(req as AuthenticatedRequest).user.userId} removed ` +
+          `${result.removed} contacts from seat ${seatId} in bulk`,
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-contact-bulk-remove]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
