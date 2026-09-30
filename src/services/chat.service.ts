@@ -9649,10 +9649,25 @@ async function salvageFinalAnswer(
       forceText: true,
     });
     const text = extractText(response.content);
+    if (!text)
+      logSalvageFallback(ctx.runId, `no text in the answer (stop ${response.stop_reason})`);
     return text || SALVAGE_FALLBACK_REPLY;
-  } catch {
+  } catch (err) {
+    logSalvageFallback(ctx.runId, err instanceof Error ? err.message : String(err));
     return SALVAGE_FALLBACK_REPLY;
   }
+}
+
+/**
+ * Row 324, the seat's 875: run ad4ae736 stalled 90 s inside the model's
+ * thinking, then its salvage call went silent for 88 s more, and the owner got
+ * the fixed line 3 minutes after the last tool call. The first stall was
+ * logged by the watchdog; why the salvage gave up was not logged at all,
+ * because this catch was empty. The fixed line is now always explained in the log.
+ */
+function logSalvageFallback(runId: string, why: string): void {
+  // eslint-disable-next-line no-console
+  console.error(`[chat] run ${runId} salvage fell back to the fixed line: ${why}`);
 }
 
 /**

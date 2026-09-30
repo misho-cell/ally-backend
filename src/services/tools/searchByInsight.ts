@@ -17,6 +17,27 @@ import { searchDidNotFinish } from './searchDidNotFinish';
 
 const RESULT_LIMIT = 20;
 const SEARCH_TIMEOUT_MS = 12_000;
+const PHONEBOOK_CHECK_TIMEOUT_MS = 3_000;
+
+/**
+ * ROW 288 — A FACT OF YOUR OWN IS NOT A CONTACT OF YOUR OWN.
+ *
+ * Ninia's goals 10891 and 10990: the plan offered to invite a person Ninia
+ * does not know, and the earlier reply called that person „found among direct
+ * contacts, has not opened Netai". Her phonebook has no entry for them. What
+ * her account DID hold was eight facts about them, saved under her id on
+ * 20 August — the Axel list loaded as if it were hers. `searchOwnFacts`
+ * returns every fact the searcher saved, and the result carried nothing that
+ * said the person was outside the phonebook, so the model read „your own
+ * record" as „your own contact". Six accounts hold such facts, 54 people.
+ *
+ * Each result now says whether the searcher's phonebook holds the number.
+ */
+const NOT_IN_CONTACTS_NOTE =
+  "in_your_contacts false: this person is NOT in the owner's phonebook — the owner holds only a " +
+  'note about them. Never call them a contact or a direct contact, never propose inviting them, ' +
+  'and never ask them anything directly; reach them only through someone who knows them ' +
+  '(search_second_degree), or name them as a lead the owner may not know.';
 const MIN_WORD_LEN = 2;
 const MAX_QUERY_WORDS = 6;
 // T15's fallback (ticket 7 task 10): how many single-source pointers the
@@ -386,6 +407,23 @@ async function searchOwnFacts(
     SEARCH_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+/** The numbers among `phones` that the searcher's own phonebook holds, normalized. */
+export async function phonesInPhonebook(
+  userId: string,
+  phones: readonly string[],
+): Promise<Set<string>> {
+  const digits = [...new Set(phones.map((p) => p.replace(/\D/g, '')).filter((d) => d !== ''))];
+  if (digits.length === 0) return new Set();
+  const result = await query<{ phone: string }>(
+    `SELECT DISTINCT phone FROM "UserAlias"
+      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = ANY($2::text[])
+      LIMIT $3`,
+    [userId, digits, digits.length],
+    PHONEBOOK_CHECK_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((row) => normalizePhone(row.phone)));
 }
 
 /**
@@ -780,7 +818,18 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       };
     }
 
-    const accountStates = await fetchAccountStates(scored.map((s) => s.hit.contact_id));
+    const [accountStates, inBook] = await Promise.all([
+      fetchAccountStates(scored.map((s) => s.hit.contact_id)),
+      phonesInPhonebook(
+        userId,
+        scored.map((s) => s.hit.contact_id),
+      ).catch((err: unknown): null => {
+        // Unknown is said as unknown: the field is left out rather than guessed.
+        // eslint-disable-next-line no-console
+        console.error('searchByInsight phonebook check failed:', (err as Error).message);
+        return null;
+      }),
+    ]);
     const results = scored.map((s) => ({
       // sql_hits is ranking machinery, not an answer — spreading the hit whole
       // put it in front of the assistant. An empty `negated` is noise too.
@@ -792,6 +841,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       is_member: isMemberPhone(accountStates, s.hit.contact_id),
       account_state: accountStateFor(accountStates, s.hit.contact_id),
       netai_subscriber: isSubscriberPhone(accountStates, s.hit.contact_id),
+      ...(inBook !== null && { in_your_contacts: inBook.has(normalizePhone(s.hit.contact_id)) }),
     }));
 
     // Matchable facts add people HERE too, not only when the search came back
@@ -811,6 +861,9 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       found: true,
       count: results.length,
       results,
+      ...(results.some((r) => r.in_your_contacts === false) && {
+        not_in_contacts_note: NOT_IN_CONTACTS_NOTE,
+      }),
       ...(pointers.length > 0 && { pointers, pointer_note: POINTER_NOTE }),
       ...negatedNote(negatedSkipped.size),
     };

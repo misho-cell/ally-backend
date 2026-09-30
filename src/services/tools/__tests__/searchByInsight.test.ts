@@ -18,6 +18,16 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
   return { rows: data, rowCount: data.length };
 }
 
+/**
+ * Row 288's phonebook check. Every number is in the searcher's phonebook
+ * unless a test says otherwise, which is what every older case here assumed.
+ */
+let notInTheBook: ReadonlySet<string> = new Set();
+function inTheBook(params: unknown[] | undefined): { rows: unknown[]; rowCount: number } {
+  const digits = (params?.[1] as string[] | undefined) ?? [];
+  return rows(digits.filter((d) => !notInTheBook.has(d)).map((d) => ({ phone: `+${d}` })));
+}
+
 const insightRow = {
   neo4j_contact_id: '+995599000123',
   neo4j_contact_name: 'გიორგი ბერიძე',
@@ -40,7 +50,9 @@ function setup(opts: {
   const own = opts.facts ?? [];
   const pub = opts.publicFacts ?? [];
   const insights = opts.insights ?? [];
-  mockQuery.mockImplementation((sql: string) => {
+  mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    if (sql.includes('"contactId" = $1 AND regexp_replace'))
+      return Promise.resolve(inTheBook(params) as never);
     if (sql.includes('cf.submitted_by_user_id = $1')) return Promise.resolve(rows(own) as never);
     if (sql.includes('cf.is_public = true')) return Promise.resolve(rows(pub) as never);
     if (sql.includes('cf.is_public = false'))
@@ -59,6 +71,7 @@ function setup(opts: {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  notInTheBook = new Set();
 });
 
 describe('searchByInsight', () => {
@@ -321,7 +334,9 @@ describe('searchByInsight', () => {
     // channel down with it. Sources are now isolated — facts must survive.
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     setup({ facts: [{ phone: '+995599777777', name: 'Nino', matched: ['employer: MKD Law'] }] });
-    mockQuery.mockImplementation((sql: string) => {
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('"contactId" = $1 AND regexp_replace'))
+        return Promise.resolve(inTheBook(params) as never);
       if (sql.includes('cf.submitted_by_user_id = $1')) {
         return Promise.resolve(
           rows([{ phone: '+995599777777', name: 'Nino', matched: ['employer: MKD Law'] }]) as never,
@@ -347,7 +362,9 @@ describe('searchByInsight', () => {
     // Precisely the reported prod symptom: save a fact, then search it. Even if
     // the crowd/public-facts scan times out, the user's OWN fact must surface.
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    mockQuery.mockImplementation((sql: string) => {
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('"contactId" = $1 AND regexp_replace'))
+        return Promise.resolve(inTheBook(params) as never);
       if (sql.includes('cf.submitted_by_user_id = $1')) {
         return Promise.resolve(
           rows([
@@ -761,5 +778,56 @@ describe('a concept search asks in both scripts', () => {
     expect(ranking).toBeDefined();
     // Two query words → exactly two bool_or terms, however many spellings each has.
     expect((ranking?.match(/bool_or/g) ?? []).length / 2).toBe(2);
+  });
+});
+
+describe('row 288: a fact of your own is not a contact of your own', () => {
+  const FACT = { phone: '+995599777777', name: 'Salome', matched: ['occupation: lawyer'] };
+
+  it('says when the phonebook does not hold the person the fact is about', async () => {
+    setup({ facts: [FACT] });
+    notInTheBook = new Set(['995599777777']);
+
+    const result = (await searchByInsight('42', 'lawyer')) as Record<string, unknown>;
+
+    const row = (result.results as Array<Record<string, unknown>>)[0];
+    expect(row.in_your_contacts).toBe(false);
+    expect(String(result.not_in_contacts_note)).toContain('never propose inviting them');
+    const check = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('"contactId" = $1 AND regexp_replace'),
+    );
+    expect(check?.[1]).toEqual(['42', ['995599777777'], 1]);
+    expect(check?.[2]).toBeGreaterThan(0);
+  });
+
+  it('marks a phonebook contact as one, with no warning', async () => {
+    setup({ facts: [FACT] });
+
+    const result = (await searchByInsight('42', 'lawyer')) as Record<string, unknown>;
+
+    expect((result.results as Array<Record<string, unknown>>)[0].in_your_contacts).toBe(true);
+    expect(result.not_in_contacts_note).toBeUndefined();
+  });
+
+  it('leaves the field out, not guessed, when the check fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    setup({ facts: [FACT] });
+    const answer = mockQuery.getMockImplementation() as (
+      s: string,
+      p?: unknown[],
+    ) => Promise<never>;
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) =>
+      String(sql).includes('"contactId" = $1 AND regexp_replace')
+        ? Promise.reject(new Error('timeout'))
+        : answer(sql, params),
+    );
+
+    const result = (await searchByInsight('42', 'lawyer')) as Record<string, unknown>;
+
+    expect(result.found).toBe(true);
+    expect((result.results as Array<Record<string, unknown>>)[0]).not.toHaveProperty(
+      'in_your_contacts',
+    );
+    consoleSpy.mockRestore();
   });
 });
