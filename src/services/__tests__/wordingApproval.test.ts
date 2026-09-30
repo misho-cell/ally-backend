@@ -70,7 +70,9 @@ describe('Ticket 19 G3 — no tool text asks the user to approve wording', () =>
     });
 
     it('still names the three cases that are shown first', () => {
-      expect(NEEDS_CONFIRMATION_NOTE).toMatch(/უარია/);
+      // Row 302, 30 Sep: a typed no now goes at once — it is named among the
+      // clear answers instead of the cases shown first.
+      expect(NEEDS_CONFIRMATION_NOTE).toMatch(/უარი მისივე სიტყვებით/);
       expect(NEEDS_CONFIRMATION_NOTE).toMatch(/მესამე ადამიანი/);
       expect(NEEDS_CONFIRMATION_NOTE).toMatch(/ნაზია/);
     });

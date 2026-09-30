@@ -39,8 +39,8 @@ describe('an answer that is already clear goes at once', () => {
     expect(section).toMatch(/უარის ღილაკი/);
   });
 
-  it('keeps the one-line check for a no in their own words, a third person, or something delicate', () => {
-    expect(section).toMatch(/მისივე სიტყვებითაა დაწერილი/);
+  it('keeps the one-line check only for a third person or something delicate (a typed no goes at once)', () => {
+    expect(section).toMatch(/უარი მისივე სიტყვებით/);
     expect(section).toMatch(/მესამე ადამიანი/);
     expect(section).toMatch(/ნაზია/);
   });
@@ -56,7 +56,9 @@ describe('an answer that is already clear goes at once', () => {
 
   it('the tool and the server note say the same about the button', () => {
     expect(toolDescription('send_answer_to_asker')).toMatch(/decline button/);
-    expect(toolDescription('send_answer_to_asker')).toMatch(/no in their own words/);
+    expect(toolDescription('send_answer_to_asker')).toMatch(
+      /a no in their own words\) goes AT ONCE/,
+    );
     expect(NEEDS_CONFIRMATION_NOTE).toMatch(/უარის ღილაკის ტექსტი/);
   });
 });
@@ -75,7 +77,7 @@ describe('a recommendation or an offer to connect goes at once, as typed', () =>
   it('names them as clear answers in the prompt, the tool and the server note', () => {
     expect(section).toMatch(/რეკომენდაცია, დაკავშირების შეთავაზება/);
     expect(tool).toMatch(/a recommendation, an offer to connect/);
-    expect(NEEDS_CONFIRMATION_NOTE).toMatch(/რეკომენდაცია, ან დაკავშირების შეთავაზება/);
+    expect(NEEDS_CONFIRMATION_NOTE).toMatch(/რეკომენდაცია, დაკავშირების შეთავაზება/);
   });
 
   it('sends their words as typed and forbids a relay they did not ask for', () => {
@@ -90,5 +92,25 @@ describe('a recommendation or an offer to connect goes at once, as typed', () =>
     expect(tool).not.toMatch(/beyond a name/);
     expect(section).toMatch(/პირად დეტალებს ამხელს \(ჯანმრთელობა, ოჯახი, ფული/);
     expect(tool).toMatch(/private details \(health, family, money/);
+  });
+});
+
+/**
+ * Row 302's last residue — the seat's 864: „სამწუხაროდ არავის ვიცნობ." and
+ * „ვერ დაგეხმარები, ელექტრიკოსი არ მყავს ნაცნობი." each got a „გაგზავნე"
+ * button. The plate's DONE WHEN: every typed answer goes at once as typed.
+ */
+describe('a no typed in their own words goes at once', () => {
+  const section = buildIncomingAskSection(ASK);
+  it('names it as a clear answer in the prompt, the tool and the server note', () => {
+    expect(section).toMatch(/უარი მისივე სიტყვებით \(„სამწუხაროდ არავის ვიცნობ"\)/);
+    expect(toolDescription('send_answer_to_asker')).toMatch(
+      /a no in their own words\) goes AT ONCE/,
+    );
+    expect(NEEDS_CONFIRMATION_NOTE).toMatch(/ან უარი მისივე სიტყვებით/);
+  });
+  it('no longer lists a typed no among the cases shown first', () => {
+    expect(section).not.toMatch(/უარი მისივე სიტყვებითაა დაწერილი/);
+    expect(toolDescription('send_answer_to_asker')).not.toMatch(/when the answer is a no/);
   });
 });
