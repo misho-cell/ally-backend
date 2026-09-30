@@ -1,5 +1,5 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildRawWordGroups, splitIntoWords } from './transliterate';
+import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './transliterate';
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
@@ -474,7 +474,7 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
 
-    const rawGroups = buildRawWordGroups(tagQuery);
+    const rawGroups = buildMeaningWordGroups(tagQuery);
     if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
     const exact = await runExactSearch(userId, rawGroups, blockedPhones);

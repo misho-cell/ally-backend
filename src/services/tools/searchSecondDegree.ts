@@ -4,7 +4,7 @@ const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
-import { buildRawWordGroups, toWordStartPattern } from './transliterate';
+import { buildMeaningWordGroups, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
@@ -639,7 +639,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // buildRawWordGroups is the splitter this needed, and it already existed:
     // search_by_tag has used it since the "Dachi Axel" finding. One of the two
     // searches learned about phrases and the other never did.
-    const groups = cappedGroups(buildRawWordGroups(tagQuery), userId);
+    const groups = cappedGroups(buildMeaningWordGroups(tagQuery), userId);
     const likeTerms = groups.flat().map((t) => '%' + t + '%');
 
     // Weak-tie signal: asking for a PATH to a contact you already hold directly

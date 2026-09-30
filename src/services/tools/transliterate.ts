@@ -380,6 +380,79 @@ export function buildRawWordGroups(rawQuery: string): string[][] {
   return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
 }
 
+/**
+ * ⚠️ ROW 289 — „REAL ESTATE ISSUES AND DISPUTES" TIED LIKA TO REAL ESTATE.
+ *
+ * A phrase is matched word by word (OR), so every word of it counts — the
+ * function words and the filler nouns too. „and" and „issues" are on countless
+ * tags, and one of them was enough to bring back somebody who has nothing to
+ * do with real estate. searchByInsight has dropped function words since task
+ * 39; the tag and second-circle searches never did.
+ *
+ * FOR CONCEPT SEARCHES ONLY. Name searches keep every word — a person's name
+ * is never filler — so they keep buildRawWordGroups. And a query that is
+ * nothing but such words falls back to all of them rather than to nothing.
+ */
+const FILLER_WORDS: ReadonlySet<string> = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'with',
+  'for',
+  'of',
+  'to',
+  'in',
+  'on',
+  'at',
+  'from',
+  'by',
+  'who',
+  'that',
+  'this',
+  'my',
+  'any',
+  'some',
+  'someone',
+  'is',
+  'are',
+  'issue',
+  'issues',
+  'problem',
+  'problems',
+  'question',
+  'questions',
+  'matter',
+  'matters',
+  'stuff',
+  'things',
+  'thing',
+  'help',
+  'good',
+  'და',
+  'ან',
+  'რომ',
+  'ვინ',
+  'ვინც',
+  'ჩემი',
+  'ჩემს',
+  'კარგი',
+  'საკითხი',
+  'საკითხები',
+  'საკითხებში',
+  'პრობლემა',
+  'პრობლემები',
+]);
+
+/** The concept words of a phrase, each with its variant group — filler dropped. */
+export function buildMeaningWordGroups(rawQuery: string): string[][] {
+  const words = splitIntoWords(rawQuery);
+  const meaning = words.filter((w) => !FILLER_WORDS.has(w.toLowerCase()));
+  const kept = meaning.length > 0 ? meaning : words;
+  return kept.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
+}
+
 // One word's group: its own spelling variants first, then every other form of
 // the first name it may be (Bachana → Bacho, Vasil → Vasiko — Answers-12 Part
 // B), each with ITS spelling variants. Capped so a common name never floods
