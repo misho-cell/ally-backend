@@ -125,6 +125,8 @@ describe('the reply that follows the card', () => {
     expect(event).toContain(OWN_WORDS.answer);
     expect(event).toContain('უკვე აჩვენა');
     expect(event).toContain('არ ჩამოთვალო');
+    expect(event).toContain('ერთი წინადადებით');
+    expect(event).toContain('ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა');
   });
 
   /** A quote guarantee under the card would print the answer a second time. */

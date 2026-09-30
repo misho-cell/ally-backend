@@ -1903,7 +1903,9 @@ export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string
  * ROW 322(a) — the event when the server has ALREADY put the answers on the
  * owner's screen (`answerCard.service`). The answers ride along so the run
  * knows them; what changes is the job: not to read them out again, but to say
- * what they mean for the goal and take the next step.
+ * what the owner should do next and take the next step. The wording of that
+ * job is the seat's (901, Text A): one sentence, and never „has not answered"
+ * about somebody whose answer is on the card.
  */
 export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string {
   const blocks = answers
@@ -1917,9 +1919,10 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     'გაგზავნილ კითხვებზე:\n' +
     `${blocks}\n` +
     'სერვერმა ეს პასუხები მფლობელს უკვე აჩვენა — ბარათად, შენი პასუხის ზემოთ, ვინ რა ' +
-    'უპასუხა. ხელახლა არ ჩამოთვალო, არ დააციტირო და არ გადმოსცე. ერთ-სამ წინადადებაში ' +
-    'თქვი, რას ნიშნავს ეს დავალებისთვის; თუ რომელიმე პასუხი კითხვაა, უთხარი, რომ ადამიანი ' +
-    `პასუხს ელოდება. ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+    'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
+    'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
+    'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
+    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
 
