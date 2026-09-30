@@ -29,6 +29,7 @@ import {
   sendDueAskReminders,
   listUnwokenAnswers,
   markAskWakeDelivered,
+  answerIsTheirOwnWords,
   buildAnswerWakeEvent,
   hasPendingAskForThread,
   EnsureQuoted,
@@ -539,12 +540,14 @@ async function sweepUnwokenAnswers(): Promise<void> {
       await markAskWakeDelivered(ask.id);
       continue;
     }
+    const verbatim = await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? '');
     const woken = await wakeTask(
       ask.task_id,
-      buildAnswerWakeEvent(ask.answer ?? '', ask.from_name),
+      buildAnswerWakeEvent(ask.answer ?? '', ask.from_name, verbatim),
       {
         text: ask.answer ?? '',
         who: ask.from_name,
+        verbatim,
       },
     );
     if (woken === 'woken') {

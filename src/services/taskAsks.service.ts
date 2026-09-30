@@ -1554,12 +1554,18 @@ async function deliverCapturedAnswer(
     void (async () => {
       try {
         const { wakeTask } = await import('./taskEngine.service');
+        const verbatim = await answerIsTheirOwnWords(captured.askThreadId, captured.answer);
         const delivered = await wakeTask(
           captured.taskId,
           relay
-            ? buildRelayAnswerWakeEvent(captured.answer, captured.fromName, relay.bridgeName)
-            : buildAnswerWakeEvent(captured.answer, captured.fromName),
-          { text: captured.answer, who: captured.fromName },
+            ? buildRelayAnswerWakeEvent(
+                captured.answer,
+                captured.fromName,
+                relay.bridgeName,
+                verbatim,
+              )
+            : buildAnswerWakeEvent(captured.answer, captured.fromName, verbatim),
+          { text: captured.answer, who: captured.fromName, verbatim },
         );
         if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
       } catch (err) {
@@ -1719,6 +1725,12 @@ async function thankTheBridge(relay: RelayShape, namedName: string | null): Prom
  * decided it was the end. It is the middle. Three stages exist — agreed,
  * contact passed, they spoke — and only the last is a result.
  */
+/** Row 303: what the owner's run is told when the text is not the answerer's own words. */
+const REWORDED_ANSWER =
+  'ეს მისი ზუსტი სიტყვები არ არის — ტექსტი მისმა ასისტენტმა ჩამოაყალიბა. მფლობელს გადაეცი ' +
+  'აზრი, ბრჭყალების გარეშე და ისე, რომ არ ჩანდეს მის სიტყვებად („X-მა მითხრა, რომ…"), ' +
+  'დაასახელე ვინ უპასუხა, და თუ სხვა ენაზეა, მფლობელის ენაზე გადმოეცი.';
+
 const AGREED_IS_NOT_CONNECTED =
   'თუ პასუხი დათანხმებაა ვინმესთან დაკავშირებაზე („დაგაკავშირებ", „ვიცნობ, გაგაცნობ") — ეს ' +
   'ეტაპია „დათანხმდა", არა „დაკავშირდნენ". მფლობელს ზუსტად ეს უთხარი: ვინ დათანხმდა, ვისთან ' +
@@ -1746,6 +1758,7 @@ export function buildRelayAnswerWakeEvent(
   answer: string,
   fromName?: string | null,
   bridgeName?: string | null,
+  verbatim = true,
 ): string {
   const who = fromName?.trim()
     ? geoName(fromName.trim(), 'erg')
@@ -1757,8 +1770,11 @@ export function buildRelayAnswerWakeEvent(
   return (
     `${path} პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n` +
     `<answer>\n${answer}\n</answer>\n` +
-    'მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, დაასახელე ვინ უპასუხა და ვისი მეშვეობით — თუ ' +
-    'სხვა ენაზეა, თარგმანიც დაურთე. თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
+    (verbatim
+      ? 'მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, დაასახელე ვინ უპასუხა და ვისი მეშვეობით — თუ ' +
+        'სხვა ენაზეა, თარგმანიც დაურთე. '
+      : `${REWORDED_ANSWER} დაასახელე ვისი მეშვეობით. `) +
+    'თუ პასუხი დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი ' +
     'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
     'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. ' +
     `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
@@ -1772,13 +1788,20 @@ export function buildRelayAnswerWakeEvent(
  * (item 0C.3): an answer that arrives anonymously reads as the assistant's own
  * curiosity, so the owner has no reason to treat it as someone waiting.
  */
-export function buildAnswerWakeEvent(answer: string, fromName?: string | null): string {
+export function buildAnswerWakeEvent(
+  answer: string,
+  fromName?: string | null,
+  verbatim = true,
+): string {
   const who = fromName?.trim() ? fromName.trim() : 'ადამიანმა, ვისაც კითხვა გაეგზავნა';
   return (
-    `${who} გიპასუხა შენს გაგზავნილ კითხვაზე. პასუხის ზუსტი ტექსტი <answer> ტეგებს შორისაა:\n` +
+    `${who} გიპასუხა შენს გაგზავნილ კითხვაზე. პასუხის ტექსტი <answer> ტეგებს შორისაა:\n` +
     `<answer>\n${answer}\n</answer>\n` +
-    `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ სხვა ენაზეა, ` +
-    'თარგმანიც დაურთე. თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
+    (verbatim
+      ? `მფლობელს გადაეცი სიტყვასიტყვით, ციტატად, და დაასახელე ვინ უპასუხა (${who}) — თუ სხვა ` +
+        'ენაზეა, თარგმანიც დაურთე. '
+      : `${REWORDED_ANSWER} `) +
+    'თუ ეს პასუხი კითხვაა, მფლობელს ახსენი, რომ ადამიანი პასუხს ელოდება. ' +
     `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
   );
 }
@@ -1787,6 +1810,63 @@ export function buildAnswerWakeEvent(answer: string, fromName?: string | null): 
 export interface EnsureQuoted {
   readonly text: string;
   readonly who: string | null;
+  /**
+   * Row 303: whether `text` is the answerer's OWN words. When false, the reply
+   * must carry the meaning and name who said it, and it must NOT put the text
+   * in quotation marks — that would present their assistant's wording as
+   * theirs.
+   */
+  readonly verbatim?: boolean;
+}
+
+/** How many of the recipient's own lines are read to find their words. */
+const OWN_WORDS_LOOKBACK = 20;
+const OWN_WORDS_NOISE_RE = /[^\p{L}\p{N}]+/gu;
+
+function comparable(text: string): string {
+  return text.toLowerCase().replace(OWN_WORDS_NOISE_RE, ' ').trim();
+}
+
+/**
+ * ⚠️ ROW 303 — A REWORDED ANSWER ARRIVED IN QUOTATION MARKS, AS THE PERSON'S
+ * OWN WORDS.
+ *
+ * The seat's round of 29 September: Test 44 typed „კი, ბახვა გამოგონილი კარგი
+ * ბუღალტერია, ჩემი კონტაქტია. დავაკავშირებ, თუ გინდა." His assistant sent
+ * „კი, ვიცნობ სანდო ბუღალტერს, ბახვა. დაგაკავშირებთ." — and the owner's event
+ * said „pass it on word for word, as a quotation", so the owner read a
+ * sentence Test 44 never wrote, in quotes, with his name on it.
+ *
+ * The server can answer the question the event was assuming: is this text in
+ * what the person actually typed in that thread? If it is, it is theirs and
+ * may be quoted. If it is not — their assistant tidied or reworded it — it is
+ * their MEANING, and it goes on as meaning. Punctuation and case are ignored,
+ * so a tidied comma does not cost a quote; different words do.
+ *
+ * Unknown is treated as not theirs: a quotation is a claim, and a claim the
+ * server cannot check is not made.
+ */
+export async function answerIsTheirOwnWords(
+  askThreadId: number | null,
+  answer: string,
+): Promise<boolean> {
+  const wanted = comparable(answer);
+  if (askThreadId === null || wanted === '') return false;
+  try {
+    const result = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user'
+        ORDER BY created_at DESC
+        LIMIT $2`,
+      [askThreadId, OWN_WORDS_LOOKBACK],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return result.rows.some((r) => comparable(r.content ?? '').includes(wanted));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ask-answer] could not read the recipient's own lines:", (err as Error).message);
+    return false;
+  }
 }
 
 const QUOTE_NORM_RE = /\s+/g;
@@ -1804,7 +1884,16 @@ export function ensureVerbatimQuote(reply: string, ensure: EnsureQuoted): string
   const answer = ensure.text.trim();
   if (!answer) return reply;
   if (norm(reply).includes(norm(answer))) return reply;
-  const attribution = ensure.who?.trim() ? ` — ${ensure.who.trim()}` : '';
+  const who = ensure.who?.trim() ?? '';
+  // Row 303: their assistant's wording is not theirs. The guarantee becomes
+  // „the owner hears who answered" rather than „the text in quotes": a reply
+  // that names them has relayed it, and one that does not gets the meaning
+  // put in front of it — without quotation marks.
+  if (ensure.verbatim === false) {
+    if (who !== '' && reply.includes(who)) return reply;
+    return `${who === '' ? answer : `${who}: ${answer}`}\n\n${reply}`;
+  }
+  const attribution = who !== '' ? ` — ${who}` : '';
   return `„${answer}"${attribution}\n\n${reply}`;
 }
 
@@ -1834,13 +1923,15 @@ export interface UnwokenAnswer {
   task_status: string | null;
   /** A goal opened through the connector has no thread — nothing to wake INTO. */
   task_thread_id: number | null;
+  /** The recipient's own thread — where their own words can be checked (row 303). */
+  ask_thread_id: number | null;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
 export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
     `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
-            t.thread_id AS task_thread_id
+            t.thread_id AS task_thread_id, ta.ask_thread_id
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
      LEFT JOIN "User" u ON u.id = ta.to_user_id

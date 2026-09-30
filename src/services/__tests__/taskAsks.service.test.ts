@@ -911,6 +911,9 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
         );
       if (sql.includes('SELECT u.name AS from_name'))
         return Promise.resolve(rows([{ from_name: 'გია' }]) as never);
+      // Row 303: the recipient typed exactly what was sent, so it is theirs.
+      if (sql.includes('FROM conversations') && sql.includes("role = 'user'"))
+        return Promise.resolve(rows([{ content: 'დამტკიცებული ტექსტი' }]) as never);
       return Promise.resolve(rows([]) as never);
     });
   }
@@ -929,6 +932,7 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     expect(mockWakeTask).toHaveBeenCalledWith(3, expect.stringContaining('დამტკიცებული ტექსტი'), {
       text: 'დამტკიცებული ტექსტი',
       who: 'გია',
+      verbatim: true,
     });
     // Delivered wake gets its marker so the sweep does not re-deliver.
     const markCall = mockQuery.mock.calls.find(([sql]) =>
@@ -1287,6 +1291,8 @@ describe('the answer rule approved once', () => {
     expect(told.some((t) => t.includes('ავტომატურად ვუპასუხე') && t.includes(RULE.answer))).toBe(
       true,
     );
+    // The wake runs after the return (row 303 added a read before it).
+    await new Promise((resolve) => setImmediate(resolve));
     expect(wakeTask).toHaveBeenCalled();
   });
 
