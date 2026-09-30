@@ -583,6 +583,41 @@ export function latinStem(word: string): string {
   return back.length >= MIN_LATIN_STEM_CHARS ? back : lower;
 }
 
+/**
+ * ROW 321, ON THE SEAT — ONE PROFESSION, THREE WORDS.
+ *
+ * Test 73 (a 1,032-contact copy of Giorgi's phonebook), 30 Sep: every search
+ * finished, and four of the nine lawyers still never came back. They are
+ * saved „… iuridiuli" (legal), and „იურისტი" reaches „iurist…" but not
+ * „iuridiul…" — a different stem of the same word family. The model searched
+ * „ადვოკატი", „advokati", „იურისტი", „lawyer", „attorney" and never
+ * „iuridiuli", so a quarter of the plate's nine were invisible.
+ *
+ * So a lawyer word in the query is one WORD with all of these spellings: one
+ * alternation, counted once in word_hits, exactly as a Latin and a Georgian
+ * spelling of one word already are. Listed as Latin stems; buildSearchTerms
+ * adds the Georgian readings.
+ */
+const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
+  ['advokat', 'iurist', 'iuridiul', 'lawyer', 'attorney'],
+];
+
+/** English members are searched as written: their „Georgian readings" (ლაწიერ) are noise. */
+const ENGLISH_FAMILY_WORDS: ReadonlySet<string> = new Set(['lawyer', 'attorney']);
+
+/** The other members of a word's profession family, as search terms. */
+function professionFamilyTerms(group: ReadonlySet<string>): string[] {
+  const terms: string[] = [];
+  for (const family of PROFESSION_FAMILIES) {
+    const belongs = [...group].some((term) => family.some((stem) => term.startsWith(stem)));
+    if (!belongs) continue;
+    for (const stem of family) {
+      terms.push(...(ENGLISH_FAMILY_WORDS.has(stem) ? [stem] : buildSearchTerms(stem)));
+    }
+  }
+  return terms.filter((term) => !group.has(term));
+}
+
 function wordVariantGroup(word: string): string[] {
   const lower = word.toLowerCase();
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
@@ -598,7 +633,10 @@ function wordVariantGroup(word: string): string[] {
     if (form === latin) continue;
     for (const term of buildSearchTerms(form)) group.add(term);
   }
-  return [...group].slice(0, MAX_GROUP_TERMS);
+  // Row 321: the word's own spellings first, then its profession family,
+  // each family member kept whole so none is cut by the cap.
+  const own = [...group].slice(0, MAX_GROUP_TERMS);
+  return [...own, ...professionFamilyTerms(group)];
 }
 
 // A term this short must match a whole token, never a prefix: 'giz' swallowed
