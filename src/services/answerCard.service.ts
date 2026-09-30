@@ -30,6 +30,8 @@ export interface CardAnswer {
   readonly fromName: string | null;
   /** Row 303: the text is the answerer's own words. */
   readonly verbatim: boolean;
+  /** The bridge who passed the question on (D254), when the answer came through one. */
+  readonly viaName?: string | null;
 }
 
 export interface AnswerCardTarget {
@@ -44,6 +46,14 @@ const HEADING: Readonly<Record<RunLanguage, { one: string; many: string }>> = {
   ka: { one: 'მოვიდა პასუხი:', many: 'მოვიდა პასუხები:' },
 };
 
+/** „(through Levan)" without inflecting the name: the label comes first. */
+const VIA: Readonly<Record<RunLanguage, string>> = {
+  en: 'via',
+  ru: 'через',
+  es: 'a través de',
+  ka: 'შუამავალი:',
+};
+
 const SOMEBODY: Readonly<Record<RunLanguage, string>> = {
   en: 'Someone you asked',
   ru: 'Тот, кого вы спросили',
@@ -53,7 +63,8 @@ const SOMEBODY: Readonly<Record<RunLanguage, string>> = {
 
 /** One answer's line: their own words in quotes, anything else without. */
 async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<string> {
-  const who = answer.fromName?.trim() || SOMEBODY[language];
+  const via = answer.viaName?.trim();
+  const who = `${answer.fromName?.trim() || SOMEBODY[language]}${via ? ` (${VIA[language]} ${via})` : ''}`;
   const relayed = await relayedForReader(answer.answer, language, 'answer');
   if (relayed.original === undefined) {
     return answer.verbatim

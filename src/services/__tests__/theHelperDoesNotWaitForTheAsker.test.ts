@@ -42,7 +42,10 @@ describe('sending an answer does not wait for the asker’s run', () => {
    */
   it('fires the wake without the caller waiting on it', () => {
     expect(deliver).toContain('void (async () => {');
-    expect(deliver).toMatch(/^ {8}const delivered = await wakeTask\(/m);
+    // Row 322(a): the relayed answer's card decides WHICH wake runs, so the
+    // line now opens on that choice; the wake itself is still awaited in here.
+    expect(deliver).toMatch(/^ {8}const delivered = /m);
+    expect(deliver).toContain('await wakeTask(');
     expect(deliver).not.toMatch(/^ {4}(const \w+ = )?await wakeTask\(/m);
   });
 

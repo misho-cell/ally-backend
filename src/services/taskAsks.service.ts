@@ -1581,18 +1581,23 @@ async function deliverCapturedAnswer(
           return;
         }
         const verbatim = await answerIsTheirOwnWords(captured.askThreadId, captured.answer);
-        const delivered = await wakeTask(
-          captured.taskId,
-          relay
-            ? buildRelayAnswerWakeEvent(
+        // Row 322(a) for a relayed answer: on the owner's screen first, naming
+        // the bridge, and the reply that follows does not read it out again.
+        const delivered = (await showRelayedAnswer(captured, relay.bridgeName, verbatim))
+          ? await wakeTask(
+              captured.taskId,
+              buildShownRelayAnswerWakeEvent(captured.fromName, relay.bridgeName),
+            )
+          : await wakeTask(
+              captured.taskId,
+              buildRelayAnswerWakeEvent(
                 captured.answer,
                 captured.fromName,
                 relay.bridgeName,
                 verbatim,
-              )
-            : buildAnswerWakeEvent(captured.answer, captured.fromName, verbatim),
-          { text: captured.answer, who: captured.fromName, verbatim },
-        );
+              ),
+              { text: captured.answer, who: captured.fromName, verbatim },
+            );
         if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
         // Row 322: a busy thread is usually the previous answer's own wake.
         // Come back as soon as it is free, with every answer still waiting.
@@ -1606,6 +1611,38 @@ async function deliverCapturedAnswer(
       await closeTheBridgesOwnAsk(relay.parentAskId);
       await thankTheBridge(relay, captured.fromName);
     }
+  }
+}
+
+/** Row 322(a): the card for one relayed answer. False when it could not be written. */
+async function showRelayedAnswer(
+  captured: CapturedAnswer,
+  bridgeName: string | null,
+  verbatim: boolean,
+): Promise<boolean> {
+  try {
+    const goal = await query<{ thread_id: number | null; user_id: string }>(
+      `SELECT thread_id, user_id FROM tasks WHERE id = $1 LIMIT 1`,
+      [captured.taskId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const threadId = goal.rows[0]?.thread_id ?? null;
+    const ownerId = Number(goal.rows[0]?.user_id);
+    if (threadId === null || !Number.isInteger(ownerId) || ownerId <= 0) return false;
+    const { showAnswersToOwner } = await import('./answerCard.service');
+    return await showAnswersToOwner({ threadId, ownerId }, [
+      {
+        askId: captured.askId,
+        answer: captured.answer,
+        fromName: captured.fromName,
+        verbatim,
+        viaName: bridgeName,
+      },
+    ]);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[answer-card] relayed answer: card not written:', (err as Error).message);
+    return false;
   }
 }
 
@@ -1843,6 +1880,32 @@ export function buildRelayAnswerWakeEvent(
     'შეტყობინება თავად დაწეროს, და დაეხმარე ერთი-ორი წინადადებით — სწორედ იმაზე, რაც მას ამ ' +
     'შეხვედრიდან სჭირდება. თუ უარია, მოკლედ და თბილად თქვი და ნუ დაუბრუნდები. ' +
     `${OTHERS_MAY_HAVE_ANSWERED} ${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+  );
+}
+
+/**
+ * Row 322(a) — a relayed answer the server has ALREADY shown the owner, with
+ * the bridge named on the card. What the run still owns is what only it can
+ * do: thank the bridge in one clause and take the next step — never read the
+ * answer out again.
+ */
+export function buildShownRelayAnswerWakeEvent(
+  fromName?: string | null,
+  bridgeName?: string | null,
+): string {
+  const who = fromName?.trim()
+    ? geoName(fromName.trim(), 'erg')
+    : 'ადამიანმა, ვისაც კითხვა გადაეგზავნა';
+  const bridge = bridgeName?.trim() ? geoName(bridgeName.trim(), 'gen') : null;
+  const path = bridge
+    ? `${who} გიპასუხა — ის ${bridge} მეშვეობით იკითხა.`
+    : `${who} გიპასუხა შენი კონტაქტის მეშვეობით.`;
+  return (
+    `${path} სერვერმა პასუხი მფლობელს უკვე აჩვენა — ბარათად, შენი პასუხის ზემოთ, ვინ ` +
+    'უპასუხა და ვისი მეშვეობით. პასუხის სიტყვები არ გაიმეორო. თქვი მხოლოდ შემდეგი ნაბიჯი ' +
+    'ერთი წინადადებით: თუ დათანხმებაა, შესთავაზე მფლობელს, რომ პირველი შეტყობინება თავად ' +
+    'დაწეროს; თუ უარია, მოკლედ და თბილად, და ნუ დაუბრუნდები. ' +
+    `ეს ეტაპია „დათანხმდა", არა „დაკავშირდნენ": არასდროს თქვა „დაგაკავშირეთ" და ნუ ჰკითხავ, მოგვარდა თუ არა. შემდეგ გააგრძელე დავალება.`
   );
 }
 

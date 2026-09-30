@@ -14,7 +14,7 @@ import { saveServerLine, threadLanguage } from '../threads.service';
 import { emitMessageAppended } from '../sse.service';
 import { relayedForReader } from '../askTranslation.service';
 import { buildAnswerCard, CardAnswer, showAnswersToOwner } from '../answerCard.service';
-import { buildShownAnswersWakeEvent } from '../taskAsks.service';
+import { buildShownAnswersWakeEvent, buildShownRelayAnswerWakeEvent } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveServerLine as jest.MockedFunction<typeof saveServerLine>;
@@ -64,6 +64,14 @@ describe('the card', () => {
     expect(card).toContain('Netai Test 50: Yes, I know one.');
     expect(card).toContain(`(„${OWN_WORDS.answer}")`);
     expect(card).not.toContain('„Yes, I know one."');
+  });
+
+  /** A relayed answer (D254) names the bridge on the card, without inflecting either name. */
+  it('names the bridge when the answer came through one', async () => {
+    const card = await buildAnswerCard([{ ...OWN_WORDS, viaName: 'Levan' }], 'ka');
+    expect(card).toContain(`Netai Test 50 (შუამავალი: Levan): „${OWN_WORDS.answer}"`);
+    const english = await buildAnswerCard([{ ...REWORDED, viaName: 'Levan' }], 'en');
+    expect(english).toContain('Netai Test 54 (via Levan):');
   });
 
   it('names an unnamed answerer in the owner’s language', async () => {
@@ -137,6 +145,19 @@ describe('the reply that follows the card', () => {
     expect(event).not.toContain('მფლობელს ზუსტად ეს უთხარი');
     expect(event).toContain('ბარათზე უკვე წერია, ნუ გაიმეორებ');
     expect(event).toContain('request_introduction');
+  });
+
+  it('tells a relayed answer’s run the card is there, and keeps the bridge in the event', () => {
+    const event = buildShownRelayAnswerWakeEvent('Nino', 'Levan');
+    expect(event).toContain('უკვე აჩვენა');
+    expect(event).toContain('პასუხის სიტყვები არ გაიმეორო');
+    expect(event).toContain('მეშვეობით');
+  });
+
+  it('shows a relayed answer before its run, and drops the quote guarantee then', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    const relayWake = asks.slice(asks.indexOf('await showRelayedAnswer(captured'));
+    expect(relayWake.slice(0, 400)).toContain('buildShownRelayAnswerWakeEvent(captured.fromName');
   });
 
   /** A quote guarantee under the card would print the answer a second time. */
