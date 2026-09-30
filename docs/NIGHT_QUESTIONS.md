@@ -1,6 +1,9 @@
 # The night list — what waits for Misho or Tornike
 
-> ## ⚠️ QUIET UNTIL 08:00 SPANISH TIME ON 30 SEPTEMBER — MISHO'S OWN WORDS
+> ## ~~QUIET UNTIL 08:00 SPANISH TIME ON 30 SEPTEMBER~~ — EXPIRED 06:00 UTC, 30 SEP
+>
+> Kept for the record. The standing rule since 29 Sep is TASKS.md point 10:
+> write to Misho only about money, or a question I genuinely cannot answer.
 >
 > **„ხვალ დილის 8 საათამდე ნუ მიგზავნი შეტყობინებებს"** — 29 September, evening.
 > Send him nothing until **08:00 Spain = 06:00 UTC, 30 September**.
@@ -1256,10 +1259,15 @@ over in the morning instead of tonight.
 - **Row 295 on the plate is Pr1 and its premise does not hold — measured, and
   I misread the same field first.** „Giorgi's search found up to five lawyers
   in his own phonebook, yet the reply said none were there." There are no five.
-  The two `search_by_tag` calls returned a dedup guard
-  (`already_searched_and_empty`), not results; the „2 rows / 3 rows" is the
-  length of the already-tried list, which reads exactly like a successful
-  search unless you pull `result_keys`. And the underlying claim measured
+  The two `search_by_tag` calls RAN and found nobody; the „2 rows / 3 rows"
+  is the length of the run's list of empty searches that gets attached to an
+  empty result (`already_searched_and_empty`), which reads exactly like a
+  successful search unless you pull `result_keys`. **Corrected 30 Sep 07:30:**
+  I first wrote here, and told the tester, that this was a „dedup guard" where
+  „no search ran". It is not a guard and skips nothing — the tester caught it
+  from the call timings. The conclusion (no lawyers found and hidden) stands;
+  the mechanism I gave was wrong, and so was the log sample I shipped for it
+  (fixed, `633716f`). And the underlying claim measured
   directly: of Giorgi's **1,174 contacts**, with **2,254 tags on 987 people**,
   **zero** carry a lawyer tag and **zero** carry a lawyer fact. The reply was
   true. Told the tester (842) and suggested taking it off Pr1 — a fix aimed at
@@ -1278,6 +1286,15 @@ over in the morning instead of tonight.
   „nobody has said", not English. **My own write-up of this was too narrow:** I
   filed it as a weekly-summary fault and they correctly pointed out `detail` is
   ours on all ten kinds.
+- **One question from the morning, 30 September — row 311 (D532).** After the
+  owner says „solved", the plate wants one question first: „go on with the
+  others still asked, or stop?". Today the goal closes and every open ask is
+  cancelled at once (each asked person gets a „no longer needed" line, each
+  person who answered a thank-you). „Go on" after „solved" means a CLOSED goal
+  whose questions stay live, and what their answers then wake — nothing, a
+  card, or the goal reopening — is a product decision I would be inventing. So
+  it is not built. D532 is quoted by the tester and is not in this repository;
+  if it already says what „go on" does, one line from him settles it.
 - **Still waiting on his word, unchanged:** row 278's index rebuild
   (recommend off-peak), the Netai Test 12 seat, his own account id for the
   alarm, the Meta WhatsApp template, and the 34 stalled goals.
