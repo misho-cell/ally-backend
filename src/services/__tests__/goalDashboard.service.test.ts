@@ -1,7 +1,13 @@
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
-import { adminGoalDetail, blockerFor, goalDays } from '../goalDashboard.service';
+import {
+  adminGoalDetail,
+  blockerFor,
+  goalDays,
+  NO_TOKEN_HELD_TAILS,
+  NO_TOKEN_PAUSE_LINES,
+} from '../goalDashboard.service';
 import { GOAL_STAGE_SQL } from '../goalQuestions.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -126,13 +132,23 @@ describe('adminGoalDetail', () => {
       "'answer_automatic'",
       "'wake'",
       "'weekly_summary'",
+      "'paused_no_tokens'",
       "'debrief_' || o.outcome",
       "'closed'",
     ]) {
       expect(sql).toContain(kind);
     }
-    // The wake and summary prefixes travel as parameters, never interpolated.
-    expect(params).toEqual([1519, 200, 160, '[მოვლენა]', 'კვირის შეჯამება']);
+    // The wake and summary prefixes and the pause lines travel as
+    // parameters, never interpolated.
+    expect(params).toEqual([
+      1519,
+      200,
+      160,
+      '[მოვლენა]',
+      'კვირის შეჯამება',
+      NO_TOKEN_PAUSE_LINES,
+      NO_TOKEN_HELD_TAILS,
+    ]);
   });
 
   it('reads the blocker off the stage: waiting on a reply names the people and since when', async () => {

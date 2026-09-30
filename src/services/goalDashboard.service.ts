@@ -1,6 +1,8 @@
 import { query } from '../db/postgres/client';
 import { GOAL_STAGE_SQL, GoalStage } from './goalQuestions.service';
 import { TaskPlan } from './taskPlans.service';
+import { scrubMechanicalForStorage } from './privacyScrub';
+import { answerHeldNoTokens, RUN_STRINGS, RunLanguage } from './runLanguage';
 
 /**
  * One goal, the way the founder wants to read it on the dashboard (Ticket 10
@@ -17,6 +19,28 @@ const MAX_ACTIONS = 200;
 const WAKE_SNIPPET_CHARS = 160;
 const WAKE_PREFIX = '[მოვლენა]';
 const WEEKLY_SUMMARY_PREFIX = 'კვირის შეჯამება';
+const PAUSE_LANGUAGES: readonly RunLanguage[] = ['ka', 'en', 'ru', 'es'];
+
+/**
+ * ⚠️ A WAKE THAT FOUND THE WALLET EMPTY WAS MISSING FROM THIS LIST.
+ *
+ * The seat's 852, 30 September: goal 8089's 02:35 wake wrote „I have paused
+ * work on this goal…", moved next_wake_at a day on and touched
+ * last_activity_at — and the actions list still ended at the 29 Sep wake. A
+ * reader of the list alone would conclude the wake never fired.
+ *
+ * The engine writes nothing but that line into the thread, so the line IS the
+ * record, and it is matched here the way it is STORED: `saveThreadMessage`
+ * scrubs it first, which turns „ — " into „, " (the seat quoted the stored
+ * form, with the comma). The version that names who answered has the name in
+ * front, so it is matched by its fixed tail.
+ */
+export const NO_TOKEN_PAUSE_LINES: readonly string[] = PAUSE_LANGUAGES.map((l) =>
+  scrubMechanicalForStorage(RUN_STRINGS[l].goalPausedNoTokens),
+);
+export const NO_TOKEN_HELD_TAILS: readonly string[] = PAUSE_LANGUAGES.map((l) =>
+  scrubMechanicalForStorage(answerHeldNoTokens(l, '')),
+);
 
 export type GoalActionKind =
   | 'goal_created'
@@ -32,6 +56,7 @@ export type GoalActionKind =
   | 'answer_automatic'
   | 'wake'
   | 'weekly_summary'
+  | 'paused_no_tokens'
   | 'debrief_worked'
   | 'debrief_did_not_work'
   | 'closed';
@@ -238,6 +263,13 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
          FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
          WHERE t.id = $1 AND c.role = 'assistant' AND c.content LIKE $5 || '%'
        UNION ALL
+       SELECT c.created_at, 'paused_no_tokens', NULL, c.id::text
+         FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
+         WHERE t.id = $1 AND c.role = 'assistant'
+           AND (c.content = ANY($6::text[])
+                OR EXISTS (SELECT 1 FROM unnest($7::text[]) tail
+                            WHERE RIGHT(c.content, LENGTH(tail)) = tail))
+       UNION ALL
        SELECT o.created_at, 'debrief_' || o.outcome, NULL, a.id::text
          FROM outcome_events o JOIN task_asks a ON a.id::text = o.subject_id
          WHERE o.subject_type = 'task_ask' AND a.task_id = $1
@@ -245,7 +277,15 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
      ) x
      ORDER BY at
      LIMIT $2`,
-    [taskId, MAX_ACTIONS, WAKE_SNIPPET_CHARS, WAKE_PREFIX, WEEKLY_SUMMARY_PREFIX],
+    [
+      taskId,
+      MAX_ACTIONS,
+      WAKE_SNIPPET_CHARS,
+      WAKE_PREFIX,
+      WEEKLY_SUMMARY_PREFIX,
+      NO_TOKEN_PAUSE_LINES,
+      NO_TOKEN_HELD_TAILS,
+    ],
     DASHBOARD_QUERY_TIMEOUT_MS,
   );
   return result.rows
