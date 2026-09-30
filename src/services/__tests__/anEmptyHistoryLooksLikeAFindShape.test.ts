@@ -13,11 +13,13 @@ import { matchShapeOf } from '../chat.service';
  * opened it and read it exactly the same way, and came within one query of
  * filing it as a server bug.
  *
- * NEITHER NUMBER MEANT THAT. Those calls returned the dedup guard — the two
- * queries had already been searched and come back empty, so no search ran at
- * all — and `result_count` was the length of the ALREADY-SEARCHED list.
+ * NEITHER NUMBER MEANT THAT. Those searches ran and found nobody, and the
+ * run's list of empty searches so far was attached to the result —
+ * `result_count` was the length of THAT list. (Corrected 30 September: this
+ * file first called it a „dedup guard" where „no search ran". It is not a
+ * guard; it skips nothing. The seat caught it from the call timings.)
  * `result_count` is „a numeric count key, or the first array's length", and
- * `result_empty` is a heuristic over several fields, so on a guard shape the
+ * `result_empty` is a heuristic over several fields, so on this shape the
  * two together are indistinguishable from a successful search with rows.
  *
  * Only `result_keys` told the truth, and nobody thinks to ask for it.
@@ -35,30 +37,28 @@ describe('a sample says which shape came back, not just how many rows', () => {
   });
 
   /**
-   * THE ONE THIS IS FOR. A guard shape must not be silent, because silence is
+   * THE ONE THIS IS FOR. This shape must not be silent, because silence is
    * what let two people read it as rows.
    */
-  it('says plainly when no search ran because it was already empty', () => {
-    const guard = {
+  it('says plainly that the search found nobody, and how many empties this run has had', () => {
+    // The real shape: an empty result, with the run's empty-search history
+    // attached by withEmptySearchHistory after the search ran.
+    const emptyWithHistory = {
       found: false,
-      already_searched_and_empty: ['ადვოკატი', 'იურისტი'],
-      reason: 'already_searched',
-      note: 'nothing new to search',
-      search_id: 51,
+      already_searched_and_empty: ['search_by_tag: ადვოკატი', 'search_by_tag: იურისტი'],
+      note: 'This run has now searched 2 times and found nobody.',
     };
 
-    const sample = matchShapeOf(guard);
+    const sample = matchShapeOf(emptyWithHistory);
 
-    expect(sample).toContain('no search ran');
-    expect(sample).toContain('already searched');
-    // The count that misled is named as what it is — earlier queries.
-    expect(sample).toContain('2');
-    expect(sample).toContain('queries');
+    expect(sample).toBe('found nobody — 2 empty searches in this run, this one included');
+    // It never claims a search was skipped: the history is attached AFTER it ran.
+    expect(sample).not.toMatch(/no search ran|skipped/);
   });
 
-  it('counts one skipped query in the singular', () => {
+  it('counts one empty search in the singular', () => {
     expect(matchShapeOf({ found: false, already_searched_and_empty: ['x'] })).toContain(
-      '1 earlier query',
+      '1 empty search in this run',
     );
   });
 

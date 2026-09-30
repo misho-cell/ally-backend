@@ -38,10 +38,10 @@ describe('the match shape a search log may carry', () => {
    *
    * It used to assert that anything without a row list answers NOTHING. That
    * contract is what let two people misread Giorgi's run: the two
-   * `search_by_tag` calls returned the dedup guard, logged
-   * `result_count=2 / result_empty=true` with an empty sample, and both the
-   * tester and I read that as two lawyers found and hidden. It was the length
-   * of the already-searched list. See `aGuardShapeLooksLikeAFindShape`.
+   * `search_by_tag` calls ran, found nobody, carried the run's empty-search
+   * history, logged `result_count=2 / result_empty=true` with an empty sample,
+   * and both the tester and I read that as two lawyers found and hidden. It
+   * was the length of that history. See `anEmptyHistoryLooksLikeAFindShape`.
    *
    * So a result with no rows now says WHY it has none, when it knows. Silence
    * was never neutral here — the other two fields fill it in, wrongly.

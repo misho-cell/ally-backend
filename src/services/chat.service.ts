@@ -9741,18 +9741,24 @@ const INTERNAL_TOOL_NAMES = [
  *
  * The tester read that as two and three lawyers found and hidden, filed it Pr1
  * (row 295), and I read it the same way and nearly filed it as a server bug.
- * Neither number meant that. Those calls returned the dedup guard — the
- * queries had already been searched and come back empty, so nothing ran — and
- * `result_count` was the length of the ALREADY-SEARCHED list. On a guard shape
- * the two fields together read exactly like a successful search with rows.
+ * Neither number meant that. Those searches RAN and found nobody, and
+ * `withEmptySearchHistory` attached the run's list of empty searches so far —
+ * and `result_count` was the length of THAT list. On this shape the two fields
+ * together read exactly like a successful search with rows.
+ *
+ * ⚠️ CORRECTED 30 SEPTEMBER. The first version of this comment, and of the
+ * sample below, called that shape a „dedup guard" and said „no search ran".
+ * That was my misreading, shipped: `withEmptySearchHistory` is applied AFTER
+ * the search, to an empty result, and skips nothing. The seat caught it from
+ * the timings — second-circle calls of 2.4–3.3 s are searches, not a guard.
  *
  * Only `result_keys` said otherwise, and nobody thinks to ask for it.
  *
  * So the sample now says which shape it was, in words. Still counts and never
  * people: a search over somebody's phonebook must not leave a list of their
  * friends in a debugging table (D149), and that rule does not bend for
- * convenience. „Already searched and empty" names nobody and would have ended
- * that evening in one line.
+ * convenience. „Found nobody — N empty searches in this run" names nobody and
+ * would have ended that evening in one line.
  *
  * A search that DID NOT FINISH gets a line too. `searchDidNotFinish` exists
  * because a timeout and an empty network used to be the same sentence to the
@@ -9776,11 +9782,12 @@ export function matchShapeOf(result: unknown): string | null {
     ).length;
     return `${rows.length} rows, ${approximate} approximate`;
   }
-  const skipped = record.already_searched_and_empty;
-  if (Array.isArray(skipped)) {
-    return `no search ran — already searched and empty (${skipped.length} earlier ${
-      skipped.length === 1 ? 'query' : 'queries'
-    })`;
+  // The list includes THIS search: it is pushed before it is returned.
+  const emptySoFar = record.already_searched_and_empty;
+  if (Array.isArray(emptySoFar)) {
+    return `found nobody — ${emptySoFar.length} empty ${
+      emptySoFar.length === 1 ? 'search' : 'searches'
+    } in this run, this one included`;
   }
   if (typeof record.reason === 'string' && record.reason !== '') {
     return `no rows — ${record.reason}`;
