@@ -183,7 +183,7 @@ describe('searchSecondDegree tag matching', () => {
     )?.[0] as string;
     // The ranking CTE carries its own LIMIT, and the display tables join FROM
     // it — never onto the unbounded match set (the 6 Aug timeout shape).
-    expect(sql).toMatch(/ranked AS \([\s\S]*LIMIT 30[\s\S]*\)\s*SELECT r\.phone/);
+    expect(sql).toMatch(/ranked AS \([\s\S]*LIMIT 50[\s\S]*\)\s*SELECT r\.phone/);
     expect(sql).toContain('FROM ranked r');
   });
 

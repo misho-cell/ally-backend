@@ -306,7 +306,14 @@ const MAX_FRIEND_PHONES = 3000;
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
 // rank by that and cap at a real limit, so the right connection isn't lost in an
 // arbitrary unordered slice (was an unranked LIMIT 20).
-const SECOND_DEGREE_RESULT_LIMIT = 30;
+/**
+ * Row 298: 30 of 36. Measured 30 Sep over seven days: 29 of 348 second-circle
+ * searches reached 30 rows (~15,600 characters). The decorate phase costs
+ * ~9 ms a row over its fixed ~440 ms, so 50 adds well under half a second
+ * and about 10,000 characters, and only on the few searches that reach it.
+ * The true total rides with it (b9bb877).
+ */
+const SECOND_DEGREE_RESULT_LIMIT = 50;
 
 /**
  * ROW 298, the seat's 875: Test 70's bridge holds 36 lawyers, the second

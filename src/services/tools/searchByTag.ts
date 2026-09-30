@@ -26,7 +26,13 @@ import { OWNERSHIP } from './searchResultMeta';
 import { searchDidNotFinish } from './searchDidNotFinish';
 
 const FUZZY_THRESHOLD = 0.45;
-const RESULT_LIMIT = 20;
+/**
+ * Row 298, the seat's 875: 20 of a bridge's 36 lawyers came back. Measured
+ * 30 Sep over seven days: 5 of 377 direct tag searches reached 20, and a
+ * 20-row result is ~5,000 characters, so 50 costs little and covers the case
+ * the plate names. `total` still says when there are more.
+ */
+const RESULT_LIMIT = 50;
 
 /**
  * pg_trgm's own threshold, which the index-backed `%` operator uses.
