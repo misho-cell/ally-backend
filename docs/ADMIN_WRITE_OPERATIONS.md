@@ -5228,3 +5228,21 @@ UNDO    DELETE /admin/prompt-blocks/gpt_georgian_voice
 **§73 RUN, 1 October ~07:15 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
 `success: true`, model `gpt`, all six modes, 1,251 characters, enabled. The text sent is
 kept in the session's scratchpad (gpt_block.txt).
+
+## §74 — THREE MORE RULES IN THE GPT GEORGIAN BLOCK (row 313, second pass)
+
+**Why:** my read of the first ten Georgian replies after §73 (box 28117) failed on
+four counts: a button whose meaning was inverted („დამირეკე რომელიმე ამ
+კომპანიიდან"), „გასაყიდებლად", „მონათესავე ფიგურა", and a „თქვენ"/„შენ" switch. The
+tester's text for them (box 28150), numbered 8–10 because the block already has
+rules 1–7. „შენ" is the product's register already (`informalGeorgianForDisplay`).
+On Misho's standing rule (decide on the recommendation unless it is money); the
+button rule was my own recommendation in 28117. Only adds rules; only GPT reads it.
+
+```
+ROUTE   PUT /admin/prompt-blocks/gpt_georgian_voice   (requireAdminRole)
+BODY    { "model": "gpt", "modes": [all six run modes], "sort_order": 100,
+          "enabled": true, "content": "<§73's text + rules 8–10>" }
+UNDO    PUT the same route with §73's text (scratchpad gpt_block.txt; also in
+        prompt_block_history, the row before this one)
+```
