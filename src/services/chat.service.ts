@@ -6878,6 +6878,15 @@ async function executeToolCall(
   // reaching here means a call arrived for one anyway — a replayed block, a
   // future caller that forgets the flag, a model that names a tool it was not
   // given. The owner's consent is not something to record on any of those.
+  if (ownerAbsent && OWNER_INBOX_TOOL_NAMES.has(name)) {
+    // eslint-disable-next-line no-console
+    console.warn(`[inbox] ${name} refused: no owner in this run (wake/engine)`);
+    return {
+      error:
+        'Not in this run: it was started by the system, not by the owner. What is waiting for ' +
+        'the owner stays waiting for their own next visit — do not mention other goals or items.',
+    };
+  }
   if (ownerAbsent && OWNER_CONSENT_TOOL_NAMES.has(name)) {
     // eslint-disable-next-line no-console
     console.error(`[consent] ${name} refused: no owner in this run (wake/engine)`);
@@ -10427,6 +10436,24 @@ export const OWNER_CONSENT_TOOL_NAMES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The tester's 979 (G3): a wake on one goal called the inbox tools, and the
+ * owner's OTHER waiting items — another goal's question, „also waiting: 6
+ * questions and 2 results" — were posted into that goal's thread while nobody
+ * was there. These tools release what is waiting (it is marked seen), so in a
+ * run the owner did not start they are not held at all; the items stay
+ * waiting for the owner's own next visit.
+ */
+export const OWNER_INBOX_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'check_my_inbox',
+  'get_pending_updates',
+]);
+
+/** Tools a run the owner did not start may not hold. */
+function ownerOnlyTool(name: string): boolean {
+  return OWNER_CONSENT_TOOL_NAMES.has(name) || OWNER_INBOX_TOOL_NAMES.has(name);
+}
+
+/**
  * The tools a run is allowed to hold.
  *
  * Exported and named so „read the tool list back and find no approve, no
@@ -10437,7 +10464,7 @@ export function toolsForRun<T extends { name: string }>(
   all: readonly T[],
   ownerAbsent: boolean,
 ): T[] {
-  return ownerAbsent ? all.filter((tool) => !OWNER_CONSENT_TOOL_NAMES.has(tool.name)) : [...all];
+  return ownerAbsent ? all.filter((tool) => !ownerOnlyTool(tool.name)) : [...all];
 }
 
 /**
