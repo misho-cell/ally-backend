@@ -79,7 +79,7 @@ beforeEach(() => {
   mockNames.mockResolvedValue(false);
 });
 
-const openGoal = (title: string, brief = ''): void => {
+const openGoal = (title: string, brief = '', description: string | null = null): void => {
   mockTask.mockResolvedValue({
     id: 9109,
     user_id: 171938,
@@ -88,6 +88,7 @@ const openGoal = (title: string, brief = ''): void => {
     plan_proposed: null,
     title,
     brief,
+    description,
   } as never);
 };
 
@@ -113,6 +114,19 @@ describe('a goal that IS an instruction is not sent back for a plan', () => {
     mockNames.mockResolvedValue(true);
 
     expect(await nothingToPlanYet(9109)).toBe(false);
+  });
+
+  /**
+   * 279 run 2: the owner's „ჰკითხე Netai Test 103-ს…" was kept in the
+   * description, under a title that instructs nothing — and a plan was asked
+   * for, a second yes after the first.
+   */
+  it('reads the description too', async () => {
+    openGoal('ბუღალტერი', '', 'ჰკითხე Netai Test 103-ს, იცნობს თუ არა კარგ ბუღალტერს');
+    mockNames.mockResolvedValue(true);
+
+    expect(await nothingToPlanYet(9109)).toBe(false);
+    expect(String(mockNames.mock.calls[0][1])).toContain('ჰკითხე Netai Test 103-ს');
   });
 });
 

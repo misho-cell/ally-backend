@@ -61,6 +61,12 @@ const ASK_QUERY_TIMEOUT_MS = 8_000;
  * be — and a label shorter than this simply falls back to the plan's yes.
  */
 const MIN_NAMED_LABEL_CHARS = 4;
+/**
+ * How far before the goal's creation the owner's typed line may be. The line is
+ * saved before the run that opens the goal, and a run with web searches can
+ * take minutes.
+ */
+const TYPED_LINE_GRACE_MINUTES = 15;
 // The recipient's chat list must distinguish eight questions from the same
 // sender — the title carries the question itself, not a generic "კითხვა".
 const ASK_TITLE_SNIPPET_CHARS = 48;
@@ -561,8 +567,11 @@ export async function createAsk(
      *     owner's own phonebook which label is the longest one inside the
      *     sentence, and that label has to be this person's.
      *
-     *   * THE OWNER'S LATEST OWN MESSAGE ONLY. Not the model's text, not an
-     *     engine event, and not a line from three turns ago.
+     *   * THE OWNER'S LATEST TYPED MESSAGE ONLY. Not the model's text, not an
+     *     engine event, and not a line from before this goal. A tap on a
+     *     button the model offered is not a typed message (279 run 2: „ჰკითხე
+     *     Netai Test 103-ს…", then a tap on the model's „დიახ, გაუგზავნე" hid
+     *     the sentence and the ask waited for a second yes).
      *
      *   * AND IT IS AN INSTRUCTION, by the same predicate D316 already uses.
      *     „Nino already knows about this" names Nino and instructs nothing.
@@ -573,11 +582,18 @@ export async function createAsk(
       if (threadId === undefined) return false;
       try {
         const said = await query<{ content: string }>(
-          `SELECT content FROM conversations
-            WHERE thread_id = $1 AND role = 'user'
-              AND COALESCE(kind, '') <> 'event' AND content <> ''
-            ORDER BY created_at DESC LIMIT 1`,
-          [threadId],
+          `SELECT c.content FROM conversations c
+            WHERE c.thread_id = $1 AND c.role = 'user'
+              AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''
+              AND c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+              AND NOT EXISTS (
+                SELECT 1 FROM conversations a
+                 WHERE a.thread_id = c.thread_id AND a.role = 'assistant'
+                   AND a.created_at < c.created_at
+                   AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+                   AND jsonb_typeof(a.choices) = 'array' AND a.choices ? c.content)
+            ORDER BY c.created_at DESC LIMIT 1`,
+          [threadId, task.created_at, TYPED_LINE_GRACE_MINUTES],
           ASK_QUERY_TIMEOUT_MS,
         );
         const line = said.rows[0]?.content ?? '';

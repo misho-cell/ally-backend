@@ -448,9 +448,27 @@ describe('the owner naming somebody outranks the draft, for that person only', (
   );
 
   it('reads the owner’s own latest message, not the model’s and not an event', () => {
-    expect(matcher).toContain("role = 'user'");
-    expect(matcher).toContain("COALESCE(kind, '') <> 'event'");
-    expect(matcher).toContain('ORDER BY created_at DESC LIMIT 1');
+    expect(matcher).toContain("c.role = 'user'");
+    expect(matcher).toContain("COALESCE(c.kind, '') <> 'event'");
+    expect(matcher).toContain('ORDER BY c.created_at DESC LIMIT 1');
+  });
+
+  /**
+   * 279 run 2: „ჰკითხე Netai Test 103-ს…" was typed, then the model's own
+   * button „დიახ, გაუგზავნე" was tapped — and the tap, being the latest line,
+   * hid the sentence. A tap on an offered button is not a typed line.
+   */
+  it('skips a tap on a button the model offered, back to the typed line', () => {
+    expect(matcher).toContain("a.role = 'assistant'");
+    expect(matcher).toContain('a.created_at < c.created_at');
+    expect(matcher).toContain('a.choices ? c.content');
+  });
+
+  /** …but never reaches back past this goal, however many taps there were. */
+  it('reads no line from before the goal', () => {
+    expect(matcher).toContain("c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval");
+    expect(matcher).toContain('[threadId, task.created_at, TYPED_LINE_GRACE_MINUTES]');
+    expect(service).toContain('const TYPED_LINE_GRACE_MINUTES = 15;');
   });
 
   /** „Nino already knows about this" names Nino and instructs nothing. */

@@ -1077,7 +1077,11 @@ export async function goalIsAnInstruction(taskId: number): Promise<boolean> {
   const task = await getTaskById(taskId);
   if (!task || task.status !== 'open') return false;
   if (task.plan !== null || task.plan_proposed !== null) return false;
-  const goalText = `${task.title ?? ''} ${task.brief ?? ''}`.trim();
+  // 279 run 2: `create_task` keeps the owner's own sentence in `description`
+  // as often as in the title or brief — read all three.
+  const goalText = [task.title, task.brief, task.description]
+    .filter((part): part is string => typeof part === 'string' && part.trim() !== '')
+    .join(' ');
   if (!looksLikeContactInstruction(goalText)) return false;
   return messageNamesOwnContact(String(task.user_id), goalText);
 }
