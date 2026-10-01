@@ -5307,3 +5307,24 @@ UNDO    POST /admin/users/165699/tokens
 ```
 
 **§77 RUN, 1 October ~10:30 UTC:** `{"user_id":"165699","was":0,"tokens":1000,"balance":1000}`.
+
+## §78 — ROW 301: CHORUS RESTARTED, UNDER THE CAP
+
+**Authorised by Misho, 1 October, directly in the session:** „კი ჩართე" — answering my
+question about Tornike's capped restart (box 28217). Tornike's condition — the cap in the
+code first, never the restart alone — is met: ff8c95b (5 campaigns a Tbilisi day, 8
+people a campaign, on sends, opening and scheduling) and e912cc3 (sends only 08:00–22:00
+Tbilisi). The per-inviter once-a-week rule and every opt-out stand as before.
+
+**What „on" means, said plainly.** Chorus has no off switch; it was held by D102's
+founder-approval gate with no target approved. Restarting lifts that gate: Chorus then
+works from its own target list, under the cap, instead of only from targets the founder
+approved one by one. Setting the variable redeploys the service.
+
+```
+CHANGE  ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: false)
+UNDO    ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: true)
+        — the gate is back on the next tick; nothing already sent is recalled.
+READ    GET /admin/chorus/campaigns, GET /admin/chorus/asks (admin only); the log lines
+        „[chorus-cron] opened N" / „sent N".
+```
