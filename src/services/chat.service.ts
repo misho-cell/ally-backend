@@ -140,7 +140,12 @@ import {
   queueResult,
 } from './pendingUpdates.service';
 import { messageNamesOwnContact } from './tools/nameMatch';
-import { flagGoalQuestion, answerGoalQuestion, GOAL_QUESTION_KIND } from './goalQuestions.service';
+import {
+  flagGoalQuestion,
+  answerGoalQuestion,
+  GOAL_QUESTION_KIND,
+  QUESTION_ON_SCREEN_NOTE,
+} from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
 import {
@@ -5820,6 +5825,39 @@ function noteNothingToSendToday(runId: string | undefined): void {
  */
 const runProposedAPlan = new Set<string>();
 
+/**
+ * Plate row 268 — the owner's question, written by the server during this run
+ * (ask_owner_decision), so a final that would only repeat it can be left out.
+ * The model is told to end without a reply then; this is what keeps that from
+ * reading as an empty, failed run.
+ */
+interface QuestionOnScreen {
+  readonly rowId: number;
+  readonly text: string;
+}
+const runQuestionOnScreen = new Map<string, QuestionOnScreen>();
+
+function noteQuestionIsOnScreen(runId: string | undefined, question: QuestionOnScreen): void {
+  if (runId) runQuestionOnScreen.set(runId, question);
+}
+
+/**
+ * The question as the run's final when the model said nothing more. Its own
+ * row comes out, so the thread shows it once — carried by the final, with the
+ * final's buttons. Null when this run wrote no question.
+ */
+async function questionAsFinal(runId: string): Promise<string | null> {
+  const question = runQuestionOnScreen.get(runId);
+  if (!question) return null;
+  try {
+    await deleteMessage(question.rowId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[chat] run ${runId}: could not lift the question row:`, (err as Error).message);
+  }
+  return question.text;
+}
+
 function notePlanIsOnScreen(runId: string | undefined): void {
   if (runId) runProposedAPlan.add(runId);
 }
@@ -6210,6 +6248,7 @@ function clearRunState(runId: string): void {
   // never reaches the consumer, and a flag that outlives its run is the shape
   // of fault this file has already been bitten by once today.
   runProposedAPlan.delete(runId);
+  runQuestionOnScreen.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -7583,7 +7622,17 @@ async function executeToolCall(
       // Written the same way and for the same reason: what a person is
       // answering cannot depend on a model remembering to repeat it.
       if (threadId !== undefined && question.trim() !== '') {
-        await saveMessage(userId, threadId, 'assistant', question.trim(), 'message', runId ?? null);
+        const rowId = await saveMessage(
+          userId,
+          threadId,
+          'assistant',
+          question.trim(),
+          'message',
+          runId ?? null,
+        );
+        if (!flagged.flagged) return flagged;
+        noteQuestionIsOnScreen(runId, { rowId, text: question.trim() });
+        return { ...flagged, note: QUESTION_ON_SCREEN_NOTE };
       }
       return flagged;
     }
@@ -11111,6 +11160,7 @@ export async function processChat(
     );
     effectiveFinal = '';
   }
+  if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }

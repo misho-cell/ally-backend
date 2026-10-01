@@ -11,6 +11,19 @@ const MAX_QUESTION_CHARS = 400;
 export const GOAL_QUESTION_KIND = 'goal_question';
 
 /**
+ * Plate row 268, goal 11221 (1 Oct 07:35): the question went to the screen as
+ * its own message, and the tool result said only `{flagged: true}` — so the
+ * run's closing reply asked it a second time, eight seconds later, with
+ * „I am waiting for your answer" on top. The result now says what the owner
+ * already sees.
+ */
+export const QUESTION_ON_SCREEN_NOTE =
+  'The question is ALREADY on the owner’s screen as its own message, written by the server. ' +
+  'Do not ask it again, do not restate it, and do not write that you are waiting for their ' +
+  'answer. If you have nothing new to tell them, end without a reply — the question on screen ' +
+  'stands as your answer.';
+
+/**
  * Ticket 8 Task 2(a): the goal's blocking question, made visible.
  *
  * The nightly wake fires, the run finds people — and ends at a question inside
