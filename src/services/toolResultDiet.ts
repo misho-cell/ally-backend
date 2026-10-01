@@ -7,6 +7,19 @@
 const MODEL_RESULT_LIMIT = 8;
 
 /**
+ * The tester's 991 (G1 on Test 73): with own matches ranked first, eight of the
+ * owner's nine lawyers reached the model and the ninth was cut by the window
+ * above. A row carrying the owner's own label (`tags`, which only ever holds
+ * labels the owner saved) is never trimmed while it fits under this ceiling
+ * (the name search's own row limit); every other row keeps the eight-row
+ * window.
+ */
+const OWN_MATCHES_CEILING = 20;
+
+/** Set by the tag and name searches on a row that only others' labels matched. */
+const OTHERS_LABELS_FLAG = 'found_by_others_labels';
+
+/**
  * Ticket 16 Task 47 (Ticket 10 [3.1]): an empty field is not information, and
  * the model quotes it — „ilia tsulaia (\"\")" reached a user as a blank where a
  * number should be. A field the scrubber emptied, or that nobody ever filled,
@@ -51,16 +64,65 @@ function withoutEmptyFields(value: unknown): unknown {
   return out;
 }
 
+function isOthersLabelsOnly(row: unknown): boolean {
+  return (
+    row !== null &&
+    typeof row === 'object' &&
+    (row as Record<string, unknown>)[OTHERS_LABELS_FLAG] === true
+  );
+}
+
+interface MatchSplit {
+  readonly own_or_public_matches: number;
+  readonly others_labels_only_matches: number;
+}
+
+/**
+ * The 991 second ask: the model said „45 in your contacts" when nine were the
+ * owner's own labels and 36 other people's. It is handed the split whenever a
+ * result carries the flag, so it can say which number is the owner's.
+ */
+function matchSplit(results: readonly unknown[]): MatchSplit | null {
+  const othersOnly = results.filter(isOthersLabelsOnly).length;
+  if (othersOnly === 0) return null;
+  return {
+    own_or_public_matches: results.length - othersOnly,
+    others_labels_only_matches: othersOnly,
+  };
+}
+
+function carriesOwnLabel(row: unknown): boolean {
+  if (row === null || typeof row !== 'object' || isOthersLabelsOnly(row)) return false;
+  const tags = (row as Record<string, unknown>).tags;
+  return Array.isArray(tags) && tags.length > 0;
+}
+
+function rowsToShow(results: readonly unknown[]): number {
+  const ownCount = results.filter(carriesOwnLabel).length;
+  return Math.max(MODEL_RESULT_LIMIT, Math.min(ownCount, OWN_MATCHES_CEILING));
+}
+
+function shownRows(results: readonly unknown[], limit: number): unknown[] {
+  const own = results.filter(carriesOwnLabel);
+  const rest = results.filter((row) => !carriesOwnLabel(row));
+  return [...own, ...rest].slice(0, limit);
+}
+
 export function dietToolResult(result: unknown): unknown {
   if (result === null || typeof result !== 'object' || Array.isArray(result)) return result;
 
   const obj = withoutEmptyFields(result) as Record<string, unknown>;
-  if (!Array.isArray(obj.results) || obj.results.length <= MODEL_RESULT_LIMIT) return obj;
+  if (!Array.isArray(obj.results)) return obj;
+
+  const split = matchSplit(obj.results);
+  const withSplit = split ? { ...obj, ...split } : obj;
+  const limit = rowsToShow(obj.results);
+  if (obj.results.length <= limit) return withSplit;
 
   return {
-    ...obj,
-    results: obj.results.slice(0, MODEL_RESULT_LIMIT),
-    results_shown: MODEL_RESULT_LIMIT,
-    note: `showing top ${MODEL_RESULT_LIMIT} of ${obj.results.length}; refine the query to narrow down`,
+    ...withSplit,
+    results: shownRows(obj.results, limit),
+    results_shown: limit,
+    note: `showing top ${limit} of ${obj.results.length}; refine the query to narrow down`,
   };
 }

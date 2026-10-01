@@ -104,3 +104,63 @@ describe('a date in a tool result', () => {
     expect(Object.keys(out)).toEqual(['a']);
   });
 });
+
+/**
+ * The tester's 991 (G1 on Test 73): own matches ranked first, and eight of the
+ * owner's nine lawyers reached the model — the ninth was cut by the eight-row
+ * window. And the model said „45 in your contacts" when 36 were found only
+ * through other people's labels.
+ */
+describe('an own match in a long search', () => {
+  const own = (i: number): Record<string, unknown> => ({ name: `Own ${i}`, tags: ['advokati'] });
+  const others = (i: number): Record<string, unknown> => ({
+    name: `Other ${i}`,
+    found_by_others_labels: true,
+  });
+  const testSeventyThree = (): Record<string, unknown> => ({
+    found: true,
+    total: 45,
+    results: [
+      ...Array.from({ length: 9 }, (_, i) => own(i)),
+      ...Array.from({ length: 36 }, (_, i) => others(i)),
+    ],
+  });
+
+  it('is never trimmed: all nine reach the model', () => {
+    const dieted = dietToolResult(testSeventyThree()) as { results: Record<string, unknown>[] };
+
+    expect(dieted.results).toHaveLength(9);
+    expect(dieted.results.every((r) => r.found_by_others_labels !== true)).toBe(true);
+  });
+
+  it('comes with the split, so the owner hears nine and not forty-five', () => {
+    const dieted = dietToolResult(testSeventyThree()) as Record<string, unknown>;
+
+    expect(dieted.own_or_public_matches).toBe(9);
+    expect(dieted.others_labels_only_matches).toBe(36);
+  });
+
+  it('still fills up to eight with others when the owner has fewer', () => {
+    const input = {
+      results: [own(0), ...Array.from({ length: 20 }, (_, i) => others(i))],
+    };
+    const dieted = dietToolResult(input) as { results: unknown[] };
+
+    expect(dieted.results).toHaveLength(8);
+  });
+
+  it('stops at the ceiling when the owner has very many', () => {
+    const input = { results: Array.from({ length: 30 }, (_, i) => own(i)) };
+    const dieted = dietToolResult(input) as { results: unknown[]; results_shown: number };
+
+    expect(dieted.results).toHaveLength(20);
+    expect(dieted.results_shown).toBe(20);
+  });
+
+  it('puts an own match first even if the tool sent it later', () => {
+    const input = { results: [...Array.from({ length: 10 }, (_, i) => others(i)), own(0)] };
+    const dieted = dietToolResult(input) as { results: Record<string, unknown>[] };
+
+    expect(dieted.results[0]?.name).toBe('Own 0');
+  });
+});
