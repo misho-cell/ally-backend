@@ -507,6 +507,30 @@ const TOOL_STEPS_BY_LANG: Record<Exclude<RunLanguage, 'ka'>, Record<string, stri
   es: TOOL_STEPS_ES,
 };
 
+/**
+ * ROW 304, SECOND HALF — THE HEARTBEAT NAMED NOBODY EITHER.
+ *
+ * The tool captions above already say who and what. The line that fires every
+ * 25 seconds while the model thinks still said „still working, deep search
+ * takes time" — the exact filler the row was opened for. It now repeats the
+ * last real action, which is true and specific; with no action yet, the plain
+ * line stays.
+ */
+const STILL_ON_IT: Readonly<Record<RunLanguage, string>> = {
+  ka: '⏳ ისევ ამაზე ვმუშაობ:',
+  en: '⏳ Still on it:',
+  ru: '⏳ Всё ещё занимаюсь:',
+  es: '⏳ Sigo en ello:',
+};
+
+/** The heartbeat line: the last real action when there is one, else the plain line. */
+export function heartbeatLine(language: RunLanguage, lastCaption: string | null): string {
+  if (lastCaption === null || lastCaption.trim() === '') return RUN_STRINGS[language].heartbeat;
+  // The caption's own emoji and leading marks go; the action stays.
+  const action = lastCaption.replace(/^[^\p{L}\p{N}„"«]+/u, '');
+  return `${STILL_ON_IT[language] ?? STILL_ON_IT.ka} ${action}`;
+}
+
 /** The step caption for a tool in the run's language; null = caller's Georgian base map decides. */
 /**
  * ⚠️ ROW 304 — THE WORKING LINES NAMED NOBODY.

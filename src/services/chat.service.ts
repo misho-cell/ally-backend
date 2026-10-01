@@ -20,6 +20,7 @@ import {
   languageOfConversation,
   toolStepCaption,
   namedStepCaption,
+  heartbeatLine,
   RUN_STRINGS,
   RunLanguage,
 } from './runLanguage';
@@ -6170,8 +6171,15 @@ function runLang(runId: string | undefined): RunLanguage {
 
 // Every per-run map is dropped together at both run exits, so a crashed or
 // empty run never leaves a stale entry behind.
+/**
+ * Row 304, second half — the last real action a run announced, so its
+ * heartbeat can repeat it instead of „still working, deep search takes time".
+ */
+const runLastCaption = new Map<string, string>();
+
 function clearRunState(runId: string): void {
   runAllowedNumbers.delete(runId);
+  runLastCaption.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
@@ -8202,7 +8210,10 @@ async function processToolBlocks(
       namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
       toolStepCaption(block.name, runLang(runId)) ??
       TOOL_PROGRESS_MESSAGES[block.name];
-    if (progressMsg) emitToolProgress(userId, threadId, runId, progressMsg);
+    if (progressMsg) {
+      emitToolProgress(userId, threadId, runId, progressMsg);
+      runLastCaption.set(runId, progressMsg);
+    }
   }
   /**
    * ROW 249 — A CARD THAT COULD NOT MEAN ANYTHING, OFFERED IN THE SAME BREATH
@@ -9068,7 +9079,12 @@ async function runToolLoop(
     }
     if (Date.now() - lastSignalAt >= RUN_HEARTBEAT_MS) {
       lastSignalAt = Date.now();
-      emitStepSummary(userId, threadId, runId, RUN_STRINGS[runLang(runId)].heartbeat);
+      emitStepSummary(
+        userId,
+        threadId,
+        runId,
+        heartbeatLine(runLang(runId), runLastCaption.get(runId) ?? null),
+      );
     }
   }, RUN_HEARTBEAT_POLL_MS);
   // Initial call: nothing gathered yet, so a failure here propagates and the
