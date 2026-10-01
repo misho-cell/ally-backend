@@ -20,7 +20,9 @@ describe('budgetWindow', () => {
     const w = budgetWindow();
     expect(w.unit).toBe('week');
     expect(w.keyPrefix).toBe('w:');
-    expect(w.grantPriceKey).toBe('tokens.weekly_grant');
+    // Misho, 1 October: the week's grant is the plan's monthly total / 4.
+    expect(w.grantPriceKey).toBe('tokens.monthly_grant');
+    expect(w.grantShareOfMonth).toBe(4);
     expect(w.label).toBe('calendar_week');
   });
 

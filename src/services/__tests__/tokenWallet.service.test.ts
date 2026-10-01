@@ -486,7 +486,11 @@ describe('BUDGET_WINDOW=week', () => {
     delete process.env.BUDGET_WINDOW;
   });
 
-  it('reads the weekly grant and stamps the row with the ISO week key', async () => {
+  /**
+   * Misho, 1 October: „the weekly tokens are the subscription's total divided
+   * by 4". The week reads the plan's MONTHLY key and grants a quarter.
+   */
+  it('reads the plan’s own monthly tokens first — pro 1,000 a month is 250 a week', async () => {
     const { inserts } = setWorld({
       walletEnabled: true,
       subscriptionStatus: 'active',
@@ -499,14 +503,11 @@ describe('BUDGET_WINDOW=week', () => {
     const priceKeys = mockQuery.mock.calls
       .filter(([sql]) => String(sql).includes('FROM provider_prices'))
       .map(([, params]) => (params as string[])[0]);
-    expect(priceKeys).toEqual(['tokens.weekly_grant.pro', 'tokens.weekly_grant']);
-    // Neither weekly key is priced yet, so nothing is granted — the founder
-    // sets the number before the switch is thrown.
-    expect(inserts()).toHaveLength(0);
+    expect(priceKeys).toEqual(['tokens.monthly_grant.pro']);
+    expect(inserts()[0]).toEqual(['7', 250, 'monthly_grant']);
   });
 
-  it('grants the weekly amount once it is priced, under a w: key', async () => {
-    PRICES['tokens.weekly_grant'] = 250;
+  it('grants a quarter of the monthly tokens, under a w: key', async () => {
     const { inserts } = setWorld({
       walletEnabled: true,
       subscriptionStatus: 'active',
@@ -516,7 +517,6 @@ describe('BUDGET_WINDOW=week', () => {
 
     await ensurePeriodGrant('7');
 
-    delete PRICES['tokens.weekly_grant'];
     expect(inserts()[0]).toEqual(['7', 250, 'monthly_grant']);
     const insertSql = String(
       mockQuery.mock.calls.find(([sql]) =>
@@ -586,5 +586,29 @@ describe('the default window is the month (nothing changed for anyone today)', (
       String(sql).includes('NOT EXISTS'),
     ) as [string, unknown[]];
     expect(staleParams[2]).toBe('m:');
+  });
+});
+
+/** Misho, 1 October: a 500-token subscription gives 125 a week. */
+describe('the week is a quarter of the plan', () => {
+  beforeEach(() => {
+    process.env.BUDGET_WINDOW = 'week';
+    clearPriceCache();
+  });
+  afterEach(() => {
+    delete process.env.BUDGET_WINDOW;
+  });
+
+  it('gives 125 a week on a 500-token plan, rounding down', async () => {
+    PRICES['tokens.monthly_grant.pro'] = 501;
+    const { inserts } = setWorld({
+      walletEnabled: true,
+      subscriptionStatus: 'active',
+      balance: 0,
+      runCostUsd: 0,
+    });
+    await ensurePeriodGrant('7');
+    PRICES['tokens.monthly_grant.pro'] = 1000;
+    expect(inserts()[0]).toEqual(['7', 125, 'monthly_grant']);
   });
 });

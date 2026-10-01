@@ -34,6 +34,12 @@ export interface BudgetWindow {
   periodEndSql: string;
   /** The price key the grant is read from, before the tier suffix. */
   grantPriceKey: string;
+  /**
+   * How many of these windows one month's grant is split into: 1 for a month,
+   * 4 for a week. Misho, 1 October: „the weekly tokens are the subscription's
+   * total divided by 4" — a 1,000-token plan gives 250 a week, a 500 one 125.
+   */
+  grantShareOfMonth: number;
   /** What the admin read calls the window. */
   label: 'calendar_month' | 'calendar_week';
   /**
@@ -82,9 +88,13 @@ const MONTH: BudgetWindow = {
   periodStartSql: `to_date(${PERIOD_KEY_PARAM}, 'YYYY-MM')`,
   periodEndSql: `to_date(${PERIOD_KEY_PARAM}, 'YYYY-MM') + INTERVAL '1 month'`,
   grantPriceKey: 'tokens.monthly_grant',
+  grantShareOfMonth: 1,
   label: 'calendar_month',
   nextReset: firstOfNextMonth,
 };
+
+/** A month's grant is four weeks' grants (Misho, 1 October). */
+export const WEEKS_PER_GRANT_MONTH = 4;
 
 /** ISO weeks, Monday to Sunday, so 'w:2026-W37' sorts and compares like 'm:2026-09'. */
 const WEEK: BudgetWindow = {
@@ -95,7 +105,10 @@ const WEEK: BudgetWindow = {
   windowResetSql: `date_trunc('week', NOW()) + INTERVAL '1 week'`,
   periodStartSql: `to_date(${PERIOD_KEY_PARAM}, 'IYYY-"W"IW')`,
   periodEndSql: `to_date(${PERIOD_KEY_PARAM}, 'IYYY-"W"IW') + INTERVAL '1 week'`,
-  grantPriceKey: 'tokens.weekly_grant',
+  // The week reads the plan's MONTHLY tokens and takes a quarter of them, so
+  // the weekly number can never drift from the plan it belongs to.
+  grantPriceKey: 'tokens.monthly_grant',
+  grantShareOfMonth: WEEKS_PER_GRANT_MONTH,
   label: 'calendar_week',
   nextReset: nextMonday,
 };

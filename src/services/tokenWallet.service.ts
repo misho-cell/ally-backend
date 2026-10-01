@@ -67,13 +67,14 @@ export async function ensurePeriodGrant(userId: string): Promise<void> {
     // default, tokens.weekly_grant under 'w:IYYY-Www' when BUDGET_WINDOW=week.
     const window = budgetWindow();
     const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
-    const grant = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
+    const monthly = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
+    const grant = Math.floor(monthly / window.grantShareOfMonth);
     if (grant <= 0) return;
     await query(
       `INSERT INTO token_transactions (user_id, amount, reason, period_key)
        VALUES ($1, $2, $3, ${window.currentKeySql})
        ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
-      [userId, Math.floor(grant), MONTHLY_GRANT_REASON],
+      [userId, grant, MONTHLY_GRANT_REASON],
     );
     return;
   }
