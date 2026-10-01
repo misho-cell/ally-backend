@@ -5250,3 +5250,21 @@ UNDO    PUT the same route with §73's text (scratchpad gpt_block.txt; also in
 **§74 RUN, 1 October 08:04 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
 `success: true`; read back: 1,616 characters, enabled, rules 8–10 present. §73's text
 is kept in the scratchpad (gpt_block_v73.txt) for the undo.
+
+## §75 — THE GPT GEORGIAN BLOCK, THE TESTER'S CORRECTED TEXT (row 313, third pass)
+
+**Why:** the tester's ten-reply count from 08:44Z (box 28282) failed on 3 of 10 —
+„შესძლებია", a button ordering Netai plus the Latin „accountant", and „დამელოდები" for
+„I will wait". Their corrected block (box 28283) makes four changes: item 2 drops the
+order „გაუგზავნე" (answer buttons „კი" / „ჯერ არა"), item 3 adds „შესძლებია" and
+„მოგახსენებ", item 6 names search words in Georgian only, new item 11 puts Netai's own
+verbs in the first person. Taken word for word (1,964 characters). On Misho's standing
+rule (decide on the recommendation unless it is money), as §74. Only GPT reads it.
+
+```
+ROUTE   PUT /admin/prompt-blocks/gpt_georgian_voice   (requireAdminRole)
+BODY    { "model": "gpt", "modes": [all six run modes], "sort_order": 100,
+          "enabled": true, "content": "<the tester's 1,964-character text>" }
+UNDO    PUT the same route with §74's text (prompt_block_history, the row before
+        this one)
+```
