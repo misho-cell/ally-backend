@@ -5292,3 +5292,16 @@ UNDO    PUT the same route with { "enabled": false } — new requests open their
 
 **§76 RUN, 1 October 09:42:59 UTC:** `PUT /admin/flags/intro_follow_up_in_conversation
 {"enabled":true}` → `success: true`; read back from app_flags: enabled, 09:42:59.
+
+## §77 — ROW 293: A ONE-TIME 1,000-TOKEN TOP-UP FOR NINIA (account 165699)
+
+**Authorised by Misho, 1 October, directly in the session:** „დაუმატე" — answering my
+question about Tornike's request (box 28219) for a one-time 1,000-token top-up so Ninia
+can test. Her weekly allowance is not changed.
+
+```
+ROUTE   POST /admin/users/165699/tokens        (§57, requireAdminRole)
+BODY    { "tokens": 1000, "note": "Misho, 1 Oct (row 293): one-time 1000 tokens for testing" }
+UNDO    POST /admin/users/165699/tokens
+        { "tokens": -1000, "note": "undo §77" }
+```
