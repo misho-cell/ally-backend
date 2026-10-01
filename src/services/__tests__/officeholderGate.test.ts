@@ -504,3 +504,20 @@ describe('the gate says what it had when it refused', () => {
     expect(line()).toBe('');
   });
 });
+
+/** The tester's 973: two clinics' names were cut out of a web list of clinics. */
+describe('a clinic is not an officeholder', () => {
+  it('leaves clinic and dental names alone', () => {
+    expect(nameCandidates('The head of Smile Dental runs it.')).not.toContain('Smile Dental');
+    expect(nameCandidates('The director of Kids Clinic said so.')).not.toContain('Kids Clinic');
+    expect(nameCandidates('The head of Vake Medical Center spoke.')).not.toContain(
+      'Medical Center',
+    );
+  });
+
+  it('still catches a real person beside one', () => {
+    expect(nameCandidates('The director of Kids Clinic is Giorgi Kapanadze.')).toContain(
+      'Giorgi Kapanadze',
+    );
+  });
+});

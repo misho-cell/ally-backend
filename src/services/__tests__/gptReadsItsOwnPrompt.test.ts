@@ -11,7 +11,9 @@ describe('GPT reads its own prompt blocks', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
   it('adds the run mode’s GPT blocks to what GPT is given', () => {
-    expect(chat).toContain('const gptBlocks = await gptBlocksFor(runId, userId);');
+    expect(chat).toContain(
+      "const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);",
+    );
     expect(chat).toContain('plainSystemPrompt(systemPrompt) + gptBlocks');
   });
 

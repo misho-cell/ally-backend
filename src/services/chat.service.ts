@@ -210,7 +210,7 @@ import {
   WayIn,
   OpeningSearches,
 } from './openingSearch.service';
-import { writeFinalAnswer, unusableReason } from './finalAnswer.service';
+import { finalAnswerModel, writeFinalAnswer, unusableReason } from './finalAnswer.service';
 import { splitOpeningLine } from './goalSplit';
 import {
   describeCliffhangerOutcome,
@@ -9973,7 +9973,11 @@ async function runToolLoop(
     let openAiStarted = false;
     // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
     // edited in the admin console with the model selector set to GPT.
-    const gptBlocks = await gptBlocksFor(runId, userId);
+    // The tester's 973: replies carried „gpt:gpt_georgian_voice@…" on their
+    // stamp while answered_by said Claude — the blocks were loaded and stamped
+    // with the final writer switched off, so nobody could see GPT never ran.
+    // They are read, and stamped, only when GPT will actually write.
+    const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);
     const rewritten = await writeFinalAnswer(
       messages,
       plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(runLang(runId)),

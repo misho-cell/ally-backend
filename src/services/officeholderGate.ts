@@ -145,6 +145,27 @@ const LATIN_NOT_A_NAME = new Set([
   'authority',
   'cooperative',
   'guild',
+  /**
+   * The tester's 973 (thread 29240): a web list of children's dental clinics
+   * came out with two names replaced by „(სახელი ვერ დავადასტურე …)" — a
+   * clinic's two capitalised words read as a person's. The same test: words
+   * a business is called and no human being is.
+   */
+  'clinic',
+  'dental',
+  'dent',
+  'medical',
+  'hospital',
+  'polyclinic',
+  'pharmacy',
+  'center',
+  'centre',
+  'studio',
+  'salon',
+  'lab',
+  'laboratory',
+  'services',
+  'solutions',
 ]);
 
 /**
