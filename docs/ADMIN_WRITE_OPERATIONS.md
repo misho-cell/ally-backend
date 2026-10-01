@@ -5268,3 +5268,6 @@ BODY    { "model": "gpt", "modes": [all six run modes], "sort_order": 100,
 UNDO    PUT the same route with §74's text (prompt_block_history, the row before
         this one)
 ```
+
+**§75 RUN, 1 October 09:36 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
+`success: true`; read back: 1,964 characters, enabled, all six modes, item 11 present.
