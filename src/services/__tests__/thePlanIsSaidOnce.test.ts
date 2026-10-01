@@ -67,6 +67,14 @@ describe('does the reply carry the plan', () => {
     expect(replyCarriesPlan('Shall I go ahead with this plan?', plan)).toBe(false);
   });
 
+  /** The tester's 963: the names in another script, the plan said, and the question at its end. */
+  it('yes, when it ends the plan on the agreed question, whatever script the names are in', () => {
+    const reply =
+      'გეგმა ასეთია: მოგვარებულად ჩავთვლი, როცა გეყოლება სანდო იურისტი. ამისთვის ვკითხავ ' +
+      'ნეტაი ტესტ 50-ს და ნეტაი ტესტ 54-ს.\n\nამ გეგმას მივყვე და ვიმოქმედო?';
+    expect(replyCarriesPlan(reply, plan)).toBe(true);
+  });
+
   it('no, when someone the plan will ask is missing', () => {
     const reply = `${'I will look among your contacts first, then the second circle. '.repeat(2)}Netai Test 50 first.`;
     expect(replyCarriesPlan(reply, plan)).toBe(false);

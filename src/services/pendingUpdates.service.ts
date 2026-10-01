@@ -183,6 +183,27 @@ export async function goalTitlesFor(
   return titles;
 }
 
+/** The most debrief cards one screen reads answers for. */
+const MAX_ANSWER_LOOKUPS = 200;
+
+/**
+ * Row 230 (Ninia's phone, 1 October): a debrief card still said „… ჯერ არ გიპასუხა" after the
+ * answer had arrived, and the answers themselves were nowhere on the screen.
+ * So the screen reads the answers for the asks the cards name, by ask id. Only answered ones.
+ */
+export async function answersForAsks(askIds: readonly number[]): Promise<Map<number, string>> {
+  const wanted = [...new Set(askIds)].slice(0, MAX_ANSWER_LOOKUPS);
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: number; answer: string | null }>(
+    `SELECT id, answer FROM task_asks
+      WHERE id = ANY($1::int[]) AND status = 'answered' AND answer IS NOT NULL
+      LIMIT ${MAX_ANSWER_LOOKUPS}`,
+    [wanted],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Map(rows.rows.map((row) => [row.id, String(row.answer)]));
+}
+
 export async function queueFollowUp(
   userId: string,
   taskId: number | null,

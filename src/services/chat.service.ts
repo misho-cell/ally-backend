@@ -6023,6 +6023,15 @@ const PLAN_REPLY_MIN_CHARS = 120;
  */
 export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
   if (reply.trim().length < PLAN_REPLY_MIN_CHARS) return false;
+  // The tester's 963 (Ninia, thread 28910): the reply said the whole plan and
+  // ended on the agreed question, but wrote „ქეთევანს" and „გიორგი
+  // აბრამიშვილს" for the plan's „❤️ Ketevan" and „Giorgi Abramishvili" — so
+  // the server put its own paragraph in front and the plan was said twice.
+  // The model is told to END the plan on that question; a reply that does has
+  // written it.
+  if (Object.values(PLAN_CLOSING_QUESTION).some((question) => reply.includes(question))) {
+    return true;
+  }
   return plan.names.every((name) => reply.includes(name));
 }
 

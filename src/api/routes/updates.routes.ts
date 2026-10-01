@@ -19,8 +19,13 @@ import {
   MAX_SNOOZE_DAYS,
   DEFAULT_SNOOZE_DAYS,
 } from '../../services/pendingUpdates.service';
-import { goalTitlesFor } from '../../services/pendingUpdates.service';
-import { cardHeading, normalisedPayload } from '../../services/updateCard';
+import { answersForAsks, goalTitlesFor } from '../../services/pendingUpdates.service';
+import {
+  answeredDetail,
+  cardHeading,
+  debriefAskId,
+  normalisedPayload,
+} from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
 import { asRunLanguage, type RunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
@@ -67,6 +72,8 @@ interface UpdateRow {
    */
   readonly title: string;
   readonly detail: string;
+  /** Row 230: a debrief whose question has since been answered. */
+  readonly answered: boolean;
 }
 
 /**
@@ -78,6 +85,7 @@ interface UpdateRow {
 function updatePayload(
   u: PendingUpdate,
   titles: ReadonlyMap<number, string>,
+  answers: ReadonlyMap<number, string>,
   language: RunLanguage,
 ): UpdateRow {
   const payload = normalisedPayload(u.kind, u.payload);
@@ -87,13 +95,19 @@ function updatePayload(
     u.task_id === null ? null : (titles.get(u.task_id) ?? null),
     language,
   );
+  // Row 230: once the person answered, the card says so, with the answer.
+  const askId = debriefAskId(u.kind, payload);
+  const answer = askId === null ? undefined : answers.get(askId);
+  const who = typeof payload.who === 'string' ? payload.who : '';
   return {
     update_ref: toUpdateRef(u.id),
     kind: u.kind,
     payload,
     task_id: u.task_id ?? null,
     title: heading.title,
-    detail: heading.detail,
+    detail:
+      answer !== undefined && who !== '' ? answeredDetail(who, answer, language) : heading.detail,
+    answered: answer !== undefined,
   };
 }
 
@@ -151,10 +165,18 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
      * inference we already had — see `asRunLanguage`.
      */
     const chosen = asRunLanguage(req.get('X-Locale'));
-    const [titles, language] = await Promise.all([
+    const askIds = [...due, ...shown]
+      .map((u) => debriefAskId(u.kind, normalisedPayload(u.kind, u.payload)))
+      .filter((id): id is number => id !== null);
+    const [titles, answers, language] = await Promise.all([
       goalTitlesFor([...due, ...shown].map((u) => u.task_id)).catch(
         () => new Map<number, string>(),
       ),
+      answersForAsks(askIds).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[updates] answers read failed:', (err as Error).message);
+        return new Map<number, string>();
+      }),
       chosen !== null
         ? Promise.resolve(chosen)
         : userLanguage(userId).catch(() => 'ka' as RunLanguage),
@@ -162,8 +184,8 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     res.status(200).json({
       success: true,
       data: {
-        due: due.map((u) => updatePayload(u, titles, language)),
-        seen: shown.map((u) => updatePayload(u, titles, language)),
+        due: due.map((u) => updatePayload(u, titles, answers, language)),
+        seen: shown.map((u) => updatePayload(u, titles, answers, language)),
         held,
       },
     });

@@ -116,6 +116,27 @@ const WAITING_ON: Readonly<Record<RunLanguage, (who: string) => string>> = {
   es: (who) => `${who} aún no ha respondido.`,
 };
 
+/** „<name> answered: …" — the same card once the answer has arrived (row 230). */
+const ANSWERED: Readonly<Record<RunLanguage, (who: string, answer: string) => string>> = {
+  ka: (who, answer) => `${who} გიპასუხა: „${answer}"`,
+  en: (who, answer) => `${who} answered: “${answer}”`,
+  ru: (who, answer) => `${who} ответил: «${answer}»`,
+  es: (who, answer) => `${who} respondió: «${answer}»`,
+};
+
+/** A debrief's line once its question was answered — never „has not answered". */
+export function answeredDetail(who: string, answer: string, language: RunLanguage): string {
+  const line = ANSWERED[language] ?? ANSWERED.ka;
+  return oneLine(line(who.trim(), answer.replace(/\s+/g, ' ').trim()));
+}
+
+/** The ask a debrief card is about, when it names one. */
+export function debriefAskId(kind: string, payload: Record<string, unknown>): number | null {
+  if (kind !== 'debrief') return null;
+  const id = Number(payload.ask_id);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 const UNTITLED: Readonly<Record<RunLanguage, string>> = {
   ka: 'უსათაურო მიზანი',
   en: 'Untitled goal',
