@@ -31,6 +31,9 @@ const PLAN: TaskPlan = {
 describe('the plan in plain sentences', () => {
   it('has no version, no form heading and no bracketed status', () => {
     const text = planInSentences(PLAN, 'en');
+    // The tester's 957: no „label: value" lines either — one paragraph of sentences.
+    expect(text).not.toContain(':');
+    expect(text).not.toContain('\n');
     expect(text).not.toMatch(/\bv\d/);
     expect(text).not.toContain('awaiting your approval');
     expect(text).not.toContain('[waiting]');
@@ -39,9 +42,9 @@ describe('the plan in plain sentences', () => {
 
   it('says what solved means, how it will look, and whom it will ask', () => {
     const text = planInSentences(PLAN, 'en');
-    expect(text).toContain('I will count it solved when: a reliable architect is found');
-    expect(text).toContain('Your own contacts; The second circle.');
-    expect(text).toContain('Netai Test 50, Netai Test 54 (not on Netai');
+    expect(text).toContain('I will count it solved when a reliable architect is found');
+    expect(text).toContain('I will look through Your own contacts and The second circle.');
+    expect(text).toContain('I will ask Netai Test 50 and Netai Test 54 (not on Netai');
   });
 
   it('says it is writing to nobody when the plan names nobody', () => {
@@ -136,5 +139,16 @@ describe('only a reply that asks for approval is a plan reply', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const fn = chat.slice(chat.indexOf('function withPlanInReply('));
     expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return reply;');
+  });
+});
+
+describe('the plan reads as Georgian sentences', () => {
+  it('puts the people in the dative and joins them with „და"', () => {
+    const text = planInSentences(PLAN, 'ka');
+    expect(text).toContain('ვკითხავ Netai Test 50-ს და');
+    expect(text).toContain('ვეძებ ამ გზებით — Your own contacts და The second circle.');
+    expect(text).not.toContain('კითხვას დავუსვამ:');
+    // The note stays after the name, and only the name is put in its case.
+    expect(text).toMatch(/Netai Test 54-ს \(Netai-ზე არ არის/);
   });
 });

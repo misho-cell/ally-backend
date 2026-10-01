@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { geoName } from './georgianCase';
 import { phoneDigits } from './phone';
 import { georgianStem } from './tools/georgianStem';
 import { isARealId } from './goalId';
@@ -986,33 +987,77 @@ const PLAN_WORDS: Record<RunLanguage, Record<string, string>> = {
  * reply, so what the approve button approves is never off the screen (row
  * 101). No version, no headings, no bracketed status words.
  */
-const PLAN_SENTENCES: Record<
-  RunLanguage,
-  { solved: string; routes: string; ask: string; askNobody: string }
-> = {
+/**
+ * The tester's 957: „მოგვარებულად ჩავთვლი, როცა: … / ვეძებ ასე: … / კითხვას
+ * დავუსვამ: …" still read as the form D538 removed — a label, a colon, a
+ * value. So the plan is one short paragraph of sentences, names in the case
+ * the sentence needs, lists joined the way a person joins them.
+ */
+interface PlanPersonLine {
+  readonly name: string;
+  readonly note: string;
+}
+
+const withNote = (name: string, note: string): string => (note === '' ? name : `${name} ${note}`);
+
+interface PlanSentenceWords {
+  readonly solved: (when: string) => string;
+  readonly routes: (list: string) => string;
+  /** Each person as the sentence needs them: the name in its case, then any note. */
+  readonly ask: (people: readonly PlanPersonLine[]) => string;
+  readonly askNobody: string;
+  readonly and: string;
+}
+
+function joinWithAnd(items: readonly string[], and: string): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
+}
+
+const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
   ka: {
-    solved: 'მოგვარებულად ჩავთვლი, როცა',
-    routes: 'ვეძებ ასე',
-    ask: 'კითხვას დავუსვამ',
+    solved: (when) => `მოგვარებულად ჩავთვლი, როცა ${when}.`,
+    routes: (list) => `ვეძებ ამ გზებით — ${list}.`,
+    ask: (people) =>
+      `ვკითხავ ${joinWithAnd(
+        people.map((p) => withNote(geoName(p.name, 'dat'), p.note)),
+        'და',
+      )}.`,
     askNobody: 'ჯერ არავის ვწერ.',
+    and: 'და',
   },
   en: {
-    solved: 'I will count it solved when',
-    routes: 'How I will look',
-    ask: 'Who I will ask',
+    solved: (when) => `I will count it solved when ${when}.`,
+    routes: (list) => `I will look through ${list}.`,
+    ask: (people) =>
+      `I will ask ${joinWithAnd(
+        people.map((p) => withNote(p.name, p.note)),
+        'and',
+      )}.`,
     askNobody: 'I am not writing to anyone yet.',
+    and: 'and',
   },
   ru: {
-    solved: 'Буду считать решённым, когда',
-    routes: 'Как буду искать',
-    ask: 'Кого спрошу',
+    solved: (when) => `Буду считать решённым, когда ${when}.`,
+    routes: (list) => `Искать буду так — ${list}.`,
+    ask: (people) =>
+      `Спрошу ${joinWithAnd(
+        people.map((p) => withNote(p.name, p.note)),
+        'и',
+      )}.`,
     askNobody: 'Пока никому не пишу.',
+    and: 'и',
   },
   es: {
-    solved: 'Lo daré por resuelto cuando',
-    routes: 'Cómo buscaré',
-    ask: 'A quién preguntaré',
+    solved: (when) => `Lo daré por resuelto cuando ${when}.`,
+    routes: (list) => `Buscaré así — ${list}.`,
+    ask: (people) =>
+      `Preguntaré a ${joinWithAnd(
+        people.map((p) => withNote(p.name, p.note)),
+        'y',
+      )}.`,
     askNobody: 'Todavía no escribo a nadie.',
+    and: 'y',
   },
 };
 
@@ -1034,20 +1079,19 @@ function withoutFinalStop(text: string): string {
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
   const routes = plan.routes.map((r) => withoutFinalStop(r.name)).filter((r) => r !== '');
-  const people = plan.people_to_involve.map((p) =>
-    p.reach === undefined || p.reach === 'ok'
-      ? p.name
-      : `${p.name} ${REACH_NOTE[language][p.reach]}`,
-  );
-  const lines = [`${words.solved}: ${withoutFinalStop(plan.solved_when)}.`];
-  if (routes.length > 0) lines.push(`${words.routes}: ${routes.join('; ')}.`);
-  lines.push(people.length > 0 ? `${words.ask}: ${people.join(', ')}.` : words.askNobody);
+  const people: PlanPersonLine[] = plan.people_to_involve.map((p) => ({
+    name: p.name,
+    note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],
+  }));
+  const lines = [words.solved(withoutFinalStop(plan.solved_when))];
+  if (routes.length > 0) lines.push(words.routes(joinWithAnd(routes, words.and)));
+  lines.push(people.length > 0 ? words.ask(people) : words.askNobody);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
   // The tester's 957: the closing question is NOT part of the plan text. A
   // model pasted these lines into a reply whose ask had already gone out, so
   // the owner was asked whether to follow a plan already carried out. The
   // question is added only under an approve button (withClosingQuestion).
-  return lines.join('\n');
+  return lines.join(' ');
 }
 
 export function renderPlan(
