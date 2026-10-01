@@ -26,6 +26,28 @@ export const SIMILAR_RULE_LABEL: Readonly<Record<RunLanguage, string>> = {
   es: 'Responder así a las parecidas',
 };
 
+/**
+ * The tester's 962: after the send, the reply said only „თუ გსურს, შეგიძლია
+ * აირჩიო." — never that the answer went. D527 is one line saying it went, so
+ * the server says it when the reply did not.
+ */
+export const ANSWER_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'პასუხი გაიგზავნა.',
+  en: 'Your answer was sent.',
+  ru: 'Ответ отправлен.',
+  es: 'Tu respuesta fue enviada.',
+};
+
+/** Words a reply uses when it already says the answer went. */
+const SAYS_IT_WENT_RE = /გაიგზავნ|გაეგზავნ|გავუგზავნ|გავაგზავნ|გაგზავნილია|\bsent\b|отправ|enviad/i;
+
+/** The reply, opening with the line that the answer went when it does not say so. */
+export function withAnswerSentLine(reply: string, language: RunLanguage): string {
+  if (SAYS_IT_WENT_RE.test(reply)) return reply;
+  const line = ANSWER_SENT_LINE[language] ?? ANSWER_SENT_LINE.ka;
+  return reply.trim() === '' ? line : `${line} ${reply.trimStart()}`;
+}
+
 /** True when the message is that button, in any language. */
 export function isSimilarRuleTap(message: string): boolean {
   return Object.values(SIMILAR_RULE_LABEL).includes((message ?? '').trim());

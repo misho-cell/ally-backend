@@ -49,9 +49,16 @@ const REQUEST_TIMEOUT_MS = 90_000;
  * single oversized one cannot crowd out the rest of what the run found.
  */
 const MAX_BLOCK_CHARS = 4_000;
+/**
+ * The tester's 962 (Kutaisi, run f804348d): a web search of five results runs
+ * past 4,000 characters, and fetch_page returns up to 8,000. Clipped at 4,000,
+ * the writer never saw the last pages' phones and wrote „ტელეფონი: [hidden]".
+ * A result is what the reply is written FROM, so it gets room for a whole page.
+ */
+const MAX_RESULT_CHARS = 12_000;
 
-function clip(text: string): string {
-  return text.length > MAX_BLOCK_CHARS ? `${text.slice(0, MAX_BLOCK_CHARS)}…` : text;
+function clip(text: string, ceiling: number = MAX_BLOCK_CHARS): string {
+  return text.length > ceiling ? `${text.slice(0, ceiling)}…` : text;
 }
 
 /**
@@ -80,7 +87,7 @@ function blockToText(block: unknown): string {
       : typeof b.content === 'string'
         ? b.content
         : JSON.stringify(b.content ?? null);
-    return clip(`[result] ${inner}`);
+    return clip(`[result] ${inner}`, MAX_RESULT_CHARS);
   }
   return '';
 }

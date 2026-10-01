@@ -549,3 +549,31 @@ describe('the owner naming somebody outranks the draft, for that person only', (
     expect(service).toContain('if (introAccepted) {');
   });
 });
+
+/**
+ * The tester's 962, 279 (a): a typed „ჰკითხე X-ს…" met the PERMISSION wall on
+ * the goal the run had just opened, and the run asked „გავაგზავნო?" — a second
+ * yes. The wall stays; its refusal now says the owner's line is the consent.
+ */
+describe('the permission wall says when the owner already said it', () => {
+  const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const wall = service.slice(service.indexOf('} else if (!task.permission_granted) {'));
+
+  it('checks the owner’s typed line before the general refusal', () => {
+    const named = wall.indexOf('if (await ownerJustNamedThisPerson()) {');
+    expect(named).toBeGreaterThan(-1);
+    expect(named).toBeLessThan(wall.indexOf("'ნებართვა არ არის:"));
+    expect(wall.slice(named, named + 200)).toContain('error: OWNER_TYPED_IS_THE_YES');
+  });
+
+  it('sends the run to the grant, not back to the owner', () => {
+    const text = service.slice(service.indexOf('const OWNER_TYPED_IS_THE_YES'));
+    expect(text.slice(0, 700)).toContain('grant_task_permission (confirmed: true)');
+    expect(text.slice(0, 700)).toContain('მფლობელს ხელახლა');
+  });
+
+  it('still never sends past the wall itself', () => {
+    const named = wall.slice(wall.indexOf('if (await ownerJustNamedThisPerson()) {'));
+    expect(named.slice(0, 200)).toContain('sent: false');
+  });
+});

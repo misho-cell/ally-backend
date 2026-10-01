@@ -67,6 +67,18 @@ const MIN_NAMED_LABEL_CHARS = 4;
  * take minutes.
  */
 const TYPED_LINE_GRACE_MINUTES = 15;
+/**
+ * The tester's 962, 279 (a): „ჰკითხე Netai Test 107-ს, იცნობს თუ არა…" was
+ * typed, the run opened a goal, the ask met the permission wall, and the run
+ * asked „გავაგზავნო?" — a second yes. Misho, 25 September: „ask X about Y" IS
+ * consent to write to X. The wall still holds: the grant is recorded by its
+ * own tool. The refusal only says the owner has already said it.
+ */
+const OWNER_TYPED_IS_THE_YES =
+  'ნებართვა ჯერ ჩაწერილი არ არის, მაგრამ მფლობელის საკუთარი აკრეფილი ხაზი სწორედ ამ ' +
+  'ადამიანს ასახელებს და ავალებს, რომ ჰკითხო — ეს თვითონ არის თანხმობა. მფლობელს ხელახლა ' +
+  'არ ჰკითხო და ტექსტი არ აჩვენო: ცალკე გამოიძახე grant_task_permission (confirmed: true), ' +
+  'მერე გაიმეორე ask_contact იმავე კითხვით.';
 // The recipient's chat list must distinguish eight questions from the same
 // sender — the title carries the question itself, not a generic "კითხვა".
 const ASK_TITLE_SNIPPET_CHARS = 48;
@@ -690,6 +702,9 @@ export async function createAsk(
        * wasted turn per run and a model that had just been told to say nothing
        * had been sent, one sentence after being told to send it.
        */
+      if (await ownerJustNamedThisPerson()) {
+        return { sent: false, reason: 'consent_pending', error: OWNER_TYPED_IS_THE_YES };
+      }
       return {
         sent: false,
         reason: 'consent_pending',

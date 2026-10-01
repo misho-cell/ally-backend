@@ -5,7 +5,12 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { saveAnswerRule } from '../answerRules.service';
-import { isSimilarRuleTap, saveSimilarRuleOnTap, SIMILAR_RULE_LABEL } from '../similarAnswerRule';
+import {
+  isSimilarRuleTap,
+  saveSimilarRuleOnTap,
+  SIMILAR_RULE_LABEL,
+  withAnswerSentLine,
+} from '../similarAnswerRule';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = saveAnswerRule as jest.MockedFunction<typeof saveAnswerRule>;
@@ -69,5 +74,33 @@ describe('a standing answer rule is only ever the owner’s tap', () => {
     expect(body).toContain('await sendApprovedAskAnswer(userId, threadId, answerText);');
     expect(body).not.toContain('remember_for_similar');
     expect(chat).toContain('await saveSimilarRuleOnTap(userId, threadId, userMessage)');
+  });
+});
+
+/** The tester's 962: the line after the send said only „თუ გსურს, შეგიძლია აირჩიო.". */
+describe('the reply after the send says the answer went', () => {
+  it('opens with the line when the reply does not say it', () => {
+    expect(withAnswerSentLine('თუ გსურს, შეგიძლია აირჩიო.', 'ka')).toBe(
+      'პასუხი გაიგზავნა. თუ გსურს, შეგიძლია აირჩიო.',
+    );
+    expect(withAnswerSentLine('', 'en')).toBe('Your answer was sent.');
+  });
+
+  it('adds nothing when the reply already says it went', () => {
+    const said = 'პასუხი გავუგზავნე Netai Test 108-ს.';
+    expect(withAnswerSentLine(said, 'ka')).toBe(said);
+    expect(withAnswerSentLine('Sent it to Netai Test 108.', 'en')).toBe(
+      'Sent it to Netai Test 108.',
+    );
+  });
+
+  it('is applied to the final reply of a run whose answer went', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('if (sent.sent && runId) runAnswerSent.add(runId);');
+    expect(chat).toContain(
+      'if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);',
+    );
+    const clear = chat.slice(chat.indexOf('function clearRunState'));
+    expect(clear.slice(0, 1400)).toContain('runAnswerSent.delete(runId)');
   });
 });

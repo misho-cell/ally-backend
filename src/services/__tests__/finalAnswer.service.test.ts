@@ -109,14 +109,15 @@ describe('the run history crossing to OpenAI', () => {
       [
         {
           role: 'user',
-          content: [{ type: 'tool_result', tool_use_id: 'c3', content: 'x'.repeat(9000) }],
+          content: [{ type: 'tool_result', tool_use_id: 'c3', content: 'x'.repeat(20_000) }],
         },
         { role: 'assistant', content: 'პასუხი' },
       ],
       SYSTEM,
     );
 
-    expect(String(out[1].content).length).toBeLessThan(4_200);
+    // The ceiling is a whole page (the tester's 962), not 4,000.
+    expect(String(out[1].content).length).toBeLessThan(12_200);
     // The turns after it still arrive — that is what the cap is protecting.
     expect(out[2]).toEqual({ role: 'assistant', content: 'პასუხი' });
   });
@@ -326,5 +327,35 @@ describe('row 155 — a reply that is barely Georgian in a Georgian thread', () 
       'But must answer event? It presented true after assistant response. Nothing to do.';
 
     expect(unusableReason(leak, 'en')).toBeNull();
+  });
+});
+
+/**
+ * The tester's 962 (Kutaisi): five web results ran past the 4,000-character
+ * ceiling, and the writer never saw the last page's phone — the reply said
+ * „ტელეფონი: [hidden]". A whole page reaches the writer; a tool call's input
+ * keeps the smaller ceiling.
+ */
+describe('a web result reaches the writer whole', () => {
+  const page = `${'ა'.repeat(7_900)} +995 599 000 000`;
+
+  it('keeps a full page of results, to its last phone', () => {
+    const history: Anthropic.MessageParam[] = [
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: page }] },
+    ];
+    const text = String(toOpenAiMessages(history, 'system')[1].content);
+    expect(text).toContain('+995 599 000 000');
+  });
+
+  it('still clips a tool call’s input at the smaller ceiling', () => {
+    const history: Anthropic.MessageParam[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 't1', name: 'web_search', input: { query: page } }],
+      },
+    ];
+    const text = String(toOpenAiMessages(history, 'system')[1].content);
+    expect(text).not.toContain('+995 599 000 000');
+    expect(text.endsWith('…')).toBe(true);
   });
 });

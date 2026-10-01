@@ -291,7 +291,12 @@ import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
-import { saveSimilarRuleOnTap, SIMILAR_RULE_LABEL } from './similarAnswerRule';
+import {
+  ANSWER_SENT_LINE,
+  saveSimilarRuleOnTap,
+  SIMILAR_RULE_LABEL,
+  withAnswerSentLine,
+} from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
@@ -1994,7 +1999,9 @@ export function similarRuleOfferNote(language: RunLanguage): string {
   return (
     'The answer went. You may offer ONE optional button, exactly „' +
     SIMILAR_RULE_LABEL[language] +
-    '", via present_choices, in the line that says it went. No rule is saved now; never say ' +
+    '", via present_choices, in ONE line that opens by saying the answer went („' +
+    ANSWER_SENT_LINE[language] +
+    '"). No rule is saved now; never say ' +
     "one was. Only the owner's tap on that button saves it."
   );
 }
@@ -5971,6 +5978,20 @@ interface PlanForReply {
 }
 const runPlanForReply = new Map<string, PlanForReply>();
 
+/**
+ * The tester's 962: a reply of one zero-width character was saved and shown
+ * as an empty bubble with a button. `trim()` keeps U+200B, so the run's
+ * „empty final" checks never saw it. Invisible characters go before they do.
+ */
+const INVISIBLE_CHARACTERS_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+export function withoutInvisibleCharacters(text: string): string {
+  return text.replace(INVISIBLE_CHARACTERS_RE, '');
+}
+
+/** D527 (the tester's 962): runs whose answer to an asker went — the reply must say so. */
+const runAnswerSent = new Set<string>();
+
 function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
   if (runId) runPlanForReply.set(runId, plan);
 }
@@ -6657,6 +6678,7 @@ function clearRunState(runId: string): void {
   runProposedAPlan.delete(runId);
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
+  runAnswerSent.delete(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
@@ -7351,6 +7373,7 @@ async function executeToolCall(
       // the call carries — rule 232 was written that way with no yes. The rule
       // is one optional button after the answer, saved only on its tap.
       const sent = await sendApprovedAskAnswer(userId, threadId, answerText);
+      if (sent.sent && runId) runAnswerSent.add(runId);
       return sent.sent ? { ...sent, offer_rule: similarRuleOfferNote(runLang(runId)) } : sent;
     }
     case 'list_answer_rules': {
@@ -11568,7 +11591,7 @@ export async function processChat(
   // disambiguation) the model reasonably says nothing more, and failing the
   // run here killed the choices with it — 3 of 3 in the tester's probe
   // (ticket 6 response §3.1, threads 9146/9149/9150).
-  let effectiveFinal = finalText;
+  let effectiveFinal = withoutInvisibleCharacters(finalText);
   /**
    * Ticket 20 row 106's family — a stage direction is not something said to a
    * person.
@@ -11604,6 +11627,7 @@ export async function processChat(
   }
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
   effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);
+  if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }
