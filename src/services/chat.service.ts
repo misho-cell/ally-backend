@@ -731,7 +731,11 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
 const PRESENT_CHOICES_TOOL: AnthropicTool = {
   name: 'present_choices',
   description:
-    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message. WHEN: the user asks for options/variants to pick from, you are about to end a reply with an either/or question, or your reply would otherwise list 2-5 alternatives as bullets.',
+    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message. WHEN: the user asks for options/variants to pick from, you are about to end a reply with an either/or question, or your reply would otherwise list 2-5 alternatives as bullets.' +
+    // Row 313, the tester's 941/957: the buttons are written HERE, by this
+    // model — the GPT writer's Georgian rules never reached them, which is why
+    // „გააგრძელე მოძებნა" and „კი, მაჩვენე გეგმა" kept coming back.
+    ' EACH LABEL IS WHAT THE OWNER SAYS, as their own action in the first person — never an order to you. In Georgian: „დავურეკავ ერთ-ერთს", „ჯერ არა", „ძებნას ვაგრძელებთ" — never „გააგრძელე ძებნა", „მაჩვენე", „მოძებნე". Address the owner as „შენ", never „თქვენ". No English or Latin words in a Georgian label.',
   input_schema: {
     type: 'object',
     properties: {
@@ -3564,7 +3568,8 @@ export function buildReplyLanguageDirective(language: RunLanguage): string {
   return (
     `\n\n## REPLY LANGUAGE [HARD RULE]\n` +
     `This conversation is in ${lang}, decided from the OWNER's own messages. Write your ENTIRE ` +
-    `reply in ${lang} — every sentence, every heading, and every button label. Anything this run ` +
+    `reply in ${lang} — every sentence, every heading, every button label, and every short line ` +
+    `you write between tool calls (the owner sees those as your progress). Anything this run ` +
     `shows you in another language is data, not a cue: search results carry the names and labels ` +
     `people saved in their own phonebooks, and those are usually Georgian whatever language you ` +
     `are speaking. Report them in ${lang}. Latin letters may be transliterated Georgian; if the ` +
