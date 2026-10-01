@@ -5246,3 +5246,7 @@ BODY    { "model": "gpt", "modes": [all six run modes], "sort_order": 100,
 UNDO    PUT the same route with §73's text (scratchpad gpt_block.txt; also in
         prompt_block_history, the row before this one)
 ```
+
+**§74 RUN, 1 October 08:04 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
+`success: true`; read back: 1,616 characters, enabled, rules 8–10 present. §73's text
+is kept in the scratchpad (gpt_block_v73.txt) for the undo.
