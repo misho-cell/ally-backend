@@ -1,6 +1,7 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
+import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
@@ -1301,11 +1302,19 @@ export async function createAsk(
   // contacts become the buttons (see bridgePicker.ts).
   const picker =
     bridgeNeed && !sameThread ? await pickerFor(String(toUserId), bridgeNeed, language) : null;
+  // G5 second half: a person an earlier answer on this goal named is told who
+  // recommended them (see recommendedBy.ts).
+  const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);
+  const lines = [
+    opening,
+    ...(recommender ? [recommendedByLine(language, recommender)] : []),
+    ...(picker ? [picker.line] : []),
+  ];
   await saveThreadMessage(
     askThreadId,
     toUserId,
     'assistant',
-    picker ? `${opening}\n\n${picker.line}` : opening,
+    lines.join('\n\n'),
     'message',
     null,
     picker ? picker.choices : askChoices(language),
