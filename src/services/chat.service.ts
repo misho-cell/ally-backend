@@ -5499,12 +5499,20 @@ export function isApproveTap(message: string): boolean {
   return APPROVE_TAP_TEXTS.includes(message.trim());
 }
 
+/**
+ * The tester's 964 (thread 29014): after „ვამტკიცებ", two lines in a row said
+ * „I'll come back when they answer" — this run's, then day one's after the
+ * sends. This line only confirms the start; day one's line names who it went
+ * to and carries the promise, once.
+ */
 const APPROVED_BY_TAP_NOTE =
   "[შიდა მოვლენა] The owner's tap on the approve button has just approved the plan — the " +
   'server recorded it. That approval IS the consent (D119): day one has started by itself and ' +
   'writes to the people on the plan. Do NOT call approve_task_plan, do NOT ask again, do NOT ' +
   'show any message text, and do NOT write to anyone yourself. Reply in ONE short line in the ' +
-  "owner's language: you are on it and will come back as soon as someone answers.";
+  "owner's language: the plan is approved and you are starting now. Do NOT say you are waiting " +
+  'or will come back when someone answers — the line after the questions go out says who they ' +
+  'went to and that, once.';
 
 export async function approvePlanOnTap(
   userId: string,

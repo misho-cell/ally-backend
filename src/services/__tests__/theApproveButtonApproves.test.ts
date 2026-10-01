@@ -16,6 +16,8 @@ jest.mock('../taskEngine.service', () => ({
   startDayOne: jest.fn(),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { getOpenTaskByThread } from '../taskStore.service';
 import { approveTaskPlan } from '../taskPlans.service';
@@ -102,5 +104,21 @@ describe('the approve button approves the plan', () => {
     } as never);
     expect(await approvePlanOnTap('172732', 26700, 'I approve', 'run-1')).toBeNull();
     expect(mockDayOne).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The tester's 964 (thread 29014): after the tap, this run said „I'll come back
+ * when they answer" and day one said it again after the sends. The tap's line
+ * only confirms the start.
+ */
+describe('the tap’s own line does not repeat day one’s', () => {
+  const source = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const note = source.slice(source.indexOf('const APPROVED_BY_TAP_NOTE'));
+
+  it('confirms the start and leaves the waiting line to day one', () => {
+    expect(note.slice(0, 900)).toContain('you are starting now');
+    expect(note.slice(0, 900)).toContain('Do NOT say you are waiting');
+    expect(note.slice(0, 900)).not.toContain('will come back as soon as someone answers');
   });
 });
