@@ -184,7 +184,11 @@ describe('it looks for the name as written, not for spellings of it', () => {
     await searchByTagExactOnly('501', 'arqiteqtori');
 
     // Two calls (page and COUNT) each carrying the same single pattern.
-    const distinct = new Set(patterns().filter((p) => p.includes('arqiteqtor')));
+    // Individual patterns only — the one alternation of them (plate v301 G1)
+    // starts with „(?:" and is not a pattern of its own.
+    const distinct = new Set(
+      patterns().filter((p) => p.includes('arqiteqtor') && !p.startsWith('(?:')),
+    );
     expect(distinct.size).toBe(1);
   });
 });

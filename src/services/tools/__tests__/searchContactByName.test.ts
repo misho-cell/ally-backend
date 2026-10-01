@@ -84,7 +84,14 @@ describe('searchContactByName', () => {
     expect(params.slice(1, 3)).toEqual(['\\mგიო\\M', '\\mgio\\M']);
     expect(params).toContain('\\mgiorgi');
     expect(params.slice(-2)).toEqual(['42', []]);
-    for (const p of params.slice(1, -2)) expect(String(p).startsWith('\\m')).toBe(true);
+    // The individual patterns, then their one alternation (plate v301 G1).
+    for (const p of params.slice(1, -3)) expect(String(p).startsWith('\\m')).toBe(true);
+    expect(params[params.length - 3]).toBe(
+      params
+        .slice(1, -3)
+        .map((p) => `(?:${String(p)})`)
+        .join('|'),
+    );
   });
 
   /**
@@ -117,6 +124,7 @@ describe('searchContactByName', () => {
       '\\mლივინგსტონ',
       '\\mლივინღსთონ',
       '\\mლივინღსტონ',
+      '(?:\\mlivingston)|(?:\\mlivinghston)|(?:\\mlivinrston)|(?:\\mლივინგსთონ)|(?:\\mლივინგსტონ)|(?:\\mლივინღსთონ)|(?:\\mლივინღსტონ)',
       '42',
       [],
     ]);

@@ -88,8 +88,22 @@ export function buildExactMatchSql(
   // (the 6 Aug outage on both the app and the connector). $1 itself still
   // can't be reused here: its inferred type is pinned by the "contactId"
   // comparisons.
-  const factsUserIdx = regexStart + allRegex.length;
+  // After the individual patterns comes their one alternation (G1, below),
+  // then the facts userId, then the block list — which stays LAST.
+  const anyPatternIdx = regexStart + allRegex.length;
+  const factsUserIdx = anyPatternIdx + 1;
   const blockIdx = factsUserIdx + 1;
+  /**
+   * Plate v301 G1 (Giorgi's land-lawyer goal, 1 October): his own „იურისტი"
+   * search took 21–23 s against a 20 s budget and once came back
+   * `search_timed_out`. „იურისტი" expands to 13 patterns, and each was its own
+   * `~` with its own fold of the label — over his 87,913 label rows, about a
+   * million regex evaluations. Measured on his data the same night: 13
+   * separate tests 8.3 s, ONE alternation of the same patterns 1.1 s, the same
+   * 301 matching rows. The FILTER uses the one alternation; the per-word
+   * scoring (wordHits) still uses each pattern, over the few matched rows.
+   */
+  const anyPattern = allRegex.map((pattern) => `(?:${pattern})`).join('|');
 
   /**
    * The || '' wrapper is THE point — see the function comment (KA trigram gap).
@@ -99,11 +113,7 @@ export function buildExactMatchSql(
    * has already folded them to ordinary letters in JavaScript. A contact saved
    * in capitals was unfindable by name in either casing until this line.
    */
-  const regexOr = (col: string): string => {
-    const expr = `(${foldedLower(col)} || '')`;
-    const parts = Array.from({ length: allRegex.length }, (_, i) => `${expr} ~ $${regexStart + i}`);
-    return `(${parts.join(' OR ')})`;
-  };
+  const regexOr = (col: string): string => `((${foldedLower(col)} || '') ~ $${anyPatternIdx})`;
 
   // CROSS JOIN LATERAL forces the ONLY acceptable plan for the crowd-table
   // branches: a nested loop from mine (a few thousand phones) into the
@@ -220,7 +230,7 @@ export function buildExactMatchSql(
     matchedCte,
     wordHits,
     scalarHits,
-    params: [userId, ...allRegex, userId, [...blockedPhones]],
+    params: [userId, ...allRegex, anyPattern, userId, [...blockedPhones]],
     blockIdx,
     totalSql,
   };

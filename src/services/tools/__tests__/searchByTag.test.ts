@@ -122,6 +122,7 @@ describe('searchByTag', () => {
       '\\menrineer',
       '\\mენგინეერ',
       '\\mენღინეერ',
+      '(?:\\mengineer)|(?:\\menghineer)|(?:\\menrineer)|(?:\\mენგინეერ)|(?:\\mენღინეერ)',
       '42',
       [],
     ]);
@@ -145,6 +146,7 @@ describe('searchByTag', () => {
       '\\mინჟინერ',
       '\\minzhiner',
       '\\minjiner',
+      '(?:\\mინჟინერ)|(?:\\minzhiner)|(?:\\minjiner)',
       '42',
       [],
     ]);
