@@ -6473,13 +6473,36 @@ function registerHistoryWebResults(
   for (const result of historyWebResults(history)) {
     registerWebPages(runId, result);
     for (const { phone, source } of webNumbersWithSource(result)) {
-      registerAllowedNumber(runId, phone, source);
+      registerWebNumber(runId, phone, source);
     }
   }
 }
 
 function withRunPageLinks(text: string, runId: string): string {
   return withPageLinks(text, runWebPages.get(runId) ?? []);
+}
+
+/**
+ * Question A, the tester's 950 — the cause behind every „[hidden]" today. A
+ * page prints „+995 599 70 30 80"; a reply writes „599 70 30 80", the way a
+ * person in Georgia says it. The allowance matched the published spelling's
+ * digits, so the shorter one was masked every time. The national form of a
+ * Georgian number is allowed beside it — the same number, the same page.
+ */
+const GEORGIA_PREFIX_RE = /^\+?\s*995[\s\-().]*/;
+
+export function nationalForm(phone: string): string | null {
+  if (!GEORGIA_PREFIX_RE.test(phone)) return null;
+  const national = phone.replace(GEORGIA_PREFIX_RE, '').trim();
+  return national.replace(/\D/g, '').length >= MIN_SHOWABLE_DIGITS ? national : null;
+}
+
+/** A web number is allowed as printed and, for a Georgian one, as said at home. */
+function registerWebNumber(runId: string | undefined, phone: string, source: string): void {
+  if (!runId) return;
+  registerAllowedNumber(runId, phone, source);
+  const national = nationalForm(phone);
+  if (national !== null) registerAllowedNumber(runId, national, source);
 }
 
 /** Every phone-shaped run of digits in one web result, with its page. */
@@ -8497,7 +8520,7 @@ async function runOneToolBlock(
   if (block.name === 'web_search' || block.name === 'fetch_page') {
     registerWebPages(runId, raw);
     for (const { phone, source } of webNumbersWithSource(raw)) {
-      registerAllowedNumber(runId, phone, source);
+      registerWebNumber(runId, phone, source);
     }
   }
   // One choke point, so the next contact-data tool cannot forget it.

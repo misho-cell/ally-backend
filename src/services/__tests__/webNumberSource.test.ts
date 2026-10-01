@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { historyWebResults, webNumbersWithSource, wrapNumbers } from '../chat.service';
+import {
+  historyWebResults,
+  nationalForm,
+  webNumbersWithSource,
+  wrapNumbers,
+} from '../chat.service';
 import { scrubText, stripAllowedSpans } from '../privacyScrub';
 
 /**
@@ -298,5 +303,46 @@ describe('web results from earlier in the thread count for this run', () => {
   it('is read when the run is built', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('registerHistoryWebResults(runId, history);');
+  });
+});
+
+/**
+ * Question A, the tester's 950: every Kutaisi phone was „[hidden]" because the
+ * page printed „+995 599 70 30 80" and the reply wrote „599 70 30 80".
+ */
+describe('a Georgian number is allowed however it is written', () => {
+  it('derives the national form of a +995 number', () => {
+    expect(nationalForm('+995 599 70 30 80')).toBe('599 70 30 80');
+    expect(nationalForm('995599703080')).toBe('599703080');
+    expect(nationalForm('+1 202 555 0142')).toBeNull();
+    expect(nationalForm('599 70 30 80')).toBeNull();
+  });
+
+  it("shows the reply's national spelling of a number the page printed with +995", () => {
+    const found = webNumbersWithSource({
+      results: [{ url: 'https://www.notary.ge/p5', snippet: 'N14 +995 599 70 30 80' }],
+    });
+    // As registerWebNumber holds it: the printed spelling and its national form.
+    const held = new Map<string, string | null>(
+      found.flatMap((n) => [
+        [n.phone, n.source] as [string, string],
+        ...(nationalForm(n.phone)
+          ? [[nationalForm(n.phone) as string, n.source] as [string, string]]
+          : []),
+      ]),
+    );
+    const out = stripAllowedSpans(scrubText(wrapNumbers('ტელ: 599 70 30 80', held)));
+    expect(out).toContain('599 70 30 80');
+    expect(out).not.toContain('[hidden]');
+  });
+});
+
+describe('both forms are registered at both web doors', () => {
+  it('uses registerWebNumber for live results and for history', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat.match(/registerWebNumber\(runId, phone, source\);/g)).toHaveLength(2);
+    expect(chat).toContain(
+      'if (national !== null) registerAllowedNumber(runId, national, source);',
+    );
   });
 });
