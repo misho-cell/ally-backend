@@ -1076,6 +1076,16 @@ async function tellTheChatItWasAskedIn(
   }
 }
 
+/** F2: the mediator's name on a mediated request; null when the target answered. */
+async function answeringMediatorName(req: RequestRow): Promise<string | null> {
+  if (req.mediator_user_id === null) return null;
+  const result = await query<{ name: string | null }>(
+    'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
+    [req.mediator_user_id],
+  );
+  return result.rows[0]?.name?.trim() || null;
+}
+
 async function wakeRequestersGoal(
   req: RequestRow,
   accepted: boolean,
@@ -1083,13 +1093,14 @@ async function wakeRequestersGoal(
 ): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
+    const mediatorName = await answeringMediatorName(req);
     const [{ startIntroOutcome }, { introOutcomeEvent }] = await Promise.all([
       import('./taskEngine.service'),
       import('./taskEngine.events'),
     ]);
     startIntroOutcome(
       req.requester_task_id,
-      introOutcomeEvent(req.target_name, accepted, contactOutcome),
+      introOutcomeEvent(req.target_name, accepted, contactOutcome, mediatorName),
     );
   } catch (err) {
     // eslint-disable-next-line no-console

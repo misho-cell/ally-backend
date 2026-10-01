@@ -313,15 +313,51 @@ describe('the requester’s goal wake is told what actually happened', () => {
     expect(missing).not.toContain('the mediator chose');
     // It still must not promise a number nobody has.
     expect(missing).toContain('Do NOT tell the owner they have the number');
-    // And it says whose failure it is, rather than sending them back to ask again.
-    expect(missing).toContain('our failure');
+    // Plate v301 G6: „we are fixing this" reached a user. No internal talk.
+    expect(missing).toContain('Never mention a fault, a fix or anything internal');
+    expect(missing).not.toContain('fixing it');
   });
 
   /** The Georgian reader gets the same three-way distinction, not a fallback. */
   it('keeps the three apart in Georgian too', () => {
     const missing = introOutcomeEvent('Dato', true, 'not_found').ka;
 
-    expect(missing).toContain('ჩვენი ხარვეზია');
+    expect(missing).toContain('შუამავალი დათანხმდა');
+    expect(missing).not.toContain('ვასწორებთ');
     expect(missing).not.toContain('შუამავალმა აირჩია');
+  });
+});
+
+/**
+ * The tester's 992 (F2): the MEDIATOR tapped „connect directly" and the asker
+ * was told the target agreed. The target had answered nothing.
+ */
+describe('a mediated yes says who said it', () => {
+  it.each(['ka', 'en', 'ru', 'es'] as const)(
+    '%s names the mediator, not the target',
+    (language) => {
+      const event = introOutcomeEvent('Dato', true, 'handed_over', 'Nino')[language];
+
+      expect(event).toContain('Nino');
+      expect(event.indexOf('Nino')).toBeLessThan(event.indexOf('Dato'));
+    },
+  );
+
+  it('forbids saying the target agreed', () => {
+    expect(introOutcomeEvent('Dato', true, 'kept_by_mediator', 'Nino').en).toContain(
+      'Never say Dato agreed',
+    );
+  });
+
+  it('names who declined, too', () => {
+    expect(introOutcomeEvent('Dato', false, 'kept_by_mediator', 'Nino').en).toMatch(
+      /^The mediator, Nino, declined/,
+    );
+  });
+
+  it('leaves a direct answer as it was', () => {
+    expect(introOutcomeEvent('Dato', true, 'handed_over', null)).toEqual(
+      introOutcomeEvent('Dato', true, 'handed_over'),
+    );
   });
 });

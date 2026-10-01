@@ -97,6 +97,7 @@ import {
   answerAskTapAtOnce,
   noteDeclineIfButtonPressed,
 } from './taskAsks.service';
+import { mediatorsOwnWords } from './introResponse';
 import {
   approveTaskPlan,
   planInForce,
@@ -953,6 +954,12 @@ function bridgeNeedFrom(input: Record<string, unknown>): BridgeNeed | undefined 
   const forPhone = typeof input['for_phone'] === 'string' ? input['for_phone'].trim() : '';
   return forPhone === '' ? { need } : { need, forPhone };
 }
+
+/** The searches that read only the owner's own contacts (tester's 992, toolResultDiet). */
+const OWN_CONTACT_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'search_by_tag',
+  'search_contact_by_name',
+]);
 
 const ASK_CONTACT_TOOL: AnthropicTool = {
   name: 'ask_contact',
@@ -6654,7 +6661,8 @@ function registerWebNumber(runId: string | undefined, phone: string, source: str
  * or comma count too, and a Georgian number counts in its national form.
  */
 export function webNumberSpellings(phone: string): string[] {
-  const parts = [phone, ...phone.split(/[.,;]\s+/).map((part) => part.trim())];
+  const split = [phone, ...phone.split(/[.,;]\s+/).map((part) => part.trim())];
+  const parts = [...split, ...split.flatMap(numbersInsideOneRun)];
   const spellings = new Set<string>();
   for (const part of parts) {
     if (part.replace(/\D/g, '').length < MIN_SHOWABLE_DIGITS) continue;
@@ -6670,6 +6678,34 @@ export function webNumberSpellings(phone: string): string[] {
     }
   }
   return [...spellings];
+}
+
+/** The most digits one phone number has: +995 and nine national digits, with room. */
+const MAX_ONE_NUMBER_DIGITS = 13;
+
+/**
+ * The tester's 992 (29580, an auditor in Zugdidi): the reply showed
+ * „ტელეფონი ( და (" — the page's numbers eaten. The page printed two or more
+ * numbers back to back, separated only by spaces, and the run above read them
+ * as ONE twenty-digit „number" (logged shape „+999) 999 999 999 999 999 999").
+ * The reply wrote each number on its own, none matched the long run, and all
+ * three were masked. Every window of whole digit groups that is the length of
+ * one number counts as a spelling of that run, so each number the page
+ * printed is allowed on its own.
+ */
+function numbersInsideOneRun(run: string): string[] {
+  if (run.replace(/\D/g, '').length <= MAX_ONE_NUMBER_DIGITS) return [];
+  const groups = run.split(/\s+/).filter((g) => /\d/.test(g));
+  const windows: string[] = [];
+  for (let start = 0; start < groups.length; start += 1) {
+    for (let end = start + 1; end <= groups.length; end += 1) {
+      const window = groups.slice(start, end).join(' ');
+      const digits = window.replace(/\D/g, '').length;
+      if (digits > MAX_ONE_NUMBER_DIGITS) break;
+      if (digits >= MIN_SHOWABLE_DIGITS) windows.push(window);
+    }
+  }
+  return windows;
 }
 
 /** Every phone-shaped run of digits in one web result, with its page. */
@@ -7119,7 +7155,7 @@ async function executeToolCall(
         userId,
         input['request_id'] as number,
         input['accepted'] as boolean,
-        input['response'] as string | undefined,
+        await mediatorsOwnWords(threadId, input['response']),
         channel,
       );
     }
@@ -8760,7 +8796,7 @@ async function runOneToolBlock(
   if (block.name === 'web_search' || block.name === 'fetch_page') registerWebResult(runId, raw);
   // One choke point, so the next contact-data tool cannot forget it.
   const result = CONTACT_DATA_TOOLS.has(block.name) ? scrubEmailsDeep(raw) : raw;
-  const diet = dietToolResult(result);
+  const diet = dietToolResult(result, OWN_CONTACT_SEARCH_TOOLS.has(block.name));
   const rawContent = JSON.stringify(diet);
   const shouldSanitize = SANITIZED_RESULT_TOOLS.has(block.name);
   const safeContent = shouldSanitize ? JSON.stringify(sanitizeToolResult(diet)) : rawContent;

@@ -164,3 +164,34 @@ describe('an own match in a long search', () => {
     expect(dieted.results[0]?.name).toBe('Own 0');
   });
 });
+
+/** The tester's 992 (Test 153): ten own contacts by name, no labels, came back 8. */
+describe('an own-contact search', () => {
+  const named = (i: number): Record<string, unknown> => ({ name: `Giorgi ${i}` });
+
+  it("never trims an exact match on the owner's own contacts", () => {
+    const input = { results: Array.from({ length: 10 }, (_, i) => named(i)) };
+    const dieted = dietToolResult(input, true) as { results: unknown[] };
+
+    expect(dieted.results).toHaveLength(10);
+  });
+
+  it('still trims letter-similar neighbours past eight', () => {
+    const input = {
+      results: [
+        named(0),
+        ...Array.from({ length: 12 }, (_, i) => ({ ...named(i + 1), approximate: true })),
+      ],
+    };
+    const dieted = dietToolResult(input, true) as { results: unknown[] };
+
+    expect(dieted.results).toHaveLength(8);
+  });
+
+  it('is not how any other tool is read', () => {
+    const input = { results: Array.from({ length: 10 }, (_, i) => named(i)) };
+    const dieted = dietToolResult(input) as { results: unknown[] };
+
+    expect(dieted.results).toHaveLength(8);
+  });
+});

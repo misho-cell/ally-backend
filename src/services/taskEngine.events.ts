@@ -137,10 +137,63 @@ export type IntroContactOutcome =
   /** The mediator chose direct and we could not resolve the contact. Ours to fix, not theirs. */
   | 'not_found';
 
+/**
+ * ⚠️ THE TESTER'S 992 (F2): the MEDIATOR tapped „connect directly", and the
+ * asker was told „<target> agreed". The target had answered nothing. The event
+ * said „the introduction to <target> has been agreed", which does not say BY
+ * WHOM, and the model filled in the wrong person. On a mediated request the
+ * event now opens with who answered, and that the target has not.
+ */
+function mediatorAnswered(
+  mediatorName: string,
+  targetName: string,
+  accepted: boolean,
+): Readonly<Record<RunLanguage, string>> {
+  return accepted
+    ? {
+        ka:
+          `შუამავალი ${mediatorName} დათანხმდა ${targetName}-თან გაცნობას; ${targetName}-ს ` +
+          `ჯერ არაფერი უპასუხია. ნუ იტყვი, რომ ${targetName} დათანხმდა. `,
+        en:
+          `The mediator, ${mediatorName}, agreed to the introduction to ${targetName}; ` +
+          `${targetName} has not answered anything. Never say ${targetName} agreed. `,
+        ru:
+          `Посредник ${mediatorName} согласился на знакомство с ${targetName}; ${targetName} ` +
+          `пока ничего не ответил. Не говори, что ${targetName} согласился. `,
+        es:
+          `El intermediario, ${mediatorName}, aceptó la presentación a ${targetName}; ` +
+          `${targetName} no ha respondido nada. Nunca digas que ${targetName} aceptó. `,
+      }
+    : {
+        ka: `შუამავალმა ${mediatorName} უარი თქვა ${targetName}-თან გაცნობაზე. `,
+        en: `The mediator, ${mediatorName}, declined the introduction to ${targetName}. `,
+        ru: `Посредник ${mediatorName} отказался от знакомства с ${targetName}. `,
+        es: `El intermediario, ${mediatorName}, rechazó la presentación a ${targetName}. `,
+      };
+}
+
+/** The outcome event, opened with who answered when a mediator did (F2). */
 export function introOutcomeEvent(
   targetName: string,
   accepted: boolean,
   contact: IntroContactOutcome = 'kept_by_mediator',
+  mediatorName: string | null = null,
+): Readonly<Record<RunLanguage, string>> {
+  const event = introOutcomeBody(targetName, accepted, contact);
+  if (mediatorName === null) return event;
+  const who = mediatorAnswered(mediatorName, targetName, accepted);
+  return {
+    ka: who.ka + event.ka,
+    en: who.en + event.en,
+    ru: who.ru + event.ru,
+    es: who.es + event.es,
+  };
+}
+
+function introOutcomeBody(
+  targetName: string,
+  accepted: boolean,
+  contact: IntroContactOutcome,
 ): Readonly<Record<RunLanguage, string>> {
   /**
    * ROW 251 / D438 — THIS SENTENCE WAS THE FIRST CAUSE, AND I WROTE IT.
@@ -177,9 +230,9 @@ export function introOutcomeEvent(
         `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
         'ნუ ეტყვი, რომ ნომერი აქვს.',
       not_found:
-        'შუამავალმა დათანხმდა პირდაპირ დაკავშირებაზე, მაგრამ კონტაქტი ჩვენ ვერ მოვძებნეთ — ' +
-        'ეს ჩვენი ხარვეზია და არა მისი გადაწყვეტილება. უთხარი მფლობელს ზუსტად ასე: თანხმობა ' +
-        'არის, კონტაქტი ჯერ არ მოსულა და ამას ჩვენ ვასწორებთ. ნუ ეტყვი, რომ ნომერი აქვს, და ' +
+        'შუამავალი დათანხმდა პირდაპირ დაკავშირებაზე, მაგრამ კონტაქტი ჯერ არ გადმოსულა. ' +
+        'უთხარი მფლობელს მხოლოდ ის, რომ შუამავალი დათანხმდა და კავშირი მის გავლით გაგრძელდება. ' +
+        'ხარვეზი, შესწორება ან სისტემის შიდა საქმე არ ახსენო. ნუ ეტყვი, რომ ნომერი აქვს, და ' +
         'ნუ გაგზავნი შუამავალთან თავიდან სათხოვნელად.',
     },
     en: {
@@ -190,9 +243,9 @@ export function introOutcomeEvent(
         'NO contact was handed over — the mediator chose to keep the connection going through ' +
         'them. Do NOT tell the owner they have the number.',
       not_found:
-        'The mediator agreed to connect them DIRECTLY, but we could not resolve the contact — ' +
-        'this is our failure, not their decision. Tell the owner exactly that: the yes is real, ' +
-        'the contact has not come through yet, and we are fixing it. Do NOT tell the owner they ' +
+        'The mediator agreed to connect them DIRECTLY, but the contact has not come through. ' +
+        'Tell the owner only that the mediator agreed and the connection continues through ' +
+        'them. Never mention a fault, a fix or anything internal. Do NOT tell the owner they ' +
         'have the number, and do NOT send them back to the mediator to ask again.',
     },
     ru: {
@@ -203,10 +256,10 @@ export function introOutcomeEvent(
         'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
         'что номер у него есть.',
       not_found:
-        'Посредник согласился связать их НАПРЯМУЮ, но контакт мы найти не смогли — это наша ' +
-        'ошибка, а не его решение. Так и скажи владельцу: согласие есть, контакт ещё не дошёл, ' +
-        'и мы это исправляем. Не говори, что номер у него есть, и не отправляй его просить ' +
-        'посредника снова.',
+        'Посредник согласился связать их НАПРЯМУЮ, но контакт пока не дошёл. Скажи владельцу ' +
+        'только то, что посредник согласился и связь идёт через него. Не упоминай ошибки, ' +
+        'исправления или что-либо внутреннее. Не говори, что номер у него есть, и не отправляй ' +
+        'его просить посредника снова.',
     },
     es: {
       handed_over:
@@ -216,10 +269,10 @@ export function introOutcomeEvent(
         'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
         'él. No le digas al propietario que tiene el número.',
       not_found:
-        'El intermediario aceptó conectarlos DIRECTAMENTE, pero no hemos podido resolver el ' +
-        'contacto — es un fallo nuestro, no una decisión suya. Dilo así al propietario: el sí ' +
-        'es real, el contacto aún no ha llegado y lo estamos arreglando. No le digas que tiene ' +
-        'el número, ni le mandes a pedírselo otra vez al intermediario.',
+        'El intermediario aceptó conectarlos DIRECTAMENTE, pero el contacto aún no ha llegado. ' +
+        'Dile al propietario solo que el intermediario aceptó y que la conexión sigue a través ' +
+        'de él. No menciones fallos, arreglos ni nada interno. No le digas que tiene el número, ' +
+        'ni le mandes a pedírselo otra vez al intermediario.',
     },
   };
   /**
@@ -252,14 +305,14 @@ export function introOutcomeEvent(
   return accepted
     ? {
         ka:
-          `${targetName}-თან გაცნობაზე თანხმობა მოვიდა. უთხარი მფლობელს ერთი წინადადებით, რომ ` +
-          `პასუხი დადებითია. ${handover.ka} ` +
+          `${targetName}-თან გაცნობაზე დადებითი პასუხი მოვიდა. უთხარი მფლობელს ერთი წინადადებით, ` +
+          `ვინ დათანხმდა. ${handover.ka} ` +
           'ახლა ნუ ჰკითხავ, მოგვარდა თუ არა — მიზანი მოგვარებულია მხოლოდ მაშინ, როცა ისინი ' +
           'ნამდვილად დაუკავშირდნენ ერთმანეთს ან კონტაქტი გამოიყენეს. set_task_wake 24 საათზე ' +
           'დააყენე, რომ მაშინ შეამოწმო, ისაუბრეს თუ არა.',
         en:
-          `The introduction to ${targetName} has been agreed. Tell the owner in one sentence that ` +
-          `the answer is yes. ${handover.en} ` +
+          `The introduction to ${targetName} got a yes. Tell the owner in one sentence who said ` +
+          `yes. ${handover.en} ` +
           'Do NOT ask whether the goal is solved yet — it is solved only once the two have ' +
           'actually spoken or the contact has been used. Set set_task_wake for 24 hours to check ' +
           'then whether they spoke.',

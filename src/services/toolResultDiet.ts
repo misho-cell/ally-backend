@@ -97,31 +97,51 @@ function carriesOwnLabel(row: unknown): boolean {
   return Array.isArray(tags) && tags.length > 0;
 }
 
-function rowsToShow(results: readonly unknown[]): number {
-  const ownCount = results.filter(carriesOwnLabel).length;
+/**
+ * The tester's 992 (Test 153): a ten-name search on the owner's own contacts
+ * came back 8 of 10. Those rows carry no label, only the owner's own saved
+ * name, so `carriesOwnLabel` passed them by. In the two searches that read
+ * ONLY the owner's own contacts, every exact match is the owner's; only a
+ * letter-similar neighbour or an others'-labels match is trimmable.
+ */
+function isExactOwnMatch(row: unknown): boolean {
+  if (row === null || typeof row !== 'object' || isOthersLabelsOnly(row)) return false;
+  return (row as Record<string, unknown>).approximate !== true;
+}
+
+type RowTest = (row: unknown) => boolean;
+
+function rowsToShow(results: readonly unknown[], isOwn: RowTest): number {
+  const ownCount = results.filter(isOwn).length;
   return Math.max(MODEL_RESULT_LIMIT, Math.min(ownCount, OWN_MATCHES_CEILING));
 }
 
-function shownRows(results: readonly unknown[], limit: number): unknown[] {
-  const own = results.filter(carriesOwnLabel);
-  const rest = results.filter((row) => !carriesOwnLabel(row));
+function shownRows(results: readonly unknown[], limit: number, isOwn: RowTest): unknown[] {
+  const own = results.filter(isOwn);
+  const rest = results.filter((row) => !isOwn(row));
   return [...own, ...rest].slice(0, limit);
 }
 
-export function dietToolResult(result: unknown): unknown {
+/**
+ * `ownContactSearch`: the result came from a search over the owner's own
+ * contacts (search_by_tag, search_contact_by_name), so an exact match is never
+ * trimmed while it fits under the ceiling.
+ */
+export function dietToolResult(result: unknown, ownContactSearch = false): unknown {
   if (result === null || typeof result !== 'object' || Array.isArray(result)) return result;
 
   const obj = withoutEmptyFields(result) as Record<string, unknown>;
   if (!Array.isArray(obj.results)) return obj;
 
+  const isOwn: RowTest = ownContactSearch ? isExactOwnMatch : carriesOwnLabel;
   const split = matchSplit(obj.results);
   const withSplit = split ? { ...obj, ...split } : obj;
-  const limit = rowsToShow(obj.results);
+  const limit = rowsToShow(obj.results, isOwn);
   if (obj.results.length <= limit) return withSplit;
 
   return {
     ...withSplit,
-    results: shownRows(obj.results, limit),
+    results: shownRows(obj.results, limit, isOwn),
     results_shown: limit,
     note: `showing top ${limit} of ${obj.results.length}; refine the query to narrow down`,
   };

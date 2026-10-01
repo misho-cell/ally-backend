@@ -381,3 +381,33 @@ describe('the spellings one printed number may take', () => {
     expect(webNumberSpellings('+995 570 50 61 64')).toEqual(['+995 570 50 61 64', '570 50 61 64']);
   });
 });
+
+/**
+ * The tester's 992 (29580): a page printed several numbers back to back and
+ * the reply showed „ტელეფონი ( და (" — each number, written on its own, was
+ * masked because only the glued twenty-digit run was allowed.
+ */
+describe('numbers a page printed back to back', () => {
+  const GLUED = '(0415) 22 33 44 599 11 22 33 599 44 55 66';
+  const held = (): Map<string, string | null> =>
+    new Map(
+      webNumberSpellings(GLUED).map((s) => [s, 'https://audit.ge/zugdidi'] as [string, string]),
+    );
+
+  it.each(['(0415) 22 33 44', '599 11 22 33', '599 44 55 66'])('shows %s on its own', (one) => {
+    const out = stripAllowedSpans(scrubText(wrapNumbers(`ტელეფონი ${one}`, held())));
+
+    expect(out).toContain(one);
+    expect(out).not.toContain('[hidden]');
+  });
+
+  it('still masks a number the page never printed', () => {
+    const out = stripAllowedSpans(scrubText(wrapNumbers('ტელეფონი 577 12 34 56', held())));
+
+    expect(out).toContain('[hidden]');
+  });
+
+  it('leaves a single printed number with its ordinary spellings', () => {
+    expect(webNumberSpellings('+995 599 70 30 80')).toEqual(['+995 599 70 30 80', '599 70 30 80']);
+  });
+});
