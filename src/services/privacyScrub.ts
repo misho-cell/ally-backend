@@ -39,7 +39,8 @@ const PHONE_KEY_RE = /phone|msisdn/i;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Year ranges ("2015-2017", "2015 - 2017") are education/work dates, not phones.
 const YEAR_RANGE_RE = /^(19|20)\d{2}\s?[-–—]\s?(19|20)\d{2}$/;
-const REDACTED = '[hidden]';
+/** What a masked phone reads as, exported so a count of masked numbers reads the same mark. */
+export const REDACTED = '[hidden]';
 // Georgian numbers are 9 digits local / 12 with the country code. 8-digit runs
 // were over-masking real content (a year range is 8 digits) — see the battery
 // finding "[hidden] ადამიანი" / "FreeUni/ESM, [hidden]".

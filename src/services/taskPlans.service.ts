@@ -1043,7 +1043,10 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
   if (routes.length > 0) lines.push(`${words.routes}: ${routes.join('; ')}.`);
   lines.push(people.length > 0 ? `${words.ask}: ${people.join(', ')}.` : words.askNobody);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
-  lines.push(PLAN_CLOSING_QUESTION[language]);
+  // The tester's 957: the closing question is NOT part of the plan text. A
+  // model pasted these lines into a reply whose ask had already gone out, so
+  // the owner was asked whether to follow a plan already carried out. The
+  // question is added only under an approve button (withClosingQuestion).
   return lines.join('\n');
 }
 

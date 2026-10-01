@@ -79,9 +79,11 @@ describe('what the model is told', () => {
   });
 
   /** The tester's 941 (D520): every plan ends on the agreed question. */
-  it('to end the plan on the agreed question, which the fallback ends on too', () => {
+  it('to end the plan on the agreed question, which the plan text itself does not carry', () => {
     expect(planInYourReplyNote('ka')).toContain('„ამ გეგმას მივყვე და ვიმოქმედო?"');
-    expect(planInSentences(PLAN, 'ka').endsWith('ამ გეგმას მივყვე და ვიმოქმედო?')).toBe(true);
+    // The tester's 957: the plan text itself never carries the question — it is
+    // added only under an approve button.
+    expect(planInSentences(PLAN, 'ka')).not.toContain('ამ გეგმას მივყვე და ვიმოქმედო?');
   });
 });
 

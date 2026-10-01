@@ -177,6 +177,7 @@ import {
   looksLikeTypedChoice,
   ALLOW_OPEN,
   ALLOW_CLOSE,
+  REDACTED,
 } from './privacyScrub';
 import { georgianSpellingNote } from './ownerNameGeorgian';
 import { relativeDayNote } from './relativeDay';
@@ -6653,6 +6654,24 @@ function clearRunState(runId: string): void {
 /** How far after a number we look for its source before adding it ourselves. */
 const SOURCE_NEARBY_CHARS = 60;
 
+/**
+ * Question A, the tester's 957: phones still came out „[hidden]" on a run whose
+ * own web result, replayed offline through this same code, shows every one of
+ * them. Something differs live and four guesses today did not find it. So the
+ * run says what it held and what it still masked — counts only, never a
+ * number (D149) — and the next failure names its own cause.
+ */
+function logWebNumberOutcome(runId: string, reply: string): void {
+  const held = runAllowedNumbers.get(runId);
+  const fromWeb = held ? [...held.values()].filter((source) => source !== null).length : 0;
+  const masked = scrubText(reply).split(REDACTED).length - 1;
+  if (fromWeb === 0 && masked === 0) return;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[web-numbers] run ${runId}: ${fromWeb} allowed from the web, ${masked} masked in the reply`,
+  );
+}
+
 export function wrapAllowedNumbers(text: string, runId: string): string {
   return wrapNumbers(text, runAllowedNumbers.get(runId));
 }
@@ -11666,6 +11685,7 @@ export async function processChat(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
   );
+  logWebNumberOutcome(runId, reply);
   // Ticket 19 [6]. When the checker replaces the text, everything hanging off
   // that text goes with it.
   //
