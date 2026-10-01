@@ -600,6 +600,32 @@ async function answersAreOnScreen(
 }
 
 /**
+ * Row 311 — answers to a goal that is no longer open: shown to the owner as an
+ * answers card and marked delivered, with no model run (there is no goal to
+ * continue). A goal with no thread, or a card that cannot be written, is
+ * marked delivered as before, so the sweep cannot loop on it.
+ */
+async function showClosedGoalAnswers(taskId: number): Promise<void> {
+  const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
+  if (owed.length === 0) return;
+  const unshown = owed.filter((ask) => ask.shown !== true);
+  const threadId = owed[0].task_thread_id;
+  const ownerId = Number(owed[0].owner_user_id);
+  if (unshown.length > 0 && threadId !== null && Number.isInteger(ownerId) && ownerId > 0) {
+    const cards = await Promise.all(
+      unshown.map(async (ask) => ({
+        askId: ask.id,
+        answer: ask.answer ?? '',
+        fromName: ask.from_name,
+        verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
+      })),
+    );
+    await showAnswersToOwner({ threadId, ownerId }, cards);
+  }
+  for (const ask of owed) await markAskWakeDelivered(ask.id);
+}
+
+/**
  * Row 322: an answer whose live wake found the thread busy — almost always the
  * wake of the answer that came a second before it. Retried on the same
  * six-second rhythm as every other wake; each attempt re-reads what is owed,
@@ -610,7 +636,12 @@ export function deliverAnswersWhenFree(taskId: number, attempt = 1): void {
   setTimeout(() => {
     void (async () => {
       const owed = await listUnwokenAnswersForTask(taskId, 1);
-      if (owed.length === 0 || owed[0].task_status !== 'open') return;
+      if (owed.length === 0) return;
+      // Row 311: a closed goal gets its answers as a card, without a run.
+      if (owed[0].task_status !== 'open') {
+        await showClosedGoalAnswers(taskId);
+        return;
+      }
       const delivered = await deliverPendingAnswers(taskId);
       if (delivered === 0 && attempt < WAKE_RETRY_ATTEMPTS) {
         deliverAnswersWhenFree(taskId, attempt + 1);
@@ -636,7 +667,9 @@ async function sweepUnwokenAnswers(): Promise<void> {
   let delivered = 0;
   for (const ask of due) {
     if (ask.task_status !== 'open') {
-      await markAskWakeDelivered(ask.id);
+      // Row 311: a question the owner kept open after „solved" can still be
+      // answered. The answer reaches them as a card — no run on a closed goal.
+      await showClosedGoalAnswers(ask.task_id);
       continue;
     }
     // A goal opened through the connector carries no thread, so a wake has no

@@ -124,6 +124,35 @@ describe('an answer whose wake found the thread busy is retried, not left', () =
     expect(cards).toHaveLength(0);
   });
 
+  /** Row 311: a question kept open after „solved" is answered onto a closed goal. */
+  it('shows a closed goal’s answer as a card, marks it delivered, and runs nothing', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      const text = String(sql);
+      if (text.includes('ta.task_id = $1')) {
+        return Promise.resolve({
+          rows: [{ ...OWED, task_status: 'closed', owner_user_id: '171937', shown: false }],
+          rowCount: 1,
+        } as never);
+      }
+      if (text.includes('INSERT INTO conversations')) {
+        return Promise.resolve({ rows: [{ id: 90002 }], rowCount: 1 } as never);
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 } as never);
+    });
+    deliverAnswersWhenFree(11155);
+    await fire();
+    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    const card = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO conversations'),
+    );
+    expect(card?.[1]).toEqual([26700, 171937, expect.stringContaining(OWED.answer)]);
+    const marked = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('wake_delivered_at = NOW()'),
+    );
+    expect(marked).toHaveLength(1);
+    expect(mockTask).not.toHaveBeenCalled();
+  });
+
   it('reads what is owed with a limit and a timeout', async () => {
     owedRows([]);
     deliverAnswersWhenFree(11155);

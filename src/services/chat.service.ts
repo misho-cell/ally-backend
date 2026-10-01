@@ -269,6 +269,7 @@ import {
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
+import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
@@ -7074,8 +7075,24 @@ async function executeToolCall(
       }
       // Row 147, first half: this is the one route that means the work is DONE.
       const closed = await updateTask(userId, taskId, 'closed', summary, 'finished');
-      if (closed) await cancelAsksForTask(taskId);
-      return { closed };
+      if (!closed) return { closed };
+      // Row 311: questions still out are the owner's to close or keep, not
+      // cancelled behind their back. A goal with no thread keeps the old rule.
+      if (threadId === undefined) {
+        await cancelAsksForTask(taskId);
+        return { closed };
+      }
+      const stillOpen = await offerOpenAsksChoice(taskId, threadId, Number(userId));
+      return stillOpen === 0
+        ? { closed }
+        : {
+            closed,
+            open_questions: stillOpen,
+            note:
+              `${stillOpen} questions are still open. The server has already asked the owner, ` +
+              'with two buttons, whether to close them or keep them open — do not ask it again ' +
+              'and do not cancel anything.',
+          };
     }
     case 'get_my_tasks': {
       const status = isTaskStatus(input['status'] as string)
@@ -10957,9 +10974,18 @@ export async function processChat(
         console.error('[plan-consent] approve-on-tap failed:', (err as Error).message);
         return null;
       });
+  // Row 311: the close / keep tap after „solved" is acted on by the server too.
+  const openAsksSettled = ownerAbsent
+    ? null
+    : await settleOpenAsksOnTap(userId, threadId, userMessage).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[open-asks] tap failed:', (err as Error).message);
+        return null;
+      });
   const replyContext =
-    [tappedContext, approvedByTap].filter((part): part is string => part !== null).join('\n\n') ||
-    null;
+    [tappedContext, approvedByTap, openAsksSettled]
+      .filter((part): part is string => part !== null)
+      .join('\n\n') || null;
   /**
    * Row 209's queue — the row is already written, the PROMPT still needs it.
    *
