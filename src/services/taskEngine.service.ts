@@ -7,7 +7,7 @@ import {
   SWEEP_SILENT_GOALS,
 } from './sweepClaim';
 import { DAY_ONE_WAKE, finishWake, recordWake, wakeDoneSince } from './engineWakes.service';
-import { processChat } from './chat.service';
+import { offersTheFinishCard, processChat } from './chat.service';
 import {
   getTaskById,
   goalHasActedOutward,
@@ -1062,7 +1062,41 @@ export async function nothingToPlanYet(taskId: number): Promise<boolean> {
     );
     return false;
   }
+  if (task.thread_id !== null && (await goalWasAnsweredOnScreen(task.thread_id))) {
+    // eslint-disable-next-line no-console
+    console.log(`[task-engine] goal ${taskId}: no plan asked for — it was answered on screen`);
+    return false;
+  }
   return !(await goalHasActedOutward(taskId));
+}
+
+/**
+ * The tester's 962 (Batumi 28943): the run answered the goal from the web and
+ * ended on the finish card („მოგვარებულია / ჯერ არა"); 50 seconds later this
+ * wake drew a plan that wrote to nobody, under the same answer again, asking
+ * „ამ გეგმას მივყვე და ვიმოქმედო?". A goal whose newest reply already asks
+ * whether it is solved has nothing to plan until the owner says not yet.
+ */
+async function goalWasAnsweredOnScreen(threadId: number): Promise<boolean> {
+  try {
+    const newest = await query<{ choices: unknown }>(
+      `SELECT choices FROM conversations
+        WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message'
+        ORDER BY created_at DESC LIMIT 1`,
+      [threadId],
+      OWNER_QUIET_QUERY_TIMEOUT_MS,
+    );
+    const choices = newest?.rows[0]?.choices;
+    const labels = Array.isArray(choices)
+      ? choices.filter((c): c is string => typeof c === 'string')
+      : [];
+    return offersTheFinishCard(labels);
+  } catch (error) {
+    // Fails towards the plan, as before this check existed.
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] thread ${threadId}: could not read the newest reply:`, error);
+    return false;
+  }
 }
 
 /**

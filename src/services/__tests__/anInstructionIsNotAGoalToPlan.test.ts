@@ -1,5 +1,9 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
-jest.mock('../chat.service', () => ({ __esModule: true, processChat: jest.fn() }));
+jest.mock('../chat.service', () => ({
+  __esModule: true,
+  processChat: jest.fn(),
+  offersTheFinishCard: jest.fn(() => false),
+}));
 jest.mock('../taskStore.service', () => ({
   __esModule: true,
   getTaskById: jest.fn(),

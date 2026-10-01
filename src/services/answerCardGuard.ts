@@ -42,9 +42,16 @@ export function isAnswerCardEvent(userMessage: string): boolean {
   return userMessage.startsWith(EVENT_PREFIX) && userMessage.includes(ALREADY_ON_CARD);
 }
 
+/**
+ * The tester's 962 (28944): „ჯერ არა, სხვასაც ჰკითხე" was left alone under an
+ * empty reply after its „solved" partner was removed. The not-yet half of a
+ * finish card goes with it, however the model went on after „ჯერ არა".
+ */
 function isNotYetLabel(label: string): boolean {
   const said = label.trim().toLowerCase();
-  return NOT_YET_WORDS.some((w) => said === w);
+  return NOT_YET_WORDS.some(
+    (w) => said === w || said.startsWith(`${w},`) || said.startsWith(`${w} `),
+  );
 }
 
 /** The reply without its finish card, or null when it offered none. */

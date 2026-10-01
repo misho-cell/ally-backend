@@ -1162,10 +1162,12 @@ export function ownerSaysSolved(
   // A bare yes counts only while a finish card is the newest thing on screen —
   // the same condition a plan's bare yes has to meet, and now recognised
   // whatever language the card was drawn in.
-  const finishCardOnScreen = (newestOfferedChoices ?? []).some(
-    (label) => isSolvedLabel(label) || isSolvedButton(label),
-  );
-  return finishCardOnScreen && PLAN_YES.test(said);
+  return offersTheFinishCard(newestOfferedChoices) && PLAN_YES.test(said);
+}
+
+/** Do these buttons include a „solved" one — is this a finish card? */
+export function offersTheFinishCard(choices: readonly string[] | null | undefined): boolean {
+  return (choices ?? []).some((label) => isSolvedLabel(label) || isSolvedButton(label));
 }
 
 /**
@@ -9648,6 +9650,8 @@ async function runToolLoop(
    * be attributed rather than guessed at.
    */
   let answeredBy: string = MODEL;
+  /** Did the final writer (GPT) write this run's final from its material? */
+  let finalIsRewrite = false;
   // Signals live in two places: choices/task results in the assistant's
   // tool_use blocks, disambiguation/request-created in the tool RESULTS. Both
   // scans run on every round INCLUDING the capped last one, so a request sent
@@ -9883,6 +9887,7 @@ async function runToolLoop(
       finalText = scrubText(extractText(response.content));
     } else {
       answeredBy = rewritten.model;
+      finalIsRewrite = true;
       finalText = scrubText(rewritten.text);
       await recordClaudeUsage({
         userId,
@@ -9913,10 +9918,16 @@ async function runToolLoop(
   // replacing it), then drop the now-duplicate step. Guarantees exactly one
   // non-empty final 'message' carrying the full answer — the invariant
   // loadHistory, thread-resume, and the UI's step/final split rely on.
+  // The tester's 962 (Batumi 28943): GPT's rewrite of the same answer came out
+  // shorter — its phones were masked — so Claude's step was put in front of it
+  // and the owner read the answer twice in one message. A rewrite IS the
+  // answer, written from that same material; only an empty one is rescued.
   const buriedAnswer =
     bestNarration.length > 0 &&
     (finalText.length === 0 ||
-      (bestNarration.length >= MIN_BURIED_ANSWER_CHARS && bestNarration.length > finalText.length));
+      (!finalIsRewrite &&
+        bestNarration.length >= MIN_BURIED_ANSWER_CHARS &&
+        bestNarration.length > finalText.length));
   /**
    * Whether this run's final is a CONCATENATION rather than what the model
    * last wrote. Read by the cliffhanger check below — see the note there.
