@@ -131,7 +131,7 @@ export type CreateAskOutcome =
    * see createRelayAsk. Only that path sets it.
    */
   | { sent: true; ask_id: number; to_name: string; answered_automatically?: true; note?: string }
-  | { sent: false; error: string; reason?: AskRefusalReason };
+  | { sent: false; error: string; reason?: AskRefusalReason; reopens_at?: string };
 
 /**
  * What the assistant is told when a budget refuses a send. One table, keyed by
@@ -905,6 +905,8 @@ export async function createAsk(
     return {
       sent: false,
       reason: 'recipient_daily_limit_reached',
+      // Tester 941: the run's own set_task_wake must not push the wake past this.
+      reopens_at: reopensAt.toISOString(),
       error:
         `${toName}-ს ბოლო 24 საათში უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა ` +
         'მიუვიდა სხვებისგან — ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +

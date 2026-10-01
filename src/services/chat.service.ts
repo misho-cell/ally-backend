@@ -77,6 +77,7 @@ import {
   findOpenTaskNamedIn,
   setTaskBrief,
   setTaskWake,
+  wakeTaskNoLaterThan,
   touchTaskActivityForThread,
 } from './taskStore.service';
 import {
@@ -5902,6 +5903,30 @@ interface QuestionOnScreen {
 const runQuestionOnScreen = new Map<string, QuestionOnScreen>();
 
 /**
+ * Tester 941, the second half of 929 (goal 12211): a recipient refused for
+ * their 24-hour cap reopens at a minute the server knows, and the goal was
+ * woken then — until the same run called set_task_wake for 24 hours and moved
+ * it to the next morning. The earliest reopening per goal is kept for the run,
+ * and set_task_wake keeps the wake no later than it.
+ */
+const runWakeCaps = new Map<string, Map<number, Date>>();
+
+function noteWakeNoLaterThan(runId: string | undefined, taskId: number, at: unknown): void {
+  if (!runId || typeof at !== 'string') return;
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return;
+  const caps = runWakeCaps.get(runId) ?? new Map<number, Date>();
+  const earlier = caps.get(taskId);
+  if (earlier === undefined || when < earlier) caps.set(taskId, when);
+  runWakeCaps.set(runId, caps);
+}
+
+function wakeCapFor(runId: string | undefined, taskId: number): Date | null {
+  if (!runId) return null;
+  return runWakeCaps.get(runId)?.get(taskId) ?? null;
+}
+
+/**
  * Row 279 — the plan this run proposed, for its reply to carry (Tornike,
  * D520: once, in Netai's own words, the server's card gone). Row 101 is why
  * it is remembered: what the approve button approves must be on the screen,
@@ -6394,6 +6419,7 @@ function clearRunState(runId: string): void {
   runProposedAPlan.delete(runId);
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
+  runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -6985,6 +7011,7 @@ async function executeToolCall(
         await markSearchSent(runId, userId, [input['phone']], threadId);
         noteIntroductionSentAsAQuestion({ surface: 'chat', runId, threadId, taskId }, question);
       }
+      noteWakeNoLaterThan(runId, taskId, (askOutcome as { reopens_at?: unknown }).reopens_at);
       return askOutcome;
     }
     case 'set_task_brief': {
@@ -6994,7 +7021,13 @@ async function executeToolCall(
     }
     case 'set_task_wake': {
       const hours = Math.min(168, Math.max(1, Number(input['hours']) || 24));
-      return { scheduled: await setTaskWake(userId, Number(input['task_id']), hours), hours };
+      const wakeTaskId = Number(input['task_id']);
+      const scheduled = await setTaskWake(userId, wakeTaskId, hours);
+      // Tester 941 (goal 12211): a refused recipient reopens at a known minute,
+      // and this run's own 24 hours must not push the retry past it.
+      const reopens = scheduled ? wakeCapFor(runId, wakeTaskId) : null;
+      if (reopens !== null) await wakeTaskNoLaterThan(wakeTaskId, reopens);
+      return { scheduled, hours };
     }
     case 'stop_contacting_me':
       // Server-side gate (round 1 red, thread 9840): a single-question decline
