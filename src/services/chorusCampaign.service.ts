@@ -13,6 +13,13 @@ import { setThreadStatus } from './threadStatus.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
+import {
+  campaignsOpenedToday,
+  campaignsPerDay,
+  campaignsThatSentToday,
+  peoplePerCampaign,
+  withinDailyCampaignCap,
+} from './chorusCap';
 
 const CAMPAIGN_QUERY_TIMEOUT_MS = 8_000;
 // The typed pending_updates item a due ask ALSO becomes (T9's one list).
@@ -199,7 +206,8 @@ async function scheduleParticipants(
   candidatesForTarget: readonly InviterCandidate[],
   dial: number,
 ): Promise<number> {
-  const candidates = candidatesForTarget.slice(0, dial);
+  // Row 301: never more people than the cap, whatever the dial says.
+  const candidates = candidatesForTarget.slice(0, Math.min(dial, peoplePerCampaign()));
   let scheduled = 0;
   for (let i = 0; i < candidates.length; i++) {
     const offsetDays = scheduledOffsetDays(i);
@@ -252,8 +260,11 @@ export async function openDueCampaigns(
   // Reported, not swallowed: "we listed 22 people and could ask nobody about
   // 14 of them" is the single most useful number this function produces.
   let skippedNoInviter = 0;
+  // Row 301: no more new campaigns in a day than the cap allows.
+  let openedToday = await campaignsOpenedToday();
 
   for (const target of targets) {
+    if (openedToday >= campaignsPerDay()) break;
     if (blocked.has(target.phone)) continue;
     // Ask BEFORE opening. Opening first and closing a second later produced 46
     // dead rows and read, to anyone looking at the table, like the engine
@@ -288,6 +299,7 @@ export async function openDueCampaigns(
       continue;
     }
     opened++;
+    openedToday++;
   }
   return { opened, skipped_no_inviter: skippedNoInviter };
 }
@@ -555,12 +567,13 @@ const CAMPAIGN_ASK_MESSAGE = (label: string, how: number, returning: boolean): s
 export async function sendDueCampaignAsks(limit: number): Promise<number> {
   const due = await query<{
     id: number;
+    campaign_id: number;
     inviter_user_id: number;
     target_label: string | null;
     target_phone: string;
     target_returning: boolean;
   }>(
-    `SELECT p.id, p.inviter_user_id, c.target_label, c.target_phone,
+    `SELECT p.id, p.campaign_id, p.inviter_user_id, c.target_label, c.target_phone,
             -- Ticket 17 Task 19: does this person already HAVE an account? The
             -- pool only admits numbers whose account has never used Netai, so
             -- any account row here is an old-Ally sign-up — and the ask must
@@ -600,17 +613,27 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
          WHERE recent.inviter_user_id = p.inviter_user_id
            AND recent.asked_at > NOW() - ($2 || ' days')::INTERVAL
        )
+       -- Row 301: no campaign asks more people than the cap, ever.
+       AND (SELECT COUNT(*) FROM invite_campaign_participants asked
+             WHERE asked.campaign_id = p.campaign_id AND asked.asked_at IS NOT NULL) < $4
      ORDER BY p.scheduled_ask_at ASC
      LIMIT $1`,
-    [limit, INVITE_ASK_COOLDOWN_DAYS, founderYesRequired()],
+    [limit, INVITE_ASK_COOLDOWN_DAYS, founderYesRequired(), peoplePerCampaign()],
     CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  // Row 301: and no more campaigns sending in one day than the cap — the
+  // backlog of open campaigns is released a few a day, not all at once.
+  const sendable = withinDailyCampaignCap(
+    due.rows.map((row) => ({ ...row, campaign_id: Number(row.campaign_id) })),
+    await campaignsThatSentToday(),
+    campaignsPerDay(),
   );
 
   // The campaign stored a label when it opened; the ask goes out days later
   // and must say the name the network knows NOW (ticket 9 task 13.6). „Kato"
   // and „Maxin.ai Ceo" are the same two numbers the list already resolves to
   // „Ekaterine Bezhanishvili" and „Nika Kucia Finance".
-  const freshLabels = await bestPersonLabels(due.rows.map((r) => r.target_phone)).catch(
+  const freshLabels = await bestPersonLabels(sendable.map((r) => r.target_phone)).catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[chorus] label refresh failed, using stored labels:', (err as Error).message);
@@ -622,7 +645,7 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
   // see rows it is about to write. The sweep keeps its own list.
   const askedThisTick = new Set<number>();
   let sent = 0;
-  for (const row of due.rows) {
+  for (const row of sendable) {
     if (askedThisTick.has(row.inviter_user_id)) continue;
     askedThisTick.add(row.inviter_user_id);
     const label = freshLabels.get(row.target_phone) ?? row.target_label?.trim() ?? 'ეს კონტაქტი';
