@@ -57,11 +57,12 @@ if (FUZZY_THRESHOLD < PG_TRGM_DEFAULT_LIMIT) {
 // search untouched, instead of dragging every tag query.
 const FUZZY_TIMEOUT_MS = 5_000;
 
-interface TagRow {
+export interface TagRow {
   phone: string;
   name: string | null;
   saved_as: string | null;
   all_tags: string[];
+  own_tags: string[] | null;
   employer: string | null;
   jobPosition: string | null;
   city: string | null;
@@ -123,6 +124,7 @@ const AGG_SELECT = `h.phone,
         ${DISPLAY_NAME} AS name,
         MAX(ua.alias)                        AS saved_as,
         array_agg(DISTINCT ut.tag)           AS all_tags,
+        array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
         MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
         MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
         MAX(NULLIF(TRIM(u.city), ''))        AS city`;
@@ -347,6 +349,25 @@ async function runFuzzySearch(
   }
 }
 
+/**
+ * ROW 289 — TORNIKE, 1 OCTOBER: „ONLY MY OWN LABELS".
+ *
+ * Recall matches the labels EVERY contributor saved on a phone, so a contact
+ * surfaces by a word their other acquaintances typed. Handing those words to
+ * the model meant a reply could repeat them — how other people saved someone,
+ * the same line row 296 drew for a bridge's label. A hit now shows only the
+ * labels the owner saved himself; the rest still find the person, and say so
+ * as a flag, without a word of what they were.
+ */
+export function ownDisplayableTags(row: Pick<TagRow, 'own_tags'>): string[] {
+  return (row.own_tags || []).filter((t: string) => Boolean(t) && isDisplayableTag(t));
+}
+
+export function othersLabelsMatched(row: Pick<TagRow, 'all_tags' | 'own_tags'>): boolean {
+  const own = new Set(row.own_tags || []);
+  return (row.all_tags || []).some((t) => Boolean(t) && isDisplayableTag(t) && !own.has(t));
+}
+
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
@@ -370,7 +391,8 @@ function shape(
        * one table, one of them filtered — the same shape as the display name
        * being fixed in three places an hour earlier.
        */
-      tags: (row.all_tags || []).filter((t: string) => Boolean(t) && isDisplayableTag(t)),
+      tags: ownDisplayableTags(row),
+      ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
       employer: row.employer ?? null,
       jobPosition: row.jobPosition ?? null,
       city: row.city ?? null,

@@ -2813,6 +2813,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.' +
       " RANK BY THE FIELD OF THE NEED (row 297): for a land sale a real-estate lawyer comes before a telecom company's lawyer; anyone from another field comes later, and you say so." +
       ' A row with `name: null` and `saved_as` is a contact saved only as that label (an emoji, a symbol) — say „your contact saved as 💙", never present the label as a name (row 283).' +
+      " `tags` are only the labels the USER saved. `found_by_others_labels: true` means other people's labels matched too; their words are private and not given to you — say the person came up in their network for this search, never guess or invent what others saved (row 289)." +
       ' WHEN: for trade, company and nickname words, in both scripts, across several related words and not just one.',
     input_schema: {
       type: 'object',

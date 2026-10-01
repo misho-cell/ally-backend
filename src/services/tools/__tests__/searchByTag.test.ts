@@ -19,6 +19,7 @@ const mockRow = {
   phone: '+995555123456',
   name: 'ნინო',
   all_tags: ['engineer', 'tbilisi'],
+  own_tags: ['engineer', 'tbilisi'],
   city: 'Tbilisi',
   jobPosition: 'Engineer',
   employer: 'Bank of Georgia',
@@ -289,7 +290,11 @@ describe('searchByTag', () => {
     expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(a\.alias[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).toMatch(/\(LOWER\(TRANSLATE\(t\.tag[^)]*\)[^)]*\) \|\| ''\) ~ \$\d+/);
     expect(mainSql).toContain('array_agg(DISTINCT ut.tag)');
-    expect(mainSql).not.toContain('ut."contactId" = $1');
+    // Recall stays on every contributor's labels. Since row 289 the owner's own
+    // labels are picked out — for DISPLAY only, after the match.
+    const matching = mainSql.slice(0, mainSql.indexOf('hits AS ('));
+    expect(matching).not.toContain('ut."contactId" = $1');
+    expect(mainSql).toContain('FILTER (WHERE ut."contactId" = $1) AS own_tags');
     expect(mainSql).not.toContain('ANY(');
   });
 
@@ -463,5 +468,38 @@ describe('searchByTag', () => {
     const results = result.results as Array<Record<string, unknown>>;
     expect(results[0].employer).toBe('MKD Law');
     expect(results[0].jobPosition).toBe('Senior Associate');
+  });
+});
+
+/**
+ * Row 289 — Tornike, 1 October: „only my own labels". Other people's labels
+ * still find the person; their words are not shown.
+ */
+describe('a hit shows only the labels the owner saved', () => {
+  it('keeps the owner’s labels and drops everyone else’s', async () => {
+    setup({
+      main: [{ ...mockRow, all_tags: ['engineer', 'deda nino'], own_tags: ['engineer'] }],
+      count: 1,
+    });
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const hit = (result.results as Array<Record<string, unknown>>)[0];
+    expect(hit.tags).toEqual(['engineer']);
+    expect(hit.found_by_others_labels).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('deda nino');
+  });
+
+  it('shows no labels and no flag words when only others saved any', async () => {
+    setup({ main: [{ ...mockRow, own_tags: null }], count: 1 });
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const hit = (result.results as Array<Record<string, unknown>>)[0];
+    expect(hit.tags).toEqual([]);
+    expect(hit.found_by_others_labels).toBe(true);
+  });
+
+  it('raises no flag when every label is the owner’s own', async () => {
+    setup({ main: [mockRow], count: 1 });
+    const result = (await searchByTag('42', 'engineer')) as Record<string, unknown>;
+    const hit = (result.results as Array<Record<string, unknown>>)[0];
+    expect(hit.found_by_others_labels).toBeUndefined();
   });
 });
