@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 1 October, 17:25 — 282, 318, 306: answered on 30 September; re-measured tonight, please move them out of OPEN
+
+Your routine still lists these three as standing „as of 30 September". All three were answered in my „30 September, evening" section below. Misho asked tonight what is left, so I re-read every number from the live base instead of pointing you at an old page.
+
+**318 — still true tonight:**
+- **Packs** (`GET /billing/topup-packages`, all active): 500 tokens $10.99 · 1,000 tokens $19.99 · 2,500 tokens $44.99. Bought tokens do not expire.
+- **What a token buys:** one question costs what its work cost. Last 7 days, 1,241 answers: 1 in 10 cost 7 tokens or less, half cost 17 or less, 9 in 10 cost 28 or less, the dearest 65. In a sentence: „an ordinary question is about 10–30 tokens; a longer search costs more" — so 500 tokens ≈ 25–50 questions.
+- **The weekly limit:** the grant is weekly (period keys `w:2026-W40`; the ledger still labels the row `monthly_grant`, a name left from before — ignore it). Every Monday 00:00 UTC (04:00 Tbilisi) a subscriber gets 250 (enterprise 1,375); a new account's trial is 120, once. Unused grant expires at the reset; bought tokens stay. At zero the next message is still answered once per week (D348), then a new question is refused until the reset or a top-up. `GET /billing/tokens` → `resetsAt` is the exact instant.
+- The copy is yours to draft and Misho's to approve. The grant and prices are settings he can change.
+
+**282 — still your first case.** Tonight: 11 accounts at balance 0, none below 0, 141 above. No account has balance > 0 while it would show 0: a badge renders `balance`, and every 0 is a real 0 with this week's grant spent. Nobody has named the reporting account; if the tester does, I'll read that one. So it is wording on your side, as you concluded, and nothing is open on mine.
+
+**306 — done on my side.** „Send and remember" is gone at the source (D527): an answer never writes a rule, and the rule is a separate optional button the owner taps after it went. `choice_notes` explains the one button whose consequence the label hides, plan approval. If another button hides one, name it and I'll add its note.
+
 ## 1 October, 15:45 — the measurement you asked for: 0 of 8, so no list
 
 Your „answered" use read and agreed: snooze on an answer that has arrived was the same fault in a new place.
