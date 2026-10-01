@@ -38,6 +38,22 @@ import {
  */
 
 const SHARED_QUERY_TIMEOUT_MS = 3_000;
+
+/**
+ * The switch (migration 189), OFF until the client draws Accept / Decline in an
+ * ask thread. Off — or unreadable — means every request opens its own two
+ * threads, exactly as before D530.
+ */
+export const FOLLOW_UP_IN_CONVERSATION_FLAG = 'intro_follow_up_in_conversation';
+
+async function followUpInConversationEnabled(): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
+    [FOLLOW_UP_IN_CONVERSATION_FLAG],
+    SHARED_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.enabled === true;
+}
 /** `task_asks.status` of a question the recipient has not answered yet. */
 const ASK_STILL_WAITING = 'sent';
 
@@ -100,6 +116,7 @@ export async function findSharedConversation(
   requesterUserId: number,
   mediatorUserId: number,
 ): Promise<SharedConversation | null> {
+  if (!(await followUpInConversationEnabled())) return null;
   const ask = await findEarlierAskThread(
     taskId,
     requesterUserId,

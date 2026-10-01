@@ -264,6 +264,8 @@ import {
   withSharedCircles,
 } from '../../services/chorusCampaign.service';
 
+import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThread.service';
+
 const adminRouter = Router();
 
 adminRouter.use(authenticateJwt, requireAdminRole);
@@ -299,6 +301,9 @@ const MANAGED_APP_FLAGS = [
    */
   PERSONAL_CODE_ONLY_FLAG,
   LOGIN_INVITE_ONLY_FLAG,
+  // Row 305 (b): a follow-up request continues the conversation. Default off
+  // until the client's Accept / Decline in an ask thread is live.
+  FOLLOW_UP_IN_CONVERSATION_FLAG,
 ] as const;
 
 /**

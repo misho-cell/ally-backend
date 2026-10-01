@@ -128,6 +128,8 @@ interface World {
   readonly busy?: boolean;
   /** The lookup itself fails. */
   readonly lookupFails?: boolean;
+  /** The switch (migration 189) is off — its default until the client is ready. */
+  readonly switchedOff?: boolean;
 }
 
 /** The ask lookup, answered the way Postgres would for the scope it was given. */
@@ -145,6 +147,8 @@ function theWorldIs(world: World): void {
   inserted = [];
   mockQuery.mockImplementation(((sql: string, params: unknown[] = []) => {
     const text = String(sql);
+    if (text.includes('FROM app_flags'))
+      return Promise.resolve(rows([{ enabled: world.switchedOff !== true }]));
     if (text.includes('FROM task_asks a')) return Promise.resolve(askRows(text, params, world));
     if (text.includes('FROM tasks k'))
       return Promise.resolve(rows(world.goalThread === false ? [] : [{ id: GOAL_THREAD }]));
@@ -309,6 +313,12 @@ describe('every other request is exactly what it was', () => {
 
   it('when the goal has no thread of the requester to write into', async () => {
     theWorldIs({ askStatus: 'sent', goalThread: false });
+    await askForAnIntroduction();
+    expectTodaysTwoThreads();
+  });
+
+  it('while the switch is off — its default until the client draws the buttons', async () => {
+    theWorldIs({ askStatus: 'sent', switchedOff: true });
     await askForAnIntroduction();
     expectTodaysTwoThreads();
   });
