@@ -94,7 +94,9 @@ describe('what the ask carries, and what the answer records', () => {
   it('goes to every recipient, not only to seats', () => {
     expect(asks).not.toContain('recipientIsATestSeat');
     const offer = asks.slice(asks.indexOf('await saveThreadMessage(\n    askThreadId,'));
-    expect(offer.slice(0, 200)).toContain('askChoices(language)');
+    // G4's picker replaces the buttons on a need ask; it carries the decline
+    // too (aMediatorIsAskedWhomHeRecommends), so the window just got longer.
+    expect(offer.slice(0, 300)).toContain('askChoices(language)');
   });
 
   /**

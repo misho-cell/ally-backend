@@ -600,3 +600,32 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     return searchDidNotFinish('The tag search', err);
   }
 }
+
+/** One of a member's own contacts that fits a need, named as that member sees them. */
+export interface OwnMatch {
+  readonly phone: string;
+  readonly name: string;
+}
+
+/**
+ * Plate v301 G4: the contacts a BRIDGE could recommend for somebody else's
+ * need — the bridge's own matches (own label or public field), never a match
+ * through a third person's private label, in the search's own order. Used to
+ * show the bridge their OWN phonebook; nothing here reaches the asker.
+ */
+export async function ownMatchesFor(
+  userId: string,
+  need: string,
+  limit: number,
+): Promise<readonly OwnMatch[]> {
+  const rawGroups = buildMeaningWordGroups(need);
+  if (rawGroups.length === 0) return [];
+  const blockedPhones = await getExcludedPhones(userId, need);
+  const excludedSet = new Set(blockedPhones.map(normalizePhone));
+  const exact = await runExactSearch(userId, rawGroups, blockedPhones);
+  return exact.rows
+    .filter((r) => r.own_hit === true && !excludedSet.has(normalizePhone(r.phone)))
+    .map((r) => ({ phone: r.phone, name: (r.name ?? r.saved_as ?? '').trim() }))
+    .filter((m) => m.name !== '')
+    .slice(0, limit);
+}

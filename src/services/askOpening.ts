@@ -313,6 +313,11 @@ export function allYesChoices(): readonly string[] {
   return Object.values(YES_CHOICE);
 }
 
+/** The tappable „later" offered under an incoming ask, in the reader's language. */
+export function laterChoice(language: RunLanguage): string {
+  return LATER_CHOICE[language] ?? LATER_CHOICE.ka;
+}
+
 /** Every language's „later" button, for the prompt that must recognise a tap of it. */
 export function allLaterChoices(): readonly string[] {
   return Object.values(LATER_CHOICE);

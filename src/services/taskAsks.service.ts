@@ -1,5 +1,6 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
+import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
@@ -486,6 +487,21 @@ const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
   'past_due',
 ]);
 
+/** The bridge picker, or the ordinary buttons when it cannot be built. */
+async function pickerFor(
+  readerUserId: string,
+  bridgeNeed: BridgeNeed,
+  language: RunLanguage,
+): Promise<BridgePicker | null> {
+  try {
+    return await bridgePicker(readerUserId, bridgeNeed, language);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[bridge-picker] sent without the picker:', (err as Error).message);
+    return null;
+  }
+}
+
 export async function createAsk(
   fromUserId: string,
   taskId: number,
@@ -493,6 +509,7 @@ export async function createAsk(
   question: string,
   parentAskId?: number,
   threadId?: number,
+  bridgeNeed?: BridgeNeed,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1280,14 +1297,18 @@ export async function createAsk(
    * sentence instead of tapping it lands in the same place — and the string
    * compare on this side catches both. The two paths agree by construction.
    */
+  // Plate v301 G4: on a first ask about a need, the reader's own fitting
+  // contacts become the buttons (see bridgePicker.ts).
+  const picker =
+    bridgeNeed && !sameThread ? await pickerFor(String(toUserId), bridgeNeed, language) : null;
   await saveThreadMessage(
     askThreadId,
     toUserId,
     'assistant',
-    opening,
+    picker ? `${opening}\n\n${picker.line}` : opening,
     'message',
     null,
-    askChoices(language),
+    picker ? picker.choices : askChoices(language),
   );
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the

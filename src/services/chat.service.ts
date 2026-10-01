@@ -196,6 +196,7 @@ import { applyOfficeholderGate, clearRunEvidence, recordRunEvidence } from './of
 import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
+import { BridgeNeed } from './bridgePicker';
 import { logSearchActivity } from './abuseDetection.service';
 import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
@@ -945,6 +946,14 @@ const CREATE_TASK_TOOL: AnthropicTool = {
   },
 };
 
+/** Plate v301 G4: the need an ask_contact call names, if it names one. */
+function bridgeNeedFrom(input: Record<string, unknown>): BridgeNeed | undefined {
+  const need = typeof input['need'] === 'string' ? input['need'].trim() : '';
+  if (need === '') return undefined;
+  const forPhone = typeof input['for_phone'] === 'string' ? input['for_phone'].trim() : '';
+  return forPhone === '' ? { need } : { need, forPhone };
+}
+
 const ASK_CONTACT_TOOL: AnthropicTool = {
   name: 'ask_contact',
   description:
@@ -995,6 +1004,20 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
       question: {
         type: 'string',
         description: 'The question, short and self-contained (max 600 chars).',
+      },
+      need: {
+        type: 'string',
+        description:
+          'When you ask this person to recommend somebody — a lawyer, a plumber — the search ' +
+          'words for that need („იურისტი"). The recipient is then shown their OWN fitting ' +
+          'contacts as buttons and asked whom they recommend; leave it out for any other question.',
+      },
+      for_phone: {
+        type: 'string',
+        description:
+          'With `need`, when this person is the BRIDGE from search_second_degree: the phone id ' +
+          'of the second-degree person you found through them. They are named to the bridge ' +
+          '(it is the bridge’s own contact) as the reason they were asked.',
       },
     },
     required: ['task_id', 'phone', 'question'],
@@ -2988,7 +3011,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   search_second_degree: {
     name: 'search_second_degree',
     description:
-      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` may come from a confirmed fact OR from the person's own saved label — when they came from the label the row carries `role_source: label`, and then you must say it as what it is (the network saves him as TBC Capital) and NEVER as a confirmed fact. A row from a FACT carries `role_sources` — how many DIFFERENT members have said it. FEWER THAN TWO MEANS ONE PERSON'S NOTE, NOT A FACT ABOUT THEM: give the NAME and do not state the role (D449, the founder, 23 September). Two or more, say it plainly. No `role_source` and no `role_sources` means it came from the person's OWN profile, which is theirs to state. Both are often empty even for a real match; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
+      "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact, with `need` (your search words) and `for_phone` (this person's phone id) so the bridge is told whom they were picked for and asked whom they recommend; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` may come from a confirmed fact OR from the person's own saved label — when they came from the label the row carries `role_source: label`, and then you must say it as what it is (the network saves him as TBC Capital) and NEVER as a confirmed fact. A row from a FACT carries `role_sources` — how many DIFFERENT members have said it. FEWER THAN TWO MEANS ONE PERSON'S NOTE, NOT A FACT ABOUT THEM: give the NAME and do not state the role (D449, the founder, 23 September). Two or more, say it plainly. No `role_source` and no `role_sources` means it came from the person's OWN profile, which is theirs to state. Both are often empty even for a real match; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
       ' WHEN: for one ring beyond their contacts.',
     input_schema: {
       type: 'object',
@@ -7410,6 +7433,7 @@ async function executeToolCall(
         question,
         undefined,
         threadId,
+        bridgeNeedFrom(input),
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
         await markSearchSent(runId, userId, [input['phone']], threadId);
