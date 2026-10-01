@@ -221,13 +221,24 @@ describe('a public number survives the scrub; every other one does not', () => {
     expect(render('+995 415 223 344')).toContain('(zugdidi-clinic.ge)');
   });
 
-  it('masks rather than shows when it cannot be sure it is the same number', () => {
-    // „(995) 415…" puts TWO characters between the 5 and the 4, which the
-    // matcher does not span. The number is then masked instead of shown, and
-    // that is the failure worth having: widening the matcher would widen what
-    // counts as „this exact allowed number", and the cost of being wrong here
-    // is showing a number nobody allowed.
-    expect(render('(995) 415.22.33.44')).toContain('[hidden]');
+  /**
+   * CHANGED ON 1 OCTOBER, the tester's 961. This used to assert the opposite:
+   * „(995) 415…" puts two characters between the 5 and the 4, and the matcher
+   * spanned one, so the number was masked. That was caution about the wrong
+   * thing — the DIGITS are identical, so it is the same allowed number, and
+   * masking it hid a published phone every time a page or reply bracketed an
+   * area code („551) …"). Two separator characters are allowed now; a single
+   * different digit still masks it.
+   */
+  it('shows the same digits however they are punctuated, and nothing else', () => {
+    expect(render('(995) 415.22.33.44')).not.toContain('[hidden]');
+    expect(render('(995) 415.22.33.45')).toContain('[hidden]');
+  });
+
+  it('allows a city number printed with its trunk 0, as the reply writes it', () => {
+    const spellings = webNumberSpellings('0422 27 33 44');
+    expect(spellings).toContain('422 27 33 44');
+    expect(spellings).toContain('+995 422 27 33 44');
   });
 
   it('does not repeat a source the text already gives', () => {

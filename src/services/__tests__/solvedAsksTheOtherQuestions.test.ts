@@ -223,3 +223,17 @@ describe('where it is wired', () => {
     expect(retry.slice(0, 900)).toContain('await showClosedGoalAnswers(taskId)');
   });
 });
+
+/** The tester's 961: one open question reads as one, not „მათი კითხვები". */
+describe('the offer speaks of one person as one', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('uses the singular for a single open question', async () => {
+    mockQuery.mockResolvedValue(rows([{ n: '1' }]));
+    await offerOpenAsksChoice(TASK_ID, THREAD_ID, OWNER_ID);
+    const line = String(mockSave.mock.calls[0][3]);
+    expect(line).toContain('ერთ ადამიანს');
+    expect(line).toContain('მისი კითხვა');
+    expect(line).not.toContain('მათი');
+  });
+});

@@ -6538,6 +6538,13 @@ export function webNumberSpellings(phone: string): string[] {
     spellings.add(part);
     const national = nationalForm(part);
     if (national !== null) spellings.add(national);
+    // The tester's 958: a registry prints a city number with the trunk 0
+    // („0422 27 33 44"); a reply drops it or writes +995 instead.
+    const trunkless = part.trim().replace(/^0(?=\d)/, '');
+    if (trunkless !== part.trim() && trunkless.replace(/\D/g, '').length >= MIN_SHOWABLE_DIGITS) {
+      spellings.add(trunkless);
+      spellings.add(`+995 ${trunkless}`);
+    }
   }
   return [...spellings];
 }
@@ -6698,7 +6705,10 @@ export function wrapNumbers(text: string, held: Map<string, string | null> | und
     // Any spelling of the number (spaces/dashes/dots between digits, optional +)
     // becomes a placeholder token first — a token cannot re-match, so already-
     // marked spans and fresh wraps can never nest.
-    const sep = '[\\s\\-().]?';
+    // Up to TWO separator characters between digits (the tester's 961: a page
+    // printed „551) …", a reply wrote „(551) …" — „) " is two). Still digit
+    // for digit: only the punctuation between them is free.
+    const sep = '[\\s\\-().]{0,2}';
     const pattern = new RegExp(`\\+?${digits.split('').join(sep)}`, 'g');
     const marked = `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
     out = out.split(marked).join(phone);

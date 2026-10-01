@@ -70,14 +70,36 @@ export function openAsksTapOf(message: string): OpenAsksTap | null {
   return null;
 }
 
+/**
+ * The tester's 961: „1 ადამიანს … მათი კითხვები" — the plural for one person.
+ * One open question reads as one; more read as many.
+ */
+const OFFER_LINES: Readonly<Record<RunLanguage, { one: string; many: (n: number) => string }>> = {
+  ka: {
+    one: 'ერთ ადამიანს კითხვაზე ჯერ არ უპასუხია. მისი კითხვა დავხურო, თუ ღიად დავტოვო? თუ დავტოვებ, მისი პასუხი აქ მოვა.',
+    many: (n) =>
+      `${n} ადამიანს კითხვაზე ჯერ არ უპასუხია. მათი კითხვები დავხურო, თუ ღიად დავტოვო? თუ დავტოვებ, მათი პასუხები აქ მოვა.`,
+  },
+  en: {
+    one: 'One person has not answered yet. Close their question, or keep it open? If it stays open, their answer will still arrive here.',
+    many: (n) =>
+      `${n} people have not answered yet. Close their questions, or keep them open? If they stay open, their answers will still arrive here.`,
+  },
+  ru: {
+    one: 'Один человек ещё не ответил. Закрыть его вопрос или оставить открытым? Если оставить, ответ придёт сюда.',
+    many: (n) =>
+      `${n} человек ещё не ответили. Закрыть их вопросы или оставить открытыми? Если оставить, ответы придут сюда.`,
+  },
+  es: {
+    one: 'Una persona aún no ha respondido. ¿Cierro su pregunta o la dejo abierta? Si queda abierta, su respuesta llegará aquí.',
+    many: (n) =>
+      `${n} personas aún no han respondido. ¿Cierro sus preguntas o las dejo abiertas? Si quedan abiertas, sus respuestas llegarán aquí.`,
+  },
+};
+
 function offerLine(language: RunLanguage, count: number): string {
-  const lines: Readonly<Record<RunLanguage, string>> = {
-    ka: `${count} ადამიანს კითხვაზე ჯერ არ უპასუხია. მათი კითხვები დავხურო, თუ ღიად დავტოვო? თუ დავტოვებ, მათი პასუხები აქ მოვა.`,
-    en: `${count} people have not answered yet. Close their questions, or keep them open? If they stay open, their answers will still arrive here.`,
-    ru: `${count} человек ещё не ответили. Закрыть их вопросы или оставить открытыми? Если оставить, ответы придут сюда.`,
-    es: `${count} personas aún no han respondido. ¿Cierro sus preguntas o las dejo abiertas? Si quedan abiertas, sus respuestas llegarán aquí.`,
-  };
-  return lines[language] ?? lines.ka;
+  const lines = OFFER_LINES[language] ?? OFFER_LINES.ka;
+  return count === 1 ? lines.one : lines.many(count);
 }
 
 async function openAskCount(taskId: number): Promise<number> {
