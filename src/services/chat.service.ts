@@ -5981,6 +5981,11 @@ export function withClosingQuestion(reply: string, language: RunLanguage): strin
   return reply.includes(question) ? reply : `${reply.trimEnd()}\n\n${question}`;
 }
 
+/** Does this reply ask the owner to approve a plan — is its approve button offered? */
+export function replyAsksForApproval(offered: readonly string[] | null | undefined): boolean {
+  return (offered ?? []).some((label) => isApproveChoice(label));
+}
+
 /** Below this a reply is an announcement around a plan, not a plan. */
 const PLAN_REPLY_MIN_CHARS = 120;
 
@@ -5998,9 +6003,18 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
  * The reply, with the plan in plain sentences in front of it when the model
  * left the plan out. A reply that carries it is untouched.
  */
-function withPlanInReply(runId: string, reply: string): string {
+function withPlanInReply(
+  runId: string,
+  reply: string,
+  offered: readonly string[] | null | undefined,
+): string {
   const plan = runPlanForReply.get(runId);
   if (!plan) return reply;
+  // The tester's 954: the question was added under a reply that offered web
+  // leads with buttons of its own — a plan was proposed in the run, but the
+  // reply was not asking for it to be approved. Only a reply carrying the
+  // approve button is a plan reply.
+  if (!replyAsksForApproval(offered)) return reply;
   if (replyCarriesPlan(reply, plan)) return withClosingQuestion(reply, runLang(runId));
   // eslint-disable-next-line no-console
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
@@ -11547,7 +11561,7 @@ export async function processChat(
     effectiveFinal = '';
   }
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
-  effectiveFinal = withPlanInReply(runId, effectiveFinal);
+  effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }

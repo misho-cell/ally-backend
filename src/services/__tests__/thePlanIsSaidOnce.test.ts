@@ -1,7 +1,12 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { planInSentences, TaskPlan } from '../taskPlans.service';
-import { planInYourReplyNote, replyCarriesPlan, withClosingQuestion } from '../chat.service';
+import {
+  planInYourReplyNote,
+  replyAsksForApproval,
+  replyCarriesPlan,
+  withClosingQuestion,
+} from '../chat.service';
 
 /**
  * ROW 279 — Tornike, 1 October (D520): a new goal's plan appeared twice, first
@@ -96,7 +101,7 @@ describe('where it is wired', () => {
 
   it('hands the model the plan to show, and adds it when the reply left it out', () => {
     expect(block).toContain('show_plan: planInYourReplyNote(runLang(runId))');
-    expect(chat).toContain('effectiveFinal = withPlanInReply(runId, effectiveFinal);');
+    expect(chat).toContain('effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
     expect(clear.slice(0, 1400)).toContain('runPlanForReply.delete(runId)');
   });
@@ -109,5 +114,25 @@ describe('the agreed question under the plan', () => {
     );
     const once = withClosingQuestion('გეგმა.\n\nამ გეგმას მივყვე და ვიმოქმედო?', 'ka');
     expect(once.match(/მივყვე/g)).toHaveLength(1);
+  });
+});
+
+/**
+ * The tester's 954: „ამ გეგმას მივყვე და ვიმოქმედო?" was added under a reply of
+ * web leads whose buttons were its own („საკმარისია, გმადლობთ" …) — no plan,
+ * no approve. The question and the plan fallback belong only to a reply that
+ * asks for the plan to be approved.
+ */
+describe('only a reply that asks for approval is a plan reply', () => {
+  it('reads the approve button among the offered choices', () => {
+    expect(replyAsksForApproval(['ვამტკიცებ', 'შევცვალოთ'])).toBe(true);
+    expect(replyAsksForApproval(['საკმარისია, გმადლობთ', 'გააგრძელე მოძებნა'])).toBe(false);
+    expect(replyAsksForApproval(null)).toBe(false);
+  });
+
+  it('is checked before anything is added to the reply', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const fn = chat.slice(chat.indexOf('function withPlanInReply('));
+    expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return reply;');
   });
 });

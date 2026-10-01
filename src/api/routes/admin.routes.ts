@@ -265,6 +265,7 @@ import {
 } from '../../services/chorusCampaign.service';
 
 import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThread.service';
+import { confirmedWarmTieSql } from '../../services/chorusCap';
 
 const adminRouter = Router();
 
@@ -5515,7 +5516,9 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
               p.asked_at, p.thread_id, p.state_updated_at,
               p.technique_when, p.technique_how, p.technique_reason,
               crs.strength_score AS tie_strength,
-              COALESCE(k.known_by, 0)::int AS known_by
+              COALESCE(k.known_by, 0)::int AS known_by,
+              -- D544 (tester 954): the same test every send now passes.
+              ${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')} AS confirmed_tie
        FROM invite_campaign_participants p
        JOIN invite_campaigns c ON c.id = p.campaign_id
        LEFT JOIN "User" u ON u.id = p.inviter_user_id

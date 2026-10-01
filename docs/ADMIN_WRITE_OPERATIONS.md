@@ -5359,3 +5359,9 @@ puts it back under the stricter rule. Measured before: of 56 waiting inviters, 8
 CHANGE  ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: false)
 UNDO    the same with true (§79's state)
 ```
+
+**§79 RUN, 1 October 12:34:03 UTC:** `env.sh set CHORUS_REQUIRE_FOUNDER_YES` (true) — Chorus
+held. Before it: 7 asks across 5 campaigns since 11:32; none had a confirmed tie.
+
+**§80 RUN, 1 October 13:16:11 UTC:** `env.sh set CHORUS_REQUIRE_FOUNDER_YES` (false) — back
+on, with D544 (1dcae63) live since 12:45.

@@ -24,3 +24,13 @@ describe('chorus asks can be counted from a given time', () => {
     expect(routes).toContain('AND ($4::timestamptz IS NULL OR p.asked_at >= $4::timestamptz)');
   });
 });
+
+/** D544, the tester's 954: each ask says whether its inviter's tie is confirmed. */
+describe('each chorus ask says whether its tie was confirmed', () => {
+  it('uses the same test as every send', () => {
+    const routes = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
+    expect(routes).toContain(
+      "${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')} AS confirmed_tie",
+    );
+  });
+});
