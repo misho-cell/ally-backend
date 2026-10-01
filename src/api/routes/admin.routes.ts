@@ -1,5 +1,17 @@
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
+  authorForLogin,
+  createTeamTask,
+  isTeamTaskAuthor,
+  isTeamTaskStatus,
+  listTeamTasks,
+  TEAM_TASK_PAGES,
+  TeamTask,
+  TeamTaskAuthor,
+  TeamTaskStatus,
+  updateTeamTask,
+} from '../../services/teamTasks.service';
+import {
   createStaffAccount,
   StaffAccount,
   StaffAccountRefusal,
@@ -30,7 +42,7 @@ import {
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
-import { body, param, validationResult } from 'express-validator';
+import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
   authenticateJwt,
   requireAdminRole,
@@ -1798,6 +1810,111 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin password]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// M2 (plate v288; Misho, 1 October): the team's task board — every row says
+// who created it. The author comes from the login; only the shared login,
+// which AI seats write through, names one (`created_by`), from the fixed list.
+//   GET   /admin/team-tasks?page=1|2
+//   POST  /admin/team-tasks { problem, task, priority?, created_by? }
+//   PATCH /admin/team-tasks/:id { status?, priority?, page? }
+adminRouter.get(
+  '/team-tasks',
+  queryParam('page').optional().isIn(TEAM_TASK_PAGES.map(String)),
+  async (req: Request, res: Response<ApiResponse<{ tasks: TeamTask[] }>>) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'page is 1 or 2' });
+      return;
+    }
+    try {
+      const page = req.query.page === undefined ? undefined : Number(req.query.page);
+      res.status(200).json({ success: true, data: { tasks: await listTeamTasks(page) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[team-tasks] list failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.post(
+  '/team-tasks',
+  body('problem').isString().trim().isLength({ min: 1 }),
+  body('task').isString().trim().isLength({ min: 1 }),
+  body('priority').optional().isInt({ min: 1, max: 3 }),
+  body('created_by').optional().isString(),
+  async (req: Request, res: Response<ApiResponse<TeamTask>>) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: 'problem and task are needed; priority is 1–3' });
+      return;
+    }
+    try {
+      const adminId = String((req as AuthenticatedRequest).user.userId);
+      const input = req.body as {
+        problem: string;
+        task: string;
+        priority?: number;
+        created_by?: unknown;
+      };
+      const fromLogin = await authorForLogin(adminId);
+      const author = fromLogin ?? (isTeamTaskAuthor(input.created_by) ? input.created_by : null);
+      if (author === null) {
+        res.status(400).json({
+          success: false,
+          error: `created_by is needed from this login: one of ${Object.values(TeamTaskAuthor).join(', ')}`,
+        });
+        return;
+      }
+      const created = await createTeamTask({
+        author,
+        postedBy: adminId,
+        problem: String(input.problem),
+        task: String(input.task),
+        priority: input.priority === undefined ? undefined : Number(input.priority),
+      });
+      res.status(201).json({ success: true, data: created });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[team-tasks] create failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.patch(
+  '/team-tasks/:id',
+  param('id').isInt({ min: 1 }),
+  body('status').optional().custom(isTeamTaskStatus),
+  body('priority').optional().isInt({ min: 1, max: 3 }),
+  body('page').optional().isIn(TEAM_TASK_PAGES),
+  async (req: Request, res: Response<ApiResponse<TeamTask>>) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `status is one of ${Object.values(TeamTaskStatus).join(', ')}; priority 1–3; page 1 or 2`,
+      });
+      return;
+    }
+    try {
+      const change = req.body as { status?: TeamTaskStatus; priority?: number; page?: number };
+      const updated = await updateTeamTask(Number(req.params.id), {
+        status: change.status,
+        priority: change.priority === undefined ? undefined : Number(change.priority),
+        page: change.page === undefined ? undefined : Number(change.page),
+      });
+      if (updated === null) {
+        res.status(404).json({ success: false, error: 'No such task.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[team-tasks] update failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
