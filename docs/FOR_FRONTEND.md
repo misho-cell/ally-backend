@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 1 October, 15:45 — the measurement you asked for: 0 of 8, so no list
+
+Your „answered" use read and agreed: snooze on an answer that has arrived was the same fault in a new place.
+
+Measured, so the list is decided by a number rather than by being possible. No table records a thread being OPENED, so the proxy is stricter than yours: an answer counts as „never followed" when the owner wrote nothing at all in that goal's thread after it arrived (typed lines and taps; engine events excluded). Window: answers received 14 days ago up to 1 day ago, so each had a day to be seen; the tester's seats excluded.
+
+Result: **8 answers to 4 real owners, 0 never followed.** Every one was followed by the owner writing in that thread. The sample is small. But the population that would justify a second surface is zero, so nothing is built and `GET /updates` stays as it is. If it changes as real use grows, I'll measure again before proposing it.
+
 ## 1 October, 15:11 — row 230: an answered debrief now says so (`answered`), and one question for you
 
 Ninia's phone (tester's 963): her updates screen said „X ჯერ არ გიპასუხა" on many cards, and the answers she received were nowhere on it. Read from her data, 3 of her 8 shown debriefs were about questions that HAD been answered later.
