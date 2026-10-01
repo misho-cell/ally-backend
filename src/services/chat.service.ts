@@ -291,6 +291,7 @@ import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
+import { saveSimilarRuleOnTap, SIMILAR_RULE_LABEL } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
@@ -1310,12 +1311,10 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'private details (health, family, money — never merely who they are or what they do), ' +
     'or touches anything delicate. confirmed=true says the words ' +
     'are the USER’S answer, not one you composed for them; without it nothing is sent. Never ' +
-    'include a name or detail the user did not give you. A standing rule (D120) is recorded ' +
-    'BY THIS CALL and only by it: pass remember_for_similar=true with kind, your one-line ' +
-    'description of the kind of question this answer covers. So do not hold the answer back to ' +
-    'ask about it first — send, and make the offer in the line that says it went; a yes after ' +
-    'that is recorded on the next answer of the same kind. From then on a matching question is ' +
-    'answered automatically and the weekly summary lists it; they can see and delete their rules.',
+    'include a name or detail the user did not give you. A standing rule (D120, D527) is NEVER ' +
+    'written by this call: after the answer goes, the result tells you to offer ONE optional ' +
+    "button, and only the owner's tap on it saves the rule. Never say a rule was saved unless " +
+    'the server told you so.',
   input_schema: {
     type: 'object',
     properties: {
@@ -1326,17 +1325,6 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
       confirmed: {
         type: 'boolean',
         description: 'Must be true, and only after the user explicitly approved this exact text.',
-      },
-      remember_for_similar: {
-        type: 'boolean',
-        description:
-          'true ONLY when the user also said yes to answering similar questions this way in future.',
-      },
-      kind: {
-        type: 'string',
-        description:
-          'With remember_for_similar: one line saying what kind of question the rule covers, ' +
-          'in the user’s language (e.g. „ვინ არის კარგი BMW-ს ხელოსანი").',
       },
     },
     required: ['answer_text'],
@@ -2001,6 +1989,16 @@ export const WAKE_SHARE_NOTE =
  * server card — show it once, in its own words, and nothing that reads like a
  * form.
  */
+/** D527: what the model is told after an answer went — one optional button, no rule yet. */
+export function similarRuleOfferNote(language: RunLanguage): string {
+  return (
+    'The answer went. You may offer ONE optional button, exactly „' +
+    SIMILAR_RULE_LABEL[language] +
+    '", via present_choices, in the line that says it went. No rule is saved now; never say ' +
+    "one was. Only the owner's tap on that button saves it."
+  );
+}
+
 export function planInYourReplyNote(language: RunLanguage): string {
   const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
   const text: Record<RunLanguage, string> = {
@@ -3746,7 +3744,7 @@ export function buildIncomingAskSection(ask: IncomingAsk): string {
     `- „კი" ღილაკი (${quotedChoices(allYesChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ დაეხმარება. ჯერ არაფერი გაგზავნო — ერთი მოკლე ხაზით ჰკითხე, რა გადავცე (სახელი, დეტალი), და მხოლოდ მისი პასუხის შემდეგ გამოიძახე send_answer_to_asker.\n` +
     `- „მოგვიანებით" ღილაკი (${quotedChoices(allLaterChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ მოგვიანებით უპასუხებს, და ერთ შეხსენებას 24 საათში თვითონ გაუგზავნის. არაფერი გაგზავნო, არაფერი ჰკითხო — ერთი მოკლე თბილი ხაზით დაუდასტურე.\n` +
     `- ჯერ ერთი ხაზით აზრი აჩვენე ერთი ღილაკით და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მხოლოდ მაშინ, როცა პასუხი მესამე ადამიანის პირად დეტალებს ამხელს (ჯანმრთელობა, ოჯახი, ფული — არა უბრალოდ ვინ არის ან რას საქმიანობს), ან საკითხი ნაზია.\n` +
-    `- მსგავს კითხვებზე მომავალში მის მაგივრად პასუხის შეთავაზება (D120) იმავე ხაზში გააკეთე, რომელიც ამბობს რომ გადაეცა — პასუხს ამის გამო არასდროს დააყოვნო. მისი „კი" = შემდეგ ასეთ პასუხზე send_answer_to_asker remember_for_similar=true და kind (ერთი სტრიქონი, რა კითხვებს ფარავს). list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
+    `- მსგავს კითხვებზე წესი (D120, D527) მხოლოდ ღილაკით — პასუხს ამის გამო არასდროს დააყოვნო: პასუხი რომ გაიგზავნება, შედეგი გეტყვის, რომელი ერთი ღილაკი შესთავაზო. წესს სერვერი ინახავს მხოლოდ მისი დაჭერისას — შენ არასდროს თქვა, რომ შეინახე. list_answer_rules / delete_answer_rule — მისი წესების ნახვა და გაუქმება.\n` +
     `- გასაგზავნ ტექსტში არასდროს ჩასვა სახელი ან დეტალი, რომელიც მომხმარებელს არ უთქვამს.\n` +
     `- მომხმარებელს სახელით არ მიმართო, თუ მისი სახელი ამ საუბარში ან მის ანგარიშზე არ წერია — სახელს არასდროს მოიგონებ.\n` +
     `- relay_ask ცალკე მოქმედებაა — კითხვის მესამე ადამიანთან გადაგზავნა. მხოლოდ მაშინ, როცა მომხმარებელი ამას პირდაპირ ითხოვს („გადაუგზავნე", „მას ჰკითხე"). „თვითონ ვკითხავ", „მე მოვაგვარებ" — გადაგზავნის თხოვნა არ არის. თუ კონტაქტი ვერ მოიძებნა: ორთოგრაფია არ ჰკითხო, ბოდიში არ მოიხადო, „სისტემური შეცდომა" არ ახსენო და არასოდეს ურჩიო კითხვის ავტორთან პირდაპირ დაკავშირება.\n` +
@@ -7339,9 +7337,11 @@ async function executeToolCall(
       if (threadId === undefined) {
         return { sent: false, error: 'No thread context for this call.' };
       }
-      const kind = String(input['kind'] ?? '').trim();
-      const remember = input['remember_for_similar'] === true && kind !== '' ? { kind } : undefined;
-      return sendApprovedAskAnswer(userId, threadId, answerText, remember);
+      // Row 302 / D527 (tester 958): the send never writes a rule, whatever
+      // the call carries — rule 232 was written that way with no yes. The rule
+      // is one optional button after the answer, saved only on its tap.
+      const sent = await sendApprovedAskAnswer(userId, threadId, answerText);
+      return sent.sent ? { ...sent, offer_rule: similarRuleOfferNote(runLang(runId)) } : sent;
     }
     case 'list_answer_rules': {
       const rules = await listAnswerRules(userId);
@@ -11451,8 +11451,16 @@ export async function processChat(
         console.error('[open-asks] tap failed:', (err as Error).message);
         return null;
       });
+  // D527: the rule button, acted on by the server too.
+  const ruleSaved = ownerAbsent
+    ? null
+    : await saveSimilarRuleOnTap(userId, threadId, userMessage).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[answer-rule] tap failed:', (err as Error).message);
+        return null;
+      });
   const replyContext =
-    [tappedContext, approvedByTap, openAsksSettled]
+    [tappedContext, approvedByTap, openAsksSettled, ruleSaved]
       .filter((part): part is string => part !== null)
       .join('\n\n') || null;
   /**
