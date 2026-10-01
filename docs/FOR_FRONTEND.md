@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 1 October — row 312's last piece: a new SSE event `step_retracted` (please handle)
+
+The tester's run 73de0ab3 (thread 28216): the final reply also appeared as a step,
+11 s before run_complete. The cause was on my side. A run's narration goes out live as
+`step_summary`; when that narration WAS the real answer, the server promotes it to the
+final reply at the end and deletes the stored step — but the live step was already on
+your screen, so the reply showed twice.
+
+From this deploy, at that moment the server sends:
+
+    { event: 'step_retracted', threadId, runId, text }
+
+`text` is exactly the `text` of the earlier `step_summary` in the same run (same scrub).
+Please drop that step from the run's steps list. Nothing else changes; on reload the
+step is already gone from the stored history.
+
+---
+
 ## 1 October — row 290: a Claude / GPT selector in the admin prompt editor (please build)
 
 **Misho's word, 1 October:** GPT writes the final Georgian text and has had no prompt

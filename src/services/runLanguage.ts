@@ -568,6 +568,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
     search_second_degree: (q) => `👥 მეორე წრეში ვეძებ: „${q}"…`,
     search_contact_by_name: (q) => `🔍 სახელით ვეძებ: „${q}"…`,
     web_search: (q) => `🌐 ვებში ვეძებ: „${q}"…`,
+    search_by_insight: (q) => `🔍 შენახულ ინფოში ვეძებ: „${q}"…`,
   },
   en: {
     request_introduction: (m, t) =>
@@ -579,6 +580,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
     search_second_degree: (q) => `👥 Searching your contacts' contacts for "${q}"…`,
     search_contact_by_name: (q) => `🔍 Looking for "${q}" by name…`,
     web_search: (q) => `🌐 Searching the web for "${q}"…`,
+    search_by_insight: (q) => `🔍 Searching saved info for "${q}"…`,
   },
   ru: {
     request_introduction: (m, t) =>
@@ -590,6 +592,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
     search_second_degree: (q) => `👥 Ищу во втором круге: «${q}»…`,
     search_contact_by_name: (q) => `🔍 Ищу по имени: «${q}»…`,
     web_search: (q) => `🌐 Ищу в интернете: «${q}»…`,
+    search_by_insight: (q) => `🔍 Ищу в сохранённом: «${q}»…`,
   },
   es: {
     request_introduction: (m, t) =>
@@ -601,6 +604,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
     search_second_degree: (q) => `👥 Buscando en el segundo círculo: «${q}»…`,
     search_contact_by_name: (q) => `🔍 Buscando por nombre: «${q}»…`,
     web_search: (q) => `🌐 Buscando en la web: «${q}»…`,
+    search_by_insight: (q) => `🔍 Buscando en lo guardado: «${q}»…`,
   },
 };
 
@@ -612,6 +616,8 @@ const NAMED_FIELDS: Readonly<Record<string, readonly [string, string?]>> = {
   search_second_degree: ['tag_query'],
   search_contact_by_name: ['name_query'],
   web_search: ['query'],
+  // Tester 928: „🔍 შენახულ ინფოში ვეძებ..." twice with no object.
+  search_by_insight: ['search_query'],
 };
 
 export function namedStepCaption(

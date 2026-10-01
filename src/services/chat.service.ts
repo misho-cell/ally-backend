@@ -147,6 +147,7 @@ import {
   emitThreadCreated,
   emitToolProgress,
   emitStepSummary,
+  emitStepRetracted,
   emitTokensDebited,
   emitAnswerDelta,
   emitAnswerReset,
@@ -9411,6 +9412,8 @@ async function runToolLoop(
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
     promoted = true;
     if (bestStepId !== null) await deleteMessage(bestStepId);
+    // Row 312: and off the screen too — it went out live as a step.
+    emitStepRetracted(userId, threadId, runId, bestNarration);
   } else if (
     // Contradiction guard (battery case 8): a search returned real results,
     // the steps carry them, yet the short final claims nothing was found. The
@@ -9424,6 +9427,8 @@ async function runToolLoop(
     finalText = `${bestNarration}\n\n${finalText}`;
     promoted = true;
     if (bestStepId !== null) await deleteMessage(bestStepId);
+    // Row 312: and off the screen too — it went out live as a step.
+    emitStepRetracted(userId, threadId, runId, bestNarration);
   }
 
   // If the final is a short "now let me check…" cliffhanger, nudge the model to

@@ -446,6 +446,25 @@ export function emitStepSummary(
 }
 
 /**
+ * ROW 312, the server's half (tester 928, run 73de0ab3) — a step that turned
+ * out to be the answer.
+ *
+ * Narration goes out live as a step. When it was the real answer and the run
+ * ended on a short line, the server promotes it to the final reply and deletes
+ * the stored step — but the live step had already reached the screen, so the
+ * reply showed twice: once as a step, once as itself. This tells the client the
+ * step with this exact text in this run is gone.
+ */
+export function emitStepRetracted(
+  userId: string,
+  threadId: number,
+  runId: string,
+  text: string,
+): void {
+  publish(userId, { event: 'step_retracted', threadId, runId, text: displayText(text) });
+}
+
+/**
  * An incremental chunk of the final answer as it streams from the model, so the
  * UI fills in progressively instead of blanking for the whole generation. The
  * chunk is append-only and already phone-scrubbed; run_complete still carries the
