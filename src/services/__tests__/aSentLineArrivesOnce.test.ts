@@ -34,3 +34,34 @@ describe('withoutSentRestatement', () => {
     expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka')).toBe('პირველი.\n\nმეორე.');
   });
 });
+
+/** The tester's 995 / 996: each side restated the server line in other words. */
+describe('a restatement in other words', () => {
+  it('drops „Done, they will be connected" on the mediator side', () => {
+    expect(
+      withoutSentRestatement("Done, they'll be connected directly.", SentSide.Mediator, 'en'),
+    ).toBe('If you need anything else, I am here.');
+    expect(
+      withoutSentRestatement(
+        "Done, you're connecting them directly with Sandro.",
+        SentSide.Mediator,
+        'en',
+      ),
+    ).toBe('If you need anything else, I am here.');
+  });
+
+  it("drops the mediator's notification setting on the asker side", () => {
+    const reply =
+      'ვინაიდან მას შეტყობინებები გამორთული აქვს, პასუხს მაშინვე ვერ ვნახავთ, მაგრამ Netai-ს გახსნისას დაინახავს. სანამ ველოდებით, ვებშიც ვეძებ.';
+
+    expect(withoutSentRestatement(reply, SentSide.Asker, 'ka')).toBe(
+      'სანამ ველოდებით, ვებშიც ვეძებ.',
+    );
+  });
+
+  it('keeps a connection sentence on the asker side, where no close line says it', () => {
+    const reply = 'They will be connected once Nino agrees.';
+
+    expect(withoutSentRestatement(reply, SentSide.Asker, 'en')).toBe(reply);
+  });
+});

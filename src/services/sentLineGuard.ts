@@ -25,6 +25,26 @@ export enum SentSide {
 const SAYS_IT_WENT_RE =
   /გაიგზავნ|გაეგზავნ|გავუგზავნ|გავაგზავნ|გაგზავნილია|გადავეც|გადაეც|გადაცემულია|\bsent\b|passed (?:it )?on|forwarded|отправ|передал|передан|enviad|transmit/i;
 
+/**
+ * The tester's 995 / 996: each side's server line says more than „sent", and
+ * the reply restated THAT part in other words.
+ *
+ * Mediator: the close says the two will be connected; the reply said „Done,
+ * they'll be connected directly." Asker: the line says the mediator „will see
+ * it when they open Netai"; the reply repeated it and added the mediator's
+ * notification setting, which is not the owner's to hear.
+ */
+const SIDE_RESTATEMENT_RE: Readonly<Record<SentSide, RegExp>> = {
+  [SentSide.Mediator]:
+    /^\s*(?:done|готово|hecho|listo|მზადაა)\b|connected|connecting|დაუკავშირ|დააკავშირ|დაკავშირდებ|соедин|conectad/i,
+  [SentSide.Asker]:
+    /Netai-ს (?:შემდეგ )?გახსნისას|გახსნისას (?:ნახავს|დაინახავს)|შეტყობინებები (?:აქვს )?გამორთ|notifications (?:are )?(?:off|turned off|disabled)|opens? Netai|откроет Netai|уведомления|abra Netai|notificaciones/i,
+};
+
+function restatesTheServerLine(sentence: string, side: SentSide): boolean {
+  return SAYS_IT_WENT_RE.test(sentence) || SIDE_RESTATEMENT_RE[side].test(sentence);
+}
+
 /** Sentence ends, kept by the split so a paragraph break survives a dropped sentence. */
 const SENTENCE_END_RE = /((?<=[.!?…])\s+)/;
 
@@ -58,7 +78,7 @@ export function withoutSentRestatement(
   let dropped = false;
   for (let i = 0; i < pieces.length; i += 2) {
     const sentence = pieces[i] ?? '';
-    if (SAYS_IT_WENT_RE.test(sentence)) {
+    if (restatesTheServerLine(sentence, side)) {
       dropped = true;
       continue;
     }
