@@ -575,6 +575,8 @@ async function requestIntroductionInner(
     success: true,
     request_id: requestId,
     push_sent: hasPush,
+    // G5: the server's „it has gone" line is in this thread already.
+    ...(conversation !== null && { shown_in_thread: conversation.goalThreadId }),
     message: hasPush
       ? `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`
       : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Netai-ს გახსნისას.`,

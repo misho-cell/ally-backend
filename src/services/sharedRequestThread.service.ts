@@ -1,15 +1,16 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
-import { RUN_STRINGS } from './runLanguage';
+import { RUN_STRINGS, RunLanguage } from './runLanguage';
+import { incomingRequestFollowUp } from './introOpening';
 import { emitMessageAppended } from './sse.service';
 import { AskScope, findEarlierAskThread } from './threadBackPointer.service';
 import { setThreadStatus } from './threadStatus.service';
 import {
-  incomingRequestLine,
   outgoingRequestLine,
   RequestOpening,
   saveServerLine,
   ThreadStatus,
+  userLanguage,
 } from './threads.service';
 
 /**
@@ -174,13 +175,19 @@ async function appendLine(
  * „needs you" with the ref the client draws Accept / Decline from.
  */
 async function tellTheMediator(delivery: SharedRequestDelivery): Promise<void> {
-  const opening = await incomingRequestLine(
-    delivery.mediatorUserId,
-    delivery.requesterName,
-    delivery.targetName,
-    delivery.message,
-    delivery.direct,
+  // G7: the need is already in this thread — continue, do not greet again.
+  const language = await userLanguage(String(delivery.mediatorUserId)).catch(
+    () => 'ka' as RunLanguage,
   );
+  const opening: RequestOpening = {
+    language,
+    text: incomingRequestFollowUp(
+      language,
+      delivery.requesterName,
+      delivery.targetName,
+      delivery.direct,
+    ),
+  };
   const threadId = delivery.conversation.askThreadId;
   await appendLine(delivery.mediatorUserId, threadId, opening);
   await setThreadStatus(String(delivery.mediatorUserId), threadId, 'needs_you', {

@@ -219,10 +219,11 @@ describe('a follow-up request continues the open conversation', () => {
 
     await askForAnIntroduction();
 
+    // G7: it continues the thread — no greeting, no retold need.
     expect(mockServerLine).toHaveBeenCalledWith(
       ASK_THREAD,
       MEDIATOR,
-      'Netai Test 65 asks you to introduce Nika.',
+      '**Netai Test 65** is now asking you to introduce them to **Nika**. Will you help? 🤝',
     );
     expect(emitMessageAppended).toHaveBeenCalledWith(
       String(MEDIATOR),

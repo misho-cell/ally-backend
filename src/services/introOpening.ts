@@ -96,6 +96,38 @@ export function incomingRequestOpening(
   }
 }
 
+/**
+ * Plate v301 G7: a request that CONTINUES a conversation — written into the
+ * mediator's ask thread, where the need is already on the screen — opened
+ * with a new „გამარჯობა!" and retold the whole need. It continues instead:
+ * no greeting, no retelling, only who is now asking for what.
+ */
+export function incomingRequestFollowUp(
+  language: RunLanguage,
+  requesterName: string,
+  targetName: string,
+  direct: boolean,
+): string {
+  switch (language) {
+    case 'en':
+      return direct
+        ? `**${requesterName}** would now like to meet you directly. Will you say yes?`
+        : `**${requesterName}** is now asking you to introduce them to **${targetName}**. Will you help? 🤝`;
+    case 'ru':
+      return direct
+        ? `**${requesterName}** теперь хочет познакомиться с тобой напрямую. Соглашаешься?`
+        : `**${requesterName}** теперь просит познакомить его с **${targetName}**. Поможешь? 🤝`;
+    case 'es':
+      return direct
+        ? `**${requesterName}** ahora quiere conocerte directamente. ¿Aceptas?`
+        : `**${requesterName}** ahora te pide que le presentes a **${targetName}**. ¿Le ayudas? 🤝`;
+    default:
+      return direct
+        ? `**${geoName(requesterName, 'dat')}** ახლა პირდაპირ შენი გაცნობა უნდა. დათანხმდები?`
+        : `**${requesterName}** ახლა გთხოვს, გააცნო **${geoName(targetName, 'dat')}**. დაეხმარები? 🤝`;
+  }
+}
+
 /** „Introduction: Y" in the requester's sidebar, or „X → Y". */
 export function outgoingRequestTitle(
   language: RunLanguage,

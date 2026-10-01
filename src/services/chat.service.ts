@@ -60,6 +60,7 @@ import {
   ownerMessages,
   touchThread,
   createThread,
+  getThreadsByIntroRequestId,
 } from './threads.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
 import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.service';
@@ -98,6 +99,7 @@ import {
   noteDeclineIfButtonPressed,
 } from './taskAsks.service';
 import { mediatorsOwnWords } from './introResponse';
+import { SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
   planInForce,
@@ -6087,6 +6089,31 @@ export function withoutInvisibleCharacters(text: string): string {
 /** D527 (the tester's 962): runs whose answer to an asker went — the reply must say so. */
 const runAnswerSent = new Set<string>();
 
+/** G5: runs whose thread already shows the server's „sent" line, and on which side. */
+const runSentLineOnScreen = new Map<string, SentSide>();
+
+/**
+ * G5, the mediator's side: a resolved request writes its close line into the
+ * request's own threads. When this run's thread is one of them, the reply must
+ * not say it again. A failed lookup marks nothing — a repeat is the smaller harm.
+ */
+async function noteMediatorCloseOnScreen(
+  runId: string | undefined,
+  threadId: number | undefined,
+  requestId: unknown,
+  responded: object,
+): Promise<void> {
+  if (!runId || threadId === undefined || typeof requestId !== 'number') return;
+  if ((responded as { success?: unknown }).success !== true) return;
+  try {
+    const threads = await getThreadsByIntroRequestId(requestId);
+    if (threads.some((t) => t.id === threadId)) runSentLineOnScreen.set(runId, SentSide.Mediator);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[sent-line] could not read the request threads:', (err as Error).message);
+  }
+}
+
 function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
   if (runId) runPlanForReply.set(runId, plan);
 }
@@ -6817,6 +6844,7 @@ function clearRunState(runId: string): void {
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
   runAnswerSent.delete(runId);
+  runSentLineOnScreen.delete(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
@@ -7145,19 +7173,25 @@ async function executeToolCall(
           threadId,
         );
       }
+      const shownIn = (introOutcome as { shown_in_thread?: unknown }).shown_in_thread;
+      if (runId && threadId !== undefined && shownIn === threadId) {
+        runSentLineOnScreen.set(runId, SentSide.Asker);
+      }
       return introOutcome;
     }
     case 'respond_to_introduction': {
       const said = input['channel'];
       const channel =
         said === 'direct' || said === 'via_mediator' ? (said as IntroChannel) : undefined;
-      return respondToIntroduction(
+      const responded = await respondToIntroduction(
         userId,
         input['request_id'] as number,
         input['accepted'] as boolean,
         await mediatorsOwnWords(threadId, input['response']),
         channel,
       );
+      await noteMediatorCloseOnScreen(runId, threadId, input['request_id'], responded);
+      return responded;
     }
     case 'get_intro_status': {
       /**
@@ -11837,6 +11871,10 @@ export async function processChat(
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
   effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
+  const sentSide = runSentLineOnScreen.get(runId);
+  if (sentSide !== undefined && effectiveFinal.trim() !== '') {
+    effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language);
+  }
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }
