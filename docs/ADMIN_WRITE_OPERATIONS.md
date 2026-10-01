@@ -5365,3 +5365,25 @@ held. Before it: 7 asks across 5 campaigns since 11:32; none had a confirmed tie
 
 **§80 RUN, 1 October 13:16:11 UTC:** `env.sh set CHORUS_REQUIRE_FOUNDER_YES` (false) — back
 on, with D544 (1dcae63) live since 12:45.
+
+## §81 — M1: ADMIN LOGINS OF THEIR OWN FOR MISHO, GIO, LIKA AND NINIA
+
+**Why:** plate v288 M1 („each logs in with his own account and his entries show his name").
+Misho's direct word, 1 October ~18:40 UTC, in this session: „კი, M1 გააკეთე"; Tornike keeps
+his own login (account 501); new ones for Misho, Gio (Giorgi Turashvili), Lika and Ninia;
+SEPARATE admin-only accounts (their Netai accounts are not touched); I create the passwords
+and hand them to Misho only, in this session. Opening access, so it waits for that word —
+given.
+
+Each account is a `"User"` row (name, login email, bcrypt hash, `"hasAccessToAlly"`) plus a
+`staff_accounts` row (migration 192), so the attribution watcher and every count of people
+leave it out. Login emails are sign-in names on Misho's domain; nothing is sent to them.
+
+```
+ROUTE   POST /admin/staff-accounts
+BODY    { "name": "Misho" | "Gio" | "Lika" | "Ninia",
+          "email": "misho@allyapp.one" | "gio@allyapp.one" | "lika@allyapp.one" | "ninia@allyapp.one",
+          "password": <generated, 20+ chars, never logged, given to Misho only> }
+UNDO    POST /admin/users/:id/admin-access { "enabled": false }  — the login stops working at
+        once; the row stays so its entries keep their name.
+```

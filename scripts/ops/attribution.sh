@@ -90,7 +90,8 @@ SQL_TEXT="SELECT
 FROM \"User\" u
 WHERE u.\"createdAt\" >= TIMESTAMPTZ '${SINCE}'
   AND u.\"hasAccessToAlly\" = true
-  AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)"
+  AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+  AND NOT EXISTS (SELECT 1 FROM staff_accounts sa WHERE sa.user_id = u.id)"
 
 OUT="$(printf '%s' "$SQL_TEXT" | ./scripts/ops/ro.sh 2>/dev/null)"
 

@@ -1,5 +1,10 @@
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
+  createStaffAccount,
+  StaffAccount,
+  StaffAccountRefusal,
+} from '../../services/staffAccounts.service';
+import {
   createTestSeat,
   createdTestSeats,
   isOperableTestSeat,
@@ -268,6 +273,8 @@ import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThre
 import { confirmedWarmTieSql } from '../../services/chorusCap';
 
 const adminRouter = Router();
+/** The longest team name a staff account carries. */
+const STAFF_NAME_MAX_CHARS = 60;
 
 adminRouter.use(authenticateJwt, requireAdminRole);
 
@@ -1791,6 +1798,57 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin password]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// M1 (plate v288; Misho, 1 October): an admin login of their own for each of
+// the team, so their entries carry their name. A separate account made only
+// for the admin panel — the person's Netai account is not touched — and
+// recorded in staff_accounts so no count of people mistakes it for a signup.
+//   POST /admin/staff-accounts { name, email, password }   (password ≥ 10)
+// The password is never logged and never echoed.
+adminRouter.post(
+  '/staff-accounts',
+  body('name').isString().trim().isLength({ min: 1, max: STAFF_NAME_MAX_CHARS }),
+  body('email').isEmail(),
+  body('password').isString().isLength({ min: MIN_ADMIN_PASSWORD_CHARS }),
+  async (req: Request, res: Response<ApiResponse<StaffAccount>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'name, a valid email and a password of at least 10 characters are needed',
+      });
+      return;
+    }
+    try {
+      const adminId = (req as AuthenticatedRequest).user.userId;
+      const input = req.body as { name: string; email: string; password: string };
+      const created = await createStaffAccount({
+        name: String(input.name),
+        email: String(input.email),
+        password: String(input.password),
+        createdBy: String(adminId),
+      });
+      if (created === StaffAccountRefusal.EmailTaken) {
+        res.status(409).json({ success: false, error: 'An account already uses this email.' });
+        return;
+      }
+      if (created === StaffAccountRefusal.PasswordTooShort) {
+        res.status(400).json({ success: false, error: 'პაროლი მინიმუმ 10 სიმბოლო' });
+        return;
+      }
+      void recordProductEvent(adminId, 'staff_account_created', {
+        target_user_id: created.user_id,
+      });
+      // eslint-disable-next-line no-console
+      console.log(`[staff-accounts] admin ${adminId} created staff account ${created.user_id}`);
+      res.status(201).json({ success: true, data: created });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[staff-accounts]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

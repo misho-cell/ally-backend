@@ -13,6 +13,8 @@
  */
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import {
   HandoffAuthor,
@@ -178,7 +180,19 @@ describe('reading the thread', () => {
     const [sql, params] = mockQuery.mock.calls.find(([s]) =>
       String(s).includes('FROM handoff_messages'),
     ) as [string, unknown[]];
-    expect(sql).toContain('ORDER BY id ASC');
+    expect(sql).toContain('ORDER BY m.id ASC');
     expect(params[0]).toBe(3);
+  });
+});
+
+/** M1: each message says who posted it, by name, now that each has a login of their own. */
+describe('who posted it', () => {
+  it('names the poster: a staff account’s team name first, else the account’s own', () => {
+    const source = readFileSync(join(__dirname, '..', 'handoff.service.ts'), 'utf8');
+    expect(source).toContain(
+      'SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by',
+    );
+    expect(source).toContain('SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by');
+    expect(source).toContain('posted_by_name: row.posted_by_name ?? null');
   });
 });

@@ -65,6 +65,11 @@ export interface HandoffMessage {
    * would mark everything and mean nothing.
    */
   readonly posted_by: string | null;
+  /**
+   * M1: the name of the login that posted it — a staff account's team name
+   * („Misho", „Gio"), else the account's own name. Null when no login is known.
+   */
+  readonly posted_by_name: string | null;
 }
 
 export interface HandoffThread {
@@ -82,7 +87,26 @@ interface MessageRow {
   author: string;
   body: string;
   posted_by: string | null;
+  posted_by_name?: string | null;
   created_at: Date | string;
+}
+
+/** The poster's name: a staff account's team name first, else the account's own. */
+const POSTED_BY_NAME_SQL = `COALESCE(
+  (SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by),
+  (SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by))`;
+
+function toMessage(row: MessageRow): HandoffMessage {
+  return {
+    id: row.id,
+    author: row.author,
+    body: row.body,
+    posted_by: row.posted_by,
+    posted_by_name: row.posted_by_name ?? null,
+    // ISO 8601 at the boundary: Postgres's own text form is not something
+    // Safari parses, and this thread is read on phones.
+    created_at: new Date(row.created_at).toISOString(),
+  };
 }
 
 /**
@@ -104,10 +128,11 @@ export async function readHandoff(opts: {
 
   const [messages, latest, seen] = await Promise.all([
     query<MessageRow>(
-      `SELECT id, author, body, posted_by, created_at
-       FROM handoff_messages
-       WHERE id > $1::int
-       ORDER BY id ASC
+      `SELECT m.id, m.author, m.body, m.posted_by, ${POSTED_BY_NAME_SQL} AS posted_by_name,
+              m.created_at
+       FROM handoff_messages m
+       WHERE m.id > $1::int
+       ORDER BY m.id ASC
        LIMIT $2::int`,
       [sinceId, limit],
       QUERY_TIMEOUT_MS,
@@ -145,15 +170,7 @@ export async function readHandoff(opts: {
   const unread = reader === null ? null : Number(seen.rows[0]?.unread ?? 0);
 
   return {
-    // ISO 8601 at the boundary: Postgres's own text form is not something
-    // Safari parses, and this thread is read on phones.
-    messages: messages.rows.map((row) => ({
-      id: row.id,
-      author: row.author,
-      body: row.body,
-      posted_by: row.posted_by,
-      created_at: new Date(row.created_at).toISOString(),
-    })),
+    messages: messages.rows.map(toMessage),
     latest_id: latestId,
     unread,
     last_seen_id: lastSeenId,
@@ -176,20 +193,17 @@ export async function postHandoff(
   const text = body.trim();
   if (text === '') throw new Error('message is empty');
   const result = await query<MessageRow>(
-    `INSERT INTO handoff_messages (author, body, posted_by)
-     VALUES ($1, $2, $3)
-     RETURNING id, author, body, posted_by, created_at`,
+    `WITH m AS (
+       INSERT INTO handoff_messages (author, body, posted_by)
+       VALUES ($1, $2, $3)
+       RETURNING id, author, body, posted_by, created_at)
+     SELECT m.id, m.author, m.body, m.posted_by, ${POSTED_BY_NAME_SQL} AS posted_by_name,
+            m.created_at
+       FROM m`,
     [author, text.slice(0, MAX_BODY_CHARS), postedBy],
     QUERY_TIMEOUT_MS,
   );
-  const row = result.rows[0];
-  return {
-    id: row.id,
-    author: row.author,
-    body: row.body,
-    posted_by: row.posted_by,
-    created_at: new Date(row.created_at).toISOString(),
-  };
+  return toMessage(result.rows[0]);
 }
 
 /**
