@@ -1,4 +1,5 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
+import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
@@ -923,6 +924,15 @@ export async function createAsk(
     const reopensAt = recipientWindowReopensAt(
       receivedToday.rows.map((r) => new Date(r.created_at)),
     );
+    // The tester's 983: the question itself is kept, so the wake at the
+    // reopening knows exactly what to send — it has passed every consent
+    // gate above, so it needs no second yes.
+    try {
+      await holdAsk(taskId, toUserId, toName, trimmed, reopensAt);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(`[ask] task ${taskId}: could not hold the question:`, (err as Error).message);
+    }
     // Tester 929: the goal tries again at that minute, not a day later.
     try {
       await wakeTaskNoLaterThan(taskId, reopensAt);
@@ -1320,6 +1330,14 @@ export async function createAsk(
   // Ticket 13 Task 42 (7): the same goal now asks a DIFFERENT person than it
   // asked before — the requester rerouted. Recorded once per goal.
   if (!sameThread) void recordReroutedIfSecondRoute(fromUserId, taskId, toUserId);
+  // The tester's 983: a question held by the recipient's limit went after all.
+  void releaseHeldAsk(taskId, toUserId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ask] task ${taskId}: could not release a held question:`,
+      (err as Error).message,
+    ),
+  );
 
   // Ticket 10 Task 22 (D120): the recipient may already have said how this
   // kind of question is to be answered. A first question that one of their

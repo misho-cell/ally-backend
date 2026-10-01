@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { heldAsksWakeNote, releaseDueHeldAsks } from './heldAsks.service';
 import { query } from '../db/postgres/client';
 import {
   claimSweep,
@@ -705,16 +706,33 @@ async function sweepUnwokenAnswers(): Promise<void> {
  */
 const DEFAULT_NEXT_WAKE_HOURS = 24;
 
+const SCHEDULED_WAKE_TEXT =
+  'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი.';
+
+/**
+ * The tester's 983: a scheduled wake also says which held questions have had
+ * their recipient's window reopen, so the run sends them instead of guessing.
+ */
+async function scheduledWakeText(taskId: number): Promise<string> {
+  try {
+    const held = await releaseDueHeldAsks(taskId);
+    return held.length === 0
+      ? SCHEDULED_WAKE_TEXT
+      : `${SCHEDULED_WAKE_TEXT}\n\n${heldAsksWakeNote(held)}`;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: held questions not read:`, (err as Error).message);
+    return SCHEDULED_WAKE_TEXT;
+  }
+}
+
 async function tick(): Promise<void> {
   const due = await getDueTasks(MAX_WAKES_PER_TICK);
   for (const task of due) {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
     // re-schedules with set_task_wake when it still needs a revisit.
     await clearTaskWake(task.id);
-    await wakeTask(
-      task.id,
-      'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი.',
-    );
+    await wakeTask(task.id, await scheduledWakeText(task.id));
     // Line 9: the engine never parks a goal. If the run set no wake, the
     // default does — and the row can never read `next_wake_at: null` again.
     await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
