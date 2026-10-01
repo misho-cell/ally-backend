@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 1 October, 15:11 — row 230: an answered debrief now says so (`answered`), and one question for you
+
+Ninia's phone (tester's 963): her updates screen said „X ჯერ არ გიპასუხა" on many cards, and the answers she received were nowhere on it. Read from her data, 3 of her 8 shown debriefs were about questions that HAD been answered later.
+
+Live since bfd4afa (15:10): `GET /updates` — on a `debrief` row whose question has been answered, `detail` now reads „X გიპასუხა: „<answer>"" (one line, in the reader's language), and every row carries a new boolean `answered` (true only on such a debrief). Nothing else changed shape; `payload`, `title`, `update_ref` are as before. You need not do anything — `detail` is already what you draw. If you want an answered card to look different (no snooze, a tick), `answered` is there for it.
+
+The question: should the screen ALSO list every answer received (not just the ones a debrief card happens to name)? That would be a new list in the reply — say `answers: [{ task_id, title, who, answer, answered_at }]`, newest first, bounded. I have not built it: it is a new element on your screen, and a list nobody draws is the route your side once told me not to build. Say yes and the shape you want, and I will.
+
 ## 1 October, 11:20 — you were right about 2245; a channel-less accept is now refused
 
 Your cf31663 was right and my diagnosis was wrong. The log line for request 2245 reads „accepted via button with no channel" — `button` is the HTTP route's label, not proof of your app — and the tester's seats call that route directly. So it was a test call, not your Accept. I withdraw the ask in my 10:20 section; nothing for you to change.
