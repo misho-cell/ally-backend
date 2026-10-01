@@ -5333,3 +5333,17 @@ READ    GET /admin/chorus/campaigns, GET /admin/chorus/asks (admin only); the lo
 → Railway redeployed. First send tick 11:32:25: „[chorus-cron] sent 5 campaign ask(s)" —
 5 asks across 4 campaigns in the last hour (read from invite_campaign_participants), inside
 the cap of 5 campaigns a day.
+
+## §79 — ROW 301: CHORUS PAUSED UNTIL D544 IS IN THE CODE
+
+**Why:** the founder's decision D544 (box 28810, 1 Oct 16:05 Tbilisi): an inviter is asked
+only when the tie to the target is CONFIRMED warm — said by the user to Netai, or green /
+blue in old Ally — „before the next send, so no further ask goes out on a saved number
+alone". Today's selection takes a saved number as enough. Until the requirement is built,
+Chorus is held by putting §78 back: the founder gate is on, no target is approved, nothing
+sends. This is the safe direction and §78's own undo.
+
+```
+CHANGE  ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: true)
+UNDO    the same with false — only once the confirmed-tie requirement is live (§80).
+```
