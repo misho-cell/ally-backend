@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { planInSentences, TaskPlan } from '../taskPlans.service';
-import { planInYourReplyNote, replyCarriesPlan } from '../chat.service';
+import { planInYourReplyNote, replyCarriesPlan, withClosingQuestion } from '../chat.service';
 
 /**
  * ROW 279 — Tornike, 1 October (D520): a new goal's plan appeared twice, first
@@ -72,6 +72,12 @@ describe('what the model is told', () => {
     expect(note).toContain('No version number, no headings, no field labels');
     expect(note).toContain('present_choices');
   });
+
+  /** The tester's 941 (D520): every plan ends on the agreed question. */
+  it('to end the plan on the agreed question, which the fallback ends on too', () => {
+    expect(planInYourReplyNote('ka')).toContain('„ამ გეგმას მივყვე და ვიმოქმედო?"');
+    expect(planInSentences(PLAN, 'ka').endsWith('ამ გეგმას მივყვე და ვიმოქმედო?')).toBe(true);
+  });
 });
 
 describe('where it is wired', () => {
@@ -93,5 +99,15 @@ describe('where it is wired', () => {
     expect(chat).toContain('effectiveFinal = withPlanInReply(runId, effectiveFinal);');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
     expect(clear.slice(0, 1400)).toContain('runPlanForReply.delete(runId)');
+  });
+});
+
+describe('the agreed question under the plan', () => {
+  it('is added when the reply leaves it out, and never twice', () => {
+    expect(withClosingQuestion('The plan, in words.', 'en')).toBe(
+      'The plan, in words.\n\nShall I follow this plan and act on it?',
+    );
+    const once = withClosingQuestion('გეგმა.\n\nამ გეგმას მივყვე და ვიმოქმედო?', 'ka');
+    expect(once.match(/მივყვე/g)).toHaveLength(1);
   });
 });

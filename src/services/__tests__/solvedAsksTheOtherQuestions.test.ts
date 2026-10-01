@@ -57,6 +57,11 @@ describe('the two buttons', () => {
   it('puts close first', () => {
     expect(openAsksChoices('en')).toEqual(['Close the other questions', 'Keep them open']);
   });
+
+  /** Rule 8 of the Georgian block: the owner's own action, never an order to Netai. */
+  it('says in Georgian what the owner does', () => {
+    expect(openAsksChoices('ka')).toEqual(['ვხურავ დანარჩენ კითხვებს', 'ღიად ვტოვებ']);
+  });
 });
 
 describe('the offer after „solved"', () => {
@@ -84,23 +89,37 @@ describe('the offer after „solved"', () => {
   });
 });
 
+/** The database as the tap sees it: which card this thread showed, and whether it was answered. */
+function cardIs(card: { settled: boolean } | null, claimWins = true): void {
+  mockQuery.mockImplementation(((sql: string) => {
+    const text = String(sql);
+    if (text.includes('open_asks_offered_at IS NOT NULL')) {
+      return Promise.resolve(rows(card === null ? [] : [{ id: TASK_ID, settled: card.settled }]));
+    }
+    if (text.includes('SET open_asks_settled_at = NOW()')) {
+      return Promise.resolve(rows(claimWins ? [{ id: TASK_ID }] : []));
+    }
+    return Promise.resolve(rows([]));
+  }) as never);
+}
+
 describe('the tap', () => {
   it('cancels the questions on „close", and tells the run it is done', async () => {
-    mockQuery.mockResolvedValue(rows([{ id: TASK_ID }]));
+    cardIs({ settled: false });
 
     const told = await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, CLOSE_KA);
 
     expect(mockCancel).toHaveBeenCalledWith(TASK_ID);
     expect(told).toContain('სერვერმა უკვე შეასრულა');
     expect(told).toContain('2 ღია კითხვა დაიხურა');
-    const [sql, params] = mockQuery.mock.calls[0];
-    expect(String(sql)).toContain("t.status = 'closed'");
+    const [sql, params, timeout] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('LIMIT 1');
     expect(params).toEqual([THREAD_ID, String(OWNER_ID)]);
+    expect(timeout).toBeGreaterThan(0);
   });
 
   it('cancels nothing on „keep"', async () => {
-    mockQuery.mockResolvedValue(rows([{ id: TASK_ID }]));
+    cardIs({ settled: false });
     const told = await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, KEEP_EN);
     expect(mockCancel).not.toHaveBeenCalled();
     expect(told).toContain('ღიად დატოვა');
@@ -111,10 +130,40 @@ describe('the tap', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('does nothing twice: a second tap finds no questions left', async () => {
-    mockQuery.mockResolvedValue(rows([]));
+  it('does nothing in a thread that showed no card', async () => {
+    cardIs(null);
     expect(await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, CLOSE_KA)).toBeNull();
     expect(mockCancel).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The tester's 941, both ways: after „close", a „keep" reopened the goal;
+   * after „keep", a „close" cancelled a kept question. The first tap answers
+   * the card; every later one changes nothing and says so.
+   */
+  it.each([
+    ['close after keep', CLOSE_KA],
+    ['keep after close', KEEP_KA],
+  ])('changes nothing on %s', async (_case, label) => {
+    cardIs({ settled: true });
+
+    const told = await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, label);
+
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(told).toContain('არჩევანი უკვე გაკეთდა');
+    expect(told).toContain('update_task არ გამოიძახო');
+  });
+
+  it('lets only one of two taps at the same moment act', async () => {
+    cardIs({ settled: false }, false);
+    const told = await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, CLOSE_KA);
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(told).toContain('არჩევანი უკვე გაკეთდა');
+  });
+
+  it('still reads the earlier Georgian labels as taps', () => {
+    expect(openAsksTapOf('დანარჩენი კითხვები დახურე')).toBe(OpenAsksTap.Close);
+    expect(openAsksTapOf('ღიად დატოვე')).toBe(OpenAsksTap.Keep);
   });
 });
 

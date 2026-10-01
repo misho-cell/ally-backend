@@ -47,7 +47,7 @@ describe('an email is not a name', () => {
     const byName = readFileSync(join(__dirname, '..', 'searchContactByName.ts'), 'utf8');
     const byTag = readFileSync(join(__dirname, '..', 'searchByTag.ts'), 'utf8');
 
-    expect(byName).toContain("import { DISPLAY_NAME } from './searchByTag'");
+    expect(byName).toMatch(/import \{ DISPLAY_NAME[^}]*\} from '.\/searchByTag'/);
     expect(byName.match(/\$\{DISPLAY_NAME\} AS name/g) ?? []).toHaveLength(2);
     expect(byTag).toContain('${DISPLAY_NAME} AS name');
     // Nobody left a copy behind.

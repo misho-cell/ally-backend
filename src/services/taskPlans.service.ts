@@ -1016,6 +1016,17 @@ const PLAN_SENTENCES: Record<
   },
 };
 
+/**
+ * Row 279, the tester's 941 (D520): the agreed question every plan ends on,
+ * just above the two buttons.
+ */
+export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
+  ka: 'ამ გეგმას მივყვე და ვიმოქმედო?',
+  en: 'Shall I follow this plan and act on it?',
+  ru: 'Следовать этому плану и действовать?',
+  es: '¿Sigo este plan y actúo?',
+};
+
 function withoutFinalStop(text: string): string {
   return text.trim().replace(/[.。]+$/u, '');
 }
@@ -1032,6 +1043,7 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
   if (routes.length > 0) lines.push(`${words.routes}: ${routes.join('; ')}.`);
   lines.push(people.length > 0 ? `${words.ask}: ${people.join(', ')}.` : words.askNobody);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
+  lines.push(PLAN_CLOSING_QUESTION[language]);
   return lines.join('\n');
 }
 

@@ -25,8 +25,9 @@ export const RULE_280_WEB_LEADS_ARE_PEOPLE =
  */
 export const RULE_A_WEB_LEAD_DETAILS =
   'A PERSON FOUND ON THE WEB IS SHOWN WITH WHERE THEY ARE LISTED. For each named person you ' +
-  'offer from the web, give their name, the LINK to the page where they are listed (the page ' +
-  'you read, not a search page), and the phone number or e-mail address published on THAT ' +
+  'offer from the web, give their name, the LINK to the page where they are listed (its full ' +
+  'https:// address as the result gives it — not the site name, not a search page), and the ' +
+  'phone number or e-mail address published on THAT ' +
   'page, if it shows one. Only what that page itself shows: never a detail from another page, ' +
   'never a guessed address, never a number you did not read there.';
 

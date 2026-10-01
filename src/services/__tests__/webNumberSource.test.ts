@@ -21,7 +21,7 @@ import { scrubText, stripAllowedSpans } from '../privacyScrub';
 describe('webNumbersWithSource', () => {
   const result = (rows: unknown[]) => ({ results: rows });
 
-  it('finds a number in a result and names its domain', () => {
+  it('finds a number in a result and names its page', () => {
     const out = webNumbersWithSource(
       result([
         {
@@ -32,7 +32,34 @@ describe('webNumbersWithSource', () => {
       ]),
     );
 
-    expect(out).toEqual([{ phone: '+995 415 22 33 44', source: 'zugdidi-clinic.ge' }]);
+    expect(out).toEqual([
+      { phone: '+995 415 22 33 44', source: 'https://www.zugdidi-clinic.ge/contact' },
+    ]);
+  });
+
+  /**
+   * Question A, the tester's 941 (thread 28448): every notary's number on
+   * notary.ge came out as „[hidden]". web_search calls the page text `snippet`;
+   * this function only ever read `content`, so no search number was allowed.
+   */
+  it('reads a search result’s snippet, where web_search puts the page text', () => {
+    const out = webNumbersWithSource(
+      result([
+        {
+          url: 'https://www.notary.ge/geo-3718-sanotaro-biuroebi-notary-580#top',
+          title: 'მერაბ ჯიხვაშვილი',
+          snippet: 'ქუთაისი, თამარ მეფის ქუჩა N62+995 591 70 66 45+995 579 132 424mjikh@notary.ge',
+        },
+      ]),
+    );
+    expect(out.map((n) => n.phone)).toEqual(['+995 591 70 66 45', '+995 579 132 424']);
+    expect(out[0]?.source).toBe('https://www.notary.ge/geo-3718-sanotaro-biuroebi-notary-580');
+  });
+
+  it('takes only a web address as a page', () => {
+    expect(
+      webNumbersWithSource(result([{ url: 'ftp://x.ge/a', content: '+995 415 22 33 44' }])),
+    ).toEqual([]);
   });
 
   it('reads the title as well as the body', () => {

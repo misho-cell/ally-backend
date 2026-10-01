@@ -26,12 +26,14 @@ describe('the rule', () => {
 });
 
 describe('a number on a page the run opened may be shown', () => {
-  it('reads the opened page the same way as a search result, with its site', () => {
+  it('reads the opened page the same way as a search result, with its link', () => {
     const page = {
       url: 'https://www.gba.ge/members/nino-beridze',
       content: 'Nino Beridze, attorney. Tel: +995 599 12 34 56',
     };
-    expect(webNumbersWithSource(page)).toEqual([{ phone: '+995 599 12 34 56', source: 'gba.ge' }]);
+    expect(webNumbersWithSource(page)).toEqual([
+      { phone: '+995 599 12 34 56', source: 'https://www.gba.ge/members/nino-beridze' },
+    ]);
   });
 
   it('reads nothing from a page with no address', () => {

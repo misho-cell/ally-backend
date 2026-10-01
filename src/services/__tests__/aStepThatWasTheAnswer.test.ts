@@ -41,3 +41,29 @@ describe('the saved-info search says what it searches for', () => {
     );
   });
 });
+
+/** Plate 304, the tester's 941: the line while a question goes out names the person. */
+describe('the sending line names who is written to', () => {
+  it('names the recipient in every language', () => {
+    expect(namedStepCaption('ask_contact', { contact_name: 'Netai Test 88' }, 'ka')).toBe(
+      '✉️ Netai Test 88-ს ვწერ…',
+    );
+    expect(namedStepCaption('ask_contact', { contact_name: 'Netai Test 88' }, 'en')).toBe(
+      '✉️ Writing to Netai Test 88…',
+    );
+    expect(namedStepCaption('ask_contact', { contact_name: 'Нино' }, 'ru')).toContain('Нино');
+    expect(namedStepCaption('ask_contact', { contact_name: 'Nino' }, 'es')).toContain('Nino');
+  });
+
+  it('falls back to the plain line when no name was passed', () => {
+    expect(namedStepCaption('ask_contact', { phone: 'x' }, 'ka')).toBeNull();
+  });
+
+  it('is offered the name field by the tool', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const tool = chat.slice(chat.indexOf("name: 'ask_contact'"));
+    expect(tool.slice(0, tool.indexOf("required: ['task_id', 'phone', 'question']"))).toContain(
+      'contact_name: {',
+    );
+  });
+});

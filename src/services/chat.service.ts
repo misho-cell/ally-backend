@@ -102,6 +102,7 @@ import {
   proposeTaskPlan,
   renderPlan,
   planInSentences,
+  PLAN_CLOSING_QUESTION,
   nobodyCanBeWrittenTo,
   peopleToInvite,
   peopleToWake,
@@ -826,7 +827,7 @@ const MARK_CONTACT_DECEASED_TOOL: AnthropicTool = {
 const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
   name: 'get_contact_full_profile',
   description:
-    'Get a consolidated profile for an identified contact: all tags with contributor_count (how many different users tagged them), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
+    'Get a consolidated profile for an identified contact: the tags the USER saved, each with contributor_count (how many different users saved that same tag), `others_labels_count` (how many labels other people saved — their words are private and not given to you, row 289), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
     ' WHEN: to open a person properly before putting their name in front of anyone.',
   input_schema: {
     type: 'object',
@@ -972,6 +973,12 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     properties: {
       task_id: { type: 'number', description: 'The open task this ask belongs to.' },
       phone: { type: 'string', description: "The recipient's phone id from a search result." },
+      contact_name: {
+        type: 'string',
+        description:
+          "The recipient's name exactly as the search result shows it — used only for the " +
+          'progress line the owner sees while the question goes out.',
+      },
       question: {
         type: 'string',
         description: 'The question, short and self-contained (max 600 chars).',
@@ -1966,22 +1973,25 @@ export function planInYourReplyNote(language: RunLanguage): string {
     ka:
       'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, შენი ' +
       'სიტყვებით, ჩვეულებრივი წინადადებებით: რას ჩავთვლით მოგვარებულად, როგორ ეძებ და ვის ' +
-      'ჰკითხავ, სახელებით. ვერსია, სათაურები და ველების სახელები არ დაწერო. მერე present_choices — ',
+      'ჰკითხავ, სახელებით. ვერსია, სათაურები და ველების სახელები არ დაწერო. გეგმა ბოლოს ამ ' +
+      'კითხვით დაასრულე: „{closing}". მერე present_choices — ',
     en:
       'The plan is saved but not on screen yet. Write it in your reply ONCE, in your own words, as ' +
       'plain sentences: what counts as solved, how you will look, and whom you will ask, by name. ' +
-      'No version number, no headings, no field labels. Then present_choices — ',
+      'No version number, no headings, no field labels. End the plan with this question, word for ' +
+      'word: „{closing}". Then present_choices — ',
     ru:
       'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, своими словами, ' +
       'обычными предложениями: что считать решением, как будешь искать и кого спросишь, по ' +
-      'именам. Без номера версии, заголовков и названий полей. Затем present_choices — ',
+      'именам. Без номера версии, заголовков и названий полей. Закончи план этим вопросом: ' +
+      '„{closing}". Затем present_choices — ',
     es:
       'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, con ' +
       'tus palabras, en frases normales: qué cuenta como resuelto, cómo buscarás y a quién ' +
-      'preguntarás, por nombre. Sin número de versión, títulos ni nombres de campos. Luego ' +
-      'present_choices — ',
+      'preguntarás, por nombre. Sin número de versión, títulos ni nombres de campos. Termina el ' +
+      'plan con esta pregunta: „{closing}". Luego present_choices — ',
   };
-  return text[language] + buttons + '.';
+  return text[language].replace('{closing}', PLAN_CLOSING_QUESTION[language]) + buttons + '.';
 }
 
 export function planAlreadyOnScreenNote(language: RunLanguage): string {
@@ -5907,6 +5917,16 @@ function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
   if (runId) runPlanForReply.set(runId, plan);
 }
 
+/**
+ * Row 279, the tester's 941 (D520): a plan ends on the agreed question, just
+ * above the buttons. Asked of the model; added by the server when it is left
+ * out, so „every plan" is true rather than likely.
+ */
+export function withClosingQuestion(reply: string, language: RunLanguage): string {
+  const question = PLAN_CLOSING_QUESTION[language];
+  return reply.includes(question) ? reply : `${reply.trimEnd()}\n\n${question}`;
+}
+
 /** Below this a reply is an announcement around a plan, not a plan. */
 const PLAN_REPLY_MIN_CHARS = 120;
 
@@ -5926,7 +5946,8 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
  */
 function withPlanInReply(runId: string, reply: string): string {
   const plan = runPlanForReply.get(runId);
-  if (!plan || replyCarriesPlan(reply, plan)) return reply;
+  if (!plan) return reply;
+  if (replyCarriesPlan(reply, plan)) return withClosingQuestion(reply, runLang(runId));
   // eslint-disable-next-line no-console
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
   return reply.trim() === '' ? plan.text : `${plan.text}\n\n${reply}`;
@@ -6255,10 +6276,17 @@ function registerAllowedNumber(
  */
 const MAX_WEB_NUMBERS_PER_RUN = 20;
 
-function domainOf(url: unknown): string | null {
+/**
+ * Question A (Tornike, 1 Oct): the source shown beside a web number is the
+ * PAGE — its link, which a person can open — not the site's bare name. Only an
+ * http(s) address counts; the fragment is dropped, nothing else is changed.
+ */
+function pageLinkOf(url: unknown): string | null {
   if (typeof url !== 'string' || url === '') return null;
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    const page = new URL(url);
+    if (page.protocol !== 'https:' && page.protocol !== 'http:') return null;
+    return `${page.protocol}//${page.host}${page.pathname}${page.search}`;
   } catch {
     return null;
   }
@@ -6273,10 +6301,13 @@ export function webNumbersWithSource(result: unknown): Array<{ phone: string; so
   const found: Array<{ phone: string; source: string }> = [];
   for (const row of rows) {
     if (row === null || typeof row !== 'object') continue;
-    const r = row as { url?: unknown; title?: unknown; content?: unknown };
-    const source = domainOf(r.url);
+    const r = row as { url?: unknown; title?: unknown; snippet?: unknown; content?: unknown };
+    const source = pageLinkOf(r.url);
     if (source === null) continue;
-    const text = [r.title, r.content].filter((v) => typeof v === 'string').join(' ');
+    // Question A: web_search names its page text `snippet` (webSearch.ts) and
+    // fetch_page names it `content`. Reading `content` alone meant no search
+    // result's number was ever allowed — every one of them was masked.
+    const text = [r.title, r.snippet, r.content].filter((v) => typeof v === 'string').join(' ');
     for (const match of text.matchAll(/\+?\d[\d\s\-().]{5,}\d/g)) {
       const phone = match[0].trim();
       if (phone.replace(/\D/g, '').length < MIN_SHOWABLE_DIGITS) continue;

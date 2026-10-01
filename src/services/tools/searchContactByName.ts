@@ -24,7 +24,7 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { collapseMergedPhones } from './mergedIdentities';
 import { searchDidNotFinish } from './searchDidNotFinish';
-import { DISPLAY_NAME } from './searchByTag';
+import { DISPLAY_NAME, othersLabelsMatched, ownDisplayableTags } from './searchByTag';
 
 const FUZZY_THRESHOLD = 0.45;
 // The first letters a fuzzy neighbour must share with the term (see the
@@ -42,6 +42,7 @@ interface NameRow {
   name: string | null;
   saved_as: string | null;
   all_tags: string[];
+  own_tags: string[] | null;
   employer: string | null;
   jobPosition: string | null;
   city: string | null;
@@ -63,7 +64,10 @@ function toRow(
     {
       phone: row.phone,
       name: row.name ?? null,
-      tags: (row.all_tags || []).filter(Boolean),
+      // Row 289 (D539 / D523): only the labels the owner saved; other people's
+      // words never reach the reply — the same line as search_by_tag.
+      tags: ownDisplayableTags(row),
+      ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
       employer: row.employer ?? null,
       jobPosition: row.jobPosition ?? null,
       city: row.city ?? null,
@@ -144,6 +148,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               ${DISPLAY_NAME} AS name,
               MAX(ua.alias)                        AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
+              array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
               MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
               MAX(NULLIF(TRIM(u.city), ''))        AS city
@@ -213,6 +218,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
                   ${DISPLAY_NAME} AS name,
                   MAX(ua.alias)                        AS saved_as,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
+                  array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
                   MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
                   MAX(NULLIF(TRIM(u.city), ''))        AS city

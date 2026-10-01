@@ -564,6 +564,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 ${m}-ს ვთხოვ, ${t} გაგაცნოს…`
         : `📨 გაცნობის მოთხოვნას ვუგზავნი: ${m}…`,
     relay_ask: (c) => `↪️ კითხვას გადავცემ: ${c}…`,
+    ask_contact: (c) => `✉️ ${c}-ს ვწერ…`,
     search_by_tag: (q) => `🔍 კონტაქტებში ვეძებ: „${q}"…`,
     search_second_degree: (q) => `👥 მეორე წრეში ვეძებ: „${q}"…`,
     search_contact_by_name: (q) => `🔍 სახელით ვეძებ: „${q}"…`,
@@ -576,6 +577,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 Asking ${m} to introduce you to ${t}…`
         : `📨 Sending the introduction request to ${m}…`,
     relay_ask: (c) => `↪️ Passing the question on to ${c}…`,
+    ask_contact: (c) => `✉️ Writing to ${c}…`,
     search_by_tag: (q) => `🔍 Searching your contacts for "${q}"…`,
     search_second_degree: (q) => `👥 Searching your contacts' contacts for "${q}"…`,
     search_contact_by_name: (q) => `🔍 Looking for "${q}" by name…`,
@@ -588,6 +590,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 Прошу ${m} познакомить тебя с ${t}…`
         : `📨 Отправляю запрос на знакомство: ${m}…`,
     relay_ask: (c) => `↪️ Передаю вопрос: ${c}…`,
+    ask_contact: (c) => `✉️ Пишу: ${c}…`,
     search_by_tag: (q) => `🔍 Ищу в контактах: «${q}»…`,
     search_second_degree: (q) => `👥 Ищу во втором круге: «${q}»…`,
     search_contact_by_name: (q) => `🔍 Ищу по имени: «${q}»…`,
@@ -600,6 +603,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 Pidiendo a ${m} que te presente a ${t}…`
         : `📨 Enviando la solicitud de presentación a ${m}…`,
     relay_ask: (c) => `↪️ Pasando la pregunta a ${c}…`,
+    ask_contact: (c) => `✉️ Escribiendo a ${c}…`,
     search_by_tag: (q) => `🔍 Buscando en tus contactos: «${q}»…`,
     search_second_degree: (q) => `👥 Buscando en el segundo círculo: «${q}»…`,
     search_contact_by_name: (q) => `🔍 Buscando por nombre: «${q}»…`,
@@ -612,6 +616,10 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
 const NAMED_FIELDS: Readonly<Record<string, readonly [string, string?]>> = {
   request_introduction: ['mediator_name', 'target_name'],
   relay_ask: ['contact_name'],
+  // Plate 304, the tester's 941: „✉️ კონტაქტს ვწერ..." named nobody while asks
+  // went out. ask_contact carries only a phone id, so the model now passes the
+  // name it read in the search result — for this line and nothing else.
+  ask_contact: ['contact_name'],
   search_by_tag: ['tag_query'],
   search_second_degree: ['tag_query'],
   search_contact_by_name: ['name_query'],
