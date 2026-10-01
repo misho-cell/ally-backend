@@ -39,9 +39,15 @@ function body(name: string): string {
 }
 
 describe('the count card is not dealt on top of an unanswered plan', () => {
-  it('marks the run when a plan card actually goes on screen', () => {
-    // Beside `planIsOnScreen = true`, which is the moment the card is stored.
-    expect(code).toMatch(/planIsOnScreen = true;\s*notePlanIsOnScreen\(runId\);/);
+  it('marks the run when a plan goes on screen', () => {
+    // Row 279: the plan is a server message only in a goal's other thread;
+    // otherwise the reply carries it. Either way the run is marked, after both.
+    const handler = code.slice(code.indexOf("case 'propose_task_plan':"));
+    const block = handler.slice(0, handler.indexOf("case 'approve_task_plan':"));
+    const reply = block.indexOf('notePlanForReply(runId,');
+    expect(reply).toBeGreaterThan(0);
+    expect(block.indexOf('notePlanIsOnScreen(runId);', reply)).toBeGreaterThan(reply);
+    expect(block).toContain('planIsOnScreen = true;');
   });
 
   it('filters at delivery, where the order of tool calls cannot beat it', () => {

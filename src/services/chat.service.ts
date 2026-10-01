@@ -95,6 +95,7 @@ import {
   planInForce,
   proposeTaskPlan,
   renderPlan,
+  planInSentences,
   nobodyCanBeWrittenTo,
   peopleToInvite,
   peopleToWake,
@@ -1947,6 +1948,35 @@ export const WAKE_SHARE_NOTE =
  * that belongs to this file rather than to the prompt block, and it costs
  * nothing to stop doing.
  */
+/**
+ * Row 279 (Tornike, D520): what the model is told when the plan is NOT a
+ * server card — show it once, in its own words, and nothing that reads like a
+ * form.
+ */
+export function planInYourReplyNote(language: RunLanguage): string {
+  const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
+  const text: Record<RunLanguage, string> = {
+    ka:
+      'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, შენი ' +
+      'სიტყვებით, ჩვეულებრივი წინადადებებით: რას ჩავთვლით მოგვარებულად, როგორ ეძებ და ვის ' +
+      'ჰკითხავ, სახელებით. ვერსია, სათაურები და ველების სახელები არ დაწერო. მერე present_choices — ',
+    en:
+      'The plan is saved but not on screen yet. Write it in your reply ONCE, in your own words, as ' +
+      'plain sentences: what counts as solved, how you will look, and whom you will ask, by name. ' +
+      'No version number, no headings, no field labels. Then present_choices — ',
+    ru:
+      'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, своими словами, ' +
+      'обычными предложениями: что считать решением, как будешь искать и кого спросишь, по ' +
+      'именам. Без номера версии, заголовков и названий полей. Затем present_choices — ',
+    es:
+      'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, con ' +
+      'tus palabras, en frases normales: qué cuenta como resuelto, cómo buscarás y a quién ' +
+      'preguntarás, por nombre. Sin número de versión, títulos ni nombres de campos. Luego ' +
+      'present_choices — ',
+  };
+  return text[language] + buttons + '.';
+}
+
 export function planAlreadyOnScreenNote(language: RunLanguage): string {
   const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
   const text: Record<RunLanguage, string> = {
@@ -2167,10 +2197,12 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
     // shows ONCE. This sentence used to read „show the returned summary to the
     // user verbatim", which was right before the server stored the plan itself
     // and is an instruction to duplicate now that it does.
-    'The server writes the plan to the screen itself, as its own message, the moment this call ' +
-    'succeeds. DO NOT write the plan again in your reply — not in full, not summarised, not in ' +
-    'your own words. Your message says only what you FOUND and asks the one question. Then offer ' +
-    'two choices (approve / change) via present_choices, and call approve_task_plan only on their ' +
+    // Row 279 (Tornike, D520): the server's form-like card is gone; the plan
+    // shows once, in the reply. The result says which case this call is in.
+    'The plan shows ONCE. When the result carries `show_plan`, write the plan in your reply in ' +
+    'your own words, as plain sentences — no version, no headings, no labels. When it carries ' +
+    '`next` instead, the server already put it on screen: do not write it again. Then offer two ' +
+    'choices (approve / change) via present_choices, and call approve_task_plan only on their ' +
     'explicit yes.',
   input_schema: {
     type: 'object',
@@ -5838,6 +5870,47 @@ interface QuestionOnScreen {
 }
 const runQuestionOnScreen = new Map<string, QuestionOnScreen>();
 
+/**
+ * Row 279 — the plan this run proposed, for its reply to carry (Tornike,
+ * D520: once, in Netai's own words, the server's card gone). Row 101 is why
+ * it is remembered: what the approve button approves must be on the screen,
+ * and without the card nothing else guarantees that.
+ */
+interface PlanForReply {
+  readonly text: string;
+  readonly names: readonly string[];
+}
+const runPlanForReply = new Map<string, PlanForReply>();
+
+function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
+  if (runId) runPlanForReply.set(runId, plan);
+}
+
+/** Below this a reply is an announcement around a plan, not a plan. */
+const PLAN_REPLY_MIN_CHARS = 120;
+
+/**
+ * Does the reply say the plan? Every person the plan will ask must be named,
+ * and there must be more than a line. A reply that only asks „approve?" fails
+ * both, and that is the case row 101 was about.
+ */
+export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
+  if (reply.trim().length < PLAN_REPLY_MIN_CHARS) return false;
+  return plan.names.every((name) => reply.includes(name));
+}
+
+/**
+ * The reply, with the plan in plain sentences in front of it when the model
+ * left the plan out. A reply that carries it is untouched.
+ */
+function withPlanInReply(runId: string, reply: string): string {
+  const plan = runPlanForReply.get(runId);
+  if (!plan || replyCarriesPlan(reply, plan)) return reply;
+  // eslint-disable-next-line no-console
+  console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+  return reply.trim() === '' ? plan.text : `${plan.text}\n\n${reply}`;
+}
+
 function noteQuestionIsOnScreen(runId: string | undefined, question: QuestionOnScreen): void {
   if (runId) runQuestionOnScreen.set(runId, question);
 }
@@ -6267,6 +6340,7 @@ function clearRunState(runId: string): void {
   // of fault this file has already been bitten by once today.
   runProposedAPlan.delete(runId);
   runQuestionOnScreen.delete(runId);
+  runPlanForReply.delete(runId);
   clearRunEvidence(runId);
 }
 
@@ -7387,6 +7461,7 @@ async function executeToolCall(
       // must not vanish on a refresh — so it is stored the same way Task 98's
       // pending items are: written here, deterministically, before the answer.
       let planIsOnScreen = false;
+      let plainPlan: string | null = null;
       // Row 203: read off the STORED plan, which is the one carrying the
       // reachability the server decided — not off the model's own argument,
       // which has no reach fields at all.
@@ -7400,53 +7475,36 @@ async function executeToolCall(
         const proposed = task?.plan_proposed ?? null;
         if (proposed !== null) {
           const stored = proposed as TaskPlan;
-          // Ticket 20 row 139 — the plan message goes through the same scrub
-          // as everything else, and until now it went through NONE.
-          //
-          // Goal 3699: the plan message showed a Zugdidi clinic's number in
-          // full while the step copy of the same plan masked it. One text, two
-          // surfaces, two answers. The step path scrubs (scrubStep); this path
-          // called saveMessage directly, so whatever a model wrote into a plan
-          // reached the screen unread — a private person's number included.
-          //
-          // Wrap first, then scrub: wrapping marks the numbers a web page
-          // published in this run, and scrubText carries those spans through
-          // untouched while masking every other number. Tornike's rule, in the
-          // order the two functions have to run in.
-          // Row 140: the same everApproved the summary was rendered with, so
-          // the stored message and the tool's own summary cannot disagree
-          // about whether anything has started.
-          const rendered = renderPlan(
-            stored,
-            outcome.value.version,
-            null,
-            outcome.value.everApproved,
-            // The card the OWNER reads. The copy inside the system prompt
-            // stays Georgian, because the prompt is Georgian and its reader is
-            // the model.
-            runLang(runId),
-          );
-          const planText = runId
-            ? scrubText(wrapAllowedNumbers(rendered, runId))
-            : scrubText(rendered);
+          // Row 279 (Tornike, D520): the plan is no longer a server card with
+          // a version and field labels. It goes in the reply, ONCE, in the
+          // model's own words — which it is handed as plain sentences.
+          plainPlan = planInSentences(stored, runLang(runId));
           // Ticket 20 row 140, the third instance: thread 15812 said the plan
-          // was shown in the new thread while that thread was empty.
-          //
-          // A goal opened in a conversation that already had one is MOVED to
-          // its own thread, and the run carries on in the old one. The plan
-          // was then saved to the run's thread — so the reply truthfully said
-          // where the goal now lives, and the plan went somewhere else. The
-          // plan belongs to the GOAL's thread, which the task row knows.
-          await saveMessage(
-            userId,
-            task?.thread_id ?? threadId,
-            'assistant',
-            planText,
-            'message',
-            runId ?? null,
-          );
-          planIsOnScreen = true;
-          // Row 237: nothing the server deals may land on top of it.
+          // was shown in the new thread while that thread was empty. A goal
+          // opened in a conversation that already had one is MOVED to its own
+          // thread, and the run carries on in the old one — so the reply
+          // cannot carry the plan there. That one case keeps a server message,
+          // in the goal's thread, in plain sentences.
+          const goalThreadId = task?.thread_id ?? threadId;
+          if (goalThreadId !== threadId) {
+            // Ticket 20 row 139: through the same scrub as everything else.
+            // Wrap first, then scrub: wrapping marks the numbers a web page
+            // published in this run, and scrubText carries those spans
+            // through while masking every other number.
+            const shown = runId
+              ? scrubText(wrapAllowedNumbers(plainPlan, runId))
+              : scrubText(plainPlan);
+            await saveMessage(userId, goalThreadId, 'assistant', shown, 'message', runId ?? null);
+            planIsOnScreen = true;
+          } else {
+            // Row 101 stays true without the card: if the reply does not
+            // carry the plan, the server adds it — see withPlanInReply.
+            notePlanForReply(runId, {
+              text: plainPlan,
+              names: stored.people_to_involve.map((p) => p.name),
+            });
+          }
+          // Row 237: nothing the server deals may land on top of the plan.
           notePlanIsOnScreen(runId);
           unreachable = {
             nobodyReachable: nobodyCanBeWrittenTo(stored),
@@ -7460,16 +7518,19 @@ async function executeToolCall(
       // be removed from whatever the model goes on to offer. The instruction
       // in the result asks; this makes it true.
       if (unreachable.nobodyReachable) noteNothingToSendToday(runId);
-      // Row 101, on Tornike's word: the saved plan is the only plan text on
-      // the screen. See planProposedResult for why the summary is withheld
-      // rather than sent with an instruction not to use it.
-      return planProposedResult(
+      // Row 101: the plan text appears once. Withheld when the server wrote it
+      // (planProposedResult); otherwise handed over as what the reply shows.
+      const result = planProposedResult(
         outcome.value.version,
-        outcome.value.summary,
+        plainPlan ?? outcome.value.summary,
         planIsOnScreen,
         runLang(runId),
         unreachable,
       );
+      // Row 279: the plan the model is handed is the one it shows, once.
+      return plainPlan !== null && !planIsOnScreen
+        ? { ...result, show_plan: planInYourReplyNote(runLang(runId)) }
+        : result;
     }
     case 'approve_task_plan': {
       // Server-side gate, the same shape as send_answer_to_asker: without the
@@ -11179,6 +11240,7 @@ export async function processChat(
     effectiveFinal = '';
   }
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
+  effectiveFinal = withPlanInReply(runId, effectiveFinal);
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }

@@ -976,6 +976,65 @@ const PLAN_WORDS: Record<RunLanguage, Record<string, string>> = {
   },
 };
 
+/**
+ * ROW 279 — TORNIKE, 1 OCTOBER (D520): the plan appears ONCE, in Netai's own
+ * words, in its reply. The form-like card („v1", field labels) goes.
+ *
+ * This is the plan as plain sentences, for the two places the server still
+ * has to say it itself: handed to the model as what to put in its own words,
+ * and — only when the reply turns out not to carry the plan — added to the
+ * reply, so what the approve button approves is never off the screen (row
+ * 101). No version, no headings, no bracketed status words.
+ */
+const PLAN_SENTENCES: Record<
+  RunLanguage,
+  { solved: string; routes: string; ask: string; askNobody: string }
+> = {
+  ka: {
+    solved: 'მოგვარებულად ჩავთვლი, როცა',
+    routes: 'ვეძებ ასე',
+    ask: 'კითხვას დავუსვამ',
+    askNobody: 'ჯერ არავის ვწერ.',
+  },
+  en: {
+    solved: 'I will count it solved when',
+    routes: 'How I will look',
+    ask: 'Who I will ask',
+    askNobody: 'I am not writing to anyone yet.',
+  },
+  ru: {
+    solved: 'Буду считать решённым, когда',
+    routes: 'Как буду искать',
+    ask: 'Кого спрошу',
+    askNobody: 'Пока никому не пишу.',
+  },
+  es: {
+    solved: 'Lo daré por resuelto cuando',
+    routes: 'Cómo buscaré',
+    ask: 'A quién preguntaré',
+    askNobody: 'Todavía no escribo a nadie.',
+  },
+};
+
+function withoutFinalStop(text: string): string {
+  return text.trim().replace(/[.。]+$/u, '');
+}
+
+export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
+  const words = PLAN_SENTENCES[language];
+  const routes = plan.routes.map((r) => withoutFinalStop(r.name)).filter((r) => r !== '');
+  const people = plan.people_to_involve.map((p) =>
+    p.reach === undefined || p.reach === 'ok'
+      ? p.name
+      : `${p.name} ${REACH_NOTE[language][p.reach]}`,
+  );
+  const lines = [`${words.solved}: ${withoutFinalStop(plan.solved_when)}.`];
+  if (routes.length > 0) lines.push(`${words.routes}: ${routes.join('; ')}.`);
+  lines.push(people.length > 0 ? `${words.ask}: ${people.join(', ')}.` : words.askNobody);
+  if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
+  return lines.join('\n');
+}
+
 export function renderPlan(
   plan: TaskPlan,
   version: number,
