@@ -5305,3 +5305,5 @@ BODY    { "tokens": 1000, "note": "Misho, 1 Oct (row 293): one-time 1000 tokens 
 UNDO    POST /admin/users/165699/tokens
         { "tokens": -1000, "note": "undo §77" }
 ```
+
+**§77 RUN, 1 October ~10:30 UTC:** `{"user_id":"165699","was":0,"tokens":1000,"balance":1000}`.

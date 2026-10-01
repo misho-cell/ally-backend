@@ -1,6 +1,13 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+// Row 301: sends wait for Tbilisi's waking hours. Pinned so this suite does not
+// depend on the hour it runs at; the night case has its own test.
+jest.mock('../taskAsks.service', () => ({
+  __esModule: true,
+  isAWakingHour: jest.fn(() => true),
+  tbilisiHour: jest.fn(() => 12),
+}));
 jest.mock('../targetScoring.service', () => ({
   __esModule: true,
   buildTargetList: jest.fn(),
