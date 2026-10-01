@@ -10,8 +10,17 @@ import {
   createThread,
   getThreadsByIntroRequestId,
   saveThreadMessage,
+  Thread,
+  ThreadStatus,
   userLanguage,
 } from './threads.service';
+import {
+  isMediatorSide,
+  isRequesterSide,
+  isSharedRequestThread,
+  RequestThread,
+} from './requestThreadSide';
+import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
 import { scrubText } from './privacyScrub';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
@@ -499,6 +508,34 @@ export async function hasPendingIntroForThread(introRequestId: number | null): P
   return result.rows.length > 0;
 }
 
+const PENDING_INTRO_QUERY_TIMEOUT_MS = 3_000;
+
+/**
+ * Whether the owner of this thread is waiting on an introduction they asked
+ * for — the requester's side of `statusAfterRun`'s „waiting".
+ *
+ * Their own outgoing-request thread, as always; and (row 305 b) the goal
+ * thread a follow-up request was written into, which has no request id of its
+ * own and is a `regular` thread like any other. Only those two kinds are
+ * asked: every other thread is either the mediator's or nobody's.
+ */
+export async function introStillAwaitedOnThread(
+  thread: Pick<Thread, 'id' | 'type' | 'introduction_request_id'>,
+): Promise<boolean> {
+  if (thread.type === 'outgoing_request') {
+    return hasPendingIntroForThread(thread.introduction_request_id);
+  }
+  if (thread.type !== 'regular') return false;
+  const result = await query<{ id: number }>(
+    `SELECT id FROM introduction_requests
+      WHERE requester_thread_id = $1 AND status = 'pending'
+      LIMIT 1`,
+    [thread.id],
+    PENDING_INTRO_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
 /**
  * HOW an accepted introduction is made — Misho's design, 20 September.
  *
@@ -859,67 +896,118 @@ async function syncRequestThreads(
   try {
     const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
-      const owner = String(thread.user_id);
-      // Each side's own language — the two readers need not share one, and
-      // this caption is on their screen as of 20 September.
-      const ownerLanguage = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
-      if (thread.type === 'incoming_request') {
-        if (action === 'snooze') {
-          await setThreadStatus(owner, thread.id, 'waiting', {
-            statusLine: introSnoozedLine(ownerLanguage),
-            requestRef: req.request_ref,
-          });
-        } else {
-          // The responder sees what happened in their name (task 16) — on
-          // EVERY resolve, not only a mediated accept: request 925's direct
-          // accepter got pure silence, just a thread flipping to done
-          // (ticket 8 task 3). The richer mediated-accept follow-up wins
-          // when it exists; otherwise a plain honest close.
-          const close =
-            outcome?.mediatorFollowUp ??
-            (action === 'accept'
-              ? 'მადლობა! შენი თანხმობა გადაეცა — მან იცის, რომ დათანხმდი, და შესაძლოა მალე დაგიკავშირდეს.'
-              : 'გასაგებია — უარი მშვიდად გადაეცა. შენი სახელით მეტი არაფერი გაკეთდება ამ თხოვნაზე.');
-          await saveThreadMessage(thread.id, thread.user_id, 'assistant', close).catch(
-            () => undefined,
-          );
-          await setThreadStatus(owner, thread.id, 'done', { requestRef: req.request_ref });
-        }
-      } else if (thread.type === 'outgoing_request' && action !== 'snooze') {
-        await saveThreadMessage(
-          thread.id,
-          thread.user_id,
-          'assistant',
-          (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? ''),
-        ).catch(() => undefined);
-        /**
-         * B31's second half — „needs_you" was wrong twice over.
-         *
-         * Thread 21454, 22 September: the mediator ACCEPTED at 08:41, the
-         * outcome was written correctly with the answer quoted, and the badge
-         * over it read „Needs your answer". Nothing was needed from him, and
-         * it was never his move — the whole thread is somebody else answering
-         * a question he asked. The mediator's own incoming thread goes to
-         * `done` on the same event, ten lines up, so one side of one fact was
-         * being closed and the other left open.
-         *
-         * `done`, on a decline as well as an accept: the request is answered
-         * either way and there is nothing left to do IN THIS THREAD. What
-         * happens next belongs to his goal, which row 210's wake tells.
-         *
-         * The caption still says what happened. „Done" alone would lose the
-         * one thing he wants to see from the list.
-         */
-        await setThreadStatus(owner, thread.id, 'done', {
-          statusLine: introAnsweredLine(ownerLanguage),
-          requestRef: req.request_ref,
-        });
+      if (isMediatorSide(thread)) {
+        await settleMediatorThread(req, thread, action, outcome);
+      } else if (isRequesterSide(thread) && action !== 'snooze') {
+        await settleRequesterThread(req, thread, action, response, outcome);
       }
     }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[intro] thread sync failed for request ${req.id}:`, (err as Error).message);
   }
+}
+
+/**
+ * The status a mediator's thread is left in once the request in it is
+ * answered or snoozed.
+ *
+ * ROW 305 (b): an ask thread the request only SHARED goes back to what the ask
+ * says — `done` on it while its question is still open would file a question
+ * somebody owes an answer to under „finished". Snoozing leaves it as it is for
+ * the same reason; the snoozed request stops counting as waiting there by
+ * itself (`A_REQUEST_WAITS_HERE`).
+ *
+ * The request's OWN thread is the request, and settles exactly as it always has.
+ */
+async function mediatorThreadStatusAfter(
+  thread: RequestThread,
+  action: IntroductionAction,
+  ownerLanguage: RunLanguage,
+): Promise<{ status: ThreadStatus; statusLine?: string | null }> {
+  // The caption is the status's own default, in the owner's language.
+  if (isSharedRequestThread(thread))
+    return { status: await askThreadStatusAfterRequest(thread.id) };
+  if (action === 'snooze')
+    return { status: 'waiting', statusLine: introSnoozedLine(ownerLanguage) };
+  return { status: 'done' };
+}
+
+async function settleMediatorThread(
+  req: RequestRow,
+  thread: RequestThread,
+  action: IntroductionAction,
+  outcome?: AcceptOutcome,
+): Promise<void> {
+  const owner = String(thread.user_id);
+  // Each side's own language — the two readers need not share one, and
+  // this caption is on their screen as of 20 September.
+  const ownerLanguage = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
+  if (action !== 'snooze') {
+    // The responder sees what happened in their name (task 16) — on
+    // EVERY resolve, not only a mediated accept: request 925's direct
+    // accepter got pure silence, just a thread flipping to done
+    // (ticket 8 task 3). The richer mediated-accept follow-up wins
+    // when it exists; otherwise a plain honest close.
+    const close =
+      outcome?.mediatorFollowUp ?? (action === 'accept' ? ACCEPT_CLOSE_LINE : DECLINE_CLOSE_LINE);
+    await saveThreadMessage(thread.id, thread.user_id, 'assistant', close).catch(() => undefined);
+  }
+  const next = await mediatorThreadStatusAfter(thread, action, ownerLanguage);
+  await setThreadStatus(owner, thread.id, next.status, {
+    ...(next.statusLine !== undefined && { statusLine: next.statusLine }),
+    requestRef: req.request_ref,
+  });
+}
+
+const ACCEPT_CLOSE_LINE =
+  'მადლობა! შენი თანხმობა გადაეცა — მან იცის, რომ დათანხმდი, და შესაძლოა მალე დაგიკავშირდეს.';
+const DECLINE_CLOSE_LINE =
+  'გასაგებია — უარი მშვიდად გადაეცა. შენი სახელით მეტი არაფერი გაკეთდება ამ თხოვნაზე.';
+
+async function settleRequesterThread(
+  req: RequestRow,
+  thread: RequestThread,
+  action: IntroductionAction,
+  response?: string,
+  outcome?: AcceptOutcome,
+): Promise<void> {
+  await saveThreadMessage(
+    thread.id,
+    thread.user_id,
+    'assistant',
+    (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? ''),
+  ).catch(() => undefined);
+  /**
+   * ROW 305 (b): a GOAL thread the request only shared keeps its own status.
+   * It belongs to the goal, whose wake (row 210) is about to run on this very
+   * answer and decide it; `done` here would put a running goal under
+   * „finished" until then.
+   */
+  if (isSharedRequestThread(thread)) return;
+  const ownerLanguage = await userLanguage(String(thread.user_id)).catch(() => 'ka' as RunLanguage);
+  /**
+   * B31's second half — „needs_you" was wrong twice over.
+   *
+   * Thread 21454, 22 September: the mediator ACCEPTED at 08:41, the
+   * outcome was written correctly with the answer quoted, and the badge
+   * over it read „Needs your answer". Nothing was needed from him, and
+   * it was never his move — the whole thread is somebody else answering
+   * a question he asked. The mediator's own incoming thread goes to
+   * `done` on the same event, so one side of one fact was being closed
+   * and the other left open.
+   *
+   * `done`, on a decline as well as an accept: the request is answered
+   * either way and there is nothing left to do IN THIS THREAD. What
+   * happens next belongs to his goal, which row 210's wake tells.
+   *
+   * The caption still says what happened. „Done" alone would lose the
+   * one thing he wants to see from the list.
+   */
+  await setThreadStatus(String(thread.user_id), thread.id, 'done', {
+    statusLine: introAnsweredLine(ownerLanguage),
+    requestRef: req.request_ref,
+  });
 }
 
 /**
@@ -1364,6 +1452,47 @@ export async function resolveIntroductionRequest(
  * they did. Best-effort throughout — a stop must never fail because a thread
  * could not be written to.
  */
+/**
+ * One thread of a withdrawn request: the note, and a header that agrees.
+ *
+ * ROW 305 (b): a thread the request only SHARED is told the same note, but its
+ * header is not the request's to set. The ask thread goes back to what its ask
+ * says — the stop cancels that ask too, in its own pass, and closes the thread
+ * then; and the goal thread is the stopped goal's, whose own stop line is the
+ * header the owner should read.
+ */
+async function tellThreadTheRequestIsWithdrawn(
+  thread: RequestThread,
+  targetName: string,
+): Promise<void> {
+  const isIncoming = isMediatorSide(thread);
+  if (!isIncoming && !isRequesterSide(thread)) return;
+  const owner = String(thread.user_id);
+  const language = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
+  await saveThreadMessage(
+    thread.id,
+    thread.user_id,
+    'assistant',
+    isIncoming
+      ? introCancelledNote(language, targetName)
+      : introWithdrawnByOwnerNote(language, targetName),
+  ).catch(() => undefined);
+  if (isSharedRequestThread(thread)) {
+    if (isIncoming) {
+      await setThreadStatus(owner, thread.id, await askThreadStatusAfterRequest(thread.id)).catch(
+        () => undefined,
+      );
+    }
+    return;
+  }
+  // Row 233's fault, not repeated here: the note and the header have to
+  // agree, or „no longer needed" sits under „Needs your answer". Same
+  // header on both sides, because it is the same fact about the request.
+  await setThreadStatus(owner, thread.id, 'done', {
+    statusLine: introCancelledLine(language),
+  }).catch(() => undefined);
+}
+
 export async function cancelIntroductionRequestsForTask(taskId: number): Promise<number> {
   try {
     const cancelled = await query<{
@@ -1403,26 +1532,9 @@ export async function cancelIntroductionRequestsForTask(taskId: number): Promise
      * they cannot read is worse off than one told nothing.
      */
     for (const row of cancelled.rows) {
-      const threads = await getThreadsByIntroRequestId(row.id).catch(() => []);
+      const threads = await getThreadsByIntroRequestId(row.id).catch(() => [] as RequestThread[]);
       for (const thread of threads) {
-        const isIncoming = thread.type === 'incoming_request';
-        if (!isIncoming && thread.type !== 'outgoing_request') continue;
-        const owner = String(thread.user_id);
-        const language = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
-        await saveThreadMessage(
-          thread.id,
-          thread.user_id,
-          'assistant',
-          isIncoming
-            ? introCancelledNote(language, row.target_name)
-            : introWithdrawnByOwnerNote(language, row.target_name),
-        ).catch(() => undefined);
-        // Row 233's fault, not repeated here: the note and the header have to
-        // agree, or „no longer needed" sits under „Needs your answer". Same
-        // header on both sides, because it is the same fact about the request.
-        await setThreadStatus(owner, thread.id, 'done', {
-          statusLine: introCancelledLine(language),
-        }).catch(() => undefined);
+        await tellThreadTheRequestIsWithdrawn(thread, row.target_name);
       }
     }
     return cancelled.rowCount ?? cancelled.rows.length;

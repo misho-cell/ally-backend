@@ -8,7 +8,9 @@ jest.mock('../threads.service', () => ({
 import { query } from '../../db/postgres/client';
 import { saveThreadMessage } from '../threads.service';
 import {
+  AskScope,
   backPointerLine,
+  findEarlierAskThread,
   forwardPointerLine,
   linkRequestToEarlierAsk,
 } from '../threadBackPointer.service';
@@ -55,6 +57,26 @@ describe('one story in two threads', () => {
     expect(forwardThread).toBe(26997);
     expect(forwardText).toContain('„Netai Test 68 → Nika"');
     expect(forwardText).toContain('**Nika**');
+  });
+
+  /**
+   * Row 305 (a) points at an ask whatever became of it — a cancelled question
+   * still happened. Only (b)'s „is there a conversation to CONTINUE" narrows it.
+   */
+  it('points at any earlier ask, not only an open one', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 26997, title: null }], rowCount: 1 } as never);
+
+    await linkRequestToEarlierAsk(INPUT);
+
+    expect(String(mockQuery.mock.calls[0][0])).not.toContain('a.status IN');
+  });
+
+  it('narrows to the asks createAsk would continue when asked for an open one', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await findEarlierAskThread(11323, 172836, 172833, AskScope.StillOpen);
+
+    expect(String(mockQuery.mock.calls[0][0])).toContain("AND a.status IN ('sent', 'answered')");
   });
 
   it('writes nothing when the goal never asked this person', async () => {

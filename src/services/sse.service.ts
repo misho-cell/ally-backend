@@ -542,8 +542,12 @@ export function emitRunComplete(
 
 export interface AppendedMessagePayload {
   messageId: string;
-  /** 'answers' — row 322(a): the server's card of answers that just arrived. */
-  kind: 'pending' | 'answers';
+  /**
+   * 'answers' — row 322(a): the server's card of answers that just arrived.
+   * 'request' — row 305(b): an introduction request written into a
+   * conversation that already exists, instead of opening a thread of its own.
+   */
+  kind: 'pending' | 'answers' | 'request';
   content: string;
   choices: readonly string[];
   ref: Record<string, unknown>;

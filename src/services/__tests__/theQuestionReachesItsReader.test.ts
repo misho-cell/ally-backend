@@ -457,7 +457,9 @@ describe('every wire that quotes a person translates for the reader', () => {
 
   it('the introduction request: the mediator reads the requester’s message', () => {
     const source = read('threads.service.ts');
-    const at = source.indexOf('incomingRequestOpening(language');
+    // The call, not its first argument: row 305 (b) moved it into one composer
+    // shared by both deliveries, and prettier now puts each argument on a line.
+    const at = source.indexOf('incomingRequestOpening(');
 
     expect(source).toContain("await relayedForReader(message, language, 'request')");
     expect(source.slice(at, at + 200)).toContain('relayed?.text ?? message');

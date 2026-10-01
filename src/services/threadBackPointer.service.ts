@@ -16,6 +16,12 @@ import { saveThreadMessage, userLanguage } from './threads.service';
  * thread is the real fix, (b), and it is Tornike's decision. Until then each
  * of the two threads says where the other is — the new one points back, the
  * old one points forward — so the person reads one story in two places.
+ *
+ * (b) IS DECIDED NOW (D530) and lives in `sharedRequestThread.service`: when
+ * the ask's conversation is still open, the request is written INTO it and
+ * there is no second thread to point at. These lines remain for the case (b)
+ * does not cover — an earlier ask whose conversation has ended — where two
+ * threads are still the truth.
  */
 
 const POINTER_QUERY_TIMEOUT_MS = 3_000;
@@ -35,17 +41,40 @@ export interface RequestPointerInput {
   readonly targetName: string;
 }
 
+/**
+ * Which earlier asks count.
+ *
+ * `Any` is row 305 (a)'s question — „did this goal ever ask this reader
+ * something" — and a cancelled ask still answers yes: the conversation
+ * happened and pointing at it is true.
+ *
+ * `StillOpen` is row 305 (b)'s — „is there a conversation this request can
+ * CONTINUE". It is the rule `createAsk` already uses to decide that a second
+ * question goes into the same thread (`status IN ('sent', 'answered')`), for
+ * the same reason: a cancelled or declined ask ended its conversation with a
+ * line saying so, and writing a new favour under „this is no longer needed"
+ * would read as the opposite of what it is.
+ */
+export enum AskScope {
+  Any = 'any',
+  StillOpen = 'still_open',
+}
+
+const STILL_OPEN_ASK = `AND a.status IN ('sent', 'answered')`;
+
 /** The newest ask the same requester sent this reader for the same goal. */
 export async function findEarlierAskThread(
   taskId: number,
   requesterUserId: number,
   readerUserId: number,
+  scope: AskScope = AskScope.Any,
 ): Promise<EarlierAskThread | null> {
   const result = await query<{ id: number; title: string | null }>(
     `SELECT t.id, t.title
        FROM task_asks a
        JOIN threads t ON t.id = a.ask_thread_id
       WHERE a.task_id = $1 AND a.from_user_id = $2 AND a.to_user_id = $3
+            ${scope === AskScope.StillOpen ? STILL_OPEN_ASK : ''}
       ORDER BY a.created_at DESC
       LIMIT 1`,
     [taskId, requesterUserId, readerUserId],

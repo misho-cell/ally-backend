@@ -21,9 +21,22 @@ jest.mock('../../threadBackPointer.service', () => ({
   __esModule: true,
   linkRequestToEarlierAsk: jest.fn().mockResolvedValue(true),
 }));
+// Row 305 (b): these are the requests that continue NO open conversation — the
+// earlier ask's conversation has ended, so two threads and the pointer lines
+// are still the truth. The shared case is aFollowUpRequestStaysInTheConversation.
+jest.mock('../../sharedRequestThread.service', () => ({
+  __esModule: true,
+  findSharedConversation: jest.fn().mockResolvedValue(null),
+  writeRequestIntoConversation: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { query } from '../../../db/postgres/client';
 import { linkRequestToEarlierAsk } from '../../threadBackPointer.service';
+import {
+  findSharedConversation,
+  writeRequestIntoConversation,
+} from '../../sharedRequestThread.service';
+import { createIncomingRequestThread } from '../../threads.service';
 import { requestIntroduction } from '../requestIntroduction';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -95,6 +108,15 @@ describe('a request points back to the ask it continues', () => {
   it('does not look for an earlier ask when the request has no goal', async () => {
     await ask({});
     expect(mockLink).not.toHaveBeenCalled();
+    expect(findSharedConversation).not.toHaveBeenCalled();
+  });
+
+  it('opens its own threads when there is no open conversation to continue', async () => {
+    await ask({ requesterTaskId: 11323 });
+
+    expect(findSharedConversation).toHaveBeenCalledWith(11323, 172836, 172833);
+    expect(createIncomingRequestThread).toHaveBeenCalledTimes(1);
+    expect(writeRequestIntoConversation).not.toHaveBeenCalled();
   });
 
   it('still sends the request when the lines cannot be written', async () => {

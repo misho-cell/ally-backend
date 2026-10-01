@@ -7,8 +7,15 @@ import { emitThreadCreated } from '../sse.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { isPhoneOptedOut } from '../privacyRights.service';
 import { linkRequestToEarlierAsk, RequestPointerInput } from '../threadBackPointer.service';
+import {
+  findSharedConversation,
+  SharedConversation,
+  writeRequestIntoConversation,
+} from '../sharedRequestThread.service';
 
 const CONTACT_SEARCH_LIMIT = 3;
+/** Where the mediator's push opens the app; a thread id is appended when there is one. */
+const MEDIATOR_PUSH_URL = '/chat';
 
 export interface DisambiguationCandidate {
   phone: string;
@@ -144,6 +151,123 @@ async function pointBackToTheEarlierAsk(
       error: err instanceof Error ? err.message : String(err),
     });
   }
+}
+
+/**
+ * Row 305 (b) / D530: the conversation this request continues, if any.
+ *
+ * Read BEFORE the request is stored, so the row carries its two threads from
+ * the moment it exists — there is never a stored request that says nothing
+ * about where it is shown.
+ *
+ * A FAILED LOOKUP OPENS TWO THREADS, as every request did before D530. That
+ * costs a second thread in the mediator's list; guessing the other way would
+ * write a stranger's favour into a conversation nobody checked.
+ */
+async function conversationToContinue(
+  taskId: number | undefined,
+  requesterUserId: number,
+  mediatorUserId: number,
+): Promise<SharedConversation | null> {
+  if (taskId === undefined) return null;
+  try {
+    return await findSharedConversation(taskId, requesterUserId, mediatorUserId);
+  } catch (err) {
+    console.warn('request_introduction: shared-conversation lookup failed, opening threads', {
+      taskId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/** What both deliveries need about the request just stored. */
+interface StoredRequest {
+  readonly requestId: number;
+  readonly requestRef: string;
+  readonly requesterUserId: string;
+  readonly mediatorUserId: number;
+  readonly requesterName: string;
+  readonly mediatorDisplayName: string;
+  readonly targetName: string;
+  readonly message: string | null;
+  readonly isDirect: boolean;
+  readonly requesterTaskId: number | undefined;
+}
+
+/**
+ * Before D530, and still for every request that continues no conversation:
+ * two threads of its own, and row 305 (a)'s pointer lines when the goal asked
+ * this reader something before. Returns the thread the mediator's push opens.
+ */
+async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
+  const [incomingThread, outgoingThread] = await Promise.all([
+    createIncomingRequestThread(
+      stored.mediatorUserId,
+      stored.requestId,
+      stored.requesterName,
+      stored.targetName,
+      stored.message,
+      stored.isDirect,
+    ),
+    createOutgoingRequestThread(
+      Number(stored.requesterUserId),
+      stored.requestId,
+      stored.mediatorDisplayName,
+      stored.targetName,
+      stored.isDirect,
+    ),
+  ]);
+
+  await pointBackToTheEarlierAsk(stored.requesterTaskId, {
+    requesterUserId: Number(stored.requesterUserId),
+    readerUserId: stored.mediatorUserId,
+    requestThreadId: incomingThread.id,
+    requestThreadTitle: incomingThread.title,
+    requesterName: stored.requesterName,
+    targetName: stored.targetName,
+  });
+
+  emitThreadCreated(String(stored.mediatorUserId), {
+    id: incomingThread.id,
+    type: incomingThread.type,
+    title: incomingThread.title,
+    is_task: incomingThread.is_task,
+    status: incomingThread.status,
+    status_line: incomingThread.status_line,
+    request_ref: stored.requestRef,
+  });
+  emitThreadCreated(stored.requesterUserId, {
+    id: outgoingThread.id,
+    type: outgoingThread.type,
+    title: outgoingThread.title,
+    is_task: outgoingThread.is_task,
+    status: outgoingThread.status,
+    status_line: outgoingThread.status_line,
+    request_ref: stored.requestRef,
+  });
+  // `/chat` and not the new thread: what the push has opened since the start,
+  // and this path is meant to be exactly what it was.
+  return MEDIATOR_PUSH_URL;
+}
+
+/** Row 305 (b): the request continues the conversation. No thread, no pointer. */
+async function deliverIntoTheConversation(
+  stored: StoredRequest,
+  conversation: SharedConversation,
+): Promise<string> {
+  await writeRequestIntoConversation({
+    conversation,
+    requestRef: stored.requestRef,
+    mediatorUserId: stored.mediatorUserId,
+    requesterUserId: Number(stored.requesterUserId),
+    requesterName: stored.requesterName,
+    mediatorName: stored.mediatorDisplayName,
+    targetName: stored.targetName,
+    message: stored.message,
+    direct: stored.isDirect,
+  });
+  return `${MEDIATOR_PUSH_URL}/${conversation.askThreadId}`;
 }
 
 export async function requestIntroduction(
@@ -371,13 +495,21 @@ async function requestIntroductionInner(
     };
   }
 
+  const conversation = await conversationToContinue(
+    context.requesterTaskId,
+    Number(requesterUserId),
+    mediatorUserId,
+  );
+
   const [insertResult, requesterName] = await Promise.all([
     query<{ id: number; request_ref: string }>(
       // Row 210: `requester_task_id` is the goal this was raised for, so the
       // answer can be walked back to it instead of waiting to be asked about.
+      // Row 305 (b): the two threads it continues, when it continues any.
       `INSERT INTO introduction_requests
-         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id, origin_thread_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id, origin_thread_id,
+          mediator_thread_id, requester_thread_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id, request_ref`,
       isDirect
         ? [
@@ -390,6 +522,8 @@ async function requestIntroductionInner(
             'direct',
             context.requesterTaskId ?? null,
             context.originThreadId ?? null,
+            conversation?.askThreadId ?? null,
+            conversation?.goalThreadId ?? null,
           ]
         : [
             requesterUserId,
@@ -401,61 +535,31 @@ async function requestIntroductionInner(
             askType,
             context.requesterTaskId ?? null,
             context.originThreadId ?? null,
+            conversation?.askThreadId ?? null,
+            conversation?.goalThreadId ?? null,
           ],
     ),
     getRequesterName(requesterUserId),
   ]);
 
-  const requestId = insertResult.rows[0].id;
-  const requestRef = insertResult.rows[0].request_ref;
-
-  const mediatorDisplayName = phoneResult.displayName ?? mediatorName;
-
-  const [incomingThread, outgoingThread] = await Promise.all([
-    createIncomingRequestThread(
-      mediatorUserId,
-      requestId,
-      requesterName,
-      targetName,
-      message ?? null,
-      isDirect,
-    ),
-    createOutgoingRequestThread(
-      Number(requesterUserId),
-      requestId,
-      mediatorDisplayName,
-      targetName,
-      isDirect,
-    ),
-  ]);
-
-  await pointBackToTheEarlierAsk(context.requesterTaskId, {
-    requesterUserId: Number(requesterUserId),
-    readerUserId: mediatorUserId,
-    requestThreadId: incomingThread.id,
-    requestThreadTitle: incomingThread.title,
+  const stored: StoredRequest = {
+    requestId: insertResult.rows[0].id,
+    requestRef: insertResult.rows[0].request_ref,
+    requesterUserId,
+    mediatorUserId,
     requesterName,
+    mediatorDisplayName: phoneResult.displayName ?? mediatorName,
     targetName,
-  });
+    message: message ?? null,
+    isDirect,
+    requesterTaskId: context.requesterTaskId,
+  };
+  const requestId = stored.requestId;
 
-  emitThreadCreated(String(mediatorUserId), {
-    id: incomingThread.id,
-    type: incomingThread.type,
-    title: incomingThread.title,
-    is_task: incomingThread.is_task,
-    status: incomingThread.status,
-    status_line: incomingThread.status_line,
-    request_ref: requestRef,
-  });
-  emitThreadCreated(requesterUserId, {
-    id: outgoingThread.id,
-    type: outgoingThread.type,
-    title: outgoingThread.title,
-    is_task: outgoingThread.is_task,
-    status: outgoingThread.status,
-    status_line: outgoingThread.status_line,
-    request_ref: requestRef,
-  });
+  const pushUrl =
+    conversation === null
+      ? await deliverIntoNewThreads(stored)
+      : await deliverIntoTheConversation(stored, conversation);
 
   if (hasPush) {
     await sendPushNotification(String(mediatorUserId), {
@@ -463,7 +567,7 @@ async function requestIntroductionInner(
       body: isDirect
         ? `${requesterName}-ს შენი გაცნობა უნდა. გახსენი Netai.`
         : `${requesterName} გთხოვს, გააცნო ${targetName}-ს. გახსენი Netai.`,
-      url: '/chat',
+      url: pushUrl,
     });
   }
 

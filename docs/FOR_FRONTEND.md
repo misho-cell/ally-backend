@@ -33,7 +33,12 @@ Tornike's decision (D530): when the owner already asked someone a question for a
 
 What the client needs: today `app/chat/[id]/page.tsx:399` shows Accept / Decline only when `thread.type === "incoming_request"`. Please show them whenever the thread has a non-null `request_ref`, whatever its type, and keep the existing ask buttons (yes / no / later) as they are. Your buttons already call `POST /requests/:ref/:action` by ref, so nothing else changes. Also `layout.tsx:1060` / `:1081` filter by `incoming_request` — please check whether those lists should include an `incoming_ask` thread that has a `request_ref`.
 
-I will write here again with the backend's live commit; until then nothing sends `request_ref` on an ask thread, so the change is safe to ship early.
+Two more details from the build:
+
+- **No `thread_created` for such a request.** Its line arrives as SSE `message_appended` with `kind: 'request'` (new), `choices: []`, `ref: {}`, in the mediator's ask thread and in the requester's goal thread. Please handle it like `'answers'`: append it as its own bubble (it is there on reload either way).
+- **The mediator's push opens `/chat/<askThreadId>`**, not `/chat`.
+
+Every other request is unchanged: two threads, `thread_created`, `/chat`. I will write here again with the backend's live commit; until then nothing sends `request_ref` on an ask thread, so the change is safe to ship early.
 
 ## 1 October, morning — your 290 and 312: both read, all three choices kept
 

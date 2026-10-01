@@ -9,6 +9,7 @@ import { sendPushNotification } from './notification.service';
 import { introAnsweredPush } from './introOpening';
 import { RunLanguage } from './runLanguage';
 import { getThreadsByIntroRequestId, saveThreadMessage, userLanguage } from './threads.service';
+import { isMediatorSide, isRequesterSide } from './requestThreadSide';
 
 /**
  * ROW 316 — AN ACCEPTED INTRODUCTION THAT NOBODY WAS TOLD ABOUT CORRECTLY.
@@ -135,13 +136,15 @@ export async function redeliverAcceptedIntroduction(
 
   let requesterCorrected = false;
   let mediatorCorrected = false;
+  // By SIDE, not by type: row 305 (b)'s request lives in an ask thread and a
+  // goal thread, and the correction belongs wherever the wrong line was written.
   for (const thread of await getThreadsByIntroRequestId(row.id)) {
     const label = await correctionLabel(thread.user_id);
-    if (thread.type === 'outgoing_request') {
+    if (isRequesterSide(thread)) {
       const line = (await outcomeMessage(row, 'accept')) + outcome.requesterExtra;
       await saveThreadMessage(thread.id, thread.user_id, 'assistant', label + line);
       requesterCorrected = true;
-    } else if (thread.type === 'incoming_request') {
+    } else if (isMediatorSide(thread)) {
       await saveThreadMessage(
         thread.id,
         thread.user_id,

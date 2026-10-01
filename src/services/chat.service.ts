@@ -48,6 +48,12 @@ import {
   RespondedRequest,
 } from './introduction.service';
 import {
+  buildTwoItemsSection,
+  requestScopeForRun,
+  shouldLoadMemory,
+  ThreadRequestScope,
+} from './requestInConversation';
+import {
   getThread,
   getOrCreateDefaultThread,
   getThreadContext,
@@ -3635,25 +3641,23 @@ function buildUserNotesSection(notes: UserNote[]): string {
   return `\n\n## რა ვიცი მომხმარებელზე\n${lines}`;
 }
 
-// Tasks + self-notes only matter in the main chat, not a focused intro-request
-// thread; skip the extra queries there.
-function shouldLoadMemory(threadType?: string): boolean {
-  return threadType !== 'incoming_request' && threadType !== 'outgoing_request';
-}
-
 // Which pending requests to surface (with their request_id) for a thread.
 // Inside an incoming-request thread the agent must see THAT request so it can
 // answer it — the earlier blanket "[]" is exactly why accept/decline failed
 // with "request not found". Elsewhere (regular thread) show all waiting ones;
 // an outgoing-request thread is the requester's side, so none.
+//
+// Row 305 (b): „the request's own thread" is now a question about the scope,
+// not the type — an ask thread carrying a pending request answers THAT request
+// here, as an incoming-request thread does.
 function resolvePendingRequests(
   userId: string,
-  threadType?: string,
-  introRequestId?: number | null,
+  threadType: string | undefined,
+  scope: ThreadRequestScope,
 ): Promise<PendingRequest[]> {
-  if (threadType === 'incoming_request') {
-    if (introRequestId == null) return Promise.resolve([]);
-    return getPendingRequestById(userId, introRequestId).then((r) => (r ? [r] : []));
+  if (scope.requestIsHere) {
+    if (scope.requestId === null) return Promise.resolve([]);
+    return getPendingRequestById(userId, scope.requestId).then((r) => (r ? [r] : []));
   }
   if (threadType === 'outgoing_request') return Promise.resolve([]);
   return getPendingRequestsForMediator(userId);
@@ -3940,7 +3944,14 @@ async function buildAgentSystemPrompt(
   // boundary instead. Resolved through the normal path below: resolveRunMode
   // keeps runMode='incoming_ask' so the ask_main prompt block still applies,
   // and buildIncomingAskSection carries the ask itself.
-  const loadMemory = shouldLoadMemory(threadType);
+  //
+  // Row 305 (b): the request this conversation is about — its own thread's, or
+  // a pending follow-up written into this ask thread. Read once, here, because
+  // the memory wall, the pending read, the request section and the separate
+  // delivery all depend on it, and each re-deriving it from the type is how a
+  // shared thread would be got wrong four different ways.
+  const requestScope = await requestScopeForRun(userId, threadType, introRequestId, threadId);
+  const loadMemory = shouldLoadMemory(threadType, requestScope);
   // A thread bound to an open task runs in task_step mode: its block + the
   // engine section with the brief and ask states.
   const boundTask =
@@ -3995,18 +4006,18 @@ async function buildAgentSystemPrompt(
     // confidential material must not share that context window at all —
     // code-enforced, not prompt-enforced.
     loadMemory ? getPrivateContext(userId) : Promise.resolve({} as Record<string, string>),
-    resolvePendingRequests(userId, threadType, introRequestId),
+    resolvePendingRequests(userId, threadType, requestScope),
     // Row 211: the request this thread IS, whatever its status. Separate from
     // the read above on purpose — that one answers „is there a decision to
     // make", this one answers „what are we talking about", and conflating them
     // is what left an answered request invisible on its own thread.
-    threadType === 'incoming_request' && introRequestId != null
-      ? getRequestOnThread(userId, introRequestId)
+    requestScope.requestId !== null
+      ? getRequestOnThread(userId, requestScope.requestId)
       : Promise.resolve(null),
     // The OUTGOING-request thread is exactly where "did she reply?" gets
     // asked — starving it of response data forced the model to guess (task
     // 17). Only the incoming side (another user's request) stays lean.
-    threadType === 'incoming_request'
+    requestScope.requestIsHere
       ? Promise.resolve([] as RespondedRequest[])
       : getRecentResponsesForRequester(userId),
     loadMemory ? getMyTasks(userId, 'open') : Promise.resolve([] as Task[]),
@@ -4016,7 +4027,7 @@ async function buildAgentSystemPrompt(
   // Inside an incoming-request thread the request is the whole subject and the
   // app already draws it there; a second copy as a pending message would be the
   // same request twice on one screen.
-  const deliverRequestsSeparately = !PENDING_AS_MESSAGES_OFF && threadType !== 'incoming_request';
+  const deliverRequestsSeparately = !PENDING_AS_MESSAGES_OFF && !requestScope.requestIsHere;
 
   const base = configResult.rows[0]?.system_prompt ?? '';
   const basePromptId = configResult.rows[0]?.id ?? null;
@@ -4063,6 +4074,13 @@ async function buildAgentSystemPrompt(
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
       (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
+      // Row 305 (b): an ask and a request in one conversation, named apart so
+      // a bare „yes" is asked about rather than sent to the wrong one. Only
+      // while BOTH are open: once the question is answered, the request is
+      // the one thing left and its own section already says so.
+      (requestScope.sharedWithAsk && incomingAsk?.status === 'sent' && threadRequest
+        ? buildTwoItemsSection(incomingAsk.id, threadRequest.id, threadRequest.target_name)
+        : '') +
       (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
       buildTasksSection(tasks) +
       buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
@@ -9903,8 +9921,13 @@ function logSalvageFallback(runId: string, why: string): void {
  * The wall does not move with them. It stands where D48 put it, at the OUTBOUND
  * boundary: send_answer_to_asker and relay_ask are the only things that reach
  * the asker, and neither sends without the recipient.
+ *
+ * ROW 305 (b) NEEDS NOTHING NEW HERE, and that is checked rather than assumed:
+ * an ask thread carrying a follow-up request holds send_answer_to_asker for
+ * the question and respond_to_introduction — always on, in every thread — for
+ * the request. Exported so the test can read the list back and see both.
  */
-async function buildToolsForThread(
+export async function buildToolsForThread(
   userId: string,
   threadType?: string,
   ownerAbsent = false,

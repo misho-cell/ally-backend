@@ -41,7 +41,7 @@ import {
   clearGoalQuestionForThread,
   goalQuestionFlaggedSince,
 } from '../../services/goalQuestions.service';
-import { hasPendingIntroForThread } from '../../services/introduction.service';
+import { introStillAwaitedOnThread } from '../../services/introduction.service';
 import { generateThreadTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
 import {
@@ -955,15 +955,15 @@ threadsRouter.post(
           // somebody their note was deleted when it was not. When we cannot
           // tell, we say waiting: that claims only that something may still be
           // out there, which is true.
-          const pendingIntro =
-            thread.type === 'outgoing_request' &&
-            (await hasPendingIntroForThread(thread.introduction_request_id).catch(
-              (err: unknown) => {
-                // eslint-disable-next-line no-console
-                console.error('[run] pending-intro check failed:', (err as Error).message);
-                return true;
-              },
-            ));
+          //
+          // Row 305 (b): the requester's side of a follow-up request is their
+          // GOAL thread, which carries no request id — so the check is asked
+          // of the thread, not of the request column.
+          const pendingIntro = await introStillAwaitedOnThread(thread).catch((err: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('[run] pending-intro check failed:', (err as Error).message);
+            return true;
+          });
           // The run itself reports failure (e.g. an empty final) — surface a
           // retryable error, never a "successful" empty answer.
           if (result.runFailed === true) {

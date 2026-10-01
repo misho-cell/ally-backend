@@ -20,6 +20,7 @@ import {
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
 import { relayedForReader } from './askTranslation.service';
+import { RequestThread, SharedRequestSide } from './requestThreadSide';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
@@ -191,14 +192,38 @@ const GOAL_WAS_STOPPED = `EXISTS (
      )`;
 const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
 
+/**
+ * ROW 305 (b) — an ask thread that is also carrying an introduction request
+ * nobody has answered yet, and which is not snoozed.
+ *
+ * Such a thread is never „finished", however its own row reads. Three writers
+ * put `done` on an ask thread and none of them knows a request is in it: the
+ * answer path (`captureAnswer` closes the badge once the question is
+ * answered), a run that ends on no question, and the ask's own cancel. Each is
+ * right about the ASK. Taught one by one, the next writer would be the one
+ * that forgets — so the reader refuses it once, the same way it already
+ * refuses „finished" on an open goal.
+ *
+ * A SNOOZED request is left out on purpose: „remind me later" put the thread
+ * in `waiting`, and reading it back as „needs you" would undo the mediator's
+ * own choice.
+ */
+const A_REQUEST_WAITS_HERE = `EXISTS (
+       SELECT 1 FROM introduction_requests wr
+        WHERE wr.mediator_thread_id = t.id AND wr.status = 'pending'
+          AND (wr.snoozed_until IS NULL OR wr.snoozed_until <= NOW())
+     )`;
+
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
+       WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
        ELSE t.status
      END`;
 const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
+       WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
        ELSE t.status_line
      END`;
 
@@ -235,8 +260,22 @@ const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
  * at. Two places can both be wrong, and being right about one of them is not
  * the same as having found the bug.
  */
+/**
+ * ROW 305 (b) — AND A REQUEST CAN NOW LIVE IN A THREAD THAT IS NOT ITS OWN.
+ *
+ * A follow-up request between the same two people about the same goal is
+ * written into the mediator's existing ask thread instead of opening one
+ * (`shared_ir`, joined below). That thread's `introduction_request_id` is
+ * NULL — it is an ask thread, carrying an ask AND a request — so without the
+ * second branch the client would never draw Accept / Decline in it.
+ *
+ * The same rule as the first branch, for the same reason: the ref is handed
+ * out only while the request still needs an answer, and an ask thread whose
+ * request is answered goes back to being exactly what it was.
+ */
 const REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER = `CASE
          WHEN ir.status = 'pending' THEN ir.request_ref
+         ELSE shared_ir.request_ref
        END`;
 
 // The list's columns, shared by the page query and the open-goals query so the
@@ -256,8 +295,18 @@ const THREAD_LIST_COLUMNS = `t.id,
        lm.created_at AS last_message_at,
        ${GOAL_WAS_STOPPED} AS goal_stopped`;
 
+// `shared_ir`: the pending request written into this thread by row 305 (b).
+// At most one — `requestIntroduction` never puts a second pending request into
+// a conversation that already carries one — and LIMIT 1 says so to the planner.
 const THREAD_LIST_JOINS = `FROM threads t
      LEFT JOIN introduction_requests ir ON ir.id = t.introduction_request_id
+     LEFT JOIN LATERAL (
+       SELECT sr.request_ref
+       FROM introduction_requests sr
+       WHERE sr.mediator_thread_id = t.id AND sr.status = 'pending'
+       ORDER BY sr.id ASC
+       LIMIT 1
+     ) shared_ir ON true
      LEFT JOIN LATERAL (
        SELECT content, created_at
        FROM conversations
@@ -562,26 +611,41 @@ export async function threadIdsCreatedOn(
   return result.rows;
 }
 
-export async function getThreadByIntroRequestId(introRequestId: number): Promise<Thread | null> {
-  const result = await query<Thread>(
-    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
-            created_at, updated_at
-     FROM threads
-     WHERE introduction_request_id = $1
-     LIMIT 1`,
-    [introRequestId],
-  );
-  return result.rows[0] ?? null;
-}
+const REQUEST_THREAD_QUERY_TIMEOUT_MS = 5_000;
+/** Two sides today, either way a request is shown; the rest is headroom, not a quota. */
+const MAX_THREADS_PER_REQUEST = 8;
 
-/** Both sides of an introduction request: the mediator's incoming thread and the requester's outgoing one. */
-export async function getThreadsByIntroRequestId(introRequestId: number): Promise<Thread[]> {
-  const result = await query<Thread>(
-    `SELECT id, user_id, type, title, introduction_request_id, is_task, status, status_line,
-            created_at, updated_at
-     FROM threads
-     WHERE introduction_request_id = $1`,
-    [introRequestId],
+/**
+ * Every thread an introduction request is shown in: the mediator's side and
+ * the requester's — its OWN two threads, linked by `introduction_request_id`,
+ * or (row 305 b) the ask thread and goal thread it was written into.
+ *
+ * Two branches rather than one join with every condition OR-ed into it: the
+ * first reads `idx_threads_intro_request`, the second one request row and at
+ * most two threads by primary key. A thread is never in both, because the
+ * shared threads are never given the request's id.
+ */
+export async function getThreadsByIntroRequestId(introRequestId: number): Promise<RequestThread[]> {
+  const result = await query<RequestThread>(
+    `SELECT t.id, t.user_id, t.type, t.title, t.introduction_request_id, t.is_task, t.status,
+            t.status_line, t.created_at, t.updated_at, NULL::text AS shared_side
+     FROM threads t
+     WHERE t.introduction_request_id = $1
+     UNION ALL
+     SELECT t.id, t.user_id, t.type, t.title, t.introduction_request_id, t.is_task, t.status,
+            t.status_line, t.created_at, t.updated_at,
+            CASE WHEN t.id = ir.mediator_thread_id THEN $2::text ELSE $3::text END AS shared_side
+     FROM introduction_requests ir
+     JOIN threads t ON t.id = ir.mediator_thread_id OR t.id = ir.requester_thread_id
+     WHERE ir.id = $1
+     LIMIT $4::int`,
+    [
+      introRequestId,
+      SharedRequestSide.Mediator,
+      SharedRequestSide.Requester,
+      MAX_THREADS_PER_REQUEST,
+    ],
+    REQUEST_THREAD_QUERY_TIMEOUT_MS,
   );
   return result.rows;
 }
@@ -1132,34 +1196,30 @@ export async function saveServerLine(
   return { id: result.rows[0].id, content: stored };
 }
 
-export async function createIncomingRequestThread(
+/** A request's opening line, in the language of the person it is written to. */
+export interface RequestOpening {
+  readonly language: RunLanguage;
+  readonly text: string;
+}
+
+/**
+ * What the MEDIATOR is first told about a request — in a thread of its own, or
+ * (row 305 b) in the ask thread it continues. One composer for both, so the
+ * two can never word the same request differently.
+ */
+export async function incomingRequestLine(
   mediatorUserId: number,
-  introRequestId: number,
   requesterName: string,
   targetName: string,
   message: string | null,
   // Direct case (task 18): the reader IS the target — "X wants to meet you",
   // never "X wants you to introduce them to yourself" (live row #793).
-  direct = false,
-): Promise<Thread> {
+  direct: boolean,
+): Promise<RequestOpening> {
   // The MEDIATOR's own language — their sidebar, their message. Georgian for
   // somebody who has never written anything here, which is what this always
   // was and is the only case nothing can do better on.
   const language = await userLanguage(String(mediatorUserId)).catch(() => 'ka' as RunLanguage);
-  const title = incomingRequestTitle(language, requesterName, targetName, direct);
-  // The mediator must answer this request — the thread is born a task awaiting them.
-  const thread = await createThread(
-    String(mediatorUserId),
-    'incoming_request',
-    title,
-    introRequestId,
-    {
-      isTask: true,
-      status: 'needs_you',
-      statusLine: RUN_STRINGS[language].statusLines.needs_you,
-    },
-  );
-
   /**
    * Row 254, second cut: the frame is the mediator's language and the sentence
    * quoted inside it is the requester's own. Same shape as the ask, one path
@@ -1170,14 +1230,58 @@ export async function createIncomingRequestThread(
    * here is exactly the behaviour before this line.
    */
   const relayed = message === null ? null : await relayedForReader(message, language, 'request');
-
-  await saveThreadMessage(
-    thread.id,
-    mediatorUserId,
-    'assistant',
-    incomingRequestOpening(language, requesterName, targetName, relayed?.text ?? message, direct),
+  const text = incomingRequestOpening(
+    language,
+    requesterName,
+    targetName,
+    relayed?.text ?? message,
+    direct,
   );
+  return { language, text };
+}
 
+/** What the REQUESTER is told when the request goes — its own thread, or their goal's. */
+export async function outgoingRequestLine(
+  requesterUserId: number,
+  mediatorName: string,
+  targetName: string,
+  direct: boolean,
+): Promise<RequestOpening> {
+  // The REQUESTER's own language, which need not be the mediator's. Two
+  // readers, two threads, one each.
+  const language = await userLanguage(String(requesterUserId)).catch(() => 'ka' as RunLanguage);
+  return { language, text: outgoingRequestOpening(language, mediatorName, targetName, direct) };
+}
+
+export async function createIncomingRequestThread(
+  mediatorUserId: number,
+  introRequestId: number,
+  requesterName: string,
+  targetName: string,
+  message: string | null,
+  direct = false,
+): Promise<Thread> {
+  const opening = await incomingRequestLine(
+    mediatorUserId,
+    requesterName,
+    targetName,
+    message,
+    direct,
+  );
+  const title = incomingRequestTitle(opening.language, requesterName, targetName, direct);
+  // The mediator must answer this request — the thread is born a task awaiting them.
+  const thread = await createThread(
+    String(mediatorUserId),
+    'incoming_request',
+    title,
+    introRequestId,
+    {
+      isTask: true,
+      status: 'needs_you',
+      statusLine: RUN_STRINGS[opening.language].statusLines.needs_you,
+    },
+  );
+  await saveThreadMessage(thread.id, mediatorUserId, 'assistant', opening.text);
   return thread;
 }
 
@@ -1188,10 +1292,8 @@ export async function createOutgoingRequestThread(
   targetName: string,
   direct = false,
 ): Promise<Thread> {
-  // The REQUESTER's own language, which need not be the mediator's. Two
-  // readers, two threads, one each.
-  const language = await userLanguage(String(requesterUserId)).catch(() => 'ka' as RunLanguage);
-  const title = outgoingRequestTitle(language, mediatorName, targetName, direct);
+  const opening = await outgoingRequestLine(requesterUserId, mediatorName, targetName, direct);
+  const title = outgoingRequestTitle(opening.language, mediatorName, targetName, direct);
   // The requester is waiting on the mediator — born a task in the waiting state.
   const thread = await createThread(
     String(requesterUserId),
@@ -1201,17 +1303,10 @@ export async function createOutgoingRequestThread(
     {
       isTask: true,
       status: 'waiting',
-      statusLine: RUN_STRINGS[language].statusLines.waiting,
+      statusLine: RUN_STRINGS[opening.language].statusLines.waiting,
     },
   );
-
-  await saveThreadMessage(
-    thread.id,
-    requesterUserId,
-    'assistant',
-    outgoingRequestOpening(language, mediatorName, targetName, direct),
-  );
-
+  await saveThreadMessage(thread.id, requesterUserId, 'assistant', opening.text);
   return thread;
 }
 
