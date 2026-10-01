@@ -302,6 +302,25 @@ export async function setTaskWake(userId: string, taskId: number, hours: number)
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Tester 929 — bring an open goal's next wake FORWARD to `at`, never later.
+ *
+ * A recipient's rolling 24-hour cap refused an ask; the reply promised to try
+ * „as soon as the limit opens", and the goal's wake sat at the default day.
+ * The server knows the exact minute the window reopens, so it moves the wake
+ * there — unless a wake is already due sooner.
+ */
+export async function wakeTaskNoLaterThan(taskId: number, at: Date): Promise<boolean> {
+  if (!isARealId(taskId)) return false;
+  const result = await query(
+    `UPDATE tasks SET next_wake_at = $2
+      WHERE id = $1 AND status = 'open' AND (next_wake_at IS NULL OR next_wake_at > $2)`,
+    [taskId, at.toISOString()],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 /** Open tasks whose wake time has arrived — the ticker's worklist. */
 export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
   const result = await query<Task & { user_id: string }>(

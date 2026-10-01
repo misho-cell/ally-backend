@@ -1,6 +1,6 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { query } from '../db/postgres/client';
-import { getTaskById } from './taskStore.service';
+import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
@@ -238,6 +238,38 @@ const CONTINUE_BY_OTHER_ROUTES =
   ' მიზანი არ ჩერდება: ახლავე, ამავე გაშვებაში გააგრძელე სხვა გზებით — ქსელის სხვა ' +
   'შესაფერისი ადამიანები, მეორე წრე, ვები — და ნებართვა ამისთვის არ ჰკითხო. ვისაც ვერ ' +
   'მიწერე, ის ხვალინდელ გეგმაში ჩაწერე და ეს თქვი.';
+
+/** Enough rows to find the reopening; a person never holds many asks in a day. */
+const RECEIVED_WINDOW_READ_LIMIT = 20;
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Tester 929 — when a recipient's rolling 24-hour window has room again: the
+ * moment enough of the oldest asks fall out of it to bring the count below the
+ * cap. `received` is the window's asks, oldest first.
+ */
+export function recipientWindowReopensAt(received: readonly Date[]): Date {
+  const mustFallOut = received.length - MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY;
+  const pivot = received[Math.max(0, mustFallOut)] ?? new Date();
+  return new Date(pivot.getTime() + WINDOW_MS);
+}
+
+/** „Opens again at 06:39 Tbilisi, 2 Oct" — the exact time, so no reply says „as soon as it opens". */
+function reopensLine(toName: string, at: Date): string {
+  const when = new Intl.DateTimeFormat('ka-GE', {
+    timeZone: 'Asia/Tbilisi',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(at);
+  return (
+    ` ${toName}-სთვის ადგილი გაიხსნება ${when}-ზე (თბილისის დროით). მიზნის შემდეგი შემოწმება ` +
+    'სერვერმა ზუსტად ამ დროზე დააყენა. თუ მფლობელს ეტყვი, როდის სცდი ხელახლა, ეს დრო დაასახელე — ' +
+    '„როგორც კი გაიხსნება" დროის გარეშე არ დაწერო.'
+  );
+}
 
 const RELAY_REFUSALS: Readonly<
   Record<GrowthAskRefusalReason, { reason: AskRefusalReason; error: (toName: string) => string }>
@@ -833,10 +865,12 @@ export async function createAsk(
   // from everyone together — the founder's „two messages to the same person".
   // A follow-up inside a live conversation is not a new question and is
   // capped separately (RELAY_MESSAGES_PER_PERSON_PER_DAY).
-  const receivedToday = await query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM task_asks
+  const receivedToday = await query<{ created_at: string | Date }>(
+    `SELECT created_at FROM task_asks
      WHERE to_user_id = $1 AND is_follow_up = FALSE
-       AND created_at > NOW() - INTERVAL '24 hours'`,
+       AND created_at > NOW() - INTERVAL '24 hours'
+     ORDER BY created_at ASC
+     LIMIT ${RECEIVED_WINDOW_READ_LIMIT}`,
     [toUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -853,8 +887,21 @@ export async function createAsk(
     // askCapExemptions — the cap protects the RECEIVER, so the exemption is
     // keyed on them, and a test account asking a real person is capped as ever.
     !receivingCapsAreOff(toUserId) &&
-    Number(receivedToday.rows[0]?.count ?? 0) >= MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY
+    receivedToday.rows.length >= MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY
   ) {
+    const reopensAt = recipientWindowReopensAt(
+      receivedToday.rows.map((r) => new Date(r.created_at)),
+    );
+    // Tester 929: the goal tries again at that minute, not a day later.
+    try {
+      await wakeTaskNoLaterThan(taskId, reopensAt);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ask] task ${taskId}: could not move its wake to the reopening:`,
+        (err as Error).message,
+      );
+    }
     return {
       sent: false,
       reason: 'recipient_daily_limit_reached',
@@ -883,6 +930,7 @@ export async function createAsk(
         'კითხვა 24 საათის შემდეგ ცვივა. „განულდება", „ხვალ" ან „როცა ლიმიტი განახლდება" ' +
         'არ დაწერო: მომენტი, როცა ეს ერთბაშად ხდება, არ არსებობს. ერთი ხაზით უთხარი ' +
         'მფლობელს, ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
+        reopensLine(toName, reopensAt) +
         NOT_THE_OWNERS_LIMIT +
         CONTINUE_BY_OTHER_ROUTES +
         PROMISE_NO_ANSWER,

@@ -53,7 +53,11 @@ jest.mock('../taskEngine.service', () => ({
   wakeTask: jest.fn().mockResolvedValue('woken'),
   deliverAnswersWhenFree: jest.fn(),
 }));
-jest.mock('../taskStore.service', () => ({ __esModule: true, getTaskById: jest.fn() }));
+jest.mock('../taskStore.service', () => ({
+  __esModule: true,
+  getTaskById: jest.fn(),
+  wakeTaskNoLaterThan: jest.fn().mockResolvedValue(true),
+}));
 jest.mock('../notification.service', () => ({
   __esModule: true,
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
@@ -87,6 +91,7 @@ import { isPhoneOptedOut } from '../privacyRights.service';
 import { checkAskBudget, checkFollowUpBudget } from '../askBudget.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { createThread, saveThreadMessage } from '../threads.service';
+import { wakeTaskNoLaterThan } from '../taskStore.service';
 import { deliverAnswersWhenFree, wakeTask } from '../taskEngine.service';
 import {
   createAsk,
@@ -98,6 +103,7 @@ import {
   ensureVerbatimQuote,
   getPendingAsksForUser,
   runPayerFor,
+  recipientWindowReopensAt,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -209,7 +215,15 @@ function routeAskQueries(opts: {
       );
     // The receiving-side brake (D134): new questions this person got today.
     if (sql.includes('to_user_id = $1 AND is_follow_up = FALSE'))
-      return Promise.resolve(rows([{ count: String(opts.receivedToday ?? 0) }]) as never);
+      // Tester 929: the window's asks themselves, oldest first, so the server
+      // can say when it reopens.
+      return Promise.resolve(
+        rows(
+          Array.from({ length: opts.receivedToday ?? 0 }, (_, i) => ({
+            created_at: new Date(Date.UTC(2026, 8, 30, 6 + i, 39)),
+          })),
+        ) as never,
+      );
     if (sql.includes('COUNT(*)'))
       return Promise.resolve(rows([{ count: String(opts.sentToday ?? 0) }]) as never);
     if (sql.includes('SELECT name FROM "User"'))
@@ -1436,6 +1450,18 @@ describe('the receiving-side brake', () => {
     expect(error).toContain('ამავე გაშვებაში გააგრძელე');
     expect(error).toContain('მეორე წრე');
     expect(error).toContain('არასოდეს დაჰპირდე პასუხს');
+    // Tester 929: the reopening is named, and the goal wakes then.
+    expect(error).toContain('ადგილი გაიხსნება');
+    expect(error).toContain('„როგორც კი გაიხსნება" დროის გარეშე არ დაწერო');
+    expect(wakeTaskNoLaterThan).toHaveBeenCalledWith(3, new Date(Date.UTC(2026, 9, 1, 6, 39)));
+  });
+
+  it('reopens when enough of the oldest asks fall out to go below the cap', () => {
+    const at = (h: number): Date => new Date(Date.UTC(2026, 8, 30, h, 0));
+    expect(recipientWindowReopensAt([at(6), at(9)])).toEqual(new Date(Date.UTC(2026, 9, 1, 6, 0)));
+    expect(recipientWindowReopensAt([at(6), at(8), at(9)])).toEqual(
+      new Date(Date.UTC(2026, 9, 1, 8, 0)),
+    );
   });
 
   it('row 127 — the SENDER-side cap says whose it is and does not stop the goal', async () => {
