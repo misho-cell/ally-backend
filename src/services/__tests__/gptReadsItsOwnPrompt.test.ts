@@ -54,3 +54,24 @@ describe('GPT is told the reply language last', () => {
     );
   });
 });
+
+/**
+ * Row 313, the tester's 944: the run's stamp listed only Claude's blocks, so
+ * the GPT block looked absent from runs that had in fact loaded it.
+ */
+describe("GPT's blocks are on the run's stamp", () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const blocks = readFileSync(join(__dirname, '..', 'promptBlocks.service.ts'), 'utf8');
+
+  it('are appended to the same stamp, marked as GPT’s', () => {
+    expect(blocks).toContain("export const GPT_STAMP_PREFIX = 'gpt:';");
+    expect(blocks).toContain('SET block_names = block_names || $2::text[]');
+  });
+
+  it('are stamped where GPT loads them, without failing the run', () => {
+    const loader = chat.slice(chat.indexOf('async function gptBlocksFor'));
+    expect(loader.slice(0, 900)).toContain(
+      'await stampGptBlocks(runId, composed.names, composed.versions).catch(',
+    );
+  });
+});

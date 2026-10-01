@@ -42,6 +42,9 @@ import {
 import { relayedForReader } from './askTranslation.service';
 import { RunLanguage } from './runLanguage';
 
+/** §16: an accept that names no channel is read as a direct one. */
+const INTRO_CHANNEL_WHEN_UNSAID = 'direct';
+
 export interface PendingRequest {
   id: number;
   /**
@@ -1267,7 +1270,12 @@ export async function resolveIntroductionRequest(
    * today's behaviour.
    */
   let resolvedFromMediator: string | null = null;
-  if (action === 'accept' && opts.channel === 'direct' && !req.target_phone) {
+  // Tester 945 (request 2245): an accept with NO channel is read as `direct`
+  // everywhere after this (§16), but this lookup asked for `direct` literally —
+  // so it was skipped, and the mediator was told their own contact was not in
+  // their phonebook. The same reading here as below.
+  const readsAsDirect = (opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID) === 'direct';
+  if (action === 'accept' && readsAsDirect && !req.target_phone) {
     const matches = await findContactPhonesByName(String(mediatorUserId), req.target_name, 2);
     resolvedFromMediator = matches.length === 1 ? matches[0] : null;
     if (matches.length > 1) {

@@ -492,6 +492,35 @@ export async function stampRunMode(
   );
 }
 
+/**
+ * Row 313, the tester's 944: they read a run's blocks from its stamp, saw only
+ * task_main + task_rules, and concluded the GPT block never reached the reply —
+ * while the log showed it loaded on every GPT final. The stamp only ever held
+ * Claude's blocks. The GPT blocks the final was written with are now added to
+ * the same stamp, marked `gpt:` so the two models' blocks cannot be confused.
+ */
+export const GPT_STAMP_PREFIX = 'gpt:';
+
+export async function stampGptBlocks(
+  runId: string,
+  blockNames: readonly string[],
+  blockVersions: readonly string[],
+): Promise<void> {
+  if (blockNames.length === 0) return;
+  await query(
+    `UPDATE run_prompt_stamps
+        SET block_names = block_names || $2::text[],
+            block_versions = block_versions || $3::text[]
+      WHERE run_id = $1`,
+    [
+      runId,
+      blockNames.map((name) => `${GPT_STAMP_PREFIX}${name}`),
+      blockVersions.map((version) => `${GPT_STAMP_PREFIX}${version}`),
+    ],
+    BLOCK_QUERY_TIMEOUT_MS,
+  );
+}
+
 export interface RunStamp {
   run_id: string;
   user_id: number;

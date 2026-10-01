@@ -313,14 +313,19 @@ describe('the mediator’s own book is where the number comes from', () => {
     expect(block).toContain('findContactPhonesByName(String(mediatorUserId), req.target_name, 2)');
   });
 
-  /** Only on an accept, only on direct, and only when there is no number yet. */
+  /**
+   * Only on an accept, only on direct, and only when there is no number yet.
+   * Tester 945: an accept that names no channel is direct here too (§16) — the
+   * new Accept in an ask thread sends none, and the lookup was being skipped.
+   */
   it('does not look unless the case calls for it', () => {
     const at = intro.indexOf('let resolvedFromMediator');
-    const block = intro.slice(at, at + 400);
+    const block = intro.slice(at, at + 900);
 
     expect(block).toContain("action === 'accept'");
-    expect(block).toContain("opts.channel === 'direct'");
+    expect(block).toContain("(opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID) === 'direct'");
     expect(block).toContain('!req.target_phone');
+    expect(intro).toContain("const INTRO_CHANNEL_WHEN_UNSAID = 'direct';");
   });
 
   /**

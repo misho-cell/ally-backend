@@ -90,11 +90,17 @@ describe('the offer after „solved"', () => {
 });
 
 /** The database as the tap sees it: which card this thread showed, and whether it was answered. */
-function cardIs(card: { settled: boolean } | null, claimWins = true): void {
+function cardIs(card: { settled: boolean; choice?: string } | null, claimWins = true): void {
   mockQuery.mockImplementation(((sql: string) => {
     const text = String(sql);
     if (text.includes('open_asks_offered_at IS NOT NULL')) {
-      return Promise.resolve(rows(card === null ? [] : [{ id: TASK_ID, settled: card.settled }]));
+      return Promise.resolve(
+        rows(
+          card === null
+            ? []
+            : [{ id: TASK_ID, settled: card.settled, choice: card.choice ?? null }],
+        ),
+      );
     }
     if (text.includes('SET open_asks_settled_at = NOW()')) {
       return Promise.resolve(rows(claimWins ? [{ id: TASK_ID }] : []));
@@ -152,6 +158,28 @@ describe('the tap', () => {
     expect(mockCancel).not.toHaveBeenCalled();
     expect(told).toContain('არჩევანი უკვე გაკეთდა');
     expect(told).toContain('update_task არ გამოიძახო');
+  });
+
+  /** The tester's 944: a later „close" on a KEPT card said the questions were closed. */
+  it('says which choice stands, so a kept card is never reported closed', async () => {
+    cardIs({ settled: true, choice: 'keep' });
+    const told = await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, CLOSE_KA);
+    expect(told).toContain('დანარჩენი კითხვები ღიაა და ასე რჩება');
+    expect(told).not.toContain('უკვე დახურულია');
+    cardIs({ settled: true, choice: 'close' });
+    expect(await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, KEEP_KA)).toContain(
+      'დანარჩენი კითხვები უკვე დახურულია',
+    );
+  });
+
+  it('records the choice with the claim', async () => {
+    cardIs({ settled: false });
+    await settleOpenAsksOnTap(String(OWNER_ID), THREAD_ID, KEEP_KA);
+    const claim = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('SET open_asks_settled_at = NOW()'),
+    );
+    expect(String(claim?.[0])).toContain('open_asks_choice = $2');
+    expect(claim?.[1]).toEqual([TASK_ID, 'keep']);
   });
 
   it('lets only one of two taps at the same moment act', async () => {

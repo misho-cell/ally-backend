@@ -215,6 +215,15 @@ describe('a public number survives the scrub; every other one does not', () => {
     expect(out.match(/zugdidi-clinic\.ge/g)).toHaveLength(1);
   });
 
+  /** Question A, the tester's 944: a page link printed elsewhere in the reply is not printed again. */
+  it('does not add a link the reply already gives anywhere', () => {
+    const link = 'https://www.notary.ge/geo-3718';
+    const linked = new Map<string, string | null>([[CLINIC, link]]);
+    const reply = `ნოტარიუსი (${link}). ${'მისამართი: თამარ მეფის ქუჩა N62, ქუთაისი. '.repeat(2)}ტელ: ${CLINIC}`;
+    const out = stripAllowedSpans(scrubText(wrapNumbers(reply, linked)));
+    expect(out.split(link)).toHaveLength(2);
+  });
+
   it('adds no source to a number that has none — the user’s own', () => {
     // registerAllowedNumber's other caller is the user's own number, which
     // comes from their account and not from a page.

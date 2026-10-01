@@ -224,7 +224,13 @@ import {
   MAX_TOOL_ITERATIONS,
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
-import { composeBlocksForMode, PromptModel, stampRunMode, RunMode } from './promptBlocks.service';
+import {
+  composeBlocksForMode,
+  PromptModel,
+  stampGptBlocks,
+  stampRunMode,
+  RunMode,
+} from './promptBlocks.service';
 import { recordWarmth } from './warmth.service';
 import { correctContactFact } from './factCorrections.service';
 import {
@@ -828,7 +834,7 @@ const MARK_CONTACT_DECEASED_TOOL: AnthropicTool = {
 const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
   name: 'get_contact_full_profile',
   description:
-    'Get a consolidated profile for an identified contact: the tags the USER saved, each with contributor_count (how many different users saved that same tag), `others_labels_count` (how many labels other people saved — their words are private and not given to you, row 289), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
+    'Get a consolidated profile for an identified contact: the tags the USER saved (speak of them as the user\'s own: „you saved him as …"), each with contributor_count (how many different users saved that same tag), `others_labels_count` (how many labels other people saved — their words are private and not given to you, row 289), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
     ' WHEN: to open a person properly before putting their name in front of anyone.',
   input_schema: {
     type: 'object',
@@ -2844,6 +2850,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     name: 'search_contact_by_name',
     description:
       'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.' +
+      " `tags` are labels the USER saved themselves — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means other people's labels matched too; their words are private and not given to you (row 289)." +
       ' WHEN: try spelling variants, first name alone, surname alone, and the company, brand or nickname as a word.',
     input_schema: {
       type: 'object',
@@ -2863,7 +2870,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.' +
       " RANK BY THE FIELD OF THE NEED (row 297): for a land sale a real-estate lawyer comes before a telecom company's lawyer; anyone from another field comes later, and you say so." +
       ' A row with `name: null` and `saved_as` is a contact saved only as that label (an emoji, a symbol) — say „your contact saved as 💙", never present the label as a name (row 283).' +
-      " `tags` are only the labels the USER saved. `found_by_others_labels: true` means other people's labels matched too; their words are private and not given to you — say the person came up in their network for this search, never guess or invent what others saved (row 289)." +
+      " `tags` are only the labels the USER saved — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means other people's labels matched too; their words are private and not given to you — say the person came up in their network for this search, never guess or invent what others saved (row 289)." +
       ' WHEN: for trade, company and nickname words, in both scripts, across several related words and not just one.',
     input_schema: {
       type: 'object',
@@ -6391,6 +6398,11 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
   if (composed.names.length > 0) {
     // eslint-disable-next-line no-console
     console.log(`[final-answer] run ${runId}: GPT blocks ${composed.versions.join(', ')}`);
+    // Row 313 (tester 944): on the run's stamp too, where the seat reads it.
+    await stampGptBlocks(runId, composed.names, composed.versions).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[final-answer] run ${runId}: GPT stamp failed:`, (err as Error).message),
+    );
   }
   return composed.text;
 }
@@ -6469,7 +6481,10 @@ export function wrapNumbers(text: string, held: Map<string, string | null> | und
     let at = out.indexOf(marked);
     while (at !== -1) {
       const end = at + marked.length;
-      if (out.slice(end, end + SOURCE_NEARBY_CHARS).includes(source)) {
+      // Question A, the tester's 944: the source is now a page LINK, and a
+      // reply that already printed the link elsewhere — before the name, on a
+      // „source:" line — got it a second time. A link once anywhere is enough.
+      if (out.slice(end, end + SOURCE_NEARBY_CHARS).includes(source) || out.includes(source)) {
         at = out.indexOf(marked, end);
         continue;
       }

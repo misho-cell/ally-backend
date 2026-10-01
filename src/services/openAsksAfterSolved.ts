@@ -121,12 +121,15 @@ export async function offerOpenAsksChoice(
 interface OfferedGoal {
   readonly id: number;
   readonly settled: boolean;
+  /** How the card was answered — null on cards answered before migration 191. */
+  readonly choice: OpenAsksTap | null;
 }
 
 /** The goal whose card this thread showed last, and whether it was answered. */
 async function goalWithTheCard(threadId: number, userId: string): Promise<OfferedGoal | null> {
-  const result = await query<{ id: number; settled: boolean }>(
-    `SELECT t.id, t.open_asks_settled_at IS NOT NULL AS settled FROM tasks t
+  const result = await query<{ id: number; settled: boolean; choice: string | null }>(
+    `SELECT t.id, t.open_asks_settled_at IS NOT NULL AS settled, t.open_asks_choice AS choice
+       FROM tasks t
       WHERE t.thread_id = $1 AND t.user_id = $2 AND t.open_asks_offered_at IS NOT NULL
       ORDER BY t.open_asks_offered_at DESC
       LIMIT 1`,
@@ -134,25 +137,44 @@ async function goalWithTheCard(threadId: number, userId: string): Promise<Offere
     QUERY_TIMEOUT_MS,
   );
   const row = result.rows[0];
-  return row ? { id: row.id, settled: row.settled === true } : null;
+  if (!row) return null;
+  const choice = Object.values(OpenAsksTap).find((tap) => tap === row.choice) ?? null;
+  return { id: row.id, settled: row.settled === true, choice };
 }
 
 /** The first tap claims the card. False when another tap got there first. */
-async function claimTheCard(taskId: number): Promise<boolean> {
+async function claimTheCard(taskId: number, tap: OpenAsksTap): Promise<boolean> {
   const result = await query<{ id: number }>(
-    `UPDATE tasks SET open_asks_settled_at = NOW()
+    `UPDATE tasks SET open_asks_settled_at = NOW(), open_asks_choice = $2
       WHERE id = $1 AND open_asks_settled_at IS NULL
       RETURNING id`,
-    [taskId],
+    [taskId, tap],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.length > 0;
 }
 
-const ALREADY_SETTLED =
-  '[სერვერი: ამ ბარათზე არჩევანი უკვე გაკეთდა და ამ დაჭერამ არაფერი შეცვალა. ერთი მოკლე ' +
-  'ხაზით უთხარი, რომ უკვე გაკეთებულია. მიზანი არ გახსნა, update_task არ გამოიძახო და არც ' +
-  'ერთი კითხვა არ გააუქმო.]';
+/**
+ * A tap on a card already answered. The tester's 944: told only „already
+ * done", the run guessed the wrong half and said kept questions were closed.
+ * So it is told WHICH choice stands, in words it can repeat.
+ */
+const EARLIER_CHOICE_WORDS: Readonly<Record<OpenAsksTap, string>> = {
+  [OpenAsksTap.Close]: 'დანარჩენი კითხვები უკვე დახურულია',
+  [OpenAsksTap.Keep]: 'დანარჩენი კითხვები ღიაა და ასე რჩება — პასუხი აქ ბარათად მოვა',
+};
+
+function alreadySettled(choice: OpenAsksTap | null): string {
+  const stands =
+    choice === null
+      ? 'ადრინდელი არჩევანი ძალაშია'
+      : `ძალაშია ადრინდელი: ${EARLIER_CHOICE_WORDS[choice]}`;
+  return (
+    `[სერვერი: ამ ბარათზე არჩევანი უკვე გაკეთდა და ამ დაჭერამ არაფერი შეცვალა — ${stands}. ` +
+    'ერთი მოკლე ხაზით ზუსტად ეს უთხარი, სხვა არაფერი. მიზანი არ გახსნა, update_task არ ' +
+    'გამოიძახო და არც ერთი კითხვა არ გააუქმო.]'
+  );
+}
 
 const CLOSED_LINE = (cancelled: number): string =>
   `[სერვერმა უკვე შეასრულა: მფლობელმა დახურვა აირჩია — ${cancelled} ღია კითხვა დაიხურა, ` +
@@ -178,7 +200,8 @@ export async function settleOpenAsksOnTap(
   if (tap === null) return null;
   const goal = await goalWithTheCard(threadId, userId);
   if (goal === null) return null;
-  if (goal.settled || !(await claimTheCard(goal.id))) return ALREADY_SETTLED;
+  if (goal.settled) return alreadySettled(goal.choice);
+  if (!(await claimTheCard(goal.id, tap))) return alreadySettled(null);
   if (tap === OpenAsksTap.Close) return CLOSED_LINE(await cancelAsksForTask(goal.id));
   return KEPT_LINE;
 }
