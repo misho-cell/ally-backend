@@ -200,6 +200,7 @@ import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { BridgeNeed } from './bridgePicker';
+import { noteSecondDegreeResult, rememberedBridgeNeed } from './bridgeNeeds';
 import { logSearchActivity } from './abuseDetection.service';
 import { logToolCall } from './toolCallLog.service';
 import { recordSearchOutcome, isSearchOutcome, SEARCH_OUTCOMES } from './searchOutcome.service';
@@ -7041,8 +7042,8 @@ async function executeToolCall(
         runId,
         threadId,
       );
-    case 'search_second_degree':
-      return runLoggedSearch(
+    case 'search_second_degree': {
+      const found = await runLoggedSearch(
         userId,
         'second_degree',
         input['tag_query'] as string,
@@ -7050,6 +7051,13 @@ async function executeToolCall(
         runId,
         threadId,
       );
+      // G4 (the tester's 994): an ask to one of these bridges carries the need
+      // even when the model leaves `need` out — see bridgeNeeds.ts.
+      if (threadId !== undefined && typeof input['tag_query'] === 'string') {
+        noteSecondDegreeResult(threadId, input['tag_query'], found);
+      }
+      return found;
+    }
     case 'search_contacts_by_country':
       // `resolvePrefix` lowercases the country before anything else; an omitted
       // field was a TypeError, where the honest answer `unknown_country` was
@@ -7503,7 +7511,7 @@ async function executeToolCall(
         question,
         undefined,
         threadId,
-        bridgeNeedFrom(input),
+        bridgeNeedFrom(input) ?? rememberedBridgeNeed(threadId, String(input['phone'] ?? '')),
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
         await markSearchSent(runId, userId, [input['phone']], threadId);
