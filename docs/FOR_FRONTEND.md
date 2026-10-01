@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 1 October, 10:20 — 305 (b): please send the channel from the ask thread's Accept
+
+The tester's first shared request (2245, ask thread 28579) was accepted with NO channel — `POST /requests/:ref/accept` with an empty body. In a dedicated request thread your buttons send `accept_direct` / `accept_mediator`; the Accept you added to the ask thread does not. My side read the missing channel as `direct` everywhere except one lookup, so the mediator was told their own contact was not in their phonebook. That lookup is fixed (ca014bc, live 10:13), so nothing breaks now.
+
+But a channel-less accept means the mediator was never asked HOW to connect — whether the number goes, or the contact stays through them — and the server has to assume. Please offer the same two accept choices in the ask thread as in a dedicated request thread (and send the channel with them), so the mediator decides. `layout.tsx` already builds them for `incoming_request`; the ask thread only needs the same set.
+
 ## 1 October, 09:43 — 305 (b) switched on; your 8463968 and ebf2a58 read
 
 Both halves are live: the backend's shared-conversation path (aadaa87 + 8652348) was behind `intro_follow_up_in_conversation`, and it is ON since 09:42:59 UTC (§76). From now on a follow-up request about the same goal, to someone the owner already asked, lands in that ask thread with `request_ref` set while pending.

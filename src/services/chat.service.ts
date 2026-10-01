@@ -1157,6 +1157,26 @@ export function ownerSaysSolved(
   return finishCardOnScreen && PLAN_YES.test(said);
 }
 
+/**
+ * Has the owner, in this thread, just called the goal solved? Null when the
+ * thread cannot be read — the caller then falls back to what it did before.
+ */
+async function ownerHasSaidSolved(
+  threadId: number,
+  runId: string | undefined,
+): Promise<boolean | null> {
+  const screen = await planConsentOnScreen(threadId).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[finish-consent] run ${runId ?? '-'}: could not read the thread:`,
+      (err as Error).message,
+    );
+    return null;
+  });
+  if (screen === null) return null;
+  return ownerSaysSolved(screen.lastOwnerMessage, screen.newestOfferedChoices);
+}
+
 const FINISH_TASK_TOOL: AnthropicTool = {
   name: 'finish_task',
   /**
@@ -1181,7 +1201,9 @@ const FINISH_TASK_TOOL: AnthropicTool = {
     SOLVED_LABEL +
     '" or say so in their own words. Their „' +
     STOP_LABEL +
-    '" is update_task(status closed) instead. Cancels any unanswered asks politely.',
+    '" is update_task(status closed) instead. When the owner\'s own message ALREADY says it is ' +
+    'solved (the button or their words), call with confirmed: true at once — do not ask who ' +
+    'solved it and do not ask them to confirm again; the first „solved" counts (D532).',
   input_schema: {
     type: 'object',
     properties: {
@@ -7261,7 +7283,11 @@ async function executeToolCall(
        * assistant's judgement. This used to close outright, which is how four
        * of his own goals read „solved" tonight.
        */
-      if (input['confirmed'] !== true) {
+      // Tester 944 (D532): the owner's first „solved" counts. Read once, here:
+      // when it is already on screen the goal closes now, whatever the model
+      // passed — no „who solved it?", no „confirm once more" before the close.
+      const ownerSaid = threadId === undefined ? null : await ownerHasSaidSolved(threadId, runId);
+      if (input['confirmed'] !== true && ownerSaid !== true) {
         return {
           closed: false,
           asked: true,
@@ -7277,33 +7303,24 @@ async function executeToolCall(
        * And the yes has to be the owner's, about THIS. Ticket 19 G2 proved a
        * `confirmed` flag cannot tell „they said yes to this" from „they said
        * yes to something" — the model sets the flag, so the server reads the
-       * thread instead. Same guard as approve_task_plan.
+       * thread instead. Same guard as approve_task_plan. An unreadable thread
+       * (null) keeps the old behaviour and trusts the flag.
        */
-      if (threadId !== undefined) {
-        const screen = await planConsentOnScreen(threadId).catch((err: unknown) => {
-          // eslint-disable-next-line no-console
-          console.error('[finish-consent] could not read the thread:', (err as Error).message);
-          return null;
-        });
-        if (
-          screen !== null &&
-          !ownerSaysSolved(screen.lastOwnerMessage, screen.newestOfferedChoices)
-        ) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `[finish-consent] run ${runId ?? '-'} thread ${threadId}: close refused — the owner has not called it solved`,
-          );
-          return {
-            closed: false,
-            asked: true,
-            error:
-              'NOT CLOSED — and do not tell them it is. The goal is still open. Their last ' +
-              'message was about something else, so nobody has said this is solved. Show what ' +
-              `was achieved and offer „${SOLVED_LABEL}" / „${NOT_YET_LABEL}" / „${STOP_LABEL}" ` +
-              '(in their language), and call this only after they answer THAT. Saying „closed" ' +
-              'now would be telling them something that did not happen.',
-          };
-        }
+      if (ownerSaid === false) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[finish-consent] run ${runId ?? '-'} thread ${threadId}: close refused — the owner has not called it solved`,
+        );
+        return {
+          closed: false,
+          asked: true,
+          error:
+            'NOT CLOSED — and do not tell them it is. The goal is still open. Their last ' +
+            'message was about something else, so nobody has said this is solved. Show what ' +
+            `was achieved and offer „${SOLVED_LABEL}" / „${NOT_YET_LABEL}" / „${STOP_LABEL}" ` +
+            '(in their language), and call this only after they answer THAT. Saying „closed" ' +
+            'now would be telling them something that did not happen.',
+        };
       }
       // Row 147, first half: this is the one route that means the work is DONE.
       const closed = await updateTask(userId, taskId, 'closed', summary, 'finished');

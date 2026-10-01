@@ -1,6 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ownerSaysSolved } from '../chat.service';
 
 /**
@@ -45,5 +47,32 @@ describe("the owner's first solved closes the goal, whatever the model called th
     expect(ownerSaysSolved('Not solved yet', ['Solved', 'Not yet'])).toBe(false);
     expect(ownerSaysSolved('Не решено', ['Решено', 'Ещё нет'])).toBe(false);
     expect(ownerSaysSolved('Not solved', ['Not solved', 'Solved'])).toBe(false);
+  });
+});
+
+/**
+ * Tester 944 (D532): after „მოგვარებულია" the model asked „who solved it?" and
+ * then „confirm once more" before the close. The first „solved" counts: when
+ * the owner already said it, finish_task closes whatever flag the model sent.
+ */
+describe('the first „solved" is enough', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const handler = chat.slice(chat.indexOf("case 'finish_task': {"));
+  const body = handler.slice(0, handler.indexOf("case 'get_my_tasks':"));
+
+  it('reads the thread before asking for a confirmation', () => {
+    expect(body.indexOf('await ownerHasSaidSolved(threadId, runId)')).toBeLessThan(
+      body.indexOf("input['confirmed'] !== true && ownerSaid !== true"),
+    );
+  });
+
+  it('still refuses when the owner said something else', () => {
+    expect(body).toContain('if (ownerSaid === false) {');
+  });
+
+  it('tells the model not to ask again', () => {
+    expect(chat).toContain(
+      "do not ask who ' +\n    'solved it and do not ask them to confirm again",
+    );
   });
 });
