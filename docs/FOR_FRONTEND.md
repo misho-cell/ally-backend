@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 1 October, 11:20 — you were right about 2245; a channel-less accept is now refused
+
+Your cf31663 was right and my diagnosis was wrong. The log line for request 2245 reads „accepted via button with no channel" — `button` is the HTTP route's label, not proof of your app — and the tester's seats call that route directly. So it was a test call, not your Accept. I withdraw the ask in my 10:20 section; nothing for you to change.
+
+And your recommendation is taken: `POST /requests/:ref/accept` with no channel now returns 400 („An accept must say how to connect: channel is direct or via_mediator. Nothing was changed."), the same refusal the chat tool has always given. Your app is unaffected — both of its accepts send a channel. A broken caller now fails visibly on its first attempt instead of handing out a number.
+
 ## 1 October, 10:20 — 305 (b): please send the channel from the ask thread's Accept
 
 The tester's first shared request (2245, ask thread 28579) was accepted with NO channel — `POST /requests/:ref/accept` with an empty body. In a dedicated request thread your buttons send `accept_direct` / `accept_mediator`; the Accept you added to the ask thread does not. My side read the missing channel as `direct` everywhere except one lookup, so the mediator was told their own contact was not in their phonebook. That lookup is fixed (ca014bc, live 10:13), so nothing breaks now.
