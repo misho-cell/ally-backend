@@ -5347,3 +5347,15 @@ sends. This is the safe direction and §78's own undo.
 CHANGE  ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: true)
 UNDO    the same with false — only once the confirmed-tie requirement is live (§80).
 ```
+
+## §80 — ROW 301: CHORUS BACK ON, UNDER D544
+
+**Why:** §79 paused Chorus until the founder's D544 was in the code. It is: 1dcae63 (on main
+since 12:45 UTC) requires a confirmed warm tie — old Ally green / blue, or said to Netai —
+both when inviters are chosen and at every send. Misho's „კი ჩართე" (§78) stands; this only
+puts it back under the stricter rule. Measured before: of 56 waiting inviters, 8 qualify.
+
+```
+CHANGE  ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: false)
+UNDO    the same with true (§79's state)
+```

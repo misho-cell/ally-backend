@@ -126,6 +126,15 @@ describe('the opening searches run without being asked', () => {
     expect(out.missing).toEqual(['search_second_degree']);
   });
 
+  /**
+   * Question A, the tester's 953: the run needs the web search's own result to
+   * allow its numbers; only a serialised string used to come back.
+   */
+  it('hands back the raw web result beside the text the model reads', async () => {
+    const out = await runOpeningSearches('501', 'რამე', 'run-1', 15907);
+    expect(out.webRaw).toEqual({ results: ['a plumber in Batumi'] });
+  });
+
   it('both failing is still an answer, not an exception', async () => {
     mockWeb.mockRejectedValue(new Error('tavily down'));
     mockSecond.mockRejectedValue(new Error('statement timeout'));

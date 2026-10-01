@@ -3,6 +3,7 @@ import { join } from 'path';
 import {
   historyWebResults,
   nationalForm,
+  webNumberSpellings,
   webNumbersWithSource,
   wrapNumbers,
 } from '../chat.service';
@@ -338,11 +339,34 @@ describe('a Georgian number is allowed however it is written', () => {
 });
 
 describe('both forms are registered at both web doors', () => {
-  it('uses registerWebNumber for live results and for history', () => {
+  /**
+   * The tester's 953: an opening search's numbers were never registered, so a
+   * FRESH thread still showed „[hidden]". Every web door goes through one
+   * function now: the model's web_search / fetch_page, the history, and the
+   * opening search.
+   */
+  it('registers every web door through one function', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat.match(/registerWebNumber\(runId, phone, source\);/g)).toHaveLength(2);
+    expect(chat.match(/registerWebNumber\(runId, phone, source\);/g)).toHaveLength(1);
+    expect(chat).toContain('registerWebResult(runId, raw);');
     expect(chat).toContain(
-      'if (national !== null) registerAllowedNumber(runId, national, source);',
+      'for (const result of historyWebResults(history)) registerWebResult(runId, result);',
     );
+    expect(chat).toContain(
+      'if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);',
+    );
+    expect(chat).toContain(
+      'for (const spelling of webNumberSpellings(phone)) registerAllowedNumber(runId, spelling, source);',
+    );
+  });
+});
+
+describe('the spellings one printed number may take', () => {
+  it('splits an address number glued on by a full stop', () => {
+    expect(webNumberSpellings('12. 422277343')).toEqual(['12. 422277343', '422277343']);
+  });
+
+  it('adds the national form of a +995 number, and keeps short parts out', () => {
+    expect(webNumberSpellings('+995 570 50 61 64')).toEqual(['+995 570 50 61 64', '570 50 61 64']);
   });
 });

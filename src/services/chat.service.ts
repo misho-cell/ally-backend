@@ -6466,16 +6466,19 @@ export function historyWebResults(history: readonly Anthropic.MessageParam[]): u
   return found;
 }
 
+/** One web result's pages and published numbers, allowed for the run. */
+function registerWebResult(runId: string | undefined, result: unknown): void {
+  registerWebPages(runId, result);
+  for (const { phone, source } of webNumbersWithSource(result)) {
+    registerWebNumber(runId, phone, source);
+  }
+}
+
 function registerHistoryWebResults(
   runId: string,
   history: readonly Anthropic.MessageParam[],
 ): void {
-  for (const result of historyWebResults(history)) {
-    registerWebPages(runId, result);
-    for (const { phone, source } of webNumbersWithSource(result)) {
-      registerWebNumber(runId, phone, source);
-    }
-  }
+  for (const result of historyWebResults(history)) registerWebResult(runId, result);
 }
 
 function withRunPageLinks(text: string, runId: string): string {
@@ -6500,9 +6503,25 @@ export function nationalForm(phone: string): string | null {
 /** A web number is allowed as printed and, for a Georgian one, as said at home. */
 function registerWebNumber(runId: string | undefined, phone: string, source: string): void {
   if (!runId) return;
-  registerAllowedNumber(runId, phone, source);
-  const national = nationalForm(phone);
-  if (national !== null) registerAllowedNumber(runId, national, source);
+  for (const spelling of webNumberSpellings(phone)) registerAllowedNumber(runId, spelling, source);
+}
+
+/**
+ * Every spelling a reply may use for one number the page printed. The tester's
+ * 953: „ნოე ჟორდანიას ქუჩა N12. 422277343" was read as ONE run, „12. 422277343",
+ * and the phone itself never matched. So the parts either side of a full stop
+ * or comma count too, and a Georgian number counts in its national form.
+ */
+export function webNumberSpellings(phone: string): string[] {
+  const parts = [phone, ...phone.split(/[.,;]\s+/).map((part) => part.trim())];
+  const spellings = new Set<string>();
+  for (const part of parts) {
+    if (part.replace(/\D/g, '').length < MIN_SHOWABLE_DIGITS) continue;
+    spellings.add(part);
+    const national = nationalForm(part);
+    if (national !== null) spellings.add(national);
+  }
+  return [...spellings];
 }
 
 /** Every phone-shaped run of digits in one web result, with its page. */
@@ -8517,12 +8536,7 @@ async function runOneToolBlock(
   // web result arrives, so no later surface has to decide what is public.
   // Question A: and a page this run OPENED is a web page too — the listing a
   // lead is read from is exactly where its published number lives.
-  if (block.name === 'web_search' || block.name === 'fetch_page') {
-    registerWebPages(runId, raw);
-    for (const { phone, source } of webNumbersWithSource(raw)) {
-      registerWebNumber(runId, phone, source);
-    }
-  }
+  if (block.name === 'web_search' || block.name === 'fetch_page') registerWebResult(runId, raw);
   // One choke point, so the next contact-data tool cannot forget it.
   const result = CONTACT_DATA_TOOLS.has(block.name) ? scrubEmailsDeep(raw) : raw;
   const diet = dietToolResult(result);
@@ -9304,6 +9318,9 @@ function startOpeningSearches(
   void runOpeningSearches(userId, goalText, runId, threadId)
     .then((found) => {
       landed = found;
+      // Question A (tester 953): what the opening web search published is
+      // allowed for this run, exactly as the model's own web_search is.
+      if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);
       // Row 154: the verdicts still join the run's collection for the „From
       // the web" message, whenever they arrive. If the run finishes first the
       // message simply does not carry them, which is what it already does when

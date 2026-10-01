@@ -50,7 +50,9 @@ describe('a number on a page the run opened may be shown', () => {
 
   it('is registered for fetch_page, not only for web_search', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain("if (block.name === 'web_search' || block.name === 'fetch_page') {");
+    expect(chat).toContain(
+      "if (block.name === 'web_search' || block.name === 'fetch_page') registerWebResult(runId, raw);",
+    );
   });
 });
 
@@ -95,6 +97,6 @@ describe('a web-found person is linked by name', () => {
     const at = chat.indexOf('if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);');
     expect(at).toBeGreaterThan(0);
     expect(chat.indexOf('const reply = wrapAllowedNumbers(', at)).toBeGreaterThan(at);
-    expect(chat).toContain('registerWebPages(runId, raw);');
+    expect(chat).toContain('registerWebPages(runId, result);');
   });
 });

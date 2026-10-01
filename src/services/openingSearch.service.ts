@@ -131,6 +131,13 @@ export interface OpeningSearches {
   readonly missing: readonly string[];
   /** Row 154: for each name the web returned, the owner's own way in. */
   readonly waysIn: ReadonlyMap<string, WayIn>;
+  /**
+   * Question A, the tester's 953: the web search's own result, so the run can
+   * allow its published numbers and link its pages. The serialised `web` text
+   * went to the model and nothing registered what it carried — every phone
+   * from an opening search came out „[hidden]", fresh thread or not.
+   */
+  readonly webRaw?: unknown;
 }
 
 /**
@@ -311,6 +318,7 @@ export async function runOpeningSearches(
   // Row 154: filled by the web branch below, once the search it depends on
   // has returned. Declared here so the caller can read it after both branches.
   let waysIn: Map<string, WayIn> = new Map();
+  let webRaw: unknown = null;
 
   /**
    * ROW 253 — A PERSON'S NAME MUST NOT LEAVE THE BUILDING TO ANSWER A QUESTION
@@ -379,6 +387,7 @@ export async function runOpeningSearches(
     const search = webSearch(searched.query);
     const serialised = await logged('web_search', search, true, searched);
     const raw = await search;
+    webRaw = raw;
     // The way-in lookups run HERE, inside the web branch, after the search
     // they depend on.
     waysIn = await findWaysIn(userId, webResultNames(raw), { threadId, runId });
@@ -398,7 +407,7 @@ export async function runOpeningSearches(
   // decision would be a false one.
   if (web === null && !reachingForAPerson) missing.push('web_search');
   if (secondDegree === null) missing.push('search_second_degree');
-  return { web, secondDegree, missing, waysIn };
+  return { web, secondDegree, missing, waysIn, ...(webRaw !== null && { webRaw }) };
 }
 
 /** Results are handed to the model, never to a screen, so the labels are plain. */
