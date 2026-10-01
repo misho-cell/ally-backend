@@ -5271,3 +5271,21 @@ UNDO    PUT the same route with §74's text (prompt_block_history, the row befor
 
 **§75 RUN, 1 October 09:36 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
 `success: true`; read back: 1,964 characters, enabled, all six modes, item 11 present.
+
+## §76 — ROW 305 (b) SWITCHED ON: A FOLLOW-UP REQUEST CONTINUES THE CONVERSATION
+
+**Why:** Tornike's decision (D530, box 28216). The backend half is on main since 09:22
+(aadaa87 + 8652348) behind `intro_follow_up_in_conversation`, off by default until the
+client could draw Accept / Decline inside an ask thread. The frontend shipped that half
+(8463968, TO_BACKEND 1 Oct „305b done"); its `message_appended` handler takes the new
+`kind: 'request'` as an ordinary bubble. From the switch on, a request about the same goal
+to someone the owner already asked continues that ask thread instead of opening two new
+threads. Every other request is unchanged.
+
+```
+ROUTE   PUT /admin/flags/intro_follow_up_in_conversation   (requireAdminRole)
+BODY    { "enabled": true }
+UNDO    PUT the same route with { "enabled": false } — new requests open their own
+        threads again; requests already written into a conversation stay there and
+        keep working (their threads are found through mediator_thread_id).
+```
