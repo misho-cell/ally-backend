@@ -642,6 +642,34 @@ async function loadRequestForMediator(
   return result.rows[0] ?? null;
 }
 
+/**
+ * PLATE v301 G6, THE SECOND HALF: the mediator was offered „connect them
+ * directly" for somebody whose number is not in his phone, chose it, and the
+ * asker was then told „the contact has not come through". „Directly" is only
+ * a real choice when there is a number to hand over.
+ *
+ * The same reading the accept itself makes: a number on the request, the
+ * target's own account, or EXACTLY ONE match in the mediator's book. Null when
+ * the request is not his to answer — the ordinary path then says so.
+ */
+export async function mediatorCanHandOver(
+  mediatorUserId: string,
+  requestId: number,
+): Promise<boolean | null> {
+  const req = await loadRequestForMediator(mediatorUserId, { requestId });
+  if (req === null) return null;
+  if (req.target_phone) return true;
+  if (req.target_user_id !== null) {
+    const own = await query<{ phone: string }>(
+      'SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 1',
+      [req.target_user_id],
+    );
+    if (own.rows.length > 0) return true;
+  }
+  const matches = await findContactPhonesByName(mediatorUserId, req.target_name, 2);
+  return matches.length === 1;
+}
+
 // The outcome as a MESSAGE in the requester's thread. A push notification
 // fires once, on one device, and is gone; the thread is what persists, and it
 // used to keep reading "ველოდები პასუხს" forever after a decline — the asker

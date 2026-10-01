@@ -1,5 +1,9 @@
-import { IntroChannel, resolveIntroductionRequest } from '../introduction.service';
-import { introChannelRequired } from '../introOpening';
+import {
+  IntroChannel,
+  mediatorCanHandOver,
+  resolveIntroductionRequest,
+} from '../introduction.service';
+import { introChannelRequired, introChannelWithoutDirect } from '../introOpening';
 import { RunLanguage } from '../runLanguage';
 import { userLanguage } from '../threads.service';
 
@@ -24,6 +28,17 @@ import { userLanguage } from '../threads.service';
  *
  * A DECLINE needs no channel. There is nothing to arrange.
  */
+/** G6's check, or null (the old path) when it cannot be read — logged, never silent. */
+async function handOverCheck(mediatorUserId: string, requestId: number): Promise<boolean | null> {
+  try {
+    return await mediatorCanHandOver(mediatorUserId, requestId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] could not check for a number to hand over:', (err as Error).message);
+    return null;
+  }
+}
+
 export async function respondToIntroduction(
   mediatorUserId: string,
   requestId: number,
@@ -31,6 +46,19 @@ export async function respondToIntroduction(
   response?: string,
   channel?: IntroChannel,
 ): Promise<object> {
+  // G6: „directly" only when there is a number to hand over.
+  if (accepted && channel !== 'via_mediator') {
+    const canHandOver = await handOverCheck(mediatorUserId, requestId);
+    if (canHandOver === false) {
+      const language = await userLanguage(mediatorUserId).catch(() => 'ka' as RunLanguage);
+      return {
+        success: false,
+        needs_channel: true,
+        direct_unavailable: true,
+        error: introChannelWithoutDirect(language),
+      };
+    }
+  }
   if (accepted && channel === undefined) {
     // The MEDIATOR's language: this refusal names the three button labels the
     // model must put on their screen, and they are the ones choosing whether

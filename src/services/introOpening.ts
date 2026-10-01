@@ -400,6 +400,43 @@ export function introAnsweredLine(language: RunLanguage): string {
  * the buttons cannot drift apart — which is how the plan card ended up telling
  * the model to offer a word the product had stopped using.
  */
+/**
+ * G6: the choice when there is no number to hand over — „directly" is not on
+ * offer, and the model is told why so it does not promise it.
+ */
+export function introChannelWithoutDirect(language: RunLanguage): string {
+  switch (language) {
+    case 'en':
+      return (
+        "Nothing recorded yet. The person asked for is not in this user's phone as a single " +
+        'clear contact, so `direct` is NOT possible — do not offer it. Offer two buttons with ' +
+        'present_choices: "Keep it through me" / "No, not this time", then call me again with ' +
+        '`channel: via_mediator` on the first.'
+      );
+    case 'ru':
+      return (
+        'Пока ничего не записано. Этого человека нет в телефоне пользователя как одного ' +
+        'понятного контакта, поэтому `direct` НЕВОЗМОЖЕН — не предлагай его. Покажи две кнопки ' +
+        'через present_choices: «Через меня» / «Нет, не сейчас», затем вызови меня снова с ' +
+        '`channel: via_mediator` на первую.'
+      );
+    case 'es':
+      return (
+        'Aún no se ha registrado nada. La persona pedida no está en el teléfono de este usuario ' +
+        'como un único contacto claro, así que `direct` NO es posible — no lo ofrezcas. Muestra ' +
+        'dos botones con present_choices: "Que pase por mí" / "No, esta vez no", y vuelve a ' +
+        'llamarme con `channel: via_mediator` en el primero.'
+      );
+    default:
+      return (
+        'ჯერ არაფერი ჩაწერილა. ეს ადამიანი მომხმარებლის ტელეფონში ერთ ცალსახა კონტაქტად არ ' +
+        'არის, ამიტომ `direct` შეუძლებელია — არ შესთავაზო. present_choices-ით აჩვენე ორი ' +
+        'ღილაკი: „ჩემი გავლით" / „არა, ამჯერად", და პირველზე დამიძახე ისევ ' +
+        '`channel: via_mediator`-ით.'
+      );
+  }
+}
+
 export function introChannelRequired(language: RunLanguage): string {
   switch (language) {
     case 'en':
