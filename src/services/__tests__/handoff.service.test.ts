@@ -193,6 +193,13 @@ describe('who posted it', () => {
       'SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by',
     );
     expect(source).toContain('SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by');
-    expect(source).toContain('posted_by_name: row.posted_by_name ?? null');
+    expect(source).toContain('posted_by_name: postedByName(row)');
+  });
+
+  /** The tester's 975 (D558): an AI seat on the shared login is named as itself. */
+  it('names an AI seat as itself, not the shared login', () => {
+    const source = readFileSync(join(__dirname, '..', 'handoff.service.ts'), 'utf8');
+    expect(source).toContain(`[HandoffAuthor.Tester]: "Tornike's Claude"`);
+    expect(source).toContain('return seat ?? row.posted_by_name ?? null;');
   });
 });

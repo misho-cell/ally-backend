@@ -96,13 +96,29 @@ const POSTED_BY_NAME_SQL = `COALESCE(
   (SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by),
   (SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by))`;
 
+/**
+ * The tester's 975 (D558): a seat that is an AI writes through the shared
+ * login, so the login's name („Misho") said the wrong thing on its rows. An AI
+ * seat is named as itself; a person's row keeps the name of their own login.
+ */
+const SEAT_NAMES: Readonly<Partial<Record<HandoffAuthor, string>>> = {
+  [HandoffAuthor.Tester]: "Tornike's Claude",
+  [HandoffAuthor.ClaudeBackend]: "Misho's Claude (backend)",
+  [HandoffAuthor.ClaudeFrontend]: "Misho's Claude (frontend)",
+};
+
+function postedByName(row: MessageRow): string | null {
+  const seat = isHandoffAuthor(row.author) ? SEAT_NAMES[row.author] : undefined;
+  return seat ?? row.posted_by_name ?? null;
+}
+
 function toMessage(row: MessageRow): HandoffMessage {
   return {
     id: row.id,
     author: row.author,
     body: row.body,
     posted_by: row.posted_by,
-    posted_by_name: row.posted_by_name ?? null,
+    posted_by_name: postedByName(row),
     // ISO 8601 at the boundary: Postgres's own text form is not something
     // Safari parses, and this thread is read on phones.
     created_at: new Date(row.created_at).toISOString(),

@@ -291,12 +291,7 @@ import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
-import {
-  ANSWER_SENT_LINE,
-  saveSimilarRuleOnTap,
-  SIMILAR_RULE_LABEL,
-  withAnswerSentLine,
-} from './similarAnswerRule';
+import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
 import {
@@ -2029,15 +2024,16 @@ export const WAKE_SHARE_NOTE =
  * server card — show it once, in its own words, and nothing that reads like a
  * form.
  */
-/** D527: what the model is told after an answer went — one optional button, no rule yet. */
-export function similarRuleOfferNote(language: RunLanguage): string {
+/**
+ * D562 (Tornike, 1 October; amends D527): the „answer similar ones" button is
+ * gone from the app. After an answer goes, the reply is the one line that it
+ * went — no button, and no rule is ever saved from a send.
+ */
+export function answerSentNote(language: RunLanguage): string {
   return (
-    'The answer went. You may offer ONE optional button, exactly „' +
-    SIMILAR_RULE_LABEL[language] +
-    '", via present_choices, in ONE line that opens by saying the answer went („' +
+    'The answer went. Reply with exactly one line, „' +
     ANSWER_SENT_LINE[language] +
-    '"). No rule is saved now; never say ' +
-    "one was. Only the owner's tap on that button saves it."
+    '" — no buttons, no offer to remember it, and never say a rule was saved.'
   );
 }
 
@@ -2046,23 +2042,24 @@ export function planInYourReplyNote(language: RunLanguage): string {
   const text: Record<RunLanguage, string> = {
     ka:
       'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, შენი ' +
-      'სიტყვებით, ჩვეულებრივი წინადადებებით: რას ჩავთვლით მოგვარებულად, როგორ ეძებ და ვის ' +
-      'ჰკითხავ, სახელებით. ვერსია, სათაურები და ველების სახელები არ დაწერო. გეგმა ბოლოს ამ ' +
+      'სიტყვებით, ჩვეულებრივი წინადადებებით: როგორ ეძებ და ვის ჰკითხავ, სახელებით. არ დაწერო, ' +
+      'რას ჩავთვლით მოგვარებულად (D561). ვერსია, სათაურები და ველების სახელები არ დაწერო. გეგმა ბოლოს ამ ' +
       'კითხვით დაასრულე: „{closing}". მერე present_choices — ',
     en:
       'The plan is saved but not on screen yet. Write it in your reply ONCE, in your own words, as ' +
-      'plain sentences: what counts as solved, how you will look, and whom you will ask, by name. ' +
+      'plain sentences: how you will look and whom you will ask, by name — never what counts as ' +
+      'solved (D561). ' +
       'No version number, no headings, no field labels. End the plan with this question, word for ' +
       'word: „{closing}". Then present_choices — ',
     ru:
       'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, своими словами, ' +
-      'обычными предложениями: что считать решением, как будешь искать и кого спросишь, по ' +
-      'именам. Без номера версии, заголовков и названий полей. Закончи план этим вопросом: ' +
+      'обычными предложениями: как будешь искать и кого спросишь, по именам — никогда не пиши, ' +
+      'что считать решением (D561). Без номера версии, заголовков и названий полей. Закончи план этим вопросом: ' +
       '„{closing}". Затем present_choices — ',
     es:
       'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, con ' +
-      'tus palabras, en frases normales: qué cuenta como resuelto, cómo buscarás y a quién ' +
-      'preguntarás, por nombre. Sin número de versión, títulos ni nombres de campos. Termina el ' +
+      'tus palabras, en frases normales: cómo buscarás y a quién preguntarás, por nombre — nunca ' +
+      'qué cuenta como resuelto (D561). Sin número de versión, títulos ni nombres de campos. Termina el ' +
       'plan con esta pregunta: „{closing}". Luego present_choices — ',
   };
   return (
@@ -7478,7 +7475,7 @@ async function executeToolCall(
       // is one optional button after the answer, saved only on its tap.
       const sent = await sendApprovedAskAnswer(userId, threadId, answerText);
       if (sent.sent && runId) runAnswerSent.add(runId);
-      return sent.sent ? { ...sent, offer_rule: similarRuleOfferNote(runLang(runId)) } : sent;
+      return sent.sent ? { ...sent, next: answerSentNote(runLang(runId)) } : sent;
     }
     case 'list_answer_rules': {
       const rules = await listAnswerRules(userId);
@@ -11607,16 +11604,8 @@ export async function processChat(
         console.error('[open-asks] tap failed:', (err as Error).message);
         return null;
       });
-  // D527: the rule button, acted on by the server too.
-  const ruleSaved = ownerAbsent
-    ? null
-    : await saveSimilarRuleOnTap(userId, threadId, userMessage).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[answer-rule] tap failed:', (err as Error).message);
-        return null;
-      });
   const replyContext =
-    [tappedContext, approvedByTap, openAsksSettled, ruleSaved]
+    [tappedContext, approvedByTap, openAsksSettled]
       .filter((part): part is string => part !== null)
       .join('\n\n') || null;
   /**

@@ -1083,7 +1083,10 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
     name: p.name,
     note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],
   }));
-  const lines = [words.solved(withoutFinalStop(plan.solved_when))];
+  // D561 (Tornike, 1 October): the plan the owner reads no longer says when
+  // the goal counts as solved. `solved_when` is still kept and tracked; it is
+  // only not shown.
+  const lines: string[] = [];
   if (routes.length > 0) lines.push(words.routes(joinWithAnd(routes, words.and)));
   lines.push(people.length > 0 ? words.ask(people) : words.askNobody);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);

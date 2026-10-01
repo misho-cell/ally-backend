@@ -40,9 +40,11 @@ describe('the plan in plain sentences', () => {
     expect(text).not.toContain('Routes:');
   });
 
-  it('says what solved means, how it will look, and whom it will ask', () => {
+  /** D561 (Tornike, 1 October): the plan the owner reads no longer says when it counts as solved. */
+  it('says how it will look and whom it will ask — never when it counts as solved', () => {
     const text = planInSentences(PLAN, 'en');
-    expect(text).toContain('I will count it solved when a reliable architect is found');
+    expect(text).not.toContain('solved');
+    expect(text).not.toContain('a reliable architect is found');
     expect(text).toContain('I will look through Your own contacts and The second circle.');
     expect(text).toContain('I will ask Netai Test 50 and Netai Test 54 (not on Netai');
   });

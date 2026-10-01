@@ -45,27 +45,30 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
     'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
     'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
     'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
-    'შემოწმება. ბოლოს ერთი სტრიქონი: რა მიდის ახლა, ვის ვკითხე, როდის დავბრუნდები.',
+    'შემოწმება. ბოლოს ერთი სტრიქონი: ვის ვკითხე და შემდეგ ზუსტად ეს — „როგორც კი ვინმე ' +
+    'გიპასუხებს, მაშინვე გეტყვი." საათები და დღეები არ ახსენო (D563).',
   en:
     'The plan has just been approved — this is day one. The first rule of the standard: everything ' +
     'today. From the plan’s "who I will ask" list, write to the first 3–5 people at once — no ' +
     'separate consent is needed, and no showing the texts for confirmation either: the plan is ' +
     'approved and that IS the consent (D119). Run the web search and the network search along the ' +
-    'plan’s paths, and set the next check with set_task_wake. End with one line: what is running ' +
-    'now, whom I asked, when I come back.',
+    'plan’s paths, and set the next check with set_task_wake. End with one line: whom I asked, then ' +
+    'exactly „As soon as anyone answers, I will tell you." Never name hours or days (D563).',
   ru:
     'План только что утверждён — это первый день. Первое правило стандарта: всё сегодня. Из списка ' +
     '«кого спрошу» напиши первым 3–5 людям сразу — отдельное согласие не нужно, и показывать ' +
     'тексты на подтверждение тоже не нужно: план утверждён, и это и есть согласие (D119). Запусти ' +
     'веб-поиск и поиск по сети путями плана и назначь следующую проверку через set_task_wake. В ' +
-    'конце одна строка: что идёт сейчас, кого спросил, когда вернусь.',
+    'конце одна строка: кого спросил, и затем ровно «Как только кто-то ответит, сразу скажу.» ' +
+    'Не называй часы и дни (D563).',
   es:
     'El plan acaba de ser aprobado — es el día uno. La primera regla del estándar: todo hoy. De la ' +
     'lista «a quién preguntaré» del plan, escribe a las primeras 3–5 personas a la vez — no hace ' +
     'falta un consentimiento aparte, ni mostrar los textos para confirmarlos: el plan está ' +
     'aprobado y eso ES el consentimiento (D119). Lanza la búsqueda web y la búsqueda en la red por ' +
     'los caminos del plan, y fija la siguiente revisión con set_task_wake. Termina con una línea: ' +
-    'qué está en marcha ahora, a quién pregunté, cuándo vuelvo.',
+    'a quién pregunté y luego exactamente «En cuanto alguien responda, te lo diré.» Nunca ' +
+    'menciones horas ni días (D563).',
 };
 
 /**
