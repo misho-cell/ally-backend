@@ -22,6 +22,8 @@ describe('the rule', () => {
     expect(RULE_A_WEB_LEAD_DETAILS).toContain('the LINK to the page where they are listed');
     expect(RULE_A_WEB_LEAD_DETAILS).toContain('published on THAT page');
     expect(RULE_A_WEB_LEAD_DETAILS).toContain('never a detail from another page');
+    // The tester's 952: later replies in a thread copied „[hidden]" from earlier ones.
+    expect(RULE_A_WEB_LEAD_DETAILS).toContain('never write „[hidden]" yourself');
   });
 
   it('rides with web_search and in every run, beside 280', () => {

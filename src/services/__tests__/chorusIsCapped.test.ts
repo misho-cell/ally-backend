@@ -6,6 +6,7 @@ import { query } from '../../db/postgres/client';
 import {
   campaignsPerDay,
   campaignsThatSentToday,
+  confirmedWarmTieSql,
   peoplePerCampaign,
   withinDailyCampaignCap,
 } from '../chorusCap';
@@ -90,5 +91,37 @@ describe('where the cap is enforced', () => {
   it('on scheduling and on opening', () => {
     expect(chorus).toContain('candidatesForTarget.slice(0, Math.min(dial, peoplePerCampaign()))');
     expect(chorus).toContain('if (openedToday >= campaignsPerDay()) break;');
+  });
+});
+
+/**
+ * D544 — the founder, 1 October: an inviter is asked only when the tie to the
+ * target is CONFIRMED warm (old Ally green / blue, or said to Netai). A saved
+ * number is not enough; a computed score is not enough. Checked live before
+ * it shipped: of 56 pending inviters, 8 qualify; of the 7 asks sent that day,
+ * none did.
+ */
+describe('a Chorus inviter needs a confirmed warm tie', () => {
+  const sql = confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone');
+
+  it('accepts old Ally green / blue, legacy allies / loyal, and a stated close contact', () => {
+    expect(sql).toContain("h.tier IN ('green', 'blue')");
+    expect(sql).toContain(`uc."relationshipStatus"::text IN ('allies', 'loyal')`);
+    expect(sql).toContain("w.kind = 'stated_close'");
+  });
+
+  it('does not count a computed score', () => {
+    expect(sql).not.toContain('contact_relationship_scores');
+  });
+
+  it('compares phones by their digits, as the live check did', () => {
+    expect(sql).toContain("regexp_replace(h.contact_phone, '\\D', '', 'g')");
+    expect(sql).toContain("regexp_replace(c.target_phone, '\\D', '', 'g')");
+  });
+
+  it('is required when inviters are chosen and again at every send', () => {
+    const chorus = readFileSync(join(__dirname, '..', 'chorusCampaign.service.ts'), 'utf8');
+    expect(chorus).toContain("AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}");
+    expect(chorus).toContain("AND ${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')}");
   });
 });

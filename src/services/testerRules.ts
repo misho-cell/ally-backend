@@ -29,7 +29,9 @@ export const RULE_A_WEB_LEAD_DETAILS =
   'https:// address as the result gives it — not the site name, not a search page), and the ' +
   'phone number or e-mail address published on THAT ' +
   'page, if it shows one. Only what that page itself shows: never a detail from another page, ' +
-  'never a guessed address, never a number you did not read there.';
+  'never a guessed address, never a number you did not read there. „[hidden]" in an earlier ' +
+  'reply is a masked number, not something to repeat: if you need that number now, open the ' +
+  'page again with fetch_page, and never write „[hidden]" yourself.';
 
 /** Row 284 — read in every run. */
 export const RULE_284_ONE_REPLY_ONE_GOAL =

@@ -77,3 +77,46 @@ export function withinDailyCampaignCap<T extends { campaign_id: number }>(
     return true;
   });
 }
+
+/**
+ * D544 — THE FOUNDER, 1 OCTOBER 16:05 TBILISI: „it must be confirmed
+ * good/warm connection. that can be confirmed during conversations between
+ * netai and user and info from old ally colors - green/blue".
+ *
+ * Until now an inviter was anyone who had the target's number saved. All 7
+ * asks sent on 1 October went out that way, and none of the seven had a
+ * confirmed tie. A tie now counts only when one of these holds for THIS
+ * inviter and THIS target:
+ *
+ *   old Ally green / blue  — human_relationship_tiers, or the legacy
+ *                             UserConnection status it was copied from
+ *                             (allies = green, loyal = blue);
+ *   said to Netai           — a save_close_contact, kept as a warmth_events
+ *                             row of kind 'stated_close'.
+ *
+ * Computed scores (contact_relationship_scores) do not count: they can come
+ * from a guess at a contact's name.
+ *
+ * Built as SQL so the selection and every send ask the same question.
+ * `inviter` and `phone` are column expressions written by this file's callers,
+ * never values — the values stay parameters.
+ */
+const CONFIRMED_TIERS_SQL = "('green', 'blue')";
+const CONFIRMED_LEGACY_STATUSES_SQL = "('allies', 'loyal')";
+const STATED_CLOSE_KIND_SQL = "'stated_close'";
+
+export function confirmedWarmTieSql(inviter: string, phone: string): string {
+  const digits = (column: string): string => `regexp_replace(${column}, '\\D', '', 'g')`;
+  return `(
+    EXISTS (SELECT 1 FROM human_relationship_tiers h
+             WHERE h.user_id = ${inviter} AND h.tier IN ${CONFIRMED_TIERS_SQL}
+               AND ${digits('h.contact_phone')} = ${digits(phone)})
+    OR EXISTS (SELECT 1 FROM "UserConnectionPhone" ucp
+                 JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
+                WHERE ucp.phone = ${phone} AND uc."originUserId" = ${inviter}
+                  AND uc."relationshipStatus"::text IN ${CONFIRMED_LEGACY_STATUSES_SQL})
+    OR EXISTS (SELECT 1 FROM warmth_events w
+                WHERE w.user_id = ${inviter} AND w.kind = ${STATED_CLOSE_KIND_SQL}
+                  AND ${digits('w.contact_phone')} = ${digits(phone)})
+  )`;
+}

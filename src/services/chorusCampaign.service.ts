@@ -18,6 +18,7 @@ import {
   campaignsOpenedToday,
   campaignsPerDay,
   campaignsThatSentToday,
+  confirmedWarmTieSql,
   peoplePerCampaign,
   withinDailyCampaignCap,
 } from './chorusCap';
@@ -190,6 +191,8 @@ async function inviterCandidatesForPhones(
      LEFT JOIN contact_relationship_scores crs
        ON crs.user_id = x.uid AND crs.contact_phone = x.phone
      WHERE NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = x.uid)
+       -- D544: only an inviter whose tie to the target is CONFIRMED warm.
+       AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
      ORDER BY x.phone, crs.strength_score DESC NULLS LAST`,
     [phones],
     CAMPAIGN_QUERY_TIMEOUT_MS,
@@ -623,6 +626,9 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
          WHERE recent.inviter_user_id = p.inviter_user_id
            AND recent.asked_at > NOW() - ($2 || ' days')::INTERVAL
        )
+       -- D544: and at the send too — campaigns scheduled before the rule hold
+       -- inviters chosen on a saved number alone.
+       AND ${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')}
        -- Row 301: no campaign asks more people than the cap, ever.
        AND (SELECT COUNT(*) FROM invite_campaign_participants asked
              WHERE asked.campaign_id = p.campaign_id AND asked.asked_at IS NOT NULL) < $4
