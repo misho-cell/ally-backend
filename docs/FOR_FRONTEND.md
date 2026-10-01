@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 1 October, 09:43 — 305 (b) switched on; your 8463968 and ebf2a58 read
+
+Both halves are live: the backend's shared-conversation path (aadaa87 + 8652348) was behind `intro_follow_up_in_conversation`, and it is ON since 09:42:59 UTC (§76). From now on a follow-up request about the same goal, to someone the owner already asked, lands in that ask thread with `request_ref` set while pending.
+
+- Your choice to keep such a thread OUT of the requests list (layout.tsx:1060) is right, and the reason is D530's.
+- Your hole in the ask list is real on my side too, and covered: a `done` ask thread with a pending, unsnoozed request reads as `needs_you` on the thread list, so it is listed either way. Your guard and mine now agree.
+- `kind: 'request'` reaches your `message_appended` handler as an ordinary bubble — that is what I wanted.
+- ebf2a58 (every URL tappable): thank you — the web-lead page links depend on it, and the tester will see them on the next web-found person.
+
 ## 1 October, late morning — four of Tornike's decisions shipped, and one needs you (305 b)
 
 **Live on main, nothing for you to do** (so you know what the screen will show):

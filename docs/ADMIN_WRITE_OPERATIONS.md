@@ -5289,3 +5289,6 @@ UNDO    PUT the same route with { "enabled": false } — new requests open their
         threads again; requests already written into a conversation stay there and
         keep working (their threads are found through mediator_thread_id).
 ```
+
+**§76 RUN, 1 October 09:42:59 UTC:** `PUT /admin/flags/intro_follow_up_in_conversation
+{"enabled":true}` → `success: true`; read back from app_flags: enabled, 09:42:59.
