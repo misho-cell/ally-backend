@@ -45,7 +45,8 @@ describe('the system prompt is cached up to its per-minute tail', () => {
   it('is what the run actually sends', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('system: systemBlocks(systemPrompt),');
-    expect(chat).toContain('plainSystemPrompt(systemPrompt),');
+    // GPT gets the markerless prompt; since row 290 its own blocks ride after it.
+    expect(chat).toContain('plainSystemPrompt(systemPrompt) + gptBlocks,');
     expect(chat).toContain('sameRequestAgain + agentPrompt.volatilePrompt,');
     // The clock is no longer part of the stable string.
     expect(chat).toContain('const volatilePrompt = buildTodaySection(new Date());');

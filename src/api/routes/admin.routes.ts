@@ -85,6 +85,7 @@ import {
   deletePromptBlock,
   getPromptBlockHistory,
   computeModeTotals,
+  PromptModel,
   listRunStamps,
   isValidBlockName,
   isRunMode,
@@ -442,6 +443,10 @@ interface PromptBlocksListing {
   blocks: PromptBlock[];
   modes: readonly string[];
   mode_totals: ModeTotal[];
+  /** Row 290: the same meter for GPT's own blocks. */
+  gpt_mode_totals: ModeTotal[];
+  /** Row 290: the values the editor's model selector offers. */
+  models: readonly string[];
   /**
    * The per-BLOCK cap, served by the server so the editor cannot show a
    * different number from the one that validates the save (ticket 9 task 26).
@@ -464,7 +469,10 @@ adminRouter.get(
         data: {
           blocks,
           modes: RUN_MODES,
-          mode_totals: computeModeTotals(blocks),
+          mode_totals: computeModeTotals(blocks, PromptModel.Claude),
+          // Row 290: GPT's blocks have their own budget per mode.
+          gpt_mode_totals: computeModeTotals(blocks, PromptModel.Gpt),
+          models: Object.values(PromptModel),
           max_block_content_chars: MAX_BLOCK_CONTENT_CHARS,
         },
       });
@@ -485,6 +493,10 @@ adminRouter.put(
     // Row 215: the refusal names the way round it. One string, so the route
     // and the service cannot drift into saying two different things.
     .withMessage(BLOCK_TOO_LONG_MESSAGE),
+  body('model')
+    .optional()
+    .isIn(Object.values(PromptModel))
+    .withMessage('model must be "claude" or "gpt"'),
   body('modes').optional().isArray().withMessage('modes must be an array'),
   body('modes.*').optional().isString(),
   body('sort_order').optional().isInt({ min: 0, max: 100_000 }),

@@ -15,6 +15,7 @@ import {
   isRunMode,
   stampRunMode,
   PromptBlock,
+  PromptModel,
 } from '../promptBlocks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -27,6 +28,7 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 function block(over: Partial<PromptBlock>): PromptBlock {
   return {
     name: 'b',
+    model: PromptModel.Claude,
     content: 'x',
     modes: [],
     sort_order: 100,
@@ -85,7 +87,9 @@ describe('composeBlocksForMode', () => {
     expect(sql).toContain('$1 = ANY(modes)');
     expect(sql).toContain('cardinality(enabled_for_user_ids) = 0 OR $2::int = ANY');
     expect(sql).toContain('ORDER BY sort_order ASC, name ASC');
-    expect(mockQuery.mock.calls[0][1]).toEqual(['quick_answer', '501']);
+    expect(mockQuery.mock.calls[0][1]).toEqual(['quick_answer', '501', 'claude']);
+    // Row 290: Claude's run reads only Claude's blocks.
+    expect(sql).toContain('model = $3');
   });
 
   it('skips empty-content blocks entirely', async () => {
@@ -128,6 +132,7 @@ describe('upsertPromptBlock', () => {
       5,
       true,
       [501],
+      'claude',
     ]);
     const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
     expect(history?.params?.[1]).toBe('create');
@@ -140,7 +145,7 @@ describe('upsertPromptBlock', () => {
     await upsertPromptBlock('tone', { enabled: false });
 
     const upsert = txQueries.find((q) => q.sql.includes('ON CONFLICT (name) DO UPDATE'));
-    expect(upsert?.params).toEqual(['tone', 'KEEP', ['task_step'], 7, false, []]);
+    expect(upsert?.params).toEqual(['tone', 'KEEP', ['task_step'], 7, false, [], 'claude']);
     const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
     expect(history?.params?.[1]).toBe('update');
   });
@@ -429,5 +434,52 @@ describe('one mode may have more room than the others', () => {
     expect(quick?.budget_chars).toBe(44_000);
     expect(quick?.remaining_chars).toBe(44_000);
     expect(step?.budget_chars).toBe(40_000);
+  });
+});
+
+/**
+ * Row 290 — GPT gets a prompt of its own, edited the same way as Claude's.
+ */
+describe('a block says which model reads it', () => {
+  it('loads only GPT blocks for a GPT read', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await composeBlocksForMode('quick_answer', '501', PromptModel.Gpt);
+    expect(mockQuery.mock.calls[mockQuery.mock.calls.length - 1][1]).toEqual([
+      'quick_answer',
+      '501',
+      'gpt',
+    ]);
+  });
+
+  it("creates a GPT block when asked, and keeps an existing block's model on a partial update", async () => {
+    stubCatalog(null, []);
+    await upsertPromptBlock('gpt_voice', {
+      content: 'ქართული',
+      modes: ['quick_answer'],
+      model: PromptModel.Gpt,
+    });
+    const upsert = txQueries.find((q) => q.sql.includes('ON CONFLICT (name) DO UPDATE'));
+    expect(upsert?.params?.[6]).toBe('gpt');
+    const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
+    expect(history?.params?.[7]).toBe('gpt');
+  });
+
+  it('refuses a model that does not exist', async () => {
+    await expect(
+      upsertPromptBlock('x_block', { content: 'x', model: 'gemini' as PromptModel }),
+    ).rejects.toThrow(/model must be/);
+  });
+
+  it("meters each model's blocks against their own budget", () => {
+    const blocks = [
+      block({ name: 'a', content: 'xxxx', modes: ['quick_answer'] }),
+      { ...block({ name: 'g', content: 'yy', modes: ['quick_answer'] }), model: PromptModel.Gpt },
+    ];
+    const claude = computeModeTotals(blocks, PromptModel.Claude).find(
+      (m) => m.mode === 'quick_answer',
+    );
+    const gpt = computeModeTotals(blocks, PromptModel.Gpt).find((m) => m.mode === 'quick_answer');
+    expect(claude?.enabled_chars).toBe(4);
+    expect(gpt?.enabled_chars).toBe(2);
   });
 });

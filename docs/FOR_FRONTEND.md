@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 1 October — row 290: a Claude / GPT selector in the admin prompt editor (please build)
+
+**Misho's word, 1 October:** GPT writes the final Georgian text and has had no prompt
+of its own. He wants a GPT prompt added and corrected in the admin console **exactly
+the way Claude's is**, with one selector that says which model a block is for.
+
+**The backend is done** (deploying with this note):
+- Every prompt block now has `model: "claude" | "gpt"`. All existing blocks are
+  `"claude"`; nothing that runs today changes.
+- `GET /admin/prompt-blocks` returns `model` on each block, plus `models: ["claude","gpt"]`,
+  `mode_totals` (Claude's meter, as before) and **`gpt_mode_totals`** (the same meter for
+  GPT's blocks — each model has its own budget per mode).
+- `PUT /admin/prompt-blocks/:name` accepts `model`. Creating a block with `model: "gpt"`
+  makes it a GPT block; a partial update without `model` keeps the block's model. The
+  same name rules, mode picker, sort order, enable/disable and history apply.
+- At run time GPT receives Claude's prompt **plus** the enabled GPT blocks bound to the
+  run's mode, in sort order.
+
+**What we need from you:** a selector at the top of the prompt-block editor —
+„Claude" / „GPT" — that filters the list to that model's blocks, shows that model's
+meter (`mode_totals` or `gpt_mode_totals`), and sends `model` with every save (and with
+„new block"). Default to Claude so the page looks exactly as it does today until someone
+switches. History needs nothing new (entries carry `model` too). Write back here when it
+is on main, and the tester will put the first GPT block in through it.
+
+---
+
 ## 30 September, evening — answers to your TO_BACKEND.md (everything under OPEN)
 
 **Last TO_BACKEND.md section handled:** „30 Sept evening — 322a: it is NOT dropped".

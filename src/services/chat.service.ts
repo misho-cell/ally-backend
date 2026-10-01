@@ -209,7 +209,7 @@ import {
   MAX_TOOL_ITERATIONS,
   CLIFFHANGER_EXTRA_ROUNDS,
 } from '../config/runBudgets';
-import { composeBlocksForMode, stampRunMode, RunMode } from './promptBlocks.service';
+import { composeBlocksForMode, PromptModel, stampRunMode, RunMode } from './promptBlocks.service';
 import { recordWarmth } from './warmth.service';
 import { correctContactFact } from './factCorrections.service';
 import {
@@ -6171,6 +6171,21 @@ function runLang(runId: string | undefined): RunLanguage {
 
 // Every per-run map is dropped together at both run exits, so a crashed or
 // empty run never leaves a stale entry behind.
+/** Row 290: the mode each run resolved to, so GPT can load the same mode's blocks. */
+const runModes = new Map<string, RunMode>();
+
+/** GPT's own prompt blocks for this run's mode — empty when there are none or the read fails. */
+async function gptBlocksFor(runId: string, userId: string): Promise<string> {
+  const mode = runModes.get(runId);
+  if (mode === undefined) return '';
+  const composed = await composeBlocksForMode(mode, userId, PromptModel.Gpt);
+  if (composed.names.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[final-answer] run ${runId}: GPT blocks ${composed.versions.join(', ')}`);
+  }
+  return composed.text;
+}
+
 /**
  * Row 304, second half — the last real action a run announced, so its
  * heartbeat can repeat it instead of „still working, deep search takes time".
@@ -6179,6 +6194,7 @@ const runLastCaption = new Map<string, string>();
 
 function clearRunState(runId: string): void {
   runAllowedNumbers.delete(runId);
+  runModes.delete(runId);
   runLastCaption.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
@@ -9328,9 +9344,12 @@ async function runToolLoop(
     // has buffered; doing it before the call would wipe Claude's answer off
     // the screen on every run where this flag is off or the call then fails.
     let openAiStarted = false;
+    // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
+    // edited in the admin console with the model selector set to GPT.
+    const gptBlocks = await gptBlocksFor(runId, userId);
     const rewritten = await writeFinalAnswer(
       messages,
-      plainSystemPrompt(systemPrompt),
+      plainSystemPrompt(systemPrompt) + gptBlocks,
       (delta) => {
         if (!openAiStarted) {
           openAiStarted = true;
@@ -10738,6 +10757,7 @@ export async function processChat(
   ]);
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
+  runModes.set(runId, agentPrompt.runMode);
   void stampRunMode(
     runId,
     userId,
