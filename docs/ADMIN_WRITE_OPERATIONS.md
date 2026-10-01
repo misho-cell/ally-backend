@@ -5208,3 +5208,23 @@ has saved and nobody is registered on — the only ones a removal actually frees
 list of the 100 with their names and tags, for the §71 undo, was read from the
 base before the run and kept in the session's scratchpad (fictional numbers
 only; not pasted anywhere else).
+
+## §73 — THE FIRST GPT PROMPT BLOCK: HOW NETAI WRITES GEORGIAN (rows 290 → 313)
+
+**Why:** row 290 gave GPT prompt blocks of its own (backend 67176d9, the frontend's
+selector 3670871). Row 313 is the tester's Georgian-voice text (board 901), with item 2
+corrected to the server's own ask buttons and three more forbidden forms from 909/910
+(„შესძლო", „საინსათქო", „გულისძმა"). **Misho, 1 October: „კი, ჩასვი".** It only adds
+rules; only GPT reads it; nothing Claude reads changes.
+
+```
+ROUTE   PUT /admin/prompt-blocks/gpt_georgian_voice   (requireAdminRole)
+BODY    { "model": "gpt", "modes": [all six run modes], "sort_order": 100,
+          "enabled": true, "content": "<the text, ~1.6 KB>" }
+UNDO    DELETE /admin/prompt-blocks/gpt_georgian_voice
+        (or PUT { "enabled": false } to keep it parked)
+```
+
+**§73 RUN, 1 October ~07:15 UTC:** `PUT /admin/prompt-blocks/gpt_georgian_voice` →
+`success: true`, model `gpt`, all six modes, 1,251 characters, enabled. The text sent is
+kept in the session's scratchpad (gpt_block.txt).
