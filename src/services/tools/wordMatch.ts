@@ -134,24 +134,28 @@ export function buildExactMatchSql(
   // structured branches 2; the tools order by word_hits first, then priority.
   // The structured branches stay as mine-scoped joins over small sets
   // (registered contacts / the user's own facts).
+  // `own` (the tester's 988): did THIS match come from something the owner
+  // saved (their tag or alias), or from public fields (registered name, job,
+  // a public fact)? Only a match on another person's private label or fact is
+  // not own — and only a row with no own match is „found by others' labels".
   const matchedCte = `matched AS (
-     SELECT lt.phone, lt.label, 1 AS priority
+     SELECT lt.phone, lt.label, 1 AS priority, lt.own
      FROM mine m
      CROSS JOIN LATERAL (
-       SELECT t.phone, ${foldedLower('t.tag')} AS label
+       SELECT t.phone, ${foldedLower('t.tag')} AS label, (t."contactId" = $1) AS own
        FROM "UserTags" t
        WHERE t.phone = m.phone AND ${regexOr('t.tag')}
      ) lt
      UNION ALL
-     SELECT la.phone, la.label, 1 AS priority
+     SELECT la.phone, la.label, 1 AS priority, la.own
      FROM mine m
      CROSS JOIN LATERAL (
-       SELECT a.phone, ${foldedLower('a.alias')} AS label
+       SELECT a.phone, ${foldedLower('a.alias')} AS label, (a."contactId" = $1) AS own
        FROM "UserAlias" a
        WHERE a.phone = m.phone AND ${regexOr('a.alias')}
      ) la
      UNION ALL
-     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority
+     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own
      FROM "UserPhone" up2
      JOIN "User" u2 ON u2.id = up2."userId"
      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
@@ -159,14 +163,15 @@ export function buildExactMatchSql(
      UNION ALL
      SELECT up3.phone,
             ${foldedLower(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)} AS label,
-            2 AS priority
+            2 AS priority, TRUE AS own
      FROM "UserPhone" up3
      JOIN "User" u3 ON u3.id = up3."userId"
      WHERE up3.phone IN (SELECT phone FROM mine)
        AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
        AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
      UNION ALL
-     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority
+     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+            TRUE AS own
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.field_type IN ('occupation', 'employer', 'industry')
@@ -179,7 +184,8 @@ export function buildExactMatchSql(
      -- for an investor. Safe by construction, not by prompt: label lives only
      -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
      -- so the text can reach the ranking and never the reply.
-     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority
+     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+            FALSE AS own
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.retracted_at IS NULL

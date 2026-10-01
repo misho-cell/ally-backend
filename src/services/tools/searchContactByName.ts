@@ -35,6 +35,8 @@ const RESULT_LIMIT = 20;
 interface NameRow {
   phone: string;
   word_hits?: number | string | null;
+  /** The tester's 988: did any match come from the owner's own label or a public field? */
+  own_hit?: boolean | null;
   /** Row 137: of those words, how many the person's OWN registered name matched. */
   name_hits?: number | string | null;
   /** Their account's own name, where they have one — never a saved label. */
@@ -128,7 +130,8 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        SELECT phone FROM "UserAlias" WHERE "contactId" = $1
      )`;
     const hitsCte = `hits AS (
-       SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority
+       SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+              bool_or(own) AS own_hit
        FROM matched
        WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
@@ -143,6 +146,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     const nameHits = m.scalarHits(foldedLower(`COALESCE(MAX(NULLIF(TRIM(u.name), '')), '')`));
     const aggSelect = `SELECT h.phone,
               MAX(h.word_hits)                     AS word_hits,
+              BOOL_OR(h.own_hit)                   AS own_hit,
               (${nameHits})                        AS name_hits,
               MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
               ${DISPLAY_NAME} AS name,

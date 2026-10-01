@@ -63,6 +63,8 @@ export interface TagRow {
   saved_as: string | null;
   all_tags: string[];
   own_tags: string[] | null;
+  /** The tester's 988: did any match come from the owner's own label or a public field? */
+  own_hit?: boolean | null;
   employer: string | null;
   jobPosition: string | null;
   city: string | null;
@@ -165,12 +167,13 @@ async function runExactSearch(
     query<TagRow>(
       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
        hits AS (
-         SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority
+         SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+                bool_or(own) AS own_hit
          FROM matched
          WHERE phone != ALL($${m.blockIdx})
          GROUP BY phone
        )
-       SELECT ${AGG_SELECT}
+       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
        ${AGG_JOINS}
        GROUP BY h.phone
        ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC,
@@ -363,7 +366,19 @@ export function ownDisplayableTags(row: Pick<TagRow, 'own_tags'>): string[] {
   return (row.own_tags || []).filter((t: string) => Boolean(t) && isDisplayableTag(t));
 }
 
-export function othersLabelsMatched(row: Pick<TagRow, 'all_tags' | 'own_tags'>): boolean {
+/**
+ * The tester's 988 (Test 73, nine lawyers saved by the owner): this flag read
+ * „the person carries ANY label someone else saved", and on a phonebook built
+ * from shared numbers that is nearly everyone — so all nine came back flagged,
+ * and the run told the owner it could confirm none of them. When the query
+ * knows which matches were the owner's (`own_hit`), the flag means exactly
+ * „found ONLY through other people's labels". The fuzzy pass, which does not
+ * carry `own_hit`, keeps the old reading.
+ */
+export function othersLabelsMatched(
+  row: Pick<TagRow, 'all_tags' | 'own_tags'> & { own_hit?: boolean | null },
+): boolean {
+  if (typeof row.own_hit === 'boolean') return !row.own_hit;
   const own = new Set(row.own_tags || []);
   return (row.all_tags || []).some((t) => Boolean(t) && isDisplayableTag(t) && !own.has(t));
 }
