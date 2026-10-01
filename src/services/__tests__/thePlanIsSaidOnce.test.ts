@@ -89,6 +89,15 @@ describe('what the model is told', () => {
     expect(note).toContain('present_choices');
   });
 
+  /** The tester's 966: web-found names in passing, no link, no phone (D542). */
+  it('to show a web-found person in full or not at all', () => {
+    for (const language of ['ka', 'en'] as const) {
+      const note = planInYourReplyNote(language);
+      expect(note).toContain('page link and the public phone');
+      expect(note).toContain('Never a list of names in passing.');
+    }
+  });
+
   /** The tester's 941 (D520): every plan ends on the agreed question. */
   it('to end the plan on the agreed question, which the plan text itself does not carry', () => {
     expect(planInYourReplyNote('ka')).toContain('„ამ გეგმას მივყვე და ვიმოქმედო?"');

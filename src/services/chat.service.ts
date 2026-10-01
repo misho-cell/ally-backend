@@ -2065,8 +2065,23 @@ export function planInYourReplyNote(language: RunLanguage): string {
       'preguntarás, por nombre. Sin número de versión, títulos ni nombres de campos. Termina el ' +
       'plan con esta pregunta: „{closing}". Luego present_choices — ',
   };
-  return text[language].replace('{closing}', PLAN_CLOSING_QUESTION[language]) + buttons + '.';
+  return (
+    text[language].replace('{closing}', PLAN_CLOSING_QUESTION[language]) +
+    buttons +
+    '. ' +
+    WEB_LEADS_IN_A_PLAN_REPLY
+  );
 }
+
+/**
+ * The tester's 966 (thread 29075): a plan reply named three web-found lawyers
+ * and a firm inside one parenthesis — no page link, no phone. D542 holds in a
+ * plan reply too: a web-found person is shown in full, or not named.
+ */
+const WEB_LEADS_IN_A_PLAN_REPLY =
+  'If you mention anyone found on the web, give each one on their own line with the page ' +
+  'link and the public phone from that page — or do not name them at all. Never a list of ' +
+  'names in passing.';
 
 export function planAlreadyOnScreenNote(language: RunLanguage): string {
   const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
