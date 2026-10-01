@@ -20,6 +20,9 @@ export enum TeamTaskAuthor {
   Ninia = 'ninia',
   Misho = 'misho',
   Ai = 'ai',
+  /** The tester's 977 (D558): each Claude seat is its own author. */
+  TornikesClaude = 'tornikes_claude',
+  GiorgisClaude = 'giorgis_claude',
 }
 
 export enum TeamTaskStatus {

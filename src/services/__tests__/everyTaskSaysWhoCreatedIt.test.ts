@@ -52,6 +52,9 @@ describe('who a login files tasks as', () => {
 
   it('accepts only the fixed authors from the shared login', () => {
     expect(isTeamTaskAuthor('ai')).toBe(true);
+    // The tester's 977: the two Claude seats are told apart.
+    expect(isTeamTaskAuthor('tornikes_claude')).toBe(true);
+    expect(isTeamTaskAuthor('giorgis_claude')).toBe(true);
     expect(isTeamTaskAuthor('somebody')).toBe(false);
   });
 });

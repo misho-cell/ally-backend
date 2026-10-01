@@ -626,9 +626,11 @@ describe('buildFromTheWebMessage', () => {
    * a count where names used to be will otherwise re-derive it as a bug.
    */
   it('counts the ones with no way in instead of printing their titles', () => {
+    // Beside a real way in: a card with only the count is not sent (976).
     const message = String(
       buildFromTheWebMessage(
         new Map([
+          ['Infinity Solutions', { kind: 'first_circle' as const, who: 'დათო' }],
           ['Acme', { kind: 'none' as const }],
           ['Beta', { kind: 'unchecked' as const }],
         ]),
@@ -643,23 +645,12 @@ describe('buildFromTheWebMessage', () => {
   });
 
   /**
-   * „I looked and found nothing" is not „I did not look", and dropping the
-   * line altogether would have thrown that distinction away to fix a cosmetic
-   * one. It is the distinction the whole ops toolchain is built on.
+   * The tester's 976 (Giorgi's G2): with no way in, the card was a negative
+   * first line over a reply about a contact the owner had named. It is not
+   * sent; the run keeps every lead and its verdict in ways_in.
    */
-  it('still says that it looked', () => {
-    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
-
-    expect(message).toContain('შევამოწმე');
-    expect(message).toContain('კავშირი ვერ ვიპოვე');
-  });
-
-  /** 903: „found on the web:" over nothing read as an empty card. */
-  it('puts no „found on the web" heading over a card with no way in', () => {
-    const message = String(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]])));
-
-    expect(message).not.toContain('ვებში ეს ვიპოვე:');
-    expect(message).toContain('ვებში ერთი შედეგი შევამოწმე');
+  it('sends no card when no web result leads to anybody', () => {
+    expect(buildFromTheWebMessage(new Map([['Acme', { kind: 'none' as const }]]))).toBeNull();
   });
 
   it('never renders „could not check" as „nobody" (G7)', () => {
