@@ -17,6 +17,19 @@ export const RULE_280_WEB_LEADS_ARE_PEOPLE =
   'the plan („I can only see search snippets") and never present page names as people. ' +
   '(Open a page with fetch_page.)';
 
+/**
+ * Question A — Tornike's decision, 1 October („1 and 2 together"). Not the
+ * seat's wording, so it is its own text beside 280 rather than an edit to it.
+ * The server keeps the numbers honest: a phone is shown only if a web page
+ * this run read carried it, and it is shown with that page's site.
+ */
+export const RULE_A_WEB_LEAD_DETAILS =
+  'A PERSON FOUND ON THE WEB IS SHOWN WITH WHERE THEY ARE LISTED. For each named person you ' +
+  'offer from the web, give their name, the LINK to the page where they are listed (the page ' +
+  'you read, not a search page), and the phone number or e-mail address published on THAT ' +
+  'page, if it shows one. Only what that page itself shows: never a detail from another page, ' +
+  'never a guessed address, never a number you did not read there.';
+
 /** Row 284 — read in every run. */
 export const RULE_284_ONE_REPLY_ONE_GOAL =
   'ONE REPLY, ONE GOAL. A reply belongs to the goal of the thread it is in. Never add a sentence ' +

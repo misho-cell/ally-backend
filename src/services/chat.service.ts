@@ -289,6 +289,7 @@ import { listMyContacts } from './tools/listMyContacts';
 import {
   RULE_273_EACH_ANSWER_ONCE,
   RULE_280_WEB_LEADS_ARE_PEOPLE,
+  RULE_A_WEB_LEAD_DETAILS,
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
@@ -2921,7 +2922,9 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     description:
       'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.' +
       ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
-      RULE_280_WEB_LEADS_ARE_PEOPLE,
+      RULE_280_WEB_LEADS_ARE_PEOPLE +
+      ' ' +
+      RULE_A_WEB_LEAD_DETAILS,
     input_schema: {
       type: 'object',
       properties: {
@@ -6246,8 +6249,9 @@ function domainOf(url: unknown): string | null {
 /** Every phone-shaped run of digits in one web result, with its page. */
 export function webNumbersWithSource(result: unknown): Array<{ phone: string; source: string }> {
   if (result === null || typeof result !== 'object') return [];
-  const rows = (result as { results?: unknown }).results;
-  if (!Array.isArray(rows)) return [];
+  // A search returns `results`; fetch_page returns the one page it opened.
+  const listed = (result as { results?: unknown }).results;
+  const rows = Array.isArray(listed) ? listed : [result];
   const found: Array<{ phone: string; source: string }> = [];
   for (const row of rows) {
     if (row === null || typeof row !== 'object') continue;
@@ -8237,7 +8241,9 @@ async function runOneToolBlock(
   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
   // be shown, with the page it came from. Registered here, at the one place a
   // web result arrives, so no later surface has to decide what is public.
-  if (block.name === 'web_search') {
+  // Question A: and a page this run OPENED is a web page too — the listing a
+  // lead is read from is exactly where its published number lives.
+  if (block.name === 'web_search' || block.name === 'fetch_page') {
     for (const { phone, source } of webNumbersWithSource(raw)) {
       registerAllowedNumber(runId, phone, source);
     }
@@ -11085,7 +11091,7 @@ export async function processChat(
       // Rows 284 and 273: the seat's rule texts, in every run. Row 280 too —
       // the seat's 870: in the web_search description alone it was not
       // followed (listing pages were never opened), so it is a gate item here.
-      `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}\n${RULE_280_WEB_LEADS_ARE_PEOPLE}` +
+      `\n\n${RULE_284_ONE_REPLY_ONE_GOAL}\n${RULE_273_EACH_ANSWER_ONCE}\n${RULE_280_WEB_LEADS_ARE_PEOPLE}\n${RULE_A_WEB_LEAD_DETAILS}` +
       buildReplyLanguageDirective(language),
     sameRequestAgain + agentPrompt.volatilePrompt,
   );

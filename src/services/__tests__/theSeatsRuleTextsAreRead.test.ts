@@ -28,7 +28,7 @@ describe("the seat's rule texts are where they are read", () => {
 
   it('284, 273 and (as a gate item) 280 are in every run', () => {
     expect(chat).toContain(
-      '`\\n\\n${RULE_284_ONE_REPLY_ONE_GOAL}\\n${RULE_273_EACH_ANSWER_ONCE}\\n${RULE_280_WEB_LEADS_ARE_PEOPLE}`',
+      '`\\n\\n${RULE_284_ONE_REPLY_ONE_GOAL}\\n${RULE_273_EACH_ANSWER_ONCE}\\n${RULE_280_WEB_LEADS_ARE_PEOPLE}\\n${RULE_A_WEB_LEAD_DETAILS}`',
     );
     expect(RULE_284_ONE_REPLY_ONE_GOAL).toMatch(/^ONE REPLY, ONE GOAL\./);
     expect(RULE_273_EACH_ANSWER_ONCE).toMatch(/^EACH ANSWER ONCE\./);
