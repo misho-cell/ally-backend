@@ -150,11 +150,24 @@ describe('webNumbersWithSource', () => {
     expect(out.length).toBeGreaterThan(0);
   });
 
-  it('is bounded, so one directory page cannot fill a run', () => {
-    const many = Array.from({ length: 40 }, (_, i) => `+99541522${String(1000 + i)}`).join(' ');
+  it('is bounded, so a runaway page cannot fill memory', () => {
+    const many = Array.from({ length: 400 }, (_, i) => `+9954152${String(10000 + i)}`).join(' ');
     const out = webNumbersWithSource(result([{ url: 'https://example.ge/list', content: many }]));
 
-    expect(out.length).toBeLessThanOrEqual(20);
+    expect(out.length).toBeLessThanOrEqual(300);
+  });
+
+  /**
+   * The tester's 948: a national registry listed 20+ other cities' notaries
+   * first, and the old bound of 20 ran out before the Kutaisi ones were read.
+   */
+  it('reaches the people far down a long directory page', () => {
+    const others = Array.from({ length: 60 }, (_, i) => `+9955991${String(10000 + i)}`).join(' ');
+    const kutaisi = 'ქუთაისი, იოსებ გრიშაშვილის ქუჩა N14 +995 599 70 30 80';
+    const out = webNumbersWithSource(
+      result([{ url: 'https://napr.gov.ge/notaries', content: `${others} ${kutaisi}` }]),
+    );
+    expect(out.map((n) => n.phone)).toContain('+995 599 70 30 80');
   });
 
   it('answers nothing for a shape it does not recognise, rather than guessing', () => {

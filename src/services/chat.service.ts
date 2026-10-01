@@ -6328,7 +6328,15 @@ function registerAllowedNumber(
  * if a web search this run ran returned it; everything else is masked on that
  * surface for the first time.
  */
-const MAX_WEB_NUMBERS_PER_RUN = 20;
+/**
+ * Question A, the tester's 948 (thread 28679): the Kutaisi notaries' phones
+ * came out „[hidden]". The national registry page lists notaries from every
+ * city, and the first 20 numbers on it — none of them in Kutaisi — used up the
+ * whole allowance before the people asked about were read. A number allowed
+ * here is still shown only if the reply prints it, and always with its page,
+ * so the bound is about runaway pages, not about who gets shown.
+ */
+const MAX_WEB_NUMBERS_PER_RUN = 300;
 
 /**
  * Question A (Tornike, 1 Oct): the source shown beside a web number is the

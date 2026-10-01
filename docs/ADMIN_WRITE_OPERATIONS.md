@@ -5328,3 +5328,8 @@ UNDO    ./scripts/ops/env.sh set CHORUS_REQUIRE_FOUNDER_YES   (value on stdin: t
 READ    GET /admin/chorus/campaigns, GET /admin/chorus/asks (admin only); the log lines
         „[chorus-cron] opened N" / „sent N".
 ```
+
+**§78 RUN, 1 October 11:04:35 UTC:** `env.sh set CHORUS_REQUIRE_FOUNDER_YES` (value false)
+→ Railway redeployed. First send tick 11:32:25: „[chorus-cron] sent 5 campaign ask(s)" —
+5 asks across 4 campaigns in the last hour (read from invite_campaign_participants), inside
+the cap of 5 campaigns a day.

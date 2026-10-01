@@ -5472,6 +5472,14 @@ export function whyThisPerson(tieStrength: number | null): string {
   return `Measured tie to the target: ${tieStrength}. Candidates are ordered strongest first.`;
 }
 
+/** `asked_since` as a date: null when absent, undefined when it is not a date. */
+export function askedSinceFrom(raw: unknown): string | null | undefined {
+  if (raw === undefined || raw === '') return null;
+  if (typeof raw !== 'string') return undefined;
+  const when = new Date(raw);
+  return Number.isNaN(when.getTime()) ? undefined : when.toISOString();
+}
+
 adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);
@@ -5482,6 +5490,14 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
     const inviterId = Number.isFinite(Number(req.query.inviter_user_id))
       ? Number(req.query.inviter_user_id)
       : null;
+    // Row 301, the tester's 948: after the restart they could not count
+    // today's sends — the newest 100 rows were all from 11 September. An
+    // `asked_since` (any ISO date or time) narrows to asks sent from then on.
+    const askedSince = askedSinceFrom(req.query.asked_since);
+    if (askedSince === undefined) {
+      res.status(400).json({ success: false, error: 'asked_since must be an ISO date or time.' });
+      return;
+    }
     const result = await query<{
       total_count: number;
       technique_when: number | null;
@@ -5512,9 +5528,10 @@ adminRouter.get('/chorus/asks', async (req: Request, res: Response) => {
        ) k ON true
        WHERE ($1::int IS NULL OR p.campaign_id = $1::int)
          AND ($2::int IS NULL OR p.inviter_user_id = $2::int)
+         AND ($4::timestamptz IS NULL OR p.asked_at >= $4::timestamptz)
        ORDER BY p.id DESC
        LIMIT $3::int`,
-      [campaignId, inviterId, limit],
+      [campaignId, inviterId, limit, askedSince],
     );
     // COMPOSED WITH `askPageFrom`, NOT A SECOND COPY OF IT. That function is
     // where `truncated` is decided and tested, and the whole reason this route
