@@ -6423,6 +6423,61 @@ function registerWebPages(runId: string | undefined, result: unknown): void {
   runWebPages.set(runId, known);
 }
 
+/** The text of one tool_result block, whichever shape it was stored in. */
+function toolResultText(block: unknown): string | null {
+  if (block === null || typeof block !== 'object') return null;
+  const b = block as { type?: unknown; content?: unknown };
+  if (b.type !== 'tool_result') return null;
+  if (typeof b.content === 'string') return b.content;
+  if (!Array.isArray(b.content)) return null;
+  const texts = b.content
+    .map((part: unknown) =>
+      part !== null &&
+      typeof part === 'object' &&
+      typeof (part as { text?: unknown }).text === 'string'
+        ? (part as { text: string }).text
+        : '',
+    )
+    .filter((t) => t !== '');
+  return texts.length > 0 ? texts.join('') : null;
+}
+
+/**
+ * Web results already in the history — fetched by an earlier run in this
+ * thread — count for this run too: their numbers may be shown with their page,
+ * and their name-titles linked. Anything that is not web-shaped JSON (a url on
+ * each row) yields nothing.
+ */
+export function historyWebResults(history: readonly Anthropic.MessageParam[]): unknown[] {
+  const found: unknown[] = [];
+  for (const message of history) {
+    if (message.role !== 'user' || !Array.isArray(message.content)) continue;
+    for (const block of message.content) {
+      const text = toolResultText(block);
+      if (text === null || !text.includes('http')) continue;
+      try {
+        found.push(JSON.parse(text));
+      } catch {
+        // Not JSON, so not a web result — most tool results are plain text.
+        continue;
+      }
+    }
+  }
+  return found;
+}
+
+function registerHistoryWebResults(
+  runId: string,
+  history: readonly Anthropic.MessageParam[],
+): void {
+  for (const result of historyWebResults(history)) {
+    registerWebPages(runId, result);
+    for (const { phone, source } of webNumbersWithSource(result)) {
+      registerAllowedNumber(runId, phone, source);
+    }
+  }
+}
+
 function withRunPageLinks(text: string, runId: string): string {
   return withPageLinks(text, runWebPages.get(runId) ?? []);
 }
@@ -11344,6 +11399,10 @@ export async function processChat(
     ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
     { role: 'user', content: userMessage },
   ];
+  // Question A, the tester's 949: a run that answers from the web results an
+  // EARLIER run fetched (they are in this history) must be allowed the same
+  // numbers and links — the allowance was per run, so they came out „[hidden]".
+  registerHistoryWebResults(runId, history);
 
   // Persist the user message first so it — and the step rows saved during the
   // loop — appear in chronological order and survive a mid-run crash. An engine

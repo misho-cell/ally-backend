@@ -1,4 +1,6 @@
-import { webNumbersWithSource, wrapNumbers } from '../chat.service';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { historyWebResults, webNumbersWithSource, wrapNumbers } from '../chat.service';
 import { scrubText, stripAllowedSpans } from '../privacyScrub';
 
 /**
@@ -249,5 +251,52 @@ describe('a public number survives the scrub; every other one does not', () => {
   it('is a no-op when the run allowed nothing', () => {
     expect(wrapNumbers('რამე +995 599 12 34 56', undefined)).toBe('რამე +995 599 12 34 56');
     expect(scrubText(wrapNumbers(`x ${PRIVATE}`, new Map()))).toContain('[hidden]');
+  });
+});
+
+/**
+ * Question A, the tester's 949 (thread 28716): a run answered from web results
+ * an EARLIER run had fetched — and since the allowance was per run, every phone
+ * came out „[hidden]". Web results already in the history now count too.
+ */
+describe('web results from earlier in the thread count for this run', () => {
+  const page = {
+    results: [
+      {
+        title: 'ეთერ გზირიშვილი',
+        url: 'https://www.notary.ge/geo-3718-page-5',
+        snippet: 'ქუთაისი N14 +995 599 70 30 80',
+      },
+    ],
+  };
+
+  it('finds a web result stored as a tool_result string', () => {
+    const history = [
+      {
+        role: 'user' as const,
+        content: [
+          { type: 'tool_result' as const, tool_use_id: 'x', content: JSON.stringify(page) },
+        ],
+      },
+    ];
+    const found = historyWebResults(history);
+    expect(found).toHaveLength(1);
+    expect(webNumbersWithSource(found[0]).map((n) => n.phone)).toEqual(['+995 599 70 30 80']);
+  });
+
+  it('ignores plain-text tool results and the assistant’s own turns', () => {
+    const history = [
+      {
+        role: 'user' as const,
+        content: [{ type: 'tool_result' as const, tool_use_id: 'y', content: 'found: false http' }],
+      },
+      { role: 'assistant' as const, content: 'https://example.ge +995 599 12 34 56' },
+    ];
+    expect(historyWebResults(history)).toEqual([]);
+  });
+
+  it('is read when the run is built', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('registerHistoryWebResults(runId, history);');
   });
 });
