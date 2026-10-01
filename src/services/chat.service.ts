@@ -6346,6 +6346,79 @@ function pageLinkOf(url: unknown): string | null {
   }
 }
 
+/**
+ * Question A, the tester's 947: phones now show, but most web-found people
+ * came without the link to the page that lists them (one of four had it) —
+ * the server can only attach a link beside a number, and a person whose page
+ * shows no number got nothing. A directory page's title is very often the
+ * person's own name („მერაბ ჯიხვაშვილი"), so when the reply names a page's
+ * title and does not give its link, the link is added after the first mention.
+ */
+export interface WebPage {
+  readonly title: string;
+  readonly url: string;
+}
+
+const MAX_WEB_PAGES_PER_RUN = 40;
+const MAX_PAGE_LINKS_ADDED = 6;
+const NAME_TITLE_MAX_CHARS = 40;
+const NAME_WORD_RE = /^[\p{L}][\p{L}'’.-]*$/u;
+
+/** Every page a web result points at, with its title. */
+export function webPagesOf(result: unknown): WebPage[] {
+  if (result === null || typeof result !== 'object') return [];
+  const listed = (result as { results?: unknown }).results;
+  const rows = Array.isArray(listed) ? listed : [result];
+  const pages: WebPage[] = [];
+  for (const row of rows) {
+    if (row === null || typeof row !== 'object') continue;
+    const r = row as { url?: unknown; title?: unknown };
+    const url = pageLinkOf(r.url);
+    if (url === null || typeof r.title !== 'string' || r.title.trim() === '') continue;
+    pages.push({ title: r.title.trim(), url });
+  }
+  return pages;
+}
+
+/** A title that reads as a person's name: two to four words of letters only. */
+export function titleIsAName(title: string): boolean {
+  if (title.length > NAME_TITLE_MAX_CHARS) return false;
+  const words = title.split(/\s+/);
+  return words.length >= 2 && words.length <= 4 && words.every((w) => NAME_WORD_RE.test(w));
+}
+
+/** The reply, with a page's link after the first mention of its name-title. */
+export function withPageLinks(text: string, pages: readonly WebPage[]): string {
+  let out = text;
+  let added = 0;
+  for (const page of pages) {
+    if (added >= MAX_PAGE_LINKS_ADDED) break;
+    if (!titleIsAName(page.title) || out.includes(page.url)) continue;
+    const at = out.indexOf(page.title);
+    if (at === -1) continue;
+    const end = at + page.title.length;
+    out = `${out.slice(0, end)} (${page.url})${out.slice(end)}`;
+    added++;
+  }
+  return out;
+}
+
+const runWebPages = new Map<string, WebPage[]>();
+
+function registerWebPages(runId: string | undefined, result: unknown): void {
+  if (!runId) return;
+  const known = runWebPages.get(runId) ?? [];
+  for (const page of webPagesOf(result)) {
+    if (known.length >= MAX_WEB_PAGES_PER_RUN) break;
+    if (!known.some((k) => k.url === page.url)) known.push(page);
+  }
+  runWebPages.set(runId, known);
+}
+
+function withRunPageLinks(text: string, runId: string): string {
+  return withPageLinks(text, runWebPages.get(runId) ?? []);
+}
+
 /** Every phone-shaped run of digits in one web result, with its page. */
 export function webNumbersWithSource(result: unknown): Array<{ phone: string; source: string }> {
   if (result === null || typeof result !== 'object') return [];
@@ -6437,6 +6510,7 @@ const runLastCaption = new Map<string, string>();
 
 function clearRunState(runId: string): void {
   runAllowedNumbers.delete(runId);
+  runWebPages.delete(runId);
   runModes.delete(runId);
   runLastCaption.delete(runId);
   runLanguages.delete(runId);
@@ -8358,6 +8432,7 @@ async function runOneToolBlock(
   // Question A: and a page this run OPENED is a web page too — the listing a
   // lead is read from is exactly where its published number lives.
   if (block.name === 'web_search' || block.name === 'fetch_page') {
+    registerWebPages(runId, raw);
     for (const { phone, source } of webNumbersWithSource(raw)) {
       registerAllowedNumber(runId, phone, source);
     }
@@ -11464,6 +11539,8 @@ export async function processChat(
     cleanedFinal = earlySolved.text;
   }
   const offeredChoices = earlySolved !== null ? earlySolved.choices : choices;
+  // Question A (tester 947): a web-found person's page link, by their name.
+  if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
   const reply = wrapAllowedNumbers(
     replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
     runId,
