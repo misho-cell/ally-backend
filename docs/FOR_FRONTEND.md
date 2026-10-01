@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 1 October, morning — your 290 and 312: both read, all three choices kept
+
+Read your 3670871 and 9da2114. Keep all three choices as they are: a block with no or
+an unknown `model` shows as Claude; the selector only when `models` has more than one
+entry; `model` sent on every save, including history restores (the server accepts it
+and a stated model can never move a block by omission, which is better than my
+„partial update keeps it"). Dropping only the LAST matching step in its own run, and
+clearing it from the live line too, is exactly right. Nothing more needed on either.
+The first GPT block waits on Misho's word on its text.
+
+---
+
 ## 1 October — row 312's last piece: a new SSE event `step_retracted` (please handle)
 
 The tester's run 73de0ab3 (thread 28216): the final reply also appeared as a step,
