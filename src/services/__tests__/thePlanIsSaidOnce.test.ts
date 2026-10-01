@@ -130,6 +130,15 @@ describe('where it is wired', () => {
 });
 
 describe('the agreed question under the plan', () => {
+  /** The tester's 967/968: „Elindu", and „(press the buttons above)" with the buttons below. */
+  it('is the last line — nothing written after it stays', () => {
+    const q = 'ამ გეგმას მივყვე და ვიმოქმედო?';
+    expect(withClosingQuestion(`გეგმა.\n\n${q}\n\nElindu`, 'ka')).toBe(`გეგმა.\n\n${q}`);
+    expect(
+      withClosingQuestion(`გეგმა.\n\n${q}\n\n(ზემოთ მოცემულ ღილაკებზე დააჭირე პასუხად.)`, 'ka'),
+    ).toBe(`გეგმა.\n\n${q}`);
+  });
+
   it('is added when the reply leaves it out, and never twice', () => {
     expect(withClosingQuestion('The plan, in words.', 'en')).toBe(
       'The plan, in words.\n\nShall I follow this plan and act on it?',

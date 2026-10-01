@@ -6053,7 +6053,12 @@ function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
  */
 export function withClosingQuestion(reply: string, language: RunLanguage): string {
   const question = PLAN_CLOSING_QUESTION[language];
-  return reply.includes(question) ? reply : `${reply.trimEnd()}\n\n${question}`;
+  const at = reply.lastIndexOf(question);
+  if (at === -1) return `${reply.trimEnd()}\n\n${question}`;
+  // The tester's 967/968: text after the question — a stray „Elindu" (29107),
+  // „(ზემოთ მოცემულ ღილაკებზე დააჭირე პასუხად.)" with the buttons below it
+  // (29140). The question is the plan's last line; the buttons answer it.
+  return reply.slice(0, at + question.length);
 }
 
 /** Does this reply ask the owner to approve a plan — is its approve button offered? */
