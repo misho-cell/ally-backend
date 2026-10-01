@@ -6214,6 +6214,23 @@ function runLang(runId: string | undefined): RunLanguage {
 /** Row 290: the mode each run resolved to, so GPT can load the same mode's blocks. */
 const runModes = new Map<string, RunMode>();
 
+/**
+ * Plate row 268, the language half (goal 11221, 1 Oct 07:35). Test 57 writes
+ * English and the run worked that out — „the conversation is en" is in the
+ * log — but GPT's final came back Georgian. The language rule sits inside
+ * Claude's prompt and GPT's Georgian-voice block is appended AFTER it, so the
+ * last thing GPT read was a page of Georgian rules. On a run in any other
+ * language the rule is said again, last, and the Georgian rules are named as
+ * Georgian-only. A Georgian run needs nothing more.
+ */
+export function gptLanguageLast(language: RunLanguage): string {
+  if (language === 'ka') return '';
+  return (
+    buildReplyLanguageDirective(language) +
+    '\nAny rules above about writing Georgian apply only to a Georgian reply. This one is not.'
+  );
+}
+
 /** GPT's own prompt blocks for this run's mode — empty when there are none or the read fails. */
 async function gptBlocksFor(runId: string, userId: string): Promise<string> {
   const mode = runModes.get(runId);
@@ -9416,7 +9433,7 @@ async function runToolLoop(
     const gptBlocks = await gptBlocksFor(runId, userId);
     const rewritten = await writeFinalAnswer(
       messages,
-      plainSystemPrompt(systemPrompt) + gptBlocks,
+      plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(runLang(runId)),
       (delta) => {
         if (!openAiStarted) {
           openAiStarted = true;

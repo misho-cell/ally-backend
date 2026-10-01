@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { gptLanguageLast } from '../chat.service';
 
 /**
  * Row 290 — GPT writes the final Georgian text and had no prompt of its own.
@@ -27,5 +28,29 @@ describe('GPT reads its own prompt blocks', () => {
     );
     expect(routes).toContain('.isIn(Object.values(PromptModel))');
     expect(routes).toContain('gpt_mode_totals: computeModeTotals(blocks, PromptModel.Gpt)');
+  });
+});
+
+/**
+ * Row 268's language half: an English run's GPT final came back Georgian, the
+ * Georgian-voice block being the last thing GPT read.
+ */
+describe('GPT is told the reply language last', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('says it again after its own blocks on a non-Georgian run', () => {
+    const line = gptLanguageLast('en');
+    expect(line).toContain('Write your ENTIRE reply in English');
+    expect(line).toContain('apply only to a Georgian reply');
+  });
+
+  it('adds nothing to a Georgian run', () => {
+    expect(gptLanguageLast('ka')).toBe('');
+  });
+
+  it('is the last part of what GPT is given', () => {
+    expect(chat).toContain(
+      'plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(runLang(runId)),',
+    );
   });
 });
