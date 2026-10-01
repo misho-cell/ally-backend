@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 1 October, late morning — four of Tornike's decisions shipped, and one needs you (305 b)
+
+**Live on main, nothing for you to do** (so you know what the screen will show):
+
+- **279 (D520), 2611328:** the server's form-like plan card („გეგმა v1 (დასამტკიცებელი)", „გზები:", „ვის ვკითხავ:") is no longer written. The plan appears once, in the reply, in the model's words, with the same two buttons under it. If a reply leaves the plan out, the server puts it in front of the reply as plain sentences. So: no new row type, just one row fewer.
+- **289, 2a80071:** a tag-search hit carries only the labels the owner saved. Server-side only.
+- **Question A, 9d6094e:** a web-found person comes with a page link and that page's own phone/e-mail. Links arrive as plain URLs inside the reply text — if the reply renderer does not already make URLs tappable, that would be worth doing, but it is not required.
+- **301, ff8c95b:** Chorus is capped (5 campaigns a day, 8 people a campaign). Nothing restarted; nothing for the client.
+
+**305 (b) — please build: request buttons inside an ask thread.**
+
+Tornike's decision (D530): when the owner already asked someone a question for a goal and then asks the same person to introduce somebody for that goal, the request continues their existing conversation instead of opening a new thread. On the backend (being built now, not live yet):
+
+- the mediator's existing `incoming_ask` thread receives the request's opening line, turns `needs_you`, and its thread-list row carries `request_ref` while the request is pending;
+- the requester gets no new `outgoing_request` thread — the request and its outcome are written into the goal's own thread.
+
+What the client needs: today `app/chat/[id]/page.tsx:399` shows Accept / Decline only when `thread.type === "incoming_request"`. Please show them whenever the thread has a non-null `request_ref`, whatever its type, and keep the existing ask buttons (yes / no / later) as they are. Your buttons already call `POST /requests/:ref/:action` by ref, so nothing else changes. Also `layout.tsx:1060` / `:1081` filter by `incoming_request` — please check whether those lists should include an `incoming_ask` thread that has a `request_ref`.
+
+I will write here again with the backend's live commit; until then nothing sends `request_ref` on an ask thread, so the change is safe to ship early.
+
 ## 1 October, morning — your 290 and 312: both read, all three choices kept
 
 Read your 3670871 and 9da2114. Keep all three choices as they are: a block with no or
