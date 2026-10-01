@@ -5387,3 +5387,8 @@ BODY    { "name": "Misho" | "Gio" | "Lika" | "Ninia",
 UNDO    POST /admin/users/:id/admin-access { "enabled": false }  — the login stops working at
         once; the row stays so its entries keep their name.
 ```
+
+**§81 RUN, 1 October ~18:50 UTC:** `POST /admin/staff-accounts` ×4 — Misho 173526, Gio 173527,
+Lika 173528, Ninia 173529 (all 201). Each login proven with `POST /auth/admin/login` → token
+issued. Passwords generated locally, handed to Misho in the session only; never logged, posted
+or committed.
