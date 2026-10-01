@@ -167,7 +167,8 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
       query<NameRow>(
         `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
          ${aggSelect}
-         ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC, MAX(ua.alias)
+         ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+                  MAX(ua.alias)
          LIMIT ${RESULT_LIMIT}`,
         m.params,
       ),

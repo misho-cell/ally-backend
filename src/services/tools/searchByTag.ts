@@ -157,6 +157,13 @@ const AGG_JOINS = `FROM hits h
  */
 const EXACT_SEARCH_TIMEOUT_MS = 20_000;
 
+/**
+ * The tester's 990 (Test 73): the model is shown the first eight results
+ * (toolResultDiet), and the order was word hits, source, then how many people
+ * saved the tag — so 36 phones labelled „lawyer" by OTHER people filled the
+ * eight, and the owner's own nine lawyers were cut. A match on the owner's own
+ * label (or a public field) now ranks right after the word count.
+ */
 async function runExactSearch(
   userId: string,
   rawGroups: string[][],
@@ -176,7 +183,7 @@ async function runExactSearch(
        SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
        ${AGG_JOINS}
        GROUP BY h.phone
-       ORDER BY MAX(h.word_hits) DESC, MAX(h.src_priority) DESC,
+       ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
                 MAX(ut."weightCount") DESC NULLS LAST
        LIMIT ${RESULT_LIMIT}`,
       m.params,

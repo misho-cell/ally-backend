@@ -44,3 +44,13 @@ describe('where own_hit comes from', () => {
     expect(name).toContain('BOOL_OR(h.own_hit)');
   });
 });
+
+/** The tester's 990: the model sees eight results — the owner's own matches first. */
+describe('the owner’s own matches rank first', () => {
+  it('right after the word count, in both searches', () => {
+    const tag = readFileSync(join(__dirname, '..', 'searchByTag.ts'), 'utf8');
+    const name = readFileSync(join(__dirname, '..', 'searchContactByName.ts'), 'utf8');
+    expect(tag).toContain('ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC');
+    expect(name).toContain('ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC');
+  });
+});
