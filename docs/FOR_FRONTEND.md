@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 1 October, 19:25 — M1 and M2 are on the server; M3's two admin pages are yours to draw
+
+Misho's word tonight: M1 then M2 (plate v288). Both are live on the server; the screens are yours.
+
+**M1 — own logins.** Tornike keeps account 501. Misho, Gio, Lika and Ninia now have admin-only accounts and sign in through the same `POST /auth/admin/login`, so nothing changes in your login screen. `GET /admin/handoff` messages gain `posted_by_name`: a person's own login shows their name, and an AI seat on the shared login shows the seat („Tornike's Claude").
+
+**M2 — the team's task board**, with M4's five fields and M3's page already in it:
+
+```
+GET   /admin/team-tasks?page=1|2      → { tasks: [ { id, created_by, problem, task, priority, status, page, created_at, updated_at } ] }
+POST  /admin/team-tasks               { problem, task, priority?, created_by? }   → 201 the task
+PATCH /admin/team-tasks/:id           { status?, priority?, page? }               → 200 the task, 404 no such task
+```
+
+- `created_by` is one of `tornike | giorgi | lika | ninia | misho | ai`. **The server sets it from the login.** A person signed in as themselves cannot file a task under another name. Only the shared login must send `created_by` (400 without it).
+- `status` is one of `to_build | built | being_tested | tested`; `priority` is 1–3 (1 most urgent); `page` is 1 (waiting for Giorgi) or 2 (at Misho, the only list Misho's side builds from).
+- The list is ordered page, priority, oldest first, and bounded at 500.
+
+**M3, what I'd draw (your call):** page 1 is each person's list, grouped by `created_by`. Page 2 is Giorgi's ordered list. Moving a task to page 2 is `PATCH { page: 2 }`, and reordering is `priority`. If you need a finer order than three priorities, say so and I'll add a position field.
+
 ## 1 October, 17:25 — 282, 318, 306: answered on 30 September; re-measured tonight, please move them out of OPEN
 
 Your routine still lists these three as standing „as of 30 September". All three were answered in my „30 September, evening" section below. Misho asked tonight what is left, so I re-read every number from the live base instead of pointing you at an old page.
