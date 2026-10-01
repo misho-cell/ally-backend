@@ -1865,6 +1865,39 @@ export function goalSaysWriteToNobody(text: string | null | undefined): boolean 
 }
 
 /** The people a proposed plan would have this product write to. */
+/**
+ * The tester's 964, 279 (a): „ჰკითხე Netai Test 111-ს, იცნობს თუ არა კარგ
+ * ფიზიოთერაპევტს საბურთალოზე." — the run opened a goal and proposed a plan
+ * naming that one person, with ვამტკიცებ / შევცვალოთ: a second yes for what
+ * the owner had just said. D316: a typed instruction naming one person and one
+ * action IS the permission. A plan for exactly that person is refused here.
+ */
+const NO_PLAN_FOR_AN_INSTRUCTION =
+  "Not proposed. The owner's own last line is an instruction naming this one person — it is " +
+  'their permission for exactly that (D316). Draw no plan and show no approve buttons: call ' +
+  'grant_task_permission (confirmed: true), then ask_contact with their question, then say in ' +
+  'one line who it went to.';
+
+async function ownerJustInstructedThePlansOnePerson(
+  userId: string,
+  threadId: number,
+  plan: unknown,
+): Promise<boolean> {
+  if (plan === null || typeof plan !== 'object') return false;
+  const people = (plan as { people_to_involve?: unknown }).people_to_involve;
+  if (!Array.isArray(people) || people.length !== 1) return false;
+  try {
+    const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
+    if (!looksLikeContactInstruction(said)) return false;
+    return await messageNamesOwnContact(userId, said);
+  } catch (error) {
+    // Fails towards the plan, which asks the owner rather than writing to anyone.
+    // eslint-disable-next-line no-console
+    console.error(`[plan] thread ${threadId}: could not read the owner's line:`, error);
+    return false;
+  }
+}
+
 export function planNamesPeople(plan: unknown): boolean {
   if (plan === null || typeof plan !== 'object') return false;
   const people = (plan as { people_to_involve?: unknown }).people_to_involve;
@@ -6713,6 +6746,38 @@ function logWebNumberOutcome(runId: string, reply: string): void {
   console.log(
     `[web-numbers] run ${runId}: ${fromWeb} allowed from the web, ${masked} masked in the reply`,
   );
+  if (masked === 0) return;
+  // The tester's 964 (Rustavi): counts said 12 allowed and 2 masked, and not
+  // why. The SHAPES say it — every digit written as 9, so no number is logged.
+  const webSpellings = held
+    ? [...held.entries()].filter(([, source]) => source !== null).map(([phone]) => phone)
+    : [];
+  // eslint-disable-next-line no-console
+  console.log(
+    `[web-numbers] run ${runId}: masked shapes ${JSON.stringify(maskedNumberShapes(reply))}; ` +
+      `allowed shapes ${JSON.stringify(numberShapes(webSpellings))}`,
+  );
+}
+
+/** How many shapes one diagnostic line lists. */
+const MAX_LOGGED_SHAPES = 12;
+const PHONE_RUN_RE = /\+?\d[\d\s\-().]{5,}\d/g;
+
+/** A number's spelling with every digit as 9 — its form, never its value (D149). */
+export function numberShapes(spellings: readonly string[]): string[] {
+  return [...new Set(spellings.map((spelling) => spelling.replace(/\d/g, '9')))].slice(
+    0,
+    MAX_LOGGED_SHAPES,
+  );
+}
+
+/** The shapes of the phone-like runs a reply carries outside its allowed spans. */
+export function maskedNumberShapes(reply: string): string[] {
+  const outside = reply
+    .split(ALLOW_OPEN)
+    .map((part, i) => (i === 0 ? part : (part.split(ALLOW_CLOSE)[1] ?? '')));
+  const runs = outside.flatMap((part) => part.match(PHONE_RUN_RE) ?? []);
+  return numberShapes(runs.filter((run) => run.replace(/\D/g, '').length >= MIN_SHOWABLE_DIGITS));
 }
 
 export function wrapAllowedNumbers(text: string, runId: string): string {
@@ -7778,6 +7843,12 @@ async function executeToolCall(
       // to the owner still lists what it found as leads instead of quietly
       // dropping the work.
       const planTask = await getTaskById(taskId);
+      if (
+        threadId !== undefined &&
+        (await ownerJustInstructedThePlansOnePerson(userId, threadId, input['plan']))
+      ) {
+        return { proposed: false, reason: 'owner_instruction', error: NO_PLAN_FOR_AN_INSTRUCTION };
+      }
       if (
         planNamesPeople(input['plan']) &&
         (goalSaysWriteToNobody(planTask?.title) || goalSaysWriteToNobody(planTask?.brief))
