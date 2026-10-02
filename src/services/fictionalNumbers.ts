@@ -6,6 +6,12 @@
  *   +1 202 555 0100 – 0199   NANP: 555-0100…0199 is the block set aside for
  *                            fiction (other 555 numbers can be real).
  *   +44 7700 900000 – 900999 Ofcom: UK mobile numbers reserved for drama.
+ *   +44 20 7946 0000 – 0999  Ofcom: London geographic numbers reserved for drama.
+ *
+ * The tester's 997 (2 Oct): both blocks full — 168 seats, and 1,035 numbers
+ * used as fictional contacts in the seats' phonebooks. Misho, 2 October:
+ * „გააკეთე". A third reserved block rather than freeing used ones: freeing
+ * means deleting seats or their contacts, and other tests still read them.
  *
  * The seat's 873 (30 Sep): the first block was full. They proposed
  * +1 202 555 1000–1999, which is NOT reserved and could reach a real person;
@@ -24,6 +30,7 @@ interface FictionalRange {
 const RANGES: readonly FictionalRange[] = [
   { prefix: '+1202555', digits: 4, from: 100, to: 199 },
   { prefix: '+447700', digits: 6, from: 900000, to: 900999 },
+  { prefix: '+44207946', digits: 4, from: 0, to: 999 },
 ];
 
 function slotText(range: FictionalRange, slot: number): string {

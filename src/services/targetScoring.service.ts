@@ -2231,12 +2231,25 @@ async function oldAllyPool(): Promise<{ phone: string; label: string }[]> {
   return result.rows.map((r) => ({ phone: r.phone, label: '' }));
 }
 
+/**
+ * Chorus, 2 October: the target list failed at every warm-up with a bare
+ * „canceling statement due to statement timeout" — no step named, so nothing
+ * to fix. Each read of the build now names itself when it fails.
+ */
+async function named<T>(step: string, work: Promise<T>): Promise<T> {
+  try {
+    return await work;
+  } catch (err) {
+    throw new Error(`${step}: ${(err as Error).message}`);
+  }
+}
+
 async function buildTargetListUncached(sinceDays: number): Promise<TargetListBuild> {
   const gates = new GateLedger();
   // Read once: the pool and the per-phone count MUST agree on who counts as
   // social proof, or a candidate can enter the pool and then fail the gate
   // that let them in.
-  const holderIds = await socialProofHolderIds();
+  const holderIds = await named('socialProofHolderIds', socialProofHolderIds());
   // Ticket 19 [43]: what previous cohorts actually did. Read once for the whole
   // build; every multiplier is 1.0 until a tier has earned a say, so this is a
   // no-op on a base with no concluded campaigns rather than a silent nudge.
@@ -2248,8 +2261,11 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   });
   // The human answers, read once. A „no" is a real exclusion, not a demotion;
   // a „yes" is the founder's web judgment and lifts the row to BEST (Task 5).
-  const [refused, approved] = await Promise.all([refusedTargetPhones(), approvedTargetPhones()]);
-  const needs = await findUnmetNeeds(sinceDays);
+  const [refused, approved] = await Promise.all([
+    named('refusedTargetPhones', refusedTargetPhones()),
+    named('approvedTargetPhones', approvedTargetPhones()),
+  ]);
+  const needs = await named('findUnmetNeeds', findUnmetNeeds(sinceDays));
   const candidates = gatherCandidates(needs);
   // The founder's pool joins as the primary source: gate-passable people
   // nobody happened to search for still belong on the list (pull 0, no
@@ -2261,8 +2277,8 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // each person's OWN signals, read from what the night already measured.
   // It fails soft — an empty third source is a thinner list, never a dead one.
   const [gatePool, allyPool, wholeBase] = await Promise.all([
-    gatePassablePool(holderIds),
-    oldAllyPool(),
+    named('gatePassablePool', gatePassablePool(holderIds)),
+    named('oldAllyPool', oldAllyPool()),
     basePool().catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[base-pool] unavailable, list built without it:', (err as Error).message);
@@ -2305,17 +2321,17 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
     approachMap,
     cityMap,
   ] = await Promise.all([
-    reachForPhones(phones),
-    bestInviterForPhones(phones),
-    analyzeAliases(phones),
-    countAskableUsers(),
-    goalRelevantPhones(scoredCandidates),
-    bestUserVocabulary(),
-    subscribedHoldersForPhones(phones, holderIds),
-    fitFromFacts(phones),
-    accountFactsForPhones(phones),
-    approachHistoryForPhones(phones),
-    cityFromFacts(phones),
+    named('reachForPhones', reachForPhones(phones)),
+    named('bestInviterForPhones', bestInviterForPhones(phones)),
+    named('analyzeAliases', analyzeAliases(phones)),
+    named('countAskableUsers', countAskableUsers()),
+    named('goalRelevantPhones', goalRelevantPhones(scoredCandidates)),
+    named('bestUserVocabulary', bestUserVocabulary()),
+    named('subscribedHoldersForPhones', subscribedHoldersForPhones(phones, holderIds)),
+    named('fitFromFacts', fitFromFacts(phones)),
+    named('accountFactsForPhones', accountFactsForPhones(phones)),
+    named('approachHistoryForPhones', approachHistoryForPhones(phones)),
+    named('cityFromFacts', cityFromFacts(phones)),
   ]);
   const ourOwn = ownPeopleDigits();
 

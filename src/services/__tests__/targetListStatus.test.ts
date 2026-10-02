@@ -53,7 +53,8 @@ describe('a build that does not hold the reader', () => {
 
     const status = targetListStatus(60);
     expect(status.state).toBe('failed');
-    expect(status.last_error?.message).toBe('statement timeout');
+    // The step is named since 2 October (Chorus: which read timed out).
+    expect(status.last_error?.message).toBe('findUnmetNeeds: statement timeout');
     // A retry is one more start — nothing is stuck.
     mockNeeds.mockResolvedValue([]);
     startTargetListBuild(60);

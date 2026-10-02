@@ -46,6 +46,23 @@ const WARM_TIE_BATCH_LIMIT = 25;
 // so with TARGET_LIST_CACHE_TTL_MINUTES raised to match the 6h cadence the
 // admin routes read warm around the clock.
 const WARM_TARGET_LIST_AFTER_MS = 2 * 60 * 1000;
+/** After the warm-up has had its chance to fill the target-list cache. */
+const OPEN_CAMPAIGNS_AFTER_START_MS = 10 * 60 * 1000;
+
+/** One pass of the campaign opener, logged either way it ends. */
+function openCampaignsOnce(): void {
+  void openDueCampaigns(TARGET_LIST_LOOKBACK_DAYS)
+    .then(({ opened, skipped_no_inviter }) => {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[chorus-cron] opener ran: opened ${opened}, ${skipped_no_inviter} target(s) with no warm inviter`,
+      );
+    })
+    .catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[chorus-cron] openDueCampaigns failed:', (err as Error).message),
+    );
+}
 
 export function startChorusCampaignCron(): void {
   setTimeout(() => {
@@ -113,17 +130,13 @@ export function startChorusCampaignCron(): void {
       );
   }, RESEARCH_INTERVAL_MS).unref();
 
-  setInterval(() => {
-    void openDueCampaigns(TARGET_LIST_LOOKBACK_DAYS)
-      .then(({ opened }) => {
-        // eslint-disable-next-line no-console
-        if (opened > 0) console.log(`[chorus-cron] opened ${opened} campaign(s)`);
-      })
-      .catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error('[chorus-cron] openDueCampaigns failed:', (err as Error).message),
-      );
-  }, OPEN_CAMPAIGNS_INTERVAL_MS).unref();
+  // Chorus, 2 October: with six-hourly opening only, a server that deploys
+  // more often than every six hours never opened a campaign at all — the
+  // interval restarts with every deploy. It also runs once soon after start;
+  // the daily cap (campaignsOpenedToday) keeps a run of deploys from opening
+  // more than a day allows.
+  setTimeout(openCampaignsOnce, OPEN_CAMPAIGNS_AFTER_START_MS).unref();
+  setInterval(openCampaignsOnce, OPEN_CAMPAIGNS_INTERVAL_MS).unref();
 
   setInterval(() => {
     void sendDueCampaignAsks(SEND_ASKS_BATCH_LIMIT)

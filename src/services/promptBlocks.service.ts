@@ -98,6 +98,15 @@ const MODE_BLOCK_BUDGET_CHARS = intEnv('MODE_BLOCK_BUDGET_CHARS', 40_000);
  */
 const MODE_BLOCK_BUDGET_OVERRIDES: Readonly<Partial<Record<RunMode, number>>> = {
   quick_answer: 44_000,
+  /**
+   * Misho, 2 October (in this session): „აწიე" — the tester's 993, asked on
+   * Tornike's word. task_step sat at 39,722 of 40,000 with G2, 313 and the
+   * goal-title rule waiting for room. Measured cost, said to him before he
+   * answered: about 2,000–4,000 tokens on every goal step, roughly
+   * $0.002–0.004 each (+4–8% per call on 7 days of usage_events), latency
+   * negligible because the prefix is cached.
+   */
+  task_step: 48_000,
 };
 
 /**

@@ -26,15 +26,18 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
     }
   });
 
-  it('offers 1,100 numbers, the old block first', () => {
+  it('offers 2,100 numbers, the old blocks first (third block 2 Oct)', () => {
     const all = allFictionalNumbers();
-    expect(all).toHaveLength(1100);
+    expect(all).toHaveLength(2100);
+    expect(all[1100]).toBe('+442079460000');
     expect(all[0]).toBe('+12025550100');
     expect(all[100]).toBe('+447700900000');
     expect(all.every(isFictionalNumber)).toBe(true);
   });
 
   it('names both blocks in a refusal', () => {
-    expect(FICTIONAL_RANGES_TEXT).toBe('+12025550100–0199 or +447700900000–900999');
+    expect(FICTIONAL_RANGES_TEXT).toBe(
+      '+12025550100–0199 or +447700900000–900999 or +442079460000–0999',
+    );
   });
 });

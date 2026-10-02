@@ -411,9 +411,10 @@ describe('the stamp records which base prompt the run was given', () => {
  * and has room. I told him that before he answered and recommended the split.
  */
 describe('one mode may have more room than the others', () => {
-  it('gives quick_answer 44,000 and leaves the rest at the default', () => {
+  // Misho, 2 October: task_step raised to 48,000 (the tester's 993).
+  it('gives quick_answer 44,000, task_step 48,000, and leaves the rest at the default', () => {
     expect(modeBlockBudget('quick_answer')).toBe(44_000);
-    expect(modeBlockBudget('task_step')).toBe(40_000);
+    expect(modeBlockBudget('task_step')).toBe(48_000);
     expect(modeBlockBudget('onboarding')).toBe(40_000);
   });
 
@@ -433,7 +434,7 @@ describe('one mode may have more room than the others', () => {
     const step = totals.find((t) => t.mode === 'task_step');
     expect(quick?.budget_chars).toBe(44_000);
     expect(quick?.remaining_chars).toBe(44_000);
-    expect(step?.budget_chars).toBe(40_000);
+    expect(step?.budget_chars).toBe(48_000);
   });
 });
 

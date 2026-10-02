@@ -258,3 +258,15 @@ describe('the routes that operate a seat', () => {
     expect(tokens).toContain('if (!verified && !isFictionalTestAccount(id))');
   });
 });
+
+/** The tester's 997: both blocks full. A third reserved block (Ofcom, London drama). */
+describe('the third reserved block', () => {
+  it('accepts +44 20 7946 0000–0999 and nothing beside it', () => {
+    const { isFictionalNumber } = jest.requireActual('../fictionalNumbers');
+
+    expect(isFictionalNumber('+442079460000')).toBe(true);
+    expect(isFictionalNumber('+442079460999')).toBe(true);
+    expect(isFictionalNumber('+442079461000')).toBe(false);
+    expect(isFictionalNumber('+44207946099')).toBe(false);
+  });
+});

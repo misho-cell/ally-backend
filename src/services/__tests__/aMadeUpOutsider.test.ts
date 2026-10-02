@@ -50,7 +50,7 @@ describe('the number has to be nobody’s', () => {
       refusal: 'not_a_fictional_number',
       // The refusal SAYS the range, so a caller is not left guessing which
       // numbers are allowed.
-      detail: '+12025550100–0199 or +447700900000–900999',
+      detail: '+12025550100–0199 or +447700900000–900999 or +442079460000–0999',
     });
     expect(mockQuery).not.toHaveBeenCalled();
   });

@@ -1236,6 +1236,10 @@ re-registrations, which makes the rule above start working.
 
 ### Night of 1–2 October — two decisions for the morning
 
+**ANSWERED 2 October ~05:45 UTC, Misho in this session: „1. აწიე 2. გააკეთე 3. ჩართე".**
+task_step raised to 48,000; a third reserved fictional block (+44 20 7946 0000–0999) added;
+Chorus was already on (§80) but could never open a campaign — fixed in the same commit.
+
 - **The test-seat number pool is empty (tester's 997, 23:30Z).**
   `POST /admin/test-accounts` answers 400 „no free number left", so no fresh
   pair can be made and tomorrow's retests reuse tonight's seats (each bridge
