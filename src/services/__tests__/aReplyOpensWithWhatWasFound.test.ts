@@ -45,6 +45,17 @@ describe('a reply that opens with „nothing found"', () => {
   });
 });
 
+describe('the tester’s 1044, thread 30726', () => {
+  it('moves a „ვერაფერი მოიძებნა" opening behind a plan label, and drops the label', () => {
+    const opening =
+      'გეგმა ასე გამოიყურება: შენს კონტაქტებშიც და მეორე წრეშიც ვეძებე ვეტერინარი თბილისში, არც ერთი ვერსიით ვერაფერი მოიძებნა.';
+    const web = 'ვებზე სამი კლინიკა ვნახე:\n\n1. ვეტკლინიკა https://vet.ge';
+    expect(withNothingFoundLast(`${opening} ${web}`)).toBe(
+      `${web}\n\nშენს კონტაქტებშიც და მეორე წრეშიც ვეძებე ვეტერინარი თბილისში, არც ერთი ვერსიით ვერაფერი მოიძებნა.`,
+    );
+  });
+});
+
 describe('a reply it leaves alone', () => {
   it('a reply that is only „nothing found" — that is the answer', () => {
     const only = 'ვებში 4 შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.';

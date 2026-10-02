@@ -174,3 +174,42 @@ describe('the plan does not start on top of an unanswered question', () => {
     expect(mockChat).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * The tester's 1044, thread 30726: the owner's run had already searched and
+ * answered, and the plan turn searched everything again and wrote a second
+ * full reply of the same findings. When the findings are on the screen, the
+ * plan turn is told so and proposes only the plan.
+ */
+describe('the plan turn on a goal whose search is already answered', () => {
+  const answered = (done: boolean): void => {
+    mockQuery.mockImplementation(((sql: string) =>
+      Promise.resolve(
+        String(sql).includes('tool_call_log')
+          ? { rows: [{ done }], rowCount: 1 }
+          : { rows: [{ waiting: false }], rowCount: 1 },
+      )) as never);
+  };
+
+  it('is woken with the plan-only text, not the search-first one', async () => {
+    answered(true);
+
+    startPlanProposal(GOAL);
+    await jest.advanceTimersByTimeAsync(PLAN_PROPOSAL_DELAY_MS + 1);
+
+    expect(mockChat).toHaveBeenCalledTimes(1);
+    const woken = JSON.stringify(mockChat.mock.calls[0]);
+    expect(woken).toContain('ძებნა უკვე გაკეთდა');
+    expect(woken).not.toContain('ჯერ მოძებნე');
+  });
+
+  it('still searches first when nothing has been searched yet', async () => {
+    answered(false);
+
+    startPlanProposal(GOAL);
+    await jest.advanceTimersByTimeAsync(PLAN_PROPOSAL_DELAY_MS);
+
+    expect(mockChat).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(mockChat.mock.calls[0])).toContain('ჯერ მოძებნე');
+  });
+});

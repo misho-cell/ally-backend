@@ -17,12 +17,19 @@
 const MAX_OPENING_CHARS = 300;
 const FIRST_SENTENCE_RE = /^[^\n]*?[.!?](?=\s|$)|^[^\n]+/;
 const NOTHING_FOUND_RE =
-  /ვერ ვიპოვე|ვერავინ|არავინ|ვერ მოიძებნა|არ მოიძებნა|ვერ ვნახე|couldn['’]t find|could not find|found (?:no(?:body| one)?|nothing)\b|no one in your|nobody in your|не нашё?л|никого/i;
+  /ვერ ვიპოვე|ვერაფერი|ვერავინ|არავინ|ვერ მოიძებნა|არ მოიძებნა|ვერ ვნახე|couldn['’]t find|could not find|found (?:no(?:body| one)?|nothing)\b|no one in your|nobody in your|не нашё?л|никого/i;
 const TURN_RE =
   /მაგრამ|თუმცა|გარდა|\bbut\b|\bhowever\b|\bexcept\b|(?<!\p{L})но(?!\p{L})|однако|кроме/iu;
 const FIND_IN_REST_RE =
   /https?:\/\/|^\s*(?:\d+[.)]|[-•*])\s|(?<!ვერ |არ |არავინ )(?:ვიპოვე|ვნახე|გამოჩნდა|მოიძებნა)|\bI found\b|(?<!не )нашё?л/imu;
 const PARAGRAPH_BREAK = '\n\n';
+/**
+ * The tester's 1044 (thread 30726): the opening was „გეგმა ასე გამოიყურება:
+ * შენს კონტაქტებშიც … ვერაფერი მოიძებნა." A short label before a colon
+ * introduces the reply; carried to the end with its sentence it would announce
+ * nothing, so it comes off when the sentence moves.
+ */
+const LEADING_LABEL_RE = /^[^:\n]{1,40}:\s+/;
 
 function openingSentence(text: string): string | null {
   const match = FIRST_SENTENCE_RE.exec(text);
@@ -54,5 +61,5 @@ export function withNothingFoundLast(text: string): string {
   if (rest.length === 0 || !FIND_IN_REST_RE.test(rest)) return text;
   // eslint-disable-next-line no-console
   console.warn(`[nothing-found-last] a leading „nothing found" sentence moved after the findings`);
-  return placeBeforeClosingQuestion(rest, sentence);
+  return placeBeforeClosingQuestion(rest, sentence.replace(LEADING_LABEL_RE, ''));
 }

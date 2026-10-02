@@ -49,7 +49,12 @@ import {
   threadLanguage,
 } from './threads.service';
 import { RunLanguage, RUN_STRINGS, answerHeldNoTokens } from './runLanguage';
-import { DAY_ONE_EVENT, INSTRUCTION_EVENT, PLAN_PROPOSAL_EVENT } from './taskEngine.events';
+import {
+  DAY_ONE_EVENT,
+  INSTRUCTION_EVENT,
+  PLAN_FROM_FINDINGS_EVENT,
+  PLAN_PROPOSAL_EVENT,
+} from './taskEngine.events';
 import { RULE_268_QUIET_DAY_ONE, RULE_268_QUIET_DAY_THREE } from './testerRules';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
@@ -1241,6 +1246,54 @@ export async function ownerWasAskedAndHasNotAnswered(taskId: number): Promise<bo
   return result.rows[0]?.waiting === true;
 }
 
+/**
+ * The tester's 1044 — has this goal's thread already been searched AND
+ * answered since the goal was saved? Then the plan turn must not search again
+ * (see PLAN_FROM_FINDINGS_EVENT). The opening searches and the owner's own run
+ * both count; the window opens a few minutes before the goal, because a goal
+ * is saved in the middle of the run that searched for it.
+ */
+const SEARCH_TOOL_NAMES: readonly string[] = [
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contact_by_name',
+  'search_roster',
+  'web_search',
+];
+
+export async function goalAlreadySearchedAndAnswered(taskId: number): Promise<boolean> {
+  const result = await query<{ done: boolean }>(
+    `WITH t AS (SELECT thread_id, created_at FROM tasks WHERE id = $1),
+          searched AS (
+            SELECT MAX(l.created_at) AS at
+              FROM tool_call_log l, t
+             WHERE l.thread_id = t.thread_id
+               AND l.created_at >= t.created_at - interval '5 minutes'
+               AND split_part(l.tool, ':', 1) = ANY($2::text[])
+          )
+     SELECT EXISTS (
+       SELECT 1 FROM conversations c, t, searched s
+        WHERE c.thread_id = t.thread_id AND c.role = 'assistant' AND c.kind = 'message'
+          AND c.run_id IS NOT NULL AND TRIM(c.content) <> '' AND c.created_at > s.at
+     ) AS done`,
+    [taskId, SEARCH_TOOL_NAMES],
+    OWNER_QUIET_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.done === true;
+}
+
+/** The plan turn for a goal whose findings are already on the screen. */
+function startPlanFromFindings(taskId: number): void {
+  wakeWhenFree(
+    taskId,
+    PLAN_FROM_FINDINGS_EVENT,
+    () => nothingToPlanYet(taskId),
+    () => Promise.resolve(),
+    0,
+  );
+}
+
 export function startPlanProposal(taskId: number, attempt = 1): void {
   wakeWhenFree(
     taskId,
@@ -1266,6 +1319,12 @@ export function startPlanProposal(taskId: number, attempt = 1): void {
           );
           return true;
         }
+        return false;
+      }
+      if (await goalAlreadySearchedAndAnswered(taskId)) {
+        // eslint-disable-next-line no-console
+        console.log(`[task-engine] goal ${taskId}: already searched and answered — plan only`);
+        startPlanFromFindings(taskId);
         return false;
       }
       return true;

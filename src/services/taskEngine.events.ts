@@ -468,3 +468,53 @@ export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
     'queda vacío en el primer plan. Enumera a las personas encontradas solo en tu mensaje, como ' +
     'pistas para él. «A quién preguntaremos» significa «a nadie» en ese caso.',
 };
+
+/**
+ * The tester's 1044, thread 30726 (2 October): the owner's own run searched,
+ * answered with what it found (14:34:43), and proposed no plan; the plan wake
+ * fired ten seconds later, searched everything again, and wrote a second full
+ * reply of the same findings (14:35:51). The owner read the answer twice.
+ *
+ * When the goal's thread has already been searched and answered, the plan
+ * turn gets THIS text instead: the findings are on the screen, so it builds
+ * the plan from them and says only the plan. The rules on what needs a yes are
+ * the same as PLAN_PROPOSAL_EVENT's.
+ */
+export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'მიზანი ახლახან შეინახა, გეგმა ჯერ არ არსებობს, და ძებნა უკვე გაკეთდა — მფლობელმა ' +
+    'ნაპოვნი წინა პასუხში უკვე წაიკითხა. თავიდან ნუ მოძებნი და ნაპოვნს ნუ გაიმეორებ. ' +
+    'შეადგინე გეგმა იმ ნაპოვნიდან და დადე propose_task_plan-ით: ვინ წყვეტს ამას, რომელი ' +
+    'გზებით მივალთ, ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მფლობელს ორ-სამ წინადადებაში ' +
+    'უთხარი მხოლოდ გეგმა — ვის ვკითხავთ და რატომ — და ბოლოს present_choices-ით ორი ღილაკი: ' +
+    '„ვამტკიცებ" და „შევცვალოთ". დასტური მხოლოდ იმაზეა, რაც გადის. არავის არ მისწერო, ' +
+    'სანამ გეგმა არ დამტკიცდება. თუ მფლობელმა თქვა, რომ არავის არ მივწეროთ — ' +
+    'people_to_involve ცარიელი რჩება.',
+  en:
+    'A goal has just been saved, there is no plan yet, and the search is ALREADY done — the ' +
+    'owner has read the findings in the previous reply. Do not search again and do not repeat ' +
+    'the findings. Draw up the plan from those findings and submit it with propose_task_plan: ' +
+    'who decides this, which paths we take, whom we will ask by name, and the sign that it is ' +
+    'done. Tell the owner only the plan, in two or three sentences — whom we would ask and why ' +
+    '— and end with present_choices and two buttons: "I approve" and "Change it". The yes is ' +
+    'only for what goes out. Write to nobody until the plan is approved. If the owner said to ' +
+    'write to nobody, people_to_involve stays empty.',
+  ru:
+    'Цель только что сохранена, плана ещё нет, и поиск УЖЕ сделан — владелец прочитал ' +
+    'найденное в предыдущем ответе. Не ищи заново и не повторяй найденное. Составь план из ' +
+    'этого найденного и отправь через propose_task_plan: кто это решает, какими путями идём, ' +
+    'кого спросим поимённо, признак завершения. Владельцу скажи только план, в двух-трёх ' +
+    'предложениях — кого спросим и почему — и в конце present_choices с двумя кнопками: ' +
+    '«Подтверждаю» и «Изменить». Подтверждение нужно только для того, что уходит наружу. Никому ' +
+    'не пиши, пока план не утверждён. Если владелец сказал никому не писать — people_to_involve ' +
+    'остаётся пустым.',
+  es:
+    'Se acaba de guardar una meta, todavía no hay plan y la búsqueda YA está hecha — el ' +
+    'propietario leyó lo encontrado en la respuesta anterior. No vuelvas a buscar ni repitas lo ' +
+    'encontrado. Redacta el plan con eso y envíalo con propose_task_plan: quién decide esto, ' +
+    'por qué caminos vamos, a quién preguntaremos por nombre, y la señal de que está resuelto. ' +
+    'Dile al propietario solo el plan, en dos o tres frases — a quién preguntaríamos y por qué ' +
+    '— y termina con present_choices y dos botones: «Lo apruebo» y «Cambiarlo». El sí es solo ' +
+    'para lo que sale. No escribas a nadie hasta que el plan esté aprobado. Si el propietario ' +
+    'dijo que no escribamos a nadie, people_to_involve queda vacío.',
+};
