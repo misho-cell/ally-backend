@@ -5507,3 +5507,6 @@ BODY    { "kind": "event", "reason": "§86: leaked event bubble, Misho 2 Oct" }
 UNDO    PATCH /admin/threads/30493/messages/35e1a4d3-b2b8-4441-b8c3-3003de19156a/kind
         { "kind": "message", "reason": "undo §86" }
 ```
+
+**§86 RUN, 2 October 17:21:12 UTC:** `{"thread_id":30493,"was":"message","now":"event"}` — the bubble
+is off the owner's chat; the row and its text are unchanged.
