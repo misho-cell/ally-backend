@@ -112,3 +112,16 @@ describe('what a request thread tells the run about itself', () => {
     expect(buildRequestThreadSection({ ...ACCEPTED, direct: true })).toContain('პირდაპირ');
   });
 });
+
+/** G6 (the tester's 997): the three buttons were offered before the tool could refuse. */
+describe('a request with no number to hand over', () => {
+  const PENDING = { ...ACCEPTED, status: 'pending', responded_at: null };
+
+  it('tells the assistant up front not to offer „directly"', () => {
+    expect(buildRequestThreadSection(PENDING, true)).toContain('პირდაპირ დაკავშირება შეუძლებელია');
+  });
+
+  it('says nothing of it when a number is there', () => {
+    expect(buildRequestThreadSection(PENDING)).not.toContain('შეუძლებელია');
+  });
+});

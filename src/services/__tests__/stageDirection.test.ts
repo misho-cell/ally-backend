@@ -31,6 +31,13 @@ describe('a reply that is only a stage direction', () => {
     expect(STAGE_DIRECTION_ONLY_RE.test('[ეს შესაძლებლობა UI-ში აისახება]')).toBe(true);
   });
 
+  it("catches one in round brackets too (the tester's 997, thread 29835)", () => {
+    expect(STAGE_DIRECTION_ONLY_RE.test('*(ველოდები პასუხს.)*')).toBe(true);
+    expect(STAGE_DIRECTION_ONLY_RE.test('(waiting for an answer)')).toBe(true);
+    expect(STAGE_DIRECTION_ONLY_RE.test('ნინო (იურისტი) დაგეხმარება.')).toBe(false);
+    expect(STAGE_DIRECTION_ONLY_RE.test('(a) or (b)?')).toBe(false);
+  });
+
   it('catches them with the whitespace a model leaves around them', () => {
     expect(STAGE_DIRECTION_ONLY_RE.test('\n  [waiting for the user to choose]  \n')).toBe(true);
     expect(STAGE_DIRECTION_ONLY_RE.test('_[thinking]_')).toBe(true);

@@ -46,6 +46,7 @@ import {
   getPassedOnAsks,
   PendingRequest,
   RespondedRequest,
+  mediatorCanHandOver,
 } from './introduction.service';
 import {
   buildTwoItemsSection,
@@ -3875,7 +3876,29 @@ export function buildIncomingAskSection(ask: IncomingAsk): string {
  * asking whom, and here is what the owner has already decided — so a decision
  * already made is never asked for a second time.
  */
-export function buildRequestThreadSection(req: ThreadRequest): string {
+/**
+ * G6 (the tester's 997): the mediator was shown the three buttons BEFORE the
+ * tool could refuse „direct" — his assistant drew them from memory. So the
+ * section says it up front when there is no number to hand over.
+ */
+const NO_DIRECT_LINE =
+  '\n- პირდაპირ დაკავშირება შეუძლებელია: ეს ადამიანი მფლობელის ტელეფონში ერთ ცალსახა ' +
+  'კონტაქტად არ არის. „პირდაპირ" ღილაკი არასოდეს შესთავაზო — მხოლოდ „ჩემი გავლით" / ' +
+  '„არა, ამჯერად".';
+
+/** Whether this run's request has no number to hand over (G6); false when it cannot be read. */
+async function directIsImpossible(userId: string, req: ThreadRequest | null): Promise<boolean> {
+  if (req === null || req.direct || req.status !== 'pending') return false;
+  try {
+    return (await mediatorCanHandOver(userId, req.id)) === false;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] could not check the request for a number:', (err as Error).message);
+    return false;
+  }
+}
+
+export function buildRequestThreadSection(req: ThreadRequest, noDirect = false): string {
   const asker = req.requester_name?.trim() || 'Netai-ს მომხმარებელი';
   const why = req.message?.trim() ? `\n- მიზეზი, რომელიც მან დაწერა: „${req.message.trim()}"` : '';
   const answered =
@@ -3897,6 +3920,7 @@ export function buildRequestThreadSection(req: ThreadRequest): string {
     `${req.direct ? 'თხოვნა პირდაპირ მფლობელს ეხება.' : 'მფლობელი შუამავალია.'}` +
     why +
     response +
+    (noDirect ? NO_DIRECT_LINE : '') +
     `\n${answered}\n` +
     '- ეს საუბარი ამ თხოვნაზეა. როცა მფლობელი ზემოთ დასახელებულ სახელს ახსენებს, ან ' +
     'ამბობს „მას"/„ის" — სწორედ ეს ორი ადამიანი იგულისხმება. ნუ ეძებ მათ თავიდან ' +
@@ -4197,6 +4221,7 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
+  const noDirect = await directIsImpossible(userId, threadRequest);
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4214,7 +4239,7 @@ async function buildAgentSystemPrompt(
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
-      (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
+      (threadRequest ? buildRequestThreadSection(threadRequest, noDirect) : '') +
       // Row 305 (b): an ask and a request in one conversation, named apart so
       // a bare „yes" is asked about rather than sent to the wrong one. Only
       // while BOTH are open: once the question is answered, the request is
@@ -9199,6 +9224,12 @@ export function introContextFor(
   };
 }
 
+/** An answer with nothing in it: no text a person could read and no tool to run. */
+export function isBlankResponse(response: Anthropic.Message): boolean {
+  if (response.content.some((block) => block.type === 'tool_use')) return false;
+  return extractText(response.content).trim() === '';
+}
+
 const MIN_BURIED_ANSWER_CHARS = 200;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
@@ -9853,6 +9884,18 @@ async function runToolLoop(
     onText: stream,
     model: TOOL_TURN_MODEL,
   });
+  // The tester's 997 (29833, run 44e53e23): the first answer came back with no
+  // text and no tool call, and the owner was told „try again" — the same words
+  // sent again a minute later worked. A blank first answer is asked once more
+  // before anything is surfaced; the owner never does the retrying.
+  if (isBlankResponse(response)) {
+    // eslint-disable-next-line no-console
+    console.warn(`[chat] run ${runId} first answer was blank — asking once more`);
+    response = await callClaude(messages, systemPrompt, tools, ctx, {
+      onText: stream,
+      model: TOOL_TURN_MODEL,
+    });
+  }
   // When the fast tier is on, the user-facing answer must still come from the
   // strong model — set once a strong final has been generated.
   let finalFromStrong = false;
@@ -10152,6 +10195,10 @@ async function runToolLoop(
   // shorter — its phones were masked — so Claude's step was put in front of it
   // and the owner read the answer twice in one message. A rewrite IS the
   // answer, written from that same material; only an empty one is rescued.
+  // The tester's 997 (29835): the final was „*(ველოდები პასუხს.)*" — a stage
+  // direction in round brackets — and the real reply sat in the step before
+  // it. A final that is only a stage direction is no answer: it counts as empty.
+  if (bestNarration.length > 0 && STAGE_DIRECTION_ONLY_RE.test(finalText)) finalText = '';
   const buriedAnswer =
     bestNarration.length > 0 &&
     (finalText.length === 0 ||
@@ -10761,11 +10808,12 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * A reply that is nothing but a bracketed note about what the software is
  * doing — see where it is used, in processChat, for the two live cases.
  *
- * The whole string, and one bracket only. `[a] and [b]` is prose with brackets
- * in it and is none of this rule's business; markdown emphasis around the
+ * The whole string, and one bracket only — square, or round since the tester's
+ * 997 („*(ველოდები პასუხს.)*"). `[a] and [b]` is prose with brackets in it and
+ * is none of this rule's business; markdown emphasis around the
  * outside is allowed because the model wrapped one of these in asterisks.
  */
-export const STAGE_DIRECTION_ONLY_RE = /^[*_`~\s]*\[[^[\]]{1,200}\][*_`~\s]*$/;
+export const STAGE_DIRECTION_ONLY_RE = /^[*_`~\s]*(?:\[[^[\]]{1,200}\]|\([^()]{1,200}\))[*_`~\s]*$/;
 /**
  * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
  *
