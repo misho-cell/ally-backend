@@ -1581,7 +1581,10 @@ export async function sendApprovedAskAnswer(
     return { sent: false, error: 'ეს კითხვა უკვე დახურულია — პასუხი ვეღარ გაიგზავნება.' };
   }
 
-  const captured = await recordAskAnswer(askThreadId, approvedText);
+  // #34 (the tester's 1055): send the helper's own words when the approved
+  // text only rearranges them.
+  const answerText = await helpersOwnWording(askThreadId, approvedText);
+  const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
   }
@@ -1589,7 +1592,7 @@ export async function sendApprovedAskAnswer(
   await deliverCapturedAnswer(captured, recipientUserId);
 
   if (remember === undefined) return { sent: true };
-  const saved = await saveAnswerRule(recipientUserId, remember.kind, row.question, approvedText);
+  const saved = await saveAnswerRule(recipientUserId, remember.kind, row.question, answerText);
   return saved.ok
     ? { sent: true, rule_saved: true }
     : { sent: true, rule_saved: false, rule_error: saved.error };
@@ -2151,6 +2154,51 @@ export interface EnsureQuoted {
 /** How many of the recipient's own lines are read to find their words. */
 const OWN_WORDS_LOOKBACK = 20;
 const OWN_WORDS_NOISE_RE = /[^\p{L}\p{N}]+/gu;
+
+/**
+ * #34 — the tester's 1055, threads 31058 / 31062: the helper typed „…მეორე
+ * სართულზე, 7 ნომერ კაბინეტში." and their assistant sent „…მეორე სართულზე,
+ * კაბინეტი ნომერი 7." — every fact kept, the words rearranged. The quote
+ * guarantee then rightly treated it as meaning, not words, and the asker got no
+ * quotation. When the text the assistant sends is the same words as the
+ * helper's own last line in a different order (most of the words shared), the
+ * helper's own line is what goes: it is the more faithful of the two.
+ */
+const SAME_WORDS_SHARE = 0.6;
+const MIN_OWN_LINE_CHARS = 8;
+const MAX_OWN_LINE_CHARS = 1000;
+
+function wordSet(text: string): Set<string> {
+  return new Set(comparable(text).split(/\s+/).filter(Boolean));
+}
+
+export function sharesMostWords(a: string, b: string): boolean {
+  const left = wordSet(a);
+  const right = wordSet(b);
+  if (left.size === 0 || right.size === 0) return false;
+  const common = [...left].filter((w) => right.has(w)).length;
+  return common / new Set([...left, ...right]).size >= SAME_WORDS_SHARE;
+}
+
+async function helpersOwnWording(askThreadId: number, approvedText: string): Promise<string> {
+  try {
+    const result = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND TRIM(content) <> ''
+        ORDER BY created_at DESC LIMIT 1`,
+      [askThreadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const own = result.rows[0]?.content.trim() ?? '';
+    const usable = own.length >= MIN_OWN_LINE_CHARS && own.length <= MAX_OWN_LINE_CHARS;
+    if (!usable || comparable(own) === comparable(approvedText)) return approvedText;
+    return sharesMostWords(own, approvedText) ? own : approvedText;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ask-answer] could not read the helper's own line:", (err as Error).message);
+    return approvedText;
+  }
+}
 
 function comparable(text: string): string {
   return text.toLowerCase().replace(OWN_WORDS_NOISE_RE, ' ').trim();
