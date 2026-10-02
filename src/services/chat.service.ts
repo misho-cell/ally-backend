@@ -1,6 +1,7 @@
 import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
+import { withNameGenders } from './nameGender';
 import {
   forgetSearchStage,
   SearchStage,
@@ -8969,10 +8970,12 @@ async function runOneToolBlock(
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each
   // attempt arrives with no memory of the last one.
-  const raw = withNamelessLabelsSaid(
+  const labelled = withNamelessLabelsSaid(
     block.name,
     withEmptySearchHistory(block.name, input, runId, rawResult),
   );
+  // #69: a common Georgian first name says whether the person is a man or a woman.
+  const raw = SEARCH_TOOLS.has(block.name) ? withNameGenders(labelled) : labelled;
   // Ticket 19 G7: the step caption is written BEFORE the call and says what the
   // run INTENDS. On 15346 three of them contradicted each other inside eight
   // minutes and nobody could tell which was true, because what actually
