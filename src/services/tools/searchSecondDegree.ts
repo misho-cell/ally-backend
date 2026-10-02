@@ -68,9 +68,17 @@ export function bridgesSummary(
 }
 
 /** Row 296: said once per nameless row, so the model neither invents a name nor quotes the label. */
+/**
+ * #499 / #500 (Ninia, thread 30487): the reply printed „(სახელი ვერ დავადასტურე
+ * ოფიციალურ გვერდზე) (Paysera Bank Georgia-ს ხელმძღვანელი)" — a placeholder in
+ * brackets where a name goes. The note said what to describe and not what
+ * never to write. It says both now.
+ */
 const NAME_WITHHELD_NOTE =
-  'No name to show: how the bridge saved this person is private. Describe them by who knows ' +
-  'them and what they do; for an introduction pass target_phone.';
+  'No name to show: how the bridge saved this person is private. Say it in words, by who ' +
+  'knows them and what they do — e.g. „one more person through Tornike, who heads a bank" — ' +
+  'and never write a placeholder, a bracket or „name not confirmed" where a name would be. ' +
+  'For an introduction pass target_phone.';
 import {
   applyRelationshipWarmth,
   relationshipTouchedPhones,
