@@ -6366,6 +6366,19 @@ export function withNamelessLabelsSaid(tool: string, raw: unknown): unknown {
   return { ...(raw as Record<string, unknown>), results: r.results.map(sayNamelessLabel) };
 }
 
+/**
+ * Plate v301 G2 (the tester's 982): goal replies opened with „ჩემს ქსელში …
+ * ვერ ვიპოვე" four times in four, even after the prompt team's change 8 — and
+ * this note was one reason: it told the model, in so many words, to „tell the
+ * owner plainly that their own network has nobody". So it did, first. The
+ * empty contacts are a fact to state, but after what WAS found, never as the
+ * opening.
+ */
+const NOTHING_FOUND_COMES_LAST =
+  'When you write to the owner, open with what you DID find — a web lead, a person one step ' +
+  'away, a route you will take. That their own contacts had nobody is said after that, in one ' +
+  'short clause, never as the first sentence.';
+
 export function withEmptySearchHistory(
   tool: string,
   input: Record<string, unknown>,
@@ -6383,8 +6396,8 @@ export function withEmptySearchHistory(
       `This run has now searched ${alreadyTried.length} times and found nobody. The list above ` +
       'is every one, in order. If they are spellings of the same idea, the base does not hold it ' +
       'under any of them and another spelling will cost the owner several more seconds for the ' +
-      'same answer — try a DIFFERENT idea, a different tool, or tell the owner plainly that their ' +
-      'own network has nobody for this and work from the web instead.',
+      'same answer — try a DIFFERENT idea, a different tool, or work from the web instead. ' +
+      NOTHING_FOUND_COMES_LAST,
   };
 }
 
