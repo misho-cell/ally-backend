@@ -5510,3 +5510,17 @@ UNDO    PATCH /admin/threads/30493/messages/35e1a4d3-b2b8-4441-b8c3-3003de19156a
 
 **§86 RUN, 2 October 17:21:12 UTC:** `{"thread_id":30493,"was":"message","now":"event"}` — the bubble
 is off the owner's chat; the row and its text are unchanged.
+
+## §87 — #370: GEORGIAN SPEECH ON THE NEWER TRANSCRIPTION MODEL
+
+**Authorised by Misho, 2 October ~21:10 UTC, directly in the session:** „თუ მოთხოვნა იყო ამაზე კი"
+— to my question whether to switch the speech model for #370 (Georgian voice on iPhone comes out
+as nonsense on `whisper-1`). Price checked first on OpenAI's own pricing page: gpt-4o-transcribe
+is estimated at $0.006 per minute, the same as whisper-1. The code already falls back to plain
+JSON for a model that refuses the verbose format (speech.service).
+
+```
+ROUTE   env.sh set SPEECH_MODEL        (value on stdin: gpt-4o-transcribe; Railway redeploys)
+UNDO    env.sh unset SPEECH_MODEL      (the code's default is whisper-1) — then a restart,
+        because an unset does not redeploy (env.sh says so on its last line)
+```
