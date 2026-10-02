@@ -2,6 +2,7 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
+import { GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -9565,6 +9566,15 @@ interface CallOptions {
   onText?: (delta: string) => void;
   // Model override for this call (the fast tool-turn tier); defaults to MODEL.
   model?: string;
+  // #378: a ceiling on this one turn's length (a bare greeting); MAX_TOKENS otherwise.
+  maxTokens?: number;
+}
+
+/** The owner's newest line in the turn being answered, when it is plain text. */
+function lastOwnerText(messages: readonly Anthropic.MessageParam[]): string | null {
+  const last = messages[messages.length - 1];
+  if (last === undefined || last.role !== 'user') return null;
+  return typeof last.content === 'string' ? last.content : null;
 }
 
 async function callClaude(
@@ -9578,7 +9588,7 @@ async function callClaude(
   const stream = anthropic.messages.stream(
     {
       model,
-      max_tokens: MAX_TOKENS,
+      max_tokens: opts.maxTokens ?? MAX_TOKENS,
       system: systemBlocks(systemPrompt),
       tools: toCachedTools(tools),
       messages: markLastMessageForCache(messages),
@@ -10088,9 +10098,15 @@ async function runToolLoop(
   // Initial call: nothing gathered yet, so a failure here propagates and the
   // route reports a run error — there is no partial answer to salvage.
   // Tool turns run on TOOL_TURN_MODEL (same as MODEL unless the A/B flag is set).
+  // #378: a bare greeting outside a goal is one short turn, no tools.
+  const greetingOnly =
+    !ownerAbsent &&
+    isBareGreeting(lastOwnerText(messages)) &&
+    (await getOpenTaskByThread(threadId).catch(() => null)) === null;
   let response = await callClaude(messages, systemPrompt, tools, ctx, {
     onText: stream,
     model: TOOL_TURN_MODEL,
+    ...(greetingOnly && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words

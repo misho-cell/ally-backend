@@ -1,0 +1,20 @@
+/**
+ * Board #378 — the tester's plate: a plain greeting took 37 seconds to the
+ * first word. Measured on 2 October (threads 31092–31094): two model turns —
+ * the first wrote ~430 tokens and fetched the contact count and list, the
+ * second wrote another ~400–540 — 20 to 26 seconds for „გამარჯობა". Nothing
+ * in a greeting needs a tool.
+ *
+ * So a message that is ONLY a greeting, in a conversation with no open goal,
+ * gets one turn with no tools (the tools stay declared, so the cached prompt
+ * still hits) and a short ceiling on its length. In a goal's conversation a
+ * greeting may be waiting for that goal's news, and it keeps the full turn.
+ */
+export const GREETING_MAX_TOKENS = 350;
+
+const GREETING_ONLY_RE =
+  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|hola|buenas)[\s!.,?)😊🙂👋]*$/iu;
+
+export function isBareGreeting(text: string | null | undefined): boolean {
+  return typeof text === 'string' && GREETING_ONLY_RE.test(text);
+}
