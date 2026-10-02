@@ -5021,6 +5021,22 @@ const GO_AHEAD = [
   'send it',
   'proceed',
   'start',
+  // Giorgi, 2 October (G-007, team task #331): plan on screen, a question, the
+  // answer, „shall I go ahead?", and he typed „კი, დაუკავშირდი" — refused,
+  // because the verb was not here. These are the words a person uses to tell
+  // the assistant to reach the people on the plan. Every limit of a go-ahead
+  // still holds: a plan card is what is being answered, six words at most, no
+  // question mark, and „yes, but…" / „yes, no" are still turned away.
+  'დაუკავშირდი',
+  'დაუკავშირდით',
+  'მისწერე',
+  'მიწერე',
+  'მიუწერე',
+  'დაუწერე',
+  'ჰკითხე',
+  'contact them',
+  'write to them',
+  'ask them',
 ];
 /** A go-ahead is a sentence, not a paragraph. Beyond this it is carrying content. */
 const GO_AHEAD_MAX_WORDS = 6;
