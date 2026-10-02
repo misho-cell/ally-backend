@@ -2,6 +2,7 @@ import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.ser
 import {
   authorForLogin,
   createTeamTask,
+  deleteTeamTask,
   isTeamTaskAuthor,
   isTeamTaskStatus,
   listTeamTasks,
@@ -1821,7 +1822,8 @@ adminRouter.post(
 // which AI seats write through, names one (`created_by`), from the fixed list.
 //   GET   /admin/team-tasks?page=1|2
 //   POST  /admin/team-tasks { problem, task, priority?, created_by? }
-//   PATCH /admin/team-tasks/:id { status?, priority?, page? }
+//   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task? }
+//   DELETE /admin/team-tasks/:id   (hidden, not erased; migration 196)
 adminRouter.get(
   '/team-tasks',
   queryParam('page').optional().isIn(TEAM_TASK_PAGES.map(String)),
@@ -1893,20 +1895,30 @@ adminRouter.patch(
   body('status').optional().custom(isTeamTaskStatus),
   body('priority').optional().isInt({ min: 1, max: 3 }),
   body('page').optional().isIn(TEAM_TASK_PAGES),
+  body('problem').optional().isString().trim().isLength({ min: 1 }),
+  body('task').optional().isString().trim().isLength({ min: 1 }),
   async (req: Request, res: Response<ApiResponse<TeamTask>>) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
-        error: `status is one of ${Object.values(TeamTaskStatus).join(', ')}; priority 1–3; page 1 or 2`,
+        error: `status is one of ${Object.values(TeamTaskStatus).join(', ')}; priority 1–3; page 1 or 2; problem and task are non-empty text`,
       });
       return;
     }
     try {
-      const change = req.body as { status?: TeamTaskStatus; priority?: number; page?: number };
+      const change = req.body as {
+        status?: TeamTaskStatus;
+        priority?: number;
+        page?: number;
+        problem?: string;
+        task?: string;
+      };
       const updated = await updateTeamTask(Number(req.params.id), {
         status: change.status,
         priority: change.priority === undefined ? undefined : Number(change.priority),
         page: change.page === undefined ? undefined : Number(change.page),
+        problem: change.problem === undefined ? undefined : String(change.problem),
+        task: change.task === undefined ? undefined : String(change.task),
       });
       if (updated === null) {
         res.status(404).json({ success: false, error: 'No such task.' });
@@ -1916,6 +1928,30 @@ adminRouter.patch(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[team-tasks] update failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.delete(
+  '/team-tasks/:id',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<{ id: number; deleted: true }>>) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id is a task number' });
+      return;
+    }
+    try {
+      const id = Number(req.params.id);
+      const adminId = String((req as AuthenticatedRequest).user.userId);
+      if (!(await deleteTeamTask(id, adminId))) {
+        res.status(404).json({ success: false, error: 'No such task.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { id, deleted: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[team-tasks] delete failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

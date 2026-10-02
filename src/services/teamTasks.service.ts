@@ -116,6 +116,7 @@ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
   const result = await query<Record<string, unknown>>(
     `SELECT ${COLUMNS} FROM team_tasks
       WHERE ($1::smallint IS NULL OR page = $1::smallint)
+        AND deleted_at IS NULL
       ORDER BY page, priority, id
       LIMIT ${MAX_TASKS_LISTED}`,
     [page ?? null],
@@ -128,20 +129,59 @@ export interface TeamTaskChange {
   readonly status?: TeamTaskStatus;
   readonly priority?: number;
   readonly page?: number;
+  readonly problem?: string;
+  readonly task?: string;
 }
 
-/** Changes status, priority or page; null when there is no such task. */
+/** The edited text as stored, or null to keep what is there. */
+function editedText(text: string | undefined): string | null {
+  if (text === undefined) return null;
+  const trimmed = text.trim().slice(0, MAX_TEXT_CHARS);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Changes status, priority, page or the text; null when there is no such task.
+ *
+ * Giorgi's Claude, 2 October (G-001): a PATCH carrying new problem/task text
+ * answered 200 and changed nothing, because the text was never read. It is now;
+ * an empty text keeps what is there rather than blanking a row.
+ */
 export async function updateTeamTask(id: number, change: TeamTaskChange): Promise<TeamTask | null> {
   const result = await query<Record<string, unknown>>(
     `UPDATE team_tasks
         SET status = COALESCE($2, status),
             priority = COALESCE($3::smallint, priority),
             page = COALESCE($4::smallint, page),
+            problem = COALESCE($5, problem),
+            task = COALESCE($6, task),
             updated_at = NOW()
-      WHERE id = $1
+      WHERE id = $1 AND deleted_at IS NULL
       RETURNING ${COLUMNS}`,
-    [id, change.status ?? null, change.priority ?? null, change.page ?? null],
+    [
+      id,
+      change.status ?? null,
+      change.priority ?? null,
+      change.page ?? null,
+      editedText(change.problem),
+      editedText(change.task),
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0] ? toTask(result.rows[0]) : null;
+}
+
+/**
+ * Takes a row off the board; false when there is no such row on it. The row is
+ * hidden, not erased: who removed it and when stay with it, and it can be put
+ * back (migration 196).
+ */
+export async function deleteTeamTask(id: number, deletedBy: string): Promise<boolean> {
+  const result = await query(
+    `UPDATE team_tasks SET deleted_at = NOW(), deleted_by = $2
+      WHERE id = $1 AND deleted_at IS NULL`,
+    [id, deletedBy],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
 }

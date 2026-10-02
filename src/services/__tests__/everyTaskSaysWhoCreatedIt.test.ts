@@ -6,6 +6,7 @@ import { query } from '../../db/postgres/client';
 import {
   authorForLogin,
   createTeamTask,
+  deleteTeamTask,
   isTeamTaskAuthor,
   listTeamTasks,
   TeamTaskAuthor,
@@ -88,7 +89,47 @@ describe('the board', () => {
   it('changes only what was sent, and says when there is no such task', async () => {
     mockQuery.mockResolvedValue(rows([]));
     expect(await updateTeamTask(9, { page: 2 })).toBeNull();
-    expect(mockQuery.mock.calls[0][1]).toEqual([9, null, null, 2]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([9, null, null, 2, null, null]);
+  });
+
+  /**
+   * Giorgi's Claude, 2 October (G-001): new text answered 200 and changed
+   * nothing; a duplicate row could not be removed.
+   */
+  it('changes the problem and task text when they are sent', async () => {
+    mockQuery.mockResolvedValue(rows([{ ...ROW, task: 'new' }]));
+    await updateTeamTask(200, { task: '  new  ', problem: 'why' });
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('task = COALESCE($6, task)');
+    expect(params).toEqual([200, null, null, null, 'why', 'new']);
+  });
+
+  it('keeps the text when an empty one is sent, rather than blanking the row', async () => {
+    mockQuery.mockResolvedValue(rows([ROW]));
+    await updateTeamTask(200, { task: '   ' });
+    expect(mockQuery.mock.calls[0][1]).toEqual([200, null, null, null, null, null]);
+  });
+
+  it('hides a deleted row and keeps who removed it, so it can be put back', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
+    expect(await deleteTeamTask(199, '173527')).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('SET deleted_at = NOW(), deleted_by = $2');
+    expect(String(sql)).not.toContain('DELETE FROM');
+    expect(params).toEqual([199, '173527']);
+  });
+
+  it('says there is no such row when it is missing or already removed', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    expect(await deleteTeamTask(199, '173527')).toBe(false);
+  });
+
+  it('never lists or edits a removed row', async () => {
+    mockQuery.mockResolvedValue(rows([]));
+    await listTeamTasks();
+    await updateTeamTask(199, { page: 2 });
+    expect(String(mockQuery.mock.calls[0][0])).toContain('deleted_at IS NULL');
+    expect(String(mockQuery.mock.calls[1][0])).toContain('deleted_at IS NULL');
   });
 });
 
@@ -102,6 +143,15 @@ describe('where it is wired', () => {
     const post = route.slice(route.indexOf("adminRouter.post(\n  '/team-tasks'"));
     expect(post.slice(0, 2000)).toContain('const fromLogin = await authorForLogin(adminId);');
     expect(post.slice(0, 2000)).toContain('fromLogin ?? (isTeamTaskAuthor(input.created_by)');
+  });
+
+  it('has a delete route that hides the row, and the column it writes', () => {
+    expect(route).toContain("adminRouter.delete(\n  '/team-tasks/:id'");
+    const migration = readFileSync(
+      join(__dirname, '..', '..', 'db', 'postgres', 'migrations', '196_team_task_deleted_at.sql'),
+      'utf8',
+    );
+    expect(migration).toContain('deleted_at TIMESTAMPTZ');
   });
 
   it('has the five fields and the page in the table', () => {
