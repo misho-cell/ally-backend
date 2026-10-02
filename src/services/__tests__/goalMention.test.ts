@@ -114,3 +114,24 @@ describe('a title that says one word more than the restatement', () => {
     ).toBeNull();
   });
 });
+
+/**
+ * The tester's 1013 (thread 30065): an inheritance-dispute lawyer was folded
+ * into the land-dispute lawyer goal — the forgiven word was the one the new
+ * message had replaced.
+ */
+describe('a word replaced, not dropped', () => {
+  const land = { id: 13300, title: 'მჭირდება ადვოკატი მიწის დავაზე' };
+
+  it('is a new request when the message puts its own word in the missing one’s place', () => {
+    expect(goalNamedIn('მჭირდება ადვოკატი სამემკვიდრეო დავაზე', [land])).toBeNull();
+  });
+
+  it('still joins a restatement that only drops a word', () => {
+    expect(goalNamedIn('მჭირდება ადვოკატი დავაზე', [land])?.id).toBe(13300);
+  });
+
+  it('still joins the same need said again in full', () => {
+    expect(goalNamedIn('მჭირდება ადვოკატი მიწის დავაზე', [land])?.id).toBe(13300);
+  });
+});

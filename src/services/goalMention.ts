@@ -80,6 +80,18 @@ function sameWord(a: string, b: string): boolean {
   return prefix >= Math.min(a.length, b.length) - MAX_ENDING_CHARS;
 }
 
+/**
+ * The tester's 1013 (thread 30065): „მჭირდება ადვოკატი სამემკვიდრეო დავაზე"
+ * was folded into goal 13300, „მჭირდება ადვოკატი მიწის დავაზე" — the one
+ * missing word was forgiven, and it was the word that made it a different
+ * need: the message had put „სამემკვიდრეო" in its place. A missing word is a
+ * dropped adjective only when the message brings no word of its own; a new
+ * word standing where the old one stood is a new request.
+ */
+function bringsAWordOfItsOwn(messageWords: string[], titleWords: string[]): boolean {
+  return messageWords.some((mw) => !titleWords.some((tw) => sameWord(tw, mw)));
+}
+
 export interface NamedGoalCandidate {
   id: number;
   title: string;
@@ -101,8 +113,10 @@ export function goalNamedIn<T extends NamedGoalCandidate>(
     const titleWords = words(goal.title);
     if (titleWords.length < MIN_TITLE_WORDS) return false;
     const missing = titleWords.filter((tw) => !messageWords.some((mw) => sameWord(tw, mw)));
-    const forgiven = titleWords.length >= TOLERANCE_MIN_TITLE_WORDS ? 1 : 0;
-    return missing.length <= forgiven;
+    if (missing.length === 0) return true;
+    return missing.length === 1 && titleWords.length >= TOLERANCE_MIN_TITLE_WORDS
+      ? !bringsAWordOfItsOwn(messageWords, titleWords)
+      : false;
   });
   return matches.length === 1 ? (matches[0] ?? null) : null;
 }
