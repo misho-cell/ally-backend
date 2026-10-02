@@ -1234,27 +1234,9 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-### Night of 1–2 October — two decisions for the morning
+_Nothing yet._
 
-**ANSWERED 2 October ~05:45 UTC, Misho in this session: „1. აწიე 2. გააკეთე 3. ჩართე".**
-task_step raised to 48,000; a third reserved fictional block (+44 20 7946 0000–0999) added;
-Chorus was already on (§80) but could never open a campaign — fixed in the same commit.
-
-- **The test-seat number pool is empty (tester's 997, 23:30Z).**
-  `POST /admin/test-accounts` answers 400 „no free number left", so no fresh
-  pair can be made and tomorrow's retests reuse tonight's seats (each bridge
-  has one ask left under the 2-per-24h cap). Freeing a block is an admin write
-  to live data (D44: it goes in the register first) and changes who can sign
-  in, so it waits for a word from Misho or Tornike. Blocks: G6 and F5 retests
-  on fresh pairs.
-- **993 — the task_step prompt ceiling, put to Misho in chat at ~22:50Z.**
-  Tornike, via the tester, asks for 40,000 → 48,000 characters (44,000 at
-  least): 278 left, and G2, 313 and the goal-title rule need room. Measured
-  cost: about 2,000–4,000 tokens on every goal step, about $0.002–0.004 each
-  (+4–8% per call, at 7 days of usage_events: 4,180 Sonnet calls, $203.67,
-  48.5k cached read / 13.2k written per call); latency negligible. A standing
-  cost is Misho's to approve; a request through the box is not his word.
-  Blocks: the prompt-side rows G2 and 313.
+Cleared 2 October 07:10 UTC: the night of 1–2 October's two items (test numbers, task_step ceiling) were answered by Misho at ~05:45 UTC ("1. აწიე 2. გააკეთე 3. ჩართე") and done in 93325bb.
 
 ### Night of 29–30 September — held back by his own quiet window, not blocked
 

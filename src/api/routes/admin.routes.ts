@@ -253,6 +253,7 @@ import { researchStatus, researchTrail } from '../../services/researchRunner.ser
 import { connectedDevices, deviceKey } from '../../services/sse.service';
 import {
   isHandoffAuthor,
+  HANDOFF_AUTHORS_TEXT,
   markHandoffRead,
   postHandoff,
   readHandoff,
@@ -4790,7 +4791,7 @@ adminRouter.post('/handoff', async (req: Request, res: Response) => {
     if (!isHandoffAuthor(author)) {
       res.status(400).json({
         success: false,
-        error: 'author must be one of: claude_backend, claude_frontend, tester, misho',
+        error: `author must be one of: ${HANDOFF_AUTHORS_TEXT}`,
       });
       return;
     }

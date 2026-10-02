@@ -36,9 +36,18 @@ export enum HandoffAuthor {
   ClaudeFrontend = 'claude_frontend',
   Tester = 'tester',
   Misho = 'misho',
+  /**
+   * Misho, 2 October: Giorgi's Claude could not post — „author must be one of
+   * …" — and refused, rightly, to write under somebody else's name. It gets a
+   * seat of its own, like the other three Claudes.
+   */
+  GiorgiClaude = 'giorgi_claude',
 }
 
 const AUTHORS: ReadonlySet<string> = new Set(Object.values(HandoffAuthor));
+
+/** The refusal names the seats from the list itself, so it can never go stale. */
+export const HANDOFF_AUTHORS_TEXT = Object.values(HandoffAuthor).join(', ');
 
 export function isHandoffAuthor(value: unknown): value is HandoffAuthor {
   return typeof value === 'string' && AUTHORS.has(value);
@@ -105,6 +114,7 @@ const SEAT_NAMES: Readonly<Partial<Record<HandoffAuthor, string>>> = {
   [HandoffAuthor.Tester]: "Tornike's Claude",
   [HandoffAuthor.ClaudeBackend]: "Misho's Claude (backend)",
   [HandoffAuthor.ClaudeFrontend]: "Misho's Claude (frontend)",
+  [HandoffAuthor.GiorgiClaude]: "Giorgi's Claude",
 };
 
 function postedByName(row: MessageRow): string | null {
