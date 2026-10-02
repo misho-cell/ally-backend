@@ -2991,79 +2991,16 @@ const ASK_REMINDER_AFTER_HOURS = 48;
 const LATER_REMINDER_AFTER_HOURS = 24;
 
 /**
- * ELEVEN REAL PEOPLE HAVE HAD THIS ON A LOCK SCREEN AT NIGHT. THREE AT FIVE IN
- * THE MORNING.
+ * WHEN A REMINDER GOES — Giorgi's decision G-002, Misho's word on 2 October.
  *
- * Found at 02:57 Tbilisi while reading two replies the outage monitor showed
- * with no model call behind them. Both were ask reminders, both went to test
- * seats — and then the code said something worse than the two runs did. This
- * function looked at NO CLOCK AT ALL, neither for the chat message nor for the
- * push. It ran whenever the sweep ran, forty-eight hours after the question.
- *
- * Measured over every reminder ever sent:
- *
- *     reminders                                    56
- *     to a non-test account                        46
- *     outside 08:00-22:00 Tbilisi                  13
- *         of those, to a REAL person               11
- *
- *     hours:  01 → 1 · 04 → 1 · 05 → 3 · 06 → 1 · 07 → 3 · 23 → 2
- *
- * The text is careful — „if you have a minute… if you do not know, tell me
- * that too and I will not trouble you again". WHEN it arrives was not.
- *
- * ────────────────────────────────────────────────────────────────────────
- * IT DEFERS, IT DOES NOT DROP, and that is what makes this safe to do without
- * waiting for a ruling. The claim and the send are one statement: if the hour
- * is wrong, the rows are simply not claimed, and the next sweep inside the
- * window picks them up unchanged. Nobody loses a reminder; a few of them
- * arrive in the morning instead of at five.
- *
- * ONE CLOCK, TBILISI — AND I WENT AND MEASURED WHO THAT ACTUALLY AFFECTS
- * RATHER THAN CALLING IT AN ASSUMPTION AND MOVING ON. Every reminder ever
- * sent, by the recipient's number:
- *
- *     +995   51   of which 12 outside Tbilisi's day   ← all of the harm
- *     +1202  12   the fictional test seats, nobody
- *     +420    2   both inside Tbilisi's day
- *
- * So one country has ever been hurt by this and this window covers it. The
- * night list worried about +54 — 651 accounts, the second-largest group — and
- * the worry does not land: not one of them has ever received a reminder,
- * because an old Ally account that never opened Netai cannot be asked anything
- * in the first place.
- *
- * WHAT IS STILL NOT MINE TO SETTLE, and it is now a small and precise
- * question rather than a large vague one. For the one other country reached,
- * +420 at UTC+2, this window is 06:00-20:00 local — early, not night, and
- * nobody there has had one outside it yet. The moment the product has real
- * users further west, Tbilisi's day stops being theirs: Buenos Aires would be
- * 01:00-15:00. So the founder's answer — which hours, and on whose clock — is
- * still needed, and it is needed BEFORE that happens rather than after. The
- * window is two named constants so it is a one-line change.
- *
- * Tbilisi has not observed daylight saving since 2005, so its hour needs no
- * calendar arithmetic.
- * ────────────────────────────────────────────────────────────────────────
+ * Until then reminders kept Tbilisi's waking hours (D472, 08:00–22:00), on
+ * Tbilisi's clock, because a reminder used to ring a phone the moment it was
+ * written: eleven real people had had one on a lock screen at night, three at
+ * five in the morning. The ringing is now held by push quiet hours instead
+ * (pushQuietHours.ts: 23:00–09:30 on each device's own clock), so the message
+ * itself may land in the app at any hour, as every other message does, and
+ * the phone rings at 09:30 the recipient's time.
  */
-const REMINDER_QUIET_BEFORE_HOUR = 8;
-const REMINDER_QUIET_AFTER_HOUR = 22;
-
-export function tbilisiHour(now: Date = new Date()): number {
-  return Number(
-    new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Tbilisi',
-      hour: '2-digit',
-      hour12: false,
-    }).format(now),
-  );
-}
-
-export function isAWakingHour(now: Date = new Date()): boolean {
-  const hour = tbilisiHour(now);
-  return hour >= REMINDER_QUIET_BEFORE_HOUR && hour < REMINDER_QUIET_AFTER_HOUR;
-}
-
 /**
  * The tester's 1008: a reader with several open questions got several
  * identical reminders at the same second, one per thread, none saying which
@@ -3085,13 +3022,6 @@ export function askReminderLine(language: RunLanguage, askerName: string | null)
 }
 
 export async function sendDueAskReminders(limit: number): Promise<number> {
-  if (!isAWakingHour()) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[ask-reminder] ${tbilisiHour()}:00 Tbilisi — nothing claimed, nothing sent. These wait for the morning.`,
-    );
-    return 0;
-  }
   const due = await query<{
     ask_thread_id: number | null;
     to_user_id: number;

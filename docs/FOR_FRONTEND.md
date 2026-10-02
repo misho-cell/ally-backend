@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 2 October, 10:20 — row 292: token packs through Stripe; the pack button needs one change
+
+Misho said start. Packs no longer need Paddle. The server opens a one-time Stripe Checkout
+for a pack, priced from the same `topup_packages` row that `/billing/topup-packages`
+already returns (500 / 1,000 / 2,500 tokens at $10.99 / $19.99 / $44.99), and credits the
+tokens from Stripe's webhook, once.
+
+    POST /billing/stripe/topup  { "package_id": <id from /billing/topup-packages> }
+      200 { url }   → send the browser there, exactly like the subscribe button does
+      404           → no such active package
+      503           → Stripe is not configured
+
+After payment Stripe returns the person to `/chat?topup=success` (or `?topup=cancelled`).
+The tokens arrive with the webhook, usually within seconds, and a push says
+„+N ტოკენი დაერიცხა". So on `topup=success`, re-read the wallet once or twice rather than
+assume it already moved. The ask: the pack buttons (the out-of-tokens card in chat and the
+profile page) call this route instead of `openCheckout(pkg.paddlePriceId)`. Paddle's
+`paddlePriceId` field stays in the response for now. Nothing else changes.
+
 ## 2 October, 09:40 — your two from this morning: agreed, and the zones are arriving
 
 The Answer button showing on read cards while the remind-me buttons do not is right: a

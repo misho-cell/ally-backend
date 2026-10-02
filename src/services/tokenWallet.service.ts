@@ -346,6 +346,12 @@ export async function findTopupPackageByPriceId(priceId: string): Promise<TopupP
   };
 }
 
+/** One active package by its own id (the Stripe checkout names packages this way). */
+export async function findTopupPackageById(packageId: number): Promise<TopupPackage | null> {
+  const packages = await listTopupPackages();
+  return packages.find((pkg) => pkg.id === packageId) ?? null;
+}
+
 /**
  * Credit a purchased top-up. Idempotent by external id (the Paddle transaction
  * id) — webhook retries insert nothing. Returns whether tokens were credited.

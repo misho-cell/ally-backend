@@ -13,7 +13,6 @@ import { setThreadStatus } from './threadStatus.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
-import { isAWakingHour, tbilisiHour } from './taskAsks.service';
 import {
   campaignsOpenedToday,
   campaignsPerDay,
@@ -569,15 +568,9 @@ const CAMPAIGN_ASK_MESSAGE = (label: string, how: number, returning: boolean): s
 
 /** Sends every due (state='pending', scheduled_ask_at elapsed) campaign ask — a cron tick's own worklist. */
 export async function sendDueCampaignAsks(limit: number): Promise<number> {
-  // Row 301, before the restart: a campaign ask is a push to a real person's
-  // phone, and this tick runs every 15 minutes, all night. The same waking
-  // hours as the ask reminders (D472, 08:00–22:00 Tbilisi); what is due waits
-  // for the morning, it is not dropped.
-  if (!isAWakingHour()) {
-    // eslint-disable-next-line no-console
-    console.log(`[chorus] ${tbilisiHour()}:00 Tbilisi — no campaign asks until 08:00.`);
-    return 0;
-  }
+  // A campaign ask lands in the app at any hour; its push waits for 09:30 on
+  // the device's own clock (G-002, push quiet hours). It used to wait whole
+  // for 08:00 Tbilisi (D472), which Misho retired on 2 October.
   const due = await query<{
     id: number;
     campaign_id: number;

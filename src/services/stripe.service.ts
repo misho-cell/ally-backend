@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { recordPayment } from './payments.service';
+import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
 
 // Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
 // trial with the card collected up front, no charge during the trial, then
@@ -122,7 +123,7 @@ async function markTrialConsumed(phone: string | null, subscriptionId: string): 
  * The user id rides in metadata so a webhook can find its way back even if
  * our own column were ever lost.
  */
-async function ensureCustomer(userId: string): Promise<string> {
+export async function ensureCustomer(userId: string): Promise<string> {
   const existing = await query<{ stripeCustomerId: string | null }>(
     'SELECT "stripeCustomerId" FROM "User" WHERE id = $1',
     [userId],
@@ -383,6 +384,11 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<WebhookOut
     }
     case 'checkout.session.completed': {
       const session = event.data.object;
+      // Row 292: a token pack, paid once (mode 'payment'), not a subscription.
+      if (isTopupSession(session)) {
+        await deliverTopupSession(session);
+        return { handled: true, type: event.type };
+      }
       const subscriptionId =
         typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
       if (!subscriptionId) return { handled: false, type: event.type };

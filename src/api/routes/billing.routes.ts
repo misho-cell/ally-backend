@@ -25,6 +25,7 @@ import {
   isStripeConfigured,
   CheckoutResult,
 } from '../../services/stripe.service';
+import { createTopupCheckout } from '../../services/stripeTopup.service';
 
 const SPEND_ERRORS: Record<string, { status: number; message: string }> = {
   insufficient_balance: { status: 402, message: 'რეფერალური ბალანსი საკმარისი არ არის' },
@@ -101,6 +102,36 @@ billingRouter.post(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[POST /billing/stripe/checkout]', err);
+      res.status(500).json({ success: false, error: 'გადახდის გვერდი ვერ გაიხსნა' });
+    }
+  },
+);
+
+// Row 292: a token pack through Stripe (Paddle's checkout never completed one).
+//   POST /billing/stripe/topup { package_id }  → { url } of a one-time Checkout
+billingRouter.post(
+  '/stripe/topup',
+  async (req: Request, res: Response<ApiResponse<{ url: string }>>): Promise<void> => {
+    const packageId = Number((req.body as { package_id?: unknown }).package_id);
+    if (!Number.isInteger(packageId) || packageId < 1) {
+      res.status(400).json({ success: false, error: 'package_id is required' });
+      return;
+    }
+    if (!isStripeConfigured()) {
+      res.status(503).json({ success: false, error: 'გადახდა დროებით მიუწვდომელია' });
+      return;
+    }
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const result = await createTopupCheckout(userId, packageId);
+      if (!result.ok) {
+        res.status(404).json({ success: false, error: 'ასეთი პაკეტი არ არსებობს' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { url: result.url } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /billing/stripe/topup]', err);
       res.status(500).json({ success: false, error: 'გადახდის გვერდი ვერ გაიხსნა' });
     }
   },
