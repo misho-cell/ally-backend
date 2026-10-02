@@ -5445,3 +5445,27 @@ UNDO    POST /admin/users/165699/tokens
 ```
 
 **§83 RUN, 2 October 09:58:20 UTC:** `{"user_id":"165699","was":19,"tokens":5000,"balance":5019}`.
+
+## §84 — #298 / TESTER 1020: NO 24-HOUR QUESTION CAP FOR THE FIVE STAFF ACCOUNTS
+
+**Why:** the team runs hands-on tests today (Ninia's 39-test file) and the receiving caps
+(2 new questions per person per 24 h; 4 relay messages per exchange) stopped her tests at
+Tornike's account. Asked by Tornike through the tester (1020), set first by Giorgi (G-006).
+**Misho's direct word in this session: „ლიმიტი დაიწყე" (10:30 UTC) and „26954 ჩაწერე"
+(~10:55 UTC)** for his own account.
+
+The mechanism exists (askCapExemptions.ts): a receiver on the list is not protected by
+either receiving cap; everyone else keeps both. Introduction requests have no per-receiver
+daily cap, so nothing else is needed. The list read at boot today (10:15:43 log) held the
+ten fictional seats; they stay.
+
+```
+NAME    ASK_CAP_EXEMPT_USER_IDS   (environment; read once at boot, so the write restarts)
+BEFORE  171870,171871,171872,171873,171874,171936,171937,171938,171939,171940
+AFTER   BEFORE + 501 (Tornike), 118509 (Giorgi), 160584 (Lika), 165699 (Ninia), 26954 (Misho)
+UNDO    printf %s "<BEFORE>" | ./scripts/ops/env.sh set ASK_CAP_EXEMPT_USER_IDS, then a restart.
+```
+
+⚠️ The boot line still says „test accounts only. If a real person is on this list, take
+them off." Since §84 five real people are on it on purpose. That wording is fixed with the
+next code change; until then, this entry is the reason they are there.
