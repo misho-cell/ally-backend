@@ -2010,7 +2010,10 @@ async function bubbleDensityForPhones(phones: string[]): Promise<Map<string, Bub
             COALESCE(e.e, 0) AS edges
      FROM cand c LEFT JOIN edges e ON e.cand = c.phone`,
     [phones, DENSITY_SAVER_SAMPLE],
-    SCORE_QUERY_TIMEOUT_MS,
+    // Chorus, 2 October: this read timed out at 8 s on every warm-up and took
+    // the whole list down with it. It runs in the background build, like the
+    // reach read, so it gets the same budget.
+    REACH_QUERY_TIMEOUT_MS,
   );
   const out = new Map<string, BubbleDensity>();
   for (const row of result.rows) {
@@ -2511,9 +2514,18 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // surnames and titles („Nino Maxin AI"). Asked of 689 survivors it was 104
   // words and a timeout; asked of the shortlist it is a handful.
   const companyRows = await named('removeCompanyWordRows', removeCompanyWordRows(shortlist, gates));
-  const densities = await named(
-    'bubbleDensityForPhones',
-    bubbleDensityForPhones(shortlist.map((e) => e.phone)),
+  // Optional by design (D71: density REPLACES reach only where it is known),
+  // so a density read that still fails serves the list on raw reach rather
+  // than failing it.
+  const densities = await bubbleDensityForPhones(shortlist.map((e) => e.phone)).catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[target-list] bubble density unavailable, raw reach used:',
+        (err as Error).message,
+      );
+      return new Map<string, BubbleDensity>();
+    },
   );
   for (const entry of shortlist) {
     const bubble = densities.get(entry.phone);
