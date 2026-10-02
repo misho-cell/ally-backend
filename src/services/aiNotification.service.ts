@@ -4,6 +4,7 @@ import { recordClaudeUsage } from './costLedger.service';
 import { getUserProfile } from './userProfile.service';
 import { getPrivateContext } from './userPrivateContext.service';
 import { sendPushNotification } from './notification.service';
+import { scrubMechanicalForStorage } from './privacyScrub';
 import anthropic from '../config/anthropic';
 
 const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
@@ -168,7 +169,12 @@ async function generateNotificationContent(
   const parsed = JSON.parse(jsonMatch[0]) as { title?: string; body?: string };
   if (!parsed.title || !parsed.body) throw new Error('Notification missing title or body');
 
-  return { title: String(parsed.title), body: String(parsed.body) };
+  // A phone draws a notification as plain text, so the marks the chat scrub
+  // removes would show raw here (tester 1060/1061: the prompt rule is gone).
+  return {
+    title: scrubMechanicalForStorage(String(parsed.title)),
+    body: scrubMechanicalForStorage(String(parsed.body)),
+  };
 }
 
 async function updateEngagement(userId: string, lastSentAt: Date): Promise<void> {
