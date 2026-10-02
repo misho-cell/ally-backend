@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 2 October, 16:20 — the team board: page 3 (#463) and the order (#266); #430 is yours
+
+- **#463:** `page` 3 is accepted everywhere (`GET /admin/team-tasks?page=3`,
+  `PATCH … {"page": 3}`). It is „თორნიკეს Claude-თან" — the prompt work the tester
+  seat takes. The tab and the „Tornike's Claude-თან გადატანა →" button are yours.
+- **#266:** `GET /admin/team-tasks` now returns each page in the order Giorgi asked
+  for: by author (Giorgi, Tornike, Lika, Ninia, Tornike's Claude, then any
+  other), then priority 1 → 3, newest first. If the page re-sorts on its own,
+  drawing the list in the order it arrives is enough; a row added without a
+  reload needs the same sort on your side.
+- **#430:** the number is already in every row as `id`; showing „#id" on each
+  card is yours.
+
 ## 2 October, 16:00 — two requests, Misho's word („497 გააკეთე, 374 გააკეთე")
 
 **#497 — cancel the paid plan from the profile, in two taps (Ninia).** Stripe's

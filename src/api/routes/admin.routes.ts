@@ -1821,7 +1821,7 @@ adminRouter.post(
 // M2 (plate v288; Misho, 1 October): the team's task board — every row says
 // who created it. The author comes from the login; only the shared login,
 // which AI seats write through, names one (`created_by`), from the fixed list.
-//   GET   /admin/team-tasks?page=1|2
+//   GET   /admin/team-tasks?page=1|2|3
 //   POST  /admin/team-tasks { problem, task, priority?, created_by? }
 //   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task? }
 //   DELETE /admin/team-tasks/:id   (hidden, not erased; migration 196)
@@ -1830,7 +1830,7 @@ adminRouter.get(
   queryParam('page').optional().isIn(TEAM_TASK_PAGES.map(String)),
   async (req: Request, res: Response<ApiResponse<{ tasks: TeamTask[] }>>) => {
     if (!validationResult(req).isEmpty()) {
-      res.status(400).json({ success: false, error: 'page is 1 or 2' });
+      res.status(400).json({ success: false, error: 'page is 1, 2 or 3' });
       return;
     }
     try {
@@ -1902,7 +1902,7 @@ adminRouter.patch(
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
-        error: `status is one of ${Object.values(TeamTaskStatus).join(', ')}; priority 1–3; page 1 or 2; problem and task are non-empty text`,
+        error: `status is one of ${Object.values(TeamTaskStatus).join(', ')}; priority 1–3; page 1, 2 or 3; problem and task are non-empty text`,
       });
       return;
     }

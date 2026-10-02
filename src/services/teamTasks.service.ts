@@ -32,7 +32,8 @@ export enum TeamTaskStatus {
   Tested = 'tested',
 }
 
-export const TEAM_TASK_PAGES: readonly number[] = [1, 2];
+/** #463: 1 = waiting for Giorgi, 2 = with Misho, 3 = with Tornike's Claude (prompt work). */
+export const TEAM_TASK_PAGES: readonly number[] = [1, 2, 3];
 export const TEAM_TASK_PRIORITIES: readonly number[] = [1, 2, 3];
 
 export interface TeamTask {
@@ -111,15 +112,30 @@ export async function createTeamTask(input: NewTeamTask): Promise<TeamTask> {
   return toTask(result.rows[0]);
 }
 
-/** One page of the board, most urgent first, oldest first within a priority. */
+/**
+ * #266 (Giorgi, 2 October): the order the board reads in — by who filed the
+ * row (Giorgi first, then Tornike, Lika, Ninia, Tornike's Claude, then any
+ * other author), then urgent → later, newest first as the last tie-break.
+ */
+const AUTHOR_ORDER: readonly TeamTaskAuthor[] = [
+  TeamTaskAuthor.Giorgi,
+  TeamTaskAuthor.Tornike,
+  TeamTaskAuthor.Lika,
+  TeamTaskAuthor.Ninia,
+  TeamTaskAuthor.TornikesClaude,
+];
+
+/** One page of the board, in the order #266 asks for. */
 export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
   const result = await query<Record<string, unknown>>(
     `SELECT ${COLUMNS} FROM team_tasks
       WHERE ($1::smallint IS NULL OR page = $1::smallint)
         AND deleted_at IS NULL
-      ORDER BY page, priority, id
+      ORDER BY page,
+               COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
+               priority, id DESC
       LIMIT ${MAX_TASKS_LISTED}`,
-    [page ?? null],
+    [page ?? null, AUTHOR_ORDER],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map(toTask);

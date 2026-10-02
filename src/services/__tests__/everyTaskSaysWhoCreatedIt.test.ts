@@ -9,6 +9,7 @@ import {
   deleteTeamTask,
   isTeamTaskAuthor,
   listTeamTasks,
+  TEAM_TASK_PAGES,
   TeamTaskAuthor,
   updateTeamTask,
 } from '../teamTasks.service';
@@ -77,13 +78,22 @@ describe('the board', () => {
     expect(task.created_at).toBe('2026-10-01T19:20:00.000Z');
   });
 
-  it('lists one page, bounded, most urgent first', async () => {
+  /** #266: by who filed it (Giorgi first), then urgent → later, newest first. */
+  it('lists one page, bounded, by author, then most urgent, then newest', async () => {
     mockQuery.mockResolvedValue(rows([ROW]));
     await listTeamTasks(2);
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(String(sql)).toContain('ORDER BY page, priority, id');
+    expect(String(sql)).toMatch(
+      /ORDER BY page,\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
+    );
+    expect(String(sql)).toMatch(/priority, id DESC/);
     expect(String(sql)).toContain('LIMIT');
-    expect(params).toEqual([2]);
+    expect(params).toEqual([2, ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude']]);
+  });
+
+  /** #463: a third tab for Tornike's Claude. */
+  it('knows page 3', () => {
+    expect(TEAM_TASK_PAGES).toEqual([1, 2, 3]);
   });
 
   it('changes only what was sent, and says when there is no such task', async () => {
