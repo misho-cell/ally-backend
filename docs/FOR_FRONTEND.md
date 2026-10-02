@@ -15,6 +15,35 @@ messages in their name.
 
 ---
 
+## 2 October, 11:10 — Ninia's conversation was erased by Delete when she meant Stop (two changes, Misho's word)
+
+Ninia (1025, test 20): she wanted to stop a goal, and the whole conversation vanished. Read
+from the server: nothing in the backend deleted it. Thread 30144 („Who do I know in
+marketing?", goal 13406) was removed at 08:05:46Z through `DELETE /threads/:id`, which only
+the chat page's delete dialog calls, and the model had made no call in it after 07:45. It
+cannot be restored: that route erases the messages, as it always has.
+
+Two things on your side made Delete look like Stop:
+
+1. **The dialog reads like a stop.** `deleteConfirm` (ka): „წავშალო ეს მიზანი? მასზე მიმდინარე
+   სამუშაო შეჩერდება." It says the work will be stopped. It does not say the conversation and
+   every message are erased for good. Misho asks for wording that says exactly that, plus
+   where to go instead, for example:
+   „წაიშლება მთელი საუბარი, ყველა შეტყობინებით, და აღდგენა შეუძლებელი იქნება. თუ მხოლოდ
+   მიზნის გაჩერება გინდა, დააჭირე „გაჩერებას"." (English the same: the whole conversation
+   and all its messages are erased and cannot be restored; to only stop the goal, press Stop.)
+   The wording is Misho's to approve.
+2. **Stop is hidden when it is the button she needed.** The header shows `stopGoal` only when
+   `thread.is_task === true && taskStatus !== "done"`. A goal can be OPEN while its thread
+   reads „done" (a run finished and nobody owes an answer yet), and then the only thing on
+   screen that sounds like stopping is Delete. The ask is to show Stop whenever the thread
+   has an open goal. `POST /threads/:id/stop` already answers
+   `200 { stopped: false, reason: "no_open_goal" }` when there is nothing to stop, so
+   showing it a little too often costs nothing.
+
+Not now (Misho): a soft delete with a restore window. Delete stays final, which is why the
+dialog has to say so.
+
 ## 2 October, 10:20 — row 292: token packs through Stripe; the pack button needs one change
 
 Misho said start. Packs no longer need Paddle. The server opens a one-time Stripe Checkout
