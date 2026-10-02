@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 2 October, 15:20 — #375: each reply now carries its own steps (`steps`), and the vanishing conversation
+
+**Steps of finished conversations (Ninia's test 23).** `GET /threads/:id/messages`
+never returned step rows (row 204: a step is not a message), so after a reload
+the client had nothing to show. Each reply now carries the steps its own run
+wrote, in order, as `steps: string[]` — only on the run's last assistant
+message, absent when the run stored none, at most 20 per run. Additive: a
+client that ignores it is unaffected. Rendering them folded under the reply is
+yours.
+
+**A working conversation vanished from the list (Ninia's test 13).** I could
+not find a server cause. `GET /threads` hides nothing while a run is working:
+open goals ride at the top of page one, everything else is by `updated_at`, and
+the run touches `updated_at` every 25 seconds. The client-side filters I can
+see (snoozed requests, done ask threads, a thread moving from chats to goals
+when the run opens a goal) are where I would look; I have not reproduced it.
+
 ## 2 October, 14:45 — #397: the search shows one status line, and it is the thread's own
 
 Founder D581: while Netai searches, one sentence that changes — contacts, then

@@ -706,6 +706,60 @@ export interface ThreadMessageOptions {
 // Ceiling for a client-supplied page size.
 const MAX_MESSAGE_PAGE = 200;
 
+/** The text a person reads: own-number spans revealed, the assistant's prose display-cleaned. */
+function contentForDisplay(role: string, content: string): string {
+  if (role !== 'assistant') return stripAllowedSpans(content);
+  return informalGeorgianForDisplay(
+    stripEmDashesForDisplay(stripRedactionArtifactsForDisplay(stripAllowedSpans(content))),
+  );
+}
+
+/**
+ * Team task #375, second half (Ninia's test 23; row 312 before it): the steps
+ * of a finished conversation were not shown at all. They never could be after
+ * a reload — the step rows stay in the database, but the history endpoint
+ * leaves them out (row 204's allowlist, rightly: a step is not a message), so
+ * the client only ever had the live ones it saw stream past.
+ *
+ * So each reply now carries its own run's steps, in order, as `steps`. Only
+ * the run's LAST assistant message gets them — a run writes one answer, and a
+ * card or an error after it must not repeat the list. Bounded per run and per
+ * page; a reply with no stored steps carries no field.
+ */
+const MAX_STEPS_PER_RUN = 20;
+const MAX_STEPS_PER_PAGE = 600;
+
+export async function withRunSteps<T extends ThreadMessage>(
+  threadId: number,
+  messages: readonly T[],
+): Promise<Array<T & { steps?: string[] }>> {
+  const lastOfRun = new Map<string, number>();
+  messages.forEach((m, i) => {
+    if (m.role === 'assistant' && m.run_id !== null) lastOfRun.set(m.run_id, i);
+  });
+  if (lastOfRun.size === 0) return [...messages];
+  const result = await query<{ run_id: string; content: string }>(
+    `SELECT run_id, content FROM conversations
+      WHERE thread_id = $1 AND kind = 'step' AND content != '' AND run_id = ANY($2::text[])
+      ORDER BY created_at ASC, id::text ASC
+      LIMIT $3::int`,
+    [threadId, [...lastOfRun.keys()], MAX_STEPS_PER_PAGE],
+    STEPS_QUERY_TIMEOUT_MS,
+  );
+  const byRun = new Map<string, string[]>();
+  for (const row of result.rows) {
+    const steps = byRun.get(row.run_id) ?? [];
+    if (steps.length < MAX_STEPS_PER_RUN) steps.push(contentForDisplay('assistant', row.content));
+    byRun.set(row.run_id, steps);
+  }
+  return messages.map((m, i) => {
+    const steps = m.run_id === null ? undefined : byRun.get(m.run_id);
+    return steps !== undefined && lastOfRun.get(m.run_id ?? '') === i ? { ...m, steps } : m;
+  });
+}
+
+const STEPS_QUERY_TIMEOUT_MS = 5_000;
+
 /**
  * A thread's messages, oldest-first within the page.
  *
@@ -847,17 +901,7 @@ export async function getThreadMessages(
   // Reveal own-number passthrough spans at this display boundary (stored text
   // keeps the markers so repeated scrub passes stay idempotent). Em dashes are
   // stripped from the ASSISTANT's prose only (brand rule, render-layer fix).
-  return result.rows.map((row) => ({
-    ...row,
-    content:
-      row.role === 'assistant'
-        ? informalGeorgianForDisplay(
-            stripEmDashesForDisplay(
-              stripRedactionArtifactsForDisplay(stripAllowedSpans(row.content)),
-            ),
-          )
-        : stripAllowedSpans(row.content),
-  }));
+  return result.rows.map((row) => ({ ...row, content: contentForDisplay(row.role, row.content) }));
 }
 
 /**

@@ -15,6 +15,7 @@ import {
   createThread,
   getThread,
   getThreadMessages,
+  withRunSteps,
   ThreadMessage,
   updateThreadTitle,
   saveThreadMessage,
@@ -476,11 +477,13 @@ threadsRouter.get(
       const before = typeof req.query.before === 'string' ? req.query.before : undefined;
       // A UUID string on prod — passed through verbatim, never parsed.
       const beforeId = typeof req.query.before_id === 'string' ? req.query.before_id : undefined;
-      const messages = await getThreadMessages(threadId, {
+      const page = await getThreadMessages(threadId, {
         ...(Number.isFinite(rawLimit) && rawLimit > 0 && { limit: Math.floor(rawLimit) }),
         ...(before && { beforeCreatedAt: before }),
         ...(beforeId && { beforeId }),
       });
+      // #375: every reply carries the steps its own run wrote.
+      const messages = await withRunSteps(threadId, page);
       /**
        * The language the CLIENT should draw its own chrome in, from the owner's
        * words rather than from whatever is on the screen.
