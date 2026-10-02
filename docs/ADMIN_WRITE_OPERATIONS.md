@@ -5524,3 +5524,7 @@ ROUTE   env.sh set SPEECH_MODEL        (value on stdin: gpt-4o-transcribe; Railw
 UNDO    env.sh unset SPEECH_MODEL      (the code's default is whisper-1) — then a restart,
         because an unset does not redeploy (env.sh says so on its last line)
 ```
+
+**§87 RUN, 2 October 21:16:00 UTC:** `env.sh: set SPEECH_MODEL (value not shown) — Railway will
+redeploy`; the redeploy (48756140, fe9c645) took over at 21:17:38 UTC. The model's name is logged
+on the first transcription that follows; no voice message had arrived when this was written.
