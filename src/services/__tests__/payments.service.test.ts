@@ -110,6 +110,8 @@ describe('paymentHistory', () => {
           amount_usd: 19.99,
           currency: 'usd',
           paid_at: '2026-09-07T12:00:00.000Z',
+          refunded_usd: 0,
+          refunded_at: null,
         },
       ],
       recorded_total: 4,

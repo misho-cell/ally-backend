@@ -35,6 +35,9 @@ export interface PaymentRow {
   amount_usd: number;
   currency: string;
   paid_at: string;
+  /** #232: how much of it was refunded (0 when none), and when. */
+  refunded_usd: number;
+  refunded_at: string | null;
 }
 
 export interface InferredPayment {
@@ -85,8 +88,10 @@ export async function paymentHistory(userId: string): Promise<PaymentHistory> {
       amount_usd: string;
       currency: string;
       paid_at: Date;
+      refunded_usd: string | null;
+      refunded_at: Date | null;
     }>(
-      `SELECT provider, kind, amount_usd, currency, paid_at FROM payment_events
+      `SELECT provider, kind, amount_usd, currency, paid_at, refunded_usd, refunded_at FROM payment_events
        WHERE user_id = $1::int ORDER BY paid_at LIMIT $2`,
       [userId, FIRST_PAYMENTS_SHOWN],
       PAYMENT_QUERY_TIMEOUT_MS,
@@ -118,6 +123,8 @@ export async function paymentHistory(userId: string): Promise<PaymentHistory> {
       amount_usd: Number(r.amount_usd),
       currency: r.currency,
       paid_at: iso(r.paid_at) ?? '',
+      refunded_usd: Number(r.refunded_usd ?? 0),
+      refunded_at: iso(r.refunded_at),
     })),
     recorded_total: Number(total.rows[0]?.n ?? 0),
     inferred: inferred.rows

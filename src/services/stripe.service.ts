@@ -3,6 +3,7 @@ import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { recordPayment } from './payments.service';
 import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
+import { applyChargeRefund } from './stripeRefund.service';
 
 // Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
 // trial with the card collected up front, no charge during the trial, then
@@ -416,6 +417,11 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<WebhookOut
       await applySubscription(subscription);
       if (event.type === 'invoice.paid') await recordInvoicePayment(subscription, invoice);
       return { handled: true, type: event.type };
+    }
+    case 'charge.refunded': {
+      // #232 / #233: a refund issued in the dashboard is seen, and its rewards taken back.
+      const outcome = await applyChargeRefund(event.data.object);
+      return { handled: outcome.payments.length > 0, type: event.type };
     }
     default:
       return { handled: false, type: event.type };

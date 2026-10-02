@@ -10,6 +10,9 @@ import { getPrice } from './costLedger.service';
 // month; withdrawal (from $10) ships as a separate phase.
 
 const EARN_REASON = 'earn';
+/** #233: a reward taken back because the payment it came from was refunded. */
+const CLAWBACK_REASON = 'clawback';
+const CLAWBACK_PREFIX = 'clawback_';
 const SPEND_TOKENS_REASON = 'spend_tokens';
 const SPEND_SUBSCRIPTION_REASON = 'spend_subscription';
 // Token-wallet reason for packages bought with referral money — keeps them
@@ -243,4 +246,23 @@ export async function spendReferralOnSubscription(
     );
     return { ok: true } as SpendOutcome;
   });
+}
+
+/**
+ * #233 — Misho, 2 October: „კი ჩამოეჭრას". Every share earned from the
+ * refunded payment (matched by the payment's own external id) is taken back
+ * with one negative line, once: the clawback's own external id makes a
+ * repeated refund event a no-op. Returns how many shares were taken back.
+ */
+export async function clawbackReferralEarnings(paymentExternalId: string): Promise<number> {
+  const result = await query(
+    `INSERT INTO referral_transactions
+       (user_id, amount_usd, reason, level, source_user_id, external_id)
+     SELECT user_id, -amount_usd, $2, level, source_user_id, $3 || external_id
+       FROM referral_transactions
+      WHERE external_id = $1 AND reason = $4
+     ON CONFLICT (user_id, external_id) WHERE external_id IS NOT NULL DO NOTHING`,
+    [paymentExternalId, CLAWBACK_REASON, CLAWBACK_PREFIX, EARN_REASON],
+  );
+  return result.rowCount ?? 0;
 }
