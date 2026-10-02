@@ -11,6 +11,18 @@ const SNIPPET_CHARS = 600;
 // into "is the CEO as of March 1, 2025". We do NOT surface that sentence; the
 // model reasons over the verbatim titles/snippets itself (it carries the
 // officeholder rule), so a role stated in a source is never silently promoted.
+/**
+ * The tester's 1014 (thread 30133, accountants in Rustavi): an ordinary goal
+ * reply named six firms from these results inside one parenthesis — no link,
+ * no phone. The same rule already holds for a plan reply (966); the tool
+ * description says it too, but a description is read once at the top and this
+ * guidance is read with the results, right before the reply is written.
+ */
+const NAMED_IN_FULL_OR_NOT_AT_ALL =
+  'Anyone or any firm you name from these results goes on its own line with the full link of ' +
+  'the page it came from, and its public phone or e-mail if that page shows one — or is not ' +
+  'named at all. Never a list of names in passing.';
+
 const RESULT_GUIDANCE =
   'These are raw search results. Derive facts only from the snippets below and ' +
   'preserve exact job titles verbatim — never shorten a qualified title (e.g. ' +
@@ -22,7 +34,8 @@ const RESULT_GUIDANCE =
   'say plainly that the official page could not be read. A name you print must ' +
   'appear in fetched page text you actually received in this conversation, and you ' +
   'must cite that page; two different names for one office is a failure — when in ' +
-  'doubt, the scripted line („I could not verify") is the right answer.';
+  'doubt, the scripted line („I could not verify") is the right answer. ' +
+  NAMED_IN_FULL_OR_NOT_AT_ALL;
 
 // The institution's own domain outranks any news article on "who currently
 // holds this role". Georgian public bodies live under gov.ge; parliament and

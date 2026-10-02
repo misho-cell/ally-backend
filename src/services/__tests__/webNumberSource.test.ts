@@ -411,3 +411,37 @@ describe('numbers a page printed back to back', () => {
     expect(webNumberSpellings('+995 599 70 30 80')).toEqual(['+995 599 70 30 80', '599 70 30 80']);
   });
 });
+
+/**
+ * The tester's 1014, thread 30132: every Kutaisi clinic's phone read
+ * „ტელ: 568) 88 02 77". The page printed „(568) 88 02 77", the page read kept
+ * „568) …", and the wrap wrote that spelling over the reply's own.
+ */
+describe('a number keeps its opening bracket', () => {
+  const PAGE = 'https://www.yell.ge/companies.php?lan=geo&rub=420&SI_1=Kutaisi';
+  const held = new Map<string, string | null>([['568) 88 02 77', PAGE]]);
+  const render = (text: string): string => stripAllowedSpans(scrubText(wrapNumbers(text, held)));
+
+  it('keeps the reply’s „(568) …" whole', () => {
+    expect(render('ტელ: (568) 88 02 77')).toBe(`ტელ: (568) 88 02 77 (${PAGE})`);
+  });
+
+  it('gives a bracket that was never opened its pair', () => {
+    expect(render('ტელ: 568) 88 02 77')).toBe(`ტელ: (568) 88 02 77 (${PAGE})`);
+  });
+
+  it('leaves a number with no brackets as the reply wrote it', () => {
+    expect(render('ტელ: 568 88 02 77')).toBe(`ტელ: 568 88 02 77 (${PAGE})`);
+  });
+
+  it('names the page once when the number is written twice', () => {
+    const out = render('ტელ: (568) 88 02 77, ისევ: 568 880 277');
+    expect(out.split(PAGE).length - 1).toBe(1);
+    expect(out).not.toContain('[hidden]');
+  });
+
+  it('leaves an own number the tool already marked exactly as it was', () => {
+    const own = '⟦own⟧+995 599 11 22 33⟦/own⟧';
+    expect(wrapNumbers(`შენი: ${own}`, held)).toBe(`შენი: ${own}`);
+  });
+});

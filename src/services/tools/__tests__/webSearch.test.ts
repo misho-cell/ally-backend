@@ -53,6 +53,9 @@ describe('webSearch', () => {
 
     expect(result).not.toHaveProperty('answer');
     expect(result.guidance).toEqual(expect.stringContaining('verbatim'));
+    // The tester's 1014 (30133): six firms named in one parenthesis, no link.
+    // Said with the results, where the reply is written from.
+    expect(result.guidance).toEqual(expect.stringContaining('Never a list of names in passing'));
     const results = result.results as Array<Record<string, unknown>>;
     expect(results).toHaveLength(1);
     expect(results[0].snippet).toEqual(

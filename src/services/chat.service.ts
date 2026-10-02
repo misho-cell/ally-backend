@@ -6890,9 +6890,6 @@ function clearRunState(runId: string): void {
   clearRunEvidence(runId);
 }
 
-/** How far after a number we look for its source before adding it ourselves. */
-const SOURCE_NEARBY_CHARS = 60;
-
 /**
  * Question A, the tester's 957: phones still came out „[hidden]" on a run whose
  * own web result, replayed offline through this same code, shows every one of
@@ -6970,51 +6967,80 @@ export function wrapAllowedNumbers(text: string, runId: string): string {
  */
 export function wrapNumbers(text: string, held: Map<string, string | null> | undefined): string {
   if (!held || held.size === 0) return text;
-  let out = text;
-  let tokenIndex = 0;
-  const restores: Array<[string, string]> = [];
-  for (const [phone] of held) {
+  const spans: string[] = [];
+  const sources: Array<string | null> = [];
+  const keep = (span: string, source: string | null): string => {
+    spans.push(span);
+    sources.push(source);
+    return `${SPAN_TOKEN_EDGE}${spans.length - 1}${SPAN_TOKEN_EDGE}`;
+  };
+  // Spans already in the text (an own number the tool handed over marked, or
+  // an earlier pass of this wrap) are set aside whole, so a fresh wrap can
+  // never nest inside one or split it.
+  let out = text.replace(MARKED_SPAN_RE, (span) => keep(span, null));
+  for (const [phone, source] of held) {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 6) continue;
-    // Any spelling of the number (spaces/dashes/dots between digits, optional +)
-    // becomes a placeholder token first — a token cannot re-match, so already-
-    // marked spans and fresh wraps can never nest.
-    // Up to TWO separator characters between digits (the tester's 961: a page
-    // printed „551) …", a reply wrote „(551) …" — „) " is two). Still digit
-    // for digit: only the punctuation between them is free.
-    const sep = '[\\s\\-().]{0,2}';
-    const pattern = new RegExp(`\\+?${digits.split('').join(sep)}`, 'g');
-    const marked = `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
-    out = out.split(marked).join(phone);
-    const token = `\u0000ALLOWED${tokenIndex++}\u0000`;
-    out = out.replace(pattern, token);
-    restores.push([token, marked]);
+    out = out.replace(spellingPattern(digits), (written) =>
+      keep(`${ALLOW_OPEN}${withOpeningBracket(written)}${ALLOW_CLOSE}`, source),
+    );
   }
-  for (const [token, marked] of restores) out = out.split(token).join(marked);
-  // Row 139: the source is attached by the SERVER, after the wrap, and only
-  // where the text does not already name it. Tornike's rule is „shown with its
-  // source", and a model remembering to cite is not the same thing as a
-  // citation — the number is what we let through, so the page it came from is
-  // ours to state.
-  for (const [phone, source] of held) {
-    if (source === null) continue;
-    const marked = `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
-    let at = out.indexOf(marked);
-    while (at !== -1) {
-      const end = at + marked.length;
-      // Question A, the tester's 944: the source is now a page LINK, and a
-      // reply that already printed the link elsewhere — before the name, on a
-      // „source:" line — got it a second time. A link once anywhere is enough.
-      if (out.slice(end, end + SOURCE_NEARBY_CHARS).includes(source) || out.includes(source)) {
-        at = out.indexOf(marked, end);
-        continue;
-      }
-      const insertion = ` (${source})`;
-      out = out.slice(0, end) + insertion + out.slice(end);
-      at = out.indexOf(marked, end + insertion.length);
-    }
-  }
-  return out;
+  return restoreSpans(out, spans, sources, text);
+}
+
+/**
+ * Wraps a set-aside span's index. A private-use character: no page and no
+ * model reply carries one, so a token can never re-match a number pattern.
+ */
+const SPAN_TOKEN_EDGE = '\uE000';
+const SPAN_TOKEN_RE = /\uE000(\d+)\uE000/g;
+const MARKED_SPAN_RE = new RegExp(`${ALLOW_OPEN}[\\s\\S]*?${ALLOW_CLOSE}`, 'g');
+
+/**
+ * Any spelling of the number, digit for digit, with up to TWO separator
+ * characters between digits (the tester's 961: a page printed „551) …", a
+ * reply wrote „(551) …" — „) " is two), and the bracket that may open it.
+ */
+function spellingPattern(digits: string): RegExp {
+  return new RegExp(`\\(?\\+?${digits.split('').join('[\\s\\-().]{0,2}')}`, 'g');
+}
+
+/**
+ * The tester's 1014 (30132): „ტელ: 568) 88 02 77", four times. The page
+ * printed „(568) 88 02 77"; the page read starts a number at its first digit,
+ * so the spelling kept was „568) …", and the wrap used to write THAT spelling
+ * over whatever the reply had. The span now holds the reply's own spelling,
+ * its opening bracket included, and a closing bracket that was never opened
+ * gets its pair back.
+ */
+function withOpeningBracket(written: string): string {
+  const close = written.indexOf(')');
+  const open = written.indexOf('(');
+  return close !== -1 && (open === -1 || open > close) ? `(${written}` : written;
+}
+
+/**
+ * Puts the set-aside spans back in reading order, and after a web number the
+ * page it came from — Row 139: the source is attached by the SERVER, only where
+ * the text does not already name it (Tornike's rule is „shown with its source",
+ * and a model remembering to cite is not a citation). A link once anywhere is
+ * enough (the tester's 944: a reply that printed it on a „source:" line got it
+ * a second time).
+ */
+function restoreSpans(
+  out: string,
+  spans: readonly string[],
+  sources: ReadonlyArray<string | null>,
+  original: string,
+): string {
+  const linked = new Set<string>();
+  return out.replace(SPAN_TOKEN_RE, (_token, index: string) => {
+    const span = spans[Number(index)] ?? '';
+    const source = sources[Number(index)] ?? null;
+    if (source === null || original.includes(source) || linked.has(source)) return span;
+    linked.add(source);
+    return `${span} (${source})`;
+  });
 }
 
 async function executeToolCall(
