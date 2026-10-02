@@ -90,4 +90,21 @@ describe('the sending brakes for the same accounts', () => {
       'if (sendingBrakesAreOff(fromUserId)) return { allowed: true };',
     );
   });
+
+  /**
+   * The tester's 1041 (Ninia, thread 30604): the day-one note read the budget
+   * from describeAskBudget, which still counted her brake — „0 left, renews on
+   * the 5th" — so the model never tried. What it is told matches the send check.
+   */
+  it('are skipped by the budget the model is told about, too', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const budget = readFileSync(join(__dirname, '..', 'askBudget.service.ts'), 'utf8');
+    const at = budget.indexOf('export async function describeAskBudget');
+    expect(budget.slice(at, at + 1400)).toContain(
+      'const braked = !sendingBrakesAreOff(userId) && fatigue.total >= FATIGUE_BRAKE_SIGNALS;',
+    );
+  });
 });

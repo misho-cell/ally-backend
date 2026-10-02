@@ -210,7 +210,11 @@ export async function describeAskBudget(userId: string): Promise<AskBudgetState>
     BUDGET_QUERY_TIMEOUT_MS,
   );
   const fatigue = await countFatigueSignals(userId);
-  const braked = fatigue.total >= FATIGUE_BRAKE_SIGNALS;
+  // #298, the tester's 1041 (Ninia, thread 30604, 13:07:58Z): the send check
+  // already skips the brake for the exempt accounts, but this description did
+  // not — so the day-one note told the model „0 left, renews on the 5th" and
+  // it never tried. What the model is told matches what the server does.
+  const braked = !sendingBrakesAreOff(userId) && fatigue.total >= FATIGUE_BRAKE_SIGNALS;
   const effective = braked ? MIN_MONTHLY_ASK_BUDGET : null;
   const sentThisMonth = Number(sent.rows[0]?.count ?? 0);
   return {
