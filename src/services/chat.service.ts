@@ -264,6 +264,7 @@ import {
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
+import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import {
   looksLikeGoalRequest,
@@ -1583,6 +1584,15 @@ const GET_COUNTRY_CHANNELS_TOOL: AnthropicTool = {
     },
     required: ['country'],
   },
+};
+
+// #377: the owner's own token balance, read exactly as the screen reads it.
+const GET_MY_TOKEN_BALANCE_TOOL: AnthropicTool = {
+  name: 'get_my_token_balance',
+  description:
+    'The owner asks how many tokens they have, how many they used, or when tokens come back → ' +
+    'call this and say the numbers exactly. It is the same balance the app screen shows.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 // Ticket 5 PART G1: product self-knowledge — content DB-owned by the prompt team.
@@ -7707,6 +7717,8 @@ async function executeToolCall(
       return { resumed: true };
     case 'get_netai_info':
       return getNetaiInfo(String(input['topic'] ?? ''), userId);
+    case 'get_my_token_balance':
+      return myTokenBalance(userId);
     case 'get_country_channels':
       return getCountryChannels(
         userId,
@@ -9397,6 +9409,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   send_answer_to_asker: '📨 დამტკიცებულ პასუხს ვაგზავნი...',
   get_country_channels: '🌍 არხებს ვამოწმებ...',
   get_netai_info: 'ℹ️ Netai-ს ინფოს ვკითხულობ...',
+  get_my_token_balance: '🪙 ტოკენების ბალანსს ვამოწმებ...',
   stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
   allow_contacting_me: '🔔 შეტყობინებებს ვაბრუნებ...',
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
@@ -10859,6 +10872,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   FIND_WARM_PATH_TOOL,
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
+  GET_MY_TOKEN_BALANCE_TOOL,
 ];
 
 /**

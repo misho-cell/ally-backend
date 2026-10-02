@@ -455,6 +455,7 @@ const TOOL_STEPS_EN: Record<string, string> = {
   relay_ask: '↪️ Passing the question on...',
   get_country_channels: '🌍 Checking channels...',
   get_netai_info: 'ℹ️ Reading Netai info...',
+  get_my_token_balance: '🪙 Checking your token balance...',
   get_intro_status: '📬 Checking introduction status...',
   stop_contacting_me: '🔕 Stopping messages...',
   allow_contacting_me: '🔔 Turning messages back on...',
@@ -480,6 +481,7 @@ const TOOL_STEPS_RU: Record<string, string> = {
   ask_contact: '✉️ Пишу контакту...',
   finish_task: '🏁 Закрываю цель...',
   get_netai_info: 'ℹ️ Читаю справку Netai...',
+  get_my_token_balance: '🪙 Проверяю баланс токенов...',
   get_intro_status: '📬 Проверяю статус знакомства...',
 };
 
@@ -498,6 +500,7 @@ const TOOL_STEPS_ES: Record<string, string> = {
   ask_contact: '✉️ Escribiendo al contacto...',
   finish_task: '🏁 Cerrando la meta...',
   get_netai_info: 'ℹ️ Leyendo la info de Netai...',
+  get_my_token_balance: '🪙 Revisando tu saldo de tokens...',
   get_intro_status: '📬 Revisando el estado...',
 };
 
