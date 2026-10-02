@@ -5492,3 +5492,18 @@ UNDO    POST /admin/users/118509/tokens
 **§85 RUN, 2 October 12:04:07 UTC:** `{"user_id":"118509","was":0,"tokens":5000,"balance":5000}`.
 (Giorgi's note said a balance of 170; the purchased-token ledger read 0 before this, so the 170
 he saw is most likely the weekly allowance, which this does not touch.)
+
+## §86 — THREAD 30493: THE LEAKED „[მოვლენა]" BUBBLE MOVED TO `event`
+
+**Authorised by Misho, 2 October ~17:10 UTC, directly in the session:** „5. კი" — to my question
+whether to hide the event row that shows in thread 30493 as the owner's own message. The row is
+the 11:44:20Z turn „[მოვლენა] მფლობელმა უპასუხა მიზნის კითხვას …", stored as `role=user`,
+`kind=message` before #498 (2732a56) stopped new ones. Moving it to `kind=event` takes it off the
+chat (the history endpoint shows message/pending/error only); nothing is deleted, no text changes.
+
+```
+ROUTE   PATCH /admin/threads/30493/messages/35e1a4d3-b2b8-4441-b8c3-3003de19156a/kind
+BODY    { "kind": "event", "reason": "§86: leaked event bubble, Misho 2 Oct" }
+UNDO    PATCH /admin/threads/30493/messages/35e1a4d3-b2b8-4441-b8c3-3003de19156a/kind
+        { "kind": "message", "reason": "undo §86" }
+```

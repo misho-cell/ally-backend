@@ -43,6 +43,7 @@ import {
   TokenAdjustmentOutOfRange,
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
+import { MessageKind, setUserMessageKind } from '../../services/messageKind.service';
 import { Router, Request, Response } from 'express';
 import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
@@ -2545,6 +2546,48 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[goal-close]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §86 — one named owner-role message moved to `event` (hidden from the chat)
+ * or back to `message` (the undo). Nothing is deleted; no text changes.
+ */
+adminRouter.patch(
+  '/threads/:threadId/messages/:messageId/kind',
+  param('threadId').isInt({ min: 1 }),
+  param('messageId').isString().trim().isLength({ min: 1, max: 64 }),
+  body('kind').isIn(Object.values(MessageKind)),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'kind is message or event, and a reason (3-500 chars) is required',
+      });
+      return;
+    }
+    const threadId = Number(req.params.threadId);
+    const kind = (req.body as { kind: MessageKind }).kind;
+    try {
+      const moved = await setUserMessageKind(threadId, String(req.params.messageId), kind);
+      if (moved === null) {
+        res
+          .status(404)
+          .json({ success: false, error: 'no owner-role message with that id in that thread' });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[message-kind] admin ${(req as AuthenticatedRequest).user.userId} thread ${threadId}: ` +
+          `${moved.was} -> ${moved.now}`,
+      );
+      res.status(200).json({ success: true, data: moved });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[message-kind]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
