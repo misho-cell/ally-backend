@@ -1,5 +1,6 @@
 import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
+import { withNothingFoundLast } from './nothingFoundLast';
 import {
   WORKING_LINE_TOOLS,
   forgetWorkingLineRun,
@@ -6998,7 +6999,8 @@ export function maskedNumberShapes(reply: string): string[] {
 export function scrubFinal(text: string, runId: string | undefined): string {
   // #432: a working note the model wrote to itself in another script comes off
   // before anything else reads the final.
-  const withoutNote = withoutLeadingSelfNote(text, runLang(runId));
+  // #365: a bare „nothing found" opening moves after what was found.
+  const withoutNote = withNothingFoundLast(withoutLeadingSelfNote(text, runLang(runId)));
   return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }
 
