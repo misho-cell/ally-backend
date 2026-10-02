@@ -16,6 +16,7 @@ import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
+import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
 import { asRunLanguage } from '../../services/runLanguage';
 import {
   getOnboardingStatus,
@@ -71,8 +72,6 @@ interface ProfileData {
 // The public fields a user may edit about THEMSELVES (Lika's item 9: "the
 // user can see and correct what the product knows about them" — a data-access
 // right, not a nicety). Photo upload needs a storage decision and is not here.
-/** #504: a link is a web address, and nothing longer than a person would type. */
-const MAX_LINK_CHARS = 300;
 
 const EDITABLE_FIELDS = [
   { key: 'name', column: 'name', maxLen: 80 },
@@ -377,12 +376,7 @@ profileRouter.patch(
   body('employer').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('job_position').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('city').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
-  body('link')
-    .optional({ nullable: true })
-    .isString()
-    .trim()
-    .isLength({ max: MAX_LINK_CHARS })
-    .isURL({ protocols: ['http', 'https'], require_protocol: true }),
+  profileLinkRule(),
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({ success: false, error: 'არასწორი ველები' });

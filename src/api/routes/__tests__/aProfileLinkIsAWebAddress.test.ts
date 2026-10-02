@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { body, validationResult } from 'express-validator';
+import { validationResult } from 'express-validator';
+import { profileLinkRule } from '../../validators/profileLinkRule';
 
 /**
  * Board #504 (Ninia): a link could not be added to the profile. It is now one
@@ -8,6 +9,7 @@ import { body, validationResult } from 'express-validator';
  * http(s) address. Source assertions for the route (this repository has no
  * supertest — see anAvatarIsServedBackAsWhatItSaid), and the rule itself run.
  */
+const REFUSED = Symbol('refused');
 const routes = readFileSync(join(__dirname, '..', 'profile.routes.ts'), 'utf8');
 
 describe('the profile link', () => {
@@ -16,26 +18,30 @@ describe('the profile link', () => {
     expect(routes).toContain('u.profile_link AS link');
   });
 
-  async function accepts(value: unknown): Promise<boolean> {
-    const req = { body: { link: value } };
-    await body('link')
-      .optional({ nullable: true })
-      .isString()
-      .trim()
-      .isLength({ max: 300 })
-      .isURL({ protocols: ['http', 'https'], require_protocol: true })
-      .run(req);
-    return validationResult(req).isEmpty();
+  async function saved(value: unknown): Promise<unknown> {
+    const req: { body: { link: unknown } } = { body: { link: value } };
+    await profileLinkRule().run(req);
+    return validationResult(req).isEmpty() ? req.body.link : REFUSED;
   }
 
   it('takes a web address and a null that clears it', async () => {
-    expect(await accepts('https://www.linkedin.com/in/someone')).toBe(true);
-    expect(await accepts(null)).toBe(true);
+    expect(await saved('https://www.linkedin.com/in/someone')).toBe(
+      'https://www.linkedin.com/in/someone',
+    );
+    expect(await saved(null)).toBeNull();
+  });
+
+  it('gives an address typed without a scheme https:// (frontend, 2 October)', async () => {
+    expect(await saved('linkedin.com/in/someone')).toBe('https://linkedin.com/in/someone');
+    expect(await saved('  www.example.ge ')).toBe('https://www.example.ge');
+    expect(await saved('example.ge:8080/me')).toBe('https://example.ge:8080/me');
   });
 
   it('refuses anything that is not an http(s) address', async () => {
-    expect(await accepts('javascript:alert(1)')).toBe(false);
-    expect(await accepts('linkedin.com/in/someone')).toBe(false);
-    expect(await accepts('just words')).toBe(false);
+    expect(await saved('javascript:alert(1)')).toBe(REFUSED);
+    expect(await saved('JavaScript:alert(1)')).toBe(REFUSED);
+    expect(await saved('mailto:someone@example.ge')).toBe(REFUSED);
+    expect(await saved('just words')).toBe(REFUSED);
+    expect(await saved('')).toBe(REFUSED);
   });
 });

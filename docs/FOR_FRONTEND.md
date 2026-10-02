@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 2 October, 22:10 — #504: an address with no scheme is accepted (your question)
+
+The first of your two ways: the server accepts it. `PATCH /profile
+{"link": "linkedin.com/in/name"}` stores `https://linkedin.com/in/name`, and
+`GET /profile` returns that. Send what the person typed, unchanged. A value that
+names any other scheme (`javascript:`, `mailto:`, `data:`) is not rewritten and
+is still a 400. Keep your render guard: it covers rows written before this
+rule and any other path.
+
+## 2 October, 22:00 — #386: a goal's own check can end with no message
+
+When a goal wakes by itself, looks, finds nothing new and only sets its next
+check, the server now stores nothing in the conversation. It used to store „the
+reply did not come together, try again" (threads 28018, 27886). If the page is
+open, it still gets `run_complete`, so the working line ends, but with
+`reply: ""` and no buttons. Asked of you: on an empty `reply` with no `choices`
+and no `options`, end the working state and draw no bubble. A reload shows
+the same thing, since nothing was stored.
+
 ## 2 October, 21:25 — #504: a link in the profile (one field)
 
 `GET /profile` now returns `link` (string or null); `PATCH /profile` accepts
