@@ -39,8 +39,10 @@ import { saveThreadMessage, threadLanguage } from './threads.service';
  * - It says nothing on an ENGINE run. A wake is work nobody asked for, so
  *   there is no reply of theirs to have failed — row 33's rule, in the third
  *   place it has come up. The run is logged and left to the reaper.
- * - It promises no resumption. Nothing picks the run back up: the process that
- *   held it is gone. „Send it again" is the whole of what is true.
+ * - It does not resume the run: the process that held it is gone. Since
+ *   2 October (tester 1013) the NEXT container does, from this very row —
+ *   cutOffRunResume.service.ts finds it, takes it back and runs the owner's
+ *   stored message. Where it cannot, „send it again" stays, and stays true.
  */
 
 /**

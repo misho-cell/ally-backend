@@ -33,6 +33,7 @@ import { startLabReportCron } from './services/labReport.cron';
 import { startIdentityScanCron } from './services/identityScan.cron';
 import { startEngineWakeCron } from './services/engineWakes.cron';
 import { startRunReaper } from './services/runReaper.service';
+import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -158,6 +159,8 @@ runMigrations()
     startAiNotificationCron();
     startHeartbeat();
     startRunReaper();
+    // Tester 1013: a run the last deploy cut off is restarted here, not resent by its owner.
+    startCutOffRunResume();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();

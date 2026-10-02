@@ -855,269 +855,18 @@ threadsRouter.post(
         }
       }
 
-      const runStartedAt = new Date();
-
-      // Hard outer timeout: the run's own budget (~90s) normally forces a final
-      // answer, but a truly stuck call (a hung external dependency the inner
-      // watchdogs miss) could otherwise leave the client waiting forever with the
-      // input locked — which cost us a tester. If the run hasn't produced a reply
-      // by this ceiling, surface a visible, retryable error instead of silence.
-      // (The orphaned run may still finish; the race has already settled, so its
-      // late result is ignored and never double-emitted.)
-      // Row 205: counted for the drain, so a shutdown knows what it is about
-      // to cut off and can say so.
-      // 22 September: with the owner and the thread on it, because „1 run(s)
-      // cut off" named nobody. On the 21st I found out whose answer my deploy
-      // had killed by reading two containers' logs by hand.
-      beginRun(runId, { kind: 'chat', userId: Number(userId), threadId });
-      const hardTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
-      );
-      Promise.race([
-        /**
-         * Row 209 — the drain check above was made before the wait.
-         *
-         * `isDraining` is read on the way in, and a queued message can sit
-         * behind a run for longer than the whole drain budget, so by the time
-         * it is this one's turn the container may already be leaving. Row 205
-         * exists to stop a run being born into that. Rejecting here rather
-         * than returning early keeps one failure path: the catch below writes
-         * the owner a retryable line in their own language, and the `finally`
-         * still hands the conversation to whoever is next.
-         */
-        isDraining()
-          ? Promise.reject(new Error('RUN_DRAINED'))
-          : processChat(userId, threadId, message, runId, undefined, {
-              asGoal: as_goal === true,
-              // Row 212: written above the moment it arrived, so the run must
-              // not write it a second time — unless that write failed, in
-              // which case the ordinary one inside the run is the fallback.
-              ...(storedOnArrival && { alreadyStored: true }),
-              ...(typeof in_reply_to_message_id === 'string' && {
-                inReplyToMessageId: in_reply_to_message_id,
-              }),
-            }),
-        hardTimeout,
-      ])
-        .then(async (result) => {
-          /**
-           * Ticket 20 row 113, fourth pass — the owner stopped this goal while
-           * this run was working, so none of what it produced may land.
-           *
-           * Read on c7f8de1, goal 4489 / thread 16635: the stop line was
-           * written at 13:16:16, and at 13:16:40 the run that was already going
-           * added its reply with approve / change buttons. A stopped goal asked
-           * its owner to approve a plan.
-           *
-           * The reply itself is withheld inside processChat, which is where it
-           * is STORED — the sixth pass of this row, after goal 4623 showed the
-           * message landing in the thread 2.1 s after the stop line while this
-           * check dropped only the SSE and the push. What is left for this
-           * check is everything hanging off a delivered answer: the SSE, the
-           * push, the title generator, the fact sweep. `result.stopped` is the
-           * same verdict reached one layer down, kept explicit so a reader
-           * here does not have to know that.
-           */
-          if (result.stopped === true || runWasStopped(threadId, runId)) {
-            // eslint-disable-next-line no-console
-            console.log(
-              `[run] ${runId}: dropped on thread ${threadId} — the owner stopped the goal mid-run`,
-            );
-            /**
-             * Row 113, ninth pass — a dropped run still has to END on the
-             * screen.
-             *
-             * Thread 16840, 19:49: the stop was read by the server, answered
-             * correctly, and stored. The open page kept its „working…" spinner
-             * for over two minutes, because run_complete is the only thing
-             * that ends a run for the client and this return skipped it. The
-             * line appeared the moment the page was reloaded.
-             *
-             * Only the server's own line is delivered. A run stopped mid-way
-             * carries the MODEL's reply in `result.reply`, written before the
-             * owner pressed enter, and that is the text this whole row exists
-             * to withhold — so the spinner keeps running in that case, which
-             * is the lesser of the two wrongs and is not what was reported.
-             */
-            if (result.stoppedLine !== undefined) {
-              emitRunComplete(userId, threadId, runId, { reply: result.stoppedLine });
-            }
-            return;
-          }
-          // Waiting covers BOTH kinds of third-party dependency: an unanswered
-          // ask AND an unanswered introduction request (ticket 5 item B2).
-          //
-          // A CHECK THAT COULD NOT RUN IS NOT A "NO". Both of these used to
-          // catch into `false`, which reads as "nobody owes an answer" and
-          // sends the thread to done. A database hiccup would then be rendered
-          // to the owner as "finished" — an error wearing the clothes of a
-          // confident answer, which is the same substitution as telling
-          // somebody their note was deleted when it was not. When we cannot
-          // tell, we say waiting: that claims only that something may still be
-          // out there, which is true.
-          //
-          // Row 305 (b): the requester's side of a follow-up request is their
-          // GOAL thread, which carries no request id — so the check is asked
-          // of the thread, not of the request column.
-          const pendingIntro = await introStillAwaitedOnThread(thread).catch((err: unknown) => {
-            // eslint-disable-next-line no-console
-            console.error('[run] pending-intro check failed:', (err as Error).message);
-            return true;
-          });
-          // The run itself reports failure (e.g. an empty final) — surface a
-          // retryable error, never a "successful" empty answer.
-          if (result.runFailed === true) {
-            emitRunError(userId, threadId, runId, result.reply);
-            void markRunFailed(userId, threadId, result.language ?? 'ka');
-            return;
-          }
-          emitRunComplete(userId, threadId, runId, {
-            reply: result.reply,
-            ...(result.options && { options: result.options }),
-            ...(result.choices && { choices: result.choices }),
-            ...(result.taskResult && { result: result.taskResult }),
-            // Ticket 17 Task 39: the share button reads this, not the prose.
-            ...(result.shareText && { share_text: result.shareText }),
-          });
-          // Title from the FINAL, post-strip reply (task 20) — never from a draft.
-          if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
-          // Engine T1: catches facts about named third parties the live
-          // assistant decided not to save mid-conversation.
-          void sweepFactsFromExchange(userId, threadId, message, result.reply);
-          // Persist + broadcast the terminal status. The thread becomes a task
-          // once a run sent a request or reported a structured result.
-          const becameTask = result.requestCreated === true || result.taskResult !== undefined;
-          const pendingAsk =
-            (await hasPendingAskForThread(threadId).catch((err: unknown) => {
-              // eslint-disable-next-line no-console
-              console.error('[run] pending-ask check failed:', (err as Error).message);
-              return true;
-            })) || pendingIntro;
-          const openTask = await getOpenTaskByThread(threadId).catch(() => null);
-          const flagged =
-            openTask !== null &&
-            (await goalQuestionFlaggedSince(openTask.id, runStartedAt).catch(() => false));
-          const finalStatus = statusAfterRun(result, pendingAsk, {
-            workItem: thread.type !== 'regular' || openTask !== null || becameTask,
-            flagged,
-            awaitingPlanApproval: awaitingPlanApproval(openTask),
-            openGoal: openTask !== null,
-          });
-          // The status caption follows the conversation's language (task 22
-          // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
-          const lang = result.language ?? 'ka';
-          const langLine =
-            finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
-          void setThreadStatus(userId, threadId, finalStatus, {
-            statusLine: langLine,
-            // An OPEN goal on this thread is the same fact (ticket 9 task
-            // 20 e) — it covers threads whose goal predates the flag being
-            // written at creation time.
-            ...((becameTask || openTask !== null) && { isTask: true }),
-          });
-          // Their answer would sit unseen on any device they are not looking
-          // at — push it. Which devices those are is decided per subscription
-          // inside sendPushNotification (row 6: the gate that used to stand
-          // here answered for the person, so one open Mac tab silenced the
-          // phone). No-op when VAPID isn't configured. The preview is scrubbed
-          // and truncated so no phone number rides in the notification body.
-          void sendPushNotification(userId, {
-            title: 'Netai — პასუხი მზადაა',
-            body: buildPushPreview(result.reply),
-            url: `/chat/${threadId}`,
-          }).catch(() => undefined);
-        })
-        .catch(async (error: unknown) => {
-          const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
-          // eslint-disable-next-line no-console
-          console.error('[POST /threads/:id/message] run failed', error);
-
-          // Timeout with material already gathered → FLUSH it as a partial
-          // answer instead of a bare error ("on timeout, deliver what was
-          // found + ask გავაგრძელო?" — the spec from the battery runs where
-          // the right answer sat in a step while the run died).
-          if (timedOut) {
-            const partial = await getLongestRunStep(threadId, runId).catch(() => null);
-            if (partial !== null && partial.length >= MIN_PARTIAL_FLUSH_CHARS) {
-              const reply = `${partial}\n\nამაზე მეტი ვერ მოვასწარი — გავაგრძელო?`;
-              emitRunComplete(userId, threadId, runId, { reply });
-              void setThreadStatus(userId, threadId, 'needs_you');
-              saveThreadMessage(threadId, Number(userId), 'assistant', reply).catch(
-                () => undefined,
-              );
-              return;
-            }
-          }
-
-          // The failure line follows the conversation, like every other fixed
-          // string. Found 18 September: a run died on an English thread and
-          // the only thing left on the owner's screen was Georgian — the one
-          // message a person reads carefully, because it is the one saying
-          // something went wrong. The owner's own words decide the language;
-          // `message` is theirs, which is why it is read here and not the
-          // reply that never came.
-          const failLang = detectRunLanguage(message);
-          /**
-           * Row 217 — „please try again" must not be said into a wall.
-           *
-           * 18 September, 20:29 to past 21:12: the model provider's credit
-           * balance ran out and EVERY run in the product died on its first
-           * call, three to four seconds, no tool calls. Six of the seat's in a
-           * row, „what is 2 plus 2" among them. All six told the owner to try
-           * again, and not one retry could ever have worked.
-           *
-           * So a refusal by the provider gets its own line. It says the
-           * service is unavailable and that it is not the owner's doing, and
-           * it does not say why: our billing is not theirs to carry.
-           */
-          const refused = isProviderRefusal(error);
-          if (refused) {
-            // eslint-disable-next-line no-console
-            console.error(
-              `[provider] run ${runId} thread ${threadId}: the model provider refused the ` +
-                'request — the owner is told the service is unavailable, not to retry. ' +
-                describeProviderRefusal(error),
-            );
-          }
-          const userMessage = refused
-            ? RUN_STRINGS[failLang].serviceUnavailable
-            : timedOut
-              ? RUN_STRINGS[failLang].tookTooLong
-              : RUN_STRINGS[failLang].runDied;
-          emitRunError(userId, threadId, runId, userMessage);
-          // Row 217: the badge follows the same verdict as the message.
-          void markRunFailed(userId, threadId, failLang, { serviceUnavailable: refused });
-          // The SSE event alone is not enough: if the stream dropped mid-run, the
-          // user stares at frozen narration forever (three real stalls in one
-          // battery run showed no visible timeout). Persist the error INTO the
-          // thread — kind='error' so the client renders it as a system failure
-          // with a retry, never as words the assistant said. Best-effort.
-          // Row 202: with its run id, so a failure can be joined to the run
-          // that produced it. Without it the row recording a run's death was
-          // the one row that could not be traced back to the run.
-          saveThreadMessage(
-            threadId,
-            Number(userId),
-            'assistant',
-            userMessage,
-            'error',
-            runId,
-          ).catch(() => undefined);
-        })
-        // Row 115: released whichever way the run ended, including the failure
-        // path above. A claim that survived a failed run would refuse the
-        // person's own retry of the message that just failed them — the one
-        // moment repeating yourself is certainly deliberate.
-        .finally(() => {
-          releaseRun(userId, threadId, message, runId);
-          endRun(runId);
-          // Row 209: and hand the conversation to whoever has been waiting for
-          // it. Here, with the other two, because every way a run can end
-          // passes through this block — the failure path included. A run that
-          // died still has to let go, or the next thing the owner types waits
-          // out the whole budget for a run that is not there.
-          leaveThread(threadId, runId);
-        });
+      runOwnerMessage({
+        userId,
+        threadId,
+        thread,
+        message,
+        runId,
+        asGoal: as_goal === true,
+        storedOnArrival,
+        inReplyToMessageId:
+          typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
+        needsTitle,
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/message]', error);
@@ -1204,3 +953,289 @@ threadsRouter.delete(
 );
 
 export default threadsRouter;
+
+/** What one owner run needs, whether it came from the route or is being restarted. */
+export interface OwnerRun {
+  readonly userId: string;
+  readonly threadId: number;
+  readonly thread: NonNullable<Awaited<ReturnType<typeof getThread>>>;
+  readonly message: string;
+  readonly runId: string;
+  readonly asGoal: boolean;
+  readonly storedOnArrival: boolean;
+  readonly inReplyToMessageId: string | undefined;
+  readonly needsTitle: boolean;
+}
+
+/**
+ * Runs one owner message and delivers what it produced — the run, its stream
+ * end, the thread status, the push. Taken out of the message route on
+ * 2 October so a run a deploy cut off can be restarted on the new container
+ * through exactly the same path (cutOffRunResume.service.ts).
+ */
+export function runOwnerMessage(run: OwnerRun): void {
+  const {
+    userId,
+    threadId,
+    thread,
+    message,
+    runId,
+    asGoal,
+    storedOnArrival,
+    inReplyToMessageId,
+    needsTitle,
+  } = run;
+  const runStartedAt = new Date();
+
+  // Hard outer timeout: the run's own budget (~90s) normally forces a final
+  // answer, but a truly stuck call (a hung external dependency the inner
+  // watchdogs miss) could otherwise leave the client waiting forever with the
+  // input locked — which cost us a tester. If the run hasn't produced a reply
+  // by this ceiling, surface a visible, retryable error instead of silence.
+  // (The orphaned run may still finish; the race has already settled, so its
+  // late result is ignored and never double-emitted.)
+  // Row 205: counted for the drain, so a shutdown knows what it is about
+  // to cut off and can say so.
+  // 22 September: with the owner and the thread on it, because „1 run(s)
+  // cut off" named nobody. On the 21st I found out whose answer my deploy
+  // had killed by reading two containers' logs by hand.
+  beginRun(runId, { kind: 'chat', userId: Number(userId), threadId });
+  const hardTimeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('RUN_HARD_TIMEOUT')), RUN_HARD_TIMEOUT_MS),
+  );
+  Promise.race([
+    /**
+     * Row 209 — the drain check above was made before the wait.
+     *
+     * `isDraining` is read on the way in, and a queued message can sit
+     * behind a run for longer than the whole drain budget, so by the time
+     * it is this one's turn the container may already be leaving. Row 205
+     * exists to stop a run being born into that. Rejecting here rather
+     * than returning early keeps one failure path: the catch below writes
+     * the owner a retryable line in their own language, and the `finally`
+     * still hands the conversation to whoever is next.
+     */
+    isDraining()
+      ? Promise.reject(new Error('RUN_DRAINED'))
+      : processChat(userId, threadId, message, runId, undefined, {
+          asGoal,
+          // Row 212: written above the moment it arrived, so the run must
+          // not write it a second time — unless that write failed, in
+          // which case the ordinary one inside the run is the fallback.
+          ...(storedOnArrival && { alreadyStored: true }),
+          ...(inReplyToMessageId !== undefined && { inReplyToMessageId }),
+        }),
+    hardTimeout,
+  ])
+    .then(async (result) => {
+      /**
+       * Ticket 20 row 113, fourth pass — the owner stopped this goal while
+       * this run was working, so none of what it produced may land.
+       *
+       * Read on c7f8de1, goal 4489 / thread 16635: the stop line was
+       * written at 13:16:16, and at 13:16:40 the run that was already going
+       * added its reply with approve / change buttons. A stopped goal asked
+       * its owner to approve a plan.
+       *
+       * The reply itself is withheld inside processChat, which is where it
+       * is STORED — the sixth pass of this row, after goal 4623 showed the
+       * message landing in the thread 2.1 s after the stop line while this
+       * check dropped only the SSE and the push. What is left for this
+       * check is everything hanging off a delivered answer: the SSE, the
+       * push, the title generator, the fact sweep. `result.stopped` is the
+       * same verdict reached one layer down, kept explicit so a reader
+       * here does not have to know that.
+       */
+      if (result.stopped === true || runWasStopped(threadId, runId)) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[run] ${runId}: dropped on thread ${threadId} — the owner stopped the goal mid-run`,
+        );
+        /**
+         * Row 113, ninth pass — a dropped run still has to END on the
+         * screen.
+         *
+         * Thread 16840, 19:49: the stop was read by the server, answered
+         * correctly, and stored. The open page kept its „working…" spinner
+         * for over two minutes, because run_complete is the only thing
+         * that ends a run for the client and this return skipped it. The
+         * line appeared the moment the page was reloaded.
+         *
+         * Only the server's own line is delivered. A run stopped mid-way
+         * carries the MODEL's reply in `result.reply`, written before the
+         * owner pressed enter, and that is the text this whole row exists
+         * to withhold — so the spinner keeps running in that case, which
+         * is the lesser of the two wrongs and is not what was reported.
+         */
+        if (result.stoppedLine !== undefined) {
+          emitRunComplete(userId, threadId, runId, { reply: result.stoppedLine });
+        }
+        return;
+      }
+      // Waiting covers BOTH kinds of third-party dependency: an unanswered
+      // ask AND an unanswered introduction request (ticket 5 item B2).
+      //
+      // A CHECK THAT COULD NOT RUN IS NOT A "NO". Both of these used to
+      // catch into `false`, which reads as "nobody owes an answer" and
+      // sends the thread to done. A database hiccup would then be rendered
+      // to the owner as "finished" — an error wearing the clothes of a
+      // confident answer, which is the same substitution as telling
+      // somebody their note was deleted when it was not. When we cannot
+      // tell, we say waiting: that claims only that something may still be
+      // out there, which is true.
+      //
+      // Row 305 (b): the requester's side of a follow-up request is their
+      // GOAL thread, which carries no request id — so the check is asked
+      // of the thread, not of the request column.
+      const pendingIntro = await introStillAwaitedOnThread(thread).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[run] pending-intro check failed:', (err as Error).message);
+        return true;
+      });
+      // The run itself reports failure (e.g. an empty final) — surface a
+      // retryable error, never a "successful" empty answer.
+      if (result.runFailed === true) {
+        emitRunError(userId, threadId, runId, result.reply);
+        void markRunFailed(userId, threadId, result.language ?? 'ka');
+        return;
+      }
+      emitRunComplete(userId, threadId, runId, {
+        reply: result.reply,
+        ...(result.options && { options: result.options }),
+        ...(result.choices && { choices: result.choices }),
+        ...(result.taskResult && { result: result.taskResult }),
+        // Ticket 17 Task 39: the share button reads this, not the prose.
+        ...(result.shareText && { share_text: result.shareText }),
+      });
+      // Title from the FINAL, post-strip reply (task 20) — never from a draft.
+      if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
+      // Engine T1: catches facts about named third parties the live
+      // assistant decided not to save mid-conversation.
+      void sweepFactsFromExchange(userId, threadId, message, result.reply);
+      // Persist + broadcast the terminal status. The thread becomes a task
+      // once a run sent a request or reported a structured result.
+      const becameTask = result.requestCreated === true || result.taskResult !== undefined;
+      const pendingAsk =
+        (await hasPendingAskForThread(threadId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[run] pending-ask check failed:', (err as Error).message);
+          return true;
+        })) || pendingIntro;
+      const openTask = await getOpenTaskByThread(threadId).catch(() => null);
+      const flagged =
+        openTask !== null &&
+        (await goalQuestionFlaggedSince(openTask.id, runStartedAt).catch(() => false));
+      const finalStatus = statusAfterRun(result, pendingAsk, {
+        workItem: thread.type !== 'regular' || openTask !== null || becameTask,
+        flagged,
+        awaitingPlanApproval: awaitingPlanApproval(openTask),
+        openGoal: openTask !== null,
+      });
+      // The status caption follows the conversation's language (task 22
+      // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
+      const lang = result.language ?? 'ka';
+      const langLine = finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
+      void setThreadStatus(userId, threadId, finalStatus, {
+        statusLine: langLine,
+        // An OPEN goal on this thread is the same fact (ticket 9 task
+        // 20 e) — it covers threads whose goal predates the flag being
+        // written at creation time.
+        ...((becameTask || openTask !== null) && { isTask: true }),
+      });
+      // Their answer would sit unseen on any device they are not looking
+      // at — push it. Which devices those are is decided per subscription
+      // inside sendPushNotification (row 6: the gate that used to stand
+      // here answered for the person, so one open Mac tab silenced the
+      // phone). No-op when VAPID isn't configured. The preview is scrubbed
+      // and truncated so no phone number rides in the notification body.
+      void sendPushNotification(userId, {
+        title: 'Netai — პასუხი მზადაა',
+        body: buildPushPreview(result.reply),
+        url: `/chat/${threadId}`,
+      }).catch(() => undefined);
+    })
+    .catch(async (error: unknown) => {
+      const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/message] run failed', error);
+
+      // Timeout with material already gathered → FLUSH it as a partial
+      // answer instead of a bare error ("on timeout, deliver what was
+      // found + ask გავაგრძელო?" — the spec from the battery runs where
+      // the right answer sat in a step while the run died).
+      if (timedOut) {
+        const partial = await getLongestRunStep(threadId, runId).catch(() => null);
+        if (partial !== null && partial.length >= MIN_PARTIAL_FLUSH_CHARS) {
+          const reply = `${partial}\n\nამაზე მეტი ვერ მოვასწარი — გავაგრძელო?`;
+          emitRunComplete(userId, threadId, runId, { reply });
+          void setThreadStatus(userId, threadId, 'needs_you');
+          saveThreadMessage(threadId, Number(userId), 'assistant', reply).catch(() => undefined);
+          return;
+        }
+      }
+
+      // The failure line follows the conversation, like every other fixed
+      // string. Found 18 September: a run died on an English thread and
+      // the only thing left on the owner's screen was Georgian — the one
+      // message a person reads carefully, because it is the one saying
+      // something went wrong. The owner's own words decide the language;
+      // `message` is theirs, which is why it is read here and not the
+      // reply that never came.
+      const failLang = detectRunLanguage(message);
+      /**
+       * Row 217 — „please try again" must not be said into a wall.
+       *
+       * 18 September, 20:29 to past 21:12: the model provider's credit
+       * balance ran out and EVERY run in the product died on its first
+       * call, three to four seconds, no tool calls. Six of the seat's in a
+       * row, „what is 2 plus 2" among them. All six told the owner to try
+       * again, and not one retry could ever have worked.
+       *
+       * So a refusal by the provider gets its own line. It says the
+       * service is unavailable and that it is not the owner's doing, and
+       * it does not say why: our billing is not theirs to carry.
+       */
+      const refused = isProviderRefusal(error);
+      if (refused) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[provider] run ${runId} thread ${threadId}: the model provider refused the ` +
+            'request — the owner is told the service is unavailable, not to retry. ' +
+            describeProviderRefusal(error),
+        );
+      }
+      const userMessage = refused
+        ? RUN_STRINGS[failLang].serviceUnavailable
+        : timedOut
+          ? RUN_STRINGS[failLang].tookTooLong
+          : RUN_STRINGS[failLang].runDied;
+      emitRunError(userId, threadId, runId, userMessage);
+      // Row 217: the badge follows the same verdict as the message.
+      void markRunFailed(userId, threadId, failLang, { serviceUnavailable: refused });
+      // The SSE event alone is not enough: if the stream dropped mid-run, the
+      // user stares at frozen narration forever (three real stalls in one
+      // battery run showed no visible timeout). Persist the error INTO the
+      // thread — kind='error' so the client renders it as a system failure
+      // with a retry, never as words the assistant said. Best-effort.
+      // Row 202: with its run id, so a failure can be joined to the run
+      // that produced it. Without it the row recording a run's death was
+      // the one row that could not be traced back to the run.
+      saveThreadMessage(threadId, Number(userId), 'assistant', userMessage, 'error', runId).catch(
+        () => undefined,
+      );
+    })
+    // Row 115: released whichever way the run ended, including the failure
+    // path above. A claim that survived a failed run would refuse the
+    // person's own retry of the message that just failed them — the one
+    // moment repeating yourself is certainly deliberate.
+    .finally(() => {
+      releaseRun(userId, threadId, message, runId);
+      endRun(runId);
+      // Row 209: and hand the conversation to whoever has been waiting for
+      // it. Here, with the other two, because every way a run can end
+      // passes through this block — the failure path included. A run that
+      // died still has to let go, or the next thing the owner types waits
+      // out the whole budget for a run that is not there.
+      leaveThread(threadId, runId);
+    });
+}
