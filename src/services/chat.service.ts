@@ -7625,6 +7625,12 @@ async function executeToolCall(
       if (!task || String(task.user_id) !== userId || task.status !== 'open') {
         return { sent: false, error: 'Task not found or not open.' };
       }
+      // A goal this same run just opened in its own new conversation is this
+      // request's goal, wherever its thread is.
+      const openedThisRun = (runCreatedGoals.get(runId ?? '') ?? []).includes(taskId);
+      if (!openedThisRun && askedFromAnotherGoalsThread(task.thread_id, threadId)) {
+        return { sent: false, error: ASK_BELONGS_HERE_NOTE };
+      }
       // See noteApprovedAPlan: this run approved the plan, and day one is
       // already queued behind the reply to write to the people in it. Sending
       // here is how the same person got the same question twice, forty seconds
@@ -9135,6 +9141,30 @@ function keepCaption(userId: string, threadId: number, runId: string, caption: s
     console.warn(`[caption] could not keep a step caption:`, (err as Error).message),
   );
 }
+
+/**
+ * The tester's 1056 (threads 31059 / 31089): the owner asked the same helper a
+ * second, different question in a NEW conversation, and the run filed it under
+ * the old goal that lives in the first conversation. The answer then woke the
+ * old goal — the first conversation got a turn about an answer it never asked
+ * for, and the conversation that asked heard nothing and kept waiting.
+ *
+ * A question asked here belongs to a goal whose conversation this is. A goal
+ * from another conversation is refused, with the way through: open this
+ * request's own goal, then ask under it. The connector, which has no
+ * conversation, is not affected.
+ */
+export function askedFromAnotherGoalsThread(
+  goalThreadId: number | null | undefined,
+  askingThreadId: number | undefined,
+): boolean {
+  return askingThreadId !== undefined && goalThreadId != null && goalThreadId !== askingThreadId;
+}
+
+const ASK_BELONGS_HERE_NOTE =
+  'Nothing sent: that goal lives in another conversation, and its answer would go back there, ' +
+  'not here. For this request, call create_task first so this conversation has its own goal, ' +
+  'then ask under that new task_id. Do not tell the owner anything was sent.';
 
 async function processToolBlocks(
   userId: string,
