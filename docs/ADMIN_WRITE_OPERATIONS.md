@@ -5425,3 +5425,8 @@ UNDO    PARTIAL, and Misho was told so before running:
         - the thread's 89 messages and the goal's wakes CANNOT be restored. That is what
           „delete" means here, and it is the owner's own D23 delete.
 ```
+
+**§82 RUN, 2 October 09:31:49 UTC:** `POST /admin/goals/12508/clear-for-retest` → 200
+`{ asksCancelled: 4, cardsDropped: 0, threadDeleted: true, hidden: "hidden" }`. Read back:
+goal closed/thread_deleted, thread 28909 and its messages gone, 0 asks `sent`, 4 `cancelled`,
+goal hidden. Giorgi's other open goals (1783, 13465) are not about land.
