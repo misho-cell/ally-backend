@@ -371,8 +371,23 @@ export function splitIntoWords(rawQuery: string): string[] {
   return rawQuery
     .trim()
     .split(/\s+/)
-    .map((word) => word.replace(SENTENCE_PUNCTUATION, ''))
+    .map((word) => word.replace(SENTENCE_PUNCTUATION, '') || pictographWord(word))
     .filter(Boolean);
+}
+
+/**
+ * Team task #373 — a contact saved only as „💙" could not be found by asking
+ * about „💙": the trim above took the whole word, since an emoji is neither a
+ * letter nor a number, and an empty query is answered „not found" before the
+ * database is ever asked. A word that is nothing BUT symbols is kept when it
+ * holds a pictograph — that is somebody's label — with only its punctuation
+ * taken off. A lone „?" or „—" still goes.
+ */
+const PICTOGRAPH_RE = /\p{Extended_Pictographic}/u;
+const PUNCTUATION_RE = /\p{P}/gu;
+
+function pictographWord(word: string): string {
+  return PICTOGRAPH_RE.test(word) ? word.replace(PUNCTUATION_RE, '') : '';
 }
 
 export function buildRawWordGroups(rawQuery: string): string[][] {
@@ -655,8 +670,24 @@ const EXACT_TOKEN_MAX_CHARS = 4;
  */
 export function toWordStartPattern(term: string): string {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // #373: \m is only valid before a word character, exactly as \M is only
+  // valid after one — „💙" behind \m could never match the label „💙". A term
+  // that opens on a symbol is matched where it stands.
+  if (!/^[\p{L}\p{N}]/u.test(term)) return withOptionalEmojiStyle(escaped);
   // \M is only valid after a word character — "c++" ends on '+', where a
   // word-end boundary can never match, so such terms keep the prefix form.
   const exactToken = term.length <= EXACT_TOKEN_MAX_CHARS && /[\p{L}\p{N}]$/u.test(term);
   return exactToken ? `\\m${escaped}\\M` : '\\m' + escaped;
+}
+
+/**
+ * A phone saves „❤️" with the emoji-style selector (U+FE0F) or without it,
+ * and a keyboard types either; both spellings are the same label.
+ */
+const EMOJI_STYLE = '\uFE0F';
+
+function withOptionalEmojiStyle(escaped: string): string {
+  return escaped
+    .replaceAll(EMOJI_STYLE, '')
+    .replace(/(\p{Extended_Pictographic})/gu, `$1${EMOJI_STYLE}?`);
 }
