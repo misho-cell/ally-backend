@@ -1,3 +1,4 @@
+import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import {
   WORKING_LINE_TOOLS,
@@ -7447,8 +7448,16 @@ async function executeToolCall(
           input['neo4j_contact_id'] as string | undefined,
         ),
       ) as object;
-    case 'present_choices':
-      return { presented: true };
+    case 'present_choices': {
+      // #367: a label with a letter nobody reads today is sent back to be rewritten.
+      const labels = Array.isArray(input['items'])
+        ? (input['items'] as unknown[]).filter((i): i is string => typeof i === 'string')
+        : [];
+      const foreign = labelWithForeignLetter(labels);
+      return foreign === null
+        ? { presented: true }
+        : { presented: false, error: foreignLetterRefusal(foreign) };
+    }
     case 'set_task_result':
       // Captured from the tool_use block in runToolLoop; the result here only
       // acknowledges the call so the loop continues to the final answer.
@@ -10044,7 +10053,12 @@ async function runToolLoop(
       if (block.type !== 'tool_use') continue;
       if (block.name === 'present_choices') {
         const input = block.input as { items?: unknown };
-        if (Array.isArray(input.items)) {
+        // #367: a set the tool refused for a foreign letter never reaches the screen;
+        // the model is asked to call again, and that call is the one kept.
+        const labelsAsWritten = Array.isArray(input.items)
+          ? input.items.filter((i): i is string => typeof i === 'string')
+          : [];
+        if (Array.isArray(input.items) && labelWithForeignLetter(labelsAsWritten) === null) {
           choices = input.items
             .filter((i): i is string => typeof i === 'string')
             .map((item) => canonicalChoiceLabel(item, runLang(runId)));
