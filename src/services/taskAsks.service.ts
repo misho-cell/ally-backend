@@ -3064,6 +3064,26 @@ export function isAWakingHour(now: Date = new Date()): boolean {
   return hour >= REMINDER_QUIET_BEFORE_HOUR && hour < REMINDER_QUIET_AFTER_HOUR;
 }
 
+/**
+ * The tester's 1008: a reader with several open questions got several
+ * identical reminders at the same second, one per thread, none saying which
+ * question it was. The line names who is asking; without a name it is the
+ * line it always was.
+ */
+export function askReminderLine(language: RunLanguage, askerName: string | null): string {
+  if (!askerName) return RUN_STRINGS[language].askReminder;
+  switch (language) {
+    case 'en':
+      return `A reminder: ${askerName}'s question is still unanswered — if you have a minute, your answer would really help. If you do not know, tell me that too and I will stop bothering you.`;
+    case 'ru':
+      return `Напоминание: вопрос от ${askerName} всё ещё без ответа — если есть минута, твой ответ очень поможет. Если не знаешь, напиши и это, и я больше не буду беспокоить.`;
+    case 'es':
+      return `Un recordatorio: la pregunta de ${askerName} sigue sin respuesta — si tienes un minuto, tu respuesta ayudaría mucho. Si no lo sabes, dímelo también y no te molestaré más.`;
+    default:
+      return `შეხსენება: ${geoName(askerName, 'gen')} კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.`;
+  }
+}
+
 export async function sendDueAskReminders(limit: number): Promise<number> {
   if (!isAWakingHour()) {
     // eslint-disable-next-line no-console
@@ -3072,7 +3092,11 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     );
     return 0;
   }
-  const due = await query<{ ask_thread_id: number | null; to_user_id: number }>(
+  const due = await query<{
+    ask_thread_id: number | null;
+    to_user_id: number;
+    asker_name: string | null;
+  }>(
     `UPDATE task_asks SET reminded_at = NOW()
      WHERE id IN (
        SELECT id FROM task_asks
@@ -3086,7 +3110,9 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        ORDER BY created_at
        LIMIT $1
      )
-     RETURNING ask_thread_id, to_user_id`,
+     RETURNING ask_thread_id, to_user_id,
+               (SELECT NULLIF(TRIM(u.name), '') FROM "User" u WHERE u.id = task_asks.from_user_id)
+                 AS asker_name`,
     [limit],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -3100,7 +3126,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
       row.ask_thread_id,
       row.to_user_id,
       'assistant',
-      RUN_STRINGS[language].askReminder,
+      askReminderLine(language, row.asker_name),
     ).catch(() => undefined);
     void sendPushNotification(String(row.to_user_id), {
       ...RUN_STRINGS[language].askReminderPush,
