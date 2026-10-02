@@ -39,6 +39,8 @@ describe('a reply in the history', () => {
     expect(out[0]).not.toHaveProperty('steps');
     expect(out[1].steps).toEqual(['ვეძებ კონტაქტებში', 'ვამოწმებ მეორე წრეს']);
     expect(mockQuery.mock.calls[0][1]).toEqual([7, ['r1'], expect.any(Number)]);
+    // Misho, 2 Oct: the per-tool captions are kept too, so every run has steps.
+    expect(String(mockQuery.mock.calls[0][0])).toContain("kind IN ('step', 'caption')");
   });
 
   it('gives the steps to the run’s last assistant message only', async () => {

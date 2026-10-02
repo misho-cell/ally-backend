@@ -740,7 +740,8 @@ export async function withRunSteps<T extends ThreadMessage>(
   if (lastOfRun.size === 0) return [...messages];
   const result = await query<{ run_id: string; content: string }>(
     `SELECT run_id, content FROM conversations
-      WHERE thread_id = $1 AND kind = 'step' AND content != '' AND run_id = ANY($2::text[])
+      WHERE thread_id = $1 AND kind IN ('step', 'caption') AND content != ''
+        AND run_id = ANY($2::text[])
       ORDER BY created_at ASC, id::text ASC
       LIMIT $3::int`,
     [threadId, [...lastOfRun.keys()], MAX_STEPS_PER_PAGE],

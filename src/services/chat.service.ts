@@ -3454,7 +3454,7 @@ async function saveMessage(
   threadId: number,
   role: 'user' | 'assistant',
   content: Anthropic.MessageParam['content'],
-  kind: 'message' | 'step' | 'error' | 'event' | 'pending' = 'message',
+  kind: 'message' | 'step' | 'caption' | 'error' | 'event' | 'pending' = 'message',
   runId: string | null = null,
   // Display-only tappable choices (present_choices) — persisted with the row
   // so they survive reload (ticket 6 close §15 B1). Never part of model history.
@@ -6951,6 +6951,7 @@ function clearRunState(runId: string): void {
   runSentLineOnScreen.delete(runId);
   forgetWorkingLineRun(runId);
   forgetSearchStage(runId);
+  runCaptionsKept.delete(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
@@ -9106,6 +9107,29 @@ async function runOneToolBlockOrSayWhy(
   }
 }
 
+/**
+ * Misho, 2 October („4. კი"): steps for EVERY goal run after a reload. Only
+ * 3 in 30 runs had any — a step row was written only when the model wrote a
+ * sentence beside a tool call, and the per-tool captions („ვეძებ …") went out
+ * live and were never kept. They are kept now, as kind `caption`: shown under
+ * the reply with the steps (withRunSteps), never in the model's history, and
+ * never mistaken for a buried answer (the salvage reads `step` only). Each
+ * distinct caption once per run, at most MAX_CAPTIONS_PER_RUN.
+ */
+const MAX_CAPTIONS_PER_RUN = 12;
+const runCaptionsKept = new Map<string, Set<string>>();
+
+function keepCaption(userId: string, threadId: number, runId: string, caption: string): void {
+  const kept = runCaptionsKept.get(runId) ?? new Set<string>();
+  if (kept.has(caption) || kept.size >= MAX_CAPTIONS_PER_RUN) return;
+  kept.add(caption);
+  runCaptionsKept.set(runId, kept);
+  void saveMessage(userId, threadId, 'assistant', caption, 'caption', runId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.warn(`[caption] could not keep a step caption:`, (err as Error).message),
+  );
+}
+
 async function processToolBlocks(
   userId: string,
   threadId: number,
@@ -9131,6 +9155,7 @@ async function processToolBlocks(
     if (progressMsg) {
       emitToolProgress(userId, threadId, runId, progressMsg);
       runLastCaption.set(runId, progressMsg);
+      keepCaption(userId, threadId, runId, progressMsg);
     }
   }
   // #397: one status line per source, replaced in place.
