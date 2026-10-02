@@ -546,8 +546,9 @@ export interface AppendedMessagePayload {
    * 'answers' — row 322(a): the server's card of answers that just arrived.
    * 'request' — row 305(b): an introduction request written into a
    * conversation that already exists, instead of opening a thread of its own.
+   * 'working' — #364: the line that the search has begun (workingLine.service).
    */
-  kind: 'pending' | 'answers' | 'request';
+  kind: 'pending' | 'answers' | 'request' | 'working';
   content: string;
   choices: readonly string[];
   ref: Record<string, unknown>;

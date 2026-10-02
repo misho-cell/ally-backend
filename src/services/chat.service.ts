@@ -1,3 +1,8 @@
+import {
+  WORKING_LINE_TOOLS,
+  forgetWorkingLineRun,
+  postWorkingLineOnce,
+} from './workingLine.service';
 import Anthropic from '@anthropic-ai/sdk';
 import { getContactInsight, saveContactInsight, InsightRefusedError } from './insights.service';
 import { createGetContactInsightTool } from './tools/get_contact_insight';
@@ -6912,6 +6917,7 @@ function clearRunState(runId: string): void {
   runPlanForReply.delete(runId);
   runAnswerSent.delete(runId);
   runSentLineOnScreen.delete(runId);
+  forgetWorkingLineRun(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
@@ -8906,6 +8912,10 @@ async function runOneToolBlock(
         error: 'მფლობელმა ეს მუშაობა შეაჩერა — ვერაფერს შევცვლი. დაასრულე უპასუხოდ.',
       }),
     };
+  }
+  // #364: the owner reads that the search has begun before its first call runs.
+  if (!ownerAbsent && WORKING_LINE_TOOLS.has(block.name)) {
+    await postWorkingLineOnce(userId, threadId, runId, runLang(runId));
   }
   const rawResult = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
   // See runEmptySearches. An empty search result is handed back the list of
