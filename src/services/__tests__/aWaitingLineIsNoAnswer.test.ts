@@ -13,8 +13,17 @@ describe('isOnlyAWaitingLine', () => {
     expect(isOnlyAWaitingLine('Espero tu respuesta.')).toBe(true);
   });
 
+  /** The tester's 1048 (thread 30889): waiting for a choice, second person too. */
+  it('catches waiting for a choice or a yes, in either person', () => {
+    expect(isOnlyAWaitingLine('ელოდები, რომ აირჩიო.')).toBe(true);
+    expect(isOnlyAWaitingLine('ველოდები შენს არჩევანს.')).toBe(true);
+    expect(isOnlyAWaitingLine('დაველოდები, რომ დამიდასტურო.')).toBe(true);
+    expect(isOnlyAWaitingLine("I'm waiting for you to choose.")).toBe(true);
+  });
+
   it('leaves a reply that says more alone', () => {
     expect(isOnlyAWaitingLine('ნანას გირჩევ — ასე გადავცე? დაველოდები შენს პასუხს.')).toBe(false);
     expect(isOnlyAWaitingLine('პასუხი გაიგზავნა.')).toBe(false);
+    expect(isOnlyAWaitingLine('ნანას გირჩევ. ველოდები, რომ აირჩიო.')).toBe(false);
   });
 });

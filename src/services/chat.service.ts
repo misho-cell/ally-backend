@@ -10985,8 +10985,15 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * saw the filler and not the question it was waiting on. A final that is
  * nothing but „I'll wait for your answer" is no answer; the step is.
  */
+/**
+ * The tester's 1048 (thread 30889): the final was „ელოდები, რომ აირჩიო." — a
+ * waiting line about the owner's CHOICE, and in the second person — while the
+ * real 199-character reply sat in the step, one character under the rescue's
+ * length floor. Waiting for a choice or a yes is the same non-answer as waiting
+ * for a reply, in either person.
+ */
 const WAITING_LINE_ONLY_RE =
-  /^[*_`~(\s]*(?:დაველოდები|ველოდები)\s+(?:შენს\s+)?პასუხს[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
+  /^[*_`~(\s]*(?:და)?ვ?ელოდები[,\s]+(?:რომ\s+)?(?:შენს\s+)?(?:პასუხს|არჩევანს|დასტურს|აირჩიო|აირჩიე|აირჩევ|დაადასტურო|დამიდასტურო)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?m|I am)\s+waiting\s+for\s+(?:you\s+to\s+(?:choose|pick|confirm)|your\s+(?:choice|answer|reply))[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
 
 export function isOnlyAWaitingLine(text: string): boolean {
   return WAITING_LINE_ONLY_RE.test(text.trim());
