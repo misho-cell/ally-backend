@@ -33,7 +33,8 @@ const PAUSE_LANGUAGES: readonly RunLanguage[] = ['ka', 'en', 'ru', 'es'];
  * record, and it is matched here the way it is STORED: `saveThreadMessage`
  * scrubs it first, which turns „ — " into „, " (the seat quoted the stored
  * form, with the comma). The version that names who answered has the name in
- * front, so it is matched by its fixed tail.
+ * front, and since board #384 both are followed by the day the allowance comes
+ * back, so each is matched by containing its fixed text.
  */
 export const NO_TOKEN_PAUSE_LINES: readonly string[] = PAUSE_LANGUAGES.map((l) =>
   scrubMechanicalForStorage(RUN_STRINGS[l].goalPausedNoTokens),
@@ -266,9 +267,8 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
        SELECT c.created_at, 'paused_no_tokens', NULL, c.id::text
          FROM conversations c JOIN tasks t ON t.thread_id = c.thread_id
          WHERE t.id = $1 AND c.role = 'assistant'
-           AND (c.content = ANY($6::text[])
-                OR EXISTS (SELECT 1 FROM unnest($7::text[]) tail
-                            WHERE RIGHT(c.content, LENGTH(tail)) = tail))
+           AND EXISTS (SELECT 1 FROM unnest($6::text[] || $7::text[]) line
+                        WHERE POSITION(line IN c.content) > 0)
        UNION ALL
        SELECT o.created_at, 'debrief_' || o.outcome, NULL, a.id::text
          FROM outcome_events o JOIN task_asks a ON a.id::text = o.subject_id

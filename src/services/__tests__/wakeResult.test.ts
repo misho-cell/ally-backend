@@ -49,6 +49,8 @@ import { getTaskById, ensureNextWake, Task } from '../taskStore.service';
 import { getThread, lastAssistantMessageIs, saveThreadMessage, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
 import { processChat } from '../chat.service';
+import { nextRenewalDay } from '../renewalDay';
+import { tokensComeBack } from '../runLanguage';
 import { startDayOne, startPlanProposal, wakeTask } from '../taskEngine.service';
 import { clearThreadQueue, enterThread, leaveThread, threadHolder } from '../threadRunQueue';
 
@@ -91,6 +93,17 @@ describe('wakeTask says WHY it did not wake', () => {
     expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(String(mockSave.mock.calls[0][3])).toContain(TOKENS_OUT);
+  });
+
+  // Board #384: the pause says when the tokens come back, the same day the
+  // owner's own refused message names.
+  it('says the day the allowance comes back', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: false } as never);
+
+    await wakeTask(4258, 'ნაბიჯი');
+
+    expect(String(mockSave.mock.calls[0][3])).toContain(tokensComeBack('ka', nextRenewalDay('ka')));
   });
 
   /**

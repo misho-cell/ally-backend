@@ -683,6 +683,25 @@ export function answerHeldNoTokens(language: RunLanguage, who: string): string {
 }
 
 /**
+ * Board #384: when tokens run out, say when they come back. The owner's own
+ * refused message already names the day (messageHeldNoTokens); a goal that
+ * paused on its own only said „top up". This sentence follows either pause
+ * line, with the day from the same nextRenewalDay call the message uses.
+ */
+export function tokensComeBack(language: RunLanguage, renewal: string): string {
+  switch (language) {
+    case 'en':
+      return `Your allowance comes back on ${renewal}.`;
+    case 'ru':
+      return `Лимит обновится ${renewal}.`;
+    case 'es':
+      return `Tu asignación se renueva ${renewal}.`;
+    default:
+      return `ლიმიტი ${renewal} განახლდება.`;
+  }
+}
+
+/**
  * The goal is closed, and the person who ANSWERED is finally told so.
  *
  * The seat's reading, 22 September, from one goal closed at 10:32:58:

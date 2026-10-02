@@ -48,7 +48,8 @@ import {
   saveThreadMessage,
   threadLanguage,
 } from './threads.service';
-import { RunLanguage, RUN_STRINGS, answerHeldNoTokens } from './runLanguage';
+import { RunLanguage, RUN_STRINGS, answerHeldNoTokens, tokensComeBack } from './runLanguage';
+import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
   INSTRUCTION_EVENT,
@@ -328,10 +329,11 @@ export async function wakeTask(
        * different facts and the person is owed the first.
        */
       const who = guaranteesOf(ensureQuoted)[0]?.who?.trim();
-      const line =
+      const pauseLine =
         who === undefined || who === ''
           ? RUN_STRINGS[language].goalPausedNoTokens
           : answerHeldNoTokens(language, who);
+      const line = `${pauseLine} ${tokensComeBack(language, nextRenewalDay(language))}`;
       /**
        * Not said twice, and the test of that is the LINE rather than the
        * status badge.
