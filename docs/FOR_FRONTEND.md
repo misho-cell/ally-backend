@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 2 October, 21:05 — #503: whom the owner invited (one route), and #505's server half exists
+
+**#503 (Ninia).** `GET /billing/referral/invited` → `{ invited: [{ name, joined_at, state }] }`,
+newest first, at most 200. `state` is `registered`, `trial` or `paid`. Only people
+who registered through the owner's link appear (an unopened invitation has no person
+to name); `name` is the name they registered with, and may be null. Asked of you: a
+„ვინ მოვიწვიე" list in the profile, beside the referral balance.
+
+**#505 (blocking a contact).** The server has had it for weeks: the chat tools
+`block_contact`, `unblock_contact` and `list_blocked_contacts` work from a conversation
+(„დაბლოკე X"). A list in the profile with an unblock button is yours; if you want a
+REST route for that list rather than the chat, say so and I will add it.
+
 ## 2 October, 17:45 — #506: the delete-account button (Misho's word), and steps on every run
 
 **#506.** The erasure exists on the server and has for weeks: `POST

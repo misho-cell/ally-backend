@@ -27,6 +27,7 @@ import {
 } from '../../services/stripe.service';
 import { createTopupCheckout } from '../../services/stripeTopup.service';
 import { CancelOutcome, setPlanEndsAtPeriodEnd } from '../../services/stripeCancel.service';
+import { InvitedPerson, listInvitedPeople } from '../../services/invitedPeople.service';
 
 const SPEND_ERRORS: Record<string, { status: number; message: string }> = {
   insufficient_balance: { status: 402, message: 'რეფერალური ბალანსი საკმარისი არ არის' },
@@ -216,6 +217,21 @@ billingRouter.get(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[GET /billing/referral]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// #503: the people this owner invited who registered, with one state each.
+billingRouter.get(
+  '/referral/invited',
+  async (req: Request, res: Response<ApiResponse<{ invited: InvitedPerson[] }>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      res.status(200).json({ success: true, data: { invited: await listInvitedPeople(userId) } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /billing/referral/invited]', (err as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
