@@ -5430,3 +5430,18 @@ UNDO    PARTIAL, and Misho was told so before running:
 `{ asksCancelled: 4, cardsDropped: 0, threadDeleted: true, hidden: "hidden" }`. Read back:
 goal closed/thread_deleted, thread 28909 and its messages gone, 0 asks `sent`, 4 `cancelled`,
 goal hidden. Giorgi's other open goals (1783, 13465) are not about land.
+
+## §83 — A ONE-TIME 5,000-TOKEN TOP-UP FOR NINIA (account 165699)
+
+**Authorised by Misho, 2 October ~10:25 UTC, directly in the session:** „ამ ნომერს დაუმატე
+რა 5000 ტოკენი" (the number resolves, read-only, to account 165699, Ninia; the number is
+not repeated here, D149). Balance before: 19. Her weekly allowance is not changed.
+
+```
+ROUTE   POST /admin/users/165699/tokens        (§57, requireAdminRole)
+BODY    { "tokens": 5000, "note": "Misho, 2 Oct: one-time 5000 tokens (§83)" }
+UNDO    POST /admin/users/165699/tokens
+        { "tokens": -5000, "note": "undo §83" }
+```
+
+**§83 RUN, 2 October 09:58:20 UTC:** `{"user_id":"165699","was":19,"tokens":5000,"balance":5019}`.
