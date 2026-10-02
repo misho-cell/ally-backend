@@ -44,8 +44,9 @@ if (EXEMPT.size > 0) {
   // a list like this is that it outlives the test nobody remembers running.
   // eslint-disable-next-line no-console
   console.warn(
-    `[ask-caps] receiving caps are OFF for ${EXEMPT.size} account(s): ${[...EXEMPT].join(', ')} — ` +
-      'test accounts only. If a real person is on this list, take them off.',
+    `[ask-caps] receiving caps and sending brakes are OFF for ${EXEMPT.size} account(s): ` +
+      `${[...EXEMPT].join(', ')} — the fictional test seats and, since §84 (2 October, Misho's ` +
+      'word), the five staff accounts. Anyone else on this list should be taken off.',
   );
 }
 
@@ -61,4 +62,15 @@ export function receivingCapsAreOff(toUserId: number | string): boolean {
 /** For the write-up and for anybody reading the admin screens. */
 export function exemptAccountIds(): readonly string[] {
   return [...EXEMPT];
+}
+
+/**
+ * #298, the tester's 1034 (Ninia → Tornike, 12:01Z): with the receiving caps
+ * off, her question was still held — by a SENDING brake, the fatigue budget
+ * („recent questions went unanswered"). Tornike's ask (1020) named this case:
+ * a sender-side limit that stops a staff account lifts for the same accounts.
+ * The same list, read from the sender's side.
+ */
+export function sendingBrakesAreOff(fromUserId: number | string): boolean {
+  return EXEMPT.has(String(fromUserId));
 }

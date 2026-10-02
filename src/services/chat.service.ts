@@ -1,3 +1,4 @@
+import { withoutLeadingSelfNote } from './leadingSelfNote';
 import {
   WORKING_LINE_TOOLS,
   forgetWorkingLineRun,
@@ -6189,7 +6190,19 @@ export function withClosingQuestion(reply: string, language: RunLanguage): strin
   // The tester's 967/968: text after the question — a stray „Elindu" (29107),
   // „(ზემოთ მოცემულ ღილაკებზე დააჭირე პასუხად.)" with the buttons below it
   // (29140). The question is the plan's last line; the buttons answer it.
-  return reply.slice(0, at + question.length);
+  return withoutRepeatedQuestion(reply.slice(0, at + question.length), question);
+}
+
+/**
+ * Task #432 (thread 30500): the model wrote the closing question twice, one
+ * under the other, and the cut above keeps everything up to the LAST copy — so
+ * both stayed. The question is said once.
+ */
+function withoutRepeatedQuestion(reply: string, question: string): string {
+  let head = reply.slice(0, reply.length - question.length).trimEnd();
+  if (!head.endsWith(question)) return reply;
+  while (head.endsWith(question)) head = head.slice(0, head.length - question.length).trimEnd();
+  return head === '' ? question : `${head}\n\n${question}`;
 }
 
 /** Does this reply ask the owner to approve a plan — is its approve button offered? */
@@ -6982,7 +6995,10 @@ export function maskedNumberShapes(reply: string): string[] {
  * marked, never runs a number into the list number on the next line.
  */
 export function scrubFinal(text: string, runId: string | undefined): string {
-  return scrubText(runId ? wrapAllowedNumbers(text, runId) : text);
+  // #432: a working note the model wrote to itself in another script comes off
+  // before anything else reads the final.
+  const withoutNote = withoutLeadingSelfNote(text, runLang(runId));
+  return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }
 
 export function wrapAllowedNumbers(text: string, runId: string): string {

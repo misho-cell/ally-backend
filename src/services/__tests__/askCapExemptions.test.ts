@@ -65,3 +65,29 @@ describe('the receiving caps stay on unless somebody names an account', () => {
     expect(withEnv('171870,,', (m) => m.receivingCapsAreOff(''))).toBe(false);
   });
 });
+
+/**
+ * #298, the tester's 1034: Ninia (staff) asking Tornike (staff) was held by a
+ * SENDING brake after the receiving caps were lifted. The same list now reads
+ * from the sender's side too.
+ */
+describe('the sending brakes for the same accounts', () => {
+  it('are off for a named sender and on for everybody else', () => {
+    expect(withEnv('165699,501', (m) => m.sendingBrakesAreOff(165699))).toBe(true);
+    expect(withEnv('165699,501', (m) => m.sendingBrakesAreOff('501'))).toBe(true);
+    expect(withEnv('165699,501', (m) => m.sendingBrakesAreOff(123456))).toBe(false);
+    expect(withEnv(undefined, (m) => m.sendingBrakesAreOff(165699))).toBe(false);
+  });
+
+  it('are skipped by the ask budget before it reads anything', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const budget = readFileSync(join(__dirname, '..', 'askBudget.service.ts'), 'utf8');
+    const at = budget.indexOf('export async function checkAskBudget');
+    expect(budget.slice(at, at + 400)).toContain(
+      'if (sendingBrakesAreOff(fromUserId)) return { allowed: true };',
+    );
+  });
+});

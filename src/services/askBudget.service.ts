@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { BudgetWindow, budgetWindow } from './budgetWindow';
-import { receivingCapsAreOff } from './askCapExemptions';
+import { receivingCapsAreOff, sendingBrakesAreOff } from './askCapExemptions';
 
 const BUDGET_QUERY_TIMEOUT_MS = 5_000;
 
@@ -249,6 +249,8 @@ export async function checkAskBudget(
   fromUserId: string,
   threadId: number | undefined,
 ): Promise<AskBudgetOutcome> {
+  // #298 / 1034: the staff accounts and the test seats are not braked as senders.
+  if (sendingBrakesAreOff(fromUserId)) return { allowed: true };
   if (threadId !== undefined && PER_CONVERSATION_GROWTH_ASK_LIMIT > 0) {
     const inConversation = await query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM task_asks ta
