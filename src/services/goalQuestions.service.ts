@@ -236,10 +236,18 @@ export async function answerGoalQuestion(
   // Fallback: persist the answer into the goal's thread so the next wake
   // (nightly at the latest) reads it from history. Delivered=true is honest:
   // the answer is in the goal's record.
+  // #498 (Ninia, thread 30493, 11:44:20Z): this was stored with the default
+  // kind, 'message', so the app drew the server's own words — „[მოვლენა] …
+  // განაახლე brief-ი" — as HER bubble. It is an event: the next wake reads it,
+  // the owner never sees it.
   if (task.thread_id !== null) {
-    await saveThreadMessage(task.thread_id, Number(userId), 'user', `[მოვლენა] ${event}`).catch(
-      () => undefined,
-    );
+    await saveThreadMessage(
+      task.thread_id,
+      Number(userId),
+      'user',
+      `[მოვლენა] ${event}`,
+      'event',
+    ).catch(() => undefined);
   }
   return { delivered: true };
 }

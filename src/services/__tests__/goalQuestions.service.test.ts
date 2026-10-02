@@ -113,11 +113,14 @@ describe("answerGoalQuestion — the owner's answer travels back to the goal", (
 
     // Delivered stays true: the answer is in the goal's record either way.
     expect(out.delivered).toBe(true);
+    // #498 (Ninia, thread 30493): stored as an EVENT, so the app never draws the
+    // server's own words as the owner's bubble.
     expect(mockSaveMessage).toHaveBeenCalledWith(
       9406,
       501,
       'user',
       expect.stringContaining('პასუხი'),
+      'event',
     );
   });
 

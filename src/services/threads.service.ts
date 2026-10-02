@@ -1109,8 +1109,9 @@ export async function saveThreadMessage(
   role: 'user' | 'assistant',
   content: string,
   // 'error' renders as a system-styled failure with a retry in the client —
-  // never as words the assistant said.
-  kind: 'message' | 'error' = 'message',
+  // never as words the assistant said. 'event' is a server turn written FOR
+  // the model: the run reads it, the owner never sees it (#498).
+  kind: 'message' | 'error' | 'event' = 'message',
   /**
    * Ticket 20 row 202 — which run this belongs to.
    *
