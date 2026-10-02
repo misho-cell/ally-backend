@@ -2510,8 +2510,11 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   // written next to first names only, a company next to other people's
   // surnames and titles („Nino Maxin AI"). Asked of 689 survivors it was 104
   // words and a timeout; asked of the shortlist it is a handful.
-  const companyRows = await removeCompanyWordRows(shortlist, gates);
-  const densities = await bubbleDensityForPhones(shortlist.map((e) => e.phone));
+  const companyRows = await named('removeCompanyWordRows', removeCompanyWordRows(shortlist, gates));
+  const densities = await named(
+    'bubbleDensityForPhones',
+    bubbleDensityForPhones(shortlist.map((e) => e.phone)),
+  );
   for (const entry of shortlist) {
     const bubble = densities.get(entry.phone);
     if (bubble === undefined) continue;
@@ -2526,7 +2529,7 @@ async function buildTargetListUncached(sinceDays: number): Promise<TargetListBui
   shortlist.sort(byScore);
   const ordered = [...shortlist, ...entries.slice(shortlistSize)];
   const listed = ordered.slice(0, capacity).map(({ scoreInputs: _drop, ...entry }) => entry);
-  await recordScoreHistory(new Date(), listed, capacity);
+  await named('recordScoreHistory', recordScoreHistory(new Date(), listed, capacity));
   return {
     entries: listed,
     gates: gates.report(),
