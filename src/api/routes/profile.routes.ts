@@ -42,6 +42,8 @@ interface ProfileData {
   readonly employer: string | null;
   readonly job_position: string | null;
   readonly city: string | null;
+  /** #504: one link the person chose to show — LinkedIn, a website. */
+  readonly link: string | null;
   readonly subscription_tier: string;
   readonly subscription_status: string;
   readonly trial_ends_at: string | null;
@@ -69,11 +71,15 @@ interface ProfileData {
 // The public fields a user may edit about THEMSELVES (Lika's item 9: "the
 // user can see and correct what the product knows about them" — a data-access
 // right, not a nicety). Photo upload needs a storage decision and is not here.
+/** #504: a link is a web address, and nothing longer than a person would type. */
+const MAX_LINK_CHARS = 300;
+
 const EDITABLE_FIELDS = [
   { key: 'name', column: 'name', maxLen: 80 },
   { key: 'employer', column: 'employer', maxLen: 120 },
   { key: 'job_position', column: '"jobPosition"', maxLen: 120 },
   { key: 'city', column: 'city', maxLen: 80 },
+  { key: 'link', column: 'profile_link', maxLen: MAX_LINK_CHARS },
 ] as const;
 
 const profileRouter = Router();
@@ -299,6 +305,7 @@ profileRouter.get(
                 u.employer,
                 u."jobPosition" AS job_position,
                 u.city,
+                u.profile_link AS link,
                 u.subscription_tier,
                 u.subscription_status,
                 u.trial_ends_at,
@@ -370,6 +377,12 @@ profileRouter.patch(
   body('employer').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('job_position').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('city').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
+  body('link')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ max: MAX_LINK_CHARS })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true }),
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({ success: false, error: 'არასწორი ველები' });

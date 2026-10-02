@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 2 October, 21:25 — #504: a link in the profile (one field)
+
+`GET /profile` now returns `link` (string or null); `PATCH /profile` accepts
+`{"link": "https://…"}` — an http(s) address only, up to 300 characters — and
+`{"link": null}` clears it. A bad address is a 400 like the other fields. Asked of
+you: a „ბმული (LinkedIn, ვებგვერდი)" field in the profile, shown as a tappable link.
+
 ## 2 October, 21:05 — #503: whom the owner invited (one route), and #505's server half exists
 
 **#503 (Ninia).** `GET /billing/referral/invited` → `{ invited: [{ name, joined_at, state }] }`,
