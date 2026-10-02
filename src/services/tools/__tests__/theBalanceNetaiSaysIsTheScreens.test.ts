@@ -1,4 +1,8 @@
 jest.mock('../../tokenWallet.service', () => ({ __esModule: true, getWalletSummary: jest.fn() }));
+jest.mock('../../../db/postgres/client', () => ({
+  __esModule: true,
+  query: jest.fn().mockResolvedValue({ rows: [] }),
+}));
 
 import { getWalletSummary } from '../../tokenWallet.service';
 import { myTokenBalance } from '../tokenBalance';
@@ -25,6 +29,8 @@ describe('the balance Netai is given', () => {
       granted_this_period: 5000,
       spent_this_period: 620,
       resets_at: '2026-10-05T00:00:00.000Z',
+      // The tester's 1047: midnight UTC is 04:00 in Tbilisi, the default clock.
+      resets_at_local: '5 Oct, 04:00 (Asia/Tbilisi)',
     });
   });
 
