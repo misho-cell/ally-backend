@@ -394,16 +394,38 @@ describe('searchSecondDegree tag matching', () => {
     expect(results[0]).not.toHaveProperty('signal_strength');
   });
 
-  it('returns found:false when the graph has no contacts', async () => {
+  it('returns found:false when neither the graph nor the phonebook has contacts', async () => {
     mockGetSession.mockReturnValue({
       run: jest.fn().mockResolvedValue({ records: [] }),
       close: jest.fn().mockResolvedValue(undefined),
     } as never);
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
 
     const result = (await searchSecondDegree('42', 'buralteri')) as Record<string, unknown>;
 
-    expect(result.found).toBe(false);
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ found: false, reason: 'no_contacts_in_graph' });
+    // F5: the phonebook is read once before concluding, and nothing else runs.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(String(mockQuery.mock.calls[0]?.[0])).toContain('FROM "UserAlias"');
+  });
+
+  /**
+   * F5 (the tester's 992, thread 29575): the graph had no edge for a contact
+   * the owner had saved, and the search said „no contacts". The phonebook is
+   * the same list; it is read when the graph is empty.
+   */
+  it('reads the phonebook when the graph has no edge for the owner', async () => {
+    mockGetSession.mockReturnValue({
+      run: jest.fn().mockResolvedValue({ records: [] }),
+      close: jest.fn().mockResolvedValue(undefined),
+    } as never);
+    mockQuery.mockResolvedValueOnce({ rows: [{ phone: '+12025550146' }] } as never);
+    mockQuery.mockResolvedValue({ rows: [] } as never);
+
+    await searchSecondDegree('42', 'baxva');
+
+    // More than the phonebook read: the search went on with that friend.
+    expect(mockQuery.mock.calls.length).toBeGreaterThan(1);
   });
 });
 

@@ -303,6 +303,24 @@ function poolLine(
 }
 
 const MAX_FRIEND_PHONES = 3000;
+
+/** Bounded like every query on this path; the phonebook read is one indexed scan. */
+const PHONEBOOK_TIMEOUT_MS = 5_000;
+
+/**
+ * The owner's saved contacts, as phones — what the graph's CONTACT edges
+ * mirror. Used only when the graph has none for this owner (see F5 above).
+ */
+export async function phonebookPhones(userId: string): Promise<string[]> {
+  const result = await query<{ phone: string }>(
+    `SELECT DISTINCT phone FROM "UserAlias"
+      WHERE "contactId" = $1::int AND NULLIF(TRIM(phone), '') IS NOT NULL
+      LIMIT ${MAX_FRIEND_PHONES}`,
+    [userId],
+    PHONEBOOK_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.phone);
+}
 // A target reachable through MORE mutuals is a stronger, more-verified bridge —
 // rank by that and cap at a real limit, so the right connection isn't lost in an
 // arbitrary unordered slice (was an unranked LIMIT 20).
@@ -645,6 +663,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     mark('graph');
 
+    // F5 (the tester's 992, thread 29575): the graph had no edge for a contact
+    // the owner HAS saved, and the search answered „no contacts". The owner's
+    // own phonebook is the same list the graph mirrors; read it when the
+    // mirror is empty.
+    if (friendKeys.length === 0) friendKeys = await phonebookPhones(userId);
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
